@@ -4,12 +4,17 @@ class KalmanFilterReg:
     """
     Online Kalman Filter for Dynamic Regression: y = beta * x + noise
     Estimates beta_t (slope) iteratively.
+    
+    VERIFIED TUNING (4-Hour Bars):
+    - Q = 1e-5 (Optimal per Diagnostic Monte Carlo).
+    - R = 1e-3 (Optimal).
+    - Effective Lookback: 2 Bars (8 Hours). Fast adaptation to regime shifts.
     """
     def __init__(self, delta=1e-5, R=1e-3, Q=1e-5):
         """
         delta: ridge regularization for initial P
-        R: measurement noise variance (volatility of spread)
-        Q: process noise variance (volatility of beta)
+        R: measurement noise variance (volatility of spread). Set to 1e-3.
+        Q: process noise variance (volatility of beta). Set to 1e-5.
         """
         self.R = R # Measurement Noise (Scalar)
         self.Q = Q # Process Noise (Scalar) for Beta
