@@ -68,6 +68,8 @@ Per symbol:
 - If **loss‑streak >= 3**, pause the symbol for **14 calendar days**.
 - After cooldown, trading resumes and streak resets.
 
+Loss streak is computed from **PnL sign** (`pnl_bps <= 0` counts as a loss). **Win rate is not a KPI**; the sign of PnL is used only to enforce the guardrail.
+
 This guardrail is **required at runtime**. Without it, drawdowns are materially larger.
 
 ---
@@ -85,6 +87,7 @@ This guardrail is **required at runtime**. Without it, drawdowns are materially 
 
 ## Results (Guardrail vs Baseline)
 Results are **gross, cost‑free**, and computed over 2018–2025.
+All reported performance stats use **PnL‑based win/loss** (`pnl_bps > 0`). The `outcome` label is a **signal outcome** (Z‑barrier logic) and is **not used** for performance reporting.
 
 ### M5 (MOM‑only)
 - Baseline: 221,217 trades, mean 0.87 bps, max DD ‑68,685 bps, Sharpe 0.38
