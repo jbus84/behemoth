@@ -60,6 +60,19 @@ There is still no dedicated runtime inference/exec module for M5/M15 with guardr
 - Guardrail logic is **causal** and matches manual semantics.
 - Manual now correctly states **no ML/CatBoost usage**.
 
+## Data‑Backed Checks (Small Sample‑Free Tests)
+These are lightweight checks using the existing M5/M15 event datasets (no full rebuilds).
+
+**Outcome/PNL alignment (MOM):**  
+- **M5**: `WIN_MOM <= 0` in **2.60%** of trades; `LOSS_REV > 0` in **32.41%**.  
+- **M15**: `WIN_MOM <= 0` in **2.14%** of trades; `LOSS_REV > 0` in **35.19%**.  
+This quantifies the **signal/PNL mismatch**: Z‑based outcomes are not perfectly aligned with active‑leg returns.
+
+**Guardrail skip rates:**  
+- **M5**: guardrail keeps **34,959** trades, skips **186,258** (**84.20%** skip rate).  
+- **M15**: guardrail keeps **27,090** trades, skips **46,539** (**63.21%** skip rate).  
+This confirms guardrail behavior is aggressive and materially changes trade density.
+
 ## Bottom Line (Red‑Team)
 The strategy is **directional single‑leg MOM** with a **spread‑based signal** and a **guardrail**. It is **not hedged** or market‑neutral. The guardrail materially reduces drawdown and is implemented correctly, but the signal/PnL mismatch remains a core design risk.
 
@@ -72,6 +85,7 @@ The strategy is **directional single‑leg MOM** with a **spread‑based signal*
 ## Evidence & References
 - Manual: `docs/STRATEGY_MASTER_MANUAL.md`
 - Guardrail logic: `scripts/report_mom_guardrail_diagnostics.py`
+- Logic tests: `debunk/REDTEAM_LOGIC_TESTS.md`
 - Guardrail WFO summary: `docs/analysis/mom_loss_limiter_wfo.md`
 - Guardrail outputs (M5/M15):
   - `data/analysis/m5_guardrail_*`
