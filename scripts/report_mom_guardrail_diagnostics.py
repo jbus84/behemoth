@@ -141,6 +141,8 @@ def main() -> None:
         row.update(_metrics(sub))
         overall.append(row)
     pd.DataFrame(overall).to_csv(os.path.join(OUT_DIR, "mom_guardrail_overall.csv"), index=False)
+    # keep backward compatibility
+    pd.DataFrame(overall).to_csv(os.path.join(OUT_DIR, "m15_guardrail_overall.csv"), index=False)
 
     monthly = []
     for label, sub in [("baseline", base), ("loss_streak_3_14d", guard)]:
@@ -149,6 +151,9 @@ def main() -> None:
         monthly.append(agg)
     pd.concat(monthly, ignore_index=True).to_csv(
         os.path.join(OUT_DIR, "mom_guardrail_monthly.csv"), index=False
+    )
+    pd.concat(monthly, ignore_index=True).to_csv(
+        os.path.join(OUT_DIR, "m15_guardrail_monthly.csv"), index=False
     )
 
     session = []
@@ -159,6 +164,9 @@ def main() -> None:
     pd.concat(session, ignore_index=True).to_csv(
         os.path.join(OUT_DIR, "mom_guardrail_session.csv"), index=False
     )
+    pd.concat(session, ignore_index=True).to_csv(
+        os.path.join(OUT_DIR, "m15_guardrail_session.csv"), index=False
+    )
 
     symbol = []
     for label, sub in [("baseline", base), ("loss_streak_3_14d", guard)]:
@@ -168,12 +176,19 @@ def main() -> None:
     pd.concat(symbol, ignore_index=True).to_csv(
         os.path.join(OUT_DIR, "mom_guardrail_symbol.csv"), index=False
     )
+    pd.concat(symbol, ignore_index=True).to_csv(
+        os.path.join(OUT_DIR, "m15_guardrail_symbol.csv"), index=False
+    )
 
     print("Saved:")
     print("- data/analysis/mom_guardrail_overall.csv")
     print("- data/analysis/mom_guardrail_monthly.csv")
     print("- data/analysis/mom_guardrail_session.csv")
     print("- data/analysis/mom_guardrail_symbol.csv")
+    print("- data/analysis/m15_guardrail_overall.csv")
+    print("- data/analysis/m15_guardrail_monthly.csv")
+    print("- data/analysis/m15_guardrail_session.csv")
+    print("- data/analysis/m15_guardrail_symbol.csv")
 
 
 if __name__ == "__main__":
