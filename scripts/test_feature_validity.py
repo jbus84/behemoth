@@ -42,11 +42,11 @@ def test_no_future_leakage():
     y, x = _make_series()
     ts = _make_timestamps(len(y))
 
-    betas, errors = compute_kalman_states(y, x)
+    betas, errors, ret_betas = compute_kalman_states(y, x)
     z_scores = compute_z_scores(errors)
 
     i = 700
-    feat_orig = compute_features_at_entry(i, y, x, betas, errors, z_scores, ts)
+    feat_orig = compute_features_at_entry(i, y, x, betas, errors, ret_betas, z_scores, ts)
 
     # Modify future values only
     y2 = y.copy()
@@ -54,7 +54,7 @@ def test_no_future_leakage():
     y2[i + 1:] += 0.5
     x2[i + 1:] -= 0.3
 
-    betas2, errors2 = compute_kalman_states(y2, x2)
+    betas2, errors2, ret_betas2 = compute_kalman_states(y2, x2)
     z_scores2 = compute_z_scores(errors2)
 
     # Causality checks
@@ -65,7 +65,10 @@ def test_no_future_leakage():
     if not np.allclose(z_scores[: i + 1], z_scores2[: i + 1], atol=1e-9):
         raise AssertionError("Z-scores changed before index i when only future data changed.")
 
-    feat_new = compute_features_at_entry(i, y2, x2, betas2, errors2, z_scores2, ts)
+    if not np.allclose(ret_betas[: i + 1], ret_betas2[: i + 1], atol=1e-9):
+        raise AssertionError("Return betas changed before index i when only future data changed.")
+
+    feat_new = compute_features_at_entry(i, y2, x2, betas2, errors2, ret_betas2, z_scores2, ts)
 
     for k in feat_orig.keys():
         _assert_close(feat_orig[k], feat_new[k], tol=1e-6, label=k)
@@ -77,7 +80,7 @@ def test_inference_feature_parity():
     y, x = _make_series()
     ts = _make_timestamps(len(y))
 
-    betas, errors = compute_kalman_states(y, x)
+    betas, errors, ret_betas = compute_kalman_states(y, x)
     z_scores = compute_z_scores(errors)
 
     # Build raw closes for inference (inference logs them internally)
@@ -88,11 +91,11 @@ def test_inference_feature_parity():
     })
 
     inf = MetaModelInference(load_model=False)
-    pdf = inf._compute_features(df, betas, errors, z_scores)
+    pdf = inf._compute_features(df, betas, errors, ret_betas, z_scores)
     last = pdf.iloc[-1]
 
     i = len(y) - 1
-    feat = compute_features_at_entry(i, y, x, betas, errors, z_scores, ts)
+    feat = compute_features_at_entry(i, y, x, betas, errors, ret_betas, z_scores, ts)
 
     # Compare key features (rounded in both paths)
     keys = [
@@ -101,13 +104,16 @@ def test_inference_feature_parity():
         "spread_std",
         "beta_stability",
         "beta",
+        "signal_beta_lookback",
+        "hedge_beta_lookback",
+        "beta_mismatch",
         "vol_ratio",
         "correlation_500",
         "trend_strength",
         "hour",
         "day_of_week",
-        "ret_X_4h",
-        "ret_Y_4h",
+        "ret_X_16b",
+        "ret_Y_16b",
         "atr_ratio",
         "entry_atr",
         "vol_regime",
@@ -117,8 +123,8 @@ def test_inference_feature_parity():
     tolerances = {
         "spread_std": 0.1,
         "entry_atr": 0.1,
-        "ret_X_4h": 0.1,
-        "ret_Y_4h": 0.1,
+        "ret_X_16b": 0.1,
+        "ret_Y_16b": 0.1,
         "trend_strength": 0.02,
         "vol_ratio": 0.02,
         "correlation_500": 0.02,
@@ -128,6 +134,9 @@ def test_inference_feature_parity():
         "z_entry": 0.01,
         "z_velocity": 0.01,
         "beta": 0.01,
+        "signal_beta_lookback": 0.02,
+        "hedge_beta_lookback": 0.02,
+        "beta_mismatch": 0.05,
         "hour": 0.0,
         "day_of_week": 0.0,
     }
@@ -142,15 +151,17 @@ def test_inference_feature_parity():
 def test_kalman_centering_parity():
     y, x = _make_series()
 
-    betas_train, errors_train = compute_kalman_states(y, x)
+    betas_train, errors_train, ret_betas_train = compute_kalman_states(y, x)
 
     inf = MetaModelInference(load_model=False)
-    betas_inf, errors_inf = inf._compute_kalman(y, x)
+    betas_inf, errors_inf, ret_betas_inf = inf._compute_kalman(y, x)
 
     if not np.allclose(betas_train, betas_inf, atol=1e-9):
         raise AssertionError("Kalman betas diverge between training and inference centering.")
     if not np.allclose(errors_train, errors_inf, atol=1e-9):
         raise AssertionError("Kalman errors diverge between training and inference centering.")
+    if not np.allclose(ret_betas_train, ret_betas_inf, atol=1e-9):
+        raise AssertionError("Return-Kalman betas diverge between training and inference.")
 
     print("[PASS] test_kalman_centering_parity")
 

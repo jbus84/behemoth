@@ -13,9 +13,12 @@ DATA_PATH = "data/meta_model/events_m5_8yr_v3_dual.csv"
 
 CATEGORICAL_FEATURES = ['strategy_type', 'active_leg', 'side']
 NUMERIC_FEATURES = [
-    'z_entry', 'z_velocity', 'spread_std', 'beta_stability', 'beta',
+    'z_entry', 'z_velocity', 'z_lag1', 'z_lag2', 'z_lag3', 'dz_lag1', 'dz_lag2',
+    'spread_std', 'beta_stability', 'beta', 'beta_lag1', 'beta_lag2',
+    'signal_beta_lookback', 'hedge_beta_lookback', 'beta_mismatch',
     'vol_ratio', 'correlation_500', 'trend_strength', 'hour', 'day_of_week',
-    'ret_X_4h', 'ret_Y_4h', 'atr_ratio', 'entry_atr', 'vol_regime'
+    'ret_X_1h', 'ret_Y_1h',
+    'ret_X_16b', 'ret_Y_16b', 'atr_ratio', 'entry_atr', 'vol_regime'
 ]
 ALL_FEATURES = CATEGORICAL_FEATURES + NUMERIC_FEATURES
 
@@ -39,10 +42,15 @@ def assess_5m():
         print("No training data found (check year column).")
         return
 
-    X_train = train_df.select(ALL_FEATURES).to_pandas()
+    use_features = [f for f in ALL_FEATURES if f in train_df.columns]
+    missing = [f for f in ALL_FEATURES if f not in use_features]
+    if missing:
+        print(f"Missing features skipped: {missing}")
+
+    X_train = train_df.select(use_features).to_pandas()
     y_train = train_df['pnl_bps'].to_numpy()
     
-    X_test = test_df.select(ALL_FEATURES).to_pandas()
+    X_test = test_df.select(use_features).to_pandas()
     pnl_test = test_df['pnl_bps'].to_numpy()
     
     cat_indices = [X_train.columns.get_loc(c) for c in CATEGORICAL_FEATURES]

@@ -80,7 +80,7 @@ def compute_kalman_states(y, x):
     mu_x = s_x.rolling(500, min_periods=1).mean().values
     mu_y = s_y.rolling(500, min_periods=1).mean().values
     
-    # Kalman Loop
+    # Kalman Loop (levels)
     for i in range(len(y)):
         # Centering (use pre-computed rolling means)
         # Note: Optimization: Only update KF.
@@ -91,7 +91,16 @@ def compute_kalman_states(y, x):
         betas[i] = b
         errors[i] = (y[i] - my) - b * (x[i] - mx)
         
-    return betas, errors
+    # Return Kalman (hedge beta proxy)
+    kf_ret = KalmanFilterReg(Q=1e-5, R=1e-3)
+    ret_betas = np.zeros(len(y))
+    if len(y) > 1:
+        for i in range(1, len(y)):
+            b_ret, _ = kf_ret.update(x[i] - x[i - 1], y[i] - y[i - 1])
+            ret_betas[i] = b_ret
+        ret_betas[0] = ret_betas[1]
+
+    return betas, errors, ret_betas
 
 def compute_z_scores_vectorized(errors, window=500):
     s = pd.Series(errors)
@@ -107,7 +116,7 @@ def compute_z_scores_vectorized(errors, window=500):
     
     return z_scores
 
-def compute_features_at_entry(i, y, x, betas, errors, z_scores, ts):
+def compute_features_at_entry(i, y, x, betas, errors, ret_betas, z_scores, ts):
     # Feature extraction with checks
     features = {}
     
@@ -122,6 +131,25 @@ def compute_features_at_entry(i, y, x, betas, errors, z_scores, ts):
         
         beta_slice = max(0, i-100)
         features['beta_stability'] = round(np.std(betas[beta_slice:i]), 4)
+        sig_beta_lb = np.mean(betas[slice_start:i]) if i > 0 else betas[0]
+        hedge_beta_lb = np.mean(ret_betas[slice_start:i]) if i > 0 else ret_betas[0]
+        features['signal_beta_lookback'] = round(sig_beta_lb, 4)
+        features['hedge_beta_lookback'] = round(hedge_beta_lb, 4)
+        if abs(sig_beta_lb) > 0.01:
+            mismatch = hedge_beta_lb / sig_beta_lb
+        else:
+            mismatch = 0.0
+        mismatch = float(np.clip(mismatch, -10.0, 10.0))
+        features['beta_mismatch'] = round(mismatch, 3)
+
+        # Explicit bar-by-bar lags (causal)
+        features['z_lag1'] = round(z_scores[i - 1], 3) if i >= 1 else 0.0
+        features['z_lag2'] = round(z_scores[i - 2], 3) if i >= 2 else 0.0
+        features['z_lag3'] = round(z_scores[i - 3], 3) if i >= 3 else 0.0
+        features['dz_lag1'] = round(z_scores[i - 1] - z_scores[i - 2], 3) if i >= 2 else 0.0
+        features['dz_lag2'] = round(z_scores[i - 2] - z_scores[i - 3], 3) if i >= 3 else 0.0
+        features['beta_lag1'] = round(betas[i - 1], 4) if i >= 1 else round(betas[i], 4)
+        features['beta_lag2'] = round(betas[i - 2], 4) if i >= 2 else round(betas[i], 4)
         
         # Market Regime
         features['beta'] = round(betas[i], 4)
@@ -178,6 +206,9 @@ def compute_features_at_entry(i, y, x, betas, errors, z_scores, ts):
         lookback_4h = min(i, 48)
         features['ret_X_4h'] = round((x[i] - x[i - lookback_4h]) * 10000, 2)
         features['ret_Y_4h'] = round((y[i] - y[i - lookback_4h]) * 10000, 2)
+        lookback_1h = min(i, 12)
+        features['ret_X_1h'] = round((x[i] - x[i - lookback_1h]) * 10000, 2)
+        features['ret_Y_1h'] = round((y[i] - y[i - lookback_1h]) * 10000, 2)
         
         # Entry ATR (50 bars = 250m = 4h)
         if i >= 50:
@@ -258,7 +289,7 @@ def build_dataset_optimized():
         x = np.log(df["X"].to_numpy())
         ts = df["timestamp"].to_numpy()
         
-        betas, errors = compute_kalman_states(y, x)
+        betas, errors, ret_betas = compute_kalman_states(y, x)
         z_scores = compute_z_scores_vectorized(errors)
         
         # Iterate signals
@@ -291,7 +322,7 @@ def build_dataset_optimized():
             
             # Feature extraction
             # Done only for valid signals
-            feat = compute_features_at_entry(i, y, x, betas, errors, z_scores, ts)
+            feat = compute_features_at_entry(i, y, x, betas, errors, ret_betas, z_scores, ts)
             if feat is None: continue
             
             # MOM

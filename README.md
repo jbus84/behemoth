@@ -1,19 +1,21 @@
 
-# Behemoth: Kalman Pairs Trading System
+# Behemoth: Kalman + Meta Model (H1)
 
-**Status**: Production Ready
-**Strategy**: "Zero-Beta" Mean Reversion (Kalman Filter)
-**Timeframe**: 4-Hour Bars
+**Status**: Partially Implemented (Inference-Only)
+**Strategy**: Kalman Anomaly Detection + Meta Model Filter (CatBoost)
+**Timeframe**: H1 (Hourly)
+
+> [!IMPORTANT]
+> **Implementation Note**: This repo currently provides **signal inference** only. Execution‑side risk controls described in the manual (kill‑zone, circuit breaker, Z‑based exits, etc.) are **not implemented** in code.
 
 ## 1. The Strategy
-We trade cointegrated asset pairs (e.g., Gold vs Silver, Nasdaq vs S&P 500) using an adaptive **Kalman Filter** to estimate their hedge ratio ($\beta$) in real-time.
+We generate H1 signals using a centered **Kalman Filter** and a **CatBoost regressor** that filters MOM vs REV outcomes based on regime features.
 
-*   **Logic**: Market Neutral (Beta = 0). We profit from the *spread* reverting to the mean, regardless of market direction.
-*   **Edge**: Structural Inefficiencies (ETF rebalancing flows, Physical demand floors).
-*   **Safety**: Validated via Monte Carlo (0% probability of negative year in 10k simulations).
+*   **Logic**: Kalman estimates dynamic beta and spread error; CatBoost ranks MOM vs REV for the active leg.
+*   **Note**: Claims about market neutrality and Monte Carlo safety are **legacy** and require revalidation against the current H1 pipeline.
 
-## 2. The "Golden Six" Portfolio
-We trade 6 uncorrelated engines to diversify risk:
+## 2. Legacy 4H Portfolio (Not Revalidated)
+These were part of the older 4H system and are retained for reference only.
 
 | Engine | Pair | Sharpe Ratio | Role |
 | :--- | :--- | :--- | :--- |
@@ -24,7 +26,7 @@ We trade 6 uncorrelated engines to diversify risk:
 | **Euro FX** | EUR / GBP | **1.12** | Low Vol Income |
 | **Euro Equity** | DAX / FTSE | **1.06** | Diversification |
 
-## 3. Validated Metrics (Risk Audit)
+## 3. Legacy Metrics (Not Revalidated)
 *   **Median Sharpe**: 6.90 (Portfolio Mean)
 *   **Max Drawdown**: 0.076 log units (Worst Case 99%)
 *   **Effective Lookback**: **2 Bars** (8 Hours). Proven via Impulse Response Test.
@@ -32,25 +34,25 @@ We trade 6 uncorrelated engines to diversify risk:
 
 ## 4. Quickstart
 
-### A. Run Dashboard
-Check the current signals for all 6 pairs:
+### A. Run H1 Inference
+Generate the latest H1 signal for a pair:
+```bash
+python3 scripts/inference_meta_model.py
+```
+
+### B. Legacy 4H Dashboard
+Legacy dashboard for the 4H portfolio:
 ```bash
 python3 scripts/monitor_pairs.py
 ```
 
-### B. Core Docs
-*   **[Master Manual](docs/STRATEGY_MASTER_MANUAL.md)**: The definitive strategy guide. **READ THIS FIRST**.
-*   **[Pair Universe Analysis](docs/pair_universe_analysis.md)**: Data-backed evidence for M15/H1/H4 timeframes.
-*   **[Diagnostic Report](docs/diagnostic_report.md)**: Proof that the math works (Math Unit Tests).
-*   **[Risk Assessment](docs/risk_assessment.md)**: Detailed Monte Carlo results.
+### C. Core Docs
+*   **[Master Manual](docs/STRATEGY_MASTER_MANUAL.md)**: Current H1 logic and execution notes.
+*   **[Walkthrough](docs/walkthrough.md)**: H1 dataset exploration and deployment notes.
+*   **[Red‑Team Debunk](debunk/REDTEAM_REPO_DEBUNK.md)**: Known gaps and risks.
 
-## 5. Execution Rules (Critical)
-*   **Entry**: |Z-Score| > 2.0.
-*   **Exit**: |Z-Score| < 0.1 (Fair Value).
-*   **Stop Loss**:
-    *   **Time Stop**: 72 Hours (If spread doesn't close, correlation is broken).
-    *   **Equity Stop**: -3% Account Equity (Disaster protection).
-    *   **Avoid**: Do NOT use standard price stops (e.g. -20 pips). They kill the mean reversion edge.
+## 5. Execution Rules (Documentation vs Code)
+The manual documents several guards (kill‑zone, circuit breaker, Z‑based exits), but **only entry‑side signal rules** are currently implemented in the inference script.
 
 ---
-*Built by Antigravity. Verified Correct.*
+*Built by Antigravity. Validation status is documented in `debunk/`.* 

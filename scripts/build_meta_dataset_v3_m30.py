@@ -76,7 +76,18 @@ def compute_kalman_states(y, x):
         betas.append(b)
         errors.append((y[i] - mu_y) - b * (x[i] - mu_x))
     
-    return np.array(betas), np.array(errors)
+    # Return Kalman (hedge beta proxy)
+    kf_ret = KalmanFilterReg(Q=1e-5, R=1e-3)
+    ret_betas = np.zeros(len(y))
+    if len(y) > 1:
+        for i in range(1, len(y)):
+            ry = y[i] - y[i - 1]
+            rx = x[i] - x[i - 1]
+            b_ret, _ = kf_ret.update(rx, ry)
+            ret_betas[i] = b_ret
+        ret_betas[0] = ret_betas[1]
+
+    return np.array(betas), np.array(errors), ret_betas
 
 def compute_z_scores(errors, window=500):
     z_scores = np.zeros(len(errors))
@@ -87,7 +98,7 @@ def compute_z_scores(errors, window=500):
             z_scores[i] = (errors[i] - mu) / std
     return z_scores
 
-def compute_features_at_entry(i, y, x, betas, errors, z_scores, ts):
+def compute_features_at_entry(i, y, x, betas, errors, ret_betas, z_scores, ts):
     features = {}
     
     # Signal Quality
@@ -96,6 +107,25 @@ def compute_features_at_entry(i, y, x, betas, errors, z_scores, ts):
     features['z_velocity'] = round(z_scores[i] - z_scores[prev_i], 2)
     features['spread_std'] = round(np.std(errors[max(0, i-500):i]) * 10000, 2)
     features['beta_stability'] = round(np.std(betas[max(0, i-100):i]), 4)
+    sig_beta_lb = np.mean(betas[max(0, i - 500):i]) if i > 0 else betas[0]
+    hedge_beta_lb = np.mean(ret_betas[max(0, i - 500):i]) if i > 0 else ret_betas[0]
+    features['signal_beta_lookback'] = round(sig_beta_lb, 4)
+    features['hedge_beta_lookback'] = round(hedge_beta_lb, 4)
+    if abs(sig_beta_lb) > 0.01:
+        mismatch = hedge_beta_lb / sig_beta_lb
+    else:
+        mismatch = 0.0
+    mismatch = float(np.clip(mismatch, -10.0, 10.0))
+    features['beta_mismatch'] = round(mismatch, 3)
+
+    # Explicit bar-by-bar lags (causal)
+    features['z_lag1'] = round(z_scores[i - 1], 3) if i >= 1 else 0.0
+    features['z_lag2'] = round(z_scores[i - 2], 3) if i >= 2 else 0.0
+    features['z_lag3'] = round(z_scores[i - 3], 3) if i >= 3 else 0.0
+    features['dz_lag1'] = round(z_scores[i - 1] - z_scores[i - 2], 3) if i >= 2 else 0.0
+    features['dz_lag2'] = round(z_scores[i - 2] - z_scores[i - 3], 3) if i >= 3 else 0.0
+    features['beta_lag1'] = round(betas[i - 1], 4) if i >= 1 else round(betas[i], 4)
+    features['beta_lag2'] = round(betas[i - 2], 4) if i >= 2 else round(betas[i], 4)
     
     # Market Regime
     features['beta'] = round(betas[i], 4)
@@ -128,9 +158,12 @@ def compute_features_at_entry(i, y, x, betas, errors, z_scores, ts):
         features['day_of_week'] = dt.weekday()
     
     # Technical Context
-    lookback = min(i, 16)
-    features['ret_X_4h'] = round((x[i] - x[i - lookback]) * 10000, 2)
-    features['ret_Y_4h'] = round((y[i] - y[i - lookback]) * 10000, 2)
+    lookback = min(i, 16)  # 16 * 30m = 8h
+    features['ret_X_16b'] = round((x[i] - x[i - lookback]) * 10000, 2)
+    features['ret_Y_16b'] = round((y[i] - y[i - lookback]) * 10000, 2)
+    lookback_1h = min(i, 2)  # 2 * 30m = 1h
+    features['ret_X_1h'] = round((x[i] - x[i - lookback_1h]) * 10000, 2)
+    features['ret_Y_1h'] = round((y[i] - y[i - lookback_1h]) * 10000, 2)
     
     if i >= 100:
         atr_y = np.mean([max(y[j:j+4]) - min(y[j:j+4]) for j in range(i-100, i, 4)])
@@ -160,15 +193,15 @@ def compute_features_at_entry(i, y, x, betas, errors, z_scores, ts):
 def simulate_trade(entry_idx, direction, strategy_type, y, x, z_scores, active_asset, thresh=1.5, stop=3.5):
     """
     Simulate a single trade with Z-SCORE EXITS ONLY.
-    Barriers are recorded as features, not used for exits.
+    Uses Z0 crossing + Z-based stop.
     """
     prices = y if active_asset == 'Y' else x
     entry_price = prices[entry_idx]
-    
+
     for i in range(entry_idx + 1, min(entry_idx + 500, len(z_scores))):
         z = z_scores[i]
         curr_price = prices[i]
-        
+
         if strategy_type == 'MOM':
             if direction == 1:  # Long
                 if z < 0:
@@ -184,7 +217,7 @@ def simulate_trade(entry_idx, direction, strategy_type, y, x, z_scores, active_a
                 elif z < -stop:
                     pnl = -(curr_price - entry_price) * 10000
                     return pnl, i - entry_idx, 'WIN_MOM'
-        
+
         else:  # REVERSION
             if direction == 1:  # Long
                 if z > 0:
@@ -214,8 +247,10 @@ def simulate_trade(entry_idx, direction, strategy_type, y, x, z_scores, active_a
 def build_dataset():
     print("--- BUILDING META MODEL DATASET v3 (DUAL STRATEGY) ---")
     
-    thresh = 1.5
+    thresh_mom = 1.5
+    thresh_rev = 2.5
     stop_level = 3.5
+    min_thresh = min(thresh_mom, thresh_rev)
     
     # Phase 1: Load all data
     print("Phase 1: Loading data and computing Kalman states...")
@@ -230,12 +265,12 @@ def build_dataset():
         x = np.log(df["X"].to_numpy())
         ts = df["timestamp"].to_numpy()
         
-        betas, errors = compute_kalman_states(y, x)
+        betas, errors, ret_betas = compute_kalman_states(y, x)
         z_scores = compute_z_scores(errors)
         
         pair_states[name] = {
             'y': y, 'x': x, 'ts': ts,
-            'betas': betas, 'errors': errors, 'z_scores': z_scores,
+            'betas': betas, 'errors': errors, 'ret_betas': ret_betas, 'z_scores': z_scores,
             'cost_y': cost_y, 'cost_x': cost_x
         }
         print(f"  {name}: {len(y)} bars")
@@ -249,7 +284,7 @@ def build_dataset():
         print(f"  Processing {name}...")
         
         y, x, ts = state['y'], state['x'], state['ts']
-        betas, errors, z_scores = state['betas'], state['errors'], state['z_scores']
+        betas, errors, ret_betas, z_scores = state['betas'], state['errors'], state['ret_betas'], state['z_scores']
         cost_y, cost_x = state['cost_y'], state['cost_x']
         
         # Track last entry to avoid overlapping trades
@@ -272,24 +307,24 @@ def build_dataset():
                 continue  # Skip neutral zone
             
             # Check for signal
-            if abs(z) < thresh:
+            if abs(z) < min_thresh:
                 continue
             
             # Compute features at entry
-            features = compute_features_at_entry(i, y, x, betas, errors, z_scores, ts)
+            features = compute_features_at_entry(i, y, x, betas, errors, ret_betas, z_scores, ts)
             
             # Cross-pair signals: SKIPPED for performance
             features['num_active_signals'] = 0
             
             # === MOMENTUM TRADE ===
-            if i - last_entry_mom >= min_gap:
-                if z > thresh:
+            if i - last_entry_mom >= min_gap and abs(z) >= thresh_mom:
+                if z > 0:
                     mom_dir = 1  # Long (follow the trend up)
                 else:
                     mom_dir = -1  # Short (follow the trend down)
                 
                 pnl, duration, outcome = simulate_trade(
-                    i, mom_dir, 'MOM', y, x, z_scores, active_asset, thresh, stop_level
+                    i, mom_dir, 'MOM', y, x, z_scores, active_asset, thresh_mom, stop_level
                 )
                 
                 # Rolling performance
@@ -320,14 +355,14 @@ def build_dataset():
                 last_entry_mom = i
             
             # === REVERSION TRADE ===
-            if i - last_entry_rev >= min_gap:
-                if z > thresh:
+            if i - last_entry_rev >= min_gap and abs(z) >= thresh_rev:
+                if z > 0:
                     rev_dir = -1  # Short (fade the move, expect reversion)
                 else:
                     rev_dir = 1  # Long (fade the move, expect reversion)
                 
                 pnl, duration, outcome = simulate_trade(
-                    i, rev_dir, 'REV', y, x, z_scores, active_asset, thresh, stop_level
+                    i, rev_dir, 'REV', y, x, z_scores, active_asset, thresh_rev, stop_level
                 )
                 
                 # Rolling performance
@@ -364,6 +399,15 @@ def build_dataset():
         out_path = os.path.join(OUTPUT_DIR, "events_m30_8yr_v3_dual.csv")
         df_out.write_csv(out_path)
         print(f"Saved to {out_path}")
+
+        # Split datasets
+        df_mom = df_out.filter(pl.col("strategy_type") == "MOM")
+        df_rev = df_out.filter(pl.col("strategy_type") == "REV")
+        out_mom = os.path.join(OUTPUT_DIR, "events_m30_8yr_v3_mom.csv")
+        out_rev = os.path.join(OUTPUT_DIR, "events_m30_8yr_v3_rev.csv")
+        df_mom.write_csv(out_mom)
+        df_rev.write_csv(out_rev)
+        print(f"Saved split datasets:\n- {out_mom}\n- {out_rev}")
         
         # Summary
         print("\n=== DATASET SUMMARY ===")

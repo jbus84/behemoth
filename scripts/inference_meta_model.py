@@ -9,34 +9,59 @@ import pandas as pd
 import numpy as np
 import os
 import sys
-from catboost import CatBoostRegressor
+import json
+from catboost import CatBoostRegressor, CatBoostClassifier
 
 # Add scripts to path for Kalman
 sys.path.append(os.path.join(os.getcwd(), 'scripts'))
 from kalman_filter import KalmanFilterReg
 
 MODEL_PATH = "models/meta_model_h1/catboost_h1_reg.cbm"
+CLF_MODEL_PATH = "models/meta_model_h1/catboost_h1_clf.cbm"
+RANGE_PATH = "models/meta_model_h1/feature_ranges_h1.json"
 
 FEATURE_NAMES = [
-    'strategy_type', 'active_leg', 'side', # Categorical
+    'active_leg', 'side', # Categorical
+    'z_entry', 'z_velocity', 'spread_std', 'beta_stability', 'beta',
+    'signal_beta_lookback', 'hedge_beta_lookback', 'beta_mismatch',
+    'vol_ratio', 'correlation_500', 'trend_strength', 'hour', 'day_of_week',
+    'ret_X_16b', 'ret_Y_16b', 'atr_ratio', 'entry_atr', 'vol_regime'
+]
+LEGACY_FEATURE_NAMES = [
+    'strategy_type', 'active_leg', 'side',
     'z_entry', 'z_velocity', 'spread_std', 'beta_stability', 'beta',
     'vol_ratio', 'correlation_500', 'trend_strength', 'hour', 'day_of_week',
-    'ret_X_4h', 'ret_Y_4h', 'atr_ratio', 'entry_atr', 'vol_regime'
+    'ret_X_16b', 'ret_Y_16b', 'atr_ratio', 'entry_atr', 'vol_regime'
 ]
 
-CAT_INDICES = [0, 1, 2] # strategy_type, active_leg, side are first 3 in ALL_FEATURES if constructed carefully
+CAT_INDICES = [0, 1] # active_leg, side are first 2 in ALL_FEATURES if constructed carefully
 # BUT CatBoost stores feature names. We should pass pandas DataFrame with named columns.
 
 class MetaModelInference:
-    def __init__(self, model_path=MODEL_PATH, load_model=True):
+    def __init__(self, model_path=MODEL_PATH, clf_path=CLF_MODEL_PATH, load_model=True):
         self.model = None
+        self.clf = None
+        self.feature_ranges = None
         if load_model:
             if not os.path.exists(model_path):
                 raise FileNotFoundError(f"Model not found at {model_path}")
+            if not os.path.exists(clf_path):
+                raise FileNotFoundError(f"Classifier not found at {clf_path}")
 
             self.model = CatBoostRegressor()
             self.model.load_model(model_path)
+            self.clf = CatBoostClassifier()
+            self.clf.load_model(clf_path)
             print("Meta Model loaded successfully.")
+            self.model_features = list(getattr(self.model, "feature_names_", []))
+            if not self.model_features:
+                self.model_features = LEGACY_FEATURE_NAMES
+        else:
+            self.model_features = FEATURE_NAMES
+
+        if os.path.exists(RANGE_PATH):
+            with open(RANGE_PATH, "r", encoding="utf-8") as f:
+                self.feature_ranges = json.load(f)
         
     def _compute_kalman(self, y, x):
         kf = KalmanFilterReg(Q=1e-5, R=1e-3)
@@ -57,16 +82,26 @@ class MetaModelInference:
             b, resid = kf.update(x[i] - mx, y[i] - my)
             betas[i] = b
             errors[i] = (y[i] - my) - b * (x[i] - mx)
-            
-        return betas, errors
 
-    def _compute_features(self, df, betas, errors, z_scores):
+        # Return Kalman (hedge beta proxy)
+        kf_ret = KalmanFilterReg(Q=1e-5, R=1e-3)
+        ret_betas = np.zeros(len(y))
+        if len(y) > 1:
+            for i in range(1, len(y)):
+                b_ret, _ = kf_ret.update(x[i] - x[i - 1], y[i] - y[i - 1])
+                ret_betas[i] = b_ret
+            ret_betas[0] = ret_betas[1]
+
+        return betas, errors, ret_betas
+
+    def _compute_features(self, df, betas, errors, ret_betas, z_scores):
         # Expects df with timestamp, close_X, close_Y
         # Returns DataFrame with meta features for the TAIL
         
         # We process the whole dataframe vectorised, then slice the end.
         df = df.with_columns([
             pl.Series(betas).alias("beta"),
+            pl.Series(ret_betas).alias("ret_beta"),
             pl.Series(errors).alias("spread_error"),
             pl.Series(z_scores).alias("z_score")
         ])
@@ -82,6 +117,13 @@ class MetaModelInference:
         # Match training: use windows ending at i-1 (exclude current)
         pdf['spread_std'] = (pdf['spread_error'].shift(1).rolling(500).std(ddof=0) * 10000).round(2)
         pdf['beta_stability'] = pdf['beta'].shift(1).rolling(100).std(ddof=0).round(4)
+        pdf['signal_beta_lookback'] = pdf['beta'].shift(1).rolling(500).mean().round(4)
+        pdf['hedge_beta_lookback'] = pdf['ret_beta'].shift(1).rolling(500).mean().round(4)
+        sig = pdf['signal_beta_lookback']
+        hedge = pdf['hedge_beta_lookback']
+        mismatch = np.where(np.abs(sig) > 0.01, hedge / sig, 0.0)
+        mismatch = np.clip(mismatch, -10.0, 10.0)
+        pdf['beta_mismatch'] = pd.Series(mismatch).replace([np.inf, -np.inf], 0.0).round(3)
         
         # 2. Market Regime
         # Vol Ratio (Diff log prices)
@@ -114,8 +156,8 @@ class MetaModelInference:
         # H1 Model used 4-bar lookback for "4h" returns? Or 16?
         # Training script: `lookback = min(i, 16)`.
         # Training uses lookback = min(i, 16), so for mature series this is 16 bars.
-        pdf['ret_X_4h'] = ((pdf['log_x'] - pdf['log_x'].shift(16)) * 10000).round(2)
-        pdf['ret_Y_4h'] = ((pdf['log_y'] - pdf['log_y'].shift(16)) * 10000).round(2)
+        pdf['ret_X_16b'] = ((pdf['log_x'] - pdf['log_x'].shift(16)) * 10000).round(2)
+        pdf['ret_Y_16b'] = ((pdf['log_y'] - pdf['log_y'].shift(16)) * 10000).round(2)
         
         # 5. ATR (Entry Volatility)
         # Training: std of last 50 diffs
@@ -209,7 +251,7 @@ class MetaModelInference:
         y = np.log(df["close_Y"].to_numpy())
         x = np.log(df["close_X"].to_numpy())
         
-        betas, errors = self._compute_kalman(y, x)
+        betas, errors, ret_betas = self._compute_kalman(y, x)
         
         # Z-Scores
         s_err = pd.Series(errors)
@@ -221,64 +263,83 @@ class MetaModelInference:
         z_scores[mask] = (errors[mask] - mus[mask]) / stds[mask]
         
         # Features
-        pdf = self._compute_features(df, betas, errors, z_scores)
+        pdf = self._compute_features(df, betas, errors, ret_betas, z_scores)
         last_row = pdf.iloc[-1]
         
         z = last_row['z_entry']
         beta = last_row['beta']
         
+        # Distribution shift check (optional)
+        shift = None
+        if self.feature_ranges is not None:
+            shift = self._check_distribution_shift(last_row)
+
         # Whip/Tank Filter
         if 0.98 <= beta <= 1.02:
-            return {'action': 'WAIT', 'reason': 'Unstable Beta (1.0)', 'z': z}
+            return {'action': 'WAIT', 'reason': 'Unstable Beta (1.0)', 'z': z, 'shift': shift}
             
         active_leg = 'Y' if beta < 0.98 else 'X'
         
-        # Logic
-        signals = []
-        for strat in ['MOM', 'REV']:
-            # Construct Input Row
-            # Determine Side
-            if strat == 'MOM':
-                # Long logic: Z < 0? No, wait.
-                # If Z > 1.5 -> Long MOM.
-                # If Z < -1.5 -> Short MOM.
-                if z > 1.5: side = 'LONG'
-                elif z < -1.5: side = 'SHORT'
-                else: side = 'NONE'
-            else: # REV
-                # Fade logic
-                if z > 1.5: side = 'SHORT'
-                elif z < -1.5: side = 'LONG'
-                else: side = 'NONE'
-            
-            if side == 'NONE': continue
-            
-            # Create feature vector
-            feat_vec = pd.DataFrame([last_row])
-            feat_vec['strategy_type'] = strat
-            feat_vec['active_leg'] = active_leg
-            feat_vec['side'] = side
-            
-            # Select columns to match training
-            X_pred = feat_vec[FEATURE_NAMES]
-            
-            pred_pnl = self.model.predict(X_pred)[0]
-            
-            if pred_pnl > 20.0:
-                signals.append({
-                    'strategy': strat,
-                    'side': side,
-                    'active_leg': active_leg,
-                    'pred_pnl': round(pred_pnl, 2),
-                    'z': z
-                })
+        # MOM-only logic
+        if z > 1.5:
+            side = 'LONG'
+        elif z < -1.5:
+            side = 'SHORT'
+        else:
+            return {'action': 'WAIT', 'reason': 'No Z Signal', 'z': z, 'shift': shift}
+
+        feat_vec = pd.DataFrame([last_row])
+        if "strategy_type" in feat_vec.columns or "strategy_type" in self.model_features:
+            feat_vec['strategy_type'] = "MOM"
+        feat_vec['active_leg'] = active_leg
+        feat_vec['side'] = side
+
+        use_features = self.model_features if getattr(self, "model_features", None) else FEATURE_NAMES
+        X_pred = feat_vec[use_features]
+
+        pred_pnl = float(self.model.predict(X_pred)[0])
+        p_up = float(self.clf.predict_proba(X_pred)[0][1])
+
+        if p_up < 0.5 or pred_pnl <= 20.0:
+            return {'action': 'WAIT', 'reason': 'Low edge', 'z': z, 'shift': shift, 'p_up': round(p_up, 4)}
+
+        return {
+            'action': 'TRADE',
+            'signal': {
+                'strategy': 'MOM',
+                'side': side,
+                'active_leg': active_leg,
+                'pred_pnl': round(pred_pnl, 2),
+                'p_up': round(p_up, 4),
+                'z': z,
+            },
+            'shift': shift,
+        }
         
-        if not signals:
-            return {'action': 'WAIT', 'reason': 'Low Pred PnL', 'z': z}
-            
-        # Select best signal
-        best_sig = max(signals, key=lambda s: s['pred_pnl'])
-        return {'action': 'TRADE', 'signal': best_sig}
+        # (No multi-signal selection in MOM-only mode)
+
+    def _check_distribution_shift(self, last_row):
+        """Return out-of-range features vs training p01/p99 baseline."""
+        features = self.feature_ranges.get("features", {})
+        out = []
+        total = 0
+        for name, bounds in features.items():
+            total += 1
+            val = float(last_row[name])
+            p01 = bounds.get("p01")
+            p99 = bounds.get("p99")
+            if p01 is None or p99 is None:
+                continue
+            if val < p01 or val > p99:
+                out.append({
+                    "feature": name,
+                    "value": val,
+                    "p01": p01,
+                    "p99": p99,
+                })
+
+        score = len(out) / total if total else 0.0
+        return {"score": round(score, 3), "out_of_range": out}
 
 # Test block
 if __name__ == "__main__":
