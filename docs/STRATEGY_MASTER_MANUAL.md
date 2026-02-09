@@ -369,6 +369,20 @@ Files:
 - **Guardrail semantics**: loss streak counts `pnl <= 0` as loss, cooldown by **exit time**, and pause after 3 losses.
 - **End‑to‑end**: synthetic flows for M5/M15 confirm guardrail triggers and win/loss signs.
 
+**Test matrix (logic → test file)**
+
+| Logic Area | Test File |
+| --- | --- |
+| Z‑score causality | `tests/test_strategy_logic.py` |
+| Feature causality (M5/M15) | `tests/test_feature_causality_m5_m15.py` |
+| MOM exits (Z‑cross, Z‑stop), timeout | `tests/test_strategy_logic.py` |
+| Guardrail cooldown + `pnl <= 0` loss | `tests/test_guardrail_semantics.py` |
+| Active‑leg selection + min‑gap gating | `tests/test_entry_active_leg.py` |
+| Guardrail ordering by exit time | `tests/test_guardrail_ordering.py` |
+| WFO defaults present | `tests/test_defaults.py` |
+| End‑to‑end guardrail (M5/M15) | `tests/test_end_to_end_production_m5.py`, `tests/test_end_to_end_production_m15.py` |
+| End‑to‑end neutral‑zone + win/loss mix | `tests/test_end_to_end_additional.py` |
+
 **Dataset builders**
 - M5: `scripts/build_meta_dataset_v3_m5.py`
 - M15: `scripts/build_meta_dataset_v3.py`
