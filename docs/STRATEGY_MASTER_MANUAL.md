@@ -360,6 +360,14 @@ Files:
 **Logic test suite**
 - Run: `uv run pytest -q`
 - Tests live in `tests/` and focus on the production logic: Z‑score causality, MOM exits (Z0 + stop), timeout behavior, and guardrail cooldown semantics.
+  
+**Logic coverage map (what is enforced)**
+- **Z‑score causality**: rolling window only (no future leakage).
+- **Entry gating**: `|Z| >= threshold` and **min‑gap = 20 bars** enforced.
+- **Active‑leg selection**: `beta < 0.98 → Y`, `beta > 1.02 → X`, neutral zone skipped.
+- **Exit logic**: Z‑cross to 0 (loss) and Z‑stop (win), timeout at `entry+499`.
+- **Guardrail semantics**: loss streak counts `pnl <= 0` as loss, cooldown by **exit time**, and pause after 3 losses.
+- **End‑to‑end**: synthetic flows for M5/M15 confirm guardrail triggers and win/loss signs.
 
 **Dataset builders**
 - M5: `scripts/build_meta_dataset_v3_m5.py`
