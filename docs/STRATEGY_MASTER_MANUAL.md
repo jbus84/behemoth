@@ -384,6 +384,22 @@ Guardrail remains positive under proportional slippage:
 - **M5** mean: 15.5 → 10.9 bps at 10% slip
 - **M15** mean: 31.8 → 23.7 bps at 10% slip
 
+**Live‑ish cost + timing check (guardrail + actual timestamps)**
+We ran a conservative “live‑ish” backtest using:
+- **Actual bar timestamps** (no synthetic `exit_ts`)
+- **Cost model**: per‑side `max(half‑spread p50, 2 bps) + 1 bp slip`, round‑trip = 2×
+- **Guardrail**: loss‑streak=3, cooldown=7d
+- **Sizing**: $100k account, **no leverage**, **1/28 allocation** per trade, fully reinvested
+
+Results (net, guardrail on):
+
+| Bar | Entry | Final Equity | CAGR | Max DD | Max Daily DD | Daily Sharpe |
+|---|---|---:|---:|---:|---:|---:|
+| M5 | close | $175,223 | 7.27% | -9.03% | -1.48% | 1.01 |
+| M5 | next_close | $166,674 | 6.61% | -8.13% | -1.42% | 0.92 |
+| M15 | close | $744,643 | 28.62% | -6.89% | -1.26% | 1.88 |
+| M15 | next_close | $710,076 | 27.85% | -6.71% | -1.30% | 1.84 |
+
 **Guardrail under smoothing**
 Guardrail skip rates are similar under smoothing (1s/5s throttle, 0.5/1.0 bps filter):
 - **M5** skip rate ~0.71–0.73
