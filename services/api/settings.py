@@ -1,27 +1,61 @@
+from __future__ import annotations
+
 import os
+from pathlib import Path
+from typing import Any
+
+import yaml
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Settings:
-    def __init__(self):
-        self.database_url = os.getenv(
-            "DATABASE_URL",
-            "postgresql+psycopg2://behemoth:behemoth@localhost:5432/behemoth",
+def _yaml_settings_source() -> dict[str, Any]:
+    path = Path(os.getenv("CONFIG_PATH", "configs/api.yaml"))
+    if not path.exists():
+        return {}
+    data = yaml.safe_load(path.read_text())
+    return data or {}
+
+
+class Settings(BaseSettings):
+    database_url: str = Field(
+        default="postgresql+psycopg2://behemoth:behemoth@localhost:5432/behemoth"
+    )
+    redis_url: str = Field(default="redis://localhost:6379/0")
+    enable_redis: bool = Field(default=True)
+    auto_create_tables: bool = Field(default=False)
+
+    guardrail_enabled: bool = Field(default=True)
+    guardrail_loss_threshold: float = Field(default=0.0)
+    guardrail_loss_streak: int = Field(default=3)
+    guardrail_cooldown_days: int = Field(default=7)
+
+    account_equity_start: float = Field(default=100000.0)
+    max_daily_loss_pct: float = Field(default=0.05)
+    max_dd_pct: float = Field(default=0.10)
+    max_consecutive_losses: int = Field(default=5)
+    max_total_exposure_pct: float = Field(default=1.0)
+    max_pair_exposure_pct: float = Field(default=0.10)
+    max_weight_overshoot_pct: float = Field(default=0.10)
+    pair_weights_path: str = Field(default="configs/pair_weights.yaml")
+
+    model_config = SettingsConfigDict(env_prefix="", extra="ignore")
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls,
+        init_settings,
+        env_settings,
+        dotenv_settings,
+        file_secret_settings,
+    ):
+        return (
+            init_settings,
+            _yaml_settings_source,
+            env_settings,
+            file_secret_settings,
         )
-        self.redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-        self.enable_redis = os.getenv("ENABLE_REDIS", "true").lower() in ("1", "true", "yes")
-        self.auto_create_tables = os.getenv("AUTO_CREATE_TABLES", "false").lower() in ("1", "true", "yes")
-        self.guardrail_enabled = os.getenv("GUARDRAIL_ENABLED", "true").lower() in ("1", "true", "yes")
-        self.guardrail_loss_threshold = float(os.getenv("GUARDRAIL_LOSS_THRESHOLD", "0.0"))
-        self.guardrail_loss_streak = int(os.getenv("GUARDRAIL_LOSS_STREAK", "3"))
-        self.guardrail_cooldown_days = int(os.getenv("GUARDRAIL_COOLDOWN_DAYS", "7"))
-        self.account_equity_start = float(os.getenv("ACCOUNT_EQUITY_START", "100000"))
-        self.max_daily_loss_pct = float(os.getenv("MAX_DAILY_LOSS_PCT", "0.05"))
-        self.max_dd_pct = float(os.getenv("MAX_DD_PCT", "0.10"))
-        self.max_consecutive_losses = int(os.getenv("MAX_CONSECUTIVE_LOSSES", "5"))
-        self.max_total_exposure_pct = float(os.getenv("MAX_TOTAL_EXPOSURE_PCT", "1.0"))
-        self.max_pair_exposure_pct = float(os.getenv("MAX_PAIR_EXPOSURE_PCT", "0.10"))
-        self.max_weight_overshoot_pct = float(os.getenv("MAX_WEIGHT_OVERSHOOT_PCT", "0.10"))
-        self.pair_weights_path = os.getenv("PAIR_WEIGHTS_PATH", "configs/pair_weights.json")
 
 
 settings = Settings()

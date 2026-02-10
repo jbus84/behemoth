@@ -455,7 +455,7 @@ We enforce portfolio‑level kill‑switches and sizing guards in the API:
 - **Max consecutive losses**: configurable (default 5)
 - **Max total exposure**: 100% of equity (no leverage)
 - **Per‑pair cap**: 10% of equity (default)
-- **Pair weighting table**: `configs/pair_weights.json` (used to compute target notional)
+- **Pair weighting table**: `configs/pair_weights.yaml` (used to compute target notional)
 
 These are **hard gates**: new positions are rejected when limits are breached. The account state is updated on each close using realized PnL, and daily reset is based on the first trade close of the day.
 

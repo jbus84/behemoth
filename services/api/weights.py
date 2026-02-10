@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 from typing import Dict
 
+import yaml
+
 from .settings import settings
 
 
@@ -17,7 +19,10 @@ def _default_pairs() -> list[str]:
 def load_weights(strategy_id: str | None = None) -> Dict[str, float]:
     path = Path(settings.pair_weights_path)
     if path.exists():
-        data = json.loads(path.read_text())
+        if path.suffix in (".yaml", ".yml"):
+            data = yaml.safe_load(path.read_text())
+        else:
+            data = json.loads(path.read_text())
         if isinstance(data, dict):
             if strategy_id and strategy_id in data and isinstance(data[strategy_id], dict):
                 return data[strategy_id]

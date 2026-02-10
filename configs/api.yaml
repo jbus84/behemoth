@@ -1,0 +1,18 @@
+database_url: postgresql+psycopg2://behemoth:behemoth@localhost:5432/behemoth
+redis_url: redis://localhost:6379/0
+enable_redis: true
+auto_create_tables: false
+
+guardrail_enabled: true
+guardrail_loss_threshold: 0.0
+guardrail_loss_streak: 3
+guardrail_cooldown_days: 7
+
+account_equity_start: 100000
+max_daily_loss_pct: 0.05
+max_dd_pct: 0.10
+max_consecutive_losses: 5
+max_total_exposure_pct: 1.0
+max_pair_exposure_pct: 0.10
+max_weight_overshoot_pct: 0.10
+pair_weights_path: configs/pair_weights.yaml
