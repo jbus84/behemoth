@@ -181,11 +181,78 @@ Caps on max concurrent trades or per‑leg exposure **reduce performance** mater
   - M5: ~11.96 → 17.42 bps
   - M15: ~25.56 → 33.44 bps
 
+**Symbol stability (top‑N contributors removed)**
+We removed the top 1–3 PnL‑contributing pairs and recomputed metrics:
+- **Baseline** degrades rapidly as top contributors are removed.
+- **Guardrail** remains strong and largely unchanged.
+
+**M5 (top‑N removed, mean PnL bps)**
+- Baseline: `0.87 → 0.34 → 0.14 → 0.02`
+- Guardrail: `15.52 → 15.88 → 15.62 → 15.74`
+
+**M15 (top‑N removed, mean PnL bps)**
+- Baseline: `4.97 → 3.79 → 3.26 → 2.75`
+- Guardrail: `31.82 → 29.62 → 28.08 → 26.88`
+
+Outputs:
+- `data/analysis/m5_symbol_topn_sensitivity.csv`
+- `data/analysis/m15_symbol_topn_sensitivity.csv`
+
+**Bootstrap robustness (months + trade‑block resampling)**
+We ran **month‑bootstrap** and **trade‑block bootstrap** (block sizes 200/500) with **100 samples** each.
+Guardrail remains robust across both resampling schemes; baseline is fragile.
+
+**Month bootstrap (p5 / p50 / p95 mean PnL bps)**
+- M5 baseline: **‑0.20 / 0.79 / 2.21**
+- M5 guardrail: **13.69 / 15.15 / 16.52**
+- M15 baseline: **3.17 / 5.06 / 7.53**
+- M15 guardrail: **27.27 / 29.75 / 33.52**
+
+**Trade‑block bootstrap (block size 200, p5 / p50 / p95 mean PnL bps)**
+- M5 baseline: **‑0.18 / 0.88 / 1.79**
+- M5 guardrail: **11.76 / 12.82 / 13.85**
+- M15 baseline: **2.61 / 5.04 / 7.83**
+- M15 guardrail: **23.53 / 26.70 / 29.71**
+
+Outputs:
+- `data/analysis/m5_bootstrap_month_summary.csv`
+- `data/analysis/m15_bootstrap_month_summary.csv`
+- `data/analysis/m5_bootstrap_tradeblock_summary.csv`
+- `data/analysis/m15_bootstrap_tradeblock_summary.csv`
+
 **Tick vs bar consistency**
 Tick‑derived closes match bar closes closely for most symbols, but **XAUUSD March 2020** shows large deviations (p95 ~9 bps, max ~44 bps). This is a data‑quality risk for stressed periods.
 
 **Tick‑gap / illiquidity sensitivity**
 Removing trades that overlap large tick gaps (60–300s) **flips the edge negative** for both M5 and M15. Even with guardrail, only M5 at 300s remains modestly positive; M15 remains negative. This indicates performance depends on periods with low liquidity or data gaps.
+
+**Feed smoothing sensitivity (tick‑level smoothing → bar rebuild, 2018–2025)**
+We tested **realistic tick‑feed smoothing** and recomputed bars, signals, and trades:
+- **Time throttling**: keep the last tick per **1s** and **5s** bucket
+- **Price filtering**: keep ticks only after **0.5 bps** or **1.0 bps** move
+
+**Aggregate impact (trade‑weighted delta vs baseline, fast configs only):**
+- **M5**: guardrail **+0.10% mean**, **+0.07% total**; no‑guard **‑2.45% mean**, **‑2.43% total**
+- **M15**: guardrail **+0.39% mean**, **+0.58% total**; no‑guard **‑0.70% mean**, **‑0.71% total**
+
+**Regime/year sensitivity**  
+Year‑level deltas are usually modest but can swing in specific years. The largest guardrail‑on swings were:
+- **M5**: 2024 ~**‑19%** mean delta (trade‑weighted)
+- **M15**: 2020 ~**‑114%** mean delta (trade‑weighted)
+
+These year spikes are driven by a small number of pair/config slices with low base totals. Use the year summary files for detail.
+
+**Most smoothing‑sensitive pairs (guardrail on, worst config by |total_delta_pct|, fast configs):**
+- **M5**: AUD/CAD, CHF/JPY, GBP/CAD, NZD/CAD, Gold/Oil  
+- **M15**: EUR/JPY, Gold/Silver, GBP/JPY, SPX/Dow, NZD/CAD
+
+Files:
+- `data/analysis/m5_smoothing_year_summary_fast.csv`
+- `data/analysis/m15_smoothing_year_summary_fast.csv`
+- `data/analysis/m5_smoothing_pair_deltas_fast.csv`
+- `data/analysis/m15_smoothing_pair_deltas_fast.csv`
+- `data/analysis/m5_smoothing_pair_sensitivity_fast.csv`
+- `data/analysis/m15_smoothing_pair_sensitivity_fast.csv`
 
 **Fill‑price sensitivity (entry/exit)**
 Entry at close vs next‑close vs mean is similar, but **slippage proportional to move size** is punitive:
@@ -241,6 +308,88 @@ Full diagnostics:
 - `data/analysis/m15_guardrail_effectiveness_summary.csv`
 - `data/analysis/m15_guardrail_streak_stats.csv`
 - `data/analysis/m15_guardrail_skip_stats.csv`
+
+---
+
+## Guardrail Deep‑Dive (New)
+We ran a deeper guardrail audit focused on **definition sensitivity**, **trigger stability**, and **where the losses are removed**.
+
+**Loss definition sensitivity**
+We varied the loss threshold from `pnl <= 0` to `pnl <= -2 bps`. Results are stable:
+- **M5** guardrail mean stays ~15 bps (14.9–15.5), DD ~‑6.7k to ‑7.1k.
+- **M15** guardrail mean stays ~31 bps (31.1–31.8), DD ~‑6.0k.
+
+**Trigger/skip stability by year**
+Guardrail skip rates are stable across years:
+- **M5**: ~0.70–0.74 skip rate
+- **M15**: ~0.42–0.47 skip rate
+
+**Worst‑month attribution**
+Guardrail removes the majority of losses in the worst 5% months:
+- **M5**: baseline worst‑month total **‑112,404 bps**, guardrail **+24,046 bps** (≈**121%** loss removal)
+- **M15**: baseline worst‑month total **‑65,878 bps**, guardrail **+355 bps** (≈**101%** loss removal)
+
+**Concentration risk (top‑N PnL share)**
+Guardrail reduces concentration materially. (Shares > 1.0 indicate other pairs are net negative.)
+- **M5** baseline top‑1 share **0.62** → guardrail **0.09**
+- **M5** baseline top‑3 share **0.98** → guardrail **0.25**
+- **M15** baseline top‑1 share **0.26** → guardrail **0.10**
+- **M15** baseline top‑3 share **0.50** → guardrail **0.28**
+
+**Slippage sensitivity (guardrail)**
+Guardrail remains positive under proportional slippage:
+- **M5** mean: 15.5 → 10.9 bps at 10% slip
+- **M15** mean: 31.8 → 23.7 bps at 10% slip
+
+**Guardrail under smoothing**
+Guardrail skip rates are similar under smoothing (1s/5s throttle, 0.5/1.0 bps filter):
+- **M5** skip rate ~0.71–0.73
+- **M15** skip rate ~0.53
+
+**No‑leak guarantee (guardrail causality)**
+The guardrail is **strictly causal**: it only observes **realized PnL at trade exit**, updates the loss‑streak **after the trade closes**, and applies cooldown **forward in time** from that exit. It does not reference any future prices, future Z‑scores, or future outcomes. Entry‑time application is explicitly avoided (and tested), so there is **no lookahead leakage** in the guardrail logic.
+
+Files:
+- `data/analysis/m5_guardrail_loss_def_sensitivity.csv`
+- `data/analysis/m15_guardrail_loss_def_sensitivity.csv`
+- `data/analysis/m5_guardrail_trigger_rates.csv`
+- `data/analysis/m15_guardrail_trigger_rates.csv`
+- `data/analysis/m5_guardrail_worst_months.csv`
+- `data/analysis/m15_guardrail_worst_months.csv`
+- `data/analysis/m5_guardrail_concentration.csv`
+- `data/analysis/m15_guardrail_concentration.csv`
+- `data/analysis/m5_guardrail_slippage_sensitivity.csv`
+- `data/analysis/m15_guardrail_slippage_sensitivity.csv`
+- `data/analysis/m5_guardrail_smoothing_skiprate.csv`
+- `data/analysis/m15_guardrail_smoothing_skiprate.csv`
+
+---
+
+## Institutional Context (Why This Can Still Work)
+It is reasonable to expect fragility. The guardrail’s effectiveness is not “free alpha”; it is a **risk‑control** that removes regimes where the signal becomes structurally negative.
+
+**Why it can be effective**
+- **Losses cluster**: We measured conditional expectancy collapsing after 1–2 losses. The guardrail disables trading in those regimes.
+- **Regime filtering without hand‑tuned thresholds**: It uses realized outcomes rather than a fixed vol/corr cut‑off.
+- **Causal and low‑latency requirement**: It does not depend on micro‑timing or order‑book effects.
+
+**Why institutions use related ideas**
+Institutions typically implement the same concept as:
+- **Kill‑switches** tied to loss‑streaks or drawdown limits.
+- **Regime filters** based on volatility, dispersion, or correlation.
+- **Risk‑budget throttles** that reduce exposure after adverse sequences.
+
+**Why this might work better at retail scale**
+- **Low market impact**: small size avoids self‑induced slippage.
+- **Simpler execution requirements**: the guardrail is robust to modest slippage and smoothing.
+- **Focused universe**: fewer strategies reduce interference and make a simple risk filter effective.
+
+**Why it could still fail**
+- Structural regime change (e.g., persistent low‑corr environment).
+- Broker feed quality or execution changes.
+- Over‑reliance on a small subset of symbols (mitigated by guardrail, but not eliminated).
+
+Bottom line: the guardrail is a **robust risk‑control**, not a free edge. It is consistent with institutional risk practice, and its effectiveness at retail scale is plausible—but still requires ongoing monitoring.
 
 ---
 
