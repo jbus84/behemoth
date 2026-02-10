@@ -1,0 +1,40 @@
+site_name: Behemoth Strategy
+site_description: Production documentation for the Behemoth trading system
+site_author: Behemoth
+docs_dir: docs
+site_dir: site
+repo_url: https://github.com-jbus84/behemoth
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: blue
+      accent: teal
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed
+  - pymdownx.tasklist
+  - toc:
+      permalink: true
+
+nav:
+  - Overview: index.md
+  - Strategy Manual: STRATEGY_MASTER_MANUAL.md
+  - Architecture: architecture.md
+  - API: api.md
+  - Risk Controls: risk_controls.md
+  - Data Pipeline: data_pipeline.md
+  - Validation: validation.md

@@ -6,6 +6,9 @@
 - `pipelines/`: deterministic batch runs (event generation + diagnostics)
 - `scripts/`: thin wrappers that call pipelines
 - `services/api/`: FastAPI position + order state service
+- `docs/`: documentation (MkDocs site uses these markdown files)
+- `mkdocs.yml`: MkDocs configuration
+- `configs/`: YAML config for API and pair weights
 
 
 ## Notes

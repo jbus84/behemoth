@@ -1,4 +1,4 @@
-.PHONY: up down logs api migrate test db
+.PHONY: up down logs api migrate test db docs docs-build docs-clean
 
 up:
 	docker compose up -d --build
@@ -30,3 +30,12 @@ reconcile:
 
 db:
 	docker compose exec db psql -U behemoth -d behemoth
+
+docs:
+	uv run mkdocs serve -a 127.0.0.1:8001
+
+docs-build:
+	uv run mkdocs build
+
+docs-clean:
+	rm -rf site
