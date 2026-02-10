@@ -163,6 +163,10 @@ Conclusion: alignment errors should degrade performance; this test is a canary f
 Daily equity curve drawdown can differ materially from trade‑level DD.
 - M5: trade‑level DD ‑119,032 bps vs daily DD ‑67,618 bps (ratio 0.57)
 - M15: trade‑level DD ‑31,466 bps vs daily DD ‑39,926 bps (ratio 1.27)
+To avoid confusion, we recommend a **reporting block** that always prints **both**:
+1. **Per‑trade bps metrics** (mean, total, trade‑level DD, Sharpe_trade)  
+2. **Equity‑curve metrics** (daily Sharpe, max DD %, CAGR / annualized return)  
+This makes units explicit and prevents mixing trade‑level bps with equity‑curve percentages.
 
 **Guardrail timing sensitivity (entry‑ordered vs exit‑ordered)**
 Loss‑streak guardrail should be applied by **exit time**. Applying it by entry time reduces mean PnL.
