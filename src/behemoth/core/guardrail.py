@@ -12,7 +12,11 @@ def apply_loss_streak_guardrail(
     Apply loss-streak cooldown guardrail by pair.
     Expects df to contain columns: pair, exit_ts, pnl_bps.
     """
-    df = df.sort_values("exit_ts").copy()
+    sort_cols = ["exit_ts"]
+    for col in ("pair", "entry_ts", "timestamp", "pnl_bps"):
+        if col in df.columns and col not in sort_cols:
+            sort_cols.append(col)
+    df = df.sort_values(sort_cols).copy()
     keep = []
     skipped = []
     state = {}

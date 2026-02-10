@@ -54,5 +54,34 @@ python3 scripts/monitor_pairs.py
 ## 5. Execution Rules (Documentation vs Code)
 The manual documents several guards (kill‑zone, circuit breaker, Z‑based exits), but **only entry‑side signal rules** are currently implemented in the inference script.
 
+## 6. Position API (FastAPI + Postgres + Redis)
+This repo now includes a state management service for positions and orders.
+
+Quick start (Docker Compose):
+```bash
+make up
+make migrate
+```
+
+Local dev:
+```bash
+make api
+```
+
+API health:
+```bash
+curl http://localhost:8000/healthz
+```
+
+Migrations (CI/local without Compose):
+```bash
+make migrate-local
+```
+
+Postgres integration test (optional):
+```bash
+make test-postgres
+```
+
 ---
 *Built by Antigravity. Validation status is documented in `debunk/`.* 

@@ -5,6 +5,7 @@
 - `src/behemoth/`: production logic (Kalman, Z-score, features, guardrail, metrics)
 - `pipelines/`: deterministic batch runs (event generation + diagnostics)
 - `scripts/`: thin wrappers that call pipelines
+- `services/api/`: FastAPI position + order state service
 
 
 ## Notes
