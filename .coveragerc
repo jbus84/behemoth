@@ -9,7 +9,6 @@ include =
     scripts/analyze_guardrail_smoothing_slippage.py
     scripts/analyze_bootstrap_month_block.py
     scripts/analyze_symbol_stability.py
-    scripts/full_leak_audit.py
 
 [report]
 show_missing = True

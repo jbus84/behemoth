@@ -29,3 +29,19 @@ def test_metrics_symbol_stability():
     )
     m = ss._metrics(df)
     assert m["trades"] == 2
+
+
+def test_metrics_symbol_stability_empty():
+    df = pd.DataFrame(columns=["pair", "exit_ts", "pnl_bps"])
+    m = ss._metrics(df)
+    assert m["trades"] == 0
+
+
+def test_max_dd_symbol_stability_empty():
+    assert ss._max_dd([]) == 0.0
+
+
+def test_apply_guardrail_symbol_stability_empty():
+    df = pd.DataFrame(columns=["pair", "exit_ts", "pnl_bps"])
+    kept = ss._apply_guardrail(df)
+    assert kept.empty

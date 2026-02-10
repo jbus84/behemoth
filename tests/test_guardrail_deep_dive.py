@@ -46,3 +46,17 @@ def test_metrics_guardrail_deep():
     df = _make_df()
     m = gd._metrics(df)
     assert m["trades"] == 5
+
+
+def test_session_name_unknown():
+    assert gd._session_name(25) == "Unknown"
+
+
+def test_max_dd_empty_guardrail_deep():
+    assert gd._max_dd([]) == 0.0
+
+
+def test_metrics_empty_guardrail_deep():
+    empty = pd.DataFrame(columns=["pair", "exit_ts", "pnl_bps"])
+    m = gd._metrics(empty)
+    assert m["trades"] == 0

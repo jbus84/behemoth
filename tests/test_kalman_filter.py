@@ -30,3 +30,10 @@ def test_kalman_filter_reg_multi_update():
     beta, residual = kf.update([1.0, 0.5], 2.0)
     assert len(beta) == 2
     assert isinstance(residual, float)
+
+
+def test_kalman_filter_reg_multi_zero_innovation():
+    kf = KalmanFilterRegMulti(k=1, R=0.0, Q=0.0)
+    beta, residual = kf.update([0.0], 0.0)
+    assert beta.shape == (1,)
+    assert residual == 0.0
