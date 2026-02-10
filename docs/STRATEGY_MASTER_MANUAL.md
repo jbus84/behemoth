@@ -5,7 +5,12 @@
 **Status**: Rule‑based inference with mandatory guardrail
 
 [!IMPORTANT]
-This strategy **does not use CatBoost or any ML model**. All decisions are rule‑based on the Kalman Z‑score signal and the loss‑streak guardrail. Any legacy ML references in the repo are deprecated and not part of the live strategy.
+This strategy **does not use any ML model**. All decisions are rule‑based on the Kalman Z‑score signal and the loss‑streak guardrail.
+
+**Repo structure (production)**
+- Core logic: `src/behemoth/`
+- Deterministic runs: `pipelines/`
+- Thin wrappers: `scripts/`
 
 ---
 
@@ -48,7 +53,7 @@ The system trades synthetic spreads between asset pairs. A Kalman filter estimat
 - Minimum gap between entries: 20 bars
 
 **Required Risk Control**
-- **Loss‑streak guardrail**: if a symbol has 3 consecutive losses, skip all its signals for 14 days.
+- **Loss‑streak guardrail**: if a symbol has 3 consecutive losses, skip all its signals for 7 days.
 
 ---
 
@@ -134,6 +139,26 @@ WFO parameters: `z_entry=1.5`, `z_stop=4.0`, `z_lookback=750`, guardrail `loss_s
 ## Additional Integrity Checks (Feb 2026)
 These checks validate robustness beyond core performance.
 
+**Reproducibility manifest (data + config fingerprint)**
+We generate a reproducibility manifest that fingerprints data files, config values, and git state:
+- Script: `scripts/build_repro_manifest.py`
+- Output: `data/analysis/repro_manifest.json`
+This is the source of truth for exact re‑runs and audit trails.
+
+**Exit logic causality (no look‑ahead in exits)**
+Exit logic is tested to confirm it only uses data up to the exit bar (future bars do not alter exit timing).
+Tests:
+- `tests/test_exit_causality.py`
+- `tests/test_simulate_trade.py`
+
+**Time‑alignment stress test (±1 bar shift)**
+We shift one leg by ±1 bar and recompute MOM trades to measure sensitivity to alignment errors.
+Outputs:
+- `data/analysis/m5_alignment_sensitivity.csv`
+- `data/analysis/m15_alignment_sensitivity.csv`
+These files include `stride` and `max_bars` columns so any sampling is explicit. Set both to full (stride=1, max_bars=0) for final runs.
+Conclusion: alignment errors should degrade performance; this test is a canary for timestamp drift.
+
 **Time‑weighted vs trade‑level drawdown**
 Daily equity curve drawdown can differ materially from trade‑level DD.
 - M5: trade‑level DD ‑119,032 bps vs daily DD ‑67,618 bps (ratio 0.57)
@@ -171,6 +196,12 @@ Delaying entry by 1–3 bars and **re‑simulating Z‑exits** does **not** mate
 - M15: mean roughly stable (baseline 4.97 → ~4.82–4.96 bps)
 Guardrail performance remains strong under delayed entry.
 Conclusion: the signal appears early rather than late; delays do not break the edge.
+
+**Fill‑price realism (entry/exit mechanics)**
+We explicitly test entry at close/next close/mean and apply proportional slippage to exits.
+Outputs:
+- `data/analysis/m5_fill_price_sensitivity.csv`
+- `data/analysis/m15_fill_price_sensitivity.csv`
 
 **Portfolio constraints**
 Caps on max concurrent trades or per‑leg exposure **reduce performance** materially, both with and without guardrail. Not recommended.
@@ -253,6 +284,14 @@ Files:
 - `data/analysis/m15_smoothing_pair_deltas_fast.csv`
 - `data/analysis/m5_smoothing_pair_sensitivity_fast.csv`
 - `data/analysis/m15_smoothing_pair_sensitivity_fast.csv`
+
+**Guardrail failure modes (opportunity cost)**
+We measure the PnL of skipped trades to quantify opportunity cost and identify if the guardrail blocks extended positive regimes.
+Outputs:
+- `data/analysis/m5_guardrail_skip_stats.csv`
+- `data/analysis/m15_guardrail_skip_stats.csv`
+- `data/analysis/m5_guardrail_symbol_pauses.csv`
+- `data/analysis/m15_guardrail_symbol_pauses.csv`
 
 **Fill‑price sensitivity (entry/exit)**
 Entry at close vs next‑close vs mean is similar, but **slippage proportional to move size** is punitive:
@@ -622,6 +661,6 @@ Return and ATR context:
 ---
 
 ## Deprecated / Not Used
-- CatBoost models (classifier/regressor) are **not used**.
+- ML models are **not used**.
 - Edge score thresholds are **not used**.
 - REV strategy is **not traded**.

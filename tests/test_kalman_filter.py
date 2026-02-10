@@ -1,10 +1,5 @@
-import os
-import sys
-
 import numpy as np
-
-sys.path.append(os.path.join(os.getcwd(), "scripts"))
-from kalman_filter import KalmanFilterReg, KalmanFilterRegMulti
+from behemoth.core.kalman import KalmanFilterReg, KalmanFilterRegMulti
 
 
 def test_kalman_filter_reg_converges():

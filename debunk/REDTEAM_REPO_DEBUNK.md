@@ -58,7 +58,7 @@ There is still no dedicated runtime inference/exec module for M5/M15 with guardr
 ## What Looks Correct (Green)
 - Z‑score computation is **causal** (rolling 500‑bar window, no forward look).
 - Guardrail logic is **causal** and matches manual semantics.
-- Manual now correctly states **no ML/CatBoost usage**.
+- Manual now correctly states **no ML usage**.
 
 ## Data‑Backed Checks (Small Sample‑Free Tests)
 These are lightweight checks using the existing M5/M15 event datasets (no full rebuilds).

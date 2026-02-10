@@ -1,11 +1,5 @@
-import os
-import sys
-
 import pandas as pd
-
-sys.path.append(os.path.join(os.getcwd(), "scripts"))
-
-from analyze_guardrail_effectiveness import apply_guardrail
+from behemoth.core.guardrail import apply_loss_streak_guardrail
 
 
 def test_guardrail_counts_zero_as_loss():
@@ -20,7 +14,14 @@ def test_guardrail_counts_zero_as_loss():
         {"pair": "X", "exit_ts": base + 12 * day, "pnl": 1.0},
     ])
 
-    kept, skipped, _ = apply_guardrail(trades)
+    trades = trades.rename(columns={"pnl": "pnl_bps"})
+    kept, skipped = apply_loss_streak_guardrail(
+        trades,
+        loss_threshold=0.0,
+        loss_streak=3,
+        cooldown_days=7,
+        return_skipped=True,
+    )
 
     # Loss streak (including pnl=0) triggers a pause after day 2,
     # so day 3 is skipped, day 12 is kept.

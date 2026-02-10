@@ -1,9 +1,4 @@
-import os
-import sys
-
 import pandas as pd
-
-sys.path.append(os.path.join(os.getcwd(), "scripts"))
 import analyze_guardrail_deep_dive as gd
 
 

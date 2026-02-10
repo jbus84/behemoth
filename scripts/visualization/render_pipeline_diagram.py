@@ -48,9 +48,9 @@ def main() -> None:
     _box(ax, (0.6, 2.6), "Bar Data\n(global_5m / global_15m)")
     _box(ax, (3.4, 2.6), "Kalman Scout\n(beta, spread, Z-score)")
     _box(ax, (6.2, 2.6), "Meta Dataset\n(events_*_v3_dual.csv)")
-    _box(ax, (0.6, 0.8), "Two-Stage Model\n(CatBoost)")
-    _box(ax, (3.4, 0.8), "Edge Score\npred_pnl (expected value)")
-    _box(ax, (6.2, 0.8), "Trade Filter\nedge > threshold")
+    _box(ax, (0.6, 0.8), "Rule Engine\n(MOM + Guardrail)")
+    _box(ax, (3.4, 0.8), "Z-Based Exit\n+ Guardrail Pause")
+    _box(ax, (6.2, 0.8), "Trade Execution\n(active leg)")
 
     _arrow(ax, (3.2, 3.05), (3.4, 3.05))
     _arrow(ax, (5.9, 3.05), (6.2, 3.05))
@@ -62,7 +62,7 @@ def main() -> None:
     ax.text(
         0.6,
         3.7,
-        "Meta Model Pipeline (M5 / M15)",
+        "Rule-Based Pipeline (M5 / M15)",
         fontsize=11,
         fontweight="bold",
         color="#111827",

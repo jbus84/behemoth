@@ -1,13 +1,10 @@
-import os
-import sys
 from datetime import datetime, timedelta
 
 import numpy as np
 
-sys.path.append(os.path.join(os.getcwd(), "scripts"))
-
-import build_meta_dataset_v3 as m15
-import build_meta_dataset_v3_m5 as m5
+from behemoth.core.features import compute_features_at_entry
+from behemoth.core.kalman import compute_kalman_states
+from behemoth.core.zscore import compute_z_scores
 
 
 def _make_series(n=900, seed=42):
@@ -29,15 +26,17 @@ def _assert_close(a, b, tol=1e-6, label="value"):
         raise AssertionError(f"Mismatch for {label}: {a} vs {b} (tol={tol})")
 
 
-def _check_causality(mod):
+def _check_causality(bar_minutes):
     y, x = _make_series()
     ts = _make_timestamps(len(y))
 
-    betas, errors, ret_betas = mod.compute_kalman_states(y, x)
-    z_scores = mod.compute_z_scores(errors)
+    betas, errors, ret_betas = compute_kalman_states(y, x)
+    z_scores = compute_z_scores(errors)
 
     i = 800
-    feat_orig = mod.compute_features_at_entry(i, y, x, betas, errors, ret_betas, z_scores, ts)
+    feat_orig = compute_features_at_entry(
+        i, y, x, betas, errors, ret_betas, z_scores, ts, bar_minutes=bar_minutes
+    )
 
     # Modify future values only
     y2 = y.copy()
@@ -45,8 +44,8 @@ def _check_causality(mod):
     y2[i + 1:] += 0.5
     x2[i + 1:] -= 0.3
 
-    betas2, errors2, ret_betas2 = mod.compute_kalman_states(y2, x2)
-    z_scores2 = mod.compute_z_scores(errors2)
+    betas2, errors2, ret_betas2 = compute_kalman_states(y2, x2)
+    z_scores2 = compute_z_scores(errors2)
 
     # Causality checks
     assert np.allclose(betas[: i + 1], betas2[: i + 1], atol=1e-9)
@@ -54,15 +53,17 @@ def _check_causality(mod):
     assert np.allclose(z_scores[: i + 1], z_scores2[: i + 1], atol=1e-9)
     assert np.allclose(ret_betas[: i + 1], ret_betas2[: i + 1], atol=1e-9)
 
-    feat_new = mod.compute_features_at_entry(i, y2, x2, betas2, errors2, ret_betas2, z_scores2, ts)
+    feat_new = compute_features_at_entry(
+        i, y2, x2, betas2, errors2, ret_betas2, z_scores2, ts, bar_minutes=bar_minutes
+    )
 
     for k in feat_orig.keys():
         _assert_close(float(feat_orig[k]), float(feat_new[k]), tol=1e-6, label=k)
 
 
 def test_feature_causality_m15():
-    _check_causality(m15)
+    _check_causality(15)
 
 
 def test_feature_causality_m5():
-    _check_causality(m5)
+    _check_causality(5)

@@ -1,12 +1,8 @@
-import os
-import sys
-
 import numpy as np
 import pandas as pd
 
-sys.path.append(os.path.join(os.getcwd(), "scripts"))
-
-from build_meta_dataset_v3 import compute_z_scores, simulate_trade
+from behemoth.core.events import simulate_trade
+from behemoth.core.zscore import compute_z_scores
 import wfo_mom_full_params as wfo
 
 

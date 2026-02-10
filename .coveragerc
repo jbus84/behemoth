@@ -1,14 +1,8 @@
 [run]
 branch = True
 include =
-    scripts/metrics.py
-    scripts/kalman_filter.py
-    scripts/build_meta_dataset_v3.py
-    scripts/build_meta_dataset_v3_m5.py
-    scripts/analyze_guardrail_deep_dive.py
-    scripts/analyze_guardrail_smoothing_slippage.py
-    scripts/analyze_bootstrap_month_block.py
-    scripts/analyze_symbol_stability.py
+    src/behemoth/core/*.py
+    src/behemoth/io/*.py
 
 [report]
 show_missing = True

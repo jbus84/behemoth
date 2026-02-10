@@ -5,6 +5,11 @@ build/
 dist/
 wheels/
 *.egg-info
+.DS_Store
+.pytest_cache/
+catboost_info/
+logs/
+models/
 
 # Virtual environments
 .venv

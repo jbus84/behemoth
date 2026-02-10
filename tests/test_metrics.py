@@ -1,11 +1,6 @@
-import os
-import sys
-
 import numpy as np
 import pandas as pd
-
-sys.path.append(os.path.join(os.getcwd(), "scripts"))
-import metrics
+import behemoth.core.metrics as metrics
 
 
 def test_sharpe_daily_basic():

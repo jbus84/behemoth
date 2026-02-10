@@ -1,10 +1,5 @@
-import os
-import sys
-
 import pandas as pd
 import numpy as np
-
-sys.path.append(os.path.join(os.getcwd(), "scripts"))
 import full_leak_audit as la
 
 

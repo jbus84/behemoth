@@ -45,6 +45,6 @@ Scope: M5/M15 rule‑based MOM strategy + loss‑streak guardrail. No full data 
 
 ## Manual parity
 **Purpose**: Ensure manual reflects rule-based MOM + guardrail and no ML usage.
-**Procedure**: Search manual for key statements (no CatBoost, loss-streak guardrail).
+**Procedure**: Search manual for key statements (no ML, loss-streak guardrail).
 **Result**: no_ml=True, guardrail=True.
 **Verdict**: PASS

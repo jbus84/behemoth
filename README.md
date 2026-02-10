@@ -2,16 +2,16 @@
 # Behemoth: Kalman + Meta Model (H1)
 
 **Status**: Partially Implemented (Inference-Only)
-**Strategy**: Kalman Anomaly Detection + Meta Model Filter (CatBoost)
+**Strategy**: Kalman Z‑Score Momentum + Loss‑Streak Guardrail (Rule‑Based)
 **Timeframe**: H1 (Hourly)
 
 > [!IMPORTANT]
 > **Implementation Note**: This repo currently provides **signal inference** only. Execution‑side risk controls described in the manual (kill‑zone, circuit breaker, Z‑based exits, etc.) are **not implemented** in code.
 
 ## 1. The Strategy
-We generate H1 signals using a centered **Kalman Filter** and a **CatBoost regressor** that filters MOM vs REV outcomes based on regime features.
+We generate signals using a centered **Kalman Filter** and a rule‑based MOM/guardrail policy (no ML).
 
-*   **Logic**: Kalman estimates dynamic beta and spread error; CatBoost ranks MOM vs REV for the active leg.
+*   **Logic**: Kalman estimates dynamic beta and spread error; rules select MOM entries and guardrail pauses after loss streaks.
 *   **Note**: Claims about market neutrality and Monte Carlo safety are **legacy** and require revalidation against the current H1 pipeline.
 
 ## 2. Legacy 4H Portfolio (Not Revalidated)
@@ -48,7 +48,7 @@ python3 scripts/monitor_pairs.py
 
 ### C. Core Docs
 *   **[Master Manual](docs/STRATEGY_MASTER_MANUAL.md)**: Current H1 logic and execution notes.
-*   **[Walkthrough](docs/walkthrough.md)**: H1 dataset exploration and deployment notes.
+*   **Walkthrough**: legacy H1 exploration notes removed with ML cleanup.
 *   **[Red‑Team Debunk](debunk/REDTEAM_REPO_DEBUNK.md)**: Known gaps and risks.
 
 ## 5. Execution Rules (Documentation vs Code)
