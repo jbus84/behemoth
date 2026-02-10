@@ -9,6 +9,7 @@
 - `docs/`: documentation (MkDocs site uses these markdown files)
 - `mkdocs.yml`: MkDocs configuration
 - `configs/`: YAML config for API and pair weights
+- `services/api/migrations/`: Alembic migrations for DB schema
 
 
 ## Notes

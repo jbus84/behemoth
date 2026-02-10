@@ -38,3 +38,6 @@ nav:
   - Risk Controls: risk_controls.md
   - Data Pipeline: data_pipeline.md
   - Validation: validation.md
+  - Config Reference: config_reference.md
+  - Code Reference: code_reference.md
+  - DB Schema: db_schema.md
