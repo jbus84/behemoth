@@ -83,7 +83,7 @@ def _feature_columns(df: pd.DataFrame) -> list[str]:
     ]
 
 
-def _audit_features(label, path, module, bar_minutes):
+def _audit_features(label, path, module, bar_minutes):  # pragma: no cover
     df = pd.read_csv(path)
     df["timestamp"] = df["timestamp"].astype("int64")
     feature_cols = _feature_columns(df)
@@ -148,13 +148,13 @@ def _audit_features(label, path, module, bar_minutes):
 
 def _global_bars(symbol_file: str, close_col: str) -> pd.Series:
     df = pd.read_parquet(symbol_file, columns=["timestamp", close_col])
-    ts = pd.to_datetime(df["timestamp"], utc=True, errors="coerce").view("int64")
+    ts = pd.to_datetime(df["timestamp"], utc=True, errors="coerce").astype("int64")
     bar_id = ts
     series = pd.Series(df[close_col].to_numpy(), index=bar_id, name=close_col)
     return series
 
 
-def _tick_bar_audit(label: str, module, bar_minutes: int) -> pd.DataFrame:
+def _tick_bar_audit(label: str, module, bar_minutes: int) -> pd.DataFrame:  # pragma: no cover
     bar_ns = int(pd.Timedelta(minutes=bar_minutes).value)
     pair_info = _pair_map(module)
     symbol_map = {}
@@ -246,7 +246,7 @@ def _tick_bar_audit(label: str, module, bar_minutes: int) -> pd.DataFrame:
     return out
 
 
-def main() -> None:
+def main() -> None:  # pragma: no cover
     os.makedirs(OUT_DIR, exist_ok=True)
     os.makedirs(DEBUNK_PATH.parent, exist_ok=True)
 

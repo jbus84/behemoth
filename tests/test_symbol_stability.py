@@ -1,0 +1,31 @@
+import os
+import sys
+
+import pandas as pd
+
+sys.path.append(os.path.join(os.getcwd(), "scripts"))
+import analyze_symbol_stability as ss
+
+
+def test_apply_guardrail_symbol_stability():
+    df = pd.DataFrame(
+        {
+            "pair": ["A", "A", "A", "A"],
+            "exit_ts": [1, 2, 3, 4],
+            "pnl_bps": [-1.0, -1.0, -1.0, 2.0],
+        }
+    )
+    kept = ss._apply_guardrail(df)
+    assert len(kept) == 3
+
+
+def test_metrics_symbol_stability():
+    df = pd.DataFrame(
+        {
+            "pair": ["A", "B"],
+            "exit_ts": [1, 2],
+            "pnl_bps": [1.0, -1.0],
+        }
+    )
+    m = ss._metrics(df)
+    assert m["trades"] == 2

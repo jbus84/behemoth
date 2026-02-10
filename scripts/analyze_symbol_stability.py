@@ -84,7 +84,7 @@ def _apply_guardrail(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(keep)
 
 
-def main() -> None:
+def main() -> None:  # pragma: no cover
     os.makedirs(OUT_DIR, exist_ok=True)
 
     for label, path, bar_minutes in CONFIGS:

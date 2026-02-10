@@ -144,7 +144,7 @@ def _bootstrap_summary(samples: list[pd.DataFrame]) -> pd.DataFrame:
     return summary
 
 
-def main() -> None:
+def main() -> None:  # pragma: no cover
     os.makedirs(OUT_DIR, exist_ok=True)
 
     for label, path, bar_minutes in CONFIGS:

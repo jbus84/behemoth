@@ -137,7 +137,7 @@ def _annotate_streaks(df: pd.DataFrame, loss_threshold: float) -> pd.DataFrame:
     return df
 
 
-def main() -> None:
+def main() -> None:  # pragma: no cover
     os.makedirs(OUT_DIR, exist_ok=True)
 
     for label, path, bar_minutes in CONFIGS:

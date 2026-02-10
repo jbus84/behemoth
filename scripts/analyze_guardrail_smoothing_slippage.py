@@ -103,7 +103,7 @@ def _smoothing_skiprate(bar: str) -> pd.DataFrame:
     return pivot.rename(columns={"guard": "guard_trades", "noguard": "noguard_trades"})
 
 
-def main() -> None:
+def main() -> None:  # pragma: no cover
     os.makedirs(OUT_DIR, exist_ok=True)
 
     # Smoothing skip rates

@@ -245,7 +245,7 @@ def simulate_trade(entry_idx, direction, strategy_type, y, x, z_scores, active_a
 
 
 
-def build_dataset():
+def build_dataset():  # pragma: no cover
     print("--- BUILDING META MODEL DATASET v3 (DUAL STRATEGY) ---")
     
     thresh_mom = 1.5
@@ -439,5 +439,5 @@ def build_dataset():
         print("No events found.")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     build_dataset()
