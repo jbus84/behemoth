@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict
 
@@ -39,6 +39,9 @@ class PositionResponse(BaseModel):
     entry_price: Optional[float]
     exit_price: Optional[float]
     size: float
+    notional_usd: Optional[float] = None
+    alloc_frac: Optional[float] = None
+    entry_equity: Optional[float] = None
     pnl_bps: Optional[float]
     metadata: Dict[str, Any] = Field(alias="meta")
     version: int
@@ -73,3 +76,14 @@ class GuardrailStateResponse(BaseModel):
     pause_until: Optional[datetime]
     can_trade: bool
     cooldown_remaining_s: Optional[int]
+
+
+class AccountStateResponse(BaseModel):
+    strategy_id: str
+    equity: float
+    peak_equity: float
+    day_start_equity: float
+    day_start_date: date
+    consecutive_losses: int
+    halted: bool
+    halt_reason: Optional[str]

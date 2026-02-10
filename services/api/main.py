@@ -19,6 +19,7 @@ from .schemas import (
     OrderCreate,
     OrderResponse,
     GuardrailStateResponse,
+    AccountStateResponse,
 )
 from .settings import settings
 from .state import can_transition
@@ -26,6 +27,7 @@ from .validation import summary_for_bar
 from .validation import summary_from_db, compare_pipeline_to_db, compare_predictions_to_pipeline
 from .predict import generate_mom_events_for_pair
 from .guardrail import is_trade_allowed, update_guardrail_on_close, get_guardrail_state
+from .risk import check_risk_on_create, update_account_on_close, get_or_create_account_state, reset_account_halt
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -160,6 +162,13 @@ def create_position(
                 raise HTTPException(status_code=404, detail="Position not found for idempotency key")
             return pos
 
+    if payload.size <= 0:
+        raise HTTPException(status_code=400, detail="size must be > 0")
+
+    risk_ok, risk_detail = check_risk_on_create(db, payload.strategy_id, payload.pair, payload.size)
+    if not risk_ok:
+        raise HTTPException(status_code=409, detail=risk_detail)
+
     if settings.guardrail_enabled:
         entry_ts = payload.entry_ts or _now()
         allowed, pause_until, _ = is_trade_allowed(db, payload.strategy_id, payload.pair, entry_ts)
@@ -170,12 +179,18 @@ def create_position(
             }
             raise HTTPException(status_code=409, detail=detail)
 
+    account_state = get_or_create_account_state(db, payload.strategy_id)
+    alloc_frac = float(payload.size) / float(account_state.equity)
+
     pos = Position(
         strategy_id=payload.strategy_id,
         pair=payload.pair,
         side=payload.side,
         active_leg=payload.active_leg,
         size=payload.size,
+        notional_usd=payload.size,
+        alloc_frac=alloc_frac,
+        entry_equity=float(account_state.equity),
         entry_price=payload.entry_price,
         entry_ts=payload.entry_ts,
         meta=payload.metadata,
@@ -258,6 +273,16 @@ def close_position(position_id: str, payload: PositionClose, db: Session = Depen
     pos.pnl_bps = payload.pnl_bps
     pos.version += 1
 
+    if pos.pnl_bps is not None:
+        notional = pos.notional_usd if pos.notional_usd is not None else pos.size
+        update_account_on_close(
+            db,
+            strategy_id=pos.strategy_id,
+            pnl_bps=float(pos.pnl_bps),
+            notional=float(notional),
+            exit_ts=pos.exit_ts,
+        )
+
     if settings.guardrail_enabled and pos.exit_ts and pos.pnl_bps is not None:
         update_guardrail_on_close(
             db,
@@ -298,6 +323,20 @@ def guardrail_status(strategy_id: str, pair: str, db: Session = Depends(get_db))
         "can_trade": allowed,
         "cooldown_remaining_s": cooldown_remaining,
     }
+
+
+@app.get("/risk/{strategy_id}", response_model=AccountStateResponse)
+def risk_status(strategy_id: str, db: Session = Depends(get_db)):
+    state = get_or_create_account_state(db, strategy_id)
+    return state
+
+
+@app.post("/risk/{strategy_id}/reset", response_model=AccountStateResponse)
+def risk_reset(strategy_id: str, db: Session = Depends(get_db)):
+    state = reset_account_halt(db, strategy_id)
+    db.commit()
+    db.refresh(state)
+    return state
 
 
 @app.post("/positions/{position_id}/cancel", response_model=PositionResponse)

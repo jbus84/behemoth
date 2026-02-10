@@ -448,6 +448,17 @@ Institutions typically implement the same concept as:
 - Broker feed quality or execution changes.
 - Over‑reliance on a small subset of symbols (mitigated by guardrail, but not eliminated).
 
+**Production risk controls (mandatory)**
+We enforce portfolio‑level kill‑switches and sizing guards in the API:
+- **Max daily loss**: 5% (floating vs day‑start equity)
+- **Max drawdown**: 10% (floating vs peak equity)
+- **Max consecutive losses**: configurable (default 5)
+- **Max total exposure**: 100% of equity (no leverage)
+- **Per‑pair cap**: 10% of equity (default)
+- **Pair weighting table**: `configs/pair_weights.json` (used to compute target notional)
+
+These are **hard gates**: new positions are rejected when limits are breached. The account state is updated on each close using realized PnL, and daily reset is based on the first trade close of the day.
+
 Bottom line: the guardrail is a **robust risk‑control**, not a free edge. It is consistent with institutional risk practice, and its effectiveness at retail scale is plausible—but still requires ongoing monitoring.
 
 ---

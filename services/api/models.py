@@ -1,6 +1,6 @@
 import enum
 import uuid
-from sqlalchemy import Column, String, DateTime, Integer, Float, ForeignKey, Enum, JSON, func, UniqueConstraint
+from sqlalchemy import Column, String, DateTime, Integer, Float, ForeignKey, Enum, JSON, func, UniqueConstraint, Date, Boolean
 from sqlalchemy.orm import relationship
 
 from .db import Base
@@ -53,6 +53,9 @@ class Position(Base):
     entry_price = Column(Float)
     exit_price = Column(Float)
     size = Column(Float, nullable=False)
+    notional_usd = Column(Float)
+    alloc_frac = Column(Float)
+    entry_equity = Column(Float)
     pnl_bps = Column(Float)
     meta = Column("metadata", JSON, default=dict)
     version = Column(Integer, nullable=False, default=1)
@@ -110,5 +113,22 @@ class GuardrailState(Base):
     pair = Column(String, nullable=False)
     loss_streak = Column(Integer, nullable=False, default=0)
     pause_until = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class AccountState(Base):
+    __tablename__ = "account_state"
+    __table_args__ = (UniqueConstraint("strategy_id", name="uq_account_state_strategy"),)
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    strategy_id = Column(String, nullable=False)
+    equity = Column(Float, nullable=False)
+    peak_equity = Column(Float, nullable=False)
+    day_start_equity = Column(Float, nullable=False)
+    day_start_date = Column(Date, nullable=False)
+    consecutive_losses = Column(Integer, nullable=False, default=0)
+    halted = Column(Boolean, nullable=False, default=False)
+    halt_reason = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

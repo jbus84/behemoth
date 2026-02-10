@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 revision = "002_create_guardrail_state"
-down_revision = "001_create_positions"
+down_revision = "001"
 branch_labels = None
 depends_on = None
 

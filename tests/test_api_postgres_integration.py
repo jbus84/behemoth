@@ -35,7 +35,7 @@ def test_postgres_api_and_compare(tmp_path):
     with Session() as session:
         session.execute(
             text(
-                "TRUNCATE positions, orders, position_events, idempotency_keys, guardrail_state RESTART IDENTITY"
+                "TRUNCATE positions, orders, position_events, idempotency_keys, guardrail_state, account_state RESTART IDENTITY"
             )
         )
         session.commit()
