@@ -2,6 +2,10 @@ database_url: postgresql+psycopg2://behemoth:behemoth@localhost:5432/behemoth
 redis_url: redis://localhost:6379/0
 enable_redis: true
 auto_create_tables: false
+log_level: INFO
+metrics_enabled: true
+validate_pipeline_files: true
+require_pair_weights: true
 
 guardrail_enabled: true
 guardrail_loss_threshold: 0.0

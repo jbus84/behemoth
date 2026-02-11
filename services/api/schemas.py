@@ -88,3 +88,7 @@ class AccountStateResponse(BaseModel):
     consecutive_losses: int
     halted: bool
     halt_reason: str | None
+
+
+class RiskHaltRequest(BaseModel):
+    reason: str | None = None

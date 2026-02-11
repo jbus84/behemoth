@@ -1,16 +1,19 @@
 import hashlib
 import json
+import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import cast
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from .cache import cache_get_position, cache_invalidate_position, cache_set_position
 from .db import Base, engine, get_db
 from .guardrail import get_guardrail_state, is_trade_allowed, update_guardrail_on_close
+from .logging import configure_logging, log_event
+from .metrics import GUARDRAIL_BLOCKS, RISK_HALTS, metrics_response, timeit, track_request
 from .models import IdempotencyKey, Order, OrderStatus, Position, PositionEvent, PositionStatus
 from .predict import generate_mom_events_for_pair
 from .risk import (
@@ -19,6 +22,7 @@ from .risk import (
     reset_account_halt,
     update_account_on_close,
 )
+from .runtime import validate_runtime_config
 from .schemas import (
     AccountStateResponse,
     GuardrailStateResponse,
@@ -28,6 +32,7 @@ from .schemas import (
     PositionCreate,
     PositionOpen,
     PositionResponse,
+    RiskHaltRequest,
 )
 from .settings import settings
 from .state import can_transition
@@ -41,12 +46,15 @@ from .validation import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    configure_logging()
+    validate_runtime_config()
     if settings.auto_create_tables:
         Base.metadata.create_all(bind=engine)
     yield
 
 
 app = FastAPI(title="Behemoth Position API", version="0.1.0", lifespan=lifespan)
+logger = logging.getLogger("behemoth.api")
 
 
 def _hash_request(payload: dict) -> str:
@@ -62,6 +70,25 @@ def _payload_json(payload):
     if hasattr(payload, "model_dump"):
         return payload.model_dump(mode="json")
     return payload
+
+
+@app.middleware("http")
+async def metrics_middleware(request: Request, call_next):
+    done = timeit()
+    response = await call_next(request)
+    duration = done()
+    if settings.metrics_enabled:
+        route = request.scope.get("route")
+        path = route.path if route else request.url.path
+        track_request(request.method, path, response.status_code, duration)
+    return response
+
+
+@app.get("/metrics")
+def metrics():
+    if not settings.metrics_enabled:
+        raise HTTPException(status_code=404, detail="metrics disabled")
+    return metrics_response()
 
 
 @app.get("/healthz")
@@ -181,12 +208,15 @@ def create_position(
 
     risk_ok, risk_detail = check_risk_on_create(db, payload.strategy_id, payload.pair, payload.size)
     if not risk_ok:
+        reason = risk_detail.get("error", "risk_halted")
+        RISK_HALTS.labels(strategy_id=payload.strategy_id, reason=str(reason)).inc()
         raise HTTPException(status_code=409, detail=risk_detail)
 
     if settings.guardrail_enabled:
         entry_ts = payload.entry_ts or _now()
         allowed, pause_until, _ = is_trade_allowed(db, payload.strategy_id, payload.pair, entry_ts)
         if not allowed:
+            GUARDRAIL_BLOCKS.labels(strategy_id=payload.strategy_id, pair=payload.pair).inc()
             detail = {
                 "error": "guardrail_paused",
                 "pause_until": pause_until.isoformat() if pause_until else None,
@@ -227,6 +257,13 @@ def create_position(
     db.refresh(pos)
 
     cache_set_position(pos_id, PositionResponse.model_validate(pos).model_dump())
+    log_event(
+        logger,
+        "position_created",
+        position_id=pos_id,
+        strategy_id=payload.strategy_id,
+        pair=payload.pair,
+    )
     return pos
 
 
@@ -281,6 +318,7 @@ def open_position(position_id: str, payload: PositionOpen, db: Session = Depends
     db.commit()
     db.refresh(pos)
     cache_invalidate_position(cast(str, pos.id))
+    log_event(logger, "position_opened", position_id=cast(str, pos.id))
     return pos
 
 
@@ -330,6 +368,7 @@ def close_position(position_id: str, payload: PositionClose, db: Session = Depen
     db.commit()
     db.refresh(pos)
     cache_invalidate_position(cast(str, pos.id))
+    log_event(logger, "position_closed", position_id=cast(str, pos.id))
     return pos
 
 
@@ -367,6 +406,27 @@ def risk_status(strategy_id: str, db: Session = Depends(get_db)):
 
 @app.post("/risk/{strategy_id}/reset", response_model=AccountStateResponse)
 def risk_reset(strategy_id: str, db: Session = Depends(get_db)):
+    state = reset_account_halt(db, strategy_id)
+    db.commit()
+    db.refresh(state)
+    return state
+
+
+@app.post("/risk/{strategy_id}/halt", response_model=AccountStateResponse)
+def risk_halt(
+    strategy_id: str, payload: RiskHaltRequest | None = None, db: Session = Depends(get_db)
+):
+    state = get_or_create_account_state(db, strategy_id)
+    state.halted = True
+    state.halt_reason = payload.reason if payload and payload.reason else "manual_halt"
+    db.commit()
+    db.refresh(state)
+    RISK_HALTS.labels(strategy_id=strategy_id, reason="manual_halt").inc()
+    return state
+
+
+@app.post("/risk/{strategy_id}/resume", response_model=AccountStateResponse)
+def risk_resume(strategy_id: str, db: Session = Depends(get_db)):
     state = reset_account_halt(db, strategy_id)
     db.commit()
     db.refresh(state)

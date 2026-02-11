@@ -1,17 +1,20 @@
 from __future__ import annotations
 
-import os
+# ruff: noqa: E402
 import sys
 from logging.config import fileConfig
+from pathlib import Path
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-sys.path.append(os.path.join(os.getcwd(), "services"))
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from api import models  # noqa: F401
-from api.db import Base
-from api.settings import settings
+from services.api import models  # noqa: F401
+from services.api.db import Base
+from services.api.settings import settings
 
 config = context.config
 

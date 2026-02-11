@@ -11,6 +11,10 @@ Environment variables **override** YAML values.
 | `redis_url` | `redis://localhost:6379/0` | Redis URL |
 | `enable_redis` | `true` | Use Redis cache |
 | `auto_create_tables` | `false` | Auto-create tables (dev only) |
+| `log_level` | `INFO` | Logging level |
+| `metrics_enabled` | `true` | Expose `/metrics` |
+| `validate_pipeline_files` | `true` | Ensure pipeline CSVs exist at startup |
+| `require_pair_weights` | `true` | Require `pair_weights_path` to exist |
 
 ## Guardrail
 
@@ -43,4 +47,8 @@ max_daily_loss_pct: 0.05
 max_dd_pct: 0.10
 max_pair_exposure_pct: 0.10
 pair_weights_path: configs/pair_weights.yaml
+log_level: INFO
+metrics_enabled: true
+validate_pipeline_files: true
+require_pair_weights: true
 ```

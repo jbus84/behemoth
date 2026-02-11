@@ -1,4 +1,4 @@
-.PHONY: up down logs api migrate test db docs docs-build docs-clean docs-openapi precommit-install precommit-run lint format
+.PHONY: up down logs api migrate test db docs docs-build docs-clean docs-openapi precommit-install precommit-run lint format baselines db-backup db-restore db-restore-smoke deploy
 
 up:
 	docker compose up -d --build
@@ -56,3 +56,20 @@ lint:
 
 format:
 	uv run ruff format src services scripts tests
+
+baselines:
+	uv run python scripts/build_baselines.py
+
+db-backup:
+	mkdir -p backups
+	docker compose exec -T db pg_dump -U behemoth -d behemoth > backups/behemoth_$(shell date +%Y%m%d_%H%M%S).sql
+
+db-restore:
+	@if [ -z "$(BACKUP_FILE)" ]; then echo "BACKUP_FILE is required"; exit 1; fi
+	docker compose exec -T db psql -U behemoth -d behemoth < $(BACKUP_FILE)
+
+db-restore-smoke:
+	python scripts/db_backup_restore_smoke.py
+
+deploy:
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build

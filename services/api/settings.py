@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     redis_url: str = Field(default="redis://localhost:6379/0")
     enable_redis: bool = Field(default=True)
     auto_create_tables: bool = Field(default=False)
+    log_level: str = Field(default="INFO")
+    metrics_enabled: bool = Field(default=True)
+    validate_pipeline_files: bool = Field(default=True)
+    require_pair_weights: bool = Field(default=True)
 
     guardrail_enabled: bool = Field(default=True)
     guardrail_loss_threshold: float = Field(default=0.0)

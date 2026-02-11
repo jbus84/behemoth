@@ -27,6 +27,9 @@ stateDiagram-v2
 - `GET /guardrail/{strategy_id}/{pair}` — guardrail state
 - `GET /risk/{strategy_id}` — account risk state
 - `POST /risk/{strategy_id}/reset` — clear halt and reset streak
+- `POST /risk/{strategy_id}/halt` — manual kill‑switch
+- `POST /risk/{strategy_id}/resume` — resume after manual halt
+- `GET /metrics` — Prometheus metrics (if enabled)
 
 ## Validation Endpoints
 

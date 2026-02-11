@@ -1,0 +1,31 @@
+{
+  "bar": "m15",
+  "generated_at": "2026-02-11T08:16:47.310304+00:00",
+  "pipeline_path": "data/meta_model/events_m15_8yr_v3_mom.csv",
+  "pipeline_sha256": "12c6a0aedca14f3fd620e025c690949b8c9704866acf572f2f1c203074cbfb6c",
+  "guardrail_settings": {
+    "loss_threshold": 0.0,
+    "loss_streak": 3,
+    "cooldown_days": 7
+  },
+  "summary": {
+    "trades": 73629,
+    "win_rate": 45.847424248597704,
+    "mean_pnl": 4.971698922978719,
+    "total_pnl": 366061.2200000001,
+    "max_dd": -41525.43000000018,
+    "sharpe": 1.1126473671357617,
+    "sharpe_active": 1.1167038862814913,
+    "sharpe_trade": 1.5621493690143893
+  },
+  "summary_guardrail": {
+    "trades": 37897,
+    "win_rate": 56.7986911892762,
+    "mean_pnl": 30.18303480486582,
+    "total_pnl": 1143846.47,
+    "max_dd": -10150.229999999749,
+    "sharpe": 4.05092173228915,
+    "sharpe_active": 4.110018744000764,
+    "sharpe_trade": 5.6661044534720375
+  }
+}

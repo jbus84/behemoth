@@ -1,0 +1,13 @@
+services:
+  db:
+    restart: unless-stopped
+
+  redis:
+    restart: unless-stopped
+
+  api:
+    restart: unless-stopped
+    environment:
+      CONFIG_PATH: /app/configs/api.yaml
+      LOG_LEVEL: INFO
+      METRICS_ENABLED: "true"

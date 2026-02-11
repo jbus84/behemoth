@@ -105,3 +105,15 @@ def test_daily_loss_killswitch(tmp_path):
     status = client.get("/risk/mom_m5")
     assert status.status_code == 200
     assert status.json()["halted"] is True
+
+
+def test_manual_halt_and_resume():
+    client = make_client()
+    resp = client.post("/risk/mom_m5/halt", json={"reason": "ops_test"})
+    assert resp.status_code == 200
+    assert resp.json()["halted"] is True
+    assert resp.json()["halt_reason"] == "ops_test"
+
+    resume = client.post("/risk/mom_m5/resume")
+    assert resume.status_code == 200
+    assert resume.json()["halted"] is False

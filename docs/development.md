@@ -65,3 +65,17 @@ Format:
 ```bash
 make format
 ```
+
+## Baseline Snapshots
+Generate golden baselines for M5/M15 validation:
+
+```bash
+make baselines
+```
+
+## DB Backup Smoke Test
+Run a backup/restore smoke test (requires docker compose up):
+
+```bash
+make db-restore-smoke
+```

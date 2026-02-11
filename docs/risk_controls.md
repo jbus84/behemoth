@@ -31,3 +31,8 @@ Pairs with higher weights get a larger share of exposure.
 ## Reset
 
 Use `POST /risk/{strategy_id}/reset` to clear a halt after manual review.
+
+## Manual Halt/Resume
+
+- `POST /risk/{strategy_id}/halt` with an optional reason.
+- `POST /risk/{strategy_id}/resume` to continue trading.
