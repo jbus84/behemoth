@@ -11,6 +11,10 @@ catboost_info/
 logs/
 models/
 
+# Data artifacts
+*.csv
+*.parquet
+
 # Virtual environments
 .venv
 data/*

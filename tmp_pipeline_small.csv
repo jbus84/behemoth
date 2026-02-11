@@ -1,3 +1,0 @@
-pair,timestamp,duration_bars,pnl_bps,side,active_leg
-EUR/GBP,0,1,2.0,LONG,Y
-EUR/GBP,1000000000,1,-1.0,LONG,Y
