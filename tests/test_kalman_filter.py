@@ -1,4 +1,5 @@
 import numpy as np
+
 from behemoth.core.kalman import KalmanFilterReg, KalmanFilterRegMulti
 
 
@@ -15,7 +16,7 @@ def test_kalman_filter_reg_multi_shape_check():
     kf = KalmanFilterRegMulti(k=2)
     try:
         kf.update([1.0], 1.0)
-        assert False, "Expected shape error"
+        raise AssertionError("Expected shape error")
     except ValueError:
         assert True
 

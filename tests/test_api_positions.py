@@ -4,9 +4,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from services.api.db import Base, get_db
-from services.api.settings import settings
 from services.api.main import app
-from services.api.models import PositionStatus, Side, ActiveLeg
+from services.api.models import ActiveLeg, PositionStatus, Side
+from services.api.settings import settings
 
 
 def make_client():

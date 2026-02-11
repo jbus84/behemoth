@@ -1,17 +1,14 @@
-import os
 import numpy as np
 import pandas as pd
 
-from behemoth.config import Z_ENTRY_MOM, Z_STOP, MIN_GAP_BARS, ACTIVE_LEG_LOW, ACTIVE_LEG_HIGH
+from behemoth.config import ACTIVE_LEG_HIGH, ACTIVE_LEG_LOW, MIN_GAP_BARS, Z_ENTRY_MOM, Z_STOP
 from behemoth.core.active_leg import select_active_leg
 from behemoth.core.events import simulate_trade
 from behemoth.core.kalman import compute_kalman_states
 from behemoth.core.zscore import compute_z_scores
 from behemoth.io.loaders import load_pair_data
-
 from pipelines.build_events_m5 import PAIRS as M5_PAIRS
 from pipelines.build_events_m15 import PAIRS as M15_PAIRS
-
 
 PAIR_MAP = {
     "m5": M5_PAIRS,
@@ -50,7 +47,9 @@ def load_pair_series(bar: str, pair: str):
     return ts, y, x
 
 
-def compute_exit_ts(entry_ts: int, duration: int, bar_minutes: int, ts_series: np.ndarray, entry_idx: int):
+def compute_exit_ts(
+    entry_ts: int, duration: int, bar_minutes: int, ts_series: np.ndarray, entry_idx: int
+):
     bar_ns = int(pd.Timedelta(minutes=bar_minutes).value)
     if duration >= 500:
         idx = min(entry_idx + 499, len(ts_series) - 1)
@@ -78,7 +77,9 @@ def generate_mom_events_for_pair(bar: str, pair: str):
         if active is None:
             continue
         direction = 1 if z > 0 else -1
-        pnl, duration, outcome = simulate_trade(i, direction, "MOM", y, x, z_scores, active, Z_ENTRY_MOM, Z_STOP)
+        pnl, duration, outcome = simulate_trade(
+            i, direction, "MOM", y, x, z_scores, active, Z_ENTRY_MOM, Z_STOP
+        )
         entry_ts = int(ts[i])
         exit_ts = compute_exit_ts(entry_ts, duration, 5 if bar == "m5" else 15, ts, i)
         events.append(

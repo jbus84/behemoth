@@ -1,6 +1,6 @@
 # Red‑Team Logic Tests (Rule‑Based MOM + Guardrail)
 
-Date: 2026-02-07  
+Date: 2026-02-07
 Scope: M5/M15 rule‑based MOM strategy + loss‑streak guardrail. No full data rebuilds.
 
 ## Summary

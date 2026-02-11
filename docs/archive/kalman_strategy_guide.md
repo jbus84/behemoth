@@ -59,7 +59,7 @@ Imagine the S&P 500 crashes **-10%** in a single day.
     *   Short Nasdaq Position: **Gains +12%** (High Beta assets fall faster).
     *   Long S&P 500 Position: **Loses -10%**.
     *   **Net PnL**: **+2%**. (Profitable during a crash).
-    
+
 Because you are always Long one leg and Short the other, the "Tide" of the market cancels out. You are only exposed to the "Waves" (the difference).
 
 ### Structural Drawdowns
@@ -148,7 +148,7 @@ We deploy this logic across 6 distinct engines to minimize "Single Point of Fail
     *   **Unlevered (1x)**: **~16% / Year**. (Low Risk).
     *   **Levered (3x)**: **~48% / Year**. (Recommended).
     *   *Note*: 3x leverage is safe because you rarely hold more than 2 positions at once (See Section 19).
-*   **Algo Suitability**: **10/10**. 
+*   **Algo Suitability**: **10/10**.
     *   No need for sub-millisecond latency.
     *   Logic is strict mathematical rules (Z-Score).
     *   Perfect for Python/Cron jobs running every 4 hours.

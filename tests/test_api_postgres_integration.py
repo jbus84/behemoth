@@ -1,16 +1,16 @@
 import os
-import pytest
+
 import pandas as pd
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
+from services.api import validation
 from services.api.db import Base, get_db
 from services.api.main import app
-from services.api.models import Position, PositionStatus, Side, ActiveLeg
+from services.api.models import ActiveLeg, Side
 from services.api.settings import settings
-from services.api import validation
-
 
 POSTGRES_URL = os.getenv("POSTGRES_TEST_URL")
 

@@ -1,6 +1,6 @@
 # API Reference (Auto‑Generated)
 
-This page is generated with **mkdocstrings** from the live codebase.  
+This page is generated with **mkdocstrings** from the live codebase.
 It is intended to be a full reference for the API runtime modules.
 
 ## `services.api.main`

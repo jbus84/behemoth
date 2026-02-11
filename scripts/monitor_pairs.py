@@ -27,41 +27,41 @@ def monitor_pair(name, file, col_y, col_x, cost_bps):
         df = pl.read_parquet(path).sort("timestamp")
     except:
         return None
-    
+
     # 1. Kalman Filter (Online Training)
     y_raw = np.log(df[col_y].to_numpy())
     x_raw = np.log(df[col_x].to_numpy())
-    
+
     kf = KalmanFilterReg(Q=1e-5, R=1e-3)
-    
+
     # We only need the *current* state really, but let's run history
     # to build the Z-Score distribution.
     spreads = []
     betas = []
-    
+
     for i in range(len(y_raw)):
         beta, spread = kf.update(x_raw[i], y_raw[i])
         spreads.append(spread)
         betas.append(beta)
-        
+
     # 2. Metric Calculation
     s_series = pd.Series(spreads)
-    
+
     # Z-Score (30-Period Rolling)
     roll_mean = s_series.rolling(30).mean()
     roll_std = s_series.rolling(30).std()
     z_score = (s_series - roll_mean) / roll_std
-    
+
     current_z = z_score.iloc[-1]
     current_beta = betas[-1]
     current_spread = spreads[-1]
-    
+
     # 3. Decision Logic (No Stops, Z=0 Exit)
     # This is for display only - the execution logic is in the Guide.
-    
+
     status = "WAIT"
     action = "HOLD"
-    
+
     if current_z > 2.0:
         status = "OVER-EXTENDED"
         action = "SELL SPREAD (Short Y / Long X)"
@@ -71,7 +71,7 @@ def monitor_pair(name, file, col_y, col_x, cost_bps):
     elif abs(current_z) < 0.1:
         status = "FAIR VALUE"
         action = "EXIT ALL"
-        
+
     return {
         "Pair": name,
         "Z-Score": current_z,
@@ -83,7 +83,7 @@ def monitor_pair(name, file, col_y, col_x, cost_bps):
 def run_dashboard():
     print(f"{'PAIR':<15} | {'Z-SCORE':<8} | {'BETA':<8} | {'STATUS':<15} | {'ACTION'}")
     print("-" * 75)
-    
+
     for name, file, y, x, cost in PAIR_CONFIGS:
         res = monitor_pair(name, file, y, x, cost)
         if res:

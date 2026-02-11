@@ -1,7 +1,7 @@
 # Strategy Master Manual (M5/M15) — Kalman + Rule‑Based MOM
 
-**Version**: 7.0  
-**Date**: February 2026  
+**Version**: 7.0
+**Date**: February 2026
 **Status**: Rule‑based inference with mandatory guardrail
 
 [!IMPORTANT]
@@ -22,17 +22,17 @@ This manual defines the production research strategy for the 5‑minute (M5) and
 3. **Exit** when Z crosses 0 (mean‑reversion) or when `|Z| > 4.0` (momentum stop).
 4. **Guardrail (mandatory)**: per‑symbol loss‑streak >= 3 triggers a **7‑day pause**.
 
-This guardrail produces large drawdown reductions on both M5 and M15 while preserving positive expectancy.  
+This guardrail produces large drawdown reductions on both M5 and M15 while preserving positive expectancy.
 For **M5 and M15**, WFO‑optimized parameters are now treated as the **production defaults**.
 
-**M15 WFO calibration (Feb 2026)**  
+**M15 WFO calibration (Feb 2026)**
 We also ran a **full‑parameter walk‑forward optimization (WFO)** on M15. The best parameters were **stable across all folds**:
 - `z_entry = 1.5`, `z_stop = 4.0`, `z_lookback = 750`
 - Guardrail: `loss_streak = 3`, `cooldown = 7 days`
 
 These are the **recommended production parameters for M15**.
 
-**M5 WFO calibration (Feb 2026)**  
+**M5 WFO calibration (Feb 2026)**
 We ran the same full‑parameter WFO on M5. The best parameters were **stable across all folds**:
 - `z_entry = 1.5`, `z_stop = 4.0`, `z_lookback = 750`
 - Guardrail: `loss_streak = 3`, `cooldown = 7 days`
@@ -164,8 +164,8 @@ Daily equity curve drawdown can differ materially from trade‑level DD.
 - M5: trade‑level DD ‑119,032 bps vs daily DD ‑67,618 bps (ratio 0.57)
 - M15: trade‑level DD ‑31,466 bps vs daily DD ‑39,926 bps (ratio 1.27)
 To avoid confusion, we recommend a **reporting block** that always prints **both**:
-1. **Per‑trade bps metrics** (mean, total, trade‑level DD, Sharpe_trade)  
-2. **Equity‑curve metrics** (daily Sharpe, max DD %, CAGR / annualized return)  
+1. **Per‑trade bps metrics** (mean, total, trade‑level DD, Sharpe_trade)
+2. **Equity‑curve metrics** (daily Sharpe, max DD %, CAGR / annualized return)
 This makes units explicit and prevents mixing trade‑level bps with equity‑curve percentages.
 
 **Guardrail timing sensitivity (entry‑ordered vs exit‑ordered)**
@@ -270,7 +270,7 @@ We tested **realistic tick‑feed smoothing** and recomputed bars, signals, and 
 - **M5**: guardrail **+0.10% mean**, **+0.07% total**; no‑guard **‑2.45% mean**, **‑2.43% total**
 - **M15**: guardrail **+0.39% mean**, **+0.58% total**; no‑guard **‑0.70% mean**, **‑0.71% total**
 
-**Regime/year sensitivity**  
+**Regime/year sensitivity**
 Year‑level deltas are usually modest but can swing in specific years. The largest guardrail‑on swings were:
 - **M5**: 2024 ~**‑19%** mean delta (trade‑weighted)
 - **M15**: 2020 ~**‑114%** mean delta (trade‑weighted)
@@ -278,7 +278,7 @@ Year‑level deltas are usually modest but can swing in specific years. The larg
 These year spikes are driven by a small number of pair/config slices with low base totals. Use the year summary files for detail.
 
 **Most smoothing‑sensitive pairs (guardrail on, worst config by |total_delta_pct|, fast configs):**
-- **M5**: AUD/CAD, CHF/JPY, GBP/CAD, NZD/CAD, Gold/Oil  
+- **M5**: AUD/CAD, CHF/JPY, GBP/CAD, NZD/CAD, Gold/Oil
 - **M15**: EUR/JPY, Gold/Silver, GBP/JPY, SPX/Dow, NZD/CAD
 
 Files:
@@ -316,8 +316,8 @@ Key findings:
 
 Conclusion: the guardrail is effective because **losses are serially correlated**. Skipping trades in these regimes removes a structurally negative conditional expectation, which is why mean PnL rises and DD collapses.
 
-**Regime attribution (why those streaks happen)**  
-We compared entry‑time features for **normal regime** (prev_loss_streak ≤ 1) vs **loss‑streak regime** (prev_loss_streak ≥ 2).  
+**Regime attribution (why those streaks happen)**
+We compared entry‑time features for **normal regime** (prev_loss_streak ≤ 1) vs **loss‑streak regime** (prev_loss_streak ≥ 2).
 The loss‑streak regime shows a consistent pattern across M5 and M15:
 - **Lower correlation** (`correlation_500` drops materially).
 - **Lower spread volatility** (`spread_std` declines).
@@ -509,29 +509,29 @@ Files:
 ## Robustness Tests (M15, WFO Parameters)
 These are additional “no stone unturned” tests using the WFO‑recommended M15 parameters.
 
-**5) Universe drift (randomly drop pairs)**  
+**5) Universe drift (randomly drop pairs)**
 Dropping 10–40% of pairs reduces sharpe_trade gradually but keeps mean PnL stable.
 - Drop 10%: mean ~44.6 bps, sharpe_trade ~18.7
 - Drop 20%: mean ~45.6 bps, sharpe_trade ~17.9
 - Drop 30%: mean ~45.5 bps, sharpe_trade ~16.7
 - Drop 40%: mean ~45.0 bps, sharpe_trade ~15.9
 
-**6) Parameter stability**  
-Performance degrades smoothly as we move away from best parameters (no knife‑edge).  
+**6) Parameter stability**
+Performance degrades smoothly as we move away from best parameters (no knife‑edge).
 Median test sharpe_trade by distance from best:
 - Distance ≤1: ~16.3
 - Distance ≤2: ~14.6
 - Distance ≤3: ~11.7
 
-**7) Session robustness**  
+**7) Session robustness**
 All sessions remain positive; New York is weakest but still positive.
 - Asia: mean ~50.1 bps
 - London: ~43.5 bps
 - New York: ~39.4 bps
 - Late: ~46.9 bps
 
-**8) Tail‑risk concentration**  
-Removing worst months marginally improves Sharpe, but **max DD remains ~‑6,087 bps**.  
+**8) Tail‑risk concentration**
+Removing worst months marginally improves Sharpe, but **max DD remains ~‑6,087 bps**.
 Removing worst pairs reduces Sharpe and can worsen DD.
 Conclusion: DD is **not concentrated** in a tiny subset of pairs/months.
 
@@ -544,27 +544,27 @@ Files:
 ## Robustness Tests (M5, WFO Parameters)
 These are the same tests for M5.
 
-**5) Universe drift (randomly drop pairs)**  
+**5) Universe drift (randomly drop pairs)**
 Sharpe_trade declines gradually, mean PnL stable.
 - Drop 10%: mean ~24.2 bps, sharpe_trade ~21.45
 - Drop 20%: mean ~24.7 bps, sharpe_trade ~20.39
 - Drop 30%: mean ~24.9 bps, sharpe_trade ~19.00
 - Drop 40%: mean ~24.5 bps, sharpe_trade ~17.87
 
-**6) Parameter stability**  
+**6) Parameter stability**
 Median test sharpe_trade by distance from best:
 - Distance ≤1: ~20.95
 - Distance ≤2: ~17.50
 - Distance ≤3: ~14.27
 
-**7) Session robustness**  
+**7) Session robustness**
 All sessions positive; New York and Asia strongest.
 - Asia: mean ~25.7 bps
 - London: ~21.7 bps
 - New York: ~24.1 bps
 - Late: ~27.9 bps
 
-**8) Tail‑risk concentration**  
+**8) Tail‑risk concentration**
 Removing worst months slightly improves Sharpe; removing worst pairs reduces Sharpe and can worsen DD.
 Conclusion: DD is **not concentrated** in a tiny subset of pairs/months.
 
@@ -579,7 +579,7 @@ Files:
 **Logic test suite**
 - Run: `uv run pytest -q`
 - Tests live in `tests/` and focus on the production logic: Z‑score causality, MOM exits (Z0 + stop), timeout behavior, and guardrail cooldown semantics.
-  
+
 **Logic coverage map (what is enforced)**
 - **Z‑score causality**: rolling window only (no future leakage).
 - **Entry gating**: `|Z| >= threshold` and **min‑gap = 20 bars** enforced.

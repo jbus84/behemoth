@@ -23,7 +23,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 # Define PAIRS with 5m suffixes
 PAIRS = [
     ("EUR/GBP", "EURUSD_5m.parquet", "GBPUSD_5m.parquet", "close_EURUSD", "close_GBPUSD", 1.6, 1.0),
-    ("Gold/Oil", "BCOUSD_5m.parquet", "XAUUSD_5m.parquet", "close_BCOUSD", "close_XAUUSD", 3.0, 3.0), 
+    ("Gold/Oil", "BCOUSD_5m.parquet", "XAUUSD_5m.parquet", "close_BCOUSD", "close_XAUUSD", 3.0, 3.0),
     ("Oil/Silver", "BCOUSD_5m.parquet", "XAGUSD_5m.parquet", "close_BCOUSD", "close_XAGUSD", 3.0, 3.0),
     ("AUD/NZD", "NZDUSD_5m.parquet", "AUDUSD_5m.parquet", "close_NZDUSD", "close_AUDUSD", 2.0, 2.0),
     ("CAC/NZD", "NZDUSD_5m.parquet", "FRXEUR_5m.parquet", "close_NZDUSD", "close_FRXEUR", 3.0, 3.0),
@@ -57,7 +57,7 @@ def load_pair_data(fx, fy, cx, cy):
         df_x = pl.read_parquet(p_x).rename({cx: "X"})
         df_y = pl.read_parquet(p_y).rename({cy: "Y"})
         df = df_x.join(df_y, on="timestamp", how="inner").sort("timestamp")
-        
+
         # Filter 2018-2025
         # 5m timestamps might be high frequency, ensure range
         df = df.filter(pl.col("timestamp").dt.year().is_in(list(range(2018, 2026))))
@@ -72,25 +72,25 @@ def compute_kalman_states(y, x):
     kf = KalmanFilterReg(Q=1e-5, R=1e-3)
     betas = np.zeros(len(y))
     errors = np.zeros(len(y))
-    
+
     # Pre-compute means for stability
     # Rolling mean for centering
     s_x = pd.Series(x)
     s_y = pd.Series(y)
     mu_x = s_x.rolling(500, min_periods=1).mean().values
     mu_y = s_y.rolling(500, min_periods=1).mean().values
-    
+
     # Kalman Loop (levels)
     for i in range(len(y)):
         # Centering (use pre-computed rolling means)
         # Note: Optimization: Only update KF.
         mx = mu_x[i]
         my = mu_y[i]
-        
+
         b, resid = kf.update(x[i] - mx, y[i] - my)
         betas[i] = b
         errors[i] = (y[i] - my) - b * (x[i] - mx)
-        
+
     # Return Kalman (hedge beta proxy)
     kf_ret = KalmanFilterReg(Q=1e-5, R=1e-3)
     ret_betas = np.zeros(len(y))
@@ -108,27 +108,27 @@ def compute_z_scores_vectorized(errors, window=500):
     # Shift 1 to avoid lookahead (using past 500 stats for current Z)
     mus = roll.mean().shift(1).fillna(0.0).values
     stds = roll.std().shift(1).fillna(1.0).values
-    
+
     # Avoid div/0
     mask = stds > 1e-8
     z_scores = np.zeros_like(errors)
     z_scores[mask] = (errors[mask] - mus[mask]) / stds[mask]
-    
+
     return z_scores
 
 def compute_features_at_entry(i, y, x, betas, errors, ret_betas, z_scores, ts):
     # Feature extraction with checks
     features = {}
-    
+
     try:
         # Signal Quality
         features['z_entry'] = round(z_scores[i], 2)
         prev_i = max(500, i - 5)
         features['z_velocity'] = round(z_scores[i] - z_scores[prev_i], 2)
-        
+
         slice_start = max(0, i-500)
         features['spread_std'] = round(np.std(errors[slice_start:i]) * 10000, 2)
-        
+
         beta_slice = max(0, i-100)
         features['beta_stability'] = round(np.std(betas[beta_slice:i]), 4)
         sig_beta_lb = np.mean(betas[slice_start:i]) if i > 0 else betas[0]
@@ -150,27 +150,27 @@ def compute_features_at_entry(i, y, x, betas, errors, ret_betas, z_scores, ts):
         features['dz_lag2'] = round(z_scores[i - 2] - z_scores[i - 3], 3) if i >= 3 else 0.0
         features['beta_lag1'] = round(betas[i - 1], 4) if i >= 1 else round(betas[i], 4)
         features['beta_lag2'] = round(betas[i - 2], 4) if i >= 2 else round(betas[i], 4)
-        
+
         # Market Regime
         features['beta'] = round(betas[i], 4)
-        
+
         # Vol checks
         y_slice = y[slice_start:i]
         x_slice = x[slice_start:i]
-        
+
         if len(y_slice) > 1:
             vol_y = np.std(np.diff(y_slice))
             vol_x = np.std(np.diff(x_slice))
             features['vol_ratio'] = round(vol_y / vol_x if vol_x > 1e-9 else 1.0, 3)
         else:
             features['vol_ratio'] = 1.0
-            
+
         if i >= 500:
             corr = np.corrcoef(x_slice, y_slice)[0, 1]
             features['correlation_500'] = round(corr, 3) if not np.isnan(corr) else 0.0
         else:
             features['correlation_500'] = 0.0
-        
+
         # Trend
         if i >= 100:
             s_spread = y[i-100:i] - betas[i] * x[i-100:i]
@@ -182,7 +182,7 @@ def compute_features_at_entry(i, y, x, betas, errors, ret_betas, z_scores, ts):
                 features['trend_strength'] = 0.0
         else:
             features['trend_strength'] = 0.0
-        
+
         # Time
         item = ts[i]
         # Handle nanoseconds int or datetime
@@ -193,12 +193,12 @@ def compute_features_at_entry(i, y, x, betas, errors, ret_betas, z_scores, ts):
         else:
             features['hour'] = item.hour
             features['day_of_week'] = item.weekday()
-            
+
         # Returns
-        lookback = min(i, 16) # 16 bars * 5m = 80m? Or 4h? 
+        lookback = min(i, 16) # 16 bars * 5m = 80m? Or 4h?
         # In H1 model, 4h = 4 bars.
         # In 5m model, 4h = 48 bars.
-        # We should scale lookback? 
+        # We should scale lookback?
         # H1 model used lookback=4.
         # If we keep lookback 16 (from M15 code?)
         # Let's align with timeframe: "ret_4h" implies 4 hours.
@@ -209,14 +209,14 @@ def compute_features_at_entry(i, y, x, betas, errors, ret_betas, z_scores, ts):
         lookback_1h = min(i, 12)
         features['ret_X_1h'] = round((x[i] - x[i - lookback_1h]) * 10000, 2)
         features['ret_Y_1h'] = round((y[i] - y[i - lookback_1h]) * 10000, 2)
-        
+
         # Entry ATR (50 bars = 250m = 4h)
         if i >= 50:
             recent_ret = np.diff(y[i-50:i])
             features['entry_atr'] = round(np.std(recent_ret) * 10000, 2)
         else:
             features['entry_atr'] = 0.0
-            
+
         # Vol Regime (Short vs Long)
         if i >= 500:
             short_vol = np.std(np.diff(y[i-50:i]))
@@ -224,34 +224,34 @@ def compute_features_at_entry(i, y, x, betas, errors, ret_betas, z_scores, ts):
             features['vol_regime'] = round(short_vol / (long_vol + 1e-9), 2)
         else:
             features['vol_regime'] = 1.0
-            
+
         features['atr_ratio'] = 1.0 # Simplified for speed
-        
+
     except Exception as e:
         # print(f"Feature Error at {i}: {e}")
         return None
-        
+
     return features
 
 def simulate_trade(idx, direction, strategy, y, x, z, active, thresh, stop):
     # Same logic but simpler
     prices = y if active == 'Y' else x
     entry = prices[idx]
-    
+
     # 5m Bar Duration Limit: 500 bars (41 hours)
     limit = min(idx + 500, len(z))
-    
+
     for i in range(idx + 1, limit):
         curr = prices[i]
         curr_z = z[i]
-        
+
         # Check Exits
         hit_stop = False
         hit_target = False
-        
+
         if strategy == 'MOM':
             # Target: Z reverts to 0 (crosses 0) NO -> Z continues?
-            # MOM Logic: 
+            # MOM Logic:
             # Long (Z > 1.5): Exit if Z < 0 (Reversion occurred = Loss) OR Z > Stop (Momentum continues = Win)
             # Wait, MOM bets on Z expanding?
             # If Z > 1.5, we go Long.
@@ -263,7 +263,7 @@ def simulate_trade(idx, direction, strategy, y, x, z, active, thresh, stop):
             else: # Short
                 if curr_z > 0: return -(curr - entry)*10000, i-idx, 'LOSS_REV'
                 if curr_z < -stop: return -(curr - entry)*10000, i-idx, 'WIN_MOM'
-                
+
         else: # REV
             if direction == 1: # Long (Z < -1.5)
                 # Exit if Z > 0 (Mean Reverted = Win)
@@ -272,7 +272,7 @@ def simulate_trade(idx, direction, strategy, y, x, z, active, thresh, stop):
             else: # Short (Z > 1.5)
                 if curr_z < 0: return -(curr - entry)*10000, i-idx, 'WIN_REV'
                 if curr_z > stop: return -(curr - entry)*10000, i-idx, 'LOSS_MOM'
-                
+
     # Timeout
     final_pnl = (prices[limit-1] - entry) * 10000 * direction
     return final_pnl, 500, 'TIMEOUT'
@@ -280,51 +280,51 @@ def simulate_trade(idx, direction, strategy, y, x, z, active, thresh, stop):
 def build_dataset_optimized():
     print("--- 5M OPTIMIZED BUILDER ---")
     all_events = []
-    
+
     for name, fx, fy, cx, cy, cy_cost, cx_cost in tqdm(PAIRS):
         df = load_pair_data(fx, fy, cx, cy)
         if df is None: continue
-        
+
         y = np.log(df["Y"].to_numpy())
         x = np.log(df["X"].to_numpy())
         ts = df["timestamp"].to_numpy()
-        
+
         betas, errors, ret_betas = compute_kalman_states(y, x)
         z_scores = compute_z_scores_vectorized(errors)
-        
+
         # Iterate signals
         # Only check indices where |Z| > 1.5 and |Z| < 5.0 (outlier filter)
         thresh = 1.5
         stop = 3.5
-        
+
         # Optimization: Indices
         candidates = np.where((np.abs(z_scores) > thresh) & (np.abs(z_scores) < 6.0))[0]
         # Filter boundaries
         candidates = candidates[(candidates > 500) & (candidates < len(y) - 500)]
-        
+
         # Debounce: Skip clustered signals to avoid 1000 events in 1 hour
         # Simple step: only take 1 signal every 12 bars (1 hour)?
         # Original code used `min_gap = 20`.
-        
+
         last_mom = -100
         last_rev = -100
-        min_gap = 20 
-        
+        min_gap = 20
+
         # Candidates are sorted.
         for i in candidates:
             z = z_scores[i]
             beta = betas[i]
-            
+
             # Whip/Tank
             if 0.98 <= beta <= 1.02: continue
-            
+
             active = 'Y' if beta < 0.98 else 'X'
-            
+
             # Feature extraction
             # Done only for valid signals
             feat = compute_features_at_entry(i, y, x, betas, errors, ret_betas, z_scores, ts)
             if feat is None: continue
-            
+
             # MOM
             if i - last_mom >= min_gap:
                 dr = 1 if z > 0 else -1
@@ -337,7 +337,7 @@ def build_dataset_optimized():
                 }
                 all_events.append(row)
                 last_mom = i
-                
+
             # REV
             if i - last_rev >= min_gap:
                 # Rev direction is opposite to Z
@@ -353,7 +353,7 @@ def build_dataset_optimized():
                 }
                 all_events.append(row)
                 last_rev = i
-        
+
     print(f"Total Events: {len(all_events)}")
     if all_events:
         pl.DataFrame(all_events).write_csv("data/meta_model/events_m5_8yr_v3_dual.csv")

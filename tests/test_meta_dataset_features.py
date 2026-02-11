@@ -26,7 +26,9 @@ def test_load_pair_data_success(tmp_path):
 
 
 def test_load_pair_data_missing(tmp_path):
-    out = load_pair_data(str(tmp_path), "missing_x.parquet", "missing_y.parquet", "close_X", "close_Y")
+    out = load_pair_data(
+        str(tmp_path), "missing_x.parquet", "missing_y.parquet", "close_X", "close_Y"
+    )
     assert out is None
 
 

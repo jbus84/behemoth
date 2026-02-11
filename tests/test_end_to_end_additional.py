@@ -37,7 +37,9 @@ def _state_for_neutral_and_min_gap():
 
 
 def test_neutral_zone_and_min_gap():
-    trades = wfo._build_trades(_state_for_neutral_and_min_gap(), z_entry=1.5, z_stop=4.0, z_lookback=5)
+    trades = wfo._build_trades(
+        _state_for_neutral_and_min_gap(), z_entry=1.5, z_stop=4.0, z_lookback=5
+    )
     # Neutral zone skipped, second entry within min-gap skipped
     assert len(trades) == 1
 

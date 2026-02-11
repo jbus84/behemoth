@@ -71,4 +71,3 @@ This checklist focuses on **signal/PNL alignment risk** for the rule‑based MOM
 - Guardrail diagnostics:
   - `data/analysis/m5_guardrail_overall.csv`
   - `data/analysis/m15_guardrail_overall.csv`
-

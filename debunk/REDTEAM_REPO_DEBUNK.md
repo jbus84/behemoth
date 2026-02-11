@@ -1,7 +1,7 @@
 # Red‑Team Debunk (M5/M15 Rule‑Based MOM + Guardrail)
 
-Date: 2026-02-07  
-Scope: `docs/STRATEGY_MASTER_MANUAL.md` and M5/M15 rule‑based pipeline only.  
+Date: 2026-02-07
+Scope: `docs/STRATEGY_MASTER_MANUAL.md` and M5/M15 rule‑based pipeline only.
 Method: **Code/logic review + small focused checks** (no full dataset rebuilds).
 
 ## Executive Summary (Red‑Team)
@@ -63,14 +63,14 @@ There is still no dedicated runtime inference/exec module for M5/M15 with guardr
 ## Data‑Backed Checks (Small Sample‑Free Tests)
 These are lightweight checks using the existing M5/M15 event datasets (no full rebuilds).
 
-**Outcome/PNL alignment (MOM):**  
-- **M5**: `WIN_MOM <= 0` in **2.60%** of trades; `LOSS_REV > 0` in **32.41%**.  
-- **M15**: `WIN_MOM <= 0` in **2.14%** of trades; `LOSS_REV > 0` in **35.19%**.  
+**Outcome/PNL alignment (MOM):**
+- **M5**: `WIN_MOM <= 0` in **2.60%** of trades; `LOSS_REV > 0` in **32.41%**.
+- **M15**: `WIN_MOM <= 0` in **2.14%** of trades; `LOSS_REV > 0` in **35.19%**.
 This quantifies the **signal/PNL mismatch**: Z‑based outcomes are not perfectly aligned with active‑leg returns.
 
-**Guardrail skip rates:**  
-- **M5**: guardrail keeps **34,959** trades, skips **186,258** (**84.20%** skip rate).  
-- **M15**: guardrail keeps **27,090** trades, skips **46,539** (**63.21%** skip rate).  
+**Guardrail skip rates:**
+- **M5**: guardrail keeps **34,959** trades, skips **186,258** (**84.20%** skip rate).
+- **M15**: guardrail keeps **27,090** trades, skips **46,539** (**63.21%** skip rate).
 This confirms guardrail behavior is aggressive and materially changes trade density.
 
 ## Bottom Line (Red‑Team)

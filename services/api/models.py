@@ -1,6 +1,20 @@
 import enum
 import uuid
-from sqlalchemy import Column, String, DateTime, Integer, Float, ForeignKey, Enum, JSON, func, UniqueConstraint, Date, Boolean
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import relationship
 
 from .db import Base

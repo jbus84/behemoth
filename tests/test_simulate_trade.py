@@ -1,4 +1,5 @@
 import numpy as np
+
 from behemoth.core.events import simulate_trade
 
 

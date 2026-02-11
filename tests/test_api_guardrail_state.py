@@ -6,9 +6,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from services.api.db import Base, get_db
-from services.api.settings import settings
 from services.api.main import app
-from services.api.models import Side, ActiveLeg
+from services.api.models import ActiveLeg, Side
+from services.api.settings import settings
 
 
 def make_client():

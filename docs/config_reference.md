@@ -1,6 +1,6 @@
 # Config Reference
 
-All runtime settings for the API live in `configs/api.yaml`.  
+All runtime settings for the API live in `configs/api.yaml`.
 Environment variables **override** YAML values.
 
 ## Core

@@ -1,4 +1,4 @@
-.PHONY: up down logs api migrate test db docs docs-build docs-clean docs-openapi
+.PHONY: up down logs api migrate test db docs docs-build docs-clean docs-openapi precommit-install precommit-run lint format
 
 up:
 	docker compose up -d --build
@@ -43,3 +43,16 @@ docs-clean:
 
 docs-openapi:
 	uv run python scripts/export_openapi.py
+
+precommit-install:
+	uv run pre-commit install
+	uv run pre-commit install --hook-type pre-push
+
+precommit-run:
+	uv run pre-commit run --all-files
+
+lint:
+	uv run ruff check src services scripts tests
+
+format:
+	uv run ruff format src services scripts tests

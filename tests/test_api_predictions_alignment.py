@@ -1,10 +1,9 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 from fastapi.testclient import TestClient
 
+from services.api import predict, validation
 from services.api.main import app
-from services.api import validation
-from services.api import predict
 
 
 def test_predictions_alignment(monkeypatch, tmp_path):

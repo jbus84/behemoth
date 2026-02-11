@@ -1,9 +1,10 @@
 import os
+
 import numpy as np
 import pandas as pd
 
-from behemoth.core.metrics import sharpe_daily, sharpe_daily_active, sharpe_trade
 from behemoth.core.guardrail import apply_loss_streak_guardrail
+from behemoth.core.metrics import sharpe_daily, sharpe_daily_active, sharpe_trade
 from services.api.settings import settings
 
 PIPELINE_PATHS = {
@@ -225,8 +226,16 @@ def compare_pipeline_to_db(
     if match_ts:
         pipe_df = _filter_pipeline_to_db(pipe_df, db_df, ts_tolerance_ns, match_pair)
 
-    pipe = _metrics(pipe_df["pnl_bps"].to_numpy(), pipe_df["exit_ts"].to_numpy()) if not pipe_df.empty else _metrics(np.array([]), np.array([]))
-    dbm = _metrics(db_df["pnl_bps"].to_numpy(), db_df["exit_ts"].to_numpy()) if not db_df.empty else _metrics(np.array([]), np.array([]))
+    pipe = (
+        _metrics(pipe_df["pnl_bps"].to_numpy(), pipe_df["exit_ts"].to_numpy())
+        if not pipe_df.empty
+        else _metrics(np.array([]), np.array([]))
+    )
+    dbm = (
+        _metrics(db_df["pnl_bps"].to_numpy(), db_df["exit_ts"].to_numpy())
+        if not db_df.empty
+        else _metrics(np.array([]), np.array([]))
+    )
     return {
         "pipeline": pipe,
         "db": dbm,

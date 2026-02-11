@@ -1,15 +1,13 @@
 import json
-from typing import Optional
 
 import redis
 
 from .settings import settings
 
-
 _redis_client = None
 
 
-def get_redis() -> Optional[redis.Redis]:
+def get_redis() -> redis.Redis | None:
     global _redis_client
     if not settings.enable_redis:
         return None
@@ -22,7 +20,7 @@ def get_redis() -> Optional[redis.Redis]:
     return _redis_client
 
 
-def cache_get_position(position_id: str) -> Optional[dict]:
+def cache_get_position(position_id: str) -> dict | None:
     client = get_redis()
     if client is None:
         return None
@@ -31,6 +29,8 @@ def cache_get_position(position_id: str) -> Optional[dict]:
     except redis.RedisError:
         return None
     if not data:
+        return None
+    if not isinstance(data, (str, bytes, bytearray)):
         return None
     return json.loads(data)
 

@@ -1,4 +1,6 @@
-def simulate_trade(entry_idx, direction, strategy_type, y, x, z_scores, active_asset, thresh=1.5, stop=3.5):
+def simulate_trade(
+    entry_idx, direction, strategy_type, y, x, z_scores, active_asset, thresh=1.5, stop=3.5
+):
     """
     Simulate a single trade with Z-score exits only.
     Uses Z0 crossing + Z-based stop.

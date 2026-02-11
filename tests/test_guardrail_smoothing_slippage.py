@@ -1,5 +1,5 @@
-import pandas as pd
 import analyze_guardrail_smoothing_slippage as gs
+import pandas as pd
 
 
 def test_smoothing_skiprate(tmp_path, monkeypatch):

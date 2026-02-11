@@ -1,7 +1,7 @@
 # Global Pair Universe Analysis
 
 ## Methodology: Finding the "Safe Hedge"
-This analysis scans the entire available asset universe (FX, Indices, Commodities) to identify pairs suitable for **Kalman Filter Mean Reversion**. 
+This analysis scans the entire available asset universe (FX, Indices, Commodities) to identify pairs suitable for **Kalman Filter Mean Reversion**.
 
 ### Data Protocol 💾
 *   **Source Data**: High-fidelity Tick Data resampled to **1-Hour OHLC Bars**.
@@ -33,9 +33,9 @@ Once safety is confirmed (Matched Betas), we test if the spread actually makes m
 
 ### Concrete Example: `ETXEUR / FRXEUR`
 *   **Values**: Mismatch Let's analyze the row: `0.97x | 0.0000 | 0.98`
-*   **The Assets**: 
+*   **The Assets**:
     *   **ETX (`ETXEUR`)**: **Euro Stoxx 50**. The leading Blue-chip index for the Eurozone (top 50 companies like LVMH, SAP, Siemens).
-    *   **FRX (`FRXEUR`)**: **CAC 40**. The benchmark French Stock Market Index (top 40 companies in France). 
+    *   **FRX (`FRXEUR`)**: **CAC 40**. The benchmark French Stock Market Index (top 40 companies in France).
     *   *Why they match*: Many CAC 40 companies are also in the Euro Stoxx 50. They are economically inseparable.
 *   **Signal Beta (0.98)**: The prices move almost 1:1. For every 1% move in ETX, FRX moves 0.98%.
 *   **Mismatch (0.97x)**: This is **Perfect**. The implied "Fair Value" relationship (0.98) is almost identical to the daily "Risk" relationship. If you hedge this, you are actually hedged.

@@ -4,14 +4,14 @@ import os
 import sys
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config, pool
 from alembic import context
+from sqlalchemy import engine_from_config, pool
 
 sys.path.append(os.path.join(os.getcwd(), "services"))
 
+from api import models  # noqa: F401
 from api.db import Base
 from api.settings import settings
-from api import models  # noqa: F401
 
 config = context.config
 

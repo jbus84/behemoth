@@ -10,16 +10,16 @@ def simulate_trade_execution():
     print("--- LIVE TRADE EXECUTION SIMULATION ---")
     print("Scenario: Gold (Y) vs Oil (X). Current Date: Dec 2025.")
     print("Z-Score hits +2.1 (Signal: SHORT Gold / BUY Oil).")
-    
+
     # Mock Market Data
     price_gold = 2650.00
     price_oil = 75.00
     beta = 2.45 # From Kalman
     account_cash = 10000.00 # $10k Account
     leverage = 1.0 # No Leverage
-    
+
     notional = account_cash * leverage
-    
+
     # Sizing Logic
     # We want Dollar Neutrality on the Spread.
     # Spread = log(Y) - beta * log(X).
@@ -27,7 +27,7 @@ def simulate_trade_execution():
     # We are trading the beta-adjusted spread.
     # To neutralize market risk, we must weight by Beta.
     # Long Y ($1) vs Short X ($Beta).
-    
+
     # Wait, let's check the Math again.
     # dSpread = dLogY - beta * dLogX
     # dSpread = (dY/Y) - beta * (dX/X)
@@ -38,12 +38,12 @@ def simulate_trade_execution():
     # We want Total PnL ~ (dY/Y) - beta(dX/X).
     # So we need $N = $PosSize.
     # And we need $M = -beta * $PosSize.
-    
+
     # CORRECT: If Beta = 2.45, we need 2.45x more notional in Oil (X) than in Gold (Y).
     # Why? Because Oil is Less Volatile in percentage terms? Or More?
     # Beta = Vol_Y / Vol_X * Corr.
     # If Beta > 1, Y is more volatile (or correlated).
-    
+
     # Let's verify with the "Dog Walker" analogy.
     # Y (Dog) moves 2.45% for every 1% X (Walker) moves.
     # Beta = 2.45.
@@ -57,16 +57,16 @@ def simulate_trade_execution():
     # $M * 0.01 = $N * 0.0245.
     # $M = 2.45 * $N.
     # So Notional_X = Beta * Notional_Y.
-    
+
     # EXTREMELY IMPORTANT:
     # We hold Beta times more dollar value in X.
-    
+
     pos_size_y = 1000.0 # Trade $1000 of Gold
     pos_size_x = pos_size_y * beta # Trade $2450 of Oil
-    
+
     qty_gold = pos_size_y / price_gold
     qty_oil = pos_size_x / price_oil
-    
+
     print("\n[Trade Signal]")
     print(f"Signal: **SHORT SPREAD** (Sell Y / Buy X)")
     print(f"Beta: {beta:.2f}")
@@ -76,7 +76,7 @@ def simulate_trade_execution():
     print("-" * 30)
     print(f"Total Exposure: ${pos_size_y + pos_size_x:.2f}")
     print(f"Hedge Ratio: $1 Gold : ${beta:.2f} Oil")
-    
+
     print("\n[Exit Signal]")
     print("Trigger: Z-Score crosses 0.00")
     print("Action: Close ALL positions immediately.")

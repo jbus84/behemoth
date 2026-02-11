@@ -44,5 +44,28 @@ dev-dependencies = [
     "mkdocs>=1.5.0",
     "mkdocs-material>=9.5.0",
     "pymdown-extensions>=10.7",
-    "mkdocstrings[python]>=0.24.0"
+    "mkdocstrings[python]>=0.24.0",
+    "pre-commit>=3.7.0",
+    "ruff>=0.6.8",
+    "ty>=0.0.16"
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "W",  # pycodestyle warnings
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "UP", # pyupgrade
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501", # line length handled by formatter
+    "B008", # FastAPI Depends in defaults
+    "B904", # HTTPException raised without chaining
 ]

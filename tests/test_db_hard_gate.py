@@ -1,11 +1,11 @@
+import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-import pandas as pd
 
-from services.api.db import Base
-from services.api.models import Position, PositionStatus, Side, ActiveLeg
 from services.api import validation
+from services.api.db import Base
+from services.api.models import ActiveLeg, Position, PositionStatus, Side
 
 
 def test_db_matches_pipeline_with_ts_matching(tmp_path):

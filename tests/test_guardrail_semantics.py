@@ -1,4 +1,5 @@
 import pandas as pd
+
 from behemoth.core.guardrail import apply_loss_streak_guardrail
 
 
@@ -6,13 +7,15 @@ def test_guardrail_counts_zero_as_loss():
     base = pd.Timestamp("2020-01-01", tz="UTC").value
     day = int(pd.Timedelta(days=1).value)
 
-    trades = pd.DataFrame([
-        {"pair": "X", "exit_ts": base + 0 * day, "pnl": -1.0},
-        {"pair": "X", "exit_ts": base + 1 * day, "pnl": -1.0},
-        {"pair": "X", "exit_ts": base + 2 * day, "pnl": 0.0},
-        {"pair": "X", "exit_ts": base + 3 * day, "pnl": -1.0},
-        {"pair": "X", "exit_ts": base + 12 * day, "pnl": 1.0},
-    ])
+    trades = pd.DataFrame(
+        [
+            {"pair": "X", "exit_ts": base + 0 * day, "pnl": -1.0},
+            {"pair": "X", "exit_ts": base + 1 * day, "pnl": -1.0},
+            {"pair": "X", "exit_ts": base + 2 * day, "pnl": 0.0},
+            {"pair": "X", "exit_ts": base + 3 * day, "pnl": -1.0},
+            {"pair": "X", "exit_ts": base + 12 * day, "pnl": 1.0},
+        ]
+    )
 
     trades = trades.rename(columns={"pnl": "pnl_bps"})
     kept, skipped = apply_loss_streak_guardrail(

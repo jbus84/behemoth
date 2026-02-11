@@ -25,7 +25,7 @@ If any trigger fires, the account is **halted** and new positions are rejected u
 | Per‑pair cap | 10% of equity |
 | Weight overshoot | +10% over target |
 
-Target notional per pair is computed from `configs/pair_weights.yaml`.  
+Target notional per pair is computed from `configs/pair_weights.yaml`.
 Pairs with higher weights get a larger share of exposure.
 
 ## Reset

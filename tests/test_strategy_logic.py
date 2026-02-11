@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
+import wfo_mom_full_params as wfo
 
 from behemoth.core.events import simulate_trade
 from behemoth.core.zscore import compute_z_scores
-import wfo_mom_full_params as wfo
 
 
 def test_compute_z_scores_causal():

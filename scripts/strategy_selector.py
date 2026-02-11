@@ -10,30 +10,30 @@ DATA_DIR = "data/global_15m"
 
 def select_strategy(pair_name="EUR/GBP", file_x="EURUSD_15m.parquet", file_y="GBPUSD_15m.parquet", col_x="close_EURUSD", col_y="close_GBPUSD", year=2025):
     print(f"\n--- STRATEGY SELECTOR: {pair_name} ({year}) ---")
-    
+
     # Load Data
     p_x = os.path.join(DATA_DIR, file_x)
     p_y = os.path.join(DATA_DIR, file_y)
-    
+
     df_x = pl.read_parquet(p_x).rename({col_x: "X"})
     df_y = pl.read_parquet(p_y).rename({col_y: "Y"})
-    
+
     df = df_x.join(df_y, on="timestamp", how="inner").sort("timestamp")
     df = df.filter(pl.col("timestamp").dt.year() == year)
-    
+
     y = np.log(df["Y"].to_numpy())
     x = np.log(df["X"].to_numpy())
-    
+
     # Calculate Returns Volatility
     y_ret = np.diff(y)
     x_ret = np.diff(x)
     vol_y = np.std(y_ret)
     vol_x = np.std(x_ret)
-    
+
     vol_ratio = vol_y / vol_x
-    
+
     print(f"Volatility Ratio (Y/X): {vol_ratio:.4f}")
-    
+
     if vol_ratio > 1.0:
         high_vol = "Y (Target)"
         low_vol = "X (Predictor)"

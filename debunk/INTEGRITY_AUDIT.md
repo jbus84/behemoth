@@ -1,6 +1,6 @@
 # Integrity Audit Report
 
-Date: 2026-02-08  
+Date: 2026-02-08
 Scope: MOM strategy datasets (M5/M15) + guardrail timing sensitivity
 
 ## M5 Results

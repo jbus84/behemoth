@@ -20,7 +20,7 @@ def audit_real_pnl():
     print(f"--- GLOBAL REAL PnL AUDIT (Beta Clipped [-3, 3]) ---")
     print("| Pair | TF | Real PnL (bps) | Trades | Verdict |")
     print("|---|---|---|---|---|")
-    
+
     for y_sym, x_sym, tf, cost, label in PAIRS:
         run_single_pair(y_sym, x_sym, tf, cost, label)
 
@@ -37,37 +37,37 @@ def run_single_pair(y_sym, x_sym, tf, cost, label):
     df = df_y.rename({f"close_{y_sym}": "Y"}).join(
         df_x.rename({f"close_{x_sym}": "X"}), on="timestamp", how="inner"
     ).sort("timestamp")
-    
+
     if len(df) < 500: return
-    
+
     y = np.log(df["Y"].to_numpy())
     x = np.log(df["X"].to_numpy())
-    
+
     # STUBBORN FILTER (Q=1e-9)
     kf = KalmanFilterReg(Q=1e-9, R=1e-3)
-    
+
     betas, errors = [], []
     for i in range(len(y)):
         b, _ = kf.update(x[i], y[i])
         betas.append(b)
         errors.append(y[i] - b * x[i])
-        
+
     real_pnls = []
-    in_pos = 0 
+    in_pos = 0
     entry_beta, entry_y, entry_x = 0., 0., 0.
-    
+
     trades = 0
-    
+
     for i in range(500, len(y)):
         window = errors[i-500:i]
         mu, std = np.mean(window), np.std(window)
         if std < 1e-6: continue
         z = (errors[i] - mu) / std
-        
+
         # KEY FIX: Clip Beta to avoid implicit leverage
         raw_beta = betas[i-1]
-        beta = np.clip(raw_beta, -3.0, 3.0) 
-        
+        beta = np.clip(raw_beta, -3.0, 3.0)
+
         if in_pos == 0:
             if z > 2.0:
                 in_pos = -1; entry_beta=beta; entry_y=y[i]; entry_x=x[i]

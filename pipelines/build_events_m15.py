@@ -35,7 +35,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 PAIRS = [
     # FX & Commodities
     ("EUR/GBP", "EURUSD_15m.parquet", "GBPUSD_15m.parquet", "close_EURUSD", "close_GBPUSD", 1.6, 1.0),
-    ("Gold/Oil", "BCOUSD_15m.parquet", "XAUUSD_15m.parquet", "close_BCOUSD", "close_XAUUSD", 3.0, 3.0), 
+    ("Gold/Oil", "BCOUSD_15m.parquet", "XAUUSD_15m.parquet", "close_BCOUSD", "close_XAUUSD", 3.0, 3.0),
     ("Oil/Silver", "BCOUSD_15m.parquet", "XAGUSD_15m.parquet", "close_BCOUSD", "close_XAGUSD", 3.0, 3.0),
     ("AUD/NZD", "NZDUSD_15m.parquet", "AUDUSD_15m.parquet", "close_NZDUSD", "close_AUDUSD", 2.0, 2.0),
     ("CAC/NZD", "NZDUSD_15m.parquet", "FRXEUR_15m.parquet", "close_NZDUSD", "close_FRXEUR", 3.0, 3.0),
@@ -93,56 +93,56 @@ def simulate_trade(entry_idx, direction, strategy_type, y, x, z_scores, active_a
 
 def build_dataset():  # pragma: no cover
     print("--- BUILDING META MODEL DATASET v3 (DUAL STRATEGY) ---")
-    
+
     thresh_mom = Z_ENTRY_MOM
     thresh_rev = Z_ENTRY_REV
     stop_level = Z_STOP
     min_thresh = min(thresh_mom, thresh_rev)
-    
+
     # Phase 1: Load all data
     print("Phase 1: Loading data and computing Kalman states...")
     pair_states = {}
-    
+
     for name, fx, fy, cx, cy, cost_y, cost_x in PAIRS:
         df = load_pair_data(fx, fy, cx, cy)
         if df is None:
             continue
-        
+
         y = np.log(df["Y"].to_numpy())
         x = np.log(df["X"].to_numpy())
         ts = df["timestamp"].to_numpy()
-        
+
         betas, errors, ret_betas = compute_kalman_states(y, x)
         z_scores = compute_z_scores(errors)
-        
+
         pair_states[name] = {
             'y': y, 'x': x, 'ts': ts,
             'betas': betas, 'errors': errors, 'ret_betas': ret_betas, 'z_scores': z_scores,
             'cost_y': cost_y, 'cost_x': cost_x
         }
         print(f"  {name}: {len(y)} bars")
-    
+
     # Phase 2: Generate BOTH strategy types for each signal
     print("\nPhase 2: Generating dual-strategy events...")
     all_events = []
     pair_trade_history = defaultdict(lambda: {'MOM': [], 'REV': []})
-    
+
     for name, state in pair_states.items():
         print(f"  Processing {name}...")
-        
+
         y, x, ts = state['y'], state['x'], state['ts']
         betas, errors, ret_betas, z_scores = state['betas'], state['errors'], state['ret_betas'], state['z_scores']
         cost_y, cost_x = state['cost_y'], state['cost_x']
-        
+
         # Track last entry to avoid overlapping trades
         last_entry_mom = 0
         last_entry_rev = 0
         min_gap = MIN_GAP_BARS
-        
+
         for i in range(500, len(y) - 500):
             z = z_scores[i]
             beta = betas[i]
-            
+
             # Determine active asset based on Whip/Tank
             active_asset = select_active_leg(beta, ACTIVE_LEG_LOW, ACTIVE_LEG_HIGH)
             if active_asset == "Y":
@@ -151,28 +151,28 @@ def build_dataset():  # pragma: no cover
                 cost = cost_x
             else:
                 continue  # Skip neutral zone
-            
+
             # Check for signal
             if abs(z) < min_thresh:
                 continue
-            
+
             # Compute features at entry
             features = compute_features_at_entry(i, y, x, betas, errors, ret_betas, z_scores, ts)
-            
+
             # Cross-pair signals: SKIPPED for performance
             features['num_active_signals'] = 0
-            
+
             # === MOMENTUM TRADE ===
             if i - last_entry_mom >= min_gap and abs(z) >= thresh_mom:
                 if z > 0:
                     mom_dir = 1  # Long (follow the trend up)
                 else:
                     mom_dir = -1  # Short (follow the trend down)
-                
+
                 pnl, duration, outcome = simulate_trade(
                     i, mom_dir, 'MOM', y, x, z_scores, active_asset, thresh_mom, stop_level
                 )
-                
+
                 # Rolling performance
                 history = pair_trade_history[name]['MOM']
                 if len(history) >= 10:
@@ -181,7 +181,7 @@ def build_dataset():  # pragma: no cover
                 else:
                     rolling_wr = 0.5
                     rolling_pnl = 0.0
-                
+
                 row = {
                     "pair": name,
                     "timestamp": ts[i],
@@ -199,18 +199,18 @@ def build_dataset():  # pragma: no cover
                 all_events.append(row)
                 pair_trade_history[name]['MOM'].append(pnl)
                 last_entry_mom = i
-            
+
             # === REVERSION TRADE ===
             if i - last_entry_rev >= min_gap and abs(z) >= thresh_rev:
                 if z > 0:
                     rev_dir = -1  # Short (fade the move, expect reversion)
                 else:
                     rev_dir = 1  # Long (fade the move, expect reversion)
-                
+
                 pnl, duration, outcome = simulate_trade(
                     i, rev_dir, 'REV', y, x, z_scores, active_asset, thresh_rev, stop_level
                 )
-                
+
                 # Rolling performance
                 history = pair_trade_history[name]['REV']
                 if len(history) >= 10:
@@ -219,7 +219,7 @@ def build_dataset():  # pragma: no cover
                 else:
                     rolling_wr = 0.5
                     rolling_pnl = 0.0
-                
+
                 row = {
                     "pair": name,
                     "timestamp": ts[i],
@@ -237,7 +237,7 @@ def build_dataset():  # pragma: no cover
                 all_events.append(row)
                 pair_trade_history[name]['REV'].append(pnl)
                 last_entry_rev = i
-    
+
     # Phase 3: Save
     print(f"\nPhase 3: Saving {len(all_events)} events...")
     if len(all_events) > 0:
@@ -254,23 +254,23 @@ def build_dataset():  # pragma: no cover
         df_mom.write_csv(out_mom)
         df_rev.write_csv(out_rev)
         print(f"Saved split datasets:\n- {out_mom}\n- {out_rev}")
-        
+
         # Summary
         print("\n=== DATASET SUMMARY ===")
         print(f"Total Events: {len(all_events)}")
-        
+
         mom_events = [e for e in all_events if e['strategy_type'] == 'MOM']
         rev_events = [e for e in all_events if e['strategy_type'] == 'REV']
-        
+
         mom_pnl = [e['pnl_bps'] for e in mom_events]
         rev_pnl = [e['pnl_bps'] for e in rev_events]
-        
+
         print(f"\nMOMENTUM: {len(mom_events)} trades")
         print(f"  Mean: {np.mean(mom_pnl):.2f} | Median: {np.median(mom_pnl):.2f} | P5: {np.percentile(mom_pnl, 5):.2f} | P95: {np.percentile(mom_pnl, 95):.2f}")
-        
+
         print(f"\nREVERSION: {len(rev_events)} trades")
         print(f"  Mean: {np.mean(rev_pnl):.2f} | Median: {np.median(rev_pnl):.2f} | P5: {np.percentile(rev_pnl, 5):.2f} | P95: {np.percentile(rev_pnl, 95):.2f}")
-        
+
         # By pair and strategy
         print("\n=== BY PAIR & STRATEGY ===")
         for pair in pair_states.keys():

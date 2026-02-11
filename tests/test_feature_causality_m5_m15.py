@@ -41,8 +41,8 @@ def _check_causality(bar_minutes):
     # Modify future values only
     y2 = y.copy()
     x2 = x.copy()
-    y2[i + 1:] += 0.5
-    x2[i + 1:] -= 0.3
+    y2[i + 1 :] += 0.5
+    x2[i + 1 :] -= 0.3
 
     betas2, errors2, ret_betas2 = compute_kalman_states(y2, x2)
     z_scores2 = compute_z_scores(errors2)
@@ -57,7 +57,7 @@ def _check_causality(bar_minutes):
         i, y2, x2, betas2, errors2, ret_betas2, z_scores2, ts, bar_minutes=bar_minutes
     )
 
-    for k in feat_orig.keys():
+    for k in feat_orig:
         _assert_close(float(feat_orig[k]), float(feat_new[k]), tol=1e-6, label=k)
 
 

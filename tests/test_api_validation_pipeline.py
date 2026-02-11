@@ -1,8 +1,8 @@
-from fastapi.testclient import TestClient
 import pandas as pd
+from fastapi.testclient import TestClient
 
-from services.api.main import app
 from services.api import validation
+from services.api.main import app
 
 
 def test_pipeline_validation_endpoint(tmp_path, monkeypatch):

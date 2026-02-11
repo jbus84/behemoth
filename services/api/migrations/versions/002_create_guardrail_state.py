@@ -5,9 +5,8 @@ Revises: 001_create_positions
 Create Date: 2026-02-10
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "002_create_guardrail_state"
 down_revision = "001"
@@ -23,8 +22,12 @@ def upgrade():
         sa.Column("pair", sa.String(), nullable=False),
         sa.Column("loss_streak", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("pause_until", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("CURRENT_TIMESTAMP")),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.text("CURRENT_TIMESTAMP")
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.text("CURRENT_TIMESTAMP")
+        ),
         sa.UniqueConstraint("strategy_id", "pair", name="uq_guardrail_state"),
     )
     op.create_index("ix_guardrail_state_strategy_id", "guardrail_state", ["strategy_id"])

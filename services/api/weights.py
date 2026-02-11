@@ -1,7 +1,5 @@
 import json
-import os
 from pathlib import Path
-from typing import Dict
 
 import yaml
 
@@ -16,7 +14,7 @@ def _default_pairs() -> list[str]:
     return [name for name, *_ in PAIRS_M5]
 
 
-def load_weights(strategy_id: str | None = None) -> Dict[str, float]:
+def load_weights(strategy_id: str | None = None) -> dict[str, float]:
     path = Path(settings.pair_weights_path)
     if path.exists():
         if path.suffix in (".yaml", ".yml"):

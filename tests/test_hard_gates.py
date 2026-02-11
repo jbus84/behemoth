@@ -1,5 +1,5 @@
-from pathlib import Path
 import json
+from pathlib import Path
 
 import pandas as pd
 
@@ -25,7 +25,10 @@ def test_repro_manifest_matches_config():
 
 
 def test_alignment_shift_penalty():
-    for path in ["data/analysis/m5_alignment_sensitivity.csv", "data/analysis/m15_alignment_sensitivity.csv"]:
+    for path in [
+        "data/analysis/m5_alignment_sensitivity.csv",
+        "data/analysis/m15_alignment_sensitivity.csv",
+    ]:
         df = pd.read_csv(_require(path))
         means = df.groupby("shift")["mean_pnl"].mean()
         assert 0 in means.index
@@ -35,16 +38,22 @@ def test_alignment_shift_penalty():
 
 
 def test_fill_price_slippage_penalty():
-    for path in ["data/analysis/m5_fill_price_sensitivity.csv", "data/analysis/m15_fill_price_sensitivity.csv"]:
+    for path in [
+        "data/analysis/m5_fill_price_sensitivity.csv",
+        "data/analysis/m15_fill_price_sensitivity.csv",
+    ]:
         df = pd.read_csv(_require(path))
         for mode in ["close", "next_close", "mean"]:
-            base = df[(df["variant"] == f"{mode}_slip_0.0") & (df["guardrail"] == True)]
-            slip = df[(df["variant"] == f"{mode}_slip_0.1") & (df["guardrail"] == True)]
+            base = df[(df["variant"] == f"{mode}_slip_0.0") & (df["guardrail"])]
+            slip = df[(df["variant"] == f"{mode}_slip_0.1") & (df["guardrail"])]
             assert not base.empty and not slip.empty
             assert float(slip["mean_pnl"].iloc[0]) <= float(base["mean_pnl"].iloc[0])
 
 
 def test_guardrail_skips_negative_expectancy():
-    for path in ["data/analysis/m5_guardrail_skip_stats.csv", "data/analysis/m15_guardrail_skip_stats.csv"]:
+    for path in [
+        "data/analysis/m5_guardrail_skip_stats.csv",
+        "data/analysis/m15_guardrail_skip_stats.csv",
+    ]:
         df = pd.read_csv(_require(path))
         assert float(df["skipped_mean_pnl"].iloc[0]) < 0.0

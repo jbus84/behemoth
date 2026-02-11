@@ -1,6 +1,5 @@
 from .models import PositionStatus
 
-
 ALLOWED_TRANSITIONS = {
     PositionStatus.PENDING: {PositionStatus.OPEN, PositionStatus.CANCELLED, PositionStatus.FAILED},
     PositionStatus.OPEN: {PositionStatus.CLOSING, PositionStatus.CLOSED, PositionStatus.FAILED},

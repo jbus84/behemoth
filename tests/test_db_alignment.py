@@ -3,9 +3,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from services.api.db import Base
-from services.api.models import Position, PositionStatus, Side, ActiveLeg
 from services.api import validation
+from services.api.db import Base
+from services.api.models import ActiveLeg, Position, PositionStatus, Side
 
 
 def test_db_pipeline_alignment_small():

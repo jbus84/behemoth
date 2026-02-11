@@ -84,4 +84,4 @@ make test-postgres
 ```
 
 ---
-*Built by Antigravity. Validation status is documented in `debunk/`.* 
+*Built by Antigravity. Validation status is documented in `debunk/`.*

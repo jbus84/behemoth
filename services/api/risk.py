@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import cast
 
 from sqlalchemy.orm import Session
 
@@ -48,7 +48,11 @@ def compute_open_exposure(db: Session, strategy_id: str) -> float:
     )
     total = 0.0
     for r in rows:
-        notional = r.notional_usd if r.notional_usd is not None else r.size
+        notional = (
+            float(cast(float, r.notional_usd))
+            if r.notional_usd is not None
+            else float(cast(float, r.size))
+        )
         total += float(notional or 0.0)
     return total
 
@@ -72,7 +76,7 @@ def check_risk_on_create(
     if state.halted:
         return False, {"error": "risk_halted", "reason": state.halt_reason}
 
-    equity = float(state.equity)
+    equity = float(cast(float, state.equity))
     max_total = equity * settings.max_total_exposure_pct
     max_pair = equity * settings.max_pair_exposure_pct
     open_exposure = compute_open_exposure(db, strategy_id)
@@ -112,7 +116,7 @@ def update_account_on_close(
     exit_ts: datetime,
 ) -> AccountState:
     state = get_or_create_account_state(db, strategy_id)
-    equity_before = float(state.equity)
+    equity_before = float(cast(float, state.equity))
 
     exit_date = exit_ts.date()
     if state.day_start_date != exit_date:
@@ -122,15 +126,17 @@ def update_account_on_close(
     pnl_usd = float(notional) * float(pnl_bps) / 10000.0
     equity_after = equity_before + pnl_usd
     state.equity = equity_after
-    state.peak_equity = max(float(state.peak_equity), equity_after)
+    state.peak_equity = max(float(cast(float, state.peak_equity)), equity_after)
 
     if pnl_usd <= 0:
         state.consecutive_losses += 1
     else:
         state.consecutive_losses = 0
 
-    daily_loss_pct = (equity_after - float(state.day_start_equity)) / float(state.day_start_equity)
-    dd_pct = (equity_after - float(state.peak_equity)) / float(state.peak_equity)
+    day_start_equity = cast(float, state.day_start_equity)
+    peak_equity = cast(float, state.peak_equity)
+    daily_loss_pct = (equity_after - day_start_equity) / day_start_equity
+    dd_pct = (equity_after - peak_equity) / peak_equity
 
     if settings.max_daily_loss_pct and daily_loss_pct <= -settings.max_daily_loss_pct:
         state.halted = True
@@ -138,7 +144,10 @@ def update_account_on_close(
     if settings.max_dd_pct and dd_pct <= -settings.max_dd_pct:
         state.halted = True
         state.halt_reason = f"max_drawdown {dd_pct:.4f}"
-    if settings.max_consecutive_losses and state.consecutive_losses >= settings.max_consecutive_losses:
+    if (
+        settings.max_consecutive_losses
+        and state.consecutive_losses >= settings.max_consecutive_losses
+    ):
         state.halted = True
         state.halt_reason = f"max_consecutive_losses {state.consecutive_losses}"
 

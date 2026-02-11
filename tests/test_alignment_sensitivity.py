@@ -1,5 +1,5 @@
-import numpy as np
 import analyze_alignment_sensitivity as align
+import numpy as np
 
 
 def test_align_series_shift_positive():

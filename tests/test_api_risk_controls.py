@@ -1,16 +1,15 @@
-from datetime import datetime, timezone, timedelta
+import json
+from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import json
-
 from services.api.db import Base, get_db
-from services.api.settings import settings
 from services.api.main import app
-from services.api.models import Side, ActiveLeg
+from services.api.models import ActiveLeg, Side
+from services.api.settings import settings
 
 
 def make_client():

@@ -1,13 +1,13 @@
+import pandas as pd
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-import pandas as pd
 
+from services.api import validation
 from services.api.db import Base, get_db
 from services.api.main import app
-from services.api import validation
-from services.api.models import Position, PositionStatus, Side, ActiveLeg
+from services.api.models import ActiveLeg, Position, PositionStatus, Side
 from services.api.settings import settings
 
 

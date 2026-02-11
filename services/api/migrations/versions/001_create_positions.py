@@ -4,8 +4,9 @@ Revision ID: 001
 Revises:
 Create Date: 2026-02-10
 """
-from alembic import op
+
 import sqlalchemy as sa
+from alembic import op
 
 revision = "001"
 down_revision = None
@@ -23,7 +24,13 @@ def upgrade() -> None:
         sa.Column("exit_ts", sa.DateTime(timezone=True)),
         sa.Column("side", sa.Enum("LONG", "SHORT", name="side"), nullable=False),
         sa.Column("active_leg", sa.Enum("X", "Y", name="activeleg"), nullable=False),
-        sa.Column("status", sa.Enum("PENDING", "OPEN", "CLOSING", "CLOSED", "CANCELLED", "FAILED", name="positionstatus"), nullable=False),
+        sa.Column(
+            "status",
+            sa.Enum(
+                "PENDING", "OPEN", "CLOSING", "CLOSED", "CANCELLED", "FAILED", name="positionstatus"
+            ),
+            nullable=False,
+        ),
         sa.Column("entry_price", sa.Float()),
         sa.Column("exit_price", sa.Float()),
         sa.Column("size", sa.Float(), nullable=False),
@@ -40,8 +47,14 @@ def upgrade() -> None:
         "orders",
         sa.Column("id", sa.String(), primary_key=True),
         sa.Column("position_id", sa.String(), sa.ForeignKey("positions.id"), nullable=False),
-        sa.Column("status", sa.Enum("NEW", "SUBMITTED", "FILLED", "CANCELLED", "FAILED", name="orderstatus"), nullable=False),
-        sa.Column("order_type", sa.Enum("MARKET", "LIMIT", "STOP", name="ordertype"), nullable=False),
+        sa.Column(
+            "status",
+            sa.Enum("NEW", "SUBMITTED", "FILLED", "CANCELLED", "FAILED", name="orderstatus"),
+            nullable=False,
+        ),
+        sa.Column(
+            "order_type", sa.Enum("MARKET", "LIMIT", "STOP", name="ordertype"), nullable=False
+        ),
         sa.Column("qty", sa.Float(), nullable=False),
         sa.Column("price", sa.Float()),
         sa.Column("slippage_bps", sa.Float()),

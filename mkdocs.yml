@@ -56,5 +56,6 @@ nav:
   - Validation: validation.md
   - Config Reference: config_reference.md
   - Code Reference: code_reference.md
+  - Development: development.md
   - DB Schema: db_schema.md
   - DB Diagram: db_schema_diagram.md

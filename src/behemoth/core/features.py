@@ -1,5 +1,6 @@
-import numpy as np
 from datetime import datetime
+
+import numpy as np
 
 
 def compute_features_at_entry(
@@ -26,10 +27,7 @@ def compute_features_at_entry(
     hedge_beta_lb = np.mean(ret_betas[max(0, i - 500) : i]) if i > 0 else ret_betas[0]
     features["signal_beta_lookback"] = round(sig_beta_lb, 4)
     features["hedge_beta_lookback"] = round(hedge_beta_lb, 4)
-    if abs(sig_beta_lb) > 0.01:
-        mismatch = hedge_beta_lb / sig_beta_lb
-    else:
-        mismatch = 0.0
+    mismatch = hedge_beta_lb / sig_beta_lb if abs(sig_beta_lb) > 0.01 else 0.0
     mismatch = float(np.clip(mismatch, -10.0, 10.0))
     features["beta_mismatch"] = round(mismatch, 3)
 

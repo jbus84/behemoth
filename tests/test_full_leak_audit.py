@@ -1,6 +1,6 @@
-import pandas as pd
-import numpy as np
 import full_leak_audit as la
+import numpy as np
+import pandas as pd
 
 
 def test_scan_forward_index():

@@ -5,9 +5,8 @@ Revises: 002_create_guardrail_state
 Create Date: 2026-02-10
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "003_add_account_state_and_position_alloc"
 down_revision = "002_create_guardrail_state"
