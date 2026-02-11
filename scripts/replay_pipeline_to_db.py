@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pandas as pd
 import numpy as np
+import redis
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -31,6 +32,29 @@ from services.api.risk import (
 )
 from services.api.settings import settings
 from services.api.validation import PIPELINE_PATHS, _metrics
+
+
+def _get_progress_redis() -> redis.Redis | None:
+    url = os.getenv("REPLAY_REDIS_URL") or os.getenv("REDIS_URL")
+    if not url:
+        return None
+    try:
+        client = redis.Redis.from_url(url, decode_responses=True)
+        client.ping()
+        return client
+    except redis.RedisError:
+        return None
+
+
+def _update_progress(client: redis.Redis | None, key: str, **payload: object) -> None:
+    if client is None:
+        return None
+    data = {"updated_at": int(time.time()), **payload}
+    try:
+        client.hset(key, mapping={k: str(v) for k, v in data.items()})
+        client.expire(key, 60 * 60)
+    except redis.RedisError:
+        return None
 
 
 def _compute_exit_ts(df: pd.DataFrame, bar_minutes: int) -> pd.Series:
@@ -175,6 +199,8 @@ def replay_bar(
     opened = 0
     closed = 0
     started_at = time.time()
+    progress_key = f"replay:progress:{bar}"
+    progress_client = _get_progress_redis()
 
     for chunk in pd.read_csv(path, usecols=cols, chunksize=50000):
         chunk = chunk.copy()
@@ -242,6 +268,16 @@ def replay_bar(
                     f"skipped_guardrail={skipped_guardrail} skipped_risk={skipped_risk} "
                     f"rate={rate:.1f}/s"
                 )
+                _update_progress(
+                    progress_client,
+                    progress_key,
+                    processed=processed,
+                    opened=opened,
+                    closed=closed,
+                    skipped_guardrail=skipped_guardrail,
+                    skipped_risk=skipped_risk,
+                    done=False,
+                )
 
         if limit and processed >= limit:
             break
@@ -252,6 +288,16 @@ def replay_bar(
         closed += 1
 
     session.commit()
+    _update_progress(
+        progress_client,
+        progress_key,
+        processed=processed,
+        opened=opened,
+        closed=closed,
+        skipped_guardrail=skipped_guardrail,
+        skipped_risk=skipped_risk,
+        done=True,
+    )
 
     metrics = {"trades": 0, "mean_pnl": 0.0, "total_pnl": 0.0, "max_dd": 0.0}
     equity_stats = {

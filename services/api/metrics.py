@@ -9,6 +9,7 @@ from fastapi import Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 from sqlalchemy.orm import Session
 
+from .cache import get_redis
 from .models import AccountState, GuardrailState, Position, PositionStatus
 
 REQUEST_COUNT = Counter(
@@ -77,6 +78,15 @@ ACCOUNT_CONSEC_LOSSES = Gauge(
 ACCOUNT_HALTED = Gauge("behemoth_account_halted", "Account halted flag (1 halted)", ["strategy_id"])
 
 SYSTEM_UP = Gauge("behemoth_api_up", "API health flag")
+REPLAY_PROCESSED = Gauge("behemoth_replay_processed_total", "Replay processed rows", ["bar"])
+REPLAY_OPENED = Gauge("behemoth_replay_opened_total", "Replay opened positions", ["bar"])
+REPLAY_CLOSED = Gauge("behemoth_replay_closed_total", "Replay closed positions", ["bar"])
+REPLAY_SKIPPED_GUARDRAIL = Gauge(
+    "behemoth_replay_skipped_guardrail_total", "Replay skipped guardrail", ["bar"]
+)
+REPLAY_SKIPPED_RISK = Gauge("behemoth_replay_skipped_risk_total", "Replay skipped risk", ["bar"])
+REPLAY_DONE = Gauge("behemoth_replay_done", "Replay finished flag", ["bar"])
+REPLAY_UPDATED_AT = Gauge("behemoth_replay_updated_at", "Replay updated unix timestamp", ["bar"])
 
 _active_pos_labels: set[tuple[str, str]] = set()
 _active_total_labels: set[tuple[str]] = set()
@@ -85,6 +95,7 @@ _guardrail_total_labels: set[tuple[str]] = set()
 _guardrail_pause_labels: set[tuple[str, str]] = set()
 _guardrail_cooldown_labels: set[tuple[str, str]] = set()
 _account_labels: set[tuple[str]] = set()
+_replay_labels: set[tuple[str]] = set()
 
 
 def track_request(method: str, path: str, status: int, duration_s: float) -> None:
@@ -187,3 +198,49 @@ def refresh_state_metrics(db: Session) -> None:
         ACCOUNT_CONSEC_LOSSES.remove(*label)
         ACCOUNT_HALTED.remove(*label)
         _account_labels.discard(label)
+
+    client = get_redis()
+    if client is None:
+        return None
+    try:
+        keys = client.keys("replay:progress:*")
+    except Exception:
+        return None
+    replay_values: dict[tuple[str], dict[str, float]] = {}
+    for key in keys:
+        bar = str(key).split("replay:progress:", 1)[-1]
+        try:
+            payload = client.hgetall(key)
+        except Exception:
+            continue
+        if not payload:
+            continue
+        replay_values[(bar,)] = {
+            "processed": float(payload.get("processed", 0)),
+            "opened": float(payload.get("opened", 0)),
+            "closed": float(payload.get("closed", 0)),
+            "skipped_guardrail": float(payload.get("skipped_guardrail", 0)),
+            "skipped_risk": float(payload.get("skipped_risk", 0)),
+            "done": float(payload.get("done", 0)),
+            "updated_at": float(payload.get("updated_at", 0)),
+        }
+
+    for label, values in replay_values.items():
+        REPLAY_PROCESSED.labels(*label).set(values["processed"])
+        REPLAY_OPENED.labels(*label).set(values["opened"])
+        REPLAY_CLOSED.labels(*label).set(values["closed"])
+        REPLAY_SKIPPED_GUARDRAIL.labels(*label).set(values["skipped_guardrail"])
+        REPLAY_SKIPPED_RISK.labels(*label).set(values["skipped_risk"])
+        REPLAY_DONE.labels(*label).set(values["done"])
+        REPLAY_UPDATED_AT.labels(*label).set(values["updated_at"])
+        _replay_labels.add(label)
+
+    for label in list(_replay_labels - replay_values.keys()):
+        REPLAY_PROCESSED.remove(*label)
+        REPLAY_OPENED.remove(*label)
+        REPLAY_CLOSED.remove(*label)
+        REPLAY_SKIPPED_GUARDRAIL.remove(*label)
+        REPLAY_SKIPPED_RISK.remove(*label)
+        REPLAY_DONE.remove(*label)
+        REPLAY_UPDATED_AT.remove(*label)
+        _replay_labels.discard(label)

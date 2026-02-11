@@ -247,6 +247,38 @@
         }
       ]
     }
+    ,
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Replay Processed",
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "behemoth_replay_processed_total",
+          "legendFormat": "{{bar}}"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    }
   ],
   "templating": {
     "list": [
