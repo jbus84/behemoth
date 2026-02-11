@@ -1,6 +1,6 @@
 {
   "bar": "m5",
-  "generated_at": "2026-02-11T08:16:46.809551+00:00",
+  "generated_at": "2026-02-11T18:29:28.910759+00:00",
   "pipeline_path": "data/events/events_m5_8yr_v3_mom.csv",
   "pipeline_sha256": "eef1d51f69bdc8a886c9f123aa64790d935f0b0bd8a2d02d280e8f081f75e0db",
   "guardrail_settings": {

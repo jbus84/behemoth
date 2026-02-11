@@ -84,7 +84,6 @@ def config_snapshot() -> dict:
         "Z_ENTRY_REV": cfg.Z_ENTRY_REV,
         "Z_STOP": cfg.Z_STOP,
         "MIN_GAP_BARS": cfg.MIN_GAP_BARS,
-        "LOOKBACK_BARS": cfg.LOOKBACK_BARS,
         "ACTIVE_LEG_LOW": cfg.ACTIVE_LEG_LOW,
         "ACTIVE_LEG_HIGH": cfg.ACTIVE_LEG_HIGH,
     }

@@ -1,6 +1,7 @@
 services:
   api:
+    environment:
+      CONFIG_PATH: ${REPLAY_CONFIG_PATH:-/app/configs/replay.yaml}
+      VALIDATE_PIPELINE_FILES: "false"
     volumes:
       - ./data:/app/data:ro
-    environment:
-      VALIDATE_PIPELINE_FILES: "false"

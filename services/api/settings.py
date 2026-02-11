@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     validate_pipeline_files: bool = Field(default=True)
     require_pair_weights: bool = Field(default=True)
 
+    risk_enabled: bool = Field(default=True)
     guardrail_enabled: bool = Field(default=True)
     guardrail_loss_threshold: float = Field(default=0.0)
     guardrail_loss_streak: int = Field(default=3)

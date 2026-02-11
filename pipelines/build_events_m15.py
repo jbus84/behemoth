@@ -17,7 +17,6 @@ from behemoth.config import (
     Z_ENTRY_REV,
     Z_STOP,
     MIN_GAP_BARS,
-    LOOKBACK_BARS,
     ACTIVE_LEG_LOW,
     ACTIVE_LEG_HIGH,
 )

@@ -19,7 +19,6 @@ def test_repro_manifest_matches_config():
     assert float(config.get("Z_ENTRY_MOM")) == cfg.Z_ENTRY_MOM
     assert float(config.get("Z_STOP")) == cfg.Z_STOP
     assert int(config.get("MIN_GAP_BARS")) == cfg.MIN_GAP_BARS
-    assert int(config.get("LOOKBACK_BARS")) == cfg.LOOKBACK_BARS
     assert float(config.get("ACTIVE_LEG_LOW")) == cfg.ACTIVE_LEG_LOW
     assert float(config.get("ACTIVE_LEG_HIGH")) == cfg.ACTIVE_LEG_HIGH
 

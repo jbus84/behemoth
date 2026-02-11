@@ -223,11 +223,14 @@ def create_position(
     if payload.size <= 0:
         raise HTTPException(status_code=400, detail="size must be > 0")
 
-    risk_ok, risk_detail = check_risk_on_create(db, payload.strategy_id, payload.pair, payload.size)
-    if not risk_ok:
-        reason = risk_detail.get("error", "risk_halted")
-        RISK_HALTS.labels(strategy_id=payload.strategy_id, reason=str(reason)).inc()
-        raise HTTPException(status_code=409, detail=risk_detail)
+    if settings.risk_enabled:
+        risk_ok, risk_detail = check_risk_on_create(
+            db, payload.strategy_id, payload.pair, payload.size
+        )
+        if not risk_ok:
+            reason = risk_detail.get("error", "risk_halted")
+            RISK_HALTS.labels(strategy_id=payload.strategy_id, reason=str(reason)).inc()
+            raise HTTPException(status_code=409, detail=risk_detail)
 
     if settings.guardrail_enabled:
         entry_ts = payload.entry_ts or _now()
