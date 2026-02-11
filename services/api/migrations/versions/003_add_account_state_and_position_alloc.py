@@ -1,6 +1,6 @@
 """add account_state and position allocation fields
 
-Revision ID: 003_add_account_state_and_position_alloc
+Revision ID: 003_account_state
 Revises: 002_create_guardrail_state
 Create Date: 2026-02-10
 """
@@ -8,7 +8,7 @@ Create Date: 2026-02-10
 import sqlalchemy as sa
 from alembic import op
 
-revision = "003_add_account_state_and_position_alloc"
+revision = "003_account_state"
 down_revision = "002_create_guardrail_state"
 branch_labels = None
 depends_on = None

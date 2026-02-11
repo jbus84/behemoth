@@ -4,6 +4,8 @@ WORKDIR /app
 
 COPY pyproject.toml uv.lock README.md /app/
 COPY src /app/src
+COPY pipelines /app/pipelines
+COPY configs /app/configs
 COPY services /app/services
 
 RUN pip install --upgrade pip \

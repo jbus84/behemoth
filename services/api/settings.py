@@ -60,8 +60,8 @@ class Settings(BaseSettings):
     ):
         return (
             init_settings,
-            _yaml_settings_source,
             env_settings,
+            _yaml_settings_source,
             file_secret_settings,
         )
 
