@@ -19,6 +19,12 @@
 
 ## Scripts (curated)
 
+**Script taxonomy**
+- **Production wrappers**: `build_events_m5.py`, `build_events_m15.py`, `replay_pipeline_to_db.py`
+- **Validation & baselines**: `build_baselines.py`, `build_repro_manifest.py`, `validate_*`, `reconcile_db_vs_pipeline.py`, `integrity_audit.py`
+- **Guardrail/robustness studies**: `analyze_*` in this list (kept because referenced by docs)
+- **Visualization**: `scripts/visualization/*`
+
 - `scripts/analyze_dd_timeweighted.py`
 - `scripts/analyze_execution_latency.py`
 - `scripts/analyze_execution_latency_resim.py`
