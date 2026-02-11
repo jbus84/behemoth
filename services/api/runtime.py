@@ -18,10 +18,22 @@ def validate_runtime_config() -> None:
     errors: list[str] = []
 
     errors += _validate_pct("max_daily_loss_pct", settings.max_daily_loss_pct)
+    errors += _validate_pct("max_daily_loss_buffer_pct", settings.max_daily_loss_buffer_pct)
     errors += _validate_pct("max_dd_pct", settings.max_dd_pct)
-    errors += _validate_pct("max_total_exposure_pct", settings.max_total_exposure_pct)
-    errors += _validate_pct("max_pair_exposure_pct", settings.max_pair_exposure_pct)
-    errors += _validate_pct("max_weight_overshoot_pct", settings.max_weight_overshoot_pct)
+    errors += _validate_pct("max_dd_buffer_pct", settings.max_dd_buffer_pct)
+
+    if (
+        settings.max_daily_loss_buffer_pct
+        and settings.max_daily_loss_pct
+        and settings.max_daily_loss_buffer_pct > settings.max_daily_loss_pct
+    ):
+        errors.append("max_daily_loss_buffer_pct must be <= max_daily_loss_pct")
+    if (
+        settings.max_dd_buffer_pct
+        and settings.max_dd_pct
+        and settings.max_dd_buffer_pct > settings.max_dd_pct
+    ):
+        errors.append("max_dd_buffer_pct must be <= max_dd_pct")
 
     if settings.guardrail_loss_streak < 1:
         errors.append("guardrail_loss_streak must be >= 1")

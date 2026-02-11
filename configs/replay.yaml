@@ -1,7 +1,5 @@
 risk_enabled: false
-max_total_exposure_pct: 1.0
-max_pair_exposure_pct: 1.0
-max_weight_overshoot_pct: 1.0
-max_consecutive_losses: 0
 max_daily_loss_pct: 0.0
+max_daily_loss_buffer_pct: 0.0
 max_dd_pct: 0.0
+max_dd_buffer_pct: 0.0

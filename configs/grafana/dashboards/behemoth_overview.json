@@ -171,23 +171,6 @@
       }
     },
     {
-      "id": 8,
-      "type": "stat",
-      "title": "Consecutive Losses",
-      "gridPos": {
-        "x": 6,
-        "y": 10,
-        "w": 6,
-        "h": 4
-      },
-      "targets": [
-        {
-          "expr": "max(behemoth_account_consecutive_losses{strategy_id=~\"$strategy\"})",
-          "legendFormat": "losses"
-        }
-      ]
-    },
-    {
       "id": 9,
       "type": "table",
       "title": "Active Positions by Pair",

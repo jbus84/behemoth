@@ -41,11 +41,9 @@ class Settings(BaseSettings):
 
     account_equity_start: float = Field(default=100000.0)
     max_daily_loss_pct: float = Field(default=0.05)
+    max_daily_loss_buffer_pct: float = Field(default=0.0)
     max_dd_pct: float = Field(default=0.10)
-    max_consecutive_losses: int = Field(default=0)
-    max_total_exposure_pct: float = Field(default=1.0)
-    max_pair_exposure_pct: float = Field(default=0.10)
-    max_weight_overshoot_pct: float = Field(default=0.10)
+    max_dd_buffer_pct: float = Field(default=0.0)
     pair_weights_path: str = Field(default="configs/pair_weights.yaml")
 
     model_config = SettingsConfigDict(env_prefix="", extra="ignore")

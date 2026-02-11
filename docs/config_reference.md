@@ -31,11 +31,9 @@ Environment variables **override** YAML values.
 |---|---|
 | `account_equity_start` | `100000` |
 | `max_daily_loss_pct` | `0.05` |
+| `max_daily_loss_buffer_pct` | `0.005` |
 | `max_dd_pct` | `0.10` |
-| `max_consecutive_losses` | `5` |
-| `max_total_exposure_pct` | `1.0` |
-| `max_pair_exposure_pct` | `0.10` |
-| `max_weight_overshoot_pct` | `0.10` |
+| `max_dd_buffer_pct` | `0.005` |
 | `pair_weights_path` | `configs/pair_weights.yaml` |
 
 ## Example YAML
@@ -44,11 +42,16 @@ Environment variables **override** YAML values.
 guardrail_loss_streak: 3
 guardrail_cooldown_days: 7
 max_daily_loss_pct: 0.05
+max_daily_loss_buffer_pct: 0.005
 max_dd_pct: 0.10
-max_pair_exposure_pct: 0.10
+max_dd_buffer_pct: 0.005
 pair_weights_path: configs/pair_weights.yaml
 log_level: INFO
 metrics_enabled: true
 validate_pipeline_files: true
 require_pair_weights: true
 ```
+
+## FTMO Profile
+
+Use `configs/ftmo.yaml` for FTMO‑style limits (daily 5% / total 10% with a 0.5% buffer).

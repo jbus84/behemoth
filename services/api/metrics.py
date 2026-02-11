@@ -72,9 +72,6 @@ ACCOUNT_PEAK_EQUITY = Gauge("behemoth_account_peak_equity", "Account peak equity
 ACCOUNT_DAY_START_EQUITY = Gauge(
     "behemoth_account_day_start_equity", "Account day-start equity", ["strategy_id"]
 )
-ACCOUNT_CONSEC_LOSSES = Gauge(
-    "behemoth_account_consecutive_losses", "Account consecutive losses", ["strategy_id"]
-)
 ACCOUNT_HALTED = Gauge("behemoth_account_halted", "Account halted flag (1 halted)", ["strategy_id"])
 
 SYSTEM_UP = Gauge("behemoth_api_up", "API health flag")
@@ -192,7 +189,6 @@ def refresh_state_metrics(db: Session) -> None:
             "equity": float(cast(float, state.equity)),
             "peak": float(cast(float, state.peak_equity)),
             "day_start": float(cast(float, state.day_start_equity)),
-            "losses": float(cast(float, state.consecutive_losses)),
             "halted": 1.0 if state.halted else 0.0,
         }
 
@@ -205,7 +201,6 @@ def refresh_state_metrics(db: Session) -> None:
         ACCOUNT_EQUITY.labels(*label).set(values["equity"])
         ACCOUNT_PEAK_EQUITY.labels(*label).set(values["peak"])
         ACCOUNT_DAY_START_EQUITY.labels(*label).set(values["day_start"])
-        ACCOUNT_CONSEC_LOSSES.labels(*label).set(values["losses"])
         ACCOUNT_HALTED.labels(*label).set(values["halted"])
         _account_labels.add(label)
 
@@ -213,7 +208,6 @@ def refresh_state_metrics(db: Session) -> None:
         ACCOUNT_EQUITY.remove(*label)
         ACCOUNT_PEAK_EQUITY.remove(*label)
         ACCOUNT_DAY_START_EQUITY.remove(*label)
-        ACCOUNT_CONSEC_LOSSES.remove(*label)
         ACCOUNT_HALTED.remove(*label)
         _account_labels.discard(label)
 

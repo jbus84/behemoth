@@ -12,21 +12,11 @@ Risk controls are **hard gates** enforced at the API boundary.
 | Control | Default | Meaning |
 |---|---|---|
 | Max daily loss | 5% | Floating vs day‑start equity |
+| Max daily loss buffer | 0.5% | Halt if within buffer of max daily loss |
 | Max drawdown | 10% | Floating vs peak equity |
-| Max consecutive losses | 5 | Count of consecutive negative closes |
+| Max drawdown buffer | 0.5% | Halt if within buffer of max drawdown |
 
 If any trigger fires, the account is **halted** and new positions are rejected until reset.
-
-## Sizing & Exposure
-
-| Control | Default |
-|---|---|
-| Max total exposure | 100% of equity |
-| Per‑pair cap | 10% of equity |
-| Weight overshoot | +10% over target |
-
-Target notional per pair is computed from `configs/pair_weights.yaml`.
-Pairs with higher weights get a larger share of exposure.
 
 ## Reset
 

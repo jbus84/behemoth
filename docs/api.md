@@ -52,6 +52,5 @@ guardrail_loss_streak: 3
 guardrail_cooldown_days: 7
 max_daily_loss_pct: 0.05
 max_dd_pct: 0.10
-max_pair_exposure_pct: 0.10
 pair_weights_path: configs/pair_weights.yaml
 ```

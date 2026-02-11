@@ -11,8 +11,7 @@ Key metrics include:
 - Active positions: `behemoth_positions_active_total`, `behemoth_positions_active_by_pair`
 - Guardrail pauses: `behemoth_guardrail_paused_total`, `behemoth_guardrail_paused_by_pair`
 - Account state: `behemoth_account_equity`, `behemoth_account_peak_equity`,
-  `behemoth_account_day_start_equity`, `behemoth_account_consecutive_losses`,
-  `behemoth_account_halted`
+  `behemoth_account_day_start_equity`, `behemoth_account_halted`
 
 ## Grafana Dashboard
 The `Behemoth Overview` dashboard is provisioned automatically in Grafana.
@@ -22,7 +21,7 @@ It shows:
 - Active positions
 - Guardrail paused pairs
 - Account equity and peak equity
-- Halted state and consecutive losses
+- Halted state
 - Active positions by pair
 
 Grafana URL: `http://localhost:3000` (admin/admin)

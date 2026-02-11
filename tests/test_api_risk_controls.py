@@ -33,39 +33,12 @@ def make_client():
     return TestClient(app)
 
 
-def test_position_sizing_enforced():
-    client = make_client()
-    settings.guardrail_enabled = False
-    settings.account_equity_start = 100000
-    settings.max_total_exposure_pct = 1.0
-    settings.max_pair_exposure_pct = 0.10
-    settings.max_weight_overshoot_pct = 0.10
-
-    base = {
-        "strategy_id": "mom_m5",
-        "pair": "EUR/GBP",
-        "side": Side.LONG,
-        "active_leg": ActiveLeg.Y,
-    }
-
-    ok = client.post("/positions", json={**base, "size": 3000.0})
-    assert ok.status_code == 200
-
-    too_big = client.post("/positions", json={**base, "size": 8000.0})
-    assert too_big.status_code == 409
-    assert too_big.json()["detail"]["error"] in ("max_pair_exposure", "max_total_exposure")
-
-
 def test_daily_loss_killswitch(tmp_path):
     client = make_client()
     settings.guardrail_enabled = False
     settings.account_equity_start = 100000
-    settings.max_total_exposure_pct = 1.0
-    settings.max_pair_exposure_pct = 1.0
-    settings.max_weight_overshoot_pct = 10.0
     settings.max_daily_loss_pct = 0.05
     settings.max_dd_pct = 0.10
-    settings.max_consecutive_losses = 5
 
     weights_path = tmp_path / "weights.json"
     weights_path.write_text(json.dumps({"EUR/GBP": 1.0}))

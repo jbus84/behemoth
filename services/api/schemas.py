@@ -93,7 +93,6 @@ class AccountStateResponse(BaseModel):
     peak_equity: float
     day_start_equity: float
     day_start_date: date
-    consecutive_losses: int
     halted: bool
     halt_reason: str | None
 

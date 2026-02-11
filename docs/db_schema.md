@@ -99,7 +99,7 @@ Indexes:
 | peak_equity | float | high water mark |
 | day_start_equity | float | day‑start equity |
 | day_start_date | date | day boundary |
-| consecutive_losses | int | |
+| consecutive_losses | int | legacy (not used in risk gating) |
 | halted | boolean | kill‑switch state |
 | halt_reason | string | |
 | created_at | timestamp | |

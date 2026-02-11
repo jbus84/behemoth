@@ -26,6 +26,7 @@ import pandas as pd
 
 sys.path.append(os.path.join(os.getcwd(), "src"))
 sys.path.append(os.path.join(os.getcwd(), "pipelines"))
+sys.path.append(os.getcwd())
 
 from behemoth.core.metrics import sharpe_daily, sharpe_daily_active, sharpe_trade
 import build_events_m15 as m15
@@ -58,12 +59,17 @@ def _max_dd(pnls: np.ndarray) -> float:
     return float((curve - peak).min())
 
 
-def _metrics(trades: list[tuple[int, float]]) -> dict:
+def _metrics(trades) -> dict:
     if not trades:
         return dict(trades=0, mean_pnl=0.0, total_pnl=0.0, max_dd=0.0, sharpe=0.0, sharpe_active=0.0, sharpe_trade=0.0)
-    df = pd.DataFrame(trades, columns=["exit_ts", "pnl"]).sort_values("exit_ts")
-    pnl = df["pnl"].to_numpy()
-    ts = df["exit_ts"].to_numpy()
+    if isinstance(trades[0], dict):
+        df = pd.DataFrame(trades).sort_values("exit_ts")
+        pnl = df["pnl"].to_numpy()
+        ts = df["exit_ts"].to_numpy()
+    else:
+        df = pd.DataFrame(trades, columns=["exit_ts", "pnl"]).sort_values("exit_ts")
+        pnl = df["pnl"].to_numpy()
+        ts = df["exit_ts"].to_numpy()
     return dict(
         trades=int(len(pnl)),
         mean_pnl=float(np.mean(pnl)),
@@ -161,9 +167,9 @@ def _apply_loss_streak(trades, threshold, cooldown_days, train_years, test_years
             continue
 
         if year in train_years:
-            kept_train.append((ts, pnl))
+            kept_train.append(tr)
         elif year in test_years:
-            kept_test.append((ts, pnl))
+            kept_test.append(tr)
 
         if pnl > 0:
             st["loss_streak"] = 0
@@ -218,7 +224,6 @@ def main() -> None:
 
     grid_rows = []
     best_rows = []
-
     for start, end, test_year in WFO_WINDOWS:
         train_years = set(range(start, end + 1))
         test_years = {test_year}
@@ -300,7 +305,6 @@ def main() -> None:
     print(f"Saved: {grid_path}")
     print(f"Saved: {best_path}")
     print(f"Saved: {summary_path}")
-
 
 if __name__ == "__main__":
     main()

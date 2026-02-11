@@ -36,7 +36,6 @@ class AccountState:
     peak_equity: float
     day_start_date: datetime.date
     day_start_equity: float
-    consecutive_losses: int = 0
     halted: bool = False
     halt_reason: str | None = None
 
@@ -86,25 +85,9 @@ def _apply_guardrail_on_close(
 
 def _risk_check(
     account: AccountState,
-    open_exposure: float,
-    requested_notional: float,
-    pair: str,
-    weights: dict[str, float],
 ) -> tuple[bool, str | None]:
     if account.halted:
         return False, account.halt_reason or "risk_halted"
-    equity = float(account.equity)
-    max_total = equity * float(settings.max_total_exposure_pct)
-    max_pair = equity * float(settings.max_pair_exposure_pct)
-    weight_sum = float(sum(max(v, 0.0) for v in weights.values())) or 1.0
-    weight = float(weights.get(pair, 1.0))
-    target = equity * float(settings.max_total_exposure_pct) * (weight / weight_sum)
-    overshoot = target * (1.0 + float(settings.max_weight_overshoot_pct))
-    allowed = min(max_pair, overshoot)
-    if open_exposure + requested_notional > max_total:
-        return False, "max_total_exposure"
-    if requested_notional > allowed:
-        return False, "max_pair_exposure"
     return True, None
 
 
@@ -122,23 +105,26 @@ def _update_account_on_close(
     pnl_usd = float(notional) * float(pnl_bps) / 10000.0
     account.equity = equity_before + pnl_usd
     account.peak_equity = max(account.peak_equity, account.equity)
-    if pnl_usd <= 0:
-        account.consecutive_losses += 1
-    else:
-        account.consecutive_losses = 0
     daily_loss_pct = (account.equity - account.day_start_equity) / account.day_start_equity
     dd_pct = (account.equity - account.peak_equity) / account.peak_equity
-    if settings.max_daily_loss_pct and daily_loss_pct <= -float(settings.max_daily_loss_pct):
-        account.halted = True
-        account.halt_reason = f"max_daily_loss {daily_loss_pct:.4f}"
-    if settings.max_dd_pct and dd_pct <= -float(settings.max_dd_pct):
-        account.halted = True
-        account.halt_reason = f"max_drawdown {dd_pct:.4f}"
-    if settings.max_consecutive_losses and account.consecutive_losses >= int(
-        settings.max_consecutive_losses
-    ):
-        account.halted = True
-        account.halt_reason = f"max_consecutive_losses {account.consecutive_losses}"
+    if settings.max_daily_loss_pct:
+        buffer = float(settings.max_daily_loss_buffer_pct or 0.0)
+        limit = float(settings.max_daily_loss_pct)
+        if daily_loss_pct <= -limit:
+            account.halted = True
+            account.halt_reason = f"max_daily_loss {daily_loss_pct:.4f}"
+        elif buffer > 0 and daily_loss_pct <= -(limit - buffer):
+            account.halted = True
+            account.halt_reason = f"max_daily_loss_buffer {daily_loss_pct:.4f}"
+    if settings.max_dd_pct:
+        buffer = float(settings.max_dd_buffer_pct or 0.0)
+        limit = float(settings.max_dd_pct)
+        if dd_pct <= -limit:
+            account.halted = True
+            account.halt_reason = f"max_drawdown {dd_pct:.4f}"
+        elif buffer > 0 and dd_pct <= -(limit - buffer):
+            account.halted = True
+            account.halt_reason = f"max_drawdown_buffer {dd_pct:.4f}"
     return account
 
 
@@ -164,7 +150,6 @@ def _simulate(
 
     account = _init_account()
     open_heap: list[tuple[datetime, int, float, float, str]] = []
-    open_exposure = 0.0
     counter = 0
 
     closed: list[dict[str, Any]] = []
@@ -172,10 +157,9 @@ def _simulate(
     skipped_risk = 0
 
     def close_ready(until: datetime) -> None:
-        nonlocal open_exposure, account
+        nonlocal account
         while open_heap and open_heap[0][0] <= until:
             exit_ts, _, notional, pnl_bps, pair = heapq.heappop(open_heap)
-            open_exposure -= notional
             account = _update_account_on_close(account, pnl_bps, notional, exit_ts)
             closed.append(
                 {
@@ -207,9 +191,9 @@ def _simulate(
         equity = float(account.equity)
         weight_sum = float(sum(max(v, 0.0) for v in weights.values())) or 1.0
         weight = float(weights.get(pair, 1.0))
-        target_notional = equity * float(settings.max_total_exposure_pct) * (weight / weight_sum)
+        target_notional = equity * (weight / weight_sum)
         if enforce_risk:
-            ok, _reason = _risk_check(account, open_exposure, target_notional, pair, weights)
+            ok, _reason = _risk_check(account)
             if not ok:
                 skipped_risk += 1
                 continue

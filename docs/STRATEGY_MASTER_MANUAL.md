@@ -432,7 +432,6 @@ Institutions typically implement the same concept as:
 We enforce portfolio‑level kill‑switches and sizing guards in the API:
 - **Max daily loss**: 5% (floating vs day‑start equity)
 - **Max drawdown**: 10% (floating vs peak equity)
-- **Max consecutive losses**: configurable (default 5)
 - **Max total exposure**: 100% of equity (no leverage)
 - **Per‑pair cap**: 10% of equity (default)
 - **Pair weighting table**: `configs/pair_weights.yaml` (used to compute target notional)
