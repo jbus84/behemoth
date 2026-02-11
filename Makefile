@@ -90,6 +90,9 @@ REPLAY_REDIS_URL ?= redis://localhost:$(REPLAY_REDIS_PORT)/0
 REPLAY_COMMIT_EVERY ?= 5000
 REPLAY_SLEEP ?= 0.1
 REPLAY_LIMIT ?=
+REPLAY_ENFORCE_RISK ?= 1
+REPLAY_GUARDRAIL ?= 1
+REPLAY_REPORT ?= data/analysis/replay_report.json
 REPLAY_COMPOSE = -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.replay.yml
 
 deploy:
@@ -104,7 +107,7 @@ replay:
 	done
 	@docker compose --project-directory . -f docker-compose.yml --project-name $(REPLAY_PROJECT) exec -T db psql -U behemoth -d behemoth -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"
 	DATABASE_URL=$(REPLAY_DB_URL) uv run alembic -c services/api/alembic.ini upgrade head
-	REPLAY_REDIS_URL=$(REPLAY_REDIS_URL) DATABASE_URL=$(REPLAY_DB_URL) uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --commit-every $(REPLAY_COMMIT_EVERY) --sleep $(REPLAY_SLEEP) $(if $(REPLAY_LIMIT),--limit $(REPLAY_LIMIT),)
+	REPLAY_REDIS_URL=$(REPLAY_REDIS_URL) DATABASE_URL=$(REPLAY_DB_URL) uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --commit-every $(REPLAY_COMMIT_EVERY) --sleep $(REPLAY_SLEEP) $(if $(REPLAY_LIMIT),--limit $(REPLAY_LIMIT),) --report $(REPLAY_REPORT) $(if $(filter 0,$(REPLAY_ENFORCE_RISK)),--no-enforce-risk,) $(if $(filter 0,$(REPLAY_GUARDRAIL)),--no-guardrail,)
 
 replay-load:
 	@until docker compose --project-directory . $(REPLAY_COMPOSE) --project-name $(REPLAY_PROJECT) exec -T db pg_isready -U behemoth >/dev/null 2>&1; do \
@@ -121,7 +124,7 @@ replay-load-container:
 	done
 	docker compose --project-directory . $(REPLAY_COMPOSE) --project-name $(REPLAY_PROJECT) exec -T api /bin/sh -lc \
 	"REPLAY_REDIS_URL=redis://redis:6379/0 DATABASE_URL=postgresql+psycopg2://behemoth:behemoth@db:5432/behemoth \
-	python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --commit-every $(REPLAY_COMMIT_EVERY) --sleep $(REPLAY_SLEEP) $(if $(REPLAY_LIMIT),--limit $(REPLAY_LIMIT),)"
+	python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --commit-every $(REPLAY_COMMIT_EVERY) --sleep $(REPLAY_SLEEP) $(if $(REPLAY_LIMIT),--limit $(REPLAY_LIMIT),) --report /tmp/replay_report.json $(if $(filter 0,$(REPLAY_ENFORCE_RISK)),--no-enforce-risk,) $(if $(filter 0,$(REPLAY_GUARDRAIL)),--no-guardrail,)"
 replay-stack:
 	DB_PORT=$(REPLAY_DB_PORT) API_PORT=$(REPLAY_API_PORT) PROM_PORT=$(REPLAY_PROM_PORT) GRAFANA_PORT=$(REPLAY_GRAFANA_PORT) REDIS_PORT=$(REPLAY_REDIS_PORT) \
 	docker compose --project-directory . $(REPLAY_COMPOSE) --project-name $(REPLAY_PROJECT) up -d --build
