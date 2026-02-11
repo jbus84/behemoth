@@ -218,6 +218,7 @@ def replay_bar(
     total_rows = _count_rows(path)
     _update_progress(progress_client, progress_key, total=total_rows, done=False)
     print(f"[{bar}] starting replay: total_rows={total_rows}", flush=True)
+    risk_reasons: dict[str, int] = {}
 
     for chunk in pd.read_csv(path, usecols=cols, chunksize=50000):
         chunk = chunk.copy()
@@ -250,9 +251,13 @@ def replay_bar(
             alloc_frac = notional / equity if equity else 0.0
 
             if enforce_risk:
-                risk_ok, _ = check_risk_on_create(session, strategy_id, row.pair, float(notional))
+                risk_ok, info = check_risk_on_create(
+                    session, strategy_id, row.pair, float(notional)
+                )
                 if not risk_ok:
                     skipped_risk += 1
+                    reason = str(info.get("error", "unknown"))
+                    risk_reasons[reason] = risk_reasons.get(reason, 0) + 1
                     continue
 
             pos = Position(
@@ -312,6 +317,9 @@ def replay_bar(
         closed += 1
 
     session.commit()
+    if risk_reasons:
+        top = sorted(risk_reasons.items(), key=lambda kv: kv[1], reverse=True)[:5]
+        print(f"[{bar}] top risk skips: {top}", flush=True)
     _update_progress(
         progress_client,
         progress_key,
