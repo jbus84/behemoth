@@ -4,7 +4,7 @@
 
 - `src/behemoth/`: production logic (Kalman, Z-score, guardrail, metrics)
 - `pipelines/`: deterministic batch runs (event generation + diagnostics)
-- `scripts/`: thin wrappers that call pipelines
+- `scripts/`: thin wrappers and analysis/validation utilities used by docs/tests
 - `services/api/`: FastAPI position + order state service
 - `docs/`: documentation (MkDocs site uses these markdown files)
 - `mkdocs.yml`: MkDocs configuration
@@ -14,9 +14,52 @@
   - `configs/grafana/datasources`: Prometheus datasource config
   - `configs/grafana/dashboards`: Prebuilt Grafana dashboard JSON
 - `services/api/migrations/`: Alembic migrations for DB schema
-- `scripts/export_openapi.py`: generate OpenAPI spec for docs
 - `data/baselines/`: golden snapshot metrics for M5/M15 regression tests
 
+
+## Scripts (curated)
+
+- `scripts/analyze_dd_timeweighted.py`
+- `scripts/analyze_execution_latency.py`
+- `scripts/analyze_execution_latency_resim.py`
+- `scripts/analyze_guardrail_effectiveness.py`
+- `scripts/analyze_guardrail_entry_exit_timing.py`
+- `scripts/analyze_mom_robustness_suite.py`
+- `scripts/analyze_mom_robustness_suite_m5.py`
+- `scripts/analyze_outlier_filter_with_guardrail.py`
+- `scripts/analyze_pair_stability_filter.py`
+- `scripts/analyze_portfolio_constraints.py`
+- `scripts/analyze_stress_tests.py`
+- `scripts/analyze_tail_risk_guardrail.py`
+- `scripts/analyze_tick_bar_consistency.py`
+- `scripts/build_all_1m_data.py`
+- `scripts/build_baselines.py`
+- `scripts/build_events_m15.py`
+- `scripts/build_events_m5.py`
+- `scripts/build_repro_manifest.py`
+- `scripts/compare_timeout_convention.py`
+- `scripts/db_backup_restore_smoke.py`
+- `scripts/explore_mom_loss_limiter_combos.py`
+- `scripts/explore_mom_loss_limiters.py`
+- `scripts/export_openapi.py`
+- `scripts/integrity_audit.py`
+- `scripts/metrics.py`
+- `scripts/reconcile_db_vs_pipeline.py`
+- `scripts/replay_pipeline_to_db.py`
+- `scripts/report_m5_guardrail_diagnostics.py`
+- `scripts/report_mom_guardrail_diagnostics.py`
+- `scripts/validate_api_predictions_vs_pipeline.py`
+- `scripts/validate_api_vs_pipeline.py`
+- `scripts/validate_db_predictions_vs_pipeline.py`
+- `scripts/wfo_mom_full_params.py`
+- `scripts/wfo_mom_full_params_m5.py`
+- `scripts/wfo_mom_loss_streak.py`
+
+### Visualization
+- `scripts/visualization/plot_guardrail_monthly_and_dd.py`
+- `scripts/visualization/plot_monthly_net.py`
+- `scripts/visualization/plot_session_risk_spx.py`
+- `scripts/visualization/render_pipeline_diagram.py`
 
 ## Notes
 
