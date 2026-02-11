@@ -229,7 +229,7 @@
       },
       "targets": [
         {
-          "expr": "behemoth_guardrail_paused_by_pair{strategy_id=~\"$strategy\"} == 1",
+          "expr": "behemoth_guardrail_cooldown_seconds{strategy_id=~\"$strategy\"}",
           "legendFormat": "{{strategy_id}} {{pair}}"
         }
       ],
@@ -241,7 +241,7 @@
           "id": "organize",
           "options": {
             "renameByName": {
-              "Value": "paused"
+              "Value": "cooldown_s"
             }
           }
         }

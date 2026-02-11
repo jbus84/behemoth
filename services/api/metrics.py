@@ -55,6 +55,16 @@ GUARDRAIL_PAUSED_BY_PAIR = Gauge(
     "Guardrail paused flag (1 paused)",
     ["strategy_id", "pair"],
 )
+GUARDRAIL_PAUSE_UNTIL = Gauge(
+    "behemoth_guardrail_pause_until",
+    "Guardrail pause-until timestamp (unix seconds)",
+    ["strategy_id", "pair"],
+)
+GUARDRAIL_COOLDOWN_SECONDS = Gauge(
+    "behemoth_guardrail_cooldown_seconds",
+    "Guardrail cooldown remaining seconds",
+    ["strategy_id", "pair"],
+)
 
 ACCOUNT_EQUITY = Gauge("behemoth_account_equity", "Account equity", ["strategy_id"])
 ACCOUNT_PEAK_EQUITY = Gauge("behemoth_account_peak_equity", "Account peak equity", ["strategy_id"])
@@ -72,6 +82,8 @@ _active_pos_labels: set[tuple[str, str]] = set()
 _active_total_labels: set[tuple[str]] = set()
 _guardrail_labels: set[tuple[str, str]] = set()
 _guardrail_total_labels: set[tuple[str]] = set()
+_guardrail_pause_labels: set[tuple[str, str]] = set()
+_guardrail_cooldown_labels: set[tuple[str, str]] = set()
 _account_labels: set[tuple[str]] = set()
 
 
@@ -125,17 +137,24 @@ def refresh_state_metrics(db: Session) -> None:
 
     now = datetime.now(timezone.utc)
     paused_by_pair: dict[tuple[str, str], float] = {}
+    pause_until_by_pair: dict[tuple[str, str], float] = {}
+    cooldown_by_pair: dict[tuple[str, str], float] = {}
     paused_by_strategy: dict[tuple[str], float] = {}
     for state in db.query(GuardrailState).all():
         pause_until = state.pause_until
         if pause_until is not None and pause_until > now:
             strategy_id = str(state.strategy_id)
             pair = str(state.pair)
+            cooldown_remaining = max(int((pause_until - now).total_seconds()), 0)
             paused_by_pair[(strategy_id, pair)] = 1.0
+            pause_until_by_pair[(strategy_id, pair)] = pause_until.timestamp()
+            cooldown_by_pair[(strategy_id, pair)] = float(cooldown_remaining)
             paused_by_strategy[(strategy_id,)] = paused_by_strategy.get((strategy_id,), 0.0) + 1.0
 
     _update_labeled_gauge(GUARDRAIL_PAUSED_BY_PAIR, _guardrail_labels, paused_by_pair)
     _update_labeled_gauge(GUARDRAIL_PAUSED_TOTAL, _guardrail_total_labels, paused_by_strategy)
+    _update_labeled_gauge(GUARDRAIL_PAUSE_UNTIL, _guardrail_pause_labels, pause_until_by_pair)
+    _update_labeled_gauge(GUARDRAIL_COOLDOWN_SECONDS, _guardrail_cooldown_labels, cooldown_by_pair)
 
     account_values: dict[tuple[str], dict[str, float]] = {}
     for state in db.query(AccountState).all():
