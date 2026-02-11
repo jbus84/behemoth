@@ -14,7 +14,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import redis
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -114,12 +114,11 @@ def _close_position(session, pos: Position, exit_ts: datetime, pnl_bps: float, g
 
 
 def _load_positions(session, strategy_id: str) -> pd.DataFrame:
-    df = pd.read_sql(
+    query = text(
         "SELECT pnl_bps, exit_ts, notional_usd, size FROM positions "
-        "WHERE strategy_id = ? AND pnl_bps IS NOT NULL AND exit_ts IS NOT NULL",
-        session.connection(),
-        params=[strategy_id],
+        "WHERE strategy_id = :strategy_id AND pnl_bps IS NOT NULL AND exit_ts IS NOT NULL"
     )
+    df = pd.read_sql_query(query, session.connection(), params={"strategy_id": strategy_id})
     if df.empty:
         return df
     df["exit_ts"] = pd.to_datetime(df["exit_ts"], utc=True)
