@@ -27,3 +27,15 @@ It shows:
 
 Grafana URL: `http://localhost:3000` (admin/admin)
 Prometheus URL: `http://localhost:9090`
+
+## Historical Replay (Dashboard Activity)
+To replay historical trades into the DB and watch dashboards update:
+
+```bash
+export DATABASE_URL=postgresql+psycopg2://behemoth:behemoth@localhost:5432/behemoth
+uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --sleep 0.1
+```
+
+This streams trades into the API DB, updates guardrail/account state, and
+populates live metrics that Grafana displays. The `--sleep` flag slows the
+replay so the dashboard visibly updates.

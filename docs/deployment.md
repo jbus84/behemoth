@@ -80,4 +80,12 @@ POST /risk/{strategy_id}/halt
 POST /risk/{strategy_id}/resume
 ```
 
+## Historical Replay
+To replay historical trades into the DB and visualize progress in Grafana:
+
+```bash
+export DATABASE_URL=postgresql+psycopg2://behemoth:behemoth@localhost:5432/behemoth
+uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --sleep 0.1
+```
+
 Automatic halts are applied via risk limits in `configs/api.yaml`.
