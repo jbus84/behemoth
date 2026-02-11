@@ -174,6 +174,7 @@ def replay_bar(
     skipped_risk = 0
     opened = 0
     closed = 0
+    started_at = time.time()
 
     for chunk in pd.read_csv(path, usecols=cols, chunksize=50000):
         chunk = chunk.copy()
@@ -234,6 +235,13 @@ def replay_bar(
                 session.commit()
                 if sleep_s:
                     time.sleep(sleep_s)
+                elapsed = max(time.time() - started_at, 1e-6)
+                rate = processed / elapsed
+                print(
+                    f"[{bar}] processed={processed} opened={opened} closed={closed} "
+                    f"skipped_guardrail={skipped_guardrail} skipped_risk={skipped_risk} "
+                    f"rate={rate:.1f}/s"
+                )
 
         if limit and processed >= limit:
             break
