@@ -116,7 +116,6 @@ replay-load:
 replay-stack:
 	DB_PORT=$(REPLAY_DB_PORT) API_PORT=$(REPLAY_API_PORT) PROM_PORT=$(REPLAY_PROM_PORT) GRAFANA_PORT=$(REPLAY_GRAFANA_PORT) REDIS_PORT=$(REPLAY_REDIS_PORT) \
 	docker compose --project-directory . $(REPLAY_COMPOSE) --project-name $(REPLAY_PROJECT) up -d --build
-	$(MAKE) replay-load
 	@printf "Replay stack running:\\n"
 	@printf "  API:       http://localhost:$(REPLAY_API_PORT)\\n"
 	@printf "  Prometheus http://localhost:$(REPLAY_PROM_PORT)\\n"
