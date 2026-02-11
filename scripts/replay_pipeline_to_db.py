@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import heapq
+import itertools
 import json
 import os
 import sys
@@ -166,7 +167,8 @@ def replay_bar(
         raise SystemExit(f"Missing pipeline file for {bar}: {path}")
 
     cols = ["pair", "timestamp", "duration_bars", "pnl_bps", "side", "active_leg"]
-    open_heap: list[tuple[int, Position, float]] = []
+    open_heap: list[tuple[int, int, Position, float]] = []
+    tie_breaker = itertools.count()
     processed = 0
     skipped_guardrail = 0
     skipped_risk = 0
@@ -186,7 +188,7 @@ def replay_bar(
             exit_ts_ns = int(row.exit_ts)
 
             while open_heap and open_heap[0][0] <= entry_ts_ns:
-                _, pos, pnl_bps = heapq.heappop(open_heap)
+                _, _, pos, pnl_bps = heapq.heappop(open_heap)
                 exit_dt = pos.exit_ts if pos.exit_ts is not None else _to_dt(entry_ts_ns)
                 _close_position(session, pos, exit_dt, pnl_bps, guardrail)
                 closed += 1
@@ -226,7 +228,7 @@ def replay_bar(
             opened += 1
 
             pos.exit_ts = _to_dt(exit_ts_ns)
-            heapq.heappush(open_heap, (exit_ts_ns, pos, float(row.pnl_bps)))
+            heapq.heappush(open_heap, (exit_ts_ns, next(tie_breaker), pos, float(row.pnl_bps)))
 
             if commit_every and processed % commit_every == 0:
                 session.commit()
@@ -237,7 +239,7 @@ def replay_bar(
             break
 
     while open_heap:
-        _, pos, pnl_bps = heapq.heappop(open_heap)
+        _, _, pos, pnl_bps = heapq.heappop(open_heap)
         _close_position(session, pos, pos.exit_ts, pnl_bps, guardrail)
         closed += 1
 
