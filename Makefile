@@ -79,20 +79,21 @@ db-restore-smoke:
 	python scripts/db_backup_restore_smoke.py
 
 REPLAY_PROJECT ?= behemoth_replay
-
+REPLAY_DB_PORT ?= 5433
+REPLAY_DB_URL ?= postgresql+psycopg2://behemoth:behemoth@localhost:$(REPLAY_DB_PORT)/behemoth
 
 deploy:
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 replay:
-	docker compose --project-directory . -f docker-compose.yml --project-name $(REPLAY_PROJECT) down -v >/dev/null 2>&1 || true
-	docker compose --project-directory . -f docker-compose.yml --project-name $(REPLAY_PROJECT) up -d db
-	@until docker compose --project-directory . -f docker-compose.yml --project-name $(REPLAY_PROJECT) exec -T db pg_isready -U behemoth >/dev/null 2>&1; do \
+	docker compose --project-directory . -f docker-compose.yml -f docker-compose.replay.yml --project-name $(REPLAY_PROJECT) down -v >/dev/null 2>&1 || true
+	REPLAY_DB_PORT=$(REPLAY_DB_PORT) docker compose --project-directory . -f docker-compose.yml -f docker-compose.replay.yml --project-name $(REPLAY_PROJECT) up -d db
+	@until docker compose --project-directory . -f docker-compose.yml -f docker-compose.replay.yml --project-name $(REPLAY_PROJECT) exec -T db pg_isready -U behemoth >/dev/null 2>&1; do \
 		printf "Waiting for db...\\n"; \
 		sleep 1; \
 	done
-	uv run alembic -c services/api/alembic.ini upgrade head
-	uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --sleep 0.1
+	DATABASE_URL=$(REPLAY_DB_URL) uv run alembic -c services/api/alembic.ini upgrade head
+	DATABASE_URL=$(REPLAY_DB_URL) uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --sleep 0.1
 
 help:
 	@printf "$(COLOR_HEADER)Targets:$(COLOR_RESET)\\n"
@@ -122,7 +123,7 @@ help:
 	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "docs-openapi" "Export OpenAPI spec only"
 	@printf "\\n$(COLOR_SECTION)== Data & Analysis ==$(COLOR_RESET)\\n"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "baselines" "Generate M5/M15 baseline snapshots"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "replay" "Replay historical trades into DB (isolated temp DB)"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "replay" "Replay historical trades into DB (isolated temp DB @ :$(REPLAY_DB_PORT))"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "reconcile" "Compare DB vs pipeline outputs"
 	@printf "\\n$(COLOR_SECTION)== Deployment ==$(COLOR_RESET)\\n"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "deploy" "Start prod-like stack (compose + prod overlay)"

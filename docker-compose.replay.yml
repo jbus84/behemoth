@@ -1,0 +1,4 @@
+services:
+  db:
+    ports:
+      - "${REPLAY_DB_PORT:-5433}:5432"
