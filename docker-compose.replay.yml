@@ -1,0 +1,21 @@
+services:
+  db:
+    ports:
+      - "${REPLAY_DB_PORT:-5433}:5432"
+
+  api:
+    ports:
+      - "${REPLAY_API_PORT:-8001}:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg2://behemoth:behemoth@db:5432/behemoth
+      REDIS_URL: redis://redis:6379/0
+      AUTO_CREATE_TABLES: "false"
+      ENABLE_REDIS: "true"
+
+  prometheus:
+    ports:
+      - "${REPLAY_PROM_PORT:-9091}:9090"
+
+  grafana:
+    ports:
+      - "${REPLAY_GRAFANA_PORT:-3001}:3000"
