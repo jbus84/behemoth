@@ -13,6 +13,11 @@ This site documents the **production rule‑based MOM strategy** and its API, ri
 - `api.md` for endpoints and state model.
 - `risk_controls.md` for sizing and kill‑switches.
 
+**Quickstart tasks**
+- Build or refresh events: `scripts/build_events_m5.py`, `scripts/build_events_m15.py`
+- Validate outputs vs baselines: `scripts/build_baselines.py`, then `uv run pytest -q`
+- Replay into DB and verify API alignment: `scripts/replay_pipeline_to_db.py`, `scripts/validate_db_predictions_vs_pipeline.py`
+
 **Local build**
 ```bash
 make docs
