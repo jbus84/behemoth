@@ -50,8 +50,14 @@ def _update_progress(client: redis.Redis | None, key: str, **payload: object) ->
     if client is None:
         return None
     data = {"updated_at": int(time.time()), **payload}
+    normalized = {}
+    for k, v in data.items():
+        if isinstance(v, bool):
+            normalized[k] = "1" if v else "0"
+        else:
+            normalized[k] = str(v)
     try:
-        client.hset(key, mapping={k: str(v) for k, v in data.items()})
+        client.hset(key, mapping=normalized)
         client.expire(key, 60 * 60)
     except redis.RedisError:
         return None

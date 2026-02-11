@@ -102,6 +102,20 @@ _account_labels: set[tuple[str]] = set()
 _replay_labels: set[tuple[str]] = set()
 
 
+def _to_float(value: object, default: float = 0.0) -> float:
+    if value is None:
+        return default
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).strip().lower()
+    if text in {"true", "false"}:
+        return 1.0 if text == "true" else 0.0
+    try:
+        return float(text)
+    except ValueError:
+        return default
+
+
 def track_request(method: str, path: str, status: int, duration_s: float) -> None:
     REQUEST_COUNT.labels(method=method, path=path, status=str(status)).inc()
     REQUEST_LATENCY.labels(method=method, path=path).observe(duration_s)
@@ -220,17 +234,17 @@ def refresh_state_metrics(db: Session) -> None:
         if not payload:
             continue
         replay_values[(bar,)] = {
-            "processed": float(payload.get("processed", 0)),
-            "total": float(payload.get("total", 0)),
-            "opened": float(payload.get("opened", 0)),
-            "closed": float(payload.get("closed", 0)),
-            "skipped_guardrail": float(payload.get("skipped_guardrail", 0)),
-            "skipped_risk": float(payload.get("skipped_risk", 0)),
-            "rate": float(payload.get("rate", 0)),
-            "eta_s": float(payload.get("eta_s", 0)),
-            "progress_pct": float(payload.get("progress_pct", 0)),
-            "done": float(payload.get("done", 0)),
-            "updated_at": float(payload.get("updated_at", 0)),
+            "processed": _to_float(payload.get("processed", 0)),
+            "total": _to_float(payload.get("total", 0)),
+            "opened": _to_float(payload.get("opened", 0)),
+            "closed": _to_float(payload.get("closed", 0)),
+            "skipped_guardrail": _to_float(payload.get("skipped_guardrail", 0)),
+            "skipped_risk": _to_float(payload.get("skipped_risk", 0)),
+            "rate": _to_float(payload.get("rate", 0)),
+            "eta_s": _to_float(payload.get("eta_s", 0)),
+            "progress_pct": _to_float(payload.get("progress_pct", 0)),
+            "done": _to_float(payload.get("done", 0)),
+            "updated_at": _to_float(payload.get("updated_at", 0)),
         }
 
     for label, values in replay_values.items():
