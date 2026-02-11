@@ -25,6 +25,30 @@
 - **Guardrail/robustness studies**: `analyze_*` in this list (kept because referenced by docs)
 - **Visualization**: `scripts/visualization/*`
 
+**Script → doc mapping (primary reference)**
+
+| Script | Primary Doc Section |
+| --- | --- |
+| `scripts/build_events_m5.py` | `docs/STRATEGY_MASTER_MANUAL.md` (Event builders) |
+| `scripts/build_events_m15.py` | `docs/STRATEGY_MASTER_MANUAL.md` (Event builders) |
+| `scripts/build_baselines.py` | `docs/validation.md` |
+| `scripts/build_repro_manifest.py` | `docs/validation.md` |
+| `scripts/validate_api_vs_pipeline.py` | `docs/validation.md` |
+| `scripts/validate_api_predictions_vs_pipeline.py` | `docs/validation.md` |
+| `scripts/validate_db_predictions_vs_pipeline.py` | `docs/validation.md` |
+| `scripts/replay_pipeline_to_db.py` | `docs/monitoring.md`, `docs/deployment.md` |
+| `scripts/export_openapi.py` | `docs/api.md` |
+| `scripts/db_backup_restore_smoke.py` | `docs/deployment.md` |
+| `scripts/report_m5_guardrail_diagnostics.py` | `docs/STRATEGY_MASTER_MANUAL.md` (Guardrail diagnostics) |
+| `scripts/report_mom_guardrail_diagnostics.py` | `docs/STRATEGY_MASTER_MANUAL.md` (Guardrail diagnostics) |
+| `scripts/wfo_mom_loss_streak.py` | `docs/analysis/mom_loss_limiter_wfo.md` |
+| `scripts/analyze_mom_robustness_suite.py` | `docs/STRATEGY_MASTER_MANUAL.md` (Robustness suite) |
+| `scripts/analyze_mom_robustness_suite_m5.py` | `docs/STRATEGY_MASTER_MANUAL.md` (Robustness suite) |
+| `scripts/analyze_guardrail_effectiveness.py` | `docs/STRATEGY_MASTER_MANUAL.md` (Guardrail effectiveness) |
+| `scripts/analyze_dd_timeweighted.py` | `docs/STRATEGY_MASTER_MANUAL.md` (Integrity checks) |
+| `scripts/visualization/plot_guardrail_monthly_and_dd.py` | `docs/STRATEGY_MASTER_MANUAL.md` (Figures) |
+| `scripts/visualization/render_pipeline_diagram.py` | `docs/architecture.md` |
+
 - `scripts/analyze_dd_timeweighted.py`
 - `scripts/analyze_execution_latency.py`
 - `scripts/analyze_execution_latency_resim.py`
