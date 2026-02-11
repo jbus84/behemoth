@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import heapq
+import json
 import os
 import sys
 import time
@@ -20,7 +21,12 @@ if str(ROOT) not in sys.path:
 from services.api.db import Base
 from services.api.guardrail import is_trade_allowed, update_guardrail_on_close
 from services.api.models import ActiveLeg, AccountState, GuardrailState, Position, PositionStatus, Side
-from services.api.risk import compute_target_notional, get_or_create_account_state, update_account_on_close
+from services.api.risk import (
+    check_risk_on_create,
+    compute_target_notional,
+    get_or_create_account_state,
+    update_account_on_close,
+)
 from services.api.settings import settings
 from services.api.validation import PIPELINE_PATHS
 
@@ -72,6 +78,7 @@ def replay_bar(
     bar: str,
     strategy_id: str,
     guardrail: bool,
+    enforce_risk: bool,
     commit_every: int,
     sleep_s: float,
     limit: int | None,
@@ -84,7 +91,8 @@ def replay_bar(
     cols = ["pair", "timestamp", "duration_bars", "pnl_bps", "side", "active_leg"]
     open_heap: list[tuple[int, Position, float]] = []
     processed = 0
-    skipped = 0
+    skipped_guardrail = 0
+    skipped_risk = 0
     opened = 0
     closed = 0
 
@@ -110,13 +118,19 @@ def replay_bar(
             if guardrail and settings.guardrail_enabled:
                 allowed, _, _ = is_trade_allowed(session, strategy_id, row.pair, entry_dt)
                 if not allowed:
-                    skipped += 1
+                    skipped_guardrail += 1
                     continue
 
             state = get_or_create_account_state(session, strategy_id)
             equity = float(state.equity)
             notional = compute_target_notional(strategy_id, row.pair, equity)
             alloc_frac = notional / equity if equity else 0.0
+
+            if enforce_risk:
+                risk_ok, _ = check_risk_on_create(session, strategy_id, row.pair, float(notional))
+                if not risk_ok:
+                    skipped_risk += 1
+                    continue
 
             pos = Position(
                 strategy_id=strategy_id,
@@ -158,7 +172,8 @@ def replay_bar(
         "processed": processed,
         "opened": opened,
         "closed": closed,
-        "skipped_guardrail": skipped,
+        "skipped_guardrail": skipped_guardrail,
+        "skipped_risk": skipped_risk,
     }
 
 
@@ -169,10 +184,13 @@ def main() -> None:
     parser.add_argument("--database-url", default=os.getenv("DATABASE_URL"))
     parser.add_argument("--guardrail", action="store_true", default=True)
     parser.add_argument("--no-guardrail", dest="guardrail", action="store_false")
+    parser.add_argument("--enforce-risk", action="store_true", default=True)
+    parser.add_argument("--no-enforce-risk", dest="enforce_risk", action="store_false")
     parser.add_argument("--reset", action="store_true", help="clear positions/guardrail/account for strategy")
     parser.add_argument("--commit-every", type=int, default=5000)
     parser.add_argument("--sleep", type=float, default=0.0, help="sleep seconds between commits")
     parser.add_argument("--limit", type=int, default=None, help="limit trades for quick run")
+    parser.add_argument("--report", default="data/analysis/replay_report.json", help="write report JSON")
     args = parser.parse_args()
 
     if not args.database_url:
@@ -194,12 +212,18 @@ def main() -> None:
                 bar,
                 strategy_id,
                 guardrail=args.guardrail,
+                enforce_risk=args.enforce_risk,
                 commit_every=args.commit_every,
                 sleep_s=args.sleep,
                 limit=args.limit,
             )
             report.append(result)
             print(result)
+
+    out_path = Path(args.report)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(report, indent=2))
+    print(f"Saved report: {out_path}")
 
 
 if __name__ == "__main__":

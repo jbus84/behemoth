@@ -39,3 +39,6 @@ uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --sleep 0.1
 This streams trades into the API DB, updates guardrail/account state, and
 populates live metrics that Grafana displays. The `--sleep` flag slows the
 replay so the dashboard visibly updates.
+
+By default, the replay enforces risk gates and guardrail logic and writes a
+JSON report to `data/analysis/replay_report.json`.

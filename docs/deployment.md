@@ -88,4 +88,7 @@ export DATABASE_URL=postgresql+psycopg2://behemoth:behemoth@localhost:5432/behem
 uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --sleep 0.1
 ```
 
+The replay enforces guardrail + risk gates by default and writes a report to
+`data/analysis/replay_report.json`.
+
 Automatic halts are applied via risk limits in `configs/api.yaml`.
