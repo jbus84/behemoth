@@ -7,6 +7,7 @@ Create Date: 2026-02-10
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 revision = "001"
 down_revision = None
@@ -16,13 +17,15 @@ depends_on = None
 
 def upgrade() -> None:
     bind = op.get_bind()
-    side_enum = sa.Enum("LONG", "SHORT", name="side")
-    activeleg_enum = sa.Enum("X", "Y", name="activeleg")
-    positionstatus_enum = sa.Enum(
+    side_enum = postgresql.ENUM("LONG", "SHORT", name="side")
+    activeleg_enum = postgresql.ENUM("X", "Y", name="activeleg")
+    positionstatus_enum = postgresql.ENUM(
         "PENDING", "OPEN", "CLOSING", "CLOSED", "CANCELLED", "FAILED", name="positionstatus"
     )
-    orderstatus_enum = sa.Enum("NEW", "SUBMITTED", "FILLED", "CANCELLED", "FAILED", name="orderstatus")
-    ordertype_enum = sa.Enum("MARKET", "LIMIT", "STOP", name="ordertype")
+    orderstatus_enum = postgresql.ENUM(
+        "NEW", "SUBMITTED", "FILLED", "CANCELLED", "FAILED", name="orderstatus"
+    )
+    ordertype_enum = postgresql.ENUM("MARKET", "LIMIT", "STOP", name="ordertype")
 
     for enum in (side_enum, activeleg_enum, positionstatus_enum, orderstatus_enum, ordertype_enum):
         enum.create(bind, checkfirst=True)
@@ -34,13 +37,19 @@ def upgrade() -> None:
         sa.Column("pair", sa.String(), nullable=False),
         sa.Column("entry_ts", sa.DateTime(timezone=True)),
         sa.Column("exit_ts", sa.DateTime(timezone=True)),
-        sa.Column("side", sa.Enum("LONG", "SHORT", name="side", create_type=False), nullable=False),
         sa.Column(
-            "active_leg", sa.Enum("X", "Y", name="activeleg", create_type=False), nullable=False
+            "side",
+            postgresql.ENUM("LONG", "SHORT", name="side", create_type=False),
+            nullable=False,
+        ),
+        sa.Column(
+            "active_leg",
+            postgresql.ENUM("X", "Y", name="activeleg", create_type=False),
+            nullable=False,
         ),
         sa.Column(
             "status",
-            sa.Enum(
+            postgresql.ENUM(
                 "PENDING",
                 "OPEN",
                 "CLOSING",
@@ -70,7 +79,7 @@ def upgrade() -> None:
         sa.Column("position_id", sa.String(), sa.ForeignKey("positions.id"), nullable=False),
         sa.Column(
             "status",
-            sa.Enum(
+            postgresql.ENUM(
                 "NEW",
                 "SUBMITTED",
                 "FILLED",
@@ -83,7 +92,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "order_type",
-            sa.Enum("MARKET", "LIMIT", "STOP", name="ordertype", create_type=False),
+            postgresql.ENUM("MARKET", "LIMIT", "STOP", name="ordertype", create_type=False),
             nullable=False,
         ),
         sa.Column("qty", sa.Float(), nullable=False),
