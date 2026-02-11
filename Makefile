@@ -101,7 +101,7 @@ replay:
 	DATABASE_URL=$(REPLAY_DB_URL) uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --sleep 0.1
 
 replay-stack:
-	REPLAY_DB_PORT=$(REPLAY_DB_PORT) REPLAY_API_PORT=$(REPLAY_API_PORT) REPLAY_PROM_PORT=$(REPLAY_PROM_PORT) REPLAY_GRAFANA_PORT=$(REPLAY_GRAFANA_PORT) REPLAY_REDIS_PORT=$(REPLAY_REDIS_PORT) \
+	DB_PORT=$(REPLAY_DB_PORT) API_PORT=$(REPLAY_API_PORT) PROM_PORT=$(REPLAY_PROM_PORT) GRAFANA_PORT=$(REPLAY_GRAFANA_PORT) REDIS_PORT=$(REPLAY_REDIS_PORT) \
 	docker compose --project-directory . -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.replay.yml --project-name $(REPLAY_PROJECT) up -d --build
 	@printf "Replay stack running:\\n"
 	@printf "  API:       http://localhost:$(REPLAY_API_PORT)\\n"
