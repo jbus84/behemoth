@@ -57,6 +57,14 @@ def _update_progress(client: redis.Redis | None, key: str, **payload: object) ->
         return None
 
 
+def _count_rows(path: Path) -> int:
+    try:
+        with path.open("rb") as handle:
+            return max(sum(1 for _ in handle) - 1, 0)
+    except OSError:
+        return 0
+
+
 def _compute_exit_ts(df: pd.DataFrame, bar_minutes: int) -> pd.Series:
     bar_ns = int(pd.Timedelta(minutes=bar_minutes).value)
     durations = df["duration_bars"].astype(int)
@@ -201,6 +209,8 @@ def replay_bar(
     started_at = time.time()
     progress_key = f"replay:progress:{bar}"
     progress_client = _get_progress_redis()
+    total_rows = _count_rows(path)
+    _update_progress(progress_client, progress_key, total=total_rows, done=False)
 
     for chunk in pd.read_csv(path, usecols=cols, chunksize=50000):
         chunk = chunk.copy()
@@ -263,6 +273,9 @@ def replay_bar(
                     time.sleep(sleep_s)
                 elapsed = max(time.time() - started_at, 1e-6)
                 rate = processed / elapsed
+                remaining = max(total_rows - processed, 0)
+                eta_s = remaining / rate if rate > 0 else 0.0
+                progress_pct = (processed / total_rows * 100.0) if total_rows else 0.0
                 print(
                     f"[{bar}] processed={processed} opened={opened} closed={closed} "
                     f"skipped_guardrail={skipped_guardrail} skipped_risk={skipped_risk} "
@@ -276,6 +289,10 @@ def replay_bar(
                     closed=closed,
                     skipped_guardrail=skipped_guardrail,
                     skipped_risk=skipped_risk,
+                    rate=rate,
+                    eta_s=eta_s,
+                    progress_pct=progress_pct,
+                    total=total_rows,
                     done=False,
                 )
 
@@ -296,6 +313,10 @@ def replay_bar(
         closed=closed,
         skipped_guardrail=skipped_guardrail,
         skipped_risk=skipped_risk,
+        rate=0.0,
+        eta_s=0.0,
+        progress_pct=100.0 if total_rows else 0.0,
+        total=total_rows,
         done=True,
     )
 

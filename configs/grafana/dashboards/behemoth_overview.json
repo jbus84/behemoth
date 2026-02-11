@@ -250,8 +250,8 @@
     ,
     {
       "id": 11,
-      "type": "stat",
-      "title": "Replay Processed",
+      "type": "gauge",
+      "title": "Replay Progress (%)",
       "gridPos": {
         "x": 12,
         "y": 16,
@@ -260,7 +260,44 @@
       },
       "targets": [
         {
-          "expr": "behemoth_replay_processed_total",
+          "expr": "behemoth_replay_progress_pct",
+          "legendFormat": "{{bar}}"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Replay ETA (s)",
+      "gridPos": {
+        "x": 12,
+        "y": 22,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "behemoth_replay_eta_seconds",
           "legendFormat": "{{bar}}"
         }
       ],
@@ -277,6 +314,60 @@
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "Replay Rate (/s)",
+      "gridPos": {
+        "x": 18,
+        "y": 22,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "behemoth_replay_rate_per_s",
+          "legendFormat": "{{bar}}"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Active Positions (Live)",
+      "gridPos": {
+        "x": 12,
+        "y": 26,
+        "w": 12,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "behemoth_positions_active_total{strategy_id=~\"$strategy\"}",
+          "legendFormat": "{{strategy_id}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
       }
     }
   ],
