@@ -35,6 +35,7 @@ docs:
 	uv run mkdocs serve -a 127.0.0.1:8001
 
 docs-build:
+	uv run python scripts/export_openapi.py
 	uv run mkdocs build
 
 docs-clean:
