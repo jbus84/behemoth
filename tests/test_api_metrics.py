@@ -35,3 +35,4 @@ def test_metrics_endpoint():
     resp = client.get("/metrics")
     assert resp.status_code == 200
     assert "behemoth_http_requests_total" in resp.text
+    assert "behemoth_positions_active_total" in resp.text

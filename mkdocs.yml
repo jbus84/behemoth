@@ -52,6 +52,7 @@ nav:
   - OpenAPI: openapi.md
   - Core Reference: core_reference.md
   - Risk Controls: risk_controls.md
+  - Monitoring: monitoring.md
   - Data Pipeline: data_pipeline.md
   - Validation: validation.md
   - Config Reference: config_reference.md

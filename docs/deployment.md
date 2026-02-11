@@ -63,6 +63,11 @@ Grafana is pre‑provisioned with the Prometheus datasource from:
 
 - `configs/grafana/datasources/datasource.yml`
 
+Grafana dashboards are provisioned from:
+
+- `configs/grafana/dashboards/behemoth_overview.json`
+- `configs/grafana/dashboards/dashboard.yml`
+
 Prometheus scrape config lives at:
 
 - `configs/prometheus.yml`

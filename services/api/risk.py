@@ -133,8 +133,8 @@ def update_account_on_close(
     else:
         state.consecutive_losses = 0
 
-    day_start_equity = cast(float, state.day_start_equity)
-    peak_equity = cast(float, state.peak_equity)
+    day_start_equity = float(cast(float, state.day_start_equity))
+    peak_equity = float(cast(float, state.peak_equity))
     daily_loss_pct = (equity_after - day_start_equity) / day_start_equity
     dd_pct = (equity_after - peak_equity) / peak_equity
 

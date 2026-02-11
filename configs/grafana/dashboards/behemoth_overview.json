@@ -1,0 +1,130 @@
+{
+  "uid": "behemoth-overview",
+  "title": "Behemoth Overview",
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": {"from": "now-24h", "to": "now"},
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "API Requests / 5m",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+      "targets": [
+        {
+          "expr": "sum(rate(behemoth_http_requests_total[5m]))",
+          "legendFormat": "req/s"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {"unit": "reqps", "decimals": 2}
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "p95 Latency (5m)",
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(behemoth_http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {"unit": "s", "decimals": 3}
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Active Positions",
+      "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+      "targets": [
+        {"expr": "sum(behemoth_positions_active_total)", "legendFormat": "active"}
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Guardrail Paused Pairs",
+      "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4},
+      "targets": [
+        {"expr": "sum(behemoth_guardrail_paused_total)", "legendFormat": "paused"}
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Account Equity",
+      "gridPos": {"x": 0, "y": 4, "w": 12, "h": 6},
+      "targets": [
+        {"expr": "behemoth_account_equity", "legendFormat": "{{strategy_id}}"}
+      ],
+      "fieldConfig": {
+        "defaults": {"unit": "currencyUSD", "decimals": 2}
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Account Peak Equity",
+      "gridPos": {"x": 12, "y": 4, "w": 12, "h": 6},
+      "targets": [
+        {"expr": "behemoth_account_peak_equity", "legendFormat": "{{strategy_id}}"}
+      ],
+      "fieldConfig": {
+        "defaults": {"unit": "currencyUSD", "decimals": 2}
+      }
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Account Halted",
+      "gridPos": {"x": 0, "y": 10, "w": 6, "h": 4},
+      "targets": [
+        {"expr": "max(behemoth_account_halted)", "legendFormat": "halted"}
+      ],
+      "fieldConfig": {
+        "defaults": {"mappings": [{"type": "value", "options": {"0": {"text": "OK"}, "1": {"text": "HALTED"}}}]}
+      }
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Consecutive Losses",
+      "gridPos": {"x": 6, "y": 10, "w": 6, "h": 4},
+      "targets": [
+        {"expr": "max(behemoth_account_consecutive_losses)", "legendFormat": "losses"}
+      ]
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Active Positions by Pair",
+      "gridPos": {"x": 12, "y": 10, "w": 12, "h": 6},
+      "targets": [
+        {"expr": "behemoth_positions_active_by_pair", "legendFormat": "{{strategy_id}} {{pair}}"}
+      ],
+      "transformations": [
+        {"id": "labelsToFields"},
+        {"id": "organize", "options": {"renameByName": {"Value": "count"}}}
+      ]
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Guardrail Paused Pairs",
+      "gridPos": {"x": 0, "y": 16, "w": 12, "h": 6},
+      "targets": [
+        {"expr": "behemoth_guardrail_paused_by_pair == 1", "legendFormat": "{{strategy_id}} {{pair}}"}
+      ],
+      "transformations": [
+        {"id": "labelsToFields"},
+        {"id": "organize", "options": {"renameByName": {"Value": "paused"}}}
+      ]
+    }
+  ]
+}

@@ -13,7 +13,14 @@ from .cache import cache_get_position, cache_invalidate_position, cache_set_posi
 from .db import Base, engine, get_db
 from .guardrail import get_guardrail_state, is_trade_allowed, update_guardrail_on_close
 from .logging import configure_logging, log_event
-from .metrics import GUARDRAIL_BLOCKS, RISK_HALTS, metrics_response, timeit, track_request
+from .metrics import (
+    GUARDRAIL_BLOCKS,
+    RISK_HALTS,
+    metrics_response,
+    refresh_state_metrics,
+    timeit,
+    track_request,
+)
 from .models import IdempotencyKey, Order, OrderStatus, Position, PositionEvent, PositionStatus
 from .predict import generate_mom_events_for_pair
 from .risk import (
@@ -85,9 +92,10 @@ async def metrics_middleware(request: Request, call_next):
 
 
 @app.get("/metrics")
-def metrics():
+def metrics(db: Session = Depends(get_db)):
     if not settings.metrics_enabled:
         raise HTTPException(status_code=404, detail="metrics disabled")
+    refresh_state_metrics(db)
     return metrics_response()
 
 
