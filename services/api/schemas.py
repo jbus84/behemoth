@@ -79,6 +79,14 @@ class GuardrailStateResponse(BaseModel):
     cooldown_remaining_s: int | None
 
 
+class GuardrailPausedResponse(BaseModel):
+    strategy_id: str
+    pair: str
+    loss_streak: int
+    pause_until: datetime
+    cooldown_remaining_s: int
+
+
 class AccountStateResponse(BaseModel):
     strategy_id: str
     equity: float

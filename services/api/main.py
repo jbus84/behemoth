@@ -21,7 +21,15 @@ from .metrics import (
     timeit,
     track_request,
 )
-from .models import IdempotencyKey, Order, OrderStatus, Position, PositionEvent, PositionStatus
+from .models import (
+    GuardrailState,
+    IdempotencyKey,
+    Order,
+    OrderStatus,
+    Position,
+    PositionEvent,
+    PositionStatus,
+)
 from .predict import generate_mom_events_for_pair
 from .risk import (
     check_risk_on_create,
@@ -33,6 +41,7 @@ from .runtime import validate_runtime_config
 from .schemas import (
     AccountStateResponse,
     GuardrailStateResponse,
+    GuardrailPausedResponse,
     OrderCreate,
     OrderResponse,
     PositionClose,
@@ -404,6 +413,32 @@ def guardrail_status(strategy_id: str, pair: str, db: Session = Depends(get_db))
         "can_trade": allowed,
         "cooldown_remaining_s": cooldown_remaining,
     }
+
+
+@app.get("/guardrail/paused", response_model=list[GuardrailPausedResponse])
+def guardrail_paused(strategy_id: str | None = None, db: Session = Depends(get_db)):
+    now = _now()
+    query = db.query(GuardrailState).filter(
+        GuardrailState.pause_until.is_not(None),
+        GuardrailState.pause_until > now,
+    )
+    if strategy_id:
+        query = query.filter(GuardrailState.strategy_id == strategy_id)
+    rows = query.all()
+    results: list[GuardrailPausedResponse] = []
+    for row in rows:
+        pause_until = cast(datetime, row.pause_until)
+        cooldown_remaining = max(int((pause_until - now).total_seconds()), 0)
+        results.append(
+            GuardrailPausedResponse(
+                strategy_id=cast(str, row.strategy_id),
+                pair=cast(str, row.pair),
+                loss_streak=cast(int, row.loss_streak),
+                pause_until=pause_until,
+                cooldown_remaining_s=cooldown_remaining,
+            )
+        )
+    return results
 
 
 @app.get("/risk/{strategy_id}", response_model=AccountStateResponse)
