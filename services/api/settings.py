@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,9 +19,13 @@ def _yaml_settings_source() -> dict[str, Any]:
 
 class Settings(BaseSettings):
     database_url: str = Field(
-        default="postgresql+psycopg2://behemoth:behemoth@localhost:5432/behemoth"
+        default="postgresql+psycopg2://behemoth:behemoth@localhost:5432/behemoth",
+        validation_alias=AliasChoices("DATABASE_URL", "database_url"),
     )
-    redis_url: str = Field(default="redis://localhost:6379/0")
+    redis_url: str = Field(
+        default="redis://localhost:6379/0",
+        validation_alias=AliasChoices("REDIS_URL", "redis_url"),
+    )
     enable_redis: bool = Field(default=True)
     auto_create_tables: bool = Field(default=False)
     log_level: str = Field(default="INFO")
