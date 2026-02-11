@@ -45,3 +45,6 @@ JSON report to `data/analysis/replay_report.json`.
 
 The report includes replay counts plus summary stats (trades, mean PnL, total
 PnL, max DD, Sharpe metrics) per bar.
+
+It also includes equity curve stats (CAGR, max DD %, max daily DD %) and
+monthly buckets for time‑based inspection.

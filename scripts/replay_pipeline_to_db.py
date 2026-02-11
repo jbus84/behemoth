@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
+import numpy as np
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -71,6 +72,82 @@ def _close_position(session, pos: Position, exit_ts: datetime, pnl_bps: float, g
             exit_ts=exit_ts,
             pnl_bps=float(pnl_bps),
         )
+
+
+def _load_positions(session, strategy_id: str) -> pd.DataFrame:
+    df = pd.read_sql(
+        "SELECT pnl_bps, exit_ts, notional_usd, size FROM positions "
+        "WHERE strategy_id = ? AND pnl_bps IS NOT NULL AND exit_ts IS NOT NULL",
+        session.connection(),
+        params=[strategy_id],
+    )
+    if df.empty:
+        return df
+    df["exit_ts"] = pd.to_datetime(df["exit_ts"], utc=True)
+    df["notional_usd"] = df["notional_usd"].fillna(df["size"]).astype(float)
+    df["pnl_usd"] = df["notional_usd"] * df["pnl_bps"] / 10000.0
+    return df.sort_values("exit_ts")
+
+
+def _equity_stats(df: pd.DataFrame) -> dict:
+    if df.empty:
+        return {
+            "start_equity": float(settings.account_equity_start),
+            "end_equity": float(settings.account_equity_start),
+            "total_pnl_usd": 0.0,
+            "max_dd_usd": 0.0,
+            "max_dd_pct": 0.0,
+            "max_daily_dd_pct": 0.0,
+            "cagr": 0.0,
+        }
+    start_equity = float(settings.account_equity_start)
+    equity = start_equity + df["pnl_usd"].cumsum()
+    peak = equity.cummax()
+    dd = equity - peak
+    max_dd_usd = float(dd.min())
+    max_dd_pct = float((dd / peak).min())
+
+    daily = df.groupby(df["exit_ts"].dt.date)["pnl_usd"].sum()
+    daily_equity = start_equity + daily.cumsum()
+    daily_peak = daily_equity.cummax()
+    daily_dd = daily_equity - daily_peak
+    max_daily_dd_pct = float((daily_dd / daily_peak).min()) if not daily_dd.empty else 0.0
+
+    start_date = df["exit_ts"].iloc[0].date()
+    end_date = df["exit_ts"].iloc[-1].date()
+    days = max((end_date - start_date).days, 0)
+    cagr = (equity.iloc[-1] / start_equity) ** (365.25 / days) - 1.0 if days > 0 else 0.0
+
+    return {
+        "start_equity": start_equity,
+        "end_equity": float(equity.iloc[-1]),
+        "total_pnl_usd": float(df["pnl_usd"].sum()),
+        "max_dd_usd": max_dd_usd,
+        "max_dd_pct": max_dd_pct,
+        "max_daily_dd_pct": max_daily_dd_pct,
+        "cagr": float(cagr),
+    }
+
+
+def _monthly_metrics(df: pd.DataFrame) -> list[dict]:
+    if df.empty:
+        return []
+    df = df.copy()
+    df["month"] = df["exit_ts"].dt.to_period("M").astype(str)
+    rows: list[dict] = []
+    for month, sub in df.groupby("month"):
+        metrics = _metrics(
+            sub["pnl_bps"].to_numpy(),
+            sub["exit_ts"].astype("int64").to_numpy(),
+        )
+        rows.append(
+            {
+                "month": month,
+                **metrics,
+                "total_pnl_usd": float(sub["pnl_usd"].sum()),
+            }
+        )
+    return rows
 
 
 def replay_bar(
@@ -167,18 +244,25 @@ def replay_bar(
     session.commit()
 
     metrics = {"trades": 0, "mean_pnl": 0.0, "total_pnl": 0.0, "max_dd": 0.0}
+    equity_stats = {
+        "start_equity": float(settings.account_equity_start),
+        "end_equity": float(settings.account_equity_start),
+        "total_pnl_usd": 0.0,
+        "max_dd_usd": 0.0,
+        "max_dd_pct": 0.0,
+        "max_daily_dd_pct": 0.0,
+        "cagr": 0.0,
+    }
+    monthly = []
     try:
-        pnls = pd.read_sql(
-            "SELECT pnl_bps, exit_ts FROM positions WHERE strategy_id = ? AND pnl_bps IS NOT NULL",
-            session.connection(),
-            params=[strategy_id],
-        )
-        if not pnls.empty:
-            pnls = pnls.dropna(subset=["pnl_bps", "exit_ts"]).sort_values("exit_ts")
+        pnl_df = _load_positions(session, strategy_id)
+        if not pnl_df.empty:
             metrics = _metrics(
-                pnls["pnl_bps"].to_numpy(),
-                pnls["exit_ts"].astype("int64").to_numpy(),
+                pnl_df["pnl_bps"].to_numpy(),
+                pnl_df["exit_ts"].astype("int64").to_numpy(),
             )
+            equity_stats = _equity_stats(pnl_df)
+            monthly = _monthly_metrics(pnl_df)
     except Exception:
         pass
 
@@ -191,6 +275,8 @@ def replay_bar(
         "skipped_guardrail": skipped_guardrail,
         "skipped_risk": skipped_risk,
         "summary": metrics,
+        "equity_stats": equity_stats,
+        "monthly": monthly,
     }
 
 
