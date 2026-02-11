@@ -217,6 +217,7 @@ def replay_bar(
     progress_client = _get_progress_redis()
     total_rows = _count_rows(path)
     _update_progress(progress_client, progress_key, total=total_rows, done=False)
+    print(f"[{bar}] starting replay: total_rows={total_rows}", flush=True)
 
     for chunk in pd.read_csv(path, usecols=cols, chunksize=50000):
         chunk = chunk.copy()
@@ -286,7 +287,7 @@ def replay_bar(
                     f"[{bar}] processed={processed} opened={opened} closed={closed} "
                     f"skipped_guardrail={skipped_guardrail} skipped_risk={skipped_risk} "
                     f"rate={rate:.1f}/s"
-                )
+                , flush=True)
                 _update_progress(
                     progress_client,
                     progress_key,
