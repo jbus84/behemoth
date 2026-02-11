@@ -2,3 +2,5 @@ services:
   api:
     volumes:
       - ./data:/app/data:ro
+    environment:
+      VALIDATE_PIPELINE_FILES: "false"
