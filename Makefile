@@ -85,6 +85,7 @@ REPLAY_API_PORT ?= 8001
 REPLAY_PROM_PORT ?= 9091
 REPLAY_GRAFANA_PORT ?= 3001
 REPLAY_REDIS_PORT ?= 6380
+REPLAY_COMPOSE = -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.replay.yml
 
 deploy:
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
@@ -101,19 +102,24 @@ replay:
 	DATABASE_URL=$(REPLAY_DB_URL) uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --sleep 0.1
 
 replay-load:
+	@until docker compose --project-directory . $(REPLAY_COMPOSE) --project-name $(REPLAY_PROJECT) exec -T db pg_isready -U behemoth >/dev/null 2>&1; do \
+		printf "Waiting for replay db...\\n"; \
+		sleep 1; \
+	done
 	DATABASE_URL=$(REPLAY_DB_URL) uv run alembic -c services/api/alembic.ini upgrade head
 	DATABASE_URL=$(REPLAY_DB_URL) uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --sleep 0.1
 
 replay-stack:
 	DB_PORT=$(REPLAY_DB_PORT) API_PORT=$(REPLAY_API_PORT) PROM_PORT=$(REPLAY_PROM_PORT) GRAFANA_PORT=$(REPLAY_GRAFANA_PORT) REDIS_PORT=$(REPLAY_REDIS_PORT) \
-	docker compose --project-directory . -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.replay.yml --project-name $(REPLAY_PROJECT) up -d --build
+	docker compose --project-directory . $(REPLAY_COMPOSE) --project-name $(REPLAY_PROJECT) up -d --build
+	$(MAKE) replay-load
 	@printf "Replay stack running:\\n"
 	@printf "  API:       http://localhost:$(REPLAY_API_PORT)\\n"
 	@printf "  Prometheus http://localhost:$(REPLAY_PROM_PORT)\\n"
 	@printf "  Grafana:   http://localhost:$(REPLAY_GRAFANA_PORT) (admin/admin)\\n"
 
 replay-stack-down:
-	docker compose --project-directory . -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.replay.yml --project-name $(REPLAY_PROJECT) down -v
+	docker compose --project-directory . $(REPLAY_COMPOSE) --project-name $(REPLAY_PROJECT) down -v
 
 help:
 	@printf "$(COLOR_HEADER)Targets:$(COLOR_RESET)\\n"
