@@ -15,6 +15,18 @@ depends_on = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    side_enum = sa.Enum("LONG", "SHORT", name="side")
+    activeleg_enum = sa.Enum("X", "Y", name="activeleg")
+    positionstatus_enum = sa.Enum(
+        "PENDING", "OPEN", "CLOSING", "CLOSED", "CANCELLED", "FAILED", name="positionstatus"
+    )
+    orderstatus_enum = sa.Enum("NEW", "SUBMITTED", "FILLED", "CANCELLED", "FAILED", name="orderstatus")
+    ordertype_enum = sa.Enum("MARKET", "LIMIT", "STOP", name="ordertype")
+
+    for enum in (side_enum, activeleg_enum, positionstatus_enum, orderstatus_enum, ordertype_enum):
+        enum.create(bind, checkfirst=True)
+
     op.create_table(
         "positions",
         sa.Column("id", sa.String(), primary_key=True),
@@ -22,12 +34,21 @@ def upgrade() -> None:
         sa.Column("pair", sa.String(), nullable=False),
         sa.Column("entry_ts", sa.DateTime(timezone=True)),
         sa.Column("exit_ts", sa.DateTime(timezone=True)),
-        sa.Column("side", sa.Enum("LONG", "SHORT", name="side"), nullable=False),
-        sa.Column("active_leg", sa.Enum("X", "Y", name="activeleg"), nullable=False),
+        sa.Column("side", sa.Enum("LONG", "SHORT", name="side", create_type=False), nullable=False),
+        sa.Column(
+            "active_leg", sa.Enum("X", "Y", name="activeleg", create_type=False), nullable=False
+        ),
         sa.Column(
             "status",
             sa.Enum(
-                "PENDING", "OPEN", "CLOSING", "CLOSED", "CANCELLED", "FAILED", name="positionstatus"
+                "PENDING",
+                "OPEN",
+                "CLOSING",
+                "CLOSED",
+                "CANCELLED",
+                "FAILED",
+                name="positionstatus",
+                create_type=False,
             ),
             nullable=False,
         ),
@@ -49,11 +70,21 @@ def upgrade() -> None:
         sa.Column("position_id", sa.String(), sa.ForeignKey("positions.id"), nullable=False),
         sa.Column(
             "status",
-            sa.Enum("NEW", "SUBMITTED", "FILLED", "CANCELLED", "FAILED", name="orderstatus"),
+            sa.Enum(
+                "NEW",
+                "SUBMITTED",
+                "FILLED",
+                "CANCELLED",
+                "FAILED",
+                name="orderstatus",
+                create_type=False,
+            ),
             nullable=False,
         ),
         sa.Column(
-            "order_type", sa.Enum("MARKET", "LIMIT", "STOP", name="ordertype"), nullable=False
+            "order_type",
+            sa.Enum("MARKET", "LIMIT", "STOP", name="ordertype", create_type=False),
+            nullable=False,
         ),
         sa.Column("qty", sa.Float(), nullable=False),
         sa.Column("price", sa.Float()),
