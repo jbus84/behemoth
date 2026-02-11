@@ -5,7 +5,7 @@ COLOR_SECTION := \033[1;35m
 COLOR_TARGET := \033[0;32m
 COLOR_DOC := \033[0;34m
 COLOR_DESC := \033[2m
-.PHONY: up down logs api migrate test db docs docs-build docs-clean docs-openapi precommit-install precommit-run lint format baselines db-backup db-restore db-restore-smoke deploy replay replay-stack replay-stack-down help
+.PHONY: up down logs api migrate test db docs docs-build docs-clean docs-openapi precommit-install precommit-run lint format baselines db-backup db-restore db-restore-smoke deploy replay replay-load replay-stack replay-stack-down help
 
 up:
 	docker compose up -d --build
@@ -100,6 +100,10 @@ replay:
 	DATABASE_URL=$(REPLAY_DB_URL) uv run alembic -c services/api/alembic.ini upgrade head
 	DATABASE_URL=$(REPLAY_DB_URL) uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --sleep 0.1
 
+replay-load:
+	DATABASE_URL=$(REPLAY_DB_URL) uv run alembic -c services/api/alembic.ini upgrade head
+	DATABASE_URL=$(REPLAY_DB_URL) uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --sleep 0.1
+
 replay-stack:
 	DB_PORT=$(REPLAY_DB_PORT) API_PORT=$(REPLAY_API_PORT) PROM_PORT=$(REPLAY_PROM_PORT) GRAFANA_PORT=$(REPLAY_GRAFANA_PORT) REDIS_PORT=$(REPLAY_REDIS_PORT) \
 	docker compose --project-directory . -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.replay.yml --project-name $(REPLAY_PROJECT) up -d --build
@@ -140,6 +144,7 @@ help:
 	@printf "\\n$(COLOR_SECTION)== Data & Analysis ==$(COLOR_RESET)\\n"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "baselines" "Generate M5/M15 baseline snapshots"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "replay" "Replay historical trades into DB (isolated temp DB @ :$(REPLAY_DB_PORT))"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "replay-load" "Load replay data into temp DB (expects stack already running)"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "replay-stack" "Run isolated replay stack (DB/API/Prom/Grafana) on alt ports"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "replay-stack-down" "Stop isolated replay stack"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "reconcile" "Compare DB vs pipeline outputs"
