@@ -148,6 +148,11 @@ def refresh_state_metrics(db: Session) -> None:
             "halted": 1.0 if state.halted else 0.0,
         }
 
+    # Ensure gauges show 0 instead of "No data" when there are no active/paused positions.
+    for label in account_values.keys():
+        active_by_strategy.setdefault(label, 0.0)
+        paused_by_strategy.setdefault(label, 0.0)
+
     for label, values in account_values.items():
         ACCOUNT_EQUITY.labels(*label).set(values["equity"])
         ACCOUNT_PEAK_EQUITY.labels(*label).set(values["peak"])
