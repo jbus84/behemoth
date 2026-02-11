@@ -28,62 +28,11 @@ Scope: MOM strategy datasets (M5/M15) + guardrail timing sensitivity
 - **Max concurrent trades**: INFO — max_open=147
 
 ## Feature Lookahead Scan
-- M5 compute_features_at_entry contains i+? False
-- M15 compute_features_at_entry contains i+? False
+- M5 compute_features_at_entry: skipped (features removed)
+- M15 compute_features_at_entry: skipped (features removed)
 
 ## Outcome Usage Scan
-Occurrences of 'outcome' in scripts:
-- scripts/build_meta_dataset_v3_m5_1step.py:# record trade outcome for rolling stats
-- scripts/integrity_audit.py:if "outcome" in text:
-- scripts/integrity_audit.py:lines.append("Occurrences of 'outcome' in scripts:")
-- scripts/integrity_audit.py:lines.append("- No 'outcome' usages found.")
-- scripts/integrity_audit.py:lines.append("Unexpected outcome usage (needs review):")
-- scripts/integrity_audit.py:lines.append("- No unexpected outcome usage.")
-- scripts/build_meta_dataset_v3_m1.py:pnl, duration, outcome = simulate_trade(
-- scripts/build_meta_dataset_v3_m1.py:"outcome": outcome,
-- scripts/build_meta_dataset_v3_m1.py:pnl, duration, outcome = simulate_trade(
-- scripts/build_meta_dataset_v3_m1.py:"outcome": outcome,
-- scripts/build_meta_dataset_v3_h4.py:pnl, duration, outcome = simulate_trade(
-- scripts/build_meta_dataset_v3_h4.py:"outcome": outcome,
-- scripts/build_meta_dataset_v3_h4.py:pnl, duration, outcome = simulate_trade(
-- scripts/build_meta_dataset_v3_h4.py:"outcome": outcome,
-- scripts/build_meta_dataset_v3_m5.py:pnl, duration, outcome = simulate_trade(
-- scripts/build_meta_dataset_v3_m5.py:"outcome": outcome,
-- scripts/build_meta_dataset_v3_m5.py:pnl, duration, outcome = simulate_trade(
-- scripts/build_meta_dataset_v3_m5.py:"outcome": outcome,
-- scripts/build_meta_dataset_v3_h1.py:pnl, duration, outcome = simulate_trade(
-- scripts/build_meta_dataset_v3_h1.py:"outcome": outcome,
-- scripts/build_meta_dataset_v3_h1.py:pnl, duration, outcome = simulate_trade(
-- scripts/build_meta_dataset_v3_h1.py:"outcome": outcome,
-- scripts/explore_rev_reversion_classifier.py:- Target: outcome == WIN_REV (z0 cross before stop/timeout)
-- scripts/explore_rev_reversion_classifier.py:rev["label_win_rev"] = (rev["outcome"] == "WIN_REV").astype(int)
-- scripts/build_meta_dataset_v3_h2.py:pnl, duration, outcome = simulate_trade(
-- scripts/build_meta_dataset_v3_h2.py:"outcome": outcome,
-- scripts/build_meta_dataset_v3_h2.py:pnl, duration, outcome = simulate_trade(
-- scripts/build_meta_dataset_v3_h2.py:"outcome": outcome,
-- scripts/build_meta_dataset_v3_m30.py:pnl, duration, outcome = simulate_trade(
-- scripts/build_meta_dataset_v3_m30.py:"outcome": outcome,
-- scripts/build_meta_dataset_v3_m30.py:pnl, duration, outcome = simulate_trade(
-- scripts/build_meta_dataset_v3_m30.py:"outcome": outcome,
-- scripts/build_meta_dataset_v3_m45.py:pnl, duration, outcome = simulate_trade(
-- scripts/build_meta_dataset_v3_m45.py:"outcome": outcome,
-- scripts/build_meta_dataset_v3_m45.py:pnl, duration, outcome = simulate_trade(
-- scripts/build_meta_dataset_v3_m45.py:"outcome": outcome,
-- scripts/redteam_logic_tests.py:usecols = ["pair", "timestamp", "outcome", "pnl_bps", "duration_bars"]
-- scripts/redteam_logic_tests.py:purpose = "Quantify outcome/PNL alignment (WIN_MOM should be >0, LOSS_REV should be <=0)."
-- scripts/redteam_logic_tests.py:win_neg = ((df["outcome"] == "WIN_MOM") & (df["pnl_bps"] <= 0)).mean()
-- scripts/redteam_logic_tests.py:loss_pos = ((df["outcome"] == "LOSS_REV") & (df["pnl_bps"] > 0)).mean()
-- scripts/ml_threshold_feasibility.py:outcome = 0 # 0=Loss, 1=Win
-- scripts/diagnose_rev_pred_pnl.py:pred[["pair", "timestamp", "year", "pnl_bps", "pred_pnl", "p_up", "outcome"]].to_csv(out_path, index=False)
-- scripts/build_meta_dataset_v3_m10.py:pnl, duration, outcome = simulate_trade(
-- scripts/build_meta_dataset_v3_m10.py:"outcome": outcome,
-- scripts/build_meta_dataset_v3_m10.py:pnl, duration, outcome = simulate_trade(
-- scripts/build_meta_dataset_v3_m10.py:"outcome": outcome,
-- scripts/build_meta_dataset_v3_m5_optimized.py:'outcome': out, 'pnl_bps': pnl, 'duration_bars': dur,
-- scripts/build_meta_dataset_v3_m5_optimized.py:'outcome': out, 'pnl_bps': pnl, 'duration_bars': dur,
-- scripts/build_meta_dataset_v2.py:outcome = ""
-- scripts/build_meta_dataset_v2.py:outcome = "LOSS_REV"
-- ... (26 more)
-Unexpected outcome usage (needs review):
-- scripts/ml_threshold_feasibility.py:outcome = 0 # 0=Loss, 1=Win
-- scripts/diagnose_rev_pred_pnl.py:pred[["pair", "timestamp", "year", "pnl_bps", "pred_pnl", "p_up", "outcome"]].to_csv(out_path, index=False)
+Legacy ML/meta‑dataset builders were removed. Outcome usage is now limited to
+rule‑based QA/diagnostic scripts (e.g., `scripts/redteam_logic_tests.py`) and
+the integrity audit itself. No unexpected outcome usage remains in the active
+pipeline.

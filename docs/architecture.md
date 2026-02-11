@@ -27,7 +27,7 @@ flowchart LR
 ## Data Ownership
 
 - **Market bars**: `data/global_*`
-- **Events**: `data/meta_model/events_*`
+- **Events**: `data/events/events_*`
 - **Analysis**: `data/analysis/*`
 
 ## Charts

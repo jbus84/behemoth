@@ -15,14 +15,14 @@ import numpy as np
 import pandas as pd
 
 sys.path.append(os.path.join(os.getcwd(), "scripts"))
-import build_meta_dataset_v3_m5 as m5
-import build_meta_dataset_v3 as m15
+from pipelines import build_events_m5 as m5
+from pipelines import build_events_m15 as m15
 
 OUT_DIR = "data/analysis"
 
 CONFIGS = [
-    ("m5", "data/meta_model/events_m5_8yr_v3_mom.csv", m5),
-    ("m15", "data/meta_model/events_m15_8yr_v3_mom.csv", m15),
+    ("m5", "data/events/events_m5_8yr_v3_mom.csv", m5),
+    ("m15", "data/events/events_m15_8yr_v3_mom.csv", m15),
 ]
 
 

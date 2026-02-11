@@ -22,10 +22,6 @@ These modules define the rule‑based strategy logic.
 
 ::: behemoth.core.guardrail
 
-## `behemoth.core.features`
-
-::: behemoth.core.features
-
 ## `behemoth.core.metrics`
 
 ::: behemoth.core.metrics

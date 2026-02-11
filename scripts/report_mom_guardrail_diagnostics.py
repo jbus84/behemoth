@@ -21,7 +21,7 @@ import pandas as pd
 sys.path.append(os.path.join(os.getcwd(), "scripts"))
 from metrics import sharpe_daily, sharpe_daily_active, sharpe_trade
 
-DATA_PATH = "data/meta_model/events_m15_8yr_v3_mom.csv"
+DATA_PATH = "data/events/events_m15_8yr_v3_mom.csv"
 OUT_DIR = "data/analysis"
 
 LOSS_STREAK = 3

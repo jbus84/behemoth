@@ -96,9 +96,9 @@ class PairSpec:
 
 def _pair_specs(bar: str) -> list[PairSpec]:
     if bar == "m5":
-        import build_meta_dataset_v3_m5 as mod
+        from pipelines import build_events_m5 as mod
     else:
-        import build_meta_dataset_v3 as mod
+        from pipelines import build_events_m15 as mod
     return [PairSpec(name, fx, fy, cx, cy) for name, fx, fy, cx, cy, *_ in mod.PAIRS]
 
 
@@ -198,9 +198,9 @@ def _ohlc_diff(baseline: pd.DataFrame, smoothed: pd.DataFrame) -> dict:
 
 def _compute_signals(close_x: np.ndarray, close_y: np.ndarray, ts: np.ndarray, bar: str) -> set[int]:
     if bar == "m5":
-        import build_meta_dataset_v3_m5 as mod
+        from pipelines import build_events_m5 as mod
     else:
-        import build_meta_dataset_v3 as mod
+        from pipelines import build_events_m15 as mod
 
     y = np.log(close_y)
     x = np.log(close_x)
@@ -228,9 +228,9 @@ def _compute_signals(close_x: np.ndarray, close_y: np.ndarray, ts: np.ndarray, b
 
 def _compute_trades(close_x: np.ndarray, close_y: np.ndarray, ts: np.ndarray, bar: str) -> list[dict]:
     if bar == "m5":
-        import build_meta_dataset_v3_m5 as mod
+        from pipelines import build_events_m5 as mod
     else:
-        import build_meta_dataset_v3 as mod
+        from pipelines import build_events_m15 as mod
 
     y = np.log(close_y)
     x = np.log(close_x)

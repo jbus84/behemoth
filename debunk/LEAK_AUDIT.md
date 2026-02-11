@@ -1,9 +1,7 @@
 # Leak Audit Report
 ## M5 Audit
 ### Feature Recompute vs Dataset
-- samples: 221217
-- missing timestamps: 0
-- max mismatch rate: 0.000000
+- skipped (feature extraction removed)
 ### Source Scan (forward index usage)
 - forward-index patterns: 0
 ### Tick->Bar Close Audit
@@ -13,9 +11,7 @@
 - pct >1bp (avg): 0.4120
 ## M15 Audit
 ### Feature Recompute vs Dataset
-- samples: 73629
-- missing timestamps: 0
-- max mismatch rate: 0.000000
+- skipped (feature extraction removed)
 ### Source Scan (forward index usage)
 - forward-index patterns: 0
 ### Tick->Bar Close Audit

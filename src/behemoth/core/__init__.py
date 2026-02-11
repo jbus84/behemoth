@@ -1,6 +1,5 @@
 from .active_leg import select_active_leg
 from .events import simulate_trade
-from .features import compute_features_at_entry
 from .guardrail import apply_loss_streak_guardrail
 from .kalman import KalmanFilterReg, KalmanFilterRegMulti, compute_kalman_states
 from .metrics import sharpe_daily, sharpe_daily_active, sharpe_trade
@@ -14,7 +13,6 @@ __all__ = [
     "KalmanFilterRegMulti",
     "compute_kalman_states",
     "compute_z_scores",
-    "compute_features_at_entry",
     "simulate_trade",
     "apply_loss_streak_guardrail",
     "select_active_leg",

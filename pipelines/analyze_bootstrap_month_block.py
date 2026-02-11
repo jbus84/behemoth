@@ -28,8 +28,8 @@ BOOTSTRAP_N = int(os.getenv("BOOTSTRAP_N", "200"))
 BLOCK_SIZES = [int(x) for x in os.getenv("BLOCK_SIZES", "200,500").split(",") if x.strip()]
 
 CONFIGS = [
-    ("m5", "data/meta_model/events_m5_8yr_v3_mom.csv", 5),
-    ("m15", "data/meta_model/events_m15_8yr_v3_mom.csv", 15),
+    ("m5", "data/events/events_m5_8yr_v3_mom.csv", 5),
+    ("m15", "data/events/events_m15_8yr_v3_mom.csv", 15),
 ]
 
 

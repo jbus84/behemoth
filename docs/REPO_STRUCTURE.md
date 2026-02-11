@@ -2,7 +2,7 @@
 
 ## Core layout
 
-- `src/behemoth/`: production logic (Kalman, Z-score, features, guardrail, metrics)
+- `src/behemoth/`: production logic (Kalman, Z-score, guardrail, metrics)
 - `pipelines/`: deterministic batch runs (event generation + diagnostics)
 - `scripts/`: thin wrappers that call pipelines
 - `services/api/`: FastAPI position + order state service

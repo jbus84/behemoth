@@ -1,7 +1,7 @@
 {
   "bar": "m15",
   "generated_at": "2026-02-11T08:16:47.310304+00:00",
-  "pipeline_path": "data/meta_model/events_m15_8yr_v3_mom.csv",
+  "pipeline_path": "data/events/events_m15_8yr_v3_mom.csv",
   "pipeline_sha256": "12c6a0aedca14f3fd620e025c690949b8c9704866acf572f2f1c203074cbfb6c",
   "guardrail_settings": {
     "loss_threshold": 0.0,

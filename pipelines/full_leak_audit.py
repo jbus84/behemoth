@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
 """
 Full leak audit:
-1) Feature recomputation vs stored dataset (causality + alignment).
-2) Source scan for forward-looking index usage.
-3) Tick->bar close audit vs global bars (causality of bar construction).
+1) Source scan for forward-looking index usage.
+2) Tick->bar close audit vs global bars (causality of bar construction).
 
 Outputs:
-- data/analysis/m5_leak_audit_feature_mismatch.csv
-- data/analysis/m15_leak_audit_feature_mismatch.csv
-- data/analysis/m5_leak_audit_summary.csv
-- data/analysis/m15_leak_audit_summary.csv
 - data/analysis/m5_tick_bar_audit.csv
 - data/analysis/m15_tick_bar_audit.csv
 - debunk/LEAK_AUDIT.md
@@ -40,8 +35,8 @@ YEAR_MIN = 2018
 YEAR_MAX = 2025
 
 CONFIGS = [
-    ("m5", "data/meta_model/events_m5_8yr_v3_mom.csv", m5, 5),
-    ("m15", "data/meta_model/events_m15_8yr_v3_mom.csv", m15, 15),
+    ("m5", "data/events/events_m5_8yr_v3_mom.csv", m5, 5),
+    ("m15", "data/events/events_m15_8yr_v3_mom.csv", m15, 15),
 ]
 
 
@@ -74,78 +69,6 @@ def _load_pair_data(module, fx, fy, cx, cy):
         ts = ts.astype("int64").astype(object)
     return ts, x, y
 
-
-def _feature_columns(df: pd.DataFrame) -> list[str]:
-    return [
-        "z_entry","z_velocity","spread_std","beta_stability","signal_beta_lookback",
-        "hedge_beta_lookback","beta_mismatch","z_lag1","z_lag2","z_lag3",
-        "dz_lag1","dz_lag2","beta_lag1","beta_lag2","beta","vol_ratio",
-        "correlation_500","trend_strength","hour","day_of_week","ret_X_16b","ret_Y_16b",
-        "ret_X_1h","ret_Y_1h","atr_ratio","entry_atr","vol_regime",
-    ]
-
-
-def _audit_features(label, path, module, bar_minutes):  # pragma: no cover
-    df = pd.read_csv(path)
-    df["timestamp"] = df["timestamp"].astype("int64")
-    feature_cols = _feature_columns(df)
-    mismatches = {c: 0 for c in feature_cols}
-    total = 0
-    missing_ts = 0
-
-    pair_info = _pair_map(module)
-    for pair, (fx, fy, cx, cy) in pair_info.items():
-        sub = df[df["pair"] == pair]
-        if sub.empty:
-            continue
-        loaded = _load_pair_data(module, fx, fy, cx, cy)
-        if loaded is None:
-            continue
-        ts, x, y = loaded
-        idx_map = {int(t): i for i, t in enumerate(ts)}
-
-        betas, errors, ret_betas = module.compute_kalman_states(y, x)
-        z_scores = module.compute_z_scores(errors)
-
-        for row in sub.itertuples(index=False):
-            entry_ts = int(row.timestamp)
-            idx = idx_map.get(entry_ts)
-            if idx is None or idx >= len(z_scores):
-                missing_ts += 1
-                continue
-            feats = module.compute_features_at_entry(idx, y, x, betas, errors, ret_betas, z_scores, ts)
-            total += 1
-            for c in feature_cols:
-                val = getattr(row, c)
-                calc = feats.get(c, None)
-                if calc is None:
-                    mismatches[c] += 1
-                    continue
-                if isinstance(val, (int, float)) and isinstance(calc, (int, float)):
-                    if abs(val - calc) > 1e-6:
-                        mismatches[c] += 1
-                else:
-                    if val != calc:
-                        mismatches[c] += 1
-
-    rows = []
-    for c in feature_cols:
-        rows.append({
-            "feature": c,
-            "mismatch_count": mismatches[c],
-            "mismatch_rate": (mismatches[c] / total) if total else 0.0,
-            "samples": total,
-        })
-    out = pd.DataFrame(rows)
-    out.to_csv(os.path.join(OUT_DIR, f"{label}_leak_audit_feature_mismatch.csv"), index=False)
-    summary = pd.DataFrame([{
-        "label": label,
-        "samples": total,
-        "missing_timestamps": missing_ts,
-        "max_mismatch_rate": out["mismatch_rate"].max() if not out.empty else 0.0,
-    }])
-    summary.to_csv(os.path.join(OUT_DIR, f"{label}_leak_audit_summary.csv"), index=False)
-    return out, summary
 
 
 def _global_bars(symbol_file: str, close_col: str) -> pd.Series:
@@ -258,10 +181,7 @@ def main() -> None:  # pragma: no cover
     for label, path, module, bar_minutes in CONFIGS:
         lines.append(f"## {label.upper()} Audit\n")
         lines.append("### Feature Recompute vs Dataset\n")
-        feats, summary = _audit_features(label, path, module, bar_minutes)
-        lines.append(f"- samples: {int(summary['samples'].iloc[0])}\n")
-        lines.append(f"- missing timestamps: {int(summary['missing_timestamps'].iloc[0])}\n")
-        lines.append(f"- max mismatch rate: {summary['max_mismatch_rate'].iloc[0]:.6f}\n")
+        lines.append("- skipped (feature extraction removed from core pipeline)\n")
 
         lines.append("### Source Scan (forward index usage)\n")
         hits = _scan_forward_index(module)

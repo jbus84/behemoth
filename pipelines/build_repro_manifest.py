@@ -23,8 +23,8 @@ import behemoth.config as cfg
 
 OUT_PATH = "data/analysis/repro_manifest.json"
 DEFAULT_FILES = [
-    "data/meta_model/events_m5_8yr_v3_mom.csv",
-    "data/meta_model/events_m15_8yr_v3_mom.csv",
+    "data/events/events_m5_8yr_v3_mom.csv",
+    "data/events/events_m15_8yr_v3_mom.csv",
 ]
 
 

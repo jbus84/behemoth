@@ -20,8 +20,8 @@ from metrics import sharpe_daily, sharpe_daily_active, sharpe_trade
 OUT_DIR = "data/analysis"
 
 CONFIGS = [
-    ("m5", "data/meta_model/events_m5_8yr_v3_mom.csv"),
-    ("m15", "data/meta_model/events_m15_8yr_v3_mom.csv"),
+    ("m5", "data/events/events_m5_8yr_v3_mom.csv"),
+    ("m15", "data/events/events_m15_8yr_v3_mom.csv"),
 ]
 
 

@@ -21,8 +21,8 @@ LOSS_STREAK = 3
 COOLDOWN_DAYS = 14
 
 CONFIGS = [
-    ("m5", "data/meta_model/events_m5_8yr_v3_mom.csv", 5),
-    ("m15", "data/meta_model/events_m15_8yr_v3_mom.csv", 15),
+    ("m5", "data/events/events_m5_8yr_v3_mom.csv", 5),
+    ("m15", "data/events/events_m15_8yr_v3_mom.csv", 15),
 ]
 
 

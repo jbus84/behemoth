@@ -13,8 +13,8 @@ import pandas as pd
 OUTPUT_PATH = "docs/analysis/stable_pairs_whitelist.md"
 
 CONFIGS = [
-    ("M5", "data/meta_model/events_m5_8yr_v3_mom.csv"),
-    ("M15", "data/meta_model/events_m15_8yr_v3_mom.csv"),
+    ("M5", "data/events/events_m5_8yr_v3_mom.csv"),
+    ("M15", "data/events/events_m15_8yr_v3_mom.csv"),
 ]
 
 

@@ -8,8 +8,8 @@ from behemoth.core.metrics import sharpe_daily, sharpe_daily_active, sharpe_trad
 from services.api.settings import settings
 
 PIPELINE_PATHS = {
-    "m5": os.getenv("PIPELINE_M5_PATH", "data/meta_model/events_m5_8yr_v3_mom.csv"),
-    "m15": os.getenv("PIPELINE_M15_PATH", "data/meta_model/events_m15_8yr_v3_mom.csv"),
+    "m5": os.getenv("PIPELINE_M5_PATH", "data/events/events_m5_8yr_v3_mom.csv"),
+    "m15": os.getenv("PIPELINE_M15_PATH", "data/events/events_m15_8yr_v3_mom.csv"),
 }
 
 

@@ -4,11 +4,12 @@ Event dataset builder (M5).
 Generates MOM/REV trades for analysis; production strategy is MOM-only.
 """
 
-import polars as pl
-import numpy as np
 import os
 import sys
 from collections import defaultdict
+
+import numpy as np
+import polars as pl
 
 sys.path.append(os.path.join(os.getcwd(), "src"))
 from behemoth.config import (
@@ -22,13 +23,12 @@ from behemoth.config import (
 )
 from behemoth.core.active_leg import select_active_leg
 from behemoth.core.events import simulate_trade as _simulate_trade
-from behemoth.core.features import compute_features_at_entry as _compute_features
 from behemoth.core.kalman import compute_kalman_states as _compute_kalman_states
 from behemoth.core.zscore import compute_z_scores as _compute_z_scores
 from behemoth.io.loaders import load_pair_data as _load_pair_data
 
 DATA_DIR = "data/global_5m"
-OUTPUT_DIR = "data/meta_model"
+OUTPUT_DIR = "data/events"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # === PAIR UNIVERSE ===
@@ -72,27 +72,13 @@ def compute_z_scores(errors, window=500):
     return _compute_z_scores(errors, window=window)
 
 
-def compute_features_at_entry(i, y, x, betas, errors, ret_betas, z_scores, ts):
-    return _compute_features(
-        i,
-        y,
-        x,
-        betas,
-        errors,
-        ret_betas,
-        z_scores,
-        ts,
-        bar_minutes=5,
-        lookback_bars=LOOKBACK_BARS,
-    )
-
 def simulate_trade(entry_idx, direction, strategy_type, y, x, z_scores, active_asset, thresh=1.5, stop=3.5):
     return _simulate_trade(entry_idx, direction, strategy_type, y, x, z_scores, active_asset, thresh, stop)
 
 
 
 def build_dataset():  # pragma: no cover
-    print("--- BUILDING META MODEL DATASET v3 (DUAL STRATEGY) ---")
+    print("--- BUILDING EVENT DATASET (M5, MOM/REV) ---")
 
     thresh_mom = Z_ENTRY_MOM
     thresh_rev = Z_ENTRY_REV
@@ -156,12 +142,6 @@ def build_dataset():  # pragma: no cover
             if abs(z) < min_thresh:
                 continue
 
-            # Compute features at entry
-            features = compute_features_at_entry(i, y, x, betas, errors, ret_betas, z_scores, ts)
-
-            # Cross-pair signals: SKIPPED for performance
-            features['num_active_signals'] = 0
-
             # === MOMENTUM TRADE ===
             if i - last_entry_mom >= min_gap and abs(z) >= thresh_mom:
                 if z > 0:
@@ -194,7 +174,6 @@ def build_dataset():  # pragma: no cover
                     "duration_bars": duration,
                     "rolling_win_rate_10": round(rolling_wr, 2),
                     "rolling_avg_pnl_10": round(rolling_pnl, 2),
-                    **features
                 }
                 all_events.append(row)
                 pair_trade_history[name]['MOM'].append(pnl)
@@ -232,7 +211,6 @@ def build_dataset():  # pragma: no cover
                     "duration_bars": duration,
                     "rolling_win_rate_10": round(rolling_wr, 2),
                     "rolling_avg_pnl_10": round(rolling_pnl, 2),
-                    **features
                 }
                 all_events.append(row)
                 pair_trade_history[name]['REV'].append(pnl)

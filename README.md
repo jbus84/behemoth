@@ -1,5 +1,5 @@
 
-# Behemoth: Kalman + Meta Model (H1)
+# Behemoth: Kalman + Z-Score MOM (H1)
 
 **Status**: Partially Implemented (Inference-Only)
 **Strategy**: Kalman Z‑Score Momentum + Loss‑Streak Guardrail (Rule‑Based)
@@ -37,7 +37,7 @@ These were part of the older 4H system and are retained for reference only.
 ### A. Run H1 Inference
 Generate the latest H1 signal for a pair:
 ```bash
-python3 scripts/inference_meta_model.py
+python3 scripts/scan_global_pairs.py
 ```
 
 ### B. Legacy 4H Dashboard

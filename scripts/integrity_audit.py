@@ -23,8 +23,8 @@ import pandas as pd
 
 sys.path.append(os.path.join(os.getcwd(), "scripts"))
 from metrics import sharpe_daily, sharpe_daily_active, sharpe_trade
-import build_meta_dataset_v3_m5 as m5
-import build_meta_dataset_v3 as m15
+from pipelines import build_events_m5 as m5
+from pipelines import build_events_m15 as m15
 
 
 @dataclass
@@ -37,8 +37,8 @@ class TFConfig:
 
 
 CONFIGS = [
-    TFConfig("m5", "data/meta_model/events_m5_8yr_v3_mom.csv", m5, 5, 500),
-    TFConfig("m15", "data/meta_model/events_m15_8yr_v3_mom.csv", m15, 15, 500),
+    TFConfig("m5", "data/events/events_m5_8yr_v3_mom.csv", m5, 5, 500),
+    TFConfig("m15", "data/events/events_m15_8yr_v3_mom.csv", m15, 15, 500),
 ]
 
 OUT_MD = Path("debunk/INTEGRITY_AUDIT.md")
@@ -167,11 +167,13 @@ def _scan_outcome_usage() -> list[str]:
     return hits
 
 
-def _feature_lookahead_scan(module) -> bool:
+def _feature_lookahead_scan(module) -> bool | None:
+    if not hasattr(module, "compute_features_at_entry"):
+        return None
     try:
         src = inspect.getsource(module.compute_features_at_entry)
     except Exception:
-        return False
+        return None
     pattern = re.compile(r"i\s*\+\s*\d")
     return bool(pattern.search(src))
 
@@ -465,10 +467,8 @@ def main() -> None:
     # Outcome usage scan
     outcome_hits = _scan_outcome_usage()
     allowed_prefixes = (
-        "scripts/build_meta_dataset",
         "scripts/build_mfe_mae",
         "scripts/redteam_logic_tests.py",
-        "scripts/explore_rev_reversion_classifier.py",
     )
     unexpected = [
         h
@@ -492,8 +492,14 @@ def main() -> None:
 
     # Feature lookahead
     lines.append("## Feature Lookahead Scan")
-    lines.append(f"- M5 compute_features_at_entry contains i+? {lookahead_m5}")
-    lines.append(f"- M15 compute_features_at_entry contains i+? {lookahead_m15}")
+    if lookahead_m5 is None:
+        lines.append("- M5 compute_features_at_entry contains i+? skipped (features removed)")
+    else:
+        lines.append(f"- M5 compute_features_at_entry contains i+? {lookahead_m5}")
+    if lookahead_m15 is None:
+        lines.append("- M15 compute_features_at_entry contains i+? skipped (features removed)")
+    else:
+        lines.append(f"- M15 compute_features_at_entry contains i+? {lookahead_m15}")
     lines.append("")
 
     # Outcome usage

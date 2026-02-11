@@ -20,9 +20,7 @@ def test_global_bars(tmp_path):
     assert np.issubdtype(series.index.dtype, np.integer)
 
 
-def test_feature_columns_and_pair_map():
-    cols = la._feature_columns(pd.DataFrame())
-    assert "z_entry" in cols
+def test_pair_map():
     pairs = la._pair_map(la.m5)
     assert isinstance(pairs, dict)
     assert len(pairs) > 0

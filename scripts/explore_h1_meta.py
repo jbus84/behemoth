@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-DATA_PATH = "data/meta_model/events_h1_8yr_v3_dual.csv"
+DATA_PATH = "data/events/events_h1_8yr_v3_dual.csv"
 
 def explore_h1():
     print("Loading H1 Data...")

@@ -22,7 +22,7 @@ flowchart TD
 
 ## Outputs
 
-- **Events**: `data/meta_model/events_m5_8yr_v3_mom.csv`, `data/meta_model/events_m15_8yr_v3_mom.csv`
+- **Events**: `data/events/events_m5_8yr_v3_mom.csv`, `data/events/events_m15_8yr_v3_mom.csv`
 - **Analysis**: `data/analysis/*`
 
 ## Causality

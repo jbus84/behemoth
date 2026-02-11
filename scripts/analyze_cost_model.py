@@ -36,8 +36,8 @@ DATA_DIR = {
     "m15": ROOT / "data" / "global_15m",
 }
 EVENTS_PATH = {
-    "m5": ROOT / "data" / "meta_model" / "events_m5_8yr_v3_mom.csv",
-    "m15": ROOT / "data" / "meta_model" / "events_m15_8yr_v3_mom.csv",
+    "m5": ROOT / "data" / "events" / "events_m5_8yr_v3_mom.csv",
+    "m15": ROOT / "data" / "events" / "events_m15_8yr_v3_mom.csv",
 }
 OUT_DIR = ROOT / "data" / "analysis"
 

@@ -19,8 +19,8 @@ This page provides a structured map of the codebase. It is not exhaustive API do
 **`src/behemoth/core/guardrail.py`**
 - `apply_loss_streak_guardrail(df, ...)` — loss‑streak cooldown by pair (exit‑ordered).
 
-**`src/behemoth/core/features.py`**
-- `compute_features_at_entry(...)` — feature extraction at entry (used by analysis).
+**`src/behemoth/core/`**
+- Feature extraction module removed (no ML features in core pipeline).
 
 **`src/behemoth/core/metrics.py`**
 - `sharpe_daily`, `sharpe_daily_active`, `sharpe_trade` — standard metrics.

@@ -316,26 +316,6 @@ Key findings:
 
 Conclusion: the guardrail is effective because **losses are serially correlated**. Skipping trades in these regimes removes a structurally negative conditional expectation, which is why mean PnL rises and DD collapses.
 
-**Regime attribution (why those streaks happen)**
-We compared entry‑time features for **normal regime** (prev_loss_streak ≤ 1) vs **loss‑streak regime** (prev_loss_streak ≥ 2).
-The loss‑streak regime shows a consistent pattern across M5 and M15:
-- **Lower correlation** (`correlation_500` drops materially).
-- **Lower spread volatility** (`spread_std` declines).
-- **Lower vol ratio / vol regime** (`vol_ratio`, `vol_regime` fall).
-- **Slightly higher beta mismatch** (hedge beta diverges from signal beta).
-
-This indicates the guardrail is effective because it **detects persistent low‑correlation / low‑vol regimes** where the Z‑score signal loses validity.
-
-Summary (normal → loss‑streak regime):
-- **M5**: `correlation_500` 0.225 → 0.168, `spread_std` 31.4 → 29.5, `vol_regime` 1.05 → 0.98, `beta_mismatch` 0.897 → 0.922.
-- **M15**: `correlation_500` 0.235 → 0.160, `spread_std` 57.7 → 50.3, `vol_regime` 1.02 → 0.97, `beta_mismatch` 0.898 → 0.937.
-
-Files:
-- `data/analysis/m5_guardrail_regime_driver_summary.csv`
-- `data/analysis/m5_guardrail_regime_driver_features.csv`
-- `data/analysis/m15_guardrail_regime_driver_summary.csv`
-- `data/analysis/m15_guardrail_regime_driver_features.csv`
-
 Full diagnostics:
 - `data/analysis/m5_guardrail_overall.csv`
 - `data/analysis/m5_guardrail_monthly.csv`
@@ -593,7 +573,6 @@ Files:
 | Logic Area | Test File |
 | --- | --- |
 | Z‑score causality | `tests/test_strategy_logic.py` |
-| Feature causality (M5/M15) | `tests/test_feature_causality_m5_m15.py` |
 | MOM exits (Z‑cross, Z‑stop), timeout | `tests/test_strategy_logic.py` |
 | Guardrail cooldown + `pnl <= 0` loss | `tests/test_guardrail_semantics.py` |
 | Active‑leg selection + min‑gap gating | `tests/test_entry_active_leg.py` |
@@ -602,9 +581,9 @@ Files:
 | End‑to‑end guardrail (M5/M15) | `tests/test_end_to_end_production_m5.py`, `tests/test_end_to_end_production_m15.py` |
 | End‑to‑end neutral‑zone + win/loss mix | `tests/test_end_to_end_additional.py` |
 
-**Dataset builders**
-- M5: `scripts/build_meta_dataset_v3_m5.py`
-- M15: `scripts/build_meta_dataset_v3.py`
+**Event builders**
+- M5: `pipelines/build_events_m5.py`
+- M15: `pipelines/build_events_m15.py`
 
 **Guardrail diagnostics**
 - M5: `scripts/report_m5_guardrail_diagnostics.py`
@@ -624,7 +603,6 @@ Files:
 
 **Guardrail effectiveness study**
 - `scripts/analyze_guardrail_effectiveness.py`
- - `scripts/analyze_guardrail_regime_drivers.py`
 
 **Guardrail plots**
 - `scripts/visualization/plot_guardrail_monthly_and_dd.py`
@@ -645,49 +623,9 @@ Files:
 ---
 
 ## Causality / Leakage Notes
-- All features use only past bars at entry.
 - Z‑score windows are rolling and causal (no forward data).
 - Labels use future paths for evaluation only (as intended).
-
----
-
-## Feature Dictionary (Kalman Scout)
-These are the causal features used in dataset construction, even though inference is now rule‑based. Units in bps where noted.
-
-Categorical features:
-- `active_leg`: which leg is traded (X or Y).
-- `side`: sign of Z at entry (LONG if Z>0, SHORT if Z<0).
-
-Signal quality and lags:
-- `z_entry`: Z‑score at entry.
-- `z_velocity`: Z change vs 5 bars ago.
-- `z_lag1`, `z_lag2`, `z_lag3`: Z at prior bars.
-- `dz_lag1`, `dz_lag2`: short‑term slope proxies.
-- `spread_std`: std of spread error over 500 bars (bps).
-
-Beta and hedge context:
-- `beta`: current Kalman beta.
-- `beta_lag1`, `beta_lag2`: prior betas.
-- `beta_stability`: beta std over 100 bars.
-- `signal_beta_lookback`: mean beta over 500 bars.
-- `hedge_beta_lookback`: mean return‑beta over 500 bars.
-- `beta_mismatch`: clipped ratio `hedge_beta_lookback / signal_beta_lookback`.
-
-Regime and correlation:
-- `vol_ratio`: std(diff(Y)) / std(diff(X)) over 500 bars.
-- `correlation_500`: corr(X,Y) over 500 bars.
-- `trend_strength`: 100‑bar spread slope / spread std.
-
-Time context:
-- `hour`: entry hour (UTC).
-- `day_of_week`: entry weekday.
-
-Return and ATR context:
-- `ret_X_16b`, `ret_Y_16b`: 16‑bar returns.
-- `ret_X_1h`, `ret_Y_1h`: 1‑hour proxy returns.
-- `atr_ratio`: 4‑bar range ratio (Y/X) over 100 bars.
-- `entry_atr`: 50‑bar return std (bps).
-- `vol_regime`: short/long volatility ratio (50/500).
+- Feature extraction has been removed from the core pipeline; the strategy is rule‑based.
 
 ---
 

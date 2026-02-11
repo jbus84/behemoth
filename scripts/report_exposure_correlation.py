@@ -19,10 +19,10 @@ import numpy as np
 import pandas as pd
 
 DATASETS = {
-    "M15": ("data/meta_model/events_m15_8yr_v3_dual.csv", 15),
-    "M30": ("data/meta_model/events_m30_8yr_v3_dual.csv", 30),
-    "M45": ("data/meta_model/events_m45_8yr_v3_dual.csv", 45),
-    "H1": ("data/meta_model/events_h1_8yr_v3_dual.csv", 60),
+    "M15": ("data/events/events_m15_8yr_v3_dual.csv", 15),
+    "M30": ("data/events/events_m30_8yr_v3_dual.csv", 30),
+    "M45": ("data/events/events_m45_8yr_v3_dual.csv", 45),
+    "H1": ("data/events/events_h1_8yr_v3_dual.csv", 60),
 }
 
 GRID_MINUTES = 15

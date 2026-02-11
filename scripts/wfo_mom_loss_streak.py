@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.append(os.path.join(os.getcwd(), "scripts"))
-import build_meta_dataset_v3 as m15
+from pipelines import build_events_m15 as m15
 from metrics import sharpe_daily, sharpe_daily_active, sharpe_trade
 
 OUT_DIR = "data/analysis"
