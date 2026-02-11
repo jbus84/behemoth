@@ -29,7 +29,7 @@ test:
 	uv run pytest -q
 
 test-postgres:
-	docker compose up -d db
+	docker compose --project-directory . -f docker-compose.yml up -d db
 	POSTGRES_TEST_URL=postgresql+psycopg2://behemoth:behemoth@localhost:5432/behemoth uv run pytest -q tests/test_api_postgres_integration.py
 
 reconcile:
@@ -69,11 +69,11 @@ baselines:
 
 db-backup:
 	mkdir -p backups
-	docker compose exec -T db pg_dump -U behemoth -d behemoth > backups/behemoth_$(shell date +%Y%m%d_%H%M%S).sql
+	docker compose --project-directory . -f docker-compose.yml exec -T db pg_dump -U behemoth -d behemoth > backups/behemoth_$(shell date +%Y%m%d_%H%M%S).sql
 
 db-restore:
 	@if [ -z "$(BACKUP_FILE)" ]; then echo "BACKUP_FILE is required"; exit 1; fi
-	docker compose exec -T db psql -U behemoth -d behemoth < $(BACKUP_FILE)
+	docker compose --project-directory . -f docker-compose.yml exec -T db psql -U behemoth -d behemoth < $(BACKUP_FILE)
 
 db-restore-smoke:
 	python scripts/db_backup_restore_smoke.py
@@ -82,8 +82,8 @@ deploy:
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 replay:
-	docker compose up -d db
-	@until docker compose exec -T db pg_isready -U behemoth >/dev/null 2>&1; do \
+	docker compose --project-directory . -f docker-compose.yml up -d db
+	@until docker compose --project-directory . -f docker-compose.yml exec -T db pg_isready -U behemoth >/dev/null 2>&1; do \
 		printf "Waiting for db...\\n"; \
 		sleep 1; \
 	done
