@@ -25,7 +25,9 @@ def _load(bar: str) -> dict:
 
 def _assert_close(actual: float, expected: float, tol: float = 1e-6) -> None:
     if abs(actual - expected) > tol:
-        raise AssertionError(f"{actual} != {expected} (tol {tol})")
+        raise AssertionError(
+            f"{actual} != {expected} (tol {tol}). Baseline mismatch is a hard failure."
+        )
 
 
 def _check_guardrail_settings(payload: dict) -> None:
@@ -55,7 +57,12 @@ def _run(bar: str, bar_minutes: int) -> None:
     if not pipeline_path.exists():
         raise AssertionError(f"Pipeline file missing: {pipeline_path}")
 
-    assert payload["pipeline_sha256"] == _sha256(pipeline_path)
+    current_hash = _sha256(pipeline_path)
+    if payload["pipeline_sha256"] != current_hash:
+        raise AssertionError(
+            "Pipeline file hash mismatch (hard gate). "
+            f"expected={payload['pipeline_sha256']} actual={current_hash}"
+        )
     guard = payload["guardrail_settings"]
     prev = (
         settings.guardrail_loss_threshold,

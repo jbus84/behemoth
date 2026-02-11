@@ -53,6 +53,20 @@ GET /metrics
 
 Disable with `metrics_enabled: false`.
 
+## Prometheus + Grafana
+The prod compose overlay includes Prometheus and Grafana:
+
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3000` (default admin/admin)
+
+Grafana is pre‑provisioned with the Prometheus datasource from:
+
+- `configs/grafana/datasources/datasource.yml`
+
+Prometheus scrape config lives at:
+
+- `configs/prometheus.yml`
+
 ## Kill Switches
 Manual halt and resume:
 

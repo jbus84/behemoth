@@ -73,6 +73,8 @@ Generate golden baselines for M5/M15 validation:
 make baselines
 ```
 
+Baseline tests are hard-gated. Any mismatch or pipeline hash change fails CI.
+
 ## DB Backup Smoke Test
 Run a backup/restore smoke test (requires docker compose up):
 

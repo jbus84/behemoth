@@ -30,6 +30,7 @@ stateDiagram-v2
 - `POST /risk/{strategy_id}/halt` — manual kill‑switch
 - `POST /risk/{strategy_id}/resume` — resume after manual halt
 - `GET /metrics` — Prometheus metrics (if enabled)
+  - Enabled by default in `configs/api.yaml` when `metrics_enabled: true`
 
 ## Validation Endpoints
 

@@ -9,6 +9,8 @@
 - `docs/`: documentation (MkDocs site uses these markdown files)
 - `mkdocs.yml`: MkDocs configuration
 - `configs/`: YAML config for API and pair weights
+- `configs/prometheus.yml`: Prometheus scrape config
+- `configs/grafana/`: Grafana provisioning
 - `services/api/migrations/`: Alembic migrations for DB schema
 - `scripts/export_openapi.py`: generate OpenAPI spec for docs
 - `data/baselines/`: golden snapshot metrics for M5/M15 regression tests
