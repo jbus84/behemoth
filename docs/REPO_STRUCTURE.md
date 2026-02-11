@@ -49,6 +49,11 @@
 | `scripts/visualization/plot_guardrail_monthly_and_dd.py` | `docs/STRATEGY_MASTER_MANUAL.md` (Figures) |
 | `scripts/visualization/render_pipeline_diagram.py` | `docs/architecture.md` |
 
+**Where to start**
+- Build or refresh events: `scripts/build_events_m5.py`, `scripts/build_events_m15.py`
+- Validate outputs vs baselines: `scripts/build_baselines.py`, then `uv run pytest -q`
+- Replay into DB and verify API alignment: `scripts/replay_pipeline_to_db.py`, `scripts/validate_db_predictions_vs_pipeline.py`
+
 - `scripts/analyze_dd_timeweighted.py`
 - `scripts/analyze_execution_latency.py`
 - `scripts/analyze_execution_latency_resim.py`
