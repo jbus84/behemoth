@@ -86,9 +86,9 @@ deploy:
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 replay:
-	docker compose --project-directory . -f docker-compose.yml -f docker-compose.replay.yml --project-name $(REPLAY_PROJECT) down -v >/dev/null 2>&1 || true
-	REPLAY_DB_PORT=$(REPLAY_DB_PORT) docker compose --project-directory . -f docker-compose.yml -f docker-compose.replay.yml --project-name $(REPLAY_PROJECT) up -d db
-	@until docker compose --project-directory . -f docker-compose.yml -f docker-compose.replay.yml --project-name $(REPLAY_PROJECT) exec -T db pg_isready -U behemoth >/dev/null 2>&1; do \
+	docker compose --project-directory . -f docker-compose.yml --project-name $(REPLAY_PROJECT) down -v >/dev/null 2>&1 || true
+	DB_PORT=$(REPLAY_DB_PORT) docker compose --project-directory . -f docker-compose.yml --project-name $(REPLAY_PROJECT) up -d db
+	@until docker compose --project-directory . -f docker-compose.yml --project-name $(REPLAY_PROJECT) exec -T db pg_isready -U behemoth >/dev/null 2>&1; do \
 		printf "Waiting for db...\\n"; \
 		sleep 1; \
 	done
