@@ -85,6 +85,9 @@ REPLAY_API_PORT ?= 8001
 REPLAY_PROM_PORT ?= 9091
 REPLAY_GRAFANA_PORT ?= 3001
 REPLAY_REDIS_PORT ?= 6380
+REPLAY_COMMIT_EVERY ?= 5000
+REPLAY_SLEEP ?= 0.1
+REPLAY_LIMIT ?=
 REPLAY_COMPOSE = -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.replay.yml
 
 deploy:
@@ -99,7 +102,7 @@ replay:
 	done
 	@docker compose --project-directory . -f docker-compose.yml --project-name $(REPLAY_PROJECT) exec -T db psql -U behemoth -d behemoth -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"
 	DATABASE_URL=$(REPLAY_DB_URL) uv run alembic -c services/api/alembic.ini upgrade head
-	DATABASE_URL=$(REPLAY_DB_URL) uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --sleep 0.1
+	DATABASE_URL=$(REPLAY_DB_URL) uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --commit-every $(REPLAY_COMMIT_EVERY) --sleep $(REPLAY_SLEEP) $(if $(REPLAY_LIMIT),--limit $(REPLAY_LIMIT),)
 
 replay-load:
 	@until docker compose --project-directory . $(REPLAY_COMPOSE) --project-name $(REPLAY_PROJECT) exec -T db pg_isready -U behemoth >/dev/null 2>&1; do \
@@ -107,7 +110,7 @@ replay-load:
 		sleep 1; \
 	done
 	DATABASE_URL=$(REPLAY_DB_URL) uv run alembic -c services/api/alembic.ini upgrade head
-	DATABASE_URL=$(REPLAY_DB_URL) uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --sleep 0.1
+	DATABASE_URL=$(REPLAY_DB_URL) uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --commit-every $(REPLAY_COMMIT_EVERY) --sleep $(REPLAY_SLEEP) $(if $(REPLAY_LIMIT),--limit $(REPLAY_LIMIT),)
 
 replay-stack:
 	DB_PORT=$(REPLAY_DB_PORT) API_PORT=$(REPLAY_API_PORT) PROM_PORT=$(REPLAY_PROM_PORT) GRAFANA_PORT=$(REPLAY_GRAFANA_PORT) REDIS_PORT=$(REPLAY_REDIS_PORT) \
