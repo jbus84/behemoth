@@ -42,3 +42,6 @@ replay so the dashboard visibly updates.
 
 By default, the replay enforces risk gates and guardrail logic and writes a
 JSON report to `data/analysis/replay_report.json`.
+
+The report includes replay counts plus summary stats (trades, mean PnL, total
+PnL, max DD, Sharpe metrics) per bar.

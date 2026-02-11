@@ -1,4 +1,4 @@
-.PHONY: up down logs api migrate test db docs docs-build docs-clean docs-openapi precommit-install precommit-run lint format baselines db-backup db-restore db-restore-smoke deploy
+.PHONY: up down logs api migrate test db docs docs-build docs-clean docs-openapi precommit-install precommit-run lint format baselines db-backup db-restore db-restore-smoke deploy replay help
 
 up:
 	docker compose up -d --build
@@ -73,3 +73,29 @@ db-restore-smoke:
 
 deploy:
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+replay:
+	uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --sleep 0.1
+
+help:
+	@echo "Targets:"
+	@echo "  up                 Start docker compose services"
+	@echo "  down               Stop docker compose services"
+	@echo "  logs               Tail API logs"
+	@echo "  api                Run API locally (uvicorn reload)"
+	@echo "  migrate            Run DB migrations (compose)"
+	@echo "  migrate-local      Run DB migrations (local)"
+	@echo "  test               Run pytest"
+	@echo "  test-postgres      Run API postgres integration test"
+	@echo "  lint               Run ruff lint"
+	@echo "  format             Run ruff format"
+	@echo "  precommit-install  Install pre-commit hooks"
+	@echo "  precommit-run      Run pre-commit on all files"
+	@echo "  docs               Serve docs locally"
+	@echo "  docs-build         Build docs (export OpenAPI first)"
+	@echo "  baselines          Generate M5/M15 baseline snapshots"
+	@echo "  replay             Replay historical trades into DB"
+	@echo "  db-backup          Create DB backup to backups/"
+	@echo "  db-restore         Restore DB backup (BACKUP_FILE=...)"
+	@echo "  db-restore-smoke   Backup/restore smoke test"
+	@echo "  deploy             Start prod-like stack (compose + prod overlay)"

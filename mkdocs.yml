@@ -59,5 +59,6 @@ nav:
   - Code Reference: code_reference.md
   - Development: development.md
   - Deployment: deployment.md
+  - Makefile: makefile.md
   - DB Schema: db_schema.md
   - DB Diagram: db_schema_diagram.md

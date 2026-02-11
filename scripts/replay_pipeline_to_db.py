@@ -28,7 +28,7 @@ from services.api.risk import (
     update_account_on_close,
 )
 from services.api.settings import settings
-from services.api.validation import PIPELINE_PATHS
+from services.api.validation import PIPELINE_PATHS, _metrics
 
 
 def _compute_exit_ts(df: pd.DataFrame, bar_minutes: int) -> pd.Series:
@@ -166,6 +166,22 @@ def replay_bar(
 
     session.commit()
 
+    metrics = {"trades": 0, "mean_pnl": 0.0, "total_pnl": 0.0, "max_dd": 0.0}
+    try:
+        pnls = pd.read_sql(
+            "SELECT pnl_bps, exit_ts FROM positions WHERE strategy_id = ? AND pnl_bps IS NOT NULL",
+            session.connection(),
+            params=[strategy_id],
+        )
+        if not pnls.empty:
+            pnls = pnls.dropna(subset=["pnl_bps", "exit_ts"]).sort_values("exit_ts")
+            metrics = _metrics(
+                pnls["pnl_bps"].to_numpy(),
+                pnls["exit_ts"].astype("int64").to_numpy(),
+            )
+    except Exception:
+        pass
+
     return {
         "bar": bar,
         "strategy_id": strategy_id,
@@ -174,6 +190,7 @@ def replay_bar(
         "closed": closed,
         "skipped_guardrail": skipped_guardrail,
         "skipped_risk": skipped_risk,
+        "summary": metrics,
     }
 
 
