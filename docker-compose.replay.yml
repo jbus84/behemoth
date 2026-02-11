@@ -1,4 +1,8 @@
 services:
+  redis:
+    ports:
+      - "${REPLAY_REDIS_PORT:-6380}:6379"
+
   db:
     ports:
       - "${REPLAY_DB_PORT:-5433}:5432"

@@ -84,6 +84,7 @@ REPLAY_DB_URL ?= postgresql+psycopg2://behemoth:behemoth@localhost:$(REPLAY_DB_P
 REPLAY_API_PORT ?= 8001
 REPLAY_PROM_PORT ?= 9091
 REPLAY_GRAFANA_PORT ?= 3001
+REPLAY_REDIS_PORT ?= 6380
 
 deploy:
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
@@ -100,7 +101,7 @@ replay:
 	DATABASE_URL=$(REPLAY_DB_URL) uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --sleep 0.1
 
 replay-stack:
-	REPLAY_DB_PORT=$(REPLAY_DB_PORT) REPLAY_API_PORT=$(REPLAY_API_PORT) REPLAY_PROM_PORT=$(REPLAY_PROM_PORT) REPLAY_GRAFANA_PORT=$(REPLAY_GRAFANA_PORT) \
+	REPLAY_DB_PORT=$(REPLAY_DB_PORT) REPLAY_API_PORT=$(REPLAY_API_PORT) REPLAY_PROM_PORT=$(REPLAY_PROM_PORT) REPLAY_GRAFANA_PORT=$(REPLAY_GRAFANA_PORT) REPLAY_REDIS_PORT=$(REPLAY_REDIS_PORT) \
 	docker compose --project-directory . -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.replay.yml --project-name $(REPLAY_PROJECT) up -d --build
 	@printf "Replay stack running:\\n"
 	@printf "  API:       http://localhost:$(REPLAY_API_PORT)\\n"
