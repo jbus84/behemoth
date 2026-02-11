@@ -78,12 +78,16 @@ db-restore:
 db-restore-smoke:
 	python scripts/db_backup_restore_smoke.py
 
+REPLAY_PROJECT ?= behemoth_replay
+
+
 deploy:
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 replay:
-	docker compose --project-directory . -f docker-compose.yml up -d db
-	@until docker compose --project-directory . -f docker-compose.yml exec -T db pg_isready -U behemoth >/dev/null 2>&1; do \
+	docker compose --project-directory . -f docker-compose.yml --project-name $(REPLAY_PROJECT) down -v >/dev/null 2>&1 || true
+	docker compose --project-directory . -f docker-compose.yml --project-name $(REPLAY_PROJECT) up -d db
+	@until docker compose --project-directory . -f docker-compose.yml --project-name $(REPLAY_PROJECT) exec -T db pg_isready -U behemoth >/dev/null 2>&1; do \
 		printf "Waiting for db...\\n"; \
 		sleep 1; \
 	done
@@ -118,7 +122,7 @@ help:
 	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "docs-openapi" "Export OpenAPI spec only"
 	@printf "\\n$(COLOR_SECTION)== Data & Analysis ==$(COLOR_RESET)\\n"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "baselines" "Generate M5/M15 baseline snapshots"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "replay" "Replay historical trades into DB (starts temp DB)"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "replay" "Replay historical trades into DB (isolated temp DB)"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "reconcile" "Compare DB vs pipeline outputs"
 	@printf "\\n$(COLOR_SECTION)== Deployment ==$(COLOR_RESET)\\n"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "deploy" "Start prod-like stack (compose + prod overlay)"
