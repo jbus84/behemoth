@@ -1,4 +1,10 @@
 .DEFAULT_GOAL := help
+COLOR_RESET := \033[0m
+COLOR_HEADER := \033[1;36m
+COLOR_SECTION := \033[1;35m
+COLOR_TARGET := \033[0;32m
+COLOR_DOC := \033[0;34m
+COLOR_DESC := \033[2m
 .PHONY: up down logs api migrate test db docs docs-build docs-clean docs-openapi precommit-install precommit-run lint format baselines db-backup db-restore db-restore-smoke deploy replay help
 
 up:
@@ -79,34 +85,34 @@ replay:
 	uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --sleep 0.1
 
 help:
-	@printf "Targets:\\n"
-	@printf "\\n== Core Services ==\\n"
-	@printf "  %-18s %s\\n" "up" "Start docker compose services"
-	@printf "  %-18s %s\\n" "down" "Stop docker compose services"
-	@printf "  %-18s %s\\n" "logs" "Tail API logs"
-	@printf "  %-18s %s\\n" "api" "Run API locally (uvicorn reload)"
-	@printf "\\n== Database ==\\n"
-	@printf "  %-18s %s\\n" "migrate" "Run DB migrations (compose)"
-	@printf "  %-18s %s\\n" "migrate-local" "Run DB migrations (local)"
-	@printf "  %-18s %s\\n" "db" "Open psql shell (compose)"
-	@printf "  %-18s %s\\n" "db-backup" "Create DB backup to backups/"
-	@printf "  %-18s %s\\n" "db-restore" "Restore DB backup (BACKUP_FILE=...)"
-	@printf "  %-18s %s\\n" "db-restore-smoke" "Backup/restore smoke test"
-	@printf "\\n== Quality ==\\n"
-	@printf "  %-18s %s\\n" "test" "Run pytest"
-	@printf "  %-18s %s\\n" "test-postgres" "Run API postgres integration test"
-	@printf "  %-18s %s\\n" "lint" "Run ruff lint"
-	@printf "  %-18s %s\\n" "format" "Run ruff format"
-	@printf "  %-18s %s\\n" "precommit-install" "Install pre-commit hooks"
-	@printf "  %-18s %s\\n" "precommit-run" "Run pre-commit on all files"
-	@printf "\\n== Docs ==\\n"
-	@printf "  %-18s %s\\n" "docs" "Serve docs locally"
-	@printf "  %-18s %s\\n" "docs-build" "Build docs (export OpenAPI first)"
-	@printf "  %-18s %s\\n" "docs-clean" "Remove built site/"
-	@printf "  %-18s %s\\n" "docs-openapi" "Export OpenAPI spec only"
-	@printf "\\n== Data & Analysis ==\\n"
-	@printf "  %-18s %s\\n" "baselines" "Generate M5/M15 baseline snapshots"
-	@printf "  %-18s %s\\n" "replay" "Replay historical trades into DB"
-	@printf "  %-18s %s\\n" "reconcile" "Compare DB vs pipeline outputs"
-	@printf "\\n== Deployment ==\\n"
-	@printf "  %-18s %s\\n" "deploy" "Start prod-like stack (compose + prod overlay)"
+	@printf "$(COLOR_HEADER)Targets:$(COLOR_RESET)\\n"
+	@printf "\\n$(COLOR_SECTION)== Core Services ==$(COLOR_RESET)\\n"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "up" "Start docker compose services"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "down" "Stop docker compose services"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "logs" "Tail API logs"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "api" "Run API locally (uvicorn reload)"
+	@printf "\\n$(COLOR_SECTION)== Database ==$(COLOR_RESET)\\n"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "migrate" "Run DB migrations (compose)"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "migrate-local" "Run DB migrations (local)"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "db" "Open psql shell (compose)"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "db-backup" "Create DB backup to backups/"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "db-restore" "Restore DB backup (BACKUP_FILE=...)"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "db-restore-smoke" "Backup/restore smoke test"
+	@printf "\\n$(COLOR_SECTION)== Quality ==$(COLOR_RESET)\\n"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "test" "Run pytest"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "test-postgres" "Run API postgres integration test"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "lint" "Run ruff lint"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "format" "Run ruff format"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "precommit-install" "Install pre-commit hooks"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "precommit-run" "Run pre-commit on all files"
+	@printf "\\n$(COLOR_SECTION)== Docs ==$(COLOR_RESET)\\n"
+	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "docs" "Serve docs locally"
+	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "docs-build" "Build docs (export OpenAPI first)"
+	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "docs-clean" "Remove built site/"
+	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "docs-openapi" "Export OpenAPI spec only"
+	@printf "\\n$(COLOR_SECTION)== Data & Analysis ==$(COLOR_RESET)\\n"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "baselines" "Generate M5/M15 baseline snapshots"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "replay" "Replay historical trades into DB"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "reconcile" "Compare DB vs pipeline outputs"
+	@printf "\\n$(COLOR_SECTION)== Deployment ==$(COLOR_RESET)\\n"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "deploy" "Start prod-like stack (compose + prod overlay)"
