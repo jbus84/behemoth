@@ -1,4 +1,4 @@
-.PHONY: up down logs api migrate test db docs docs-build docs-clean
+.PHONY: up down logs api migrate test db docs docs-build docs-clean docs-openapi
 
 up:
 	docker compose up -d --build
@@ -39,3 +39,6 @@ docs-build:
 
 docs-clean:
 	rm -rf site
+
+docs-openapi:
+	uv run python scripts/export_openapi.py

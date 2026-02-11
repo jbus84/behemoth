@@ -10,6 +10,7 @@
 - `mkdocs.yml`: MkDocs configuration
 - `configs/`: YAML config for API and pair weights
 - `services/api/migrations/`: Alembic migrations for DB schema
+- `scripts/export_openapi.py`: generate OpenAPI spec for docs
 
 
 ## Notes

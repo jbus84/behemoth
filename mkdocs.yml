@@ -49,6 +49,7 @@ nav:
   - Architecture: architecture.md
   - API: api.md
   - API Reference: api_reference.md
+  - OpenAPI: openapi.md
   - Core Reference: core_reference.md
   - Risk Controls: risk_controls.md
   - Data Pipeline: data_pipeline.md
@@ -56,3 +57,4 @@ nav:
   - Config Reference: config_reference.md
   - Code Reference: code_reference.md
   - DB Schema: db_schema.md
+  - DB Diagram: db_schema_diagram.md
