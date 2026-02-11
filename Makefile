@@ -1,3 +1,4 @@
+.DEFAULT_GOAL := help
 .PHONY: up down logs api migrate test db docs docs-build docs-clean docs-openapi precommit-install precommit-run lint format baselines db-backup db-restore db-restore-smoke deploy replay help
 
 up:
