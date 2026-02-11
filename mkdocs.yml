@@ -30,11 +30,26 @@ markdown_extensions:
   - toc:
       permalink: true
 
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths:
+            - src
+            - .
+          options:
+            show_source: true
+            show_root_heading: true
+            show_signature_annotations: true
+
 nav:
   - Overview: index.md
   - Strategy Manual: STRATEGY_MASTER_MANUAL.md
   - Architecture: architecture.md
   - API: api.md
+  - API Reference: api_reference.md
+  - Core Reference: core_reference.md
   - Risk Controls: risk_controls.md
   - Data Pipeline: data_pipeline.md
   - Validation: validation.md
