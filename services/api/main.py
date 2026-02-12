@@ -31,6 +31,7 @@ from .models import (
     PositionStatus,
 )
 from .predict import generate_mom_events_for_pair
+from .signals import router as signals_router
 from .risk import (
     check_risk_on_create,
     get_or_create_account_state,
@@ -70,6 +71,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Behemoth Position API", version="0.1.0", lifespan=lifespan)
+app.include_router(signals_router)
 logger = logging.getLogger("behemoth.api")
 
 
@@ -362,6 +364,16 @@ def close_position(position_id: str, payload: PositionClose, db: Session = Depen
     pos.exit_ts = payload.exit_ts or _now()
     pos.pnl_bps = payload.pnl_bps
     pos.version += 1
+
+
+    if pos.pnl_bps is None and pos.entry_price and pos.exit_price:
+        entry = float(pos.entry_price)
+        exit_ = float(pos.exit_price)
+        if entry > 0:
+            if pos.side == Side.LONG:
+                pos.pnl_bps = (exit_ - entry) / entry * 10000.0
+            elif pos.side == Side.SHORT:
+                pos.pnl_bps = (entry - exit_) / entry * 10000.0
 
     if pos.pnl_bps is not None:
         notional = (

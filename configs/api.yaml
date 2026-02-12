@@ -15,8 +15,8 @@ guardrail_loss_streak: 3
 guardrail_cooldown_days: 7
 
 account_equity_start: 100000
-max_daily_loss_pct: 0.05
+max_daily_loss_pct: 0.99
 max_daily_loss_buffer_pct: 0.005
-max_dd_pct: 0.10
+max_dd_pct: 0.99
 max_dd_buffer_pct: 0.005
 pair_weights_path: configs/pair_weights.yaml

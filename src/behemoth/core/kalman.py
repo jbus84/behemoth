@@ -83,7 +83,9 @@ class KalmanFilterRegMulti:
         return self.beta.copy(), residual
 
 
-def compute_kalman_states(y, x, window=500, warmup=10):
+import pandas as pd
+
+def compute_kalman_states(y, x, window=750, warmup=10):
     """
     Compute level and return Kalman states plus residual errors.
     """
@@ -91,12 +93,27 @@ def compute_kalman_states(y, x, window=500, warmup=10):
     betas = []
     errors = []
 
+    # Vectorize rolling means (shift 1 to use past data only)
+    # min_periods=1 handles the growing window at the start
+    y_series = pd.Series(y)
+    x_series = pd.Series(x)
+    
+    mu_y_vec = y_series.rolling(window=window, min_periods=1).mean().shift(1).to_numpy()
+    mu_x_vec = x_series.rolling(window=window, min_periods=1).mean().shift(1).to_numpy()
+    
+    # Fill NaN at straight start (index 0 shifted in is NaN) with first value?
+    # Loop said: if i < warmup: mu_y = y[i]
+    # We can handle this inside strict loop or pre-fill
+    
     for i in range(len(y)):
         if i < warmup:
             mu_y, mu_x = y[i], x[i]
         else:
-            mu_y = np.mean(y[max(0, i - window) : i])
-            mu_x = np.mean(x[max(0, i - window) : i])
+            # Use pre-computed rolling mean
+            # If NaN (shouldn't be with min_periods=1 except index 0?), fallback
+            mu_y = mu_y_vec[i] if not np.isnan(mu_y_vec[i]) else y[i]
+            mu_x = mu_x_vec[i] if not np.isnan(mu_x_vec[i]) else x[i]
+            
         b, _ = kf.update(x[i] - mu_x, y[i] - mu_y)
         betas.append(b)
         errors.append((y[i] - mu_y) - b * (x[i] - mu_x))

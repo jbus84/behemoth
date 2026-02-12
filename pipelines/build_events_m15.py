@@ -67,7 +67,7 @@ def compute_kalman_states(y, x):
     return _compute_kalman_states(y, x)
 
 
-def compute_z_scores(errors, window=500):
+def compute_z_scores(errors, window=750):
     return _compute_z_scores(errors, window=window)
 
 

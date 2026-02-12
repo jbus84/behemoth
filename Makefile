@@ -166,3 +166,6 @@ help:
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "reconcile" "Compare DB vs pipeline outputs"
 	@printf "\\n$(COLOR_SECTION)== Deployment ==$(COLOR_RESET)\\n"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "deploy" "Start prod-like stack (compose + prod overlay)"
+
+deploy-cbot: ## Deploy cBot code to cTrader Robots directory
+	python3 scripts/deploy_cbot.py
