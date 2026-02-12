@@ -68,7 +68,7 @@
       },
       "targets": [
         {
-          "expr": "sum(behemoth_positions_active_total{strategy_id=~\"$strategy\"})",
+          "expr": "sum(behemoth_positions_active_total{strategy_id=\"mom_m15\"})",
           "legendFormat": "active"
         }
       ]
@@ -85,7 +85,7 @@
       },
       "targets": [
         {
-          "expr": "sum(behemoth_guardrail_paused_total{strategy_id=~\"$strategy\"})",
+          "expr": "sum(behemoth_guardrail_paused_total{strategy_id=\"mom_m15\"})",
           "legendFormat": "paused"
         }
       ]
@@ -102,7 +102,7 @@
       },
       "targets": [
         {
-          "expr": "behemoth_account_equity{strategy_id=~\"$strategy\"}",
+          "expr": "behemoth_account_equity{strategy_id=\"mom_m15\"}",
           "legendFormat": "{{strategy_id}}"
         }
       ],
@@ -125,7 +125,7 @@
       },
       "targets": [
         {
-          "expr": "behemoth_account_peak_equity{strategy_id=~\"$strategy\"}",
+          "expr": "behemoth_account_peak_equity{strategy_id=\"mom_m15\"}",
           "legendFormat": "{{strategy_id}}"
         }
       ],
@@ -148,7 +148,7 @@
       },
       "targets": [
         {
-          "expr": "max(behemoth_account_halted{strategy_id=~\"$strategy\"})",
+          "expr": "max(behemoth_account_halted{strategy_id=\"mom_m15\"})",
           "legendFormat": "halted"
         }
       ],
@@ -171,19 +171,134 @@
       }
     },
     {
+      "id": 15,
+      "type": "stat",
+      "title": "Mean Return / Trade (%)",
+      "gridPos": {
+        "x": 12,
+        "y": 10,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "behemoth_closed_trades_mean_bps{strategy_id=\"mom_m15\"} / 100",
+          "legendFormat": "mean_return_/_trade_(%)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2
+        }
+      }
+    },
+    {
+      "id": 17,
+      "type": "stat",
+      "title": "Closed Trades",
+      "gridPos": {
+        "x": 18,
+        "y": 10,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "behemoth_closed_trades_total{strategy_id=\"mom_m15\"}",
+          "legendFormat": "closed_trades"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0
+        }
+      }
+    },
+    {
+      "id": 18,
+      "type": "stat",
+      "title": "Daily Drawdown (%)",
+      "gridPos": {
+        "x": 12,
+        "y": 14,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "(behemoth_account_equity{strategy_id=\"mom_m15\"} - behemoth_account_day_start_equity{strategy_id=\"mom_m15\"}) / behemoth_account_day_start_equity{strategy_id=\"mom_m15\"} * 100",
+          "legendFormat": "daily_drawdown_(%)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2
+        }
+      }
+    },
+    {
+      "id": 19,
+      "type": "stat",
+      "title": "Drawdown vs Peak (%)",
+      "gridPos": {
+        "x": 18,
+        "y": 14,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "(behemoth_account_equity{strategy_id=\"mom_m15\"} - behemoth_account_peak_equity{strategy_id=\"mom_m15\"}) / behemoth_account_peak_equity{strategy_id=\"mom_m15\"} * 100",
+          "legendFormat": "drawdown_vs_peak_(%)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2
+        }
+      }
+    },
+    {
+      "id": 16,
+      "type": "stat",
+      "title": "Paused Pairs (Count)",
+      "gridPos": {
+        "x": 6,
+        "y": 10,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "behemoth_guardrail_paused_total{strategy_id=\"mom_m15\"}",
+          "legendFormat": "paused_pairs"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0
+        }
+      }
+    },
+    {
       "id": 9,
       "type": "table",
       "title": "Active Positions by Pair",
       "gridPos": {
         "x": 12,
-        "y": 10,
+        "y": 18,
         "w": 12,
         "h": 6
       },
       "targets": [
         {
-          "expr": "behemoth_positions_active_by_pair{strategy_id=~\"$strategy\"}",
-          "legendFormat": "{{strategy_id}} {{pair}}"
+          "expr": "sum by (pair) (behemoth_positions_active_by_pair{strategy_id=\"mom_m15\"})",
+          "legendFormat": "{{pair}}",
+          "format": "table",
+          "instant": true
         }
       ],
       "transformations": [
@@ -195,10 +310,21 @@
           "options": {
             "renameByName": {
               "Value": "count"
+            },
+            "excludeByName": {
+              "__name__": true,
+              "instance": true,
+              "job": true,
+              "strategy_id": true,
+              "Time": true
             }
           }
         }
-      ]
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
     },
     {
       "id": 10,
@@ -206,13 +332,13 @@
       "title": "Guardrail Paused Pairs",
       "gridPos": {
         "x": 0,
-        "y": 16,
+        "y": 24,
         "w": 12,
         "h": 6
       },
       "targets": [
         {
-          "expr": "behemoth_guardrail_cooldown_seconds{strategy_id=~\"$strategy\"}",
+          "expr": "behemoth_guardrail_cooldown_seconds{strategy_id=\"mom_m15\"}",
           "legendFormat": "{{strategy_id}} {{pair}}"
         }
       ],
@@ -229,15 +355,14 @@
           }
         }
       ]
-    }
-    ,
+    },
     {
       "id": 11,
       "type": "gauge",
       "title": "Replay Progress (%)",
       "gridPos": {
         "x": 12,
-        "y": 16,
+        "y": 24,
         "w": 12,
         "h": 6
       },
@@ -269,12 +394,132 @@
       }
     },
     {
+      "id": 20,
+      "type": "stat",
+      "title": "Replay Processed",
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "behemoth_replay_processed_total{bar=\"m15\"}",
+          "legendFormat": "processed"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0
+        }
+      }
+    },
+    {
+      "id": 21,
+      "type": "stat",
+      "title": "Replay Total",
+      "gridPos": {
+        "x": 6,
+        "y": 30,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "behemoth_replay_total_rows{bar=\"m15\"}",
+          "legendFormat": "total"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0
+        }
+      }
+    },
+    {
+      "id": 22,
+      "type": "table",
+      "title": "Skipped Guardrail by Pair",
+      "gridPos": {
+        "x": 12,
+        "y": 30,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum by (pair) (behemoth_replay_skipped_guardrail_total{bar=\"m15\"})",
+          "legendFormat": "{{pair}}",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields"
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "Value": "count"
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 23,
+      "type": "table",
+      "title": "Skipped Risk by Pair",
+      "gridPos": {
+        "x": 18,
+        "y": 30,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum by (pair) (behemoth_replay_skipped_risk_total{bar=\"m15\"})",
+          "legendFormat": "{{pair}}",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields"
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "Value": "count"
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
       "id": 12,
       "type": "stat",
       "title": "Replay ETA (s)",
       "gridPos": {
         "x": 12,
-        "y": 22,
+        "y": 34,
         "w": 6,
         "h": 4
       },
@@ -305,7 +550,7 @@
       "title": "Replay Rate (/s)",
       "gridPos": {
         "x": 18,
-        "y": 22,
+        "y": 34,
         "w": 6,
         "h": 4
       },
@@ -336,13 +581,13 @@
       "title": "Active Positions (Live)",
       "gridPos": {
         "x": 12,
-        "y": 26,
+        "y": 38,
         "w": 12,
         "h": 6
       },
       "targets": [
         {
-          "expr": "behemoth_positions_active_total{strategy_id=~\"$strategy\"}",
+          "expr": "behemoth_positions_active_total{strategy_id=\"mom_m15\"}",
           "legendFormat": "{{strategy_id}}"
         }
       ],
@@ -355,18 +600,6 @@
     }
   ],
   "templating": {
-    "list": [
-      {
-        "name": "strategy",
-        "type": "query",
-        "label": "Strategy",
-        "datasource": "Prometheus",
-        "refresh": 2,
-        "query": "label_values(behemoth_account_equity, strategy_id)",
-        "multi": false,
-        "includeAll": true,
-        "allValue": ".*"
-      }
-    ]
+    "list": []
   }
 }

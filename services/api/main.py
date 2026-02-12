@@ -136,6 +136,7 @@ def predictions(
     pair: str,
     start_ts: int | None = None,
     end_ts: int | None = None,
+    offset: int = 0,
     limit: int = 1000,
 ):
     events = generate_mom_events_for_pair(bar, pair)
@@ -143,11 +144,16 @@ def predictions(
         events = [e for e in events if e["entry_ts"] >= start_ts]
     if end_ts is not None:
         events = [e for e in events if e["entry_ts"] <= end_ts]
+    total = len(events)
+    page = events[offset : offset + limit]
     return {
         "pair": pair,
         "bar": bar,
-        "count": len(events),
-        "events": events[:limit],
+        "total": total,
+        "count": len(page),
+        "offset": offset,
+        "limit": limit,
+        "events": page,
     }
 
 

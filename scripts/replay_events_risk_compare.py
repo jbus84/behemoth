@@ -203,7 +203,6 @@ def _simulate(
             open_heap,
             (row.exit_ts.to_pydatetime(), counter, float(target_notional), float(row.pnl_bps), pair),
         )
-        open_exposure += float(target_notional)
 
     # Close any remaining open positions
     if open_heap:

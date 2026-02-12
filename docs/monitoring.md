@@ -15,7 +15,7 @@ Key metrics include:
 
 ## Grafana Dashboard
 The `Behemoth Overview` dashboard is provisioned automatically in Grafana.
-It shows:
+It shows **guardrailed M15 executed state** only.
 
 - API request rate and p95 latency
 - Active positions
@@ -32,14 +32,14 @@ To replay historical trades into the DB and watch dashboards update:
 
 ```bash
 export DATABASE_URL=postgresql+psycopg2://behemoth:behemoth@localhost:5432/behemoth
-uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --sleep 0.1
+uv run python scripts/replay_pipeline_to_db.py --bars m15 --reset --sleep 0.1
 ```
 
 This streams trades into the API DB, updates guardrail/account state, and
 populates live metrics that Grafana displays. The `--sleep` flag slows the
 replay so the dashboard visibly updates.
 
-By default, the replay enforces risk gates and guardrail logic and writes a
+By default, the replay enforces kill‑switches and guardrail logic and writes a
 JSON report to `data/analysis/replay_report.json`.
 
 The report includes replay counts plus summary stats (trades, mean PnL, total

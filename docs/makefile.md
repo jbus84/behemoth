@@ -38,7 +38,11 @@ Use `make help` to list targets.
 - <span style="color:#1f77b4;"><strong>`make baselines`</strong></span>
   <span style="color:#2ca02c;">Generate M5/M15 golden baselines.</span>
 - <span style="color:#1f77b4;"><strong>`make replay`</strong></span>
-  <span style="color:#2ca02c;">Replay historical trades into DB (dashboards).</span>
+  <span style="color:#2ca02c;">Fast DB‑only replay from event CSVs (default `REPLAY_BARS=m15`).</span>
+- <span style="color:#1f77b4;"><strong>`make replay-load`</strong></span>
+  <span style="color:#2ca02c;">Full end‑to‑end replay via API + DB (updates Grafana live).</span>
+- <span style="color:#1f77b4;"><strong>`make replay-stack`</strong></span>
+  <span style="color:#2ca02c;">Run isolated replay stack (DB/API/Prom/Grafana) on alt ports.</span>
 
 **Docs**
 - <span style="color:#1f77b4;"><strong>`make docs`</strong></span>

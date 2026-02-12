@@ -1,3 +1,4 @@
+import functools
 import numpy as np
 import pandas as pd
 
@@ -57,10 +58,11 @@ def compute_exit_ts(
     return int(entry_ts + duration * bar_ns)
 
 
-def generate_mom_events_for_pair(bar: str, pair: str):
+@functools.lru_cache(maxsize=64)
+def generate_mom_events_for_pair(bar: str, pair: str) -> tuple[dict, ...]:
     series = load_pair_series(bar, pair)
     if series is None:
-        return []
+        return ()
     ts, y, x = series
     betas, errors, _ = compute_kalman_states(y, x)
     z_scores = compute_z_scores(errors)
@@ -95,4 +97,4 @@ def generate_mom_events_for_pair(bar: str, pair: str):
             }
         )
         last_entry = i
-    return events
+    return tuple(events)

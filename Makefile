@@ -5,8 +5,7 @@ COLOR_SECTION := \033[1;35m
 COLOR_TARGET := \033[0;32m
 COLOR_DOC := \033[0;34m
 COLOR_DESC := \033[2m
-.PHONY: up down logs api migrate test db docs docs-build docs-clean docs-openapi precommit-install precommit-run lint format baselines db-backup db-restore db-restore-smoke deploy replay replay-load replay-load-pipeline replay-stack replay-stack-down help
-.PHONY: replay-load-container
+.PHONY: up down logs api migrate test db docs docs-build docs-clean docs-openapi precommit-install precommit-run lint format baselines db-backup db-restore db-restore-smoke deploy replay replay-load replay-stack replay-stack-down help
 
 up:
 	docker compose up -d --build
@@ -88,8 +87,10 @@ REPLAY_GRAFANA_PORT ?= 3001
 REPLAY_REDIS_PORT ?= 6380
 REPLAY_REDIS_URL ?= redis://localhost:$(REPLAY_REDIS_PORT)/0
 REPLAY_COMMIT_EVERY ?= 5000
-REPLAY_SLEEP ?= 0.1
+REPLAY_SLEEP ?= 0.0
 REPLAY_LIMIT ?=
+REPLAY_BARS ?= m15
+REPLAY_API_LIMIT ?= 5000
 REPLAY_PROGRESS_EVERY ?= 1000
 REPLAY_ENFORCE_RISK ?= 1
 REPLAY_GUARDRAIL ?= 1
@@ -109,33 +110,16 @@ replay:
 	done
 	@docker compose --project-directory . -f docker-compose.yml --project-name $(REPLAY_PROJECT) exec -T db psql -U behemoth -d behemoth -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"
 	DATABASE_URL=$(REPLAY_DB_URL) uv run alembic -c services/api/alembic.ini upgrade head
-	REPLAY_REDIS_URL=$(REPLAY_REDIS_URL) DATABASE_URL=$(REPLAY_DB_URL) uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --commit-every $(REPLAY_COMMIT_EVERY) --sleep $(REPLAY_SLEEP) $(if $(REPLAY_LIMIT),--limit $(REPLAY_LIMIT),) --report $(REPLAY_REPORT) $(if $(filter 0,$(REPLAY_ENFORCE_RISK)),--no-enforce-risk,) $(if $(filter 0,$(REPLAY_GUARDRAIL)),--no-guardrail,)
+	REPLAY_REDIS_URL=$(REPLAY_REDIS_URL) DATABASE_URL=$(REPLAY_DB_URL) uv run python scripts/replay_pipeline_to_db.py --bars $(REPLAY_BARS) --reset --commit-every $(REPLAY_COMMIT_EVERY) --sleep $(REPLAY_SLEEP) $(if $(REPLAY_LIMIT),--limit $(REPLAY_LIMIT),) --report $(REPLAY_REPORT) $(if $(filter 0,$(REPLAY_ENFORCE_RISK)),--no-enforce-risk,) $(if $(filter 0,$(REPLAY_GUARDRAIL)),--no-guardrail,)
 
 replay-load:
 	@until docker compose --project-directory . $(REPLAY_COMPOSE) --project-name $(REPLAY_PROJECT) exec -T db pg_isready -U behemoth >/dev/null 2>&1; do \
 		printf "Waiting for replay db...\\n"; \
 		sleep 1; \
 	done
+	@docker compose --project-directory . $(REPLAY_COMPOSE) --project-name $(REPLAY_PROJECT) exec -T db psql -U behemoth -d behemoth -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"
 	DATABASE_URL=$(REPLAY_DB_URL) uv run alembic -c services/api/alembic.ini upgrade head
-	REPLAY_REDIS_URL=$(REPLAY_REDIS_URL) REPLAY_API_URL=$(REPLAY_API_URL) uv run python scripts/replay_bars_via_api.py --bars m5,m15 --sleep $(REPLAY_SLEEP) --progress-every $(REPLAY_PROGRESS_EVERY) $(if $(REPLAY_LIMIT),--limit $(REPLAY_LIMIT),)
-
-replay-load-container:
-	@until docker compose --project-directory . $(REPLAY_COMPOSE) --project-name $(REPLAY_PROJECT) exec -T db pg_isready -U behemoth >/dev/null 2>&1; do \
-		printf "Waiting for replay db...\\n"; \
-		sleep 1; \
-	done
-	docker compose --project-directory . $(REPLAY_COMPOSE) --project-name $(REPLAY_PROJECT) exec -T api /bin/sh -lc \
-	"DATABASE_URL=postgresql+psycopg2://behemoth:behemoth@db:5432/behemoth \
-	alembic -c services/api/alembic.ini upgrade head && \
-	REPLAY_REDIS_URL=redis://redis:6379/0 REPLAY_API_URL=http://api:8000 \
-	python scripts/replay_bars_via_api.py --bars m5,m15 --sleep $(REPLAY_SLEEP) --progress-every $(REPLAY_PROGRESS_EVERY) $(if $(REPLAY_LIMIT),--limit $(REPLAY_LIMIT),)"
-
-replay-load-pipeline:
-	@until docker compose --project-directory . $(REPLAY_COMPOSE) --project-name $(REPLAY_PROJECT) exec -T db pg_isready -U behemoth >/dev/null 2>&1; do \
-		printf "Waiting for replay db...\\n"; \
-		sleep 1; \
-	done
-	REPLAY_REDIS_URL=$(REPLAY_REDIS_URL) DATABASE_URL=$(REPLAY_DB_URL) uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --commit-every $(REPLAY_COMMIT_EVERY) --sleep $(REPLAY_SLEEP) $(if $(REPLAY_LIMIT),--limit $(REPLAY_LIMIT),)
+	REPLAY_REDIS_URL=$(REPLAY_REDIS_URL) REPLAY_API_URL=$(REPLAY_API_URL) uv run python scripts/replay_bars_via_api.py --bars $(REPLAY_BARS) --sleep $(REPLAY_SLEEP) --progress-every $(REPLAY_PROGRESS_EVERY) --api-limit $(REPLAY_API_LIMIT) $(if $(REPLAY_LIMIT),--limit $(REPLAY_LIMIT),)
 replay-stack:
 	DB_PORT=$(REPLAY_DB_PORT) API_PORT=$(REPLAY_API_PORT) PROM_PORT=$(REPLAY_PROM_PORT) GRAFANA_PORT=$(REPLAY_GRAFANA_PORT) REDIS_PORT=$(REPLAY_REDIS_PORT) \
 	docker compose --project-directory . $(REPLAY_COMPOSE) --project-name $(REPLAY_PROJECT) up -d --build
@@ -175,10 +159,8 @@ help:
 	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "docs-openapi" "Export OpenAPI spec only"
 	@printf "\\n$(COLOR_SECTION)== Data & Analysis ==$(COLOR_RESET)\\n"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "baselines" "Generate M5/M15 baseline snapshots"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "replay" "Replay historical trades into DB (isolated temp DB @ :$(REPLAY_DB_PORT))"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "replay-load" "Full simulation via API + bar data (expects replay stack running)"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "replay-load-container" "Full simulation inside API container (no host DB access needed)"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "replay-load-pipeline" "Replay from prebuilt event CSVs (no API calls)"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "replay" "Fast DB-only replay from event CSVs (bars=$(REPLAY_BARS), isolated temp DB @ :$(REPLAY_DB_PORT))"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "replay-load" "Full end-to-end replay via API + DB (bars=$(REPLAY_BARS), updates Grafana live)"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "replay-stack" "Run isolated replay stack (DB/API/Prom/Grafana) on alt ports"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "replay-stack-down" "Stop isolated replay stack"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "reconcile" "Compare DB vs pipeline outputs"

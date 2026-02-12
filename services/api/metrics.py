@@ -7,6 +7,7 @@ from typing import cast
 
 from fastapi import Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .cache import get_redis
@@ -73,6 +74,12 @@ ACCOUNT_DAY_START_EQUITY = Gauge(
     "behemoth_account_day_start_equity", "Account day-start equity", ["strategy_id"]
 )
 ACCOUNT_HALTED = Gauge("behemoth_account_halted", "Account halted flag (1 halted)", ["strategy_id"])
+TRADES_CLOSED_TOTAL = Gauge(
+    "behemoth_closed_trades_total", "Closed trades total", ["strategy_id"]
+)
+TRADES_CLOSED_MEAN_BPS = Gauge(
+    "behemoth_closed_trades_mean_bps", "Closed trades mean pnl (bps)", ["strategy_id"]
+)
 
 SYSTEM_UP = Gauge("behemoth_api_up", "API health flag")
 REPLAY_PROCESSED = Gauge("behemoth_replay_processed_total", "Replay processed rows", ["bar"])
@@ -80,9 +87,11 @@ REPLAY_TOTAL = Gauge("behemoth_replay_total_rows", "Replay total rows", ["bar"])
 REPLAY_OPENED = Gauge("behemoth_replay_opened_total", "Replay opened positions", ["bar"])
 REPLAY_CLOSED = Gauge("behemoth_replay_closed_total", "Replay closed positions", ["bar"])
 REPLAY_SKIPPED_GUARDRAIL = Gauge(
-    "behemoth_replay_skipped_guardrail_total", "Replay skipped guardrail", ["bar"]
+    "behemoth_replay_skipped_guardrail_total", "Replay skipped guardrail", ["bar", "pair"]
 )
-REPLAY_SKIPPED_RISK = Gauge("behemoth_replay_skipped_risk_total", "Replay skipped risk", ["bar"])
+REPLAY_SKIPPED_RISK = Gauge(
+    "behemoth_replay_skipped_risk_total", "Replay skipped risk", ["bar", "pair"]
+)
 REPLAY_RATE = Gauge("behemoth_replay_rate_per_s", "Replay processing rate per second", ["bar"])
 REPLAY_ETA_SECONDS = Gauge("behemoth_replay_eta_seconds", "Replay ETA in seconds", ["bar"])
 REPLAY_PROGRESS_PCT = Gauge("behemoth_replay_progress_pct", "Replay progress percent", ["bar"])
@@ -96,7 +105,9 @@ _guardrail_total_labels: set[tuple[str]] = set()
 _guardrail_pause_labels: set[tuple[str, str]] = set()
 _guardrail_cooldown_labels: set[tuple[str, str]] = set()
 _account_labels: set[tuple[str]] = set()
+_trade_summary_labels: set[tuple[str]] = set()
 _replay_labels: set[tuple[str]] = set()
+_replay_skip_labels: set[tuple[str, str]] = set()
 
 
 def _to_float(value: object, default: float = 0.0) -> float:
@@ -211,6 +222,36 @@ def refresh_state_metrics(db: Session) -> None:
         ACCOUNT_HALTED.remove(*label)
         _account_labels.discard(label)
 
+    trade_summary: dict[tuple[str], dict[str, float]] = {}
+    rows = (
+        db.query(
+            Position.strategy_id,
+            func.count(Position.id),
+            func.avg(Position.pnl_bps),
+        )
+        .filter(Position.status == PositionStatus.CLOSED, Position.pnl_bps.isnot(None))
+        .group_by(Position.strategy_id)
+        .all()
+    )
+    for strategy_id, count, mean_bps in rows:
+        trade_summary[(str(strategy_id),)] = {
+            "count": float(count or 0),
+            "mean_bps": float(mean_bps or 0.0),
+        }
+    # Ensure gauges show 0 when there are no closed trades yet.
+    for label in account_values.keys():
+        trade_summary.setdefault(label, {"count": 0.0, "mean_bps": 0.0})
+
+    for label, values in trade_summary.items():
+        TRADES_CLOSED_TOTAL.labels(*label).set(values["count"])
+        TRADES_CLOSED_MEAN_BPS.labels(*label).set(values["mean_bps"])
+        _trade_summary_labels.add(label)
+
+    for label in list(_trade_summary_labels - trade_summary.keys()):
+        TRADES_CLOSED_TOTAL.remove(*label)
+        TRADES_CLOSED_MEAN_BPS.remove(*label)
+        _trade_summary_labels.discard(label)
+
     client = get_redis()
     if client is None:
         return None
@@ -219,6 +260,8 @@ def refresh_state_metrics(db: Session) -> None:
     except Exception:
         return None
     replay_values: dict[tuple[str], dict[str, float]] = {}
+    skipped_guardrail_values: dict[tuple[str, str], float] = {}
+    skipped_risk_values: dict[tuple[str, str], float] = {}
     for key in keys:
         bar = str(key).split("replay:progress:", 1)[-1]
         try:
@@ -232,22 +275,25 @@ def refresh_state_metrics(db: Session) -> None:
             "total": _to_float(payload.get("total", 0)),
             "opened": _to_float(payload.get("opened", 0)),
             "closed": _to_float(payload.get("closed", 0)),
-            "skipped_guardrail": _to_float(payload.get("skipped_guardrail", 0)),
-            "skipped_risk": _to_float(payload.get("skipped_risk", 0)),
             "rate": _to_float(payload.get("rate", 0)),
             "eta_s": _to_float(payload.get("eta_s", 0)),
             "progress_pct": _to_float(payload.get("progress_pct", 0)),
             "done": _to_float(payload.get("done", 0)),
             "updated_at": _to_float(payload.get("updated_at", 0)),
         }
+        for k, v in payload.items():
+            if k.startswith("skipped_guardrail:"):
+                p = k.split(":", 1)[1]
+                skipped_guardrail_values[(bar, p)] = _to_float(v)
+            elif k.startswith("skipped_risk:"):
+                p = k.split(":", 1)[1]
+                skipped_risk_values[(bar, p)] = _to_float(v)
 
     for label, values in replay_values.items():
         REPLAY_PROCESSED.labels(*label).set(values["processed"])
         REPLAY_TOTAL.labels(*label).set(values["total"])
         REPLAY_OPENED.labels(*label).set(values["opened"])
         REPLAY_CLOSED.labels(*label).set(values["closed"])
-        REPLAY_SKIPPED_GUARDRAIL.labels(*label).set(values["skipped_guardrail"])
-        REPLAY_SKIPPED_RISK.labels(*label).set(values["skipped_risk"])
         REPLAY_RATE.labels(*label).set(values["rate"])
         REPLAY_ETA_SECONDS.labels(*label).set(values["eta_s"])
         REPLAY_PROGRESS_PCT.labels(*label).set(values["progress_pct"])
@@ -255,13 +301,14 @@ def refresh_state_metrics(db: Session) -> None:
         REPLAY_UPDATED_AT.labels(*label).set(values["updated_at"])
         _replay_labels.add(label)
 
+    _update_labeled_gauge(REPLAY_SKIPPED_GUARDRAIL, _replay_skip_labels, skipped_guardrail_values)
+    _update_labeled_gauge(REPLAY_SKIPPED_RISK, _replay_skip_labels, skipped_risk_values)
+
     for label in list(_replay_labels - replay_values.keys()):
         REPLAY_PROCESSED.remove(*label)
         REPLAY_TOTAL.remove(*label)
         REPLAY_OPENED.remove(*label)
         REPLAY_CLOSED.remove(*label)
-        REPLAY_SKIPPED_GUARDRAIL.remove(*label)
-        REPLAY_SKIPPED_RISK.remove(*label)
         REPLAY_RATE.remove(*label)
         REPLAY_ETA_SECONDS.remove(*label)
         REPLAY_PROGRESS_PCT.remove(*label)

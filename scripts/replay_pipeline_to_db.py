@@ -24,14 +24,10 @@ if str(ROOT) not in sys.path:
 from services.api.db import Base
 from services.api.guardrail import is_trade_allowed, update_guardrail_on_close
 from services.api.models import ActiveLeg, AccountState, GuardrailState, Position, PositionStatus, Side
-from services.api.risk import (
-    check_risk_on_create,
-    compute_target_notional,
-    get_or_create_account_state,
-    update_account_on_close,
-)
+from services.api.risk import check_risk_on_create, get_or_create_account_state, update_account_on_close
 from services.api.settings import settings
 from services.api.validation import PIPELINE_PATHS, _metrics
+from services.api.weights import load_weights
 
 
 def _get_progress_redis() -> redis.Redis | None:
@@ -87,6 +83,15 @@ def _reset_state(session, strategy_id: str) -> None:
     session.query(GuardrailState).filter(GuardrailState.strategy_id == strategy_id).delete()
     session.query(AccountState).filter(AccountState.strategy_id == strategy_id).delete()
     session.commit()
+
+
+def _compute_target_notional(strategy_id: str, pair: str, equity: float) -> float:
+    weights = load_weights(strategy_id)
+    if not weights:
+        return float(equity)
+    weight_sum = float(sum(max(v, 0.0) for v in weights.values())) or 1.0
+    weight = float(weights.get(pair, 1.0))
+    return float(equity) * (weight / weight_sum)
 
 
 def _close_position(session, pos: Position, exit_ts: datetime, pnl_bps: float, guardrail: bool) -> None:
@@ -246,7 +251,7 @@ def replay_bar(
 
             state = get_or_create_account_state(session, strategy_id)
             equity = float(state.equity)
-            notional = compute_target_notional(strategy_id, row.pair, equity)
+            notional = _compute_target_notional(strategy_id, row.pair, equity)
             alloc_frac = notional / equity if equity else 0.0
 
             if enforce_risk:

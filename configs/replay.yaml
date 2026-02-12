@@ -1,5 +1,9 @@
-risk_enabled: false
-max_daily_loss_pct: 0.0
-max_daily_loss_buffer_pct: 0.0
-max_dd_pct: 0.0
-max_dd_buffer_pct: 0.0
+risk_enabled: true
+guardrail_enabled: true
+guardrail_loss_threshold: 0.0
+guardrail_loss_streak: 3
+guardrail_cooldown_days: 7
+max_daily_loss_pct: 0.05
+max_daily_loss_buffer_pct: 0.005
+max_dd_pct: 0.10
+max_dd_buffer_pct: 0.005
