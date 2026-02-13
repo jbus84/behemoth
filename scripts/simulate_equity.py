@@ -66,13 +66,16 @@ def simulate_equity_curve(df: pd.DataFrame, start_equity: float = 100000.0) -> d
         if len(daily_returns) > 1 and daily_returns.std() > 0:
             sharpe = (daily_returns.mean() / daily_returns.std()) * np.sqrt(252)
 
+    avg_pnl = df["pnl_bps"].mean() if "pnl_bps" in df.columns and not df.empty else 0.0
+
     return {
         "trades": len(df),
         "start_equity": start_equity,
         "end_equity": equity,
         "total_return_pct": total_return_pct,
         "max_dd_pct": max_dd_pct * 100.0,
-        "sharpe_daily": sharpe
+        "sharpe_daily": sharpe,
+        "avg_pnl": avg_pnl
     }
 
 def main():
@@ -92,13 +95,13 @@ def main():
         
         # 1. Baseline
         stats = simulate_equity_curve(df)
-        print(f"[Baseline]  Trades: {stats['trades']} | Sharpe: {stats['sharpe_daily']:.2f} | Return: {stats['total_return_pct']:.2f}% | DD: {stats['max_dd_pct']:.2f}%")
+        print(f"[Baseline]  Trades: {stats['trades']} | Sharpe: {stats['sharpe_daily']:.2f} | Return: {stats['total_return_pct']:.2f}% | DD: {stats['max_dd_pct']:.2f}% | Avg PnL: {stats['avg_pnl']:.2f} bps")
         
         # 2. Guardrail
         # Standard settings: loss_streak=3, cooldown=7 days
         df_guard = apply_loss_streak_guardrail(df, loss_streak=3, cooldown_days=7)
         stats_g = simulate_equity_curve(df_guard)
-        print(f"[Guardrail] Trades: {stats_g['trades']} | Sharpe: {stats_g['sharpe_daily']:.2f} | Return: {stats_g['total_return_pct']:.2f}% | DD: {stats_g['max_dd_pct']:.2f}%")
+        print(f"[Guardrail] Trades: {stats_g.get('trades')} | Sharpe: {stats_g.get('sharpe_daily'):.2f} | Return: {stats_g.get('total_return_pct'):.2f}% | DD: {stats_g.get('max_dd_pct'):.2f}% | Avg PnL: {stats_g.get('avg_pnl'):.2f} bps")
         print("")
 
 if __name__ == "__main__":

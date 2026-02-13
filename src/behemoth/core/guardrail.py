@@ -39,6 +39,7 @@ def apply_loss_streak_guardrail(
 
         if pnl > loss_threshold:
             st["loss_streak"] = 0
+            st["pause_until"] = None
         else:
             st["loss_streak"] += 1
             if st["loss_streak"] >= loss_streak:

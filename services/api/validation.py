@@ -69,7 +69,14 @@ def _compute_exit_ts(df: pd.DataFrame, bar_minutes: int) -> np.ndarray:
     bar_ns = int(pd.Timedelta(minutes=bar_minutes).value)
     durations = df["duration_bars"].astype(int)
     timeout_adjust = (durations >= 500).astype(int)
-    return (df["timestamp"].astype("int64") + ((durations - timeout_adjust) * bar_ns)).to_numpy()
+    # Robust timestamp conversion
+    ts_series = df["timestamp"]
+    if ts_series.dtype == "object" or ts_series.dtype == "string":
+        ts_series = pd.to_datetime(ts_series, utc=True).astype("int64")
+    else:
+        ts_series = ts_series.astype("int64")
+        
+    return (ts_series + ((durations - timeout_adjust) * bar_ns)).to_numpy()
 
 
 def _load_pipeline(path: str, bar_minutes: int) -> pd.DataFrame:

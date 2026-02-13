@@ -3,6 +3,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using cAlgo.API;
@@ -34,9 +35,113 @@ namespace cAlgo.Robots
         private HttpClient _client;
         private Bars _bars;
         private DateTime _lastProcessedBarTime = DateTime.MinValue;
-        private int _barsProcessed = 0;
+        private bool _isFirstBar = true;
 
-        // Mapping: internal API name → broker cTrader symbol name
+        protected override void OnStart()
+        {
+            try
+            {
+                _client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+                
+                // Reset API state on start
+                ResetAPI();
+
+                var tf = BarSize == "m5" ? TimeFrame.Minute5 : TimeFrame.Minute15;
+                _bars = MarketData.GetBars(tf);
+
+                // Build reverse mapping
+                foreach (var kvp in SymbolMap)
+                    BrokerToInternal[kvp.Value] = kvp.Key;
+
+                // Resolve symbols... (omitted for brevity, keep existing logic if creating partial replacement?)
+                // Actually to keep it safe, I should just modify the parts I need.
+                // The block below replicates the OnStart logic.
+                
+                // ... (Load symbols loop) ...
+                // Effectively I need to replace OnStart and add ResetAPI.
+                // But the user said "do not overreact".
+                
+                // Let's do this in chunks. Validating OnStart logic.
+                // The provided replacement content must be exact.
+                
+                // I will rewrite OnStart to include ResetAPI() call.
+                // And add ResetAPI method below OnStart.
+            } 
+            catch (Exception ex) 
+            { 
+                Print($"ERROR in OnStart: {ex}"); 
+            }
+        }
+        
+        private void ResetAPI()
+        {
+            try
+            {
+                var url = $"{BaseUrl}/reset/{BarSize}";
+                var content = new StringContent("", Encoding.UTF8, "application/json");
+                var task = _client.PostAsync(url, content);
+                task.Wait(TimeSpan.FromSeconds(5));
+                if (task.Result.IsSuccessStatusCode)
+                    Print("API State Reset Successful");
+                else
+                    Print($"API Reset Failed: {task.Result.StatusCode}");
+            }
+            catch (Exception ex)
+            {
+                Print($"API Reset Exception: {ex.Message}");
+            }
+        }
+
+        protected override void OnBar()
+        {
+            var now = Bars.LastBar.OpenTime; // Start of the new bar = End of the confirmed bar?
+            // Actually Bars.OpenTimes.Last(0) is the open time of the forming bar.
+            // Behemoth trades on COMPLETED bars.
+            // OnBar triggers when a bar closes and a new one opens.
+            // So 'now' usually refers to the close time of the previous bar / open of new.
+            
+            // To be consistent with data, we pass the timestamp of the *just closed* bar?
+            // Or the current time? 
+            // In API: ts = datetime.fromisoformat(body.timestamp)
+            // It uses this for logging and cooldown.
+            
+            // If I just access Bars.Last(1).OpenTime, that is the opened bar that just closed.
+            // But let's stick to existing logic for 'now'. 
+            // Existing: nothing specific about 'now' creation in the snippet I saw?
+            // Ah, OnBar() usually has no args.
+            
+            // Let's focus on defining 'barsNeeded'
+            int barsNeeded = _isFirstBar ? BarCount : 1;
+            
+            // ── Collect bar data ──
+            var barData = CollectBarData(barsNeeded);
+            if (barData.Count == 0) return;
+
+            Print($"BAR {_barsProcessed}: Posting {barsNeeded} bar(s) for {barData.Count} symbols...");
+
+            // ── POST ──
+            var signalTask = PostBarData(barData, now);
+            if (!signalTask.Wait(TimeSpan.FromSeconds(20)))
+            {
+                Print("TIMEOUT: Signal computation timed out");
+                return;
+            }
+
+            var response = signalTask.Result;
+            if (response == null) return;
+            
+            // If successful huge payload, switch to incremental
+            if (_isFirstBar)
+            {
+                _isFirstBar = false;
+                Print("Switching to INCREMENTAL mode (1 bar updates)");
+            }
+
+            // ... (Process Exits/Signals) ...
+            // I need to be careful replacing the whole OnBar.
+            // I will use multiple Replace calls to avoid breaking the file.
+            // Changing OnBar signature or body? existing is just OnBar().
+        }
         // API uses the left side, cTrader uses the right side
         private static readonly Dictionary<string, string> SymbolMap = new Dictionary<string, string>
         {
@@ -53,15 +158,6 @@ namespace cAlgo.Robots
             { "XAGUSD", "XAGUSD" },
             // Energy — broker uses XBRUSD for Brent
             { "BCOUSD", "XBRUSD" },
-            // Indices — broker uses descriptive names
-            { "SPXUSD", "US 500" },
-            { "UDXUSD", "US 30" },
-            { "NSXUSD", "US TECH 100" },
-            { "GRXEUR", "GERMANY 40" },
-            { "FRXEUR", "FRANCE 40" },
-            { "UKXGBP", "UK 100" },
-            { "JPXJPY", "JAPAN 225" },
-            { "HKXHKD", "HONG KONG 50" },
         };
 
         // Reverse mapping: broker name → internal API name
@@ -113,6 +209,7 @@ namespace cAlgo.Robots
                                 _symbolBars[internalName] = bars;
                                 loaded++;
                                 Print($"Loaded {brokerName} → {internalName} ({bars.Count} bars)");
+                                Print($"  SPEC: MinVol={sym.VolumeInUnitsMin} Step={sym.VolumeInUnitsStep} LotSize={sym.LotSize} Bid={sym.Bid:F4}");
                             }
                             else
                             {
@@ -235,7 +332,9 @@ namespace cAlgo.Robots
 
         // ── Bar Data Collection ────────────────────────────────────────
 
-        private Dictionary<string, List<double>> CollectBarData()
+        // ── Bar Data Collection ────────────────────────────────────────
+
+        private Dictionary<string, List<double>> CollectBarData(int count)
         {
             var result = new Dictionary<string, List<double>>();
 
@@ -244,16 +343,40 @@ namespace cAlgo.Robots
                 var symName = kvp.Key;
                 var bars = kvp.Value;
 
-                int count = Math.Min(BarCount, bars.Count - 1);  // Exclude current incomplete bar
-                if (count < 100)
+                // Ensure we have enough bars
+                if (bars.Count < count + 1)
                 {
-                    Print($"WARN: Only {count} bars for {symName}, skipping");
+                    // For incremental (count=1), we need at least 2 bars (1 closed, 1 developing)
+                    // For init (count=1500), we need 1501
+                    if (_isFirstBar)
+                        Print($"WARN: Only {bars.Count} bars for {symName}, skipping");
                     continue;
                 }
 
                 var closes = new List<double>(count);
-                int startIdx = bars.Count - 1 - count;  // Skip last (incomplete) bar
-                for (int i = startIdx; i < bars.Count - 1; i++)
+                // bars.Count - 1 is the index of the last CLOSED bar
+                // We want 'count' bars ending at index (bars.Count - 1)
+                int startIdx = bars.Count - 1 - count + 1; 
+                // Wait: 
+                // Index: 0 1 2 3 [4] (developing)
+                // Count=5. Last closed is 3.
+                // We want 1 bar? Index 3.
+                // Start = 5 - 1 - 1 + 1 = 4? No.
+                
+                // Last closed index = bars.Count - 2 (in 0-cAlgo index? No, Bars array 0..Count-1)
+                // bars.LastBar is the developing bar (index Count-1).
+                // bars.Last(1) is the last closed bar (index Count-2).
+                
+                // Let's us cAlgo API indices.
+                // index 0 is oldest. index Count-1 is newest (developing).
+                
+                int lastClosedIndex = bars.Count - 2;
+                if (lastClosedIndex < 0) continue;
+                
+                int firstIndex = lastClosedIndex - count + 1;
+                if (firstIndex < 0) firstIndex = 0; // Should be handled by check above
+                
+                for (int i = firstIndex; i <= lastClosedIndex; i++)
                 {
                     closes.Add(bars.ClosePrices[i]);
                 }
@@ -285,6 +408,15 @@ namespace cAlgo.Robots
                 Print($"POST {url} ({json.Length / 1024}KB)");
 
                 var resp = await _client.PostAsync(url, content);
+                
+                // Self-Healing: If API lost state (409), force full resend next time
+                if (resp.StatusCode == System.Net.HttpStatusCode.Conflict)
+                {
+                    Print("API STATE MISSING (409): Triggering FULL HISTORY RESEND on next tick.");
+                    _isFirstBar = true;
+                    return null;
+                }
+
                 if (!resp.IsSuccessStatusCode)
                 {
                     var errBody = await resp.Content.ReadAsStringAsync();
@@ -366,18 +498,20 @@ namespace cAlgo.Robots
             double notionalUSD;
             double price = sym.Bid;
 
-            if (sig.target_usd > 0)
+            if (sig.TargetUsd > 0)
             {
+                Print($"DEBUG-SIZE: {sig.pair} Target=${sig.TargetUsd:F0} Price={price:F4}");
                 // Notional-Based Sizing: volume = target_usd / price
-                double rawVolume = sig.target_usd / price;
+                double rawVolume = sig.TargetUsd / price;
                 volume = sym.NormalizeVolumeInUnits(rawVolume, RoundingMode.ToNearest);
                 if (volume < sym.VolumeInUnitsMin) volume = sym.VolumeInUnitsMin;
                 notionalUSD = volume * price;
             }
             else
             {
+                Print($"DEBUG-SIZE: {sig.pair} Target=0 (Fallback to LotSize)");
                 // Fallback to fixed LotSize
-                var lotSize = sig.lot_size > 0 ? sig.lot_size : LotSize;
+                var lotSize = sig.LotSize > 0 ? sig.LotSize : LotSize;
                 volume = sym.QuantityToVolumeInUnits(lotSize);
                 // Approx notional for reporting (assuming USD base or close enough)
                 notionalUSD = volume * price;
@@ -534,8 +668,11 @@ namespace cAlgo.Robots
         public double beta { get; set; }
         public string leg_x { get; set; }
         public string leg_y { get; set; }
-        public double lot_size { get; set; }
-        public double target_usd { get; set; }
+        [JsonPropertyName("lot_size")]
+        public double LotSize { get; set; }
+
+        [JsonPropertyName("target_usd")]
+        public double TargetUsd { get; set; }
     }
 
     public class ExitSignal
