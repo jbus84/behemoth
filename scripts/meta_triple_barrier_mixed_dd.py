@@ -28,6 +28,7 @@ from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import brier_score_loss, log_loss
+from catboost import CatBoostClassifier
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
@@ -63,6 +64,27 @@ class FoldWindow:
     train_end_ts_ns: int
     test_start_ts_ns: int
     test_end_ts_ns: int
+
+
+def _empty_events_frame() -> pd.DataFrame:
+    cols = [
+        "pair",
+        "timeframe",
+        "strategy_type",
+        "timestamp",
+        "exit_ts",
+        "pnl_bps",
+        "duration_bars",
+        "max_hold_bars",
+        "z_score",
+        "z_velocity",
+        "z_accel",
+        "rolling_win_rate_10",
+        "rolling_avg_pnl_10",
+        "active_leg",
+        "side",
+    ]
+    return pd.DataFrame(columns=cols)
 
 
 def _year_bounds_ns(year: int) -> tuple[int, int]:
@@ -108,6 +130,22 @@ def _parse_objective_weights(s: str) -> dict[str, float]:
     return out
 
 
+def _normalize_strategy_spec(raw_spec: str) -> str:
+    tokens = [t.strip().upper() for t in str(raw_spec).split("+") if t.strip()]
+    if not tokens:
+        raise ValueError(f"Empty strategy spec: {raw_spec}")
+    if "NONE" in tokens:
+        if len(tokens) != 1:
+            raise ValueError(f"NONE cannot be combined with other strategies: {raw_spec}")
+        return "NONE"
+    for tok in tokens:
+        if tok not in {"MOM", "REV"}:
+            raise ValueError(f"Unsupported strategy in mix: {tok}")
+    # Canonical order keeps IDs stable regardless of input token order.
+    ordered = [tok for tok in ["MOM", "REV"] if tok in set(tokens)]
+    return "+".join(ordered)
+
+
 def _parse_strategy_mixes(s: str) -> list[dict[str, str]]:
     """
     Format:
@@ -132,14 +170,14 @@ def _parse_strategy_mixes(s: str) -> list[dict[str, str]]:
                 raise ValueError(f"Invalid mix token: {tok}")
             tf, strat = tok.split("=", 1)
             tf = tf.strip().lower()
-            strat = strat.strip().upper()
+            strat = _normalize_strategy_spec(strat.strip())
             if tf not in {"m5", "m15", "m60"}:
                 raise ValueError(f"Unsupported timeframe in mix: {tf}")
-            if strat not in {"MOM", "REV"}:
-                raise ValueError(f"Unsupported strategy in mix: {strat}")
             m[tf] = strat
         if set(m.keys()) != {"m5", "m15", "m60"}:
             raise ValueError(f"Mix must specify m5,m15,m60 exactly: {part}")
+        if m["m5"] == "NONE" or m["m15"] == "NONE":
+            raise ValueError("m5 and m15 cannot be NONE in this pipeline.")
         mixes.append(m)
     if not mixes:
         mixes.append({"m5": "REV", "m15": "REV", "m60": "MOM"})
@@ -147,7 +185,10 @@ def _parse_strategy_mixes(s: str) -> list[dict[str, str]]:
 
 
 def _mix_id(mix: dict[str, str]) -> str:
-    return f"m5_{mix['m5'].lower()}__m15_{mix['m15'].lower()}__m60_{mix['m60'].lower()}"
+    def _token_id(spec: str) -> str:
+        return "".join(part.strip().lower() for part in str(spec).split("+") if part.strip())
+
+    return f"m5_{_token_id(mix['m5'])}__m15_{_token_id(mix['m15'])}__m60_{_token_id(mix['m60'])}"
 
 
 def _load_events(
@@ -688,6 +729,7 @@ def _fit_model_with_optional_calibration(
     te_short: pd.DataFrame,
     X_all: pd.DataFrame,
     y_tr: pd.Series,
+    classifier: str,
     enable_calibration: bool,
     calibration_method: str,
     calibration_frac: float,
@@ -707,13 +749,26 @@ def _fit_model_with_optional_calibration(
         train_mask = train_labeled.copy()
         cal_mask = pd.Series(False, index=tr_short.index)
 
-    model = HistGradientBoostingClassifier(
-        max_depth=4,
-        learning_rate=0.05,
-        max_iter=350,
-        min_samples_leaf=80,
-        random_state=int(random_state),
-    )
+    clf = str(classifier).lower().strip()
+    if clf == "catboost":
+        model = CatBoostClassifier(
+            loss_function="Logloss",
+            depth=6,
+            learning_rate=0.05,
+            iterations=500,
+            l2_leaf_reg=3.0,
+            random_seed=int(random_state),
+            verbose=False,
+            allow_writing_files=False,
+        )
+    else:
+        model = HistGradientBoostingClassifier(
+            max_depth=4,
+            learning_rate=0.05,
+            max_iter=350,
+            min_samples_leaf=80,
+            random_state=int(random_state),
+        )
     model.fit(X_tr.loc[train_mask], y_tr.loc[train_mask].astype(int))
 
     p_raw_tr = model.predict_proba(X_tr)[:, 1].astype(float)
@@ -779,6 +834,7 @@ def main() -> None:
     p.add_argument("--enable-calibration", action="store_true", default=True)
     p.add_argument("--calibration-method", default="isotonic", choices=["isotonic", "platt", "none"])
     p.add_argument("--calibration-frac", type=float, default=0.20)
+    p.add_argument("--classifier", default="hgbt", choices=["hgbt", "catboost"])
     p.add_argument("--retain-annualized-frac", type=float, default=0.80)
     p.add_argument("--min-trade-frac", type=float, default=0.50)
     p.add_argument("--threshold-grid", default="0.30,0.35,0.40,0.45,0.50,0.55,0.60,0.65,0.70,0.75,0.80")
@@ -832,16 +888,22 @@ def main() -> None:
         print(f"\n=== Mix: {mix_name} ===")
         loaded = {}
         for tf in ["m5", "m15", "m60"]:
-            strat = mix[tf]
-            path, pair_col = EVENT_PATHS[(tf, strat)]
-            loaded[(tf, strat)] = _load_events(path, strat, tf, pair_col, pair_whitelist)
+            specs = [x.strip().upper() for x in str(mix[tf]).split("+") if x.strip()]
+            tf_frames = []
+            for strat in specs:
+                if strat == "NONE":
+                    continue
+                path, pair_col = EVENT_PATHS[(tf, strat)]
+                tf_frames.append(_load_events(path, strat, tf, pair_col, pair_whitelist))
+            loaded[tf] = pd.concat(tf_frames, ignore_index=True) if tf_frames else _empty_events_frame()
 
         short_all = pd.concat(
-            [loaded[("m5", mix["m5"])], loaded[("m15", mix["m15"])]], ignore_index=True
+            [loaded["m5"], loaded["m15"]], ignore_index=True
         ).reset_index(drop=True)
-        long_all = loaded[("m60", mix["m60"])].reset_index(drop=True)
-        if short_all.empty or long_all.empty:
-            print("  skip mix: empty short or long dataset after filters")
+        long_all = loaded["m60"].reset_index(drop=True)
+        has_long_leg = str(mix["m60"]).upper() != "NONE"
+        if short_all.empty or (has_long_leg and long_all.empty):
+            print("  skip mix: empty short dataset or empty required long dataset after filters")
             continue
 
         short_all["trade_id"] = np.arange(len(short_all), dtype=np.int64)
@@ -905,6 +967,7 @@ def main() -> None:
                     te_short=te_short,
                     X_all=X_all,
                     y_tr=y_tr,
+                    classifier=args.classifier,
                     enable_calibration=bool(args.enable_calibration),
                     calibration_method=args.calibration_method,
                     calibration_frac=float(args.calibration_frac),

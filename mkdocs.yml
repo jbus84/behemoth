@@ -46,6 +46,8 @@ plugins:
 nav:
   - Overview: index.md
   - Strategy Manual: STRATEGY_MASTER_MANUAL.md
+  - HGBT Deep Dive: analysis/m5_mom_m15_momrev_m60_rev_hgbt_report.md
+  - Cluster EW Deep Dive: analysis/cluster_earlywarning_report.md
   - Architecture: architecture.md
   - API: api.md
   - API Reference: api_reference.md

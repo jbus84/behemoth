@@ -378,6 +378,104 @@ def _daily_stats_bps(df: pd.DataFrame) -> dict[str, float]:
     }
 
 
+def _exposure_stats(df: pd.DataFrame) -> dict[str, float]:
+    """
+    Exposure statistics from trade entry/exit timestamps.
+    """
+    if df.empty:
+        return {
+            "time_in_market_pct": 0.0,
+            "avg_concurrent_trades": 0.0,
+            "trade_density_per_day": 0.0,
+            "avg_trade_duration_bars": 0.0,
+            "avg_trade_duration_hours": 0.0,
+        }
+
+    if "timestamp" not in df.columns or "exit_ts" not in df.columns:
+        return {
+            "time_in_market_pct": 0.0,
+            "avg_concurrent_trades": 0.0,
+            "trade_density_per_day": 0.0,
+            "avg_trade_duration_bars": 0.0,
+            "avg_trade_duration_hours": 0.0,
+        }
+
+    start_ns = pd.to_numeric(df["timestamp"], errors="coerce")
+    end_ns = pd.to_numeric(df["exit_ts"], errors="coerce")
+    valid = start_ns.notna() & end_ns.notna()
+    if not bool(valid.any()):
+        return {
+            "time_in_market_pct": 0.0,
+            "avg_concurrent_trades": 0.0,
+            "trade_density_per_day": 0.0,
+            "avg_trade_duration_bars": 0.0,
+            "avg_trade_duration_hours": 0.0,
+        }
+
+    start_vals = start_ns.loc[valid].astype("int64")
+    end_vals = end_ns.loc[valid].astype("int64")
+    keep = end_vals >= start_vals
+    if not bool(keep.any()):
+        return {
+            "time_in_market_pct": 0.0,
+            "avg_concurrent_trades": 0.0,
+            "trade_density_per_day": 0.0,
+            "avg_trade_duration_bars": 0.0,
+            "avg_trade_duration_hours": 0.0,
+        }
+
+    start_vals = start_vals.loc[keep]
+    end_vals = end_vals.loc[keep]
+
+    t0 = int(start_vals.min())
+    t1 = int(end_vals.max())
+    total_ns = max(0, t1 - t0)
+
+    entries = pd.DataFrame({"ts": start_vals.to_numpy(dtype="int64"), "delta": np.ones(len(start_vals), dtype="int8"), "event_type": np.ones(len(start_vals), dtype="int8")})
+    exits = pd.DataFrame({"ts": end_vals.to_numpy(dtype="int64"), "delta": -np.ones(len(end_vals), dtype="int8"), "event_type": np.zeros(len(end_vals), dtype="int8")})
+    events = pd.concat([entries, exits], ignore_index=True).sort_values(
+        ["ts", "event_type"], kind="mergesort"
+    )
+
+    active_ns = 0
+    weighted_concurrency_ns = 0
+    current_open = 0
+    prev_ts = int(events["ts"].iloc[0])
+    for evt in events.itertuples(index=False):
+        ts = int(evt.ts)
+        dt = ts - prev_ts
+        if dt > 0:
+            if current_open > 0:
+                active_ns += dt
+            weighted_concurrency_ns += current_open * dt
+        current_open += int(evt.delta)
+        prev_ts = ts
+
+    time_in_market_pct = (100.0 * active_ns / total_ns) if total_ns > 0 else 0.0
+    avg_concurrency = (weighted_concurrency_ns / total_ns) if total_ns > 0 else 0.0
+    total_days = total_ns / float(pd.Timedelta(days=1).value) if total_ns > 0 else 0.0
+    trade_density_per_day = (len(start_vals) / total_days) if total_days > 0 else 0.0
+
+    duration_hours = (end_vals.to_numpy(dtype=float) - start_vals.to_numpy(dtype=float)) / float(pd.Timedelta(hours=1).value)
+    duration_hours = duration_hours[np.isfinite(duration_hours) & (duration_hours >= 0.0)]
+    avg_duration_hours = float(np.mean(duration_hours)) if len(duration_hours) else 0.0
+
+    if "duration_bars" in df.columns:
+        dur_bars = pd.to_numeric(df.loc[valid].loc[keep].get("duration_bars"), errors="coerce").to_numpy(dtype=float)
+        dur_bars = dur_bars[np.isfinite(dur_bars) & (dur_bars >= 0.0)]
+        avg_duration_bars = float(np.mean(dur_bars)) if len(dur_bars) else 0.0
+    else:
+        avg_duration_bars = 0.0
+
+    return {
+        "time_in_market_pct": float(time_in_market_pct),
+        "avg_concurrent_trades": float(avg_concurrency),
+        "trade_density_per_day": float(trade_density_per_day),
+        "avg_trade_duration_bars": float(avg_duration_bars),
+        "avg_trade_duration_hours": float(avg_duration_hours),
+    }
+
+
 def _metrics_with_risk(df: pd.DataFrame, risk_bps: float) -> dict[str, float]:
     if df.empty:
         return {
@@ -404,11 +502,17 @@ def _metrics_with_risk(df: pd.DataFrame, risk_bps: float) -> dict[str, float]:
             "max_daily_dd_bps": 0.0,
             "mean_daily_dd_bps_underwater": 0.0,
             "annualized_bps_calendar": 0.0,
+            "time_in_market_pct": 0.0,
+            "avg_concurrent_trades": 0.0,
+            "trade_density_per_day": 0.0,
+            "avg_trade_duration_bars": 0.0,
+            "avg_trade_duration_hours": 0.0,
         }
     pnls = df["pnl_bps"].to_numpy(dtype=float)
     ts = df["exit_ts"].to_numpy(dtype="int64")
     eq_stats = _equity_stats(df, risk_bps=risk_bps)
     daily_stats = _daily_stats_bps(df)
+    exposure_stats = _exposure_stats(df)
     return {
         "trades": int(len(df)),
         "mean_pnl_per_trade_bps": float(np.mean(pnls)),
@@ -433,6 +537,11 @@ def _metrics_with_risk(df: pd.DataFrame, risk_bps: float) -> dict[str, float]:
         "max_daily_dd_bps": float(daily_stats["max_daily_dd_bps"]),
         "mean_daily_dd_bps_underwater": float(daily_stats["mean_daily_dd_bps_underwater"]),
         "annualized_bps_calendar": float(daily_stats["annualized_bps_calendar"]),
+        "time_in_market_pct": float(exposure_stats["time_in_market_pct"]),
+        "avg_concurrent_trades": float(exposure_stats["avg_concurrent_trades"]),
+        "trade_density_per_day": float(exposure_stats["trade_density_per_day"]),
+        "avg_trade_duration_bars": float(exposure_stats["avg_trade_duration_bars"]),
+        "avg_trade_duration_hours": float(exposure_stats["avg_trade_duration_hours"]),
     }
 
 

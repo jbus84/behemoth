@@ -7,9 +7,11 @@ Generates MOM/REV trades for analysis; production strategy is MOM-only.
 import os
 import sys
 from collections import defaultdict
+import heapq
 
 import numpy as np
 import polars as pl
+import pandas as pd
 
 sys.path.append(os.path.join(os.getcwd(), "src"))
 from behemoth.config import (
@@ -19,8 +21,11 @@ from behemoth.config import (
     MIN_GAP_BARS,
     ACTIVE_LEG_LOW,
     ACTIVE_LEG_HIGH,
+    EXIT_TIMEOUT_MODE_OFFLINE,
+    ENTRY_EXIT_VARIANTS,
 )
 from behemoth.core.active_leg import select_active_leg
+from behemoth.core.exit_contract import build_exit_contract
 from behemoth.core.events import simulate_trade as _simulate_trade
 from behemoth.core.kalman import compute_kalman_states as _compute_kalman_states
 from behemoth.core.zscore import compute_z_scores as _compute_z_scores
@@ -71,8 +76,30 @@ def compute_z_scores(errors, window=750):
     return _compute_z_scores(errors, window=window)
 
 
-def simulate_trade(entry_idx, direction, strategy_type, y, x, z_scores, active_asset, thresh=1.5, stop=3.5):
-    return _simulate_trade(entry_idx, direction, strategy_type, y, x, z_scores, active_asset, thresh, stop)
+def simulate_trade(
+    entry_idx,
+    direction,
+    strategy_type,
+    y,
+    x,
+    z_scores,
+    active_asset,
+    thresh=1.5,
+    stop=3.5,
+    exit_contract=None,
+):
+    return _simulate_trade(
+        entry_idx,
+        direction,
+        strategy_type,
+        y,
+        x,
+        z_scores,
+        active_asset,
+        thresh,
+        stop,
+        exit_contract=exit_contract,
+    )
 
 
 
@@ -99,10 +126,16 @@ def build_dataset():  # pragma: no cover
 
         betas, errors, ret_betas = compute_kalman_states(y, x)
         z_scores = compute_z_scores(errors)
+        
+        # Velocity/Accel
+        z_series = pd.Series(z_scores)
+        z_vel = z_series.diff(20).to_numpy() # 20-bar velocity
+        z_accel = pd.Series(z_vel).diff(20).to_numpy() # 20-bar acceleration
 
         pair_states[name] = {
             'y': y, 'x': x, 'ts': ts,
             'betas': betas, 'errors': errors, 'ret_betas': ret_betas, 'z_scores': z_scores,
+            'z_vel': z_vel, 'z_accel': z_accel,
             'cost_y': cost_y, 'cost_x': cost_x
         }
         print(f"  {name}: {len(y)} bars")
@@ -110,18 +143,26 @@ def build_dataset():  # pragma: no cover
     # Phase 2: Generate BOTH strategy types for each signal
     print("\nPhase 2: Generating dual-strategy events...")
     all_events = []
-    pair_trade_history = defaultdict(lambda: {'MOM': [], 'REV': []})
+    entry_exit_variants = list(ENTRY_EXIT_VARIANTS)
+    # Causal rolling stats: only include trades whose exits are <= current entry bar.
+    realized_history = defaultdict(
+        lambda: {v: {"MOM": [], "REV": []} for v in entry_exit_variants}
+    )
+    pending_trades = defaultdict(
+        lambda: {v: {"MOM": [], "REV": []} for v in entry_exit_variants}
+    )
 
     for name, state in pair_states.items():
         print(f"  Processing {name}...")
 
         y, x, ts = state['y'], state['x'], state['ts']
         betas, errors, ret_betas, z_scores = state['betas'], state['errors'], state['ret_betas'], state['z_scores']
+        z_vel, z_accel = state['z_vel'], state['z_accel']
         cost_y, cost_x = state['cost_y'], state['cost_x']
 
-        # Track last entry to avoid overlapping trades
-        last_entry_mom = 0
-        last_entry_rev = 0
+        # Track last entry to avoid overlapping trades (independent per exit variant)
+        last_entry_mom = {v: 0 for v in entry_exit_variants}
+        last_entry_rev = {v: 0 for v in entry_exit_variants}
         min_gap = MIN_GAP_BARS
 
         for i in range(500, len(y) - 500):
@@ -141,79 +182,145 @@ def build_dataset():  # pragma: no cover
             if abs(z) < min_thresh:
                 continue
 
-            # === MOMENTUM TRADE ===
-            if i - last_entry_mom >= min_gap and abs(z) >= thresh_mom:
-                if z > 0:
-                    mom_dir = 1  # Long (follow the trend up)
-                else:
-                    mom_dir = -1  # Short (follow the trend down)
+            for entry_exit_variant in entry_exit_variants:
+                # Materialize only truly realized trades before scoring this entry bar.
+                mom_heap = pending_trades[name][entry_exit_variant]["MOM"]
+                mom_hist = realized_history[name][entry_exit_variant]["MOM"]
+                while mom_heap and mom_heap[0][0] <= i:
+                    _, mom_pnl = heapq.heappop(mom_heap)
+                    mom_hist.append(mom_pnl)
 
-                pnl, duration, outcome = simulate_trade(
-                    i, mom_dir, 'MOM', y, x, z_scores, active_asset, thresh_mom, stop_level
-                )
+                rev_heap = pending_trades[name][entry_exit_variant]["REV"]
+                rev_hist = realized_history[name][entry_exit_variant]["REV"]
+                while rev_heap and rev_heap[0][0] <= i:
+                    _, rev_pnl = heapq.heappop(rev_heap)
+                    rev_hist.append(rev_pnl)
 
-                # Rolling performance
-                history = pair_trade_history[name]['MOM']
-                if len(history) >= 10:
-                    rolling_wr = sum(1 for p in history[-10:] if p > 0) / 10
-                    rolling_pnl = np.mean(history[-10:])
-                else:
-                    rolling_wr = 0.5
-                    rolling_pnl = 0.0
+                # === MOMENTUM TRADE ===
+                if i - last_entry_mom[entry_exit_variant] >= min_gap and abs(z) >= thresh_mom:
+                    if z > 0:
+                        mom_dir = 1  # Long (follow the trend up)
+                    else:
+                        mom_dir = -1  # Short (follow the trend down)
 
-                row = {
-                    "pair": name,
-                    "timestamp": ts[i],
-                    "year": int(str(ts[i])[:4]),
-                    "strategy_type": "MOM",
-                    "active_leg": active_asset,
-                    "side": "LONG" if mom_dir == 1 else "SHORT",
-                    "outcome": outcome,
-                    "pnl_bps": round(pnl, 2),
-                    "duration_bars": duration,
-                    "rolling_win_rate_10": round(rolling_wr, 2),
-                    "rolling_avg_pnl_10": round(rolling_pnl, 2),
-                }
-                all_events.append(row)
-                pair_trade_history[name]['MOM'].append(pnl)
-                last_entry_mom = i
+                    exit_contract = build_exit_contract(
+                        timeframe="m15",
+                        entry_z=float(z),
+                        timeout_mode=EXIT_TIMEOUT_MODE_OFFLINE,
+                        variant=entry_exit_variant,
+                        z_stop=stop_level,
+                    )
+                    pnl, duration, outcome = simulate_trade(
+                        i,
+                        mom_dir,
+                        'MOM',
+                        y,
+                        x,
+                        z_scores,
+                        active_asset,
+                        thresh_mom,
+                        stop_level,
+                        exit_contract=exit_contract,
+                    )
 
-            # === REVERSION TRADE ===
-            if i - last_entry_rev >= min_gap and abs(z) >= thresh_rev:
-                if z > 0:
-                    rev_dir = -1  # Short (fade the move, expect reversion)
-                else:
-                    rev_dir = 1  # Long (fade the move, expect reversion)
+                    # Rolling performance
+                    history = mom_hist
+                    if len(history) >= 10:
+                        rolling_wr = sum(1 for p in history[-10:] if p > 0) / 10
+                        rolling_pnl = np.mean(history[-10:])
+                    else:
+                        rolling_wr = 0.5
+                        rolling_pnl = 0.0
 
-                pnl, duration, outcome = simulate_trade(
-                    i, rev_dir, 'REV', y, x, z_scores, active_asset, thresh_rev, stop_level
-                )
+                    row = {
+                        "pair": name,
+                        "timestamp": ts[i],
+                        "year": int(str(ts[i])[:4]),
+                        "strategy_type": "MOM",
+                        "entry_exit_variant": entry_exit_variant,
+                        "exit_policy": exit_contract.mode,
+                        "max_hold_bars": int(exit_contract.max_hold_bars),
+                        "entry_cross_zero_level": float(exit_contract.cross_zero_buffer_abs_z),
+                        "entry_stop_win_level_abs_z": float(exit_contract.stop_win_level_abs_z),
+                        "entry_use_stop_win": bool(exit_contract.use_stop_win),
+                        "active_leg": active_asset,
+                        "side": "LONG" if mom_dir == 1 else "SHORT",
+                        "outcome": outcome,
+                        "pnl_bps": round(pnl, 2),
+                        "duration_bars": duration,
+                        "rolling_win_rate_10": round(rolling_wr, 2),
+                        "rolling_avg_pnl_10": round(rolling_pnl, 2),
+                        "z_score": round(z, 2),
+                        "z_velocity": round(z_vel[i], 4) if not np.isnan(z_vel[i]) else 0.0,
+                        "z_accel": round(z_accel[i], 4) if not np.isnan(z_accel[i]) else 0.0,
+                    }
+                    all_events.append(row)
+                    exit_idx = int(i + duration)
+                    heapq.heappush(mom_heap, (exit_idx, float(pnl)))
+                    last_entry_mom[entry_exit_variant] = i
 
-                # Rolling performance
-                history = pair_trade_history[name]['REV']
-                if len(history) >= 10:
-                    rolling_wr = sum(1 for p in history[-10:] if p > 0) / 10
-                    rolling_pnl = np.mean(history[-10:])
-                else:
-                    rolling_wr = 0.5
-                    rolling_pnl = 0.0
+                # === REVERSION TRADE ===
+                if i - last_entry_rev[entry_exit_variant] >= min_gap and abs(z) >= thresh_rev:
+                    if z > 0:
+                        rev_dir = -1  # Short (fade the move, expect reversion)
+                    else:
+                        rev_dir = 1  # Long (fade the move, expect reversion)
 
-                row = {
-                    "pair": name,
-                    "timestamp": ts[i],
-                    "year": int(str(ts[i])[:4]),
-                    "strategy_type": "REV",
-                    "active_leg": active_asset,
-                    "side": "LONG" if rev_dir == 1 else "SHORT",
-                    "outcome": outcome,
-                    "pnl_bps": round(pnl, 2),
-                    "duration_bars": duration,
-                    "rolling_win_rate_10": round(rolling_wr, 2),
-                    "rolling_avg_pnl_10": round(rolling_pnl, 2),
-                }
-                all_events.append(row)
-                pair_trade_history[name]['REV'].append(pnl)
-                last_entry_rev = i
+                    exit_contract = build_exit_contract(
+                        timeframe="m15",
+                        entry_z=float(z),
+                        timeout_mode=EXIT_TIMEOUT_MODE_OFFLINE,
+                        variant=entry_exit_variant,
+                        z_stop=stop_level,
+                    )
+                    pnl, duration, outcome = simulate_trade(
+                        i,
+                        rev_dir,
+                        'REV',
+                        y,
+                        x,
+                        z_scores,
+                        active_asset,
+                        thresh_rev,
+                        stop_level,
+                        exit_contract=exit_contract,
+                    )
+
+                    # Rolling performance
+                    history = rev_hist
+                    if len(history) >= 10:
+                        rolling_wr = sum(1 for p in history[-10:] if p > 0) / 10
+                        rolling_pnl = np.mean(history[-10:])
+                    else:
+                        rolling_wr = 0.5
+                        rolling_pnl = 0.0
+
+                    row = {
+                        "pair": name,
+                        "timestamp": ts[i],
+                        "year": int(str(ts[i])[:4]),
+                        "strategy_type": "REV",
+                        "entry_exit_variant": entry_exit_variant,
+                        "exit_policy": exit_contract.mode,
+                        "max_hold_bars": int(exit_contract.max_hold_bars),
+                        "entry_cross_zero_level": float(exit_contract.cross_zero_buffer_abs_z),
+                        "entry_stop_win_level_abs_z": float(exit_contract.stop_win_level_abs_z),
+                        "entry_use_stop_win": bool(exit_contract.use_stop_win),
+                        "active_leg": active_asset,
+                        "side": "LONG" if rev_dir == 1 else "SHORT",
+                        "outcome": outcome,
+                        "pnl_bps": round(pnl, 2),
+                        "duration_bars": duration,
+                        "rolling_win_rate_10": round(rolling_wr, 2),
+                        "rolling_avg_pnl_10": round(rolling_pnl, 2),
+                        "z_score": round(z, 2),
+                        "z_velocity": round(z_vel[i], 4) if not np.isnan(z_vel[i]) else 0.0,
+                        "z_accel": round(z_accel[i], 4) if not np.isnan(z_accel[i]) else 0.0,
+                    }
+                    all_events.append(row)
+                    exit_idx = int(i + duration)
+                    heapq.heappush(rev_heap, (exit_idx, float(pnl)))
+                    last_entry_rev[entry_exit_variant] = i
 
     # Phase 3: Save
     print(f"\nPhase 3: Saving {len(all_events)} events...")
