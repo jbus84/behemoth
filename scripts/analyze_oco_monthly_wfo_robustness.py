@@ -86,12 +86,34 @@ def _select_by_quantile(d: pd.DataFrame, q: float) -> pd.DataFrame:
     return pd.concat(out, ignore_index=True) if out else pd.DataFrame()
 
 
+def _select_events(
+    d: pd.DataFrame,
+    *,
+    q: float,
+    use_exec_selection: bool,
+    execution_quantile: float,
+) -> pd.DataFrame:
+    if bool(use_exec_selection) and abs(float(q) - float(execution_quantile)) <= 1e-12 and "selected_exec" in d.columns:
+        x = d[pd.to_numeric(d["selected_exec"], errors="coerce").fillna(0).astype(int) == 1].copy()
+        x["quantile"] = float(q)
+        if "threshold_exec" in d.columns:
+            x["threshold"] = pd.to_numeric(x["threshold_exec"], errors="coerce")
+        x["selection_mode"] = "exec_flag"
+        return x
+    x = _select_by_quantile(d, float(q))
+    if not x.empty:
+        x["selection_mode"] = "monthly_quantile"
+    return x
+
+
 def run(
     *,
     pred_path: Path,
     quantiles: list[float],
     bootstrap_paths: int,
     stress_extra_cost_grid: list[float],
+    use_exec_selection: bool,
+    execution_quantile: float,
     out_summary_csv: Path,
     out_monthly_csv: Path,
     out_report: Path,
@@ -111,7 +133,7 @@ def run(
     rows: list[dict[str, float | int | str]] = []
     monthly_rows: list[dict[str, float | int | str]] = []
     for i, q in enumerate(quantiles):
-        s = _select_by_quantile(d, float(q))
+        s = _select_events(d, q=float(q), use_exec_selection=bool(use_exec_selection), execution_quantile=float(execution_quantile))
         if s.empty:
             continue
         gross = s["target_gross_pips"].to_numpy(dtype=float)
@@ -147,6 +169,7 @@ def run(
 
         row = {
             "quantile": float(q),
+            "selection_mode": str(s["selection_mode"].iloc[0]) if "selection_mode" in s.columns and len(s) else "unknown",
             "rows": int(len(s)),
             "months": int(mon["test_month"].nunique()),
             "coverage": float(len(s) / max(len(d), 1)),
@@ -185,6 +208,8 @@ def run(
     lines.append(f"- quantiles: `{','.join(str(x) for x in quantiles)}`")
     lines.append(f"- bootstrap_paths: `{int(bootstrap_paths)}`")
     lines.append(f"- stress_extra_cost_grid: `{','.join(str(x) for x in stress_extra_cost_grid)}`")
+    lines.append(f"- use_exec_selection: `{bool(use_exec_selection)}`")
+    lines.append(f"- execution_quantile: `{float(execution_quantile)}`")
     lines.append("")
     lines.append("## Summary")
     lines.append(summary.to_markdown(index=False) if not summary.empty else "_empty_")
@@ -203,6 +228,8 @@ def main() -> None:
     p.add_argument("--quantiles", default="0.5,0.6,0.7,0.8,0.9,0.95")
     p.add_argument("--bootstrap-paths", type=int, default=2000)
     p.add_argument("--stress-extra-cost-grid", default="0.1,0.2,0.3,0.5")
+    p.add_argument("--use-exec-selection", default="true")
+    p.add_argument("--execution-quantile", type=float, default=0.9)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--out-summary-csv", default="data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fast/EURUSD_oco_robustness_summary.csv")
     p.add_argument("--out-monthly-csv", default="data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fast/EURUSD_oco_robustness_monthly.csv")
@@ -214,6 +241,8 @@ def main() -> None:
         quantiles=_parse_float_list(str(args.quantiles)),
         bootstrap_paths=int(args.bootstrap_paths),
         stress_extra_cost_grid=_parse_float_list(str(args.stress_extra_cost_grid)),
+        use_exec_selection=str(args.use_exec_selection).strip().lower() in {"1", "true", "yes", "y"},
+        execution_quantile=float(args.execution_quantile),
         out_summary_csv=Path(str(args.out_summary_csv)),
         out_monthly_csv=Path(str(args.out_monthly_csv)),
         out_report=Path(str(args.report_out)),

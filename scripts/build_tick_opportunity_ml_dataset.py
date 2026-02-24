@@ -46,6 +46,8 @@ DEFAULTS: dict[str, Any] = {
     "min_quality_tier": "C",  # A|B|C|D
     "max_candidates_per_library": 120,
     "max_events_per_candidate": 20000,
+    "oco_include_no_touch": True,
+    "oco_hold_mode": "from_touch",  # from_touch|from_start
     "out_dir": "data/analysis/tick_opportunity_mining/ml_ready",
     "report_out": "docs/analysis/eurusd_tick_opportunity_ml_ready_report.md",
 }
@@ -98,6 +100,31 @@ def _sample_positions(pos: np.ndarray, max_events: int) -> np.ndarray:
         return pos
     picks = np.linspace(0, len(pos) - 1, num=int(max_events), dtype=int)
     return pos[picks]
+
+
+def _sample_positions_balanced(
+    *,
+    all_pos: np.ndarray,
+    trade_pos: np.ndarray,
+    max_events: int,
+) -> np.ndarray:
+    if int(max_events) <= 0 or len(all_pos) <= int(max_events):
+        return all_pos
+    trade = np.asarray(np.intersect1d(all_pos, trade_pos, assume_unique=False), dtype=np.int64)
+    if len(trade) >= int(max_events):
+        return _sample_positions(trade, int(max_events))
+    out = list(trade.tolist())
+    remaining = int(max_events) - len(out)
+    all_set = set(all_pos.tolist())
+    tr_set = set(trade.tolist())
+    no_touch = np.array(sorted(all_set - tr_set), dtype=np.int64)
+    if remaining > 0 and len(no_touch) > 0:
+        out.extend(_sample_positions(no_touch, remaining).tolist())
+    if len(out) < int(max_events):
+        rest = np.array(sorted(all_set - set(out)), dtype=np.int64)
+        if len(rest) > 0:
+            out.extend(_sample_positions(rest, int(max_events) - len(out)).tolist())
+    return np.array(sorted(out[: int(max_events)]), dtype=np.int64)
 
 
 def _ensure_quality_cols(d: pd.DataFrame) -> pd.DataFrame:
@@ -221,23 +248,30 @@ def _build_directional_events(
     return pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
 
 
-def _oco_precompute(df: pd.DataFrame, *, horizon: int, barrier_pips: float, pip: float) -> dict[str, np.ndarray]:
+def _oco_precompute(
+    df: pd.DataFrame,
+    *,
+    horizon: int,
+    barrier_pips: float,
+    pip: float,
+    hold_mode: str,
+) -> dict[str, np.ndarray]:
     close = pd.to_numeric(df["close"], errors="coerce").to_numpy(dtype=float)
     high = pd.to_numeric(df["high"], errors="coerce").to_numpy(dtype=float)
     low = pd.to_numeric(df["low"], errors="coerce").to_numpy(dtype=float)
     hlf = pd.to_numeric(df["hl_first"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
     h = int(horizon)
-    n_eff = len(df) - h - 1
+    mode = str(hold_mode).strip().lower()
+    if mode not in {"from_touch", "from_start"}:
+        raise ValueError("oco_hold_mode must be from_touch|from_start")
+    n_eff = (len(df) - 2 * h) if mode == "from_touch" else (len(df) - h - 1)
     if n_eff <= 100:
         return {}
     i0 = np.arange(n_eff, dtype=np.int64)
     ref = close[i0]
-    ex = close[i0 + h]
-    valid = np.isfinite(ref) & np.isfinite(ex)
+    valid = np.isfinite(ref)
     i0 = i0[valid]
     ref = ref[valid]
-    ex = ex[valid]
-    ret = (ex - ref) / pip
 
     k = float(barrier_pips)
     up_thr = ref + k * pip
@@ -271,7 +305,22 @@ def _oco_precompute(df: pd.DataFrame, *, horizon: int, barrier_pips: float, pip:
     both = any_up & any_dn
     touch_step = np.minimum(up_step, dn_step).astype(float)
     touch_step[~decided] = np.nan
-    gross = side.astype(float) * ret - k
+    gross = np.full(len(i0), np.nan, dtype=float)
+    if mode == "from_start":
+        ex = close[i0 + h]
+        ret = (ex - ref) / pip
+        gross[decided] = side[decided].astype(float) * ret[decided] - k
+    else:
+        touch_i = np.minimum(up_step, dn_step).astype(np.int64, copy=False)
+        exit_i = i0 + touch_i + int(h)
+        ok = decided & (exit_i < len(close))
+        if np.any(ok):
+            ok_idx = np.flatnonzero(ok)
+            ex_ok = close[exit_i[ok_idx]]
+            num_ok = np.isfinite(ex_ok) & np.isfinite(ref[ok_idx])
+            use = ok_idx[num_ok]
+            if len(use) > 0:
+                gross[use] = side[use].astype(float) * ((close[exit_i[use]] - ref[use]) / pip) - k
     return {
         "i0": i0,
         "gross": gross,
@@ -290,6 +339,8 @@ def _build_oco_events(
     cands: pd.DataFrame,
     max_events_per_candidate: int,
     symbol: str,
+    hold_mode: str,
+    include_no_touch: bool,
 ) -> pd.DataFrame:
     if df.empty or cands.empty:
         return pd.DataFrame()
@@ -301,7 +352,7 @@ def _build_oco_events(
     unique_hk = sorted({(int(r["horizon"]), float(_parse_barrier_pips(r))) for _, r in cands.iterrows()})
     cache: dict[tuple[int, float], dict[str, np.ndarray]] = {}
     for h, k in unique_hk:
-        prep = _oco_precompute(df, horizon=int(h), barrier_pips=float(k), pip=pip)
+        prep = _oco_precompute(df, horizon=int(h), barrier_pips=float(k), pip=pip, hold_mode=hold_mode)
         if prep:
             cache[(int(h), float(k))] = prep
 
@@ -325,13 +376,29 @@ def _build_oco_events(
             base = ck["decided"] & (~ck["both"])
         else:
             continue
-        mask = base & reg0
-        pos0 = np.flatnonzero(mask)
+        tradable = base & reg0 & np.isfinite(ck["gross"])
+        if bool(include_no_touch):
+            arm = reg0
+            pos0 = np.flatnonzero(arm)
+        else:
+            pos0 = np.flatnonzero(tradable)
         if len(pos0) == 0:
             continue
-        pos0 = _sample_positions(pos0, int(max_events_per_candidate))
+        if bool(include_no_touch):
+            pos0 = _sample_positions_balanced(
+                all_pos=pos0,
+                trade_pos=np.flatnonzero(tradable),
+                max_events=int(max_events_per_candidate),
+            )
+        else:
+            pos0 = _sample_positions(pos0, int(max_events_per_candidate))
         idx = i0[pos0]
-        gross = ck["gross"][pos0]
+        gross = np.zeros(len(pos0), dtype=float) if bool(include_no_touch) else ck["gross"][pos0]
+        touch_event = tradable[pos0].astype(int)
+        if bool(include_no_touch):
+            gsrc = ck["gross"][pos0]
+            ok = np.isfinite(gsrc) & (touch_event == 1)
+            gross[ok] = gsrc[ok]
         chunk = df.iloc[idx][features].copy()
         chunk["close_ts"] = ts.iloc[idx].to_numpy()
         chunk["split"] = str(split_name)
@@ -349,6 +416,7 @@ def _build_oco_events(
         chunk["barrier_pips"] = float(k)
         # Do not emit post-outcome path fields (first_touch_side/both_window/touch_step)
         # in ML-ready tables to prevent accidental forward leakage during training.
+        chunk["touch_event"] = touch_event
         chunk["target_gross_pips"] = gross
         chunk["target_gross_pos"] = (gross > 0.0).astype(int)
         chunk["target_abs_gross_pips"] = np.abs(gross)
@@ -377,6 +445,10 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     min_quality_tier = str(cfg["min_quality_tier"]).upper().strip()
     max_candidates = int(cfg["max_candidates_per_library"])
     max_events = int(cfg["max_events_per_candidate"])
+    oco_hold_mode = str(cfg.get("oco_hold_mode", DEFAULTS["oco_hold_mode"])).strip().lower()
+    include_no_touch = bool(cfg.get("oco_include_no_touch", DEFAULTS["oco_include_no_touch"]))
+    if oco_hold_mode not in {"from_touch", "from_start"}:
+        raise ValueError("oco_hold_mode must be from_touch|from_start")
 
     d_path = candidate_dir / f"{symbol}_directional_candidates.csv"
     o_path = candidate_dir / f"{symbol}_oco_candidates.csv"
@@ -465,6 +537,8 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                     cands=oc,
                     max_events_per_candidate=max_events,
                     symbol=symbol,
+                    hold_mode=oco_hold_mode,
+                    include_no_touch=include_no_touch,
                 )
             )
             oco_parts.append(
@@ -475,6 +549,8 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                     cands=oc,
                     max_events_per_candidate=max_events,
                     symbol=symbol,
+                    hold_mode=oco_hold_mode,
+                    include_no_touch=include_no_touch,
                 )
             )
         print(f"ok {symbol} {bt}tick")
@@ -530,6 +606,8 @@ def _write_report(
     lines.append(f"- min_quality_tier: `{cfg['min_quality_tier']}`")
     lines.append(f"- max_candidates_per_library: `{int(cfg['max_candidates_per_library'])}`")
     lines.append(f"- max_events_per_candidate: `{int(cfg['max_events_per_candidate'])}`")
+    lines.append(f"- oco_hold_mode: `{cfg.get('oco_hold_mode', DEFAULTS['oco_hold_mode'])}`")
+    lines.append(f"- oco_include_no_touch: `{bool(cfg.get('oco_include_no_touch', DEFAULTS['oco_include_no_touch']))}`")
     lines.append("")
 
     if not summary.empty:
@@ -582,6 +660,8 @@ def main() -> None:
     p.add_argument("--min-quality-tier", default=None)
     p.add_argument("--max-candidates-per-library", type=int, default=None)
     p.add_argument("--max-events-per-candidate", type=int, default=None)
+    p.add_argument("--oco-include-no-touch", default=None)
+    p.add_argument("--oco-hold-mode", default=None)
     p.add_argument("--out-dir", default=None)
     p.add_argument("--report-out", default=None)
     args = p.parse_args()
@@ -589,6 +669,8 @@ def main() -> None:
     cfg = _merge_config(args)
     if isinstance(cfg.get("selection_required"), str):
         cfg["selection_required"] = str(cfg["selection_required"]).strip().lower() in {"1", "true", "yes", "y"}
+    if isinstance(cfg.get("oco_include_no_touch"), str):
+        cfg["oco_include_no_touch"] = str(cfg["oco_include_no_touch"]).strip().lower() in {"1", "true", "yes", "y"}
 
     directional, oco, summary = run(cfg)
 

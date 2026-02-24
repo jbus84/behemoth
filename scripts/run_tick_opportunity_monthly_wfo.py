@@ -63,6 +63,12 @@ DEFAULTS: dict[str, Any] = {
     "min_month_test_rows": 1500,
     "min_candidate_rows_in_train_window": 300,
     "threshold_quantiles": "0.5,0.6,0.7,0.8,0.9,0.95",
+    "oco_include_no_touch": True,
+    "threshold_mode": "rolling_days",  # rolling_days|train_quantile
+    "rolling_threshold_days": 20,
+    "rolling_threshold_min_history": 1000,
+    "execution_quantile": 0.9,
+    "oco_hold_mode": "from_touch",  # from_touch|from_start
     "seed": 42,
     "out_dir": "data/analysis/tick_opportunity_mining/wfo_2025_m3to1",
     "report_out": "docs/analysis/eurusd_tick_opportunity_monthly_wfo_report.md",
@@ -133,6 +139,8 @@ def _build_events_for_library(
     min_candidate_train_count: int,
     max_candidates: int,
     max_events_per_candidate: int,
+    oco_include_no_touch: bool,
+    oco_hold_mode: str,
 ) -> pd.DataFrame:
     lib = str(library).strip().lower()
     if lib not in {"directional", "oco"}:
@@ -181,6 +189,8 @@ def _build_events_for_library(
                 cands=sub,
                 max_events_per_candidate=int(max_events_per_candidate),
                 symbol=symbol,
+                hold_mode=str(oco_hold_mode),
+                include_no_touch=bool(oco_include_no_touch),
             )
         if not ev.empty:
             events_parts.append(ev)
@@ -219,6 +229,68 @@ def _month_bounds(year: int) -> list[tuple[pd.Timestamp, pd.Timestamp]]:
     return out
 
 
+def _rolling_day_threshold_vector(
+    *,
+    train_ts: pd.Series,
+    train_p: np.ndarray,
+    test_ts: pd.Series,
+    test_p: np.ndarray,
+    q: float,
+    lookback_days: int,
+    min_history: int,
+) -> np.ndarray:
+    tr_t = pd.to_datetime(train_ts, utc=True, errors="coerce")
+    te_t = pd.to_datetime(test_ts, utc=True, errors="coerce")
+    tr_v = np.asarray(train_p, dtype=float)
+    te_v = np.asarray(test_p, dtype=float)
+    tr_ok = np.isfinite(tr_v) & tr_t.notna().to_numpy()
+    te_ok = np.isfinite(te_v) & te_t.notna().to_numpy()
+    out = np.full(len(te_v), np.nan, dtype=float)
+    if not np.any(te_ok):
+        return out
+
+    tr_day = tr_t.dt.floor("D")
+    te_day = te_t.dt.floor("D")
+    tr_df = pd.DataFrame({"day": tr_day[tr_ok].to_numpy(), "p": tr_v[tr_ok]})
+    te_df = pd.DataFrame({"day": te_day[te_ok].to_numpy(), "p": te_v[te_ok], "idx": np.flatnonzero(te_ok)})
+
+    train_by_day: dict[pd.Timestamp, np.ndarray] = {}
+    for d, g in tr_df.groupby("day", sort=True):
+        train_by_day[pd.Timestamp(d)] = g["p"].to_numpy(dtype=float)
+
+    test_by_day_vals: dict[pd.Timestamp, np.ndarray] = {}
+    test_by_day_idx: dict[pd.Timestamp, np.ndarray] = {}
+    for d, g in te_df.groupby("day", sort=True):
+        dd = pd.Timestamp(d)
+        test_by_day_vals[dd] = g["p"].to_numpy(dtype=float)
+        test_by_day_idx[dd] = g["idx"].to_numpy(dtype=np.int64)
+
+    fallback = tr_v[tr_ok]
+    if len(fallback) == 0:
+        fallback = te_v[te_ok]
+    fallback_thr = float(np.quantile(fallback, float(q))) if len(fallback) else float("nan")
+
+    lookback = pd.Timedelta(days=int(max(1, lookback_days)))
+    seen_test_days: list[pd.Timestamp] = []
+    train_items = list(train_by_day.items())
+    for day in sorted(test_by_day_idx.keys()):
+        start = day - lookback
+        parts: list[np.ndarray] = []
+        for d, arr in train_items:
+            if start <= d < day:
+                parts.append(arr)
+        for d in seen_test_days:
+            if start <= d < day:
+                parts.append(test_by_day_vals[d])
+        hist = np.concatenate(parts) if parts else np.array([], dtype=float)
+        if len(hist) < int(max(1, min_history)):
+            hist = fallback
+        thr = float(np.quantile(hist, float(q))) if len(hist) else float(fallback_thr)
+        out[test_by_day_idx[day]] = thr
+        seen_test_days.append(day)
+    return out
+
+
 def _wfo_monthly(
     d: pd.DataFrame,
     *,
@@ -229,6 +301,10 @@ def _wfo_monthly(
     min_month_test_rows: int,
     min_candidate_rows_in_train_window: int,
     threshold_quantiles: list[float],
+    threshold_mode: str,
+    rolling_threshold_days: int,
+    rolling_threshold_min_history: int,
+    execution_quantile: float,
     seed: int,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     if d.empty:
@@ -245,6 +321,10 @@ def _wfo_monthly(
     x = x.dropna(subset=feats + ["target_gross_pos", "target_gross_pips", "candidate_uid"]).copy()
 
     months = _month_bounds(int(year))
+    mode = str(threshold_mode).strip().lower()
+    if mode not in {"rolling_days", "train_quantile"}:
+        raise ValueError("threshold_mode must be rolling_days|train_quantile")
+    exec_q = float(execution_quantile)
     metric_rows: list[dict[str, Any]] = []
     thr_rows: list[dict[str, Any]] = []
     pred_rows: list[pd.DataFrame] = []
@@ -281,6 +361,7 @@ def _wfo_monthly(
             verbose=False,
         )
         model.fit(tr[feats], tr["target_gross_pos"].astype(int))
+        p_tr = model.predict_proba(tr[feats])[:, 1]
         p = model.predict_proba(te[feats])[:, 1]
         y = te["target_gross_pos"].astype(int).to_numpy()
         from sklearn.metrics import roc_auc_score, brier_score_loss  # local import
@@ -313,13 +394,28 @@ def _wfo_monthly(
                 "pred_prob": p.astype(float),
                 "target_gross_pips": te["target_gross_pips"].to_numpy(dtype=float),
                 "target_gross_pos": te["target_gross_pos"].to_numpy(dtype=int),
+                "threshold_mode": mode,
+                "threshold_days": int(rolling_threshold_days) if mode == "rolling_days" else 0,
+                "threshold_exec": np.full(len(te), np.nan, dtype=float),
+                "selected_exec": np.zeros(len(te), dtype=int),
             }
         )
-        pred_rows.append(pred_chunk)
         g = te["target_gross_pips"].to_numpy(dtype=float)
         for q in threshold_quantiles:
-            thr = float(np.quantile(p, float(q)))
-            m = p >= thr
+            if mode == "rolling_days":
+                thr_vec = _rolling_day_threshold_vector(
+                    train_ts=tr["close_ts"],
+                    train_p=p_tr,
+                    test_ts=te["close_ts"],
+                    test_p=p,
+                    q=float(q),
+                    lookback_days=int(rolling_threshold_days),
+                    min_history=int(rolling_threshold_min_history),
+                )
+            else:
+                thr = float(np.quantile(p_tr, float(q)))
+                thr_vec = np.full(len(p), float(thr), dtype=float)
+            m = np.isfinite(thr_vec) & (p >= thr_vec)
             if int(m.sum()) <= 0:
                 continue
             gg = g[m]
@@ -328,6 +424,10 @@ def _wfo_monthly(
                     "library": library,
                     "test_month": test_start.strftime("%Y-%m"),
                     "quantile": float(q),
+                    "threshold_mode": mode,
+                    "threshold_median": float(np.nanmedian(thr_vec)),
+                    "threshold_min": float(np.nanmin(thr_vec)),
+                    "threshold_max": float(np.nanmax(thr_vec)),
                     "coverage": float(np.mean(m)),
                     "mean_gross_pips": float(np.mean(gg)),
                     "median_gross_pips": float(np.median(gg)),
@@ -335,6 +435,10 @@ def _wfo_monthly(
                     "selected_rows": int(m.sum()),
                 }
             )
+            if abs(float(q) - exec_q) <= 1e-12:
+                pred_chunk["threshold_exec"] = thr_vec.astype(float)
+                pred_chunk["selected_exec"] = m.astype(int)
+        pred_rows.append(pred_chunk)
     preds = pd.concat(pred_rows, ignore_index=True) if pred_rows else pd.DataFrame()
     return pd.DataFrame(metric_rows), pd.DataFrame(thr_rows), preds
 
@@ -350,6 +454,12 @@ def _write_report(report_out: Path, metrics: pd.DataFrame, thresholds: pd.DataFr
     lines.append(f"- min_candidate_train_count: `{cfg['min_candidate_train_count']}`")
     lines.append(f"- max_candidates_per_library: `{cfg['max_candidates_per_library']}`")
     lines.append(f"- rolling_train_months: `{cfg['rolling_train_months']}`")
+    lines.append(f"- oco_include_no_touch: `{cfg.get('oco_include_no_touch', DEFAULTS['oco_include_no_touch'])}`")
+    lines.append(f"- threshold_mode: `{cfg.get('threshold_mode', DEFAULTS['threshold_mode'])}`")
+    lines.append(f"- rolling_threshold_days: `{cfg.get('rolling_threshold_days', DEFAULTS['rolling_threshold_days'])}`")
+    lines.append(f"- rolling_threshold_min_history: `{cfg.get('rolling_threshold_min_history', DEFAULTS['rolling_threshold_min_history'])}`")
+    lines.append(f"- execution_quantile: `{cfg.get('execution_quantile', DEFAULTS['execution_quantile'])}`")
+    lines.append(f"- oco_hold_mode: `{cfg.get('oco_hold_mode', DEFAULTS['oco_hold_mode'])}`")
     lines.append("")
     lines.append("## Monthly Metrics")
     lines.append(metrics.to_markdown(index=False) if not metrics.empty else "_empty_")
@@ -378,18 +488,33 @@ def main() -> None:
     p.add_argument("--min-month-test-rows", type=int, default=None)
     p.add_argument("--min-candidate-rows-in-train-window", type=int, default=None)
     p.add_argument("--threshold-quantiles", default=None)
+    p.add_argument("--oco-include-no-touch", default=None)
+    p.add_argument("--threshold-mode", default=None)
+    p.add_argument("--rolling-threshold-days", type=int, default=None)
+    p.add_argument("--rolling-threshold-min-history", type=int, default=None)
+    p.add_argument("--execution-quantile", type=float, default=None)
+    p.add_argument("--oco-hold-mode", default=None)
     p.add_argument("--seed", type=int, default=None)
     p.add_argument("--out-dir", default=None)
     p.add_argument("--report-out", default=None)
     args = p.parse_args()
 
     cfg = _merge_config(args)
+    if isinstance(cfg.get("oco_include_no_touch"), str):
+        cfg["oco_include_no_touch"] = str(cfg["oco_include_no_touch"]).strip().lower() in {"1", "true", "yes", "y"}
     symbol = str(cfg["symbol"]).upper().strip()
     dataset_dir = Path(str(cfg["dataset_dir"]))
     candidate_dir = Path(str(cfg["candidate_dir"]))
     train_years_fit = set(_parse_ints(str(cfg["train_years_for_state_fit"])))
     eval_year = int(cfg["eval_year"])
     libs_raw = str(cfg["library"]).strip().lower()
+    oco_include_no_touch = bool(cfg.get("oco_include_no_touch", DEFAULTS["oco_include_no_touch"]))
+    threshold_mode = str(cfg.get("threshold_mode", DEFAULTS["threshold_mode"])).strip().lower()
+    if threshold_mode not in {"rolling_days", "train_quantile"}:
+        raise ValueError("threshold_mode must be rolling_days|train_quantile")
+    oco_hold_mode = str(cfg.get("oco_hold_mode", DEFAULTS["oco_hold_mode"])).strip().lower()
+    if oco_hold_mode not in {"from_touch", "from_start"}:
+        raise ValueError("oco_hold_mode must be from_touch|from_start")
     libs = ["directional", "oco"] if libs_raw == "both" else [libs_raw]
     for lib in libs:
         if lib not in {"directional", "oco"}:
@@ -412,6 +537,8 @@ def main() -> None:
             min_candidate_train_count=int(cfg["min_candidate_train_count"]),
             max_candidates=int(cfg["max_candidates_per_library"]),
             max_events_per_candidate=int(cfg["max_events_per_candidate"]),
+            oco_include_no_touch=oco_include_no_touch,
+            oco_hold_mode=oco_hold_mode,
         )
         ev_path = out_dir / f"{symbol}_{lib}_events_eval{eval_year}.parquet"
         ev.to_parquet(ev_path, index=False)
@@ -425,6 +552,10 @@ def main() -> None:
             min_month_test_rows=int(cfg["min_month_test_rows"]),
             min_candidate_rows_in_train_window=int(cfg["min_candidate_rows_in_train_window"]),
             threshold_quantiles=_parse_float_list(str(cfg["threshold_quantiles"])),
+            threshold_mode=threshold_mode,
+            rolling_threshold_days=int(cfg.get("rolling_threshold_days", DEFAULTS["rolling_threshold_days"])),
+            rolling_threshold_min_history=int(cfg.get("rolling_threshold_min_history", DEFAULTS["rolling_threshold_min_history"])),
+            execution_quantile=float(cfg.get("execution_quantile", DEFAULTS["execution_quantile"])),
             seed=int(cfg["seed"]),
         )
         if not m.empty:
