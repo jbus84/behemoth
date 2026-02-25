@@ -1,0 +1,156 @@
+{
+  "artifacts": {
+    "predictions_path": "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet",
+    "predictions_sha256": "b612437c29ffe20bd695edb21b5c80524f3c76ea0f11e13ea8e19a5d440ee1cf",
+    "reduced_config_path": "configs/research/experiments/eurusd_oco_reduced_core_2025.yaml",
+    "reduced_config_sha256": "d8e47b43d7ad62629c5c2b651d03cf8215cc900b8198719d5653da9dae51034a",
+    "reduced_states_csv_path": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_reduced_states.csv",
+    "reduced_states_csv_sha256": "45b5d7911abd8cf5729bd45cf545869969a1c496df0074208eb33fdfba422096",
+    "tick_exact_overall_pass": true,
+    "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_tick_exact_summary.csv",
+    "tick_exact_summary_sha256": "96641671a5fc4d663ff96b799fc9ed38f18afc9a10163e999b0ff65bbdf2c6e9",
+    "wfo_config_path": "configs/research/experiments/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
+    "wfo_config_sha256": "ee3d117d2200f0f0c29313068cff91a6c8b3063b91ee166a3d2f6b11670b5ca8"
+  },
+  "frozen_at_utc": "2026-02-25T08:03:27.247805+00:00",
+  "git": {
+    "branch": "main",
+    "commit": "e871bd9260089a4647c0305b585476606f78adb2",
+    "dirty": true
+  },
+  "locked_runtime": {
+    "barrier_keep": "2,3",
+    "execution_quantile": 0.9,
+    "family_keep": "oco_first_touch_clean",
+    "horizon_keep": "5,6",
+    "locked_quantile": 0.9,
+    "oco_hold_mode": "from_touch",
+    "oco_include_no_touch": true,
+    "rolling_threshold_days": 20,
+    "rolling_threshold_min_history": 1000,
+    "selection_mode": "auto",
+    "threshold_mode": "rolling_days"
+  },
+  "retrain_policy": {
+    "anchor_day_utc": 1,
+    "cadence_days": 30,
+    "mode": "calendar_window",
+    "window_days": 3
+  },
+  "schema_version": 1,
+  "state_universe": {
+    "count": 12,
+    "rows": [
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 5,
+        "regime_desc": "asia;barrier=2.0",
+        "state_id": "oco_first_touch_clean__asia__k2",
+        "symbol": "EURUSD"
+      },
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 5,
+        "regime_desc": "high_abs_vel_q70;barrier=2.0",
+        "state_id": "oco_first_touch_clean__high_abs_vel_q70__k2",
+        "symbol": "EURUSD"
+      },
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 5,
+        "regime_desc": "high_abs_vel_q80;barrier=2.0",
+        "state_id": "oco_first_touch_clean__high_abs_vel_q80__k2",
+        "symbol": "EURUSD"
+      },
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 5,
+        "regime_desc": "high_range_q70;barrier=2.0",
+        "state_id": "oco_first_touch_clean__high_range_q70__k2",
+        "symbol": "EURUSD"
+      },
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 5,
+        "regime_desc": "high_range_q80;barrier=2.0",
+        "state_id": "oco_first_touch_clean__high_range_q80__k2",
+        "symbol": "EURUSD"
+      },
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 5,
+        "regime_desc": "london;barrier=2.0",
+        "state_id": "oco_first_touch_clean__london__k2",
+        "symbol": "EURUSD"
+      },
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 6,
+        "regime_desc": "asia;barrier=2.0",
+        "state_id": "oco_first_touch_clean__asia__k2",
+        "symbol": "EURUSD"
+      },
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 6,
+        "regime_desc": "high_abs_vel_q70;barrier=2.0",
+        "state_id": "oco_first_touch_clean__high_abs_vel_q70__k2",
+        "symbol": "EURUSD"
+      },
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 6,
+        "regime_desc": "high_abs_vel_q80;barrier=2.0",
+        "state_id": "oco_first_touch_clean__high_abs_vel_q80__k2",
+        "symbol": "EURUSD"
+      },
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 6,
+        "regime_desc": "high_range_q70;barrier=2.0",
+        "state_id": "oco_first_touch_clean__high_range_q70__k2",
+        "symbol": "EURUSD"
+      },
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 6,
+        "regime_desc": "high_range_q80;barrier=2.0",
+        "state_id": "oco_first_touch_clean__high_range_q80__k2",
+        "symbol": "EURUSD"
+      },
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 6,
+        "regime_desc": "london;barrier=2.0",
+        "state_id": "oco_first_touch_clean__london__k2",
+        "symbol": "EURUSD"
+      }
+    ],
+    "sha256": "a9dcfd3b305cffe3c50cef90e5e7e7860aab73cc2beec2bbc6644900f3080dcc"
+  },
+  "symbol": "EURUSD"
+}
