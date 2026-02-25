@@ -45,6 +45,7 @@ DEFAULTS: dict[str, Any] = {
     "min_state_avg_rows": 200.0,
     "min_positive_months_train": 2,
     "strict_gate_only": True,
+    "overlap_divergence_max": 0.40,
     "require_lb95_trade_gt0": True,
     "require_lb95_month_gt0": True,
     "bootstrap_paths": 600,
@@ -266,6 +267,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     min_state_avg_rows = float(cfg["min_state_avg_rows"])
     min_positive_months_train = int(cfg["min_positive_months_train"])
     strict_gate_only = bool(cfg.get("strict_gate_only", True))
+    overlap_divergence_max = float(cfg.get("overlap_divergence_max", 0.40))
     min_fill_rate = float(cfg.get("stop_limit_min_fill_rate", 0.0))
     require_lb95_trade_gt0 = bool(cfg["require_lb95_trade_gt0"])
     require_lb95_month_gt0 = bool(cfg["require_lb95_month_gt0"])
@@ -466,17 +468,18 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             + pd.to_numeric(s["horizon"], errors="coerce").fillna(-1).astype(int).astype(str)
         )
 
-        train_for_corr = train[train["__filled"] == 1].copy()
-        piv = (
-            train_for_corr.groupby(["state_key", "test_month"], as_index=False)
-            .size()
-            .pivot(index="state_key", columns="test_month", values="size")
-            .fillna(0.0)
+        dep = train.groupby(["state_key", "test_month"], as_index=False).agg(
+            activity=("__filled", "sum"),
+            pnl_signal=("__pnl_signal", "mean"),
         )
-        corr = piv.T.corr() if not piv.empty else pd.DataFrame()
+        piv_act = dep.pivot(index="state_key", columns="test_month", values="activity").fillna(0.0)
+        piv_pnl = dep.pivot(index="state_key", columns="test_month", values="pnl_signal")
+        corr_act = piv_act.T.corr() if not piv_act.empty else pd.DataFrame()
+        corr_pnl = piv_pnl.T.corr() if not piv_pnl.empty else pd.DataFrame()
 
         selected_keys: list[str] = []
         selected_corr_max: dict[str, float] = {}
+        selected_div_max: dict[str, float] = {}
         pass_keys = set(s[s["gate_pass"]]["state_key"].astype(str).tolist())
         candidate_order = [x for x in s["state_key"].astype(str).tolist() if x in pass_keys]
         if not candidate_order and strict_gate_only:
@@ -508,23 +511,30 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             if not selected_keys:
                 selected_keys.append(sk)
                 selected_corr_max[sk] = 0.0
+                selected_div_max[sk] = 0.0
                 continue
-            cvals = [
-                float(corr.loc[sk, t])
-                for t in selected_keys
-                if (sk in corr.index and t in corr.columns)
-            ]
-            cvals = [x for x in cvals if np.isfinite(x)]
+            cvals: list[float] = []
+            dvals: list[float] = []
+            for t in selected_keys:
+                cp = float(corr_pnl.loc[sk, t]) if (sk in corr_pnl.index and t in corr_pnl.columns) else np.nan
+                ca = float(corr_act.loc[sk, t]) if (sk in corr_act.index and t in corr_act.columns) else np.nan
+                if np.isfinite(cp):
+                    cvals.append(abs(cp))
+                if np.isfinite(cp) and np.isfinite(ca):
+                    dvals.append(abs(cp - ca))
             cmax = float(np.max(cvals)) if cvals else 0.0
-            if cmax <= overlap_corr_max or len(selected_keys) < min_states:
+            dmax = float(np.max(dvals)) if dvals else 0.0
+            if cmax <= overlap_corr_max and dmax <= overlap_divergence_max:
                 selected_keys.append(sk)
                 selected_corr_max[sk] = cmax
+                selected_div_max[sk] = dmax
 
         if len(selected_keys) < min_states and not strict_gate_only:
             for sk in s["state_key"].astype(str).tolist():
                 if sk not in selected_keys:
                     selected_keys.append(sk)
                     selected_corr_max[sk] = float("nan")
+                    selected_div_max[sk] = float("nan")
                 if len(selected_keys) >= min_states:
                     break
 
@@ -533,6 +543,9 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         selected_state_df["selected_rank"] = selected_state_df["state_key"].astype(str).map(rank_map)
         selected_state_df["overlap_corr_max"] = (
             selected_state_df["state_key"].astype(str).map(selected_corr_max).fillna(np.nan)
+        )
+        selected_state_df["overlap_div_max"] = (
+            selected_state_df["state_key"].astype(str).map(selected_div_max).fillna(np.nan)
         )
         selected_state_df = selected_state_df.sort_values("selected_rank").reset_index(drop=True)
 
@@ -580,6 +593,9 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                     "barrier_pips": float(r["barrier_pips"]),
                     "overlap_corr_max": float(r["overlap_corr_max"])
                     if np.isfinite(r["overlap_corr_max"])
+                    else np.nan,
+                    "overlap_div_max": float(r["overlap_div_max"])
+                    if np.isfinite(r["overlap_div_max"])
                     else np.nan,
                     "train_rows": int(r["train_rows"]),
                     "train_months_count": int(r["train_months_count"]),
@@ -708,6 +724,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     report_lines.append(f"- state_train_months: `{state_train_months}`")
     report_lines.append(f"- min_train_months: `{min_train_months}`")
     report_lines.append(f"- overlap_corr_max: `{overlap_corr_max}`")
+    report_lines.append(f"- overlap_divergence_max: `{overlap_divergence_max}`")
     report_lines.append(f"- max_states/min_states: `{max_states}/{min_states}`")
     report_lines.append(f"- strict_gate_only: `{strict_gate_only}`")
     report_lines.append("")
@@ -757,6 +774,7 @@ def main() -> None:
     p.add_argument("--min-state-avg-rows", type=float, default=None)
     p.add_argument("--min-positive-months-train", type=int, default=None)
     p.add_argument("--strict-gate-only", default=None)
+    p.add_argument("--overlap-divergence-max", type=float, default=None)
     p.add_argument("--require-lb95-trade-gt0", default=None)
     p.add_argument("--require-lb95-month-gt0", default=None)
     p.add_argument("--bootstrap-paths", type=int, default=None)

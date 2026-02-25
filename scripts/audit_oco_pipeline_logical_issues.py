@@ -128,6 +128,16 @@ def _parse_state_id(uid: str) -> str:
     return str(toks[4])
 
 
+def _parse_state_key(uid: str) -> str:
+    toks = str(uid).split("|", 4)
+    if len(toks) != 5:
+        return str(uid)
+    bt = str(toks[2])
+    h = str(toks[3]).lstrip("hH")
+    sid = str(toks[4])
+    return f"{sid}|{bt}|{h}"
+
+
 def _dt_utc_mixed(series: pd.Series) -> pd.Series:
     try:
         return pd.to_datetime(series, utc=True, errors="coerce", format="mixed")
@@ -196,6 +206,7 @@ def _load_selected_events(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame
     p = p[p["selected_exec"] == 1].copy()
     p["candidate_uid"] = p["candidate_uid"].astype(str)
     p["state_id"] = p["candidate_uid"].map(_parse_state_id)
+    p["state_key"] = p["candidate_uid"].map(_parse_state_key)
     p["close_month_utc"] = p["close_ts"].dt.strftime("%Y-%m")
 
     d = pd.read_csv(
@@ -237,6 +248,7 @@ def _check_overlap_divergence(
     monthly: pd.DataFrame,
     schedule: pd.DataFrame,
 ) -> tuple[float, float, int]:
+    key_col = "state_key" if ("state_key" in selected.columns and "state_key" in schedule.columns) else "state_id"
     month_rows = monthly[monthly["status"] == "ok"][["test_month", "train_months"]].copy()
     if month_rows.empty:
         return float("nan"), float("nan"), 0
@@ -248,19 +260,19 @@ def _check_overlap_divergence(
         train_months = [m.strip() for m in str(r["train_months"]).split(",") if m.strip()]
         if len(train_months) < 2:
             continue
-        states = schedule[schedule["test_month"] == month]["state_id"].astype(str).tolist()
+        states = schedule[schedule["test_month"] == month][key_col].astype(str).tolist()
         states = sorted(set(states))
         if len(states) < 2:
             continue
-        g = selected[selected["test_month"].isin(train_months) & selected["state_id"].isin(states)].copy()
+        g = selected[selected["test_month"].isin(train_months) & selected[key_col].astype(str).isin(states)].copy()
         if g.empty:
             continue
-        agg = g.groupby(["state_id", "test_month"], as_index=False).agg(
+        agg = g.groupby([key_col, "test_month"], as_index=False).agg(
             activity=("filled", "sum"),
             pnl=("pnl_signal", "mean"),
         )
-        pa = agg.pivot(index="state_id", columns="test_month", values="activity").fillna(0.0)
-        pp = agg.pivot(index="state_id", columns="test_month", values="pnl")
+        pa = agg.pivot(index=key_col, columns="test_month", values="activity").fillna(0.0)
+        pp = agg.pivot(index=key_col, columns="test_month", values="pnl")
         if pa.shape[1] < 2 or pa.shape[0] < 2:
             continue
         ca = pa.T.corr()
@@ -290,6 +302,20 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
     selected, detail_raw, detail_dup_count, detail_match_rate = _load_selected_events(cfg)
     caps = pd.read_csv(cfg.stop_caps_path).copy()
     caps = caps.sort_values("cap_pips").reset_index(drop=True)
+
+    ok_months = set(monthly[monthly["status"] == "ok"]["test_month"].astype(str).tolist())
+    if "state_key" in schedule.columns:
+        schedule_keys = schedule[["test_month", "state_key"]].dropna().copy()
+    else:
+        schedule_keys = schedule[["test_month", "state_id"]].dropna().copy()
+        schedule_keys["state_key"] = schedule_keys["state_id"].astype(str)
+    strategy_rows = selected[selected["test_month"].isin(ok_months)].merge(
+        schedule_keys[["test_month", "state_key"]],
+        on=["test_month", "state_key"],
+        how="inner",
+    )
+    if strategy_rows.empty:
+        strategy_rows = selected[selected["test_month"].isin(ok_months)].copy()
 
     checks: list[dict[str, Any]] = []
     issues: list[dict[str, Any]] = []
@@ -443,12 +469,20 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     # C05: stop-limit detail join integrity.
     by_month_match = (
-        selected.assign(matched=pd.to_numeric(selected["__matched_detail"], errors="coerce").fillna(0).astype(int))
+        strategy_rows.assign(
+            matched=pd.to_numeric(strategy_rows["__matched_detail"], errors="coerce").fillna(0).astype(int)
+        )
         .groupby("test_month", as_index=False)["matched"]
         .mean()
     )
     min_match = float(by_month_match["matched"].min()) if not by_month_match.empty else np.nan
-    c05_pass = detail_dup_count == 0 and np.isfinite(detail_match_rate) and detail_match_rate >= 0.995 and min_match >= 0.995
+    c05_pass = (
+        detail_dup_count == 0
+        and np.isfinite(detail_match_rate)
+        and detail_match_rate >= 0.995
+        and np.isfinite(min_match)
+        and min_match >= 0.995
+    )
     add_check(
         "C05",
         "pass" if c05_pass else "fail",
@@ -457,7 +491,11 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
         "min_month_match_rate",
         float(min_match) if np.isfinite(min_match) else float("nan"),
         ">=0.995 and duplicate_keys=0",
-        {"duplicate_keys": int(detail_dup_count), "overall_match_rate": detail_match_rate},
+        {
+            "duplicate_keys": int(detail_dup_count),
+            "overall_match_rate": detail_match_rate,
+            "strategy_rows": int(len(strategy_rows)),
+        },
         "Stop-limit detail join has duplicates or low key-match coverage.",
         "Execution model can silently drop/alter rows if key integrity is weak.",
         "Deduplicate detail at source and enforce key uniqueness + match-rate gate per month.",
@@ -558,7 +596,9 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
     )
 
     # C10: timezone/timestamp causality consistency.
-    matched = selected[pd.to_numeric(selected["__matched_detail"], errors="coerce").fillna(0).astype(int) == 1].copy()
+    matched = strategy_rows[
+        pd.to_numeric(strategy_rows["__matched_detail"], errors="coerce").fillna(0).astype(int) == 1
+    ].copy()
     touch_open = _dt_utc_mixed(matched["touch_open_ts"])
     touch_close = _dt_utc_mixed(matched["touch_close_ts"])
     close_ts = _dt_utc_mixed(matched["close_ts"])
@@ -633,8 +673,35 @@ def run_audit(symbols: list[str], *, out_checks_csv: Path, out_issues_csv: Path,
         all_checks.append(checks_df)
         all_issues.append(issues_df)
 
-    checks = pd.concat(all_checks, ignore_index=True) if all_checks else pd.DataFrame()
-    issues = pd.concat(all_issues, ignore_index=True) if all_issues else pd.DataFrame()
+    checks_cols = [
+        "symbol",
+        "check_id",
+        "status",
+        "severity_if_fail",
+        "component",
+        "metric_name",
+        "metric_value",
+        "threshold",
+        "details_json",
+    ]
+    issues_cols = [
+        "issue_id",
+        "symbol",
+        "check_id",
+        "severity",
+        "component",
+        "description",
+        "impact_estimate",
+        "proposed_fix",
+        "acceptance_test",
+        "details_json",
+    ]
+    checks = pd.concat(all_checks, ignore_index=True) if all_checks else pd.DataFrame(columns=checks_cols)
+    issues = pd.concat(all_issues, ignore_index=True) if all_issues else pd.DataFrame(columns=issues_cols)
+    if checks.empty:
+        checks = pd.DataFrame(columns=checks_cols)
+    if issues.empty:
+        issues = pd.DataFrame(columns=issues_cols)
 
     out_checks_csv.parent.mkdir(parents=True, exist_ok=True)
     out_issues_csv.parent.mkdir(parents=True, exist_ok=True)
