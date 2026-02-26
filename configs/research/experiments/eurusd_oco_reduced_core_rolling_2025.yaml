@@ -31,6 +31,7 @@ capacity_floor_monthly: 3000
 capacity_floor_annual: 5000
 
 out_state_schedule_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv
+out_state_csv: data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_reduced_states.csv
 out_monthly_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv
 out_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_summary.csv
 report_out: docs/analysis/eurusd_oco_reduced_core_rolling_report.md

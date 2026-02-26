@@ -1,0 +1,1879 @@
+#!/usr/bin/env python3
+"""Build canonical OCO rolling strategy bible generated documentation artifacts."""
+
+from __future__ import annotations
+
+import argparse
+import glob
+import json
+import math
+import re
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+import pandas as pd
+import yaml
+
+DEFAULT_MANIFEST = Path("configs/research/docs/oco_bible_manifest.yaml")
+
+
+@dataclass(frozen=True)
+class BuildOutputs:
+    generated_dir: Path
+    figures_dir: Path
+    build_report_csv: Path
+    symbol_snapshot_csv: Path
+    stage_status_csv: Path
+    stage_metrics_csv: Path
+
+
+REQUIRED_SYMBOL_KEYS = {
+    "symbol",
+    "reduced_summary_csv",
+    "tick_exact_summary_csv",
+    "robustness_summary_csv",
+    "stop_limit_summary_csv",
+    "mining_report_md",
+    "wfo_report_md",
+    "reduced_core_report_md",
+    "tick_exact_report_md",
+}
+
+
+def _parse_bool(raw: str) -> bool:
+    return str(raw).strip().lower() in {"1", "true", "yes", "y"}
+
+
+def _table(df: pd.DataFrame) -> str:
+    if df.empty:
+        return "_empty_"
+    try:
+        return df.to_markdown(index=False)
+    except Exception:
+        cols = [str(c) for c in df.columns.tolist()]
+        head = "| " + " | ".join(cols) + " |"
+        sep = "|" + "|".join([" --- " for _ in cols]) + "|"
+        body: list[str] = []
+        for _, row in df.iterrows():
+            vals: list[str] = []
+            for c in cols:
+                v = row.get(c, "")
+                if pd.isna(v):
+                    vals.append("")
+                else:
+                    vals.append(str(v))
+            body.append("| " + " | ".join(vals) + " |")
+        return "\n".join([head, sep] + body)
+
+
+def _resolve_path(base: Path, raw: str) -> Path:
+    p = Path(str(raw))
+    if p.is_absolute():
+        return p
+    # Prefer repository-root-relative paths (cwd), then fall back to manifest-relative paths.
+    p_cwd = (Path.cwd() / p).resolve()
+    if p_cwd.exists():
+        return p_cwd
+    return (base / p).resolve()
+
+
+def _resolve_output_path(raw: str) -> Path:
+    p = Path(str(raw))
+    if p.is_absolute():
+        return p
+    return (Path.cwd() / p).resolve()
+
+
+def _require_manifest_keys(cfg: dict[str, Any]) -> None:
+    required_root = {"title", "outputs", "symbols", "audit"}
+    missing = sorted(k for k in required_root if k not in cfg)
+    if missing:
+        raise ValueError(f"manifest missing root keys: {missing}")
+
+    outputs = cfg.get("outputs")
+    if not isinstance(outputs, dict):
+        raise ValueError("manifest outputs must be a mapping")
+    for k in ["generated_dir", "figures_dir", "build_report_csv", "symbol_snapshot_csv", "stage_status_csv"]:
+        if k not in outputs:
+            raise ValueError(f"manifest outputs missing key: {k}")
+
+    symbols = cfg.get("symbols")
+    if not isinstance(symbols, list) or not symbols:
+        raise ValueError("manifest symbols must be a non-empty list")
+    for i, entry in enumerate(symbols):
+        if not isinstance(entry, dict):
+            raise ValueError(f"manifest symbols[{i}] must be a mapping")
+        missing_symbol = sorted(REQUIRED_SYMBOL_KEYS - set(entry.keys()))
+        if missing_symbol:
+            raise ValueError(f"manifest symbols[{i}] missing keys: {missing_symbol}")
+
+    audit = cfg.get("audit")
+    if not isinstance(audit, dict):
+        raise ValueError("manifest audit must be a mapping")
+    for k in ["checks_csv", "issues_csv", "report_md"]:
+        if k not in audit:
+            raise ValueError(f"manifest audit missing key: {k}")
+
+
+def _load_manifest(path: Path) -> tuple[dict[str, Any], Path]:
+    if not path.exists():
+        raise FileNotFoundError(path)
+    obj = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(obj, dict):
+        raise ValueError("manifest root must be a mapping")
+    _require_manifest_keys(obj)
+    return obj, path.parent.resolve()
+
+
+def _artifact_rows(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+
+    for entry in cfg["symbols"]:
+        symbol = str(entry["symbol"]).upper().strip()
+        for k in sorted(REQUIRED_SYMBOL_KEYS - {"symbol"}):
+            p = _resolve_path(base_dir, str(entry[k]))
+            rows.append(
+                {
+                    "group": "symbol",
+                    "symbol": symbol,
+                    "artifact": k,
+                    "path": str(p),
+                    "exists": p.exists(),
+                    "required": True,
+                }
+            )
+
+    audit = cfg["audit"]
+    for k in ["checks_csv", "issues_csv", "report_md"]:
+        p = _resolve_path(base_dir, str(audit[k]))
+        rows.append(
+            {
+                "group": "audit",
+                "symbol": "ALL",
+                "artifact": k,
+                "path": str(p),
+                "exists": p.exists(),
+                "required": True,
+            }
+        )
+
+    for raw in cfg.get("required_artifacts", []):
+        p = _resolve_path(base_dir, str(raw))
+        rows.append(
+            {
+                "group": "required_artifacts",
+                "symbol": "ALL",
+                "artifact": "required_artifact",
+                "path": str(p),
+                "exists": p.exists(),
+                "required": True,
+            }
+        )
+    return rows
+
+
+def _read_csv(path: Path) -> pd.DataFrame:
+    return pd.read_csv(path)
+
+
+def _read_symbol_row(path: Path, symbol: str) -> pd.Series:
+    df = _read_csv(path)
+    if df.empty:
+        raise ValueError(f"empty csv: {path}")
+    if "symbol" in df.columns:
+        pick = df[df["symbol"].astype(str).str.upper() == str(symbol).upper()].copy()
+        if not pick.empty:
+            return pick.iloc[0]
+    return df.iloc[0]
+
+
+def _read_robustness_row(path: Path, quantile: float | None) -> pd.Series:
+    df = _read_csv(path)
+    if df.empty:
+        raise ValueError(f"empty csv: {path}")
+    if "quantile" in df.columns and quantile is not None:
+        qcol = pd.to_numeric(df["quantile"], errors="coerce")
+        m = qcol == float(quantile)
+        if m.any():
+            return df.loc[m].iloc[0]
+    if "quantile" in df.columns:
+        qcol = pd.to_numeric(df["quantile"], errors="coerce")
+        if qcol.notna().any():
+            return df.iloc[int(qcol.fillna(-1).to_numpy().argmax())]
+    return df.iloc[0]
+
+
+def _num(v: Any) -> float:
+    try:
+        x = float(v)
+    except Exception:
+        return float("nan")
+    return x
+
+
+def _is_true(v: Any) -> bool:
+    if isinstance(v, bool):
+        return bool(v)
+    s = str(v).strip().lower()
+    return s in {"1", "true", "yes", "y", "pass"}
+
+
+def _symbol_snapshot(
+    entry: dict[str, Any],
+    *,
+    base_dir: Path,
+    min_exact: float,
+    min_pos: float,
+    robust_quantile: float | None,
+) -> dict[str, Any]:
+    symbol = str(entry["symbol"]).upper().strip()
+
+    reduced = _read_symbol_row(_resolve_path(base_dir, str(entry["reduced_summary_csv"])), symbol=symbol)
+    tick_exact = _read_symbol_row(_resolve_path(base_dir, str(entry["tick_exact_summary_csv"])), symbol=symbol)
+    robustness = _read_robustness_row(_resolve_path(base_dir, str(entry["robustness_summary_csv"])), quantile=robust_quantile)
+    stop_limit = _read_symbol_row(_resolve_path(base_dir, str(entry["stop_limit_summary_csv"])), symbol=symbol)
+
+    exact_rate = _num(tick_exact.get("exact_match_rate"))
+    pos_rate = _num(tick_exact.get("pos_label_match_rate"))
+
+    robust_months = _num(robustness.get("months"))
+    robust_pos_months = _num(robustness.get("positive_months"))
+    robust_majority = (
+        robust_pos_months >= math.ceil(0.5 * robust_months)
+        if (math.isfinite(robust_months) and robust_months > 0 and math.isfinite(robust_pos_months))
+        else False
+    )
+
+    reduced_lb95 = _num(reduced.get("lb95_month_mean_gross_pips"))
+    robust_lb95_trade = _num(robustness.get("lb95_trade_mean_gross_pips"))
+
+    gate_reduced = math.isfinite(reduced_lb95) and reduced_lb95 > 0.0
+    gate_tick_exact = (
+        math.isfinite(exact_rate)
+        and exact_rate >= float(min_exact)
+        and math.isfinite(pos_rate)
+        and pos_rate >= float(min_pos)
+        and _is_true(tick_exact.get("overall_pass"))
+    )
+    gate_robust_lb95 = math.isfinite(robust_lb95_trade) and robust_lb95_trade > 0.0
+
+    return {
+        "symbol": symbol,
+        "mean_gross_pips": _num(reduced.get("mean_gross_pips")),
+        "lb95_month_mean_gross_pips": reduced_lb95,
+        "positive_months": _num(reduced.get("positive_months")),
+        "months_total": _num(reduced.get("months_total")),
+        "rows_total": _num(reduced.get("rows_total")),
+        "fill_rate_overall": _num(reduced.get("fill_rate_overall")),
+        "exact_match_rate": exact_rate,
+        "pos_label_match_rate": pos_rate,
+        "tick_exact_overall_pass": _is_true(tick_exact.get("overall_pass")),
+        "robustness_quantile": _num(robustness.get("quantile")),
+        "robustness_rows": _num(robustness.get("rows")),
+        "robustness_mean_gross_pips": _num(robustness.get("mean_gross_pips")),
+        "robustness_lb95_trade_mean_gross_pips": robust_lb95_trade,
+        "robustness_positive_months": robust_pos_months,
+        "robustness_months": robust_months,
+        "tick_overshoot_mean_pips": _num(stop_limit.get("tick_overshoot_mean_pips")),
+        "tick_overshoot_p95_pips": _num(stop_limit.get("tick_overshoot_p95_pips")),
+        "gate_reduced_lb95_month_gt0": gate_reduced,
+        "gate_tick_exact": gate_tick_exact,
+        "gate_robust_lb95_trade_gt0": gate_robust_lb95,
+        "gate_robust_months_majority": robust_majority,
+        "symbol_all_gates_pass": gate_reduced and gate_tick_exact and gate_robust_lb95 and robust_majority,
+    }
+
+
+def _write_plot_gross(snapshot: pd.DataFrame, out_path: Path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    d = snapshot.copy()
+    if d.empty:
+        return
+
+    x = range(len(d))
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+    ax.bar([i - 0.2 for i in x], d["mean_gross_pips"], width=0.38, label="Reduced mean gross")
+    ax.bar(
+        [i + 0.2 for i in x],
+        d["robustness_lb95_trade_mean_gross_pips"],
+        width=0.38,
+        label="Robustness LB95 trade gross",
+    )
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(d["symbol"].tolist())
+    ax.set_ylabel("Pips")
+    ax.set_title("Symbol Gross vs Robustness LB95")
+    ax.axhline(0.0, color="black", linewidth=1.0)
+    ax.legend(loc="best")
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+
+
+def _write_plot_tick_exact(snapshot: pd.DataFrame, out_path: Path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    d = snapshot.copy()
+    if d.empty:
+        return
+
+    x = range(len(d))
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+    ax.plot(list(x), d["exact_match_rate"], marker="o", label="Exact match")
+    ax.plot(list(x), d["pos_label_match_rate"], marker="o", label="Pos-label match")
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(d["symbol"].tolist())
+    ax.set_ylim(0.0, 1.01)
+    ax.set_ylabel("Rate")
+    ax.set_title("Tick-Exact Verification Rates")
+    ax.grid(True, axis="y", alpha=0.3)
+    ax.legend(loc="lower right")
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+
+
+def _write_markdown_outputs(
+    *,
+    cfg: dict[str, Any],
+    outputs: BuildOutputs,
+    artifact_inventory: pd.DataFrame,
+    snapshot: pd.DataFrame,
+    stage_status: pd.DataFrame,
+    checks: pd.DataFrame,
+    issues: pd.DataFrame,
+    audit_failures: int,
+    audit_pass: bool,
+    figures: list[Path],
+) -> None:
+    generated_dir = outputs.generated_dir
+    generated_dir.mkdir(parents=True, exist_ok=True)
+
+    now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    pipeline_md = generated_dir / "pipeline_snapshot.md"
+    pipeline_lines: list[str] = []
+    pipeline_lines.append("# Pipeline Snapshot")
+    pipeline_lines.append("")
+    pipeline_lines.append(f"- generated_at: `{now_utc}`")
+    pipeline_lines.append(f"- title: `{cfg.get('title')}`")
+    pipeline_lines.append("")
+    pipeline_lines.append("## Symbol Summary")
+    pipeline_lines.append(_table(snapshot))
+    pipeline_lines.append("")
+    pipeline_lines.append("## Stage Gate Status")
+    pipeline_lines.append(_table(stage_status))
+    pipeline_lines.append("")
+    if figures:
+        pipeline_lines.append("## Figures")
+        for fig in figures:
+            rel = Path("..") / ".." / "figures" / "oco_bible" / fig.name
+            pipeline_lines.append(f"- `{fig.name}`")
+            pipeline_lines.append(f"  ![]({rel.as_posix()})")
+    pipeline_md.write_text("\n".join(pipeline_lines), encoding="utf-8")
+
+    audit_md = generated_dir / "audit_snapshot.md"
+    audit_lines: list[str] = []
+    audit_lines.append("# Audit Snapshot")
+    audit_lines.append("")
+    audit_lines.append(f"- generated_at: `{now_utc}`")
+    audit_lines.append(f"- audit_failures: `{int(audit_failures)}`")
+    audit_lines.append(f"- audit_pass: `{bool(audit_pass)}`")
+    audit_lines.append("")
+    fail_checks = checks[checks["status"].astype(str) != "pass"].copy() if not checks.empty else pd.DataFrame()
+    audit_lines.append("## Failed Checks")
+    audit_lines.append(_table(fail_checks))
+    audit_lines.append("")
+    audit_lines.append("## Issues")
+    audit_lines.append(_table(issues))
+    audit_md.write_text("\n".join(audit_lines), encoding="utf-8")
+
+    inventory_md = generated_dir / "artifact_inventory.md"
+    inventory_lines: list[str] = []
+    inventory_lines.append("# Artifact Inventory")
+    inventory_lines.append("")
+    inventory_lines.append(f"- generated_at: `{now_utc}`")
+    inventory_lines.append("")
+    inventory_lines.append(_table(artifact_inventory))
+    inventory_md.write_text("\n".join(inventory_lines), encoding="utf-8")
+
+    source_md = generated_dir / "source_index.md"
+    source_lines: list[str] = []
+    source_lines.append("# Source Index")
+    source_lines.append("")
+
+    script_links = cfg.get("script_links", [])
+    if script_links:
+        source_lines.append("## Scripts")
+        for p in script_links:
+            source_lines.append(f"- `{p}`")
+        source_lines.append("")
+
+    config_links = cfg.get("config_links", [])
+    if config_links:
+        source_lines.append("## Configs")
+        for p in config_links:
+            source_lines.append(f"- `{p}`")
+        source_lines.append("")
+
+    test_links = cfg.get("test_links", [])
+    if test_links:
+        source_lines.append("## Tests")
+        for p in test_links:
+            source_lines.append(f"- `{p}`")
+        source_lines.append("")
+
+    source_lines.append("## Symbol Reports")
+    for entry in cfg.get("symbols", []):
+        s = str(entry.get("symbol", "")).upper()
+        source_lines.append(f"### {s}")
+        for k in ["mining_report_md", "wfo_report_md", "reduced_core_report_md", "tick_exact_report_md"]:
+            if k in entry:
+                source_lines.append(f"- `{entry[k]}`")
+        source_lines.append("")
+    source_lines.append("## Generated Stage Snapshots")
+    for i in range(1, 11):
+        source_lines.append(f"- `docs/strategy_bible/generated/stage_{i:02d}_snapshot.md`")
+    source_lines.append("")
+    source_lines.append("## Stage Metrics")
+    source_lines.append(f"- `{outputs.stage_metrics_csv}`")
+    source_md.write_text("\n".join(source_lines), encoding="utf-8")
+
+
+def _safe_read_csv(path: Path | None) -> pd.DataFrame:
+    if path is None or not path.exists():
+        return pd.DataFrame()
+    try:
+        return pd.read_csv(path)
+    except Exception:
+        return pd.DataFrame()
+
+
+def _safe_read_parquet(path: Path | None, *, columns: list[str] | None = None) -> pd.DataFrame:
+    if path is None or not path.exists():
+        return pd.DataFrame()
+    try:
+        return pd.read_parquet(path, columns=columns)
+    except Exception:
+        try:
+            return pd.read_parquet(path)
+        except Exception:
+            return pd.DataFrame()
+
+
+def _safe_read_json(path: Path | None) -> dict[str, Any]:
+    if path is None or not path.exists():
+        return {}
+    try:
+        obj = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return obj if isinstance(obj, dict) else {}
+
+
+def _glob_latest(pattern: str) -> Path | None:
+    matches = [Path(p).resolve() for p in glob.glob(pattern)]
+    if not matches:
+        return None
+    matches = [p for p in matches if p.exists()]
+    if not matches:
+        return None
+    matches.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return matches[0]
+
+
+def _discover_stage_pages() -> dict[int, Path]:
+    root = (Path.cwd() / "docs" / "strategy_bible").resolve()
+    out: dict[int, Path] = {}
+    if not root.exists():
+        return out
+    for p in sorted(root.glob("stage_[0-9][0-9]_*.md")):
+        m = re.match(r"stage_(\d{2})_", p.name)
+        if not m:
+            continue
+        out[int(m.group(1))] = p
+    return out
+
+
+def _inject_stage_block(page_path: Path, *, stage_id: int, content: str) -> None:
+    if not page_path.exists():
+        return
+    start = f"<!-- GENERATED:STAGE_{stage_id:02d}:START -->"
+    end = f"<!-- GENERATED:STAGE_{stage_id:02d}:END -->"
+    body = page_path.read_text(encoding="utf-8")
+    replacement = f"{start}\n{content.strip()}\n{end}"
+
+    if start in body and end in body:
+        pattern = re.compile(re.escape(start) + r".*?" + re.escape(end), flags=re.S)
+        body = pattern.sub(replacement, body, count=1)
+    else:
+        append_block = "\n".join(
+            [
+                "",
+                "## Generated Run Snapshot",
+                replacement,
+                "",
+            ]
+        )
+        body = body.rstrip() + "\n" + append_block
+    page_path.write_text(body, encoding="utf-8")
+
+
+def _inject_named_block(page_path: Path, *, marker_name: str, heading: str, content: str) -> None:
+    if not page_path.exists():
+        return
+    start = f"<!-- GENERATED:{marker_name}:START -->"
+    end = f"<!-- GENERATED:{marker_name}:END -->"
+    body = page_path.read_text(encoding="utf-8")
+    replacement = f"{start}\n{content.strip()}\n{end}"
+
+    if start in body and end in body:
+        pattern = re.compile(re.escape(start) + r".*?" + re.escape(end), flags=re.S)
+        body = pattern.sub(replacement, body, count=1)
+    else:
+        append_block = "\n".join(["", heading, replacement, ""])
+        body = body.rstrip() + "\n" + append_block
+    page_path.write_text(body, encoding="utf-8")
+
+
+def _to_bool_series(s: pd.Series) -> pd.Series:
+    return s.astype(str).str.strip().str.lower().isin({"1", "true", "yes", "y", "pass"})
+
+
+def _pick_cols(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
+    keep = [c for c in cols if c in df.columns]
+    if not keep:
+        return pd.DataFrame()
+    return df[keep].copy()
+
+
+def _symbol_contexts(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]]:
+    contexts: list[dict[str, Any]] = []
+    for entry in cfg.get("symbols", []):
+        symbol = str(entry.get("symbol", "")).upper().strip()
+        if not symbol:
+            continue
+        reduced_summary = _resolve_path(base_dir, str(entry["reduced_summary_csv"]))
+        tick_exact_summary = _resolve_path(base_dir, str(entry["tick_exact_summary_csv"]))
+        robustness_summary = _resolve_path(base_dir, str(entry["robustness_summary_csv"]))
+        stop_summary = _resolve_path(base_dir, str(entry["stop_limit_summary_csv"]))
+        reduced_dir = reduced_summary.parent
+        stop_dir = stop_summary.parent
+
+        cwd = Path.cwd()
+        wfo_metrics = _glob_latest(
+            str(cwd / "data" / "analysis" / "tick_opportunity_mining" / "wfo_*" / f"{symbol}_monthly_metrics_all.csv")
+        ) or _glob_latest(
+            str(cwd / "data" / "analysis" / "tick_opportunity_mining" / "wfo_*" / f"{symbol}_oco_monthly_metrics.csv")
+        )
+        wfo_thresholds = _glob_latest(
+            str(cwd / "data" / "analysis" / "tick_opportunity_mining" / "wfo_*" / f"{symbol}_monthly_thresholds_all.csv")
+        ) or _glob_latest(
+            str(cwd / "data" / "analysis" / "tick_opportunity_mining" / "wfo_*" / f"{symbol}_oco_monthly_thresholds.csv")
+        )
+        governance_predeploy = _glob_latest(
+            str(cwd / "data" / "analysis" / "tick_opportunity_mining" / f"{str(symbol).lower()}_governance_predeploy*.json")
+        )
+        if governance_predeploy is None:
+            governance_predeploy = _resolve_path(
+                base_dir, f"data/analysis/tick_opportunity_mining/{str(symbol).lower()}_governance_predeploy.json"
+            )
+        events_eval = _glob_latest(
+            str(cwd / "data" / "analysis" / "tick_opportunity_mining" / "wfo_*" / f"{symbol}_oco_events_eval*.parquet")
+        )
+        contexts.append(
+            {
+                "symbol": symbol,
+                "timezone_contract_csv": _resolve_path(
+                    base_dir, f"data/analysis/tick_opportunity_mining/{symbol}_stage1_timezone_contract.csv"
+                ),
+                "candidate_csv": _resolve_path(
+                    base_dir, f"data/analysis/tick_opportunity_mining/{symbol}_oco_candidates.csv"
+                ),
+                "reduced_summary_csv": reduced_summary,
+                "reduced_monthly_csv": reduced_dir / f"{symbol}_oco_reduced_monthly.csv",
+                "reduced_churn_csv": reduced_dir / f"{symbol}_oco_reduced_state_churn.csv",
+                "reduced_state_schedule_csv": reduced_dir / f"{symbol}_oco_reduced_state_schedule.csv",
+                "tick_exact_summary_csv": tick_exact_summary,
+                "tick_exact_monthly_csv": reduced_dir / f"{symbol}_oco_tick_exact_monthly.csv",
+                "tick_exact_replay_csv": reduced_dir / f"{symbol}_oco_tick_exact_replay_bundle.csv",
+                "robustness_summary_csv": robustness_summary,
+                "robustness_null_csv": robustness_summary.parent / f"{symbol}_oco_robustness_null_tests.csv",
+                "robustness_stability_csv": robustness_summary.parent / f"{symbol}_oco_robustness_stability.csv",
+                "robustness_effect_csv": robustness_summary.parent / f"{symbol}_oco_robustness_effect_sizes.csv",
+                "stop_limit_summary_csv": stop_summary,
+                "stop_limit_caps_csv": stop_dir / f"{symbol}_stop_limit_tickfill_caps.csv",
+                "stop_limit_detail_csv": stop_dir / f"{symbol}_stop_limit_tickfill_detail.csv",
+                "stop_limit_fill_drift_csv": stop_dir / f"{symbol}_fill_drift_monthly.csv",
+                "wfo_metrics_csv": wfo_metrics,
+                "wfo_thresholds_csv": wfo_thresholds,
+                "wfo_skip_reasons_csv": (
+                    wfo_metrics.parent / f"{symbol}_wfo_skip_reasons_all.csv" if wfo_metrics is not None else None
+                ),
+                "governance_predeploy_json": governance_predeploy,
+                "events_eval_parquet": events_eval,
+            }
+        )
+    return contexts
+
+
+def _robustness_diag_table(*, contexts: list[dict[str, Any]], exec_q: float) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    for ctx in contexts:
+        sym = str(ctx.get("symbol", "")).upper().strip()
+        rb = _safe_read_csv(ctx.get("robustness_summary_csv"))
+        if rb.empty:
+            continue
+        pick = rb.copy()
+        if "quantile" in pick.columns:
+            qcol = pd.to_numeric(pick["quantile"], errors="coerce")
+            m = qcol == float(exec_q)
+            pick = pick.loc[m].copy() if m.any() else pick.head(1).copy()
+        row = pick.iloc[0].to_dict()
+        months = _num(row.get("months"))
+        pos_months = _num(row.get("positive_months"))
+        majority = (
+            bool(pos_months >= math.ceil(0.5 * months))
+            if (math.isfinite(months) and months > 0 and math.isfinite(pos_months))
+            else False
+        )
+        p_bonf = _num(row.get("pvalue_bonferroni"))
+        p_fdr = _num(row.get("pvalue_fdr_bh"))
+        p_perm = _num(row.get("pvalue_perm_uplift"))
+        p_perm_fdr = _num(row.get("pvalue_perm_fdr_bh"))
+        lb_iid = _num(row.get("lb95_trade_mean_gross_pips_iid"))
+        lb_block = _num(row.get("lb95_trade_mean_gross_pips_month_block"))
+        uplift = _num(row.get("uplift_vs_null_pips"))
+        rows.append(
+            {
+                "symbol": sym,
+                "quantile": _num(row.get("quantile")),
+                "rows": _num(row.get("rows")),
+                "months": months,
+                "positive_months": pos_months,
+                "lb95_trade_mean_gross_pips": _num(row.get("lb95_trade_mean_gross_pips")),
+                "lb95_trade_mean_gross_pips_iid": lb_iid,
+                "lb95_trade_mean_gross_pips_month_block": lb_block,
+                "pvalue_month_mean_gt0": _num(row.get("pvalue_month_mean_gt0")),
+                "pvalue_bonferroni": p_bonf,
+                "pvalue_fdr_bh": p_fdr,
+                "uplift_vs_null_pips": uplift,
+                "pvalue_perm_uplift": p_perm,
+                "pvalue_perm_fdr_bh": p_perm_fdr,
+                "majority_positive_months": majority,
+                "bonferroni_pass_10pct": bool(math.isfinite(p_bonf) and p_bonf <= 0.10),
+                "fdr_pass_10pct": bool(math.isfinite(p_fdr) and p_fdr <= 0.10),
+                "perm_fdr_pass_10pct": bool(math.isfinite(p_perm_fdr) and p_perm_fdr <= 0.10),
+            }
+        )
+    out = pd.DataFrame(rows)
+    if not out.empty and "symbol" in out.columns:
+        out = out.sort_values("symbol").reset_index(drop=True)
+    return out
+
+
+def _stage_plot_path(outputs: BuildOutputs, stage_id: int, slug: str) -> Path:
+    return outputs.figures_dir / f"stage_{stage_id:02d}_{slug}.png"
+
+
+def _plot_stage_lines(
+    *,
+    df: pd.DataFrame,
+    x: str,
+    y: str,
+    hue: str,
+    title: str,
+    ylabel: str,
+    out_path: Path,
+) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    if df.empty or x not in df.columns or y not in df.columns or hue not in df.columns:
+        return
+
+    fig, ax = plt.subplots(figsize=(9, 4.8))
+    for key, grp in df.groupby(hue):
+        g = grp.sort_values(x)
+        ax.plot(g[x].astype(str), pd.to_numeric(g[y], errors="coerce"), marker="o", label=str(key))
+    ax.set_title(title)
+    ax.set_xlabel(x)
+    ax.set_ylabel(ylabel)
+    ax.grid(True, axis="y", alpha=0.25)
+    ax.legend(loc="best")
+    for label in ax.get_xticklabels():
+        label.set_rotation(30)
+        label.set_ha("right")
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+
+
+def _plot_stage_bars(
+    *,
+    df: pd.DataFrame,
+    x: str,
+    ys: list[str],
+    title: str,
+    ylabel: str,
+    out_path: Path,
+) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    if df.empty or x not in df.columns:
+        return
+    keep = [c for c in ys if c in df.columns]
+    if not keep:
+        return
+
+    d = df.copy()
+    fig, ax = plt.subplots(figsize=(9, 4.8))
+    xpos = list(range(len(d)))
+    width = 0.8 / max(1, len(keep))
+    for i, col in enumerate(keep):
+        vals = pd.to_numeric(d[col], errors="coerce")
+        offs = [j - 0.4 + width / 2 + i * width for j in xpos]
+        ax.bar(offs, vals, width=width, label=col)
+    ax.set_xticks(xpos)
+    ax.set_xticklabels(d[x].astype(str).tolist())
+    ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    ax.grid(True, axis="y", alpha=0.25)
+    ax.legend(loc="best")
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+
+
+def _plot_stage_scatter(
+    *,
+    df: pd.DataFrame,
+    x: str,
+    y: str,
+    hue: str,
+    title: str,
+    xlabel: str,
+    ylabel: str,
+    out_path: Path,
+) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    if df.empty or x not in df.columns or y not in df.columns or hue not in df.columns:
+        return
+
+    fig, ax = plt.subplots(figsize=(8.5, 4.8))
+    for key, grp in df.groupby(hue):
+        xv = pd.to_numeric(grp[x], errors="coerce")
+        yv = pd.to_numeric(grp[y], errors="coerce")
+        ax.scatter(xv, yv, s=18, alpha=0.6, label=str(key))
+    ax.axhline(0.0, color="black", linewidth=1.0)
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.grid(True, alpha=0.25)
+    ax.legend(loc="best")
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+
+
+def _render_stage_snapshot(
+    *,
+    stage_id: int,
+    now_utc: str,
+    summary_table: pd.DataFrame,
+    details_table: pd.DataFrame | None,
+    notes: list[str],
+    figure_paths: list[Path],
+    figure_prefix: str,
+) -> str:
+    lines: list[str] = []
+    lines.append(f"### Auto Snapshot - Stage {stage_id:02d}")
+    lines.append("")
+    lines.append(f"- generated_at: `{now_utc}`")
+    lines.extend(f"- {n}" for n in notes)
+    lines.append("")
+    lines.append("#### Key Results")
+    lines.append(_table(summary_table))
+    if details_table is not None:
+        lines.append("")
+        lines.append("#### Details")
+        lines.append(_table(details_table))
+    if figure_paths:
+        lines.append("")
+        lines.append("#### Plots")
+        for fig in figure_paths:
+            lines.append(f"![{fig.stem}]({figure_prefix}{fig.name})")
+    return "\n".join(lines).strip()
+
+
+def _write_stage_snapshots(
+    *,
+    cfg: dict[str, Any],
+    base_dir: Path,
+    outputs: BuildOutputs,
+    snapshot: pd.DataFrame,
+    stage_status: pd.DataFrame,
+    artifact_inventory: pd.DataFrame,
+    checks: pd.DataFrame,
+    issues: pd.DataFrame,
+) -> pd.DataFrame:
+    contexts = _symbol_contexts(cfg, base_dir)
+    now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    generated_dir = outputs.generated_dir
+    generated_dir.mkdir(parents=True, exist_ok=True)
+    page_map = _discover_stage_pages()
+    repo_generated_dir = (Path.cwd() / "docs" / "strategy_bible" / "generated").resolve()
+    inject_stage_pages = generated_dir.resolve() == repo_generated_dir
+    metric_rows: list[dict[str, Any]] = []
+
+    def add_metric(stage_id: int, metric_id: str, symbol: str, value: Any, unit: str, source_path: str) -> None:
+        metric_rows.append(
+            {
+                "stage_id": stage_id,
+                "metric_id": metric_id,
+                "symbol": symbol,
+                "value": _num(value),
+                "unit": unit,
+                "source_path": source_path,
+                "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            }
+        )
+
+    def write_stage(stage_id: int, content_for_stage_page: str) -> None:
+        snap = generated_dir / f"stage_{stage_id:02d}_snapshot.md"
+        content_for_generated = content_for_stage_page.replace("../figures/oco_bible/", "../../figures/oco_bible/")
+        snap.write_text(content_for_generated + "\n", encoding="utf-8")
+        page = page_map.get(stage_id)
+        if inject_stage_pages and page is not None:
+            _inject_stage_block(page, stage_id=stage_id, content=content_for_stage_page)
+
+    # Stage 01: Data contract health over events.
+    req_cols = ["cost_est_pips", "range_pips", "spread_z", "tick_rate_z", "vel_cost_units_h1", "hl_first"]
+    stage01_rows: list[dict[str, Any]] = []
+    tz_rows: list[pd.DataFrame] = []
+    for ctx in contexts:
+        sym = ctx["symbol"]
+        ev_path = ctx.get("events_eval_parquet")
+        df = _safe_read_parquet(ev_path, columns=[c for c in (["close_ts"] + req_cols)])
+        row: dict[str, Any] = {"symbol": sym, "events_rows": int(len(df)) if not df.empty else 0}
+        for c in req_cols:
+            if c in df.columns and len(df) > 0:
+                row[f"{c}_null_pct"] = float(df[c].isna().mean() * 100.0)
+            else:
+                row[f"{c}_null_pct"] = float("nan")
+        stage01_rows.append(row)
+        add_metric(1, "events_rows", sym, row["events_rows"], "rows", str(ev_path) if ev_path else "")
+        tz = _safe_read_csv(ctx.get("timezone_contract_csv"))
+        if not tz.empty:
+            if "symbol" in tz.columns:
+                tz = tz[tz["symbol"].astype(str).str.upper() == str(sym).upper()].copy()
+            if not tz.empty:
+                tz_rows.append(tz.assign(symbol=sym))
+    stage01 = pd.DataFrame(stage01_rows)
+    tz_stage01 = pd.concat(tz_rows, ignore_index=True) if tz_rows else pd.DataFrame()
+    stage01_plot = _stage_plot_path(outputs, 1, "contract_health")
+    if not stage01.empty:
+        stage01_plot_df = stage01[["symbol", "events_rows"]].copy()
+        stage01_plot_df["max_null_pct"] = pd.to_numeric(
+            stage01[[f"{c}_null_pct" for c in req_cols]].max(axis=1), errors="coerce"
+        )
+        _plot_stage_bars(
+            df=stage01_plot_df,
+            x="symbol",
+            ys=["events_rows", "max_null_pct"],
+            title="Stage 1: Event Rows vs Max Null %",
+            ylabel="rows / percent",
+            out_path=stage01_plot,
+        )
+    stage01_details = stage01 if not stage01.empty else None
+    if not tz_stage01.empty:
+        tz_pick = _pick_cols(
+            tz_stage01,
+            [
+                "symbol",
+                "bar_ticks",
+                "close_ts_parse_rate",
+                "monotonic_close_ts_ok",
+                "dst_transition_ok",
+                "utc_offset_anomalies",
+                "pass",
+            ],
+        )
+        stage01_details = pd.concat([stage01_details, tz_pick], ignore_index=True) if stage01_details is not None else tz_pick
+    stage01_content = _render_stage_snapshot(
+        stage_id=1,
+        now_utc=now_utc,
+        summary_table=_pick_cols(
+            stage01, ["symbol", "events_rows", "cost_est_pips_null_pct", "range_pips_null_pct", "hl_first_null_pct"]
+        )
+        if not stage01.empty
+        else pd.DataFrame(),
+        details_table=stage01_details if stage01_details is not None and not stage01_details.empty else None,
+        notes=[
+            "Contract check uses eval-year event tables consumed by WFO.",
+            "Null percentages should remain near 0 for required modeling fields.",
+            "Timezone contract rows include parse rate, monotonicity, DST and offset anomaly checks.",
+        ],
+        figure_paths=[stage01_plot] if stage01_plot.exists() else [],
+        figure_prefix="../figures/oco_bible/",
+    )
+    write_stage(1, stage01_content)
+
+    # Stage 02: Opportunity mining.
+    stage23_overfit = _robustness_diag_table(contexts=contexts, exec_q=float(cfg.get("gate_thresholds", {}).get("robustness_quantile", 0.9)))
+    mining_summary_rows: list[dict[str, Any]] = []
+    mining_scatter_rows: list[pd.DataFrame] = []
+    for ctx in contexts:
+        sym = ctx["symbol"]
+        cand = _safe_read_csv(ctx.get("candidate_csv"))
+        if cand.empty:
+            continue
+        sel = _to_bool_series(cand.get("selection_pass", pd.Series(dtype=str)))
+        selected = cand[sel].copy()
+        mining_summary_rows.append(
+            {
+                "symbol": sym,
+                "candidates_total": int(len(cand)),
+                "selected_total": int(len(selected)),
+                "selected_mean_gross_pips": _num(selected.get("mean_gross_pips_test", pd.Series(dtype=float)).mean()),
+                "selected_median_annualized": _num(selected.get("annualized_test_fills", pd.Series(dtype=float)).median()),
+            }
+        )
+        add_metric(2, "selected_total", sym, len(selected), "rows", str(ctx.get("candidate_csv", "")))
+        if not selected.empty:
+            q = selected[["symbol", "annualized_test_fills", "mean_gross_pips_test"]].copy()
+            q["symbol"] = sym
+            mining_scatter_rows.append(q)
+    stage02 = pd.DataFrame(mining_summary_rows)
+    stage02_scatter = pd.concat(mining_scatter_rows, ignore_index=True) if mining_scatter_rows else pd.DataFrame()
+    stage02_plot = _stage_plot_path(outputs, 2, "selected_scatter")
+    if not stage02_scatter.empty:
+        _plot_stage_scatter(
+            df=stage02_scatter,
+            x="annualized_test_fills",
+            y="mean_gross_pips_test",
+            hue="symbol",
+            title="Stage 2: Selected Candidates (Gross vs Annualized Fills)",
+            xlabel="Annualized test fills",
+            ylabel="Mean gross pips (test)",
+            out_path=stage02_plot,
+        )
+    stage02_content = _render_stage_snapshot(
+        stage_id=2,
+        now_utc=now_utc,
+        summary_table=stage02 if not stage02.empty else pd.DataFrame(),
+        details_table=None,
+        notes=[
+            "selection_pass candidates are broad hypotheses only.",
+            "Scatter shows the high-count >0 gross opportunity frontier.",
+        ],
+        figure_paths=[stage02_plot] if stage02_plot.exists() else [],
+        figure_prefix="../figures/oco_bible/",
+    )
+    if not stage23_overfit.empty:
+        stage02_content += (
+            "\n\n#### Overfitting Diagnostics (Downstream, Exec Quantile)\n"
+            + _table(stage23_overfit)
+            + "\n\n"
+            + "- Interpretation: Stage 2 mining is accepted only as hypothesis generation; false-discovery control is enforced downstream via Stage 3/8 out-of-sample evaluation.\n"
+            + "- Multiplicity fields (`pvalue_bonferroni`, `pvalue_fdr_bh`) are reported at the execution quantile and should be used with LB95/month-consistency, not in isolation."
+        )
+    write_stage(2, stage02_content)
+
+    # Stage 03: Monthly WFO.
+    exec_q = float(cfg.get("gate_thresholds", {}).get("robustness_quantile", 0.9))
+    wfo_rows: list[pd.DataFrame] = []
+    wfo_summary_rows: list[dict[str, Any]] = []
+    wfo_skip_rows: list[pd.DataFrame] = []
+    for ctx in contexts:
+        sym = ctx["symbol"]
+        metrics = _safe_read_csv(ctx.get("wfo_metrics_csv"))
+        thresholds = _safe_read_csv(ctx.get("wfo_thresholds_csv"))
+        skips = _safe_read_csv(ctx.get("wfo_skip_reasons_csv"))
+        if not metrics.empty:
+            wfo_summary_rows.append(
+                {
+                    "symbol": sym,
+                    "months": int(len(metrics)),
+                    "auc_mean": _num(metrics.get("auc", pd.Series(dtype=float)).mean()),
+                    "brier_mean": _num(metrics.get("brier", pd.Series(dtype=float)).mean()),
+                    "test_rows_total": _num(metrics.get("test_rows", pd.Series(dtype=float)).sum()),
+                }
+            )
+            add_metric(3, "auc_mean", sym, _num(metrics.get("auc", pd.Series(dtype=float)).mean()), "auc", str(ctx.get("wfo_metrics_csv", "")))
+        if not thresholds.empty and "quantile" in thresholds.columns:
+            q = thresholds[pd.to_numeric(thresholds["quantile"], errors="coerce") == exec_q].copy()
+            if not q.empty:
+                q["symbol"] = sym
+                wfo_rows.append(q[["symbol", "test_month", "mean_gross_pips", "coverage", "selected_rows"]])
+        if not skips.empty:
+            skips["symbol"] = sym
+            wfo_skip_rows.append(skips)
+    stage03_summary = pd.DataFrame(wfo_summary_rows)
+    stage03_monthly = pd.concat(wfo_rows, ignore_index=True) if wfo_rows else pd.DataFrame()
+    stage03_plot = _stage_plot_path(outputs, 3, "wfo_monthly_gross")
+    if not stage03_monthly.empty:
+        _plot_stage_lines(
+            df=stage03_monthly,
+            x="test_month",
+            y="mean_gross_pips",
+            hue="symbol",
+            title=f"Stage 3: Monthly WFO Gross (q={exec_q})",
+            ylabel="mean gross pips",
+            out_path=stage03_plot,
+        )
+    stage03_detail = (
+        stage03_monthly.groupby("symbol", as_index=False)
+        .agg(
+            months=("test_month", "nunique"),
+            mean_coverage=("coverage", "mean"),
+            mean_gross_pips=("mean_gross_pips", "mean"),
+            rows_selected=("selected_rows", "sum"),
+        )
+        if not stage03_monthly.empty
+        else None
+    )
+    stage03_content = _render_stage_snapshot(
+        stage_id=3,
+        now_utc=now_utc,
+        summary_table=stage03_summary if not stage03_summary.empty else pd.DataFrame(),
+        details_table=stage03_detail,
+        notes=[
+            f"Execution threshold summary is aligned to quantile={exec_q}.",
+            "Metrics are strictly month-forward (3M train -> 1M test).",
+        ],
+        figure_paths=[stage03_plot] if stage03_plot.exists() else [],
+        figure_prefix="../figures/oco_bible/",
+    )
+    stage03_skip = pd.concat(wfo_skip_rows, ignore_index=True) if wfo_skip_rows else pd.DataFrame()
+    if not stage03_skip.empty and {"symbol", "reason_code"}.issubset(set(stage03_skip.columns)):
+        s3 = (
+            stage03_skip.groupby(["symbol", "reason_code"], as_index=False)
+            .agg(
+                months=("test_month", "nunique"),
+                rows_affected=("rows_affected", "sum"),
+                avg_pct_month_rows=("pct_month_rows", "mean"),
+            )
+            .sort_values(["symbol", "months", "rows_affected"], ascending=[True, False, False])
+        )
+        stage03_content += "\n\n#### Skip Reason Distribution\n" + _table(s3)
+    if not stage23_overfit.empty:
+        stage03_content += (
+            "\n\n#### Overfitting Diagnostics (Exec Quantile)\n"
+            + _table(stage23_overfit)
+            + "\n\n"
+            + "- Interpretation: these diagnostics are computed on WFO out-of-sample predictions only.\n"
+            + "- `bonferroni_pass_10pct` and `fdr_pass_10pct` summarize multiplicity-adjusted significance at alpha=0.10."
+        )
+    write_stage(3, stage03_content)
+
+    # Stage 04: Stop-limit execution.
+    stage04_summary_rows: list[dict[str, Any]] = []
+    caps_rows: list[pd.DataFrame] = []
+    drift_rows: list[pd.DataFrame] = []
+    for ctx in contexts:
+        sym = ctx["symbol"]
+        s = _safe_read_csv(ctx.get("stop_limit_summary_csv"))
+        c = _safe_read_csv(ctx.get("stop_limit_caps_csv"))
+        drift = _safe_read_csv(ctx.get("stop_limit_fill_drift_csv"))
+        if not s.empty:
+            if "symbol" in s.columns:
+                ss = s[s["symbol"].astype(str).str.upper() == sym].copy()
+                row = (ss.iloc[0] if not ss.empty else s.iloc[0]).to_dict()
+            else:
+                row = s.iloc[0].to_dict()
+            row["symbol"] = sym
+            stage04_summary_rows.append(row)
+            add_metric(4, "tick_overshoot_mean_pips", sym, row.get("tick_overshoot_mean_pips"), "pips", str(ctx.get("stop_limit_summary_csv", "")))
+        if not c.empty:
+            cc = c.copy()
+            if "symbol" in cc.columns:
+                cc = cc[cc["symbol"].astype(str).str.upper() == sym].copy()
+            if cc.empty:
+                continue
+            cc["symbol"] = sym
+            caps_rows.append(cc)
+        if not drift.empty:
+            dd = drift.copy()
+            if "symbol" in dd.columns:
+                dd = dd[dd["symbol"].astype(str).str.upper() == sym].copy()
+            if dd.empty:
+                continue
+            dd["symbol"] = sym
+            drift_rows.append(dd)
+    stage04 = pd.DataFrame(stage04_summary_rows)
+    stage04_caps = pd.concat(caps_rows, ignore_index=True) if caps_rows else pd.DataFrame()
+    stage04_plot = _stage_plot_path(outputs, 4, "stop_limit_caps")
+    if not stage04_caps.empty:
+        _plot_stage_lines(
+            df=stage04_caps,
+            x="cap_pips",
+            y="mean_per_signal_full_overshoot",
+            hue="symbol",
+            title="Stage 4: Stop-Limit Cap vs Per-Signal PnL",
+            ylabel="mean per-signal pips",
+            out_path=stage04_plot,
+        )
+    stage04_details = _pick_cols(stage04_caps, ["symbol", "cap_pips", "fill_rate", "mean_per_signal_full_overshoot"])
+    if not stage04_details.empty and {"symbol", "cap_pips"}.issubset(set(stage04_details.columns)):
+        stage04_details = stage04_details.sort_values(["symbol", "cap_pips"])
+    stage04_content = _render_stage_snapshot(
+        stage_id=4,
+        now_utc=now_utc,
+        summary_table=_pick_cols(
+            stage04,
+            ["symbol", "rows", "touch_found_rate", "base_mean_gross_pips", "tick_overshoot_mean_pips", "tick_overshoot_p95_pips"],
+        )
+        if not stage04.empty
+        else pd.DataFrame(),
+        details_table=stage04_details if not stage04_details.empty else None,
+        notes=[
+            "Execution realism is applied with tick first-cross overshoot.",
+            "Cap curve highlights fill-rate versus signal-level expectancy.",
+        ],
+        figure_paths=[stage04_plot] if stage04_plot.exists() else [],
+        figure_prefix="../figures/oco_bible/",
+    )
+    stage04_drift = pd.concat(drift_rows, ignore_index=True) if drift_rows else pd.DataFrame()
+    if not stage04_drift.empty:
+        d4 = _pick_cols(
+            stage04_drift,
+            ["symbol", "test_month", "session", "touch_found_rate", "overshoot_p95", "touch_found_rate_drop", "drift_z", "pass"],
+        )
+        stage04_content += "\n\n#### Fill Drift\n" + _table(d4)
+    write_stage(4, stage04_content)
+
+    # Stage 05: Reduced-core rolling.
+    stage05_summary_rows: list[dict[str, Any]] = []
+    stage05_monthly_rows: list[pd.DataFrame] = []
+    stage05_churn_rows: list[pd.DataFrame] = []
+    for ctx in contexts:
+        sym = ctx["symbol"]
+        rs = _safe_read_csv(ctx.get("reduced_summary_csv"))
+        rm = _safe_read_csv(ctx.get("reduced_monthly_csv"))
+        rc = _safe_read_csv(ctx.get("reduced_churn_csv"))
+        sched = _safe_read_csv(ctx.get("reduced_state_schedule_csv"))
+        if not rs.empty:
+            row = rs.iloc[0].to_dict()
+            row["symbol"] = sym
+            stage05_summary_rows.append(row)
+            add_metric(5, "lb95_month_mean_gross_pips", sym, row.get("lb95_month_mean_gross_pips"), "pips", str(ctx.get("reduced_summary_csv", "")))
+        if not rm.empty:
+            m = rm.copy()
+            m["symbol"] = sym
+            stage05_monthly_rows.append(m[["symbol", "test_month", "mean_gross_pips", "fill_rate", "rows", "states_selected"]])
+        if not rc.empty:
+            c = rc.copy()
+            c["symbol"] = sym
+            stage05_churn_rows.append(c)
+        if not sched.empty:
+            add_metric(5, "states_scheduled", sym, len(sched), "rows", str(ctx.get("reduced_state_schedule_csv", "")))
+    stage05_summary = pd.DataFrame(stage05_summary_rows)
+    stage05_monthly = pd.concat(stage05_monthly_rows, ignore_index=True) if stage05_monthly_rows else pd.DataFrame()
+    stage05_plot = _stage_plot_path(outputs, 5, "reduced_monthly_gross")
+    if not stage05_monthly.empty:
+        _plot_stage_lines(
+            df=stage05_monthly,
+            x="test_month",
+            y="mean_gross_pips",
+            hue="symbol",
+            title="Stage 5: Reduced-Core Monthly Mean Gross",
+            ylabel="mean gross pips",
+            out_path=stage05_plot,
+        )
+    stage05_detail = (
+        stage05_monthly.groupby("symbol", as_index=False)
+        .agg(
+            months=("test_month", "nunique"),
+            rows_total=("rows", "sum"),
+            mean_fill_rate=("fill_rate", "mean"),
+            mean_gross=("mean_gross_pips", "mean"),
+        )
+        if not stage05_monthly.empty
+        else None
+    )
+    stage05_content = _render_stage_snapshot(
+        stage_id=5,
+        now_utc=now_utc,
+        summary_table=_pick_cols(
+            stage05_summary,
+            ["symbol", "rows_total", "mean_gross_pips", "lb95_month_mean_gross_pips", "fill_rate_overall", "positive_months", "months_total"],
+        )
+        if not stage05_summary.empty
+        else pd.DataFrame(),
+        details_table=stage05_detail,
+        notes=[
+            "State schedule is selected month-by-month using only prior-month train data.",
+            "Summary emphasizes full-path gross behavior after reduced-core filtering.",
+        ],
+        figure_paths=[stage05_plot] if stage05_plot.exists() else [],
+        figure_prefix="../figures/oco_bible/",
+    )
+    stage05_churn = pd.concat(stage05_churn_rows, ignore_index=True) if stage05_churn_rows else pd.DataFrame()
+    if not stage05_churn.empty:
+        c5 = _pick_cols(
+            stage05_churn,
+            ["symbol", "test_month", "states_selected", "state_churn_rate", "top_state_share", "state_hhi", "stability_pass", "status"],
+        )
+        stage05_content += "\n\n#### State Churn\n" + _table(c5)
+    write_stage(5, stage05_content)
+
+    # Stage 06: Tick-exact verification.
+    stage06_summary_rows: list[dict[str, Any]] = []
+    stage06_monthly_rows: list[pd.DataFrame] = []
+    stage06_replay_rows: list[pd.DataFrame] = []
+    for ctx in contexts:
+        sym = ctx["symbol"]
+        ts = _safe_read_csv(ctx.get("tick_exact_summary_csv"))
+        tm = _safe_read_csv(ctx.get("tick_exact_monthly_csv"))
+        tr = _safe_read_csv(ctx.get("tick_exact_replay_csv"))
+        if not ts.empty:
+            row = ts.iloc[0].to_dict()
+            row["symbol"] = sym
+            stage06_summary_rows.append(row)
+            add_metric(6, "exact_match_rate", sym, row.get("exact_match_rate"), "rate", str(ctx.get("tick_exact_summary_csv", "")))
+        if not tm.empty:
+            m = tm.copy()
+            m["symbol"] = sym
+            stage06_monthly_rows.append(m[["symbol", "test_month", "exact_match_rate", "pos_label_match_rate"]])
+        if not tr.empty:
+            r = tr.copy()
+            r["symbol"] = sym
+            stage06_replay_rows.append(r)
+    stage06_summary = pd.DataFrame(stage06_summary_rows)
+    stage06_monthly = pd.concat(stage06_monthly_rows, ignore_index=True) if stage06_monthly_rows else pd.DataFrame()
+    stage06_plot = _stage_plot_path(outputs, 6, "tick_exact_monthly")
+    if not stage06_monthly.empty:
+        _plot_stage_lines(
+            df=stage06_monthly,
+            x="test_month",
+            y="exact_match_rate",
+            hue="symbol",
+            title="Stage 6: Monthly Tick-Exact Match Rate",
+            ylabel="exact match rate",
+            out_path=stage06_plot,
+        )
+    stage06_detail = (
+        stage06_monthly.groupby("symbol", as_index=False)
+        .agg(
+            months=("test_month", "nunique"),
+            exact_min=("exact_match_rate", "min"),
+            exact_mean=("exact_match_rate", "mean"),
+            pos_min=("pos_label_match_rate", "min"),
+            pos_mean=("pos_label_match_rate", "mean"),
+        )
+        if not stage06_monthly.empty
+        else None
+    )
+    stage06_content = _render_stage_snapshot(
+        stage_id=6,
+        now_utc=now_utc,
+        summary_table=_pick_cols(
+            stage06_summary,
+            [
+                "symbol",
+                "rows_selected",
+                "rows_verified",
+                "exact_match_rate",
+                "pos_label_match_rate",
+                "replay_rows_checked",
+                "replay_mismatch_count",
+                "pass_replay_bundle",
+                "overall_pass",
+            ],
+        )
+        if not stage06_summary.empty
+        else pd.DataFrame(),
+        details_table=stage06_detail,
+        notes=[
+            "Verifier recomputes OCO outcomes independently from stored labels.",
+            "All summary rates should remain near 1.0 for contract consistency.",
+        ],
+        figure_paths=[stage06_plot] if stage06_plot.exists() else [],
+        figure_prefix="../figures/oco_bible/",
+    )
+    stage06_replay = pd.concat(stage06_replay_rows, ignore_index=True) if stage06_replay_rows else pd.DataFrame()
+    if not stage06_replay.empty:
+        stage06_content += "\n\n#### Replay Bundle Sample\n" + _table(stage06_replay.head(30))
+    write_stage(6, stage06_content)
+
+    # Stage 07: Logical audit.
+    audit_evidence_path = _resolve_path(base_dir, "data/analysis/tick_opportunity_mining/oco_logical_audit_evidence.csv")
+    audit_evidence = _safe_read_csv(audit_evidence_path)
+    fail_checks = checks.copy()
+    if not fail_checks.empty and "status" in fail_checks.columns:
+        fail_checks = fail_checks[fail_checks["status"].astype(str).str.lower() != "pass"].copy()
+    stage07_summary = (
+        checks.groupby("symbol", as_index=False)
+        .agg(total_checks=("check_id", "count"), failed_checks=("status", lambda s: int((s.astype(str).str.lower() != "pass").sum())))
+        if not checks.empty and "check_id" in checks.columns and "status" in checks.columns and "symbol" in checks.columns
+        else pd.DataFrame()
+    )
+    check_rollup = (
+        checks.groupby(["check_id", "status"], as_index=False)
+        .size()
+        .sort_values(["check_id", "status"])
+        if not checks.empty and "check_id" in checks.columns and "status" in checks.columns
+        else pd.DataFrame()
+    )
+    stage07_plot = _stage_plot_path(outputs, 7, "audit_failures")
+    if not stage07_summary.empty:
+        _plot_stage_bars(
+            df=stage07_summary,
+            x="symbol",
+            ys=["failed_checks", "total_checks"],
+            title="Stage 7: Logical Audit Failures",
+            ylabel="count",
+            out_path=stage07_plot,
+        )
+        for _, r in stage07_summary.iterrows():
+            add_metric(7, "failed_checks", str(r.get("symbol", "ALL")), r.get("failed_checks"), "count", str(cfg["audit"]["checks_csv"]))
+    stage07_content = _render_stage_snapshot(
+        stage_id=7,
+        now_utc=now_utc,
+        summary_table=stage07_summary if not stage07_summary.empty else pd.DataFrame(),
+        details_table=_pick_cols(
+            fail_checks, ["symbol", "check_id", "severity_if_fail", "component", "metric_name", "metric_value", "threshold"]
+        ).head(20)
+        if not fail_checks.empty
+        else check_rollup,
+        notes=[
+            "C01..C10 checks are the logical contract gate before robustness sign-off.",
+            f"Open issue rows: {len(issues)}.",
+        ],
+        figure_paths=[stage07_plot] if stage07_plot.exists() else [],
+        figure_prefix="../figures/oco_bible/",
+    )
+    if not audit_evidence.empty:
+        stage07_content += "\n\n#### Failed Check Evidence Links\n" + _table(audit_evidence.head(80))
+    write_stage(7, stage07_content)
+
+    # Stage 08: Robustness and overfit controls.
+    robust_rows: list[dict[str, Any]] = []
+    for ctx in contexts:
+        sym = ctx["symbol"]
+        rb = _safe_read_csv(ctx.get("robustness_summary_csv"))
+        if rb.empty:
+            continue
+        if "quantile" in rb.columns:
+            qcol = pd.to_numeric(rb["quantile"], errors="coerce")
+            rb = rb.loc[qcol == exec_q] if (qcol == exec_q).any() else rb.head(1)
+        row = rb.iloc[0].to_dict()
+        row["symbol"] = sym
+        robust_rows.append(row)
+        add_metric(8, "lb95_trade_mean_gross_pips", sym, row.get("lb95_trade_mean_gross_pips"), "pips", str(ctx.get("robustness_summary_csv", "")))
+    stage08 = pd.DataFrame(robust_rows)
+    stress_cols = sorted(
+        [
+            c
+            for c in stage08.columns
+            if str(c).startswith("mean_net_pips_costplus_") or str(c).startswith("lb95_trade_mean_net_pips_costplus_")
+        ]
+    ) if not stage08.empty else []
+    stage08_detail_cols = [
+        "symbol",
+        "lb95_trade_mean_gross_pips_iid",
+        "lb95_trade_mean_gross_pips_month_block",
+        "uplift_vs_null_pips",
+        "pvalue_perm_uplift",
+        "pvalue_perm_fdr_bh",
+        "pvalue_month_mean_gt0",
+        "pvalue_bonferroni",
+        "pvalue_fdr_bh",
+    ] + stress_cols[:4]
+    stage08_detail = _pick_cols(stage08, stage08_detail_cols) if not stage08.empty else None
+    stage08_plot = _stage_plot_path(outputs, 8, "robustness_lb95")
+    stage08_overfit_panel = outputs.figures_dir / "stage_08_overfit_symbol_panel.png"
+    if not stage08.empty:
+        _plot_stage_bars(
+            df=stage08,
+            x="symbol",
+            ys=["mean_gross_pips", "lb95_trade_mean_gross_pips"],
+            title="Stage 8: Mean vs LB95 Gross",
+            ylabel="pips",
+            out_path=stage08_plot,
+        )
+        panel_cols = [c for c in ["mean_gross_pips", "null_mean_gross_pips", "lb95_trade_mean_gross_pips_iid", "lb95_trade_mean_gross_pips_month_block"] if c in stage08.columns]
+        if panel_cols:
+            _plot_stage_bars(
+                df=stage08,
+                x="symbol",
+                ys=panel_cols,
+                title="Stage 8: Overfit Panel (Observed vs Null vs LB95)",
+                ylabel="pips",
+                out_path=stage08_overfit_panel,
+            )
+    stage08_content = _render_stage_snapshot(
+        stage_id=8,
+        now_utc=now_utc,
+        summary_table=_pick_cols(
+            stage08, ["symbol", "quantile", "rows", "months", "mean_gross_pips", "lb95_trade_mean_gross_pips", "positive_months"]
+        )
+        if not stage08.empty
+        else pd.DataFrame(),
+        details_table=stage08_detail if stage08_detail is not None and not stage08_detail.empty else None,
+        notes=[
+            "Robustness summary uses bootstrap lower bounds from the configured smoke/full run artifacts.",
+            "Interpretation: LB95 > 0 indicates conservative positive expectancy under sampled uncertainty.",
+            "Overfit panel adds month-stratified null uplift and dependence-aware LB95 comparisons.",
+        ],
+        figure_paths=[p for p in [stage08_plot, stage08_overfit_panel] if p.exists()],
+        figure_prefix="../figures/oco_bible/",
+    )
+    write_stage(8, stage08_content)
+
+    # Stage 09: Governance and deployment readiness.
+    missing_inventory = artifact_inventory[~artifact_inventory["exists"].astype(bool)].copy() if not artifact_inventory.empty else pd.DataFrame()
+    stage09_summary = stage_status.copy() if not stage_status.empty else pd.DataFrame()
+    gov_rows: list[dict[str, Any]] = []
+    for ctx in contexts:
+        sym = ctx["symbol"]
+        gp = _safe_read_json(ctx.get("governance_predeploy_json"))
+        if not gp:
+            gov_rows.append(
+                {
+                    "symbol": sym,
+                    "status": "missing",
+                    "blocker": True,
+                    "failed_checks": "missing_predeploy_json",
+                    "checks_total": 1,
+                    "checks_failed": 1,
+                }
+            )
+            continue
+        checks_list = gp.get("checks", [])
+        fail_list = gp.get("failed_checks", [])
+        if not isinstance(checks_list, list):
+            checks_list = []
+        if not isinstance(fail_list, list):
+            fail_list = []
+        gov_rows.append(
+            {
+                "symbol": sym,
+                "status": str(gp.get("status", "unknown")),
+                "blocker": bool(gp.get("blocker", False)),
+                "failed_checks": ",".join(map(str, fail_list)),
+                "checks_total": int(len(checks_list)),
+                "checks_failed": int(len(fail_list)),
+                "as_of": str(gp.get("meta", {}).get("as_of", "")) if isinstance(gp.get("meta"), dict) else "",
+                "window_end": str(gp.get("meta", {}).get("window_end", "")) if isinstance(gp.get("meta"), dict) else "",
+                "json_path": str(ctx.get("governance_predeploy_json") or ""),
+            }
+        )
+    stage09_gov = pd.DataFrame(gov_rows)
+    stage09_plot = _stage_plot_path(outputs, 9, "gate_matrix")
+    if not stage09_summary.empty:
+        heat = stage09_summary.copy()
+        gate_cols = [c for c in heat.columns if c.startswith("gate_") or c == "symbol_all_gates_pass"]
+        if gate_cols:
+            _plot_stage_bars(
+                df=pd.DataFrame(
+                    {
+                        "symbol": heat["symbol"],
+                        "gates_passed": heat[gate_cols].astype(bool).sum(axis=1),
+                        "gates_total": len(gate_cols),
+                    }
+                ),
+                x="symbol",
+                ys=["gates_passed", "gates_total"],
+                title="Stage 9: Governance Gates Passed",
+                ylabel="count",
+                out_path=stage09_plot,
+            )
+    stage09_predeploy_plot = _stage_plot_path(outputs, 9, "predeploy_checks")
+    if not stage09_gov.empty:
+        d9 = stage09_gov.copy()
+        if "checks_total" not in d9.columns:
+            d9["checks_total"] = 0
+        if "checks_failed" not in d9.columns:
+            d9["checks_failed"] = 0
+        _plot_stage_bars(
+            df=d9,
+            x="symbol",
+            ys=["checks_total", "checks_failed"],
+            title="Stage 9: Predeploy Validator Checks",
+            ylabel="count",
+            out_path=stage09_predeploy_plot,
+        )
+        for _, r in d9.iterrows():
+            add_metric(
+                9,
+                "predeploy_checks_failed",
+                str(r.get("symbol", "ALL")),
+                r.get("checks_failed", 0),
+                "count",
+                str(r.get("json_path", "")),
+            )
+    stage09_content = _render_stage_snapshot(
+        stage_id=9,
+        now_utc=now_utc,
+        summary_table=stage09_summary if not stage09_summary.empty else pd.DataFrame(),
+        details_table=_pick_cols(missing_inventory, ["group", "symbol", "artifact", "path"]).head(20)
+        if not missing_inventory.empty
+        else None,
+        notes=[
+            "Governance snapshot combines symbol gate matrix with artifact inventory completeness.",
+            f"Missing required artifacts: {int(len(missing_inventory[missing_inventory['required'] == True])) if not missing_inventory.empty and 'required' in missing_inventory.columns else 0}.",
+        ],
+        figure_paths=[p for p in [stage09_plot, stage09_predeploy_plot] if p.exists()],
+        figure_prefix="../figures/oco_bible/",
+    )
+    if not stage09_gov.empty:
+        stage09_content += "\n\n#### Predeploy Validator Status\n" + _table(
+            _pick_cols(stage09_gov, ["symbol", "status", "blocker", "checks_total", "checks_failed", "as_of", "window_end", "failed_checks"])
+        )
+        if "status" in stage09_gov.columns and (stage09_gov["status"].astype(str).str.lower() == "missing").any():
+            stage09_content += (
+                "\n\n- Missing predeploy JSON for one or more symbols. Generate with "
+                "`scripts/validate_oco_live_governance.py --mode predeploy --out-json ...` per symbol."
+            )
+    write_stage(9, stage09_content)
+
+    # Stage 10: Risks and backlog.
+    severity_map = {"low": 1.0, "medium": 2.0, "high": 3.0, "critical": 4.0}
+    risk = fail_checks.copy()
+    if not risk.empty:
+        risk["severity_score"] = risk.get("severity_if_fail", risk.get("severity", "")).astype(str).str.lower().map(severity_map).fillna(1.0)
+    risk_summary = (
+        risk.groupby(["symbol", "check_id"], as_index=False)
+        .agg(
+            fail_count=("check_id", "count"),
+            impact_score=("severity_score", "mean"),
+        )
+        if not risk.empty and "symbol" in risk.columns and "check_id" in risk.columns
+        else pd.DataFrame()
+    )
+    risk_controls = pd.DataFrame()
+    if not checks.empty and "severity_if_fail" in checks.columns:
+        c = checks.copy()
+        c["failed"] = c["status"].astype(str).str.lower() != "pass"
+        risk_controls = (
+            c.groupby(["symbol", "severity_if_fail"], as_index=False)
+            .agg(total_checks=("check_id", "count"), failed_checks=("failed", "sum"))
+            .sort_values(["symbol", "severity_if_fail"])
+        )
+    stage10_plot = _stage_plot_path(outputs, 10, "risk_matrix")
+    risk_plot_df = risk_summary.copy()
+    if risk_plot_df.empty and not checks.empty and "symbol" in checks.columns:
+        syms = sorted({str(x).upper() for x in checks["symbol"].astype(str)})
+        risk_plot_df = pd.DataFrame(
+            {
+                "symbol": syms,
+                "check_id": ["none"] * len(syms),
+                "fail_count": [0] * len(syms),
+                "impact_score": [0.0] * len(syms),
+            }
+        )
+    if not risk_plot_df.empty:
+        # Use scatter to emulate impact/likelihood map.
+        _plot_stage_scatter(
+            df=risk_plot_df.assign(
+                likelihood=lambda d: (
+                    d["fail_count"] / max(float(d["fail_count"].max()), 1.0)
+                    if "fail_count" in d.columns
+                    else 0.0
+                )
+            ),
+            x="likelihood",
+            y="impact_score",
+            hue="symbol",
+            title="Stage 10: Risk Matrix (Audit-Derived)",
+            xlabel="relative likelihood",
+            ylabel="impact score",
+            out_path=stage10_plot,
+        )
+    risk_sla_path = _resolve_path(base_dir, "data/analysis/tick_opportunity_mining/risk_sla_tracker.csv")
+    risk_sla = _safe_read_csv(risk_sla_path)
+    stage10_sla_plot = _stage_plot_path(outputs, 10, "risk_sla_open_breached")
+    if not risk_sla.empty and {"symbol", "status", "breached"}.issubset(set(risk_sla.columns)):
+        open_sla = risk_sla[risk_sla["status"].astype(str).str.lower() == "open"].copy()
+        if not open_sla.empty:
+            open_sla["breached_flag"] = open_sla["breached"].astype(str).str.lower().isin({"1", "true", "yes", "y"}).astype(int)
+            sla_roll = (
+                open_sla.groupby("symbol", as_index=False)
+                .agg(open_risks=("risk_id", "count"), breached_risks=("breached_flag", "sum"), avg_days_open=("days_open", "mean"))
+            )
+            _plot_stage_bars(
+                df=sla_roll,
+                x="symbol",
+                ys=["open_risks", "breached_risks"],
+                title="Stage 10: Open vs Breached Risks",
+                ylabel="count",
+                out_path=stage10_sla_plot,
+            )
+            for _, r in sla_roll.iterrows():
+                add_metric(10, "open_risks", str(r.get("symbol", "ALL")), r.get("open_risks", 0), "count", str(risk_sla_path))
+                add_metric(
+                    10,
+                    "breached_risks",
+                    str(r.get("symbol", "ALL")),
+                    r.get("breached_risks", 0),
+                    "count",
+                    str(risk_sla_path),
+                )
+    stage10_content = _render_stage_snapshot(
+        stage_id=10,
+        now_utc=now_utc,
+        summary_table=risk_summary
+        if not risk_summary.empty
+        else pd.DataFrame([{"status": "no_open_audit_failures", "failed_checks": 0}]),
+        details_table=risk_controls if not risk_controls.empty else None,
+        notes=[
+            "Risk backlog is derived from current logical-audit failures.",
+            "When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.",
+        ],
+        figure_paths=[p for p in [stage10_plot, stage10_sla_plot] if p.exists()],
+        figure_prefix="../figures/oco_bible/",
+    )
+    if risk_sla_path.exists() and not risk_sla.empty:
+        stage10_content += "\n\n#### Risk SLA Tracker\n" + _table(
+            _pick_cols(
+                risk_sla,
+                ["risk_id", "symbol", "check_id", "severity", "status", "days_open", "sla_days", "breached", "owner"],
+            )
+        )
+        if {"status", "breached"}.issubset(set(risk_sla.columns)):
+            open_count = int((risk_sla["status"].astype(str).str.lower() == "open").sum())
+            breach_count = int(
+                (
+                    (risk_sla["status"].astype(str).str.lower() == "open")
+                    & risk_sla["breached"].astype(str).str.lower().isin({"1", "true", "yes", "y"})
+                ).sum()
+            )
+            stage10_content += (
+                "\n\n- SLA summary: "
+                + f"`open={open_count}`, `breached={breach_count}`, `source={risk_sla_path}`"
+            )
+    elif risk_sla_path.exists():
+        stage10_content += (
+            "\n\n- Risk SLA tracker exists but has no open rows. "
+            + f"`source={risk_sla_path}`"
+        )
+    else:
+        stage10_content += (
+            "\n\n- Risk SLA tracker not found; run `scripts/audit_oco_pipeline_logical_issues.py` "
+            "with `--out-risk-sla-csv` to populate Stage 10 operational aging metrics."
+        )
+    write_stage(10, stage10_content)
+
+    return pd.DataFrame(metric_rows)
+
+
+def run(*, manifest_path: Path, strict: bool) -> dict[str, Any]:
+    cfg, base_dir = _load_manifest(manifest_path)
+    out_cfg = cfg["outputs"]
+    outputs = BuildOutputs(
+        generated_dir=_resolve_output_path(str(out_cfg["generated_dir"])),
+        figures_dir=_resolve_output_path(str(out_cfg["figures_dir"])),
+        build_report_csv=_resolve_output_path(str(out_cfg["build_report_csv"])),
+        symbol_snapshot_csv=_resolve_output_path(str(out_cfg["symbol_snapshot_csv"])),
+        stage_status_csv=_resolve_output_path(str(out_cfg["stage_status_csv"])),
+        stage_metrics_csv=_resolve_output_path(
+            str(out_cfg.get("stage_metrics_csv", "data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv"))
+        ),
+    )
+
+    inventory_rows = _artifact_rows(cfg, base_dir)
+    inventory = pd.DataFrame(inventory_rows)
+
+    missing_required = inventory[(inventory["required"]) & (~inventory["exists"])].copy()
+    if strict and not missing_required.empty:
+        missing = "\n".join(missing_required["path"].astype(str).tolist())
+        raise FileNotFoundError(f"missing required artifacts:\n{missing}")
+
+    thresholds = cfg.get("gate_thresholds", {})
+    min_exact = float(thresholds.get("min_exact_match_rate", 0.999))
+    min_pos = float(thresholds.get("min_pos_label_match_rate", 0.999))
+    expected_audit_failures = int(thresholds.get("expected_audit_failures", 0))
+    robust_quantile = thresholds.get("robustness_quantile")
+    robust_quantile_f = float(robust_quantile) if robust_quantile is not None else None
+
+    snapshot_rows: list[dict[str, Any]] = []
+    for entry in cfg["symbols"]:
+        try:
+            row = _symbol_snapshot(
+                entry,
+                base_dir=base_dir,
+                min_exact=min_exact,
+                min_pos=min_pos,
+                robust_quantile=robust_quantile_f,
+            )
+            snapshot_rows.append(row)
+        except Exception:
+            if strict:
+                raise
+            snapshot_rows.append(
+                {
+                    "symbol": str(entry.get("symbol", "")).upper(),
+                    "symbol_all_gates_pass": False,
+                }
+            )
+
+    snapshot = pd.DataFrame(snapshot_rows)
+    for c, default in [
+        ("gate_reduced_lb95_month_gt0", False),
+        ("gate_tick_exact", False),
+        ("gate_robust_lb95_trade_gt0", False),
+        ("gate_robust_months_majority", False),
+        ("symbol_all_gates_pass", False),
+    ]:
+        if c not in snapshot.columns:
+            snapshot[c] = default
+
+    stage_status = snapshot[
+        [
+            "symbol",
+            "gate_reduced_lb95_month_gt0",
+            "gate_tick_exact",
+            "gate_robust_lb95_trade_gt0",
+            "gate_robust_months_majority",
+            "symbol_all_gates_pass",
+        ]
+    ].copy()
+
+    audit_cfg = cfg["audit"]
+    checks_path = _resolve_path(base_dir, str(audit_cfg["checks_csv"]))
+    issues_path = _resolve_path(base_dir, str(audit_cfg["issues_csv"]))
+
+    checks = _read_csv(checks_path) if checks_path.exists() else pd.DataFrame()
+    issues = _read_csv(issues_path) if issues_path.exists() else pd.DataFrame()
+    audit_failures = int((checks["status"].astype(str) != "pass").sum()) if "status" in checks.columns else len(issues)
+    audit_pass = audit_failures <= expected_audit_failures and len(issues) <= expected_audit_failures
+
+    overall_pass = bool(snapshot.get("symbol_all_gates_pass", pd.Series(dtype=bool)).fillna(False).all()) and bool(audit_pass)
+
+    outputs.symbol_snapshot_csv.parent.mkdir(parents=True, exist_ok=True)
+    outputs.stage_status_csv.parent.mkdir(parents=True, exist_ok=True)
+    outputs.build_report_csv.parent.mkdir(parents=True, exist_ok=True)
+    outputs.stage_metrics_csv.parent.mkdir(parents=True, exist_ok=True)
+
+    snapshot.to_csv(outputs.symbol_snapshot_csv, index=False)
+    stage_status.to_csv(outputs.stage_status_csv, index=False)
+
+    build_report = inventory.copy()
+    build_report["generated_at_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    build_report.to_csv(outputs.build_report_csv, index=False)
+
+    figures: list[Path] = []
+    if not snapshot.empty and all(c in snapshot.columns for c in ["mean_gross_pips", "robustness_lb95_trade_mean_gross_pips"]):
+        fig1 = outputs.figures_dir / "fig01_symbol_gross_vs_lb95.png"
+        _write_plot_gross(snapshot, fig1)
+        figures.append(fig1)
+    if not snapshot.empty and all(c in snapshot.columns for c in ["exact_match_rate", "pos_label_match_rate"]):
+        fig2 = outputs.figures_dir / "fig02_symbol_tick_exact_rates.png"
+        _write_plot_tick_exact(snapshot, fig2)
+        figures.append(fig2)
+
+    _write_markdown_outputs(
+        cfg=cfg,
+        outputs=outputs,
+        artifact_inventory=inventory,
+        snapshot=snapshot,
+        stage_status=stage_status,
+        checks=checks,
+        issues=issues,
+        audit_failures=audit_failures,
+        audit_pass=audit_pass,
+        figures=figures,
+    )
+
+    stage_metrics = _write_stage_snapshots(
+        cfg=cfg,
+        base_dir=base_dir,
+        outputs=outputs,
+        snapshot=snapshot,
+        stage_status=stage_status,
+        artifact_inventory=inventory,
+        checks=checks,
+        issues=issues,
+    )
+    stage_metrics.to_csv(outputs.stage_metrics_csv, index=False)
+
+    canonical_path = (Path.cwd() / "docs" / "strategy_bible" / "oco_rolling_bible.md").resolve()
+    canonical_lines: list[str] = []
+    canonical_lines.append("### Latest Run Results")
+    canonical_lines.append("")
+    canonical_lines.append(f"- generated_at: `{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}`")
+    canonical_lines.append(f"- overall_pass: `{overall_pass}`")
+    canonical_lines.append(f"- audit_pass: `{audit_pass}`")
+    canonical_lines.append("")
+    canonical_lines.append("#### Symbol Snapshot")
+    canonical_lines.append(_table(snapshot))
+    canonical_lines.append("")
+    canonical_lines.append("#### Stage Gate Status")
+    canonical_lines.append(_table(stage_status))
+    canonical_lines.append("")
+    canonical_lines.append("#### Quick Links")
+    for i in range(1, 11):
+        canonical_lines.append(f"- [Stage {i:02d} snapshot](generated/stage_{i:02d}_snapshot.md)")
+    _inject_named_block(
+        canonical_path,
+        marker_name="CANONICAL_RESULTS",
+        heading="## Generated Run Snapshot",
+        content="\n".join(canonical_lines),
+    )
+
+    return {
+        "overall_pass": overall_pass,
+        "audit_pass": audit_pass,
+        "audit_failures": audit_failures,
+        "missing_required_count": int(len(missing_required)),
+        "symbols": snapshot[["symbol", "symbol_all_gates_pass"]].to_dict(orient="records")
+        if not snapshot.empty
+        else [],
+        "generated_dir": str(outputs.generated_dir),
+        "figures_dir": str(outputs.figures_dir),
+        "build_report_csv": str(outputs.build_report_csv),
+        "symbol_snapshot_csv": str(outputs.symbol_snapshot_csv),
+        "stage_status_csv": str(outputs.stage_status_csv),
+        "stage_metrics_csv": str(outputs.stage_metrics_csv),
+    }
+
+
+def main() -> None:
+    p = argparse.ArgumentParser(description="Build OCO rolling strategy bible generated docs")
+    p.add_argument("--manifest", default=str(DEFAULT_MANIFEST))
+    p.add_argument("--strict", default="false")
+    args = p.parse_args()
+
+    out = run(manifest_path=Path(str(args.manifest)), strict=_parse_bool(str(args.strict)))
+    for k in [
+        "overall_pass",
+        "audit_pass",
+        "audit_failures",
+        "missing_required_count",
+        "generated_dir",
+        "figures_dir",
+        "build_report_csv",
+        "symbol_snapshot_csv",
+        "stage_status_csv",
+        "stage_metrics_csv",
+    ]:
+        print(f"{k}: {out.get(k)}")
+
+
+if __name__ == "__main__":
+    main()

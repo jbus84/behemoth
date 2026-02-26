@@ -52,9 +52,15 @@ DEFAULTS: dict[str, Any] = {
     "seed": 42,
     "capacity_floor_monthly": 3000.0,
     "capacity_floor_annual": 5000.0,
+    "max_state_churn": 0.45,
+    "max_top_state_share": 0.35,
+    "max_state_hhi": 0.25,
+    "enforce_state_stability_gates": False,
     "out_state_schedule_csv": "data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv",
+    "out_state_csv": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_reduced_states.csv",
     "out_monthly_csv": "data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv",
     "out_summary_csv": "data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_summary.csv",
+    "out_state_churn_csv": "",
     "report_out": "docs/analysis/eurusd_oco_reduced_core_rolling_report.md",
 }
 
@@ -177,6 +183,15 @@ def _annualized_from_monthly_rows(monthly: pd.DataFrame) -> float:
     return float(pd.to_numeric(monthly["rows"], errors="coerce").mean()) * 12.0
 
 
+def _default_out_state_csv(symbol: str) -> Path:
+    s = str(symbol).upper().strip()
+    if s == "EURUSD":
+        return Path("data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_reduced_states.csv")
+    if s == "GBPUSD":
+        return Path("data/analysis/tick_opportunity_mining/reduced_core_gbpusd/GBPUSD_oco_reduced_states.csv")
+    return Path(f"data/analysis/tick_opportunity_mining/reduced_core_{s.lower()}/{s}_oco_reduced_states.csv")
+
+
 def _prepare_execution_frame(selected: pd.DataFrame, cfg: dict[str, Any]) -> tuple[pd.DataFrame, dict[str, float]]:
     mode = str(cfg.get("execution_mode", "gross")).strip().lower()
     if mode not in {"gross", "stop_limit"}:
@@ -269,6 +284,10 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     strict_gate_only = bool(cfg.get("strict_gate_only", True))
     overlap_divergence_max = float(cfg.get("overlap_divergence_max", 0.40))
     min_fill_rate = float(cfg.get("stop_limit_min_fill_rate", 0.0))
+    max_state_churn = float(cfg.get("max_state_churn", DEFAULTS["max_state_churn"]))
+    max_top_state_share = float(cfg.get("max_top_state_share", DEFAULTS["max_top_state_share"]))
+    max_state_hhi = float(cfg.get("max_state_hhi", DEFAULTS["max_state_hhi"]))
+    enforce_state_stability_gates = bool(cfg.get("enforce_state_stability_gates", DEFAULTS["enforce_state_stability_gates"]))
     require_lb95_trade_gt0 = bool(cfg["require_lb95_trade_gt0"])
     require_lb95_month_gt0 = bool(cfg["require_lb95_month_gt0"])
     bootstrap_paths = int(cfg["bootstrap_paths"])
@@ -330,6 +349,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     months = sorted(selected_all["test_month"].unique().tolist())
     sched_rows: list[dict[str, Any]] = []
     monthly_rows: list[dict[str, Any]] = []
+    prev_selected_keys: set[str] | None = None
 
     for i, month in enumerate(months):
         train_start = max(0, i - state_train_months)
@@ -348,6 +368,10 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                     "mean_signal_pips": np.nan,
                     "median_gross_pips": np.nan,
                     "pos_rate": np.nan,
+                    "state_churn_rate": np.nan,
+                    "top_state_share": np.nan,
+                    "state_hhi": np.nan,
+                    "stability_pass": np.nan,
                     "status": "warmup_skip",
                 }
             )
@@ -368,6 +392,10 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                     "mean_signal_pips": np.nan,
                     "median_gross_pips": np.nan,
                     "pos_rate": np.nan,
+                    "state_churn_rate": np.nan,
+                    "top_state_share": np.nan,
+                    "state_hhi": np.nan,
+                    "stability_pass": np.nan,
                     "status": "no_train_rows",
                 }
             )
@@ -445,6 +473,10 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                     "mean_signal_pips": np.nan,
                     "median_gross_pips": np.nan,
                     "pos_rate": np.nan,
+                    "state_churn_rate": np.nan,
+                    "top_state_share": np.nan,
+                    "state_hhi": np.nan,
+                    "stability_pass": np.nan,
                     "status": "no_states",
                 }
             )
@@ -496,6 +528,10 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                     "mean_signal_pips": np.nan,
                     "median_gross_pips": np.nan,
                     "pos_rate": np.nan,
+                    "state_churn_rate": np.nan,
+                    "top_state_share": np.nan,
+                    "state_hhi": np.nan,
+                    "stability_pass": np.nan,
                     "status": "no_gate_states",
                 }
             )
@@ -559,6 +595,39 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         filled_rows = int(pd.to_numeric(test["__filled"], errors="coerce").fillna(0).astype(int).sum())
         signal_rows = int(len(test))
         fill_rate = float(filled_rows / signal_rows) if signal_rows > 0 else np.nan
+        state_counts = (
+            test.groupby("state_key", as_index=False)
+            .agg(rows=("candidate_uid", "size"))
+            .sort_values("rows", ascending=False)
+            .reset_index(drop=True)
+        )
+        shares = (
+            pd.to_numeric(state_counts["rows"], errors="coerce").to_numpy(dtype=float) / max(float(signal_rows), 1.0)
+            if signal_rows > 0 and not state_counts.empty
+            else np.array([], dtype=float)
+        )
+        top_share = float(np.max(shares)) if len(shares) else np.nan
+        state_hhi = float(np.sum(shares * shares)) if len(shares) else np.nan
+        selected_now = set(selected_keys)
+        if prev_selected_keys is None:
+            churn = 0.0
+        else:
+            u = selected_now.union(prev_selected_keys)
+            inter = selected_now.intersection(prev_selected_keys)
+            churn = float(1.0 - (len(inter) / max(len(u), 1)))
+        stability_pass = bool(
+            (not np.isfinite(churn) or churn <= max_state_churn)
+            and (not np.isfinite(top_share) or top_share <= max_top_state_share)
+            and (not np.isfinite(state_hhi) or state_hhi <= max_state_hhi)
+        )
+        month_status = "ok" if signal_rows > 0 else "no_test_rows"
+        if enforce_state_stability_gates and signal_rows > 0 and not stability_pass:
+            month_status = "stability_gate_fail"
+            filled_rows = 0
+            signal_rows = 0
+            fill_rate = np.nan
+            trd = np.array([], dtype=float)
+            sig = np.array([], dtype=float)
 
         monthly_rows.append(
             {
@@ -573,9 +642,14 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                 "mean_signal_pips": float(np.mean(sig)) if len(sig) else np.nan,
                 "median_gross_pips": float(np.median(trd)) if len(trd) else np.nan,
                 "pos_rate": float(np.mean(sig > 0.0)) if len(sig) else np.nan,
-                "status": "ok" if signal_rows > 0 else "no_test_rows",
+                "state_churn_rate": float(churn),
+                "top_state_share": float(top_share) if np.isfinite(top_share) else np.nan,
+                "state_hhi": float(state_hhi) if np.isfinite(state_hhi) else np.nan,
+                "stability_pass": bool(stability_pass),
+                "status": month_status,
             }
         )
+        prev_selected_keys = selected_now
 
         for _, r in selected_state_df.iterrows():
             sched_rows.append(
@@ -691,19 +765,49 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                 "capacity_pass_monthly_or_annual": bool(
                     (avg_month_rows >= capacity_floor_monthly) or (annualized_rows >= capacity_floor_annual)
                 ),
+                "max_state_churn": max_state_churn,
+                "max_top_state_share": max_top_state_share,
+                "max_state_hhi": max_state_hhi,
+                "stability_months_pass": int(pd.to_numeric(ok.get("stability_pass", pd.Series(dtype=float)), errors="coerce").fillna(0).astype(int).sum()) if not ok.empty else 0,
             }
         ]
     )
 
+    churn_df = monthly[["symbol", "test_month", "states_selected", "state_churn_rate", "top_state_share", "state_hhi", "stability_pass", "status"]].copy() if not monthly.empty else pd.DataFrame()
+
     out_sched = Path(str(cfg["out_state_schedule_csv"]))
+    out_state_raw = str(cfg.get("out_state_csv", "")).strip()
+    if out_state_raw:
+        out_state = Path(out_state_raw)
+    else:
+        if out_sched.name.endswith("_state_schedule.csv"):
+            out_state = out_sched.with_name(out_sched.name.replace("_state_schedule.csv", "_states.csv"))
+        else:
+            out_state = out_sched.with_name(f"{symbol}_oco_reduced_states.csv")
     out_month = Path(str(cfg["out_monthly_csv"]))
     out_sum = Path(str(cfg["out_summary_csv"]))
+    out_churn_raw = str(cfg.get("out_state_churn_csv", "")).strip()
+    out_churn = Path(out_churn_raw) if out_churn_raw else out_month.with_name(out_month.name.replace("_monthly.csv", "_state_churn.csv"))
     out_sched.parent.mkdir(parents=True, exist_ok=True)
+    out_state.parent.mkdir(parents=True, exist_ok=True)
     out_month.parent.mkdir(parents=True, exist_ok=True)
     out_sum.parent.mkdir(parents=True, exist_ok=True)
+    out_churn.parent.mkdir(parents=True, exist_ok=True)
+    state_cols = ["symbol", "bar_ticks", "horizon", "state_id", "family", "barrier_pips", "regime_desc"]
+    if not schedule.empty:
+        states = (
+            schedule[state_cols]
+            .drop_duplicates()
+            .sort_values(["symbol", "bar_ticks", "horizon", "state_id"])
+            .reset_index(drop=True)
+        )
+    else:
+        states = pd.DataFrame(columns=state_cols)
     schedule.to_csv(out_sched, index=False)
+    states.to_csv(out_state, index=False)
     monthly.to_csv(out_month, index=False)
     summary.to_csv(out_sum, index=False)
+    churn_df.to_csv(out_churn, index=False)
 
     report_lines: list[str] = []
     report_lines.append(f"# {symbol} OCO Reduced-Core Rolling Selection")
@@ -725,14 +829,24 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     report_lines.append(f"- min_train_months: `{min_train_months}`")
     report_lines.append(f"- overlap_corr_max: `{overlap_corr_max}`")
     report_lines.append(f"- overlap_divergence_max: `{overlap_divergence_max}`")
+    report_lines.append(f"- max_state_churn: `{max_state_churn}`")
+    report_lines.append(f"- max_top_state_share: `{max_top_state_share}`")
+    report_lines.append(f"- max_state_hhi: `{max_state_hhi}`")
+    report_lines.append(f"- enforce_state_stability_gates: `{enforce_state_stability_gates}`")
     report_lines.append(f"- max_states/min_states: `{max_states}/{min_states}`")
     report_lines.append(f"- strict_gate_only: `{strict_gate_only}`")
     report_lines.append("")
     report_lines.append("## Summary")
     report_lines.append(_table(summary))
     report_lines.append("")
+    report_lines.append("## Reduced State Universe")
+    report_lines.append(_table(states))
+    report_lines.append("")
     report_lines.append("## Monthly Portfolio")
     report_lines.append(_table(monthly))
+    report_lines.append("")
+    report_lines.append("## State Stability")
+    report_lines.append(_table(churn_df))
     report_lines.append("")
     report_lines.append("## State Schedule (Top Rows)")
     report_lines.append(_table(schedule.head(80)))
@@ -743,8 +857,10 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     report_out.write_text("\n".join(report_lines), encoding="utf-8")
 
     print(f"wrote: {out_sched}")
+    print(f"wrote: {out_state}")
     print(f"wrote: {out_month}")
     print(f"wrote: {out_sum}")
+    print(f"wrote: {out_churn}")
     print(f"wrote: {report_out}")
     return schedule, monthly, summary
 
@@ -781,14 +897,20 @@ def main() -> None:
     p.add_argument("--seed", type=int, default=None)
     p.add_argument("--capacity-floor-monthly", type=float, default=None)
     p.add_argument("--capacity-floor-annual", type=float, default=None)
+    p.add_argument("--max-state-churn", type=float, default=None)
+    p.add_argument("--max-top-state-share", type=float, default=None)
+    p.add_argument("--max-state-hhi", type=float, default=None)
+    p.add_argument("--enforce-state-stability-gates", default=None)
     p.add_argument("--out-state-schedule-csv", default=None)
+    p.add_argument("--out-state-csv", default=None)
     p.add_argument("--out-monthly-csv", default=None)
     p.add_argument("--out-summary-csv", default=None)
+    p.add_argument("--out-state-churn-csv", default=None)
     p.add_argument("--report-out", default=None)
     args = p.parse_args()
 
     cfg = _merge_config(args)
-    for b in ["strict_gate_only", "require_lb95_trade_gt0", "require_lb95_month_gt0"]:
+    for b in ["strict_gate_only", "require_lb95_trade_gt0", "require_lb95_month_gt0", "enforce_state_stability_gates"]:
         if isinstance(cfg.get(b), str):
             cfg[b] = str(cfg[b]).strip().lower() in {"1", "true", "yes", "y"}
     run(cfg)

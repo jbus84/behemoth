@@ -1,21 +1,21 @@
 {
   "artifacts": {
     "predictions_path": "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet",
-    "predictions_sha256": "b612437c29ffe20bd695edb21b5c80524f3c76ea0f11e13ea8e19a5d440ee1cf",
+    "predictions_sha256": "08afa9c58dd40faa519c3b5b7571ed0a1a1fde14778012d7c68f4670a2f9bf32",
     "reduced_config_path": "configs/research/experiments/eurusd_oco_reduced_core_2025.yaml",
     "reduced_config_sha256": "d8e47b43d7ad62629c5c2b651d03cf8215cc900b8198719d5653da9dae51034a",
     "reduced_states_csv_path": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_reduced_states.csv",
-    "reduced_states_csv_sha256": "45b5d7911abd8cf5729bd45cf545869969a1c496df0074208eb33fdfba422096",
+    "reduced_states_csv_sha256": "34cd381e0ec73bd31d7cbab3b1e16d34d81fa789a3e0b9c5fbc6e5472c7f8cea",
     "tick_exact_overall_pass": true,
-    "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_tick_exact_summary.csv",
-    "tick_exact_summary_sha256": "96641671a5fc4d663ff96b799fc9ed38f18afc9a10163e999b0ff65bbdf2c6e9",
+    "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_tick_exact_summary.csv",
+    "tick_exact_summary_sha256": "bdd091a33a427d68ab3d6853b2bf2f83b092fa61743c1729683d9ce62e333bf4",
     "wfo_config_path": "configs/research/experiments/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
     "wfo_config_sha256": "ee3d117d2200f0f0c29313068cff91a6c8b3063b91ee166a3d2f6b11670b5ca8"
   },
-  "frozen_at_utc": "2026-02-25T08:03:27.247805+00:00",
+  "frozen_at_utc": "2026-02-26T17:45:25.059694+00:00",
   "git": {
     "branch": "main",
-    "commit": "e871bd9260089a4647c0305b585476606f78adb2",
+    "commit": "a9c80022cce8611f65d02b9a34aaeccd235011e8",
     "dirty": true
   },
   "locked_runtime": {
@@ -39,7 +39,7 @@
   },
   "schema_version": 1,
   "state_universe": {
-    "count": 12,
+    "count": 7,
     "rows": [
       {
         "bar_ticks": 100,
@@ -54,51 +54,6 @@
         "bar_ticks": 100,
         "barrier_pips": 2.0,
         "family": "oco_first_touch_clean",
-        "horizon": 5,
-        "regime_desc": "high_abs_vel_q70;barrier=2.0",
-        "state_id": "oco_first_touch_clean__high_abs_vel_q70__k2",
-        "symbol": "EURUSD"
-      },
-      {
-        "bar_ticks": 100,
-        "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
-        "horizon": 5,
-        "regime_desc": "high_abs_vel_q80;barrier=2.0",
-        "state_id": "oco_first_touch_clean__high_abs_vel_q80__k2",
-        "symbol": "EURUSD"
-      },
-      {
-        "bar_ticks": 100,
-        "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
-        "horizon": 5,
-        "regime_desc": "high_range_q70;barrier=2.0",
-        "state_id": "oco_first_touch_clean__high_range_q70__k2",
-        "symbol": "EURUSD"
-      },
-      {
-        "bar_ticks": 100,
-        "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
-        "horizon": 5,
-        "regime_desc": "high_range_q80;barrier=2.0",
-        "state_id": "oco_first_touch_clean__high_range_q80__k2",
-        "symbol": "EURUSD"
-      },
-      {
-        "bar_ticks": 100,
-        "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
-        "horizon": 5,
-        "regime_desc": "london;barrier=2.0",
-        "state_id": "oco_first_touch_clean__london__k2",
-        "symbol": "EURUSD"
-      },
-      {
-        "bar_ticks": 100,
-        "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
         "horizon": 6,
         "regime_desc": "asia;barrier=2.0",
         "state_id": "oco_first_touch_clean__asia__k2",
@@ -127,15 +82,6 @@
         "barrier_pips": 2.0,
         "family": "oco_first_touch_clean",
         "horizon": 6,
-        "regime_desc": "high_range_q70;barrier=2.0",
-        "state_id": "oco_first_touch_clean__high_range_q70__k2",
-        "symbol": "EURUSD"
-      },
-      {
-        "bar_ticks": 100,
-        "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
-        "horizon": 6,
         "regime_desc": "high_range_q80;barrier=2.0",
         "state_id": "oco_first_touch_clean__high_range_q80__k2",
         "symbol": "EURUSD"
@@ -148,9 +94,18 @@
         "regime_desc": "london;barrier=2.0",
         "state_id": "oco_first_touch_clean__london__k2",
         "symbol": "EURUSD"
+      },
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 6,
+        "regime_desc": "ny_overlap;barrier=2.0",
+        "state_id": "oco_first_touch_clean__ny_overlap__k2",
+        "symbol": "EURUSD"
       }
     ],
-    "sha256": "a9dcfd3b305cffe3c50cef90e5e7e7860aab73cc2beec2bbc6644900f3080dcc"
+    "sha256": "97f2ccb43a305b9a76d8d9f4e2edba9b54a277be6d98e9d79ad35c7a10af4968"
   },
   "symbol": "EURUSD"
 }

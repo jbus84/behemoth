@@ -67,6 +67,13 @@ def _split_csv(raw: str) -> list[str]:
     return [x.strip().upper() for x in str(raw).split(",") if x.strip()]
 
 
+def _pick_first_existing(*paths: Path) -> Path:
+    for p in paths:
+        if p.exists():
+            return p
+    return paths[0]
+
+
 def _default_paths(symbol: str) -> dict[str, Path]:
     s = str(symbol).upper().strip()
     sl = s.lower()
@@ -75,7 +82,10 @@ def _default_paths(symbol: str) -> dict[str, Path]:
             "wfo_config": Path("configs/research/experiments/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml"),
             "reduced_config": Path("configs/research/experiments/eurusd_oco_reduced_core_2025.yaml"),
             "reduced_states": Path("data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_reduced_states.csv"),
-            "tick_exact_summary": Path("data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_tick_exact_summary.csv"),
+            "tick_exact_summary": _pick_first_existing(
+                Path("data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_tick_exact_summary.csv"),
+                Path("data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_tick_exact_summary.csv"),
+            ),
             "predictions": Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet"),
         }
     if s == "GBPUSD":
@@ -83,14 +93,26 @@ def _default_paths(symbol: str) -> dict[str, Path]:
             "wfo_config": Path("configs/research/experiments/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml"),
             "reduced_config": Path("configs/research/experiments/gbpusd_oco_reduced_core_2025.yaml"),
             "reduced_states": Path("data/analysis/tick_opportunity_mining/reduced_core_gbpusd/GBPUSD_oco_reduced_states.csv"),
-            "tick_exact_summary": Path("data/analysis/tick_opportunity_mining/reduced_core_gbpusd/GBPUSD_oco_tick_exact_summary.csv"),
+            "tick_exact_summary": _pick_first_existing(
+                Path("data/analysis/tick_opportunity_mining/reduced_core_gbpusd/GBPUSD_oco_tick_exact_summary.csv"),
+                Path("data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_tick_exact_summary.csv"),
+            ),
             "predictions": Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_predictions.parquet"),
         }
     return {
-        "wfo_config": Path(f"configs/research/experiments/{sl}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml"),
-        "reduced_config": Path(f"configs/research/experiments/{sl}_oco_reduced_core_2025.yaml"),
+        "wfo_config": _pick_first_existing(
+            Path(f"configs/research/experiments/{sl}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml"),
+            Path(f"configs/research/experiments/{sl}_tick_opportunity_monthly_wfo_oco_fullcap_rolling_2025.yaml"),
+        ),
+        "reduced_config": _pick_first_existing(
+            Path(f"configs/research/experiments/{sl}_oco_reduced_core_2025.yaml"),
+            Path(f"configs/research/experiments/{sl}_oco_reduced_core_rolling_2025.yaml"),
+        ),
         "reduced_states": Path(f"data/analysis/tick_opportunity_mining/reduced_core_{sl}/{s}_oco_reduced_states.csv"),
-        "tick_exact_summary": Path(f"data/analysis/tick_opportunity_mining/reduced_core_{sl}/{s}_oco_tick_exact_summary.csv"),
+        "tick_exact_summary": _pick_first_existing(
+            Path(f"data/analysis/tick_opportunity_mining/reduced_core_{sl}/{s}_oco_tick_exact_summary.csv"),
+            Path(f"data/analysis/tick_opportunity_mining/reduced_core_rolling_{sl}/{s}_oco_tick_exact_summary.csv"),
+        ),
         "predictions": Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_{sl}/{s}_oco_monthly_predictions.parquet"),
     }
 
