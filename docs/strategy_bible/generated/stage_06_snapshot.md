@@ -1,0 +1,22 @@
+### Auto Snapshot - Stage 06
+
+- generated_at: `2026-02-26 21:20:14 UTC`
+- Verifier recomputes OCO outcomes independently from stored labels.
+- All summary rates should remain near 1.0 for contract consistency.
+
+#### Key Results
+| symbol   |   rows_selected |   rows_verified |   exact_match_rate |   pos_label_match_rate | overall_pass   |
+|:---------|----------------:|----------------:|-------------------:|-----------------------:|:---------------|
+| EURUSD   |           31507 |           31507 |                  1 |                      1 | True           |
+| GBPUSD   |           34861 |           34861 |                  1 |                      1 | True           |
+| USDJPY   |           50326 |           50326 |                  1 |                      1 | True           |
+
+#### Details
+| symbol   |   months |   exact_min |   exact_mean |   pos_min |   pos_mean |
+|:---------|---------:|------------:|-------------:|----------:|-----------:|
+| EURUSD   |        9 |           1 |            1 |         1 |          1 |
+| GBPUSD   |        9 |           1 |            1 |         1 |          1 |
+| USDJPY   |        9 |           1 |            1 |         1 |          1 |
+
+#### Plots
+![stage_06_tick_exact_monthly](../../figures/oco_bible/stage_06_tick_exact_monthly.png)

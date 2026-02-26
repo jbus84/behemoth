@@ -1,0 +1,82 @@
+title: OCO Rolling Strategy Bible
+
+outputs:
+  generated_dir: docs/strategy_bible/generated
+  figures_dir: docs/figures/oco_bible
+  build_report_csv: data/analysis/tick_opportunity_mining/oco_bible_build_report.csv
+  symbol_snapshot_csv: data/analysis/tick_opportunity_mining/oco_bible_symbol_snapshot.csv
+  stage_status_csv: data/analysis/tick_opportunity_mining/oco_bible_stage_status.csv
+  stage_metrics_csv: data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv
+
+gate_thresholds:
+  min_exact_match_rate: 0.999
+  min_pos_label_match_rate: 0.999
+  expected_audit_failures: 0
+  robustness_quantile: 0.9
+
+audit:
+  checks_csv: data/analysis/tick_opportunity_mining/oco_logical_audit_checks.csv
+  issues_csv: data/analysis/tick_opportunity_mining/oco_logical_audit_issues.csv
+  report_md: docs/analysis/oco_logical_audit_report.md
+
+symbols:
+  - symbol: EURUSD
+    reduced_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_summary.csv
+    tick_exact_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_tick_exact_summary.csv
+    robustness_summary_csv: data/analysis/tick_opportunity_mining/full_robustness/EURUSD_oco_robustness_summary.csv
+    stop_limit_summary_csv: data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv
+    mining_report_md: docs/analysis/eurusd_tick_opportunity_mining_report.md
+    wfo_report_md: docs/analysis/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md
+    reduced_core_report_md: docs/analysis/eurusd_oco_reduced_core_rolling_report.md
+    tick_exact_report_md: docs/analysis/eurusd_oco_tick_exact_rolling_report.md
+
+  - symbol: GBPUSD
+    reduced_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_summary.csv
+    tick_exact_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_tick_exact_summary.csv
+    robustness_summary_csv: data/analysis/tick_opportunity_mining/full_robustness/GBPUSD_oco_robustness_summary.csv
+    stop_limit_summary_csv: data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv
+    mining_report_md: docs/analysis/gbpusd_tick_opportunity_mining_report.md
+    wfo_report_md: docs/analysis/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md
+    reduced_core_report_md: docs/analysis/gbpusd_oco_reduced_core_rolling_report.md
+    tick_exact_report_md: docs/analysis/gbpusd_oco_tick_exact_rolling_report.md
+
+  - symbol: USDJPY
+    reduced_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_summary.csv
+    tick_exact_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_tick_exact_summary.csv
+    robustness_summary_csv: data/analysis/tick_opportunity_mining/full_robustness/USDJPY_oco_robustness_summary.csv
+    stop_limit_summary_csv: data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv
+    mining_report_md: docs/analysis/usdjpy_tick_opportunity_mining_report.md
+    wfo_report_md: docs/analysis/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_report.md
+    reduced_core_report_md: docs/analysis/usdjpy_oco_reduced_core_rolling_report.md
+    tick_exact_report_md: docs/analysis/usdjpy_oco_tick_exact_rolling_report.md
+
+required_artifacts:
+  - docs/analysis/oco_stop_limit_tickfill_smoke_report.md
+  - docs/analysis/oco_stop_limit_tickfill_fullcap_report.md
+
+script_links:
+  - scripts/run_tick_opportunity_mining.py
+  - scripts/run_tick_opportunity_monthly_wfo.py
+  - scripts/analyze_oco_stop_limit_tickfill.py
+  - scripts/select_oco_reduced_core_rolling.py
+  - scripts/verify_oco_tick_exact_shortlist.py
+  - scripts/analyze_oco_monthly_wfo_robustness.py
+  - scripts/audit_oco_pipeline_logical_issues.py
+  - scripts/build_oco_strategy_bible.py
+
+config_links:
+  - configs/research/experiments/eurusd_tick_opportunity_mining.yaml
+  - configs/research/experiments/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml
+  - configs/research/experiments/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml
+  - configs/research/experiments/eurusd_oco_reduced_core_rolling_2025.yaml
+  - configs/research/experiments/gbpusd_oco_reduced_core_2025.yaml
+  - configs/research/experiments/usdjpy_oco_reduced_core_rolling_2025.yaml
+  - configs/research/docs/oco_bible_manifest.yaml
+
+test_links:
+  - tests/test_tick_opportunity_mining.py
+  - tests/test_oco_no_leakage_contract.py
+  - tests/test_oco_reduced_core_rolling.py
+  - tests/test_oco_tick_exact_verifier.py
+  - tests/test_oco_pipeline_logical_audit.py
+  - tests/test_oco_strategy_bible_builder.py

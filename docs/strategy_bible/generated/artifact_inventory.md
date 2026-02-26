@@ -1,0 +1,35 @@
+# Artifact Inventory
+
+- generated_at: `2026-02-26 21:20:14 UTC`
+
+| group              | symbol   | artifact               | path                                                                                                                                          | exists   | required   |
+|:-------------------|:---------|:-----------------------|:----------------------------------------------------------------------------------------------------------------------------------------------|:---------|:-----------|
+| symbol             | EURUSD   | mining_report_md       | /Users/danielfisher/repositories/behemoth/docs/analysis/eurusd_tick_opportunity_mining_report.md                                              | True     | True       |
+| symbol             | EURUSD   | reduced_core_report_md | /Users/danielfisher/repositories/behemoth/docs/analysis/eurusd_oco_reduced_core_rolling_report.md                                             | True     | True       |
+| symbol             | EURUSD   | reduced_summary_csv    | /Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_summary.csv           | True     | True       |
+| symbol             | EURUSD   | robustness_summary_csv | /Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/full_robustness/EURUSD_oco_robustness_summary.csv             | True     | True       |
+| symbol             | EURUSD   | stop_limit_summary_csv | /Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv                       | True     | True       |
+| symbol             | EURUSD   | tick_exact_report_md   | /Users/danielfisher/repositories/behemoth/docs/analysis/eurusd_oco_tick_exact_rolling_report.md                                               | True     | True       |
+| symbol             | EURUSD   | tick_exact_summary_csv | /Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_tick_exact_summary.csv        | True     | True       |
+| symbol             | EURUSD   | wfo_report_md          | /Users/danielfisher/repositories/behemoth/docs/analysis/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md                             | True     | True       |
+| symbol             | GBPUSD   | mining_report_md       | /Users/danielfisher/repositories/behemoth/docs/analysis/gbpusd_tick_opportunity_mining_report.md                                              | True     | True       |
+| symbol             | GBPUSD   | reduced_core_report_md | /Users/danielfisher/repositories/behemoth/docs/analysis/gbpusd_oco_reduced_core_rolling_report.md                                             | True     | True       |
+| symbol             | GBPUSD   | reduced_summary_csv    | /Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_summary.csv    | True     | True       |
+| symbol             | GBPUSD   | robustness_summary_csv | /Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/full_robustness/GBPUSD_oco_robustness_summary.csv             | True     | True       |
+| symbol             | GBPUSD   | stop_limit_summary_csv | /Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv                       | True     | True       |
+| symbol             | GBPUSD   | tick_exact_report_md   | /Users/danielfisher/repositories/behemoth/docs/analysis/gbpusd_oco_tick_exact_rolling_report.md                                               | True     | True       |
+| symbol             | GBPUSD   | tick_exact_summary_csv | /Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_tick_exact_summary.csv | True     | True       |
+| symbol             | GBPUSD   | wfo_report_md          | /Users/danielfisher/repositories/behemoth/docs/analysis/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md                             | True     | True       |
+| symbol             | USDJPY   | mining_report_md       | /Users/danielfisher/repositories/behemoth/docs/analysis/usdjpy_tick_opportunity_mining_report.md                                              | True     | True       |
+| symbol             | USDJPY   | reduced_core_report_md | /Users/danielfisher/repositories/behemoth/docs/analysis/usdjpy_oco_reduced_core_rolling_report.md                                             | True     | True       |
+| symbol             | USDJPY   | reduced_summary_csv    | /Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_summary.csv    | True     | True       |
+| symbol             | USDJPY   | robustness_summary_csv | /Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/full_robustness/USDJPY_oco_robustness_summary.csv             | True     | True       |
+| symbol             | USDJPY   | stop_limit_summary_csv | /Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv                       | True     | True       |
+| symbol             | USDJPY   | tick_exact_report_md   | /Users/danielfisher/repositories/behemoth/docs/analysis/usdjpy_oco_tick_exact_rolling_report.md                                               | True     | True       |
+| symbol             | USDJPY   | tick_exact_summary_csv | /Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_tick_exact_summary.csv | True     | True       |
+| symbol             | USDJPY   | wfo_report_md          | /Users/danielfisher/repositories/behemoth/docs/analysis/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_report.md                             | True     | True       |
+| audit              | ALL      | checks_csv             | /Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/oco_logical_audit_checks.csv                                  | True     | True       |
+| audit              | ALL      | issues_csv             | /Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/oco_logical_audit_issues.csv                                  | True     | True       |
+| audit              | ALL      | report_md              | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_logical_audit_report.md                                                           | True     | True       |
+| required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_stop_limit_tickfill_smoke_report.md                                               | True     | True       |
+| required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_stop_limit_tickfill_fullcap_report.md                                             | True     | True       |

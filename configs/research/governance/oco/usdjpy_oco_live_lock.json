@@ -12,10 +12,10 @@
     "wfo_config_path": "configs/research/experiments/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
     "wfo_config_sha256": "9672bac3338bd134e0397b4f5ff29ca91de902e84e4f8d65953f4277b908ff39"
   },
-  "frozen_at_utc": "2026-02-26T18:06:39.051728+00:00",
+  "frozen_at_utc": "2026-02-26T21:15:32.913276+00:00",
   "git": {
     "branch": "main",
-    "commit": "a9c80022cce8611f65d02b9a34aaeccd235011e8",
+    "commit": "e0ab7c2f8ea9612a1709f42062e0c090bde022fd",
     "dirty": true
   },
   "locked_runtime": {
