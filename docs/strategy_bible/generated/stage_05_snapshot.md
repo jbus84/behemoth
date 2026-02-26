@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 05
 
-- generated_at: `2026-02-26 21:20:14 UTC`
+- generated_at: `2026-02-26 22:19:06 UTC`
 - State schedule is selected month-by-month using only prior-month train data.
 - Summary emphasizes full-path gross behavior after reduced-core filtering.
 
@@ -51,3 +51,10 @@
 | USDJPY   | 2025-10      |                 2 |           0.75     |          0.666951 |    0.555745 |                0 | ok          |
 | USDJPY   | 2025-11      |                 2 |           0.666667 |          0.543775 |    0.503833 |                0 | ok          |
 | USDJPY   | 2025-12      |                 2 |           0.666667 |          0.54269  |    0.503645 |                0 | ok          |
+
+#### Leakage/Label Integrity (Reduced-Core Focus)
+| symbol   |   checks_total |   checks_failed | failed_check_ids   |
+|:---------|---------------:|----------------:|:-------------------|
+| EURUSD   |              3 |               0 |                    |
+| GBPUSD   |              3 |               0 |                    |
+| USDJPY   |              3 |               0 |                    |

@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 08
 
-- generated_at: `2026-02-26 21:20:14 UTC`
+- generated_at: `2026-02-26 22:19:06 UTC`
 - Robustness summary uses bootstrap lower bounds from the configured smoke/full run artifacts.
 - Interpretation: LB95 > 0 indicates conservative positive expectancy under sampled uncertainty.
 - Overfit panel adds month-stratified null uplift and dependence-aware LB95 comparisons.

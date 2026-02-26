@@ -1,6 +1,6 @@
 # Artifact Inventory
 
-- generated_at: `2026-02-26 21:20:14 UTC`
+- generated_at: `2026-02-26 22:19:06 UTC`
 
 | group              | symbol   | artifact               | path                                                                                                                                          | exists   | required   |
 |:-------------------|:---------|:-----------------------|:----------------------------------------------------------------------------------------------------------------------------------------------|:---------|:-----------|
@@ -33,3 +33,6 @@
 | audit              | ALL      | report_md              | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_logical_audit_report.md                                                           | True     | True       |
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_stop_limit_tickfill_smoke_report.md                                               | True     | True       |
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_stop_limit_tickfill_fullcap_report.md                                             | True     | True       |
+| required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/data_reliability_report.md                                                            | True     | True       |
+| required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_leakage_integrity_report.md                                                       | True     | True       |
+| required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_execution_risk_prelive_report.md                                                  | True     | True       |

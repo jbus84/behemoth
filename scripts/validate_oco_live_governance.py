@@ -85,6 +85,9 @@ def run(
     state_csv: Path | None,
     wfo_config: Path | None,
     reduced_config: Path | None,
+    data_reliability_checks_csv: Path | None = None,
+    leakage_checks_csv: Path | None = None,
+    execution_risk_checks_csv: Path | None = None,
 ) -> tuple[bool, list[Check], dict[str, Any]]:
     lock = json.loads(lock_path.read_text(encoding="utf-8"))
     checks: list[Check] = []
@@ -127,6 +130,115 @@ def run(
         ok = (len(missing) == 0) and (len(extra) == 0)
         checks.append(Check("state_universe_exact_match", ok, f"missing={len(missing)} extra={len(extra)}"))
 
+    # Data reliability gate (high/critical failures block deploy/retrain).
+    lock_symbol = str(lock.get("symbol", "")).upper().strip()
+    if data_reliability_checks_csv is not None:
+        if not data_reliability_checks_csv.exists():
+            checks.append(Check("data_reliability_artifact_exists", False, f"missing {data_reliability_checks_csv}"))
+        else:
+            dc = pd.read_csv(data_reliability_checks_csv)
+            if "symbol" in dc.columns:
+                dc = dc[dc["symbol"].astype(str).str.upper() == lock_symbol].copy()
+            checks.append(
+                Check(
+                    "data_reliability_rows_present",
+                    len(dc) > 0,
+                    f"symbol={lock_symbol} rows={len(dc)} path={data_reliability_checks_csv}",
+                )
+            )
+            if len(dc) > 0:
+                status = dc.get("status", pd.Series(index=dc.index, dtype=str)).astype(str).str.lower()
+                severity = dc.get("severity_if_fail", pd.Series(index=dc.index, dtype=str)).astype(str).str.lower()
+                failed = status != "pass"
+                critical_fail = failed & (severity == "critical")
+                high_fail = failed & (severity == "high")
+                checks.append(
+                    Check(
+                        "data_reliability_no_critical_failures",
+                        int(critical_fail.sum()) == 0,
+                        f"critical_failed={int(critical_fail.sum())}",
+                    )
+                )
+                checks.append(
+                    Check(
+                        "data_reliability_no_high_failures",
+                        int(high_fail.sum()) == 0,
+                        f"high_failed={int(high_fail.sum())}",
+                    )
+                )
+
+    # Leakage/label integrity gate (high/critical failures block deploy/retrain).
+    if leakage_checks_csv is not None:
+        if not leakage_checks_csv.exists():
+            checks.append(Check("leakage_artifact_exists", False, f"missing {leakage_checks_csv}"))
+        else:
+            lc = pd.read_csv(leakage_checks_csv)
+            if "symbol" in lc.columns:
+                lc = lc[lc["symbol"].astype(str).str.upper() == lock_symbol].copy()
+            checks.append(
+                Check(
+                    "leakage_rows_present",
+                    len(lc) > 0,
+                    f"symbol={lock_symbol} rows={len(lc)} path={leakage_checks_csv}",
+                )
+            )
+            if len(lc) > 0:
+                status = lc.get("status", pd.Series(index=lc.index, dtype=str)).astype(str).str.lower()
+                severity = lc.get("severity_if_fail", pd.Series(index=lc.index, dtype=str)).astype(str).str.lower()
+                failed = status != "pass"
+                critical_fail = failed & (severity == "critical")
+                high_fail = failed & (severity == "high")
+                checks.append(
+                    Check(
+                        "leakage_no_critical_failures",
+                        int(critical_fail.sum()) == 0,
+                        f"critical_failed={int(critical_fail.sum())}",
+                    )
+                )
+                checks.append(
+                    Check(
+                        "leakage_no_high_failures",
+                        int(high_fail.sum()) == 0,
+                        f"high_failed={int(high_fail.sum())}",
+                    )
+                )
+
+    # Execution-risk preflight gate (high/critical failures block deploy/retrain).
+    if execution_risk_checks_csv is not None:
+        if not execution_risk_checks_csv.exists():
+            checks.append(Check("execution_risk_artifact_exists", False, f"missing {execution_risk_checks_csv}"))
+        else:
+            ec = pd.read_csv(execution_risk_checks_csv)
+            if "symbol" in ec.columns:
+                ec = ec[ec["symbol"].astype(str).str.upper() == lock_symbol].copy()
+            checks.append(
+                Check(
+                    "execution_risk_rows_present",
+                    len(ec) > 0,
+                    f"symbol={lock_symbol} rows={len(ec)} path={execution_risk_checks_csv}",
+                )
+            )
+            if len(ec) > 0:
+                status = ec.get("status", pd.Series(index=ec.index, dtype=str)).astype(str).str.lower()
+                severity = ec.get("severity_if_fail", pd.Series(index=ec.index, dtype=str)).astype(str).str.lower()
+                failed = status != "pass"
+                critical_fail = failed & (severity == "critical")
+                high_fail = failed & (severity == "high")
+                checks.append(
+                    Check(
+                        "execution_risk_no_critical_failures",
+                        int(critical_fail.sum()) == 0,
+                        f"critical_failed={int(critical_fail.sum())}",
+                    )
+                )
+                checks.append(
+                    Check(
+                        "execution_risk_no_high_failures",
+                        int(high_fail.sum()) == 0,
+                        f"high_failed={int(high_fail.sum())}",
+                    )
+                )
+
     # Retrain cadence guard.
     m = str(mode).strip().lower()
     due, win_start, win_end = _retrain_window(lock, as_of=as_of)
@@ -157,6 +269,9 @@ def main() -> None:
     p.add_argument("--state-csv", default="")
     p.add_argument("--wfo-config", default="")
     p.add_argument("--reduced-config", default="")
+    p.add_argument("--data-reliability-checks-csv", default="")
+    p.add_argument("--leakage-checks-csv", default="")
+    p.add_argument("--execution-risk-checks-csv", default="")
     p.add_argument("--out-json", default="")
     args = p.parse_args()
 
@@ -167,11 +282,22 @@ def main() -> None:
         state_csv=Path(str(args.state_csv)) if str(args.state_csv).strip() else None,
         wfo_config=Path(str(args.wfo_config)) if str(args.wfo_config).strip() else None,
         reduced_config=Path(str(args.reduced_config)) if str(args.reduced_config).strip() else None,
+        data_reliability_checks_csv=Path(str(args.data_reliability_checks_csv))
+        if str(args.data_reliability_checks_csv).strip()
+        else None,
+        leakage_checks_csv=Path(str(args.leakage_checks_csv)) if str(args.leakage_checks_csv).strip() else None,
+        execution_risk_checks_csv=Path(str(args.execution_risk_checks_csv))
+        if str(args.execution_risk_checks_csv).strip()
+        else None,
     )
+    failed_checks = [c.name for c in checks if not c.ok]
     payload = {
         "ok": bool(ok),
+        "status": "pass" if ok else "fail",
+        "blocker": not ok,
         "meta": meta,
         "checks": [{"name": c.name, "ok": bool(c.ok), "detail": c.detail} for c in checks],
+        "failed_checks": failed_checks,
     }
     if str(args.out_json).strip():
         out = Path(str(args.out_json))

@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 03
 
-- generated_at: `2026-02-26 21:20:14 UTC`
+- generated_at: `2026-02-26 22:19:06 UTC`
 - Execution threshold summary is aligned to quantile=0.9.
 - Metrics are strictly month-forward (3M train -> 1M test).
 
@@ -30,3 +30,10 @@
 
 - Interpretation: these diagnostics are computed on WFO out-of-sample predictions only.
 - `bonferroni_pass_10pct` and `fdr_pass_10pct` summarize multiplicity-adjusted significance at alpha=0.10.
+
+#### Leakage/Label Integrity (WFO Focus)
+| symbol   |   checks_total |   checks_failed |   high_critical_failed |
+|:---------|---------------:|----------------:|-----------------------:|
+| EURUSD   |              6 |               0 |                      0 |
+| GBPUSD   |              6 |               0 |                      0 |
+| USDJPY   |              6 |               0 |                      0 |

@@ -46,6 +46,23 @@ plugins:
 nav:
   - Overview: index.md
   - Strategy Manual: STRATEGY_MASTER_MANUAL.md
+  - OCO Strategy Bible:
+      - Pipeline Snapshot: strategy_bible/generated/pipeline_snapshot.md
+      - Stage 01 Data Foundation: strategy_bible/generated/stage_01_snapshot.md
+      - Stage 02 Opportunity Mining: strategy_bible/generated/stage_02_snapshot.md
+      - Stage 03 Monthly WFO: strategy_bible/generated/stage_03_snapshot.md
+      - Stage 04 Stop-Limit Realism: strategy_bible/generated/stage_04_snapshot.md
+      - Stage 05 Reduced Core: strategy_bible/generated/stage_05_snapshot.md
+      - Stage 06 Tick-Exact Verification: strategy_bible/generated/stage_06_snapshot.md
+      - Stage 07 Logical Audit: strategy_bible/generated/stage_07_snapshot.md
+      - Stage 08 Robustness: strategy_bible/generated/stage_08_snapshot.md
+      - Stage 09 Governance Snapshot: strategy_bible/generated/stage_09_snapshot.md
+      - Stage 09 Governance Spec: strategy_bible/stage_09_live_governance_and_deployment.md
+      - Stage 10 Risks Snapshot: strategy_bible/generated/stage_10_snapshot.md
+      - Stage 10 Risks Spec: strategy_bible/stage_10_known_risks_and_backlog.md
+      - Data Reliability Audit: analysis/data_reliability_report.md
+      - Leakage + Label Audit: analysis/oco_leakage_integrity_report.md
+      - Execution Risk Preflight: analysis/oco_execution_risk_prelive_report.md
   - HGBT Deep Dive: analysis/m5_mom_m15_momrev_m60_rev_hgbt_report.md
   - Cluster EW Deep Dive: analysis/cluster_earlywarning_report.md
   - Architecture: architecture.md

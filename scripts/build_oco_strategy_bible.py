@@ -595,6 +595,29 @@ def _symbol_contexts(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]
         contexts.append(
             {
                 "symbol": symbol,
+                "data_reliability_checks_csv": _resolve_path(
+                    base_dir, "data/analysis/tick_opportunity_mining/data_reliability_checks.csv"
+                ),
+                "data_reliability_issues_csv": _resolve_path(
+                    base_dir, "data/analysis/tick_opportunity_mining/data_reliability_issues.csv"
+                ),
+                "data_reliability_report_md": _resolve_path(base_dir, "docs/analysis/data_reliability_report.md"),
+                "leakage_checks_csv": _resolve_path(
+                    base_dir, "data/analysis/tick_opportunity_mining/oco_leakage_integrity_checks.csv"
+                ),
+                "leakage_issues_csv": _resolve_path(
+                    base_dir, "data/analysis/tick_opportunity_mining/oco_leakage_issues.csv"
+                ),
+                "leakage_report_md": _resolve_path(base_dir, "docs/analysis/oco_leakage_integrity_report.md"),
+                "execution_risk_checks_csv": _resolve_path(
+                    base_dir, "data/analysis/tick_opportunity_mining/oco_execution_risk_checks.csv"
+                ),
+                "execution_risk_issues_csv": _resolve_path(
+                    base_dir, "data/analysis/tick_opportunity_mining/oco_execution_risk_issues.csv"
+                ),
+                "execution_risk_report_md": _resolve_path(
+                    base_dir, "docs/analysis/oco_execution_risk_prelive_report.md"
+                ),
                 "timezone_contract_csv": _resolve_path(
                     base_dir, f"data/analysis/tick_opportunity_mining/{symbol}_stage1_timezone_contract.csv"
                 ),
@@ -874,6 +897,8 @@ def _write_stage_snapshots(
     req_cols = ["cost_est_pips", "range_pips", "spread_z", "tick_rate_z", "vel_cost_units_h1", "hl_first"]
     stage01_rows: list[dict[str, Any]] = []
     tz_rows: list[pd.DataFrame] = []
+    rel_rows: list[pd.DataFrame] = []
+    rel_issue_rows: list[pd.DataFrame] = []
     for ctx in contexts:
         sym = ctx["symbol"]
         ev_path = ctx.get("events_eval_parquet")
@@ -886,6 +911,35 @@ def _write_stage_snapshots(
                 row[f"{c}_null_pct"] = float("nan")
         stage01_rows.append(row)
         add_metric(1, "events_rows", sym, row["events_rows"], "rows", str(ev_path) if ev_path else "")
+        rel = _safe_read_csv(ctx.get("data_reliability_checks_csv"))
+        if not rel.empty and "symbol" in rel.columns:
+            rel = rel[rel["symbol"].astype(str).str.upper() == str(sym).upper()].copy()
+        if not rel.empty:
+            status = rel.get("status", pd.Series(index=rel.index, dtype=str)).astype(str).str.lower()
+            severity = rel.get("severity_if_fail", pd.Series(index=rel.index, dtype=str)).astype(str).str.lower()
+            row["reliability_checks_total"] = int(len(rel))
+            row["reliability_failed"] = int((status != "pass").sum())
+            row["reliability_high_critical_failed"] = int(
+                ((status != "pass") & severity.isin(["high", "critical"])).sum()
+            )
+            rel_rows.append(rel.assign(symbol=sym))
+            add_metric(
+                1,
+                "reliability_high_critical_failed",
+                sym,
+                row["reliability_high_critical_failed"],
+                "count",
+                str(ctx.get("data_reliability_checks_csv", "")),
+            )
+        else:
+            row["reliability_checks_total"] = 0
+            row["reliability_failed"] = 0
+            row["reliability_high_critical_failed"] = 0
+        rel_issues = _safe_read_csv(ctx.get("data_reliability_issues_csv"))
+        if not rel_issues.empty and "symbol" in rel_issues.columns:
+            rel_issues = rel_issues[rel_issues["symbol"].astype(str).str.upper() == str(sym).upper()].copy()
+        if not rel_issues.empty:
+            rel_issue_rows.append(rel_issues.assign(symbol=sym))
         tz = _safe_read_csv(ctx.get("timezone_contract_csv"))
         if not tz.empty:
             if "symbol" in tz.columns:
@@ -894,7 +948,10 @@ def _write_stage_snapshots(
                 tz_rows.append(tz.assign(symbol=sym))
     stage01 = pd.DataFrame(stage01_rows)
     tz_stage01 = pd.concat(tz_rows, ignore_index=True) if tz_rows else pd.DataFrame()
+    rel_stage01 = pd.concat(rel_rows, ignore_index=True) if rel_rows else pd.DataFrame()
+    rel_issues_stage01 = pd.concat(rel_issue_rows, ignore_index=True) if rel_issue_rows else pd.DataFrame()
     stage01_plot = _stage_plot_path(outputs, 1, "contract_health")
+    stage01_rel_plot = _stage_plot_path(outputs, 1, "data_reliability")
     if not stage01.empty:
         stage01_plot_df = stage01[["symbol", "events_rows"]].copy()
         stage01_plot_df["max_null_pct"] = pd.to_numeric(
@@ -908,6 +965,15 @@ def _write_stage_snapshots(
             ylabel="rows / percent",
             out_path=stage01_plot,
         )
+        if {"reliability_failed", "reliability_checks_total"}.issubset(set(stage01.columns)):
+            _plot_stage_bars(
+                df=stage01,
+                x="symbol",
+                ys=["reliability_checks_total", "reliability_failed", "reliability_high_critical_failed"],
+                title="Stage 1: Data Reliability Check Failures",
+                ylabel="count",
+                out_path=stage01_rel_plot,
+            )
     stage01_details = stage01 if not stage01.empty else None
     if not tz_stage01.empty:
         tz_pick = _pick_cols(
@@ -927,7 +993,17 @@ def _write_stage_snapshots(
         stage_id=1,
         now_utc=now_utc,
         summary_table=_pick_cols(
-            stage01, ["symbol", "events_rows", "cost_est_pips_null_pct", "range_pips_null_pct", "hl_first_null_pct"]
+            stage01,
+            [
+                "symbol",
+                "events_rows",
+                "cost_est_pips_null_pct",
+                "range_pips_null_pct",
+                "hl_first_null_pct",
+                "reliability_checks_total",
+                "reliability_failed",
+                "reliability_high_critical_failed",
+            ],
         )
         if not stage01.empty
         else pd.DataFrame(),
@@ -936,10 +1012,26 @@ def _write_stage_snapshots(
             "Contract check uses eval-year event tables consumed by WFO.",
             "Null percentages should remain near 0 for required modeling fields.",
             "Timezone contract rows include parse rate, monotonicity, DST and offset anomaly checks.",
+            "Data reliability checks add schema, parse-rate, duplicate timestamp, OHLC consistency, and session coverage gates.",
         ],
-        figure_paths=[stage01_plot] if stage01_plot.exists() else [],
+        figure_paths=[p for p in [stage01_plot, stage01_rel_plot] if p.exists()],
         figure_prefix="../figures/oco_bible/",
     )
+    if not rel_stage01.empty:
+        rel_fail = rel_stage01[rel_stage01.get("status", pd.Series(dtype=str)).astype(str).str.lower() != "pass"].copy()
+        stage01_content += "\n\n#### Data Reliability Failed Checks\n" + _table(
+            _pick_cols(
+                rel_fail,
+                ["symbol", "check_id", "severity_if_fail", "metric_name", "metric_value", "threshold", "details", "source_path"],
+            )
+        )
+    if not rel_issues_stage01.empty:
+        stage01_content += "\n\n#### Data Reliability Issues\n" + _table(
+            _pick_cols(
+                rel_issues_stage01,
+                ["symbol", "issue_id", "check_id", "severity", "summary", "metric_name", "metric_value", "threshold"],
+            )
+        )
     write_stage(1, stage01_content)
 
     # Stage 02: Opportunity mining.
@@ -1008,11 +1100,13 @@ def _write_stage_snapshots(
     wfo_rows: list[pd.DataFrame] = []
     wfo_summary_rows: list[dict[str, Any]] = []
     wfo_skip_rows: list[pd.DataFrame] = []
+    stage03_leak_rows: list[dict[str, Any]] = []
     for ctx in contexts:
         sym = ctx["symbol"]
         metrics = _safe_read_csv(ctx.get("wfo_metrics_csv"))
         thresholds = _safe_read_csv(ctx.get("wfo_thresholds_csv"))
         skips = _safe_read_csv(ctx.get("wfo_skip_reasons_csv"))
+        leakage = _safe_read_csv(ctx.get("leakage_checks_csv"))
         if not metrics.empty:
             wfo_summary_rows.append(
                 {
@@ -1032,6 +1126,25 @@ def _write_stage_snapshots(
         if not skips.empty:
             skips["symbol"] = sym
             wfo_skip_rows.append(skips)
+        if not leakage.empty:
+            if "symbol" in leakage.columns:
+                leakage = leakage[leakage["symbol"].astype(str).str.upper() == sym].copy()
+            leak_focus = leakage[
+                leakage.get("check_id", pd.Series(index=leakage.index, dtype=str)).astype(str).isin(
+                    ["L01", "L02", "L03", "L04", "L06", "L09"]
+                )
+            ].copy()
+            if not leak_focus.empty:
+                fail = leak_focus["status"].astype(str).str.lower() != "pass"
+                sev = leak_focus.get("severity_if_fail", pd.Series(index=leak_focus.index, dtype=str)).astype(str).str.lower()
+                stage03_leak_rows.append(
+                    {
+                        "symbol": sym,
+                        "checks_total": int(len(leak_focus)),
+                        "checks_failed": int(fail.sum()),
+                        "high_critical_failed": int((fail & sev.isin(["high", "critical"])).sum()),
+                    }
+                )
     stage03_summary = pd.DataFrame(wfo_summary_rows)
     stage03_monthly = pd.concat(wfo_rows, ignore_index=True) if wfo_rows else pd.DataFrame()
     stage03_plot = _stage_plot_path(outputs, 3, "wfo_monthly_gross")
@@ -1088,17 +1201,22 @@ def _write_stage_snapshots(
             + "- Interpretation: these diagnostics are computed on WFO out-of-sample predictions only.\n"
             + "- `bonferroni_pass_10pct` and `fdr_pass_10pct` summarize multiplicity-adjusted significance at alpha=0.10."
         )
+    stage03_leak = pd.DataFrame(stage03_leak_rows)
+    if not stage03_leak.empty:
+        stage03_content += "\n\n#### Leakage/Label Integrity (WFO Focus)\n" + _table(stage03_leak)
     write_stage(3, stage03_content)
 
     # Stage 04: Stop-limit execution.
     stage04_summary_rows: list[dict[str, Any]] = []
     caps_rows: list[pd.DataFrame] = []
     drift_rows: list[pd.DataFrame] = []
+    stage04_exec_rows: list[dict[str, Any]] = []
     for ctx in contexts:
         sym = ctx["symbol"]
         s = _safe_read_csv(ctx.get("stop_limit_summary_csv"))
         c = _safe_read_csv(ctx.get("stop_limit_caps_csv"))
         drift = _safe_read_csv(ctx.get("stop_limit_fill_drift_csv"))
+        er = _safe_read_csv(ctx.get("execution_risk_checks_csv"))
         if not s.empty:
             if "symbol" in s.columns:
                 ss = s[s["symbol"].astype(str).str.upper() == sym].copy()
@@ -1124,6 +1242,24 @@ def _write_stage_snapshots(
                 continue
             dd["symbol"] = sym
             drift_rows.append(dd)
+        if not er.empty:
+            if "symbol" in er.columns:
+                er = er[er["symbol"].astype(str).str.upper() == sym].copy()
+            if not er.empty:
+                fail = er["status"].astype(str).str.lower() != "pass"
+                sev = er.get("severity_if_fail", pd.Series(index=er.index, dtype=str)).astype(str).str.lower()
+                m_by_id = er.set_index("check_id")["metric_value"] if "check_id" in er.columns and "metric_value" in er.columns else pd.Series(dtype=float)
+                stage04_exec_rows.append(
+                    {
+                        "symbol": sym,
+                        "checks_total": int(len(er)),
+                        "checks_failed": int(fail.sum()),
+                        "high_critical_failed": int((fail & sev.isin(["high", "critical"])).sum()),
+                        "e02_min_month_fill_rate": _num(m_by_id.get("E02")),
+                        "e03_tail_above_cap": _num(m_by_id.get("E03")),
+                        "e10_lb95_month_signal_net": _num(m_by_id.get("E10")),
+                    }
+                )
     stage04 = pd.DataFrame(stage04_summary_rows)
     stage04_caps = pd.concat(caps_rows, ignore_index=True) if caps_rows else pd.DataFrame()
     stage04_plot = _stage_plot_path(outputs, 4, "stop_limit_caps")
@@ -1164,18 +1300,23 @@ def _write_stage_snapshots(
             ["symbol", "test_month", "session", "touch_found_rate", "overshoot_p95", "touch_found_rate_drop", "drift_z", "pass"],
         )
         stage04_content += "\n\n#### Fill Drift\n" + _table(d4)
+    stage04_exec = pd.DataFrame(stage04_exec_rows)
+    if not stage04_exec.empty:
+        stage04_content += "\n\n#### Execution Risk Pre-Live\n" + _table(stage04_exec)
     write_stage(4, stage04_content)
 
     # Stage 05: Reduced-core rolling.
     stage05_summary_rows: list[dict[str, Any]] = []
     stage05_monthly_rows: list[pd.DataFrame] = []
     stage05_churn_rows: list[pd.DataFrame] = []
+    stage05_leak_rows: list[dict[str, Any]] = []
     for ctx in contexts:
         sym = ctx["symbol"]
         rs = _safe_read_csv(ctx.get("reduced_summary_csv"))
         rm = _safe_read_csv(ctx.get("reduced_monthly_csv"))
         rc = _safe_read_csv(ctx.get("reduced_churn_csv"))
         sched = _safe_read_csv(ctx.get("reduced_state_schedule_csv"))
+        leakage = _safe_read_csv(ctx.get("leakage_checks_csv"))
         if not rs.empty:
             row = rs.iloc[0].to_dict()
             row["symbol"] = sym
@@ -1191,6 +1332,24 @@ def _write_stage_snapshots(
             stage05_churn_rows.append(c)
         if not sched.empty:
             add_metric(5, "states_scheduled", sym, len(sched), "rows", str(ctx.get("reduced_state_schedule_csv", "")))
+        if not leakage.empty:
+            if "symbol" in leakage.columns:
+                leakage = leakage[leakage["symbol"].astype(str).str.upper() == sym].copy()
+            leak_focus = leakage[
+                leakage.get("check_id", pd.Series(index=leakage.index, dtype=str)).astype(str).isin(["L05", "L10", "L11"])
+            ].copy()
+            if not leak_focus.empty:
+                fail = leak_focus["status"].astype(str).str.lower() != "pass"
+                stage05_leak_rows.append(
+                    {
+                        "symbol": sym,
+                        "checks_total": int(len(leak_focus)),
+                        "checks_failed": int(fail.sum()),
+                        "failed_check_ids": ",".join(
+                            leak_focus.loc[fail, "check_id"].astype(str).tolist()
+                        ),
+                    }
+                )
     stage05_summary = pd.DataFrame(stage05_summary_rows)
     stage05_monthly = pd.concat(stage05_monthly_rows, ignore_index=True) if stage05_monthly_rows else pd.DataFrame()
     stage05_plot = _stage_plot_path(outputs, 5, "reduced_monthly_gross")
@@ -1239,6 +1398,9 @@ def _write_stage_snapshots(
             ["symbol", "test_month", "states_selected", "state_churn_rate", "top_state_share", "state_hhi", "stability_pass", "status"],
         )
         stage05_content += "\n\n#### State Churn\n" + _table(c5)
+    stage05_leak = pd.DataFrame(stage05_leak_rows)
+    if not stage05_leak.empty:
+        stage05_content += "\n\n#### Leakage/Label Integrity (Reduced-Core Focus)\n" + _table(stage05_leak)
     write_stage(5, stage05_content)
 
     # Stage 06: Tick-exact verification.
@@ -1452,6 +1614,22 @@ def _write_stage_snapshots(
     for ctx in contexts:
         sym = ctx["symbol"]
         gp = _safe_read_json(ctx.get("governance_predeploy_json"))
+        leak_issues = _safe_read_csv(ctx.get("leakage_issues_csv"))
+        exec_issues = _safe_read_csv(ctx.get("execution_risk_issues_csv"))
+        leak_high_crit = 0
+        exec_high_crit = 0
+        if not leak_issues.empty:
+            if "symbol" in leak_issues.columns:
+                leak_issues = leak_issues[leak_issues["symbol"].astype(str).str.upper() == sym].copy()
+            if not leak_issues.empty and "severity" in leak_issues.columns:
+                sev = leak_issues["severity"].astype(str).str.lower()
+                leak_high_crit = int(sev.isin(["high", "critical"]).sum())
+        if not exec_issues.empty:
+            if "symbol" in exec_issues.columns:
+                exec_issues = exec_issues[exec_issues["symbol"].astype(str).str.upper() == sym].copy()
+            if not exec_issues.empty and "severity" in exec_issues.columns:
+                sev = exec_issues["severity"].astype(str).str.lower()
+                exec_high_crit = int(sev.isin(["high", "critical"]).sum())
         if not gp:
             gov_rows.append(
                 {
@@ -1461,6 +1639,8 @@ def _write_stage_snapshots(
                     "failed_checks": "missing_predeploy_json",
                     "checks_total": 1,
                     "checks_failed": 1,
+                    "leakage_high_critical_issues": leak_high_crit,
+                    "execution_risk_high_critical_issues": exec_high_crit,
                 }
             )
             continue
@@ -1481,6 +1661,8 @@ def _write_stage_snapshots(
                 "as_of": str(gp.get("meta", {}).get("as_of", "")) if isinstance(gp.get("meta"), dict) else "",
                 "window_end": str(gp.get("meta", {}).get("window_end", "")) if isinstance(gp.get("meta"), dict) else "",
                 "json_path": str(ctx.get("governance_predeploy_json") or ""),
+                "leakage_high_critical_issues": leak_high_crit,
+                "execution_risk_high_critical_issues": exec_high_crit,
             }
         )
     stage09_gov = pd.DataFrame(gov_rows)
@@ -1543,18 +1725,58 @@ def _write_stage_snapshots(
     )
     if not stage09_gov.empty:
         stage09_content += "\n\n#### Predeploy Validator Status\n" + _table(
-            _pick_cols(stage09_gov, ["symbol", "status", "blocker", "checks_total", "checks_failed", "as_of", "window_end", "failed_checks"])
+            _pick_cols(
+                stage09_gov,
+                [
+                    "symbol",
+                    "status",
+                    "blocker",
+                    "checks_total",
+                    "checks_failed",
+                    "leakage_high_critical_issues",
+                    "execution_risk_high_critical_issues",
+                    "as_of",
+                    "window_end",
+                    "failed_checks",
+                ],
+            )
         )
         if "status" in stage09_gov.columns and (stage09_gov["status"].astype(str).str.lower() == "missing").any():
             stage09_content += (
                 "\n\n- Missing predeploy JSON for one or more symbols. Generate with "
-                "`scripts/validate_oco_live_governance.py --mode predeploy --out-json ...` per symbol."
+                "`scripts/validate_oco_live_governance.py --mode deploy --data-reliability-checks-csv ... "
+                "--leakage-checks-csv ... --execution-risk-checks-csv ... --out-json ...` per symbol."
             )
     write_stage(9, stage09_content)
 
     # Stage 10: Risks and backlog.
     severity_map = {"low": 1.0, "medium": 2.0, "high": 3.0, "critical": 4.0}
     risk = fail_checks.copy()
+    exec_issue_rows: list[pd.DataFrame] = []
+    for ctx in contexts:
+        sym = ctx["symbol"]
+        exi = _safe_read_csv(ctx.get("execution_risk_issues_csv"))
+        if exi.empty:
+            continue
+        if "symbol" in exi.columns:
+            exi = exi[exi["symbol"].astype(str).str.upper() == sym].copy()
+        if exi.empty:
+            continue
+        r = pd.DataFrame(
+            {
+                "symbol": exi.get("symbol", pd.Series(dtype=str)).astype(str).str.upper(),
+                "check_id": exi.get("check_id", pd.Series(dtype=str)).astype(str),
+                "severity_if_fail": exi.get("severity", pd.Series(dtype=str)).astype(str).str.lower(),
+                "component": exi.get("component", pd.Series(dtype=str)).astype(str),
+                "metric_name": exi.get("summary", pd.Series(dtype=str)).astype(str),
+                "metric_value": np.nan,
+                "threshold": "",
+                "status": "fail",
+            }
+        )
+        exec_issue_rows.append(r)
+    if exec_issue_rows:
+        risk = pd.concat([risk, pd.concat(exec_issue_rows, ignore_index=True)], ignore_index=True)
     if not risk.empty:
         risk["severity_score"] = risk.get("severity_if_fail", risk.get("severity", "")).astype(str).str.lower().map(severity_map).fillna(1.0)
     risk_summary = (

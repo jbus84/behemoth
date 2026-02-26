@@ -1,6 +1,9 @@
 # Source Index
 
 ## Scripts
+- `scripts/audit_data_reliability.py`
+- `scripts/audit_oco_leakage_label_integrity.py`
+- `scripts/audit_oco_execution_risk_prelive.py`
 - `scripts/run_tick_opportunity_mining.py`
 - `scripts/run_tick_opportunity_monthly_wfo.py`
 - `scripts/analyze_oco_stop_limit_tickfill.py`
@@ -20,6 +23,9 @@
 - `configs/research/docs/oco_bible_manifest.yaml`
 
 ## Tests
+- `tests/test_data_reliability_audit.py`
+- `tests/test_oco_leakage_label_integrity.py`
+- `tests/test_oco_execution_risk_prelive.py`
 - `tests/test_tick_opportunity_mining.py`
 - `tests/test_oco_no_leakage_contract.py`
 - `tests/test_oco_reduced_core_rolling.py`

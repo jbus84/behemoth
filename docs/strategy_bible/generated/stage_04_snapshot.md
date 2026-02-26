@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 04
 
-- generated_at: `2026-02-26 21:20:14 UTC`
+- generated_at: `2026-02-26 22:19:06 UTC`
 - Execution realism is applied with tick first-cross overshoot.
 - Cap curve highlights fill-rate versus signal-level expectancy.
 
@@ -29,3 +29,10 @@
 
 #### Plots
 ![stage_04_stop_limit_caps](../../figures/oco_bible/stage_04_stop_limit_caps.png)
+
+#### Execution Risk Pre-Live
+| symbol   |   checks_total |   checks_failed |   high_critical_failed |   e02_min_month_fill_rate |   e03_tail_above_cap |   e10_lb95_month_signal_net |
+|:---------|---------------:|----------------:|-----------------------:|--------------------------:|---------------------:|----------------------------:|
+| EURUSD   |             10 |               0 |                      0 |                  0.985912 |           0.00993051 |                    0.541982 |
+| GBPUSD   |             10 |               0 |                      0 |                  0.985112 |           0.00912057 |                    0.787315 |
+| USDJPY   |             10 |               0 |                      0 |                  0.974161 |           0.0164939  |                    0.958587 |
