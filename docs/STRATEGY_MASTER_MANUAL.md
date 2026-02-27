@@ -1,361 +1,247 @@
-# Strategy Master Manual - Causal Mixed Portfolio (FX + Commodities ex-Oil)
+# Strategy Master Manual - Tick OCO Stop-Limit System
 
-**Version**: 9.2  
-**Date**: February 15, 2026  
+**Version**: 10.2  
+**Date**: February 27, 2026  
 **Status**: Active
 
-[!IMPORTANT]
-This manual is the canonical runbook for the current causal mixed-strategy pipeline.
-It documents exactly how to recreate:
-- mixed MOM/REV results,
-- exposure-focused strategy-family sweeps,
-- report rollups and recommended top-2 outputs.
+This is the canonical manual for the active OCO research/governance system.
+If any section conflicts with generated stage artifacts, the generated stage artifacts and contract checks win.
 
-## Scope
-- Universe: FX + commodities whitelist excluding oil-linked pairs
-- Excluded pairs: `Gold/Oil`, `Oil/Silver`
-- Included pair examples: `EUR/GBP`, `AUD/NZD`, `EUR/CHF`, `EUR/JPY`, `GBP/JPY`, `CHF/JPY`, `EUR/AUD`, `GBP/AUD`, `AUD/CAD`, `GBP/CAD`, `NZD/CAD`, `Gold/Silver`
-- Timeframes: `m5`, `m15`, `m60` (`h1` source for `m60`)
-- Strategy families:
-- Baseline families: `MOM`, `REV` across each timeframe
-- Exposure-focused stage-A families: `MOM_PERSIST`, `MOM_BURST`, `REV_EXHAUSTION`, `REV_QUICKFAIL`
-- Mixed search space: all 8 combinations of `MOM/REV` over `m5/m15/m60`
+## 1. Strategy Definition
 
-## Causal Rules
+### 1.1 Core Trade Concept
+- Build tick-velocity bars from raw ticks.
+- Mine OCO opportunities parameterized by `barrier_pips` and `horizon`.
+- Evaluate first-touch behavior and realized gross pip outcomes.
+- Use monthly walk-forward filtering and rolling probability thresholding to keep only stable opportunities.
+- Enforce stop-limit execution realism (tick overshoot caps, no-touch handling) before promotion.
 
-### Exit Contract
-Exit conditions are frozen at entry in the event builders/reports:
-- `max_hold_bars`
-- `entry_cross_zero_level`
-- `entry_stop_win_level_abs_z`
-- `entry_use_stop_win`
+### 1.2 Active Universe
+- `EURUSD`, `GBPUSD`, `USDJPY`
 
-No future information is used to modify an already-open trade's exit contract.
+### 1.3 What This System Is Not
+- Not the legacy mixed MOM/REV portfolio framework.
+- Not Kalman-only directional portfolio blending.
+- Not an API-first live runtime; current source of truth is artifact-first pipeline governance.
 
-### Guardrail Contract
-Guardrail is strictly causal and pair-local:
-1. Check pause at entry timestamp.
-2. If pair is paused, block the new entry.
-3. Update loss streak only when accepted trades exit.
-4. Never cancel already-open accepted trades.
+## 2. Why This System Works (and When It Should Not Be Used)
 
-This prevents the prior Sharpe/DD inflation bug from retroactive trade cancellation.
+### 2.1 Edge Mechanism (Why it works)
+- The system starts with broad OCO hypothesis mining, then keeps only states that survive rolling selection and downstream governance gates.
+- Edge concentration is not dominated by a tiny handful of states: Stage-2 `M01_top3_contrib_share` is low (about `0.04-0.05` across active symbols), which reduces single-pattern fragility.
+- Positive expectancy density is high at the mining layer: Stage-2 `M03_positive_density=1` for `EURUSD`, `GBPUSD`, and `USDJPY`.
+- Threshold slices show monotonic quality under stricter selection (for example, aggregate mean gross rises as quantile moves from `0.8` to `0.95`), consistent with a rankable signal rather than noise sorting.
+- Evidence: `docs/analysis/oco_edge_clarity_report.md`, `docs/strategy_bible/generated/pipeline_snapshot.md`.
 
-## Pipeline Overview
-1. Run mixed triple-barrier meta filter over all 8 baseline MOM/REV mixes.
-2. Optionally run exposure-focused strategy-family sweep mixes.
-3. Append mixed OOS variants into strategy report outputs.
-4. Select top-2 promoted mixes (Sharpe or balanced exposure objective).
-5. Materialize top-2-only mixed report slices.
+### 2.2 Temporal Robustness (Why this is not static-fit)
+- Time ordering is enforced by monthly walk-forward evaluation and rolling-history threshold policy; decisions at time `t` use only data available by `t`.
+- Threshold drift diagnostics remain in controlled ranges under current policy families:
+  - `W13` fragility is moderate (about `0.42-0.60`),
+  - `W14` brier drift is low (about `0.0026-0.0076`),
+  - `W15` turnover remains low (about `0.005-0.018` in recommended configs).
+- Stage 4 execution drift remains stable in latest month snapshots:
+  - fill rates around `0.986-0.994`,
+  - no-touch rate near `0`,
+  - overshoot `p95` around `0.3-0.6` pips.
+- Governance and contract controls remain clean at the current snapshot (`docs_contract` high/critical fails = `0`).
+- Evidence: `docs/analysis/oco_threshold_sensitivity_report.md`, `docs/analysis/oco_execution_drift_report.md`, `docs/analysis/oco_docs_contract_report.md`.
 
-Deep-dive model report:
-- `docs/analysis/m5_mom_m15_momrev_m60_rev_hgbt_report.md`
+### 2.3 Retail ECN Suitability (Qualified)
+This system is suitable for retail FX traders using ECN-style execution only when these operating conditions hold:
 
-## ML Model Spec (Meta Triple-Barrier Filter)
-This section documents the exact ML design used by `scripts/meta_triple_barrier_mixed_dd.py`.
+- Broker and platform support stop-limit semantics aligned with Stage-4 modeling (trigger + bounded fill logic).
+- Monthly realized `fill_rate` remains at or above `0.98`.
+- Monthly realized `overshoot_p95_pips` remains at or below `0.6` pips (symbol-specific), and no-touch remains near policy limits.
+- Effective spread/fee/slippage regime remains within monitored drift controls; red execution-drift breaches block promotion.
+- End-to-end latency is low enough that observed overshoot/no-touch metrics stay within the same control bands.
 
-### Objective
-- Estimate `P(bad_trade)` for short-horizon legs (`m5`, `m15`) and gate entries with a train-selected probability threshold.
-- Keep long-horizon `m60` leg as a structural leg in portfolio evaluation.
+This is not a universal profitability claim for all retail brokers or all market regimes. It is a conditional operational claim tied to current governed evidence.
 
-### Labels (Train/Test Fold-Local)
-- Labels are first-hit triple-barrier outcomes on short trades:
-- `0`: profit barrier hit first.
-- `1`: stop barrier hit first, or timeout-like close with negative terminal PnL.
-- `-1`: neutral (neither barrier hit in allowed hold window).
-- Barrier magnitudes are computed on train only, per timeframe, via quantiles:
-- `pt_q` from positive train PnL distribution.
-- `sl_q` from absolute negative train PnL distribution.
+### 2.4 Invalidation and Action Triggers
+| Condition | Detection metric/artifact | Required action |
+| --- | --- | --- |
+| Execution tail degrades | `E_DRIFT_OVERSHOOT_P95` in `docs/analysis/oco_execution_drift_report.md` | Recalibrate cap/session policy and halt symbol promotion until green/acceptable amber posture |
+| Selection fragility increases | `TS01_W13_THRESHOLD_FRAGILITY` in `docs/analysis/oco_threshold_sensitivity_report.md` | Re-run threshold policy sweep and refresh active policy lock |
+| Governance lock drift | `G03_lock_drift_flags` in Stage-9 outputs / edge clarity report | Block deploy path, rebuild lock from latest valid artifacts |
+| Robustness deterioration | Stage-8/11 LB95 stress metrics in `docs/analysis/oco_edge_clarity_report.md` | Freeze promotion and re-evaluate assumptions/cost model before resuming |
 
-### Features
-- Numeric:
-- `abs_z`, `z_velocity`, `z_accel`
-- `rolling_win_rate_10`, `rolling_avg_pnl_10`
-- `max_hold_bars`, `entry_hour_utc`, `entry_dow_utc`
-- Categorical (one-hot encoded):
-- `pair`, `timeframe`, `side`, `active_leg`
+### 2.5 How to Interpret This Section
+- Treat this section as a synthesis layer, not as standalone proof.
+- Final authority remains governed artifacts and stage snapshots.
+- If prose and artifacts conflict, follow artifact priority rules in Section 12.
 
-### Model
-- `HistGradientBoostingClassifier` with:
-- `max_depth=4`
-- `learning_rate=0.05`
-- `max_iter=350`
-- `min_samples_leaf=80`
-- `random_state` fold-adjusted from base seed
+## 3. Data and Label Contract
 
-### Calibration
-- Enabled by default.
-- Time-ordered split from train labeled rows:
-- model-fit subset first, calibration subset last (`calibration_frac=0.20` by default).
-- Default calibrator: `isotonic`.
-- Alternate calibrator options: `platt`, `none`.
-- Calibration quality artifacts are written to:
-- `*_fold_calibration.csv`
+### 3.1 Inputs
+- Raw tick source configured at runtime (not hard-coded in docs).
+- Tick-velocity bar artifacts in `data/analysis/tick_velocity/`.
+- Stage outputs in `data/analysis/tick_opportunity_mining/`.
 
-### Threshold Selection (Train-Only)
-- Grid over `P(bad_trade)` threshold (`--threshold-grid`).
-- For each threshold, compute guarded train metrics and train MC stress metrics.
-- Hard pass uses:
-- annualized retention floor (`--retain-annualized-frac`)
-- trade retention floor (`--min-trade-frac`)
-- max daily DD cap (absolute and percent variants)
-- MC p5 DD cap
-- Rank score:
-- `0.45 * norm(max_daily_dd_bps) + 0.35 * norm(sharpe) + 0.20 * norm(annualized_bps_calendar)`
-- If no strict pass exists, fallback is best eligible score (`strict_caps_unmet` recorded).
+### 3.2 Event Semantics
+- Entry trigger: first barrier touch in forward window.
+- If no touch within horizon: event is non-filled/no-touch under execution semantics.
+- Post-touch outcome: fixed-horizon gross pip move from touch context, evaluated causally.
 
-### Causality Controls
-- Walk-forward by calendar year with embargo (`--embargo-days`, default 5).
-- Train window is strictly pre-test-year.
-- Barrier parameters, calibrator fit, and threshold are selected from train data only.
-- Pair filter uses train-only pair Sharpe (`--pair-sharpe-cutoff`).
-- Guardrail does not retroactively cancel open trades.
+### 3.3 Execution Realism
+- Entry style: stop-limit, not naive market fill.
+- Overshoot tracked in pips at tick-level.
+- Cap policy controls acceptable overshoot and effective fills.
 
-### Mix Syntax
-- Timeframe strategy specs support single or combined tokens:
-- Single: `m15=MOM` or `m15=REV`
-- Combined: `m15=MOM+REV`
-- Canonical output mix IDs normalize combined tokens, for example:
-- `m5=MOM,m15=MOM+REV,m60=REV` -> `m5_mom__m15_momrev__m60_rev`
+## 4. Stage Architecture
 
-## Reproduction Commands
-Run from repo root.
+The production research process is a stage-gated chain:
+1. Stage 01: data foundation + reliability checks.
+2. Stage 02: opportunity mining.
+3. Stage 03: monthly walk-forward selection + thresholding.
+4. Stage 04: stop-limit execution realism and cap policy.
+5. Stage 05: reduced-core selection.
+6. Stage 06: tick-exact verification + portability.
+7. Stage 07: logical/statistical audit.
+8. Stage 08: robustness and stress tests.
+9. Stage 09: governance lock + deploy eligibility.
+10. Stage 10: known risks + backlog controls.
+11. Stage 11: execution Monte Carlo degradation analysis.
 
-### 1) Run all mixed combinations (authoritative)
+Generated status is published in `docs/strategy_bible/generated/pipeline_snapshot.md`.
+
+## 5. Causality and Leakage Controls
+
+### 5.1 Time Ordering Rules
+- Training windows are strictly prior to test windows.
+- Threshold and policy selection are train-only or rolling-history-only for the decision timestamp.
+- No future rows are used to decide current event selection.
+
+### 5.2 Selection Discipline
+- Candidate mining is hypothesis generation only.
+- Promotion relies on downstream WFO, execution realism, and robustness gates.
+- Contract checks reject stale, missing, or inconsistent artifacts.
+
+### 5.3 Governance Controls
+- Active non-green alerts require explicit disposition and owner.
+- Expired exceptions and recurrence breaches are governed by policy and fail contracts when configured.
+
+## 6. Rolling WFO Logic
+
+### 6.1 Selection Mechanics
+- Generate model probabilities for candidate events.
+- Compute threshold using rolling history policy (current standard: 20-day lookback family in policy set).
+- Select events above threshold for each decision period.
+
+### 6.2 Why Rolling Thresholds
+- Avoid static threshold drift.
+- Keep selection calibrated to recent distribution shift.
+- Reduce dependence on any single backtest-era probability scale.
+
+### 6.3 Robustness Tracking
+- Monthly positive-rate and LB95 metrics are tracked per symbol.
+- Threshold sensitivity metrics (`W13`, `W14`, `W15`) monitor fragility/drift.
+
+### 6.4 Latest Reduced-Core Expected Gross (Per Trade)
+Latest completed WFO cycle:
+- training window: September 1, 2025 to November 30, 2025
+- training cutoff (`train_end`): December 1, 2025
+- next evaluated month (`test_month`): December 2025
+- execution policy context: `q=0.9` rolling threshold
+- trading set used live: reduced-core filtered rows only
+
+Expected gross pips/trade proxy below is taken from reduced-core monthly outputs.
+
+| Pair | Expected gross pips/trade | Selected rows | Source |
+| --- | ---:| ---:| --- |
+| EURUSD | 1.061547 | 892 | `data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv` |
+| GBPUSD | 1.715543 | 1,023 | `data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_monthly.csv` |
+| USDJPY | 2.817082 | 843 | `data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_monthly.csv` |
+
+Interpretation note:
+- these are cycle-level expectancy estimates under the current selection policy, not guaranteed live outcomes;
+- execution-drift and governance gates (Sections 7-13) must still pass for deploy suitability.
+
+## 7. Execution Semantics (Stop-Limit)
+
+### 7.1 Why Stop-Limit
+- Pure market entries can overpay through overshoot.
+- Pure limits can miss directional breakout-style touches.
+- Stop-limit balances trigger certainty with bounded adverse fill.
+
+### 7.2 Cap Definition
+- `cap_pips` is the maximum allowed overshoot from barrier price to accepted fill.
+- If overshoot exceeds cap, treat as non-fill under capped scenario.
+
+### 7.3 Key Stage-04 Outputs
+- Drift report: `docs/analysis/oco_execution_drift_report.md`
+- Tickfill detail/cap sweeps in `data/analysis/tick_opportunity_mining/`.
+
+## 8. Current Acceptance Gates
+
+A symbol is release-eligible only when governed gates pass (representative):
+- Reduced-core monthly LB95 and capacity gates.
+- Tick-exact consistency gates.
+- Robustness LB95 and month-stability gates.
+- Stage integrity + docs contract high/critical failures equal zero.
+
+See:
+- `docs/analysis/oco_stage_integrity_report.md`
+- `docs/analysis/oco_docs_contract_report.md`
+- `docs/analysis/oco_edge_clarity_report.md`
+
+## 9. Core Scripts
+
+### 9.1 Strategy Pipeline
+- `scripts/run_tick_opportunity_mining.py`
+- `scripts/run_tick_opportunity_monthly_wfo.py`
+- `scripts/select_oco_reduced_core.py`
+- `scripts/select_oco_reduced_core_rolling.py`
+- `scripts/verify_oco_tick_exact_shortlist.py`
+- `scripts/analyze_oco_monthly_wfo_robustness.py`
+- `scripts/analyze_oco_stop_limit_tickfill.py`
+
+### 9.2 Governance and Docs
+- `scripts/build_oco_strategy_bible.py`
+- `scripts/build_oco_system_reference_docs.py`
+- `scripts/check_oco_docs_stage_integrity.py`
+- `scripts/validate_oco_docs_contract.py`
+- `scripts/build_oco_execution_drift_report.py`
+- `scripts/build_oco_threshold_sensitivity_report.py`
+- `scripts/remediate_oco_monitoring_alerts.py`
+- `scripts/build_oco_governance_explainability_report.py`
+- `scripts/build_operator_action_report.py`
+- `scripts/validate_oco_rule_universe_registry.py`
+
+## 10. Standard Reproduction
+
+Run from repo root:
+
 ```bash
-python scripts/meta_triple_barrier_mixed_dd.py \
-  --mixes all \
-  --exclude-oil \
-  --out-prefix meta_tb_mixed_no_oil_allmix
+make docs-contract-ci
+uv run python scripts/build_oco_strategy_bible.py --manifest configs/research/docs/oco_bible_manifest.yaml --strict false
+uv run python scripts/build_oco_system_reference_docs.py
+uv run mkdocs build
 ```
 
-Primary outputs:
-- `data/analysis/meta_tb_mixed_no_oil_allmix_summary.csv`
-- `data/analysis/meta_tb_mixed_no_oil_allmix_folds.csv`
-- `data/analysis/meta_tb_mixed_no_oil_allmix_oos_trades.csv`
-- `data/analysis/meta_tb_mixed_no_oil_allmix_oos_scored_trades.csv`
-- `data/analysis/meta_tb_mixed_no_oil_allmix_threshold_grid.csv`
-- `data/analysis/meta_tb_mixed_no_oil_allmix_label_ablation.csv`
-- `data/analysis/meta_tb_mixed_no_oil_allmix_fold_calibration.csv`
-- `data/analysis/meta_tb_mixed_no_oil_allmix_mc_daily_paths.csv`
-- `data/analysis/meta_tb_mixed_no_oil_allmix_mc_daily_summary.csv`
+## 11. Operator Workflow
 
-### 2) Build strategy report with mixed variants included
-```bash
-python scripts/report_strategy_fx_comm_multi_tf.py \
-  --exclude-oil \
-  --include-meta-mixed \
-  --meta-mixed-path data/analysis/meta_tb_mixed_no_oil_allmix_oos_trades.csv
-```
+Daily/weekly/monthly actions are defined in:
+- `docs/strategy_bible/operator_runbook.md`
+- `docs/strategy_bible/operator_playbook.md`
 
-Outputs:
-- `data/analysis/strategy_fx_comm_no_oil_overall.csv`
-- `data/analysis/strategy_fx_comm_no_oil_yearly.csv`
-- `data/analysis/strategy_fx_comm_no_oil_pair.csv`
-- `data/analysis/strategy_fx_comm_no_oil_pair_yearly.csv`
-- `data/analysis/strategy_fx_comm_no_oil_accel_thresholds.csv`
+The minimum operational cycle is:
+1. Refresh governed artifacts.
+2. Resolve non-green alerts/dispositions.
+3. Re-check stage and docs contracts.
+4. Rebuild docs and review stage snapshots.
 
-Notes:
-- Mixed rows are emitted as distinct variants: `mixed_<mix_id>__<variant>`
-- No blending across mixes.
+## 12. Artifact Priority Rules
 
-### 3) Produce recommended top-2 and filtered mixed report slices
-```bash
-python scripts/select_meta_mixed_top2.py
-```
+When documents disagree, use this priority:
+1. `data/analysis/tick_opportunity_mining/*` governed CSV artifacts
+2. `docs/strategy_bible/generated/*` snapshots
+3. `docs/analysis/*` governed reports
+4. this manual (`docs/STRATEGY_MASTER_MANUAL.md`)
 
-Outputs:
-- `data/analysis/meta_tb_mixed_no_oil_allmix_recommended_top2.csv`
-- `data/analysis/strategy_fx_comm_no_oil_mixed_top2_overall.csv`
-- `data/analysis/strategy_fx_comm_no_oil_mixed_top2_yearly.csv`
-- `data/analysis/strategy_fx_comm_no_oil_mixed_top2_pair.csv`
-- `data/analysis/strategy_fx_comm_no_oil_mixed_top2_pair_yearly.csv`
+## 13. Change Control
 
-### 4) Run exposure-focused strategy-family sweeps
-```bash
-python scripts/sweep_strategy_families.py \
-  --exclude-oil \
-  --mixes all \
-  --out-prefix strategy_family_sweep_no_oil
-```
-
-Outputs:
-- `data/analysis/strategy_family_sweep_no_oil_summary.csv`
-- `data/analysis/strategy_family_sweep_no_oil_ranking.csv`
-- `data/analysis/strategy_family_sweep_no_oil_selected_trades.csv`
-
-Notes:
-- Mixes are built from `MOM_PERSIST`, `MOM_BURST`, `REV_EXHAUSTION`, `REV_QUICKFAIL`.
-- Ranking objective is exposure-weighted and enforces configurable gates on:
-- `time_in_market_pct` reduction
-- Sharpe retention
-- annualized bps retention
-- `worst_single_day_bps` improvement (single-day DD, non-cumulative)
-- Defaults now enforce at least 2 `eligible=true` mixes via adaptive gate relaxation:
-- `--min-eligible 2`
-- gate relaxation over `--max-relax-steps` if needed
-
-### 5) Build report from strategy-family selected trades
-```bash
-python scripts/report_strategy_fx_comm_multi_tf.py \
-  --exclude-oil \
-  --include-meta-mixed \
-  --meta-mixed-path data/analysis/strategy_family_sweep_no_oil_selected_trades.csv
-```
-
-This appends selected family-mix rows into the standard report outputs under `timeframe=mixed`.
-
-### 6) Run low-Z + hard-ML walk-forward sweep (strict DD-first)
-```bash
-python scripts/sweep_lowz_ml_hardgate.py \
-  --exclude-oil \
-  --mixes all \
-  --out-prefix lowz_ml_hardgate
-```
-
-Outputs:
-- `data/analysis/lowz_ml_hardgate_summary.csv`
-- `data/analysis/lowz_ml_hardgate_ranking.csv`
-- `data/analysis/lowz_ml_hardgate_selected_trades.csv`
-- `data/analysis/lowz_ml_hardgate_oos_trades.csv`
-- `data/analysis/lowz_ml_hardgate_oos_scored_trades.csv`
-- `data/analysis/lowz_ml_hardgate_fold_metrics.csv`
-- `data/analysis/lowz_ml_hardgate_threshold_grid.csv`
-- `data/analysis/lowz_ml_hardgate_ablation.csv`
-
-To append selected low-Z ML results into the report:
-```bash
-python scripts/report_strategy_fx_comm_multi_tf.py \
-  --exclude-oil \
-  --include-meta-mixed \
-  --meta-mixed-path data/analysis/lowz_ml_hardgate_selected_trades.csv
-```
-
-### 7) Run cluster early-warning WFO (pre-loss-cluster detection)
-```bash
-python scripts/meta_cluster_earlywarning_wfo.py \
-  --mixes "m5=MOM,m15=MOM+REV,m60=REV" \
-  --exclude-oil \
-  --cluster-trade-horizon 10 \
-  --cluster-trade-loss-bps -250 \
-  --cluster-day-horizon 5 \
-  --cluster-day-loss-bps -400 \
-  --threshold-grid "0.35,0.40,0.45,0.50,0.55,0.60,0.65" \
-  --min-mean-bps 5.0 \
-  --out-prefix cluster_ew_m5mom_m15momrev_m60rev
-```
-
-Outputs:
-- `data/analysis/cluster_ew_m5mom_m15momrev_m60rev_summary.csv`
-- `data/analysis/cluster_ew_m5mom_m15momrev_m60rev_folds.csv`
-- `data/analysis/cluster_ew_m5mom_m15momrev_m60rev_threshold_grid.csv`
-- `data/analysis/cluster_ew_m5mom_m15momrev_m60rev_oos_trades.csv`
-- `data/analysis/cluster_ew_m5mom_m15momrev_m60rev_oos_scored_trades.csv`
-- `data/analysis/cluster_ew_m5mom_m15momrev_m60rev_label_stats.csv`
-- `data/analysis/cluster_ew_m5mom_m15momrev_m60rev_fold_calibration.csv`
-- `data/analysis/cluster_ew_m5mom_m15momrev_m60rev_mc_daily_paths.csv`
-- `data/analysis/cluster_ew_m5mom_m15momrev_m60rev_mc_daily_summary.csv`
-
-Build markdown report + figures:
-```bash
-python scripts/visualization/build_cluster_earlywarning_report.py \
-  --prefix cluster_ew_m5mom_m15momrev_m60rev \
-  --report-path docs/analysis/cluster_earlywarning_report.md \
-  --fig-dir docs/figures/cluster_earlywarning
-```
-
-Cluster EW interpretation:
-- `worst_single_day_bps`: worst non-cumulative daily PnL (single-day DD proxy).
-- `max_daily_dd_bps`: cumulative drawdown on the daily equity curve.
-- `cluster_gate_action`: `keep_full`, `keep_half`, `skip` based on calibrated risk.
-- `oos_hard_pass`: fold-level pass/fail against DD-first + return/trade floors.
-
-### 8) Run KF directional/both-sides meta WFO (Q80 actionable regimes)
-```bash
-python scripts/meta_kf_directional_wfo.py \
-  --mixes "m5=NONE,m15=MOM+REV,m60=REV" \
-  --trade-timeframes m15,m60 \
-  --decision-timeframes m15,m60 \
-  --models heuristic,logit,hgbt,dual_head,regime_expert \
-  --target-mode z_cross \
-  --accel-quantile 0.80 \
-  --pt-quantile 0.60 \
-  --sl-quantile 0.60 \
-  --p-min-grid "0.45,0.50,0.55,0.60" \
-  --ev-min-grid "0.00,0.10,0.20" \
-  --exclude-oil \
-  --out-prefix kf_dir_q80_1bar
-```
-
-Both-sides one-bar probe:
-```bash
-python scripts/meta_kf_directional_wfo.py \
-  --mixes "m5=NONE,m15=MOM+REV,m60=REV" \
-  --trade-timeframes m15,m60 \
-  --decision-timeframes m15,m60 \
-  --models heuristic,logit,hgbt,dual_head,regime_expert \
-  --target-mode one_bar \
-  --policy-mode both_sides \
-  --p-move-min 0.85 \
-  --both-balance-tol 0.08 \
-  --both-capture-mult 1.00 \
-  --accel-quantile 0.80 \
-  --pt-quantile 0.60 \
-  --sl-quantile 0.60 \
-  --exclude-oil \
-  --out-prefix kf_both_q80_1bar
-```
-
-Outputs:
-- `data/analysis/kf_dir_q80_1bar_summary.csv`
-- `data/analysis/kf_dir_q80_1bar_folds.csv`
-- `data/analysis/kf_dir_q80_1bar_model_grid.csv`
-- `data/analysis/kf_dir_q80_1bar_oos_trades.csv`
-- `data/analysis/kf_dir_q80_1bar_oos_scored.csv`
-- `data/analysis/kf_dir_q80_1bar_yearly.csv`
-- `data/analysis/kf_dir_q80_1bar_pair_timeframe_breakdown.csv`
-
-Directional KF interpretation:
-- Trading universe can be restricted with `--trade-timeframes` (for example `m15,m60`), while still using `m5` as context features.
-- `--target-mode z_cross` uses full trade outcomes (existing causal z-cross/contract exits) for labels and policy scoring.
-- `--target-mode one_bar` is available for short-horizon probing, but is not the primary production objective.
-- `--policy-mode directional` keeps the directional keep/skip/override logic.
-- `--policy-mode both_sides` enables OCO-style one-bar capture on high move-probability, direction-ambiguous rows.
-- `--policy-mode both_sides` currently requires `--target-mode one_bar`.
-- Actionable rows are selected by train-only threshold on `|kf_z_accel|` at quantile `--accel-quantile`.
-- Labels are one-bar forward directional classes from raw move:
-- `+1` if move >= PT barrier.
-- `-1` if move <= -SL barrier.
-- `0` otherwise.
-- PT/SL barriers are estimated from train-only actionable rows per timeframe.
-- Candidate policy overrides baseline side only when both confidence and EV pass selected thresholds; otherwise baseline side is retained.
-- Promotion is strict hard-gate only (`directional_promoted` falls back to baseline on fold hard-fail).
-
-Smoke report template:
-- `docs/analysis/kf_directional_q80_1bar_report.md`
-
-## Current Recommended Top-2 (from full all-mix run)
-
-Selection rule:
-- Rank `meta_tb_promoted` mixes by `sharpe` descending, tie-break `annualized_bps_calendar` descending.
-
-| Rank | Mix | Trades | Mean PnL/Trade (bps) | Sharpe | Annualized BPS | Max Daily DD (bps) | MC Pass Rate |
-|---|---|---:|---:|---:|---:|---:|---:|
-| 1 | `m5_mom__m15_mom__m60_rev` | 13,539 | 20.37 | 5.097 | 46,027.29 | -5,437.81 | 1.00 |
-| 2 | `m5_mom__m15_rev__m60_rev` | 8,432 | 19.26 | 4.032 | 27,147.51 | -3,504.99 | 1.00 |
-
-## Interpretation Notes
-- `annualized_bps_calendar`: average daily bps over calendar days annualized by `365.25`.
-- `max_daily_dd_bps`: worst peak-to-trough drawdown on the calendar-day cumulative bps curve (more negative is worse).
-- `cagr` in report tables is account-equity CAGR under risk sizing (`risk_per_trade_pct=1%`); it is not directly comparable to raw bps without the risk-sizing context.
-- Exposure metrics now included in report rows:
-- `time_in_market_pct`
-- `avg_concurrent_trades`
-- `trade_density_per_day`
-- `avg_trade_duration_bars`
-- `avg_trade_duration_hours`
-
-## Strategy Guide Hygiene
-- This manual intentionally excludes deprecated or non-causal reporting sections.
-- Source-of-truth artifacts are the CSVs listed above.
-- If rerunning with changed parameters, update this guide with the exact command line and new result table.
+Any change to strategy logic, threshold policy, execution semantics, or gate definitions requires:
+1. regenerated stage artifacts,
+2. regenerated governance reports,
+3. passing docs contract checks,
+4. updated manual and impacted stage specs.

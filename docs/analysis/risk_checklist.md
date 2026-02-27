@@ -74,5 +74,5 @@ This checklist focuses on **signal/PNL alignment risk** for the rule‑based MOM
 
 ## OCO Pair Scope Reference
 - Current OCO deployment scope is constrained to `EURUSD`, `GBPUSD`, and `USDJPY`.
-- Historical pair screening notes are archived at:
-  - `docs/archive/analysis/stable_pairs_whitelist.md`
+- Scope governance and approved rule universe are tracked in:
+  - `docs/analysis/oco_rule_universe_registry_report.md`

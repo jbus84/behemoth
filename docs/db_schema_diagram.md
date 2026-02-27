@@ -1,72 +1,51 @@
-# Database Schema Diagram
+# Persistence Diagram
 
 ```mermaid
-erDiagram
-  positions ||--o{ orders : contains
-  positions ||--o{ position_events : logs
-  positions ||--o{ idempotency_keys : idempotent
-  guardrail_state }o--|| positions : per_pair
-  account_state ||--o{ positions : tracks
+flowchart TD
+  A[configs/research/governance] --> B[stage scripts]
+  B --> C[data/analysis/tick_opportunity_mining]
+  C --> D[docs/analysis reports]
+  C --> E[docs/strategy_bible/generated snapshots]
+  D --> F[docs-contract checks]
+  E --> F
+  F --> G[promotion decision]
 
-  positions {
-    string id PK
-    string strategy_id
-    string pair
-    string side
-    string active_leg
-    string status
-    datetime entry_ts
-    datetime exit_ts
-    float entry_price
-    float exit_price
-    float size
-    float notional_usd
-    float alloc_frac
-    float entry_equity
-    float pnl_bps
-  }
-
-  orders {
-    string id PK
-    string position_id FK
-    string status
-    string order_type
-    float qty
-    float price
-    float slippage_bps
-  }
-
-  position_events {
-    string id PK
-    string position_id FK
-    string event_type
-    json payload
-  }
-
-  idempotency_keys {
-    string id PK
-    string key
-    string request_hash
-    string position_id FK
-  }
-
-  guardrail_state {
-    string id PK
-    string strategy_id
-    string pair
-    int loss_streak
-    datetime pause_until
-  }
-
-  account_state {
-    string id PK
-    string strategy_id
-    float equity
-    float peak_equity
-    float day_start_equity
-    date day_start_date
-    int consecutive_losses
-    bool halted
-    string halt_reason
-  }
+  H[optional services/api DB] -. integration only .-> G
 ```
+
+The relational DB path is optional. The mandatory path is the artifact contract path shown above.
+
+## Rolling Historical Evidence
+
+<!-- GENERATED:SYSREF:DB_SCHEMA_DIAGRAM:START -->
+- generated_at_utc: `2026-02-27T16:58:52Z`
+- symbols_covered: `EURUSD,GBPUSD,USDJPY`
+- stop-limit_reference: `stage_04_execution_realism`
+- artifact_sources:
+  - `data/analysis/tick_opportunity_mining/oco_execution_drift_monthly.csv`
+  - `data/analysis/tick_opportunity_mining/oco_threshold_sensitivity.csv`
+  - `data/analysis/tick_opportunity_mining/operator_action_status.csv`
+  - `data/analysis/tick_opportunity_mining/oco_alert_disposition.csv`
+  - `data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv`
+  - `data/analysis/tick_opportunity_mining/docs_contract_checks.csv`
+  - `data/analysis/tick_opportunity_mining/run_delta_summary.csv`
+
+#### Rolling Snapshot By Symbol
+| symbol   | latest_month   | drift_fill_rate   | drift_overshoot_p95   | w13_fragility   | policy_quantile   | mc_s1_lb95   | reduced_mean_gross   |   non_green_actions |   non_green_alerts |
+|:---------|:---------------|:------------------|:----------------------|:----------------|:------------------|:-------------|:---------------------|--------------------:|-------------------:|
+| EURUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| GBPUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| USDJPY   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+
+#### Rolling Trend (Last 3 Months)
+| symbol   |   months_used | fill_rate_mean_3m   | overshoot_p95_mean_3m   |
+|:---------|--------------:|:--------------------|:------------------------|
+| EURUSD   |             0 |                     |                         |
+| GBPUSD   |             0 |                     |                         |
+| USDJPY   |             0 |                     |                         |
+
+#### Governance Snapshot
+|   checks_failed |   high_critical_failed | max_age_hours_c6   |   run_delta_metric_rows_changed |   run_delta_gate_rows_changed |
+|----------------:|-----------------------:|:-------------------|--------------------------------:|------------------------------:|
+|               0 |                      0 |                    |                               0 |                             0 |
+<!-- GENERATED:SYSREF:DB_SCHEMA_DIAGRAM:END -->

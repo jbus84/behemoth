@@ -1,14 +1,13 @@
 # Analysis Taxonomy Rules
 
-- generated_at_utc: `2026-02-27T15:20:48Z`
+- generated_at_utc: `2026-02-27T16:58:36Z`
 
 ## Group Assignment Order
-1. `archive`: any document under `docs/archive/`.
-2. `core`: canonical governance reports for the OCO bible.
-3. `symbol`: filename maps to specific symbol token (`EURUSD`, `GBPUSD`, `USDJPY`).
-4. `stage`: filename keyword maps to stage id.
-5. `legacy`: known historical/legacy analysis families.
-6. `unclassified`: everything else (should be zero in healthy state).
+1. `core`: canonical governance reports for the OCO bible.
+2. `symbol`: filename maps to specific symbol token (`EURUSD`, `GBPUSD`, `USDJPY`).
+3. `stage`: filename keyword maps to stage id.
+4. `legacy`: known historical/legacy analysis families.
+5. `unclassified`: everything else (should be zero in healthy state).
 
 ## Stage Keyword Map
 |   stage_id | keywords                                                                  |

@@ -1,49 +1,52 @@
 # Monitoring
 
-## Metrics
-Prometheus metrics are exposed at `GET /metrics` when `metrics_enabled: true`.
+## Primary Monitoring Mode (Current)
+Monitoring is artifact-driven from each run:
+- `docs/analysis/operator_action_report.md`
+- `docs/analysis/oco_alert_remediation_report.md`
+- `docs/analysis/oco_governance_explainability_report.md`
+- `docs/analysis/oco_docs_contract_report.md`
 
-Key metrics include:
+## Required Daily/Weekly Signals
+- execution drift metrics (`E_DRIFT_*`),
+- threshold sensitivity alerts (`TS*`),
+- governance near-fail/lock-drift diagnostics (`G01`, `G03`),
+- freshness and exception expiry.
 
-- Request volume and latency: `behemoth_http_requests_total`, `behemoth_http_request_duration_seconds`
-- Guardrail blocks: `behemoth_guardrail_blocks_total`
-- Risk halts: `behemoth_risk_halts_total`
-- Active positions: `behemoth_positions_active_total`, `behemoth_positions_active_by_pair`
-- Guardrail pauses: `behemoth_guardrail_paused_total`, `behemoth_guardrail_paused_by_pair`
-- Account state: `behemoth_account_equity`, `behemoth_account_peak_equity`,
-  `behemoth_account_day_start_equity`, `behemoth_account_halted`
+## Optional Infra Monitoring
+Prometheus/Grafana endpoints are legacy/optional and only required if the API runtime is actively used.
 
-## Grafana Dashboard
-The `Behemoth Overview` dashboard is provisioned automatically in Grafana.
-It shows **guardrailed M15 executed state** only.
+## Rolling Historical Evidence
 
-- API request rate and p95 latency
-- Active positions
-- Guardrail paused pairs
-- Account equity and peak equity
-- Halted state
-- Active positions by pair
+<!-- GENERATED:SYSREF:MONITORING:START -->
+- generated_at_utc: `2026-02-27T16:58:52Z`
+- symbols_covered: `EURUSD,GBPUSD,USDJPY`
+- stop-limit_reference: `stage_04_execution_realism`
+- artifact_sources:
+  - `data/analysis/tick_opportunity_mining/oco_execution_drift_monthly.csv`
+  - `data/analysis/tick_opportunity_mining/oco_threshold_sensitivity.csv`
+  - `data/analysis/tick_opportunity_mining/operator_action_status.csv`
+  - `data/analysis/tick_opportunity_mining/oco_alert_disposition.csv`
+  - `data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv`
+  - `data/analysis/tick_opportunity_mining/docs_contract_checks.csv`
+  - `data/analysis/tick_opportunity_mining/run_delta_summary.csv`
 
-Grafana URL: `http://localhost:3000` (admin/admin)
-Prometheus URL: `http://localhost:9090`
+#### Rolling Snapshot By Symbol
+| symbol   | latest_month   | drift_fill_rate   | drift_overshoot_p95   | w13_fragility   | policy_quantile   | mc_s1_lb95   | reduced_mean_gross   |   non_green_actions |   non_green_alerts |
+|:---------|:---------------|:------------------|:----------------------|:----------------|:------------------|:-------------|:---------------------|--------------------:|-------------------:|
+| EURUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| GBPUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| USDJPY   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 
-## Historical Replay (Dashboard Activity)
-To replay historical trades into the DB and watch dashboards update:
+#### Rolling Trend (Last 3 Months)
+| symbol   |   months_used | fill_rate_mean_3m   | overshoot_p95_mean_3m   |
+|:---------|--------------:|:--------------------|:------------------------|
+| EURUSD   |             0 |                     |                         |
+| GBPUSD   |             0 |                     |                         |
+| USDJPY   |             0 |                     |                         |
 
-```bash
-export DATABASE_URL=postgresql+psycopg2://behemoth:behemoth@localhost:5432/behemoth
-uv run python scripts/replay_pipeline_to_db.py --bars m15 --reset --sleep 0.1
-```
-
-This streams trades into the API DB, updates guardrail/account state, and
-populates live metrics that Grafana displays. The `--sleep` flag slows the
-replay so the dashboard visibly updates.
-
-By default, the replay enforces kill‑switches and guardrail logic and writes a
-JSON report to `data/analysis/replay_report.json`.
-
-The report includes replay counts plus summary stats (trades, mean PnL, total
-PnL, max DD, Sharpe metrics) per bar.
-
-It also includes equity curve stats (CAGR, max DD %, max daily DD %) and
-monthly buckets for time‑based inspection.
+#### Governance Snapshot
+|   checks_failed |   high_critical_failed | max_age_hours_c6   |   run_delta_metric_rows_changed |   run_delta_gate_rows_changed |
+|----------------:|-----------------------:|:-------------------|--------------------------------:|------------------------------:|
+|               0 |                      0 |                    |                               0 |                             0 |
+<!-- GENERATED:SYSREF:MONITORING:END -->

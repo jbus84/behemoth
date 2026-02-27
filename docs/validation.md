@@ -1,27 +1,55 @@
-# Validation & Testing
+# Validation
 
-This project includes reproducibility, causality, and API alignment checks.
+## Validation Layers
+1. Stage integrity and required section checks.
+2. Rule-universe registry lock checks.
+3. Alert disposition and governance explainability checks.
+4. Docs contract checks (including freshness, metadata, and path portability).
+5. Strategy-level robustness and Monte Carlo checks.
 
-## Reproducibility
-- `scripts/build_repro_manifest.py` → `data/analysis/repro_manifest.json`
+## Core Commands
+```bash
+make docs-contract-ci
+uv run pytest -q tests/test_oco_docs_contract.py tests/test_stage_integrity_gate.py
+uv run mkdocs build
+```
 
-## API vs Pipeline Alignment
-- `scripts/validate_api_vs_pipeline.py`
-- `scripts/validate_api_predictions_vs_pipeline.py`
-- `scripts/validate_db_predictions_vs_pipeline.py`
+## Primary Evidence
+- `data/analysis/tick_opportunity_mining/docs_contract_checks.csv`
+- `data/analysis/tick_opportunity_mining/oco_stage_integrity_checks.csv`
+- `docs/analysis/oco_docs_contract_report.md`
 
-## Baseline Snapshots (M5/M15)
-- `scripts/build_baselines.py` → `data/baselines/baseline_m5.json`, `data/baselines/baseline_m15.json`
-- `tests/test_baseline_snapshots.py`
+## Rolling Historical Evidence
 
-## Guardrail Causality
-- `tests/test_guardrail_semantics.py`
-- `tests/test_guardrail_ordering.py`
-- `tests/test_guardrail_deep_dive.py`
+<!-- GENERATED:SYSREF:VALIDATION:START -->
+- generated_at_utc: `2026-02-27T16:58:52Z`
+- symbols_covered: `EURUSD,GBPUSD,USDJPY`
+- stop-limit_reference: `stage_04_execution_realism`
+- artifact_sources:
+  - `data/analysis/tick_opportunity_mining/oco_execution_drift_monthly.csv`
+  - `data/analysis/tick_opportunity_mining/oco_threshold_sensitivity.csv`
+  - `data/analysis/tick_opportunity_mining/operator_action_status.csv`
+  - `data/analysis/tick_opportunity_mining/oco_alert_disposition.csv`
+  - `data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv`
+  - `data/analysis/tick_opportunity_mining/docs_contract_checks.csv`
+  - `data/analysis/tick_opportunity_mining/run_delta_summary.csv`
 
-## Hard Gates
-- `tests/test_hard_gates.py`
-- `tests/test_api_risk_controls.py`
+#### Rolling Snapshot By Symbol
+| symbol   | latest_month   | drift_fill_rate   | drift_overshoot_p95   | w13_fragility   | policy_quantile   | mc_s1_lb95   | reduced_mean_gross   |   non_green_actions |   non_green_alerts |
+|:---------|:---------------|:------------------|:----------------------|:----------------|:------------------|:-------------|:---------------------|--------------------:|-------------------:|
+| EURUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| GBPUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| USDJPY   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 
-## Visual Diagnostics
-Charts in `docs/figures` and summary CSVs in `data/analysis/*`.
+#### Rolling Trend (Last 3 Months)
+| symbol   |   months_used | fill_rate_mean_3m   | overshoot_p95_mean_3m   |
+|:---------|--------------:|:--------------------|:------------------------|
+| EURUSD   |             0 |                     |                         |
+| GBPUSD   |             0 |                     |                         |
+| USDJPY   |             0 |                     |                         |
+
+#### Governance Snapshot
+|   checks_failed |   high_critical_failed | max_age_hours_c6   |   run_delta_metric_rows_changed |   run_delta_gate_rows_changed |
+|----------------:|-----------------------:|:-------------------|--------------------------------:|------------------------------:|
+|               0 |                      0 |                    |                               0 |                             0 |
+<!-- GENERATED:SYSREF:VALIDATION:END -->

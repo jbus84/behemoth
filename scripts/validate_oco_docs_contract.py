@@ -335,6 +335,35 @@ GOVERNANCE_EXPLAINABILITY_REQUIRED_COLUMNS = [
 
 ABSOLUTE_PATH_RE = re.compile(r"(/Users/|[A-Za-z]:\\)")
 
+SYSREF_PAGE_SPECS: list[tuple[str, str]] = [
+    ("ARCHITECTURE", "architecture.md"),
+    ("API", "api.md"),
+    ("API_REFERENCE", "api_reference.md"),
+    ("OPENAPI", "openapi.md"),
+    ("CORE_REFERENCE", "core_reference.md"),
+    ("RISK_CONTROLS", "risk_controls.md"),
+    ("MONITORING", "monitoring.md"),
+    ("DATA_PIPELINE", "data_pipeline.md"),
+    ("VALIDATION", "validation.md"),
+    ("CONFIG_REFERENCE", "config_reference.md"),
+    ("CODE_REFERENCE", "code_reference.md"),
+    ("DEVELOPMENT", "development.md"),
+    ("DEPLOYMENT", "deployment.md"),
+    ("MAKEFILE", "makefile.md"),
+    ("DB_SCHEMA", "db_schema.md"),
+    ("DB_SCHEMA_DIAGRAM", "db_schema_diagram.md"),
+]
+
+SYSREF_STOP_LIMIT_REQUIRED_PATHS = {
+    "architecture.md",
+    "api.md",
+    "monitoring.md",
+    "risk_controls.md",
+    "deployment.md",
+}
+
+SYSREF_REQUIRED_SYMBOLS = {"EURUSD", "GBPUSD", "USDJPY"}
+
 
 def _table(df: pd.DataFrame) -> str:
     if df.empty:
@@ -353,6 +382,28 @@ def _count_machine_local_path_tokens(text: str) -> int:
     if not text:
         return 0
     return int(len(ABSOLUTE_PATH_RE.findall(text)))
+
+
+def _extract_sysref_block(path: Path, key: str) -> str:
+    if not path.exists():
+        return ""
+    text = path.read_text(encoding="utf-8", errors="ignore")
+    start = f"<!-- GENERATED:SYSREF:{key}:START -->"
+    end = f"<!-- GENERATED:SYSREF:{key}:END -->"
+    i = text.find(start)
+    j = text.find(end)
+    if i < 0 or j < 0 or i >= j:
+        return ""
+    return text[i : j + len(end)]
+
+
+def _is_repo_relative_path(path_text: str) -> bool:
+    p = str(path_text).strip()
+    if not p:
+        return False
+    if p.startswith("/"):
+        return False
+    return re.match(r"^[A-Za-z]:[\\/]", p) is None
 
 
 def _add_check(
@@ -1583,6 +1634,209 @@ def run(
         comparator="==",
         source_path=edge_metrics_csv,
         details=json.dumps(portability_hits, sort_keys=True),
+    )
+
+    # C41: System reference docs exist, generated markers are present, and build status is complete.
+    sysref_status_csv = edge_metrics_csv.parent / "system_reference_build_status.csv"
+    try:
+        sysref_status = pd.read_csv(sysref_status_csv) if sysref_status_csv.exists() else pd.DataFrame()
+    except Exception:
+        sysref_status = pd.DataFrame()
+    sysref_missing_pages: list[str] = []
+    sysref_missing_markers: list[str] = []
+    for key, rel_path in SYSREF_PAGE_SPECS:
+        p = docs_root.parent / rel_path
+        if not p.exists():
+            sysref_missing_pages.append(rel_path)
+            continue
+        if not _extract_sysref_block(p, key):
+            sysref_missing_markers.append(rel_path)
+    status_cols = {"page_key", "doc_path", "generated_at_utc"}
+    missing_status_cols = [c for c in status_cols if c not in sysref_status.columns]
+    status_keys = (
+        set(sysref_status["page_key"].astype(str).tolist()) if (not sysref_status.empty and "page_key" in sysref_status.columns) else set()
+    )
+    expected_keys = {k for k, _ in SYSREF_PAGE_SPECS}
+    _add_check(
+        checks_rows,
+        check_id="C41",
+        check_name="system_reference_pages_generated_and_indexed",
+        passed=len(sysref_missing_pages) == 0
+        and len(sysref_missing_markers) == 0
+        and sysref_status_csv.exists()
+        and len(missing_status_cols) == 0
+        and expected_keys.issubset(status_keys),
+        severity_if_fail="high",
+        metric_name="system_reference_generation_gaps",
+        metric_value=int(
+            len(sysref_missing_pages)
+            + len(sysref_missing_markers)
+            + len(missing_status_cols)
+            + len(expected_keys - status_keys)
+        ),
+        threshold=0,
+        comparator="==",
+        source_path=sysref_status_csv,
+        details=json.dumps(
+            {
+                "missing_pages": sysref_missing_pages,
+                "missing_markers": sysref_missing_markers,
+                "missing_status_columns": missing_status_cols,
+                "missing_status_page_keys": sorted(list(expected_keys - status_keys)),
+            },
+            sort_keys=True,
+        ),
+    )
+
+    # C42: Each system-reference page exposes rolling snapshot table with symbol rows or explicit unavailable fallback.
+    sysref_snapshot_gaps: list[str] = []
+    for key, rel_path in SYSREF_PAGE_SPECS:
+        p = docs_root.parent / rel_path
+        block = _extract_sysref_block(p, key)
+        if not block:
+            sysref_snapshot_gaps.append(rel_path + ":missing_block")
+            continue
+        has_header = "#### Rolling Snapshot By Symbol" in block
+        has_symbol_row = any(re.search(rf"\|\s*{sym}\s*\|", block) is not None for sym in sorted(SYSREF_REQUIRED_SYMBOLS))
+        has_unavailable = "| unavailable |" in block.lower()
+        if not has_header or not (has_symbol_row or has_unavailable):
+            sysref_snapshot_gaps.append(rel_path)
+    _add_check(
+        checks_rows,
+        check_id="C42",
+        check_name="system_reference_rolling_snapshot_nonempty",
+        passed=len(sysref_snapshot_gaps) == 0,
+        severity_if_fail="high",
+        metric_name="system_reference_snapshot_gaps",
+        metric_value=int(len(sysref_snapshot_gaps)),
+        threshold=0,
+        comparator="==",
+        source_path=docs_root.parent,
+        details=",".join(sysref_snapshot_gaps),
+    )
+
+    # C43: Artifact source references are present and use repository-relative paths.
+    sysref_artifact_issues: list[str] = []
+    repo_root = docs_root.parent.parent
+    for key, rel_path in SYSREF_PAGE_SPECS:
+        p = docs_root.parent / rel_path
+        block = _extract_sysref_block(p, key)
+        if not block:
+            sysref_artifact_issues.append(rel_path + ":missing_block")
+            continue
+        if "- artifact_sources:" not in block:
+            sysref_artifact_issues.append(rel_path + ":missing_artifact_sources_heading")
+            continue
+        artifacts = re.findall(r"^\s*-\s*`([^`]+)`\s*$", block, flags=re.MULTILINE)
+        if not artifacts:
+            sysref_artifact_issues.append(rel_path + ":no_artifact_rows")
+            continue
+        non_unavailable = [a for a in artifacts if str(a).strip().lower() != "unavailable"]
+        if not non_unavailable:
+            sysref_artifact_issues.append(rel_path + ":all_artifacts_unavailable")
+            continue
+        for art in non_unavailable:
+            if not _is_repo_relative_path(art):
+                sysref_artifact_issues.append(f"{rel_path}:absolute:{art}")
+                continue
+            if not (repo_root / art).exists():
+                sysref_artifact_issues.append(f"{rel_path}:missing:{art}")
+    _add_check(
+        checks_rows,
+        check_id="C43",
+        check_name="system_reference_artifact_sources_present_and_relative",
+        passed=len(sysref_artifact_issues) == 0,
+        severity_if_fail="medium",
+        metric_name="system_reference_artifact_source_issues",
+        metric_value=int(len(sysref_artifact_issues)),
+        threshold=0,
+        comparator="==",
+        source_path=docs_root.parent,
+        details=",".join(sysref_artifact_issues),
+    )
+
+    # C44: System-reference generated timestamps must be recent.
+    sysref_ts_missing: list[str] = []
+    sysref_max_age_h = float("inf")
+    for key, rel_path in SYSREF_PAGE_SPECS:
+        p = docs_root.parent / rel_path
+        block = _extract_sysref_block(p, key)
+        if not block:
+            sysref_ts_missing.append(rel_path + ":missing_block")
+            continue
+        m = re.search(r"-\s*generated_at_utc:\s*`([^`]+)`", block)
+        if not m:
+            sysref_ts_missing.append(rel_path + ":missing_generated_at_utc")
+            continue
+        ts = pd.to_datetime(m.group(1), utc=True, errors="coerce")
+        if pd.isna(ts):
+            sysref_ts_missing.append(rel_path + ":invalid_generated_at_utc")
+            continue
+        now = datetime.now(timezone.utc)
+        age_h = float((now - ts.to_pydatetime()).total_seconds() / 3600.0)
+        sysref_max_age_h = age_h if sysref_max_age_h == float("inf") else max(sysref_max_age_h, age_h)
+    _add_check(
+        checks_rows,
+        check_id="C44",
+        check_name="system_reference_generated_timestamp_freshness",
+        passed=len(sysref_ts_missing) == 0 and sysref_max_age_h <= float(thresholds.max_age_hours),
+        severity_if_fail="medium",
+        metric_name="system_reference_max_age_hours",
+        metric_value=sysref_max_age_h,
+        threshold=float(thresholds.max_age_hours),
+        comparator="<=",
+        source_path=docs_root.parent,
+        details=",".join(sysref_ts_missing),
+    )
+
+    # C45: Key system docs must explicitly reference stop-limit behavior.
+    stop_limit_missing: list[str] = []
+    for rel_path in sorted(SYSREF_STOP_LIMIT_REQUIRED_PATHS):
+        p = docs_root.parent / rel_path
+        txt = p.read_text(encoding="utf-8", errors="ignore") if p.exists() else ""
+        if "stop-limit" not in txt.lower():
+            stop_limit_missing.append(rel_path)
+    _add_check(
+        checks_rows,
+        check_id="C45",
+        check_name="system_reference_stop_limit_relevance_present",
+        passed=len(stop_limit_missing) == 0,
+        severity_if_fail="high",
+        metric_name="system_reference_stop_limit_missing",
+        metric_value=int(len(stop_limit_missing)),
+        threshold=0,
+        comparator="==",
+        source_path=docs_root.parent,
+        details=",".join(stop_limit_missing),
+    )
+
+    # C46: Symbol coverage line must include EURUSD, GBPUSD, and USDJPY.
+    symbol_coverage_gaps: list[str] = []
+    for key, rel_path in SYSREF_PAGE_SPECS:
+        p = docs_root.parent / rel_path
+        block = _extract_sysref_block(p, key)
+        if not block:
+            symbol_coverage_gaps.append(rel_path + ":missing_block")
+            continue
+        m = re.search(r"-\s*symbols_covered:\s*`([^`]+)`", block)
+        if not m:
+            symbol_coverage_gaps.append(rel_path + ":missing_symbols_covered")
+            continue
+        have = set(_parse_symbols(m.group(1)))
+        if not SYSREF_REQUIRED_SYMBOLS.issubset(have):
+            symbol_coverage_gaps.append(rel_path + ":missing_expected_symbols")
+    _add_check(
+        checks_rows,
+        check_id="C46",
+        check_name="system_reference_symbol_coverage_required_triplet",
+        passed=len(symbol_coverage_gaps) == 0,
+        severity_if_fail="medium",
+        metric_name="system_reference_symbol_coverage_gaps",
+        metric_value=int(len(symbol_coverage_gaps)),
+        threshold=0,
+        comparator="==",
+        source_path=docs_root.parent,
+        details=",".join(symbol_coverage_gaps),
     )
 
     checks = pd.DataFrame(checks_rows)

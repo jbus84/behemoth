@@ -1,113 +1,59 @@
-# Development Workflow
+# Development
 
-## Pre-commit Hooks
-We use pre-commit to enforce basic hygiene, type checking, and docs build consistency.
+## Default Workflow
+1. implement changes,
+2. regenerate stage/docs artifacts,
+3. run docs contracts,
+4. run targeted tests,
+5. rebuild docs.
 
-Install hooks:
-
-```bash
-make precommit-install
-```
-
-Run all hooks manually:
-
-```bash
-make precommit-run
-```
-
-What runs by default:
-
-- Formatting hygiene: trailing whitespace, EOF newline, YAML/TOML checks, merge conflict markers, large files.
-- `ruff` lint + format for Python.
-- `ty` type check across `src`, `services`, `scripts`, `tests`.
-
-What runs on `pre-push`:
-
-- OCO docs contract/gov checks via `make docs-contract`.
-- Full docs build via `make docs-build` (export OpenAPI + mkdocs build).
-
-If you need to bypass hooks temporarily, use `SKIP=ty,docs-build` with pre-commit. Avoid this for normal development.
-
-## Docs Build
-To preview docs locally:
-
-```bash
-make docs
-```
-
-To build docs:
-
-```bash
-make docs-build
-```
-
-To run OCO docs contracts explicitly:
-
-```bash
-make docs-contract
-```
-
-CI-safe (no heavy recompute) contract run:
-
+## Standard Commands
 ```bash
 make docs-contract-ci
+uv run pytest -q tests/test_oco_docs_contract.py tests/test_stage_integrity_gate.py
+uv run mkdocs build
 ```
 
-## Server CI
-GitHub Actions now enforces the same contract server-side:
+## When Changing Strategy Logic
+Also run relevant stage scripts and refresh generated snapshots before committing.
 
+## CI Alignment
 - `.github/workflows/docs_contract.yml`
-- Runs `make docs-contract-ci`, rebuilds strategy-bible snapshots, then `mkdocs build`.
-- Uploads contract artifacts (`docs_contract_checks.csv`, registry checks, alert disposition report) for review on failures.
-
 - `.github/workflows/tests_fast.yml`
-- Runs focused OCO governance/docs tests:
-- `tests/test_build_docs_catalog.py`
-- `tests/test_stage_integrity_gate.py`
-- `tests/test_execution_drift_report.py`
-- `tests/test_threshold_sensitivity_report.py`
-- `tests/test_validate_oco_rule_universe_registry.py`
-- `tests/test_remediate_oco_monitoring_alerts.py`
-- `tests/test_oco_docs_contract.py`
 
-## Test Run
-Quick test run:
+These workflows are the baseline governance checks for docs and analysis consistency.
 
-```bash
-make test
-```
+## Rolling Historical Evidence
 
-Postgres integration test:
+<!-- GENERATED:SYSREF:DEVELOPMENT:START -->
+- generated_at_utc: `2026-02-27T16:58:52Z`
+- symbols_covered: `EURUSD,GBPUSD,USDJPY`
+- stop-limit_reference: `stage_04_execution_realism`
+- artifact_sources:
+  - `data/analysis/tick_opportunity_mining/oco_execution_drift_monthly.csv`
+  - `data/analysis/tick_opportunity_mining/oco_threshold_sensitivity.csv`
+  - `data/analysis/tick_opportunity_mining/operator_action_status.csv`
+  - `data/analysis/tick_opportunity_mining/oco_alert_disposition.csv`
+  - `data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv`
+  - `data/analysis/tick_opportunity_mining/docs_contract_checks.csv`
+  - `data/analysis/tick_opportunity_mining/run_delta_summary.csv`
 
-```bash
-make test-postgres
-```
+#### Rolling Snapshot By Symbol
+| symbol   | latest_month   | drift_fill_rate   | drift_overshoot_p95   | w13_fragility   | policy_quantile   | mc_s1_lb95   | reduced_mean_gross   |   non_green_actions |   non_green_alerts |
+|:---------|:---------------|:------------------|:----------------------|:----------------|:------------------|:-------------|:---------------------|--------------------:|-------------------:|
+| EURUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| GBPUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| USDJPY   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 
-## Linting/Formatting
-Lint:
+#### Rolling Trend (Last 3 Months)
+| symbol   |   months_used | fill_rate_mean_3m   | overshoot_p95_mean_3m   |
+|:---------|--------------:|:--------------------|:------------------------|
+| EURUSD   |             0 |                     |                         |
+| GBPUSD   |             0 |                     |                         |
+| USDJPY   |             0 |                     |                         |
 
-```bash
-make lint
-```
-
-Format:
-
-```bash
-make format
-```
-
-## Baseline Snapshots
-Generate golden baselines for M5/M15 validation:
-
-```bash
-make baselines
-```
-
-Baseline tests are hard-gated. Any mismatch or pipeline hash change fails CI.
-
-## DB Backup Smoke Test
-Run a backup/restore smoke test (requires docker compose up):
-
-```bash
-make db-restore-smoke
-```
+#### Governance Snapshot
+|   checks_failed |   high_critical_failed | max_age_hours_c6   |   run_delta_metric_rows_changed |   run_delta_gate_rows_changed |
+|----------------:|-----------------------:|:-------------------|--------------------------------:|------------------------------:|
+|               0 |                      0 |                    |                               0 |                             0 |
+<!-- GENERATED:SYSREF:DEVELOPMENT:END -->

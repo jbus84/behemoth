@@ -1,56 +1,57 @@
 # API
 
-The API is a stateful service that persists positions, orders, guardrail state, and account risk state in Postgres. Redis is optional.
+## Status
+The OCO strategy pipeline does not require a running API for core research, validation, or governance.
 
-## Position Lifecycle
+## What Is Required Today
+- Stage pipeline execution via scripts.
+- Artifact and docs contracts via `make docs-contract-ci`.
+- Governance lock validation via Stage 9 artifacts.
 
-```mermaid
-stateDiagram-v2
-  [*] --> PENDING
-  PENDING --> OPEN: open
-  PENDING --> CANCELLED: cancel
-  OPEN --> CLOSING: closing
-  OPEN --> CLOSED: close
-  OPEN --> FAILED: fail
-  CLOSING --> CLOSED: close
-  CLOSING --> FAILED: fail
-  CLOSED --> [*]
-  CANCELLED --> [*]
-  FAILED --> [*]
-```
+## Optional Execution Interface (Future)
+If an execution service is used, it must implement the same contract as the strategy docs:
+- consume only approved states from governance lock,
+- place stop-limit style entries,
+- return tick-realized touch/fill outcomes,
+- persist auditable execution evidence.
 
-## Key Endpoints
+Minimum payload contract should include:
+- `symbol`, `event_ts`, `side`, `barrier_pips`, `horizon`, `cap_pips`, `state_id`, `candidate_uid`.
 
-- `POST /positions` — create a new position (guardrail + risk gates enforced)
-- `POST /positions/{id}/open` — mark position open
-- `POST /positions/{id}/close` — close and update guardrail + account state
-- `GET /guardrail/{strategy_id}/{pair}` — guardrail state
-- `GET /risk/{strategy_id}` — account risk state
-- `POST /risk/{strategy_id}/reset` — clear halt and reset streak
-- `POST /risk/{strategy_id}/halt` — manual kill‑switch
-- `POST /risk/{strategy_id}/resume` — resume after manual halt
-- `GET /metrics` — Prometheus metrics (if enabled)
-  - Enabled by default in `configs/api.yaml` when `metrics_enabled: true`
+## Legacy API Stack
+Legacy FastAPI components remain under `services/api/` for integration work, but they are not the source of truth for the current OCO research process.
 
-## Validation Endpoints
+## Rolling Historical Evidence
 
-- `GET /validation/pipeline/{bar}` — summary metrics
-- `GET /validation/db/{bar}` — DB metrics
-- `GET /validation/compare/{bar}` — pipeline vs DB comparison
-- `GET /validation/predictions/{bar}/{pair}` — signal alignment check
+<!-- GENERATED:SYSREF:API:START -->
+- generated_at_utc: `2026-02-27T16:58:52Z`
+- symbols_covered: `EURUSD,GBPUSD,USDJPY`
+- stop-limit_reference: `stage_04_execution_realism`
+- artifact_sources:
+  - `data/analysis/tick_opportunity_mining/oco_execution_drift_monthly.csv`
+  - `data/analysis/tick_opportunity_mining/oco_threshold_sensitivity.csv`
+  - `data/analysis/tick_opportunity_mining/operator_action_status.csv`
+  - `data/analysis/tick_opportunity_mining/oco_alert_disposition.csv`
+  - `data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv`
+  - `data/analysis/tick_opportunity_mining/docs_contract_checks.csv`
+  - `data/analysis/tick_opportunity_mining/run_delta_summary.csv`
 
-## Config
+#### Rolling Snapshot By Symbol
+| symbol   | latest_month   | drift_fill_rate   | drift_overshoot_p95   | w13_fragility   | policy_quantile   | mc_s1_lb95   | reduced_mean_gross   |   non_green_actions |   non_green_alerts |
+|:---------|:---------------|:------------------|:----------------------|:----------------|:------------------|:-------------|:---------------------|--------------------:|-------------------:|
+| EURUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| GBPUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| USDJPY   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 
-API settings are loaded from YAML and can be overridden via environment variables:
+#### Rolling Trend (Last 3 Months)
+| symbol   |   months_used | fill_rate_mean_3m   | overshoot_p95_mean_3m   |
+|:---------|--------------:|:--------------------|:------------------------|
+| EURUSD   |             0 |                     |                         |
+| GBPUSD   |             0 |                     |                         |
+| USDJPY   |             0 |                     |                         |
 
-- `configs/api.yaml`
-- `CONFIG_PATH` (override file path)
-
-### Example
-```yaml
-guardrail_loss_streak: 3
-guardrail_cooldown_days: 7
-max_daily_loss_pct: 0.05
-max_dd_pct: 0.10
-pair_weights_path: configs/pair_weights.yaml
-```
+#### Governance Snapshot
+|   checks_failed |   high_critical_failed | max_age_hours_c6   |   run_delta_metric_rows_changed |   run_delta_gate_rows_changed |
+|----------------:|-----------------------:|:-------------------|--------------------------------:|------------------------------:|
+|               0 |                      0 |                    |                               0 |                             0 |
+<!-- GENERATED:SYSREF:API:END -->

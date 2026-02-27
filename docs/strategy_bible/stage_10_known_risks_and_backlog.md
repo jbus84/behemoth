@@ -51,8 +51,8 @@ Status workflow:
 
 ## Pair Scope Constraint (Current Deployment)
 - Active OCO production scope remains `EURUSD`, `GBPUSD`, and `USDJPY`.
-- Historical multi-asset stability screens are archived at:
-- `docs/archive/analysis/stable_pairs_whitelist.md`
+- Pair scope governance is maintained by:
+- `docs/analysis/oco_rule_universe_registry_report.md`
 - Scope expansion requires a full Stage 1-10 replay and fresh governance lock artifacts.
 
 ## Outputs
@@ -96,7 +96,6 @@ Diagnostics-first backlog checks (informational, not blockers yet):
 
 ## Canonical Analysis Reports
 - `docs/analysis/risk_checklist.md`
-- `docs/archive/analysis/stable_pairs_whitelist.md`
 - `docs/analysis/oco_docs_contract_report.md`
 - `docs/analysis/oco_rule_universe_registry_report.md`
 - `docs/analysis/oco_alert_remediation_report.md`
@@ -159,13 +158,12 @@ If any trigger occurs, required action is immediate:
 ## Traceability
 - `docs/strategy_bible/generated/audit_snapshot.md`
 - `docs/analysis/risk_checklist.md`
-- `docs/archive/analysis/stable_pairs_whitelist.md`
 
 ## Generated Run Snapshot
 <!-- GENERATED:STAGE_10:START -->
 ### Auto Snapshot - Stage 10
 
-- generated_at: `2026-02-27 15:20:50 UTC`
+- generated_at: `2026-02-27 16:58:38 UTC`
 - Risk backlog is derived from current logical-audit failures.
 - When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.
 

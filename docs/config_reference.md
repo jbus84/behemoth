@@ -1,57 +1,56 @@
 # Config Reference
 
-All runtime settings for the API live in `configs/api.yaml`.
-Environment variables **override** YAML values.
+Current strategy operation is driven by research/governance configs, not API runtime config alone.
 
-## Core
+## Core OCO Configs
+| Path | Purpose |
+| --- | --- |
+| `configs/research/docs/oco_bible_manifest.yaml` | canonical docs/stage artifact wiring |
+| `configs/research/governance/oco_rule_universe_registry.yaml` | pre-registered rule/state universe lock |
+| `configs/research/governance/oco_monitoring_exceptions.yaml` | alert exception policy and SLA behavior |
+| `configs/research/docs/operator_action_rules.yaml` | metric-to-action governance mapping |
+| `configs/research/experiments/*_tick_opportunity_*.yaml` | symbol/timeframe research runs |
 
-| Key | Default | Meaning |
-|---|---|---|
-| `database_url` | `postgresql+psycopg2://behemoth:behemoth@localhost:5432/behemoth` | Postgres URL |
-| `redis_url` | `redis://localhost:6379/0` | Redis URL |
-| `enable_redis` | `true` | Use Redis cache |
-| `auto_create_tables` | `false` | Auto-create tables (dev only) |
-| `log_level` | `INFO` | Logging level |
-| `metrics_enabled` | `true` | Expose `/metrics` |
-| `validate_pipeline_files` | `true` | Ensure pipeline CSVs exist at startup |
-| `require_pair_weights` | `true` | Require `pair_weights_path` to exist |
+## Optional Legacy Configs
+- `configs/api.yaml` applies only when the API service is actively used.
 
-## Guardrail
+## Change Control
+Any config change affecting stage behavior must be followed by:
+1. refreshed artifacts,
+2. docs-contract rerun,
+3. updated governance evidence.
 
-| Key | Default |
-|---|---|
-| `guardrail_enabled` | `true` |
-| `guardrail_loss_threshold` | `0.0` |
-| `guardrail_loss_streak` | `3` |
-| `guardrail_cooldown_days` | `7` |
+## Rolling Historical Evidence
 
-## Risk Controls
+<!-- GENERATED:SYSREF:CONFIG_REFERENCE:START -->
+- generated_at_utc: `2026-02-27T16:58:52Z`
+- symbols_covered: `EURUSD,GBPUSD,USDJPY`
+- stop-limit_reference: `stage_04_execution_realism`
+- artifact_sources:
+  - `data/analysis/tick_opportunity_mining/oco_execution_drift_monthly.csv`
+  - `data/analysis/tick_opportunity_mining/oco_threshold_sensitivity.csv`
+  - `data/analysis/tick_opportunity_mining/operator_action_status.csv`
+  - `data/analysis/tick_opportunity_mining/oco_alert_disposition.csv`
+  - `data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv`
+  - `data/analysis/tick_opportunity_mining/docs_contract_checks.csv`
+  - `data/analysis/tick_opportunity_mining/run_delta_summary.csv`
 
-| Key | Default |
-|---|---|
-| `account_equity_start` | `100000` |
-| `max_daily_loss_pct` | `0.05` |
-| `max_daily_loss_buffer_pct` | `0.005` |
-| `max_dd_pct` | `0.10` |
-| `max_dd_buffer_pct` | `0.005` |
-| `pair_weights_path` | `configs/pair_weights.yaml` |
+#### Rolling Snapshot By Symbol
+| symbol   | latest_month   | drift_fill_rate   | drift_overshoot_p95   | w13_fragility   | policy_quantile   | mc_s1_lb95   | reduced_mean_gross   |   non_green_actions |   non_green_alerts |
+|:---------|:---------------|:------------------|:----------------------|:----------------|:------------------|:-------------|:---------------------|--------------------:|-------------------:|
+| EURUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| GBPUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| USDJPY   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 
-## Example YAML
+#### Rolling Trend (Last 3 Months)
+| symbol   |   months_used | fill_rate_mean_3m   | overshoot_p95_mean_3m   |
+|:---------|--------------:|:--------------------|:------------------------|
+| EURUSD   |             0 |                     |                         |
+| GBPUSD   |             0 |                     |                         |
+| USDJPY   |             0 |                     |                         |
 
-```yaml
-guardrail_loss_streak: 3
-guardrail_cooldown_days: 7
-max_daily_loss_pct: 0.05
-max_daily_loss_buffer_pct: 0.005
-max_dd_pct: 0.10
-max_dd_buffer_pct: 0.005
-pair_weights_path: configs/pair_weights.yaml
-log_level: INFO
-metrics_enabled: true
-validate_pipeline_files: true
-require_pair_weights: true
-```
-
-## FTMO Profile
-
-Use `configs/ftmo.yaml` for FTMO‑style limits (daily 5% / total 10% with a 0.5% buffer).
+#### Governance Snapshot
+|   checks_failed |   high_critical_failed | max_age_hours_c6   |   run_delta_metric_rows_changed |   run_delta_gate_rows_changed |
+|----------------:|-----------------------:|:-------------------|--------------------------------:|------------------------------:|
+|               0 |                      0 |                    |                               0 |                             0 |
+<!-- GENERATED:SYSREF:CONFIG_REFERENCE:END -->

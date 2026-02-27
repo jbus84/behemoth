@@ -1,76 +1,60 @@
 # Code Reference
 
-This page provides a structured map of the codebase. It is not exhaustive API documentation, but it **covers all core modules** and their responsibilities.
+## Active Strategy Surface
 
-## Core Strategy Logic (`src/behemoth/`)
+### Pipeline/Research Scripts
+- `scripts/run_tick_opportunity_mining.py`
+- `scripts/run_tick_opportunity_monthly_wfo.py`
+- `scripts/analyze_oco_stop_limit_tickfill.py`
+- `scripts/select_oco_reduced_core_rolling.py`
+- `scripts/verify_oco_tick_exact_shortlist.py`
+- `scripts/analyze_oco_monthly_wfo_robustness.py`
+- `scripts/run_execution_monte_carlo.py`
 
-**`src/behemoth/core/kalman.py`**
-- `compute_kalman_states(y, x, window, warmup)` — rolling Kalman filter for dynamic hedge ratio and spread error.
+### Governance/Contracts
+- `scripts/validate_oco_live_governance.py`
+- `scripts/validate_oco_rule_universe_registry.py`
+- `scripts/remediate_oco_monitoring_alerts.py`
+- `scripts/build_oco_governance_explainability_report.py`
+- `scripts/check_oco_docs_stage_integrity.py`
+- `scripts/validate_oco_docs_contract.py`
+- `scripts/build_docs_catalog.py`
+- `scripts/build_oco_strategy_bible.py`
 
-**`src/behemoth/core/zscore.py`**
-- `compute_z_scores(errors, window)` — rolling Z‑score of spread error (causal).
+## Optional Legacy Runtime
+- `services/api/*` and SQL migrations remain available for future execution integration.
 
-**`src/behemoth/core/active_leg.py`**
-- `select_active_leg(beta, low, high)` — pick which leg to trade based on beta band.
+## Rolling Historical Evidence
 
-**`src/behemoth/core/events.py`**
-- `simulate_trade(...)` — MOM/REV trade simulation with Z‑crossing exits and timeout.
+<!-- GENERATED:SYSREF:CODE_REFERENCE:START -->
+- generated_at_utc: `2026-02-27T16:58:52Z`
+- symbols_covered: `EURUSD,GBPUSD,USDJPY`
+- stop-limit_reference: `stage_04_execution_realism`
+- artifact_sources:
+  - `data/analysis/tick_opportunity_mining/oco_execution_drift_monthly.csv`
+  - `data/analysis/tick_opportunity_mining/oco_threshold_sensitivity.csv`
+  - `data/analysis/tick_opportunity_mining/operator_action_status.csv`
+  - `data/analysis/tick_opportunity_mining/oco_alert_disposition.csv`
+  - `data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv`
+  - `data/analysis/tick_opportunity_mining/docs_contract_checks.csv`
+  - `data/analysis/tick_opportunity_mining/run_delta_summary.csv`
 
-**`src/behemoth/core/guardrail.py`**
-- `apply_loss_streak_guardrail(df, ...)` — loss‑streak cooldown by pair (exit‑ordered).
+#### Rolling Snapshot By Symbol
+| symbol   | latest_month   | drift_fill_rate   | drift_overshoot_p95   | w13_fragility   | policy_quantile   | mc_s1_lb95   | reduced_mean_gross   |   non_green_actions |   non_green_alerts |
+|:---------|:---------------|:------------------|:----------------------|:----------------|:------------------|:-------------|:---------------------|--------------------:|-------------------:|
+| EURUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| GBPUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| USDJPY   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 
-**`src/behemoth/core/`**
-- Feature extraction module removed (no ML features in core pipeline).
+#### Rolling Trend (Last 3 Months)
+| symbol   |   months_used | fill_rate_mean_3m   | overshoot_p95_mean_3m   |
+|:---------|--------------:|:--------------------|:------------------------|
+| EURUSD   |             0 |                     |                         |
+| GBPUSD   |             0 |                     |                         |
+| USDJPY   |             0 |                     |                         |
 
-**`src/behemoth/core/metrics.py`**
-- `sharpe_daily`, `sharpe_daily_active`, `sharpe_trade` — standard metrics.
-
-**`src/behemoth/io/loaders.py`**
-- `load_pair_data(...)` — load and align legs from parquet bars.
-
-## API Service (`services/api/`)
-
-**`services/api/main.py`**
-- FastAPI endpoints for positions, orders, guardrail, and risk.
-
-**`services/api/models.py`**
-- SQLAlchemy models for positions, orders, guardrail state, account state.
-
-**`services/api/schemas.py`**
-- Pydantic request/response schemas for API endpoints.
-
-**`services/api/settings.py`**
-- Pydantic settings with YAML + env overrides (`configs/api.yaml`).
-
-**`services/api/guardrail.py`**
-- Guardrail state read/update logic.
-
-**`services/api/risk.py`**
-- Exposure limits and kill‑switch logic.
-
-**`services/api/weights.py`**
-- Pair weight loader (`configs/pair_weights.yaml`).
-
-**`services/api/validation.py`**
-- Pipeline vs DB validation utilities.
-
-**`services/api/predict.py`**
-- Rebuilds MOM signals for API/pipeline alignment checks.
-
-## Pipelines & Scripts
-
-**Pipelines (`pipelines/`)**
-- `build_events_m5.py`, `build_events_m15.py` — MOM trade event generation.
-- `wfo_mom_full_params*.py` — WFO parameter sweeps.
-
-**Scripts (`scripts/`)**
-- Validation: `validate_api_vs_pipeline.py`, `validate_db_predictions_vs_pipeline.py`
-- Cost model: `analyze_cost_model.py`
-- Stress tests, guardrail diagnostics, execution sensitivity.
-
-## Migrations
-
-**`services/api/migrations/versions/`**
-- `001_create_positions.py`
-- `002_create_guardrail_state.py`
-- `003_add_account_state_and_position_alloc.py`
+#### Governance Snapshot
+|   checks_failed |   high_critical_failed | max_age_hours_c6   |   run_delta_metric_rows_changed |   run_delta_gate_rows_changed |
+|----------------:|-----------------------:|:-------------------|--------------------------------:|------------------------------:|
+|               0 |                      0 |                    |                               0 |                             0 |
+<!-- GENERATED:SYSREF:CODE_REFERENCE:END -->

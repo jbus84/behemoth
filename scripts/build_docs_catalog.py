@@ -249,13 +249,6 @@ def _render_index(manifest: pd.DataFrame, *, docs_root: Path) -> str:
             lines.append(f"- [{r['title']}]({r['doc_path'].replace('analysis/', '')})")
     lines.append("")
 
-    lines.append("## Archive Links")
-    arch = manifest[manifest["is_archive"].astype(bool)].copy().sort_values("doc_path")
-    if arch.empty:
-        lines.append("_empty_")
-    else:
-        for _, r in arch.iterrows():
-            lines.append(f"- [{r['title']}](../{r['doc_path']})")
     return "\n".join(lines)
 
 
@@ -294,12 +287,11 @@ def _render_taxonomy_rules() -> str:
     lines.append(f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`")
     lines.append("")
     lines.append("## Group Assignment Order")
-    lines.append("1. `archive`: any document under `docs/archive/`.")
-    lines.append("2. `core`: canonical governance reports for the OCO bible.")
-    lines.append("3. `symbol`: filename maps to specific symbol token (`EURUSD`, `GBPUSD`, `USDJPY`).")
-    lines.append("4. `stage`: filename keyword maps to stage id.")
-    lines.append("5. `legacy`: known historical/legacy analysis families.")
-    lines.append("6. `unclassified`: everything else (should be zero in healthy state).")
+    lines.append("1. `core`: canonical governance reports for the OCO bible.")
+    lines.append("2. `symbol`: filename maps to specific symbol token (`EURUSD`, `GBPUSD`, `USDJPY`).")
+    lines.append("3. `stage`: filename keyword maps to stage id.")
+    lines.append("4. `legacy`: known historical/legacy analysis families.")
+    lines.append("5. `unclassified`: everything else (should be zero in healthy state).")
     lines.append("")
     lines.append("## Stage Keyword Map")
     stage_rows = []
@@ -430,7 +422,7 @@ def run(
     *,
     docs_root: Path,
     analysis_dir: Path,
-    archive_dir: Path,
+    archive_dir: Path | None,
     out_index_md: Path,
     out_manifest_csv: Path,
     out_gaps_md: Path,
@@ -442,7 +434,7 @@ def run(
     doc_paths: list[Path] = []
     if analysis_dir.exists():
         doc_paths.extend(sorted(analysis_dir.glob("*.md")))
-    if archive_dir.exists():
+    if archive_dir is not None and archive_dir.exists():
         doc_paths.extend(sorted(archive_dir.rglob("*.md")))
     excluded_names = {"index.md", "catalog_gaps_report.md"}
     doc_paths = [p for p in doc_paths if p.name not in excluded_names]
@@ -500,27 +492,30 @@ def main() -> None:
     p = argparse.ArgumentParser(description="Build docs analysis catalog and manifest")
     p.add_argument("--docs-root", default="docs")
     p.add_argument("--analysis-dir", default="docs/analysis")
-    p.add_argument("--archive-dir", default="docs/archive")
+    p.add_argument("--archive-dir", default="")
     p.add_argument("--out-index-md", default="docs/analysis/index.md")
     p.add_argument("--out-manifest-csv", default="docs/analysis/catalog_manifest.csv")
     p.add_argument("--out-gaps-md", default="docs/analysis/catalog_gaps_report.md")
     p.add_argument("--out-taxonomy-md", default="docs/analysis/taxonomy_rules.md")
     p.add_argument("--out-canonical-map-csv", default="docs/analysis/canonical_stage_map.csv")
     p.add_argument("--out-archive-candidates-csv", default="docs/analysis/archive_candidates.csv")
-    p.add_argument("--out-archive-index-md", default="docs/archive/analysis/index.md")
+    p.add_argument("--out-archive-index-md", default="")
     args = p.parse_args()
+
+    archive_dir = Path(str(args.archive_dir)) if str(args.archive_dir).strip() else None
+    out_archive_index_md = Path(str(args.out_archive_index_md)) if str(args.out_archive_index_md).strip() else None
 
     manifest, out_index, out_gaps = run(
         docs_root=Path(str(args.docs_root)),
         analysis_dir=Path(str(args.analysis_dir)),
-        archive_dir=Path(str(args.archive_dir)),
+        archive_dir=archive_dir,
         out_index_md=Path(str(args.out_index_md)),
         out_manifest_csv=Path(str(args.out_manifest_csv)),
         out_gaps_md=Path(str(args.out_gaps_md)),
         out_taxonomy_md=Path(str(args.out_taxonomy_md)),
         out_canonical_map_csv=Path(str(args.out_canonical_map_csv)),
         out_archive_candidates_csv=Path(str(args.out_archive_candidates_csv)),
-        out_archive_index_md=Path(str(args.out_archive_index_md)),
+        out_archive_index_md=out_archive_index_md,
     )
     print(f"wrote manifest: {args.out_manifest_csv} rows={len(manifest)}")
     print(f"wrote index: {out_index}")
@@ -528,7 +523,10 @@ def main() -> None:
     print(f"wrote taxonomy rules: {args.out_taxonomy_md}")
     print(f"wrote canonical map: {args.out_canonical_map_csv}")
     print(f"wrote archive candidates: {args.out_archive_candidates_csv}")
-    print(f"wrote archive index: {args.out_archive_index_md}")
+    if out_archive_index_md is not None:
+        print(f"wrote archive index: {out_archive_index_md}")
+    else:
+        print("archive index output disabled")
 
 
 if __name__ == "__main__":

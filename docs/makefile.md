@@ -1,59 +1,56 @@
 # Makefile Reference
 
-Use `make help` to list targets.
+## Core OCO Docs/Analysis Targets
+- `make docs-contract`
+  - full docs contract pipeline with report regeneration.
+- `make docs-contract-ci`
+  - CI-safe contract run used by workflows.
+- `make docs-build`
+  - builds static docs site.
+- `make docs`
+  - serves docs locally on `127.0.0.1:8001`.
 
-**Legend**
-- <span style="color:#1f77b4;"><strong>Target</strong></span>
-- <span style="color:#2ca02c;"><strong>Documentation</strong></span>
+## Quality Targets
+- `make test`
+- `make lint`
+- `make format`
 
-**Core**
-- <span style="color:#1f77b4;"><strong>`make up`</strong></span>
-  <span style="color:#2ca02c;">Start docker compose services (dev stack).</span>
-- <span style="color:#1f77b4;"><strong>`make down`</strong></span>
-  <span style="color:#2ca02c;">Stop docker compose services.</span>
-- <span style="color:#1f77b4;"><strong>`make deploy`</strong></span>
-  <span style="color:#2ca02c;">Start prod‑like stack (compose + prod overlay).</span>
-- <span style="color:#1f77b4;"><strong>`make logs`</strong></span>
-  <span style="color:#2ca02c;">Tail API logs.</span>
-- <span style="color:#1f77b4;"><strong>`make api`</strong></span>
-  <span style="color:#2ca02c;">Run API locally (uvicorn reload).</span>
-- <span style="color:#1f77b4;"><strong>`make migrate`</strong></span>
-  <span style="color:#2ca02c;">Run Alembic migrations in compose.</span>
-- <span style="color:#1f77b4;"><strong>`make migrate-local`</strong></span>
-  <span style="color:#2ca02c;">Run migrations locally.</span>
+## Legacy/Optional Targets
+API/DB/docker targets remain available for integration scenarios, but they are not required for the current OCO research lifecycle.
 
-**Testing & Quality**
-- <span style="color:#1f77b4;"><strong>`make test`</strong></span>
-  <span style="color:#2ca02c;">Run pytest.</span>
-- <span style="color:#1f77b4;"><strong>`make test-postgres`</strong></span>
-  <span style="color:#2ca02c;">Run Postgres integration tests.</span>
-- <span style="color:#1f77b4;"><strong>`make lint`</strong></span>
-  <span style="color:#2ca02c;">Run ruff lint.</span>
-- <span style="color:#1f77b4;"><strong>`make format`</strong></span>
-  <span style="color:#2ca02c;">Run ruff format.</span>
-- <span style="color:#1f77b4;"><strong>`make precommit-run`</strong></span>
-  <span style="color:#2ca02c;">Run all pre‑commit hooks.</span>
+Run `make help` for the full target list.
 
-**Data & Baselines**
-- <span style="color:#1f77b4;"><strong>`make baselines`</strong></span>
-  <span style="color:#2ca02c;">Generate M5/M15 golden baselines.</span>
-- <span style="color:#1f77b4;"><strong>`make replay`</strong></span>
-  <span style="color:#2ca02c;">Fast DB‑only replay from event CSVs (default `REPLAY_BARS=m15`).</span>
-- <span style="color:#1f77b4;"><strong>`make replay-load`</strong></span>
-  <span style="color:#2ca02c;">Full end‑to‑end replay via API + DB (updates Grafana live).</span>
-- <span style="color:#1f77b4;"><strong>`make replay-stack`</strong></span>
-  <span style="color:#2ca02c;">Run isolated replay stack (DB/API/Prom/Grafana) on alt ports.</span>
+## Rolling Historical Evidence
 
-**Docs**
-- <span style="color:#1f77b4;"><strong>`make docs`</strong></span>
-  <span style="color:#2ca02c;">Serve MkDocs locally.</span>
-- <span style="color:#1f77b4;"><strong>`make docs-build`</strong></span>
-  <span style="color:#2ca02c;">Build docs (exports OpenAPI first).</span>
+<!-- GENERATED:SYSREF:MAKEFILE:START -->
+- generated_at_utc: `2026-02-27T16:58:52Z`
+- symbols_covered: `EURUSD,GBPUSD,USDJPY`
+- stop-limit_reference: `stage_04_execution_realism`
+- artifact_sources:
+  - `data/analysis/tick_opportunity_mining/oco_execution_drift_monthly.csv`
+  - `data/analysis/tick_opportunity_mining/oco_threshold_sensitivity.csv`
+  - `data/analysis/tick_opportunity_mining/operator_action_status.csv`
+  - `data/analysis/tick_opportunity_mining/oco_alert_disposition.csv`
+  - `data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv`
+  - `data/analysis/tick_opportunity_mining/docs_contract_checks.csv`
+  - `data/analysis/tick_opportunity_mining/run_delta_summary.csv`
 
-**DB Ops**
-- <span style="color:#1f77b4;"><strong>`make db-backup`</strong></span>
-  <span style="color:#2ca02c;">Create a DB backup in `backups/`.</span>
-- <span style="color:#1f77b4;"><strong>`make db-restore BACKUP_FILE=...`</strong></span>
-  <span style="color:#2ca02c;">Restore a backup into the DB.</span>
-- <span style="color:#1f77b4;"><strong>`make db-restore-smoke`</strong></span>
-  <span style="color:#2ca02c;">Backup/restore smoke test.</span>
+#### Rolling Snapshot By Symbol
+| symbol   | latest_month   | drift_fill_rate   | drift_overshoot_p95   | w13_fragility   | policy_quantile   | mc_s1_lb95   | reduced_mean_gross   |   non_green_actions |   non_green_alerts |
+|:---------|:---------------|:------------------|:----------------------|:----------------|:------------------|:-------------|:---------------------|--------------------:|-------------------:|
+| EURUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| GBPUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| USDJPY   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+
+#### Rolling Trend (Last 3 Months)
+| symbol   |   months_used | fill_rate_mean_3m   | overshoot_p95_mean_3m   |
+|:---------|--------------:|:--------------------|:------------------------|
+| EURUSD   |             0 |                     |                         |
+| GBPUSD   |             0 |                     |                         |
+| USDJPY   |             0 |                     |                         |
+
+#### Governance Snapshot
+|   checks_failed |   high_critical_failed | max_age_hours_c6   |   run_delta_metric_rows_changed |   run_delta_gate_rows_changed |
+|----------------:|-----------------------:|:-------------------|--------------------------------:|------------------------------:|
+|               0 |                      0 |                    |                               0 |                             0 |
+<!-- GENERATED:SYSREF:MAKEFILE:END -->

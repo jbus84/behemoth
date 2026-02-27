@@ -49,7 +49,7 @@ validation:
 
 nav:
   - Overview: index.md
-  - Strategy Manual: STRATEGY_MASTER_MANUAL.md
+  - OCO Strategy Manual: STRATEGY_MASTER_MANUAL.md
   - Analysis:
       - Catalog: analysis/index.md
       - Catalog Gaps: analysis/catalog_gaps_report.md
@@ -126,20 +126,6 @@ nav:
       - Data Sources: DATA_SOURCES.md
       - Repo Structure: REPO_STRUCTURE.md
       - Walkthrough: walkthrough.md
-  - Archive:
-      - Analysis Reports: archive/analysis/index.md
-      - Institutional Audit Report: archive/institutional_audit_report.md
-      - Kalman Deployment Guide: archive/kalman_deployment_guide.md
-      - Kalman Strategy Guide: archive/kalman_strategy_guide.md
-      - Kalman Strategy 1H: archive/kalman_strategy_guide_1h_edition.md
-      - Kalman Strategy 30M: archive/kalman_strategy_guide_30m_edition.md
-      - Kalman Strategy Final Spreads: archive/kalman_strategy_guide_final_real_spreads.md
-      - Kalman Strategy Master: archive/kalman_strategy_master_guide.md
-      - M15 FX Cheat Sheet: archive/m15_fx_cheat_sheet.md
-      - Pair Universe Analysis: archive/pair_universe_analysis.md
-      - Scalp Validation: archive/scalp_validation.md
-      - Archive Task Notes: archive/task.md
-      - Universal Beta Audit: archive/universal_beta_audit.md
   - Architecture: architecture.md
   - API: api.md
   - API Reference: api_reference.md

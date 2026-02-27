@@ -1,109 +1,50 @@
-# Database Schema
+# Persistence Schema
 
-This schema is defined by SQLAlchemy models in `services/api/models.py` and migrations in `services/api/migrations/versions/`.
+## Current OCO Persistence Model
+The active pipeline stores state in versioned artifacts (CSV/Parquet/Markdown), not a mandatory relational DB.
 
-## positions
+## Canonical Artifact Groups
+| Group | Path Pattern | Purpose |
+| --- | --- | --- |
+| Stage metrics | `data/analysis/tick_opportunity_mining/*` | machine-readable governance and analysis outputs |
+| Analysis reports | `docs/analysis/*.md` | human-readable evidence |
+| Stage specs/snapshots | `docs/strategy_bible/*.md`, `docs/strategy_bible/generated/*.md` | process contract and latest run state |
+| Governance configs | `configs/research/governance/*` | locked policy inputs |
 
-| Column | Type | Notes |
-|---|---|---|
-| id | string | primary key |
-| strategy_id | string | strategy label |
-| pair | string | e.g., `EUR/GBP` |
-| side | enum | `LONG` / `SHORT` |
-| active_leg | enum | `X` / `Y` |
-| status | enum | `PENDING`, `OPEN`, `CLOSING`, `CLOSED`, `CANCELLED`, `FAILED` |
-| entry_ts | timestamp | |
-| exit_ts | timestamp | |
-| entry_price | float | |
-| exit_price | float | |
-| size | float | requested notional |
-| notional_usd | float | stored notional |
-| alloc_frac | float | fraction of equity at entry |
-| entry_equity | float | equity at entry |
-| pnl_bps | float | per‑trade bps |
-| metadata | json | extra payload |
-| version | int | optimistic version |
-| created_at | timestamp | |
-| updated_at | timestamp | |
+## Optional Legacy SQL Schema
+`services/api/models.py` and migrations define a relational schema for optional API runtime integration. This schema is not required for core OCO research governance.
 
-Indexes:
-- `ix_positions_pair_status`
-- `ix_positions_exit_ts`
+## Rolling Historical Evidence
 
-## orders
+<!-- GENERATED:SYSREF:DB_SCHEMA:START -->
+- generated_at_utc: `2026-02-27T16:58:52Z`
+- symbols_covered: `EURUSD,GBPUSD,USDJPY`
+- stop-limit_reference: `stage_04_execution_realism`
+- artifact_sources:
+  - `data/analysis/tick_opportunity_mining/oco_execution_drift_monthly.csv`
+  - `data/analysis/tick_opportunity_mining/oco_threshold_sensitivity.csv`
+  - `data/analysis/tick_opportunity_mining/operator_action_status.csv`
+  - `data/analysis/tick_opportunity_mining/oco_alert_disposition.csv`
+  - `data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv`
+  - `data/analysis/tick_opportunity_mining/docs_contract_checks.csv`
+  - `data/analysis/tick_opportunity_mining/run_delta_summary.csv`
 
-| Column | Type | Notes |
-|---|---|---|
-| id | string | primary key |
-| position_id | string | FK → positions |
-| status | enum | `NEW`, `SUBMITTED`, `FILLED`, `CANCELLED`, `FAILED` |
-| order_type | enum | `MARKET`, `LIMIT`, `STOP` |
-| qty | float | |
-| price | float | |
-| slippage_bps | float | |
-| created_at | timestamp | |
-| updated_at | timestamp | |
+#### Rolling Snapshot By Symbol
+| symbol   | latest_month   | drift_fill_rate   | drift_overshoot_p95   | w13_fragility   | policy_quantile   | mc_s1_lb95   | reduced_mean_gross   |   non_green_actions |   non_green_alerts |
+|:---------|:---------------|:------------------|:----------------------|:----------------|:------------------|:-------------|:---------------------|--------------------:|-------------------:|
+| EURUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| GBPUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| USDJPY   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 
-Index:
-- `ix_orders_position_id`
+#### Rolling Trend (Last 3 Months)
+| symbol   |   months_used | fill_rate_mean_3m   | overshoot_p95_mean_3m   |
+|:---------|--------------:|:--------------------|:------------------------|
+| EURUSD   |             0 |                     |                         |
+| GBPUSD   |             0 |                     |                         |
+| USDJPY   |             0 |                     |                         |
 
-## position_events
-
-| Column | Type | Notes |
-|---|---|---|
-| id | string | primary key |
-| position_id | string | FK → positions |
-| event_type | string | `CREATED`, `OPENED`, `CLOSED`, etc. |
-| payload | json | request payload |
-| created_at | timestamp | |
-
-Index:
-- `ix_position_events_position_id`
-
-## idempotency_keys
-
-| Column | Type | Notes |
-|---|---|---|
-| id | string | primary key |
-| key | string | unique |
-| request_hash | string | hash of payload |
-| position_id | string | FK → positions |
-| created_at | timestamp | |
-
-## guardrail_state
-
-| Column | Type | Notes |
-|---|---|---|
-| id | string | primary key |
-| strategy_id | string | |
-| pair | string | |
-| loss_streak | int | |
-| pause_until | timestamp | |
-| created_at | timestamp | |
-| updated_at | timestamp | |
-
-Unique:
-- `uq_guardrail_state` on (`strategy_id`, `pair`)
-
-Indexes:
-- `ix_guardrail_state_strategy_id`
-- `ix_guardrail_state_pair`
-
-## account_state
-
-| Column | Type | Notes |
-|---|---|---|
-| id | string | primary key |
-| strategy_id | string | unique |
-| equity | float | current |
-| peak_equity | float | high water mark |
-| day_start_equity | float | day‑start equity |
-| day_start_date | date | day boundary |
-| consecutive_losses | int | legacy (not used in risk gating) |
-| halted | boolean | kill‑switch state |
-| halt_reason | string | |
-| created_at | timestamp | |
-| updated_at | timestamp | |
-
-Unique:
-- `uq_account_state_strategy` on `strategy_id`
+#### Governance Snapshot
+|   checks_failed |   high_critical_failed | max_age_hours_c6   |   run_delta_metric_rows_changed |   run_delta_gate_rows_changed |
+|----------------:|-----------------------:|:-------------------|--------------------------------:|------------------------------:|
+|               0 |                      0 |                    |                               0 |                             0 |
+<!-- GENERATED:SYSREF:DB_SCHEMA:END -->

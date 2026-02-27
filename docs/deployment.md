@@ -1,94 +1,55 @@
-# Deployment & Ops
+# Deployment
 
-## Docker Compose (Prod-Like)
-Use the production overlay to run API, Postgres, and Redis:
+## Current State
+The current OCO system is operated as a governed research pipeline. Live execution deployment is optional and must follow Stage 9 governance locks.
 
-```bash
-make deploy
-```
+## Promotion Checklist
+1. Stage 1-11 snapshots refreshed.
+2. `make docs-contract-ci` passes with zero failed checks.
+3. alert dispositions and explainability are current.
+4. governance lock validation passes for target symbols.
+5. docs site rebuild passes.
 
-This uses `docker-compose.yml` plus `docker-compose.prod.yml` for prod‑like settings.
+## Execution Integration (When Enabled)
+If deploying through API/broker bridge:
+- enforce stop-limit contract from Stage 4,
+- enforce state/threshold lock from Stage 9,
+- persist execution evidence required by remediation and monitoring.
 
-## Migrations
-Apply migrations after deploy:
+## Legacy Docker/API Stack
+Compose/API deployment docs remain for optional runtime services but are not required for core OCO research governance.
 
-```bash
-make migrate
-```
+## Rolling Historical Evidence
 
-## Backups
-Create a snapshot (SQL dump) inside `backups/`:
+<!-- GENERATED:SYSREF:DEPLOYMENT:START -->
+- generated_at_utc: `2026-02-27T16:58:52Z`
+- symbols_covered: `EURUSD,GBPUSD,USDJPY`
+- stop-limit_reference: `stage_04_execution_realism`
+- artifact_sources:
+  - `data/analysis/tick_opportunity_mining/oco_execution_drift_monthly.csv`
+  - `data/analysis/tick_opportunity_mining/oco_threshold_sensitivity.csv`
+  - `data/analysis/tick_opportunity_mining/operator_action_status.csv`
+  - `data/analysis/tick_opportunity_mining/oco_alert_disposition.csv`
+  - `data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv`
+  - `data/analysis/tick_opportunity_mining/docs_contract_checks.csv`
+  - `data/analysis/tick_opportunity_mining/run_delta_summary.csv`
 
-```bash
-make db-backup
-```
+#### Rolling Snapshot By Symbol
+| symbol   | latest_month   | drift_fill_rate   | drift_overshoot_p95   | w13_fragility   | policy_quantile   | mc_s1_lb95   | reduced_mean_gross   |   non_green_actions |   non_green_alerts |
+|:---------|:---------------|:------------------|:----------------------|:----------------|:------------------|:-------------|:---------------------|--------------------:|-------------------:|
+| EURUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| GBPUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| USDJPY   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 
-Restore from a specific backup file:
+#### Rolling Trend (Last 3 Months)
+| symbol   |   months_used | fill_rate_mean_3m   | overshoot_p95_mean_3m   |
+|:---------|--------------:|:--------------------|:------------------------|
+| EURUSD   |             0 |                     |                         |
+| GBPUSD   |             0 |                     |                         |
+| USDJPY   |             0 |                     |                         |
 
-```bash
-make db-restore BACKUP_FILE=backups/<file>.sql
-```
-
-Smoke test the backup/restore flow (creates a temporary DB):
-
-```bash
-make db-restore-smoke
-```
-
-## Redis Optionality
-If you want to disable Redis, set in config:
-
-```yaml
-enable_redis: false
-```
-
-API behavior remains correct; Redis only accelerates read paths.
-
-## Metrics
-Prometheus metrics are exposed at:
-
-```
-GET /metrics
-```
-
-Disable with `metrics_enabled: false`.
-
-## Prometheus + Grafana
-The prod compose overlay includes Prometheus and Grafana:
-
-- Prometheus: `http://localhost:9090`
-- Grafana: `http://localhost:3000` (default admin/admin)
-
-Grafana is pre‑provisioned with the Prometheus datasource from:
-
-- `configs/grafana/datasources/datasource.yml`
-
-Grafana dashboards are provisioned from:
-
-- `configs/grafana/dashboards/behemoth_overview.json`
-- `configs/grafana/dashboards/dashboard.yml`
-
-Prometheus scrape config lives at:
-
-- `configs/prometheus.yml`
-
-## Kill Switches
-Manual halt and resume:
-
-```
-POST /risk/{strategy_id}/halt
-POST /risk/{strategy_id}/resume
-```
-
-## Historical Replay
-To replay historical trades into the DB and visualize progress in Grafana:
-
-```bash
-export DATABASE_URL=postgresql+psycopg2://behemoth:behemoth@localhost:5432/behemoth
-uv run python scripts/replay_pipeline_to_db.py --bars m5,m15 --reset --sleep 0.1
-```
-
-The replay enforces guardrail + risk gates by default and writes a report to
-`data/analysis/replay_report.json`.
-
-Automatic halts are applied via risk limits in `configs/api.yaml`.
+#### Governance Snapshot
+|   checks_failed |   high_critical_failed | max_age_hours_c6   |   run_delta_metric_rows_changed |   run_delta_gate_rows_changed |
+|----------------:|-----------------------:|:-------------------|--------------------------------:|------------------------------:|
+|               0 |                      0 |                    |                               0 |                             0 |
+<!-- GENERATED:SYSREF:DEPLOYMENT:END -->

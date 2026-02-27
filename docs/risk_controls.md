@@ -1,28 +1,57 @@
 # Risk Controls
 
-Risk controls are **hard gates** enforced at the API boundary.
+Risk is controlled through stage gates, not a single runtime kill-switch.
 
-## Guardrail (per‑pair)
-- **Loss‑streak**: default 3
-- **Cooldown**: default 7 days
-- **Trigger**: `pnl_bps <= 0`
+## Active Control Layers
+| Layer | Purpose | Primary Artifacts |
+| --- | --- | --- |
+| Stage 4 execution realism | stop-limit fill quality and overshoot control | `oco_execution_drift_report.md`, Stage 4 snapshot |
+| Stage 7 audit | logical/statistical hygiene | `oco_logical_audit_report.md` |
+| Stage 8 robustness | stress and conservative bounds | `oco_edge_clarity_report.md` |
+| Stage 9 governance | lock drift + alert remediation | `operator_action_report.md`, `oco_alert_remediation_report.md` |
+| Stage 10 backlog | residual risk ownership and SLA | Stage 10 spec + snapshot |
+| Stage 11 MC | execution stress scenarios | `oco_execution_monte_carlo_report.md` |
 
-## Account Kill‑Switches
+## Hard Block Conditions
+- docs-contract high/critical failures,
+- governance lock drift,
+- failed stage integrity checks,
+- unresolved red policy actions.
 
-| Control | Default | Meaning |
-|---|---|---|
-| Max daily loss | 5% | Floating vs day‑start equity |
-| Max daily loss buffer | 0.5% | Halt if within buffer of max daily loss |
-| Max drawdown | 10% | Floating vs peak equity |
-| Max drawdown buffer | 0.5% | Halt if within buffer of max drawdown |
+## Current Risk Posture
+Strategy decisions must be based on refreshed artifacts (freshness SLA in Stage 9/operator runbook), not stale historical summaries.
 
-If any trigger fires, the account is **halted** and new positions are rejected until reset.
+## Rolling Historical Evidence
 
-## Reset
+<!-- GENERATED:SYSREF:RISK_CONTROLS:START -->
+- generated_at_utc: `2026-02-27T16:58:52Z`
+- symbols_covered: `EURUSD,GBPUSD,USDJPY`
+- stop-limit_reference: `stage_04_execution_realism`
+- artifact_sources:
+  - `data/analysis/tick_opportunity_mining/oco_execution_drift_monthly.csv`
+  - `data/analysis/tick_opportunity_mining/oco_threshold_sensitivity.csv`
+  - `data/analysis/tick_opportunity_mining/operator_action_status.csv`
+  - `data/analysis/tick_opportunity_mining/oco_alert_disposition.csv`
+  - `data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv`
+  - `data/analysis/tick_opportunity_mining/docs_contract_checks.csv`
+  - `data/analysis/tick_opportunity_mining/run_delta_summary.csv`
 
-Use `POST /risk/{strategy_id}/reset` to clear a halt after manual review.
+#### Rolling Snapshot By Symbol
+| symbol   | latest_month   | drift_fill_rate   | drift_overshoot_p95   | w13_fragility   | policy_quantile   | mc_s1_lb95   | reduced_mean_gross   |   non_green_actions |   non_green_alerts |
+|:---------|:---------------|:------------------|:----------------------|:----------------|:------------------|:-------------|:---------------------|--------------------:|-------------------:|
+| EURUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| GBPUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| USDJPY   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 
-## Manual Halt/Resume
+#### Rolling Trend (Last 3 Months)
+| symbol   |   months_used | fill_rate_mean_3m   | overshoot_p95_mean_3m   |
+|:---------|--------------:|:--------------------|:------------------------|
+| EURUSD   |             0 |                     |                         |
+| GBPUSD   |             0 |                     |                         |
+| USDJPY   |             0 |                     |                         |
 
-- `POST /risk/{strategy_id}/halt` with an optional reason.
-- `POST /risk/{strategy_id}/resume` to continue trading.
+#### Governance Snapshot
+|   checks_failed |   high_critical_failed | max_age_hours_c6   |   run_delta_metric_rows_changed |   run_delta_gate_rows_changed |
+|----------------:|-----------------------:|:-------------------|--------------------------------:|------------------------------:|
+|               0 |                      0 |                    |                               0 |                             0 |
+<!-- GENERATED:SYSREF:RISK_CONTROLS:END -->

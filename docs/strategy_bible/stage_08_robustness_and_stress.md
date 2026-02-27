@@ -76,7 +76,7 @@ uv run python scripts/analyze_oco_monthly_wfo_robustness.py \
 <!-- GENERATED:STAGE_08:START -->
 ### Auto Snapshot - Stage 08
 
-- generated_at: `2026-02-27 15:20:50 UTC`
+- generated_at: `2026-02-27 16:58:38 UTC`
 - Robustness summary uses bootstrap lower bounds from the configured smoke/full run artifacts.
 - Interpretation: LB95 > 0 indicates conservative positive expectancy under sampled uncertainty.
 - Overfit panel adds month-stratified null uplift and dependence-aware LB95 comparisons.

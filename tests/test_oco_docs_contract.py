@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from scripts.build_oco_system_reference_docs import run as build_system_reference_docs
 from scripts.validate_oco_docs_contract import (
     CORE_METRIC_IDS,
     STAGE04_POLICY_REQUIRED_METRICS,
@@ -567,20 +568,66 @@ def _write_governance_explainability_artifacts(*, docs_root: Path, edge_metrics_
     (docs_root.parent / "analysis" / "oco_governance_explainability_report.md").write_text("# Governance Explainability\n", encoding="utf-8")
 
 
-def test_docs_contract_smoke_pass(tmp_path: Path) -> None:
+def _write_system_reference_docs(*, docs_root: Path, edge_metrics_csv: Path) -> None:
+    artifact_root = edge_metrics_csv.parent
+    docs_contract_checks = artifact_root / "docs_contract_checks.csv"
+    if not docs_contract_checks.exists():
+        pd.DataFrame(
+            [
+                {
+                    "check_id": "C0",
+                    "status": "pass",
+                    "severity_if_fail": "low",
+                    "metric_value": 0.0,
+                }
+            ]
+        ).to_csv(docs_contract_checks, index=False)
+
+    analysis_root = docs_root.parent.parent / "data" / "analysis"
+    tick_analysis_root = analysis_root / "tick_opportunity_mining"
+    tick_analysis_root.mkdir(parents=True, exist_ok=True)
+    required = [
+        "oco_execution_drift_monthly.csv",
+        "oco_threshold_sensitivity.csv",
+        "operator_action_status.csv",
+        "oco_alert_disposition.csv",
+        "execution_mc_symbol_scenarios.csv",
+        "docs_contract_checks.csv",
+        "run_delta_summary.csv",
+    ]
+    for name in required:
+        src = artifact_root / name
+        dst = tick_analysis_root / name
+        if src.exists():
+            dst.write_bytes(src.read_bytes())
+        elif not dst.exists():
+            pd.DataFrame().to_csv(dst, index=False)
+
+    build_system_reference_docs(
+        docs_root=docs_root.parent,
+        analysis_root=analysis_root,
+        out_status_csv=tick_analysis_root / "system_reference_build_status.csv",
+    )
+    (artifact_root / "system_reference_build_status.csv").write_bytes(
+        (tick_analysis_root / "system_reference_build_status.csv").read_bytes()
+    )
+
+
+def _build_smoke_fixture(tmp_path: Path, *, with_system_reference: bool = True) -> dict[str, Path]:
     docs_root = tmp_path / "docs" / "strategy_bible"
     docs_root.mkdir(parents=True, exist_ok=True)
     generated_root = docs_root / "generated"
     generated_root.mkdir(parents=True, exist_ok=True)
+    artifact_root = tmp_path / "data" / "analysis" / "tick_opportunity_mining"
+    artifact_root.mkdir(parents=True, exist_ok=True)
 
     _write_stage_docs(docs_root)
     _write_analysis_catalog_artifacts(docs_root)
 
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     rows = [{"stage_id": 1, "symbol": "EURUSD", "metric_id": m, "metric_value": 1.0, "generated_at_utc": now} for m in sorted(CORE_METRIC_IDS)]
-    edge_metrics = pd.DataFrame(rows)
-    edge_metrics_csv = tmp_path / "edge_metrics.csv"
-    edge_metrics.to_csv(edge_metrics_csv, index=False)
+    edge_metrics_csv = artifact_root / "edge_metrics.csv"
+    pd.DataFrame(rows).to_csv(edge_metrics_csv, index=False)
     _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
@@ -591,16 +638,15 @@ def test_docs_contract_smoke_pass(tmp_path: Path) -> None:
     _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    if with_system_reference:
+        _write_system_reference_docs(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
 
     stage_status_csv = tmp_path / "stage_status.csv"
     pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
-
-    stage09 = generated_root / "stage_09_snapshot.md"
-    stage09.write_text("| EURUSD | pass |\n", encoding="utf-8")
+    (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
 
     edge_report = tmp_path / "edge_report.md"
     edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
-
     metric_dictionary = docs_root / "metric_dictionary.md"
     metric_dictionary.write_text(
         "\n".join(
@@ -613,22 +659,34 @@ def test_docs_contract_smoke_pass(tmp_path: Path) -> None:
         ),
         encoding="utf-8",
     )
-
     mkdocs_yml = tmp_path / "mkdocs.yml"
     mkdocs_yml.write_text(_mkdocs_text(), encoding="utf-8")
+    return {
+        "docs_root": docs_root,
+        "generated_root": generated_root,
+        "edge_metrics_csv": edge_metrics_csv,
+        "stage_status_csv": stage_status_csv,
+        "edge_report_md": edge_report,
+        "metric_dictionary_md": metric_dictionary,
+        "mkdocs_yml": mkdocs_yml,
+    }
+
+
+def test_docs_contract_smoke_pass(tmp_path: Path) -> None:
+    f = _build_smoke_fixture(tmp_path, with_system_reference=True)
 
     out_checks = tmp_path / "checks.csv"
     out_issues = tmp_path / "issues.csv"
     out_report = tmp_path / "report.md"
 
     checks, issues = run(
-        docs_root=docs_root,
-        generated_root=generated_root,
-        edge_metrics_csv=edge_metrics_csv,
-        stage_status_csv=stage_status_csv,
-        metric_dictionary_md=metric_dictionary,
-        edge_report_md=edge_report,
-        mkdocs_yml=mkdocs_yml,
+        docs_root=f["docs_root"],
+        generated_root=f["generated_root"],
+        edge_metrics_csv=f["edge_metrics_csv"],
+        stage_status_csv=f["stage_status_csv"],
+        metric_dictionary_md=f["metric_dictionary_md"],
+        edge_report_md=f["edge_report_md"],
+        mkdocs_yml=f["mkdocs_yml"],
         out_checks_csv=out_checks,
         out_issues_csv=out_issues,
         out_report_md=out_report,
@@ -1254,3 +1312,48 @@ def test_docs_contract_flags_machine_local_paths(tmp_path: Path) -> None:
     c40 = checks[checks["check_id"].astype(str) == "C40"]
     assert not c40.empty
     assert (c40["status"].astype(str) == "fail").all()
+
+
+def test_docs_contract_flags_missing_system_reference_pages(tmp_path: Path) -> None:
+    f = _build_smoke_fixture(tmp_path, with_system_reference=False)
+    checks, _issues = run(
+        docs_root=f["docs_root"],
+        generated_root=f["generated_root"],
+        edge_metrics_csv=f["edge_metrics_csv"],
+        stage_status_csv=f["stage_status_csv"],
+        metric_dictionary_md=f["metric_dictionary_md"],
+        edge_report_md=f["edge_report_md"],
+        mkdocs_yml=f["mkdocs_yml"],
+        out_checks_csv=tmp_path / "checks.csv",
+        out_issues_csv=tmp_path / "issues.csv",
+        out_report_md=tmp_path / "report.md",
+        thresholds=Thresholds(max_age_hours=24.0),
+    )
+    c41 = checks[checks["check_id"].astype(str) == "C41"]
+    assert not c41.empty
+    assert (c41["status"].astype(str) == "fail").all()
+
+
+def test_docs_contract_flags_system_reference_symbol_coverage_gap(tmp_path: Path) -> None:
+    f = _build_smoke_fixture(tmp_path, with_system_reference=True)
+    api_md = f["docs_root"].parent / "api.md"
+    txt = api_md.read_text(encoding="utf-8")
+    txt = txt.replace("EURUSD,GBPUSD,USDJPY", "EURUSD,GBPUSD")
+    api_md.write_text(txt, encoding="utf-8")
+
+    checks, _issues = run(
+        docs_root=f["docs_root"],
+        generated_root=f["generated_root"],
+        edge_metrics_csv=f["edge_metrics_csv"],
+        stage_status_csv=f["stage_status_csv"],
+        metric_dictionary_md=f["metric_dictionary_md"],
+        edge_report_md=f["edge_report_md"],
+        mkdocs_yml=f["mkdocs_yml"],
+        out_checks_csv=tmp_path / "checks.csv",
+        out_issues_csv=tmp_path / "issues.csv",
+        out_report_md=tmp_path / "report.md",
+        thresholds=Thresholds(max_age_hours=24.0),
+    )
+    c46 = checks[checks["check_id"].astype(str) == "C46"]
+    assert not c46.empty
+    assert (c46["status"].astype(str) == "fail").all()
