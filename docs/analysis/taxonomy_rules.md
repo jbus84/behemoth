@@ -1,6 +1,6 @@
 # Analysis Taxonomy Rules
 
-- generated_at_utc: `2026-02-27T10:50:18Z`
+- generated_at_utc: `2026-02-27T11:13:24Z`
 
 ## Group Assignment Order
 1. `archive`: any document under `docs/archive/`.
@@ -11,19 +11,19 @@
 6. `unclassified`: everything else (should be zero in healthy state).
 
 ## Stage Keyword Map
-|   stage_id | keywords                    |
-|-----------:|:----------------------------|
-|          1 | data_reliability            |
-|          2 | mining, opportunity_mining  |
-|          3 | monthly_wfo, _wfo_          |
-|          4 | stop_limit, execution_risk  |
-|          5 | reduced_core                |
-|          6 | tick_exact                  |
-|          7 | logical_audit               |
-|          8 | robustness                  |
-|          9 | governance, live_governance |
-|         10 | risk, checklist             |
-|         11 | execution_monte_carlo       |
+|   stage_id | keywords                                     |
+|-----------:|:---------------------------------------------|
+|          1 | data_reliability                             |
+|          2 | mining, opportunity_mining                   |
+|          3 | monthly_wfo, _wfo_                           |
+|          4 | stop_limit, execution_risk                   |
+|          5 | reduced_core                                 |
+|          6 | tick_exact                                   |
+|          7 | logical_audit                                |
+|          8 | robustness, remediation_metric_decomposition |
+|          9 | governance, live_governance                  |
+|         10 | risk, checklist                              |
+|         11 | execution_monte_carlo                        |
 
 ## Legacy Keyword Map
 | keyword                |

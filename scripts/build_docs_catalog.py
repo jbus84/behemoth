@@ -36,7 +36,7 @@ STAGE_KEYWORDS: list[tuple[int, tuple[str, ...]]] = [
     (5, ("reduced_core",)),
     (6, ("tick_exact",)),
     (7, ("logical_audit",)),
-    (8, ("robustness",)),
+    (8, ("robustness", "remediation_metric_decomposition")),
     (9, ("governance", "live_governance")),
     (10, ("risk", "checklist")),
     (11, ("execution_monte_carlo",)),

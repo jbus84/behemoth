@@ -18,14 +18,15 @@ Define metric semantics, formulas, units, interpretation bands, and missing-valu
 | --- | --- | --- | --- | --- | --- |
 | D16_spread_regime_shift_z | 1 | z-score of last month mean `cost_est_pips` vs prior months | z | abs<1 stable; 1-2 watch; >2 review | disallow |
 | D17_gap_burst_ratio | 1 | share of inter-bar gaps >10x median positive gap | ratio | <0.01 good; 0.01-0.05 watch; >0.05 risk | disallow |
-| D18_clock_jitter_cv | 1 | std(delta_t)/median positive delta_t | ratio | <5 good; 5-15 watch; >15 risk | disallow |
+| D18_clock_jitter_cv_raw | 1 | std(delta_t)/median positive delta_t | ratio | lower is better; session effects included | disallow |
+| D18_clock_jitter_cv | 1 | std(clipped(delta_t / hour-of-week median delta_t))/mean(clipped(delta_t / hour-of-week median delta_t)) | ratio | <0.5 good; 0.5-1.0 watch; >1.0 risk | disallow |
 | M01_top3_contrib_share | 2 | top3 edge-weight share | ratio | <0.20 good; 0.20-0.40 watch; >0.40 risk | disallow |
 | M02_smoothness_abs_jump | 2 | median abs adjacent-horizon gross jump | pips | lower is better; >0.30 fragile | disallow |
 | M03_positive_density | 2 | share selected hypotheses with positive mean gross | ratio | >0.7 good; 0.5-0.7 watch; <0.5 weak | disallow |
 | W13_threshold_fragility | 3 | local gross slope around execution quantile | pips/quantile | lower is better; >3 fragile | disallow |
 | W14_brier_drift_std | 3 | std monthly Brier | score | <0.01 stable; >0.03 drift risk | disallow |
 | W15_selection_turnover | 3 | 1-mean consecutive-month Jaccard | ratio | <0.2 stable; 0.2-0.4 watch; >0.4 unstable | disallow |
-| E11_session_overshoot_dispersion | 4 | CV of hourly mean overshoot | ratio | <1 good; 1-1.5 watch; >1.5 risk | disallow |
+| E11_session_overshoot_dispersion | 4 | CV of session mean overshoot after causal rolling caps (20D, q0.90) | ratio | <0.35 good; 0.35-0.5 watch; >0.5 risk | disallow |
 | E12_cap_plateau_width_pips | 4 | cap interval width with >=95% best per-signal result | pips | wider is better; <0.2 fragile | disallow |
 | E13_nonfill_opportunity_cost_pips | 4 | `(ideal-realized)*fill` at best cap | pips | lower is better; >0.3 high erosion | disallow |
 | erosion_overshoot_component | 4 | mean overshoot pips | pips | lower is better | disallow |
@@ -41,7 +42,7 @@ Define metric semantics, formulas, units, interpretation bands, and missing-valu
 | S03_multiplicity_survival | 7 | indicator(Bonferroni pass or FDR pass) | binary | 1 pass; 0 fail | disallow |
 | T01_stress_elasticity | 8 | slope of mean net across cost-plus levels | pips/cost | less negative is better | disallow |
 | T02_first_negative_costplus | 8 | first negative cost-plus level (or max tested) | pips | higher is better | disallow |
-| T03_post_worst_month_recovery | 8 | next-month minus worst-month mean gross | pips | >0 preferred | disallow |
+| T03_post_worst_month_recovery | 8 | next-month mean gross / abs(worst-month mean gross) | ratio | >1 strong recovery; 0.75-1 mild; <0.75 weak | disallow |
 | G01_near_fail_count | 9 | count of low-margin pass checks | count | 0 preferred | disallow |
 | G02_open_warning_age_days | 9 | mean age of open warnings from SLA tracker | days | lower is better | allow when no open risks |
 | G03_lock_drift_flags | 9 | config/hash/state drift failures | count | 0 required | disallow |

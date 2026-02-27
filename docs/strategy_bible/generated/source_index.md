@@ -14,6 +14,9 @@
 - `scripts/validate_oco_docs_contract.py`
 - `scripts/build_oco_strategy_bible.py`
 - `scripts/build_docs_catalog.py`
+- `scripts/register_docs_run.py`
+- `scripts/build_run_delta_dashboard.py`
+- `scripts/build_operator_action_report.py`
 - `scripts/run_execution_monte_carlo.py`
 - `scripts/validate_execution_monte_carlo.py`
 
@@ -37,6 +40,9 @@
 - `tests/test_oco_pipeline_logical_audit.py`
 - `tests/test_oco_docs_contract.py`
 - `tests/test_build_docs_catalog.py`
+- `tests/test_register_docs_run.py`
+- `tests/test_build_run_delta_dashboard.py`
+- `tests/test_build_operator_action_report.py`
 - `tests/test_execution_monte_carlo.py`
 - `tests/test_validate_execution_monte_carlo.py`
 - `tests/test_oco_strategy_bible_builder.py`

@@ -225,6 +225,88 @@ def _safe_div(a: float, b: float) -> float:
     return a / b
 
 
+def _session_bucket(hour_utc: Any) -> str:
+    h = int(_num(hour_utc))
+    if 0 <= h <= 7:
+        return "ASIA"
+    if 8 <= h <= 12:
+        return "LONDON"
+    if 13 <= h <= 21:
+        return "NY"
+    return "LATE"
+
+
+def _rolling_session_cap_table(
+    detail: pd.DataFrame,
+    *,
+    symbol: str,
+    lookback_days: int = 20,
+    cap_quantile: float = 0.90,
+    min_periods: int = 200,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Apply causal rolling overshoot caps by session and return enriched detail + policy rows."""
+    required = {"touch_open_ts", "overshoot_tick_pips"}
+    if detail.empty or not required.issubset(set(detail.columns)):
+        return pd.DataFrame(), pd.DataFrame()
+
+    d = detail.copy()
+    d["touch_open_ts"] = pd.to_datetime(d["touch_open_ts"], utc=True, errors="coerce")
+    d["overshoot_tick_pips"] = pd.to_numeric(d["overshoot_tick_pips"], errors="coerce")
+    d = d.dropna(subset=["touch_open_ts", "overshoot_tick_pips"]).sort_values("touch_open_ts").reset_index(drop=True)
+    if d.empty:
+        return pd.DataFrame(), pd.DataFrame()
+    d["session_bucket"] = d["touch_open_ts"].dt.hour.map(_session_bucket)
+
+    horizon = f"{int(max(lookback_days, 1))}D"
+    parts: list[pd.DataFrame] = []
+    for sess, g in d.groupby("session_bucket", sort=False):
+        gg = g[["touch_open_ts", "overshoot_tick_pips"]].copy().sort_values("touch_open_ts").set_index("touch_open_ts")
+        cap_s = gg["overshoot_tick_pips"].rolling(horizon, min_periods=max(int(min_periods), 1)).quantile(float(cap_quantile)).shift(1)
+        out = g.copy()
+        out["cap_session_pips"] = cap_s.values
+        out["session_bucket"] = sess
+        parts.append(out)
+    d2 = pd.concat(parts, ignore_index=True).sort_values("touch_open_ts").reset_index(drop=True)
+
+    gg = d2[["touch_open_ts", "overshoot_tick_pips"]].copy().set_index("touch_open_ts")
+    d2["cap_global_pips"] = (
+        gg["overshoot_tick_pips"]
+        .rolling(horizon, min_periods=max(int(min_periods), 1))
+        .quantile(float(cap_quantile))
+        .shift(1)
+        .values
+    )
+    fallback_cap = _num(d2["overshoot_tick_pips"].quantile(float(cap_quantile)))
+    d2["cap_applied_pips"] = d2["cap_session_pips"].fillna(d2["cap_global_pips"]).fillna(fallback_cap)
+    d2["cap_source"] = np.where(
+        d2["cap_session_pips"].notna(),
+        "session",
+        np.where(d2["cap_global_pips"].notna(), "global", "fallback"),
+    )
+    d2["overshoot_capped_pips"] = np.minimum(d2["overshoot_tick_pips"], d2["cap_applied_pips"])
+
+    now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    policy_rows: list[dict[str, Any]] = []
+    for sess, g in d2.groupby("session_bucket", sort=True):
+        cap_last = _num(g["cap_applied_pips"].dropna().iloc[-1]) if g["cap_applied_pips"].notna().any() else fallback_cap
+        policy_rows.append(
+            {
+                "symbol": str(symbol).upper(),
+                "session_bucket": str(sess),
+                "lookback_days": int(lookback_days),
+                "cap_quantile": float(cap_quantile),
+                "cap_pips": cap_last,
+                "rows_used": int(len(g)),
+                "session_cap_rows": int(g["cap_session_pips"].notna().sum()),
+                "global_cap_rows": int(g["cap_session_pips"].isna().sum() - ((g["cap_session_pips"].isna()) & (g["cap_global_pips"].isna())).sum()),
+                "fallback_rows": int(((g["cap_session_pips"].isna()) & (g["cap_global_pips"].isna())).sum()),
+                "generated_at_utc": now_utc,
+            }
+        )
+    policy = pd.DataFrame(policy_rows)
+    return d2, policy
+
+
 STAGE04_ALLOWED_ACTION_CODES = {
     "A0_MONITOR",
     "A1_RECALIBRATE_CAP",
@@ -1185,16 +1267,40 @@ def _write_stage_snapshots(
                 gap_s = dd["close_ts"].diff().dt.total_seconds().dropna()
                 gap_pos = gap_s[gap_s > 0]
                 ref_gap = _num(gap_pos.median()) if len(gap_pos) > 0 else _num(gap_s.median())
+                jitter_cv_raw = _safe_div(_num(gap_s.std(ddof=1)), ref_gap)
                 if not math.isfinite(ref_gap) or ref_gap <= 0:
                     # If timestamp precision collapses many diffs to 0, fall back to no-burst/no-jitter.
                     burst_ratio = 0.0
                     jitter_cv = 0.0
+                    jitter_cv_raw = 0.0
                 else:
                     burst_ratio = _num((gap_s > (10.0 * ref_gap)).mean())
-                    jitter_cv = _safe_div(_num(gap_s.std(ddof=1)), ref_gap)
+                    # Normalize spacing by hour-of-week expected interval to reduce deterministic session effects.
+                    d_gap = dd.loc[gap_s.index, ["close_ts"]].copy()
+                    d_gap["dt_s"] = pd.to_numeric(gap_s, errors="coerce")
+                    d_gap = d_gap.dropna(subset=["dt_s"])
+                    d_gap = d_gap[d_gap["dt_s"] > 0].copy()
+                    if not d_gap.empty:
+                        d_gap["how"] = d_gap["close_ts"].dt.dayofweek * 24 + d_gap["close_ts"].dt.hour
+                        exp = d_gap.groupby("how")["dt_s"].median()
+                        global_med = _num(d_gap["dt_s"].median())
+                        d_gap["exp_dt_s"] = d_gap["how"].map(exp).astype(float).fillna(global_med)
+                        d_gap = d_gap[d_gap["exp_dt_s"] > 0].copy()
+                        d_gap["resid_ratio"] = d_gap["dt_s"] / d_gap["exp_dt_s"]
+                        q05 = _num(d_gap["resid_ratio"].quantile(0.05))
+                        q95 = _num(d_gap["resid_ratio"].quantile(0.95))
+                        if math.isfinite(q05) and math.isfinite(q95) and q95 > q05:
+                            d_gap["resid_ratio"] = d_gap["resid_ratio"].clip(lower=q05, upper=q95)
+                        jitter_cv = _safe_div(
+                            _num(d_gap["resid_ratio"].std(ddof=1)),
+                            _num(d_gap["resid_ratio"].mean()),
+                        )
+                    else:
+                        jitter_cv = jitter_cv_raw
             else:
                 burst_ratio = float("nan")
                 jitter_cv = float("nan")
+                jitter_cv_raw = float("nan")
             if "cost_est_pips" in dd.columns:
                 dd["month"] = dd["close_ts"].dt.tz_convert(None).dt.to_period("M").astype(str)
                 month_cost = dd.groupby("month")["cost_est_pips"].mean().dropna()
@@ -1211,15 +1317,18 @@ def _write_stage_snapshots(
         else:
             burst_ratio = float("nan")
             jitter_cv = float("nan")
+            jitter_cv_raw = float("nan")
             spread_shift_z = float("nan")
         row["d16_spread_regime_shift_z"] = spread_shift_z
         row["d17_gap_burst_ratio"] = burst_ratio
         row["d18_clock_jitter_cv"] = jitter_cv
+        row["d18_clock_jitter_cv_raw"] = jitter_cv_raw
         stage01_rows.append(row)
         add_metric(1, "events_rows", sym, row["events_rows"], "rows", str(ev_path) if ev_path else "")
         add_edge_metric(1, sym, "D16_spread_regime_shift_z", spread_shift_z, "Last-month cost-estimate shift vs prior months", str(ev_path) if ev_path else "")
         add_edge_metric(1, sym, "D17_gap_burst_ratio", burst_ratio, "Share of large inter-bar time gaps (>10x median)", str(ev_path) if ev_path else "")
-        add_edge_metric(1, sym, "D18_clock_jitter_cv", jitter_cv, "Inter-bar timing jitter coefficient of variation", str(ev_path) if ev_path else "")
+        add_edge_metric(1, sym, "D18_clock_jitter_cv_raw", jitter_cv_raw, "Raw inter-bar timing jitter coefficient of variation", str(ev_path) if ev_path else "")
+        add_edge_metric(1, sym, "D18_clock_jitter_cv", jitter_cv, "Normalized inter-bar timing jitter CV after hour-of-week baseline adjustment", str(ev_path) if ev_path else "")
         rel = _safe_read_csv(ctx.get("data_reliability_checks_csv"))
         if not rel.empty and "symbol" in rel.columns:
             rel = rel[rel["symbol"].astype(str).str.upper() == str(sym).upper()].copy()
@@ -1315,6 +1424,7 @@ def _write_stage_snapshots(
                 "d16_spread_regime_shift_z",
                 "d17_gap_burst_ratio",
                 "d18_clock_jitter_cv",
+                "d18_clock_jitter_cv_raw",
             ],
         )
         if not stage01.empty
@@ -1645,6 +1755,7 @@ def _write_stage_snapshots(
     drift_rows: list[pd.DataFrame] = []
     stage04_exec_rows: list[dict[str, Any]] = []
     stage04_policy_rows: list[dict[str, Any]] = []
+    stage04_cap_policy_rows: list[pd.DataFrame] = []
     stage04_policy_metrics = [
         "E11_session_overshoot_dispersion",
         "E12_cap_plateau_width_pips",
@@ -1682,37 +1793,35 @@ def _write_stage_snapshots(
             cc = c.copy()
             if "symbol" in cc.columns:
                 cc = cc[cc["symbol"].astype(str).str.upper() == sym].copy()
-            if cc.empty:
-                continue
-            cc["symbol"] = sym
-            caps_rows.append(cc)
-            if {"cap_pips", "mean_per_signal_full_overshoot"}.issubset(set(cc.columns)):
-                cc2 = cc.copy()
-                cc2["cap_pips"] = pd.to_numeric(cc2["cap_pips"], errors="coerce")
-                cc2["mean_per_signal_full_overshoot"] = pd.to_numeric(cc2["mean_per_signal_full_overshoot"], errors="coerce")
-                cc2 = cc2.dropna(subset=["cap_pips", "mean_per_signal_full_overshoot"]).sort_values("cap_pips")
-                if not cc2.empty:
-                    best = _num(cc2["mean_per_signal_full_overshoot"].max())
-                    near = cc2[cc2["mean_per_signal_full_overshoot"] >= (0.95 * best if math.isfinite(best) else float("nan"))]
-                    if len(near) >= 2:
-                        e12_plateau_width = _num(near["cap_pips"].max() - near["cap_pips"].min())
-                if {"mean_per_signal_no_extra_slip", "mean_per_signal_full_overshoot", "fill_rate"}.issubset(set(cc2.columns)):
-                    cc_best = cc2.iloc[cc2["mean_per_signal_full_overshoot"].argmax()]
-                    ideal = _num(cc_best.get("mean_per_signal_no_extra_slip"))
-                    real = _num(cc_best.get("mean_per_signal_full_overshoot"))
-                    fill = _num(cc_best.get("fill_rate"))
-                    best_cap_pips = _num(cc_best.get("cap_pips"))
-                    best_fill_rate = fill
-                    e4_per_signal_realized = real
-                    e13_nonfill_opportunity_cost = (ideal - real) * fill if all(math.isfinite(v) for v in [ideal, real, fill]) else float("nan")
+            if not cc.empty:
+                cc["symbol"] = sym
+                caps_rows.append(cc)
+                if {"cap_pips", "mean_per_signal_full_overshoot"}.issubset(set(cc.columns)):
+                    cc2 = cc.copy()
+                    cc2["cap_pips"] = pd.to_numeric(cc2["cap_pips"], errors="coerce")
+                    cc2["mean_per_signal_full_overshoot"] = pd.to_numeric(cc2["mean_per_signal_full_overshoot"], errors="coerce")
+                    cc2 = cc2.dropna(subset=["cap_pips", "mean_per_signal_full_overshoot"]).sort_values("cap_pips")
+                    if not cc2.empty:
+                        best = _num(cc2["mean_per_signal_full_overshoot"].max())
+                        near = cc2[cc2["mean_per_signal_full_overshoot"] >= (0.95 * best if math.isfinite(best) else float("nan"))]
+                        if len(near) >= 2:
+                            e12_plateau_width = _num(near["cap_pips"].max() - near["cap_pips"].min())
+                    if {"mean_per_signal_no_extra_slip", "mean_per_signal_full_overshoot", "fill_rate"}.issubset(set(cc2.columns)):
+                        cc_best = cc2.iloc[cc2["mean_per_signal_full_overshoot"].argmax()]
+                        ideal = _num(cc_best.get("mean_per_signal_no_extra_slip"))
+                        real = _num(cc_best.get("mean_per_signal_full_overshoot"))
+                        fill = _num(cc_best.get("fill_rate"))
+                        best_cap_pips = _num(cc_best.get("cap_pips"))
+                        best_fill_rate = fill
+                        e4_per_signal_realized = real
+                        e13_nonfill_opportunity_cost = (ideal - real) * fill if all(math.isfinite(v) for v in [ideal, real, fill]) else float("nan")
         if not drift.empty:
             dd = drift.copy()
             if "symbol" in dd.columns:
                 dd = dd[dd["symbol"].astype(str).str.upper() == sym].copy()
-            if dd.empty:
-                continue
-            dd["symbol"] = sym
-            drift_rows.append(dd)
+            if not dd.empty:
+                dd["symbol"] = sym
+                drift_rows.append(dd)
         if not er.empty:
             if "symbol" in er.columns:
                 er = er[er["symbol"].astype(str).str.upper() == sym].copy()
@@ -1738,20 +1847,43 @@ def _write_stage_snapshots(
                 is_num_side = side_norm.isin([-1, 1])
                 is_text_side = d["side"].astype(str).str.upper().isin(["BUY", "SELL"])
                 d = d[is_num_side | is_text_side].copy()
+            if "touch_found_tick" in d.columns:
+                d["touch_found_tick"] = pd.to_numeric(d["touch_found_tick"], errors="coerce").fillna(0).astype(int)
+                d = d[d["touch_found_tick"] == 1].copy()
             d["touch_open_ts"] = pd.to_datetime(d["touch_open_ts"], utc=True, errors="coerce")
             d["overshoot_tick_pips"] = pd.to_numeric(d["overshoot_tick_pips"], errors="coerce")
             d = d.dropna(subset=["touch_open_ts", "overshoot_tick_pips"])
             if not d.empty:
-                d["hour_utc"] = d["touch_open_ts"].dt.hour
-                by_hr = d.groupby("hour_utc")["overshoot_tick_pips"].mean()
-                if len(by_hr) > 1:
-                    e11_session_overshoot_dispersion = _safe_div(_num(by_hr.std(ddof=1)), _num(by_hr.mean()))
+                d_cap, cap_policy = _rolling_session_cap_table(
+                    d,
+                    symbol=sym,
+                    lookback_days=20,
+                    cap_quantile=0.90,
+                    min_periods=200,
+                )
+                if not cap_policy.empty:
+                    stage04_cap_policy_rows.append(cap_policy)
+                if not d_cap.empty:
+                    by_session = d_cap.groupby("session_bucket")["overshoot_capped_pips"].mean()
+                    if len(by_session) > 1:
+                        e11_session_overshoot_dispersion = _safe_div(_num(by_session.std(ddof=1)), _num(by_session.mean()))
+                    if stage04_idx >= 0:
+                        stage04_summary_rows[stage04_idx]["stage04_cap_lookback_days"] = 20
+                        stage04_summary_rows[stage04_idx]["stage04_cap_quantile"] = 0.90
+                        stage04_summary_rows[stage04_idx]["stage04_cap_sessions"] = int(by_session.shape[0])
         erosion = float("nan")
         if stage04_idx >= 0:
             base = _num(stage04_summary_rows[stage04_idx].get("base_mean_gross_pips"))
             erosion = base - e4_per_signal_realized if math.isfinite(base) and math.isfinite(e4_per_signal_realized) else float("nan")
             add_edge_metric(4, sym, "erosion_spread_fee_plus_slip", erosion, "Gross-to-per-signal erosion including overshoot realism", str(ctx.get("stop_limit_caps_csv", "")))
-        add_edge_metric(4, sym, "E11_session_overshoot_dispersion", e11_session_overshoot_dispersion, "CV of mean overshoot across UTC hours", str(ctx.get("stop_limit_detail_csv", "")))
+        add_edge_metric(
+            4,
+            sym,
+            "E11_session_overshoot_dispersion",
+            e11_session_overshoot_dispersion,
+            "CV of mean overshoot across sessions after causal rolling session caps (20D, q=0.90)",
+            str(ctx.get("stop_limit_detail_csv", "")),
+        )
         add_edge_metric(4, sym, "E12_cap_plateau_width_pips", e12_plateau_width, "Cap width where performance remains >=95% of best", str(ctx.get("stop_limit_caps_csv", "")))
         add_edge_metric(4, sym, "E13_nonfill_opportunity_cost_pips", e13_nonfill_opportunity_cost, "Estimated opportunity cost at best cap (ideal-realized)*fill", str(ctx.get("stop_limit_caps_csv", "")))
         if stage04_idx >= 0:
@@ -1791,6 +1923,7 @@ def _write_stage_snapshots(
     stage04 = pd.DataFrame(stage04_summary_rows)
     stage04_policy = pd.DataFrame(stage04_policy_rows)
     stage04_policy_csv = outputs.stage_metrics_csv.parent / "stage04_execution_policy_status.csv"
+    stage04_cap_policy_csv = outputs.stage_metrics_csv.parent / "stage04_cap_policy_by_session.csv"
     stage04_policy_csv.parent.mkdir(parents=True, exist_ok=True)
     if stage04_policy.empty:
         stage04_policy = pd.DataFrame(
@@ -1809,6 +1942,23 @@ def _write_stage_snapshots(
             ]
         )
     stage04_policy.to_csv(stage04_policy_csv, index=False)
+    stage04_cap_policy = pd.concat(stage04_cap_policy_rows, ignore_index=True) if stage04_cap_policy_rows else pd.DataFrame()
+    if stage04_cap_policy.empty:
+        stage04_cap_policy = pd.DataFrame(
+            columns=[
+                "symbol",
+                "session_bucket",
+                "lookback_days",
+                "cap_quantile",
+                "cap_pips",
+                "rows_used",
+                "session_cap_rows",
+                "global_cap_rows",
+                "fallback_rows",
+                "generated_at_utc",
+            ]
+        )
+    stage04_cap_policy.to_csv(stage04_cap_policy_csv, index=False)
     stage04_policy_rollup = _stage04_policy_rollup_rows(stage04_policy)
     stage04_caps = pd.concat(caps_rows, ignore_index=True) if caps_rows else pd.DataFrame()
     stage04_plot = _stage_plot_path(outputs, 4, "stop_limit_caps")
@@ -1857,9 +2007,11 @@ def _write_stage_snapshots(
         details_table=stage04_details if not stage04_details.empty else None,
         notes=[
             "Execution realism is applied with tick first-cross overshoot.",
+            "Session-aware rolling caps are built causally (20D lookback, q=0.90) before E11 dispersion is measured.",
             "Cap curve highlights fill-rate versus signal-level expectancy.",
             "E11-E13 are informational execution diagnostics: session dispersion, plateau width, and non-fill opportunity cost.",
             f"Policy status artifact: {stage04_policy_csv}",
+            f"Session cap artifact: {stage04_cap_policy_csv}",
         ],
         figure_paths=[p for p in [stage04_plot, stage04_policy_plot] if p.exists()],
         figure_prefix="../figures/oco_bible/",
@@ -1909,6 +2061,13 @@ def _write_stage_snapshots(
                     "green_threshold",
                     "amber_threshold",
                 ],
+            )
+        )
+    if not stage04_cap_policy.empty:
+        stage04_content += "\n\n#### Session Rolling Cap Policy\n" + _table(
+            _pick_cols(
+                stage04_cap_policy,
+                ["symbol", "session_bucket", "lookback_days", "cap_quantile", "cap_pips", "rows_used", "session_cap_rows", "global_cap_rows", "fallback_rows"],
             )
         )
     write_stage(4, stage04_content)
@@ -2292,7 +2451,10 @@ def _write_stage_snapshots(
                 base = rr.iloc[:-1].copy()
                 if not base.empty:
                     i = int(base["mean_gross_pips"].idxmin())
-                    t03_recovery = _num(rr.loc[i + 1, "mean_gross_pips"] - rr.loc[i, "mean_gross_pips"])
+                    worst = _num(rr.loc[i, "mean_gross_pips"])
+                    nxt = _num(rr.loc[i + 1, "mean_gross_pips"])
+                    # Recovery factor: next-month gross / abs(worst-month gross); higher is better.
+                    t03_recovery = _safe_div(nxt, abs(worst))
         row["t01_stress_elasticity"] = t01_elasticity
         row["t02_first_negative_costplus"] = t02_first_negative_cost
         row["t03_post_worst_month_recovery"] = t03_recovery
@@ -2300,7 +2462,14 @@ def _write_stage_snapshots(
         add_metric(8, "lb95_trade_mean_gross_pips", sym, row.get("lb95_trade_mean_gross_pips"), "pips", str(ctx.get("robustness_summary_csv", "")))
         add_edge_metric(8, sym, "T01_stress_elasticity", t01_elasticity, "Slope of mean net pips across costplus stress levels", str(ctx.get("robustness_summary_csv", "")))
         add_edge_metric(8, sym, "T02_first_negative_costplus", t02_first_negative_cost, "First costplus level where mean net turns negative", str(ctx.get("robustness_summary_csv", "")))
-        add_edge_metric(8, sym, "T03_post_worst_month_recovery", t03_recovery, "One-month rebound after worst reduced-core month", str(ctx.get("reduced_monthly_csv", "")))
+        add_edge_metric(
+            8,
+            sym,
+            "T03_post_worst_month_recovery",
+            t03_recovery,
+            "Next-month / abs(worst-month) gross ratio after worst reduced-core month",
+            str(ctx.get("reduced_monthly_csv", "")),
+        )
     stage08 = pd.DataFrame(robust_rows)
     stress_cols = sorted(
         [
@@ -2358,7 +2527,7 @@ def _write_stage_snapshots(
             "Robustness summary uses bootstrap lower bounds from the configured smoke/full run artifacts.",
             "Interpretation: LB95 > 0 indicates conservative positive expectancy under sampled uncertainty.",
             "Overfit panel adds month-stratified null uplift and dependence-aware LB95 comparisons.",
-            "T01-T03 summarize stress elasticity, negative-cost crossing, and post-stress monthly recovery.",
+            "T01-T03 summarize stress elasticity, negative-cost crossing, and post-worst-month recovery efficiency.",
         ],
         figure_paths=[p for p in [stage08_plot, stage08_overfit_panel] if p.exists()],
         figure_prefix="../figures/oco_bible/",

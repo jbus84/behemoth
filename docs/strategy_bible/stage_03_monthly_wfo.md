@@ -56,7 +56,7 @@ uv run python scripts/run_tick_opportunity_monthly_wfo.py \
 <!-- GENERATED:STAGE_03:START -->
 ### Auto Snapshot - Stage 03
 
-- generated_at: `2026-02-27 09:11:16 UTC`
+- generated_at: `2026-02-27 11:11:58 UTC`
 - Execution threshold summary is aligned to quantile=0.9.
 - Metrics are strictly month-forward (3M train -> 1M test).
 - W13-W15 are informational diagnostics for threshold fragility, calibration drift, and selection turnover.

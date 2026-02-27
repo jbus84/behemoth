@@ -53,7 +53,7 @@ uv run python scripts/run_tick_opportunity_mining.py \
 <!-- GENERATED:STAGE_02:START -->
 ### Auto Snapshot - Stage 02
 
-- generated_at: `2026-02-27 09:11:16 UTC`
+- generated_at: `2026-02-27 11:11:58 UTC`
 - selection_pass candidates are broad hypotheses only.
 - Scatter shows the high-count >0 gross opportunity frontier.
 - M01-M03 quantify concentration risk, horizon smoothness, and positive-edge density.
