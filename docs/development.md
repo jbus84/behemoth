@@ -23,6 +23,7 @@ What runs by default:
 
 What runs on `pre-push`:
 
+- OCO docs contract/gov checks via `make docs-contract`.
 - Full docs build via `make docs-build` (export OpenAPI + mkdocs build).
 
 If you need to bypass hooks temporarily, use `SKIP=ty,docs-build` with pre-commit. Avoid this for normal development.
@@ -38,6 +39,12 @@ To build docs:
 
 ```bash
 make docs-build
+```
+
+To run OCO docs contracts explicitly:
+
+```bash
+make docs-contract
 ```
 
 ## Test Run

@@ -110,6 +110,9 @@ def _write_stage11_mc_artifacts(*, generated_root: Path, edge_metrics_csv: Path)
 def _mkdocs_text() -> str:
     paths = [
         "analysis/index.md",
+        "analysis/oco_stage_integrity_report.md",
+        "analysis/oco_execution_drift_report.md",
+        "analysis/oco_threshold_sensitivity_report.md",
         "strategy_bible/stage_01_data_foundation.md",
         "strategy_bible/stage_02_opportunity_mining.md",
         "strategy_bible/stage_03_monthly_wfo.md",
@@ -125,9 +128,12 @@ def _mkdocs_text() -> str:
         "strategy_bible/assumptions_and_threats.md",
         "strategy_bible/governance_mapping.md",
         "analysis/data_reliability_report.md",
+        "analysis/oco_stage_integrity_report.md",
         "analysis/operator_action_report.md",
         "analysis/oco_leakage_integrity_report.md",
         "analysis/oco_execution_risk_prelive_report.md",
+        "analysis/oco_execution_drift_report.md",
+        "analysis/oco_threshold_sensitivity_report.md",
         "analysis/oco_execution_monte_carlo_report.md",
         "analysis/oco_execution_monte_carlo_validation_report.md",
         "analysis/oco_logical_audit_report.md",
@@ -144,9 +150,12 @@ def _write_analysis_catalog_artifacts(docs_root: Path) -> None:
     analysis.mkdir(parents=True, exist_ok=True)
     files = [
         "data_reliability_report.md",
+        "oco_stage_integrity_report.md",
         "operator_action_report.md",
         "oco_leakage_integrity_report.md",
         "oco_execution_risk_prelive_report.md",
+        "oco_execution_drift_report.md",
+        "oco_threshold_sensitivity_report.md",
         "oco_execution_monte_carlo_report.md",
         "oco_execution_monte_carlo_validation_report.md",
         "oco_logical_audit_report.md",
@@ -293,6 +302,115 @@ def _write_operator_action_artifacts(*, docs_root: Path, edge_metrics_csv: Path)
     (docs_root.parent / "analysis" / "taxonomy_rules.md").write_text("# Taxonomy\n", encoding="utf-8")
 
 
+def _write_stage_integrity_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> None:
+    base = edge_metrics_csv.parent
+    rows = []
+    for stage_id in range(1, 11):
+        rows.append(
+            {
+                "symbol": "ALL",
+                "stage_id": stage_id,
+                "check_id": f"SI01_{stage_id:02d}",
+                "check_name": "ok",
+                "status": "pass",
+                "severity_if_fail": "high",
+                "component": "stage_integrity",
+                "metric_name": "exists",
+                "metric_value": 1,
+                "threshold": 1,
+                "comparator": "==",
+                "details": "",
+                "source_path": str(docs_root),
+                "evaluated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            }
+        )
+    pd.DataFrame(rows).to_csv(base / "oco_stage_integrity_checks.csv", index=False)
+    pd.DataFrame(columns=["issue_id", "symbol", "check_id", "severity", "component", "summary", "details_json"]).to_csv(
+        base / "oco_stage_integrity_issues.csv", index=False
+    )
+    (docs_root.parent / "analysis" / "oco_stage_integrity_report.md").write_text("# Stage Integrity\n", encoding="utf-8")
+
+
+def _write_execution_drift_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> None:
+    base = edge_metrics_csv.parent
+    monthly_rows = []
+    for sym in ["EURUSD", "GBPUSD", "USDJPY"]:
+        monthly_rows.append(
+            {
+                "symbol": sym,
+                "test_month": "2025-12",
+                "rows_total": 1000,
+                "fill_rate": 0.98,
+                "no_touch_rate": 0.01,
+                "overshoot_p50_pips": 0.1,
+                "overshoot_p95_pips": 0.4,
+                "delta_fill_rate_drop": 0.0,
+                "delta_no_touch_rate": 0.0,
+                "delta_overshoot_p95_pips": 0.0,
+            }
+        )
+    pd.DataFrame(monthly_rows).to_csv(base / "oco_execution_drift_monthly.csv", index=False)
+    pd.DataFrame(
+        [
+            {
+                "symbol": "EURUSD",
+                "test_month": "2025-12",
+                "metric_id": "E_DRIFT_OVERSHOOT_P95",
+                "metric_value": 0.0,
+                "warn_threshold": 0.1,
+                "fail_threshold": 0.2,
+                "band": "green",
+                "severity": "info",
+                "source_path": "x",
+                "details_json": "{}",
+                "evaluated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            }
+        ]
+    ).to_csv(base / "oco_execution_drift_alerts.csv", index=False)
+    (docs_root.parent / "analysis" / "oco_execution_drift_report.md").write_text("# Drift\n", encoding="utf-8")
+
+
+def _write_threshold_sensitivity_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> None:
+    base = edge_metrics_csv.parent
+    rows = []
+    for sym in ["EURUSD", "GBPUSD", "USDJPY"]:
+        rows.append(
+            {
+                "symbol": sym,
+                "lookback_days": 20,
+                "cadence_days": 30,
+                "window_days": 3,
+                "quantile": 0.9,
+                "lb95_month_mean_signal_pips": 0.5,
+                "w13_threshold_fragility": 1.0,
+                "w14_brier_drift_std": 0.001,
+                "w15_selection_turnover": 0.05,
+                "final_score": 0.8,
+                "is_recommended": 1,
+                "is_current_policy": 1,
+            }
+        )
+    pd.DataFrame(rows).to_csv(base / "oco_threshold_sensitivity.csv", index=False)
+    pd.DataFrame(
+        [
+            {
+                "symbol": "EURUSD",
+                "test_month": "",
+                "metric_id": "TS01_W13_THRESHOLD_FRAGILITY",
+                "metric_value": 1.0,
+                "warn_threshold": 2.5,
+                "fail_threshold": 4.0,
+                "band": "green",
+                "severity": "info",
+                "source_path": "x",
+                "details_json": "{}",
+                "evaluated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            }
+        ]
+    ).to_csv(base / "oco_threshold_sensitivity_alerts.csv", index=False)
+    (docs_root.parent / "analysis" / "oco_threshold_sensitivity_report.md").write_text("# Threshold Sensitivity\n", encoding="utf-8")
+
+
 def test_docs_contract_smoke_pass(tmp_path: Path) -> None:
     docs_root = tmp_path / "docs" / "strategy_bible"
     docs_root.mkdir(parents=True, exist_ok=True)
@@ -311,6 +429,9 @@ def test_docs_contract_smoke_pass(tmp_path: Path) -> None:
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage_integrity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_execution_drift_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
 
     stage_status_csv = tmp_path / "stage_status.csv"
     pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
@@ -378,6 +499,9 @@ def test_docs_contract_flags_missing_metric_definition(tmp_path: Path) -> None:
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage_integrity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_execution_drift_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
 
     stage_status_csv = tmp_path / "stage_status.csv"
     pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
@@ -443,6 +567,9 @@ def test_docs_contract_flags_invalid_stage04_action_code(tmp_path: Path) -> None
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage_integrity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_execution_drift_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
 
     bad_policy = pd.read_csv(edge_metrics_csv.parent / "stage04_execution_policy_status.csv")
     bad_policy.loc[0, "action_code"] = "BAD_CODE"
@@ -505,6 +632,9 @@ def test_docs_contract_flags_snapshot_details_over_cap(tmp_path: Path) -> None:
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage_integrity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_execution_drift_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
 
     # Build a large details table (>40 rows) to trigger C18 failure.
     lines = ["#### Details", "| a | b |", "| --- | --- |"] + [f"| {i} | x |" for i in range(45)]
@@ -565,6 +695,9 @@ def test_docs_contract_flags_missing_run_delta_baseline(tmp_path: Path) -> None:
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage_integrity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_execution_drift_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
 
     reg = pd.read_csv(edge_metrics_csv.parent / "run_registry.csv")
     reg["is_baseline"] = 0
@@ -625,6 +758,9 @@ def test_docs_contract_flags_unclassified_taxonomy_docs(tmp_path: Path) -> None:
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage_integrity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_execution_drift_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
 
     manifest = pd.read_csv(docs_root.parent / "analysis" / "catalog_manifest.csv")
     manifest = pd.concat(

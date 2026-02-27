@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 06
 
-- generated_at: `2026-02-27 11:41:32 UTC`
+- generated_at: `2026-02-27 12:15:07 UTC`
 - Verifier recomputes OCO outcomes independently from stored labels.
 - All summary rates should remain near 1.0 for contract consistency.
 

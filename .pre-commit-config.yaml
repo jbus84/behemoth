@@ -30,6 +30,12 @@ repos:
         language: system
         pass_filenames: false
         args: ["src", "services"]
+      - id: docs-contract
+        name: docs contract
+        entry: make docs-contract
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
       - id: docs-build
         name: docs build
         entry: make docs-build

@@ -45,15 +45,18 @@ Evaluate model filtering with strict monthly walk-forward ordering and quantify 
 - `docs/analysis/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md`
 - `docs/analysis/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md`
 - `docs/analysis/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_report.md`
+- `docs/analysis/oco_threshold_sensitivity_report.md`
 
 ## Reproduction Commands
 ```bash
 uv run python scripts/run_tick_opportunity_monthly_wfo.py \
   --config configs/research/experiments/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml
+uv run python scripts/build_oco_threshold_sensitivity_report.py
 ```
 
 ## Traceability
 - `scripts/run_tick_opportunity_monthly_wfo.py`
+- `scripts/build_oco_threshold_sensitivity_report.py`
 - `docs/analysis/*_tick_opportunity_monthly_wfo_oco_*_report.md`
 - `docs/strategy_bible/generated/stage_03_snapshot.md`
 
@@ -61,7 +64,7 @@ uv run python scripts/run_tick_opportunity_monthly_wfo.py \
 <!-- GENERATED:STAGE_03:START -->
 ### Auto Snapshot - Stage 03
 
-- generated_at: `2026-02-27 11:41:32 UTC`
+- generated_at: `2026-02-27 12:15:07 UTC`
 - Execution threshold summary is aligned to quantile=0.9.
 - Metrics are strictly month-forward (3M train -> 1M test).
 - W13-W15 are informational diagnostics for threshold fragility, calibration drift, and selection turnover.

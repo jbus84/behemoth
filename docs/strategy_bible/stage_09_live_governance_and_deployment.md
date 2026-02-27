@@ -154,6 +154,7 @@ Rollback rule:
 - `docs/analysis/oco_live_governance_lock.md`
 - `docs/analysis/run_delta_dashboard.md`
 - `docs/analysis/operator_action_report.md`
+- `docs/analysis/oco_threshold_sensitivity_report.md`
 
 ## Reproduction Commands
 Freeze:
@@ -175,11 +176,13 @@ uv run python scripts/validate_oco_live_governance.py \
   --leakage-checks-csv data/analysis/tick_opportunity_mining/oco_leakage_integrity_checks.csv \
   --execution-risk-checks-csv data/analysis/tick_opportunity_mining/oco_execution_risk_checks.csv \
   --out-json data/analysis/tick_opportunity_mining/eurusd_governance_validate.json
+uv run python scripts/build_oco_threshold_sensitivity_report.py
 ```
 
 ## Traceability
 - `scripts/freeze_oco_live_governance.py`
 - `scripts/validate_oco_live_governance.py`
+- `scripts/build_oco_threshold_sensitivity_report.py`
 - `tests/test_oco_live_governance.py`
 - `docs/analysis/oco_live_governance_lock.md`
 
@@ -187,7 +190,7 @@ uv run python scripts/validate_oco_live_governance.py \
 <!-- GENERATED:STAGE_09:START -->
 ### Auto Snapshot - Stage 09
 
-- generated_at: `2026-02-27 11:41:32 UTC`
+- generated_at: `2026-02-27 12:15:07 UTC`
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
 - Missing required artifacts: 0.
 

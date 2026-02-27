@@ -14,9 +14,12 @@ import pandas as pd
 
 CORE_REPORTS = {
     "analysis/data_reliability_report.md",
+    "analysis/oco_stage_integrity_report.md",
     "analysis/operator_action_report.md",
     "analysis/oco_leakage_integrity_report.md",
     "analysis/oco_execution_risk_prelive_report.md",
+    "analysis/oco_execution_drift_report.md",
+    "analysis/oco_threshold_sensitivity_report.md",
     "analysis/oco_execution_monte_carlo_report.md",
     "analysis/oco_execution_monte_carlo_validation_report.md",
     "analysis/oco_logical_audit_report.md",
@@ -32,9 +35,12 @@ GOVERNANCE_CORE_REPORTS = {
 }
 
 STAGE_INTEGRATED_MANUAL = {
+    "analysis/oco_stage_integrity_report.md",
     "analysis/oco_edge_clarity_report.md",
     "analysis/oco_docs_contract_report.md",
     "analysis/oco_leakage_integrity_report.md",
+    "analysis/oco_execution_drift_report.md",
+    "analysis/oco_threshold_sensitivity_report.md",
     "analysis/run_delta_dashboard.md",
     "analysis/operator_action_report.md",
     "analysis/taxonomy_rules.md",
@@ -46,14 +52,14 @@ SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY")
 STAGE_KEYWORDS: list[tuple[int, tuple[str, ...]]] = [
     (1, ("data_reliability",)),
     (2, ("mining", "opportunity_mining")),
-    (3, ("monthly_wfo", "_wfo_")),
-    (4, ("stop_limit", "execution_risk")),
+    (3, ("monthly_wfo", "_wfo_", "threshold_sensitivity")),
+    (4, ("stop_limit", "execution_risk", "execution_drift")),
     (5, ("reduced_core",)),
     (6, ("tick_exact",)),
     (7, ("logical_audit",)),
     (8, ("robustness", "remediation_metric_decomposition")),
     (9, ("governance", "live_governance")),
-    (10, ("risk", "checklist")),
+    (10, ("risk", "checklist", "stage_integrity")),
     (11, ("execution_monte_carlo",)),
 ]
 

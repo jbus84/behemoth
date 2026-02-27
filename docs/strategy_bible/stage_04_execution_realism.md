@@ -123,11 +123,13 @@ flowchart TD
 ## Canonical Analysis Reports
 - `docs/analysis/oco_execution_risk_prelive_report.md`
 - `docs/analysis/oco_stop_limit_tickfill_fullcap_report.md`
+- `docs/analysis/oco_execution_drift_report.md`
 
 ## Reproduction Commands
 ```bash
 uv run python scripts/analyze_oco_stop_limit_tickfill.py \
   --symbols EURUSD,GBPUSD,USDJPY
+uv run python scripts/build_oco_execution_drift_report.py
 
 uv run python scripts/build_oco_strategy_bible.py \
   --manifest configs/research/docs/oco_bible_manifest.yaml --strict false
@@ -135,6 +137,7 @@ uv run python scripts/build_oco_strategy_bible.py \
 
 ## Traceability
 - `scripts/analyze_oco_stop_limit_tickfill.py`
+- `scripts/build_oco_execution_drift_report.py`
 - `docs/analysis/oco_stop_limit_tickfill_fullcap_report.md`
 - `docs/strategy_bible/generated/stage_04_snapshot.md`
 
@@ -142,7 +145,7 @@ uv run python scripts/build_oco_strategy_bible.py \
 <!-- GENERATED:STAGE_04:START -->
 ### Auto Snapshot - Stage 04
 
-- generated_at: `2026-02-27 11:41:32 UTC`
+- generated_at: `2026-02-27 12:15:07 UTC`
 - Execution realism is applied with tick first-cross overshoot.
 - Session-aware rolling caps are built causally (20D lookback, q=0.90) before E11 dispersion is measured.
 - Cap curve highlights fill-rate versus signal-level expectancy.

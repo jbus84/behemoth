@@ -94,6 +94,7 @@ Diagnostics-first backlog checks (informational, not blockers yet):
 - `docs/analysis/oco_docs_contract_report.md`
 - `docs/analysis/oco_leakage_integrity_report.md`
 - `docs/analysis/taxonomy_rules.md`
+- `docs/analysis/oco_stage_integrity_report.md`
 
 ## Reproduction Commands
 ```bash
@@ -106,10 +107,15 @@ uv run python scripts/build_oco_strategy_bible.py \
 
 | Backlog ID | Item | Priority | Owner | Acceptance Test |
 | --- | --- | --- | --- | --- |
-| B10.1 | Add docs CI check: all stages must contain generated snapshot and non-empty key table | High | Research infra | CI fails when any stage snapshot marker missing |
-| B10.2 | Add monthly drift report for overshoot/fill distributions by symbol | High | Execution research | Stage 4 drift report emitted with p50/p95 change bands |
 | B10.3 | Add explicit pre-registration note for reduced rule family universe | Medium | Research lead | Stage 2/5 docs include versioned rule-universe rationale |
-| B10.4 | Add threshold lookback/retrain cadence sensitivity report | Medium | WFO research | Stage 3/9 sensitivity table committed per release |
+
+## Recently Implemented Backlog (2026-02-27)
+
+| Backlog ID | Item | Status | Evidence |
+| --- | --- | --- | --- |
+| B10.1 | Add docs CI check: all stages must contain generated snapshot and non-empty key table | Implemented | `make docs-contract`, `docs/analysis/oco_stage_integrity_report.md` |
+| B10.2 | Add monthly drift report for overshoot/fill distributions by symbol | Implemented | `docs/analysis/oco_execution_drift_report.md` |
+| B10.4 | Add threshold lookback/retrain cadence sensitivity report | Implemented | `docs/analysis/oco_threshold_sensitivity_report.md` |
 
 ## Escalation Matrix
 If any trigger occurs, required action is immediate:
@@ -130,7 +136,7 @@ If any trigger occurs, required action is immediate:
 <!-- GENERATED:STAGE_10:START -->
 ### Auto Snapshot - Stage 10
 
-- generated_at: `2026-02-27 11:41:32 UTC`
+- generated_at: `2026-02-27 12:15:07 UTC`
 - Risk backlog is derived from current logical-audit failures.
 - When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.
 

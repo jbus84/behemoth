@@ -59,9 +59,12 @@ required_artifacts:
   - docs/analysis/catalog_manifest.csv
   - docs/analysis/catalog_gaps_report.md
   - docs/analysis/taxonomy_rules.md
+  - docs/analysis/oco_stage_integrity_report.md
   - docs/analysis/run_delta_dashboard.md
   - docs/analysis/operator_action_report.md
   - docs/analysis/oco_stop_limit_tickfill_fullcap_report.md
+  - docs/analysis/oco_execution_drift_report.md
+  - docs/analysis/oco_threshold_sensitivity_report.md
   - docs/analysis/data_reliability_report.md
   - docs/analysis/oco_leakage_integrity_report.md
   - docs/analysis/oco_execution_risk_prelive_report.md
@@ -84,6 +87,9 @@ script_links:
   - scripts/validate_oco_docs_contract.py
   - scripts/build_oco_strategy_bible.py
   - scripts/build_docs_catalog.py
+  - scripts/check_oco_docs_stage_integrity.py
+  - scripts/build_oco_execution_drift_report.py
+  - scripts/build_oco_threshold_sensitivity_report.py
   - scripts/register_docs_run.py
   - scripts/build_run_delta_dashboard.py
   - scripts/build_operator_action_report.py
@@ -108,6 +114,9 @@ test_links:
   - tests/test_oco_pipeline_logical_audit.py
   - tests/test_oco_docs_contract.py
   - tests/test_build_docs_catalog.py
+  - tests/test_stage_integrity_gate.py
+  - tests/test_execution_drift_report.py
+  - tests/test_threshold_sensitivity_report.py
   - tests/test_register_docs_run.py
   - tests/test_build_run_delta_dashboard.py
   - tests/test_build_operator_action_report.py

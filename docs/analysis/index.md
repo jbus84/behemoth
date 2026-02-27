@@ -1,6 +1,6 @@
 # Analysis Catalog
 
-- generated_at_utc: `2026-02-27T11:40:39Z`
+- generated_at_utc: `2026-02-27T12:55:42Z`
 - manifest_csv: `analysis/catalog_manifest.csv`
 - gaps_report: `analysis/catalog_gaps_report.md`
 
@@ -8,11 +8,14 @@
 - [Data Reliability Report](data_reliability_report.md)
 - [Oco Docs Contract Report](oco_docs_contract_report.md)
 - [Oco Edge Clarity Report](oco_edge_clarity_report.md)
+- [Oco Execution Drift Report](oco_execution_drift_report.md)
 - [Oco Execution Monte Carlo Report](oco_execution_monte_carlo_report.md)
 - [Oco Execution Monte Carlo Validation Report](oco_execution_monte_carlo_validation_report.md)
 - [Oco Execution Risk Prelive Report](oco_execution_risk_prelive_report.md)
 - [Oco Leakage Integrity Report](oco_leakage_integrity_report.md)
 - [Oco Logical Audit Report](oco_logical_audit_report.md)
+- [Oco Stage Integrity Report](oco_stage_integrity_report.md)
+- [Oco Threshold Sensitivity Report](oco_threshold_sensitivity_report.md)
 - [Operator Action Report](operator_action_report.md)
 - [Run Delta Dashboard](run_delta_dashboard.md)
 - [Taxonomy Rules](taxonomy_rules.md)
@@ -42,14 +45,14 @@
 |-----------:|---------------:|
 |          1 |              1 |
 |          2 |              3 |
-|          3 |              6 |
-|          4 |              2 |
+|          3 |              7 |
+|          4 |              3 |
 |          5 |              3 |
 |          6 |              3 |
 |          7 |              1 |
 |          8 |              1 |
 |          9 |              1 |
-|         10 |              1 |
+|         10 |              2 |
 |         11 |              2 |
 
 ## Legacy Reports

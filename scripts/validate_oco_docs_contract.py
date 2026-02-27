@@ -96,6 +96,9 @@ CANONICAL_NAV_PATHS = [
     "strategy_bible/assumptions_and_threats.md",
     "strategy_bible/governance_mapping.md",
     "analysis/index.md",
+    "analysis/oco_stage_integrity_report.md",
+    "analysis/oco_execution_drift_report.md",
+    "analysis/oco_threshold_sensitivity_report.md",
     "analysis/oco_docs_contract_report.md",
 ]
 
@@ -146,9 +149,12 @@ STAGE11_REQUIRED_SCENARIOS = {"S0_baseline", "S1_mild", "S2_moderate", "S3_sever
 CORE_REPORT_PATHS = [
     "analysis/index.md",
     "analysis/data_reliability_report.md",
+    "analysis/oco_stage_integrity_report.md",
     "analysis/operator_action_report.md",
     "analysis/oco_leakage_integrity_report.md",
     "analysis/oco_execution_risk_prelive_report.md",
+    "analysis/oco_execution_drift_report.md",
+    "analysis/oco_threshold_sensitivity_report.md",
     "analysis/oco_execution_monte_carlo_report.md",
     "analysis/oco_execution_monte_carlo_validation_report.md",
     "analysis/oco_logical_audit_report.md",
@@ -211,6 +217,43 @@ CANONICAL_MAP_REQUIRED_COLUMNS = [
 ]
 
 CANONICAL_ALLOWED_CLASSES = {"stage_integrated", "governance_core", "archive"}
+
+STAGE_INTEGRITY_REQUIRED_COLUMNS = [
+    "stage_id",
+    "check_id",
+    "status",
+    "severity_if_fail",
+    "metric_name",
+    "metric_value",
+]
+
+EXECUTION_DRIFT_REQUIRED_COLUMNS = [
+    "symbol",
+    "test_month",
+    "rows_total",
+    "fill_rate",
+    "no_touch_rate",
+    "overshoot_p50_pips",
+    "overshoot_p95_pips",
+    "delta_fill_rate_drop",
+    "delta_no_touch_rate",
+    "delta_overshoot_p95_pips",
+]
+
+THRESHOLD_SENSITIVITY_REQUIRED_COLUMNS = [
+    "symbol",
+    "lookback_days",
+    "cadence_days",
+    "window_days",
+    "quantile",
+    "lb95_month_mean_signal_pips",
+    "w13_threshold_fragility",
+    "w14_brier_drift_std",
+    "w15_selection_turnover",
+    "final_score",
+    "is_recommended",
+    "is_current_policy",
+]
 
 
 def _table(df: pd.DataFrame) -> str:
@@ -1006,6 +1049,136 @@ def run(
         comparator="==",
         source_path=canonical_map_csv,
         details=json.dumps({"duplicate_groups": dup_count, "missing_groups": missing_count}, sort_keys=True),
+    )
+
+    # C30: Stage integrity checks exist and have zero high/critical failures.
+    stage_integrity_checks_csv = edge_metrics_csv.parent / "oco_stage_integrity_checks.csv"
+    stage_integrity_issues_csv = edge_metrics_csv.parent / "oco_stage_integrity_issues.csv"
+    stage_integrity_report_md = docs_root.parent / "analysis" / "oco_stage_integrity_report.md"
+    try:
+        si = pd.read_csv(stage_integrity_checks_csv) if stage_integrity_checks_csv.exists() else pd.DataFrame()
+    except Exception:
+        si = pd.DataFrame()
+    missing_si_cols = [c for c in STAGE_INTEGRITY_REQUIRED_COLUMNS if c not in si.columns]
+    si_fail = pd.DataFrame()
+    if not si.empty and {"status", "severity_if_fail"}.issubset(set(si.columns)):
+        si_fail = si[si["status"].astype(str).str.lower() != "pass"].copy()
+    si_high_critical = (
+        int(si_fail["severity_if_fail"].astype(str).str.lower().isin(["high", "critical"]).sum())
+        if not si_fail.empty
+        else 0
+    )
+    _add_check(
+        checks_rows,
+        check_id="C30",
+        check_name="stage_integrity_checks_present_and_clean",
+        passed=stage_integrity_checks_csv.exists()
+        and stage_integrity_issues_csv.exists()
+        and stage_integrity_report_md.exists()
+        and len(missing_si_cols) == 0
+        and si_high_critical == 0,
+        severity_if_fail="high",
+        metric_name="stage_integrity_high_critical_fails",
+        metric_value=int(si_high_critical),
+        threshold=0,
+        comparator="==",
+        source_path=stage_integrity_checks_csv,
+        details=json.dumps(
+            {
+                "missing_columns": missing_si_cols,
+                "report_exists": stage_integrity_report_md.exists(),
+                "issues_exists": stage_integrity_issues_csv.exists(),
+                "checks_rows": int(len(si)),
+            },
+            sort_keys=True,
+        ),
+    )
+
+    # C31: Execution drift artifacts exist and have required schema/symbol coverage.
+    execution_drift_csv = edge_metrics_csv.parent / "oco_execution_drift_monthly.csv"
+    execution_drift_alerts_csv = edge_metrics_csv.parent / "oco_execution_drift_alerts.csv"
+    execution_drift_report_md = docs_root.parent / "analysis" / "oco_execution_drift_report.md"
+    try:
+        drift = pd.read_csv(execution_drift_csv) if execution_drift_csv.exists() else pd.DataFrame()
+    except Exception:
+        drift = pd.DataFrame()
+    missing_drift_cols = [c for c in EXECUTION_DRIFT_REQUIRED_COLUMNS if c not in drift.columns]
+    drift_syms = (
+        set(drift["symbol"].astype(str).str.upper().unique().tolist())
+        if (not drift.empty and "symbol" in drift.columns)
+        else set()
+    )
+    expected_syms = {"EURUSD", "GBPUSD", "USDJPY"}
+    _add_check(
+        checks_rows,
+        check_id="C31",
+        check_name="execution_drift_artifacts_schema_and_symbols",
+        passed=execution_drift_csv.exists()
+        and execution_drift_alerts_csv.exists()
+        and execution_drift_report_md.exists()
+        and len(missing_drift_cols) == 0
+        and expected_syms.issubset(drift_syms),
+        severity_if_fail="high",
+        metric_name="execution_drift_missing_or_invalid",
+        metric_value=int(len(missing_drift_cols) + len(expected_syms - drift_syms)),
+        threshold=0,
+        comparator="==",
+        source_path=execution_drift_csv,
+        details=json.dumps(
+            {
+                "missing_columns": missing_drift_cols,
+                "symbols_present": sorted(list(drift_syms)),
+                "alerts_exists": execution_drift_alerts_csv.exists(),
+                "report_exists": execution_drift_report_md.exists(),
+            },
+            sort_keys=True,
+        ),
+    )
+
+    # C32: Threshold sensitivity artifacts exist, have required schema, and recommended/current rows.
+    threshold_sens_csv = edge_metrics_csv.parent / "oco_threshold_sensitivity.csv"
+    threshold_sens_alerts_csv = edge_metrics_csv.parent / "oco_threshold_sensitivity_alerts.csv"
+    threshold_sens_report_md = docs_root.parent / "analysis" / "oco_threshold_sensitivity_report.md"
+    try:
+        sens = pd.read_csv(threshold_sens_csv) if threshold_sens_csv.exists() else pd.DataFrame()
+    except Exception:
+        sens = pd.DataFrame()
+    missing_sens_cols = [c for c in THRESHOLD_SENSITIVITY_REQUIRED_COLUMNS if c not in sens.columns]
+    sens_syms = (
+        set(sens["symbol"].astype(str).str.upper().unique().tolist())
+        if (not sens.empty and "symbol" in sens.columns)
+        else set()
+    )
+    rec_count = int(pd.to_numeric(sens.get("is_recommended", pd.Series(dtype=float)), errors="coerce").fillna(0).sum()) if not sens.empty else 0
+    cur_count = int(pd.to_numeric(sens.get("is_current_policy", pd.Series(dtype=float)), errors="coerce").fillna(0).sum()) if not sens.empty else 0
+    _add_check(
+        checks_rows,
+        check_id="C32",
+        check_name="threshold_sensitivity_artifacts_schema_and_policy_rows",
+        passed=threshold_sens_csv.exists()
+        and threshold_sens_alerts_csv.exists()
+        and threshold_sens_report_md.exists()
+        and len(missing_sens_cols) == 0
+        and expected_syms.issubset(sens_syms)
+        and rec_count >= len(expected_syms)
+        and cur_count >= len(expected_syms),
+        severity_if_fail="high",
+        metric_name="threshold_sensitivity_missing_or_invalid",
+        metric_value=int(len(missing_sens_cols) + len(expected_syms - sens_syms)),
+        threshold=0,
+        comparator="==",
+        source_path=threshold_sens_csv,
+        details=json.dumps(
+            {
+                "missing_columns": missing_sens_cols,
+                "symbols_present": sorted(list(sens_syms)),
+                "recommended_rows": rec_count,
+                "current_policy_rows": cur_count,
+                "alerts_exists": threshold_sens_alerts_csv.exists(),
+                "report_exists": threshold_sens_report_md.exists(),
+            },
+            sort_keys=True,
+        ),
     )
 
     checks = pd.DataFrame(checks_rows)
