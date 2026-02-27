@@ -14,6 +14,7 @@ import pandas as pd
 
 CORE_REPORTS = {
     "analysis/data_reliability_report.md",
+    "analysis/operator_action_report.md",
     "analysis/oco_leakage_integrity_report.md",
     "analysis/oco_execution_risk_prelive_report.md",
     "analysis/oco_execution_monte_carlo_report.md",
@@ -21,6 +22,8 @@ CORE_REPORTS = {
     "analysis/oco_logical_audit_report.md",
     "analysis/oco_edge_clarity_report.md",
     "analysis/oco_docs_contract_report.md",
+    "analysis/run_delta_dashboard.md",
+    "analysis/taxonomy_rules.md",
 }
 
 SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY")
@@ -38,6 +41,15 @@ STAGE_KEYWORDS: list[tuple[int, tuple[str, ...]]] = [
     (10, ("risk", "checklist")),
     (11, ("execution_monte_carlo",)),
 ]
+
+LEGACY_KEYWORDS: tuple[str, ...] = (
+    "close_path_contracts",
+    "cluster_earlywarning",
+    "kf_directional",
+    "mom_loss_limiter",
+    "m5_mom_m15_momrev",
+    "stable_pairs_whitelist",
+)
 
 
 @dataclass(frozen=True)
@@ -96,8 +108,10 @@ def _classify_doc(path: Path, docs_root: Path) -> ClassifiedDoc:
         group = "symbol"
     elif stage_id is not None:
         group = "stage"
+    elif any(k in name_l for k in LEGACY_KEYWORDS):
+        group = "legacy"
     else:
-        group = "misc"
+        group = "unclassified"
     mtime = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     return ClassifiedDoc(
         doc_path=rel,
@@ -160,12 +174,21 @@ def _render_index(manifest: pd.DataFrame, *, docs_root: Path) -> str:
         lines.append(_table(agg))
     lines.append("")
 
-    lines.append("## Misc Reports")
-    misc = manifest[manifest["group"] == "misc"].copy().sort_values("doc_path")
-    if misc.empty:
+    lines.append("## Legacy Reports")
+    legacy = manifest[manifest["group"] == "legacy"].copy().sort_values("doc_path")
+    if legacy.empty:
         lines.append("_empty_")
     else:
-        for _, r in misc.iterrows():
+        for _, r in legacy.iterrows():
+            lines.append(f"- [{r['title']}]({r['doc_path'].replace('analysis/', '')})")
+    lines.append("")
+
+    lines.append("## Unclassified Reports")
+    unclassified = manifest[manifest["group"] == "unclassified"].copy().sort_values("doc_path")
+    if unclassified.empty:
+        lines.append("_empty_")
+    else:
+        for _, r in unclassified.iterrows():
             lines.append(f"- [{r['title']}]({r['doc_path'].replace('analysis/', '')})")
     lines.append("")
 
@@ -193,7 +216,7 @@ def _render_gaps(manifest: pd.DataFrame, *, docs_root: Path) -> str:
     lines.append("_empty_" if not missing_core else "\n".join(f"- `{x}`" for x in missing_core))
     lines.append("")
 
-    unclassified = manifest[manifest["stage_id"].isna() & (~manifest["is_archive"].astype(bool))].copy()
+    unclassified = manifest[manifest["group"].astype(str) == "unclassified"].copy()
     lines.append("## Unclassified Reports")
     if unclassified.empty:
         lines.append("_empty_")
@@ -207,6 +230,36 @@ def _render_gaps(manifest: pd.DataFrame, *, docs_root: Path) -> str:
     return "\n".join(lines)
 
 
+def _render_taxonomy_rules() -> str:
+    lines: list[str] = []
+    lines.append("# Analysis Taxonomy Rules")
+    lines.append("")
+    lines.append(f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`")
+    lines.append("")
+    lines.append("## Group Assignment Order")
+    lines.append("1. `archive`: any document under `docs/archive/`.")
+    lines.append("2. `core`: canonical governance reports for the OCO bible.")
+    lines.append("3. `symbol`: filename maps to specific symbol token (`EURUSD`, `GBPUSD`, `USDJPY`).")
+    lines.append("4. `stage`: filename keyword maps to stage id.")
+    lines.append("5. `legacy`: known historical/legacy analysis families.")
+    lines.append("6. `unclassified`: everything else (should be zero in healthy state).")
+    lines.append("")
+    lines.append("## Stage Keyword Map")
+    stage_rows = []
+    for stage_id, keys in STAGE_KEYWORDS:
+        stage_rows.append({"stage_id": int(stage_id), "keywords": ", ".join(keys)})
+    lines.append(_table(pd.DataFrame(stage_rows)))
+    lines.append("")
+    lines.append("## Legacy Keyword Map")
+    legacy_rows = [{"keyword": k} for k in LEGACY_KEYWORDS]
+    lines.append(_table(pd.DataFrame(legacy_rows)))
+    lines.append("")
+    lines.append("## Core Report Set")
+    core_rows = [{"doc_path": p} for p in sorted(CORE_REPORTS)]
+    lines.append(_table(pd.DataFrame(core_rows)))
+    return "\n".join(lines)
+
+
 def run(
     *,
     docs_root: Path,
@@ -215,6 +268,7 @@ def run(
     out_index_md: Path,
     out_manifest_csv: Path,
     out_gaps_md: Path,
+    out_taxonomy_md: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
     doc_paths: list[Path] = []
     if analysis_dir.exists():
@@ -246,9 +300,13 @@ def run(
     out_manifest_csv.parent.mkdir(parents=True, exist_ok=True)
     out_index_md.parent.mkdir(parents=True, exist_ok=True)
     out_gaps_md.parent.mkdir(parents=True, exist_ok=True)
+    if out_taxonomy_md is not None:
+        out_taxonomy_md.parent.mkdir(parents=True, exist_ok=True)
     manifest.to_csv(out_manifest_csv, index=False)
     out_index_md.write_text(_render_index(manifest, docs_root=docs_root), encoding="utf-8")
     out_gaps_md.write_text(_render_gaps(manifest, docs_root=docs_root), encoding="utf-8")
+    if out_taxonomy_md is not None:
+        out_taxonomy_md.write_text(_render_taxonomy_rules(), encoding="utf-8")
     return manifest, out_index_md, out_gaps_md
 
 
@@ -260,6 +318,7 @@ def main() -> None:
     p.add_argument("--out-index-md", default="docs/analysis/index.md")
     p.add_argument("--out-manifest-csv", default="docs/analysis/catalog_manifest.csv")
     p.add_argument("--out-gaps-md", default="docs/analysis/catalog_gaps_report.md")
+    p.add_argument("--out-taxonomy-md", default="docs/analysis/taxonomy_rules.md")
     args = p.parse_args()
 
     manifest, out_index, out_gaps = run(
@@ -269,10 +328,12 @@ def main() -> None:
         out_index_md=Path(str(args.out_index_md)),
         out_manifest_csv=Path(str(args.out_manifest_csv)),
         out_gaps_md=Path(str(args.out_gaps_md)),
+        out_taxonomy_md=Path(str(args.out_taxonomy_md)),
     )
     print(f"wrote manifest: {args.out_manifest_csv} rows={len(manifest)}")
     print(f"wrote index: {out_index}")
     print(f"wrote gaps: {out_gaps}")
+    print(f"wrote taxonomy rules: {args.out_taxonomy_md}")
 
 
 if __name__ == "__main__":

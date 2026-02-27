@@ -1,6 +1,6 @@
 # Analysis Catalog
 
-- generated_at_utc: `2026-02-27T09:11:05Z`
+- generated_at_utc: `2026-02-27T10:50:18Z`
 - manifest_csv: `analysis/catalog_manifest.csv`
 - gaps_report: `analysis/catalog_gaps_report.md`
 
@@ -13,6 +13,9 @@
 - [Oco Execution Risk Prelive Report](oco_execution_risk_prelive_report.md)
 - [Oco Leakage Integrity Report](oco_leakage_integrity_report.md)
 - [Oco Logical Audit Report](oco_logical_audit_report.md)
+- [Operator Action Report](operator_action_report.md)
+- [Run Delta Dashboard](run_delta_dashboard.md)
+- [Taxonomy Rules](taxonomy_rules.md)
 
 ## Symbol Reports
 ### EURUSD
@@ -65,13 +68,16 @@
 |         10 |              1 |
 |         11 |              2 |
 
-## Misc Reports
+## Legacy Reports
 - [Close Path Contracts M5 M15 M60 Ml Gate Report](close_path_contracts_m5_m15_m60_ml_gate_report.md)
 - [Cluster Earlywarning Report](cluster_earlywarning_report.md)
 - [Kf Directional Q80 1bar Report](kf_directional_q80_1bar_report.md)
 - [M5 Mom M15 Momrev M60 Rev Hgbt Report](m5_mom_m15_momrev_m60_rev_hgbt_report.md)
 - [Mom Loss Limiter Wfo](mom_loss_limiter_wfo.md)
 - [Stable Pairs Whitelist](stable_pairs_whitelist.md)
+
+## Unclassified Reports
+_empty_
 
 ## Archive Links
 - [Institutional Audit Report](../archive/institutional_audit_report.md)

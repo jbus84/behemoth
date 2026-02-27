@@ -58,6 +58,9 @@ required_artifacts:
   - docs/analysis/index.md
   - docs/analysis/catalog_manifest.csv
   - docs/analysis/catalog_gaps_report.md
+  - docs/analysis/taxonomy_rules.md
+  - docs/analysis/run_delta_dashboard.md
+  - docs/analysis/operator_action_report.md
   - docs/analysis/oco_stop_limit_tickfill_smoke_report.md
   - docs/analysis/oco_stop_limit_tickfill_fullcap_report.md
   - docs/analysis/data_reliability_report.md
@@ -82,6 +85,9 @@ script_links:
   - scripts/validate_oco_docs_contract.py
   - scripts/build_oco_strategy_bible.py
   - scripts/build_docs_catalog.py
+  - scripts/register_docs_run.py
+  - scripts/build_run_delta_dashboard.py
+  - scripts/build_operator_action_report.py
   - scripts/run_execution_monte_carlo.py
   - scripts/validate_execution_monte_carlo.py
 
@@ -105,6 +111,9 @@ test_links:
   - tests/test_oco_pipeline_logical_audit.py
   - tests/test_oco_docs_contract.py
   - tests/test_build_docs_catalog.py
+  - tests/test_register_docs_run.py
+  - tests/test_build_run_delta_dashboard.py
+  - tests/test_build_operator_action_report.py
   - tests/test_execution_monte_carlo.py
   - tests/test_validate_execution_monte_carlo.py
   - tests/test_oco_strategy_bible_builder.py

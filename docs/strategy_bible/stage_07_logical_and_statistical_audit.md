@@ -40,6 +40,18 @@ Enforce logical pipeline contracts and summarize multiplicity-aware significance
 - `C01-C10` are hard logical gates.
 - `S01-S03` are statistical interpretation diagnostics.
 
+## Operator MRM Checks
+- Verify any `S01` jump is explained by known dependence structure changes.
+- Escalate if `S02` drops below 1 for any production symbol.
+- Treat repeated `S03=0` as a model-risk event requiring re-selection review.
+
+## Escalation Matrix
+| condition | owner | action |
+| --- | --- | --- |
+| `S02 < 1` | research | halt symbol from promotion pipeline |
+| `S03 = 0` in two consecutive runs | research + risk | rerun Stage 2-5 with constrained state family |
+| `S01` exceeds historical p95 | risk | add temporary uncertainty uplift and monitor |
+
 ## Reproduction Commands
 ```bash
 uv run python scripts/audit_oco_pipeline_logical_issues.py

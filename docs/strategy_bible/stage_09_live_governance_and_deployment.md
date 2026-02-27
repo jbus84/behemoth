@@ -133,6 +133,14 @@ Diagnostics-first governance checks (informational, not blockers yet):
 ## Operational Notes
 - Any change to selection or threshold policy requires governance refresh and re-validation.
 
+## Operator Escalation Matrix
+| trigger | severity | required action |
+| --- | --- | --- |
+| any hash mismatch (`G9.1-G9.3`) | critical | block deploy; restore frozen lock alignment |
+| deploy outside window (`G9.4`) | high | refresh lock via approved retrain cycle |
+| `G01` rising for 3 runs | medium | open risk review task; tighten predeploy checks |
+| non-zero `G03` | high | halt release until lock drift root cause is closed |
+
 Deployment runbook:
 1. Freeze lock from freshly validated research outputs.
 2. Validate deploy mode against lock using live config paths.

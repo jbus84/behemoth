@@ -146,6 +146,7 @@ STAGE11_REQUIRED_SCENARIOS = {"S0_baseline", "S1_mild", "S2_moderate", "S3_sever
 CORE_REPORT_PATHS = [
     "analysis/index.md",
     "analysis/data_reliability_report.md",
+    "analysis/operator_action_report.md",
     "analysis/oco_leakage_integrity_report.md",
     "analysis/oco_execution_risk_prelive_report.md",
     "analysis/oco_execution_monte_carlo_report.md",
@@ -153,9 +154,52 @@ CORE_REPORT_PATHS = [
     "analysis/oco_logical_audit_report.md",
     "analysis/oco_edge_clarity_report.md",
     "analysis/oco_docs_contract_report.md",
+    "analysis/run_delta_dashboard.md",
+    "analysis/taxonomy_rules.md",
 ]
 
 STAGE_SNAPSHOT_MAX_DETAIL_ROWS = 40
+
+RUN_DELTA_SUMMARY_REQUIRED_COLUMNS = [
+    "baseline_run_id",
+    "latest_run_id",
+    "metric_rows_baseline",
+    "metric_rows_latest",
+    "metric_rows_changed",
+    "gate_rows_changed",
+]
+
+RUN_DELTA_GATE_REQUIRED_COLUMNS = [
+    "symbol",
+    "gate_id",
+    "baseline_value",
+    "latest_value",
+    "delta",
+    "changed",
+]
+
+OPERATOR_ACTION_REQUIRED_COLUMNS = [
+    "symbol",
+    "stage_id",
+    "metric_id",
+    "metric_value",
+    "band",
+    "severity",
+    "action_code",
+    "action_summary",
+    "owner",
+    "evaluated_at_utc",
+]
+
+STAGE_OPERATOR_SECTIONS: dict[int, list[str]] = {
+    7: [
+        "Operator MRM Checks",
+        "Escalation Matrix",
+    ],
+    9: [
+        "Operator Escalation Matrix",
+    ],
+}
 
 
 def _table(df: pd.DataFrame) -> str:
@@ -719,6 +763,156 @@ def run(
         threshold=int(STAGE_SNAPSHOT_MAX_DETAIL_ROWS),
         comparator="<=",
         source_path=Path(worst_path) if worst_path else generated_root,
+    )
+
+    # C19: Run delta artifacts exist and baseline is configured.
+    run_registry_csv = edge_metrics_csv.parent / "run_registry.csv"
+    run_delta_summary_csv = edge_metrics_csv.parent / "run_delta_summary.csv"
+    run_delta_metric_changes_csv = edge_metrics_csv.parent / "run_delta_metric_changes.csv"
+    run_delta_gate_changes_csv = edge_metrics_csv.parent / "run_delta_gate_changes.csv"
+    run_delta_report_md = docs_root.parent / "analysis" / "run_delta_dashboard.md"
+    try:
+        run_registry = pd.read_csv(run_registry_csv) if run_registry_csv.exists() else pd.DataFrame()
+    except Exception:
+        run_registry = pd.DataFrame()
+    try:
+        run_delta_summary = pd.read_csv(run_delta_summary_csv) if run_delta_summary_csv.exists() else pd.DataFrame()
+    except Exception:
+        run_delta_summary = pd.DataFrame()
+    try:
+        run_delta_gate = pd.read_csv(run_delta_gate_changes_csv) if run_delta_gate_changes_csv.exists() else pd.DataFrame()
+    except Exception:
+        run_delta_gate = pd.DataFrame()
+    baseline_count = 0
+    if not run_registry.empty and "is_baseline" in run_registry.columns:
+        baseline_count = int(pd.to_numeric(run_registry["is_baseline"], errors="coerce").fillna(0).astype(int).sum())
+    missing_run_delta_summary_cols = [c for c in RUN_DELTA_SUMMARY_REQUIRED_COLUMNS if c not in run_delta_summary.columns]
+    missing_run_delta_gate_cols = [c for c in RUN_DELTA_GATE_REQUIRED_COLUMNS if c not in run_delta_gate.columns]
+    baseline_ref_ok = False
+    if not run_delta_summary.empty and {"baseline_run_id", "latest_run_id"}.issubset(set(run_delta_summary.columns)):
+        row = run_delta_summary.iloc[0]
+        baseline_ref_ok = bool(str(row.get("baseline_run_id", "")).strip()) and bool(str(row.get("latest_run_id", "")).strip())
+    run_delta_ok = (
+        run_registry_csv.exists()
+        and run_delta_summary_csv.exists()
+        and run_delta_metric_changes_csv.exists()
+        and run_delta_gate_changes_csv.exists()
+        and run_delta_report_md.exists()
+        and baseline_count >= 1
+        and len(missing_run_delta_summary_cols) == 0
+        and len(missing_run_delta_gate_cols) == 0
+        and baseline_ref_ok
+    )
+    _add_check(
+        checks_rows,
+        check_id="C19",
+        check_name="run_delta_artifacts_and_baseline",
+        passed=run_delta_ok,
+        severity_if_fail="high",
+        metric_name="run_delta_missing_or_invalid",
+        metric_value=int(not run_delta_ok),
+        threshold=0,
+        comparator="==",
+        source_path=run_delta_summary_csv,
+        details=json.dumps(
+            {
+                "baseline_count": baseline_count,
+                "missing_summary_cols": missing_run_delta_summary_cols,
+                "missing_gate_cols": missing_run_delta_gate_cols,
+                "baseline_ref_ok": baseline_ref_ok,
+                "report_exists": run_delta_report_md.exists(),
+            },
+            sort_keys=True,
+        ),
+    )
+
+    # C20: Taxonomy has no unclassified docs.
+    taxonomy_manifest_csv = docs_root.parent / "analysis" / "catalog_manifest.csv"
+    try:
+        taxonomy_manifest = pd.read_csv(taxonomy_manifest_csv) if taxonomy_manifest_csv.exists() else pd.DataFrame()
+    except Exception:
+        taxonomy_manifest = pd.DataFrame()
+    unclassified_count = 0
+    if not taxonomy_manifest.empty and "group" in taxonomy_manifest.columns:
+        unclassified_count = int(taxonomy_manifest["group"].astype(str).str.lower().isin(["unclassified", "misc"]).sum())
+    taxonomy_rules_md = docs_root.parent / "analysis" / "taxonomy_rules.md"
+    _add_check(
+        checks_rows,
+        check_id="C20",
+        check_name="taxonomy_unclassified_count_zero",
+        passed=taxonomy_rules_md.exists() and unclassified_count == 0,
+        severity_if_fail="medium",
+        metric_name="unclassified_docs_count",
+        metric_value=int(unclassified_count),
+        threshold=0,
+        comparator="==",
+        source_path=taxonomy_manifest_csv,
+        details=f"taxonomy_rules_exists={taxonomy_rules_md.exists()}",
+    )
+
+    # C21: Operator action artifacts exist and match schema.
+    operator_status_csv = edge_metrics_csv.parent / "operator_action_status.csv"
+    operator_report_md = docs_root.parent / "analysis" / "operator_action_report.md"
+    operator_playbook_md = docs_root / "operator_playbook.md"
+    try:
+        operator_status = pd.read_csv(operator_status_csv) if operator_status_csv.exists() else pd.DataFrame()
+    except Exception:
+        operator_status = pd.DataFrame()
+    missing_operator_cols = [c for c in OPERATOR_ACTION_REQUIRED_COLUMNS if c not in operator_status.columns]
+    unresolved_schema_rows = 0
+    if not operator_status.empty:
+        req = operator_status[[c for c in ["band", "action_code", "action_summary"] if c in operator_status.columns]].copy()
+        if not req.empty:
+            unresolved_schema_rows = int((req.astype(str).apply(lambda x: x.str.strip() == "").any(axis=1)).sum())
+    operator_ok = (
+        operator_status_csv.exists()
+        and operator_report_md.exists()
+        and operator_playbook_md.exists()
+        and len(missing_operator_cols) == 0
+        and unresolved_schema_rows == 0
+    )
+    _add_check(
+        checks_rows,
+        check_id="C21",
+        check_name="operator_action_artifacts_schema",
+        passed=operator_ok,
+        severity_if_fail="high",
+        metric_name="missing_operator_columns",
+        metric_value=int(len(missing_operator_cols)),
+        threshold=0,
+        comparator="==",
+        source_path=operator_status_csv,
+        details=json.dumps(
+            {
+                "missing_columns": missing_operator_cols,
+                "blank_band_action_rows": unresolved_schema_rows,
+                "report_exists": operator_report_md.exists(),
+                "playbook_exists": operator_playbook_md.exists(),
+            },
+            sort_keys=True,
+        ),
+    )
+
+    # C22: Operator sections are present in required stage specs.
+    missing_operator_sections: list[str] = []
+    for stage_id, sections in STAGE_OPERATOR_SECTIONS.items():
+        sp = _stage_doc_path(docs_root, stage_id)
+        txt = sp.read_text(encoding="utf-8", errors="ignore") if sp.exists() else ""
+        for sec in sections:
+            if sec not in txt:
+                missing_operator_sections.append(f"stage_{stage_id:02d}:{sec}")
+    _add_check(
+        checks_rows,
+        check_id="C22",
+        check_name="stage_specs_operator_sections_present",
+        passed=len(missing_operator_sections) == 0,
+        severity_if_fail="medium",
+        metric_name="missing_operator_sections",
+        metric_value=int(len(missing_operator_sections)),
+        threshold=0,
+        comparator="==",
+        source_path=docs_root,
+        details=",".join(missing_operator_sections),
     )
 
     checks = pd.DataFrame(checks_rows)

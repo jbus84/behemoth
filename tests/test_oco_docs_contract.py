@@ -42,6 +42,10 @@ def _write_stage_docs(root: Path) -> None:
         txt = _stage_doc_text()
         if i == 4:
             txt = txt + _stage04_policy_sections_text()
+        if i == 7:
+            txt = txt + "\n\n## Operator MRM Checks\n\n## Escalation Matrix\n"
+        if i == 9:
+            txt = txt + "\n\n## Operator Escalation Matrix\n"
         (root / n).write_text(txt, encoding="utf-8")
 
 
@@ -121,6 +125,7 @@ def _mkdocs_text() -> str:
         "strategy_bible/assumptions_and_threats.md",
         "strategy_bible/governance_mapping.md",
         "analysis/data_reliability_report.md",
+        "analysis/operator_action_report.md",
         "analysis/oco_leakage_integrity_report.md",
         "analysis/oco_execution_risk_prelive_report.md",
         "analysis/oco_execution_monte_carlo_report.md",
@@ -128,6 +133,8 @@ def _mkdocs_text() -> str:
         "analysis/oco_logical_audit_report.md",
         "analysis/oco_edge_clarity_report.md",
         "analysis/oco_docs_contract_report.md",
+        "analysis/run_delta_dashboard.md",
+        "analysis/taxonomy_rules.md",
     ]
     return "\n".join(["nav:"] + [f"  - {p}" for p in paths])
 
@@ -137,6 +144,7 @@ def _write_analysis_catalog_artifacts(docs_root: Path) -> None:
     analysis.mkdir(parents=True, exist_ok=True)
     files = [
         "data_reliability_report.md",
+        "operator_action_report.md",
         "oco_leakage_integrity_report.md",
         "oco_execution_risk_prelive_report.md",
         "oco_execution_monte_carlo_report.md",
@@ -144,6 +152,8 @@ def _write_analysis_catalog_artifacts(docs_root: Path) -> None:
         "oco_logical_audit_report.md",
         "oco_edge_clarity_report.md",
         "oco_docs_contract_report.md",
+        "run_delta_dashboard.md",
+        "taxonomy_rules.md",
     ]
     for name in files:
         (analysis / name).write_text(f"# {name}\n", encoding="utf-8")
@@ -151,6 +161,101 @@ def _write_analysis_catalog_artifacts(docs_root: Path) -> None:
     (analysis / "catalog_gaps_report.md").write_text("# gaps\n", encoding="utf-8")
     manifest_rows = [{"doc_path": f"analysis/{name}", "title": name, "group": "core"} for name in files]
     pd.DataFrame(manifest_rows).to_csv(analysis / "catalog_manifest.csv", index=False)
+
+
+def _write_run_delta_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> None:
+    base = edge_metrics_csv.parent
+    snap = base / "run_snapshots" / "run_baseline"
+    snap.mkdir(parents=True, exist_ok=True)
+    edge = pd.read_csv(edge_metrics_csv)
+    edge.to_csv(snap / "edge_clarity_stage_metrics.csv", index=False)
+    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": 1}]).to_csv(snap / "oco_bible_stage_status.csv", index=False)
+    reg = pd.DataFrame(
+        [
+            {
+                "run_id": "run_baseline",
+                "run_label": "baseline",
+                "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "registered_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "edge_metrics_rows": int(len(edge)),
+                "stage_metrics_rows": int(len(edge)),
+                "stage_status_rows": 1,
+                "docs_checks_failed": 0,
+                "docs_checks_high_critical_failed": 0,
+                "symbols_total": 1,
+                "symbols_pass_count": 1,
+                "edge_metrics_snapshot": str(snap / "edge_clarity_stage_metrics.csv"),
+                "stage_metrics_snapshot": str(snap / "oco_bible_stage_metrics.csv"),
+                "stage_status_snapshot": str(snap / "oco_bible_stage_status.csv"),
+                "docs_checks_snapshot": str(snap / "docs_contract_checks.csv"),
+                "snapshot_dir": str(snap),
+                "is_baseline": 1,
+            }
+        ]
+    )
+    reg.to_csv(base / "run_registry.csv", index=False)
+    pd.DataFrame(
+        [
+            {
+                "baseline_run_id": "run_baseline",
+                "latest_run_id": "run_baseline",
+                "metric_rows_baseline": len(edge),
+                "metric_rows_latest": len(edge),
+                "metric_rows_changed": 0,
+                "gate_rows_changed": 0,
+            }
+        ]
+    ).to_csv(base / "run_delta_summary.csv", index=False)
+    pd.DataFrame(
+        [
+            {
+                "stage_id": 1,
+                "symbol": "EURUSD",
+                "metric_id": "D16_spread_regime_shift_z",
+                "metric_value_baseline": 1.0,
+                "metric_value_latest": 1.0,
+                "delta": 0.0,
+                "abs_delta": 0.0,
+                "changed": False,
+            }
+        ]
+    ).to_csv(base / "run_delta_metric_changes.csv", index=False)
+    pd.DataFrame(
+        [
+            {
+                "symbol": "EURUSD",
+                "gate_id": "symbol_all_gates_pass",
+                "baseline_value": 1,
+                "latest_value": 1,
+                "delta": 0,
+                "changed": 0,
+            }
+        ]
+    ).to_csv(base / "run_delta_gate_changes.csv", index=False)
+    (docs_root.parent / "analysis" / "run_delta_dashboard.md").write_text("# Run Delta\n", encoding="utf-8")
+
+
+def _write_operator_action_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> None:
+    base = edge_metrics_csv.parent
+    pd.DataFrame(
+        [
+            {
+                "symbol": "EURUSD",
+                "stage_id": 1,
+                "metric_id": "D16_spread_regime_shift_z",
+                "metric_value": 0.1,
+                "band": "green",
+                "severity": "info",
+                "action_code": "A0_MONITOR",
+                "action_summary": "ok",
+                "owner": "research",
+                "evaluated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            }
+        ]
+    ).to_csv(base / "operator_action_status.csv", index=False)
+    (docs_root.parent / "analysis" / "operator_action_report.md").write_text("# Operator Action\n", encoding="utf-8")
+    (docs_root / "operator_playbook.md").write_text("# Operator Playbook\n", encoding="utf-8")
+    (docs_root.parent / "analysis" / "taxonomy_rules.md").write_text("# Taxonomy\n", encoding="utf-8")
 
 
 def test_docs_contract_smoke_pass(tmp_path: Path) -> None:
@@ -169,6 +274,8 @@ def test_docs_contract_smoke_pass(tmp_path: Path) -> None:
     edge_metrics.to_csv(edge_metrics_csv, index=False)
     _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
 
     stage_status_csv = tmp_path / "stage_status.csv"
     pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
@@ -234,6 +341,8 @@ def test_docs_contract_flags_missing_metric_definition(tmp_path: Path) -> None:
     edge_metrics.to_csv(edge_metrics_csv, index=False)
     _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
 
     stage_status_csv = tmp_path / "stage_status.csv"
     pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
@@ -297,6 +406,8 @@ def test_docs_contract_flags_invalid_stage04_action_code(tmp_path: Path) -> None
     ).to_csv(edge_metrics_csv, index=False)
     _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
 
     bad_policy = pd.read_csv(edge_metrics_csv.parent / "stage04_execution_policy_status.csv")
     bad_policy.loc[0, "action_code"] = "BAD_CODE"
@@ -357,6 +468,8 @@ def test_docs_contract_flags_snapshot_details_over_cap(tmp_path: Path) -> None:
     ).to_csv(edge_metrics_csv, index=False)
     _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
 
     # Build a large details table (>40 rows) to trigger C18 failure.
     lines = ["#### Details", "| a | b |", "| --- | --- |"] + [f"| {i} | x |" for i in range(45)]
@@ -398,3 +511,129 @@ def test_docs_contract_flags_snapshot_details_over_cap(tmp_path: Path) -> None:
     c18 = checks[checks["check_id"].astype(str) == "C18"]
     assert not c18.empty
     assert (c18["status"].astype(str) == "fail").all()
+
+
+def test_docs_contract_flags_missing_run_delta_baseline(tmp_path: Path) -> None:
+    docs_root = tmp_path / "docs" / "strategy_bible"
+    docs_root.mkdir(parents=True, exist_ok=True)
+    generated_root = docs_root / "generated"
+    generated_root.mkdir(parents=True, exist_ok=True)
+    _write_stage_docs(docs_root)
+    _write_analysis_catalog_artifacts(docs_root)
+
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    edge_metrics_csv = tmp_path / "edge_metrics.csv"
+    pd.DataFrame(
+        [{"stage_id": 1, "symbol": "EURUSD", "metric_id": m, "metric_value": 1.0, "generated_at_utc": now} for m in sorted(CORE_METRIC_IDS)]
+    ).to_csv(edge_metrics_csv, index=False)
+    _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+
+    reg = pd.read_csv(edge_metrics_csv.parent / "run_registry.csv")
+    reg["is_baseline"] = 0
+    reg.to_csv(edge_metrics_csv.parent / "run_registry.csv", index=False)
+
+    (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
+    stage_status_csv = tmp_path / "stage_status.csv"
+    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
+    edge_report = tmp_path / "edge_report.md"
+    edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
+    metric_dictionary = docs_root / "metric_dictionary.md"
+    metric_dictionary.write_text(
+        "\n".join(
+            [
+                "# Dict",
+                "| metric_id | stage | formula | unit | interpretation bands | missing policy |",
+                "| --- | --- | --- | --- | --- | --- |",
+            ]
+            + [f"| {m} | 1 | x | u | b | disallow |" for m in sorted(CORE_METRIC_IDS)]
+        ),
+        encoding="utf-8",
+    )
+    mkdocs_yml = tmp_path / "mkdocs.yml"
+    mkdocs_yml.write_text(_mkdocs_text(), encoding="utf-8")
+
+    checks, _issues = run(
+        docs_root=docs_root,
+        generated_root=generated_root,
+        edge_metrics_csv=edge_metrics_csv,
+        stage_status_csv=stage_status_csv,
+        metric_dictionary_md=metric_dictionary,
+        edge_report_md=edge_report,
+        mkdocs_yml=mkdocs_yml,
+        out_checks_csv=tmp_path / "checks.csv",
+        out_issues_csv=tmp_path / "issues.csv",
+        out_report_md=tmp_path / "report.md",
+        thresholds=Thresholds(max_age_hours=24.0),
+    )
+    c19 = checks[checks["check_id"].astype(str) == "C19"]
+    assert not c19.empty
+    assert (c19["status"].astype(str) == "fail").all()
+
+
+def test_docs_contract_flags_unclassified_taxonomy_docs(tmp_path: Path) -> None:
+    docs_root = tmp_path / "docs" / "strategy_bible"
+    docs_root.mkdir(parents=True, exist_ok=True)
+    generated_root = docs_root / "generated"
+    generated_root.mkdir(parents=True, exist_ok=True)
+    _write_stage_docs(docs_root)
+    _write_analysis_catalog_artifacts(docs_root)
+
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    edge_metrics_csv = tmp_path / "edge_metrics.csv"
+    pd.DataFrame(
+        [{"stage_id": 1, "symbol": "EURUSD", "metric_id": m, "metric_value": 1.0, "generated_at_utc": now} for m in sorted(CORE_METRIC_IDS)]
+    ).to_csv(edge_metrics_csv, index=False)
+    _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+
+    manifest = pd.read_csv(docs_root.parent / "analysis" / "catalog_manifest.csv")
+    manifest = pd.concat(
+        [
+            manifest,
+            pd.DataFrame([{"doc_path": "analysis/random_note.md", "title": "Random", "group": "unclassified"}]),
+        ],
+        ignore_index=True,
+    )
+    manifest.to_csv(docs_root.parent / "analysis" / "catalog_manifest.csv", index=False)
+
+    (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
+    stage_status_csv = tmp_path / "stage_status.csv"
+    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
+    edge_report = tmp_path / "edge_report.md"
+    edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
+    metric_dictionary = docs_root / "metric_dictionary.md"
+    metric_dictionary.write_text(
+        "\n".join(
+            [
+                "# Dict",
+                "| metric_id | stage | formula | unit | interpretation bands | missing policy |",
+                "| --- | --- | --- | --- | --- | --- |",
+            ]
+            + [f"| {m} | 1 | x | u | b | disallow |" for m in sorted(CORE_METRIC_IDS)]
+        ),
+        encoding="utf-8",
+    )
+    mkdocs_yml = tmp_path / "mkdocs.yml"
+    mkdocs_yml.write_text(_mkdocs_text(), encoding="utf-8")
+
+    checks, _issues = run(
+        docs_root=docs_root,
+        generated_root=generated_root,
+        edge_metrics_csv=edge_metrics_csv,
+        stage_status_csv=stage_status_csv,
+        metric_dictionary_md=metric_dictionary,
+        edge_report_md=edge_report,
+        mkdocs_yml=mkdocs_yml,
+        out_checks_csv=tmp_path / "checks.csv",
+        out_issues_csv=tmp_path / "issues.csv",
+        out_report_md=tmp_path / "report.md",
+        thresholds=Thresholds(max_age_hours=24.0),
+    )
+    c20 = checks[checks["check_id"].astype(str) == "C20"]
+    assert not c20.empty
+    assert (c20["status"].astype(str) == "fail").all()

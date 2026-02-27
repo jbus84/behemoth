@@ -1,0 +1,34 @@
+# OCO Operator Playbook
+
+- generated_at_utc: `2026-02-27T10:49:45Z`
+- source_rules: `configs/research/docs/operator_action_rules.yaml`
+
+## Action Codes
+| action_code           | description                                                             |
+|:----------------------|:------------------------------------------------------------------------|
+| A0_MONITOR            | Metric within policy band.                                              |
+| A1_REVIEW             | Investigate and monitor; no deploy block by itself.                     |
+| A2_RECALIBRATE        | Recalibrate threshold/cost assumptions for the affected symbol.         |
+| A3_HALT_AND_REMEDIATE | Block deployment for symbol until remediation and rerun.                |
+| A9_DATA_GAP           | Data/schema gap; restore artifact integrity before governance sign-off. |
+
+## Operator Checklist
+1. Review `operator_action_status.csv` after each full pipeline run.
+2. Execute all `red` actions before deployment decisions.
+3. Open a remediation task for persistent `amber` metrics (>=3 consecutive runs).
+4. Block deployment if any `A3_` action remains unresolved.
+
+## Current Escalations
+| symbol   | metric_id                        | band   | action_code           | owner     | action_summary         |
+|:---------|:---------------------------------|:-------|:----------------------|:----------|:-----------------------|
+| EURUSD   | T02_first_negative_costplus      | amber  | A1_REVIEW             | risk      | review and monitor     |
+| GBPUSD   | T02_first_negative_costplus      | amber  | A1_REVIEW             | risk      | review and monitor     |
+| USDJPY   | T02_first_negative_costplus      | amber  | A1_REVIEW             | risk      | review and monitor     |
+| EURUSD   | D18_clock_jitter_cv              | red    | A3_HALT_AND_REMEDIATE | data      | escalate and remediate |
+| EURUSD   | E11_session_overshoot_dispersion | red    | A3_HALT_AND_REMEDIATE | execution | escalate and remediate |
+| EURUSD   | T03_post_worst_month_recovery    | red    | A2_RECALIBRATE        | risk      | escalate and remediate |
+| GBPUSD   | D18_clock_jitter_cv              | red    | A3_HALT_AND_REMEDIATE | data      | escalate and remediate |
+| GBPUSD   | E11_session_overshoot_dispersion | red    | A3_HALT_AND_REMEDIATE | execution | escalate and remediate |
+| USDJPY   | D18_clock_jitter_cv              | red    | A3_HALT_AND_REMEDIATE | data      | escalate and remediate |
+| USDJPY   | E11_session_overshoot_dispersion | red    | A3_HALT_AND_REMEDIATE | execution | escalate and remediate |
+| USDJPY   | T03_post_worst_month_recovery    | red    | A2_RECALIBRATE        | risk      | escalate and remediate |
