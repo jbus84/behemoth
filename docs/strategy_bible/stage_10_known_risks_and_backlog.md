@@ -59,6 +59,11 @@ Promotion-to-close gates:
 - latest run evidence is attached
 - no conflicting open issue in `oco_logical_audit_issues.csv`
 
+Diagnostics-first backlog checks (informational, not blockers yet):
+- `B11`: open risk count by symbol.
+- `B12`: open high/critical risk count by symbol.
+- `B13`: average risk age in days.
+
 ## Failure Modes
 - Overfitting by silent parameter expansion.
 - Cost model drift versus live ECN conditions.
@@ -98,7 +103,7 @@ If any trigger occurs, required action is immediate:
 <!-- GENERATED:STAGE_10:START -->
 ### Auto Snapshot - Stage 10
 
-- generated_at: `2026-02-26 22:19:06 UTC`
+- generated_at: `2026-02-27 07:37:02 UTC`
 - Risk backlog is derived from current logical-audit failures.
 - When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.
 

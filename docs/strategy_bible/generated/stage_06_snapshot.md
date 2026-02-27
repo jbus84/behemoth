@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 06
 
-- generated_at: `2026-02-26 22:19:06 UTC`
+- generated_at: `2026-02-27 07:37:02 UTC`
 - Verifier recomputes OCO outcomes independently from stored labels.
 - All summary rates should remain near 1.0 for contract consistency.
 
@@ -20,3 +20,9 @@
 
 #### Plots
 ![stage_06_tick_exact_monthly](../../figures/oco_bible/stage_06_tick_exact_monthly.png)
+
+#### Cross-Symbol Portability (X01-X03)
+| family                |   symbols_covered |   mean_across_symbols |   std_across_symbols |   spread_max_min |   x01_all_symbols_positive |
+|:----------------------|------------------:|----------------------:|---------------------:|-----------------:|---------------------------:|
+| oco_first_touch_clean |                 3 |              2.33238  |            0.638742  |        1.13561   |                        nan |
+| oco_first_touch       |                 3 |              0.214237 |            0.0474996 |        0.0851724 |                        nan |

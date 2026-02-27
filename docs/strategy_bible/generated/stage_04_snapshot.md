@@ -1,15 +1,16 @@
 ### Auto Snapshot - Stage 04
 
-- generated_at: `2026-02-26 22:19:06 UTC`
+- generated_at: `2026-02-27 07:37:02 UTC`
 - Execution realism is applied with tick first-cross overshoot.
 - Cap curve highlights fill-rate versus signal-level expectancy.
+- E11-E13 are informational execution diagnostics: session dispersion, plateau width, and non-fill opportunity cost.
 
 #### Key Results
-| symbol   |   rows |   touch_found_rate |   base_mean_gross_pips |   tick_overshoot_mean_pips |   tick_overshoot_p95_pips |
-|:---------|-------:|-------------------:|-----------------------:|---------------------------:|--------------------------:|
-| EURUSD   | 324963 |           0.999985 |                1.04109 |                   0.136206 |                       0.5 |
-| GBPUSD   | 414128 |           0.999978 |                1.01745 |                   0.141476 |                       0.5 |
-| USDJPY   | 459585 |           0.999954 |                1.37853 |                   0.221513 |                       0.7 |
+| symbol   |   rows |   touch_found_rate |   base_mean_gross_pips |   tick_overshoot_mean_pips |   tick_overshoot_p95_pips |   e11_session_overshoot_dispersion |   e12_cap_plateau_width_pips |   e13_nonfill_opportunity_cost_pips |
+|:---------|-------:|-------------------:|-----------------------:|---------------------------:|--------------------------:|-----------------------------------:|-----------------------------:|------------------------------------:|
+| EURUSD   | 324963 |           0.999985 |                1.04109 |                   0.136206 |                       0.5 |                           0.851988 |                          0.7 |                            0.116807 |
+| GBPUSD   | 414128 |           0.999978 |                1.01745 |                   0.141476 |                       0.5 |                           1.20518  |                          0.7 |                            0.11825  |
+| USDJPY   | 459585 |           0.999954 |                1.37853 |                   0.221513 |                       0.7 |                           0.958511 |                          0.7 |                            0.185352 |
 
 #### Details
 | symbol   |   cap_pips |   fill_rate |   mean_per_signal_full_overshoot |

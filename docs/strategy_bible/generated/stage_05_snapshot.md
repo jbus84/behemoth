@@ -1,15 +1,16 @@
 ### Auto Snapshot - Stage 05
 
-- generated_at: `2026-02-26 22:19:06 UTC`
+- generated_at: `2026-02-27 07:37:02 UTC`
 - State schedule is selected month-by-month using only prior-month train data.
 - Summary emphasizes full-path gross behavior after reduced-core filtering.
+- R01-R03 track pruning severity, state concentration, and re-selection stability.
 
 #### Key Results
-| symbol   |   rows_total |   mean_gross_pips |   lb95_month_mean_gross_pips |   fill_rate_overall |   positive_months |   months_total |
-|:---------|-------------:|------------------:|-----------------------------:|--------------------:|------------------:|---------------:|
-| EURUSD   |         4898 |           1.59847 |                      1.30417 |            0.994922 |                 6 |              9 |
-| GBPUSD   |         6824 |           2.51775 |                      2.21592 |            0.990421 |                 6 |              9 |
-| USDJPY   |         7843 |           3.31998 |                      2.95901 |            0.987783 |                 6 |              9 |
+| symbol   |   rows_total |   mean_gross_pips |   lb95_month_mean_gross_pips |   fill_rate_overall |   positive_months |   months_total |   r01_post_pre_row_ratio |   r02_top_state_dependency |   r03_reselection_stability |
+|:---------|-------------:|------------------:|-----------------------------:|--------------------:|------------------:|---------------:|-------------------------:|---------------------------:|----------------------------:|
+| EURUSD   |         4898 |           1.59847 |                      1.30417 |            0.994922 |                 6 |              9 |                0.0150469 |                       0.35 |                    0.361111 |
+| GBPUSD   |         6824 |           2.51775 |                      2.21592 |            0.990421 |                 6 |              9 |                0.016478  |                       0.35 |                    0.430556 |
+| USDJPY   |         7843 |           3.31998 |                      2.95901 |            0.987783 |                 6 |              9 |                0.0170654 |                       0.35 |                    0.416667 |
 
 #### Details
 | symbol   |   months |   rows_total |   mean_fill_rate |   mean_gross |

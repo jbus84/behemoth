@@ -63,6 +63,7 @@ nav:
       - Data Reliability Audit: analysis/data_reliability_report.md
       - Leakage + Label Audit: analysis/oco_leakage_integrity_report.md
       - Execution Risk Preflight: analysis/oco_execution_risk_prelive_report.md
+      - Edge Clarity Report: analysis/oco_edge_clarity_report.md
   - HGBT Deep Dive: analysis/m5_mom_m15_momrev_m60_rev_hgbt_report.md
   - Cluster EW Deep Dive: analysis/cluster_earlywarning_report.md
   - Architecture: architecture.md

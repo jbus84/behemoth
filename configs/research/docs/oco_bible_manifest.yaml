@@ -7,6 +7,10 @@ outputs:
   symbol_snapshot_csv: data/analysis/tick_opportunity_mining/oco_bible_symbol_snapshot.csv
   stage_status_csv: data/analysis/tick_opportunity_mining/oco_bible_stage_status.csv
   stage_metrics_csv: data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv
+  edge_clarity_stage_metrics_csv: data/analysis/tick_opportunity_mining/edge_clarity_stage_metrics.csv
+  edge_clarity_state_contrib_csv: data/analysis/tick_opportunity_mining/edge_clarity_state_contrib.csv
+  edge_clarity_threshold_robustness_csv: data/analysis/tick_opportunity_mining/edge_clarity_threshold_robustness.csv
+  edge_clarity_report_md: docs/analysis/oco_edge_clarity_report.md
 
 gate_thresholds:
   min_exact_match_rate: 0.999
@@ -56,6 +60,7 @@ required_artifacts:
   - docs/analysis/data_reliability_report.md
   - docs/analysis/oco_leakage_integrity_report.md
   - docs/analysis/oco_execution_risk_prelive_report.md
+  - docs/analysis/oco_edge_clarity_report.md
 
 script_links:
   - scripts/audit_data_reliability.py

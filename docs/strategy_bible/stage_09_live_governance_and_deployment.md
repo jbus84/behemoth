@@ -106,6 +106,11 @@ Hard deploy gate table:
 | G9.3 | state universe exact key-set match | Critical |
 | G9.4 | deploy date not beyond lock window end | High |
 
+Diagnostics-first governance checks (informational, not blockers yet):
+- `G01`: near-fail pressure count from validator checks with low margin heuristics.
+- `G02`: open-risk warning age (days) from SLA tracker.
+- `G03`: lock drift flags from hash/state-universe related checks.
+
 ## Failure Modes
 - Silent drift in runtime configs.
 - Unapproved state expansion in production.
@@ -156,7 +161,7 @@ uv run python scripts/validate_oco_live_governance.py \
 <!-- GENERATED:STAGE_09:START -->
 ### Auto Snapshot - Stage 09
 
-- generated_at: `2026-02-26 22:19:06 UTC`
+- generated_at: `2026-02-27 07:37:02 UTC`
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
 - Missing required artifacts: 0.
 
@@ -172,9 +177,9 @@ uv run python scripts/validate_oco_live_governance.py \
 ![stage_09_predeploy_checks](../figures/oco_bible/stage_09_predeploy_checks.png)
 
 #### Predeploy Validator Status
-| symbol   | status   | blocker   |   checks_total |   checks_failed |   leakage_high_critical_issues |   execution_risk_high_critical_issues | as_of      | window_end   | failed_checks   |
-|:---------|:---------|:----------|---------------:|----------------:|-------------------------------:|--------------------------------------:|:-----------|:-------------|:----------------|
-| EURUSD   | pass     | False     |             25 |               0 |                              0 |                                     0 | 2026-02-26 | 2026-03-31   |                 |
-| GBPUSD   | pass     | False     |             25 |               0 |                              0 |                                     0 | 2026-02-26 | 2026-03-31   |                 |
-| USDJPY   | pass     | False     |             25 |               0 |                              0 |                                     0 | 2026-02-26 | 2026-03-31   |                 |
+| symbol   | status   | blocker   |   checks_total |   checks_failed |   leakage_high_critical_issues |   execution_risk_high_critical_issues |   g01_near_fail_count |   g03_lock_drift_flags | as_of      | window_end   | failed_checks   |
+|:---------|:---------|:----------|---------------:|----------------:|-------------------------------:|--------------------------------------:|----------------------:|-----------------------:|:-----------|:-------------|:----------------|
+| EURUSD   | pass     | False     |             25 |               0 |                              0 |                                     0 |                     0 |                      0 | 2026-02-26 | 2026-03-31   |                 |
+| GBPUSD   | pass     | False     |             25 |               0 |                              0 |                                     0 |                     0 |                      0 | 2026-02-26 | 2026-03-31   |                 |
+| USDJPY   | pass     | False     |             25 |               0 |                              0 |                                     0 |                     0 |                      0 | 2026-02-26 | 2026-03-31   |                 |
 <!-- GENERATED:STAGE_09:END -->

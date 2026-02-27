@@ -1,6 +1,6 @@
 # Artifact Inventory
 
-- generated_at: `2026-02-26 22:19:06 UTC`
+- generated_at: `2026-02-27 07:37:02 UTC`
 
 | group              | symbol   | artifact               | path                                                                                                                                          | exists   | required   |
 |:-------------------|:---------|:-----------------------|:----------------------------------------------------------------------------------------------------------------------------------------------|:---------|:-----------|
@@ -36,3 +36,4 @@
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/data_reliability_report.md                                                            | True     | True       |
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_leakage_integrity_report.md                                                       | True     | True       |
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_execution_risk_prelive_report.md                                                  | True     | True       |
+| required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_edge_clarity_report.md                                                            | True     | True       |
