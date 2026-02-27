@@ -119,6 +119,7 @@ def _mkdocs_text() -> str:
         "analysis/oco_rule_universe_registry_report.md",
         "analysis/oco_execution_drift_report.md",
         "analysis/oco_alert_remediation_report.md",
+        "analysis/oco_governance_explainability_report.md",
         "analysis/oco_threshold_sensitivity_report.md",
         "strategy_bible/stage_01_data_foundation.md",
         "strategy_bible/stage_02_opportunity_mining.md",
@@ -144,6 +145,7 @@ def _mkdocs_text() -> str:
         "analysis/oco_execution_risk_prelive_report.md",
         "analysis/oco_execution_drift_report.md",
         "analysis/oco_alert_remediation_report.md",
+        "analysis/oco_governance_explainability_report.md",
         "analysis/oco_threshold_sensitivity_report.md",
         "analysis/oco_execution_monte_carlo_report.md",
         "analysis/oco_execution_monte_carlo_validation_report.md",
@@ -168,6 +170,7 @@ def _write_analysis_catalog_artifacts(docs_root: Path) -> None:
         "oco_execution_risk_prelive_report.md",
         "oco_execution_drift_report.md",
         "oco_alert_remediation_report.md",
+        "oco_governance_explainability_report.md",
         "oco_threshold_sensitivity_report.md",
         "oco_execution_monte_carlo_report.md",
         "oco_execution_monte_carlo_validation_report.md",
@@ -467,6 +470,18 @@ def _write_alert_remediation_artifacts(*, docs_root: Path, edge_metrics_csv: Pat
             "is_expired": False,
             "source_path": "x",
             "evaluated_at_utc": now,
+            "first_seen_utc": now,
+            "last_seen_utc": now,
+            "consecutive_runs_non_green": 1,
+            "months_non_green_count": 1,
+            "sla_days": 30,
+            "days_to_expiry": 30.0,
+            "escalation_level": "warn",
+            "evidence_required": True,
+            "evidence_link": "docs/analysis/oco_execution_drift_report.md",
+            "expiry_breach": False,
+            "recurrence_breach": False,
+            "policy_violation_code": "",
         },
         {
             "symbol": "EURUSD",
@@ -484,10 +499,72 @@ def _write_alert_remediation_artifacts(*, docs_root: Path, edge_metrics_csv: Pat
             "is_expired": False,
             "source_path": "x",
             "evaluated_at_utc": now,
+            "first_seen_utc": now,
+            "last_seen_utc": now,
+            "consecutive_runs_non_green": 1,
+            "months_non_green_count": 1,
+            "sla_days": 30,
+            "days_to_expiry": 30.0,
+            "escalation_level": "monitor",
+            "evidence_required": False,
+            "evidence_link": "docs/analysis/oco_threshold_sensitivity_report.md",
+            "expiry_breach": False,
+            "recurrence_breach": False,
+            "policy_violation_code": "",
         },
     ]
     pd.DataFrame(rows).to_csv(base / "oco_alert_disposition.csv", index=False)
     (docs_root.parent / "analysis" / "oco_alert_remediation_report.md").write_text("# Alert Remediation\n", encoding="utf-8")
+
+
+def _write_governance_explainability_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> None:
+    base = edge_metrics_csv.parent
+    rows = [
+        {
+            "metric_id": "E_DRIFT_OVERSHOOT_P95",
+            "source_alert": "execution_drift",
+            "definition": "Tail overshoot drift",
+            "risk_path": "Execution tail risk",
+            "threshold_context": "warn/fail thresholds",
+            "action_rationale": "Session guard selected",
+            "expected_recovery_signal": "returns green",
+            "band_worst": "amber",
+            "severity_worst": "medium",
+            "active_rows": 1,
+            "symbol_count": 1,
+            "symbols": "EURUSD",
+            "action_codes": "A2_SESSION_GUARD",
+            "owners": "execution_research",
+            "review_cadence_days": 30,
+            "evidence_required": True,
+            "example_evidence_link": "docs/analysis/oco_execution_drift_report.md",
+            "coverage_status": "covered",
+            "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        },
+        {
+            "metric_id": "TS01_W13_THRESHOLD_FRAGILITY",
+            "source_alert": "threshold_sensitivity",
+            "definition": "Threshold fragility",
+            "risk_path": "Selection instability risk",
+            "threshold_context": "threshold grid",
+            "action_rationale": "monitor",
+            "expected_recovery_signal": "stabilizes",
+            "band_worst": "amber",
+            "severity_worst": "medium",
+            "active_rows": 1,
+            "symbol_count": 1,
+            "symbols": "EURUSD",
+            "action_codes": "A0_MONITOR",
+            "owners": "research",
+            "review_cadence_days": 30,
+            "evidence_required": False,
+            "example_evidence_link": "docs/analysis/oco_threshold_sensitivity_report.md",
+            "coverage_status": "covered",
+            "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        },
+    ]
+    pd.DataFrame(rows).to_csv(base / "oco_governance_explainability.csv", index=False)
+    (docs_root.parent / "analysis" / "oco_governance_explainability_report.md").write_text("# Governance Explainability\n", encoding="utf-8")
 
 
 def test_docs_contract_smoke_pass(tmp_path: Path) -> None:
@@ -513,6 +590,7 @@ def test_docs_contract_smoke_pass(tmp_path: Path) -> None:
     _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
 
     stage_status_csv = tmp_path / "stage_status.csv"
     pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
@@ -585,6 +663,7 @@ def test_docs_contract_flags_missing_metric_definition(tmp_path: Path) -> None:
     _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
 
     stage_status_csv = tmp_path / "stage_status.csv"
     pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
@@ -655,6 +734,7 @@ def test_docs_contract_flags_invalid_stage04_action_code(tmp_path: Path) -> None
     _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
 
     bad_policy = pd.read_csv(edge_metrics_csv.parent / "stage04_execution_policy_status.csv")
     bad_policy.loc[0, "action_code"] = "BAD_CODE"
@@ -722,6 +802,7 @@ def test_docs_contract_flags_snapshot_details_over_cap(tmp_path: Path) -> None:
     _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
 
     # Build a large details table (>40 rows) to trigger C18 failure.
     lines = ["#### Details", "| a | b |", "| --- | --- |"] + [f"| {i} | x |" for i in range(45)]
@@ -787,6 +868,7 @@ def test_docs_contract_flags_missing_run_delta_baseline(tmp_path: Path) -> None:
     _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
 
     reg = pd.read_csv(edge_metrics_csv.parent / "run_registry.csv")
     reg["is_baseline"] = 0
@@ -852,6 +934,7 @@ def test_docs_contract_flags_unclassified_taxonomy_docs(tmp_path: Path) -> None:
     _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
 
     manifest = pd.read_csv(docs_root.parent / "analysis" / "catalog_manifest.csv")
     manifest = pd.concat(
@@ -899,3 +982,275 @@ def test_docs_contract_flags_unclassified_taxonomy_docs(tmp_path: Path) -> None:
     c20 = checks[checks["check_id"].astype(str) == "C20"]
     assert not c20.empty
     assert (c20["status"].astype(str) == "fail").all()
+
+
+def test_docs_contract_flags_legacy_taxonomy_docs(tmp_path: Path) -> None:
+    docs_root = tmp_path / "docs" / "strategy_bible"
+    docs_root.mkdir(parents=True, exist_ok=True)
+    generated_root = docs_root / "generated"
+    generated_root.mkdir(parents=True, exist_ok=True)
+    _write_stage_docs(docs_root)
+    _write_analysis_catalog_artifacts(docs_root)
+
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    edge_metrics_csv = tmp_path / "edge_metrics.csv"
+    pd.DataFrame(
+        [{"stage_id": 1, "symbol": "EURUSD", "metric_id": m, "metric_value": 1.0, "generated_at_utc": now} for m in sorted(CORE_METRIC_IDS)]
+    ).to_csv(edge_metrics_csv, index=False)
+    _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage_integrity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_execution_drift_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+
+    manifest = pd.read_csv(docs_root.parent / "analysis" / "catalog_manifest.csv")
+    manifest = pd.concat(
+        [
+            manifest,
+            pd.DataFrame([{"doc_path": "analysis/old_note.md", "title": "Legacy", "group": "legacy"}]),
+        ],
+        ignore_index=True,
+    )
+    manifest.to_csv(docs_root.parent / "analysis" / "catalog_manifest.csv", index=False)
+
+    (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
+    stage_status_csv = tmp_path / "stage_status.csv"
+    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
+    edge_report = tmp_path / "edge_report.md"
+    edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
+    metric_dictionary = docs_root / "metric_dictionary.md"
+    metric_dictionary.write_text(
+        "\n".join(
+            [
+                "# Dict",
+                "| metric_id | stage | formula | unit | interpretation bands | missing policy |",
+                "| --- | --- | --- | --- | --- | --- |",
+            ]
+            + [f"| {m} | 1 | x | u | b | disallow |" for m in sorted(CORE_METRIC_IDS)]
+        ),
+        encoding="utf-8",
+    )
+    mkdocs_yml = tmp_path / "mkdocs.yml"
+    mkdocs_yml.write_text(_mkdocs_text(), encoding="utf-8")
+
+    checks, _issues = run(
+        docs_root=docs_root,
+        generated_root=generated_root,
+        edge_metrics_csv=edge_metrics_csv,
+        stage_status_csv=stage_status_csv,
+        metric_dictionary_md=metric_dictionary,
+        edge_report_md=edge_report,
+        mkdocs_yml=mkdocs_yml,
+        out_checks_csv=tmp_path / "checks.csv",
+        out_issues_csv=tmp_path / "issues.csv",
+        out_report_md=tmp_path / "report.md",
+        thresholds=Thresholds(max_age_hours=24.0),
+    )
+    c20b = checks[checks["check_id"].astype(str) == "C20B"]
+    assert not c20b.empty
+    assert (c20b["status"].astype(str) == "fail").all()
+
+
+def test_docs_contract_flags_expired_accepted_exception(tmp_path: Path) -> None:
+    docs_root = tmp_path / "docs" / "strategy_bible"
+    docs_root.mkdir(parents=True, exist_ok=True)
+    generated_root = docs_root / "generated"
+    generated_root.mkdir(parents=True, exist_ok=True)
+    _write_stage_docs(docs_root)
+    _write_analysis_catalog_artifacts(docs_root)
+
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    edge_metrics_csv = tmp_path / "edge_metrics.csv"
+    pd.DataFrame(
+        [{"stage_id": 1, "symbol": "EURUSD", "metric_id": m, "metric_value": 1.0, "generated_at_utc": now} for m in sorted(CORE_METRIC_IDS)]
+    ).to_csv(edge_metrics_csv, index=False)
+    _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage_integrity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_execution_drift_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+
+    disp = pd.read_csv(edge_metrics_csv.parent / "oco_alert_disposition.csv")
+    disp.loc[0, "status"] = "accepted_exception"
+    disp.loc[0, "is_expired"] = True
+    disp.to_csv(edge_metrics_csv.parent / "oco_alert_disposition.csv", index=False)
+
+    (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
+    stage_status_csv = tmp_path / "stage_status.csv"
+    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
+    edge_report = tmp_path / "edge_report.md"
+    edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
+    metric_dictionary = docs_root / "metric_dictionary.md"
+    metric_dictionary.write_text(
+        "\n".join(
+            [
+                "# Dict",
+                "| metric_id | stage | formula | unit | interpretation bands | missing policy |",
+                "| --- | --- | --- | --- | --- | --- |",
+            ]
+            + [f"| {m} | 1 | x | u | b | disallow |" for m in sorted(CORE_METRIC_IDS)]
+        ),
+        encoding="utf-8",
+    )
+    mkdocs_yml = tmp_path / "mkdocs.yml"
+    mkdocs_yml.write_text(_mkdocs_text(), encoding="utf-8")
+
+    checks, _issues = run(
+        docs_root=docs_root,
+        generated_root=generated_root,
+        edge_metrics_csv=edge_metrics_csv,
+        stage_status_csv=stage_status_csv,
+        metric_dictionary_md=metric_dictionary,
+        edge_report_md=edge_report,
+        mkdocs_yml=mkdocs_yml,
+        out_checks_csv=tmp_path / "checks.csv",
+        out_issues_csv=tmp_path / "issues.csv",
+        out_report_md=tmp_path / "report.md",
+        thresholds=Thresholds(max_age_hours=24.0),
+    )
+    c35 = checks[checks["check_id"].astype(str) == "C35"]
+    assert not c35.empty
+    assert (c35["status"].astype(str) == "fail").all()
+
+
+def test_docs_contract_flags_missing_explainability_coverage(tmp_path: Path) -> None:
+    docs_root = tmp_path / "docs" / "strategy_bible"
+    docs_root.mkdir(parents=True, exist_ok=True)
+    generated_root = docs_root / "generated"
+    generated_root.mkdir(parents=True, exist_ok=True)
+    _write_stage_docs(docs_root)
+    _write_analysis_catalog_artifacts(docs_root)
+
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    edge_metrics_csv = tmp_path / "edge_metrics.csv"
+    pd.DataFrame(
+        [{"stage_id": 1, "symbol": "EURUSD", "metric_id": m, "metric_value": 1.0, "generated_at_utc": now} for m in sorted(CORE_METRIC_IDS)]
+    ).to_csv(edge_metrics_csv, index=False)
+    _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage_integrity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_execution_drift_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+
+    explain = pd.read_csv(edge_metrics_csv.parent / "oco_governance_explainability.csv")
+    explain = explain[explain["metric_id"].astype(str) != "E_DRIFT_OVERSHOOT_P95"].copy()
+    explain.to_csv(edge_metrics_csv.parent / "oco_governance_explainability.csv", index=False)
+
+    (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
+    stage_status_csv = tmp_path / "stage_status.csv"
+    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
+    edge_report = tmp_path / "edge_report.md"
+    edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
+    metric_dictionary = docs_root / "metric_dictionary.md"
+    metric_dictionary.write_text(
+        "\n".join(
+            [
+                "# Dict",
+                "| metric_id | stage | formula | unit | interpretation bands | missing policy |",
+                "| --- | --- | --- | --- | --- | --- |",
+            ]
+            + [f"| {m} | 1 | x | u | b | disallow |" for m in sorted(CORE_METRIC_IDS)]
+        ),
+        encoding="utf-8",
+    )
+    mkdocs_yml = tmp_path / "mkdocs.yml"
+    mkdocs_yml.write_text(_mkdocs_text(), encoding="utf-8")
+
+    checks, _issues = run(
+        docs_root=docs_root,
+        generated_root=generated_root,
+        edge_metrics_csv=edge_metrics_csv,
+        stage_status_csv=stage_status_csv,
+        metric_dictionary_md=metric_dictionary,
+        edge_report_md=edge_report,
+        mkdocs_yml=mkdocs_yml,
+        out_checks_csv=tmp_path / "checks.csv",
+        out_issues_csv=tmp_path / "issues.csv",
+        out_report_md=tmp_path / "report.md",
+        thresholds=Thresholds(max_age_hours=24.0),
+    )
+    c39 = checks[checks["check_id"].astype(str) == "C39"]
+    assert not c39.empty
+    assert (c39["status"].astype(str) == "fail").all()
+
+
+def test_docs_contract_flags_machine_local_paths(tmp_path: Path) -> None:
+    docs_root = tmp_path / "docs" / "strategy_bible"
+    docs_root.mkdir(parents=True, exist_ok=True)
+    generated_root = docs_root / "generated"
+    generated_root.mkdir(parents=True, exist_ok=True)
+    _write_stage_docs(docs_root)
+    _write_analysis_catalog_artifacts(docs_root)
+
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    edge_metrics_csv = tmp_path / "edge_metrics.csv"
+    pd.DataFrame(
+        [{"stage_id": 1, "symbol": "EURUSD", "metric_id": m, "metric_value": 1.0, "generated_at_utc": now} for m in sorted(CORE_METRIC_IDS)]
+    ).to_csv(edge_metrics_csv, index=False)
+    _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage_integrity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_execution_drift_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+
+    (docs_root.parent / "analysis" / "oco_alert_remediation_report.md").write_text(
+        "# Alert Remediation\n\nsource: /Users/tester/fake/path.csv\n",
+        encoding="utf-8",
+    )
+
+    (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
+    stage_status_csv = tmp_path / "stage_status.csv"
+    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
+    edge_report = tmp_path / "edge_report.md"
+    edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
+    metric_dictionary = docs_root / "metric_dictionary.md"
+    metric_dictionary.write_text(
+        "\n".join(
+            [
+                "# Dict",
+                "| metric_id | stage | formula | unit | interpretation bands | missing policy |",
+                "| --- | --- | --- | --- | --- | --- |",
+            ]
+            + [f"| {m} | 1 | x | u | b | disallow |" for m in sorted(CORE_METRIC_IDS)]
+        ),
+        encoding="utf-8",
+    )
+    mkdocs_yml = tmp_path / "mkdocs.yml"
+    mkdocs_yml.write_text(_mkdocs_text(), encoding="utf-8")
+
+    checks, _issues = run(
+        docs_root=docs_root,
+        generated_root=generated_root,
+        edge_metrics_csv=edge_metrics_csv,
+        stage_status_csv=stage_status_csv,
+        metric_dictionary_md=metric_dictionary,
+        edge_report_md=edge_report,
+        mkdocs_yml=mkdocs_yml,
+        out_checks_csv=tmp_path / "checks.csv",
+        out_issues_csv=tmp_path / "issues.csv",
+        out_report_md=tmp_path / "report.md",
+        thresholds=Thresholds(max_age_hours=24.0),
+    )
+    c40 = checks[checks["check_id"].astype(str) == "C40"]
+    assert not c40.empty
+    assert (c40["status"].astype(str) == "fail").all()

@@ -71,3 +71,8 @@ This checklist focuses on **signal/PNL alignment risk** for the rule‑based MOM
 - Guardrail diagnostics:
   - `data/analysis/m5_guardrail_overall.csv`
   - `data/analysis/m15_guardrail_overall.csv`
+
+## OCO Pair Scope Reference
+- Current OCO deployment scope is constrained to `EURUSD`, `GBPUSD`, and `USDJPY`.
+- Historical pair screening notes are archived at:
+  - `docs/archive/analysis/stable_pairs_whitelist.md`

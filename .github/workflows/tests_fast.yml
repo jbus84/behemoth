@@ -39,4 +39,5 @@ jobs:
             tests/test_threshold_sensitivity_report.py \
             tests/test_validate_oco_rule_universe_registry.py \
             tests/test_remediate_oco_monitoring_alerts.py \
+            tests/test_governance_explainability_report.py \
             tests/test_oco_docs_contract.py

@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 11
 
-- generated_at: `2026-02-27 14:15:43 UTC`
+- generated_at: `2026-02-27 15:20:50 UTC`
 - Execution Monte Carlo uses month x session stress scenarios derived from Stage 04 tickfill artifacts.
 - EM01-EM05 summarize mild/moderate survival, month negativity risk, fill-rate decay, and data integrity.
 
@@ -100,4 +100,4 @@
 | EURUSD   | S1_mild       | 2025-04      | NY               |     37447 |             1.43812    |               1.36634  |         0.975142 |
 
 - month_session_rows_shown: `40` of `432`
-- full_month_session_artifact: `/Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/execution_mc_month_session_summary.csv`
+- full_month_session_artifact: `data/analysis/tick_opportunity_mining/execution_mc_month_session_summary.csv`

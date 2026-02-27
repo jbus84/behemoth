@@ -137,6 +137,18 @@ Diagnostics-first governance checks (informational, not blockers yet):
 ## Operational Notes
 - Any change to selection or threshold policy requires governance refresh and re-validation.
 
+## Data/Docs Freshness Policy
+- Freshness SLA: governed analysis artifacts must be refreshed within `168h` (7 days).
+- Stale evidence is treated as a deployment blocker when it affects Stage 4, Stage 8, or Stage 9 decision inputs.
+- Evidence sources:
+- `docs/analysis/oco_docs_contract_report.md` (`C6 generated_artifacts_recency`)
+- `docs/analysis/oco_alert_remediation_report.md` (active exceptions/expiry)
+- `docs/analysis/oco_governance_explainability_report.md` (metric-level action context)
+- If stale:
+- rerun generation commands for affected stages,
+- refresh governance lock validation,
+- attach updated evidence before promotion.
+
 ## Operator Escalation Matrix
 | trigger | severity | required action |
 | --- | --- | --- |
@@ -160,6 +172,7 @@ Rollback rule:
 - `docs/analysis/run_delta_dashboard.md`
 - `docs/analysis/operator_action_report.md`
 - `docs/analysis/oco_alert_remediation_report.md`
+- `docs/analysis/oco_governance_explainability_report.md`
 - `docs/analysis/oco_threshold_sensitivity_report.md`
 - `docs/strategy_bible/operator_runbook.md`
 
@@ -201,6 +214,7 @@ uv run python scripts/validate_oco_live_governance.py \
   --out-json data/analysis/tick_opportunity_mining/eurusd_governance_validate.json
 uv run python scripts/validate_oco_rule_universe_registry.py
 uv run python scripts/remediate_oco_monitoring_alerts.py
+uv run python scripts/build_oco_governance_explainability_report.py
 uv run python scripts/build_oco_threshold_sensitivity_report.py
 ```
 
@@ -209,6 +223,7 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 - `scripts/validate_oco_live_governance.py`
 - `scripts/validate_oco_rule_universe_registry.py`
 - `scripts/remediate_oco_monitoring_alerts.py`
+- `scripts/build_oco_governance_explainability_report.py`
 - `scripts/build_oco_threshold_sensitivity_report.py`
 - `tests/test_oco_live_governance.py`
 - `docs/analysis/oco_live_governance_lock.md`
@@ -217,7 +232,7 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 <!-- GENERATED:STAGE_09:START -->
 ### Auto Snapshot - Stage 09
 
-- generated_at: `2026-02-27 14:15:43 UTC`
+- generated_at: `2026-02-27 15:20:50 UTC`
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
 - Missing required artifacts: 0.
 

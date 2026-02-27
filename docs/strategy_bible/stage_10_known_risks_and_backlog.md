@@ -49,6 +49,12 @@ Status workflow:
 | R10.4 | Robustness inference overconfidence from narrow test universe | 3 | 2 | 6 | Open | Stage 8 stress and LB gates remain passing |
 | R10.5 | Audit cleanliness regression after upstream changes | 4 | 2 | 8 | Open | Stage 7 C01-C10 with zero critical/high failures |
 
+## Pair Scope Constraint (Current Deployment)
+- Active OCO production scope remains `EURUSD`, `GBPUSD`, and `USDJPY`.
+- Historical multi-asset stability screens are archived at:
+- `docs/archive/analysis/stable_pairs_whitelist.md`
+- Scope expansion requires a full Stage 1-10 replay and fresh governance lock artifacts.
+
 ## Outputs
 - This page and linked issue artifacts.
 
@@ -90,10 +96,11 @@ Diagnostics-first backlog checks (informational, not blockers yet):
 
 ## Canonical Analysis Reports
 - `docs/analysis/risk_checklist.md`
-- `docs/analysis/stable_pairs_whitelist.md`
+- `docs/archive/analysis/stable_pairs_whitelist.md`
 - `docs/analysis/oco_docs_contract_report.md`
 - `docs/analysis/oco_rule_universe_registry_report.md`
 - `docs/analysis/oco_alert_remediation_report.md`
+- `docs/analysis/oco_governance_explainability_report.md`
 - `docs/analysis/oco_leakage_integrity_report.md`
 - `docs/analysis/taxonomy_rules.md`
 - `docs/analysis/oco_stage_integrity_report.md`
@@ -126,7 +133,7 @@ uv run python scripts/build_oco_strategy_bible.py \
 
 | Backlog ID | Item | Priority | Owner | Acceptance Test |
 | --- | --- | --- | --- | --- |
-| B10.5 | Add escalation SLA enforcement for accepted exceptions older than 30 days | Medium | Research lead | `oco_alert_disposition.csv` has no expired `accepted_exception` rows |
+| B10.7 | Add docs freshness escalation for stale evidence artifacts | Medium | Research lead | stale artifacts are flagged in runbook checklist and Stage 9 predeploy review |
 
 ## Recently Implemented Backlog (2026-02-27)
 
@@ -136,6 +143,7 @@ uv run python scripts/build_oco_strategy_bible.py \
 | B10.2 | Add monthly drift report for overshoot/fill distributions by symbol | Implemented | `docs/analysis/oco_execution_drift_report.md` |
 | B10.3 | Add explicit pre-registration note for reduced rule family universe | Implemented | `docs/strategy_bible/stage_02_opportunity_mining.md`, `docs/strategy_bible/stage_05_reduced_core.md`, `docs/analysis/oco_rule_universe_registry_report.md` |
 | B10.4 | Add threshold lookback/retrain cadence sensitivity report | Implemented | `docs/analysis/oco_threshold_sensitivity_report.md` |
+| B10.5 | Add escalation SLA enforcement for accepted exceptions older than 30 days | Implemented | `configs/research/governance/oco_monitoring_exceptions.yaml`, `docs/analysis/oco_alert_remediation_report.md`, `docs/analysis/oco_docs_contract_report.md` |
 | B10.6 | Add alert remediation matrix with owner/action/expiry | Implemented | `docs/analysis/oco_alert_remediation_report.md`, `data/analysis/tick_opportunity_mining/oco_alert_disposition.csv` |
 
 ## Escalation Matrix
@@ -151,13 +159,13 @@ If any trigger occurs, required action is immediate:
 ## Traceability
 - `docs/strategy_bible/generated/audit_snapshot.md`
 - `docs/analysis/risk_checklist.md`
-- `docs/analysis/stable_pairs_whitelist.md`
+- `docs/archive/analysis/stable_pairs_whitelist.md`
 
 ## Generated Run Snapshot
 <!-- GENERATED:STAGE_10:START -->
 ### Auto Snapshot - Stage 10
 
-- generated_at: `2026-02-27 14:15:43 UTC`
+- generated_at: `2026-02-27 15:20:50 UTC`
 - Risk backlog is derived from current logical-audit failures.
 - When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.
 
@@ -192,5 +200,5 @@ If any trigger occurs, required action is immediate:
 #### Plots
 ![stage_10_risk_matrix](../figures/oco_bible/stage_10_risk_matrix.png)
 
-- Risk SLA tracker exists but has no open rows. `source=/Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/risk_sla_tracker.csv`
+- Risk SLA tracker exists but has no open rows. `source=data/analysis/tick_opportunity_mining/risk_sla_tracker.csv`
 <!-- GENERATED:STAGE_10:END -->

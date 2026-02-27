@@ -19,6 +19,7 @@ import yaml
 
 DEFAULT_MANIFEST = Path("configs/research/docs/oco_bible_manifest.yaml")
 DETAIL_MAX_ROWS_DEFAULT = 40
+REPO_ROOT = Path.cwd().resolve()
 
 
 @dataclass(frozen=True)
@@ -50,6 +51,21 @@ REQUIRED_SYMBOL_KEYS = {
 
 def _parse_bool(raw: str) -> bool:
     return str(raw).strip().lower() in {"1", "true", "yes", "y"}
+
+
+def _to_repo_rel(raw: Any) -> str:
+    s = str(raw).strip()
+    if not s:
+        return ""
+    p = Path(s)
+    try:
+        abs_p = p.resolve() if p.is_absolute() else (REPO_ROOT / p).resolve()
+        try:
+            return abs_p.relative_to(REPO_ROOT).as_posix()
+        except ValueError:
+            return abs_p.as_posix()
+    except Exception:
+        return s.replace("\\", "/")
 
 
 def _table(df: pd.DataFrame) -> str:
@@ -145,7 +161,7 @@ def _artifact_rows(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]]:
                     "group": "symbol",
                     "symbol": symbol,
                     "artifact": k,
-                    "path": str(p),
+                    "path": _to_repo_rel(p),
                     "exists": p.exists(),
                     "required": True,
                 }
@@ -159,7 +175,7 @@ def _artifact_rows(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]]:
                 "group": "audit",
                 "symbol": "ALL",
                 "artifact": k,
-                "path": str(p),
+                "path": _to_repo_rel(p),
                 "exists": p.exists(),
                 "required": True,
             }
@@ -172,7 +188,7 @@ def _artifact_rows(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]]:
                 "group": "required_artifacts",
                 "symbol": "ALL",
                 "artifact": "required_artifact",
-                "path": str(p),
+                "path": _to_repo_rel(p),
                 "exists": p.exists(),
                 "required": True,
             }
@@ -738,7 +754,7 @@ def _write_markdown_outputs(
         source_lines.append(f"- `docs/strategy_bible/generated/stage_{i:02d}_snapshot.md`")
     source_lines.append("")
     source_lines.append("## Stage Metrics")
-    source_lines.append(f"- `{outputs.stage_metrics_csv}`")
+    source_lines.append(f"- `{_to_repo_rel(outputs.stage_metrics_csv)}`")
     source_md.write_text("\n".join(source_lines), encoding="utf-8")
 
 
@@ -1202,7 +1218,7 @@ def _render_stage_snapshot(
                 f"- details_rows_shown: `{len(d)}` of `{n_full}`"
             )
             if str(details_source_path).strip():
-                lines.append(f"- full_artifact: `{details_source_path}`")
+                lines.append(f"- full_artifact: `{_to_repo_rel(details_source_path)}`")
     if figure_paths:
         lines.append("")
         lines.append("#### Plots")
@@ -1249,7 +1265,7 @@ def _write_stage_snapshots(
                 "symbol": symbol,
                 "value": _num(value),
                 "unit": unit,
-                "source_path": source_path,
+                "source_path": _to_repo_rel(source_path),
                 "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             }
         )
@@ -1262,7 +1278,7 @@ def _write_stage_snapshots(
                 "metric_id": metric_id,
                 "metric_value": _num(metric_value),
                 "note": str(note),
-                "source_path": str(source_path),
+                "source_path": _to_repo_rel(source_path),
                 "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             }
         )
@@ -1969,7 +1985,7 @@ def _write_stage_snapshots(
                     "action_summary": mapped["action_summary"],
                     "green_threshold": mapped["green_threshold"],
                     "amber_threshold": mapped["amber_threshold"],
-                    "source_path": policy_source,
+                    "source_path": _to_repo_rel(policy_source),
                     "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 }
             )
@@ -2063,8 +2079,8 @@ def _write_stage_snapshots(
             "Session-aware rolling caps are built causally (20D lookback, q=0.90) before E11 dispersion is measured.",
             "Cap curve highlights fill-rate versus signal-level expectancy.",
             "E11-E13 are informational execution diagnostics: session dispersion, plateau width, and non-fill opportunity cost.",
-            f"Policy status artifact: {stage04_policy_csv}",
-            f"Session cap artifact: {stage04_cap_policy_csv}",
+            f"Policy status artifact: {_to_repo_rel(stage04_policy_csv)}",
+            f"Session cap artifact: {_to_repo_rel(stage04_cap_policy_csv)}",
         ],
         figure_paths=[p for p in [stage04_plot, stage04_policy_plot] if p.exists()],
         figure_prefix="../figures/oco_bible/",
@@ -2100,7 +2116,7 @@ def _write_stage_snapshots(
         )
         stage04_content += (
             "\n\n- policy_csv: "
-            + f"`{stage04_policy_csv}`"
+            + f"`{_to_repo_rel(stage04_policy_csv)}`"
         )
     if not stage04_policy.empty:
         stage04_content += "\n\n#### Policy Metric Mapping (Detail)\n" + _table(
@@ -2923,12 +2939,12 @@ def _write_stage_snapshots(
             )
             stage10_content += (
                 "\n\n- SLA summary: "
-                + f"`open={open_count}`, `breached={breach_count}`, `source={risk_sla_path}`"
+                + f"`open={open_count}`, `breached={breach_count}`, `source={_to_repo_rel(risk_sla_path)}`"
             )
     elif risk_sla_path.exists():
         stage10_content += (
             "\n\n- Risk SLA tracker exists but has no open rows. "
-            + f"`source={risk_sla_path}`"
+            + f"`source={_to_repo_rel(risk_sla_path)}`"
         )
     else:
         stage10_content += (
@@ -3086,7 +3102,7 @@ def _write_stage_snapshots(
             + f"`{len(stage11_month_view)}` of `{n_full}`"
         )
         if stage11_month_source:
-            stage11_content += "\n- full_month_session_artifact: " + f"`{stage11_month_source}`"
+            stage11_content += "\n- full_month_session_artifact: " + f"`{_to_repo_rel(stage11_month_source)}`"
     write_stage(11, stage11_content)
 
     edge_stage = pd.DataFrame(edge_stage_rows)
@@ -3104,9 +3120,9 @@ def _write_stage_snapshots(
     report_lines.append("# OCO Edge Clarity Report")
     report_lines.append("")
     report_lines.append(f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`")
-    report_lines.append(f"- stage_metrics_csv: `{outputs.edge_clarity_stage_metrics_csv}`")
-    report_lines.append(f"- state_contrib_csv: `{outputs.edge_clarity_state_contrib_csv}`")
-    report_lines.append(f"- threshold_robustness_csv: `{outputs.edge_clarity_threshold_robustness_csv}`")
+    report_lines.append(f"- stage_metrics_csv: `{_to_repo_rel(outputs.edge_clarity_stage_metrics_csv)}`")
+    report_lines.append(f"- state_contrib_csv: `{_to_repo_rel(outputs.edge_clarity_state_contrib_csv)}`")
+    report_lines.append(f"- threshold_robustness_csv: `{_to_repo_rel(outputs.edge_clarity_threshold_robustness_csv)}`")
     report_lines.append("")
     if not edge_stage.empty:
         top_metrics = (
@@ -3324,16 +3340,16 @@ def run(*, manifest_path: Path, strict: bool) -> dict[str, Any]:
         "symbols": snapshot[["symbol", "symbol_all_gates_pass"]].to_dict(orient="records")
         if not snapshot.empty
         else [],
-        "generated_dir": str(outputs.generated_dir),
-        "figures_dir": str(outputs.figures_dir),
-        "build_report_csv": str(outputs.build_report_csv),
-        "symbol_snapshot_csv": str(outputs.symbol_snapshot_csv),
-        "stage_status_csv": str(outputs.stage_status_csv),
-        "stage_metrics_csv": str(outputs.stage_metrics_csv),
-        "edge_clarity_stage_metrics_csv": str(outputs.edge_clarity_stage_metrics_csv),
-        "edge_clarity_state_contrib_csv": str(outputs.edge_clarity_state_contrib_csv),
-        "edge_clarity_threshold_robustness_csv": str(outputs.edge_clarity_threshold_robustness_csv),
-        "edge_clarity_report_md": str(outputs.edge_clarity_report_md),
+        "generated_dir": _to_repo_rel(outputs.generated_dir),
+        "figures_dir": _to_repo_rel(outputs.figures_dir),
+        "build_report_csv": _to_repo_rel(outputs.build_report_csv),
+        "symbol_snapshot_csv": _to_repo_rel(outputs.symbol_snapshot_csv),
+        "stage_status_csv": _to_repo_rel(outputs.stage_status_csv),
+        "stage_metrics_csv": _to_repo_rel(outputs.stage_metrics_csv),
+        "edge_clarity_stage_metrics_csv": _to_repo_rel(outputs.edge_clarity_stage_metrics_csv),
+        "edge_clarity_state_contrib_csv": _to_repo_rel(outputs.edge_clarity_state_contrib_csv),
+        "edge_clarity_threshold_robustness_csv": _to_repo_rel(outputs.edge_clarity_threshold_robustness_csv),
+        "edge_clarity_report_md": _to_repo_rel(outputs.edge_clarity_report_md),
     }
 
 

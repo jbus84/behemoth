@@ -55,6 +55,7 @@ Enforce logical pipeline contracts and summarize multiplicity-aware significance
 ## Canonical Analysis Reports
 - `docs/analysis/oco_logical_audit_report.md`
 - `docs/analysis/oco_edge_clarity_report.md`
+- `docs/analysis/oco_governance_explainability_report.md`
 - `docs/strategy_bible/operator_runbook.md`
 
 ## Operator Decision Tree
@@ -87,7 +88,7 @@ uv run python scripts/audit_oco_pipeline_logical_issues.py
 <!-- GENERATED:STAGE_07:START -->
 ### Auto Snapshot - Stage 07
 
-- generated_at: `2026-02-27 14:15:43 UTC`
+- generated_at: `2026-02-27 15:20:50 UTC`
 - C01..C10 checks are the logical contract gate before robustness sign-off.
 - Open issue rows: 0.
 

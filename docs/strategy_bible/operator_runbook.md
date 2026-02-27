@@ -31,6 +31,21 @@ Provide deterministic daily, weekly, and monthly operating actions for OCO pipel
 | Registry drift | any `RU*` high/critical failure | high | research lead | enforce universe lock refresh before promotion | `docs/analysis/oco_rule_universe_registry_report.md` | immediate |
 | Robustness degradation | Stage 8 LB95 turns non-positive | high | risk + research | freeze promotion and re-evaluate assumptions | `docs/analysis/oco_edge_clarity_report.md` | immediate |
 
+## Freshness and Staleness Rules
+- Default freshness limit for governed evidence artifacts: `168h` (7 days).
+- If any required artifact is stale, treat release readiness as `blocked` until regenerated.
+- Primary freshness evidence:
+- `docs/analysis/oco_docs_contract_report.md` (`C6 generated_artifacts_recency`)
+- `docs/analysis/oco_alert_remediation_report.md`
+- `docs/analysis/oco_governance_explainability_report.md`
+- Recovery commands:
+```bash
+make docs-contract-ci
+uv run python scripts/build_oco_strategy_bible.py \
+  --manifest configs/research/docs/oco_bible_manifest.yaml --strict false
+uv run mkdocs build
+```
+
 ## Decision Tree
 ```mermaid
 flowchart TD
@@ -66,6 +81,7 @@ flowchart TD
 ## Linked Governance Artifacts
 - `docs/analysis/oco_execution_drift_report.md`
 - `docs/analysis/oco_alert_remediation_report.md`
+- `docs/analysis/oco_governance_explainability_report.md`
 - `docs/analysis/oco_threshold_sensitivity_report.md`
 - `docs/analysis/oco_rule_universe_registry_report.md`
 - `docs/analysis/operator_action_report.md`

@@ -1,6 +1,6 @@
 # Analysis Catalog
 
-- generated_at_utc: `2026-02-27T14:16:06Z`
+- generated_at_utc: `2026-02-27T15:20:48Z`
 - manifest_csv: `analysis/catalog_manifest.csv`
 - gaps_report: `analysis/catalog_gaps_report.md`
 
@@ -13,6 +13,7 @@
 - [Oco Execution Monte Carlo Report](oco_execution_monte_carlo_report.md)
 - [Oco Execution Monte Carlo Validation Report](oco_execution_monte_carlo_validation_report.md)
 - [Oco Execution Risk Prelive Report](oco_execution_risk_prelive_report.md)
+- [Oco Governance Explainability Report](oco_governance_explainability_report.md)
 - [Oco Leakage Integrity Report](oco_leakage_integrity_report.md)
 - [Oco Logical Audit Report](oco_logical_audit_report.md)
 - [Oco Rule Universe Registry Report](oco_rule_universe_registry_report.md)
@@ -53,12 +54,12 @@
 |          6 |              3 |
 |          7 |              1 |
 |          8 |              1 |
-|          9 |              2 |
+|          9 |              3 |
 |         10 |              2 |
 |         11 |              2 |
 
 ## Legacy Reports
-- [Stable Pairs Whitelist](stable_pairs_whitelist.md)
+_empty_
 
 ## Unclassified Reports
 _empty_
@@ -83,6 +84,7 @@ _empty_
 - [Mom Loss Limiter Wfo](../archive/analysis/mom_loss_limiter_wfo.md)
 - [Oco Stop Limit Tickfill Report Eurusd Gbpusd Usdjpy](../archive/analysis/oco_stop_limit_tickfill_report_eurusd_gbpusd_usdjpy.md)
 - [Oco Stop Limit Tickfill Smoke Report](../archive/analysis/oco_stop_limit_tickfill_smoke_report.md)
+- [Stable Pairs Whitelist](../archive/analysis/stable_pairs_whitelist.md)
 - [Usdjpy Oco Monthly Wfo Robustness Smoke Report](../archive/analysis/usdjpy_oco_monthly_wfo_robustness_smoke_report.md)
 - [Usdjpy Oco Reduced Core Rolling Smoke Report](../archive/analysis/usdjpy_oco_reduced_core_rolling_smoke_report.md)
 - [Usdjpy Oco Tick Exact Smoke Report](../archive/analysis/usdjpy_oco_tick_exact_smoke_report.md)

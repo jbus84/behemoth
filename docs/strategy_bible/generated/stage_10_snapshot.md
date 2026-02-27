@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 10
 
-- generated_at: `2026-02-27 14:15:43 UTC`
+- generated_at: `2026-02-27 15:20:50 UTC`
 - Risk backlog is derived from current logical-audit failures.
 - When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.
 
@@ -35,4 +35,4 @@
 #### Plots
 ![stage_10_risk_matrix](../../figures/oco_bible/stage_10_risk_matrix.png)
 
-- Risk SLA tracker exists but has no open rows. `source=/Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/risk_sla_tracker.csv`
+- Risk SLA tracker exists but has no open rows. `source=data/analysis/tick_opportunity_mining/risk_sla_tracker.csv`

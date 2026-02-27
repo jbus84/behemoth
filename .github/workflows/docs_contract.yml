@@ -49,6 +49,8 @@ jobs:
             data/analysis/tick_opportunity_mining/oco_rule_universe_registry_checks.csv
             data/analysis/tick_opportunity_mining/oco_rule_universe_registry_issues.csv
             data/analysis/tick_opportunity_mining/oco_alert_disposition.csv
+            data/analysis/tick_opportunity_mining/oco_governance_explainability.csv
             docs/analysis/oco_docs_contract_report.md
             docs/analysis/oco_rule_universe_registry_report.md
             docs/analysis/oco_alert_remediation_report.md
+            docs/analysis/oco_governance_explainability_report.md

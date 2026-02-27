@@ -66,6 +66,7 @@ required_artifacts:
   - docs/analysis/oco_stop_limit_tickfill_fullcap_report.md
   - docs/analysis/oco_execution_drift_report.md
   - docs/analysis/oco_alert_remediation_report.md
+  - docs/analysis/oco_governance_explainability_report.md
   - docs/analysis/oco_threshold_sensitivity_report.md
   - docs/analysis/data_reliability_report.md
   - docs/analysis/oco_leakage_integrity_report.md
@@ -93,6 +94,7 @@ script_links:
   - scripts/validate_oco_rule_universe_registry.py
   - scripts/build_oco_execution_drift_report.py
   - scripts/remediate_oco_monitoring_alerts.py
+  - scripts/build_oco_governance_explainability_report.py
   - scripts/build_oco_threshold_sensitivity_report.py
   - scripts/register_docs_run.py
   - scripts/build_run_delta_dashboard.py
@@ -124,6 +126,7 @@ test_links:
   - tests/test_validate_oco_rule_universe_registry.py
   - tests/test_execution_drift_report.py
   - tests/test_remediate_oco_monitoring_alerts.py
+  - tests/test_governance_explainability_report.py
   - tests/test_threshold_sensitivity_report.py
   - tests/test_register_docs_run.py
   - tests/test_build_run_delta_dashboard.py

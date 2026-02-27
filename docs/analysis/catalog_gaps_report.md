@@ -1,6 +1,6 @@
 # Analysis Catalog Gaps
 
-- generated_at_utc: `2026-02-27T14:16:06Z`
+- generated_at_utc: `2026-02-27T15:20:48Z`
 
 ## Missing Core Reports
 _empty_
@@ -11,8 +11,7 @@ _empty_
 ## Counts
 | group   |   count |
 |:--------|--------:|
-| archive |      35 |
-| core    |      16 |
-| legacy  |       1 |
+| archive |      36 |
+| core    |      17 |
 | stage   |       4 |
 | symbol  |      15 |

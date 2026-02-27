@@ -11,7 +11,6 @@ from typing import Any
 
 import pandas as pd
 
-
 CORE_REPORTS = {
     "analysis/data_reliability_report.md",
     "analysis/oco_stage_integrity_report.md",
@@ -21,6 +20,7 @@ CORE_REPORTS = {
     "analysis/oco_execution_risk_prelive_report.md",
     "analysis/oco_execution_drift_report.md",
     "analysis/oco_alert_remediation_report.md",
+    "analysis/oco_governance_explainability_report.md",
     "analysis/oco_threshold_sensitivity_report.md",
     "analysis/oco_execution_monte_carlo_report.md",
     "analysis/oco_execution_monte_carlo_validation_report.md",
@@ -44,11 +44,11 @@ STAGE_INTEGRATED_MANUAL = {
     "analysis/oco_leakage_integrity_report.md",
     "analysis/oco_execution_drift_report.md",
     "analysis/oco_alert_remediation_report.md",
+    "analysis/oco_governance_explainability_report.md",
     "analysis/oco_threshold_sensitivity_report.md",
     "analysis/run_delta_dashboard.md",
     "analysis/operator_action_report.md",
     "analysis/taxonomy_rules.md",
-    "analysis/stable_pairs_whitelist.md",
 }
 
 SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY")
@@ -62,7 +62,7 @@ STAGE_KEYWORDS: list[tuple[int, tuple[str, ...]]] = [
     (6, ("tick_exact",)),
     (7, ("logical_audit",)),
     (8, ("robustness", "remediation_metric_decomposition")),
-    (9, ("governance", "live_governance", "alert_remediation")),
+    (9, ("governance", "live_governance", "alert_remediation", "governance_explainability")),
     (10, ("risk", "checklist", "stage_integrity")),
     (11, ("execution_monte_carlo",)),
 ]
@@ -73,7 +73,6 @@ LEGACY_KEYWORDS: tuple[str, ...] = (
     "kf_directional",
     "mom_loss_limiter",
     "m5_mom_m15_momrev",
-    "stable_pairs_whitelist",
 )
 
 
@@ -189,8 +188,8 @@ def _render_index(manifest: pd.DataFrame, *, docs_root: Path) -> str:
     lines.append("# Analysis Catalog")
     lines.append("")
     lines.append(f"- generated_at_utc: `{now}`")
-    lines.append(f"- manifest_csv: `analysis/catalog_manifest.csv`")
-    lines.append(f"- gaps_report: `analysis/catalog_gaps_report.md`")
+    lines.append("- manifest_csv: `analysis/catalog_manifest.csv`")
+    lines.append("- gaps_report: `analysis/catalog_gaps_report.md`")
     lines.append("")
 
     lines.append("## Core Reports")

@@ -1,6 +1,6 @@
 # Archived Analysis Reports
 
-- generated_at_utc: `2026-02-27T14:16:06Z`
+- generated_at_utc: `2026-02-27T15:20:48Z`
 
 ## Archive List
 - [`archive/analysis/close_path_contracts_m5_m15_m60_ml_gate_report.md`](close_path_contracts_m5_m15_m60_ml_gate_report.md)
@@ -8,6 +8,7 @@
 - [`archive/analysis/kf_directional_q80_1bar_report.md`](kf_directional_q80_1bar_report.md)
 - [`archive/analysis/m5_mom_m15_momrev_m60_rev_hgbt_report.md`](m5_mom_m15_momrev_m60_rev_hgbt_report.md)
 - [`archive/analysis/mom_loss_limiter_wfo.md`](mom_loss_limiter_wfo.md)
+- [`archive/analysis/stable_pairs_whitelist.md`](stable_pairs_whitelist.md)
 - [`archive/institutional_audit_report.md`](../institutional_audit_report.md)
 - [`archive/kalman_deployment_guide.md`](../kalman_deployment_guide.md)
 - [`archive/kalman_strategy_guide.md`](../kalman_strategy_guide.md)
@@ -47,6 +48,7 @@
 | archive/analysis/kf_directional_q80_1bar_report.md                          | ALL      |        nan | none                 | archive | False          | docs/archive/analysis/kf_directional_q80_1bar_report.md                          | already_archived |
 | archive/analysis/m5_mom_m15_momrev_m60_rev_hgbt_report.md                   | ALL      |        nan | none                 | archive | False          | docs/archive/analysis/m5_mom_m15_momrev_m60_rev_hgbt_report.md                   | already_archived |
 | archive/analysis/mom_loss_limiter_wfo.md                                    | ALL      |        nan | none                 | archive | False          | docs/archive/analysis/mom_loss_limiter_wfo.md                                    | already_archived |
+| archive/analysis/stable_pairs_whitelist.md                                  | ALL      |        nan | none                 | archive | False          | docs/archive/analysis/stable_pairs_whitelist.md                                  | already_archived |
 | archive/institutional_audit_report.md                                       | ALL      |        nan | none                 | archive | False          | docs/archive/institutional_audit_report.md                                       | already_archived |
 | archive/kalman_deployment_guide.md                                          | ALL      |        nan | none                 | archive | False          | docs/archive/kalman_deployment_guide.md                                          | already_archived |
 | archive/kalman_strategy_guide.md                                            | ALL      |        nan | none                 | archive | False          | docs/archive/kalman_strategy_guide.md                                            | already_archived |

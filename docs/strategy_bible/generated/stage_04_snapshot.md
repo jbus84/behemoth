@@ -1,12 +1,12 @@
 ### Auto Snapshot - Stage 04
 
-- generated_at: `2026-02-27 14:15:43 UTC`
+- generated_at: `2026-02-27 15:20:50 UTC`
 - Execution realism is applied with tick first-cross overshoot.
 - Session-aware rolling caps are built causally (20D lookback, q=0.90) before E11 dispersion is measured.
 - Cap curve highlights fill-rate versus signal-level expectancy.
 - E11-E13 are informational execution diagnostics: session dispersion, plateau width, and non-fill opportunity cost.
-- Policy status artifact: /Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/stage04_execution_policy_status.csv
-- Session cap artifact: /Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/stage04_cap_policy_by_session.csv
+- Policy status artifact: data/analysis/tick_opportunity_mining/stage04_execution_policy_status.csv
+- Session cap artifact: data/analysis/tick_opportunity_mining/stage04_cap_policy_by_session.csv
 
 #### Key Results
 | symbol   |   rows |   touch_found_rate |   base_mean_gross_pips |   tick_overshoot_mean_pips |   tick_overshoot_p95_pips |   e11_session_overshoot_dispersion |   e12_cap_plateau_width_pips |   e13_nonfill_opportunity_cost_pips |
@@ -67,7 +67,7 @@
 | GBPUSD   |               5 |                    5 |                    0 |                  0 | green        | A0_MONITOR                | within execution policy limits; monitor only |               |                 |
 | USDJPY   |               5 |                    5 |                    0 |                  0 | green        | A0_MONITOR                | within execution policy limits; monitor only |               |                 |
 
-- policy_csv: `/Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/stage04_execution_policy_status.csv`
+- policy_csv: `data/analysis/tick_opportunity_mining/stage04_execution_policy_status.csv`
 
 #### Policy Metric Mapping (Detail)
 | symbol   | metric_id                         |   metric_value | band   | action_code   | green_threshold   | amber_threshold   |

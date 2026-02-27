@@ -1,5 +1,12 @@
 version: 1
 default_expiry_days: 60
+max_amber_consecutive_runs: 3
+max_amber_months: 6
+require_owner: true
+require_rationale: true
+require_evidence_link: true
+hard_fail_on_expired_exception: true
+hard_fail_on_recurrence_breach: true
 rules:
   - metric_id: E_DRIFT_OVERSHOOT_P50
     symbols: [EURUSD]
@@ -7,15 +14,18 @@ rules:
     owner: execution_research
     rationale: "Observed overshoot p50 drift is moderate and not persistent across symbols."
     review_cadence_days: 30
+    evidence_link: docs/analysis/oco_execution_drift_report.md
   - metric_id: E_DRIFT_OVERSHOOT_P95
     symbols: [EURUSD, USDJPY]
     disposition: accepted_exception
     owner: execution_research
     rationale: "Tail drift remains amber-only and below fail thresholds."
     review_cadence_days: 30
+    evidence_link: docs/analysis/oco_execution_drift_report.md
   - metric_id: TS03_LB95_MONTH_SIGNAL
     symbols: [EURUSD, GBPUSD, USDJPY]
     disposition: accepted_exception
     owner: wfo_research
     rationale: "LB95 signal floor is a monitoring warning; hard gates remain positive."
     review_cadence_days: 30
+    evidence_link: docs/analysis/oco_threshold_sensitivity_report.md

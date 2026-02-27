@@ -18,6 +18,7 @@
 - `scripts/validate_oco_rule_universe_registry.py`
 - `scripts/build_oco_execution_drift_report.py`
 - `scripts/remediate_oco_monitoring_alerts.py`
+- `scripts/build_oco_governance_explainability_report.py`
 - `scripts/build_oco_threshold_sensitivity_report.py`
 - `scripts/register_docs_run.py`
 - `scripts/build_run_delta_dashboard.py`
@@ -49,6 +50,7 @@
 - `tests/test_validate_oco_rule_universe_registry.py`
 - `tests/test_execution_drift_report.py`
 - `tests/test_remediate_oco_monitoring_alerts.py`
+- `tests/test_governance_explainability_report.py`
 - `tests/test_threshold_sensitivity_report.py`
 - `tests/test_register_docs_run.py`
 - `tests/test_build_run_delta_dashboard.py`
@@ -88,4 +90,4 @@
 - `docs/strategy_bible/generated/stage_10_snapshot.md`
 
 ## Stage Metrics
-- `/Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv`
+- `data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv`

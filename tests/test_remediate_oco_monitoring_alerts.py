@@ -47,6 +47,13 @@ def _write_alert_inputs(tmp_path: Path) -> tuple[Path, Path, Path]:
     exceptions = {
         "version": 1,
         "default_expiry_days": 60,
+        "max_amber_consecutive_runs": 3,
+        "max_amber_months": 6,
+        "require_owner": True,
+        "require_rationale": True,
+        "require_evidence_link": True,
+        "hard_fail_on_expired_exception": True,
+        "hard_fail_on_recurrence_breach": True,
         "rules": [
             {
                 "metric_id": "E_DRIFT_OVERSHOOT_P95",
@@ -77,7 +84,18 @@ def test_remediation_outputs_dispositions(tmp_path: Path) -> None:
         report_out=tmp_path / "report.md",
     )
     assert not disposition.empty
-    assert {"symbol", "metric_id", "status", "action_code", "is_expired"}.issubset(set(disposition.columns))
+    assert {
+        "symbol",
+        "metric_id",
+        "status",
+        "action_code",
+        "is_expired",
+        "consecutive_runs_non_green",
+        "months_non_green_count",
+        "escalation_level",
+        "evidence_link",
+        "policy_violation_code",
+    }.issubset(set(disposition.columns))
     # green alert is filtered out
     assert "E_DRIFT_OVERSHOOT_P50" not in set(disposition["metric_id"].astype(str))
     # exception-matched alert stays accepted
@@ -88,6 +106,33 @@ def test_remediation_outputs_dispositions(tmp_path: Path) -> None:
     gbp = disposition[disposition["metric_id"].astype(str) == "TS03_LB95_MONTH_SIGNAL"]
     assert not gbp.empty
     assert gbp.iloc[0]["status"] == "remediated"
+    assert (disposition["escalation_level"].astype(str) == "warn").any()
+
+
+def test_remediation_recurrence_increments_across_runs(tmp_path: Path) -> None:
+    drift_path, threshold_path, exceptions_path = _write_alert_inputs(tmp_path)
+    out_csv = tmp_path / "disposition.csv"
+    report = tmp_path / "report.md"
+    d1 = run(
+        drift_alerts_csv=drift_path,
+        threshold_alerts_csv=threshold_path,
+        exceptions_yaml=exceptions_path,
+        out_disposition_csv=out_csv,
+        report_out=report,
+    )
+    prev = pd.read_csv(out_csv)
+    prev["last_seen_utc"] = "2025-01-01T00:00:00Z"
+    prev.to_csv(out_csv, index=False)
+    d2 = run(
+        drift_alerts_csv=drift_path,
+        threshold_alerts_csv=threshold_path,
+        exceptions_yaml=exceptions_path,
+        out_disposition_csv=out_csv,
+        report_out=report,
+    )
+    r1 = d1[d1["metric_id"].astype(str) == "E_DRIFT_OVERSHOOT_P95"].iloc[0]
+    r2 = d2[d2["metric_id"].astype(str) == "E_DRIFT_OVERSHOOT_P95"].iloc[0]
+    assert int(r2["consecutive_runs_non_green"]) >= int(r1["consecutive_runs_non_green"]) + 1
 
 
 def test_remediation_handles_empty_alerts(tmp_path: Path) -> None:

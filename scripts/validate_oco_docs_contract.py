@@ -13,6 +13,11 @@ from typing import Any
 
 import pandas as pd
 
+try:
+    import yaml
+except Exception:
+    yaml = None  # type: ignore[assignment]
+
 
 @dataclass(frozen=True)
 class Thresholds:
@@ -106,6 +111,7 @@ CANONICAL_NAV_PATHS = [
     "analysis/oco_rule_universe_registry_report.md",
     "analysis/oco_execution_drift_report.md",
     "analysis/oco_alert_remediation_report.md",
+    "analysis/oco_governance_explainability_report.md",
     "analysis/oco_threshold_sensitivity_report.md",
     "analysis/oco_docs_contract_report.md",
 ]
@@ -164,6 +170,7 @@ CORE_REPORT_PATHS = [
     "analysis/oco_execution_risk_prelive_report.md",
     "analysis/oco_execution_drift_report.md",
     "analysis/oco_alert_remediation_report.md",
+    "analysis/oco_governance_explainability_report.md",
     "analysis/oco_threshold_sensitivity_report.md",
     "analysis/oco_execution_monte_carlo_report.md",
     "analysis/oco_execution_monte_carlo_validation_report.md",
@@ -290,7 +297,43 @@ ALERT_DISPOSITION_REQUIRED_COLUMNS = [
     "is_expired",
     "source_path",
     "evaluated_at_utc",
+    "first_seen_utc",
+    "last_seen_utc",
+    "consecutive_runs_non_green",
+    "months_non_green_count",
+    "sla_days",
+    "days_to_expiry",
+    "escalation_level",
+    "evidence_required",
+    "evidence_link",
+    "expiry_breach",
+    "recurrence_breach",
+    "policy_violation_code",
 ]
+
+GOVERNANCE_EXPLAINABILITY_REQUIRED_COLUMNS = [
+    "metric_id",
+    "source_alert",
+    "definition",
+    "risk_path",
+    "threshold_context",
+    "action_rationale",
+    "expected_recovery_signal",
+    "band_worst",
+    "severity_worst",
+    "active_rows",
+    "symbol_count",
+    "symbols",
+    "action_codes",
+    "owners",
+    "review_cadence_days",
+    "evidence_required",
+    "example_evidence_link",
+    "coverage_status",
+    "generated_at_utc",
+]
+
+ABSOLUTE_PATH_RE = re.compile(r"(/Users/|[A-Za-z]:\\)")
 
 
 def _table(df: pd.DataFrame) -> str:
@@ -304,6 +347,12 @@ def _table(df: pd.DataFrame) -> str:
 
 def _parse_symbols(raw: str) -> list[str]:
     return [x.strip().upper() for x in str(raw).split(",") if x.strip()]
+
+
+def _count_machine_local_path_tokens(text: str) -> int:
+    if not text:
+        return 0
+    return int(len(ABSOLUTE_PATH_RE.findall(text)))
 
 
 def _add_check(
@@ -922,8 +971,10 @@ def run(
     except Exception:
         taxonomy_manifest = pd.DataFrame()
     unclassified_count = 0
+    legacy_count = 0
     if not taxonomy_manifest.empty and "group" in taxonomy_manifest.columns:
         unclassified_count = int(taxonomy_manifest["group"].astype(str).str.lower().isin(["unclassified", "misc"]).sum())
+        legacy_count = int(taxonomy_manifest["group"].astype(str).str.lower().eq("legacy").sum())
     taxonomy_rules_md = docs_root.parent / "analysis" / "taxonomy_rules.md"
     _add_check(
         checks_rows,
@@ -937,6 +988,20 @@ def run(
         comparator="==",
         source_path=taxonomy_manifest_csv,
         details=f"taxonomy_rules_exists={taxonomy_rules_md.exists()}",
+    )
+
+    # C20B: Taxonomy has no legacy-classified active docs.
+    _add_check(
+        checks_rows,
+        check_id="C20B",
+        check_name="taxonomy_legacy_count_zero",
+        passed=legacy_count == 0,
+        severity_if_fail="medium",
+        metric_name="legacy_docs_count",
+        metric_value=int(legacy_count),
+        threshold=0,
+        comparator="==",
+        source_path=taxonomy_manifest_csv,
     )
 
     # C21: Operator action artifacts exist and match schema.
@@ -1333,6 +1398,191 @@ def run(
             },
             sort_keys=True,
         ),
+    )
+
+    # C35: Expired accepted exceptions must not remain active when hard-fail policy is enabled.
+    policy_cfg = {}
+    if yaml is not None and exceptions_yaml.exists():
+        try:
+            loaded = yaml.safe_load(exceptions_yaml.read_text(encoding="utf-8"))
+            policy_cfg = loaded if isinstance(loaded, dict) else {}
+        except Exception:
+            policy_cfg = {}
+    hard_fail_expired = str(policy_cfg.get("hard_fail_on_expired_exception", True)).strip().lower() in {"1", "true", "yes", "y", "t"}
+    expired_accepted = 0
+    if not disp.empty and {"status", "is_expired"}.issubset(set(disp.columns)):
+        is_exp = disp["is_expired"].astype(str).str.lower().isin(["1", "true", "t", "yes", "y"])
+        is_acc = disp["status"].astype(str).str.lower().eq("accepted_exception")
+        expired_accepted = int((is_exp & is_acc).sum())
+    _add_check(
+        checks_rows,
+        check_id="C35",
+        check_name="no_expired_accepted_exceptions_under_hard_fail_policy",
+        passed=(not hard_fail_expired) or (expired_accepted == 0),
+        severity_if_fail="high",
+        metric_name="expired_accepted_exception_count",
+        metric_value=int(expired_accepted),
+        threshold=0,
+        comparator="==",
+        source_path=disposition_csv,
+        details=json.dumps(
+            {
+                "hard_fail_on_expired_exception": hard_fail_expired,
+                "expired_accepted_exception_count": expired_accepted,
+            },
+            sort_keys=True,
+        ),
+    )
+
+    # C36: Recurrence breaches must not remain active when hard-fail recurrence policy is enabled.
+    hard_fail_recurrence = str(policy_cfg.get("hard_fail_on_recurrence_breach", True)).strip().lower() in {"1", "true", "yes", "y", "t"}
+    max_amber_consecutive = int(policy_cfg.get("max_amber_consecutive_runs", 3))
+    max_amber_months = int(policy_cfg.get("max_amber_months", 6))
+    recurrence_breach_count = 0
+    if not disp.empty:
+        if "recurrence_breach" in disp.columns:
+            recurrence_breach_count = int(disp["recurrence_breach"].astype(str).str.lower().isin(["1", "true", "t", "yes", "y"]).sum())
+        elif {"consecutive_runs_non_green", "months_non_green_count"}.issubset(set(disp.columns)):
+            consec = pd.to_numeric(disp["consecutive_runs_non_green"], errors="coerce").fillna(0)
+            months = pd.to_numeric(disp["months_non_green_count"], errors="coerce").fillna(0)
+            recurrence_breach_count = int(((consec > max_amber_consecutive) | (months > max_amber_months)).sum())
+    _add_check(
+        checks_rows,
+        check_id="C36",
+        check_name="no_recurrence_breach_under_hard_fail_policy",
+        passed=(not hard_fail_recurrence) or (recurrence_breach_count == 0),
+        severity_if_fail="high",
+        metric_name="recurrence_breach_count",
+        metric_value=int(recurrence_breach_count),
+        threshold=0,
+        comparator="==",
+        source_path=disposition_csv,
+        details=json.dumps(
+            {
+                "hard_fail_on_recurrence_breach": hard_fail_recurrence,
+                "max_amber_consecutive_runs": max_amber_consecutive,
+                "max_amber_months": max_amber_months,
+                "recurrence_breach_count": recurrence_breach_count,
+            },
+            sort_keys=True,
+        ),
+    )
+
+    # C37: Non-green disposition rows must include required governance metadata.
+    metadata_missing = 0
+    if not disp.empty:
+        ng = disp[disp.get("band", pd.Series(dtype=str)).astype(str).str.lower().isin(["amber", "red"])].copy()
+        if not ng.empty:
+            req_cols = ["owner", "rationale", "action_code", "expires_utc"]
+            for c in req_cols:
+                if c not in ng.columns:
+                    metadata_missing += int(len(ng))
+                    continue
+                missing_c = ng[c].astype(str).str.strip().eq("") | ng[c].isna()
+                metadata_missing += int(missing_c.sum())
+    _add_check(
+        checks_rows,
+        check_id="C37",
+        check_name="non_green_dispositions_have_required_metadata",
+        passed=metadata_missing == 0,
+        severity_if_fail="high",
+        metric_name="missing_required_disposition_metadata",
+        metric_value=int(metadata_missing),
+        threshold=0,
+        comparator="==",
+        source_path=disposition_csv,
+    )
+
+    # C38: Block escalation rows require evidence links.
+    missing_block_evidence = 0
+    if not disp.empty and {"escalation_level", "evidence_link"}.issubset(set(disp.columns)):
+        block_rows = disp[disp["escalation_level"].astype(str).str.lower() == "block"].copy()
+        if not block_rows.empty:
+            missing_block_evidence = int((block_rows["evidence_link"].astype(str).str.strip() == "").sum())
+    _add_check(
+        checks_rows,
+        check_id="C38",
+        check_name="block_escalations_have_evidence_link",
+        passed=missing_block_evidence == 0,
+        severity_if_fail="high",
+        metric_name="missing_block_evidence_links",
+        metric_value=int(missing_block_evidence),
+        threshold=0,
+        comparator="==",
+        source_path=disposition_csv,
+    )
+
+    # C39: Explainability artifacts exist and cover all active non-green metric_ids.
+    explain_csv = edge_metrics_csv.parent / "oco_governance_explainability.csv"
+    explain_report = docs_root.parent / "analysis" / "oco_governance_explainability_report.md"
+    try:
+        explain_df = pd.read_csv(explain_csv) if explain_csv.exists() else pd.DataFrame()
+    except Exception:
+        explain_df = pd.DataFrame()
+    missing_explain_cols = [c for c in GOVERNANCE_EXPLAINABILITY_REQUIRED_COLUMNS if c not in explain_df.columns]
+    active_metrics = set(
+        disp[disp.get("band", pd.Series(dtype=str)).astype(str).str.lower().isin(["amber", "red"])]["metric_id"].astype(str).unique().tolist()
+    ) if (not disp.empty and "metric_id" in disp.columns) else set()
+    explain_metrics = set(explain_df.get("metric_id", pd.Series(dtype=str)).astype(str).unique().tolist()) if not explain_df.empty else set()
+    missing_coverage = sorted(list(active_metrics - explain_metrics))
+    _add_check(
+        checks_rows,
+        check_id="C39",
+        check_name="governance_explainability_artifacts_and_coverage",
+        passed=explain_csv.exists()
+        and explain_report.exists()
+        and len(missing_explain_cols) == 0
+        and len(missing_coverage) == 0,
+        severity_if_fail="high",
+        metric_name="governance_explainability_coverage_gaps",
+        metric_value=int(len(missing_explain_cols) + len(missing_coverage)),
+        threshold=0,
+        comparator="==",
+        source_path=explain_csv,
+        details=json.dumps(
+            {
+                "explain_csv_exists": explain_csv.exists(),
+                "explain_report_exists": explain_report.exists(),
+                "missing_columns": missing_explain_cols,
+                "active_metric_ids": sorted(list(active_metrics)),
+                "missing_metric_coverage": missing_coverage,
+            },
+            sort_keys=True,
+        ),
+    )
+
+    # C40: Core governed docs/artifacts must avoid machine-local absolute path prefixes.
+    portability_targets = [
+        edge_metrics_csv,
+        operator_status_csv,
+        disposition_csv,
+        docs_root.parent / "analysis" / "oco_edge_clarity_report.md",
+        docs_root.parent / "analysis" / "operator_action_report.md",
+        docs_root.parent / "analysis" / "oco_alert_remediation_report.md",
+        docs_root / "stage_04_execution_realism.md",
+        docs_root / "stage_10_known_risks_and_backlog.md",
+        docs_root / "stage_11_execution_monte_carlo.md",
+    ]
+    portability_hits: dict[str, int] = {}
+    for p in portability_targets:
+        if not p.exists():
+            continue
+        txt = p.read_text(encoding="utf-8", errors="ignore")
+        n = _count_machine_local_path_tokens(txt)
+        if n > 0:
+            portability_hits[str(p)] = n
+    _add_check(
+        checks_rows,
+        check_id="C40",
+        check_name="core_docs_artifacts_use_portable_paths",
+        passed=len(portability_hits) == 0,
+        severity_if_fail="high",
+        metric_name="machine_local_path_tokens",
+        metric_value=int(sum(portability_hits.values())),
+        threshold=0,
+        comparator="==",
+        source_path=edge_metrics_csv,
+        details=json.dumps(portability_hits, sort_keys=True),
     )
 
     checks = pd.DataFrame(checks_rows)
