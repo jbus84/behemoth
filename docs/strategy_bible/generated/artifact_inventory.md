@@ -1,6 +1,6 @@
 # Artifact Inventory
 
-- generated_at: `2026-02-27 11:11:58 UTC`
+- generated_at: `2026-02-27 11:41:32 UTC`
 
 | group              | symbol   | artifact               | path                                                                                                                                          | exists   | required   |
 |:-------------------|:---------|:-----------------------|:----------------------------------------------------------------------------------------------------------------------------------------------|:---------|:-----------|
@@ -37,7 +37,6 @@
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/taxonomy_rules.md                                                                     | True     | True       |
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/run_delta_dashboard.md                                                                | True     | True       |
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/operator_action_report.md                                                             | True     | True       |
-| required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_stop_limit_tickfill_smoke_report.md                                               | True     | True       |
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_stop_limit_tickfill_fullcap_report.md                                             | True     | True       |
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/data_reliability_report.md                                                            | True     | True       |
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_leakage_integrity_report.md                                                       | True     | True       |

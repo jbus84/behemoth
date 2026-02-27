@@ -39,6 +39,12 @@ Quantify conservative expectancy and stress elasticity under cost and regime per
 - Robustness LB95 and monthly consistency are hard promotion criteria.
 - `T01-T03` are stress diagnostics for hardening.
 
+## Canonical Analysis Reports
+- `docs/analysis/eurusd_oco_monthly_wfo_robustness_fullcap_report.md`
+- `docs/analysis/gbpusd_oco_monthly_wfo_robustness_fullcap_report.md`
+- `docs/analysis/usdjpy_oco_monthly_wfo_robustness_fullcap_report.md`
+- `docs/analysis/remediation_metric_decomposition.md`
+
 ## Reproduction Commands
 ```bash
 uv run python scripts/analyze_oco_monthly_wfo_robustness.py \
@@ -54,7 +60,7 @@ uv run python scripts/analyze_oco_monthly_wfo_robustness.py \
 <!-- GENERATED:STAGE_08:START -->
 ### Auto Snapshot - Stage 08
 
-- generated_at: `2026-02-27 11:11:58 UTC`
+- generated_at: `2026-02-27 11:41:32 UTC`
 - Robustness summary uses bootstrap lower bounds from the configured smoke/full run artifacts.
 - Interpretation: LB95 > 0 indicates conservative positive expectancy under sampled uncertainty.
 - Overfit panel adds month-stratified null uplift and dependence-aware LB95 comparisons.

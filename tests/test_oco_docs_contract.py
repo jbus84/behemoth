@@ -161,6 +161,41 @@ def _write_analysis_catalog_artifacts(docs_root: Path) -> None:
     (analysis / "catalog_gaps_report.md").write_text("# gaps\n", encoding="utf-8")
     manifest_rows = [{"doc_path": f"analysis/{name}", "title": name, "group": "core"} for name in files]
     pd.DataFrame(manifest_rows).to_csv(analysis / "catalog_manifest.csv", index=False)
+    canonical_rows = [
+        {
+            "doc_path": "analysis/eurusd_tick_opportunity_mining_report.md",
+            "symbol": "EURUSD",
+            "stage_id": 2,
+            "stage_family": "stage02_mining",
+            "class": "stage_integrated",
+            "is_canonical": True,
+        },
+        {
+            "doc_path": "analysis/gbpusd_tick_opportunity_mining_report.md",
+            "symbol": "GBPUSD",
+            "stage_id": 2,
+            "stage_family": "stage02_mining",
+            "class": "stage_integrated",
+            "is_canonical": True,
+        },
+        {
+            "doc_path": "analysis/usdjpy_tick_opportunity_mining_report.md",
+            "symbol": "USDJPY",
+            "stage_id": 2,
+            "stage_family": "stage02_mining",
+            "class": "stage_integrated",
+            "is_canonical": True,
+        },
+        {
+            "doc_path": "analysis/run_delta_dashboard.md",
+            "symbol": "ALL",
+            "stage_id": 9,
+            "stage_family": "none",
+            "class": "stage_integrated",
+            "is_canonical": True,
+        },
+    ]
+    pd.DataFrame(canonical_rows).to_csv(analysis / "canonical_stage_map.csv", index=False)
 
 
 def _write_run_delta_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> None:

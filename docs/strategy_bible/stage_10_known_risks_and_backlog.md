@@ -88,6 +88,13 @@ Diagnostics-first backlog checks (informational, not blockers yet):
 - Minimum cadence: weekly while live, and always post-refresh.
 - If any risk score rises to `>=12`, freeze new deploys until mitigated.
 
+## Canonical Analysis Reports
+- `docs/analysis/risk_checklist.md`
+- `docs/analysis/stable_pairs_whitelist.md`
+- `docs/analysis/oco_docs_contract_report.md`
+- `docs/analysis/oco_leakage_integrity_report.md`
+- `docs/analysis/taxonomy_rules.md`
+
 ## Reproduction Commands
 ```bash
 uv run python scripts/audit_oco_pipeline_logical_issues.py
@@ -123,7 +130,7 @@ If any trigger occurs, required action is immediate:
 <!-- GENERATED:STAGE_10:START -->
 ### Auto Snapshot - Stage 10
 
-- generated_at: `2026-02-27 11:11:58 UTC`
+- generated_at: `2026-02-27 11:41:32 UTC`
 - Risk backlog is derived from current logical-audit failures.
 - When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.
 

@@ -201,6 +201,17 @@ STAGE_OPERATOR_SECTIONS: dict[int, list[str]] = {
     ],
 }
 
+CANONICAL_MAP_REQUIRED_COLUMNS = [
+    "doc_path",
+    "symbol",
+    "stage_id",
+    "stage_family",
+    "class",
+    "is_canonical",
+]
+
+CANONICAL_ALLOWED_CLASSES = {"stage_integrated", "governance_core", "archive"}
+
 
 def _table(df: pd.DataFrame) -> str:
     if df.empty:
@@ -913,6 +924,88 @@ def run(
         comparator="==",
         source_path=docs_root,
         details=",".join(missing_operator_sections),
+    )
+
+    # C27: Canonical map classes are valid and primary analysis docs are stage/governance classified.
+    canonical_map_csv = docs_root.parent / "analysis" / "canonical_stage_map.csv"
+    try:
+        cmap = pd.read_csv(canonical_map_csv) if canonical_map_csv.exists() else pd.DataFrame()
+    except Exception:
+        cmap = pd.DataFrame()
+    missing_cmap_cols = [c for c in CANONICAL_MAP_REQUIRED_COLUMNS if c not in cmap.columns]
+    invalid_classes = 0
+    primary_misclassified = 0
+    if not cmap.empty and "class" in cmap.columns:
+        invalid_classes = int((~cmap["class"].astype(str).isin(CANONICAL_ALLOWED_CLASSES)).sum())
+        primary = cmap[cmap["doc_path"].astype(str).str.startswith("analysis/")].copy()
+        primary_misclassified = int((~primary["class"].astype(str).isin(["stage_integrated", "governance_core"])).sum())
+    _add_check(
+        checks_rows,
+        check_id="C27",
+        check_name="canonical_map_valid_primary_classification",
+        passed=canonical_map_csv.exists() and len(missing_cmap_cols) == 0 and invalid_classes == 0 and primary_misclassified == 0,
+        severity_if_fail="high",
+        metric_name="canonical_map_invalid_rows",
+        metric_value=int(invalid_classes + primary_misclassified + len(missing_cmap_cols)),
+        threshold=0,
+        comparator="==",
+        source_path=canonical_map_csv,
+        details=json.dumps(
+            {
+                "missing_columns": missing_cmap_cols,
+                "invalid_classes": invalid_classes,
+                "primary_misclassified": primary_misclassified,
+            },
+            sort_keys=True,
+        ),
+    )
+
+    # C28: Primary nav excludes historical variant report names.
+    historical_patterns = ["_smoke_", "fast_r20", "selection_fast", "shortlist_fast"]
+    hist_hits: list[str] = []
+    for pat in historical_patterns:
+        if pat in mk_text:
+            hist_hits.append(pat)
+    _add_check(
+        checks_rows,
+        check_id="C28",
+        check_name="mkdocs_nav_excludes_historical_variants",
+        passed=len(hist_hits) == 0,
+        severity_if_fail="medium",
+        metric_name="historical_variant_nav_hits",
+        metric_value=int(len(hist_hits)),
+        threshold=0,
+        comparator="==",
+        source_path=mkdocs_yml,
+        details=",".join(hist_hits),
+    )
+
+    # C29: Canonical uniqueness for symbol x stage_family among stage-integrated docs.
+    dup_count = 0
+    missing_count = 0
+    if not cmap.empty and {"symbol", "stage_family", "class", "is_canonical", "doc_path"}.issubset(set(cmap.columns)):
+        x = cmap[
+            (cmap["class"].astype(str) == "stage_integrated")
+            & (cmap["symbol"].astype(str).isin(["EURUSD", "GBPUSD", "USDJPY"]))
+            & (cmap["stage_family"].astype(str) != "none")
+        ].copy()
+        if not x.empty:
+            x["is_canonical"] = x["is_canonical"].astype(str).str.lower().isin(["1", "true", "t", "yes", "y"])
+            grp = x.groupby(["symbol", "stage_family"], as_index=False).agg(canon_count=("is_canonical", "sum"))
+            dup_count = int((grp["canon_count"] > 1).sum())
+            missing_count = int((grp["canon_count"] < 1).sum())
+    _add_check(
+        checks_rows,
+        check_id="C29",
+        check_name="canonical_uniqueness_symbol_stage_family",
+        passed=(dup_count == 0 and missing_count == 0),
+        severity_if_fail="high",
+        metric_name="canonical_count_violations",
+        metric_value=int(dup_count + missing_count),
+        threshold=0,
+        comparator="==",
+        source_path=canonical_map_csv,
+        details=json.dumps({"duplicate_groups": dup_count, "missing_groups": missing_count}, sort_keys=True),
     )
 
     checks = pd.DataFrame(checks_rows)

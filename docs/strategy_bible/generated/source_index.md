@@ -34,9 +34,7 @@
 - `tests/test_oco_leakage_label_integrity.py`
 - `tests/test_oco_execution_risk_prelive.py`
 - `tests/test_tick_opportunity_mining.py`
-- `tests/test_oco_no_leakage_contract.py`
 - `tests/test_oco_reduced_core_rolling.py`
-- `tests/test_oco_tick_exact_verifier.py`
 - `tests/test_oco_pipeline_logical_audit.py`
 - `tests/test_oco_docs_contract.py`
 - `tests/test_build_docs_catalog.py`
@@ -45,7 +43,6 @@
 - `tests/test_build_operator_action_report.py`
 - `tests/test_execution_monte_carlo.py`
 - `tests/test_validate_execution_monte_carlo.py`
-- `tests/test_oco_strategy_bible_builder.py`
 
 ## Symbol Reports
 ### EURUSD

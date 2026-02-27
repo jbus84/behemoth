@@ -39,6 +39,11 @@ Verify label/path correctness at tick level and assess whether family-level edge
 - Tick-exact contract checks are hard.
 - `X01-X03` are informational for universality assessment.
 
+## Canonical Analysis Reports
+- `docs/analysis/eurusd_oco_tick_exact_rolling_report.md`
+- `docs/analysis/gbpusd_oco_tick_exact_rolling_report.md`
+- `docs/analysis/usdjpy_oco_tick_exact_rolling_report.md`
+
 ## Reproduction Commands
 ```bash
 uv run python scripts/verify_oco_tick_exact_shortlist.py \
@@ -54,7 +59,7 @@ uv run python scripts/verify_oco_tick_exact_shortlist.py \
 <!-- GENERATED:STAGE_06:START -->
 ### Auto Snapshot - Stage 06
 
-- generated_at: `2026-02-27 11:11:58 UTC`
+- generated_at: `2026-02-27 11:41:32 UTC`
 - Verifier recomputes OCO outcomes independently from stored labels.
 - All summary rates should remain near 1.0 for contract consistency.
 

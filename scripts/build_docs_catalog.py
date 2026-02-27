@@ -26,6 +26,21 @@ CORE_REPORTS = {
     "analysis/taxonomy_rules.md",
 }
 
+GOVERNANCE_CORE_REPORTS = {
+    "analysis/oco_execution_monte_carlo_report.md",
+    "analysis/oco_execution_monte_carlo_validation_report.md",
+}
+
+STAGE_INTEGRATED_MANUAL = {
+    "analysis/oco_edge_clarity_report.md",
+    "analysis/oco_docs_contract_report.md",
+    "analysis/oco_leakage_integrity_report.md",
+    "analysis/run_delta_dashboard.md",
+    "analysis/operator_action_report.md",
+    "analysis/taxonomy_rules.md",
+    "analysis/stable_pairs_whitelist.md",
+}
+
 SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY")
 
 STAGE_KEYWORDS: list[tuple[int, tuple[str, ...]]] = [
@@ -62,6 +77,39 @@ class ClassifiedDoc:
     is_core: bool
     is_archive: bool
     mtime_utc: str
+
+
+def _variant_score(name_l: str) -> int:
+    score = 0
+    if "rolling" in name_l:
+        score += 100
+    if "fullcap" in name_l:
+        score += 80
+    if "smoke" in name_l:
+        score -= 60
+    if "fast_r20" in name_l:
+        score -= 50
+    if "selection" in name_l:
+        score -= 40
+    if "shortlist" in name_l:
+        score -= 30
+    return score
+
+
+def _stage_family(name_l: str) -> str:
+    if "_tick_opportunity_mining_report" in name_l:
+        return "stage02_mining"
+    if "_tick_opportunity_monthly_wfo_oco_" in name_l:
+        return "stage03_wfo"
+    if "stop_limit_tickfill" in name_l:
+        return "stage04_stop_limit"
+    if "_oco_reduced_core_" in name_l:
+        return "stage05_reduced_core"
+    if "_oco_tick_exact_" in name_l:
+        return "stage06_tick_exact"
+    if "_oco_monthly_wfo_robustness_" in name_l:
+        return "stage08_robustness"
+    return "none"
 
 
 def _table(df: pd.DataFrame) -> str:
@@ -260,6 +308,115 @@ def _render_taxonomy_rules() -> str:
     return "\n".join(lines)
 
 
+def _build_canonical_map(manifest: pd.DataFrame) -> pd.DataFrame:
+    if manifest.empty:
+        return pd.DataFrame(
+            columns=[
+                "doc_path",
+                "symbol",
+                "stage_id",
+                "stage_family",
+                "class",
+                "is_canonical",
+                "archive_target_path",
+                "reason",
+            ]
+        )
+    m = manifest.copy()
+    m["name_l"] = m["doc_path"].astype(str).str.lower()
+    m["stage_family"] = m["name_l"].map(_stage_family)
+    m["variant_score"] = m["name_l"].map(_variant_score)
+    m["class"] = "archive"
+    m["is_canonical"] = False
+    m["reason"] = "default_archive"
+    m["archive_target_path"] = "docs/archive/analysis/" + m["doc_path"].astype(str).str.replace("analysis/", "", regex=False)
+
+    # Canonical within symbol/stage families for primary analysis docs.
+    sym_primary = m[
+        (m["doc_path"].astype(str).str.startswith("analysis/"))
+        & (m["symbol"].astype(str).isin(SYMBOLS))
+        & (m["stage_family"].astype(str) != "none")
+    ].copy()
+    if not sym_primary.empty:
+        sym_primary = sym_primary.sort_values(["symbol", "stage_family", "variant_score", "mtime_utc"], ascending=[True, True, False, False])
+        best_idx = sym_primary.groupby(["symbol", "stage_family"], as_index=False).head(1).index
+        m.loc[best_idx, "is_canonical"] = True
+        m.loc[best_idx, "class"] = "stage_integrated"
+        m.loc[best_idx, "reason"] = "best_variant_for_symbol_stage_family"
+
+    # Stage-integrated reports.
+    stage_rows = (
+        (m["doc_path"].astype(str).str.startswith("analysis/"))
+        & (
+            pd.to_numeric(m["stage_id"], errors="coerce").between(1, 10)
+            | m["doc_path"].astype(str).isin(STAGE_INTEGRATED_MANUAL)
+        )
+    )
+    m.loc[stage_rows & ~m["is_canonical"].astype(bool), "class"] = "stage_integrated"
+    m.loc[stage_rows & ~m["is_canonical"].astype(bool), "reason"] = "mapped_to_stage_01_10"
+
+    # Governance core retained outside strict stage mapping.
+    gov_rows = m["doc_path"].astype(str).isin(GOVERNANCE_CORE_REPORTS)
+    m.loc[gov_rows, "class"] = "governance_core"
+    m.loc[gov_rows, "reason"] = "governance_core_keep"
+
+    # Already archived files remain archive class.
+    arch_rows = m["doc_path"].astype(str).str.startswith("archive/")
+    m.loc[arch_rows, "class"] = "archive"
+    m.loc[arch_rows, "reason"] = "already_archived"
+    m.loc[arch_rows, "archive_target_path"] = "docs/" + m.loc[arch_rows, "doc_path"].astype(str)
+
+    # Symbol docs that are not canonical should archive even if stage-tagged.
+    noncanonical_symbol = (
+        (m["doc_path"].astype(str).str.startswith("analysis/"))
+        & (m["symbol"].astype(str).isin(SYMBOLS))
+        & (~m["is_canonical"].astype(bool))
+        & (m["stage_family"].astype(str) != "none")
+    )
+    m.loc[noncanonical_symbol, "class"] = "archive"
+    m.loc[noncanonical_symbol, "reason"] = "noncanonical_symbol_variant"
+
+    out_cols = [
+        "doc_path",
+        "symbol",
+        "stage_id",
+        "stage_family",
+        "class",
+        "is_canonical",
+        "archive_target_path",
+        "reason",
+    ]
+    return m[out_cols].sort_values(["class", "symbol", "stage_family", "doc_path"]).reset_index(drop=True)
+
+
+def _render_archive_analysis_index(canonical_map: pd.DataFrame) -> str:
+    lines: list[str] = []
+    lines.append("# Archived Analysis Reports")
+    lines.append("")
+    lines.append(f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`")
+    lines.append("")
+    arch = canonical_map[canonical_map["class"].astype(str) == "archive"].copy()
+    if arch.empty:
+        lines.append("_empty_")
+        return "\n".join(lines)
+    lines.append("## Archive List")
+    for _, r in arch.sort_values(["symbol", "stage_family", "doc_path"]).iterrows():
+        doc_path = str(r["doc_path"])
+        if doc_path.startswith("archive/analysis/"):
+            link = doc_path.removeprefix("archive/analysis/")
+        elif doc_path.startswith("archive/"):
+            link = "../" + doc_path.removeprefix("archive/")
+        elif doc_path.startswith("analysis/"):
+            link = "../../" + doc_path
+        else:
+            link = doc_path
+        lines.append(f"- [`{doc_path}`]({link})")
+    lines.append("")
+    lines.append("## Archive Mapping")
+    lines.append(_table(arch))
+    return "\n".join(lines)
+
+
 def run(
     *,
     docs_root: Path,
@@ -269,12 +426,15 @@ def run(
     out_manifest_csv: Path,
     out_gaps_md: Path,
     out_taxonomy_md: Path | None = None,
+    out_canonical_map_csv: Path | None = None,
+    out_archive_candidates_csv: Path | None = None,
+    out_archive_index_md: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
     doc_paths: list[Path] = []
     if analysis_dir.exists():
         doc_paths.extend(sorted(analysis_dir.glob("*.md")))
     if archive_dir.exists():
-        doc_paths.extend(sorted(archive_dir.glob("*.md")))
+        doc_paths.extend(sorted(archive_dir.rglob("*.md")))
     excluded_names = {"index.md", "catalog_gaps_report.md"}
     doc_paths = [p for p in doc_paths if p.name not in excluded_names]
 
@@ -302,11 +462,28 @@ def run(
     out_gaps_md.parent.mkdir(parents=True, exist_ok=True)
     if out_taxonomy_md is not None:
         out_taxonomy_md.parent.mkdir(parents=True, exist_ok=True)
+    if out_canonical_map_csv is not None:
+        out_canonical_map_csv.parent.mkdir(parents=True, exist_ok=True)
+    if out_archive_candidates_csv is not None:
+        out_archive_candidates_csv.parent.mkdir(parents=True, exist_ok=True)
+    if out_archive_index_md is not None:
+        out_archive_index_md.parent.mkdir(parents=True, exist_ok=True)
     manifest.to_csv(out_manifest_csv, index=False)
     out_index_md.write_text(_render_index(manifest, docs_root=docs_root), encoding="utf-8")
     out_gaps_md.write_text(_render_gaps(manifest, docs_root=docs_root), encoding="utf-8")
     if out_taxonomy_md is not None:
         out_taxonomy_md.write_text(_render_taxonomy_rules(), encoding="utf-8")
+    canonical_map = _build_canonical_map(manifest)
+    if out_canonical_map_csv is not None:
+        canonical_map.to_csv(out_canonical_map_csv, index=False)
+    if out_archive_candidates_csv is not None:
+        archive_candidates = canonical_map[
+            (canonical_map["class"].astype(str) == "archive")
+            & (canonical_map["doc_path"].astype(str).str.startswith("analysis/"))
+        ].copy()
+        archive_candidates.to_csv(out_archive_candidates_csv, index=False)
+    if out_archive_index_md is not None:
+        out_archive_index_md.write_text(_render_archive_analysis_index(canonical_map), encoding="utf-8")
     return manifest, out_index_md, out_gaps_md
 
 
@@ -319,6 +496,9 @@ def main() -> None:
     p.add_argument("--out-manifest-csv", default="docs/analysis/catalog_manifest.csv")
     p.add_argument("--out-gaps-md", default="docs/analysis/catalog_gaps_report.md")
     p.add_argument("--out-taxonomy-md", default="docs/analysis/taxonomy_rules.md")
+    p.add_argument("--out-canonical-map-csv", default="docs/analysis/canonical_stage_map.csv")
+    p.add_argument("--out-archive-candidates-csv", default="docs/analysis/archive_candidates.csv")
+    p.add_argument("--out-archive-index-md", default="docs/archive/analysis/index.md")
     args = p.parse_args()
 
     manifest, out_index, out_gaps = run(
@@ -329,11 +509,17 @@ def main() -> None:
         out_manifest_csv=Path(str(args.out_manifest_csv)),
         out_gaps_md=Path(str(args.out_gaps_md)),
         out_taxonomy_md=Path(str(args.out_taxonomy_md)),
+        out_canonical_map_csv=Path(str(args.out_canonical_map_csv)),
+        out_archive_candidates_csv=Path(str(args.out_archive_candidates_csv)),
+        out_archive_index_md=Path(str(args.out_archive_index_md)),
     )
     print(f"wrote manifest: {args.out_manifest_csv} rows={len(manifest)}")
     print(f"wrote index: {out_index}")
     print(f"wrote gaps: {out_gaps}")
     print(f"wrote taxonomy rules: {args.out_taxonomy_md}")
+    print(f"wrote canonical map: {args.out_canonical_map_csv}")
+    print(f"wrote archive candidates: {args.out_archive_candidates_csv}")
+    print(f"wrote archive index: {args.out_archive_index_md}")
 
 
 if __name__ == "__main__":

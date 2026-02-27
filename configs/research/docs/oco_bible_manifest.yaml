@@ -61,7 +61,6 @@ required_artifacts:
   - docs/analysis/taxonomy_rules.md
   - docs/analysis/run_delta_dashboard.md
   - docs/analysis/operator_action_report.md
-  - docs/analysis/oco_stop_limit_tickfill_smoke_report.md
   - docs/analysis/oco_stop_limit_tickfill_fullcap_report.md
   - docs/analysis/data_reliability_report.md
   - docs/analysis/oco_leakage_integrity_report.md
@@ -105,9 +104,7 @@ test_links:
   - tests/test_oco_leakage_label_integrity.py
   - tests/test_oco_execution_risk_prelive.py
   - tests/test_tick_opportunity_mining.py
-  - tests/test_oco_no_leakage_contract.py
   - tests/test_oco_reduced_core_rolling.py
-  - tests/test_oco_tick_exact_verifier.py
   - tests/test_oco_pipeline_logical_audit.py
   - tests/test_oco_docs_contract.py
   - tests/test_build_docs_catalog.py
@@ -116,4 +113,3 @@ test_links:
   - tests/test_build_operator_action_report.py
   - tests/test_execution_monte_carlo.py
   - tests/test_validate_execution_monte_carlo.py
-  - tests/test_oco_strategy_bible_builder.py

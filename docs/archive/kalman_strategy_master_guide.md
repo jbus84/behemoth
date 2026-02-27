@@ -4,8 +4,6 @@
 We conducted a **Full Spectrum Audit** across **15m, 30m, 1H, and 4H** timeframes.
 **Crucial Finding**: The "Speed Limit" for Commodities is much higher than expected.
 
-![Gold Timeframe Comparison](gold_timeframe_comparison.png)
-
 **The "Golden Rule" of Deployment**:
 *   **Commodities (Gold/Oil)**: **15-Minute** (Turbo Mode). The mean reversion is fractal.
 *   **Indices & Liquid FX**: **1-Hour** (Intraday).

@@ -52,6 +52,10 @@ Enforce logical pipeline contracts and summarize multiplicity-aware significance
 | `S03 = 0` in two consecutive runs | research + risk | rerun Stage 2-5 with constrained state family |
 | `S01` exceeds historical p95 | risk | add temporary uncertainty uplift and monitor |
 
+## Canonical Analysis Reports
+- `docs/analysis/oco_logical_audit_report.md`
+- `docs/analysis/oco_edge_clarity_report.md`
+
 ## Reproduction Commands
 ```bash
 uv run python scripts/audit_oco_pipeline_logical_issues.py
@@ -66,7 +70,7 @@ uv run python scripts/audit_oco_pipeline_logical_issues.py
 <!-- GENERATED:STAGE_07:START -->
 ### Auto Snapshot - Stage 07
 
-- generated_at: `2026-02-27 11:11:58 UTC`
+- generated_at: `2026-02-27 11:41:32 UTC`
 - C01..C10 checks are the logical contract gate before robustness sign-off.
 - Open issue rows: 0.
 

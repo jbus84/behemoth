@@ -38,6 +38,11 @@ Mine high-count, gross-positive OCO opportunity families as hypotheses before mo
 - Informational at Stage 2.
 - Hard pass/fail occurs later via Stage 3, Stage 7, Stage 8.
 
+## Canonical Analysis Reports
+- `docs/analysis/eurusd_tick_opportunity_mining_report.md`
+- `docs/analysis/gbpusd_tick_opportunity_mining_report.md`
+- `docs/analysis/usdjpy_tick_opportunity_mining_report.md`
+
 ## Reproduction Commands
 ```bash
 uv run python scripts/run_tick_opportunity_mining.py \
@@ -53,7 +58,7 @@ uv run python scripts/run_tick_opportunity_mining.py \
 <!-- GENERATED:STAGE_02:START -->
 ### Auto Snapshot - Stage 02
 
-- generated_at: `2026-02-27 11:11:58 UTC`
+- generated_at: `2026-02-27 11:41:32 UTC`
 - selection_pass candidates are broad hypotheses only.
 - Scatter shows the high-count >0 gross opportunity frontier.
 - M01-M03 quantify concentration risk, horizon smoothness, and positive-edge density.

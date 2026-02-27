@@ -41,6 +41,11 @@ Evaluate model filtering with strict monthly walk-forward ordering and quantify 
 - WFO gating and leakage contract checks are hard gates.
 - `W13-W15` remain informational until promoted.
 
+## Canonical Analysis Reports
+- `docs/analysis/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md`
+- `docs/analysis/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md`
+- `docs/analysis/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_report.md`
+
 ## Reproduction Commands
 ```bash
 uv run python scripts/run_tick_opportunity_monthly_wfo.py \
@@ -56,7 +61,7 @@ uv run python scripts/run_tick_opportunity_monthly_wfo.py \
 <!-- GENERATED:STAGE_03:START -->
 ### Auto Snapshot - Stage 03
 
-- generated_at: `2026-02-27 11:11:58 UTC`
+- generated_at: `2026-02-27 11:41:32 UTC`
 - Execution threshold summary is aligned to quantile=0.9.
 - Metrics are strictly month-forward (3M train -> 1M test).
 - W13-W15 are informational diagnostics for threshold fragility, calibration drift, and selection turnover.

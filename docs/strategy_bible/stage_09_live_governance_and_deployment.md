@@ -150,6 +150,11 @@ Deployment runbook:
 Rollback rule:
 - if live config/state drift is detected, revert to last passing lock + allowed states set and redeploy.
 
+## Canonical Analysis Reports
+- `docs/analysis/oco_live_governance_lock.md`
+- `docs/analysis/run_delta_dashboard.md`
+- `docs/analysis/operator_action_report.md`
+
 ## Reproduction Commands
 Freeze:
 ```bash
@@ -182,7 +187,7 @@ uv run python scripts/validate_oco_live_governance.py \
 <!-- GENERATED:STAGE_09:START -->
 ### Auto Snapshot - Stage 09
 
-- generated_at: `2026-02-27 11:11:58 UTC`
+- generated_at: `2026-02-27 11:41:32 UTC`
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
 - Missing required artifacts: 0.
 

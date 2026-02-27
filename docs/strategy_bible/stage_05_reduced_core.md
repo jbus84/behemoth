@@ -38,6 +38,11 @@ Reduce candidate universe to a stable, capacity-valid core set with preserved ex
 - Capacity and stability conditions are hard gates in reduced-core outputs.
 - `R01-R03` are monitoring diagnostics.
 
+## Canonical Analysis Reports
+- `docs/analysis/eurusd_oco_reduced_core_rolling_report.md`
+- `docs/analysis/gbpusd_oco_reduced_core_rolling_report.md`
+- `docs/analysis/usdjpy_oco_reduced_core_rolling_report.md`
+
 ## Reproduction Commands
 ```bash
 uv run python scripts/select_oco_reduced_core_rolling.py \
@@ -53,7 +58,7 @@ uv run python scripts/select_oco_reduced_core_rolling.py \
 <!-- GENERATED:STAGE_05:START -->
 ### Auto Snapshot - Stage 05
 
-- generated_at: `2026-02-27 11:11:58 UTC`
+- generated_at: `2026-02-27 11:41:32 UTC`
 - State schedule is selected month-by-month using only prior-month train data.
 - Summary emphasizes full-path gross behavior after reduced-core filtering.
 - R01-R03 track pruning severity, state concentration, and re-selection stability.

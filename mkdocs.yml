@@ -91,6 +91,7 @@ nav:
       - Repo Structure: REPO_STRUCTURE.md
       - Walkthrough: walkthrough.md
   - Archive:
+      - Analysis Reports: archive/analysis/index.md
       - Institutional Audit Report: archive/institutional_audit_report.md
       - Kalman Deployment Guide: archive/kalman_deployment_guide.md
       - Kalman Strategy Guide: archive/kalman_strategy_guide.md
@@ -103,8 +104,6 @@ nav:
       - Scalp Validation: archive/scalp_validation.md
       - Archive Task Notes: archive/task.md
       - Universal Beta Audit: archive/universal_beta_audit.md
-  - HGBT Deep Dive: analysis/m5_mom_m15_momrev_m60_rev_hgbt_report.md
-  - Cluster EW Deep Dive: analysis/cluster_earlywarning_report.md
   - Architecture: architecture.md
   - API: api.md
   - API Reference: api_reference.md

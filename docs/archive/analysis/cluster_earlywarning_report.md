@@ -21,17 +21,17 @@
 
 ## Figures
 
-![Fold Metrics](../figures/cluster_earlywarning/fig01_fold_metrics.png)
+![Fold Metrics](../../figures/cluster_earlywarning/fig01_fold_metrics.png)
 
-![Precision Recall](../figures/cluster_earlywarning/fig02_precision_recall.png)
+![Precision Recall](../../figures/cluster_earlywarning/fig02_precision_recall.png)
 
-![Gate Actions](../figures/cluster_earlywarning/fig03_gate_actions.png)
+![Gate Actions](../../figures/cluster_earlywarning/fig03_gate_actions.png)
 
-![MC Tail](../figures/cluster_earlywarning/fig04_mc_tail.png)
+![MC Tail](../../figures/cluster_earlywarning/fig04_mc_tail.png)
 
-![Equity Curve](../figures/cluster_earlywarning/fig05_equity_curve.png)
+![Equity Curve](../../figures/cluster_earlywarning/fig05_equity_curve.png)
 
-![Decile Quality](../figures/cluster_earlywarning/fig06_decile_quality.png)
+![Decile Quality](../../figures/cluster_earlywarning/fig06_decile_quality.png)
 
 ## Interpretation Notes
 - `worst_single_day_bps` is the single worst daily PnL (non-cumulative).

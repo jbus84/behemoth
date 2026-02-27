@@ -46,6 +46,9 @@ Hard gates come from `DR*` checks in reliability audit.
 - `DR01-DR15` are deployment-relevant quality gates.
 - `D16-D18` are informational diagnostics.
 
+## Canonical Analysis Reports
+- `docs/analysis/data_reliability_report.md`
+
 ## Reproduction Commands
 ```bash
 uv run python scripts/audit_data_reliability.py \
@@ -64,7 +67,7 @@ uv run python scripts/audit_data_reliability.py \
 <!-- GENERATED:STAGE_01:START -->
 ### Auto Snapshot - Stage 01
 
-- generated_at: `2026-02-27 11:11:58 UTC`
+- generated_at: `2026-02-27 11:41:32 UTC`
 - Contract check uses eval-year event tables consumed by WFO.
 - Null percentages should remain near 0 for required modeling fields.
 - Timezone contract rows include parse rate, monotonicity, DST and offset anomaly checks.
