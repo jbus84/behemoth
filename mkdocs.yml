@@ -49,21 +49,33 @@ nav:
   - OCO Strategy Bible:
       - Pipeline Snapshot: strategy_bible/generated/pipeline_snapshot.md
       - Stage 01 Data Foundation: strategy_bible/generated/stage_01_snapshot.md
+      - Stage 01 Data Foundation Spec: strategy_bible/stage_01_data_foundation.md
       - Stage 02 Opportunity Mining: strategy_bible/generated/stage_02_snapshot.md
+      - Stage 02 Opportunity Mining Spec: strategy_bible/stage_02_opportunity_mining.md
       - Stage 03 Monthly WFO: strategy_bible/generated/stage_03_snapshot.md
+      - Stage 03 Monthly WFO Spec: strategy_bible/stage_03_monthly_wfo.md
       - Stage 04 Stop-Limit Realism: strategy_bible/generated/stage_04_snapshot.md
+      - Stage 04 Stop-Limit Realism Spec: strategy_bible/stage_04_execution_realism.md
       - Stage 05 Reduced Core: strategy_bible/generated/stage_05_snapshot.md
+      - Stage 05 Reduced Core Spec: strategy_bible/stage_05_reduced_core.md
       - Stage 06 Tick-Exact Verification: strategy_bible/generated/stage_06_snapshot.md
+      - Stage 06 Tick-Exact + Portability Spec: strategy_bible/stage_06_tick_exact_and_portability.md
       - Stage 07 Logical Audit: strategy_bible/generated/stage_07_snapshot.md
+      - Stage 07 Logical + Statistical Spec: strategy_bible/stage_07_logical_and_statistical_audit.md
       - Stage 08 Robustness: strategy_bible/generated/stage_08_snapshot.md
+      - Stage 08 Robustness + Stress Spec: strategy_bible/stage_08_robustness_and_stress.md
       - Stage 09 Governance Snapshot: strategy_bible/generated/stage_09_snapshot.md
       - Stage 09 Governance Spec: strategy_bible/stage_09_live_governance_and_deployment.md
       - Stage 10 Risks Snapshot: strategy_bible/generated/stage_10_snapshot.md
       - Stage 10 Risks Spec: strategy_bible/stage_10_known_risks_and_backlog.md
+      - Metric Dictionary: strategy_bible/metric_dictionary.md
+      - Assumptions + Threats: strategy_bible/assumptions_and_threats.md
+      - Governance Mapping: strategy_bible/governance_mapping.md
       - Data Reliability Audit: analysis/data_reliability_report.md
       - Leakage + Label Audit: analysis/oco_leakage_integrity_report.md
       - Execution Risk Preflight: analysis/oco_execution_risk_prelive_report.md
       - Edge Clarity Report: analysis/oco_edge_clarity_report.md
+      - Docs Contract Report: analysis/oco_docs_contract_report.md
   - HGBT Deep Dive: analysis/m5_mom_m15_momrev_m60_rev_hgbt_report.md
   - Cluster EW Deep Dive: analysis/cluster_earlywarning_report.md
   - Architecture: architecture.md

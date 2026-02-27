@@ -1,3 +1,59 @@
+# Stage 4 - Execution Realism (Stop-Limit)
+
+## Objective
+Convert bar-level OCO outcomes to tick-aware stop-limit realism and quantify execution-driven EV erosion.
+
+## Inputs
+- Tickfill detail:
+- `data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/<SYMBOL>_stop_limit_tickfill_detail.csv`
+- Cap sweep:
+- `data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/<SYMBOL>_stop_limit_tickfill_caps.csv`
+- Summary:
+- `data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv`
+
+## Process
+- Reconstruct first-touch execution with tick-first crossing.
+- Apply stop-limit cap sweep.
+- Quantify cap robustness and overshoot/session dispersion diagnostics (`E11-E13`).
+
+## Exact Calculations
+- `E11_session_overshoot_dispersion = std(mean_overshoot_by_hour) / mean(mean_overshoot_by_hour)`
+- `E12_cap_plateau_width_pips`:
+- width of cap interval where per-signal performance >= 95% of best
+- `E13_nonfill_opportunity_cost_pips`:
+- `(mean_per_signal_no_extra_slip - mean_per_signal_full_overshoot) * fill_rate` at best cap
+
+## Causality / Leakage Controls
+- Uses realized tick path around touch events only.
+- No future month leakage in execution diagnostics.
+
+## Failure Modes
+- Overshoot tail thickening in specific sessions.
+- Performance dependent on razor-thin cap choice.
+- Unrealistic fill assumptions causing optimistic net.
+
+## Interpretation Guide
+- Lower `E11` indicates more uniform execution quality across sessions.
+- Larger `E12` indicates more robust cap choice.
+- Higher `E13` indicates more opportunity loss from realistic fill behavior.
+
+## Validation Gates
+- Hard execution gates live in `E01-E10` preflight audit.
+- `E11-E13` are informational hardening diagnostics.
+
+## Reproduction Commands
+```bash
+uv run python scripts/analyze_oco_stop_limit_tickfill.py \
+  --symbols EURUSD,GBPUSD,USDJPY
+```
+
+## Traceability
+- `scripts/analyze_oco_stop_limit_tickfill.py`
+- `docs/analysis/oco_stop_limit_tickfill_fullcap_report.md`
+- `docs/strategy_bible/generated/stage_04_snapshot.md`
+
+## Generated Run Snapshot
+<!-- GENERATED:STAGE_04:START -->
 ### Auto Snapshot - Stage 04
 
 - generated_at: `2026-02-27 07:51:49 UTC`
@@ -29,7 +85,7 @@
 | USDJPY   |        1.5 |    0.990209 |                         1.1564   |
 
 #### Plots
-![stage_04_stop_limit_caps](../../figures/oco_bible/stage_04_stop_limit_caps.png)
+![stage_04_stop_limit_caps](../figures/oco_bible/stage_04_stop_limit_caps.png)
 
 #### Execution Risk Pre-Live
 | symbol   |   checks_total |   checks_failed |   high_critical_failed |   e02_min_month_fill_rate |   e03_tail_above_cap |   e10_lb95_month_signal_net |
@@ -37,3 +93,4 @@
 | EURUSD   |             10 |               0 |                      0 |                  0.985912 |           0.00993051 |                    0.541982 |
 | GBPUSD   |             10 |               0 |                      0 |                  0.985112 |           0.00912057 |                    0.787315 |
 | USDJPY   |             10 |               0 |                      0 |                  0.974161 |           0.0164939  |                    0.958587 |
+<!-- GENERATED:STAGE_04:END -->

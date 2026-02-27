@@ -11,6 +11,7 @@
 - `scripts/verify_oco_tick_exact_shortlist.py`
 - `scripts/analyze_oco_monthly_wfo_robustness.py`
 - `scripts/audit_oco_pipeline_logical_issues.py`
+- `scripts/validate_oco_docs_contract.py`
 - `scripts/build_oco_strategy_bible.py`
 
 ## Configs
@@ -31,6 +32,7 @@
 - `tests/test_oco_reduced_core_rolling.py`
 - `tests/test_oco_tick_exact_verifier.py`
 - `tests/test_oco_pipeline_logical_audit.py`
+- `tests/test_oco_docs_contract.py`
 - `tests/test_oco_strategy_bible_builder.py`
 
 ## Symbol Reports

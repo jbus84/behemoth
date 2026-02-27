@@ -1,3 +1,59 @@
+# Stage 3 - Monthly Walk-Forward Modeling
+
+## Objective
+Evaluate model filtering with strict monthly walk-forward ordering and quantify threshold robustness.
+
+## Inputs
+- WFO metrics:
+- `data/analysis/tick_opportunity_mining/wfo_*/<SYMBOL>_monthly_metrics_all.csv`
+- WFO thresholds:
+- `data/analysis/tick_opportunity_mining/wfo_*/<SYMBOL>_monthly_thresholds_all.csv`
+- WFO predictions:
+- `data/analysis/tick_opportunity_mining/wfo_*/<SYMBOL>_monthly_predictions_all.parquet`
+
+## Process
+- Train on prior months only and score next month.
+- Apply execution quantile filter (`q`, default 0.9).
+- Compute threshold/calibration/turnover diagnostics (`W13-W15`).
+
+## Exact Calculations
+- `W13_threshold_fragility`:
+- Around execution `q`, aggregate mean gross by quantile and compute slope:
+- `(max(mean_gross_near_q)-min(mean_gross_near_q)) / (max(q_near)-min(q_near))`
+- `W14_brier_drift_std = std(monthly_brier)`
+- `W15_selection_turnover = 1 - mean(Jaccard(selected_uid_month_t, selected_uid_month_t-1))`
+
+## Causality / Leakage Controls
+- Strict 3M train -> 1M test ordering.
+- Selection thresholding uses historical window only (rolling causal threshold).
+
+## Failure Modes
+- Threshold fragility: tiny `q` change causes large performance change.
+- Calibration drift over months.
+- High turnover suggesting unstable signal identity.
+
+## Interpretation Guide
+- Lower `W13` is less fragile.
+- Lower `W14` indicates more stable calibration.
+- Lower `W15` indicates higher month-to-month continuity.
+
+## Validation Gates
+- WFO gating and leakage contract checks are hard gates.
+- `W13-W15` remain informational until promoted.
+
+## Reproduction Commands
+```bash
+uv run python scripts/run_tick_opportunity_monthly_wfo.py \
+  --config configs/research/experiments/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml
+```
+
+## Traceability
+- `scripts/run_tick_opportunity_monthly_wfo.py`
+- `docs/analysis/*_tick_opportunity_monthly_wfo_oco_*_report.md`
+- `docs/strategy_bible/generated/stage_03_snapshot.md`
+
+## Generated Run Snapshot
+<!-- GENERATED:STAGE_03:START -->
 ### Auto Snapshot - Stage 03
 
 - generated_at: `2026-02-27 07:51:49 UTC`
@@ -20,7 +76,7 @@
 | USDJPY   |        9 |       0.101975  |          1.33948  |          459585 |
 
 #### Plots
-![stage_03_wfo_monthly_gross](../../figures/oco_bible/stage_03_wfo_monthly_gross.png)
+![stage_03_wfo_monthly_gross](../figures/oco_bible/stage_03_wfo_monthly_gross.png)
 
 #### Threshold Robustness Around Execution Quantile
 | symbol   | test_month   |   quantile |   mean_gross_pips |   coverage |   selected_rows |
@@ -51,3 +107,4 @@
 | EURUSD   |              6 |               0 |                      0 |
 | GBPUSD   |              6 |               0 |                      0 |
 | USDJPY   |              6 |               0 |                      0 |
+<!-- GENERATED:STAGE_03:END -->

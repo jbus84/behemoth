@@ -81,6 +81,14 @@ From lock:
 - `window_start = due - window_days`
 - `window_end = due + window_days`
 
+## Exact Calculations
+- Retrain due date:
+- `due = date(frozen_at_utc) + cadence_days`
+- Allowed retrain window:
+- `[due - window_days, due + window_days]`
+- Deploy validity:
+- `as_of <= window_end`
+
 ## Outputs
 - Governance artifacts under `configs/research/governance/oco/`
 - Lock/validation reports in docs and logs.
@@ -116,6 +124,11 @@ Diagnostics-first governance checks (informational, not blockers yet):
 - Unapproved state expansion in production.
 - Deploying with expired lock window.
 - Lock generated from stale or mismatched artifacts.
+
+## Interpretation Guide
+- `checks_failed = 0` and `blocker = false` is required for deploy.
+- Any hash/state mismatch indicates governance drift and must block release.
+- `G01-G03` diagnostics indicate pressure and should be trended even if deploy passes.
 
 ## Operational Notes
 - Any change to selection or threshold policy requires governance refresh and re-validation.
@@ -161,7 +174,7 @@ uv run python scripts/validate_oco_live_governance.py \
 <!-- GENERATED:STAGE_09:START -->
 ### Auto Snapshot - Stage 09
 
-- generated_at: `2026-02-27 07:37:02 UTC`
+- generated_at: `2026-02-27 07:51:49 UTC`
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
 - Missing required artifacts: 0.
 

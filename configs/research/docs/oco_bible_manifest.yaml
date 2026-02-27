@@ -61,6 +61,7 @@ required_artifacts:
   - docs/analysis/oco_leakage_integrity_report.md
   - docs/analysis/oco_execution_risk_prelive_report.md
   - docs/analysis/oco_edge_clarity_report.md
+  - docs/analysis/oco_docs_contract_report.md
 
 script_links:
   - scripts/audit_data_reliability.py
@@ -73,6 +74,7 @@ script_links:
   - scripts/verify_oco_tick_exact_shortlist.py
   - scripts/analyze_oco_monthly_wfo_robustness.py
   - scripts/audit_oco_pipeline_logical_issues.py
+  - scripts/validate_oco_docs_contract.py
   - scripts/build_oco_strategy_bible.py
 
 config_links:
@@ -93,4 +95,5 @@ test_links:
   - tests/test_oco_reduced_core_rolling.py
   - tests/test_oco_tick_exact_verifier.py
   - tests/test_oco_pipeline_logical_audit.py
+  - tests/test_oco_docs_contract.py
   - tests/test_oco_strategy_bible_builder.py

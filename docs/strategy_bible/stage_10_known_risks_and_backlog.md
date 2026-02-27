@@ -30,6 +30,15 @@ Status workflow:
 - `open -> mitigated -> validated -> closed`
 - status can only move to `closed` after acceptance tests pass on latest artifacts.
 
+## Exact Calculations
+- `risk_score = impact * likelihood`
+- Severity bands:
+- `1-3` low, `4-7` medium, `8-11` high, `12-16` critical
+- Backlog diagnostics (informational):
+- `B11_open_risks = count(status=open)`
+- `B12_high_open = count(status=open and severity in {high,critical})`
+- `B13_avg_days_open = mean(days_open)`
+
 ## Current Risk Register (Contract-Level)
 
 | Risk ID | Description | Impact | Likelihood | Score | Current Status | Acceptance Test |
@@ -70,10 +79,21 @@ Diagnostics-first backlog checks (informational, not blockers yet):
 - Capacity degradation from regime change.
 - Untracked operational drift after governance freeze.
 
+## Interpretation Guide
+- High `risk_score` with increasing `days_open` should escalate priority even if no hard gate is failing.
+- A clean Stage 7 does not eliminate operational backlog risk; monitor `B11-B13` trends.
+
 ## Operational Notes
 - Revisit this page on every major strategy refresh.
 - Minimum cadence: weekly while live, and always post-refresh.
 - If any risk score rises to `>=12`, freeze new deploys until mitigated.
+
+## Reproduction Commands
+```bash
+uv run python scripts/audit_oco_pipeline_logical_issues.py
+uv run python scripts/build_oco_strategy_bible.py \
+  --manifest configs/research/docs/oco_bible_manifest.yaml --strict false
+```
 
 ## Open Backlog (Current)
 
@@ -103,7 +123,7 @@ If any trigger occurs, required action is immediate:
 <!-- GENERATED:STAGE_10:START -->
 ### Auto Snapshot - Stage 10
 
-- generated_at: `2026-02-27 07:37:02 UTC`
+- generated_at: `2026-02-27 07:51:49 UTC`
 - Risk backlog is derived from current logical-audit failures.
 - When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.
 

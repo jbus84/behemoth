@@ -1,3 +1,56 @@
+# Stage 2 - Opportunity Mining
+
+## Objective
+Mine high-count, gross-positive OCO opportunity families as hypotheses before model filtering and robustness controls.
+
+## Inputs
+- Candidate catalogs:
+- `data/analysis/tick_opportunity_mining/<SYMBOL>_oco_candidates.csv`
+- Key candidate fields:
+- `selection_pass`, `annualized_test_fills`, `mean_gross_pips_test`, `family`, `state_id`, `bar_ticks`, `horizon`
+
+## Process
+- Enumerate OCO state families and horizons.
+- Keep broad candidate frontier (`selection_pass`) for downstream filtering.
+- Compute concentration/smoothness diagnostics (`M01-M03`).
+
+## Exact Calculations
+- `edge_weight = annualized_test_fills * mean_gross_pips_test`
+- `M01_top3_contrib_share = sum(top3 edge_weight by state block) / sum(all edge_weight)`
+- `M02_smoothness_abs_jump = median(abs(diff(mean_gross_pips_test across adjacent horizon)))`
+- `M03_positive_density = mean(mean_gross_pips_test > 0 among selection_pass)`
+
+## Causality / Leakage Controls
+- Mining outputs are hypothesis-generation only.
+- No deployment gating at this stage without downstream WFO/robustness confirmation.
+
+## Failure Modes
+- Edge concentration in very few states (fragile alpha).
+- Non-smooth parameter surfaces indicating noisy search.
+- Post-hoc over-interpretation without Stage 3/8 controls.
+
+## Interpretation Guide
+- Lower `M01` is better diversification.
+- Lower `M02` indicates smoother, less brittle parameter landscape.
+- Higher `M03` indicates a denser positive frontier.
+
+## Validation Gates
+- Informational at Stage 2.
+- Hard pass/fail occurs later via Stage 3, Stage 7, Stage 8.
+
+## Reproduction Commands
+```bash
+uv run python scripts/run_tick_opportunity_mining.py \
+  --config configs/research/experiments/eurusd_tick_opportunity_mining.yaml
+```
+
+## Traceability
+- `scripts/run_tick_opportunity_mining.py`
+- `docs/analysis/*_tick_opportunity_mining_report.md`
+- `docs/strategy_bible/generated/stage_02_snapshot.md`
+
+## Generated Run Snapshot
+<!-- GENERATED:STAGE_02:START -->
 ### Auto Snapshot - Stage 02
 
 - generated_at: `2026-02-27 07:51:49 UTC`
@@ -13,7 +66,7 @@
 | USDJPY   |               2160 |              995 |                    1.92264 |                      20211.8 |                0.04021   |                 0.0981752 |                      1 |
 
 #### Plots
-![stage_02_selected_scatter](../../figures/oco_bible/stage_02_selected_scatter.png)
+![stage_02_selected_scatter](../figures/oco_bible/stage_02_selected_scatter.png)
 
 #### Edge Contribution by State Block
 | symbol   | family                | state_id                                  |   bar_ticks |   horizon |   edge_weight |   contrib_share |
@@ -52,3 +105,4 @@
 
 - Interpretation: Stage 2 mining is accepted only as hypothesis generation; false-discovery control is enforced downstream via Stage 3/8 out-of-sample evaluation.
 - Multiplicity fields (`pvalue_bonferroni`, `pvalue_fdr_bh`) are reported at the execution quantile and should be used with LB95/month-consistency, not in isolation.
+<!-- GENERATED:STAGE_02:END -->
