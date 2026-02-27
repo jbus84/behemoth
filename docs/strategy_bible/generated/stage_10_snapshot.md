@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 10
 
-- generated_at: `2026-02-27 13:24:04 UTC`
+- generated_at: `2026-02-27 14:15:43 UTC`
 - Risk backlog is derived from current logical-audit failures.
 - When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.
 
@@ -8,6 +8,16 @@
 | status                 |   failed_checks |
 |:-----------------------|----------------:|
 | no_open_audit_failures |               0 |
+
+#### Interpretation Notes
+- Risk backlog is derived from current logical-audit failures.
+- When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.
+
+#### Action Trigger Summary
+| trigger            | threshold_or_signal   | action_code                   | action_summary                                                          |
+|:-------------------|:----------------------|:------------------------------|:------------------------------------------------------------------------|
+| hard_gate_fail     | status=fail           | A3_HALT_RECALIBRATE           | Block promotion and rerun upstream stage diagnostics before continuing. |
+| monitoring_warning | band=amber            | A0_MONITOR/A1_RECALIBRATE_CAP | Apply stage runbook remediation and confirm next-run recovery.          |
 
 #### Details
 | symbol   | severity_if_fail   |   total_checks |   failed_checks |

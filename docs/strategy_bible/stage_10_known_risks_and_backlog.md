@@ -97,6 +97,23 @@ Diagnostics-first backlog checks (informational, not blockers yet):
 - `docs/analysis/oco_leakage_integrity_report.md`
 - `docs/analysis/taxonomy_rules.md`
 - `docs/analysis/oco_stage_integrity_report.md`
+- `docs/strategy_bible/operator_runbook.md`
+
+## Operator Decision Tree
+- If any hard gate in this stage fails, block promotion and escalate using the operator runbook.
+- If only warning/amber diagnostics trigger, continue with mitigation and add an owner/deadline in remediation artifacts.
+
+## How To Run
+- Run the `Reproduction Commands` in this stage exactly as listed.
+- Confirm artifacts are refreshed and timestamps are current before interpreting outcomes.
+
+## How To Interpret Outputs
+- Read `Key Results` first for pass/fail posture and core health metrics.
+- Use `Interpretation Notes` and `Action Trigger Summary` to map observed values to operational actions.
+
+## What To Do If It Fails
+- `critical/high`: halt deployment progression, remediate root cause, rerun stage and downstream dependent stages.
+- `medium/low`: open tracked remediation with owner and ETA, monitor for recurrence in next cycle.
 
 ## Reproduction Commands
 ```bash
@@ -140,7 +157,7 @@ If any trigger occurs, required action is immediate:
 <!-- GENERATED:STAGE_10:START -->
 ### Auto Snapshot - Stage 10
 
-- generated_at: `2026-02-27 13:24:04 UTC`
+- generated_at: `2026-02-27 14:15:43 UTC`
 - Risk backlog is derived from current logical-audit failures.
 - When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.
 
@@ -148,6 +165,16 @@ If any trigger occurs, required action is immediate:
 | status                 |   failed_checks |
 |:-----------------------|----------------:|
 | no_open_audit_failures |               0 |
+
+#### Interpretation Notes
+- Risk backlog is derived from current logical-audit failures.
+- When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.
+
+#### Action Trigger Summary
+| trigger            | threshold_or_signal   | action_code                   | action_summary                                                          |
+|:-------------------|:----------------------|:------------------------------|:------------------------------------------------------------------------|
+| hard_gate_fail     | status=fail           | A3_HALT_RECALIBRATE           | Block promotion and rerun upstream stage diagnostics before continuing. |
+| monitoring_warning | band=amber            | A0_MONITOR/A1_RECALIBRATE_CAP | Apply stage runbook remediation and confirm next-run recovery.          |
 
 #### Details
 | symbol   | severity_if_fail   |   total_checks |   failed_checks |

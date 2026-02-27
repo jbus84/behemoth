@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 02
 
-- generated_at: `2026-02-27 13:24:04 UTC`
+- generated_at: `2026-02-27 14:15:43 UTC`
 - selection_pass candidates are broad hypotheses only.
 - Scatter shows the high-count >0 gross opportunity frontier.
 - M01-M03 quantify concentration risk, horizon smoothness, and positive-edge density.
@@ -11,6 +11,17 @@
 | EURUSD   |               2160 |              737 |                    1.19563 |                      15514.1 |                0.0486952 |                 0.0940589 |                      1 |
 | GBPUSD   |               2160 |              762 |                    1.22153 |                      18903.7 |                0.0508144 |                 0.0744663 |                      1 |
 | USDJPY   |               2160 |              995 |                    1.92264 |                      20211.8 |                0.04021   |                 0.0981752 |                      1 |
+
+#### Interpretation Notes
+- selection_pass candidates are broad hypotheses only.
+- Scatter shows the high-count >0 gross opportunity frontier.
+- M01-M03 quantify concentration risk, horizon smoothness, and positive-edge density.
+
+#### Action Trigger Summary
+| trigger            | threshold_or_signal   | action_code                   | action_summary                                                          |
+|:-------------------|:----------------------|:------------------------------|:------------------------------------------------------------------------|
+| hard_gate_fail     | status=fail           | A3_HALT_RECALIBRATE           | Block promotion and rerun upstream stage diagnostics before continuing. |
+| monitoring_warning | band=amber            | A0_MONITOR/A1_RECALIBRATE_CAP | Apply stage runbook remediation and confirm next-run recovery.          |
 
 #### Plots
 ![stage_02_selected_scatter](../../figures/oco_bible/stage_02_selected_scatter.png)

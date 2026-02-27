@@ -161,6 +161,23 @@ Rollback rule:
 - `docs/analysis/operator_action_report.md`
 - `docs/analysis/oco_alert_remediation_report.md`
 - `docs/analysis/oco_threshold_sensitivity_report.md`
+- `docs/strategy_bible/operator_runbook.md`
+
+## Operator Decision Tree
+- If any hard gate in this stage fails, block promotion and escalate using the operator runbook.
+- If only warning/amber diagnostics trigger, continue with mitigation and add an owner/deadline in remediation artifacts.
+
+## How To Run
+- Run the `Reproduction Commands` in this stage exactly as listed.
+- Confirm artifacts are refreshed and timestamps are current before interpreting outcomes.
+
+## How To Interpret Outputs
+- Read `Key Results` first for pass/fail posture and core health metrics.
+- Use `Interpretation Notes` and `Action Trigger Summary` to map observed values to operational actions.
+
+## What To Do If It Fails
+- `critical/high`: halt deployment progression, remediate root cause, rerun stage and downstream dependent stages.
+- `medium/low`: open tracked remediation with owner and ETA, monitor for recurrence in next cycle.
 
 ## Reproduction Commands
 Freeze:
@@ -200,7 +217,7 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 <!-- GENERATED:STAGE_09:START -->
 ### Auto Snapshot - Stage 09
 
-- generated_at: `2026-02-27 13:24:04 UTC`
+- generated_at: `2026-02-27 14:15:43 UTC`
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
 - Missing required artifacts: 0.
 
@@ -210,6 +227,20 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 | EURUSD   | True                          | True              | True                         | True                          | True                    |
 | GBPUSD   | True                          | True              | True                         | True                          | True                    |
 | USDJPY   | True                          | True              | True                         | True                          | True                    |
+
+#### Interpretation Notes
+- Governance snapshot combines symbol gate matrix with artifact inventory completeness.
+- Missing required artifacts: 0.
+
+#### Action Trigger Summary
+| symbol   | metric_id            | band   | severity   | action_code   | action_summary     | owner      |
+|:---------|:---------------------|:-------|:-----------|:--------------|:-------------------|:-----------|
+| EURUSD   | G01_near_fail_count  | green  | info       | A0_MONITOR    | within policy band | governance |
+| EURUSD   | G03_lock_drift_flags | green  | info       | A0_MONITOR    | within policy band | governance |
+| GBPUSD   | G01_near_fail_count  | green  | info       | A0_MONITOR    | within policy band | governance |
+| GBPUSD   | G03_lock_drift_flags | green  | info       | A0_MONITOR    | within policy band | governance |
+| USDJPY   | G01_near_fail_count  | green  | info       | A0_MONITOR    | within policy band | governance |
+| USDJPY   | G03_lock_drift_flags | green  | info       | A0_MONITOR    | within policy band | governance |
 
 #### Plots
 ![stage_09_gate_matrix](../figures/oco_bible/stage_09_gate_matrix.png)

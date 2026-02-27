@@ -44,6 +44,22 @@ Verify label/path correctness at tick level and assess whether family-level edge
 - `docs/analysis/gbpusd_oco_tick_exact_rolling_report.md`
 - `docs/analysis/usdjpy_oco_tick_exact_rolling_report.md`
 
+## Operator Decision Tree
+- If any hard gate in this stage fails, block promotion and escalate using the operator runbook.
+- If only warning/amber diagnostics trigger, continue with mitigation and add an owner/deadline in remediation artifacts.
+
+## How To Run
+- Run the `Reproduction Commands` in this stage exactly as listed.
+- Confirm artifacts are refreshed and timestamps are current before interpreting outcomes.
+
+## How To Interpret Outputs
+- Read `Key Results` first for pass/fail posture and core health metrics.
+- Use `Interpretation Notes` and `Action Trigger Summary` to map observed values to operational actions.
+
+## What To Do If It Fails
+- `critical/high`: halt deployment progression, remediate root cause, rerun stage and downstream dependent stages.
+- `medium/low`: open tracked remediation with owner and ETA, monitor for recurrence in next cycle.
+
 ## Reproduction Commands
 ```bash
 uv run python scripts/verify_oco_tick_exact_shortlist.py \
@@ -59,7 +75,7 @@ uv run python scripts/verify_oco_tick_exact_shortlist.py \
 <!-- GENERATED:STAGE_06:START -->
 ### Auto Snapshot - Stage 06
 
-- generated_at: `2026-02-27 13:24:04 UTC`
+- generated_at: `2026-02-27 14:15:43 UTC`
 - Verifier recomputes OCO outcomes independently from stored labels.
 - All summary rates should remain near 1.0 for contract consistency.
 
@@ -69,6 +85,16 @@ uv run python scripts/verify_oco_tick_exact_shortlist.py \
 | EURUSD   |           31507 |           31507 |                  1 |                      1 | True           |
 | GBPUSD   |           34861 |           34861 |                  1 |                      1 | True           |
 | USDJPY   |           50326 |           50326 |                  1 |                      1 | True           |
+
+#### Interpretation Notes
+- Verifier recomputes OCO outcomes independently from stored labels.
+- All summary rates should remain near 1.0 for contract consistency.
+
+#### Action Trigger Summary
+| trigger            | threshold_or_signal   | action_code                   | action_summary                                                          |
+|:-------------------|:----------------------|:------------------------------|:------------------------------------------------------------------------|
+| hard_gate_fail     | status=fail           | A3_HALT_RECALIBRATE           | Block promotion and rerun upstream stage diagnostics before continuing. |
+| monitoring_warning | band=amber            | A0_MONITOR/A1_RECALIBRATE_CAP | Apply stage runbook remediation and confirm next-run recovery.          |
 
 #### Details
 | symbol   |   months |   exact_min |   exact_mean |   pos_min |   pos_mean |

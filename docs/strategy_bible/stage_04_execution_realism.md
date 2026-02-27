@@ -124,6 +124,24 @@ flowchart TD
 - `docs/analysis/oco_execution_risk_prelive_report.md`
 - `docs/analysis/oco_stop_limit_tickfill_fullcap_report.md`
 - `docs/analysis/oco_execution_drift_report.md`
+- `docs/strategy_bible/signal_lifecycle_reference.md`
+- `docs/strategy_bible/operator_runbook.md`
+
+## Operator Decision Tree
+- If any hard gate in this stage fails, block promotion and escalate using the operator runbook.
+- If only warning/amber diagnostics trigger, continue with mitigation and add an owner/deadline in remediation artifacts.
+
+## How To Run
+- Run the `Reproduction Commands` in this stage exactly as listed.
+- Confirm artifacts are refreshed and timestamps are current before interpreting outcomes.
+
+## How To Interpret Outputs
+- Read `Key Results` first for pass/fail posture and core health metrics.
+- Use `Interpretation Notes` and `Action Trigger Summary` to map observed values to operational actions.
+
+## What To Do If It Fails
+- `critical/high`: halt deployment progression, remediate root cause, rerun stage and downstream dependent stages.
+- `medium/low`: open tracked remediation with owner and ETA, monitor for recurrence in next cycle.
 
 ## Reproduction Commands
 ```bash
@@ -145,7 +163,7 @@ uv run python scripts/build_oco_strategy_bible.py \
 <!-- GENERATED:STAGE_04:START -->
 ### Auto Snapshot - Stage 04
 
-- generated_at: `2026-02-27 13:24:04 UTC`
+- generated_at: `2026-02-27 14:15:43 UTC`
 - Execution realism is applied with tick first-cross overshoot.
 - Session-aware rolling caps are built causally (20D lookback, q=0.90) before E11 dispersion is measured.
 - Cap curve highlights fill-rate versus signal-level expectancy.
@@ -159,6 +177,24 @@ uv run python scripts/build_oco_strategy_bible.py \
 | EURUSD   | 324963 |           0.999985 |                1.04109 |                   0.136206 |                       0.5 |                           0.199265 |                          0.7 |                            0.116807 |
 | GBPUSD   | 414128 |           0.999978 |                1.01745 |                   0.141476 |                       0.5 |                           0.26181  |                          0.7 |                            0.11825  |
 | USDJPY   | 459585 |           0.999954 |                1.37853 |                   0.221513 |                       0.7 |                           0.133612 |                          0.7 |                            0.185352 |
+
+#### Interpretation Notes
+- Execution realism is applied with tick first-cross overshoot.
+- Session-aware rolling caps are built causally (20D lookback, q=0.90) before E11 dispersion is measured.
+- Cap curve highlights fill-rate versus signal-level expectancy.
+
+#### Action Trigger Summary
+| symbol   | metric_id                         | band   | severity   | action_code   | action_summary     | owner     |
+|:---------|:----------------------------------|:-------|:-----------|:--------------|:-------------------|:----------|
+| EURUSD   | E11_session_overshoot_dispersion  | green  | info       | A0_MONITOR    | within policy band | execution |
+| EURUSD   | E12_cap_plateau_width_pips        | green  | info       | A0_MONITOR    | within policy band | execution |
+| EURUSD   | E13_nonfill_opportunity_cost_pips | green  | info       | A0_MONITOR    | within policy band | execution |
+| GBPUSD   | E11_session_overshoot_dispersion  | green  | info       | A0_MONITOR    | within policy band | execution |
+| GBPUSD   | E12_cap_plateau_width_pips        | green  | info       | A0_MONITOR    | within policy band | execution |
+| GBPUSD   | E13_nonfill_opportunity_cost_pips | green  | info       | A0_MONITOR    | within policy band | execution |
+| USDJPY   | E11_session_overshoot_dispersion  | green  | info       | A0_MONITOR    | within policy band | execution |
+| USDJPY   | E12_cap_plateau_width_pips        | green  | info       | A0_MONITOR    | within policy band | execution |
+| USDJPY   | E13_nonfill_opportunity_cost_pips | green  | info       | A0_MONITOR    | within policy band | execution |
 
 #### Details
 | symbol   |   cap_pips |   fill_rate |   mean_per_signal_full_overshoot |

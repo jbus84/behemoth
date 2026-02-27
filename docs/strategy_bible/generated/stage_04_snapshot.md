@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 04
 
-- generated_at: `2026-02-27 13:24:04 UTC`
+- generated_at: `2026-02-27 14:15:43 UTC`
 - Execution realism is applied with tick first-cross overshoot.
 - Session-aware rolling caps are built causally (20D lookback, q=0.90) before E11 dispersion is measured.
 - Cap curve highlights fill-rate versus signal-level expectancy.
@@ -14,6 +14,24 @@
 | EURUSD   | 324963 |           0.999985 |                1.04109 |                   0.136206 |                       0.5 |                           0.199265 |                          0.7 |                            0.116807 |
 | GBPUSD   | 414128 |           0.999978 |                1.01745 |                   0.141476 |                       0.5 |                           0.26181  |                          0.7 |                            0.11825  |
 | USDJPY   | 459585 |           0.999954 |                1.37853 |                   0.221513 |                       0.7 |                           0.133612 |                          0.7 |                            0.185352 |
+
+#### Interpretation Notes
+- Execution realism is applied with tick first-cross overshoot.
+- Session-aware rolling caps are built causally (20D lookback, q=0.90) before E11 dispersion is measured.
+- Cap curve highlights fill-rate versus signal-level expectancy.
+
+#### Action Trigger Summary
+| symbol   | metric_id                         | band   | severity   | action_code   | action_summary     | owner     |
+|:---------|:----------------------------------|:-------|:-----------|:--------------|:-------------------|:----------|
+| EURUSD   | E11_session_overshoot_dispersion  | green  | info       | A0_MONITOR    | within policy band | execution |
+| EURUSD   | E12_cap_plateau_width_pips        | green  | info       | A0_MONITOR    | within policy band | execution |
+| EURUSD   | E13_nonfill_opportunity_cost_pips | green  | info       | A0_MONITOR    | within policy band | execution |
+| GBPUSD   | E11_session_overshoot_dispersion  | green  | info       | A0_MONITOR    | within policy band | execution |
+| GBPUSD   | E12_cap_plateau_width_pips        | green  | info       | A0_MONITOR    | within policy band | execution |
+| GBPUSD   | E13_nonfill_opportunity_cost_pips | green  | info       | A0_MONITOR    | within policy band | execution |
+| USDJPY   | E11_session_overshoot_dispersion  | green  | info       | A0_MONITOR    | within policy band | execution |
+| USDJPY   | E12_cap_plateau_width_pips        | green  | info       | A0_MONITOR    | within policy band | execution |
+| USDJPY   | E13_nonfill_opportunity_cost_pips | green  | info       | A0_MONITOR    | within policy band | execution |
 
 #### Details
 | symbol   |   cap_pips |   fill_rate |   mean_per_signal_full_overshoot |

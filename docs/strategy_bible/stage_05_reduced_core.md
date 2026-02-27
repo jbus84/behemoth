@@ -61,6 +61,22 @@ Reduce candidate universe to a stable, capacity-valid core set with preserved ex
 - `docs/analysis/usdjpy_oco_reduced_core_rolling_report.md`
 - `docs/analysis/oco_rule_universe_registry_report.md`
 
+## Operator Decision Tree
+- If any hard gate in this stage fails, block promotion and escalate using the operator runbook.
+- If only warning/amber diagnostics trigger, continue with mitigation and add an owner/deadline in remediation artifacts.
+
+## How To Run
+- Run the `Reproduction Commands` in this stage exactly as listed.
+- Confirm artifacts are refreshed and timestamps are current before interpreting outcomes.
+
+## How To Interpret Outputs
+- Read `Key Results` first for pass/fail posture and core health metrics.
+- Use `Interpretation Notes` and `Action Trigger Summary` to map observed values to operational actions.
+
+## What To Do If It Fails
+- `critical/high`: halt deployment progression, remediate root cause, rerun stage and downstream dependent stages.
+- `medium/low`: open tracked remediation with owner and ETA, monitor for recurrence in next cycle.
+
 ## Reproduction Commands
 ```bash
 uv run python scripts/select_oco_reduced_core_rolling.py \
@@ -79,7 +95,7 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 <!-- GENERATED:STAGE_05:START -->
 ### Auto Snapshot - Stage 05
 
-- generated_at: `2026-02-27 13:24:04 UTC`
+- generated_at: `2026-02-27 14:15:43 UTC`
 - State schedule is selected month-by-month using only prior-month train data.
 - Summary emphasizes full-path gross behavior after reduced-core filtering.
 - R01-R03 track pruning severity, state concentration, and re-selection stability.
@@ -90,6 +106,18 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 | EURUSD   |         4898 |           1.59847 |                      1.30417 |            0.994922 |                 6 |              9 |                0.0150469 |                       0.35 |                    0.361111 |
 | GBPUSD   |         6824 |           2.51775 |                      2.21592 |            0.990421 |                 6 |              9 |                0.016478  |                       0.35 |                    0.430556 |
 | USDJPY   |         7843 |           3.31998 |                      2.95901 |            0.987783 |                 6 |              9 |                0.0170654 |                       0.35 |                    0.416667 |
+
+#### Interpretation Notes
+- State schedule is selected month-by-month using only prior-month train data.
+- Summary emphasizes full-path gross behavior after reduced-core filtering.
+- R01-R03 track pruning severity, state concentration, and re-selection stability.
+
+#### Action Trigger Summary
+| symbol   | metric_id                | band   | severity   | action_code   | action_summary     | owner    |
+|:---------|:-------------------------|:-------|:-----------|:--------------|:-------------------|:---------|
+| EURUSD   | R02_top_state_dependency | green  | info       | A0_MONITOR    | within policy band | research |
+| GBPUSD   | R02_top_state_dependency | green  | info       | A0_MONITOR    | within policy band | research |
+| USDJPY   | R02_top_state_dependency | green  | info       | A0_MONITOR    | within policy band | research |
 
 #### Details
 | symbol   |   months |   rows_total |   mean_fill_rate |   mean_gross |

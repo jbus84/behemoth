@@ -64,6 +64,23 @@ Mine high-count, gross-positive OCO opportunity families as hypotheses before mo
 - `docs/analysis/gbpusd_tick_opportunity_mining_report.md`
 - `docs/analysis/usdjpy_tick_opportunity_mining_report.md`
 - `docs/analysis/oco_rule_universe_registry_report.md`
+- `docs/strategy_bible/signal_lifecycle_reference.md`
+
+## Operator Decision Tree
+- If any hard gate in this stage fails, block promotion and escalate using the operator runbook.
+- If only warning/amber diagnostics trigger, continue with mitigation and add an owner/deadline in remediation artifacts.
+
+## How To Run
+- Run the `Reproduction Commands` in this stage exactly as listed.
+- Confirm artifacts are refreshed and timestamps are current before interpreting outcomes.
+
+## How To Interpret Outputs
+- Read `Key Results` first for pass/fail posture and core health metrics.
+- Use `Interpretation Notes` and `Action Trigger Summary` to map observed values to operational actions.
+
+## What To Do If It Fails
+- `critical/high`: halt deployment progression, remediate root cause, rerun stage and downstream dependent stages.
+- `medium/low`: open tracked remediation with owner and ETA, monitor for recurrence in next cycle.
 
 ## Reproduction Commands
 ```bash
@@ -83,7 +100,7 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 <!-- GENERATED:STAGE_02:START -->
 ### Auto Snapshot - Stage 02
 
-- generated_at: `2026-02-27 13:24:04 UTC`
+- generated_at: `2026-02-27 14:15:43 UTC`
 - selection_pass candidates are broad hypotheses only.
 - Scatter shows the high-count >0 gross opportunity frontier.
 - M01-M03 quantify concentration risk, horizon smoothness, and positive-edge density.
@@ -94,6 +111,17 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 | EURUSD   |               2160 |              737 |                    1.19563 |                      15514.1 |                0.0486952 |                 0.0940589 |                      1 |
 | GBPUSD   |               2160 |              762 |                    1.22153 |                      18903.7 |                0.0508144 |                 0.0744663 |                      1 |
 | USDJPY   |               2160 |              995 |                    1.92264 |                      20211.8 |                0.04021   |                 0.0981752 |                      1 |
+
+#### Interpretation Notes
+- selection_pass candidates are broad hypotheses only.
+- Scatter shows the high-count >0 gross opportunity frontier.
+- M01-M03 quantify concentration risk, horizon smoothness, and positive-edge density.
+
+#### Action Trigger Summary
+| trigger            | threshold_or_signal   | action_code                   | action_summary                                                          |
+|:-------------------|:----------------------|:------------------------------|:------------------------------------------------------------------------|
+| hard_gate_fail     | status=fail           | A3_HALT_RECALIBRATE           | Block promotion and rerun upstream stage diagnostics before continuing. |
+| monitoring_warning | band=amber            | A0_MONITOR/A1_RECALIBRATE_CAP | Apply stage runbook remediation and confirm next-run recovery.          |
 
 #### Plots
 ![stage_02_selected_scatter](../figures/oco_bible/stage_02_selected_scatter.png)

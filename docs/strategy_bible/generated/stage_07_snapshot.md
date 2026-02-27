@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 07
 
-- generated_at: `2026-02-27 13:24:04 UTC`
+- generated_at: `2026-02-27 14:15:43 UTC`
 - C01..C10 checks are the logical contract gate before robustness sign-off.
 - Open issue rows: 0.
 
@@ -10,6 +10,20 @@
 | EURUSD   |             10 |               0 |
 | GBPUSD   |             10 |               0 |
 | USDJPY   |             10 |               0 |
+
+#### Interpretation Notes
+- C01..C10 checks are the logical contract gate before robustness sign-off.
+- Open issue rows: 0.
+
+#### Action Trigger Summary
+| symbol   | metric_id               | band   | severity   | action_code   | action_summary     | owner    |
+|:---------|:------------------------|:-------|:-----------|:--------------|:-------------------|:---------|
+| EURUSD   | S01_lb95_dependence_gap | green  | info       | A0_MONITOR    | within policy band | research |
+| EURUSD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
+| GBPUSD   | S01_lb95_dependence_gap | green  | info       | A0_MONITOR    | within policy band | research |
+| GBPUSD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
+| USDJPY   | S01_lb95_dependence_gap | green  | info       | A0_MONITOR    | within policy band | research |
+| USDJPY   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
 
 #### Details
 | check_id   | status   |   size |

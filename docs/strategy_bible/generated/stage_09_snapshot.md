@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 09
 
-- generated_at: `2026-02-27 13:24:04 UTC`
+- generated_at: `2026-02-27 14:15:43 UTC`
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
 - Missing required artifacts: 0.
 
@@ -10,6 +10,20 @@
 | EURUSD   | True                          | True              | True                         | True                          | True                    |
 | GBPUSD   | True                          | True              | True                         | True                          | True                    |
 | USDJPY   | True                          | True              | True                         | True                          | True                    |
+
+#### Interpretation Notes
+- Governance snapshot combines symbol gate matrix with artifact inventory completeness.
+- Missing required artifacts: 0.
+
+#### Action Trigger Summary
+| symbol   | metric_id            | band   | severity   | action_code   | action_summary     | owner      |
+|:---------|:---------------------|:-------|:-----------|:--------------|:-------------------|:-----------|
+| EURUSD   | G01_near_fail_count  | green  | info       | A0_MONITOR    | within policy band | governance |
+| EURUSD   | G03_lock_drift_flags | green  | info       | A0_MONITOR    | within policy band | governance |
+| GBPUSD   | G01_near_fail_count  | green  | info       | A0_MONITOR    | within policy band | governance |
+| GBPUSD   | G03_lock_drift_flags | green  | info       | A0_MONITOR    | within policy band | governance |
+| USDJPY   | G01_near_fail_count  | green  | info       | A0_MONITOR    | within policy band | governance |
+| USDJPY   | G03_lock_drift_flags | green  | info       | A0_MONITOR    | within policy band | governance |
 
 #### Plots
 ![stage_09_gate_matrix](../../figures/oco_bible/stage_09_gate_matrix.png)

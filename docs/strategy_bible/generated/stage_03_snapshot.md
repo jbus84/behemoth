@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 03
 
-- generated_at: `2026-02-27 13:24:04 UTC`
+- generated_at: `2026-02-27 14:15:43 UTC`
 - Execution threshold summary is aligned to quantile=0.9.
 - Metrics are strictly month-forward (3M train -> 1M test).
 - W13-W15 are informational diagnostics for threshold fragility, calibration drift, and selection turnover.
@@ -11,6 +11,24 @@
 | EURUSD   |        9 |   0.526973 |     0.249766 |        3.3563e+06 |                   1.34602 |           0.00162703  |                0.0799501 |
 | GBPUSD   |        9 |   0.522514 |     0.24961  |        4.2722e+06 |                   1.25854 |           0.000778954 |                0.0593122 |
 | USDJPY   |        9 |   0.526568 |     0.247866 |        4.5452e+06 |                   1.50447 |           0.000967283 |                0.0163693 |
+
+#### Interpretation Notes
+- Execution threshold summary is aligned to quantile=0.9.
+- Metrics are strictly month-forward (3M train -> 1M test).
+- W13-W15 are informational diagnostics for threshold fragility, calibration drift, and selection turnover.
+
+#### Action Trigger Summary
+| symbol   | metric_id               | band   | severity   | action_code   | action_summary     | owner    |
+|:---------|:------------------------|:-------|:-----------|:--------------|:-------------------|:---------|
+| EURUSD   | W13_threshold_fragility | green  | info       | A0_MONITOR    | within policy band | research |
+| EURUSD   | W14_brier_drift_std     | green  | info       | A0_MONITOR    | within policy band | research |
+| EURUSD   | W15_selection_turnover  | green  | info       | A0_MONITOR    | within policy band | research |
+| GBPUSD   | W13_threshold_fragility | green  | info       | A0_MONITOR    | within policy band | research |
+| GBPUSD   | W14_brier_drift_std     | green  | info       | A0_MONITOR    | within policy band | research |
+| GBPUSD   | W15_selection_turnover  | green  | info       | A0_MONITOR    | within policy band | research |
+| USDJPY   | W13_threshold_fragility | green  | info       | A0_MONITOR    | within policy band | research |
+| USDJPY   | W14_brier_drift_std     | green  | info       | A0_MONITOR    | within policy band | research |
+| USDJPY   | W15_selection_turnover  | green  | info       | A0_MONITOR    | within policy band | research |
 
 #### Details
 | symbol   |   months |   mean_coverage |   mean_gross_pips |   rows_selected |

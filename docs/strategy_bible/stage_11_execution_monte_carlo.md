@@ -50,6 +50,27 @@ Stress-test stop-limit execution realism using month x session Monte Carlo scena
 - `EM04`: `fill_rate_drop_vs_S0 <= 0.12` in `S1_mild`
 - `EM05`: no NaN in core scenario outputs
 
+## Canonical Analysis Reports
+- `docs/analysis/oco_execution_monte_carlo_report.md`
+- `docs/analysis/oco_execution_monte_carlo_validation_report.md`
+- `docs/strategy_bible/operator_runbook.md`
+
+## Operator Decision Tree
+- If any hard gate in this stage fails, block promotion and escalate using the operator runbook.
+- If only warning/amber diagnostics trigger, continue with mitigation and add an owner/deadline in remediation artifacts.
+
+## How To Run
+- Run the `Reproduction Commands` in this stage exactly as listed.
+- Confirm artifacts are refreshed and timestamps are current before interpreting outcomes.
+
+## How To Interpret Outputs
+- Read `Key Results` first for pass/fail posture and core health metrics.
+- Use `Interpretation Notes` and `Action Trigger Summary` to map observed values to operational actions.
+
+## What To Do If It Fails
+- `critical/high`: halt deployment progression, remediate root cause, rerun stage and downstream dependent stages.
+- `medium/low`: open tracked remediation with owner and ETA, monitor for recurrence in next cycle.
+
 ## Reproduction Commands
 ```bash
 uv run python scripts/run_execution_monte_carlo.py \
@@ -68,7 +89,7 @@ uv run python scripts/validate_execution_monte_carlo.py
 <!-- GENERATED:STAGE_11:START -->
 ### Auto Snapshot - Stage 11
 
-- generated_at: `2026-02-27 13:24:04 UTC`
+- generated_at: `2026-02-27 14:15:43 UTC`
 - Execution Monte Carlo uses month x session stress scenarios derived from Stage 04 tickfill artifacts.
 - EM01-EM05 summarize mild/moderate survival, month negativity risk, fill-rate decay, and data integrity.
 
@@ -78,6 +99,23 @@ uv run python scripts/validate_execution_monte_carlo.py
 | EURUSD   |    324963 |  0.927147 |  0.854675 |                    0.006 |           0.010333  |            -0.000771565 |
 | GBPUSD   |    414128 |  0.92312  |  0.856639 |                    0     |           0.0100266 |             0.65997     |
 | USDJPY   |    459585 |  1.25837  |  1.1814   |                    0     |           0.0111806 |             0.701175    |
+
+#### Interpretation Notes
+- Execution Monte Carlo uses month x session stress scenarios derived from Stage 04 tickfill artifacts.
+- EM01-EM05 summarize mild/moderate survival, month negativity risk, fill-rate decay, and data integrity.
+
+#### Action Trigger Summary
+| symbol   | metric_id                    | band   | severity   | action_code   | action_summary     | owner     |
+|:---------|:-----------------------------|:-------|:-----------|:--------------|:-------------------|:----------|
+| EURUSD   | EM03_prob_negative_month_s1  | green  | info       | A0_MONITOR    | within policy band | risk      |
+| EURUSD   | EM04_fill_rate_drop_vs_s0_s1 | green  | info       | A0_MONITOR    | within policy band | execution |
+| EURUSD   | EM05_nan_core_fields         | green  | info       | A0_MONITOR    | within policy band | data      |
+| GBPUSD   | EM03_prob_negative_month_s1  | green  | info       | A0_MONITOR    | within policy band | risk      |
+| GBPUSD   | EM04_fill_rate_drop_vs_s0_s1 | green  | info       | A0_MONITOR    | within policy band | execution |
+| GBPUSD   | EM05_nan_core_fields         | green  | info       | A0_MONITOR    | within policy band | data      |
+| USDJPY   | EM03_prob_negative_month_s1  | green  | info       | A0_MONITOR    | within policy band | risk      |
+| USDJPY   | EM04_fill_rate_drop_vs_s0_s1 | green  | info       | A0_MONITOR    | within policy band | execution |
+| USDJPY   | EM05_nan_core_fields         | green  | info       | A0_MONITOR    | within policy band | data      |
 
 #### Details
 | symbol   | scenario_id   |   mean_per_signal_pips |   lb95_per_signal_pips |   lb99_per_signal_pips |   mean_per_trade_pips |   mean_fill_rate |   prob_negative_month |   fill_rate_drop_vs_S0 |   drawdown_proxy_p95 |

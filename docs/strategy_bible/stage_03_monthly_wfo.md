@@ -47,6 +47,22 @@ Evaluate model filtering with strict monthly walk-forward ordering and quantify 
 - `docs/analysis/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_report.md`
 - `docs/analysis/oco_threshold_sensitivity_report.md`
 
+## Operator Decision Tree
+- If any hard gate in this stage fails, block promotion and escalate using the operator runbook.
+- If only warning/amber diagnostics trigger, continue with mitigation and add an owner/deadline in remediation artifacts.
+
+## How To Run
+- Run the `Reproduction Commands` in this stage exactly as listed.
+- Confirm artifacts are refreshed and timestamps are current before interpreting outcomes.
+
+## How To Interpret Outputs
+- Read `Key Results` first for pass/fail posture and core health metrics.
+- Use `Interpretation Notes` and `Action Trigger Summary` to map observed values to operational actions.
+
+## What To Do If It Fails
+- `critical/high`: halt deployment progression, remediate root cause, rerun stage and downstream dependent stages.
+- `medium/low`: open tracked remediation with owner and ETA, monitor for recurrence in next cycle.
+
 ## Reproduction Commands
 ```bash
 uv run python scripts/run_tick_opportunity_monthly_wfo.py \
@@ -64,7 +80,7 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 <!-- GENERATED:STAGE_03:START -->
 ### Auto Snapshot - Stage 03
 
-- generated_at: `2026-02-27 13:24:04 UTC`
+- generated_at: `2026-02-27 14:15:43 UTC`
 - Execution threshold summary is aligned to quantile=0.9.
 - Metrics are strictly month-forward (3M train -> 1M test).
 - W13-W15 are informational diagnostics for threshold fragility, calibration drift, and selection turnover.
@@ -75,6 +91,24 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 | EURUSD   |        9 |   0.526973 |     0.249766 |        3.3563e+06 |                   1.34602 |           0.00162703  |                0.0799501 |
 | GBPUSD   |        9 |   0.522514 |     0.24961  |        4.2722e+06 |                   1.25854 |           0.000778954 |                0.0593122 |
 | USDJPY   |        9 |   0.526568 |     0.247866 |        4.5452e+06 |                   1.50447 |           0.000967283 |                0.0163693 |
+
+#### Interpretation Notes
+- Execution threshold summary is aligned to quantile=0.9.
+- Metrics are strictly month-forward (3M train -> 1M test).
+- W13-W15 are informational diagnostics for threshold fragility, calibration drift, and selection turnover.
+
+#### Action Trigger Summary
+| symbol   | metric_id               | band   | severity   | action_code   | action_summary     | owner    |
+|:---------|:------------------------|:-------|:-----------|:--------------|:-------------------|:---------|
+| EURUSD   | W13_threshold_fragility | green  | info       | A0_MONITOR    | within policy band | research |
+| EURUSD   | W14_brier_drift_std     | green  | info       | A0_MONITOR    | within policy band | research |
+| EURUSD   | W15_selection_turnover  | green  | info       | A0_MONITOR    | within policy band | research |
+| GBPUSD   | W13_threshold_fragility | green  | info       | A0_MONITOR    | within policy band | research |
+| GBPUSD   | W14_brier_drift_std     | green  | info       | A0_MONITOR    | within policy band | research |
+| GBPUSD   | W15_selection_turnover  | green  | info       | A0_MONITOR    | within policy band | research |
+| USDJPY   | W13_threshold_fragility | green  | info       | A0_MONITOR    | within policy band | research |
+| USDJPY   | W14_brier_drift_std     | green  | info       | A0_MONITOR    | within policy band | research |
+| USDJPY   | W15_selection_turnover  | green  | info       | A0_MONITOR    | within policy band | research |
 
 #### Details
 | symbol   |   months |   mean_coverage |   mean_gross_pips |   rows_selected |

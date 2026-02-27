@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 05
 
-- generated_at: `2026-02-27 13:24:04 UTC`
+- generated_at: `2026-02-27 14:15:43 UTC`
 - State schedule is selected month-by-month using only prior-month train data.
 - Summary emphasizes full-path gross behavior after reduced-core filtering.
 - R01-R03 track pruning severity, state concentration, and re-selection stability.
@@ -11,6 +11,18 @@
 | EURUSD   |         4898 |           1.59847 |                      1.30417 |            0.994922 |                 6 |              9 |                0.0150469 |                       0.35 |                    0.361111 |
 | GBPUSD   |         6824 |           2.51775 |                      2.21592 |            0.990421 |                 6 |              9 |                0.016478  |                       0.35 |                    0.430556 |
 | USDJPY   |         7843 |           3.31998 |                      2.95901 |            0.987783 |                 6 |              9 |                0.0170654 |                       0.35 |                    0.416667 |
+
+#### Interpretation Notes
+- State schedule is selected month-by-month using only prior-month train data.
+- Summary emphasizes full-path gross behavior after reduced-core filtering.
+- R01-R03 track pruning severity, state concentration, and re-selection stability.
+
+#### Action Trigger Summary
+| symbol   | metric_id                | band   | severity   | action_code   | action_summary     | owner    |
+|:---------|:-------------------------|:-------|:-----------|:--------------|:-------------------|:---------|
+| EURUSD   | R02_top_state_dependency | green  | info       | A0_MONITOR    | within policy band | research |
+| GBPUSD   | R02_top_state_dependency | green  | info       | A0_MONITOR    | within policy band | research |
+| USDJPY   | R02_top_state_dependency | green  | info       | A0_MONITOR    | within policy band | research |
 
 #### Details
 | symbol   |   months |   rows_total |   mean_fill_rate |   mean_gross |

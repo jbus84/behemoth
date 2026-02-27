@@ -1146,6 +1146,8 @@ def _render_stage_snapshot(
     notes: list[str],
     figure_paths: list[Path],
     figure_prefix: str,
+    interpretation_notes: list[str] | None = None,
+    action_summary_table: pd.DataFrame | None = None,
     details_max_rows: int = DETAIL_MAX_ROWS_DEFAULT,
     details_source_path: str = "",
 ) -> str:
@@ -1157,6 +1159,33 @@ def _render_stage_snapshot(
     lines.append("")
     lines.append("#### Key Results")
     lines.append(_table(summary_table))
+    interp = [str(x).strip() for x in (interpretation_notes if interpretation_notes is not None else notes[:3]) if str(x).strip()]
+    lines.append("")
+    lines.append("#### Interpretation Notes")
+    if interp:
+        lines.extend(f"- {n}" for n in interp[:6])
+    else:
+        lines.append("- Review key metrics against stage-specific Validation Gates and operator runbook triggers.")
+    lines.append("")
+    lines.append("#### Action Trigger Summary")
+    if action_summary_table is None or action_summary_table.empty:
+        action_summary_table = pd.DataFrame(
+            [
+                {
+                    "trigger": "hard_gate_fail",
+                    "threshold_or_signal": "status=fail",
+                    "action_code": "A3_HALT_RECALIBRATE",
+                    "action_summary": "Block promotion and rerun upstream stage diagnostics before continuing.",
+                },
+                {
+                    "trigger": "monitoring_warning",
+                    "threshold_or_signal": "band=amber",
+                    "action_code": "A0_MONITOR/A1_RECALIBRATE_CAP",
+                    "action_summary": "Apply stage runbook remediation and confirm next-run recovery.",
+                },
+            ]
+        )
+    lines.append(_table(action_summary_table))
     if details_table is not None:
         d = details_table.copy()
         n_full = int(len(d))
@@ -1204,6 +1233,13 @@ def _write_stage_snapshots(
     edge_stage_rows: list[dict[str, Any]] = []
     edge_state_rows: list[dict[str, Any]] = []
     edge_threshold_rows: list[dict[str, Any]] = []
+    operator_action_csv = outputs.stage_metrics_csv.parent / "operator_action_status.csv"
+    operator_actions = pd.DataFrame()
+    if operator_action_csv.exists():
+        try:
+            operator_actions = pd.read_csv(operator_action_csv)
+        except Exception:
+            operator_actions = pd.DataFrame()
 
     def add_metric(stage_id: int, metric_id: str, symbol: str, value: Any, unit: str, source_path: str) -> None:
         metric_rows.append(
@@ -1238,6 +1274,20 @@ def _write_stage_snapshots(
         page = page_map.get(stage_id)
         if inject_stage_pages and page is not None:
             _inject_stage_block(page, stage_id=stage_id, content=content_for_stage_page)
+
+    def stage_action_table(stage_id: int) -> pd.DataFrame:
+        if operator_actions.empty or "stage_id" not in operator_actions.columns:
+            return pd.DataFrame()
+        oa = operator_actions.copy()
+        oa["stage_id"] = pd.to_numeric(oa["stage_id"], errors="coerce")
+        g = oa[oa["stage_id"] == int(stage_id)].copy()
+        if g.empty:
+            return pd.DataFrame()
+        keep = [c for c in ["symbol", "metric_id", "band", "severity", "action_code", "action_summary", "owner"] if c in g.columns]
+        if not keep:
+            return pd.DataFrame()
+        g = g[keep].drop_duplicates()
+        return g.head(12).reset_index(drop=True)
 
     # Stage 01: Data contract health over events.
     req_cols = ["cost_est_pips", "range_pips", "spread_z", "tick_rate_z", "vel_cost_units_h1", "hl_first"]
@@ -1439,6 +1489,7 @@ def _write_stage_snapshots(
         ],
         figure_paths=[p for p in [stage01_plot, stage01_rel_plot] if p.exists()],
         figure_prefix="../figures/oco_bible/",
+        action_summary_table=stage_action_table(1),
     )
     if not rel_stage01.empty:
         rel_fail = rel_stage01[rel_stage01.get("status", pd.Series(dtype=str)).astype(str).str.lower() != "pass"].copy()
@@ -1555,6 +1606,7 @@ def _write_stage_snapshots(
         ],
         figure_paths=[stage02_plot] if stage02_plot.exists() else [],
         figure_prefix="../figures/oco_bible/",
+        action_summary_table=stage_action_table(2),
     )
     stage02_state = pd.DataFrame([r for r in edge_state_rows if int(_num(r.get("stage_id"))) == 2])
     if not stage02_state.empty:
@@ -1718,6 +1770,7 @@ def _write_stage_snapshots(
         ],
         figure_paths=[stage03_plot] if stage03_plot.exists() else [],
         figure_prefix="../figures/oco_bible/",
+        action_summary_table=stage_action_table(3),
     )
     stage03_thr = pd.DataFrame([r for r in edge_threshold_rows if int(_num(r.get("stage_id"))) == 3])
     if not stage03_thr.empty:
@@ -2015,6 +2068,7 @@ def _write_stage_snapshots(
         ],
         figure_paths=[p for p in [stage04_plot, stage04_policy_plot] if p.exists()],
         figure_prefix="../figures/oco_bible/",
+        action_summary_table=stage_action_table(4),
     )
     stage04_drift = pd.concat(drift_rows, ignore_index=True) if drift_rows else pd.DataFrame()
     if not stage04_drift.empty:
@@ -2195,6 +2249,7 @@ def _write_stage_snapshots(
         ],
         figure_paths=[stage05_plot] if stage05_plot.exists() else [],
         figure_prefix="../figures/oco_bible/",
+        action_summary_table=stage_action_table(5),
     )
     stage05_churn = pd.concat(stage05_churn_rows, ignore_index=True) if stage05_churn_rows else pd.DataFrame()
     if not stage05_churn.empty:
@@ -2281,6 +2336,7 @@ def _write_stage_snapshots(
         ],
         figure_paths=[stage06_plot] if stage06_plot.exists() else [],
         figure_prefix="../figures/oco_bible/",
+        action_summary_table=stage_action_table(6),
     )
     stage06_replay = pd.concat(stage06_replay_rows, ignore_index=True) if stage06_replay_rows else pd.DataFrame()
     if not stage06_replay.empty:
@@ -2366,6 +2422,7 @@ def _write_stage_snapshots(
         ],
         figure_paths=[stage07_plot] if stage07_plot.exists() else [],
         figure_prefix="../figures/oco_bible/",
+        action_summary_table=stage_action_table(7),
     )
     if not stage23_overfit.empty:
         s7 = stage23_overfit.copy()
@@ -2429,18 +2486,15 @@ def _write_stage_snapshots(
         t01_elasticity = float("nan")
         t02_first_negative_cost = float("nan")
         if len(cost_levels) >= 2:
-            srt = sorted(zip(cost_levels, stress_vals), key=lambda x: x[0])
+            srt = sorted(zip(cost_levels, stress_vals, strict=False), key=lambda x: x[0])
             xs = pd.Series([x for x, _ in srt], dtype=float)
             ys = pd.Series([y for _, y in srt], dtype=float)
             dx = _num(xs.iloc[-1] - xs.iloc[0])
             dy = _num(ys.iloc[-1] - ys.iloc[0])
             t01_elasticity = _safe_div(dy, dx)
             neg = [x for x, y in srt if y < 0]
-            if neg:
-                t02_first_negative_cost = _num(min(neg))
-            else:
-                # No negative crossing in tested stress range.
-                t02_first_negative_cost = _num(max(cost_levels))
+            # No negative crossing in tested stress range uses max tested cost.
+            t02_first_negative_cost = _num(min(neg)) if neg else _num(max(cost_levels))
         t03_recovery = float("nan")
         if not rm.empty and {"test_month", "mean_gross_pips"}.issubset(set(rm.columns)):
             rr = rm.copy().sort_values("test_month")
@@ -2531,6 +2585,7 @@ def _write_stage_snapshots(
         ],
         figure_paths=[p for p in [stage08_plot, stage08_overfit_panel] if p.exists()],
         figure_prefix="../figures/oco_bible/",
+        action_summary_table=stage_action_table(8),
     )
     write_stage(8, stage08_content)
 
@@ -2674,10 +2729,11 @@ def _write_stage_snapshots(
         else None,
         notes=[
             "Governance snapshot combines symbol gate matrix with artifact inventory completeness.",
-            f"Missing required artifacts: {int(len(missing_inventory[missing_inventory['required'] == True])) if not missing_inventory.empty and 'required' in missing_inventory.columns else 0}.",
+            f"Missing required artifacts: {int(len(missing_inventory[missing_inventory['required']])) if not missing_inventory.empty and 'required' in missing_inventory.columns else 0}.",
         ],
         figure_paths=[p for p in [stage09_plot, stage09_predeploy_plot] if p.exists()],
         figure_prefix="../figures/oco_bible/",
+        action_summary_table=stage_action_table(9),
     )
     if not stage09_gov.empty:
         stage09_content += "\n\n#### Predeploy Validator Status\n" + _table(
@@ -2846,6 +2902,7 @@ def _write_stage_snapshots(
         ],
         figure_paths=[p for p in [stage10_plot, stage10_sla_plot] if p.exists()],
         figure_prefix="../figures/oco_bible/",
+        action_summary_table=stage_action_table(10),
     )
     if risk_sla_path.exists() and not risk_sla.empty:
         stage10_content += "\n\n#### Risk SLA Tracker\n" + _table(
@@ -3000,6 +3057,7 @@ def _write_stage_snapshots(
         ],
         figure_paths=[p for p in [stage11_plot, stage11_scatter] if p.exists()],
         figure_prefix="../figures/oco_bible/",
+        action_summary_table=stage_action_table(11),
         details_source_path=stage11_symbol_source,
     )
     if not stage11_checks.empty:

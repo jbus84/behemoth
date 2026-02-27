@@ -14,7 +14,7 @@ from scripts.validate_oco_docs_contract import (
 
 
 def _stage_doc_text() -> str:
-    return """# Stage X\n\n## Objective\n\n## Inputs\n\n## Process\n\n## Exact Calculations\n\n## Causality / Leakage Controls\n\n## Failure Modes\n\n## Interpretation Guide\n\n## Validation Gates\n\n## Reproduction Commands\n\n## Traceability\n"""
+    return """# Stage X\n\n## Objective\n\n## Inputs\n\n## Process\n\n## Exact Calculations\n\n## Causality / Leakage Controls\n\n## Failure Modes\n\n## Interpretation Guide\n\n## Validation Gates\n\n## Operator Decision Tree\n\n## How To Run\n\n## How To Interpret Outputs\n\n## What To Do If It Fails\n\n## Reproduction Commands\n\n## Traceability\n"""
 
 
 def _stage04_policy_sections_text() -> str:
@@ -131,6 +131,8 @@ def _mkdocs_text() -> str:
         "strategy_bible/stage_09_live_governance_and_deployment.md",
         "strategy_bible/stage_10_known_risks_and_backlog.md",
         "strategy_bible/stage_11_execution_monte_carlo.md",
+        "strategy_bible/signal_lifecycle_reference.md",
+        "strategy_bible/operator_runbook.md",
         "strategy_bible/metric_dictionary.md",
         "strategy_bible/assumptions_and_threats.md",
         "strategy_bible/governance_mapping.md",
@@ -177,6 +179,8 @@ def _write_analysis_catalog_artifacts(docs_root: Path) -> None:
     ]
     for name in files:
         (analysis / name).write_text(f"# {name}\n", encoding="utf-8")
+    (docs_root / "signal_lifecycle_reference.md").write_text("# Signal Lifecycle\n", encoding="utf-8")
+    (docs_root / "operator_runbook.md").write_text("# Operator Runbook\n", encoding="utf-8")
     (analysis / "index.md").write_text("# Analysis Catalog\n", encoding="utf-8")
     (analysis / "catalog_gaps_report.md").write_text("# gaps\n", encoding="utf-8")
     manifest_rows = [{"doc_path": f"analysis/{name}", "title": name, "group": "core"} for name in files]

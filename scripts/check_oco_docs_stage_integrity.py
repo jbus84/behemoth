@@ -23,7 +23,25 @@ STAGE_DOCS = {
     8: "stage_08_robustness_and_stress.md",
     9: "stage_09_live_governance_and_deployment.md",
     10: "stage_10_known_risks_and_backlog.md",
+    11: "stage_11_execution_monte_carlo.md",
 }
+
+MANUAL_HEADINGS_REQUIRED = [
+    "Objective",
+    "Inputs",
+    "Process",
+    "Exact Calculations",
+    "Causality / Leakage Controls",
+    "Failure Modes",
+    "Interpretation Guide",
+    "Validation Gates",
+    "Operator Decision Tree",
+    "How To Run",
+    "How To Interpret Outputs",
+    "What To Do If It Fails",
+    "Reproduction Commands",
+    "Traceability",
+]
 
 
 def _table(df: pd.DataFrame) -> str:
@@ -80,6 +98,22 @@ def _extract_generated_block(text: str, *, stage_id: int) -> str:
     return text[i + len(start) : j]
 
 
+def _marker_count(text: str, marker: str) -> int:
+    return int(text.count(marker))
+
+
+def _strip_generated_block(text: str, *, stage_id: int) -> str:
+    start = f"<!-- GENERATED:STAGE_{int(stage_id):02d}:START -->"
+    end = f"<!-- GENERATED:STAGE_{int(stage_id):02d}:END -->"
+    i = text.find(start)
+    j = text.find(end)
+    if i < 0 or j < 0 or j <= i:
+        return text
+    left = text[:i]
+    right = text[j + len(end) :]
+    return left + "\n" + right
+
+
 def _count_key_results_rows(block_text: str) -> int:
     if not block_text:
         return 0
@@ -114,6 +148,21 @@ def _canonical_report_paths(text: str) -> list[str]:
     section = tail if next_h is None else tail[: next_h.start()]
     paths = re.findall(r"`(docs/analysis/[^`]+\.md)`", section)
     return sorted(list(dict.fromkeys(paths)))
+
+
+def _extract_h2_headings(text: str) -> set[str]:
+    out: set[str] = set()
+    for line in text.splitlines():
+        m = re.match(r"^##\s+(.+?)\s*$", line.strip())
+        if m:
+            out.add(str(m.group(1)).strip())
+    return out
+
+
+def _count_plot_refs(block_text: str) -> int:
+    if not block_text:
+        return 0
+    return int(len(re.findall(r"!\[[^\]]*\]\([^)]+\)", block_text)))
 
 
 def run(
@@ -162,6 +211,22 @@ def run(
             details=f"start={start_tag};end={end_tag}",
         )
 
+        marker_multiplicity_ok = (_marker_count(txt, start_tag) == 1) and (_marker_count(txt, end_tag) == 1)
+        _add_check(
+            checks_rows,
+            stage_id=stage_id,
+            check_id=f"SI05_{stage_id:02d}",
+            check_name=f"stage_{stage_id:02d}_generated_markers_single_pair",
+            passed=marker_multiplicity_ok,
+            severity_if_fail="high",
+            metric_name="generated_marker_pairs",
+            metric_value=int(_marker_count(txt, start_tag) + _marker_count(txt, end_tag)),
+            threshold=2,
+            comparator="==",
+            source_path=path,
+            details=f"start_count={_marker_count(txt, start_tag)};end_count={_marker_count(txt, end_tag)}",
+        )
+
         block = _extract_generated_block(txt, stage_id=stage_id)
         key_rows = _count_key_results_rows(block)
         _add_check(
@@ -173,6 +238,51 @@ def run(
             severity_if_fail="high",
             metric_name="key_results_table_rows",
             metric_value=int(key_rows),
+            threshold=1,
+            comparator=">=",
+            source_path=path,
+        )
+
+        block_has_interpretation = "#### Interpretation Notes" in block
+        _add_check(
+            checks_rows,
+            stage_id=stage_id,
+            check_id=f"SI07_{stage_id:02d}",
+            check_name=f"stage_{stage_id:02d}_generated_interpretation_notes_present",
+            passed=block_has_interpretation,
+            severity_if_fail="high",
+            metric_name="generated_interpretation_section",
+            metric_value=int(block_has_interpretation),
+            threshold=1,
+            comparator="==",
+            source_path=path,
+        )
+
+        block_has_actions = "#### Action Trigger Summary" in block
+        _add_check(
+            checks_rows,
+            stage_id=stage_id,
+            check_id=f"SI08_{stage_id:02d}",
+            check_name=f"stage_{stage_id:02d}_generated_action_summary_present",
+            passed=block_has_actions,
+            severity_if_fail="high",
+            metric_name="generated_action_summary_section",
+            metric_value=int(block_has_actions),
+            threshold=1,
+            comparator="==",
+            source_path=path,
+        )
+
+        plot_refs = _count_plot_refs(block)
+        _add_check(
+            checks_rows,
+            stage_id=stage_id,
+            check_id=f"SI09_{stage_id:02d}",
+            check_name=f"stage_{stage_id:02d}_generated_plot_refs_present",
+            passed=plot_refs >= 1,
+            severity_if_fail="high",
+            metric_name="generated_plot_ref_count",
+            metric_value=int(plot_refs),
             threshold=1,
             comparator=">=",
             source_path=path,
@@ -192,6 +302,24 @@ def run(
             comparator=">=",
             source_path=path,
             details=",".join(canon_paths),
+        )
+
+        manual_txt = _strip_generated_block(txt, stage_id=stage_id)
+        manual_heads = _extract_h2_headings(manual_txt)
+        missing_manual = [h for h in MANUAL_HEADINGS_REQUIRED if h not in manual_heads]
+        _add_check(
+            checks_rows,
+            stage_id=stage_id,
+            check_id=f"SI06_{stage_id:02d}",
+            check_name=f"stage_{stage_id:02d}_manual_required_sections_outside_generated_block",
+            passed=len(missing_manual) == 0,
+            severity_if_fail="high",
+            metric_name="manual_missing_sections",
+            metric_value=int(len(missing_manual)),
+            threshold=0,
+            comparator="==",
+            source_path=path,
+            details=",".join(missing_manual),
         )
 
     checks = pd.DataFrame(checks_rows).sort_values(["check_id"]).reset_index(drop=True)

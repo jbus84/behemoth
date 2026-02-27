@@ -1,6 +1,6 @@
 # Archived Analysis Reports
 
-- generated_at_utc: `2026-02-27T13:28:41Z`
+- generated_at_utc: `2026-02-27T14:16:06Z`
 
 ## Archive List
 - [`archive/analysis/close_path_contracts_m5_m15_m60_ml_gate_report.md`](close_path_contracts_m5_m15_m60_ml_gate_report.md)
