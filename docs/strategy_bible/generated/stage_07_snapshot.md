@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 07
 
-- generated_at: `2026-02-27 16:58:38 UTC`
+- generated_at: `2026-02-27 18:50:29 UTC`
 - C01..C10 checks are the logical contract gate before robustness sign-off.
 - Open issue rows: 0.
 
@@ -45,6 +45,6 @@
 #### Statistical Inference Ladder (S01-S03)
 | symbol   |   lb95_trade_mean_gross_pips |   s01_lb95_dependence_gap |   pvalue_bonferroni |   pvalue_fdr_bh |   s02_practical_lb95_gt0 |   s03_multiplicity_survival |
 |:---------|-----------------------------:|--------------------------:|--------------------:|----------------:|-------------------------:|----------------------------:|
-| EURUSD   |                      1.02232 |                         0 |         1.15261e-09 |     1.15261e-09 |                        1 |                           1 |
-| GBPUSD   |                      1.00211 |                         0 |         0           |     0           |                        1 |                           1 |
-| USDJPY   |                      1.36145 |                         0 |         0           |     0           |                        1 |                           1 |
+| EURUSD   |                     1.04912  |                         0 |         1.45698e-08 |     2.91396e-09 |                        1 |                           1 |
+| GBPUSD   |                     0.973913 |                         0 |         0           |     0           |                        1 |                           1 |
+| USDJPY   |                     1.33687  |                         0 |         0           |     0           |                        1 |                           1 |

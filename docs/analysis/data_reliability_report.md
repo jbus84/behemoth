@@ -1,6 +1,6 @@
 # Data Reliability Audit
 
-- generated_at_utc: `2026-02-26 22:15:51 UTC`
+- generated_at_utc: `2026-02-27 18:05:52 UTC`
 - symbols: `EURUSD,GBPUSD,USDJPY`
 - source_pattern: `data/analysis/tick_velocity/{symbol}_100tick_velocity.parquet`
 

@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 10
 
-- generated_at: `2026-02-27 16:58:38 UTC`
+- generated_at: `2026-02-27 18:50:29 UTC`
 - Risk backlog is derived from current logical-audit failures.
 - When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.
 

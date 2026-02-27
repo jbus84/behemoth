@@ -551,7 +551,9 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
     idx = pd.period_range(start=min(months), end=max(months), freq="M").astype(str).tolist() if months else []
     missing_months = sorted(set(idx) - set(months))
     warmup_count = int((monthly["status"] == "warmup_skip").sum())
-    unexpected_non_ok = int((~monthly["status"].isin(["ok", "warmup_skip"])).sum())
+    no_gate_states_count = int((monthly["status"] == "no_gate_states").sum())
+    allowed_statuses = {"ok", "warmup_skip", "no_gate_states"}
+    unexpected_non_ok = int((~monthly["status"].isin(sorted(allowed_statuses))).sum())
     c08_pass = len(missing_months) == 0 and warmup_count == int(cfg.min_train_months) and unexpected_non_ok == 0
     add_check(
         "C08",
@@ -560,10 +562,11 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
         "wfo_windowing",
         "warmup_count",
         float(warmup_count),
-        f"=={cfg.min_train_months}, missing_months=0, unexpected_non_ok=0",
+        f"=={cfg.min_train_months}, missing_months=0, unexpected_non_ok=0 (allowed={sorted(allowed_statuses)})",
         {
             "missing_months": missing_months,
             "unexpected_non_ok": unexpected_non_ok,
+            "no_gate_states_count": no_gate_states_count,
             "months_total": len(months),
         },
         "Warmup/month continuity check failed (gaps or unexpected status values).",

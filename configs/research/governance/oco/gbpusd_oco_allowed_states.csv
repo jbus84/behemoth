@@ -1,7 +1,5 @@
 symbol,bar_ticks,horizon,state_id,family,barrier_pips,regime_desc
-GBPUSD,100,5,oco_first_touch_clean__high_abs_vel_q70__k2,oco_first_touch_clean,2.0,high_abs_vel_q70;barrier=2.0
-GBPUSD,100,5,oco_first_touch_clean__high_range_q70__k2,oco_first_touch_clean,2.0,high_range_q70;barrier=2.0
-GBPUSD,100,5,oco_first_touch_clean__ny_overlap__k2,oco_first_touch_clean,2.0,ny_overlap;barrier=2.0
-GBPUSD,100,6,oco_first_touch_clean__high_abs_vel_q70__k2,oco_first_touch_clean,2.0,high_abs_vel_q70;barrier=2.0
+GBPUSD,100,6,oco_first_touch_clean__asia__k2,oco_first_touch_clean,2.0,asia;barrier=2.0
 GBPUSD,100,6,oco_first_touch_clean__high_range_q70__k2,oco_first_touch_clean,2.0,high_range_q70;barrier=2.0
-GBPUSD,100,6,oco_first_touch_clean__high_range_q80__k2,oco_first_touch_clean,2.0,high_range_q80;barrier=2.0
+GBPUSD,100,6,oco_first_touch_clean__london__k2,oco_first_touch_clean,2.0,london;barrier=2.0
+GBPUSD,100,6,oco_first_touch_clean__low_cost_q50__k2,oco_first_touch_clean,2.0,low_cost_q50;barrier=2.0

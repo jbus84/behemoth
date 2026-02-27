@@ -18,7 +18,7 @@ The relational DB path is optional. The mandatory path is the artifact contract 
 ## Rolling Historical Evidence
 
 <!-- GENERATED:SYSREF:DB_SCHEMA_DIAGRAM:START -->
-- generated_at_utc: `2026-02-27T16:58:52Z`
+- generated_at_utc: `2026-02-27T18:39:10Z`
 - symbols_covered: `EURUSD,GBPUSD,USDJPY`
 - stop-limit_reference: `stage_04_execution_realism`
 - artifact_sources:

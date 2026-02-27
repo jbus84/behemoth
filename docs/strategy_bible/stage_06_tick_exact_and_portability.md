@@ -75,16 +75,16 @@ uv run python scripts/verify_oco_tick_exact_shortlist.py \
 <!-- GENERATED:STAGE_06:START -->
 ### Auto Snapshot - Stage 06
 
-- generated_at: `2026-02-27 16:58:38 UTC`
+- generated_at: `2026-02-27 18:50:29 UTC`
 - Verifier recomputes OCO outcomes independently from stored labels.
 - All summary rates should remain near 1.0 for contract consistency.
 
 #### Key Results
 | symbol   |   rows_selected |   rows_verified |   exact_match_rate |   pos_label_match_rate | overall_pass   |
 |:---------|----------------:|----------------:|-------------------:|-----------------------:|:---------------|
-| EURUSD   |           31507 |           31507 |                  1 |                      1 | True           |
-| GBPUSD   |           34861 |           34861 |                  1 |                      1 | True           |
-| USDJPY   |           50326 |           50326 |                  1 |                      1 | True           |
+| EURUSD   |            5903 |            5903 |                  1 |                      1 | True           |
+| GBPUSD   |            7767 |            7767 |                  1 |                      1 | True           |
+| USDJPY   |           11582 |           11582 |                  1 |                      1 | True           |
 
 #### Interpretation Notes
 - Verifier recomputes OCO outcomes independently from stored labels.

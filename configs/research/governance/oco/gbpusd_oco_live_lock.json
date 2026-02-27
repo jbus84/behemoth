@@ -1,21 +1,21 @@
 {
   "artifacts": {
     "predictions_path": "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_predictions.parquet",
-    "predictions_sha256": "cddec268ce7526b32d14b1af93d1b53cd9a1de4a796d3c02145b9040517d3bde",
+    "predictions_sha256": "49b5950d0d0416a3793a4c6026309fc508c451d4ca8e7b847d3bb94a6bbab9a5",
     "reduced_config_path": "configs/research/experiments/gbpusd_oco_reduced_core_2025.yaml",
     "reduced_config_sha256": "721341e00525faca2021e100a9eb0e6c6e275fc3f7459e8645cb178eb61ab9fd",
     "reduced_states_csv_path": "data/analysis/tick_opportunity_mining/reduced_core_gbpusd/GBPUSD_oco_reduced_states.csv",
-    "reduced_states_csv_sha256": "c0816523aa2c6f39a1f64914a1865df07ad025075a97702e82e81e09ab5ade23",
+    "reduced_states_csv_sha256": "0b5c3d9d17ef53463a5826bbf8f71454fd2bd8cb4a1178b905d9515c7501dba8",
     "tick_exact_overall_pass": true,
     "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_tick_exact_summary.csv",
-    "tick_exact_summary_sha256": "773b5ff2078e688c73a9a740b1b9504ac7eed12a4df20713c28f292e2b4bf14a",
+    "tick_exact_summary_sha256": "584ec9e038e0ec95340397e39f0b72be18dc1772ef96b30189a52019621d7e29",
     "wfo_config_path": "configs/research/experiments/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
     "wfo_config_sha256": "6f55f8cdd3b955613094fd23a67dfbf15bdc492ed03c095d947e006798766a86"
   },
-  "frozen_at_utc": "2026-02-26T21:15:32.863250+00:00",
+  "frozen_at_utc": "2026-02-27T18:42:12.109225+00:00",
   "git": {
     "branch": "main",
-    "commit": "e0ab7c2f8ea9612a1709f42062e0c090bde022fd",
+    "commit": "45269a96f7a49fc5bd8b28cc96924bba8e97bb22",
     "dirty": true
   },
   "locked_runtime": {
@@ -39,42 +39,15 @@
   },
   "schema_version": 1,
   "state_universe": {
-    "count": 6,
+    "count": 4,
     "rows": [
       {
         "bar_ticks": 100,
         "barrier_pips": 2.0,
         "family": "oco_first_touch_clean",
-        "horizon": 5,
-        "regime_desc": "high_abs_vel_q70;barrier=2.0",
-        "state_id": "oco_first_touch_clean__high_abs_vel_q70__k2",
-        "symbol": "GBPUSD"
-      },
-      {
-        "bar_ticks": 100,
-        "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
-        "horizon": 5,
-        "regime_desc": "high_range_q70;barrier=2.0",
-        "state_id": "oco_first_touch_clean__high_range_q70__k2",
-        "symbol": "GBPUSD"
-      },
-      {
-        "bar_ticks": 100,
-        "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
-        "horizon": 5,
-        "regime_desc": "ny_overlap;barrier=2.0",
-        "state_id": "oco_first_touch_clean__ny_overlap__k2",
-        "symbol": "GBPUSD"
-      },
-      {
-        "bar_ticks": 100,
-        "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
         "horizon": 6,
-        "regime_desc": "high_abs_vel_q70;barrier=2.0",
-        "state_id": "oco_first_touch_clean__high_abs_vel_q70__k2",
+        "regime_desc": "asia;barrier=2.0",
+        "state_id": "oco_first_touch_clean__asia__k2",
         "symbol": "GBPUSD"
       },
       {
@@ -91,12 +64,21 @@
         "barrier_pips": 2.0,
         "family": "oco_first_touch_clean",
         "horizon": 6,
-        "regime_desc": "high_range_q80;barrier=2.0",
-        "state_id": "oco_first_touch_clean__high_range_q80__k2",
+        "regime_desc": "london;barrier=2.0",
+        "state_id": "oco_first_touch_clean__london__k2",
+        "symbol": "GBPUSD"
+      },
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 6,
+        "regime_desc": "low_cost_q50;barrier=2.0",
+        "state_id": "oco_first_touch_clean__low_cost_q50__k2",
         "symbol": "GBPUSD"
       }
     ],
-    "sha256": "cde0715f49d43acbd91163f3c6da65c10240c22fd71d8e9b476a22e109e2b44d"
+    "sha256": "f3e4b6861e1bd59cfb80439047451a59a47a8a98ae6d211b8642bf18a0f3f8fa"
   },
   "symbol": "GBPUSD"
 }
