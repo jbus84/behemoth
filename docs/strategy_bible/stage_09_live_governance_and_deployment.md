@@ -19,6 +19,8 @@ Default lock location:
 - Freeze governance lock from validated outputs.
 - Validate runtime settings against lock constraints.
 - Enforce retrain/deploy windows and state-universe hash consistency.
+- Validate the pre-registered rule universe against lock + reduced-core artifacts.
+- Apply remediation dispositions for non-green monitoring alerts.
 
 ## Lock Manifest Schema (Canonical)
 Top-level keys written by freeze script:
@@ -104,6 +106,8 @@ From lock:
 - Deploy validation passes.
 - Retrain window policy passes.
 - State hash and config hash match frozen lock.
+- Rule-universe registry check has zero high/critical failures.
+- Non-green drift/threshold alerts have active disposition records.
 
 Hard deploy gate table:
 
@@ -152,8 +156,10 @@ Rollback rule:
 
 ## Canonical Analysis Reports
 - `docs/analysis/oco_live_governance_lock.md`
+- `docs/analysis/oco_rule_universe_registry_report.md`
 - `docs/analysis/run_delta_dashboard.md`
 - `docs/analysis/operator_action_report.md`
+- `docs/analysis/oco_alert_remediation_report.md`
 - `docs/analysis/oco_threshold_sensitivity_report.md`
 
 ## Reproduction Commands
@@ -176,12 +182,16 @@ uv run python scripts/validate_oco_live_governance.py \
   --leakage-checks-csv data/analysis/tick_opportunity_mining/oco_leakage_integrity_checks.csv \
   --execution-risk-checks-csv data/analysis/tick_opportunity_mining/oco_execution_risk_checks.csv \
   --out-json data/analysis/tick_opportunity_mining/eurusd_governance_validate.json
+uv run python scripts/validate_oco_rule_universe_registry.py
+uv run python scripts/remediate_oco_monitoring_alerts.py
 uv run python scripts/build_oco_threshold_sensitivity_report.py
 ```
 
 ## Traceability
 - `scripts/freeze_oco_live_governance.py`
 - `scripts/validate_oco_live_governance.py`
+- `scripts/validate_oco_rule_universe_registry.py`
+- `scripts/remediate_oco_monitoring_alerts.py`
 - `scripts/build_oco_threshold_sensitivity_report.py`
 - `tests/test_oco_live_governance.py`
 - `docs/analysis/oco_live_governance_lock.md`
@@ -190,7 +200,7 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 <!-- GENERATED:STAGE_09:START -->
 ### Auto Snapshot - Stage 09
 
-- generated_at: `2026-02-27 12:15:07 UTC`
+- generated_at: `2026-02-27 13:24:04 UTC`
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
 - Missing required artifacts: 0.
 

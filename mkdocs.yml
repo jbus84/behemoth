@@ -76,6 +76,7 @@ nav:
       - Governance Mapping: strategy_bible/governance_mapping.md
       - Data Reliability Audit: analysis/data_reliability_report.md
       - Stage Integrity Audit: analysis/oco_stage_integrity_report.md
+      - Rule Universe Registry: analysis/oco_rule_universe_registry_report.md
       - Run Delta Dashboard: analysis/run_delta_dashboard.md
       - Operator Action Report: analysis/operator_action_report.md
       - Taxonomy Rules: analysis/taxonomy_rules.md
@@ -83,6 +84,7 @@ nav:
       - Leakage + Label Audit: analysis/oco_leakage_integrity_report.md
       - Execution Risk Preflight: analysis/oco_execution_risk_prelive_report.md
       - Execution Drift Report: analysis/oco_execution_drift_report.md
+      - Alert Remediation Report: analysis/oco_alert_remediation_report.md
       - Threshold Sensitivity Report: analysis/oco_threshold_sensitivity_report.md
       - Execution Monte Carlo Report: analysis/oco_execution_monte_carlo_report.md
       - Execution Monte Carlo Validation: analysis/oco_execution_monte_carlo_validation_report.md

@@ -1,0 +1,42 @@
+name: tests-fast
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/**"
+      - "tests/**"
+      - "docs/**"
+      - "configs/research/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "Makefile"
+  pull_request:
+    paths:
+      - "scripts/**"
+      - "tests/**"
+      - "docs/**"
+      - "configs/research/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "Makefile"
+
+jobs:
+  fast-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: Run focused governance/doc tests
+        run: |
+          uv run pytest -q \
+            tests/test_build_docs_catalog.py \
+            tests/test_stage_integrity_gate.py \
+            tests/test_execution_drift_report.py \
+            tests/test_threshold_sensitivity_report.py \
+            tests/test_validate_oco_rule_universe_registry.py \
+            tests/test_remediate_oco_monitoring_alerts.py \
+            tests/test_oco_docs_contract.py

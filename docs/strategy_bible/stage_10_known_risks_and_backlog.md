@@ -92,6 +92,8 @@ Diagnostics-first backlog checks (informational, not blockers yet):
 - `docs/analysis/risk_checklist.md`
 - `docs/analysis/stable_pairs_whitelist.md`
 - `docs/analysis/oco_docs_contract_report.md`
+- `docs/analysis/oco_rule_universe_registry_report.md`
+- `docs/analysis/oco_alert_remediation_report.md`
 - `docs/analysis/oco_leakage_integrity_report.md`
 - `docs/analysis/taxonomy_rules.md`
 - `docs/analysis/oco_stage_integrity_report.md`
@@ -107,7 +109,7 @@ uv run python scripts/build_oco_strategy_bible.py \
 
 | Backlog ID | Item | Priority | Owner | Acceptance Test |
 | --- | --- | --- | --- | --- |
-| B10.3 | Add explicit pre-registration note for reduced rule family universe | Medium | Research lead | Stage 2/5 docs include versioned rule-universe rationale |
+| B10.5 | Add escalation SLA enforcement for accepted exceptions older than 30 days | Medium | Research lead | `oco_alert_disposition.csv` has no expired `accepted_exception` rows |
 
 ## Recently Implemented Backlog (2026-02-27)
 
@@ -115,7 +117,9 @@ uv run python scripts/build_oco_strategy_bible.py \
 | --- | --- | --- | --- |
 | B10.1 | Add docs CI check: all stages must contain generated snapshot and non-empty key table | Implemented | `make docs-contract`, `docs/analysis/oco_stage_integrity_report.md` |
 | B10.2 | Add monthly drift report for overshoot/fill distributions by symbol | Implemented | `docs/analysis/oco_execution_drift_report.md` |
+| B10.3 | Add explicit pre-registration note for reduced rule family universe | Implemented | `docs/strategy_bible/stage_02_opportunity_mining.md`, `docs/strategy_bible/stage_05_reduced_core.md`, `docs/analysis/oco_rule_universe_registry_report.md` |
 | B10.4 | Add threshold lookback/retrain cadence sensitivity report | Implemented | `docs/analysis/oco_threshold_sensitivity_report.md` |
+| B10.6 | Add alert remediation matrix with owner/action/expiry | Implemented | `docs/analysis/oco_alert_remediation_report.md`, `data/analysis/tick_opportunity_mining/oco_alert_disposition.csv` |
 
 ## Escalation Matrix
 If any trigger occurs, required action is immediate:
@@ -136,7 +140,7 @@ If any trigger occurs, required action is immediate:
 <!-- GENERATED:STAGE_10:START -->
 ### Auto Snapshot - Stage 10
 
-- generated_at: `2026-02-27 12:15:07 UTC`
+- generated_at: `2026-02-27 13:24:04 UTC`
 - Risk backlog is derived from current logical-audit failures.
 - When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.
 

@@ -1,0 +1,29 @@
+registry_version: 1
+effective_from_utc: "2026-02-27T00:00:00Z"
+symbols:
+  - EURUSD
+  - GBPUSD
+  - USDJPY
+allowed_families:
+  - oco_first_touch_clean
+allowed_barrier_keep:
+  - 2
+  - 3
+allowed_horizon_keep:
+  - 5
+  - 6
+selection_mode_contract: auto
+locked_runtime_contract:
+  threshold_mode: rolling_days
+  rolling_threshold_days: 20
+  rolling_threshold_min_history: 1000
+  oco_hold_mode: from_touch
+  oco_include_no_touch: true
+  execution_quantile: 0.9
+change_control:
+  owner: research_lead
+  ticket: OCO-GOV-001
+  rationale: >
+    Freeze rule-family universe used by reduced-core and governance lock so
+    research selection cannot silently expand.
+hash_sha256: "dc2ac188d70deb23d557619be3992361753cf0ae67f0093307beeb5060b0435c"

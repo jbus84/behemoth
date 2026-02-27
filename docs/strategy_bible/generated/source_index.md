@@ -15,7 +15,9 @@
 - `scripts/build_oco_strategy_bible.py`
 - `scripts/build_docs_catalog.py`
 - `scripts/check_oco_docs_stage_integrity.py`
+- `scripts/validate_oco_rule_universe_registry.py`
 - `scripts/build_oco_execution_drift_report.py`
+- `scripts/remediate_oco_monitoring_alerts.py`
 - `scripts/build_oco_threshold_sensitivity_report.py`
 - `scripts/register_docs_run.py`
 - `scripts/build_run_delta_dashboard.py`
@@ -31,6 +33,8 @@
 - `configs/research/experiments/gbpusd_oco_reduced_core_2025.yaml`
 - `configs/research/experiments/usdjpy_oco_reduced_core_rolling_2025.yaml`
 - `configs/research/docs/oco_bible_manifest.yaml`
+- `configs/research/governance/oco_rule_universe_registry.yaml`
+- `configs/research/governance/oco_monitoring_exceptions.yaml`
 
 ## Tests
 - `tests/test_data_reliability_audit.py`
@@ -42,7 +46,9 @@
 - `tests/test_oco_docs_contract.py`
 - `tests/test_build_docs_catalog.py`
 - `tests/test_stage_integrity_gate.py`
+- `tests/test_validate_oco_rule_universe_registry.py`
 - `tests/test_execution_drift_report.py`
+- `tests/test_remediate_oco_monitoring_alerts.py`
 - `tests/test_threshold_sensitivity_report.py`
 - `tests/test_register_docs_run.py`
 - `tests/test_build_run_delta_dashboard.py`

@@ -1,0 +1,54 @@
+name: docs-contract
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "scripts/**"
+      - "configs/research/**"
+      - "tests/**"
+      - "mkdocs.yml"
+      - "Makefile"
+      - "pyproject.toml"
+      - "uv.lock"
+  pull_request:
+    paths:
+      - "docs/**"
+      - "scripts/**"
+      - "configs/research/**"
+      - "tests/**"
+      - "mkdocs.yml"
+      - "Makefile"
+      - "pyproject.toml"
+      - "uv.lock"
+
+jobs:
+  docs-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: Run docs contract (CI-safe)
+        run: make docs-contract-ci
+      - name: Build strategy bible snapshots
+        run: uv run python scripts/build_oco_strategy_bible.py --manifest configs/research/docs/oco_bible_manifest.yaml --strict false
+      - name: Build docs
+        run: uv run mkdocs build
+      - name: Upload docs contract artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-contract-artifacts
+          path: |
+            data/analysis/tick_opportunity_mining/docs_contract_checks.csv
+            data/analysis/tick_opportunity_mining/docs_contract_issues.csv
+            data/analysis/tick_opportunity_mining/oco_rule_universe_registry_checks.csv
+            data/analysis/tick_opportunity_mining/oco_rule_universe_registry_issues.csv
+            data/analysis/tick_opportunity_mining/oco_alert_disposition.csv
+            docs/analysis/oco_docs_contract_report.md
+            docs/analysis/oco_rule_universe_registry_report.md
+            docs/analysis/oco_alert_remediation_report.md

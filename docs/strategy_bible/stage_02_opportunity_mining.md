@@ -13,6 +13,7 @@ Mine high-count, gross-positive OCO opportunity families as hypotheses before mo
 - Enumerate OCO state families and horizons.
 - Keep broad candidate frontier (`selection_pass`) for downstream filtering.
 - Compute concentration/smoothness diagnostics (`M01-M03`).
+- Constrain mining outputs to a pre-registered rule universe contract used by downstream reduced-core and live governance.
 
 ## Exact Calculations
 - `edge_weight = annualized_test_fills * mean_gross_pips_test`
@@ -20,9 +21,28 @@ Mine high-count, gross-positive OCO opportunity families as hypotheses before mo
 - `M02_smoothness_abs_jump = median(abs(diff(mean_gross_pips_test across adjacent horizon)))`
 - `M03_positive_density = mean(mean_gross_pips_test > 0 among selection_pass)`
 
+## Pre-Registered Rule-Universe Contract
+- Registry artifact: `configs/research/governance/oco_rule_universe_registry.yaml`
+- Required frozen fields:
+- `symbols`
+- `allowed_families`
+- `allowed_barrier_keep`
+- `allowed_horizon_keep`
+- `selection_mode_contract`
+- `locked_runtime_contract`
+- Integrity rule:
+- Canonical payload hash (SHA-256 over sorted JSON with `hash_sha256` removed) must match `hash_sha256` in registry.
+- Contract validation artifacts:
+- `data/analysis/tick_opportunity_mining/oco_rule_universe_registry_checks.csv`
+- `data/analysis/tick_opportunity_mining/oco_rule_universe_registry_issues.csv`
+- `docs/analysis/oco_rule_universe_registry_report.md`
+- Purpose:
+- Prevent silent expansion of families/barriers/horizons after seeing results, which is a primary overfitting pathway in mining workflows.
+
 ## Causality / Leakage Controls
 - Mining outputs are hypothesis-generation only.
 - No deployment gating at this stage without downstream WFO/robustness confirmation.
+- Rule universe is locked before reduced-core/live selection and checked against frozen governance locks (`RU06-RU09`).
 
 ## Failure Modes
 - Edge concentration in very few states (fragile alpha).
@@ -37,28 +57,33 @@ Mine high-count, gross-positive OCO opportunity families as hypotheses before mo
 ## Validation Gates
 - Informational at Stage 2.
 - Hard pass/fail occurs later via Stage 3, Stage 7, Stage 8.
+- Governance contract gate: registry checks must have zero high/critical failures (`C33` at docs-contract level).
 
 ## Canonical Analysis Reports
 - `docs/analysis/eurusd_tick_opportunity_mining_report.md`
 - `docs/analysis/gbpusd_tick_opportunity_mining_report.md`
 - `docs/analysis/usdjpy_tick_opportunity_mining_report.md`
+- `docs/analysis/oco_rule_universe_registry_report.md`
 
 ## Reproduction Commands
 ```bash
 uv run python scripts/run_tick_opportunity_mining.py \
   --config configs/research/experiments/eurusd_tick_opportunity_mining.yaml
+uv run python scripts/validate_oco_rule_universe_registry.py
 ```
 
 ## Traceability
 - `scripts/run_tick_opportunity_mining.py`
+- `scripts/validate_oco_rule_universe_registry.py`
 - `docs/analysis/*_tick_opportunity_mining_report.md`
+- `docs/analysis/oco_rule_universe_registry_report.md`
 - `docs/strategy_bible/generated/stage_02_snapshot.md`
 
 ## Generated Run Snapshot
 <!-- GENERATED:STAGE_02:START -->
 ### Auto Snapshot - Stage 02
 
-- generated_at: `2026-02-27 12:15:07 UTC`
+- generated_at: `2026-02-27 13:24:04 UTC`
 - selection_pass candidates are broad hypotheses only.
 - Scatter shows the high-count >0 gross opportunity frontier.
 - M01-M03 quantify concentration risk, horizon smoothness, and positive-edge density.

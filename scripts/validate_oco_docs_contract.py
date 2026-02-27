@@ -97,7 +97,9 @@ CANONICAL_NAV_PATHS = [
     "strategy_bible/governance_mapping.md",
     "analysis/index.md",
     "analysis/oco_stage_integrity_report.md",
+    "analysis/oco_rule_universe_registry_report.md",
     "analysis/oco_execution_drift_report.md",
+    "analysis/oco_alert_remediation_report.md",
     "analysis/oco_threshold_sensitivity_report.md",
     "analysis/oco_docs_contract_report.md",
 ]
@@ -150,10 +152,12 @@ CORE_REPORT_PATHS = [
     "analysis/index.md",
     "analysis/data_reliability_report.md",
     "analysis/oco_stage_integrity_report.md",
+    "analysis/oco_rule_universe_registry_report.md",
     "analysis/operator_action_report.md",
     "analysis/oco_leakage_integrity_report.md",
     "analysis/oco_execution_risk_prelive_report.md",
     "analysis/oco_execution_drift_report.md",
+    "analysis/oco_alert_remediation_report.md",
     "analysis/oco_threshold_sensitivity_report.md",
     "analysis/oco_execution_monte_carlo_report.md",
     "analysis/oco_execution_monte_carlo_validation_report.md",
@@ -253,6 +257,33 @@ THRESHOLD_SENSITIVITY_REQUIRED_COLUMNS = [
     "final_score",
     "is_recommended",
     "is_current_policy",
+]
+
+RULE_UNIVERSE_REGISTRY_REQUIRED_COLUMNS = [
+    "symbol",
+    "check_id",
+    "status",
+    "severity_if_fail",
+    "metric_name",
+    "metric_value",
+]
+
+ALERT_DISPOSITION_REQUIRED_COLUMNS = [
+    "symbol",
+    "source_alert",
+    "test_month",
+    "metric_id",
+    "metric_value",
+    "band",
+    "severity",
+    "status",
+    "action_code",
+    "owner",
+    "rationale",
+    "expires_utc",
+    "is_expired",
+    "source_path",
+    "evaluated_at_utc",
 ]
 
 
@@ -382,8 +413,6 @@ def _max_details_rows_in_snapshot(path: Path) -> int:
                     break
                 if s.startswith("|"):
                     table_lines.append(s)
-                elif table_lines and s == "":
-                    break
                 elif table_lines:
                     break
                 i += 1
@@ -1102,6 +1131,10 @@ def run(
         drift = pd.read_csv(execution_drift_csv) if execution_drift_csv.exists() else pd.DataFrame()
     except Exception:
         drift = pd.DataFrame()
+    try:
+        drift_alerts = pd.read_csv(execution_drift_alerts_csv) if execution_drift_alerts_csv.exists() else pd.DataFrame()
+    except Exception:
+        drift_alerts = pd.DataFrame()
     missing_drift_cols = [c for c in EXECUTION_DRIFT_REQUIRED_COLUMNS if c not in drift.columns]
     drift_syms = (
         set(drift["symbol"].astype(str).str.upper().unique().tolist())
@@ -1143,6 +1176,10 @@ def run(
         sens = pd.read_csv(threshold_sens_csv) if threshold_sens_csv.exists() else pd.DataFrame()
     except Exception:
         sens = pd.DataFrame()
+    try:
+        sens_alerts = pd.read_csv(threshold_sens_alerts_csv) if threshold_sens_alerts_csv.exists() else pd.DataFrame()
+    except Exception:
+        sens_alerts = pd.DataFrame()
     missing_sens_cols = [c for c in THRESHOLD_SENSITIVITY_REQUIRED_COLUMNS if c not in sens.columns]
     sens_syms = (
         set(sens["symbol"].astype(str).str.upper().unique().tolist())
@@ -1176,6 +1213,117 @@ def run(
                 "current_policy_rows": cur_count,
                 "alerts_exists": threshold_sens_alerts_csv.exists(),
                 "report_exists": threshold_sens_report_md.exists(),
+            },
+            sort_keys=True,
+        ),
+    )
+
+    # C33: Rule-universe registry artifacts exist and have zero high/critical failures.
+    registry_yaml = Path("configs/research/governance/oco_rule_universe_registry.yaml")
+    registry_checks_csv = edge_metrics_csv.parent / "oco_rule_universe_registry_checks.csv"
+    registry_issues_csv = edge_metrics_csv.parent / "oco_rule_universe_registry_issues.csv"
+    registry_report_md = docs_root.parent / "analysis" / "oco_rule_universe_registry_report.md"
+    try:
+        reg_checks = pd.read_csv(registry_checks_csv) if registry_checks_csv.exists() else pd.DataFrame()
+    except Exception:
+        reg_checks = pd.DataFrame()
+    missing_reg_cols = [c for c in RULE_UNIVERSE_REGISTRY_REQUIRED_COLUMNS if c not in reg_checks.columns]
+    reg_fail = pd.DataFrame()
+    if not reg_checks.empty and {"status", "severity_if_fail"}.issubset(set(reg_checks.columns)):
+        reg_fail = reg_checks[reg_checks["status"].astype(str).str.lower() != "pass"].copy()
+    reg_high_critical = (
+        int(reg_fail["severity_if_fail"].astype(str).str.lower().isin(["high", "critical"]).sum())
+        if not reg_fail.empty
+        else 0
+    )
+    _add_check(
+        checks_rows,
+        check_id="C33",
+        check_name="rule_universe_registry_artifacts_present_and_clean",
+        passed=registry_yaml.exists()
+        and registry_checks_csv.exists()
+        and registry_issues_csv.exists()
+        and registry_report_md.exists()
+        and len(missing_reg_cols) == 0
+        and reg_high_critical == 0,
+        severity_if_fail="high",
+        metric_name="rule_universe_registry_high_critical_fails",
+        metric_value=int(reg_high_critical),
+        threshold=0,
+        comparator="==",
+        source_path=registry_checks_csv,
+        details=json.dumps(
+            {
+                "registry_yaml_exists": registry_yaml.exists(),
+                "checks_exists": registry_checks_csv.exists(),
+                "issues_exists": registry_issues_csv.exists(),
+                "report_exists": registry_report_md.exists(),
+                "missing_columns": missing_reg_cols,
+                "checks_rows": int(len(reg_checks)),
+            },
+            sort_keys=True,
+        ),
+    )
+
+    # C34: Non-green alerts have disposition rows and accepted exceptions are not expired.
+    disposition_csv = edge_metrics_csv.parent / "oco_alert_disposition.csv"
+    disposition_report_md = docs_root.parent / "analysis" / "oco_alert_remediation_report.md"
+    exceptions_yaml = Path("configs/research/governance/oco_monitoring_exceptions.yaml")
+    try:
+        disp = pd.read_csv(disposition_csv) if disposition_csv.exists() else pd.DataFrame()
+    except Exception:
+        disp = pd.DataFrame()
+    missing_disp_cols = [c for c in ALERT_DISPOSITION_REQUIRED_COLUMNS if c not in disp.columns]
+    alert_keys_expected: set[str] = set()
+    for _df in [drift_alerts if "drift_alerts" in locals() else pd.DataFrame(), sens_alerts if "sens_alerts" in locals() else pd.DataFrame()]:
+        if _df.empty:
+            continue
+        x = _df.copy()
+        if "band" in x.columns:
+            x = x[x["band"].astype(str).str.lower() != "green"].copy()
+        if x.empty:
+            continue
+        x["symbol"] = x.get("symbol", pd.Series(dtype=str)).astype(str).str.upper()
+        x["metric_id"] = x.get("metric_id", pd.Series(dtype=str)).astype(str)
+        x["test_month"] = x.get("test_month", pd.Series(dtype=str)).astype(str)
+        alert_keys_expected |= {f"{a}|{b}|{c}" for a, b, c in zip(x["symbol"], x["metric_id"], x["test_month"], strict=False)}
+    disp_keys: set[str] = set()
+    expired_exception_count = 0
+    if not disp.empty and {"symbol", "metric_id", "test_month"}.issubset(set(disp.columns)):
+        disp["symbol"] = disp["symbol"].astype(str).str.upper()
+        disp["metric_id"] = disp["metric_id"].astype(str)
+        disp["test_month"] = disp["test_month"].astype(str)
+        disp_keys = {f"{a}|{b}|{c}" for a, b, c in zip(disp["symbol"], disp["metric_id"], disp["test_month"], strict=False)}
+        if {"status", "is_expired"}.issubset(set(disp.columns)):
+            is_expired = disp["is_expired"].astype(str).str.lower().isin(["1", "true", "t", "yes", "y"])
+            is_exception = disp["status"].astype(str).str.lower().eq("accepted_exception")
+            expired_exception_count = int((is_expired & is_exception).sum())
+    missing_dispositions = int(len(alert_keys_expected - disp_keys))
+    _add_check(
+        checks_rows,
+        check_id="C34",
+        check_name="alert_disposition_coverage_and_unexpired_exceptions",
+        passed=disposition_csv.exists()
+        and disposition_report_md.exists()
+        and exceptions_yaml.exists()
+        and len(missing_disp_cols) == 0
+        and missing_dispositions == 0
+        and expired_exception_count == 0,
+        severity_if_fail="high",
+        metric_name="alert_disposition_violations",
+        metric_value=int(len(missing_disp_cols) + missing_dispositions + expired_exception_count),
+        threshold=0,
+        comparator="==",
+        source_path=disposition_csv,
+        details=json.dumps(
+            {
+                "disposition_exists": disposition_csv.exists(),
+                "report_exists": disposition_report_md.exists(),
+                "exceptions_yaml_exists": exceptions_yaml.exists(),
+                "missing_columns": missing_disp_cols,
+                "expected_non_green_alerts": int(len(alert_keys_expected)),
+                "missing_dispositions": missing_dispositions,
+                "expired_exception_count": expired_exception_count,
             },
             sort_keys=True,
         ),

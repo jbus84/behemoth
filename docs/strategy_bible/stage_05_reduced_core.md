@@ -15,14 +15,30 @@ Reduce candidate universe to a stable, capacity-valid core set with preserved ex
 - Select reduced states month-by-month using prior train window.
 - Validate capacity floor and state churn constraints.
 - Compute reduction diagnostics (`R01-R03`).
+- Enforce that reduced states stay inside the pre-registered rule universe contract.
 
 ## Exact Calculations
 - `R01_post_pre_row_ratio = reduced_rows / prefilter_wfo_selected_rows`
 - `R02_top_state_dependency = max_top_state_share` (or `top_state_share` if available)
 - `R03_reselection_stability = 1 - mean(state_churn_rate)`
 
+## Rule-Universe Enforcement
+- Registry artifact: `configs/research/governance/oco_rule_universe_registry.yaml`
+- Allowed reduced dimensions:
+- families: `allowed_families`
+- barriers: `allowed_barrier_keep`
+- horizons: `allowed_horizon_keep`
+- Contract checks:
+- `RU08`: reduced states file exists per symbol.
+- `RU09`: every reduced state row is inside the registered universe.
+- Artifacts:
+- `data/analysis/tick_opportunity_mining/oco_rule_universe_registry_checks.csv`
+- `data/analysis/tick_opportunity_mining/oco_rule_universe_registry_issues.csv`
+- `docs/analysis/oco_rule_universe_registry_report.md`
+
 ## Causality / Leakage Controls
 - State schedule and selection produced from prior-month training only.
+- Universe lock prevents post-hoc adding states/families discovered after out-of-sample review.
 
 ## Failure Modes
 - Over-pruning removes too much capacity.
@@ -37,28 +53,33 @@ Reduce candidate universe to a stable, capacity-valid core set with preserved ex
 ## Validation Gates
 - Capacity and stability conditions are hard gates in reduced-core outputs.
 - `R01-R03` are monitoring diagnostics.
+- Hard governance condition: reduced states must pass registry scope checks (`RU09`, surfaced by `C33`).
 
 ## Canonical Analysis Reports
 - `docs/analysis/eurusd_oco_reduced_core_rolling_report.md`
 - `docs/analysis/gbpusd_oco_reduced_core_rolling_report.md`
 - `docs/analysis/usdjpy_oco_reduced_core_rolling_report.md`
+- `docs/analysis/oco_rule_universe_registry_report.md`
 
 ## Reproduction Commands
 ```bash
 uv run python scripts/select_oco_reduced_core_rolling.py \
   --symbols EURUSD,GBPUSD,USDJPY
+uv run python scripts/validate_oco_rule_universe_registry.py
 ```
 
 ## Traceability
 - `scripts/select_oco_reduced_core_rolling.py`
+- `scripts/validate_oco_rule_universe_registry.py`
 - `docs/analysis/*_oco_reduced_core_rolling_report.md`
+- `docs/analysis/oco_rule_universe_registry_report.md`
 - `docs/strategy_bible/generated/stage_05_snapshot.md`
 
 ## Generated Run Snapshot
 <!-- GENERATED:STAGE_05:START -->
 ### Auto Snapshot - Stage 05
 
-- generated_at: `2026-02-27 12:15:07 UTC`
+- generated_at: `2026-02-27 13:24:04 UTC`
 - State schedule is selected month-by-month using only prior-month train data.
 - Summary emphasizes full-path gross behavior after reduced-core filtering.
 - R01-R03 track pruning severity, state concentration, and re-selection stability.

@@ -60,10 +60,12 @@ required_artifacts:
   - docs/analysis/catalog_gaps_report.md
   - docs/analysis/taxonomy_rules.md
   - docs/analysis/oco_stage_integrity_report.md
+  - docs/analysis/oco_rule_universe_registry_report.md
   - docs/analysis/run_delta_dashboard.md
   - docs/analysis/operator_action_report.md
   - docs/analysis/oco_stop_limit_tickfill_fullcap_report.md
   - docs/analysis/oco_execution_drift_report.md
+  - docs/analysis/oco_alert_remediation_report.md
   - docs/analysis/oco_threshold_sensitivity_report.md
   - docs/analysis/data_reliability_report.md
   - docs/analysis/oco_leakage_integrity_report.md
@@ -88,7 +90,9 @@ script_links:
   - scripts/build_oco_strategy_bible.py
   - scripts/build_docs_catalog.py
   - scripts/check_oco_docs_stage_integrity.py
+  - scripts/validate_oco_rule_universe_registry.py
   - scripts/build_oco_execution_drift_report.py
+  - scripts/remediate_oco_monitoring_alerts.py
   - scripts/build_oco_threshold_sensitivity_report.py
   - scripts/register_docs_run.py
   - scripts/build_run_delta_dashboard.py
@@ -104,6 +108,8 @@ config_links:
   - configs/research/experiments/gbpusd_oco_reduced_core_2025.yaml
   - configs/research/experiments/usdjpy_oco_reduced_core_rolling_2025.yaml
   - configs/research/docs/oco_bible_manifest.yaml
+  - configs/research/governance/oco_rule_universe_registry.yaml
+  - configs/research/governance/oco_monitoring_exceptions.yaml
 
 test_links:
   - tests/test_data_reliability_audit.py
@@ -115,7 +121,9 @@ test_links:
   - tests/test_oco_docs_contract.py
   - tests/test_build_docs_catalog.py
   - tests/test_stage_integrity_gate.py
+  - tests/test_validate_oco_rule_universe_registry.py
   - tests/test_execution_drift_report.py
+  - tests/test_remediate_oco_monitoring_alerts.py
   - tests/test_threshold_sensitivity_report.py
   - tests/test_register_docs_run.py
   - tests/test_build_run_delta_dashboard.py

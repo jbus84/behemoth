@@ -1,11 +1,12 @@
 # Analysis Catalog
 
-- generated_at_utc: `2026-02-27T12:55:42Z`
+- generated_at_utc: `2026-02-27T13:28:41Z`
 - manifest_csv: `analysis/catalog_manifest.csv`
 - gaps_report: `analysis/catalog_gaps_report.md`
 
 ## Core Reports
 - [Data Reliability Report](data_reliability_report.md)
+- [Oco Alert Remediation Report](oco_alert_remediation_report.md)
 - [Oco Docs Contract Report](oco_docs_contract_report.md)
 - [Oco Edge Clarity Report](oco_edge_clarity_report.md)
 - [Oco Execution Drift Report](oco_execution_drift_report.md)
@@ -14,6 +15,7 @@
 - [Oco Execution Risk Prelive Report](oco_execution_risk_prelive_report.md)
 - [Oco Leakage Integrity Report](oco_leakage_integrity_report.md)
 - [Oco Logical Audit Report](oco_logical_audit_report.md)
+- [Oco Rule Universe Registry Report](oco_rule_universe_registry_report.md)
 - [Oco Stage Integrity Report](oco_stage_integrity_report.md)
 - [Oco Threshold Sensitivity Report](oco_threshold_sensitivity_report.md)
 - [Operator Action Report](operator_action_report.md)
@@ -47,11 +49,11 @@
 |          2 |              3 |
 |          3 |              7 |
 |          4 |              3 |
-|          5 |              3 |
+|          5 |              4 |
 |          6 |              3 |
 |          7 |              1 |
 |          8 |              1 |
-|          9 |              1 |
+|          9 |              2 |
 |         10 |              2 |
 |         11 |              2 |
 

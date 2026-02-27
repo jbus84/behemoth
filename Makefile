@@ -5,7 +5,7 @@ COLOR_SECTION := \033[1;35m
 COLOR_TARGET := \033[0;32m
 COLOR_DOC := \033[0;34m
 COLOR_DESC := \033[2m
-.PHONY: up down logs api migrate test db docs docs-build docs-contract docs-clean docs-openapi precommit-install precommit-run lint format baselines db-backup db-restore db-restore-smoke deploy replay replay-load replay-stack replay-stack-down help
+.PHONY: up down logs api migrate test db docs docs-build docs-contract docs-contract-ci docs-clean docs-openapi precommit-install precommit-run lint format baselines db-backup db-restore db-restore-smoke deploy replay replay-load replay-stack replay-stack-down help
 
 up:
 	docker compose up -d --build
@@ -50,6 +50,15 @@ docs-contract:
 	uv run python scripts/check_oco_docs_stage_integrity.py
 	uv run python scripts/build_oco_execution_drift_report.py
 	uv run python scripts/build_oco_threshold_sensitivity_report.py
+	uv run python scripts/validate_oco_rule_universe_registry.py
+	uv run python scripts/remediate_oco_monitoring_alerts.py
+	uv run python scripts/validate_oco_docs_contract.py
+
+docs-contract-ci:
+	uv run python scripts/build_docs_catalog.py
+	uv run python scripts/check_oco_docs_stage_integrity.py
+	uv run python scripts/validate_oco_rule_universe_registry.py
+	uv run python scripts/remediate_oco_monitoring_alerts.py
 	uv run python scripts/validate_oco_docs_contract.py
 
 docs-clean:
@@ -163,6 +172,7 @@ help:
 	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "docs" "Serve docs locally"
 	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "docs-build" "Build docs (export OpenAPI first)"
 	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "docs-contract" "Run docs contracts and OCO docs governance checks"
+	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "docs-contract-ci" "Run CI-safe docs contracts without heavy recomputation"
 	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "docs-clean" "Remove built site/"
 	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\\n" "docs-openapi" "Export OpenAPI spec only"
 	@printf "\\n$(COLOR_SECTION)== Data & Analysis ==$(COLOR_RESET)\\n"

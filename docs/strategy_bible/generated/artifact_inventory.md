@@ -1,6 +1,6 @@
 # Artifact Inventory
 
-- generated_at: `2026-02-27 12:15:07 UTC`
+- generated_at: `2026-02-27 13:24:04 UTC`
 
 | group              | symbol   | artifact               | path                                                                                                                                          | exists   | required   |
 |:-------------------|:---------|:-----------------------|:----------------------------------------------------------------------------------------------------------------------------------------------|:---------|:-----------|
@@ -36,10 +36,12 @@
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/catalog_gaps_report.md                                                                | True     | True       |
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/taxonomy_rules.md                                                                     | True     | True       |
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_stage_integrity_report.md                                                         | True     | True       |
+| required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_rule_universe_registry_report.md                                                  | True     | True       |
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/run_delta_dashboard.md                                                                | True     | True       |
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/operator_action_report.md                                                             | True     | True       |
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_stop_limit_tickfill_fullcap_report.md                                             | True     | True       |
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_execution_drift_report.md                                                         | True     | True       |
+| required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_alert_remediation_report.md                                                       | True     | True       |
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_threshold_sensitivity_report.md                                                   | True     | True       |
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/data_reliability_report.md                                                            | True     | True       |
 | required_artifacts | ALL      | required_artifact      | /Users/danielfisher/repositories/behemoth/docs/analysis/oco_leakage_integrity_report.md                                                       | True     | True       |

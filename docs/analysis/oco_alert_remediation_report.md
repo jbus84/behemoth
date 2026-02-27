@@ -1,0 +1,25 @@
+# OCO Alert Remediation Report
+
+- generated_at_utc: `2026-02-27T13:28:41Z`
+- drift_alerts_csv: `data/analysis/tick_opportunity_mining/oco_execution_drift_alerts.csv`
+- threshold_alerts_csv: `data/analysis/tick_opportunity_mining/oco_threshold_sensitivity_alerts.csv`
+- exceptions_yaml: `configs/research/governance/oco_monitoring_exceptions.yaml`
+- disposition_csv: `data/analysis/tick_opportunity_mining/oco_alert_disposition.csv`
+
+## Summary
+| source_alert          | status             | band   |   rows |
+|:----------------------|:-------------------|:-------|-------:|
+| execution_drift       | accepted_exception | amber  |      5 |
+| threshold_sensitivity | accepted_exception | amber  |      3 |
+
+## Dispositions
+| symbol   | source_alert          | test_month   | metric_id              |   metric_value | band   | severity   | status             | action_code        | owner              | rationale                                                                   | expires_utc          | is_expired   | source_path                                                                                                    | evaluated_at_utc     |
+|:---------|:----------------------|:-------------|:-----------------------|---------------:|:-------|:-----------|:-------------------|:-------------------|:-------------------|:----------------------------------------------------------------------------|:---------------------|:-------------|:---------------------------------------------------------------------------------------------------------------|:---------------------|
+| EURUSD   | execution_drift       | 2025-04      | E_DRIFT_OVERSHOOT_P50  |      0.0666667 | amber  | medium     | accepted_exception | A2_SESSION_GUARD   | execution_research | Observed overshoot p50 drift is moderate and not persistent across symbols. | 2026-03-29T13:28:41Z | False        | data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv        | 2026-02-27T13:28:41Z |
+| EURUSD   | execution_drift       | 2025-04      | E_DRIFT_OVERSHOOT_P95  |      0.166667  | amber  | medium     | accepted_exception | A2_SESSION_GUARD   | execution_research | Tail drift remains amber-only and below fail thresholds.                    | 2026-03-29T13:28:41Z | False        | data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv        | 2026-02-27T13:28:41Z |
+| EURUSD   | execution_drift       | 2025-07      | E_DRIFT_OVERSHOOT_P50  |      0.0666667 | amber  | medium     | accepted_exception | A2_SESSION_GUARD   | execution_research | Observed overshoot p50 drift is moderate and not persistent across symbols. | 2026-03-29T13:28:41Z | False        | data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv        | 2026-02-27T13:28:41Z |
+| EURUSD   | execution_drift       | 2025-08      | E_DRIFT_OVERSHOOT_P50  |      0.0666667 | amber  | medium     | accepted_exception | A2_SESSION_GUARD   | execution_research | Observed overshoot p50 drift is moderate and not persistent across symbols. | 2026-03-29T13:28:41Z | False        | data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv        | 2026-02-27T13:28:41Z |
+| USDJPY   | execution_drift       | 2025-04      | E_DRIFT_OVERSHOOT_P95  |      0.166667  | amber  | medium     | accepted_exception | A2_SESSION_GUARD   | execution_research | Tail drift remains amber-only and below fail thresholds.                    | 2026-03-29T13:28:41Z | False        | data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDJPY_stop_limit_tickfill_detail.csv        | 2026-02-27T13:28:41Z |
+| EURUSD   | threshold_sensitivity | nan          | TS03_LB95_MONTH_SIGNAL |      0.0297629 | amber  | medium     | accepted_exception | A1_RECALIBRATE_CAP | wfo_research       | LB95 signal floor is a monitoring warning; hard gates remain positive.      | 2026-03-29T13:28:41Z | False        | data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet        | 2026-02-27T13:28:41Z |
+| GBPUSD   | threshold_sensitivity | nan          | TS03_LB95_MONTH_SIGNAL |      0.0811512 | amber  | medium     | accepted_exception | A1_RECALIBRATE_CAP | wfo_research       | LB95 signal floor is a monitoring warning; hard gates remain positive.      | 2026-03-29T13:28:41Z | False        | data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_predictions.parquet | 2026-02-27T13:28:41Z |
+| USDJPY   | threshold_sensitivity | nan          | TS03_LB95_MONTH_SIGNAL |      0.0935097 | amber  | medium     | accepted_exception | A1_RECALIBRATE_CAP | wfo_research       | LB95 signal floor is a monitoring warning; hard gates remain positive.      | 2026-03-29T13:28:41Z | False        | data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_monthly_predictions.parquet | 2026-02-27T13:28:41Z |

@@ -47,6 +47,29 @@ To run OCO docs contracts explicitly:
 make docs-contract
 ```
 
+CI-safe (no heavy recompute) contract run:
+
+```bash
+make docs-contract-ci
+```
+
+## Server CI
+GitHub Actions now enforces the same contract server-side:
+
+- `.github/workflows/docs_contract.yml`
+- Runs `make docs-contract-ci`, rebuilds strategy-bible snapshots, then `mkdocs build`.
+- Uploads contract artifacts (`docs_contract_checks.csv`, registry checks, alert disposition report) for review on failures.
+
+- `.github/workflows/tests_fast.yml`
+- Runs focused OCO governance/docs tests:
+- `tests/test_build_docs_catalog.py`
+- `tests/test_stage_integrity_gate.py`
+- `tests/test_execution_drift_report.py`
+- `tests/test_threshold_sensitivity_report.py`
+- `tests/test_validate_oco_rule_universe_registry.py`
+- `tests/test_remediate_oco_monitoring_alerts.py`
+- `tests/test_oco_docs_contract.py`
+
 ## Test Run
 Quick test run:
 
