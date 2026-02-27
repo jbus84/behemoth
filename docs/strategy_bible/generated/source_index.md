@@ -13,6 +13,9 @@
 - `scripts/audit_oco_pipeline_logical_issues.py`
 - `scripts/validate_oco_docs_contract.py`
 - `scripts/build_oco_strategy_bible.py`
+- `scripts/build_docs_catalog.py`
+- `scripts/run_execution_monte_carlo.py`
+- `scripts/validate_execution_monte_carlo.py`
 
 ## Configs
 - `configs/research/experiments/eurusd_tick_opportunity_mining.yaml`
@@ -33,6 +36,9 @@
 - `tests/test_oco_tick_exact_verifier.py`
 - `tests/test_oco_pipeline_logical_audit.py`
 - `tests/test_oco_docs_contract.py`
+- `tests/test_build_docs_catalog.py`
+- `tests/test_execution_monte_carlo.py`
+- `tests/test_validate_execution_monte_carlo.py`
 - `tests/test_oco_strategy_bible_builder.py`
 
 ## Symbol Reports

@@ -53,7 +53,7 @@ uv run python scripts/select_oco_reduced_core_rolling.py \
 <!-- GENERATED:STAGE_05:START -->
 ### Auto Snapshot - Stage 05
 
-- generated_at: `2026-02-27 07:51:49 UTC`
+- generated_at: `2026-02-27 09:11:16 UTC`
 - State schedule is selected month-by-month using only prior-month train data.
 - Summary emphasizes full-path gross behavior after reduced-core filtering.
 - R01-R03 track pruning severity, state concentration, and re-selection stability.

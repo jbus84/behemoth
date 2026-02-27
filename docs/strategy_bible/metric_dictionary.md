@@ -48,6 +48,11 @@ Define metric semantics, formulas, units, interpretation bands, and missing-valu
 | B11_open_risks | 10 | open risk count from SLA tracker | count | lower is better | allow when tracker empty |
 | B12_high_open | 10 | open high/critical risk count | count | 0 preferred | allow when tracker empty |
 | B13_avg_days_open | 10 | average days open | days | lower is better | allow when tracker empty |
+| EM01_lb95_per_signal_s1 | 11 | LB95 per-signal pips under `S1_mild` scenario | pips | >0 required | disallow |
+| EM02_lb95_per_signal_s2 | 11 | LB95 per-signal pips under `S2_moderate` scenario | pips | >=0 required | disallow |
+| EM03_prob_negative_month_s1 | 11 | probability monthly per-signal draw is negative under `S1_mild` | ratio | <=0.35 preferred | disallow |
+| EM04_fill_rate_drop_vs_s0_s1 | 11 | `mean_fill_rate(S0)-mean_fill_rate(S1)` | ratio | <=0.12 preferred | disallow |
+| EM05_nan_core_fields | 11 | NaN count in execution MC core fields | count | 0 required | disallow |
 
 ## Causality / Leakage Controls
 - Metrics are computed from finalized stage artifacts; no forward joins beyond each stage contract.

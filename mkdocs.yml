@@ -46,6 +46,7 @@ plugins:
 nav:
   - Overview: index.md
   - Strategy Manual: STRATEGY_MASTER_MANUAL.md
+  - Analysis Catalog: analysis/index.md
   - OCO Strategy Bible:
       - Pipeline Snapshot: strategy_bible/generated/pipeline_snapshot.md
       - Stage 01 Data Foundation: strategy_bible/generated/stage_01_snapshot.md
@@ -68,14 +69,36 @@ nav:
       - Stage 09 Governance Spec: strategy_bible/stage_09_live_governance_and_deployment.md
       - Stage 10 Risks Snapshot: strategy_bible/generated/stage_10_snapshot.md
       - Stage 10 Risks Spec: strategy_bible/stage_10_known_risks_and_backlog.md
+      - Stage 11 Execution MC Snapshot: strategy_bible/generated/stage_11_snapshot.md
+      - Stage 11 Execution MC Spec: strategy_bible/stage_11_execution_monte_carlo.md
       - Metric Dictionary: strategy_bible/metric_dictionary.md
       - Assumptions + Threats: strategy_bible/assumptions_and_threats.md
       - Governance Mapping: strategy_bible/governance_mapping.md
       - Data Reliability Audit: analysis/data_reliability_report.md
       - Leakage + Label Audit: analysis/oco_leakage_integrity_report.md
       - Execution Risk Preflight: analysis/oco_execution_risk_prelive_report.md
+      - Execution Monte Carlo Report: analysis/oco_execution_monte_carlo_report.md
+      - Execution Monte Carlo Validation: analysis/oco_execution_monte_carlo_validation_report.md
+      - Logical Audit Report: analysis/oco_logical_audit_report.md
       - Edge Clarity Report: analysis/oco_edge_clarity_report.md
       - Docs Contract Report: analysis/oco_docs_contract_report.md
+  - Repository Notes:
+      - Data Sources: DATA_SOURCES.md
+      - Repo Structure: REPO_STRUCTURE.md
+      - Walkthrough: walkthrough.md
+  - Archive:
+      - Institutional Audit Report: archive/institutional_audit_report.md
+      - Kalman Deployment Guide: archive/kalman_deployment_guide.md
+      - Kalman Strategy Guide: archive/kalman_strategy_guide.md
+      - Kalman Strategy 1H: archive/kalman_strategy_guide_1h_edition.md
+      - Kalman Strategy 30M: archive/kalman_strategy_guide_30m_edition.md
+      - Kalman Strategy Final Spreads: archive/kalman_strategy_guide_final_real_spreads.md
+      - Kalman Strategy Master: archive/kalman_strategy_master_guide.md
+      - M15 FX Cheat Sheet: archive/m15_fx_cheat_sheet.md
+      - Pair Universe Analysis: archive/pair_universe_analysis.md
+      - Scalp Validation: archive/scalp_validation.md
+      - Archive Task Notes: archive/task.md
+      - Universal Beta Audit: archive/universal_beta_audit.md
   - HGBT Deep Dive: analysis/m5_mom_m15_momrev_m60_rev_hgbt_report.md
   - Cluster EW Deep Dive: analysis/cluster_earlywarning_report.md
   - Architecture: architecture.md

@@ -1,9 +1,10 @@
 ### Auto Snapshot - Stage 04
 
-- generated_at: `2026-02-27 07:51:49 UTC`
+- generated_at: `2026-02-27 09:11:16 UTC`
 - Execution realism is applied with tick first-cross overshoot.
 - Cap curve highlights fill-rate versus signal-level expectancy.
 - E11-E13 are informational execution diagnostics: session dispersion, plateau width, and non-fill opportunity cost.
+- Policy status artifact: /Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/stage04_execution_policy_status.csv
 
 #### Key Results
 | symbol   |   rows |   touch_found_rate |   base_mean_gross_pips |   tick_overshoot_mean_pips |   tick_overshoot_p95_pips |   e11_session_overshoot_dispersion |   e12_cap_plateau_width_pips |   e13_nonfill_opportunity_cost_pips |
@@ -30,6 +31,7 @@
 
 #### Plots
 ![stage_04_stop_limit_caps](../../figures/oco_bible/stage_04_stop_limit_caps.png)
+![stage_04_execution_policy_bands](../../figures/oco_bible/stage_04_execution_policy_bands.png)
 
 #### Execution Risk Pre-Live
 | symbol   |   checks_total |   checks_failed |   high_critical_failed |   e02_min_month_fill_rate |   e03_tail_above_cap |   e10_lb95_month_signal_net |
@@ -37,3 +39,31 @@
 | EURUSD   |             10 |               0 |                      0 |                  0.985912 |           0.00993051 |                    0.541982 |
 | GBPUSD   |             10 |               0 |                      0 |                  0.985112 |           0.00912057 |                    0.787315 |
 | USDJPY   |             10 |               0 |                      0 |                  0.974161 |           0.0164939  |                    0.958587 |
+
+#### Policy Status
+| symbol   |   metrics_total |   green_metric_count |   amber_metric_count |   red_metric_count | worst_band   | recommended_action_code   | recommended_action_summary                                   | red_metrics   | amber_metrics                    |
+|:---------|----------------:|---------------------:|---------------------:|-------------------:|:-------------|:--------------------------|:-------------------------------------------------------------|:--------------|:---------------------------------|
+| EURUSD   |               5 |                    5 |                    0 |                  0 | green        | A0_MONITOR                | within execution policy limits; monitor only                 |               |                                  |
+| GBPUSD   |               5 |                    4 |                    1 |                  0 | amber        | A2_SESSION_GUARD          | session overshoot uneven; add session guard and re-check E11 |               | E11_session_overshoot_dispersion |
+| USDJPY   |               5 |                    5 |                    0 |                  0 | green        | A0_MONITOR                | within execution policy limits; monitor only                 |               |                                  |
+
+- policy_csv: `/Users/danielfisher/repositories/behemoth/data/analysis/tick_opportunity_mining/stage04_execution_policy_status.csv`
+
+#### Policy Metric Mapping (Detail)
+| symbol   | metric_id                         |   metric_value | band   | action_code      | green_threshold   | amber_threshold   |
+|:---------|:----------------------------------|---------------:|:-------|:-----------------|:------------------|:------------------|
+| EURUSD   | E11_session_overshoot_dispersion  |       0.851988 | green  | A0_MONITOR       | <= 1.0000         | <= 1.3000         |
+| EURUSD   | E12_cap_plateau_width_pips        |       0.7      | green  | A0_MONITOR       | >= 0.5000         | >= 0.3000         |
+| EURUSD   | E13_nonfill_opportunity_cost_pips |       0.116807 | green  | A0_MONITOR       | <= 0.2000         | <= 0.3500         |
+| EURUSD   | erosion_spread_fee_plus_slip      |       0.151985 | green  | A0_MONITOR       | <= 0.3000         | <= 0.5000         |
+| EURUSD   | tick_overshoot_p95_pips           |       0.5      | green  | A0_MONITOR       | <= 0.7000         | <= 1.0000         |
+| GBPUSD   | E11_session_overshoot_dispersion  |       1.20518  | amber  | A2_SESSION_GUARD | <= 1.0000         | <= 1.3000         |
+| GBPUSD   | E12_cap_plateau_width_pips        |       0.7      | green  | A0_MONITOR       | >= 0.5000         | >= 0.3000         |
+| GBPUSD   | E13_nonfill_opportunity_cost_pips |       0.11825  | green  | A0_MONITOR       | <= 0.2000         | <= 0.3500         |
+| GBPUSD   | erosion_spread_fee_plus_slip      |       0.138699 | green  | A0_MONITOR       | <= 0.3000         | <= 0.5000         |
+| GBPUSD   | tick_overshoot_p95_pips           |       0.5      | green  | A0_MONITOR       | <= 0.7000         | <= 1.0000         |
+| USDJPY   | E11_session_overshoot_dispersion  |       0.958511 | green  | A0_MONITOR       | <= 1.0000         | <= 1.3000         |
+| USDJPY   | E12_cap_plateau_width_pips        |       0.7      | green  | A0_MONITOR       | >= 0.5000         | >= 0.3000         |
+| USDJPY   | E13_nonfill_opportunity_cost_pips |       0.185352 | green  | A0_MONITOR       | <= 0.2000         | <= 0.3500         |
+| USDJPY   | erosion_spread_fee_plus_slip      |       0.222132 | green  | A0_MONITOR       | <= 0.3000         | <= 0.5000         |
+| USDJPY   | tick_overshoot_p95_pips           |       0.7      | green  | A0_MONITOR       | <= 0.7000         | <= 1.0000         |

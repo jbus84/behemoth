@@ -61,7 +61,7 @@ uv run python scripts/audit_data_reliability.py \
 <!-- GENERATED:STAGE_01:START -->
 ### Auto Snapshot - Stage 01
 
-- generated_at: `2026-02-27 07:51:49 UTC`
+- generated_at: `2026-02-27 09:11:16 UTC`
 - Contract check uses eval-year event tables consumed by WFO.
 - Null percentages should remain near 0 for required modeling fields.
 - Timezone contract rows include parse rate, monotonicity, DST and offset anomaly checks.

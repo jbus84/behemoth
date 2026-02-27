@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 03
 
-- generated_at: `2026-02-27 07:51:49 UTC`
+- generated_at: `2026-02-27 09:11:16 UTC`
 - Execution threshold summary is aligned to quantile=0.9.
 - Metrics are strictly month-forward (3M train -> 1M test).
 - W13-W15 are informational diagnostics for threshold fragility, calibration drift, and selection turnover.

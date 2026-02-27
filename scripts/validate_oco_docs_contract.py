@@ -30,6 +30,7 @@ REQUIRED_STAGE_DOCS = {
     8: "stage_08_robustness_and_stress.md",
     9: "stage_09_live_governance_and_deployment.md",
     10: "stage_10_known_risks_and_backlog.md",
+    11: "stage_11_execution_monte_carlo.md",
 }
 
 REQUIRED_HEADINGS = [
@@ -72,6 +73,11 @@ CORE_METRIC_IDS = {
     "T03_post_worst_month_recovery",
     "G01_near_fail_count",
     "G03_lock_drift_flags",
+    "EM01_lb95_per_signal_s1",
+    "EM02_lb95_per_signal_s2",
+    "EM03_prob_negative_month_s1",
+    "EM04_fill_rate_drop_vs_s0_s1",
+    "EM05_nan_core_fields",
 }
 
 CANONICAL_NAV_PATHS = [
@@ -85,11 +91,71 @@ CANONICAL_NAV_PATHS = [
     "strategy_bible/stage_08_robustness_and_stress.md",
     "strategy_bible/stage_09_live_governance_and_deployment.md",
     "strategy_bible/stage_10_known_risks_and_backlog.md",
+    "strategy_bible/stage_11_execution_monte_carlo.md",
     "strategy_bible/metric_dictionary.md",
     "strategy_bible/assumptions_and_threats.md",
     "strategy_bible/governance_mapping.md",
+    "analysis/index.md",
     "analysis/oco_docs_contract_report.md",
 ]
+
+STAGE04_POLICY_SECTIONS = [
+    "Execution Contract Semantics (Stop-Limit)",
+    "Stage 04 Policy Bands and Actions",
+    "Cap Recalibration Decision Tree",
+    "Degradation Playbooks",
+]
+
+STAGE04_POLICY_REQUIRED_COLUMNS = [
+    "symbol",
+    "metric_id",
+    "metric_value",
+    "band",
+    "action_code",
+    "action_summary",
+]
+
+STAGE04_POLICY_REQUIRED_METRICS = {
+    "E11_session_overshoot_dispersion",
+    "E12_cap_plateau_width_pips",
+    "E13_nonfill_opportunity_cost_pips",
+    "erosion_spread_fee_plus_slip",
+    "tick_overshoot_p95_pips",
+}
+
+STAGE04_ALLOWED_ACTION_CODES = {
+    "A0_MONITOR",
+    "A1_RECALIBRATE_CAP",
+    "A2_SESSION_GUARD",
+    "A3_HALT_RECALIBRATE",
+    "A9_DATA_GAP",
+}
+
+STAGE11_REQUIRED_COLUMNS = [
+    "symbol",
+    "scenario_id",
+    "mean_per_signal_pips",
+    "lb95_per_signal_pips",
+    "mean_fill_rate",
+    "prob_negative_month",
+    "fill_rate_drop_vs_S0",
+]
+
+STAGE11_REQUIRED_SCENARIOS = {"S0_baseline", "S1_mild", "S2_moderate", "S3_severe"}
+
+CORE_REPORT_PATHS = [
+    "analysis/index.md",
+    "analysis/data_reliability_report.md",
+    "analysis/oco_leakage_integrity_report.md",
+    "analysis/oco_execution_risk_prelive_report.md",
+    "analysis/oco_execution_monte_carlo_report.md",
+    "analysis/oco_execution_monte_carlo_validation_report.md",
+    "analysis/oco_logical_audit_report.md",
+    "analysis/oco_edge_clarity_report.md",
+    "analysis/oco_docs_contract_report.md",
+]
+
+STAGE_SNAPSHOT_MAX_DETAIL_ROWS = 40
 
 
 def _table(df: pd.DataFrame) -> str:
@@ -186,6 +252,51 @@ def _extract_symbols_from_edge_report(path: Path) -> set[str]:
     return set(re.findall(r"\|\s*[0-9]+\s*\|\s*(EURUSD|GBPUSD|USDJPY)\s*\|", txt))
 
 
+def _analysis_docs_without_generated(docs_root: Path) -> set[str]:
+    analysis_root = docs_root.parent / "analysis"
+    if not analysis_root.exists():
+        return set()
+    out: set[str] = set()
+    for p in sorted(analysis_root.glob("*.md")):
+        if p.name in {"index.md", "catalog_gaps_report.md"}:
+            continue
+        out.add(p.relative_to(docs_root.parent).as_posix())
+    return out
+
+
+def _max_details_rows_in_snapshot(path: Path) -> int:
+    if not path.exists():
+        return 0
+    lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    max_rows = 0
+    i = 0
+    while i < len(lines):
+        if lines[i].strip() == "#### Details":
+            i += 1
+            while i < len(lines) and lines[i].strip() == "":
+                i += 1
+            table_lines: list[str] = []
+            while i < len(lines):
+                s = lines[i].strip()
+                if s.startswith("#### ") and table_lines:
+                    break
+                if s.startswith("### ") and table_lines:
+                    break
+                if s.startswith("|"):
+                    table_lines.append(s)
+                elif table_lines and s == "":
+                    break
+                elif table_lines:
+                    break
+                i += 1
+            # markdown table: first two lines are header + separator.
+            data_rows = max(0, len(table_lines) - 2)
+            max_rows = max(max_rows, data_rows)
+        else:
+            i += 1
+    return max_rows
+
+
 def run(
     *,
     docs_root: Path,
@@ -204,7 +315,7 @@ def run(
 
     # C1: Stage spec presence.
     missing_stage_docs: list[str] = []
-    for i in range(1, 11):
+    for i in range(1, len(REQUIRED_STAGE_DOCS) + 1):
         p = _stage_doc_path(docs_root, i)
         ok = p.exists()
         if not ok:
@@ -224,7 +335,7 @@ def run(
         )
 
     # C2: Required section headings.
-    for i in range(1, 11):
+    for i in range(1, len(REQUIRED_STAGE_DOCS) + 1):
         p = _stage_doc_path(docs_root, i)
         if not p.exists():
             continue
@@ -375,6 +486,239 @@ def run(
         comparator="==",
         source_path=mkdocs_yml,
         details=",".join(nav_missing),
+    )
+
+    # C8: Stage 04 policy sections are documented.
+    stage04_doc = _stage_doc_path(docs_root, 4)
+    stage04_txt = stage04_doc.read_text(encoding="utf-8", errors="ignore") if stage04_doc.exists() else ""
+    missing_policy_sections = [s for s in STAGE04_POLICY_SECTIONS if s not in stage04_txt]
+    _add_check(
+        checks_rows,
+        check_id="C8",
+        check_name="stage04_policy_sections_present",
+        passed=len(missing_policy_sections) == 0,
+        severity_if_fail="high",
+        metric_name="missing_stage04_policy_sections",
+        metric_value=int(len(missing_policy_sections)),
+        threshold=0,
+        comparator="==",
+        source_path=stage04_doc,
+        details=",".join(missing_policy_sections),
+    )
+
+    # C9: Stage 04 policy CSV exists with required schema.
+    stage04_policy_csv = edge_metrics_csv.parent / "stage04_execution_policy_status.csv"
+    stage04_policy = pd.read_csv(stage04_policy_csv) if stage04_policy_csv.exists() else pd.DataFrame()
+    missing_policy_cols = [c for c in STAGE04_POLICY_REQUIRED_COLUMNS if c not in stage04_policy.columns]
+    _add_check(
+        checks_rows,
+        check_id="C9",
+        check_name="stage04_policy_csv_schema",
+        passed=stage04_policy_csv.exists() and len(missing_policy_cols) == 0,
+        severity_if_fail="critical",
+        metric_name="missing_stage04_policy_columns",
+        metric_value=int(len(missing_policy_cols)),
+        threshold=0,
+        comparator="==",
+        source_path=stage04_policy_csv,
+        details=",".join(missing_policy_cols),
+    )
+
+    # C10: All required Stage 04 metrics are mapped per symbol to band/action.
+    missing_mappings: list[str] = []
+    if stage04_policy.empty or "symbol" not in stage04_policy.columns:
+        missing_mappings.append("ALL:missing_policy_rows")
+    else:
+        syms = sorted(stage04_policy["symbol"].astype(str).str.upper().unique().tolist())
+        for sym in syms:
+            g = stage04_policy[stage04_policy["symbol"].astype(str).str.upper() == sym].copy()
+            for metric_id in sorted(STAGE04_POLICY_REQUIRED_METRICS):
+                m = g[g.get("metric_id", pd.Series(index=g.index, dtype=str)).astype(str) == metric_id].copy()
+                if m.empty:
+                    missing_mappings.append(f"{sym}:{metric_id}:missing")
+                    continue
+                band_ok = m.get("band", pd.Series(index=m.index, dtype=str)).astype(str).str.strip() != ""
+                action_ok = m.get("action_code", pd.Series(index=m.index, dtype=str)).astype(str).str.strip() != ""
+                if not bool((band_ok & action_ok).any()):
+                    missing_mappings.append(f"{sym}:{metric_id}:unmapped")
+    _add_check(
+        checks_rows,
+        check_id="C10",
+        check_name="stage04_policy_metrics_mapped",
+        passed=len(missing_mappings) == 0,
+        severity_if_fail="critical",
+        metric_name="missing_or_unmapped_stage04_metrics",
+        metric_value=int(len(missing_mappings)),
+        threshold=0,
+        comparator="==",
+        source_path=stage04_policy_csv,
+        details=",".join(missing_mappings),
+    )
+
+    # C11: Stage 04 action codes are from the allowed set.
+    invalid_action_rows = 0
+    if not stage04_policy.empty and {"action_code", "metric_id"}.issubset(set(stage04_policy.columns)):
+        p = stage04_policy.copy()
+        p = p[p["metric_id"].astype(str).isin(STAGE04_POLICY_REQUIRED_METRICS)].copy()
+        invalid_action_rows = int((~p["action_code"].astype(str).isin(STAGE04_ALLOWED_ACTION_CODES)).sum())
+    _add_check(
+        checks_rows,
+        check_id="C11",
+        check_name="stage04_action_codes_allowed",
+        passed=invalid_action_rows == 0,
+        severity_if_fail="high",
+        metric_name="invalid_action_codes",
+        metric_value=invalid_action_rows,
+        threshold=0,
+        comparator="==",
+        source_path=stage04_policy_csv,
+    )
+
+    # C12: Generated Stage 04 snapshot exposes policy status table.
+    stage04_snapshot = generated_root / "stage_04_snapshot.md"
+    stage04_snapshot_txt = stage04_snapshot.read_text(encoding="utf-8", errors="ignore") if stage04_snapshot.exists() else ""
+    snapshot_has_policy = "#### Policy Status" in stage04_snapshot_txt
+    _add_check(
+        checks_rows,
+        check_id="C12",
+        check_name="stage04_snapshot_policy_section_present",
+        passed=snapshot_has_policy,
+        severity_if_fail="high",
+        metric_name="policy_status_section_present",
+        metric_value=int(snapshot_has_policy),
+        threshold=1,
+        comparator="==",
+        source_path=stage04_snapshot,
+    )
+
+    # C13: Stage 11 execution Monte Carlo artifacts exist and match required schema.
+    stage11_symbol_csv = edge_metrics_csv.parent / "execution_mc_symbol_scenarios.csv"
+    stage11_month_session_csv = edge_metrics_csv.parent / "execution_mc_month_session_summary.csv"
+    stage11_checks_csv = edge_metrics_csv.parent / "execution_mc_checks.csv"
+    stage11_symbol = pd.read_csv(stage11_symbol_csv) if stage11_symbol_csv.exists() else pd.DataFrame()
+    stage11_month_session = pd.read_csv(stage11_month_session_csv) if stage11_month_session_csv.exists() else pd.DataFrame()
+    stage11_checks = pd.read_csv(stage11_checks_csv) if stage11_checks_csv.exists() else pd.DataFrame()
+    missing_stage11_cols = [c for c in STAGE11_REQUIRED_COLUMNS if c not in stage11_symbol.columns]
+    scenario_ok = False
+    if not stage11_symbol.empty and "scenario_id" in stage11_symbol.columns and "symbol" in stage11_symbol.columns:
+        have = set(stage11_symbol["scenario_id"].astype(str).unique().tolist())
+        syms = stage11_symbol["symbol"].astype(str).str.upper().unique().tolist()
+        scenario_ok = bool(syms) and all(STAGE11_REQUIRED_SCENARIOS.issubset(set(stage11_symbol[stage11_symbol["symbol"].astype(str).str.upper() == s]["scenario_id"].astype(str).tolist())) for s in syms)
+        if not STAGE11_REQUIRED_SCENARIOS.issubset(have):
+            scenario_ok = False
+    stage11_exists_ok = stage11_symbol_csv.exists() and stage11_month_session_csv.exists() and stage11_checks_csv.exists()
+    stage11_schema_ok = len(missing_stage11_cols) == 0 and scenario_ok and not stage11_month_session.empty and not stage11_checks.empty
+    _add_check(
+        checks_rows,
+        check_id="C13",
+        check_name="stage11_execution_mc_artifacts_schema",
+        passed=stage11_exists_ok and stage11_schema_ok,
+        severity_if_fail="critical",
+        metric_name="missing_stage11_columns",
+        metric_value=int(len(missing_stage11_cols)),
+        threshold=0,
+        comparator="==",
+        source_path=stage11_symbol_csv,
+        details=json.dumps(
+            {
+                "missing_columns": missing_stage11_cols,
+                "scenario_ok": scenario_ok,
+                "symbol_rows": int(len(stage11_symbol)),
+                "month_session_rows": int(len(stage11_month_session)),
+                "checks_rows": int(len(stage11_checks)),
+            },
+            sort_keys=True,
+        ),
+    )
+
+    # C14: Generated Stage 11 snapshot exists and includes key sections.
+    stage11_snapshot = generated_root / "stage_11_snapshot.md"
+    stage11_txt = stage11_snapshot.read_text(encoding="utf-8", errors="ignore") if stage11_snapshot.exists() else ""
+    stage11_snapshot_ok = ("#### Key Results" in stage11_txt) and ("#### Monte Carlo Governance Checks" in stage11_txt)
+    _add_check(
+        checks_rows,
+        check_id="C14",
+        check_name="stage11_snapshot_present_and_populated",
+        passed=stage11_snapshot_ok,
+        severity_if_fail="high",
+        metric_name="stage11_snapshot_sections_present",
+        metric_value=int(stage11_snapshot_ok),
+        threshold=1,
+        comparator="==",
+        source_path=stage11_snapshot,
+    )
+
+    # C15: Analysis catalog page exists.
+    analysis_index = docs_root.parent / "analysis" / "index.md"
+    _add_check(
+        checks_rows,
+        check_id="C15",
+        check_name="analysis_catalog_index_exists",
+        passed=analysis_index.exists(),
+        severity_if_fail="high",
+        metric_name="analysis_index_exists",
+        metric_value=int(analysis_index.exists()),
+        threshold=1,
+        comparator="==",
+        source_path=analysis_index,
+    )
+
+    # C16: Catalog manifest covers all non-generated analysis markdown files.
+    catalog_manifest_csv = docs_root.parent / "analysis" / "catalog_manifest.csv"
+    catalog_manifest = pd.read_csv(catalog_manifest_csv) if catalog_manifest_csv.exists() else pd.DataFrame()
+    manifest_paths = set(catalog_manifest.get("doc_path", pd.Series(dtype=str)).astype(str).tolist())
+    required_analysis_paths = _analysis_docs_without_generated(docs_root)
+    missing_in_manifest = sorted(list(required_analysis_paths - manifest_paths))
+    _add_check(
+        checks_rows,
+        check_id="C16",
+        check_name="analysis_catalog_manifest_coverage",
+        passed=len(missing_in_manifest) == 0,
+        severity_if_fail="critical",
+        metric_name="missing_manifest_paths",
+        metric_value=int(len(missing_in_manifest)),
+        threshold=0,
+        comparator="==",
+        source_path=catalog_manifest_csv,
+        details=",".join(missing_in_manifest),
+    )
+
+    # C17: Core reports are represented in mkdocs nav.
+    nav_missing_core = [p for p in CORE_REPORT_PATHS if p not in mk_text]
+    _add_check(
+        checks_rows,
+        check_id="C17",
+        check_name="mkdocs_nav_includes_core_reports",
+        passed=len(nav_missing_core) == 0,
+        severity_if_fail="high",
+        metric_name="missing_core_reports_in_nav",
+        metric_value=int(len(nav_missing_core)),
+        threshold=0,
+        comparator="==",
+        source_path=mkdocs_yml,
+        details=",".join(nav_missing_core),
+    )
+
+    # C18: Generated stage snapshot detail tables are capped.
+    snapshot_paths = sorted(generated_root.glob("stage_*_snapshot.md"))
+    worst_rows = 0
+    worst_path = ""
+    for p in snapshot_paths:
+        n = _max_details_rows_in_snapshot(p)
+        if n > worst_rows:
+            worst_rows = n
+            worst_path = str(p)
+    _add_check(
+        checks_rows,
+        check_id="C18",
+        check_name="stage_snapshot_details_row_cap",
+        passed=worst_rows <= STAGE_SNAPSHOT_MAX_DETAIL_ROWS,
+        severity_if_fail="medium",
+        metric_name="max_details_rows",
+        metric_value=int(worst_rows),
+        threshold=int(STAGE_SNAPSHOT_MAX_DETAIL_ROWS),
+        comparator="<=",
+        source_path=Path(worst_path) if worst_path else generated_root,
     )
 
     checks = pd.DataFrame(checks_rows)

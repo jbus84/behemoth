@@ -18,6 +18,7 @@ import pandas as pd
 import yaml
 
 DEFAULT_MANIFEST = Path("configs/research/docs/oco_bible_manifest.yaml")
+DETAIL_MAX_ROWS_DEFAULT = 40
 
 
 @dataclass(frozen=True)
@@ -222,6 +223,176 @@ def _safe_div(a: float, b: float) -> float:
     if not (math.isfinite(a) and math.isfinite(b)) or b == 0.0:
         return float("nan")
     return a / b
+
+
+STAGE04_ALLOWED_ACTION_CODES = {
+    "A0_MONITOR",
+    "A1_RECALIBRATE_CAP",
+    "A2_SESSION_GUARD",
+    "A3_HALT_RECALIBRATE",
+    "A9_DATA_GAP",
+}
+
+
+def _stage04_policy_for_metric(metric_id: str, metric_value: Any) -> dict[str, Any]:
+    m_id = str(metric_id)
+    val = _num(metric_value)
+    if not math.isfinite(val):
+        return {
+            "metric_id": m_id,
+            "metric_value": float("nan"),
+            "direction": "na",
+            "band": "unknown",
+            "action_code": "A9_DATA_GAP",
+            "action_summary": "missing metric value; regenerate Stage 04 artifacts before deployment",
+            "green_threshold": "",
+            "amber_threshold": "",
+        }
+
+    rules: dict[str, dict[str, Any]] = {
+        "E11_session_overshoot_dispersion": {
+            "direction": "lower_better",
+            "green_max": 1.00,
+            "amber_max": 1.30,
+            "amber_action": "A2_SESSION_GUARD",
+            "amber_summary": "session overshoot uneven; add session guard and re-check E11",
+            "red_action": "A3_HALT_RECALIBRATE",
+            "red_summary": "session overshoot instability too high; halt symbol and recalibrate",
+        },
+        "E12_cap_plateau_width_pips": {
+            "direction": "higher_better",
+            "green_min": 0.50,
+            "amber_min": 0.30,
+            "amber_action": "A1_RECALIBRATE_CAP",
+            "amber_summary": "cap plateau narrow; recalibrate cap and verify robustness",
+            "red_action": "A3_HALT_RECALIBRATE",
+            "red_summary": "cap robustness collapsed; halt until cap/strategy is revalidated",
+        },
+        "E13_nonfill_opportunity_cost_pips": {
+            "direction": "lower_better",
+            "green_max": 0.20,
+            "amber_max": 0.35,
+            "amber_action": "A1_RECALIBRATE_CAP",
+            "amber_summary": "non-fill opportunity cost elevated; recalibrate cap",
+            "red_action": "A3_HALT_RECALIBRATE",
+            "red_summary": "non-fill opportunity cost too high; halt and rework execution envelope",
+        },
+        "erosion_spread_fee_plus_slip": {
+            "direction": "lower_better",
+            "green_max": 0.30,
+            "amber_max": 0.50,
+            "amber_action": "A1_RECALIBRATE_CAP",
+            "amber_summary": "execution erosion elevated; recalibrate cap/slippage assumptions",
+            "red_action": "A3_HALT_RECALIBRATE",
+            "red_summary": "execution erosion too high; halt symbol until recalibrated",
+        },
+        "tick_overshoot_p95_pips": {
+            "direction": "lower_better",
+            "green_max": 0.70,
+            "amber_max": 1.00,
+            "amber_action": "A2_SESSION_GUARD",
+            "amber_summary": "overshoot tail elevated; apply session guard and monitor",
+            "red_action": "A3_HALT_RECALIBRATE",
+            "red_summary": "overshoot tail unsafe; halt and revalidate execution assumptions",
+        },
+    }
+    rule = rules.get(m_id)
+    if rule is None:
+        return {
+            "metric_id": m_id,
+            "metric_value": val,
+            "direction": "na",
+            "band": "unknown",
+            "action_code": "A9_DATA_GAP",
+            "action_summary": "unknown policy metric; update Stage 04 policy map",
+            "green_threshold": "",
+            "amber_threshold": "",
+        }
+
+    direction = str(rule["direction"])
+    if direction == "lower_better":
+        g = _num(rule["green_max"])
+        a = _num(rule["amber_max"])
+        if val <= g:
+            band = "green"
+            action_code = "A0_MONITOR"
+            action_summary = "within execution policy limits; monitor only"
+        elif val <= a:
+            band = "amber"
+            action_code = str(rule["amber_action"])
+            action_summary = str(rule["amber_summary"])
+        else:
+            band = "red"
+            action_code = str(rule["red_action"])
+            action_summary = str(rule["red_summary"])
+        green_threshold = f"<= {g:.4f}"
+        amber_threshold = f"<= {a:.4f}"
+    else:
+        g = _num(rule["green_min"])
+        a = _num(rule["amber_min"])
+        if val >= g:
+            band = "green"
+            action_code = "A0_MONITOR"
+            action_summary = "within execution policy limits; monitor only"
+        elif val >= a:
+            band = "amber"
+            action_code = str(rule["amber_action"])
+            action_summary = str(rule["amber_summary"])
+        else:
+            band = "red"
+            action_code = str(rule["red_action"])
+            action_summary = str(rule["red_summary"])
+        green_threshold = f">= {g:.4f}"
+        amber_threshold = f">= {a:.4f}"
+
+    return {
+        "metric_id": m_id,
+        "metric_value": val,
+        "direction": direction,
+        "band": band,
+        "action_code": action_code,
+        "action_summary": action_summary,
+        "green_threshold": green_threshold,
+        "amber_threshold": amber_threshold,
+    }
+
+
+def _stage04_policy_rollup_rows(policy_rows: pd.DataFrame) -> pd.DataFrame:
+    if policy_rows.empty or "symbol" not in policy_rows.columns:
+        return pd.DataFrame()
+    band_rank = {"green": 0, "amber": 1, "red": 2, "unknown": 3}
+    action_rank = {
+        "A0_MONITOR": 0,
+        "A1_RECALIBRATE_CAP": 1,
+        "A2_SESSION_GUARD": 2,
+        "A3_HALT_RECALIBRATE": 3,
+        "A9_DATA_GAP": 4,
+    }
+    out: list[dict[str, Any]] = []
+    for sym, grp in policy_rows.groupby("symbol", sort=True):
+        g = grp.copy()
+        g["band_rank"] = g["band"].astype(str).map(band_rank).fillna(3).astype(int)
+        g["action_rank"] = g["action_code"].astype(str).map(action_rank).fillna(4).astype(int)
+        worst_band_idx = int(g["band_rank"].idxmax())
+        worst_action_idx = int(g["action_rank"].idxmax())
+        red_metrics = g[g["band"].astype(str) == "red"]["metric_id"].astype(str).tolist()
+        amber_metrics = g[g["band"].astype(str) == "amber"]["metric_id"].astype(str).tolist()
+        out.append(
+            {
+                "symbol": str(sym).upper(),
+                "metrics_total": int(len(g)),
+                "green_metric_count": int((g["band"] == "green").sum()),
+                "amber_metric_count": int((g["band"] == "amber").sum()),
+                "red_metric_count": int((g["band"] == "red").sum()),
+                "unknown_metric_count": int((g["band"] == "unknown").sum()),
+                "worst_band": str(g.loc[worst_band_idx, "band"]),
+                "recommended_action_code": str(g.loc[worst_action_idx, "action_code"]),
+                "recommended_action_summary": str(g.loc[worst_action_idx, "action_summary"]),
+                "red_metrics": ",".join(red_metrics),
+                "amber_metrics": ",".join(amber_metrics),
+            }
+        )
+    return pd.DataFrame(out).sort_values("symbol").reset_index(drop=True)
 
 
 def _threshold_margin(metric_value: Any, threshold: Any) -> float:
@@ -661,6 +832,24 @@ def _symbol_contexts(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]
                 "execution_risk_report_md": _resolve_path(
                     base_dir, "docs/analysis/oco_execution_risk_prelive_report.md"
                 ),
+                "execution_mc_month_session_csv": _resolve_path(
+                    base_dir, "data/analysis/tick_opportunity_mining/execution_mc_month_session_summary.csv"
+                ),
+                "execution_mc_monthly_csv": _resolve_path(
+                    base_dir, "data/analysis/tick_opportunity_mining/execution_mc_monthly_summary.csv"
+                ),
+                "execution_mc_symbol_scenarios_csv": _resolve_path(
+                    base_dir, "data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv"
+                ),
+                "execution_mc_checks_csv": _resolve_path(
+                    base_dir, "data/analysis/tick_opportunity_mining/execution_mc_checks.csv"
+                ),
+                "execution_mc_issues_csv": _resolve_path(
+                    base_dir, "data/analysis/tick_opportunity_mining/execution_mc_issues.csv"
+                ),
+                "execution_mc_report_md": _resolve_path(
+                    base_dir, "docs/analysis/oco_execution_monte_carlo_report.md"
+                ),
                 "timezone_contract_csv": _resolve_path(
                     base_dir, f"data/analysis/tick_opportunity_mining/{symbol}_stage1_timezone_contract.csv"
                 ),
@@ -875,6 +1064,8 @@ def _render_stage_snapshot(
     notes: list[str],
     figure_paths: list[Path],
     figure_prefix: str,
+    details_max_rows: int = DETAIL_MAX_ROWS_DEFAULT,
+    details_source_path: str = "",
 ) -> str:
     lines: list[str] = []
     lines.append(f"### Auto Snapshot - Stage {stage_id:02d}")
@@ -885,9 +1076,22 @@ def _render_stage_snapshot(
     lines.append("#### Key Results")
     lines.append(_table(summary_table))
     if details_table is not None:
+        d = details_table.copy()
+        n_full = int(len(d))
+        truncated = False
+        if int(details_max_rows) > 0 and n_full > int(details_max_rows):
+            d = d.head(int(details_max_rows)).copy()
+            truncated = True
         lines.append("")
         lines.append("#### Details")
-        lines.append(_table(details_table))
+        lines.append(_table(d))
+        if truncated:
+            lines.append("")
+            lines.append(
+                f"- details_rows_shown: `{len(d)}` of `{n_full}`"
+            )
+            if str(details_source_path).strip():
+                lines.append(f"- full_artifact: `{details_source_path}`")
     if figure_paths:
         lines.append("")
         lines.append("#### Plots")
@@ -1440,6 +1644,14 @@ def _write_stage_snapshots(
     caps_rows: list[pd.DataFrame] = []
     drift_rows: list[pd.DataFrame] = []
     stage04_exec_rows: list[dict[str, Any]] = []
+    stage04_policy_rows: list[dict[str, Any]] = []
+    stage04_policy_metrics = [
+        "E11_session_overshoot_dispersion",
+        "E12_cap_plateau_width_pips",
+        "E13_nonfill_opportunity_cost_pips",
+        "erosion_spread_fee_plus_slip",
+        "tick_overshoot_p95_pips",
+    ]
     for ctx in contexts:
         sym = ctx["symbol"]
         stage04_idx = -1
@@ -1452,6 +1664,8 @@ def _write_stage_snapshots(
         e12_plateau_width = float("nan")
         e13_nonfill_opportunity_cost = float("nan")
         e4_per_signal_realized = float("nan")
+        best_cap_pips = float("nan")
+        best_fill_rate = float("nan")
         if not s.empty:
             if "symbol" in s.columns:
                 ss = s[s["symbol"].astype(str).str.upper() == sym].copy()
@@ -1487,6 +1701,8 @@ def _write_stage_snapshots(
                     ideal = _num(cc_best.get("mean_per_signal_no_extra_slip"))
                     real = _num(cc_best.get("mean_per_signal_full_overshoot"))
                     fill = _num(cc_best.get("fill_rate"))
+                    best_cap_pips = _num(cc_best.get("cap_pips"))
+                    best_fill_rate = fill
                     e4_per_signal_realized = real
                     e13_nonfill_opportunity_cost = (ideal - real) * fill if all(math.isfinite(v) for v in [ideal, real, fill]) else float("nan")
         if not drift.empty:
@@ -1530,6 +1746,7 @@ def _write_stage_snapshots(
                 by_hr = d.groupby("hour_utc")["overshoot_tick_pips"].mean()
                 if len(by_hr) > 1:
                     e11_session_overshoot_dispersion = _safe_div(_num(by_hr.std(ddof=1)), _num(by_hr.mean()))
+        erosion = float("nan")
         if stage04_idx >= 0:
             base = _num(stage04_summary_rows[stage04_idx].get("base_mean_gross_pips"))
             erosion = base - e4_per_signal_realized if math.isfinite(base) and math.isfinite(e4_per_signal_realized) else float("nan")
@@ -1541,9 +1758,61 @@ def _write_stage_snapshots(
             stage04_summary_rows[stage04_idx]["e11_session_overshoot_dispersion"] = e11_session_overshoot_dispersion
             stage04_summary_rows[stage04_idx]["e12_cap_plateau_width_pips"] = e12_plateau_width
             stage04_summary_rows[stage04_idx]["e13_nonfill_opportunity_cost_pips"] = e13_nonfill_opportunity_cost
+            stage04_summary_rows[stage04_idx]["erosion_spread_fee_plus_slip"] = erosion
+            stage04_summary_rows[stage04_idx]["best_cap_pips"] = best_cap_pips
+            stage04_summary_rows[stage04_idx]["best_fill_rate"] = best_fill_rate
+        policy_source = str(ctx.get("stop_limit_caps_csv", ""))
+        policy_values: dict[str, Any] = {
+            "E11_session_overshoot_dispersion": e11_session_overshoot_dispersion,
+            "E12_cap_plateau_width_pips": e12_plateau_width,
+            "E13_nonfill_opportunity_cost_pips": e13_nonfill_opportunity_cost,
+            "erosion_spread_fee_plus_slip": erosion,
+            "tick_overshoot_p95_pips": _num(
+                stage04_summary_rows[stage04_idx].get("tick_overshoot_p95_pips") if stage04_idx >= 0 else float("nan")
+            ),
+        }
+        for metric_id in stage04_policy_metrics:
+            mapped = _stage04_policy_for_metric(metric_id, policy_values.get(metric_id))
+            stage04_policy_rows.append(
+                {
+                    "symbol": sym,
+                    "metric_id": metric_id,
+                    "metric_value": mapped["metric_value"],
+                    "direction": mapped["direction"],
+                    "band": mapped["band"],
+                    "action_code": mapped["action_code"],
+                    "action_summary": mapped["action_summary"],
+                    "green_threshold": mapped["green_threshold"],
+                    "amber_threshold": mapped["amber_threshold"],
+                    "source_path": policy_source,
+                    "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                }
+            )
     stage04 = pd.DataFrame(stage04_summary_rows)
+    stage04_policy = pd.DataFrame(stage04_policy_rows)
+    stage04_policy_csv = outputs.stage_metrics_csv.parent / "stage04_execution_policy_status.csv"
+    stage04_policy_csv.parent.mkdir(parents=True, exist_ok=True)
+    if stage04_policy.empty:
+        stage04_policy = pd.DataFrame(
+            columns=[
+                "symbol",
+                "metric_id",
+                "metric_value",
+                "direction",
+                "band",
+                "action_code",
+                "action_summary",
+                "green_threshold",
+                "amber_threshold",
+                "source_path",
+                "generated_at_utc",
+            ]
+        )
+    stage04_policy.to_csv(stage04_policy_csv, index=False)
+    stage04_policy_rollup = _stage04_policy_rollup_rows(stage04_policy)
     stage04_caps = pd.concat(caps_rows, ignore_index=True) if caps_rows else pd.DataFrame()
     stage04_plot = _stage_plot_path(outputs, 4, "stop_limit_caps")
+    stage04_policy_plot = _stage_plot_path(outputs, 4, "execution_policy_bands")
     if not stage04_caps.empty:
         _plot_stage_lines(
             df=stage04_caps,
@@ -1553,6 +1822,15 @@ def _write_stage_snapshots(
             title="Stage 4: Stop-Limit Cap vs Per-Signal PnL",
             ylabel="mean per-signal pips",
             out_path=stage04_plot,
+        )
+    if not stage04_policy_rollup.empty:
+        _plot_stage_bars(
+            df=stage04_policy_rollup,
+            x="symbol",
+            ys=["red_metric_count", "amber_metric_count", "green_metric_count"],
+            title="Stage 4: Execution Policy Band Counts",
+            ylabel="metric count",
+            out_path=stage04_policy_plot,
         )
     stage04_details = _pick_cols(stage04_caps, ["symbol", "cap_pips", "fill_rate", "mean_per_signal_full_overshoot"])
     if not stage04_details.empty and {"symbol", "cap_pips"}.issubset(set(stage04_details.columns)):
@@ -1581,8 +1859,9 @@ def _write_stage_snapshots(
             "Execution realism is applied with tick first-cross overshoot.",
             "Cap curve highlights fill-rate versus signal-level expectancy.",
             "E11-E13 are informational execution diagnostics: session dispersion, plateau width, and non-fill opportunity cost.",
+            f"Policy status artifact: {stage04_policy_csv}",
         ],
-        figure_paths=[stage04_plot] if stage04_plot.exists() else [],
+        figure_paths=[p for p in [stage04_plot, stage04_policy_plot] if p.exists()],
         figure_prefix="../figures/oco_bible/",
     )
     stage04_drift = pd.concat(drift_rows, ignore_index=True) if drift_rows else pd.DataFrame()
@@ -1595,6 +1874,43 @@ def _write_stage_snapshots(
     stage04_exec = pd.DataFrame(stage04_exec_rows)
     if not stage04_exec.empty:
         stage04_content += "\n\n#### Execution Risk Pre-Live\n" + _table(stage04_exec)
+    if not stage04_policy_rollup.empty:
+        stage04_content += "\n\n#### Policy Status\n" + _table(
+            _pick_cols(
+                stage04_policy_rollup,
+                [
+                    "symbol",
+                    "metrics_total",
+                    "green_metric_count",
+                    "amber_metric_count",
+                    "red_metric_count",
+                    "worst_band",
+                    "recommended_action_code",
+                    "recommended_action_summary",
+                    "red_metrics",
+                    "amber_metrics",
+                ],
+            )
+        )
+        stage04_content += (
+            "\n\n- policy_csv: "
+            + f"`{stage04_policy_csv}`"
+        )
+    if not stage04_policy.empty:
+        stage04_content += "\n\n#### Policy Metric Mapping (Detail)\n" + _table(
+            _pick_cols(
+                stage04_policy,
+                [
+                    "symbol",
+                    "metric_id",
+                    "metric_value",
+                    "band",
+                    "action_code",
+                    "green_threshold",
+                    "amber_threshold",
+                ],
+            )
+        )
     write_stage(4, stage04_content)
 
     # Stage 05: Reduced-core rolling.
@@ -2395,6 +2711,157 @@ def _write_stage_snapshots(
         )
     write_stage(10, stage10_content)
 
+    # Stage 11: Execution Monte Carlo hardening.
+    stage11_rows: list[dict[str, Any]] = []
+    stage11_detail_rows: list[pd.DataFrame] = []
+    stage11_month_rows: list[pd.DataFrame] = []
+    stage11_check_rows: list[dict[str, Any]] = []
+    mc_symbol_all = _safe_read_csv(contexts[0].get("execution_mc_symbol_scenarios_csv")) if contexts else pd.DataFrame()
+    mc_month_all = _safe_read_csv(contexts[0].get("execution_mc_month_session_csv")) if contexts else pd.DataFrame()
+    mc_checks_all = _safe_read_csv(contexts[0].get("execution_mc_checks_csv")) if contexts else pd.DataFrame()
+    for ctx in contexts:
+        sym = ctx["symbol"]
+        s = mc_symbol_all.copy()
+        if not s.empty and "symbol" in s.columns:
+            s = s[s["symbol"].astype(str).str.upper() == sym].copy()
+        if not s.empty:
+            stage11_detail_rows.append(s)
+            s1 = s[s["scenario_id"].astype(str) == "S1_mild"].copy()
+            s2 = s[s["scenario_id"].astype(str) == "S2_moderate"].copy()
+            sb = s[s["scenario_id"].astype(str) == "S0_baseline"].copy()
+            row = {
+                "symbol": sym,
+                "signals": _num(sb.iloc[0]["signals"]) if not sb.empty and "signals" in sb.columns else _num(s["signals"].max() if "signals" in s.columns else float("nan")),
+                "lb95_s1": _num(s1.iloc[0]["lb95_per_signal_pips"]) if not s1.empty and "lb95_per_signal_pips" in s1.columns else float("nan"),
+                "lb95_s2": _num(s2.iloc[0]["lb95_per_signal_pips"]) if not s2.empty and "lb95_per_signal_pips" in s2.columns else float("nan"),
+                "prob_negative_month_s1": _num(s1.iloc[0]["prob_negative_month"]) if not s1.empty and "prob_negative_month" in s1.columns else float("nan"),
+                "fill_rate_drop_s1": _num(s1.iloc[0]["fill_rate_drop_vs_S0"]) if not s1.empty and "fill_rate_drop_vs_S0" in s1.columns else float("nan"),
+                "drawdown_proxy_p95_s1": _num(s1.iloc[0]["drawdown_proxy_p95"]) if not s1.empty and "drawdown_proxy_p95" in s1.columns else float("nan"),
+            }
+            stage11_rows.append(row)
+            add_edge_metric(11, sym, "EM01_lb95_per_signal_s1", row["lb95_s1"], "LB95 per-signal pips in mild stress", str(ctx.get("execution_mc_symbol_scenarios_csv", "")))
+            add_edge_metric(11, sym, "EM02_lb95_per_signal_s2", row["lb95_s2"], "LB95 per-signal pips in moderate stress", str(ctx.get("execution_mc_symbol_scenarios_csv", "")))
+            add_edge_metric(11, sym, "EM03_prob_negative_month_s1", row["prob_negative_month_s1"], "Probability of negative month in mild stress", str(ctx.get("execution_mc_symbol_scenarios_csv", "")))
+            add_edge_metric(11, sym, "EM04_fill_rate_drop_vs_s0_s1", row["fill_rate_drop_s1"], "Fill-rate drop from baseline to mild stress", str(ctx.get("execution_mc_symbol_scenarios_csv", "")))
+        m = mc_month_all.copy()
+        if not m.empty and "symbol" in m.columns:
+            m = m[m["symbol"].astype(str).str.upper() == sym].copy()
+        if not m.empty:
+            stage11_month_rows.append(m)
+        c11 = mc_checks_all.copy()
+        if not c11.empty and "symbol" in c11.columns:
+            c11 = c11[c11["symbol"].astype(str).str.upper() == sym].copy()
+        if not c11.empty:
+            fail = c11["status"].astype(str).str.lower() != "pass"
+            nan_row = c11[c11["check_id"].astype(str) == "EM05"]
+            em05_nan = _num(nan_row.iloc[0]["metric_value"]) if not nan_row.empty and "metric_value" in nan_row.columns else float("nan")
+            add_edge_metric(11, sym, "EM05_nan_core_fields", em05_nan, "NaN count in execution MC core fields", str(ctx.get("execution_mc_checks_csv", "")))
+            stage11_check_rows.append(
+                {
+                    "symbol": sym,
+                    "checks_total": int(len(c11)),
+                    "checks_failed": int(fail.sum()),
+                    "high_critical_failed": int(
+                        (
+                            fail
+                            & c11.get("severity_if_fail", pd.Series(index=c11.index, dtype=str))
+                            .astype(str)
+                            .str.lower()
+                            .isin(["high", "critical"])
+                        ).sum()
+                    ),
+                }
+            )
+    stage11_summary = pd.DataFrame(stage11_rows)
+    stage11_detail = pd.concat(stage11_detail_rows, ignore_index=True) if stage11_detail_rows else pd.DataFrame()
+    stage11_month = pd.concat(stage11_month_rows, ignore_index=True) if stage11_month_rows else pd.DataFrame()
+    stage11_checks = pd.DataFrame(stage11_check_rows)
+    stage11_symbol_source = str(contexts[0].get("execution_mc_symbol_scenarios_csv", "")) if contexts else ""
+    stage11_month_source = str(contexts[0].get("execution_mc_month_session_csv", "")) if contexts else ""
+    stage11_plot = _stage_plot_path(outputs, 11, "mc_lb95_by_scenario")
+    stage11_scatter = _stage_plot_path(outputs, 11, "mc_fill_vs_pnl")
+    if not stage11_detail.empty:
+        p11 = stage11_detail.copy()
+        p11["lb95_per_signal_pips"] = pd.to_numeric(p11["lb95_per_signal_pips"], errors="coerce")
+        p11["mean_per_signal_pips"] = pd.to_numeric(p11["mean_per_signal_pips"], errors="coerce")
+        p11["mean_fill_rate"] = pd.to_numeric(p11["mean_fill_rate"], errors="coerce")
+        _plot_stage_lines(
+            df=p11,
+            x="scenario_id",
+            y="lb95_per_signal_pips",
+            hue="symbol",
+            title="Stage 11: LB95 Per-Signal by Scenario",
+            ylabel="pips",
+            out_path=stage11_plot,
+        )
+        _plot_stage_scatter(
+            df=p11,
+            x="mean_fill_rate",
+            y="mean_per_signal_pips",
+            hue="symbol",
+            title="Stage 11: Fill Rate vs Mean Per-Signal",
+            xlabel="mean fill rate",
+            ylabel="mean per-signal pips",
+            out_path=stage11_scatter,
+        )
+    stage11_content = _render_stage_snapshot(
+        stage_id=11,
+        now_utc=now_utc,
+        summary_table=stage11_summary if not stage11_summary.empty else pd.DataFrame(),
+        details_table=_pick_cols(
+            stage11_detail,
+            [
+                "symbol",
+                "scenario_id",
+                "mean_per_signal_pips",
+                "lb95_per_signal_pips",
+                "lb99_per_signal_pips",
+                "mean_per_trade_pips",
+                "mean_fill_rate",
+                "prob_negative_month",
+                "fill_rate_drop_vs_S0",
+                "drawdown_proxy_p95",
+            ],
+        )
+        if not stage11_detail.empty
+        else None,
+        notes=[
+            "Execution Monte Carlo uses month x session stress scenarios derived from Stage 04 tickfill artifacts.",
+            "EM01-EM05 summarize mild/moderate survival, month negativity risk, fill-rate decay, and data integrity.",
+        ],
+        figure_paths=[p for p in [stage11_plot, stage11_scatter] if p.exists()],
+        figure_prefix="../figures/oco_bible/",
+        details_source_path=stage11_symbol_source,
+    )
+    if not stage11_checks.empty:
+        stage11_content += "\n\n#### Monte Carlo Governance Checks\n" + _table(stage11_checks)
+    if not stage11_month.empty:
+        stage11_month_view = _pick_cols(
+            stage11_month,
+            [
+                "symbol",
+                "scenario_id",
+                "test_month",
+                "session_bucket",
+                "signals",
+                "mean_per_signal_pips",
+                "lb95_per_signal_pips",
+                "mean_fill_rate",
+            ],
+        )
+        n_full = len(stage11_month_view)
+        stage11_month_view = stage11_month_view.head(DETAIL_MAX_ROWS_DEFAULT)
+        stage11_content += "\n\n#### Month x Session Summary (head)\n" + _table(
+            stage11_month_view
+        )
+        stage11_content += (
+            "\n\n- month_session_rows_shown: "
+            + f"`{len(stage11_month_view)}` of `{n_full}`"
+        )
+        if stage11_month_source:
+            stage11_content += "\n- full_month_session_artifact: " + f"`{stage11_month_source}`"
+    write_stage(11, stage11_content)
+
     edge_stage = pd.DataFrame(edge_stage_rows)
     edge_state = pd.DataFrame(edge_state_rows)
     edge_thr = pd.DataFrame(edge_threshold_rows)
@@ -2613,7 +3080,7 @@ def run(*, manifest_path: Path, strict: bool) -> dict[str, Any]:
     canonical_lines.append(_table(stage_status))
     canonical_lines.append("")
     canonical_lines.append("#### Quick Links")
-    for i in range(1, 11):
+    for i in range(1, 12):
         canonical_lines.append(f"- [Stage {i:02d} snapshot](generated/stage_{i:02d}_snapshot.md)")
     _inject_named_block(
         canonical_path,
