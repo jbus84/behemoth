@@ -88,7 +88,7 @@ uv run python scripts/audit_oco_pipeline_logical_issues.py
 <!-- GENERATED:STAGE_07:START -->
 ### Auto Snapshot - Stage 07
 
-- generated_at: `2026-02-28 21:17:53 UTC`
+- generated_at: `2026-02-28 22:08:13 UTC`
 - C01..C10 checks are the logical contract gate before robustness sign-off.
 - Open issue rows: 0.
 
@@ -133,9 +133,9 @@ uv run python scripts/audit_oco_pipeline_logical_issues.py
 #### Statistical Inference Ladder (S01-S03)
 | symbol   |   lb95_trade_mean_gross_pips |   s01_lb95_dependence_gap |   pvalue_bonferroni |   pvalue_fdr_bh |   s02_practical_lb95_gt0 |   s03_multiplicity_survival |
 |:---------|-----------------------------:|--------------------------:|--------------------:|----------------:|-------------------------:|----------------------------:|
-| EURUSD   |                     1.60064  |                         0 |         1.07186e-10 |     2.67966e-11 |                        1 |                           1 |
-| GBPUSD   |                     0.696371 |                         0 |         0           |     0           |                        1 |                           1 |
-| USDCAD   |                     1.18194  |                         0 |         2.79776e-14 |     1.39888e-14 |                        1 |                           1 |
-| USDCHF   |                     1.43592  |                         0 |         0           |     0           |                        1 |                           1 |
-| USDJPY   |                     1.25936  |                         0 |         0           |     0           |                        1 |                           1 |
+| EURUSD   |                      1.60064 |                         0 |         1.07186e-10 |     2.67966e-11 |                        1 |                           1 |
+| GBPUSD   |                      2.57358 |                         0 |         0           |     0           |                        1 |                           1 |
+| USDCAD   |                      1.18194 |                         0 |         2.79776e-14 |     1.39888e-14 |                        1 |                           1 |
+| USDCHF   |                      1.43592 |                         0 |         0           |     0           |                        1 |                           1 |
+| USDJPY   |                      3.42238 |                         0 |         0           |     0           |                        1 |                           1 |
 <!-- GENERATED:STAGE_07:END -->

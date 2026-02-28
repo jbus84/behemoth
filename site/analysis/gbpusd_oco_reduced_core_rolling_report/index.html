@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#gbpusd-oco-reduced-core-rolling-selection" class="md-skip">
+        <a href="#oco-tick-exact-shortlist-verification" class="md-skip">
           Skip to content
         </a>
       
@@ -1051,10 +1051,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#reduced-state-universe" class="md-nav__link">
+  <a href="#by-state" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Reduced State Universe
+        By State
       
     </span>
   </a>
@@ -1062,32 +1062,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#monthly-portfolio" class="md-nav__link">
+  <a href="#by-month" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Monthly Portfolio
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#state-stability" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        State Stability
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#state-schedule-top-rows" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        State Schedule (Top Rows)
+        By Month
       
     </span>
   </a>
@@ -3539,10 +3517,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#reduced-state-universe" class="md-nav__link">
+  <a href="#by-state" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Reduced State Universe
+        By State
       
     </span>
   </a>
@@ -3550,32 +3528,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#monthly-portfolio" class="md-nav__link">
+  <a href="#by-month" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Monthly Portfolio
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#state-stability" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        State Stability
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#state-schedule-top-rows" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        State Schedule (Top Rows)
+        By Month
       
     </span>
   </a>
@@ -3599,25 +3555,16 @@
 
 
 
-<h1 id="gbpusd-oco-reduced-core-rolling-selection">GBPUSD OCO Reduced-Core Rolling Selection<a class="headerlink" href="#gbpusd-oco-reduced-core-rolling-selection" title="Permanent link">&para;</a></h1>
+<h1 id="oco-tick-exact-shortlist-verification">OCO Tick-Exact Shortlist Verification<a class="headerlink" href="#oco-tick-exact-shortlist-verification" title="Permanent link">&para;</a></h1>
 <h2 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h2>
 <ul>
-<li>family_keep: <code>oco_first_touch_clean</code></li>
-<li>barrier_keep: <code>[2.0, 3.0]</code></li>
-<li>horizon_keep: <code>[5, 6]</code></li>
+<li>symbol: <code>GBPUSD</code></li>
+<li>family_required: <code>oco_first_touch_clean</code></li>
 <li>locked_quantile: <code>0.9</code></li>
 <li>selection_mode: <code>auto</code></li>
-<li>execution_mode: <code>gross</code></li>
-<li>state_train_months: <code>3</code></li>
-<li>min_train_months: <code>3</code></li>
-<li>overlap_corr_max: <code>0.85</code></li>
-<li>overlap_divergence_max: <code>0.4</code></li>
-<li>max_state_churn: <code>0.45</code></li>
-<li>max_top_state_share: <code>0.35</code></li>
-<li>max_state_hhi: <code>0.25</code></li>
-<li>enforce_state_stability_gates: <code>False</code></li>
-<li>max_states/min_states: <code>12/4</code></li>
-<li>strict_gate_only: <code>True</code></li>
+<li>oco_hold_mode: <code>from_touch</code></li>
+<li>oco_include_no_touch: <code>True</code></li>
+<li>abs_tol_pips: <code>1e-09</code></li>
 </ul>
 <h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
 <table>
@@ -3625,365 +3572,321 @@
 <tr>
 <th style="text-align: left;">symbol</th>
 <th style="text-align: right;">locked_quantile</th>
-<th style="text-align: left;">selection_mode</th>
-<th style="text-align: left;">execution_mode</th>
-<th style="text-align: right;">state_train_months</th>
-<th style="text-align: right;">months_total</th>
-<th style="text-align: right;">months_scored</th>
-<th style="text-align: right;">rows_total</th>
-<th style="text-align: right;">signal_rows_total</th>
-<th style="text-align: right;">mean_gross_pips</th>
-<th style="text-align: right;">monthly_mean_gross_pips</th>
-<th style="text-align: right;">lb95_month_mean_gross_pips</th>
-<th style="text-align: right;">mean_signal_pips</th>
-<th style="text-align: right;">monthly_mean_signal_pips</th>
-<th style="text-align: right;">lb95_month_mean_signal_pips</th>
-<th style="text-align: right;">positive_months</th>
-<th style="text-align: right;">positive_months_signal</th>
-<th style="text-align: right;">avg_month_rows</th>
-<th style="text-align: right;">avg_month_signal_rows</th>
-<th style="text-align: right;">fill_rate_overall</th>
-<th style="text-align: right;">annualized_rows</th>
-<th style="text-align: right;">capacity_floor_monthly</th>
-<th style="text-align: right;">capacity_floor_annual</th>
-<th style="text-align: left;">capacity_pass_monthly_or_annual</th>
-<th style="text-align: right;">max_state_churn</th>
-<th style="text-align: right;">max_top_state_share</th>
-<th style="text-align: right;">max_state_hhi</th>
-<th style="text-align: right;">stability_months_pass</th>
+<th style="text-align: left;">oco_hold_mode</th>
+<th style="text-align: left;">oco_include_no_touch</th>
+<th style="text-align: right;">rows_selected</th>
+<th style="text-align: right;">rows_mapped</th>
+<th style="text-align: right;">rows_verified</th>
+<th style="text-align: right;">mean_abs_err_pips</th>
+<th style="text-align: right;">p99_abs_err_pips</th>
+<th style="text-align: right;">max_abs_err_pips</th>
+<th style="text-align: right;">exact_match_rate</th>
+<th style="text-align: right;">sign_match_rate</th>
+<th style="text-align: right;">pos_label_match_rate</th>
+<th style="text-align: right;">clean_violation_count</th>
+<th style="text-align: right;">both_window_count</th>
+<th style="text-align: right;">undecided_count</th>
+<th style="text-align: right;">min_exact_match_rate</th>
+<th style="text-align: right;">min_pos_label_match_rate</th>
+<th style="text-align: left;">pass_exact_match</th>
+<th style="text-align: left;">pass_pos_label_match</th>
+<th style="text-align: left;">pass_clean</th>
+<th style="text-align: left;">overall_pass</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
 <td style="text-align: right;">0.9</td>
-<td style="text-align: left;">auto</td>
-<td style="text-align: left;">gross</td>
-<td style="text-align: right;">3</td>
-<td style="text-align: right;">9</td>
+<td style="text-align: left;">from_touch</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: right;">31673</td>
+<td style="text-align: right;">31673</td>
+<td style="text-align: right;">31673</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">3000</td>
-<td style="text-align: right;">5000</td>
-<td style="text-align: left;">False</td>
-<td style="text-align: right;">0.45</td>
-<td style="text-align: right;">0.35</td>
-<td style="text-align: right;">0.25</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.999</td>
+<td style="text-align: right;">0.999</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 </tr>
 </tbody>
 </table>
-<h2 id="reduced-state-universe">Reduced State Universe<a class="headerlink" href="#reduced-state-universe" title="Permanent link">&para;</a></h2>
-<p><em>empty</em></p>
-<h2 id="monthly-portfolio">Monthly Portfolio<a class="headerlink" href="#monthly-portfolio" title="Permanent link">&para;</a></h2>
+<h2 id="by-state">By State<a class="headerlink" href="#by-state" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th style="text-align: left;">symbol</th>
-<th style="text-align: left;">test_month</th>
-<th style="text-align: left;">train_months</th>
-<th style="text-align: right;">states_selected</th>
-<th style="text-align: right;">rows</th>
-<th style="text-align: right;">signal_rows</th>
-<th style="text-align: right;">fill_rate</th>
-<th style="text-align: right;">mean_gross_pips</th>
-<th style="text-align: right;">mean_signal_pips</th>
-<th style="text-align: right;">median_gross_pips</th>
-<th style="text-align: right;">pos_rate</th>
-<th style="text-align: right;">state_churn_rate</th>
-<th style="text-align: right;">top_state_share</th>
-<th style="text-align: right;">state_hhi</th>
-<th style="text-align: right;">stability_pass</th>
-<th style="text-align: left;">status</th>
+<th style="text-align: right;">bar_ticks</th>
+<th style="text-align: right;">horizon</th>
+<th style="text-align: left;">state_id</th>
+<th style="text-align: right;">rows_selected</th>
+<th style="text-align: right;">rows_mapped</th>
+<th style="text-align: right;">rows_verified</th>
+<th style="text-align: right;">mean_abs_err_pips</th>
+<th style="text-align: right;">p99_abs_err_pips</th>
+<th style="text-align: right;">max_abs_err_pips</th>
+<th style="text-align: right;">exact_match_rate</th>
+<th style="text-align: right;">sign_match_rate</th>
+<th style="text-align: right;">pos_label_match_rate</th>
+<th style="text-align: right;">clean_violation_count</th>
+<th style="text-align: right;">both_window_count</th>
+<th style="text-align: right;">undecided_count</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td style="text-align: left;">GBPUSD</td>
-<td style="text-align: left;">2025-04</td>
-<td style="text-align: left;"></td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">oco_first_touch_clean__asia__k2</td>
+<td style="text-align: right;">6770</td>
+<td style="text-align: right;">6770</td>
+<td style="text-align: right;">6770</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">warmup_skip</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr>
-<td style="text-align: left;">GBPUSD</td>
-<td style="text-align: left;">2025-05</td>
-<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q70__k2</td>
+<td style="text-align: right;">6678</td>
+<td style="text-align: right;">6678</td>
+<td style="text-align: right;">6678</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">warmup_skip</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr>
-<td style="text-align: left;">GBPUSD</td>
-<td style="text-align: left;">2025-06</td>
-<td style="text-align: left;">2025-04,2025-05</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q80__k2</td>
+<td style="text-align: right;">6766</td>
+<td style="text-align: right;">6766</td>
+<td style="text-align: right;">6766</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">warmup_skip</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr>
-<td style="text-align: left;">GBPUSD</td>
-<td style="text-align: left;">2025-07</td>
-<td style="text-align: left;">2025-04,2025-05,2025-06</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: right;">7853</td>
+<td style="text-align: right;">7853</td>
+<td style="text-align: right;">7853</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">no_gate_states</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr>
-<td style="text-align: left;">GBPUSD</td>
-<td style="text-align: left;">2025-08</td>
-<td style="text-align: left;">2025-05,2025-06,2025-07</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">oco_first_touch_clean__ny_overlap__k2</td>
+<td style="text-align: right;">3606</td>
+<td style="text-align: right;">3606</td>
+<td style="text-align: right;">3606</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">no_gate_states</td>
-</tr>
-<tr>
-<td style="text-align: left;">GBPUSD</td>
-<td style="text-align: left;">2025-09</td>
-<td style="text-align: left;">2025-06,2025-07,2025-08</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">no_gate_states</td>
-</tr>
-<tr>
-<td style="text-align: left;">GBPUSD</td>
-<td style="text-align: left;">2025-10</td>
-<td style="text-align: left;">2025-07,2025-08,2025-09</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">no_gate_states</td>
-</tr>
-<tr>
-<td style="text-align: left;">GBPUSD</td>
-<td style="text-align: left;">2025-11</td>
-<td style="text-align: left;">2025-08,2025-09,2025-10</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">no_gate_states</td>
-</tr>
-<tr>
-<td style="text-align: left;">GBPUSD</td>
-<td style="text-align: left;">2025-12</td>
-<td style="text-align: left;">2025-09,2025-10,2025-11</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">no_gate_states</td>
 </tr>
 </tbody>
 </table>
-<h2 id="state-stability">State Stability<a class="headerlink" href="#state-stability" title="Permanent link">&para;</a></h2>
+<h2 id="by-month">By Month<a class="headerlink" href="#by-month" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th style="text-align: left;">symbol</th>
 <th style="text-align: left;">test_month</th>
-<th style="text-align: right;">states_selected</th>
-<th style="text-align: right;">state_churn_rate</th>
-<th style="text-align: right;">top_state_share</th>
-<th style="text-align: right;">state_hhi</th>
-<th style="text-align: right;">stability_pass</th>
-<th style="text-align: left;">status</th>
+<th style="text-align: right;">rows_selected</th>
+<th style="text-align: right;">rows_mapped</th>
+<th style="text-align: right;">rows_verified</th>
+<th style="text-align: right;">mean_abs_err_pips</th>
+<th style="text-align: right;">p99_abs_err_pips</th>
+<th style="text-align: right;">max_abs_err_pips</th>
+<th style="text-align: right;">exact_match_rate</th>
+<th style="text-align: right;">sign_match_rate</th>
+<th style="text-align: right;">pos_label_match_rate</th>
+<th style="text-align: right;">clean_violation_count</th>
+<th style="text-align: right;">both_window_count</th>
+<th style="text-align: right;">undecided_count</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">6245</td>
+<td style="text-align: right;">6245</td>
+<td style="text-align: right;">6245</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">warmup_skip</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr>
-<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">4635</td>
+<td style="text-align: right;">4635</td>
+<td style="text-align: right;">4635</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">warmup_skip</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr>
-<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">4505</td>
+<td style="text-align: right;">4505</td>
+<td style="text-align: right;">4505</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">warmup_skip</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr>
-<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">4205</td>
+<td style="text-align: right;">4205</td>
+<td style="text-align: right;">4205</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">no_gate_states</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr>
-<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">2025-08</td>
+<td style="text-align: right;">2146</td>
+<td style="text-align: right;">2146</td>
+<td style="text-align: right;">2146</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">no_gate_states</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr>
-<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">2025-09</td>
+<td style="text-align: right;">3075</td>
+<td style="text-align: right;">3075</td>
+<td style="text-align: right;">3075</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">no_gate_states</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr>
-<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">2776</td>
+<td style="text-align: right;">2776</td>
+<td style="text-align: right;">2776</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">no_gate_states</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr>
-<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">2086</td>
+<td style="text-align: right;">2086</td>
+<td style="text-align: right;">2086</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">no_gate_states</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr>
-<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">2000</td>
+<td style="text-align: right;">2000</td>
+<td style="text-align: right;">2000</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">no_gate_states</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 </tbody>
 </table>
-<h2 id="state-schedule-top-rows">State Schedule (Top Rows)<a class="headerlink" href="#state-schedule-top-rows" title="Permanent link">&para;</a></h2>
-<p><em>empty</em></p>
 
 
 

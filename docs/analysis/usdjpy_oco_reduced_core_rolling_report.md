@@ -1,56 +1,36 @@
-# USDJPY OCO Reduced-Core Rolling Selection
+# OCO Tick-Exact Shortlist Verification
 
 ## Setup
-- family_keep: `oco_first_touch_clean`
-- barrier_keep: `[2.0, 3.0]`
-- horizon_keep: `[5, 6]`
+- symbol: `USDJPY`
+- family_required: `oco_first_touch_clean`
 - locked_quantile: `0.9`
 - selection_mode: `auto`
-- execution_mode: `gross`
-- state_train_months: `3`
-- min_train_months: `3`
-- overlap_corr_max: `0.85`
-- overlap_divergence_max: `0.4`
-- max_state_churn: `0.45`
-- max_top_state_share: `0.35`
-- max_state_hhi: `0.25`
-- enforce_state_stability_gates: `False`
-- max_states/min_states: `12/4`
-- strict_gate_only: `True`
+- oco_hold_mode: `from_touch`
+- oco_include_no_touch: `True`
+- abs_tol_pips: `1e-09`
 
 ## Summary
-| symbol   |   locked_quantile | selection_mode   | execution_mode   |   state_train_months |   months_total |   months_scored |   rows_total |   signal_rows_total |   mean_gross_pips |   monthly_mean_gross_pips |   lb95_month_mean_gross_pips |   mean_signal_pips |   monthly_mean_signal_pips |   lb95_month_mean_signal_pips |   positive_months |   positive_months_signal |   avg_month_rows |   avg_month_signal_rows |   fill_rate_overall |   annualized_rows |   capacity_floor_monthly |   capacity_floor_annual | capacity_pass_monthly_or_annual   |   max_state_churn |   max_top_state_share |   max_state_hhi |   stability_months_pass |
-|:---------|------------------:|:-----------------|:-----------------|---------------------:|---------------:|----------------:|-------------:|--------------------:|------------------:|--------------------------:|-----------------------------:|-------------------:|---------------------------:|------------------------------:|------------------:|-------------------------:|-----------------:|------------------------:|--------------------:|------------------:|-------------------------:|------------------------:|:----------------------------------|------------------:|----------------------:|----------------:|------------------------:|
-| USDJPY   |               0.9 | auto             | gross            |                    3 |              9 |               0 |            0 |                   0 |               nan |                       nan |                          nan |                nan |                        nan |                           nan |                 0 |                        0 |                0 |                       0 |                 nan |                 0 |                     3000 |                    5000 | False                             |              0.45 |                  0.35 |            0.25 |                       0 |
+| symbol   |   locked_quantile | oco_hold_mode   | oco_include_no_touch   |   rows_selected |   rows_mapped |   rows_verified |   mean_abs_err_pips |   p99_abs_err_pips |   max_abs_err_pips |   exact_match_rate |   sign_match_rate |   pos_label_match_rate |   clean_violation_count |   both_window_count |   undecided_count |   min_exact_match_rate |   min_pos_label_match_rate | pass_exact_match   | pass_pos_label_match   | pass_clean   | overall_pass   |
+|:---------|------------------:|:----------------|:-----------------------|----------------:|--------------:|----------------:|--------------------:|-------------------:|-------------------:|-------------------:|------------------:|-----------------------:|------------------------:|--------------------:|------------------:|-----------------------:|---------------------------:|:-------------------|:-----------------------|:-------------|:---------------|
+| USDJPY   |               0.9 | from_touch      | True                   |           33670 |         33670 |           33670 |                   0 |                  0 |                  0 |                  1 |                 1 |                      1 |                       0 |                   0 |                 0 |                  0.999 |                      0.999 | True               | True                   | True         | True           |
 
-## Reduced State Universe
-_empty_
+## By State
+|   bar_ticks |   horizon | state_id                                    |   rows_selected |   rows_mapped |   rows_verified |   mean_abs_err_pips |   p99_abs_err_pips |   max_abs_err_pips |   exact_match_rate |   sign_match_rate |   pos_label_match_rate |   clean_violation_count |   both_window_count |   undecided_count |
+|------------:|----------:|:--------------------------------------------|----------------:|--------------:|----------------:|--------------------:|-------------------:|-------------------:|-------------------:|------------------:|-----------------------:|------------------------:|--------------------:|------------------:|
+|         100 |         6 | oco_first_touch_clean__asia__k2             |            8678 |          8678 |            8678 |                   0 |                  0 |                  0 |                  1 |                 1 |                      1 |                       0 |                   0 |                 0 |
+|         100 |         6 | oco_first_touch_clean__high_abs_vel_q70__k2 |            7558 |          7558 |            7558 |                   0 |                  0 |                  0 |                  1 |                 1 |                      1 |                       0 |                   0 |                 0 |
+|         100 |         6 | oco_first_touch_clean__high_abs_vel_q80__k2 |            8174 |          8174 |            8174 |                   0 |                  0 |                  0 |                  1 |                 1 |                      1 |                       0 |                   0 |                 0 |
+|         100 |         6 | oco_first_touch_clean__high_range_q80__k2   |            9260 |          9260 |            9260 |                   0 |                  0 |                  0 |                  1 |                 1 |                      1 |                       0 |                   0 |                 0 |
 
-## Monthly Portfolio
-| symbol   | test_month   | train_months            |   states_selected |   rows |   signal_rows |   fill_rate |   mean_gross_pips |   mean_signal_pips |   median_gross_pips |   pos_rate |   state_churn_rate |   top_state_share |   state_hhi |   stability_pass | status         |
-|:---------|:-------------|:------------------------|------------------:|-------:|--------------:|------------:|------------------:|-------------------:|--------------------:|-----------:|-------------------:|------------------:|------------:|-----------------:|:---------------|
-| USDJPY   | 2025-04      |                         |                 0 |      0 |             0 |         nan |               nan |                nan |                 nan |        nan |                nan |               nan |         nan |              nan | warmup_skip    |
-| USDJPY   | 2025-05      | 2025-04                 |                 0 |      0 |             0 |         nan |               nan |                nan |                 nan |        nan |                nan |               nan |         nan |              nan | warmup_skip    |
-| USDJPY   | 2025-06      | 2025-04,2025-05         |                 0 |      0 |             0 |         nan |               nan |                nan |                 nan |        nan |                nan |               nan |         nan |              nan | warmup_skip    |
-| USDJPY   | 2025-07      | 2025-04,2025-05,2025-06 |                 0 |      0 |             0 |         nan |               nan |                nan |                 nan |        nan |                nan |               nan |         nan |              nan | no_gate_states |
-| USDJPY   | 2025-08      | 2025-05,2025-06,2025-07 |                 0 |      0 |             0 |         nan |               nan |                nan |                 nan |        nan |                nan |               nan |         nan |              nan | no_gate_states |
-| USDJPY   | 2025-09      | 2025-06,2025-07,2025-08 |                 0 |      0 |             0 |         nan |               nan |                nan |                 nan |        nan |                nan |               nan |         nan |              nan | no_gate_states |
-| USDJPY   | 2025-10      | 2025-07,2025-08,2025-09 |                 0 |      0 |             0 |         nan |               nan |                nan |                 nan |        nan |                nan |               nan |         nan |              nan | no_gate_states |
-| USDJPY   | 2025-11      | 2025-08,2025-09,2025-10 |                 0 |      0 |             0 |         nan |               nan |                nan |                 nan |        nan |                nan |               nan |         nan |              nan | no_gate_states |
-| USDJPY   | 2025-12      | 2025-09,2025-10,2025-11 |                 0 |      0 |             0 |         nan |               nan |                nan |                 nan |        nan |                nan |               nan |         nan |              nan | no_gate_states |
-
-## State Stability
-| symbol   | test_month   |   states_selected |   state_churn_rate |   top_state_share |   state_hhi |   stability_pass | status         |
-|:---------|:-------------|------------------:|-------------------:|------------------:|------------:|-----------------:|:---------------|
-| USDJPY   | 2025-04      |                 0 |                nan |               nan |         nan |              nan | warmup_skip    |
-| USDJPY   | 2025-05      |                 0 |                nan |               nan |         nan |              nan | warmup_skip    |
-| USDJPY   | 2025-06      |                 0 |                nan |               nan |         nan |              nan | warmup_skip    |
-| USDJPY   | 2025-07      |                 0 |                nan |               nan |         nan |              nan | no_gate_states |
-| USDJPY   | 2025-08      |                 0 |                nan |               nan |         nan |              nan | no_gate_states |
-| USDJPY   | 2025-09      |                 0 |                nan |               nan |         nan |              nan | no_gate_states |
-| USDJPY   | 2025-10      |                 0 |                nan |               nan |         nan |              nan | no_gate_states |
-| USDJPY   | 2025-11      |                 0 |                nan |               nan |         nan |              nan | no_gate_states |
-| USDJPY   | 2025-12      |                 0 |                nan |               nan |         nan |              nan | no_gate_states |
-
-## State Schedule (Top Rows)
-_empty_
+## By Month
+| test_month   |   rows_selected |   rows_mapped |   rows_verified |   mean_abs_err_pips |   p99_abs_err_pips |   max_abs_err_pips |   exact_match_rate |   sign_match_rate |   pos_label_match_rate |   clean_violation_count |   both_window_count |   undecided_count |
+|:-------------|----------------:|--------------:|----------------:|--------------------:|-------------------:|-------------------:|-------------------:|------------------:|-----------------------:|------------------------:|--------------------:|------------------:|
+| 2025-04      |            8094 |          8094 |            8094 |                   0 |                  0 |                  0 |                  1 |                 1 |                      1 |                       0 |                   0 |                 0 |
+| 2025-05      |            5666 |          5666 |            5666 |                   0 |                  0 |                  0 |                  1 |                 1 |                      1 |                       0 |                   0 |                 0 |
+| 2025-06      |            3289 |          3289 |            3289 |                   0 |                  0 |                  0 |                  1 |                 1 |                      1 |                       0 |                   0 |                 0 |
+| 2025-07      |            3048 |          3048 |            3048 |                   0 |                  0 |                  0 |                  1 |                 1 |                      1 |                       0 |                   0 |                 0 |
+| 2025-08      |            2762 |          2762 |            2762 |                   0 |                  0 |                  0 |                  1 |                 1 |                      1 |                       0 |                   0 |                 0 |
+| 2025-09      |            2208 |          2208 |            2208 |                   0 |                  0 |                  0 |                  1 |                 1 |                      1 |                       0 |                   0 |                 0 |
+| 2025-10      |            3400 |          3400 |            3400 |                   0 |                  0 |                  0 |                  1 |                 1 |                      1 |                       0 |                   0 |                 0 |
+| 2025-11      |            2852 |          2852 |            2852 |                   0 |                  0 |                  0 |                  1 |                 1 |                      1 |                       0 |                   0 |                 0 |
+| 2025-12      |            2351 |          2351 |            2351 |                   0 |                  0 |                  0 |                  1 |                 1 |                      1 |                       0 |                   0 |                 0 |

@@ -1,6 +1,6 @@
 # OCO Operator Playbook
 
-- generated_at_utc: `2026-02-28T21:18:11Z`
+- generated_at_utc: `2026-02-28T22:08:39Z`
 - source_rules: `configs/research/docs/operator_action_rules.yaml`
 
 ## Action Codes
@@ -20,9 +20,4 @@
 5. Block deployment if any `A3_` action remains unresolved.
 
 ## Current Escalations
-| symbol   | metric_id                     | band   | action_code    | owner   | action_summary         |
-|:---------|:------------------------------|:-------|:---------------|:--------|:-----------------------|
-| GBPUSD   | T02_first_negative_costplus   | red    | A2_RECALIBRATE | risk    | escalate and remediate |
-| GBPUSD   | T03_post_worst_month_recovery | red    | A2_RECALIBRATE | risk    | escalate and remediate |
-| USDJPY   | T02_first_negative_costplus   | red    | A2_RECALIBRATE | risk    | escalate and remediate |
-| USDJPY   | T03_post_worst_month_recovery | red    | A2_RECALIBRATE | risk    | escalate and remediate |
+_empty_

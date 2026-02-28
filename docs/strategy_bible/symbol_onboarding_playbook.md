@@ -1,6 +1,6 @@
 # Symbol Onboarding Playbook
 
-- generated_at_utc: `2026-02-28T21:18:12Z`
+- generated_at_utc: `2026-02-28T22:08:39Z`
 
 This playbook documents how to onboard a new symbol into the OCO strategy pipeline.
 It is **auto-generated** on every `make docs-contract` run to stay in sync with the current codebase.

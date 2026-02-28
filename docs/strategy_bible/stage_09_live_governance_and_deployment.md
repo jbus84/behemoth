@@ -232,7 +232,7 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 <!-- GENERATED:STAGE_09:START -->
 ### Auto Snapshot - Stage 09
 
-- generated_at: `2026-02-28 21:17:53 UTC`
+- generated_at: `2026-02-28 22:08:13 UTC`
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
 - Missing required artifacts: 5.
 
@@ -240,9 +240,9 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 | symbol   |   gate_reduced_lb95_month_gt0 |   gate_tick_exact |   gate_robust_lb95_trade_gt0 |   gate_robust_months_majority | symbol_all_gates_pass   |
 |:---------|------------------------------:|------------------:|-----------------------------:|------------------------------:|:------------------------|
 | EURUSD   |                             1 |                 1 |                            1 |                             1 | True                    |
-| GBPUSD   |                             0 |                 1 |                            1 |                             1 | False                   |
+| GBPUSD   |                             1 |                 1 |                            1 |                             1 | True                    |
 | AUDUSD   |                           nan |               nan |                          nan |                           nan | False                   |
-| USDJPY   |                             0 |                 1 |                            1 |                             1 | False                   |
+| USDJPY   |                             1 |                 1 |                            1 |                             1 | True                    |
 | USDCHF   |                             1 |                 1 |                            1 |                             1 | True                    |
 | USDCAD   |                           nan |               nan |                          nan |                           nan | False                   |
 
@@ -281,7 +281,7 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 | AUDUSD   | missing  | True      |              1 |               1 |                              0 |                                     0 |                   nan |                    nan | nan        | nan          | missing_predeploy_json                                                         |
 | USDJPY   | pass     | False     |             25 |               0 |                              0 |                                     0 |                     0 |                      0 | 2026-02-26 | 2026-03-31   |                                                                                |
 | USDCHF   | fail     | True      |             19 |               3 |                              0 |                                     0 |                     0 |                      0 | 2026-02-28 | 2026-04-02   | data_reliability_rows_present,leakage_rows_present,execution_risk_rows_present |
-| USDCAD   | missing  | True      |              1 |               1 |                              0 |                                     0 |                   nan |                    nan | nan        | nan          | missing_predeploy_json                                                         |
+| USDCAD   | missing  | True      |              1 |               1 |                              1 |                                     0 |                   nan |                    nan | nan        | nan          | missing_predeploy_json                                                         |
 
 - Missing predeploy JSON for one or more symbols. Generate with `scripts/validate_oco_live_governance.py --mode deploy --data-reliability-checks-csv ... --leakage-checks-csv ... --execution-risk-checks-csv ... --out-json ...` per symbol.
 <!-- GENERATED:STAGE_09:END -->

@@ -1,6 +1,6 @@
 # Analysis Catalog
 
-- generated_at_utc: `2026-02-28T21:15:06Z`
+- generated_at_utc: `2026-02-28T22:01:19Z`
 - manifest_csv: `analysis/catalog_manifest.csv`
 - gaps_report: `analysis/catalog_gaps_report.md`
 
@@ -36,13 +36,17 @@
 - [Gbpusd Oco Reduced Core Rolling Report](gbpusd_oco_reduced_core_rolling_report.md)
 - [Gbpusd Oco Tick Exact Rolling Report](gbpusd_oco_tick_exact_rolling_report.md)
 - [Gbpusd Tick Opportunity Mining Report](gbpusd_tick_opportunity_mining_report.md)
+- [Gbpusd Tick Opportunity Ml Ready Report](gbpusd_tick_opportunity_ml_ready_report.md)
 - [Gbpusd Tick Opportunity Monthly Wfo Oco Fullcap Report](gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md)
+- [Gbpusd Tick Opportunity Monthly Wfo Report](gbpusd_tick_opportunity_monthly_wfo_report.md)
 ### USDJPY
 - [Usdjpy Oco Monthly Wfo Robustness Fullcap Report](usdjpy_oco_monthly_wfo_robustness_fullcap_report.md)
 - [Usdjpy Oco Reduced Core Rolling Report](usdjpy_oco_reduced_core_rolling_report.md)
 - [Usdjpy Oco Tick Exact Rolling Report](usdjpy_oco_tick_exact_rolling_report.md)
 - [Usdjpy Tick Opportunity Mining Report](usdjpy_tick_opportunity_mining_report.md)
+- [Usdjpy Tick Opportunity Ml Ready Report](usdjpy_tick_opportunity_ml_ready_report.md)
 - [Usdjpy Tick Opportunity Monthly Wfo Oco Fullcap Report](usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_report.md)
+- [Usdjpy Tick Opportunity Monthly Wfo Report](usdjpy_tick_opportunity_monthly_wfo_report.md)
 ### USDCHF
 - [Usdchf Oco Monthly Wfo Robustness Report](usdchf_oco_monthly_wfo_robustness_report.md)
 - [Usdchf Oco Reduced Core Rolling Report](usdchf_oco_reduced_core_rolling_report.md)
@@ -69,7 +73,7 @@
 |-----------:|---------------:|
 |          1 |              1 |
 |          2 |              6 |
-|          3 |             14 |
+|          3 |             16 |
 |          4 |              7 |
 |          5 |              7 |
 |          6 |              4 |
