@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 03
 
-- generated_at: `2026-02-28 08:46:09 UTC`
+- generated_at: `2026-02-28 14:28:19 UTC`
 - Execution threshold summary is aligned to quantile=0.9.
 - Metrics are strictly month-forward (3M train -> 1M test).
 - W13-W15 are informational diagnostics for threshold fragility, calibration drift, and selection turnover.
@@ -8,9 +8,10 @@
 #### Key Results
 | symbol   |   months |   auc_mean |   brier_mean |   test_rows_total |   w13_threshold_fragility |   w14_brier_drift_std |   w15_selection_turnover |
 |:---------|---------:|-----------:|-------------:|------------------:|--------------------------:|----------------------:|-------------------------:|
-| EURUSD   |        9 |   0.526973 |     0.249766 |        3.3563e+06 |                  1.34602  |            0.00162703 |                0.0799501 |
-| GBPUSD   |        9 |   0.51732  |     0.251184 |    46722          |                  0.700198 |            0.00128023 |                0.137968  |
-| USDJPY   |        9 |   0.52696  |     0.247879 |    51512          |                  0.5354   |            0.00217768 |                0.175758  |
+| EURUSD   |        9 |   0.526973 |     0.249766 |       3.3563e+06  |                  1.34602  |            0.00162703 |                0.0799501 |
+| GBPUSD   |        9 |   0.51732  |     0.251184 |   46722           |                  0.700198 |            0.00128023 |                0.137968  |
+| USDJPY   |        9 |   0.52696  |     0.247879 |   51512           |                  0.5354   |            0.00217768 |                0.175758  |
+| USDCHF   |        9 |   0.543015 |     0.249483 |       3.74021e+06 |                  1.30968  |            0.00115577 |                0.166349  |
 
 #### Interpretation Notes
 - Execution threshold summary is aligned to quantile=0.9.
@@ -22,7 +23,7 @@
 |:---------|:------------------------|:-------|:-----------|:--------------|:-------------------|:---------|
 | EURUSD   | W13_threshold_fragility | green  | info       | A0_MONITOR    | within policy band | research |
 | EURUSD   | W14_brier_drift_std     | green  | info       | A0_MONITOR    | within policy band | research |
-| EURUSD   | W15_selection_turnover  | amber  | medium     | A1_REVIEW     | review and monitor | research |
+| EURUSD   | W15_selection_turnover  | green  | info       | A0_MONITOR    | within policy band | research |
 | GBPUSD   | W13_threshold_fragility | green  | info       | A0_MONITOR    | within policy band | research |
 | GBPUSD   | W14_brier_drift_std     | green  | info       | A0_MONITOR    | within policy band | research |
 | GBPUSD   | W15_selection_turnover  | green  | info       | A0_MONITOR    | within policy band | research |
@@ -35,6 +36,7 @@
 |:---------|---------:|----------------:|------------------:|----------------:|
 | EURUSD   |        9 |       0.0953233 |          0.884677 |          325515 |
 | GBPUSD   |        9 |       0.0945693 |          0.784329 |            4427 |
+| USDCHF   |        9 |       0.097029  |          0.721884 |          366516 |
 | USDJPY   |        9 |       0.0964553 |          1.39854  |            4939 |
 
 #### Plots
@@ -52,13 +54,17 @@
 | USDJPY   | aggregate    |       0.8  |          1.31823  |  0.196447  |        1120.89  |
 | USDJPY   | aggregate    |       0.9  |          1.39854  |  0.0964553 |         548.778 |
 | USDJPY   | aggregate    |       0.95 |          1.32811  |  0.0468008 |         264.444 |
+| USDCHF   | aggregate    |       0.8  |          0.613991 |  0.19583   |       81513.1   |
+| USDCHF   | aggregate    |       0.9  |          0.721884 |  0.097029  |       40724     |
+| USDCHF   | aggregate    |       0.95 |          0.810443 |  0.0471862 |       19976.1   |
 
 #### Overfitting Diagnostics (Exec Quantile)
 | symbol   |   quantile |   rows |   months |   positive_months |   lb95_trade_mean_gross_pips |   lb95_trade_mean_gross_pips_iid |   lb95_trade_mean_gross_pips_month_block |   pvalue_month_mean_gt0 |   pvalue_bonferroni |   pvalue_fdr_bh |   uplift_vs_null_pips |   pvalue_perm_uplift |   pvalue_perm_fdr_bh | majority_positive_months   | bonferroni_pass_10pct   | fdr_pass_10pct   | perm_fdr_pass_10pct   |
 |:---------|-----------:|-------:|---------:|------------------:|-----------------------------:|---------------------------------:|-----------------------------------------:|------------------------:|--------------------:|----------------:|----------------------:|---------------------:|---------------------:|:---------------------------|:------------------------|:-----------------|:----------------------|
-| EURUSD   |        0.9 |  59955 |        9 |                 9 |                     1.04912  |                              nan |                                      nan |              2.4283e-09 |         1.45698e-08 |     2.91396e-09 |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
-| GBPUSD   |        0.9 |  70579 |        9 |                 9 |                     0.973913 |                              nan |                                      nan |              0          |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
-| USDJPY   |        0.9 |  77785 |        9 |                 9 |                     1.33687  |                              nan |                                      nan |              0          |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
+| EURUSD   |        0.9 |  59955 |        9 |                 9 |                     1.04912  |                              nan |                                      nan |             2.4283e-09  |         1.45698e-08 |     2.91396e-09 |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
+| GBPUSD   |        0.9 |  70579 |        9 |                 9 |                     0.973913 |                              nan |                                      nan |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
+| USDCHF   |        0.9 | 366516 |        9 |                 9 |                     0.885075 |                              nan |                                      nan |             1.64743e-05 |         9.88457e-05 |     3.29486e-05 |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
+| USDJPY   |        0.9 |  77785 |        9 |                 9 |                     1.33687  |                              nan |                                      nan |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
 
 - Interpretation: these diagnostics are computed on WFO out-of-sample predictions only.
 - `bonferroni_pass_10pct` and `fdr_pass_10pct` summarize multiplicity-adjusted significance at alpha=0.10.

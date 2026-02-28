@@ -65,6 +65,8 @@ def _default_paths(symbol: str) -> SymbolPaths:
         pred = Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet")
     elif s == "GBPUSD":
         pred = Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_predictions.parquet")
+    elif s == "USDCHF":
+        pred = Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdchf/USDCHF_oco_monthly_predictions.parquet")
     else:
         pred = Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_monthly_predictions.parquet")
     lock = Path(f"configs/research/governance/oco/{s.lower()}_oco_live_lock.json")

@@ -30,9 +30,12 @@
 - `configs/research/experiments/eurusd_tick_opportunity_mining.yaml`
 - `configs/research/experiments/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml`
 - `configs/research/experiments/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml`
+- `configs/research/experiments/usdchf_tick_opportunity_mining.yaml`
+- `configs/research/experiments/usdchf_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml`
 - `configs/research/experiments/eurusd_oco_reduced_core_rolling_2025.yaml`
 - `configs/research/experiments/gbpusd_oco_reduced_core_2025.yaml`
 - `configs/research/experiments/usdjpy_oco_reduced_core_rolling_2025.yaml`
+- `configs/research/experiments/usdchf_oco_reduced_core_rolling_2025.yaml`
 - `configs/research/docs/oco_bible_manifest.yaml`
 - `configs/research/governance/oco_rule_universe_registry.yaml`
 - `configs/research/governance/oco_monitoring_exceptions.yaml`
@@ -76,6 +79,12 @@
 - `docs/analysis/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_report.md`
 - `docs/analysis/usdjpy_oco_reduced_core_rolling_report.md`
 - `docs/analysis/usdjpy_oco_tick_exact_rolling_report.md`
+
+### USDCHF
+- `docs/analysis/usdchf_tick_opportunity_mining_report.md`
+- `docs/analysis/usdchf_tick_opportunity_monthly_wfo_oco_fullcap_report.md`
+- `docs/analysis/usdchf_oco_reduced_core_rolling_report.md`
+- `docs/analysis/usdchf_oco_tick_exact_shortlist_report.md`
 
 ## Generated Stage Snapshots
 - `docs/strategy_bible/generated/stage_01_snapshot.md`

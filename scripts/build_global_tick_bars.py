@@ -15,6 +15,8 @@ from pathlib import Path
 
 import polars as pl
 
+UTC_TS = pl.Datetime("ns", "UTC")
+
 
 def _timestamp_expr(timestamp_mode: str) -> pl.Expr:
     mode = str(timestamp_mode).strip().lower()
@@ -89,8 +91,8 @@ def _select_tick_exprs(schema_names: set[str], price_source: str) -> tuple[pl.Ex
 def _empty_bar_frame(symbol: str) -> pl.DataFrame:
     return pl.DataFrame(
         schema={
-            "timestamp": pl.Datetime(time_zone="UTC"),
-            "close_ts": pl.Datetime(time_zone="UTC"),
+            "timestamp": UTC_TS,
+            "close_ts": UTC_TS,
             "open": pl.Float64,
             "high": pl.Float64,
             "low": pl.Float64,
@@ -224,7 +226,7 @@ def _build_base_tick_bars(
 
     carry = pl.DataFrame(
         schema={
-            "timestamp": pl.Datetime(time_zone="UTC"),
+            "timestamp": UTC_TS,
             "price": pl.Float64,
             "ask": pl.Float64,
             "spread": pl.Float64,
@@ -245,6 +247,7 @@ def _build_base_tick_bars(
             .drop_nulls(["timestamp", "price"])
             .sort("timestamp")
             .collect()
+            .with_columns(pl.col("timestamp").cast(UTC_TS))
         )
         if carry.height:
             part = pl.concat([carry, part], how="vertical")

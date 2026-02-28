@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 05
 
-- generated_at: `2026-02-28 08:46:09 UTC`
+- generated_at: `2026-02-28 14:28:19 UTC`
 - State schedule is selected month-by-month using only prior-month train data.
 - Summary emphasizes full-path gross behavior after reduced-core filtering.
 - R01-R03 track pruning severity, state concentration, and re-selection stability.
@@ -11,6 +11,7 @@
 | EURUSD   |         4898 |           1.59847 |                      1.30417 |            0.994922 |                 6 |              9 |                0.0150469 |                       0.35 |                    0.361111 |
 | GBPUSD   |            0 |         nan       |                    nan       |          nan        |                 0 |              9 |                0         |                       0.35 |                  nan        |
 | USDJPY   |            0 |         nan       |                    nan       |          nan        |                 0 |              9 |                0         |                       0.35 |                  nan        |
+| USDCHF   |         4074 |           1.33073 |                      1.04729 |            0.976276 |                 6 |              9 |                0.0111155 |                       0.35 |                    0.472222 |
 
 #### Interpretation Notes
 - State schedule is selected month-by-month using only prior-month train data.
@@ -29,6 +30,7 @@
 |:---------|---------:|-------------:|-----------------:|-------------:|
 | EURUSD   |        9 |         4898 |         0.994601 |      1.67778 |
 | GBPUSD   |        9 |            0 |       nan        |    nan       |
+| USDCHF   |        9 |         4074 |         0.976843 |      1.26051 |
 | USDJPY   |        9 |            0 |       nan        |    nan       |
 
 #### Plots
@@ -64,6 +66,15 @@
 | USDJPY   | 2025-10      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
 | USDJPY   | 2025-11      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
 | USDJPY   | 2025-12      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
+| USDCHF   | 2025-04      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
+| USDCHF   | 2025-05      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
+| USDCHF   | 2025-06      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
+| USDCHF   | 2025-07      |                 1 |           0        |          1        |    1        |                0 | ok             |
+| USDCHF   | 2025-08      |                 2 |           0.5      |          0.587036 |    0.51515  |                0 | ok             |
+| USDCHF   | 2025-09      |                 2 |           0.666667 |          0.589744 |    0.516108 |                0 | ok             |
+| USDCHF   | 2025-10      |                 2 |           0.666667 |          0.565306 |    0.50853  |                0 | ok             |
+| USDCHF   | 2025-11      |                 2 |           0.666667 |          0.54797  |    0.504602 |                0 | ok             |
+| USDCHF   | 2025-12      |                 2 |           0.666667 |          0.526596 |    0.501415 |                0 | ok             |
 
 #### Leakage/Label Integrity (Reduced-Core Focus)
 | symbol   |   checks_total |   checks_failed | failed_check_ids   |

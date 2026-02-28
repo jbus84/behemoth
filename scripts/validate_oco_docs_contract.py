@@ -362,7 +362,7 @@ SYSREF_STOP_LIMIT_REQUIRED_PATHS = {
     "deployment.md",
 }
 
-SYSREF_REQUIRED_SYMBOLS = {"EURUSD", "GBPUSD", "USDJPY"}
+SYSREF_REQUIRED_SYMBOLS = {"EURUSD", "GBPUSD", "USDJPY", "USDCHF"}
 
 STAGE03_CATBOOST_REQUIRED_TERMS = [
     "catboost",
@@ -522,14 +522,14 @@ def _extract_symbols_from_stage09_snapshot(path: Path) -> set[str]:
     if not path.exists():
         return set()
     txt = path.read_text(encoding="utf-8", errors="ignore")
-    return set(re.findall(r"\|\s*(EURUSD|GBPUSD|USDJPY)\s*\|", txt))
+    return set(re.findall(r"\|\s*(EURUSD|GBPUSD|USDJPY|USDCHF)\s*\|", txt))
 
 
 def _extract_symbols_from_edge_report(path: Path) -> set[str]:
     if not path.exists():
         return set()
     txt = path.read_text(encoding="utf-8", errors="ignore")
-    return set(re.findall(r"\|\s*[0-9]+\s*\|\s*(EURUSD|GBPUSD|USDJPY)\s*\|", txt))
+    return set(re.findall(r"\|\s*[0-9]+\s*\|\s*(EURUSD|GBPUSD|USDJPY|USDCHF)\s*\|", txt))
 
 
 def _analysis_docs_without_generated(docs_root: Path) -> set[str]:
@@ -1225,7 +1225,7 @@ def run(
     if not cmap.empty and {"symbol", "stage_family", "class", "is_canonical", "doc_path"}.issubset(set(cmap.columns)):
         x = cmap[
             (cmap["class"].astype(str) == "stage_integrated")
-            & (cmap["symbol"].astype(str).isin(["EURUSD", "GBPUSD", "USDJPY"]))
+            & (cmap["symbol"].astype(str).isin(["EURUSD", "GBPUSD", "USDJPY", "USDCHF"]))
             & (cmap["stage_family"].astype(str) != "none")
         ].copy()
         if not x.empty:
@@ -1308,7 +1308,7 @@ def run(
         if (not drift.empty and "symbol" in drift.columns)
         else set()
     )
-    expected_syms = {"EURUSD", "GBPUSD", "USDJPY"}
+    expected_syms = set(status_syms) if status_syms else set(SYSREF_REQUIRED_SYMBOLS)
     _add_check(
         checks_rows,
         check_id="C31",

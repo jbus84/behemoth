@@ -196,7 +196,7 @@ Rollback rule:
 Freeze:
 ```bash
 uv run python scripts/freeze_oco_live_governance.py \
-  --symbols EURUSD,GBPUSD,USDJPY \
+  --symbols EURUSD,GBPUSD,USDJPY,USDCHF \
   --out-dir configs/research/governance/oco
 ```
 
@@ -232,7 +232,7 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 <!-- GENERATED:STAGE_09:START -->
 ### Auto Snapshot - Stage 09
 
-- generated_at: `2026-02-28 08:46:09 UTC`
+- generated_at: `2026-02-28 14:28:19 UTC`
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
 - Missing required artifacts: 0.
 
@@ -242,6 +242,7 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 | EURUSD   | True                          | True              | True                         | True                          | True                    |
 | GBPUSD   | False                         | True              | True                         | True                          | False                   |
 | USDJPY   | False                         | True              | True                         | True                          | False                   |
+| USDCHF   | True                          | True              | True                         | True                          | True                    |
 
 #### Interpretation Notes
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
@@ -262,9 +263,10 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 ![stage_09_predeploy_checks](../figures/oco_bible/stage_09_predeploy_checks.png)
 
 #### Predeploy Validator Status
-| symbol   | status   | blocker   |   checks_total |   checks_failed |   leakage_high_critical_issues |   execution_risk_high_critical_issues |   g01_near_fail_count |   g03_lock_drift_flags | as_of      | window_end   | failed_checks   |
-|:---------|:---------|:----------|---------------:|----------------:|-------------------------------:|--------------------------------------:|----------------------:|-----------------------:|:-----------|:-------------|:----------------|
-| EURUSD   | pass     | False     |             25 |               0 |                              0 |                                     0 |                     0 |                      0 | 2026-02-26 | 2026-03-31   |                 |
-| GBPUSD   | pass     | False     |             25 |               0 |                              0 |                                     0 |                     0 |                      0 | 2026-02-26 | 2026-03-31   |                 |
-| USDJPY   | pass     | False     |             25 |               0 |                              0 |                                     0 |                     0 |                      0 | 2026-02-26 | 2026-03-31   |                 |
+| symbol   | status   | blocker   |   checks_total |   checks_failed |   leakage_high_critical_issues |   execution_risk_high_critical_issues |   g01_near_fail_count |   g03_lock_drift_flags | as_of      | window_end   | failed_checks                                                                  |
+|:---------|:---------|:----------|---------------:|----------------:|-------------------------------:|--------------------------------------:|----------------------:|-----------------------:|:-----------|:-------------|:-------------------------------------------------------------------------------|
+| EURUSD   | pass     | False     |             25 |               0 |                              0 |                                     0 |                     0 |                      0 | 2026-02-26 | 2026-03-31   |                                                                                |
+| GBPUSD   | pass     | False     |             25 |               0 |                              0 |                                     0 |                     0 |                      0 | 2026-02-26 | 2026-03-31   |                                                                                |
+| USDJPY   | pass     | False     |             25 |               0 |                              0 |                                     0 |                     0 |                      0 | 2026-02-26 | 2026-03-31   |                                                                                |
+| USDCHF   | fail     | True      |             19 |               3 |                              0 |                                     0 |                     0 |                      0 | 2026-02-28 | 2026-04-02   | data_reliability_rows_present,leakage_rows_present,execution_risk_rows_present |
 <!-- GENERATED:STAGE_09:END -->

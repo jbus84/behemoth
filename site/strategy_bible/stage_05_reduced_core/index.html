@@ -3915,7 +3915,7 @@
 </ul>
 <h2 id="reproduction-commands">Reproduction Commands<a class="headerlink" href="#reproduction-commands" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/select_oco_reduced_core_rolling.py<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--symbols<span class="w"> </span>EURUSD,GBPUSD,USDJPY
+<span class="w">  </span>--symbols<span class="w"> </span>EURUSD,GBPUSD,USDJPY,USDCHF
 uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/validate_oco_rule_universe_registry.py
 </code></pre></div>
 <h2 id="traceability">Traceability<a class="headerlink" href="#traceability" title="Permanent link">&para;</a></h2>
@@ -3930,7 +3930,7 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <!-- GENERATED:STAGE_05:START -->
 <h3 id="auto-snapshot-stage-05">Auto Snapshot - Stage 05<a class="headerlink" href="#auto-snapshot-stage-05" title="Permanent link">&para;</a></h3>
 <ul>
-<li>generated_at: <code>2026-02-28 08:46:09 UTC</code></li>
+<li>generated_at: <code>2026-02-28 14:28:19 UTC</code></li>
 <li>State schedule is selected month-by-month using only prior-month train data.</li>
 <li>Summary emphasizes full-path gross behavior after reduced-core filtering.</li>
 <li>R01-R03 track pruning severity, state concentration, and re-selection stability.</li>
@@ -3987,6 +3987,18 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0.35</td>
 <td style="text-align: right;">nan</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">4074</td>
+<td style="text-align: right;">1.33073</td>
+<td style="text-align: right;">1.04729</td>
+<td style="text-align: right;">0.976276</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">0.0111155</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">0.472222</td>
 </tr>
 </tbody>
 </table>
@@ -4064,6 +4076,13 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">nan</td>
 <td style="text-align: right;">nan</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">4074</td>
+<td style="text-align: right;">0.976843</td>
+<td style="text-align: right;">1.26051</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4360,6 +4379,96 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <td style="text-align: right;">nan</td>
 <td style="text-align: right;">nan</td>
 <td style="text-align: left;">no_gate_states</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">warmup_skip</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">warmup_skip</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">warmup_skip</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.587036</td>
+<td style="text-align: right;">0.51515</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.666667</td>
+<td style="text-align: right;">0.589744</td>
+<td style="text-align: right;">0.516108</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.666667</td>
+<td style="text-align: right;">0.565306</td>
+<td style="text-align: right;">0.50853</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.666667</td>
+<td style="text-align: right;">0.54797</td>
+<td style="text-align: right;">0.504602</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.666667</td>
+<td style="text-align: right;">0.526596</td>
+<td style="text-align: right;">0.501415</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
 </tr>
 </tbody>
 </table>

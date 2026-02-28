@@ -4024,8 +4024,8 @@
 
 
 <h1 id="strategy-master-manual-tick-oco-stop-limit-system">Strategy Master Manual - Tick OCO Stop-Limit System<a class="headerlink" href="#strategy-master-manual-tick-oco-stop-limit-system" title="Permanent link">&para;</a></h1>
-<p><strong>Version</strong>: 10.2<br />
-<strong>Date</strong>: February 27, 2026<br />
+<p><strong>Version</strong>: 10.3<br />
+<strong>Date</strong>: February 28, 2026<br />
 <strong>Status</strong>: Active</p>
 <p>This is the canonical manual for the active OCO research/governance system.
 If any section conflicts with generated stage artifacts, the generated stage artifacts and contract checks win.</p>
@@ -4040,7 +4040,7 @@ If any section conflicts with generated stage artifacts, the generated stage art
 </ul>
 <h3 id="12-active-universe">1.2 Active Universe<a class="headerlink" href="#12-active-universe" title="Permanent link">&para;</a></h3>
 <ul>
-<li><code>EURUSD</code>, <code>GBPUSD</code>, <code>USDJPY</code></li>
+<li><code>EURUSD</code>, <code>GBPUSD</code>, <code>USDJPY</code>, <code>USDCHF</code></li>
 </ul>
 <h3 id="13-what-this-system-is-not">1.3 What This System Is Not<a class="headerlink" href="#13-what-this-system-is-not" title="Permanent link">&para;</a></h3>
 <ul>
@@ -4053,7 +4053,7 @@ If any section conflicts with generated stage artifacts, the generated stage art
 <ul>
 <li>The system starts with broad OCO hypothesis mining, then keeps only states that survive rolling selection and downstream governance gates.</li>
 <li>Edge concentration is not dominated by a tiny handful of states: Stage-2 <code>M01_top3_contrib_share</code> is low (about <code>0.04-0.05</code> across active symbols), which reduces single-pattern fragility.</li>
-<li>Positive expectancy density is high at the mining layer: Stage-2 <code>M03_positive_density=1</code> for <code>EURUSD</code>, <code>GBPUSD</code>, and <code>USDJPY</code>.</li>
+<li>Positive expectancy density is high at the mining layer: Stage-2 <code>M03_positive_density=1</code> for <code>EURUSD</code>, <code>GBPUSD</code>, <code>USDJPY</code>, and <code>USDCHF</code>.</li>
 <li>Threshold slices show monotonic quality under stricter selection (for example, aggregate mean gross rises as quantile moves from <code>0.8</code> to <code>0.95</code>), consistent with a rankable signal rather than noise sorting.</li>
 <li>Evidence: <code>docs/analysis/oco_edge_clarity_report.md</code>, <code>docs/strategy_bible/generated/pipeline_snapshot.md</code>.</li>
 </ul>
@@ -4214,8 +4214,8 @@ If any section conflicts with generated stage artifacts, the generated stage art
 <h3 id="65-latest-reduced-core-expected-gross-per-trade">6.5 Latest Reduced-Core Expected Gross (Per Trade)<a class="headerlink" href="#65-latest-reduced-core-expected-gross-per-trade" title="Permanent link">&para;</a></h3>
 <p>Latest reduced-core <code>status=ok</code> row per symbol:
 - execution policy context: rolling threshold policy (<code>q=0.9</code>) with reduced-core filtering
-- latest completed train window: <code>2025-11</code> to <code>2026-01</code> (November 1, 2025 to January 31, 2026)
-- latest evaluated month: <code>2026-02</code> (partial month through February 13, 2026 in current tick dataset)</p>
+- latest completed train window in current governed artifacts: <code>2025-09</code> to <code>2025-11</code> (September 1, 2025 to November 30, 2025)
+- latest evaluated month in current governed artifacts: <code>2025-12</code> (December 2025)</p>
 <p>Expected gross pips/trade proxy below is taken from reduced-core monthly outputs (latest <code>ok</code> month by symbol).</p>
 <table>
 <thead>
@@ -4231,27 +4231,35 @@ If any section conflicts with generated stage artifacts, the generated stage art
 <tbody>
 <tr>
 <td>EURUSD</td>
-<td>2026-02</td>
-<td>2025-11,2025-12,2026-01</td>
-<td style="text-align: right;">1.203817</td>
-<td style="text-align: right;">786</td>
+<td>2025-12</td>
+<td>2025-09,2025-10,2025-11</td>
+<td style="text-align: right;">1.061547</td>
+<td style="text-align: right;">892</td>
 <td><code>data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv</code></td>
 </tr>
 <tr>
 <td>GBPUSD</td>
-<td>2026-02</td>
-<td>2025-11,2025-12,2026-01</td>
-<td style="text-align: right;">2.892252</td>
-<td style="text-align: right;">1,381</td>
+<td>2025-12</td>
+<td>2025-09,2025-10,2025-11</td>
+<td style="text-align: right;">n/a (<code>status != ok</code>)</td>
+<td style="text-align: right;">0</td>
 <td><code>data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_monthly.csv</code></td>
 </tr>
 <tr>
 <td>USDJPY</td>
-<td>2026-02</td>
-<td>2025-11,2025-12,2026-01</td>
-<td style="text-align: right;">4.776597</td>
-<td style="text-align: right;">1,346</td>
+<td>2025-12</td>
+<td>2025-09,2025-10,2025-11</td>
+<td style="text-align: right;">n/a (<code>status != ok</code>)</td>
+<td style="text-align: right;">0</td>
 <td><code>data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_monthly.csv</code></td>
+</tr>
+<tr>
+<td>USDCHF</td>
+<td>2025-12</td>
+<td>2025-09,2025-10,2025-11</td>
+<td style="text-align: right;">0.723562</td>
+<td style="text-align: right;">365</td>
+<td><code>data/analysis/tick_opportunity_mining/reduced_core_rolling_usdchf/USDCHF_oco_reduced_monthly.csv</code></td>
 </tr>
 </tbody>
 </table>

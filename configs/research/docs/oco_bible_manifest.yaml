@@ -54,6 +54,16 @@ symbols:
     reduced_core_report_md: docs/analysis/usdjpy_oco_reduced_core_rolling_report.md
     tick_exact_report_md: docs/analysis/usdjpy_oco_tick_exact_rolling_report.md
 
+  - symbol: USDCHF
+    reduced_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling_usdchf/USDCHF_oco_reduced_summary.csv
+    tick_exact_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling_usdchf/USDCHF_oco_tick_exact_summary.csv
+    robustness_summary_csv: data/analysis/tick_opportunity_mining/full_robustness/USDCHF_oco_robustness_summary.csv
+    stop_limit_summary_csv: data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv
+    mining_report_md: docs/analysis/usdchf_tick_opportunity_mining_report.md
+    wfo_report_md: docs/analysis/usdchf_tick_opportunity_monthly_wfo_oco_fullcap_report.md
+    reduced_core_report_md: docs/analysis/usdchf_oco_reduced_core_rolling_report.md
+    tick_exact_report_md: docs/analysis/usdchf_oco_tick_exact_shortlist_report.md
+
 required_artifacts:
   - docs/analysis/index.md
   - docs/analysis/catalog_manifest.csv
@@ -106,9 +116,12 @@ config_links:
   - configs/research/experiments/eurusd_tick_opportunity_mining.yaml
   - configs/research/experiments/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml
   - configs/research/experiments/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml
+  - configs/research/experiments/usdchf_tick_opportunity_mining.yaml
+  - configs/research/experiments/usdchf_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml
   - configs/research/experiments/eurusd_oco_reduced_core_rolling_2025.yaml
   - configs/research/experiments/gbpusd_oco_reduced_core_2025.yaml
   - configs/research/experiments/usdjpy_oco_reduced_core_rolling_2025.yaml
+  - configs/research/experiments/usdchf_oco_reduced_core_rolling_2025.yaml
   - configs/research/docs/oco_bible_manifest.yaml
   - configs/research/governance/oco_rule_universe_registry.yaml
   - configs/research/governance/oco_monitoring_exceptions.yaml

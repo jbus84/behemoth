@@ -6,7 +6,7 @@ This documentation set is for the active **tick-based OCO stop-limit strategy** 
 - Strategy type: directional OCO candidate selection with stop-limit entry realism and fixed-horizon post-touch outcome labeling.
 - Core model engine: CatBoost-based monthly WFO probability ranking (`pred_prob`) for execution-threshold selection.
 - Model lifecycle policy: one-month validity and monthly retrain (predictions expire at new test-month boundary).
-- Primary symbols: `EURUSD`, `GBPUSD`, `USDJPY`.
+- Primary symbols: `EURUSD`, `GBPUSD`, `USDJPY`, `USDCHF`.
 - Core objective: find high-count, positive gross microstructure opportunities and govern them with strict causal validation.
 - Validation posture: stage-gated, artifact-driven, and contract-checked.
 
@@ -22,10 +22,11 @@ This documentation set is for the active **tick-based OCO stop-limit strategy** 
 - Current generated snapshot: `docs/strategy_bible/generated/pipeline_snapshot.md`
 
 ## Latest Expected Gross (Training Window)
-Using the latest available **reduced-core `status=ok`** month per symbol (current run includes `2026-01` and partial `2026-02`), expected gross pips/trade proxies are:
-- EURUSD (month `2026-02`): `1.203817`
-- GBPUSD (month `2026-02`): `2.892252`
-- USDJPY (month `2026-02`): `4.776597`
+Using the latest available reduced-core month in current governed artifacts (`2025-12`):
+- EURUSD: `1.061547` pips/trade (`status=ok`)
+- GBPUSD: `n/a` (`status != ok`, rows `0`)
+- USDJPY: `n/a` (`status != ok`, rows `0`)
+- USDCHF: `0.723562` pips/trade (`status=ok`)
 
 Full table and sources are in `STRATEGY_MASTER_MANUAL.md` Section `6.5`.
 

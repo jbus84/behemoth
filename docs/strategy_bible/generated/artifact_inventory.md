@@ -1,6 +1,6 @@
 # Artifact Inventory
 
-- generated_at: `2026-02-28 08:46:09 UTC`
+- generated_at: `2026-02-28 14:28:19 UTC`
 
 | group              | symbol   | artifact               | path                                                                                                | exists   | required   |
 |:-------------------|:---------|:-----------------------|:----------------------------------------------------------------------------------------------------|:---------|:-----------|
@@ -28,6 +28,14 @@
 | symbol             | USDJPY   | tick_exact_report_md   | docs/analysis/usdjpy_oco_tick_exact_rolling_report.md                                               | True     | True       |
 | symbol             | USDJPY   | tick_exact_summary_csv | data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_tick_exact_summary.csv | True     | True       |
 | symbol             | USDJPY   | wfo_report_md          | docs/analysis/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_report.md                             | True     | True       |
+| symbol             | USDCHF   | mining_report_md       | docs/analysis/usdchf_tick_opportunity_mining_report.md                                              | True     | True       |
+| symbol             | USDCHF   | reduced_core_report_md | docs/analysis/usdchf_oco_reduced_core_rolling_report.md                                             | True     | True       |
+| symbol             | USDCHF   | reduced_summary_csv    | data/analysis/tick_opportunity_mining/reduced_core_rolling_usdchf/USDCHF_oco_reduced_summary.csv    | True     | True       |
+| symbol             | USDCHF   | robustness_summary_csv | data/analysis/tick_opportunity_mining/full_robustness/USDCHF_oco_robustness_summary.csv             | True     | True       |
+| symbol             | USDCHF   | stop_limit_summary_csv | data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv                       | True     | True       |
+| symbol             | USDCHF   | tick_exact_report_md   | docs/analysis/usdchf_oco_tick_exact_shortlist_report.md                                             | True     | True       |
+| symbol             | USDCHF   | tick_exact_summary_csv | data/analysis/tick_opportunity_mining/reduced_core_rolling_usdchf/USDCHF_oco_tick_exact_summary.csv | True     | True       |
+| symbol             | USDCHF   | wfo_report_md          | docs/analysis/usdchf_tick_opportunity_monthly_wfo_oco_fullcap_report.md                             | True     | True       |
 | audit              | ALL      | checks_csv             | data/analysis/tick_opportunity_mining/oco_logical_audit_checks.csv                                  | True     | True       |
 | audit              | ALL      | issues_csv             | data/analysis/tick_opportunity_mining/oco_logical_audit_issues.csv                                  | True     | True       |
 | audit              | ALL      | report_md              | docs/analysis/oco_logical_audit_report.md                                                           | True     | True       |

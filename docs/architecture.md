@@ -36,8 +36,8 @@ When execution integration is enabled, treat it as a thin adapter over the Stage
 ## Rolling Historical Evidence
 
 <!-- GENERATED:SYSREF:ARCHITECTURE:START -->
-- generated_at_utc: `2026-02-28T08:46:14Z`
-- symbols_covered: `EURUSD,GBPUSD,USDJPY`
+- generated_at_utc: `2026-02-28T14:28:10Z`
+- symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF`
 - stop-limit_reference: `stage_04_execution_realism`
 - artifact_sources:
   - `data/analysis/tick_opportunity_mining/oco_execution_drift_monthly.csv`
@@ -54,6 +54,7 @@ When execution integration is enabled, treat it as a thin adapter over the Stage
 | EURUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 | GBPUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 | USDJPY   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| USDCHF   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 
 #### Rolling Trend (Last 3 Months)
 | symbol   |   months_used | fill_rate_mean_3m   | overshoot_p95_mean_3m   |
@@ -61,6 +62,7 @@ When execution integration is enabled, treat it as a thin adapter over the Stage
 | EURUSD   |             0 |                     |                         |
 | GBPUSD   |             0 |                     |                         |
 | USDJPY   |             0 |                     |                         |
+| USDCHF   |             0 |                     |                         |
 
 #### Governance Snapshot
 |   checks_failed |   high_critical_failed | max_age_hours_c6   |   run_delta_metric_rows_changed |   run_delta_gate_rows_changed |

@@ -10,7 +10,7 @@ from typing import Any
 
 import pandas as pd
 
-SYMBOLS = ["EURUSD", "GBPUSD", "USDJPY"]
+SYMBOLS = ["EURUSD", "GBPUSD", "USDJPY", "USDCHF"]
 
 PAGES: list[dict[str, Any]] = [
     {
@@ -213,6 +213,7 @@ def _reduced_core_latest_rows(data_root: Path) -> pd.DataFrame:
         "reduced_core_rolling/*_oco_reduced_monthly.csv",
         "reduced_core_rolling_gbpusd/*_oco_reduced_monthly.csv",
         "reduced_core_rolling_usdjpy/*_oco_reduced_monthly.csv",
+        "reduced_core_rolling_usdchf/*_oco_reduced_monthly.csv",
     ]
     rows: list[pd.DataFrame] = []
     for pat in patterns:

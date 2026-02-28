@@ -4049,7 +4049,7 @@
 </ul>
 <h2 id="reproduction-commands">Reproduction Commands<a class="headerlink" href="#reproduction-commands" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/analyze_oco_stop_limit_tickfill.py<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--symbols<span class="w"> </span>EURUSD,GBPUSD,USDJPY
+<span class="w">  </span>--symbols<span class="w"> </span>EURUSD,GBPUSD,USDJPY,USDCHF
 uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/build_oco_execution_drift_report.py
 
 uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/build_oco_strategy_bible.py<span class="w"> </span><span class="se">\</span>
@@ -4066,7 +4066,7 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <!-- GENERATED:STAGE_04:START -->
 <h3 id="auto-snapshot-stage-04">Auto Snapshot - Stage 04<a class="headerlink" href="#auto-snapshot-stage-04" title="Permanent link">&para;</a></h3>
 <ul>
-<li>generated_at: <code>2026-02-28 08:46:09 UTC</code></li>
+<li>generated_at: <code>2026-02-28 14:28:19 UTC</code></li>
 <li>Execution realism is applied with tick first-cross overshoot.</li>
 <li>Session-aware rolling caps are built causally (20D lookback, q=0.90) before E11 dispersion is measured.</li>
 <li>Cap curve highlights fill-rate versus signal-level expectancy.</li>
@@ -4092,14 +4092,14 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <tbody>
 <tr>
 <td style="text-align: left;">EURUSD</td>
-<td style="text-align: right;">4427</td>
-<td style="text-align: right;">0.999548</td>
-<td style="text-align: right;">0.808516</td>
-<td style="text-align: right;">0.134215</td>
+<td style="text-align: right;">324963</td>
+<td style="text-align: right;">0.999985</td>
+<td style="text-align: right;">1.04109</td>
+<td style="text-align: right;">0.136206</td>
 <td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.223359</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0.12845</td>
+<td style="text-align: right;">0.199265</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: right;">0.116807</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4122,6 +4122,17 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <td style="text-align: right;">0.0882319</td>
 <td style="text-align: right;">1.2</td>
 <td style="text-align: right;">0.182388</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">364968</td>
+<td style="text-align: right;">0.999951</td>
+<td style="text-align: right;">0.901119</td>
+<td style="text-align: right;">0.181818</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">1.0242</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: right;">0.109211</td>
 </tr>
 </tbody>
 </table>
@@ -4175,10 +4186,10 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <tr>
 <td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">E11_session_overshoot_dispersion</td>
-<td style="text-align: left;">red</td>
-<td style="text-align: left;">high</td>
-<td style="text-align: left;">A3_HALT_AND_REMEDIATE</td>
-<td style="text-align: left;">escalate and remediate</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
 <td style="text-align: left;">execution</td>
 </tr>
 <tr>
@@ -4242,38 +4253,38 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.938154</td>
-<td style="text-align: right;">0.824463</td>
+<td style="text-align: right;">0.942824</td>
+<td style="text-align: right;">0.798632</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">0.8</td>
-<td style="text-align: right;">0.972196</td>
-<td style="text-align: right;">0.873018</td>
+<td style="text-align: right;">0.975843</td>
+<td style="text-align: right;">0.849812</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">1</td>
-<td style="text-align: right;">0.984288</td>
-<td style="text-align: right;">0.896848</td>
+<td style="text-align: right;">0.986275</td>
+<td style="text-align: right;">0.865469</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">1.2</td>
-<td style="text-align: right;">0.987808</td>
-<td style="text-align: right;">0.904805</td>
+<td style="text-align: right;">0.990054</td>
+<td style="text-align: right;">0.877019</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">1.5</td>
-<td style="text-align: right;">0.992878</td>
-<td style="text-align: right;">0.919832</td>
+<td style="text-align: right;">0.993919</td>
+<td style="text-align: right;">0.889102</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">2</td>
-<td style="text-align: right;">0.996497</td>
-<td style="text-align: right;">0.924965</td>
+<td style="text-align: right;">0.997058</td>
+<td style="text-align: right;">0.888653</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4310,6 +4321,42 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <td style="text-align: right;">2</td>
 <td style="text-align: right;">0.996612</td>
 <td style="text-align: right;">0.677863</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.946351</td>
+<td style="text-align: right;">0.678917</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.96817</td>
+<td style="text-align: right;">0.706963</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.974277</td>
+<td style="text-align: right;">0.707902</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: right;">0.977236</td>
+<td style="text-align: right;">0.71137</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">0.982412</td>
+<td style="text-align: right;">0.725124</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.986462</td>
+<td style="text-align: right;">0.728158</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4437,6 +4484,18 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <td style="text-align: left;"></td>
 </tr>
 <tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">amber</td>
+<td style="text-align: left;">A2_SESSION_GUARD</td>
+<td style="text-align: left;">session overshoot uneven; add session guard and re-check E11</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">E11_session_overshoot_dispersion</td>
+</tr>
+<tr>
 <td style="text-align: left;">USDJPY</td>
 <td style="text-align: right;">5</td>
 <td style="text-align: right;">5</td>
@@ -4470,7 +4529,7 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: left;">E11_session_overshoot_dispersion</td>
-<td style="text-align: right;">0.223359</td>
+<td style="text-align: right;">0.199265</td>
 <td style="text-align: left;">green</td>
 <td style="text-align: left;">A0_MONITOR</td>
 <td style="text-align: left;">&lt;= 1.0000</td>
@@ -4479,7 +4538,7 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: left;">E12_cap_plateau_width_pips</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: right;">1.2</td>
 <td style="text-align: left;">green</td>
 <td style="text-align: left;">A0_MONITOR</td>
 <td style="text-align: left;">&gt;= 0.5000</td>
@@ -4488,7 +4547,7 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: left;">E13_nonfill_opportunity_cost_pips</td>
-<td style="text-align: right;">0.12845</td>
+<td style="text-align: right;">0.116807</td>
 <td style="text-align: left;">green</td>
 <td style="text-align: left;">A0_MONITOR</td>
 <td style="text-align: left;">&lt;= 0.2000</td>
@@ -4497,7 +4556,7 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: left;">erosion_spread_fee_plus_slip</td>
-<td style="text-align: right;">-0.116449</td>
+<td style="text-align: right;">0.151985</td>
 <td style="text-align: left;">green</td>
 <td style="text-align: left;">A0_MONITOR</td>
 <td style="text-align: left;">&lt;= 0.3000</td>
@@ -4602,6 +4661,51 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <td style="text-align: left;">&lt;= 0.7000</td>
 <td style="text-align: left;">&lt;= 1.0000</td>
 </tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">E11_session_overshoot_dispersion</td>
+<td style="text-align: right;">1.0242</td>
+<td style="text-align: left;">amber</td>
+<td style="text-align: left;">A2_SESSION_GUARD</td>
+<td style="text-align: left;">&lt;= 1.0000</td>
+<td style="text-align: left;">&lt;= 1.3000</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">E12_cap_plateau_width_pips</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">&gt;= 0.5000</td>
+<td style="text-align: left;">&gt;= 0.3000</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">E13_nonfill_opportunity_cost_pips</td>
+<td style="text-align: right;">0.109211</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">&lt;= 0.2000</td>
+<td style="text-align: left;">&lt;= 0.3500</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">erosion_spread_fee_plus_slip</td>
+<td style="text-align: right;">0.172961</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">&lt;= 0.3000</td>
+<td style="text-align: left;">&lt;= 0.5000</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">tick_overshoot_p95_pips</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">&lt;= 0.7000</td>
+<td style="text-align: left;">&lt;= 1.0000</td>
+</tr>
 </tbody>
 </table>
 <h4 id="session-rolling-cap-policy">Session Rolling Cap Policy<a class="headerlink" href="#session-rolling-cap-policy" title="Permanent link">&para;</a></h4>
@@ -4626,20 +4730,20 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <td style="text-align: right;">20</td>
 <td style="text-align: right;">0.9</td>
 <td style="text-align: right;">0.2</td>
-<td style="text-align: right;">22526</td>
-<td style="text-align: right;">22326</td>
-<td style="text-align: right;">90</td>
-<td style="text-align: right;">110</td>
+<td style="text-align: right;">114171</td>
+<td style="text-align: right;">113971</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">198</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: left;">LATE</td>
 <td style="text-align: right;">20</td>
 <td style="text-align: right;">0.9</td>
-<td style="text-align: right;">0.3</td>
-<td style="text-align: right;">2034</td>
-<td style="text-align: right;">955</td>
-<td style="text-align: right;">1079</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">11207</td>
+<td style="text-align: right;">10377</td>
+<td style="text-align: right;">830</td>
 <td style="text-align: right;">0</td>
 </tr>
 <tr>
@@ -4648,10 +4752,10 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <td style="text-align: right;">20</td>
 <td style="text-align: right;">0.9</td>
 <td style="text-align: right;">0.2</td>
-<td style="text-align: right;">22976</td>
-<td style="text-align: right;">22776</td>
-<td style="text-align: right;">135</td>
-<td style="text-align: right;">65</td>
+<td style="text-align: right;">108028</td>
+<td style="text-align: right;">107828</td>
+<td style="text-align: right;">200</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -4659,10 +4763,10 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <td style="text-align: right;">20</td>
 <td style="text-align: right;">0.9</td>
 <td style="text-align: right;">0.2</td>
-<td style="text-align: right;">12363</td>
-<td style="text-align: right;">11935</td>
-<td style="text-align: right;">403</td>
-<td style="text-align: right;">25</td>
+<td style="text-align: right;">91288</td>
+<td style="text-align: right;">91088</td>
+<td style="text-align: right;">200</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4751,6 +4855,50 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <td style="text-align: right;">119</td>
 <td style="text-align: right;">1205</td>
 <td style="text-align: right;">71</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">ASIA</td>
+<td style="text-align: right;">20</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: right;">165298</td>
+<td style="text-align: right;">165098</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">199</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">LATE</td>
+<td style="text-align: right;">20</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.3</td>
+<td style="text-align: right;">4630</td>
+<td style="text-align: right;">3906</td>
+<td style="text-align: right;">724</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">LONDON</td>
+<td style="text-align: right;">20</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: right;">152685</td>
+<td style="text-align: right;">152485</td>
+<td style="text-align: right;">200</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">NY</td>
+<td style="text-align: right;">20</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">2.6</td>
+<td style="text-align: right;">42069</td>
+<td style="text-align: right;">41869</td>
+<td style="text-align: right;">200</td>
+<td style="text-align: right;">0</td>
 </tr>
 </tbody>
 </table>

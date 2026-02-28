@@ -3710,7 +3710,7 @@
 </ul>
 <h2 id="reproduction-commands">Reproduction Commands<a class="headerlink" href="#reproduction-commands" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/analyze_oco_monthly_wfo_robustness.py<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--symbols<span class="w"> </span>EURUSD,GBPUSD,USDJPY
+<span class="w">  </span>--symbols<span class="w"> </span>EURUSD,GBPUSD,USDJPY,USDCHF
 </code></pre></div>
 <h2 id="traceability">Traceability<a class="headerlink" href="#traceability" title="Permanent link">&para;</a></h2>
 <ul>
@@ -3722,7 +3722,7 @@
 <!-- GENERATED:STAGE_08:START -->
 <h3 id="auto-snapshot-stage-08">Auto Snapshot - Stage 08<a class="headerlink" href="#auto-snapshot-stage-08" title="Permanent link">&para;</a></h3>
 <ul>
-<li>generated_at: <code>2026-02-28 08:46:09 UTC</code></li>
+<li>generated_at: <code>2026-02-28 14:28:19 UTC</code></li>
 <li>Robustness summary uses bootstrap lower bounds from the configured smoke/full run artifacts.</li>
 <li>Interpretation: LB95 &gt; 0 indicates conservative positive expectancy under sampled uncertainty.</li>
 <li>Overfit panel adds month-stratified null uplift and dependence-aware LB95 comparisons.</li>
@@ -3769,6 +3769,15 @@
 <td style="text-align: right;">1.33687</td>
 <td style="text-align: right;">9</td>
 </tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">366516</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">0.897313</td>
+<td style="text-align: right;">0.885075</td>
+<td style="text-align: right;">9</td>
+</tr>
 </tbody>
 </table>
 <h4 id="interpretation-notes">Interpretation Notes<a class="headerlink" href="#interpretation-notes" title="Permanent link">&para;</a></h4>
@@ -3812,10 +3821,10 @@
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: left;">T03_post_worst_month_recovery</td>
-<td style="text-align: left;">amber</td>
-<td style="text-align: left;">medium</td>
-<td style="text-align: left;">A1_REVIEW</td>
-<td style="text-align: left;">review and monitor</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
 <td style="text-align: left;">risk</td>
 </tr>
 <tr>
@@ -3839,10 +3848,10 @@
 <tr>
 <td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">T03_post_worst_month_recovery</td>
-<td style="text-align: left;">green</td>
-<td style="text-align: left;">info</td>
-<td style="text-align: left;">A0_MONITOR</td>
-<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A9_DATA_GAP</td>
+<td style="text-align: left;">metric unavailable</td>
 <td style="text-align: left;">risk</td>
 </tr>
 <tr>
@@ -3866,10 +3875,10 @@
 <tr>
 <td style="text-align: left;">USDJPY</td>
 <td style="text-align: left;">T03_post_worst_month_recovery</td>
-<td style="text-align: left;">green</td>
-<td style="text-align: left;">info</td>
-<td style="text-align: left;">A0_MONITOR</td>
-<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A9_DATA_GAP</td>
+<td style="text-align: left;">metric unavailable</td>
 <td style="text-align: left;">risk</td>
 </tr>
 </tbody>
@@ -3930,6 +3939,19 @@
 <td style="text-align: right;">1.13592</td>
 <td style="text-align: right;">1.03604</td>
 <td style="text-align: right;">0.834248</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">1.64743e-05</td>
+<td style="text-align: right;">9.88457e-05</td>
+<td style="text-align: right;">3.29486e-05</td>
+<td style="text-align: right;">-1</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">1.03157</td>
+<td style="text-align: right;">0.784079</td>
+<td style="text-align: right;">0.68417</td>
+<td style="text-align: right;">0.585102</td>
+<td style="text-align: right;">0.384669</td>
 </tr>
 </tbody>
 </table>

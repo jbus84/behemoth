@@ -3262,7 +3262,7 @@
 <li>Strategy type: directional OCO candidate selection with stop-limit entry realism and fixed-horizon post-touch outcome labeling.</li>
 <li>Core model engine: CatBoost-based monthly WFO probability ranking (<code>pred_prob</code>) for execution-threshold selection.</li>
 <li>Model lifecycle policy: one-month validity and monthly retrain (predictions expire at new test-month boundary).</li>
-<li>Primary symbols: <code>EURUSD</code>, <code>GBPUSD</code>, <code>USDJPY</code>.</li>
+<li>Primary symbols: <code>EURUSD</code>, <code>GBPUSD</code>, <code>USDJPY</code>, <code>USDCHF</code>.</li>
 <li>Core objective: find high-count, positive gross microstructure opportunities and govern them with strict causal validation.</li>
 <li>Validation posture: stage-gated, artifact-driven, and contract-checked.</li>
 </ul>
@@ -3280,10 +3280,11 @@
 <li>Current generated snapshot: <code>docs/strategy_bible/generated/pipeline_snapshot.md</code></li>
 </ul>
 <h2 id="latest-expected-gross-training-window">Latest Expected Gross (Training Window)<a class="headerlink" href="#latest-expected-gross-training-window" title="Permanent link">&para;</a></h2>
-<p>Using the latest available <strong>reduced-core <code>status=ok</code></strong> month per symbol (current run includes <code>2026-01</code> and partial <code>2026-02</code>), expected gross pips/trade proxies are:
-- EURUSD (month <code>2026-02</code>): <code>1.203817</code>
-- GBPUSD (month <code>2026-02</code>): <code>2.892252</code>
-- USDJPY (month <code>2026-02</code>): <code>4.776597</code></p>
+<p>Using the latest available reduced-core month in current governed artifacts (<code>2025-12</code>):
+- EURUSD: <code>1.061547</code> pips/trade (<code>status=ok</code>)
+- GBPUSD: <code>n/a</code> (<code>status != ok</code>, rows <code>0</code>)
+- USDJPY: <code>n/a</code> (<code>status != ok</code>, rows <code>0</code>)
+- USDCHF: <code>0.723562</code> pips/trade (<code>status=ok</code>)</p>
 <p>Full table and sources are in <code>STRATEGY_MASTER_MANUAL.md</code> Section <code>6.5</code>.</p>
 <h2 id="standard-refresh-cycle">Standard Refresh Cycle<a class="headerlink" href="#standard-refresh-cycle" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>make<span class="w"> </span>docs-contract-ci

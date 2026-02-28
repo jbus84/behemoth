@@ -63,7 +63,7 @@ Verify label/path correctness at tick level and assess whether family-level edge
 ## Reproduction Commands
 ```bash
 uv run python scripts/verify_oco_tick_exact_shortlist.py \
-  --symbols EURUSD,GBPUSD,USDJPY
+  --symbols EURUSD,GBPUSD,USDJPY,USDCHF
 ```
 
 ## Traceability
@@ -75,7 +75,7 @@ uv run python scripts/verify_oco_tick_exact_shortlist.py \
 <!-- GENERATED:STAGE_06:START -->
 ### Auto Snapshot - Stage 06
 
-- generated_at: `2026-02-28 08:46:09 UTC`
+- generated_at: `2026-02-28 14:28:19 UTC`
 - Verifier recomputes OCO outcomes independently from stored labels.
 - All summary rates should remain near 1.0 for contract consistency.
 
@@ -85,6 +85,7 @@ uv run python scripts/verify_oco_tick_exact_shortlist.py \
 | EURUSD   |            5903 |            5903 |                  1 |                      1 | True           |
 | GBPUSD   |            7767 |            7767 |                  1 |                      1 | True           |
 | USDJPY   |           11582 |           11582 |                  1 |                      1 | True           |
+| USDCHF   |           36965 |           36965 |                  1 |                      1 | True           |
 
 #### Interpretation Notes
 - Verifier recomputes OCO outcomes independently from stored labels.
@@ -101,6 +102,7 @@ uv run python scripts/verify_oco_tick_exact_shortlist.py \
 |:---------|---------:|------------:|-------------:|----------:|-----------:|
 | EURUSD   |        9 |           1 |            1 |         1 |          1 |
 | GBPUSD   |        9 |           1 |            1 |         1 |          1 |
+| USDCHF   |        9 |           1 |            1 |         1 |          1 |
 | USDJPY   |        9 |           1 |            1 |         1 |          1 |
 
 #### Plots
@@ -109,6 +111,6 @@ uv run python scripts/verify_oco_tick_exact_shortlist.py \
 #### Cross-Symbol Portability (X01-X03)
 | family                |   symbols_covered |   mean_across_symbols |   std_across_symbols |   spread_max_min |   x01_all_symbols_positive |
 |:----------------------|------------------:|----------------------:|---------------------:|-----------------:|---------------------------:|
-| oco_first_touch_clean |                 3 |              2.33238  |            0.638742  |        1.13561   |                        nan |
-| oco_first_touch       |                 3 |              0.214237 |            0.0474996 |        0.0851724 |                        nan |
+| oco_first_touch_clean |                 4 |              2.03253  |            0.794745  |         1.93609  |                        nan |
+| oco_first_touch       |                 4 |              0.186995 |            0.0668777 |         0.139407 |                        nan |
 <!-- GENERATED:STAGE_06:END -->

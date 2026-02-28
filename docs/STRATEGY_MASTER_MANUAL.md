@@ -1,7 +1,7 @@
 # Strategy Master Manual - Tick OCO Stop-Limit System
 
-**Version**: 10.2  
-**Date**: February 27, 2026  
+**Version**: 10.3  
+**Date**: February 28, 2026  
 **Status**: Active
 
 This is the canonical manual for the active OCO research/governance system.
@@ -17,7 +17,7 @@ If any section conflicts with generated stage artifacts, the generated stage art
 - Enforce stop-limit execution realism (tick overshoot caps, no-touch handling) before promotion.
 
 ### 1.2 Active Universe
-- `EURUSD`, `GBPUSD`, `USDJPY`
+- `EURUSD`, `GBPUSD`, `USDJPY`, `USDCHF`
 
 ### 1.3 What This System Is Not
 - Not the legacy mixed MOM/REV portfolio framework.
@@ -29,7 +29,7 @@ If any section conflicts with generated stage artifacts, the generated stage art
 ### 2.1 Edge Mechanism (Why it works)
 - The system starts with broad OCO hypothesis mining, then keeps only states that survive rolling selection and downstream governance gates.
 - Edge concentration is not dominated by a tiny handful of states: Stage-2 `M01_top3_contrib_share` is low (about `0.04-0.05` across active symbols), which reduces single-pattern fragility.
-- Positive expectancy density is high at the mining layer: Stage-2 `M03_positive_density=1` for `EURUSD`, `GBPUSD`, and `USDJPY`.
+- Positive expectancy density is high at the mining layer: Stage-2 `M03_positive_density=1` for `EURUSD`, `GBPUSD`, `USDJPY`, and `USDCHF`.
 - Threshold slices show monotonic quality under stricter selection (for example, aggregate mean gross rises as quantile moves from `0.8` to `0.95`), consistent with a rankable signal rather than noise sorting.
 - Evidence: `docs/analysis/oco_edge_clarity_report.md`, `docs/strategy_bible/generated/pipeline_snapshot.md`.
 
@@ -161,16 +161,17 @@ Generated status is published in `docs/strategy_bible/generated/pipeline_snapsho
 ### 6.5 Latest Reduced-Core Expected Gross (Per Trade)
 Latest reduced-core `status=ok` row per symbol:
 - execution policy context: rolling threshold policy (`q=0.9`) with reduced-core filtering
-- latest completed train window: `2025-11` to `2026-01` (November 1, 2025 to January 31, 2026)
-- latest evaluated month: `2026-02` (partial month through February 13, 2026 in current tick dataset)
+- latest completed train window in current governed artifacts: `2025-09` to `2025-11` (September 1, 2025 to November 30, 2025)
+- latest evaluated month in current governed artifacts: `2025-12` (December 2025)
 
 Expected gross pips/trade proxy below is taken from reduced-core monthly outputs (latest `ok` month by symbol).
 
 | Pair | Test month | Training months | Expected gross pips/trade | Selected rows | Source |
 | --- | --- | --- | ---:| ---:| --- |
-| EURUSD | 2026-02 | 2025-11,2025-12,2026-01 | 1.203817 | 786 | `data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv` |
-| GBPUSD | 2026-02 | 2025-11,2025-12,2026-01 | 2.892252 | 1,381 | `data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_monthly.csv` |
-| USDJPY | 2026-02 | 2025-11,2025-12,2026-01 | 4.776597 | 1,346 | `data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_monthly.csv` |
+| EURUSD | 2025-12 | 2025-09,2025-10,2025-11 | 1.061547 | 892 | `data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv` |
+| GBPUSD | 2025-12 | 2025-09,2025-10,2025-11 | n/a (`status != ok`) | 0 | `data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_monthly.csv` |
+| USDJPY | 2025-12 | 2025-09,2025-10,2025-11 | n/a (`status != ok`) | 0 | `data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_monthly.csv` |
+| USDCHF | 2025-12 | 2025-09,2025-10,2025-11 | 0.723562 | 365 | `data/analysis/tick_opportunity_mining/reduced_core_rolling_usdchf/USDCHF_oco_reduced_monthly.csv` |
 
 Interpretation note:
 - these are cycle-level expectancy estimates under the current selection policy, not guaranteed live outcomes;
