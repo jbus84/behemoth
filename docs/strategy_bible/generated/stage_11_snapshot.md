@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 11
 
-- generated_at: `2026-02-28 20:57:22 UTC`
+- generated_at: `2026-02-28 21:17:53 UTC`
 - Execution Monte Carlo uses month x session stress scenarios derived from Stage 04 tickfill artifacts.
 - EM01-EM05 summarize mild/moderate survival, month negativity risk, fill-rate decay, and data integrity.
 

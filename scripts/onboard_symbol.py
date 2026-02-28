@@ -384,9 +384,19 @@ def _patch_mkdocs_nav(symbol: str, *, dry_run: bool) -> None:
 def stage_4_registration(symbol: str, *, dry_run: bool) -> None:
     """Patch all hardcoded symbol lists and config files."""
     print("\n=== Stage 4: Registration ===")
+    _uv_run(
+        "freeze_oco_live_governance.py",
+        "--symbols", symbol,
+        dry_run=dry_run,
+        label="Stage 4a: Freeze live governance lock",
+    )
+
     _patch_python_symbols_tuple(CATALOG_SCRIPT, symbol, dry_run=dry_run)
     _patch_argparse_default_symbols(DRIFT_SCRIPT, symbol, dry_run=dry_run)
     _patch_argparse_default_symbols(THRESHOLD_SCRIPT, symbol, dry_run=dry_run)
+    _patch_argparse_default_symbols(
+        ROOT / "scripts" / "audit_oco_leakage_label_integrity.py", symbol, dry_run=dry_run
+    )
     _patch_bible_manifest(symbol, dry_run=dry_run)
     _patch_mkdocs_nav(symbol, dry_run=dry_run)
 

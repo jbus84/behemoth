@@ -38,7 +38,7 @@ class SymbolConfig:
 
 
 def _default_configs() -> dict[str, SymbolConfig]:
-    return {
+    defaults = {
         "EURUSD": SymbolConfig(
             symbol="EURUSD",
             pred_path=Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet"),
@@ -70,6 +70,23 @@ def _default_configs() -> dict[str, SymbolConfig]:
             lock_path=Path("configs/research/governance/oco/usdjpy_oco_live_lock.json"),
         ),
     }
+    
+    lock_dir = Path("configs/research/governance/oco")
+    if lock_dir.exists():
+        for p in lock_dir.glob("*_oco_live_lock.json"):
+            s = p.name.split("_")[0].upper()
+            if s not in defaults:
+                defaults[s] = SymbolConfig(
+                    symbol=s,
+                    pred_path=Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s}_oco_monthly_predictions.parquet"),
+                    metrics_path=Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s}_oco_monthly_metrics.csv"),
+                    thresholds_path=Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s}_oco_monthly_thresholds.csv"),
+                    events_path=Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s}_oco_events_eval2025.parquet"),
+                    schedule_path=Path(f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_reduced_state_schedule.csv"),
+                    monthly_path=Path(f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_reduced_monthly.csv"),
+                    lock_path=p,
+                )
+    return defaults
 
 
 FEATURE_BASE = [
@@ -329,7 +346,10 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     # L02: warmup months exact.
     monthly_sorted = monthly.sort_values("test_month").reset_index(drop=True)
-    warm_mask = monthly_sorted["status"].astype(str).str.lower() == "warmup_skip"
+    if "status" in monthly_sorted.columns:
+        warm_mask = monthly_sorted["status"].astype(str).str.lower() == "warmup_skip"
+    else:
+        warm_mask = pd.Series(False, index=monthly_sorted.index)
     warm_count = int(warm_mask.sum())
     expected = int(cfg.min_train_months)
     first_nonwarm = int(np.argmax((~warm_mask).to_numpy(dtype=bool))) if len(monthly_sorted) else 0
@@ -760,7 +780,7 @@ def run_audit(
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Leakage + label integrity audit for OCO pipeline")
-    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY")
+    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCAD,AUDUSD")
     p.add_argument("--out-checks-csv", default="data/analysis/tick_opportunity_mining/oco_leakage_integrity_checks.csv")
     p.add_argument("--out-issues-csv", default="data/analysis/tick_opportunity_mining/oco_leakage_integrity_issues.csv")
     p.add_argument("--report-out", default="docs/analysis/oco_leakage_integrity_report.md")

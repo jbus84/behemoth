@@ -1,0 +1,47 @@
+{
+  "artifacts": {
+    "predictions_path": "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/AUDUSD_oco_monthly_predictions.parquet",
+    "predictions_sha256": "86fcd8db5ec489a330161dd86474c97db871b57a164cea7f3b2999f4d41ef18d",
+    "reduced_config_path": "configs/research/experiments/audusd_oco_reduced_core_2025.yaml",
+    "reduced_config_sha256": "1627233172e725ce1cc2d80d678ecca001f66c75b4fdc708716cb9a79b491984",
+    "reduced_states_csv_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/AUDUSD_oco_reduced_state_schedule.csv",
+    "reduced_states_csv_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "tick_exact_overall_pass": null,
+    "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/AUDUSD_oco_reduced_summary.csv",
+    "tick_exact_summary_sha256": "483ee420a321cf5c953e01d7e36854c7232d422d30a7860aaf029cf09a04f622",
+    "wfo_config_path": "configs/research/experiments/audusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
+    "wfo_config_sha256": "0dbf25e73649bf874c06064c26b25d02d1369f8bb0cecf23952087b6e24ff882"
+  },
+  "frozen_at_utc": "2026-02-28T21:14:57.616737+00:00",
+  "git": {
+    "branch": "main",
+    "commit": "86e9b4febc8fe68e9b8506d1cd7e1562abbf882f",
+    "dirty": true
+  },
+  "locked_runtime": {
+    "barrier_keep": "2,3",
+    "execution_quantile": 0.9,
+    "family_keep": "oco_first_touch_clean",
+    "horizon_keep": "5,6",
+    "locked_quantile": 0.9,
+    "oco_hold_mode": "from_touch",
+    "oco_include_no_touch": true,
+    "rolling_threshold_days": 20,
+    "rolling_threshold_min_history": 1000,
+    "selection_mode": "auto",
+    "threshold_mode": "rolling_days"
+  },
+  "retrain_policy": {
+    "anchor_day_utc": 1,
+    "cadence_days": 30,
+    "mode": "calendar_window",
+    "window_days": 3
+  },
+  "schema_version": 1,
+  "state_universe": {
+    "count": 0,
+    "rows": [],
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "symbol": "AUDUSD"
+}

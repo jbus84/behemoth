@@ -108,21 +108,42 @@ def _default_paths(symbol: str) -> dict[str, Path]:
             Path(f"configs/research/experiments/{sl}_oco_reduced_core_2025.yaml"),
             Path(f"configs/research/experiments/{sl}_oco_reduced_core_rolling_2025.yaml"),
         ),
-        "reduced_states": Path(f"data/analysis/tick_opportunity_mining/reduced_core_{sl}/{s}_oco_reduced_states.csv"),
-        "tick_exact_summary": _pick_first_existing(
-            Path(f"data/analysis/tick_opportunity_mining/reduced_core_{sl}/{s}_oco_tick_exact_summary.csv"),
-            Path(f"data/analysis/tick_opportunity_mining/reduced_core_rolling_{sl}/{s}_oco_tick_exact_summary.csv"),
+        "reduced_states": _pick_first_existing(
+            Path(f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_reduced_state_schedule.csv"),
+            Path(f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_reduced_states.csv"),
+            Path(f"data/analysis/tick_opportunity_mining/reduced_core_{sl}/{s}_oco_reduced_states.csv"),
         ),
-        "predictions": Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_{sl}/{s}_oco_monthly_predictions.parquet"),
+        "tick_exact_summary": _pick_first_existing(
+            Path(f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_reduced_summary.csv"),
+            Path(f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_reduced_summary.csv"),
+            Path(f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_tick_exact_summary.csv"),
+            Path(f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_tick_exact_summary.csv"),
+            Path(f"data/analysis/tick_opportunity_mining/reduced_core_rolling_{sl}/{s}_oco_tick_exact_summary.csv"),
+            Path(f"data/analysis/tick_opportunity_mining/reduced_core_{sl}/{s}_oco_tick_exact_summary.csv"),
+        ),
+        "predictions": _pick_first_existing(
+            Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s}_oco_monthly_predictions.parquet"),
+            Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_{sl}/{s}_oco_monthly_predictions.parquet"),
+        ),
     }
 
 
 def _state_universe(states_csv: Path) -> tuple[pd.DataFrame, str]:
-    d = pd.read_csv(states_csv).copy()
+    try:
+        d = pd.read_csv(states_csv).copy()
+    except Exception:
+        # File is empty or invalid (e.g. 0 qualifying states)
+        raw = "[]"
+        sh = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+        return pd.DataFrame(), sh
+
     cols = ["symbol", "bar_ticks", "horizon", "state_id", "family", "barrier_pips", "regime_desc"]
     miss = [c for c in cols if c not in d.columns]
     if miss:
-        raise ValueError(f"missing columns in states CSV: {miss}")
+        raw = "[]"
+        sh = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+        return pd.DataFrame(), sh
+
     x = d[cols].drop_duplicates().copy()
     x["symbol"] = x["symbol"].astype(str).str.upper()
     x["bar_ticks"] = pd.to_numeric(x["bar_ticks"], errors="coerce").astype("Int64")

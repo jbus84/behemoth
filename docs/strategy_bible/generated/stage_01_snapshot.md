@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 01
 
-- generated_at: `2026-02-28 20:57:22 UTC`
+- generated_at: `2026-02-28 21:17:53 UTC`
 - Contract check uses eval-year event tables consumed by WFO.
 - Null percentages should remain near 0 for required modeling fields.
 - Timezone contract rows include parse rate, monotonicity, DST and offset anomaly checks.
