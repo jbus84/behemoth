@@ -46,8 +46,23 @@ def _write_stage_docs(root: Path) -> None:
     }
     for i, n in names.items():
         txt = _stage_doc_text()
+        if i == 1:
+            txt = (
+                txt
+                + "\n\n## Tick Build Contract\n"
+                + "raw ticks are transformed via build_global_tick_bars.py and build_tick_velocity_dataset.py into tick_velocity datasets.\n"
+            )
+        if i == 3:
+            txt = (
+                txt
+                + "\n\n## CatBoost Model Specification (Critical)\n"
+                + "catboost one-month validity monthly retrain selected_exec threshold_exec auc brier w13 w14 w15 operating bands.\n"
+                + "train-only fallback threshold_source no_history and never uses unseen same-month test pools.\n"
+            )
         if i == 4:
             txt = txt + _stage04_policy_sections_text()
+        if i == 5:
+            txt = txt + "\n\n## Dependency on Stage 3 (CatBoost Outputs)\nstage 3 selected_exec selection_mode\n"
         if i == 7:
             txt = txt + "\n\n## Operator MRM Checks\n\n## Escalation Matrix\n"
         if i == 9:
@@ -184,7 +199,16 @@ def _write_analysis_catalog_artifacts(docs_root: Path) -> None:
     for name in files:
         (analysis / name).write_text(f"# {name}\n", encoding="utf-8")
     (docs_root / "signal_lifecycle_reference.md").write_text("# Signal Lifecycle\n", encoding="utf-8")
-    (docs_root / "operator_runbook.md").write_text("# Operator Runbook\n", encoding="utf-8")
+    (docs_root / "operator_runbook.md").write_text("# Operator Runbook\none-month validity monthly retrain\n", encoding="utf-8")
+    (docs_root.parent / "index.md").write_text("# Index\none-month validity monthly retrain\n", encoding="utf-8")
+    (docs_root.parent / "STRATEGY_MASTER_MANUAL.md").write_text(
+        "# Manual\none-month validity monthly retrain\n",
+        encoding="utf-8",
+    )
+    scripts_dir = docs_root.parent.parent / "scripts"
+    scripts_dir.mkdir(parents=True, exist_ok=True)
+    (scripts_dir / "build_global_tick_bars.py").write_text("# fixture script\n", encoding="utf-8")
+    (scripts_dir / "build_tick_velocity_dataset.py").write_text("# fixture script\n", encoding="utf-8")
     (analysis / "index.md").write_text("# Analysis Catalog\n", encoding="utf-8")
     (analysis / "catalog_gaps_report.md").write_text("# gaps\n", encoding="utf-8")
     manifest_rows = [{"doc_path": f"analysis/{name}", "title": name, "group": "core"} for name in files]

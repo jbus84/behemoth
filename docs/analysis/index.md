@@ -1,6 +1,6 @@
 # Analysis Catalog
 
-- generated_at_utc: `2026-02-27T18:39:05Z`
+- generated_at_utc: `2026-02-28T08:46:07Z`
 - manifest_csv: `analysis/catalog_manifest.csv`
 - gaps_report: `analysis/catalog_gaps_report.md`
 
@@ -30,6 +30,7 @@
 - [Eurusd Oco Tick Exact Rolling Report](eurusd_oco_tick_exact_rolling_report.md)
 - [Eurusd Tick Opportunity Mining Report](eurusd_tick_opportunity_mining_report.md)
 - [Eurusd Tick Opportunity Monthly Wfo Oco Fullcap Report](eurusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md)
+- [Oco Stop Limit Tickfill Eurusd Fixed Report](oco_stop_limit_tickfill_eurusd_fixed_report.md)
 ### GBPUSD
 - [Gbpusd Oco Monthly Wfo Robustness Fullcap Report](gbpusd_oco_monthly_wfo_robustness_fullcap_report.md)
 - [Gbpusd Oco Reduced Core Rolling Report](gbpusd_oco_reduced_core_rolling_report.md)
@@ -49,7 +50,7 @@
 |          1 |              1 |
 |          2 |              3 |
 |          3 |              7 |
-|          4 |              3 |
+|          4 |              4 |
 |          5 |              4 |
 |          6 |              3 |
 |          7 |              1 |

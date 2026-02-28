@@ -27,9 +27,18 @@ Provide deterministic daily, weekly, and monthly operating actions for OCO pipel
 ## Monthly Checks
 | trigger | threshold / signal | severity | owner | action | evidence artifact | SLA |
 | --- | --- | --- | --- | --- | --- | --- |
+| Stage-3 model staleness | latest prediction month `<` current test month | high | research lead | block deployment; rerun Stage 3 monthly WFO and downstream Stage 5+ | `data/analysis/tick_opportunity_mining/wfo_*/<SYMBOL>_oco_monthly_predictions.parquet` | immediate |
 | Reduced-core capacity drop | `rows` below configured floor | high | research lead | hold release and rerun reduced-core selection | `docs/analysis/*_oco_reduced_core_rolling_report.md` | immediate |
 | Registry drift | any `RU*` high/critical failure | high | research lead | enforce universe lock refresh before promotion | `docs/analysis/oco_rule_universe_registry_report.md` | immediate |
 | Robustness degradation | Stage 8 LB95 turns non-positive | high | risk + research | freeze promotion and re-evaluate assumptions | `docs/analysis/oco_edge_clarity_report.md` | immediate |
+
+## Monthly Retrain Checklist (Stage 3 -> Stage 5)
+1. Confirm latest Stage-3 predictions include the current test month for each active symbol.
+2. Confirm CatBoost **one-month validity** policy and **monthly retrain** policy are satisfied; prior month predictions are not reused for current month decisions.
+3. Confirm Stage-3 threshold provenance fields are present and causal (`threshold_source` in `rolling_history|train_fallback|train_quantile|no_history`) and that selected rows are never `no_history`.
+4. Rebuild stop-limit detail artifacts from latest predictions.
+5. Re-run reduced-core rolling selection using latest Stage-3 outputs.
+6. Verify docs-contract and stage-integrity checks pass before any release decision.
 
 ## Freshness and Staleness Rules
 - Default freshness limit for governed evidence artifacts: `168h` (7 days).

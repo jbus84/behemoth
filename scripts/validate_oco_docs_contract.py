@@ -364,6 +364,51 @@ SYSREF_STOP_LIMIT_REQUIRED_PATHS = {
 
 SYSREF_REQUIRED_SYMBOLS = {"EURUSD", "GBPUSD", "USDJPY"}
 
+STAGE03_CATBOOST_REQUIRED_TERMS = [
+    "catboost",
+    "one-month validity",
+    "monthly retrain",
+    "selected_exec",
+    "threshold_exec",
+    "auc",
+    "brier",
+    "w13",
+    "w14",
+    "w15",
+    "operating bands",
+]
+
+MODEL_LIFECYCLE_REQUIRED_DOCS = [
+    "index.md",
+    "STRATEGY_MASTER_MANUAL.md",
+    "strategy_bible/operator_runbook.md",
+]
+
+STAGE05_STAGE3_LINK_REQUIRED_TERMS = [
+    "stage 3",
+    "selected_exec",
+    "selection_mode",
+]
+
+STAGE03_THRESHOLD_FALLBACK_REQUIRED_TERMS = [
+    "train-only fallback",
+    "threshold_source",
+    "no_history",
+    "never uses unseen same-month test pools",
+]
+
+TICK_BUILDER_REQUIRED_SCRIPTS = [
+    "scripts/build_global_tick_bars.py",
+    "scripts/build_tick_velocity_dataset.py",
+]
+
+STAGE01_TICK_BUILDER_REQUIRED_TERMS = [
+    "build_global_tick_bars.py",
+    "build_tick_velocity_dataset.py",
+    "raw ticks",
+    "tick_velocity",
+]
+
 
 def _table(df: pd.DataFrame) -> str:
     if df.empty:
@@ -1837,6 +1882,111 @@ def run(
         comparator="==",
         source_path=docs_root.parent,
         details=",".join(symbol_coverage_gaps),
+    )
+
+    # C47: Stage 03 must include explicit CatBoost lifecycle/spec semantics.
+    stage03_path = docs_root / "stage_03_monthly_wfo.md"
+    stage03_txt = stage03_path.read_text(encoding="utf-8", errors="ignore").lower() if stage03_path.exists() else ""
+    stage03_missing_terms = [t for t in STAGE03_CATBOOST_REQUIRED_TERMS if t.lower() not in stage03_txt]
+    _add_check(
+        checks_rows,
+        check_id="C47",
+        check_name="stage03_catboost_spec_completeness",
+        passed=len(stage03_missing_terms) == 0,
+        severity_if_fail="high",
+        metric_name="stage03_catboost_missing_terms",
+        metric_value=int(len(stage03_missing_terms)),
+        threshold=0,
+        comparator="==",
+        source_path=stage03_path,
+        details=",".join(stage03_missing_terms),
+    )
+
+    # C48: Core docs must state one-month validity and monthly retrain policy.
+    lifecycle_missing: list[str] = []
+    lifecycle_terms = ["one-month validity", "monthly retrain"]
+    for rel in MODEL_LIFECYCLE_REQUIRED_DOCS:
+        p = docs_root.parent / rel
+        txt = p.read_text(encoding="utf-8", errors="ignore").lower() if p.exists() else ""
+        missing = [t for t in lifecycle_terms if t not in txt]
+        if missing:
+            lifecycle_missing.append(f"{rel}:{'|'.join(missing)}")
+    _add_check(
+        checks_rows,
+        check_id="C48",
+        check_name="model_lifecycle_policy_docs_present",
+        passed=len(lifecycle_missing) == 0,
+        severity_if_fail="high",
+        metric_name="model_lifecycle_policy_missing_docs",
+        metric_value=int(len(lifecycle_missing)),
+        threshold=0,
+        comparator="==",
+        source_path=docs_root.parent,
+        details=",".join(lifecycle_missing),
+    )
+
+    # C49: Stage 05 must explicitly document dependency on Stage 3 outputs.
+    stage05_path = docs_root / "stage_05_reduced_core.md"
+    stage05_txt = stage05_path.read_text(encoding="utf-8", errors="ignore").lower() if stage05_path.exists() else ""
+    stage05_missing_terms = [t for t in STAGE05_STAGE3_LINK_REQUIRED_TERMS if t.lower() not in stage05_txt]
+    _add_check(
+        checks_rows,
+        check_id="C49",
+        check_name="stage05_stage3_dependency_documented",
+        passed=len(stage05_missing_terms) == 0,
+        severity_if_fail="high",
+        metric_name="stage05_stage3_dependency_missing_terms",
+        metric_value=int(len(stage05_missing_terms)),
+        threshold=0,
+        comparator="==",
+        source_path=stage05_path,
+        details=",".join(stage05_missing_terms),
+    )
+
+    # C50: Stage 03 must document strict causal fallback provenance for thresholding.
+    stage03_fallback_missing_terms = [
+        t for t in STAGE03_THRESHOLD_FALLBACK_REQUIRED_TERMS if t.lower() not in stage03_txt
+    ]
+    _add_check(
+        checks_rows,
+        check_id="C50",
+        check_name="stage03_threshold_fallback_provenance_documented",
+        passed=len(stage03_fallback_missing_terms) == 0,
+        severity_if_fail="high",
+        metric_name="stage03_threshold_fallback_missing_terms",
+        metric_value=int(len(stage03_fallback_missing_terms)),
+        threshold=0,
+        comparator="==",
+        source_path=stage03_path,
+        details=",".join(stage03_fallback_missing_terms),
+    )
+
+    # C51: Tick builder scripts must exist and Stage 01 must document them.
+    missing_tick_builder_scripts: list[str] = []
+    repo_root = docs_root.parent.parent
+    for rel in TICK_BUILDER_REQUIRED_SCRIPTS:
+        p = repo_root / rel
+        if not p.exists():
+            missing_tick_builder_scripts.append(rel)
+    stage01_path = docs_root / "stage_01_data_foundation.md"
+    stage01_txt = stage01_path.read_text(encoding="utf-8", errors="ignore").lower() if stage01_path.exists() else ""
+    stage01_missing_terms = [t for t in STAGE01_TICK_BUILDER_REQUIRED_TERMS if t.lower() not in stage01_txt]
+    c51_pass = (len(missing_tick_builder_scripts) == 0) and (len(stage01_missing_terms) == 0)
+    _add_check(
+        checks_rows,
+        check_id="C51",
+        check_name="tick_builder_scripts_present_and_stage01_documented",
+        passed=c51_pass,
+        severity_if_fail="high",
+        metric_name="tick_builder_contract_gaps",
+        metric_value=int(len(missing_tick_builder_scripts) + len(stage01_missing_terms)),
+        threshold=0,
+        comparator="==",
+        source_path=stage01_path,
+        details="scripts_missing="
+        + "|".join(missing_tick_builder_scripts)
+        + ";stage01_terms_missing="
+        + "|".join(stage01_missing_terms),
     )
 
     checks = pd.DataFrame(checks_rows)

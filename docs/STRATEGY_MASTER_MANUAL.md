@@ -76,6 +76,9 @@ This is not a universal profitability claim for all retail brokers or all market
 - Raw tick source configured at runtime (not hard-coded in docs).
 - Tick-velocity bar artifacts in `data/analysis/tick_velocity/`.
 - Stage outputs in `data/analysis/tick_opportunity_mining/`.
+- Builders used to produce these artifacts:
+- `scripts/build_global_tick_bars.py` (raw ticks -> `data/global_tickbars/*_Ntick.parquet`)
+- `scripts/build_tick_velocity_dataset.py` (`data/global_tickbars` -> `data/analysis/tick_velocity/*_tick_velocity.parquet`)
 
 ### 3.2 Event Semantics
 - Entry trigger: first barrier touch in forward window.
@@ -136,21 +139,38 @@ Generated status is published in `docs/strategy_bible/generated/pipeline_snapsho
 - Monthly positive-rate and LB95 metrics are tracked per symbol.
 - Threshold sensitivity metrics (`W13`, `W14`, `W15`) monitor fragility/drift.
 
-### 6.4 Latest Reduced-Core Expected Gross (Per Trade)
-Latest completed WFO cycle:
-- training window: September 1, 2025 to November 30, 2025
-- training cutoff (`train_end`): December 1, 2025
-- next evaluated month (`test_month`): December 2025
-- execution policy context: `q=0.9` rolling threshold
-- trading set used live: reduced-core filtered rows only
+### 6.4 CatBoost Selection Model (Stage 3)
+- Model type: `CatBoostClassifier` with `Logloss` objective and `AUC` eval metric.
+- Target: `target_gross_pos` (binary sign of gross pip outcome).
+- Core features: cost/range/return z-score/velocity/spread/tick-rate/hour/path features plus structure fields (`bar_ticks`, `horizon`, `barrier_pips`).
+- Train/test rule: strict rolling month order (`rolling_train_months` train -> next month test).
+- Model validity policy: **one-month validity** (predictions are valid only for the scored test month).
+- Retrain cadence policy: **monthly retrain** at each new test month boundary.
+- Staleness rule: if latest Stage-3 prediction month is older than current test month, deployment decisions are blocked.
+- Candidate filtering is train-window only:
+- `train_rows >= min_candidate_rows_in_train_window`
+- `train_mean_gross > 0`
+- Selection output is probability-threshold based:
+- monthly quantile sweep and execution quantile (`q=0.9` default)
+- threshold modes: `rolling_days` (causal day-by-day) or `train_quantile`
+- Stage interaction: Stage 5 reduced-core filtering consumes Stage 3 `selected_exec`/`pred_prob` outputs and applies additional state-level gates.
+- Key leakage control:
+- no test-month row can influence that month’s fit or threshold at decision time.
+- Full technical specification is maintained in `docs/strategy_bible/stage_03_monthly_wfo.md`.
 
-Expected gross pips/trade proxy below is taken from reduced-core monthly outputs.
+### 6.5 Latest Reduced-Core Expected Gross (Per Trade)
+Latest reduced-core `status=ok` row per symbol:
+- execution policy context: rolling threshold policy (`q=0.9`) with reduced-core filtering
+- latest completed train window: `2025-11` to `2026-01` (November 1, 2025 to January 31, 2026)
+- latest evaluated month: `2026-02` (partial month through February 13, 2026 in current tick dataset)
 
-| Pair | Expected gross pips/trade | Selected rows | Source |
-| --- | ---:| ---:| --- |
-| EURUSD | 1.061547 | 892 | `data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv` |
-| GBPUSD | 1.715543 | 1,023 | `data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_monthly.csv` |
-| USDJPY | 2.817082 | 843 | `data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_monthly.csv` |
+Expected gross pips/trade proxy below is taken from reduced-core monthly outputs (latest `ok` month by symbol).
+
+| Pair | Test month | Training months | Expected gross pips/trade | Selected rows | Source |
+| --- | --- | --- | ---:| ---:| --- |
+| EURUSD | 2026-02 | 2025-11,2025-12,2026-01 | 1.203817 | 786 | `data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv` |
+| GBPUSD | 2026-02 | 2025-11,2025-12,2026-01 | 2.892252 | 1,381 | `data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_monthly.csv` |
+| USDJPY | 2026-02 | 2025-11,2025-12,2026-01 | 4.776597 | 1,346 | `data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_monthly.csv` |
 
 Interpretation note:
 - these are cycle-level expectancy estimates under the current selection policy, not guaranteed live outcomes;

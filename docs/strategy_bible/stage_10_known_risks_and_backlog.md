@@ -163,7 +163,7 @@ If any trigger occurs, required action is immediate:
 <!-- GENERATED:STAGE_10:START -->
 ### Auto Snapshot - Stage 10
 
-- generated_at: `2026-02-27 18:50:29 UTC`
+- generated_at: `2026-02-28 08:46:09 UTC`
 - Risk backlog is derived from current logical-audit failures.
 - When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.
 

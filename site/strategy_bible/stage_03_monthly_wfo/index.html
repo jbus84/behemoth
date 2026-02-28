@@ -1,0 +1,4894 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Production documentation for the Behemoth trading system">
+      
+      
+        <meta name="author" content="Behemoth">
+      
+      
+      
+        <link rel="prev" href="../generated/stage_03_snapshot/">
+      
+      
+        <link rel="next" href="../generated/stage_04_snapshot/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Stage 03 Monthly WFO Spec - Behemoth Strategy</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#stage-3-monthly-walk-forward-modeling" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Behemoth Strategy" class="md-header__button md-logo" aria-label="Behemoth Strategy" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Behemoth Strategy
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Stage 03 Monthly WFO Spec
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="teal"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com-jbus84/behemoth" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Github
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Behemoth Strategy" class="md-nav__button md-logo" aria-label="Behemoth Strategy" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Behemoth Strategy
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com-jbus84/behemoth" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Github
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../STRATEGY_MASTER_MANUAL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OCO Strategy Manual
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Analysis
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Analysis
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/catalog_gaps_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Catalog Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/oco_stop_limit_tickfill_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stop-Limit Tickfill Fullcap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/oco_live_governance_lock/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Live Governance Lock
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/remediation_metric_decomposition/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Remediation Metric Decomposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/risk_checklist/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Risk Checklist
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_7" id="__nav_3_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EURUSD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    EURUSD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/eurusd_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/eurusd_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reduced Core Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/eurusd_oco_tick_exact_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tick-Exact Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/eurusd_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GBPUSD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    GBPUSD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/gbpusd_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/gbpusd_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reduced Core Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/gbpusd_oco_tick_exact_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tick-Exact Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/gbpusd_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    USDJPY
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    USDJPY
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/usdjpy_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/usdjpy_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reduced Core Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/usdjpy_oco_tick_exact_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tick-Exact Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/usdjpy_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OCO Strategy Bible
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    OCO Strategy Bible
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generated/pipeline_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generated/stage_01_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 01 Data Foundation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stage_01_data_foundation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 01 Data Foundation Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generated/stage_02_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 02 Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stage_02_opportunity_mining/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 02 Opportunity Mining Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generated/stage_03_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 03 Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 03 Monthly WFO Spec
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 03 Monthly WFO Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#objective" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Objective
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#process" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Process
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#catboost-model-specification-critical" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CatBoost Model Specification (Critical)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CatBoost Model Specification (Critical)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#model-purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model Purpose
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-validity-and-retrain-cadence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model Validity and Retrain Cadence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#training-label" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Training Label
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#feature-vector-current" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature Vector (Current)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#catboost-hyperparameters-current" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CatBoost Hyperparameters (Current)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#monthly-wfo-training-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Monthly WFO Training Loop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#thresholding-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Thresholding Logic
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#supported-evaluation-windowing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported Evaluation Windowing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stage-3-output-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage-3 Output Metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prediction-output-schema-per-row" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prediction Output Schema (Per Row)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metric-definitions-exact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metric Definitions (Exact)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#operating-bands-policy-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Operating Bands (Policy Reference)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explicit-leakage-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Explicit Leakage Controls
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#known-model-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known Model Limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#interaction-with-reduced-core-selection-stage-5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interaction with Reduced-Core Selection (Stage 5)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exact-calculations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exact Calculations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#causality-leakage-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Causality / Leakage Controls
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#failure-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure Modes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interpretation-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interpretation Guide
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validation-gates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Gates
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#canonical-analysis-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Canonical Analysis Reports
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#operator-decision-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Operator Decision Tree
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How To Run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-interpret-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How To Interpret Outputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-to-do-if-it-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What To Do If It Fails
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reproduction-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reproduction Commands
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#traceability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Traceability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generated-run-snapshot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generated Run Snapshot
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Generated Run Snapshot">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#auto-snapshot-stage-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto Snapshot - Stage 03
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Auto Snapshot - Stage 03">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#interpretation-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interpretation Notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#action-trigger-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Action Trigger Summary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#details" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Details
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plots
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#threshold-robustness-around-execution-quantile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Threshold Robustness Around Execution Quantile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overfitting-diagnostics-exec-quantile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overfitting Diagnostics (Exec Quantile)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#leakagelabel-integrity-wfo-focus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Leakage/Label Integrity (WFO Focus)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generated/stage_04_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 04 Stop-Limit Realism
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stage_04_execution_realism/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 04 Stop-Limit Realism Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generated/stage_05_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 05 Reduced Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stage_05_reduced_core/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 05 Reduced Core Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generated/stage_06_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 06 Tick-Exact Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stage_06_tick_exact_and_portability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 06 Tick-Exact + Portability Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generated/stage_07_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 07 Logical Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stage_07_logical_and_statistical_audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 07 Logical + Statistical Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generated/stage_08_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 08 Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stage_08_robustness_and_stress/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 08 Robustness + Stress Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generated/stage_09_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 09 Governance Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stage_09_live_governance_and_deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 09 Governance Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generated/stage_10_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 10 Risks Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stage_10_known_risks_and_backlog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 10 Risks Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generated/stage_11_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 11 Execution MC Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stage_11_execution_monte_carlo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 11 Execution MC Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../signal_lifecycle_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Signal Lifecycle Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operator_runbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operator Runbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metric_dictionary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metric Dictionary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../assumptions_and_threats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assumptions + Threats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../governance_mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance Mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/data_reliability_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Reliability Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/oco_stage_integrity_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage Integrity Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/oco_rule_universe_registry_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rule Universe Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/run_delta_dashboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run Delta Dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/operator_action_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operator Action Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/taxonomy_rules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Taxonomy Rules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operator_playbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operator Playbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/oco_leakage_integrity_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Leakage + Label Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/oco_execution_risk_prelive_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Risk Preflight
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/oco_execution_drift_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Drift Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/oco_alert_remediation_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alert Remediation Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/oco_governance_explainability_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance Explainability Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/oco_threshold_sensitivity_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Threshold Sensitivity Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/oco_execution_monte_carlo_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Monte Carlo Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/oco_execution_monte_carlo_validation_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Monte Carlo Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/oco_logical_audit_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logical Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/oco_edge_clarity_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Edge Clarity Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/oco_docs_contract_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docs Contract Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repository Notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Repository Notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DATA_SOURCES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../REPO_STRUCTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repo Structure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../walkthrough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Walkthrough
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../openapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenAPI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../risk_controls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Risk Controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monitoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data_pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../config_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../code_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Code Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../makefile/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Makefile
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../db_schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DB Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../db_schema_diagram/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DB Diagram
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#objective" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Objective
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#process" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Process
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#catboost-model-specification-critical" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CatBoost Model Specification (Critical)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CatBoost Model Specification (Critical)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#model-purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model Purpose
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-validity-and-retrain-cadence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model Validity and Retrain Cadence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#training-label" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Training Label
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#feature-vector-current" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature Vector (Current)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#catboost-hyperparameters-current" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CatBoost Hyperparameters (Current)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#monthly-wfo-training-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Monthly WFO Training Loop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#thresholding-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Thresholding Logic
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#supported-evaluation-windowing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported Evaluation Windowing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stage-3-output-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage-3 Output Metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prediction-output-schema-per-row" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prediction Output Schema (Per Row)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metric-definitions-exact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metric Definitions (Exact)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#operating-bands-policy-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Operating Bands (Policy Reference)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explicit-leakage-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Explicit Leakage Controls
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#known-model-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known Model Limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#interaction-with-reduced-core-selection-stage-5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interaction with Reduced-Core Selection (Stage 5)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exact-calculations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exact Calculations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#causality-leakage-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Causality / Leakage Controls
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#failure-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure Modes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interpretation-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interpretation Guide
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validation-gates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Gates
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#canonical-analysis-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Canonical Analysis Reports
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#operator-decision-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Operator Decision Tree
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How To Run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-interpret-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How To Interpret Outputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-to-do-if-it-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What To Do If It Fails
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reproduction-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reproduction Commands
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#traceability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Traceability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generated-run-snapshot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generated Run Snapshot
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Generated Run Snapshot">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#auto-snapshot-stage-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto Snapshot - Stage 03
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Auto Snapshot - Stage 03">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#interpretation-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interpretation Notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#action-trigger-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Action Trigger Summary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#details" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Details
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plots
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#threshold-robustness-around-execution-quantile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Threshold Robustness Around Execution Quantile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overfitting-diagnostics-exec-quantile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overfitting Diagnostics (Exec Quantile)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#leakagelabel-integrity-wfo-focus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Leakage/Label Integrity (WFO Focus)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="stage-3-monthly-walk-forward-modeling">Stage 3 - Monthly Walk-Forward Modeling<a class="headerlink" href="#stage-3-monthly-walk-forward-modeling" title="Permanent link">&para;</a></h1>
+<h2 id="objective">Objective<a class="headerlink" href="#objective" title="Permanent link">&para;</a></h2>
+<p>Evaluate model filtering with strict monthly walk-forward ordering and quantify threshold robustness.</p>
+<h2 id="inputs">Inputs<a class="headerlink" href="#inputs" title="Permanent link">&para;</a></h2>
+<ul>
+<li>WFO metrics:</li>
+<li><code>data/analysis/tick_opportunity_mining/wfo_*/&lt;SYMBOL&gt;_monthly_metrics_all.csv</code></li>
+<li>WFO thresholds:</li>
+<li><code>data/analysis/tick_opportunity_mining/wfo_*/&lt;SYMBOL&gt;_monthly_thresholds_all.csv</code></li>
+<li>WFO predictions:</li>
+<li><code>data/analysis/tick_opportunity_mining/wfo_*/&lt;SYMBOL&gt;_monthly_predictions_all.parquet</code></li>
+</ul>
+<h2 id="process">Process<a class="headerlink" href="#process" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Train on prior months only and score next month.</li>
+<li>Apply execution quantile filter (<code>q</code>, default 0.9).</li>
+<li>Compute threshold/calibration/turnover diagnostics (<code>W13-W15</code>).</li>
+</ul>
+<h2 id="catboost-model-specification-critical">CatBoost Model Specification (Critical)<a class="headerlink" href="#catboost-model-specification-critical" title="Permanent link">&para;</a></h2>
+<h3 id="model-purpose">Model Purpose<a class="headerlink" href="#model-purpose" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Rank OCO event rows by conditional probability of positive gross outcome (<code>target_gross_pos=1</code>).</li>
+<li>Selection is then performed by thresholding this probability stream, not by direct regression on pip magnitude.</li>
+</ul>
+<h3 id="model-validity-and-retrain-cadence">Model Validity and Retrain Cadence<a class="headerlink" href="#model-validity-and-retrain-cadence" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Validity window:</strong> CatBoost predictions are valid for exactly one scored test month.</li>
+<li><strong>Policy term:</strong> <strong>one-month validity</strong>.</li>
+<li><strong>Expiry rule:</strong> At the first timestamp of a new calendar test month, prior-month predictions are stale for production decisions.</li>
+<li><strong>Retrain cadence:</strong> retrain monthly using the latest rolling train window (<code>rolling_train_months</code>, default <code>3</code>).</li>
+<li><strong>Policy term:</strong> <strong>monthly retrain</strong>.</li>
+<li><strong>Cross-year behavior:</strong> in cross-year mode, history is prepended only to satisfy rolling warmup; validity is still one scored month at a time.</li>
+</ul>
+<h3 id="training-label">Training Label<a class="headerlink" href="#training-label" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Binary target: <code>target_gross_pos = 1</code> if <code>target_gross_pips &gt; 0</code>, else <code>0</code>.</li>
+<li><code>target_gross_pips</code> is the realized gross pip label generated from strict forward path logic in prior stages.</li>
+</ul>
+<h3 id="feature-vector-current">Feature Vector (Current)<a class="headerlink" href="#feature-vector-current" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>cost_est_pips</code></li>
+<li><code>range_pips</code></li>
+<li><code>ret1_pips</code></li>
+<li><code>ret_z</code></li>
+<li><code>ret_abs_z</code></li>
+<li><code>vel_cost_units_h1</code></li>
+<li><code>vel_abs_cost_units_h1</code></li>
+<li><code>spread_z</code></li>
+<li><code>tick_rate_z</code></li>
+<li><code>hour_utc</code></li>
+<li><code>hl_first</code></li>
+<li><code>hl_first_mean_24</code></li>
+<li><code>hl_pos_frac_mean_24</code></li>
+<li><code>bar_ticks</code></li>
+<li><code>horizon</code></li>
+<li><code>barrier_pips</code></li>
+</ul>
+<p>Source of truth: <code>scripts/run_tick_opportunity_monthly_wfo.py</code> (<code>_feature_cols</code>).</p>
+<h3 id="catboost-hyperparameters-current">CatBoost Hyperparameters (Current)<a class="headerlink" href="#catboost-hyperparameters-current" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>loss_function=Logloss</code></li>
+<li><code>eval_metric=AUC</code></li>
+<li><code>iterations=350</code></li>
+<li><code>learning_rate=0.05</code></li>
+<li><code>depth=6</code></li>
+<li><code>l2_leaf_reg=5.0</code></li>
+<li><code>random_seed=seed + month_index</code></li>
+<li><code>verbose=False</code></li>
+</ul>
+<p>Source of truth: <code>scripts/run_tick_opportunity_monthly_wfo.py</code> (<code>_wfo_monthly</code>).</p>
+<h3 id="monthly-wfo-training-loop">Monthly WFO Training Loop<a class="headerlink" href="#monthly-wfo-training-loop" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Build month boundaries.</li>
+<li>For each test month <code>M</code>, use prior <code>rolling_train_months</code> months as train window.</li>
+<li>Candidate prefilter inside train window only:</li>
+<li>keep <code>candidate_uid</code> where <code>train_rows &gt;= min_candidate_rows_in_train_window</code></li>
+<li>and <code>train_mean_gross &gt; 0</code>.</li>
+<li>Apply same keep-set to test month rows.</li>
+<li>Enforce minimum train/test row gates and class-balance gate (<code>target_gross_pos</code> has both classes).</li>
+<li>Fit CatBoost on train rows and score test rows with <code>predict_proba(... )[:,1]</code>.</li>
+<li>Persist per-row <code>pred_prob</code> and threshold-selection flags for downstream stages.</li>
+</ol>
+<h3 id="thresholding-logic">Thresholding Logic<a class="headerlink" href="#thresholding-logic" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Candidate quantiles are swept (default: <code>0.5,0.6,0.7,0.8,0.9,0.95</code>).</li>
+<li><code>execution_quantile</code> (default <code>0.9</code>) is the live selection quantile.</li>
+<li>Two modes are supported:</li>
+<li><code>train_quantile</code>: threshold from current train-month score distribution.</li>
+<li><code>rolling_days</code>: threshold computed causally from a rolling history pool (<code>rolling_threshold_days</code>, <code>rolling_threshold_min_history</code>), including train history and already-seen prior test days only.</li>
+<li>If rolling history is insufficient, Stage 3 uses a strict <strong>train-only fallback</strong> quantile.</li>
+<li>It <strong>never uses unseen same-month test pools</strong> for fallback thresholding.</li>
+<li>If both rolling history and train history are unavailable, threshold source is <code>no_history</code> and rows are fail-closed (not selected).</li>
+<li>Output rows include execution-threshold fields used by Stage 5:</li>
+<li><code>threshold_exec</code></li>
+<li><code>selected_exec</code></li>
+<li><code>threshold_mode</code></li>
+<li><code>threshold_days</code></li>
+<li><code>threshold_source</code></li>
+</ul>
+<h3 id="supported-evaluation-windowing">Supported Evaluation Windowing<a class="headerlink" href="#supported-evaluation-windowing" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Legacy single-year mode via <code>eval_year</code>.</li>
+<li>Cross-year causal window via:</li>
+<li><code>eval_start_month</code></li>
+<li><code>eval_end_month</code></li>
+<li>When cross-year mode is used, the engine prepends exactly <code>rolling_train_months</code> months of history before <code>eval_start_month</code> to preserve train warmup without leakage.</li>
+</ul>
+<h3 id="stage-3-output-metrics">Stage-3 Output Metrics<a class="headerlink" href="#stage-3-output-metrics" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Classifier diagnostics:</li>
+<li>AUC</li>
+<li>Brier score</li>
+<li>Selection diagnostics:</li>
+<li>Coverage at each quantile</li>
+<li>Mean/median gross pips for selected rows</li>
+<li>W13/W14/W15 stability metrics</li>
+</ul>
+<h3 id="prediction-output-schema-per-row">Prediction Output Schema (Per Row)<a class="headerlink" href="#prediction-output-schema-per-row" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Meaning</th>
+<th>Downstream use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>close_ts</code></td>
+<td>timestamp (UTC)</td>
+<td>Event decision timestamp</td>
+<td>Join key for execution realism and audits</td>
+</tr>
+<tr>
+<td><code>candidate_uid</code></td>
+<td>string</td>
+<td>Unique candidate/state identifier</td>
+<td>Join key for reduced-core state filtering</td>
+</tr>
+<tr>
+<td><code>pred_prob</code></td>
+<td>float</td>
+<td>CatBoost probability for <code>target_gross_pos=1</code></td>
+<td>Ranking signal for thresholding</td>
+</tr>
+<tr>
+<td><code>target_gross_pips</code></td>
+<td>float</td>
+<td>Realized gross pip label</td>
+<td>Outcome metrics and diagnostics</td>
+</tr>
+<tr>
+<td><code>target_gross_pos</code></td>
+<td>int (0/1)</td>
+<td>Binary sign label</td>
+<td>AUC/Brier and classification diagnostics</td>
+</tr>
+<tr>
+<td><code>threshold_mode</code></td>
+<td>string</td>
+<td><code>rolling_days</code> or <code>train_quantile</code></td>
+<td>Provenance of threshold generation</td>
+</tr>
+<tr>
+<td><code>threshold_days</code></td>
+<td>int</td>
+<td>Rolling lookback days if <code>rolling_days</code>, else <code>0</code></td>
+<td>Traceability of threshold policy</td>
+</tr>
+<tr>
+<td><code>threshold_source</code></td>
+<td>string</td>
+<td><code>rolling_history</code>, <code>train_fallback</code>, <code>train_quantile</code>, or <code>no_history</code></td>
+<td>Causal provenance audit for threshold assignment</td>
+</tr>
+<tr>
+<td><code>threshold_exec</code></td>
+<td>float</td>
+<td>Applied execution threshold for <code>execution_quantile</code></td>
+<td>Defines selected decision boundary</td>
+</tr>
+<tr>
+<td><code>selected_exec</code></td>
+<td>int (0/1)</td>
+<td>Whether row passed <code>threshold_exec</code></td>
+<td>Default Stage-5 entry set (<code>selection_mode=auto/exec_flag</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="metric-definitions-exact">Metric Definitions (Exact)<a class="headerlink" href="#metric-definitions-exact" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>AUC</code>: ROC area for classifying <code>target_gross_pos</code>; threshold-independent ranking quality.</li>
+<li><code>Brier</code>: mean squared probability error, <code>mean((pred_prob - target_gross_pos)^2)</code>; lower is better.</li>
+<li><code>Coverage@q</code>: <code>selected_rows / total_rows</code> for quantile <code>q</code>.</li>
+<li><code>Mean/Median gross@q</code>: mean/median of <code>target_gross_pips</code> on rows selected at quantile <code>q</code>.</li>
+<li><code>W13_threshold_fragility</code>:</li>
+<li>Around execution <code>q</code>, aggregate mean gross by quantile and compute slope:</li>
+<li><code>(max(mean_gross_near_q)-min(mean_gross_near_q)) / (max(q_near)-min(q_near))</code></li>
+<li><code>W14_brier_drift_std = std(monthly_brier)</code></li>
+<li><code>W15_selection_turnover = 1 - mean(Jaccard(selected_uid_month_t, selected_uid_month_t-1))</code></li>
+</ul>
+<h3 id="operating-bands-policy-reference">Operating Bands (Policy Reference)<a class="headerlink" href="#operating-bands-policy-reference" title="Permanent link">&para;</a></h3>
+<p>These are operator bands for interpretation and escalation alignment. Stage hard-gate authority remains governance checks.</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Green</th>
+<th>Amber</th>
+<th>Red</th>
+<th>Direction</th>
+<th>Primary action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>W13_threshold_fragility</code></td>
+<td><code>&lt; 2.5</code></td>
+<td><code>&gt;= 2.5 and &lt; 4.0</code></td>
+<td><code>&gt;= 4.0</code></td>
+<td>lower is better</td>
+<td>recalibrate threshold policy</td>
+</tr>
+<tr>
+<td><code>W14_brier_drift_std</code></td>
+<td><code>&lt; 0.01</code></td>
+<td><code>&gt;= 0.01 and &lt; 0.02</code></td>
+<td><code>&gt;= 0.02</code></td>
+<td>lower is better</td>
+<td>review calibration drift</td>
+</tr>
+<tr>
+<td><code>W15_selection_turnover</code></td>
+<td><code>&lt; 0.25</code></td>
+<td><code>&gt;= 0.25 and &lt; 0.40</code></td>
+<td><code>&gt;= 0.40</code></td>
+<td>lower is better</td>
+<td>investigate selection instability</td>
+</tr>
+<tr>
+<td><code>AUC</code></td>
+<td><code>&gt;= 0.55</code></td>
+<td><code>&gt;= 0.52 and &lt; 0.55</code></td>
+<td><code>&lt; 0.52</code></td>
+<td>higher is better</td>
+<td>review feature/regime fit</td>
+</tr>
+<tr>
+<td><code>Brier</code></td>
+<td><code>&lt;= 0.245</code></td>
+<td><code>&gt; 0.245 and &lt;= 0.255</code></td>
+<td><code>&gt; 0.255</code></td>
+<td>lower is better</td>
+<td>review probability calibration</td>
+</tr>
+<tr>
+<td><code>Coverage@q=0.9</code></td>
+<td><code>0.08-0.12</code></td>
+<td><code>0.05-0.08 or 0.12-0.15</code></td>
+<td><code>&lt; 0.05 or &gt; 0.15</code></td>
+<td>center-stable</td>
+<td>inspect threshold drift</td>
+</tr>
+</tbody>
+</table>
+<p>Band notes:
+- <code>W13/W14/W15</code> thresholds align to <code>configs/research/docs/operator_action_rules.yaml</code>.
+- <code>AUC/Brier/Coverage</code> are operational reference bands (not standalone hard deploy gates).</p>
+<h3 id="explicit-leakage-controls">Explicit Leakage Controls<a class="headerlink" href="#explicit-leakage-controls" title="Permanent link">&para;</a></h3>
+<ul>
+<li>No row from month <code>M</code> is used in model fitting for month <code>M</code>.</li>
+<li>Candidate keep-set is derived from train-window aggregates only.</li>
+<li>Rolling threshold in <code>rolling_days</code> mode uses only:</li>
+<li>train rows before test month day <code>D</code></li>
+<li>test rows from days strictly before <code>D</code></li>
+<li>Never future-in-test.</li>
+<li>Fallback policy is strict: if rolling history is short, use train-only fallback; if train history is absent, mark <code>threshold_source=no_history</code> and do not select.</li>
+</ul>
+<h3 id="known-model-limits">Known Model Limits<a class="headerlink" href="#known-model-limits" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>pred_prob</code> is a ranking score, not a calibrated expected-pips estimator.</li>
+<li>Hyperparameters are static; no monthly hyperparameter re-optimization is currently performed.</li>
+<li>Feature importances and calibration curves are not yet part of mandatory Stage-3 outputs.</li>
+</ul>
+<h3 id="interaction-with-reduced-core-selection-stage-5">Interaction with Reduced-Core Selection (Stage 5)<a class="headerlink" href="#interaction-with-reduced-core-selection-stage-5" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Stage 3 contributes model-layer filtering only (<code>selected_exec</code> from <code>pred_prob</code> vs <code>threshold_exec</code>).</li>
+<li>Stage 5 contributes state-layer reduced-core filtering (<code>core_spec_match</code>) plus execution feasibility.</li>
+<li>Final tradable rows are the strict intersection of these gates, not a Stage-3-only pass.</li>
+<li>Reference: <code>docs/strategy_bible/stage_05_reduced_core.md</code> section <code>CatBoost x Core Spec Interaction</code>.</li>
+</ul>
+<h2 id="exact-calculations">Exact Calculations<a class="headerlink" href="#exact-calculations" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Metric formulas and units are defined in <code>Metric Definitions (Exact)</code> above.</li>
+<li>Computation is performed on strict out-of-sample month slices produced by the monthly WFO loop.</li>
+</ul>
+<h2 id="causality-leakage-controls">Causality / Leakage Controls<a class="headerlink" href="#causality-leakage-controls" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Strict 3M train -&gt; 1M test ordering.</li>
+<li>Selection thresholding uses historical window only (rolling causal threshold).</li>
+</ul>
+<h2 id="failure-modes">Failure Modes<a class="headerlink" href="#failure-modes" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Threshold fragility: tiny <code>q</code> change causes large performance change.</li>
+<li>Calibration drift over months.</li>
+<li>High turnover suggesting unstable signal identity.</li>
+</ul>
+<h2 id="interpretation-guide">Interpretation Guide<a class="headerlink" href="#interpretation-guide" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Lower <code>W13</code> is less fragile.</li>
+<li>Lower <code>W14</code> indicates more stable calibration.</li>
+<li>Lower <code>W15</code> indicates higher month-to-month continuity.</li>
+</ul>
+<h2 id="validation-gates">Validation Gates<a class="headerlink" href="#validation-gates" title="Permanent link">&para;</a></h2>
+<ul>
+<li>WFO gating and leakage contract checks are hard gates.</li>
+<li><code>W13-W15</code> remain informational until promoted.</li>
+</ul>
+<h2 id="canonical-analysis-reports">Canonical Analysis Reports<a class="headerlink" href="#canonical-analysis-reports" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>docs/analysis/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md</code></li>
+<li><code>docs/analysis/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md</code></li>
+<li><code>docs/analysis/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_report.md</code></li>
+<li><code>docs/analysis/oco_threshold_sensitivity_report.md</code></li>
+</ul>
+<h2 id="operator-decision-tree">Operator Decision Tree<a class="headerlink" href="#operator-decision-tree" title="Permanent link">&para;</a></h2>
+<ul>
+<li>If any hard gate in this stage fails, block promotion and escalate using the operator runbook.</li>
+<li>If only warning/amber diagnostics trigger, continue with mitigation and add an owner/deadline in remediation artifacts.</li>
+</ul>
+<h2 id="how-to-run">How To Run<a class="headerlink" href="#how-to-run" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Run the <code>Reproduction Commands</code> in this stage exactly as listed.</li>
+<li>Confirm artifacts are refreshed and timestamps are current before interpreting outcomes.</li>
+</ul>
+<h2 id="how-to-interpret-outputs">How To Interpret Outputs<a class="headerlink" href="#how-to-interpret-outputs" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Read <code>Key Results</code> first for pass/fail posture and core health metrics.</li>
+<li>Use <code>Interpretation Notes</code> and <code>Action Trigger Summary</code> to map observed values to operational actions.</li>
+</ul>
+<h2 id="what-to-do-if-it-fails">What To Do If It Fails<a class="headerlink" href="#what-to-do-if-it-fails" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>critical/high</code>: halt deployment progression, remediate root cause, rerun stage and downstream dependent stages.</li>
+<li><code>medium/low</code>: open tracked remediation with owner and ETA, monitor for recurrence in next cycle.</li>
+</ul>
+<h2 id="reproduction-commands">Reproduction Commands<a class="headerlink" href="#reproduction-commands" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/run_tick_opportunity_monthly_wfo.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span>configs/research/experiments/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/build_oco_threshold_sensitivity_report.py
+</code></pre></div>
+<h2 id="traceability">Traceability<a class="headerlink" href="#traceability" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>scripts/run_tick_opportunity_monthly_wfo.py</code></li>
+<li><code>scripts/build_oco_threshold_sensitivity_report.py</code></li>
+<li><code>docs/analysis/*_tick_opportunity_monthly_wfo_oco_*_report.md</code></li>
+<li><code>docs/strategy_bible/generated/stage_03_snapshot.md</code></li>
+</ul>
+<h2 id="generated-run-snapshot">Generated Run Snapshot<a class="headerlink" href="#generated-run-snapshot" title="Permanent link">&para;</a></h2>
+<!-- GENERATED:STAGE_03:START -->
+<h3 id="auto-snapshot-stage-03">Auto Snapshot - Stage 03<a class="headerlink" href="#auto-snapshot-stage-03" title="Permanent link">&para;</a></h3>
+<ul>
+<li>generated_at: <code>2026-02-28 08:46:09 UTC</code></li>
+<li>Execution threshold summary is aligned to quantile=0.9.</li>
+<li>Metrics are strictly month-forward (3M train -&gt; 1M test).</li>
+<li>W13-W15 are informational diagnostics for threshold fragility, calibration drift, and selection turnover.</li>
+</ul>
+<h4 id="key-results">Key Results<a class="headerlink" href="#key-results" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">symbol</th>
+<th style="text-align: right;">months</th>
+<th style="text-align: right;">auc_mean</th>
+<th style="text-align: right;">brier_mean</th>
+<th style="text-align: right;">test_rows_total</th>
+<th style="text-align: right;">w13_threshold_fragility</th>
+<th style="text-align: right;">w14_brier_drift_std</th>
+<th style="text-align: right;">w15_selection_turnover</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">0.526973</td>
+<td style="text-align: right;">0.249766</td>
+<td style="text-align: right;">3.3563e+06</td>
+<td style="text-align: right;">1.34602</td>
+<td style="text-align: right;">0.00162703</td>
+<td style="text-align: right;">0.0799501</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">0.51732</td>
+<td style="text-align: right;">0.251184</td>
+<td style="text-align: right;">46722</td>
+<td style="text-align: right;">0.700198</td>
+<td style="text-align: right;">0.00128023</td>
+<td style="text-align: right;">0.137968</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">0.52696</td>
+<td style="text-align: right;">0.247879</td>
+<td style="text-align: right;">51512</td>
+<td style="text-align: right;">0.5354</td>
+<td style="text-align: right;">0.00217768</td>
+<td style="text-align: right;">0.175758</td>
+</tr>
+</tbody>
+</table>
+<h4 id="interpretation-notes">Interpretation Notes<a class="headerlink" href="#interpretation-notes" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Execution threshold summary is aligned to quantile=0.9.</li>
+<li>Metrics are strictly month-forward (3M train -&gt; 1M test).</li>
+<li>W13-W15 are informational diagnostics for threshold fragility, calibration drift, and selection turnover.</li>
+</ul>
+<h4 id="action-trigger-summary">Action Trigger Summary<a class="headerlink" href="#action-trigger-summary" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">symbol</th>
+<th style="text-align: left;">metric_id</th>
+<th style="text-align: left;">band</th>
+<th style="text-align: left;">severity</th>
+<th style="text-align: left;">action_code</th>
+<th style="text-align: left;">action_summary</th>
+<th style="text-align: left;">owner</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">W13_threshold_fragility</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">W14_brier_drift_std</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">W15_selection_turnover</td>
+<td style="text-align: left;">amber</td>
+<td style="text-align: left;">medium</td>
+<td style="text-align: left;">A1_REVIEW</td>
+<td style="text-align: left;">review and monitor</td>
+<td style="text-align: left;">research</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">W13_threshold_fragility</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">W14_brier_drift_std</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">W15_selection_turnover</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">W13_threshold_fragility</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">W14_brier_drift_std</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">W15_selection_turnover</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+</tr>
+</tbody>
+</table>
+<h4 id="details">Details<a class="headerlink" href="#details" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">symbol</th>
+<th style="text-align: right;">months</th>
+<th style="text-align: right;">mean_coverage</th>
+<th style="text-align: right;">mean_gross_pips</th>
+<th style="text-align: right;">rows_selected</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">0.0953233</td>
+<td style="text-align: right;">0.884677</td>
+<td style="text-align: right;">325515</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">0.0945693</td>
+<td style="text-align: right;">0.784329</td>
+<td style="text-align: right;">4427</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">0.0964553</td>
+<td style="text-align: right;">1.39854</td>
+<td style="text-align: right;">4939</td>
+</tr>
+</tbody>
+</table>
+<h4 id="plots">Plots<a class="headerlink" href="#plots" title="Permanent link">&para;</a></h4>
+<p><img alt="stage_03_wfo_monthly_gross" src="../../figures/oco_bible/stage_03_wfo_monthly_gross.png" /></p>
+<h4 id="threshold-robustness-around-execution-quantile">Threshold Robustness Around Execution Quantile<a class="headerlink" href="#threshold-robustness-around-execution-quantile" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">symbol</th>
+<th style="text-align: left;">test_month</th>
+<th style="text-align: right;">quantile</th>
+<th style="text-align: right;">mean_gross_pips</th>
+<th style="text-align: right;">coverage</th>
+<th style="text-align: right;">selected_rows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">aggregate</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.758561</td>
+<td style="text-align: right;">0.191746</td>
+<td style="text-align: right;">72544.3</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">aggregate</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.884677</td>
+<td style="text-align: right;">0.0953233</td>
+<td style="text-align: right;">36168.3</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">aggregate</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">0.960465</td>
+<td style="text-align: right;">0.0475931</td>
+<td style="text-align: right;">18029.7</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">aggregate</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.795246</td>
+<td style="text-align: right;">0.193268</td>
+<td style="text-align: right;">1005.22</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">aggregate</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.784329</td>
+<td style="text-align: right;">0.0945693</td>
+<td style="text-align: right;">491.889</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">aggregate</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">0.690217</td>
+<td style="text-align: right;">0.0459482</td>
+<td style="text-align: right;">238.778</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">aggregate</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">1.31823</td>
+<td style="text-align: right;">0.196447</td>
+<td style="text-align: right;">1120.89</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">aggregate</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">1.39854</td>
+<td style="text-align: right;">0.0964553</td>
+<td style="text-align: right;">548.778</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">aggregate</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">1.32811</td>
+<td style="text-align: right;">0.0468008</td>
+<td style="text-align: right;">264.444</td>
+</tr>
+</tbody>
+</table>
+<h4 id="overfitting-diagnostics-exec-quantile">Overfitting Diagnostics (Exec Quantile)<a class="headerlink" href="#overfitting-diagnostics-exec-quantile" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">symbol</th>
+<th style="text-align: right;">quantile</th>
+<th style="text-align: right;">rows</th>
+<th style="text-align: right;">months</th>
+<th style="text-align: right;">positive_months</th>
+<th style="text-align: right;">lb95_trade_mean_gross_pips</th>
+<th style="text-align: right;">lb95_trade_mean_gross_pips_iid</th>
+<th style="text-align: right;">lb95_trade_mean_gross_pips_month_block</th>
+<th style="text-align: right;">pvalue_month_mean_gt0</th>
+<th style="text-align: right;">pvalue_bonferroni</th>
+<th style="text-align: right;">pvalue_fdr_bh</th>
+<th style="text-align: right;">uplift_vs_null_pips</th>
+<th style="text-align: right;">pvalue_perm_uplift</th>
+<th style="text-align: right;">pvalue_perm_fdr_bh</th>
+<th style="text-align: left;">majority_positive_months</th>
+<th style="text-align: left;">bonferroni_pass_10pct</th>
+<th style="text-align: left;">fdr_pass_10pct</th>
+<th style="text-align: left;">perm_fdr_pass_10pct</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">59955</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">1.04912</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">2.4283e-09</td>
+<td style="text-align: right;">1.45698e-08</td>
+<td style="text-align: right;">2.91396e-09</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">False</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">70579</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">0.973913</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">False</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">77785</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">1.33687</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">False</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>Interpretation: these diagnostics are computed on WFO out-of-sample predictions only.</li>
+<li><code>bonferroni_pass_10pct</code> and <code>fdr_pass_10pct</code> summarize multiplicity-adjusted significance at alpha=0.10.</li>
+</ul>
+<h4 id="leakagelabel-integrity-wfo-focus">Leakage/Label Integrity (WFO Focus)<a class="headerlink" href="#leakagelabel-integrity-wfo-focus" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">symbol</th>
+<th style="text-align: right;">checks_total</th>
+<th style="text-align: right;">checks_failed</th>
+<th style="text-align: right;">high_critical_failed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+</tbody>
+</table>
+<!-- GENERATED:STAGE_03:END -->
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.sections", "navigation.top", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

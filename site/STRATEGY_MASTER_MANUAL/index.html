@@ -1,0 +1,4402 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Production documentation for the Behemoth trading system">
+      
+      
+        <meta name="author" content="Behemoth">
+      
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../analysis/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>OCO Strategy Manual - Behemoth Strategy</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#strategy-master-manual-tick-oco-stop-limit-system" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Behemoth Strategy" class="md-header__button md-logo" aria-label="Behemoth Strategy" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Behemoth Strategy
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              OCO Strategy Manual
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="teal"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com-jbus84/behemoth" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Github
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Behemoth Strategy" class="md-nav__button md-logo" aria-label="Behemoth Strategy" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Behemoth Strategy
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com-jbus84/behemoth" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Github
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OCO Strategy Manual
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OCO Strategy Manual
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-strategy-definition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Strategy Definition
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Strategy Definition">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-core-trade-concept" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Core Trade Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-active-universe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 Active Universe
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-what-this-system-is-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 What This System Is Not
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-why-this-system-works-and-when-it-should-not-be-used" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Why This System Works (and When It Should Not Be Used)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Why This System Works (and When It Should Not Be Used)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-edge-mechanism-why-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Edge Mechanism (Why it works)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-temporal-robustness-why-this-is-not-static-fit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Temporal Robustness (Why this is not static-fit)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-retail-ecn-suitability-qualified" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Retail ECN Suitability (Qualified)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-invalidation-and-action-triggers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Invalidation and Action Triggers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-how-to-interpret-this-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 How to Interpret This Section
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-data-and-label-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Data and Label Contract
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Data and Label Contract">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Inputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-event-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Event Semantics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-execution-realism" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Execution Realism
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-stage-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Stage Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-causality-and-leakage-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Causality and Leakage Controls
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Causality and Leakage Controls">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-time-ordering-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Time Ordering Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-selection-discipline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Selection Discipline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-governance-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Governance Controls
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-rolling-wfo-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Rolling WFO Logic
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Rolling WFO Logic">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-selection-mechanics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Selection Mechanics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-why-rolling-thresholds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Why Rolling Thresholds
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-robustness-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Robustness Tracking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-catboost-selection-model-stage-3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 CatBoost Selection Model (Stage 3)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#65-latest-reduced-core-expected-gross-per-trade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.5 Latest Reduced-Core Expected Gross (Per Trade)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-execution-semantics-stop-limit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Execution Semantics (Stop-Limit)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Execution Semantics (Stop-Limit)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-why-stop-limit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Why Stop-Limit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-cap-definition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Cap Definition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-key-stage-04-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Key Stage-04 Outputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-current-acceptance-gates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Current Acceptance Gates
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-core-scripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Core Scripts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Core Scripts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-strategy-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 Strategy Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-governance-and-docs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 Governance and Docs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-standard-reproduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Standard Reproduction
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-operator-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Operator Workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-artifact-priority-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Artifact Priority Rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-change-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Change Control
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Analysis
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Analysis
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/catalog_gaps_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Catalog Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_stop_limit_tickfill_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stop-Limit Tickfill Fullcap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_live_governance_lock/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Live Governance Lock
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/remediation_metric_decomposition/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Remediation Metric Decomposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/risk_checklist/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Risk Checklist
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_7" id="__nav_3_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EURUSD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    EURUSD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/eurusd_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/eurusd_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reduced Core Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/eurusd_oco_tick_exact_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tick-Exact Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/eurusd_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GBPUSD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    GBPUSD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/gbpusd_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/gbpusd_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reduced Core Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/gbpusd_oco_tick_exact_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tick-Exact Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/gbpusd_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    USDJPY
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    USDJPY
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/usdjpy_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/usdjpy_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reduced Core Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/usdjpy_oco_tick_exact_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tick-Exact Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/usdjpy_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OCO Strategy Bible
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    OCO Strategy Bible
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/pipeline_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_01_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 01 Data Foundation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_01_data_foundation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 01 Data Foundation Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_02_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 02 Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_02_opportunity_mining/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 02 Opportunity Mining Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_03_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 03 Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_03_monthly_wfo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 03 Monthly WFO Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_04_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 04 Stop-Limit Realism
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_04_execution_realism/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 04 Stop-Limit Realism Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_05_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 05 Reduced Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_05_reduced_core/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 05 Reduced Core Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_06_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 06 Tick-Exact Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_06_tick_exact_and_portability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 06 Tick-Exact + Portability Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_07_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 07 Logical Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_07_logical_and_statistical_audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 07 Logical + Statistical Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_08_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 08 Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_08_robustness_and_stress/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 08 Robustness + Stress Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_09_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 09 Governance Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_09_live_governance_and_deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 09 Governance Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_10_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 10 Risks Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_10_known_risks_and_backlog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 10 Risks Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_11_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 11 Execution MC Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_11_execution_monte_carlo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 11 Execution MC Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/signal_lifecycle_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Signal Lifecycle Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/operator_runbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operator Runbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/metric_dictionary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metric Dictionary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/assumptions_and_threats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assumptions + Threats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/governance_mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance Mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/data_reliability_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Reliability Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_stage_integrity_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage Integrity Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_rule_universe_registry_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rule Universe Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/run_delta_dashboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run Delta Dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/operator_action_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operator Action Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/taxonomy_rules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Taxonomy Rules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/operator_playbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operator Playbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_leakage_integrity_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Leakage + Label Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_execution_risk_prelive_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Risk Preflight
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_execution_drift_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Drift Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_alert_remediation_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alert Remediation Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_governance_explainability_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance Explainability Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_threshold_sensitivity_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Threshold Sensitivity Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_execution_monte_carlo_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Monte Carlo Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_execution_monte_carlo_validation_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Monte Carlo Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_logical_audit_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logical Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_edge_clarity_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Edge Clarity Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_docs_contract_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docs Contract Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repository Notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Repository Notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DATA_SOURCES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../REPO_STRUCTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repo Structure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../walkthrough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Walkthrough
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../openapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenAPI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../core_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../risk_controls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Risk Controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monitoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data_pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../code_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Code Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../makefile/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Makefile
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../db_schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DB Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../db_schema_diagram/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DB Diagram
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-strategy-definition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Strategy Definition
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Strategy Definition">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-core-trade-concept" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Core Trade Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-active-universe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 Active Universe
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-what-this-system-is-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 What This System Is Not
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-why-this-system-works-and-when-it-should-not-be-used" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Why This System Works (and When It Should Not Be Used)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Why This System Works (and When It Should Not Be Used)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-edge-mechanism-why-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Edge Mechanism (Why it works)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-temporal-robustness-why-this-is-not-static-fit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Temporal Robustness (Why this is not static-fit)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-retail-ecn-suitability-qualified" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Retail ECN Suitability (Qualified)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-invalidation-and-action-triggers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Invalidation and Action Triggers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-how-to-interpret-this-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 How to Interpret This Section
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-data-and-label-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Data and Label Contract
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Data and Label Contract">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Inputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-event-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Event Semantics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-execution-realism" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Execution Realism
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-stage-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Stage Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-causality-and-leakage-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Causality and Leakage Controls
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Causality and Leakage Controls">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-time-ordering-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Time Ordering Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-selection-discipline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Selection Discipline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-governance-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Governance Controls
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-rolling-wfo-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Rolling WFO Logic
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Rolling WFO Logic">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-selection-mechanics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Selection Mechanics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-why-rolling-thresholds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Why Rolling Thresholds
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-robustness-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Robustness Tracking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-catboost-selection-model-stage-3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 CatBoost Selection Model (Stage 3)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#65-latest-reduced-core-expected-gross-per-trade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.5 Latest Reduced-Core Expected Gross (Per Trade)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-execution-semantics-stop-limit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Execution Semantics (Stop-Limit)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Execution Semantics (Stop-Limit)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-why-stop-limit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Why Stop-Limit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-cap-definition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Cap Definition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-key-stage-04-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Key Stage-04 Outputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-current-acceptance-gates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Current Acceptance Gates
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-core-scripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Core Scripts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Core Scripts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-strategy-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 Strategy Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-governance-and-docs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 Governance and Docs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-standard-reproduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Standard Reproduction
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-operator-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Operator Workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-artifact-priority-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Artifact Priority Rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-change-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Change Control
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="strategy-master-manual-tick-oco-stop-limit-system">Strategy Master Manual - Tick OCO Stop-Limit System<a class="headerlink" href="#strategy-master-manual-tick-oco-stop-limit-system" title="Permanent link">&para;</a></h1>
+<p><strong>Version</strong>: 10.2<br />
+<strong>Date</strong>: February 27, 2026<br />
+<strong>Status</strong>: Active</p>
+<p>This is the canonical manual for the active OCO research/governance system.
+If any section conflicts with generated stage artifacts, the generated stage artifacts and contract checks win.</p>
+<h2 id="1-strategy-definition">1. Strategy Definition<a class="headerlink" href="#1-strategy-definition" title="Permanent link">&para;</a></h2>
+<h3 id="11-core-trade-concept">1.1 Core Trade Concept<a class="headerlink" href="#11-core-trade-concept" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Build tick-velocity bars from raw ticks.</li>
+<li>Mine OCO opportunities parameterized by <code>barrier_pips</code> and <code>horizon</code>.</li>
+<li>Evaluate first-touch behavior and realized gross pip outcomes.</li>
+<li>Use monthly walk-forward filtering and rolling probability thresholding to keep only stable opportunities.</li>
+<li>Enforce stop-limit execution realism (tick overshoot caps, no-touch handling) before promotion.</li>
+</ul>
+<h3 id="12-active-universe">1.2 Active Universe<a class="headerlink" href="#12-active-universe" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>EURUSD</code>, <code>GBPUSD</code>, <code>USDJPY</code></li>
+</ul>
+<h3 id="13-what-this-system-is-not">1.3 What This System Is Not<a class="headerlink" href="#13-what-this-system-is-not" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Not the legacy mixed MOM/REV portfolio framework.</li>
+<li>Not Kalman-only directional portfolio blending.</li>
+<li>Not an API-first live runtime; current source of truth is artifact-first pipeline governance.</li>
+</ul>
+<h2 id="2-why-this-system-works-and-when-it-should-not-be-used">2. Why This System Works (and When It Should Not Be Used)<a class="headerlink" href="#2-why-this-system-works-and-when-it-should-not-be-used" title="Permanent link">&para;</a></h2>
+<h3 id="21-edge-mechanism-why-it-works">2.1 Edge Mechanism (Why it works)<a class="headerlink" href="#21-edge-mechanism-why-it-works" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The system starts with broad OCO hypothesis mining, then keeps only states that survive rolling selection and downstream governance gates.</li>
+<li>Edge concentration is not dominated by a tiny handful of states: Stage-2 <code>M01_top3_contrib_share</code> is low (about <code>0.04-0.05</code> across active symbols), which reduces single-pattern fragility.</li>
+<li>Positive expectancy density is high at the mining layer: Stage-2 <code>M03_positive_density=1</code> for <code>EURUSD</code>, <code>GBPUSD</code>, and <code>USDJPY</code>.</li>
+<li>Threshold slices show monotonic quality under stricter selection (for example, aggregate mean gross rises as quantile moves from <code>0.8</code> to <code>0.95</code>), consistent with a rankable signal rather than noise sorting.</li>
+<li>Evidence: <code>docs/analysis/oco_edge_clarity_report.md</code>, <code>docs/strategy_bible/generated/pipeline_snapshot.md</code>.</li>
+</ul>
+<h3 id="22-temporal-robustness-why-this-is-not-static-fit">2.2 Temporal Robustness (Why this is not static-fit)<a class="headerlink" href="#22-temporal-robustness-why-this-is-not-static-fit" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Time ordering is enforced by monthly walk-forward evaluation and rolling-history threshold policy; decisions at time <code>t</code> use only data available by <code>t</code>.</li>
+<li>Threshold drift diagnostics remain in controlled ranges under current policy families:</li>
+<li><code>W13</code> fragility is moderate (about <code>0.42-0.60</code>),</li>
+<li><code>W14</code> brier drift is low (about <code>0.0026-0.0076</code>),</li>
+<li><code>W15</code> turnover remains low (about <code>0.005-0.018</code> in recommended configs).</li>
+<li>Stage 4 execution drift remains stable in latest month snapshots:</li>
+<li>fill rates around <code>0.986-0.994</code>,</li>
+<li>no-touch rate near <code>0</code>,</li>
+<li>overshoot <code>p95</code> around <code>0.3-0.6</code> pips.</li>
+<li>Governance and contract controls remain clean at the current snapshot (<code>docs_contract</code> high/critical fails = <code>0</code>).</li>
+<li>Evidence: <code>docs/analysis/oco_threshold_sensitivity_report.md</code>, <code>docs/analysis/oco_execution_drift_report.md</code>, <code>docs/analysis/oco_docs_contract_report.md</code>.</li>
+</ul>
+<h3 id="23-retail-ecn-suitability-qualified">2.3 Retail ECN Suitability (Qualified)<a class="headerlink" href="#23-retail-ecn-suitability-qualified" title="Permanent link">&para;</a></h3>
+<p>This system is suitable for retail FX traders using ECN-style execution only when these operating conditions hold:</p>
+<ul>
+<li>Broker and platform support stop-limit semantics aligned with Stage-4 modeling (trigger + bounded fill logic).</li>
+<li>Monthly realized <code>fill_rate</code> remains at or above <code>0.98</code>.</li>
+<li>Monthly realized <code>overshoot_p95_pips</code> remains at or below <code>0.6</code> pips (symbol-specific), and no-touch remains near policy limits.</li>
+<li>Effective spread/fee/slippage regime remains within monitored drift controls; red execution-drift breaches block promotion.</li>
+<li>End-to-end latency is low enough that observed overshoot/no-touch metrics stay within the same control bands.</li>
+</ul>
+<p>This is not a universal profitability claim for all retail brokers or all market regimes. It is a conditional operational claim tied to current governed evidence.</p>
+<h3 id="24-invalidation-and-action-triggers">2.4 Invalidation and Action Triggers<a class="headerlink" href="#24-invalidation-and-action-triggers" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>Detection metric/artifact</th>
+<th>Required action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Execution tail degrades</td>
+<td><code>E_DRIFT_OVERSHOOT_P95</code> in <code>docs/analysis/oco_execution_drift_report.md</code></td>
+<td>Recalibrate cap/session policy and halt symbol promotion until green/acceptable amber posture</td>
+</tr>
+<tr>
+<td>Selection fragility increases</td>
+<td><code>TS01_W13_THRESHOLD_FRAGILITY</code> in <code>docs/analysis/oco_threshold_sensitivity_report.md</code></td>
+<td>Re-run threshold policy sweep and refresh active policy lock</td>
+</tr>
+<tr>
+<td>Governance lock drift</td>
+<td><code>G03_lock_drift_flags</code> in Stage-9 outputs / edge clarity report</td>
+<td>Block deploy path, rebuild lock from latest valid artifacts</td>
+</tr>
+<tr>
+<td>Robustness deterioration</td>
+<td>Stage-8/11 LB95 stress metrics in <code>docs/analysis/oco_edge_clarity_report.md</code></td>
+<td>Freeze promotion and re-evaluate assumptions/cost model before resuming</td>
+</tr>
+</tbody>
+</table>
+<h3 id="25-how-to-interpret-this-section">2.5 How to Interpret This Section<a class="headerlink" href="#25-how-to-interpret-this-section" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Treat this section as a synthesis layer, not as standalone proof.</li>
+<li>Final authority remains governed artifacts and stage snapshots.</li>
+<li>If prose and artifacts conflict, follow artifact priority rules in Section 12.</li>
+</ul>
+<h2 id="3-data-and-label-contract">3. Data and Label Contract<a class="headerlink" href="#3-data-and-label-contract" title="Permanent link">&para;</a></h2>
+<h3 id="31-inputs">3.1 Inputs<a class="headerlink" href="#31-inputs" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Raw tick source configured at runtime (not hard-coded in docs).</li>
+<li>Tick-velocity bar artifacts in <code>data/analysis/tick_velocity/</code>.</li>
+<li>Stage outputs in <code>data/analysis/tick_opportunity_mining/</code>.</li>
+<li>Builders used to produce these artifacts:</li>
+<li><code>scripts/build_global_tick_bars.py</code> (raw ticks -&gt; <code>data/global_tickbars/*_Ntick.parquet</code>)</li>
+<li><code>scripts/build_tick_velocity_dataset.py</code> (<code>data/global_tickbars</code> -&gt; <code>data/analysis/tick_velocity/*_tick_velocity.parquet</code>)</li>
+</ul>
+<h3 id="32-event-semantics">3.2 Event Semantics<a class="headerlink" href="#32-event-semantics" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Entry trigger: first barrier touch in forward window.</li>
+<li>If no touch within horizon: event is non-filled/no-touch under execution semantics.</li>
+<li>Post-touch outcome: fixed-horizon gross pip move from touch context, evaluated causally.</li>
+</ul>
+<h3 id="33-execution-realism">3.3 Execution Realism<a class="headerlink" href="#33-execution-realism" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Entry style: stop-limit, not naive market fill.</li>
+<li>Overshoot tracked in pips at tick-level.</li>
+<li>Cap policy controls acceptable overshoot and effective fills.</li>
+</ul>
+<h2 id="4-stage-architecture">4. Stage Architecture<a class="headerlink" href="#4-stage-architecture" title="Permanent link">&para;</a></h2>
+<p>The production research process is a stage-gated chain:
+1. Stage 01: data foundation + reliability checks.
+2. Stage 02: opportunity mining.
+3. Stage 03: monthly walk-forward selection + thresholding.
+4. Stage 04: stop-limit execution realism and cap policy.
+5. Stage 05: reduced-core selection.
+6. Stage 06: tick-exact verification + portability.
+7. Stage 07: logical/statistical audit.
+8. Stage 08: robustness and stress tests.
+9. Stage 09: governance lock + deploy eligibility.
+10. Stage 10: known risks + backlog controls.
+11. Stage 11: execution Monte Carlo degradation analysis.</p>
+<p>Generated status is published in <code>docs/strategy_bible/generated/pipeline_snapshot.md</code>.</p>
+<h2 id="5-causality-and-leakage-controls">5. Causality and Leakage Controls<a class="headerlink" href="#5-causality-and-leakage-controls" title="Permanent link">&para;</a></h2>
+<h3 id="51-time-ordering-rules">5.1 Time Ordering Rules<a class="headerlink" href="#51-time-ordering-rules" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Training windows are strictly prior to test windows.</li>
+<li>Threshold and policy selection are train-only or rolling-history-only for the decision timestamp.</li>
+<li>No future rows are used to decide current event selection.</li>
+</ul>
+<h3 id="52-selection-discipline">5.2 Selection Discipline<a class="headerlink" href="#52-selection-discipline" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Candidate mining is hypothesis generation only.</li>
+<li>Promotion relies on downstream WFO, execution realism, and robustness gates.</li>
+<li>Contract checks reject stale, missing, or inconsistent artifacts.</li>
+</ul>
+<h3 id="53-governance-controls">5.3 Governance Controls<a class="headerlink" href="#53-governance-controls" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Active non-green alerts require explicit disposition and owner.</li>
+<li>Expired exceptions and recurrence breaches are governed by policy and fail contracts when configured.</li>
+</ul>
+<h2 id="6-rolling-wfo-logic">6. Rolling WFO Logic<a class="headerlink" href="#6-rolling-wfo-logic" title="Permanent link">&para;</a></h2>
+<h3 id="61-selection-mechanics">6.1 Selection Mechanics<a class="headerlink" href="#61-selection-mechanics" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Generate model probabilities for candidate events.</li>
+<li>Compute threshold using rolling history policy (current standard: 20-day lookback family in policy set).</li>
+<li>Select events above threshold for each decision period.</li>
+</ul>
+<h3 id="62-why-rolling-thresholds">6.2 Why Rolling Thresholds<a class="headerlink" href="#62-why-rolling-thresholds" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Avoid static threshold drift.</li>
+<li>Keep selection calibrated to recent distribution shift.</li>
+<li>Reduce dependence on any single backtest-era probability scale.</li>
+</ul>
+<h3 id="63-robustness-tracking">6.3 Robustness Tracking<a class="headerlink" href="#63-robustness-tracking" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Monthly positive-rate and LB95 metrics are tracked per symbol.</li>
+<li>Threshold sensitivity metrics (<code>W13</code>, <code>W14</code>, <code>W15</code>) monitor fragility/drift.</li>
+</ul>
+<h3 id="64-catboost-selection-model-stage-3">6.4 CatBoost Selection Model (Stage 3)<a class="headerlink" href="#64-catboost-selection-model-stage-3" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Model type: <code>CatBoostClassifier</code> with <code>Logloss</code> objective and <code>AUC</code> eval metric.</li>
+<li>Target: <code>target_gross_pos</code> (binary sign of gross pip outcome).</li>
+<li>Core features: cost/range/return z-score/velocity/spread/tick-rate/hour/path features plus structure fields (<code>bar_ticks</code>, <code>horizon</code>, <code>barrier_pips</code>).</li>
+<li>Train/test rule: strict rolling month order (<code>rolling_train_months</code> train -&gt; next month test).</li>
+<li>Model validity policy: <strong>one-month validity</strong> (predictions are valid only for the scored test month).</li>
+<li>Retrain cadence policy: <strong>monthly retrain</strong> at each new test month boundary.</li>
+<li>Staleness rule: if latest Stage-3 prediction month is older than current test month, deployment decisions are blocked.</li>
+<li>Candidate filtering is train-window only:</li>
+<li><code>train_rows &gt;= min_candidate_rows_in_train_window</code></li>
+<li><code>train_mean_gross &gt; 0</code></li>
+<li>Selection output is probability-threshold based:</li>
+<li>monthly quantile sweep and execution quantile (<code>q=0.9</code> default)</li>
+<li>threshold modes: <code>rolling_days</code> (causal day-by-day) or <code>train_quantile</code></li>
+<li>Stage interaction: Stage 5 reduced-core filtering consumes Stage 3 <code>selected_exec</code>/<code>pred_prob</code> outputs and applies additional state-level gates.</li>
+<li>Key leakage control:</li>
+<li>no test-month row can influence that month’s fit or threshold at decision time.</li>
+<li>Full technical specification is maintained in <code>docs/strategy_bible/stage_03_monthly_wfo.md</code>.</li>
+</ul>
+<h3 id="65-latest-reduced-core-expected-gross-per-trade">6.5 Latest Reduced-Core Expected Gross (Per Trade)<a class="headerlink" href="#65-latest-reduced-core-expected-gross-per-trade" title="Permanent link">&para;</a></h3>
+<p>Latest reduced-core <code>status=ok</code> row per symbol:
+- execution policy context: rolling threshold policy (<code>q=0.9</code>) with reduced-core filtering
+- latest completed train window: <code>2025-11</code> to <code>2026-01</code> (November 1, 2025 to January 31, 2026)
+- latest evaluated month: <code>2026-02</code> (partial month through February 13, 2026 in current tick dataset)</p>
+<p>Expected gross pips/trade proxy below is taken from reduced-core monthly outputs (latest <code>ok</code> month by symbol).</p>
+<table>
+<thead>
+<tr>
+<th>Pair</th>
+<th>Test month</th>
+<th>Training months</th>
+<th style="text-align: right;">Expected gross pips/trade</th>
+<th style="text-align: right;">Selected rows</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>EURUSD</td>
+<td>2026-02</td>
+<td>2025-11,2025-12,2026-01</td>
+<td style="text-align: right;">1.203817</td>
+<td style="text-align: right;">786</td>
+<td><code>data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv</code></td>
+</tr>
+<tr>
+<td>GBPUSD</td>
+<td>2026-02</td>
+<td>2025-11,2025-12,2026-01</td>
+<td style="text-align: right;">2.892252</td>
+<td style="text-align: right;">1,381</td>
+<td><code>data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_monthly.csv</code></td>
+</tr>
+<tr>
+<td>USDJPY</td>
+<td>2026-02</td>
+<td>2025-11,2025-12,2026-01</td>
+<td style="text-align: right;">4.776597</td>
+<td style="text-align: right;">1,346</td>
+<td><code>data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_monthly.csv</code></td>
+</tr>
+</tbody>
+</table>
+<p>Interpretation note:
+- these are cycle-level expectancy estimates under the current selection policy, not guaranteed live outcomes;
+- execution-drift and governance gates (Sections 7-13) must still pass for deploy suitability.</p>
+<h2 id="7-execution-semantics-stop-limit">7. Execution Semantics (Stop-Limit)<a class="headerlink" href="#7-execution-semantics-stop-limit" title="Permanent link">&para;</a></h2>
+<h3 id="71-why-stop-limit">7.1 Why Stop-Limit<a class="headerlink" href="#71-why-stop-limit" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Pure market entries can overpay through overshoot.</li>
+<li>Pure limits can miss directional breakout-style touches.</li>
+<li>Stop-limit balances trigger certainty with bounded adverse fill.</li>
+</ul>
+<h3 id="72-cap-definition">7.2 Cap Definition<a class="headerlink" href="#72-cap-definition" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>cap_pips</code> is the maximum allowed overshoot from barrier price to accepted fill.</li>
+<li>If overshoot exceeds cap, treat as non-fill under capped scenario.</li>
+</ul>
+<h3 id="73-key-stage-04-outputs">7.3 Key Stage-04 Outputs<a class="headerlink" href="#73-key-stage-04-outputs" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Drift report: <code>docs/analysis/oco_execution_drift_report.md</code></li>
+<li>Tickfill detail/cap sweeps in <code>data/analysis/tick_opportunity_mining/</code>.</li>
+</ul>
+<h2 id="8-current-acceptance-gates">8. Current Acceptance Gates<a class="headerlink" href="#8-current-acceptance-gates" title="Permanent link">&para;</a></h2>
+<p>A symbol is release-eligible only when governed gates pass (representative):
+- Reduced-core monthly LB95 and capacity gates.
+- Tick-exact consistency gates.
+- Robustness LB95 and month-stability gates.
+- Stage integrity + docs contract high/critical failures equal zero.</p>
+<p>See:
+- <code>docs/analysis/oco_stage_integrity_report.md</code>
+- <code>docs/analysis/oco_docs_contract_report.md</code>
+- <code>docs/analysis/oco_edge_clarity_report.md</code></p>
+<h2 id="9-core-scripts">9. Core Scripts<a class="headerlink" href="#9-core-scripts" title="Permanent link">&para;</a></h2>
+<h3 id="91-strategy-pipeline">9.1 Strategy Pipeline<a class="headerlink" href="#91-strategy-pipeline" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>scripts/run_tick_opportunity_mining.py</code></li>
+<li><code>scripts/run_tick_opportunity_monthly_wfo.py</code></li>
+<li><code>scripts/select_oco_reduced_core.py</code></li>
+<li><code>scripts/select_oco_reduced_core_rolling.py</code></li>
+<li><code>scripts/verify_oco_tick_exact_shortlist.py</code></li>
+<li><code>scripts/analyze_oco_monthly_wfo_robustness.py</code></li>
+<li><code>scripts/analyze_oco_stop_limit_tickfill.py</code></li>
+</ul>
+<h3 id="92-governance-and-docs">9.2 Governance and Docs<a class="headerlink" href="#92-governance-and-docs" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>scripts/build_oco_strategy_bible.py</code></li>
+<li><code>scripts/build_oco_system_reference_docs.py</code></li>
+<li><code>scripts/check_oco_docs_stage_integrity.py</code></li>
+<li><code>scripts/validate_oco_docs_contract.py</code></li>
+<li><code>scripts/build_oco_execution_drift_report.py</code></li>
+<li><code>scripts/build_oco_threshold_sensitivity_report.py</code></li>
+<li><code>scripts/remediate_oco_monitoring_alerts.py</code></li>
+<li><code>scripts/build_oco_governance_explainability_report.py</code></li>
+<li><code>scripts/build_operator_action_report.py</code></li>
+<li><code>scripts/validate_oco_rule_universe_registry.py</code></li>
+</ul>
+<h2 id="10-standard-reproduction">10. Standard Reproduction<a class="headerlink" href="#10-standard-reproduction" title="Permanent link">&para;</a></h2>
+<p>Run from repo root:</p>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>docs-contract-ci
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/build_oco_strategy_bible.py<span class="w"> </span>--manifest<span class="w"> </span>configs/research/docs/oco_bible_manifest.yaml<span class="w"> </span>--strict<span class="w"> </span><span class="nb">false</span>
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/build_oco_system_reference_docs.py
+uv<span class="w"> </span>run<span class="w"> </span>mkdocs<span class="w"> </span>build
+</code></pre></div>
+<h2 id="11-operator-workflow">11. Operator Workflow<a class="headerlink" href="#11-operator-workflow" title="Permanent link">&para;</a></h2>
+<p>Daily/weekly/monthly actions are defined in:
+- <code>docs/strategy_bible/operator_runbook.md</code>
+- <code>docs/strategy_bible/operator_playbook.md</code></p>
+<p>The minimum operational cycle is:
+1. Refresh governed artifacts.
+2. Resolve non-green alerts/dispositions.
+3. Re-check stage and docs contracts.
+4. Rebuild docs and review stage snapshots.</p>
+<h2 id="12-artifact-priority-rules">12. Artifact Priority Rules<a class="headerlink" href="#12-artifact-priority-rules" title="Permanent link">&para;</a></h2>
+<p>When documents disagree, use this priority:
+1. <code>data/analysis/tick_opportunity_mining/*</code> governed CSV artifacts
+2. <code>docs/strategy_bible/generated/*</code> snapshots
+3. <code>docs/analysis/*</code> governed reports
+4. this manual (<code>docs/STRATEGY_MASTER_MANUAL.md</code>)</p>
+<h2 id="13-change-control">13. Change Control<a class="headerlink" href="#13-change-control" title="Permanent link">&para;</a></h2>
+<p>Any change to strategy logic, threshold policy, execution semantics, or gate definitions requires:
+1. regenerated stage artifacts,
+2. regenerated governance reports,
+3. passing docs contract checks,
+4. updated manual and impacted stage specs.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.sections", "navigation.top", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

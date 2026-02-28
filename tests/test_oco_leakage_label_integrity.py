@@ -37,6 +37,7 @@ def _build_minimal_bundle(tmp_path: Path, *, bad_time_order: bool = False) -> Sy
                 "threshold_days": 20,
                 "threshold_exec": 0.6,
                 "selected_exec": 1,
+                "threshold_source": "rolling_history",
             },
             {
                 "test_month": "2025-05",
@@ -49,6 +50,7 @@ def _build_minimal_bundle(tmp_path: Path, *, bad_time_order: bool = False) -> Sy
                 "threshold_days": 20,
                 "threshold_exec": 0.55,
                 "selected_exec": 1,
+                "threshold_source": "rolling_history",
             },
         ]
     )
@@ -205,4 +207,26 @@ def test_leakage_audit_flags_bad_time_order(tmp_path: Path) -> None:
     assert not checks.empty
     l01 = checks[checks["check_id"] == "L01"].iloc[0]
     assert l01["status"] == "fail"
+    assert not issues.empty
+
+
+def test_leakage_audit_flags_missing_threshold_source(tmp_path: Path) -> None:
+    cfg = _build_minimal_bundle(tmp_path, bad_time_order=False)
+    pred = pd.read_parquet(cfg.pred_path).copy()
+    pred = pred.drop(columns=["threshold_source"])
+    pred.to_parquet(cfg.pred_path, index=False)
+
+    checks_csv = tmp_path / "checks.csv"
+    issues_csv = tmp_path / "issues.csv"
+    report_md = tmp_path / "report.md"
+    checks, issues = run_audit(
+        ["EURUSD"],
+        out_checks_csv=checks_csv,
+        out_issues_csv=issues_csv,
+        report_out=report_md,
+        config_map={"EURUSD": cfg},
+    )
+    assert not checks.empty
+    l13 = checks[checks["check_id"] == "L13"].iloc[0]
+    assert l13["status"] == "fail"
     assert not issues.empty

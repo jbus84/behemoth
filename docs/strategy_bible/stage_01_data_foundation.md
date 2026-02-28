@@ -4,16 +4,61 @@
 Define and verify the minimum data-quality contract required for causal OCO research and deployment decisions.
 
 ## Inputs
+- Raw ticks root (runtime):
+- `/Users/danielfisher/Desktop/tick/<SYMBOL>/<SYMBOL>_YYYYMM_ticks.parquet`
 - Event parquet produced by WFO prep:
 - `data/analysis/tick_opportunity_mining/wfo_*/<SYMBOL>_oco_events_eval*.parquet`
 - Reliability audit artifacts:
 - `data/analysis/tick_opportunity_mining/data_reliability_checks.csv`
 - `data/analysis/tick_opportunity_mining/data_reliability_issues.csv`
+- Tick-bar + velocity builders:
+- `scripts/build_global_tick_bars.py`
+- `scripts/build_tick_velocity_dataset.py`
 
 ## Process
+- Build fixed tick bars (`100/1000/2000`) from raw ticks.
+- Build causal velocity datasets from tick bars.
 - Validate required columns and parse quality.
 - Validate timestamp monotonicity, duplication, and hourly/session coverage.
 - Compute Stage-1 drift diagnostics (`D16-D18`) for edge-context monitoring.
+
+## Tick Builder Contract
+- Tick bars are built causally from ordered ticks using fixed tick count buckets.
+- Bar schema produced by `scripts/build_global_tick_bars.py` includes:
+- `timestamp`, `close_ts`, `open`, `high`, `low`, `close`, `ask`, `spread`, `tick_volume`
+- path fields: `high_pos_tick`, `low_pos_tick`, `hl_first`, `hl_pos_delta_tick`, `hl_pos_frac`
+- symbol aliases: `close_<SYMBOL>`, `ask_<SYMBOL>`, `spread_<SYMBOL>`
+- Velocity datasets are built by `scripts/build_tick_velocity_dataset.py` from tick bars and include:
+- required OCO fields: `close_ts`, `open`, `high`, `low`, `close`, `cost_est_pips`, `range_pips`, `hour_utc`, `spread_z`, `tick_rate_z`, `vel_cost_units_h1`, `hl_first`
+- forward labels scaffold: `y_fwd_pips_h{h}`
+- All rolling statistics are lagged by one bar (`shift(1)`) to keep features causal.
+
+## Tick-to-Velocity Build Commands
+```bash
+# 1) Build fixed tick bars directly from raw ticks.
+uv run python scripts/build_global_tick_bars.py \
+  --tick-root /Users/danielfisher/Desktop/tick \
+  --output-dir data/global_tickbars \
+  --symbols EURUSD,GBPUSD,USDJPY \
+  --base-ticks 100 \
+  --aggregate-multiples 1,10,20 \
+  --price-source bid \
+  --timestamp-mode as_utc
+
+# 2) Build causal velocity datasets consumed by mining/WFO.
+uv run python scripts/build_tick_velocity_dataset.py \
+  --tick-root /Users/danielfisher/Desktop/tick \
+  --tickbar-dir data/global_tickbars \
+  --out-dir data/analysis/tick_velocity \
+  --symbols EURUSD,GBPUSD,USDJPY \
+  --bar-ticks-grid 100,1000,2000 \
+  --vel-horizons 1,2,5,10 \
+  --target-horizons 1,2,3 \
+  --vol-window 96 \
+  --cost-window 288 \
+  --timestamp-mode as_utc \
+  --overwrite
+```
 
 ## Exact Calculations
 - `D16_spread_regime_shift_z`:
@@ -67,6 +112,28 @@ Hard gates come from `DR*` checks in reliability audit.
 
 ## Reproduction Commands
 ```bash
+uv run python scripts/build_global_tick_bars.py \
+  --tick-root /Users/danielfisher/Desktop/tick \
+  --output-dir data/global_tickbars \
+  --symbols EURUSD,GBPUSD,USDJPY \
+  --base-ticks 100 \
+  --aggregate-multiples 1,10,20 \
+  --price-source bid \
+  --timestamp-mode as_utc
+
+uv run python scripts/build_tick_velocity_dataset.py \
+  --tick-root /Users/danielfisher/Desktop/tick \
+  --tickbar-dir data/global_tickbars \
+  --out-dir data/analysis/tick_velocity \
+  --symbols EURUSD,GBPUSD,USDJPY \
+  --bar-ticks-grid 100,1000,2000 \
+  --vel-horizons 1,2,5,10 \
+  --target-horizons 1,2,3 \
+  --vol-window 96 \
+  --cost-window 288 \
+  --timestamp-mode as_utc \
+  --overwrite
+
 uv run python scripts/audit_data_reliability.py \
   --symbols EURUSD,GBPUSD,USDJPY \
   --out-checks-csv data/analysis/tick_opportunity_mining/data_reliability_checks.csv \
@@ -83,7 +150,7 @@ uv run python scripts/audit_data_reliability.py \
 <!-- GENERATED:STAGE_01:START -->
 ### Auto Snapshot - Stage 01
 
-- generated_at: `2026-02-27 18:50:29 UTC`
+- generated_at: `2026-02-28 08:46:09 UTC`
 - Contract check uses eval-year event tables consumed by WFO.
 - Null percentages should remain near 0 for required modeling fields.
 - Timezone contract rows include parse rate, monotonicity, DST and offset anomaly checks.
@@ -94,8 +161,8 @@ uv run python scripts/audit_data_reliability.py \
 | symbol   |   events_rows |   cost_est_pips_null_pct |   range_pips_null_pct |   hl_first_null_pct |   reliability_checks_total |   reliability_failed |   reliability_high_critical_failed |   d16_spread_regime_shift_z |   d17_gap_burst_ratio |   d18_clock_jitter_cv |   d18_clock_jitter_cv_raw |
 |:---------|--------------:|-------------------------:|----------------------:|--------------------:|---------------------------:|---------------------:|-----------------------------------:|----------------------------:|----------------------:|----------------------:|--------------------------:|
 | EURUSD   |       5536229 |                        0 |                     0 |                   0 |                         15 |                    0 |                                  0 |                    -1.12735 |           0.000298398 |              0.63644  |                   7.90046 |
-| GBPUSD   |       1080000 |                        0 |                     0 |                   0 |                         15 |                    0 |                                  0 |                    -1.78648 |           0.00169167  |              0.615734 |                  17.0692  |
-| USDJPY   |       1080000 |                        0 |                     0 |                   0 |                         15 |                    0 |                                  0 |                    -1.13879 |           0.00188241  |              0.64048  |                  23.2842  |
+| GBPUSD   |         80000 |                        0 |                     0 |                   0 |                         15 |                    0 |                                  0 |                    -1.70309 |           0.0186002   |              0.908974 |                  25.5665  |
+| USDJPY   |         80000 |                        0 |                     0 |                   0 |                         15 |                    0 |                                  0 |                    -1.12011 |           0.0158127   |              0.931903 |                  26.1473  |
 
 #### Interpretation Notes
 - Contract check uses eval-year event tables consumed by WFO.
@@ -103,24 +170,24 @@ uv run python scripts/audit_data_reliability.py \
 - Timezone contract rows include parse rate, monotonicity, DST and offset anomaly checks.
 
 #### Action Trigger Summary
-| symbol   | metric_id                 | band   | severity   | action_code   | action_summary     | owner    |
-|:---------|:--------------------------|:-------|:-----------|:--------------|:-------------------|:---------|
-| EURUSD   | D16_spread_regime_shift_z | green  | info       | A0_MONITOR    | within policy band | research |
-| EURUSD   | D17_gap_burst_ratio       | green  | info       | A0_MONITOR    | within policy band | data     |
-| EURUSD   | D18_clock_jitter_cv       | green  | info       | A0_MONITOR    | within policy band | data     |
-| GBPUSD   | D16_spread_regime_shift_z | green  | info       | A0_MONITOR    | within policy band | research |
-| GBPUSD   | D17_gap_burst_ratio       | green  | info       | A0_MONITOR    | within policy band | data     |
-| GBPUSD   | D18_clock_jitter_cv       | green  | info       | A0_MONITOR    | within policy band | data     |
-| USDJPY   | D16_spread_regime_shift_z | green  | info       | A0_MONITOR    | within policy band | research |
-| USDJPY   | D17_gap_burst_ratio       | green  | info       | A0_MONITOR    | within policy band | data     |
-| USDJPY   | D18_clock_jitter_cv       | green  | info       | A0_MONITOR    | within policy band | data     |
+| symbol   | metric_id                 | band   | severity   | action_code    | action_summary     | owner    |
+|:---------|:--------------------------|:-------|:-----------|:---------------|:-------------------|:---------|
+| EURUSD   | D16_spread_regime_shift_z | amber  | medium     | A2_RECALIBRATE | review and monitor | research |
+| EURUSD   | D17_gap_burst_ratio       | green  | info       | A0_MONITOR     | within policy band | data     |
+| EURUSD   | D18_clock_jitter_cv       | green  | info       | A0_MONITOR     | within policy band | data     |
+| GBPUSD   | D16_spread_regime_shift_z | green  | info       | A0_MONITOR     | within policy band | research |
+| GBPUSD   | D17_gap_burst_ratio       | green  | info       | A0_MONITOR     | within policy band | data     |
+| GBPUSD   | D18_clock_jitter_cv       | green  | info       | A0_MONITOR     | within policy band | data     |
+| USDJPY   | D16_spread_regime_shift_z | green  | info       | A0_MONITOR     | within policy band | research |
+| USDJPY   | D17_gap_burst_ratio       | green  | info       | A0_MONITOR     | within policy band | data     |
+| USDJPY   | D18_clock_jitter_cv       | green  | info       | A0_MONITOR     | within policy band | data     |
 
 #### Details
 | symbol   |   events_rows |   cost_est_pips_null_pct |   range_pips_null_pct |   spread_z_null_pct |   tick_rate_z_null_pct |   vel_cost_units_h1_null_pct |   hl_first_null_pct |   d16_spread_regime_shift_z |   d17_gap_burst_ratio |   d18_clock_jitter_cv |   d18_clock_jitter_cv_raw |   reliability_checks_total |   reliability_failed |   reliability_high_critical_failed |
 |:---------|--------------:|-------------------------:|----------------------:|--------------------:|-----------------------:|-----------------------------:|--------------------:|----------------------------:|----------------------:|----------------------:|--------------------------:|---------------------------:|---------------------:|-----------------------------------:|
 | EURUSD   |       5536229 |                        0 |                     0 |                   0 |                      0 |                            0 |                   0 |                    -1.12735 |           0.000298398 |              0.63644  |                   7.90046 |                         15 |                    0 |                                  0 |
-| GBPUSD   |       1080000 |                        0 |                     0 |                   0 |                      0 |                            0 |                   0 |                    -1.78648 |           0.00169167  |              0.615734 |                  17.0692  |                         15 |                    0 |                                  0 |
-| USDJPY   |       1080000 |                        0 |                     0 |                   0 |                      0 |                            0 |                   0 |                    -1.13879 |           0.00188241  |              0.64048  |                  23.2842  |                         15 |                    0 |                                  0 |
+| GBPUSD   |         80000 |                        0 |                     0 |                   0 |                      0 |                            0 |                   0 |                    -1.70309 |           0.0186002   |              0.908974 |                  25.5665  |                         15 |                    0 |                                  0 |
+| USDJPY   |         80000 |                        0 |                     0 |                   0 |                      0 |                            0 |                   0 |                    -1.12011 |           0.0158127   |              0.931903 |                  26.1473  |                         15 |                    0 |                                  0 |
 
 #### Plots
 ![stage_01_contract_health](../figures/oco_bible/stage_01_contract_health.png)

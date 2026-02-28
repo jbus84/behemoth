@@ -17,6 +17,50 @@ Reduce candidate universe to a stable, capacity-valid core set with preserved ex
 - Compute reduction diagnostics (`R01-R03`).
 - Enforce that reduced states stay inside the pre-registered rule universe contract.
 
+## Dependency on Stage 3 (CatBoost Outputs)
+- Stage 5 consumes Stage 3 prediction artifacts (`*_monthly_predictions.parquet`) and does not refit CatBoost.
+- Default reduced-core entry set is controlled by `selection_mode`:
+- `auto` / `exec_flag`: uses Stage 3 execution flag (`selected_exec == 1`).
+- `monthly_quantile`: recomputes monthwise quantile filter from `pred_prob` when explicitly configured.
+- Stage 3 is model-level row ranking; Stage 5 is state-level governance filtering:
+- model layer: probability thresholding (`pred_prob`, `threshold_exec`, `selected_exec`)
+- state layer: stability/capacity/risk gates across rolling train months
+- If Stage 3 predictions are stale for the current test month, Stage 5 outputs are operationally invalid.
+
+## CatBoost x Core Spec Interaction
+- Final tradable rows are the strict intersection of three gates:
+- `core_spec_match == 1` (row is inside reduced-core state set)
+- `selected_exec == 1` (Stage 3 CatBoost passed execution threshold)
+- `execution_feasible == 1` (Stage 4 stop-limit realism/fill constraints passed)
+- Operational rule:
+- `trade_row = core_spec_match AND selected_exec AND execution_feasible`
+- Rejection logic:
+- CatBoost positive but outside core spec -> reject.
+- Core spec match but CatBoost below threshold -> reject.
+- Passes both but execution infeasible (for configured cap/fill policy) -> reject.
+
+```mermaid
+flowchart TD
+    A[Candidate row at test timestamp] --> B{Inside reduced-core state spec}
+    B -- no --> X1[Reject]
+    B -- yes --> C{CatBoost selected_exec equals 1}
+    C -- no --> X2[Reject]
+    C -- yes --> D{Execution feasible under stop-limit policy}
+    D -- no --> X3[Reject]
+    D -- yes --> E[Trade row admitted]
+```
+
+### Row-Level Example
+- Example row:
+- `state_key=tf30_revert_b2_h3`
+- `core_spec_match=1`
+- `pred_prob=0.84`
+- `threshold_exec=0.79`
+- `selected_exec=1`
+- `execution_feasible=1`
+- Outcome: admitted (`trade_row=1`).
+- If the same row had `core_spec_match=0`, it would be rejected even with `selected_exec=1`.
+
 ## Exact Calculations
 - `R01_post_pre_row_ratio = reduced_rows / prefilter_wfo_selected_rows`
 - `R02_top_state_dependency = max_top_state_share` (or `top_state_share` if available)
@@ -95,7 +139,7 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 <!-- GENERATED:STAGE_05:START -->
 ### Auto Snapshot - Stage 05
 
-- generated_at: `2026-02-27 18:50:29 UTC`
+- generated_at: `2026-02-28 08:46:09 UTC`
 - State schedule is selected month-by-month using only prior-month train data.
 - Summary emphasizes full-path gross behavior after reduced-core filtering.
 - R01-R03 track pruning severity, state concentration, and re-selection stability.
@@ -103,9 +147,9 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 #### Key Results
 | symbol   |   rows_total |   mean_gross_pips |   lb95_month_mean_gross_pips |   fill_rate_overall |   positive_months |   months_total |   r01_post_pre_row_ratio |   r02_top_state_dependency |   r03_reselection_stability |
 |:---------|-------------:|------------------:|-----------------------------:|--------------------:|------------------:|---------------:|-------------------------:|---------------------------:|----------------------------:|
-| EURUSD   |          661 |           2.76929 |                      2.30087 |            0.991004 |                 3 |              9 |                0.0110249 |                       0.35 |                    0.5      |
-| GBPUSD   |         1916 |           2.07056 |                      1.80556 |            0.995842 |                 6 |              9 |                0.0271469 |                       0.35 |                    0.5      |
-| USDJPY   |         2258 |           3.00368 |                      2.54229 |            0.990351 |                 6 |              9 |                0.0290287 |                       0.35 |                    0.305556 |
+| EURUSD   |         4898 |           1.59847 |                      1.30417 |            0.994922 |                 6 |              9 |                0.0150469 |                       0.35 |                    0.361111 |
+| GBPUSD   |            0 |         nan       |                    nan       |          nan        |                 0 |              9 |                0         |                       0.35 |                  nan        |
+| USDJPY   |            0 |         nan       |                    nan       |          nan        |                 0 |              9 |                0         |                       0.35 |                  nan        |
 
 #### Interpretation Notes
 - State schedule is selected month-by-month using only prior-month train data.
@@ -122,9 +166,9 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 #### Details
 | symbol   |   months |   rows_total |   mean_fill_rate |   mean_gross |
 |:---------|---------:|-------------:|-----------------:|-------------:|
-| EURUSD   |        9 |          661 |         0.989648 |      2.64718 |
-| GBPUSD   |        9 |         1916 |         0.996571 |      2.13763 |
-| USDJPY   |        9 |         2258 |         0.990604 |      2.98447 |
+| EURUSD   |        9 |         4898 |         0.994601 |      1.67778 |
+| GBPUSD   |        9 |            0 |       nan        |    nan       |
+| USDJPY   |        9 |            0 |       nan        |    nan       |
 
 #### Plots
 ![stage_05_reduced_monthly_gross](../figures/oco_bible/stage_05_reduced_monthly_gross.png)
@@ -135,30 +179,30 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 | EURUSD   | 2025-04      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
 | EURUSD   | 2025-05      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
 | EURUSD   | 2025-06      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
-| EURUSD   | 2025-07      |                 2 |           0        |          0.610169 |    0.524275 |                0 | ok             |
-| EURUSD   | 2025-08      |                 2 |           1        |          0.590551 |    0.516399 |                0 | ok             |
-| EURUSD   | 2025-09      |                 1 |           0.5      |          1        |    1        |                0 | ok             |
-| EURUSD   | 2025-10      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
-| EURUSD   | 2025-11      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
-| EURUSD   | 2025-12      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
+| EURUSD   | 2025-07      |                 1 |           0        |          1        |    1        |                0 | ok             |
+| EURUSD   | 2025-08      |                 1 |           1        |          1        |    1        |                0 | ok             |
+| EURUSD   | 2025-09      |                 2 |           0.5      |          0.538173 |    0.502914 |                0 | ok             |
+| EURUSD   | 2025-10      |                 2 |           1        |          0.591503 |    0.516746 |                0 | ok             |
+| EURUSD   | 2025-11      |                 2 |           0.666667 |          0.508966 |    0.500161 |                0 | ok             |
+| EURUSD   | 2025-12      |                 2 |           0.666667 |          0.598883 |    0.519556 |                0 | ok             |
 | GBPUSD   | 2025-04      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
 | GBPUSD   | 2025-05      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
 | GBPUSD   | 2025-06      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
-| GBPUSD   | 2025-07      |                 1 |           0        |          1        |    1        |                0 | ok             |
-| GBPUSD   | 2025-08      |                 2 |           0.5      |          0.5053   |    0.500056 |                0 | ok             |
-| GBPUSD   | 2025-09      |                 1 |           1        |          1        |    1        |                0 | ok             |
-| GBPUSD   | 2025-10      |                 2 |           0.5      |          0.54321  |    0.503734 |                0 | ok             |
-| GBPUSD   | 2025-11      |                 1 |           0.5      |          1        |    1        |                0 | ok             |
-| GBPUSD   | 2025-12      |                 2 |           0.5      |          0.530726 |    0.501888 |                0 | ok             |
+| GBPUSD   | 2025-07      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
+| GBPUSD   | 2025-08      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
+| GBPUSD   | 2025-09      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
+| GBPUSD   | 2025-10      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
+| GBPUSD   | 2025-11      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
+| GBPUSD   | 2025-12      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
 | USDJPY   | 2025-04      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
 | USDJPY   | 2025-05      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
 | USDJPY   | 2025-06      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
-| USDJPY   | 2025-07      |                 2 |           0        |          0.614525 |    0.526232 |                0 | ok             |
-| USDJPY   | 2025-08      |                 2 |           0.666667 |          0.522124 |    0.500979 |                0 | ok             |
-| USDJPY   | 2025-09      |                 1 |           1        |          1        |    1        |                0 | ok             |
-| USDJPY   | 2025-10      |                 2 |           0.5      |          0.605206 |    0.522137 |                0 | ok             |
-| USDJPY   | 2025-11      |                 1 |           1        |          1        |    1        |                0 | ok             |
-| USDJPY   | 2025-12      |                 2 |           1        |          0.639469 |    0.538903 |                0 | ok             |
+| USDJPY   | 2025-07      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
+| USDJPY   | 2025-08      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
+| USDJPY   | 2025-09      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
+| USDJPY   | 2025-10      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
+| USDJPY   | 2025-11      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
+| USDJPY   | 2025-12      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
 
 #### Leakage/Label Integrity (Reduced-Core Focus)
 | symbol   |   checks_total |   checks_failed | failed_check_ids   |

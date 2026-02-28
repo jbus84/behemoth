@@ -232,7 +232,7 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 <!-- GENERATED:STAGE_09:START -->
 ### Auto Snapshot - Stage 09
 
-- generated_at: `2026-02-27 18:50:29 UTC`
+- generated_at: `2026-02-28 08:46:09 UTC`
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
 - Missing required artifacts: 0.
 
@@ -240,8 +240,8 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 | symbol   | gate_reduced_lb95_month_gt0   | gate_tick_exact   | gate_robust_lb95_trade_gt0   | gate_robust_months_majority   | symbol_all_gates_pass   |
 |:---------|:------------------------------|:------------------|:-----------------------------|:------------------------------|:------------------------|
 | EURUSD   | True                          | True              | True                         | True                          | True                    |
-| GBPUSD   | True                          | True              | True                         | True                          | True                    |
-| USDJPY   | True                          | True              | True                         | True                          | True                    |
+| GBPUSD   | False                         | True              | True                         | True                          | False                   |
+| USDJPY   | False                         | True              | True                         | True                          | False                   |
 
 #### Interpretation Notes
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.

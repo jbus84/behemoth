@@ -1,0 +1,4806 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Production documentation for the Behemoth trading system">
+      
+      
+        <meta name="author" content="Behemoth">
+      
+      
+      
+        <link rel="prev" href="../oco_logical_audit_report/">
+      
+      
+        <link rel="next" href="../oco_docs_contract_report/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Edge Clarity Report - Behemoth Strategy</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#oco-edge-clarity-report" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Behemoth Strategy" class="md-header__button md-logo" aria-label="Behemoth Strategy" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Behemoth Strategy
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Edge Clarity Report
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="teal"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com-jbus84/behemoth" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Github
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Behemoth Strategy" class="md-nav__button md-logo" aria-label="Behemoth Strategy" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Behemoth Strategy
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com-jbus84/behemoth" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Github
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../STRATEGY_MASTER_MANUAL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OCO Strategy Manual
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Analysis
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Analysis
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../catalog_gaps_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Catalog Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_stop_limit_tickfill_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stop-Limit Tickfill Fullcap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_live_governance_lock/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Live Governance Lock
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../remediation_metric_decomposition/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Remediation Metric Decomposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../risk_checklist/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Risk Checklist
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_7" id="__nav_3_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EURUSD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    EURUSD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eurusd_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eurusd_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eurusd_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reduced Core Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eurusd_oco_tick_exact_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tick-Exact Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eurusd_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GBPUSD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    GBPUSD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gbpusd_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gbpusd_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reduced Core Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gbpusd_oco_tick_exact_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tick-Exact Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gbpusd_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    USDJPY
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    USDJPY
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usdjpy_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usdjpy_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reduced Core Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usdjpy_oco_tick_exact_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tick-Exact Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usdjpy_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OCO Strategy Bible
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    OCO Strategy Bible
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/pipeline_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_01_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 01 Data Foundation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_01_data_foundation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 01 Data Foundation Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_02_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 02 Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_02_opportunity_mining/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 02 Opportunity Mining Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_03_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 03 Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_03_monthly_wfo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 03 Monthly WFO Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_04_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 04 Stop-Limit Realism
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_04_execution_realism/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 04 Stop-Limit Realism Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_05_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 05 Reduced Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_05_reduced_core/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 05 Reduced Core Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_06_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 06 Tick-Exact Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_06_tick_exact_and_portability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 06 Tick-Exact + Portability Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_07_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 07 Logical Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_07_logical_and_statistical_audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 07 Logical + Statistical Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_08_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 08 Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_08_robustness_and_stress/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 08 Robustness + Stress Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_09_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 09 Governance Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_09_live_governance_and_deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 09 Governance Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_10_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 10 Risks Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_10_known_risks_and_backlog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 10 Risks Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_11_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 11 Execution MC Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_11_execution_monte_carlo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 11 Execution MC Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/signal_lifecycle_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Signal Lifecycle Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/operator_runbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operator Runbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/metric_dictionary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metric Dictionary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/assumptions_and_threats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assumptions + Threats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/governance_mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance Mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data_reliability_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Reliability Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_stage_integrity_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage Integrity Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_rule_universe_registry_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rule Universe Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run_delta_dashboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run Delta Dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operator_action_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operator Action Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../taxonomy_rules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Taxonomy Rules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/operator_playbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operator Playbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_leakage_integrity_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Leakage + Label Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_execution_risk_prelive_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Risk Preflight
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_execution_drift_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Drift Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_alert_remediation_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alert Remediation Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_governance_explainability_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance Explainability Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_threshold_sensitivity_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Threshold Sensitivity Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_execution_monte_carlo_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Monte Carlo Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_execution_monte_carlo_validation_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Monte Carlo Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_logical_audit_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logical Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Edge Clarity Report
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Edge Clarity Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#stage-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage Metrics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#top-state-contributions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Top State Contributions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#threshold-robustness-slices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Threshold Robustness Slices
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_docs_contract_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docs Contract Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repository Notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Repository Notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DATA_SOURCES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../REPO_STRUCTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repo Structure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../walkthrough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Walkthrough
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../openapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenAPI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../risk_controls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Risk Controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monitoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data_pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../config_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../code_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Code Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../makefile/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Makefile
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../db_schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DB Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../db_schema_diagram/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DB Diagram
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#stage-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage Metrics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#top-state-contributions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Top State Contributions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#threshold-robustness-slices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Threshold Robustness Slices
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="oco-edge-clarity-report">OCO Edge Clarity Report<a class="headerlink" href="#oco-edge-clarity-report" title="Permanent link">&para;</a></h1>
+<ul>
+<li>generated_at_utc: <code>2026-02-28T08:46:13Z</code></li>
+<li>stage_metrics_csv: <code>data/analysis/tick_opportunity_mining/edge_clarity_stage_metrics.csv</code></li>
+<li>state_contrib_csv: <code>data/analysis/tick_opportunity_mining/edge_clarity_state_contrib.csv</code></li>
+<li>threshold_robustness_csv: <code>data/analysis/tick_opportunity_mining/edge_clarity_threshold_robustness.csv</code></li>
+</ul>
+<h2 id="stage-metrics">Stage Metrics<a class="headerlink" href="#stage-metrics" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">stage_id</th>
+<th style="text-align: left;">symbol</th>
+<th style="text-align: left;">metric_id</th>
+<th style="text-align: right;">metric_value</th>
+<th style="text-align: left;">note</th>
+<th style="text-align: left;">source_path</th>
+<th style="text-align: left;">generated_at_utc</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">D16_spread_regime_shift_z</td>
+<td style="text-align: right;">-1.12735</td>
+<td style="text-align: left;">Last-month cost-estimate shift vs prior months</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-02-28T08:46:11Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">D17_gap_burst_ratio</td>
+<td style="text-align: right;">0.000298398</td>
+<td style="text-align: left;">Share of large inter-bar time gaps (&gt;10x median)</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-02-28T08:46:11Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">D18_clock_jitter_cv</td>
+<td style="text-align: right;">0.63644</td>
+<td style="text-align: left;">Normalized inter-bar timing jitter CV after hour-of-week baseline adjustment</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-02-28T08:46:11Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">D18_clock_jitter_cv_raw</td>
+<td style="text-align: right;">7.90046</td>
+<td style="text-align: left;">Raw inter-bar timing jitter coefficient of variation</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-02-28T08:46:11Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">D16_spread_regime_shift_z</td>
+<td style="text-align: right;">-1.70309</td>
+<td style="text-align: left;">Last-month cost-estimate shift vs prior months</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">D17_gap_burst_ratio</td>
+<td style="text-align: right;">0.0186002</td>
+<td style="text-align: left;">Share of large inter-bar time gaps (&gt;10x median)</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">D18_clock_jitter_cv</td>
+<td style="text-align: right;">0.908974</td>
+<td style="text-align: left;">Normalized inter-bar timing jitter CV after hour-of-week baseline adjustment</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">D18_clock_jitter_cv_raw</td>
+<td style="text-align: right;">25.5665</td>
+<td style="text-align: left;">Raw inter-bar timing jitter coefficient of variation</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">D16_spread_regime_shift_z</td>
+<td style="text-align: right;">-1.12011</td>
+<td style="text-align: left;">Last-month cost-estimate shift vs prior months</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">D17_gap_burst_ratio</td>
+<td style="text-align: right;">0.0158127</td>
+<td style="text-align: left;">Share of large inter-bar time gaps (&gt;10x median)</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">D18_clock_jitter_cv</td>
+<td style="text-align: right;">0.931903</td>
+<td style="text-align: left;">Normalized inter-bar timing jitter CV after hour-of-week baseline adjustment</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">D18_clock_jitter_cv_raw</td>
+<td style="text-align: right;">26.1473</td>
+<td style="text-align: left;">Raw inter-bar timing jitter coefficient of variation</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">M01_top3_contrib_share</td>
+<td style="text-align: right;">0.0486952</td>
+<td style="text-align: left;">Share of edge_weight from top 3 state blocks</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/EURUSD_oco_candidates.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">M02_smoothness_abs_jump</td>
+<td style="text-align: right;">0.0940589</td>
+<td style="text-align: left;">Median absolute gross jump across adjacent horizons</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/EURUSD_oco_candidates.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">M03_positive_density</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">Share of selected hypotheses with positive mean gross</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/EURUSD_oco_candidates.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">M01_top3_contrib_share</td>
+<td style="text-align: right;">0.0508144</td>
+<td style="text-align: left;">Share of edge_weight from top 3 state blocks</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/GBPUSD_oco_candidates.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">M02_smoothness_abs_jump</td>
+<td style="text-align: right;">0.0744663</td>
+<td style="text-align: left;">Median absolute gross jump across adjacent horizons</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/GBPUSD_oco_candidates.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">M03_positive_density</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">Share of selected hypotheses with positive mean gross</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/GBPUSD_oco_candidates.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">M01_top3_contrib_share</td>
+<td style="text-align: right;">0.04021</td>
+<td style="text-align: left;">Share of edge_weight from top 3 state blocks</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/USDJPY_oco_candidates.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">M02_smoothness_abs_jump</td>
+<td style="text-align: right;">0.0981752</td>
+<td style="text-align: left;">Median absolute gross jump across adjacent horizons</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/USDJPY_oco_candidates.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">M03_positive_density</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">Share of selected hypotheses with positive mean gross</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/USDJPY_oco_candidates.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">W13_threshold_fragility</td>
+<td style="text-align: right;">1.34602</td>
+<td style="text-align: left;">Mean-gross sensitivity around execution quantile</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_monthly_thresholds_all.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">W14_brier_drift_std</td>
+<td style="text-align: right;">0.00162703</td>
+<td style="text-align: left;">Std of monthly Brier score (calibration drift)</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_monthly_metrics_all.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">W15_selection_turnover</td>
+<td style="text-align: right;">0.0799501</td>
+<td style="text-align: left;">1 - consecutive-month Jaccard of selected candidate_uids</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_monthly_predictions_all.parquet</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">W13_threshold_fragility</td>
+<td style="text-align: right;">0.700198</td>
+<td style="text-align: left;">Mean-gross sensitivity around execution quantile</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_monthly_thresholds_all.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">W14_brier_drift_std</td>
+<td style="text-align: right;">0.00128023</td>
+<td style="text-align: left;">Std of monthly Brier score (calibration drift)</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_monthly_metrics_all.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">W15_selection_turnover</td>
+<td style="text-align: right;">0.137968</td>
+<td style="text-align: left;">1 - consecutive-month Jaccard of selected candidate_uids</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_monthly_predictions_all.parquet</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">W13_threshold_fragility</td>
+<td style="text-align: right;">0.5354</td>
+<td style="text-align: left;">Mean-gross sensitivity around execution quantile</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_monthly_thresholds_all.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">W14_brier_drift_std</td>
+<td style="text-align: right;">0.00217768</td>
+<td style="text-align: left;">Std of monthly Brier score (calibration drift)</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_monthly_metrics_all.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">W15_selection_turnover</td>
+<td style="text-align: right;">0.175758</td>
+<td style="text-align: left;">1 - consecutive-month Jaccard of selected candidate_uids</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_monthly_predictions_all.parquet</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">E11_session_overshoot_dispersion</td>
+<td style="text-align: right;">0.223359</td>
+<td style="text-align: left;">CV of mean overshoot across sessions after causal rolling session caps (20D, q=0.90)</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">E12_cap_plateau_width_pips</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">Cap width where performance remains &gt;=95% of best</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_caps.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">E13_nonfill_opportunity_cost_pips</td>
+<td style="text-align: right;">0.12845</td>
+<td style="text-align: left;">Estimated opportunity cost at best cap (ideal-realized)*fill</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_caps.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">erosion_overshoot_component</td>
+<td style="text-align: right;">0.134215</td>
+<td style="text-align: left;">Average overshoot pips at tick first-cross</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">erosion_spread_fee_plus_slip</td>
+<td style="text-align: right;">-0.116449</td>
+<td style="text-align: left;">Gross-to-per-signal erosion including overshoot realism</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_caps.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:12Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">E11_session_overshoot_dispersion</td>
+<td style="text-align: right;">0.148447</td>
+<td style="text-align: left;">CV of mean overshoot across sessions after causal rolling session caps (20D, q=0.90)</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/GBPUSD_stop_limit_tickfill_detail.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">E12_cap_plateau_width_pips</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: left;">Cap width where performance remains &gt;=95% of best</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/GBPUSD_stop_limit_tickfill_caps.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">E13_nonfill_opportunity_cost_pips</td>
+<td style="text-align: right;">0.116433</td>
+<td style="text-align: left;">Estimated opportunity cost at best cap (ideal-realized)*fill</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/GBPUSD_stop_limit_tickfill_caps.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">erosion_overshoot_component</td>
+<td style="text-align: right;">0.134215</td>
+<td style="text-align: left;">Average overshoot pips at tick first-cross</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">erosion_spread_fee_plus_slip</td>
+<td style="text-align: right;">0.130653</td>
+<td style="text-align: left;">Gross-to-per-signal erosion including overshoot realism</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/GBPUSD_stop_limit_tickfill_caps.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">E11_session_overshoot_dispersion</td>
+<td style="text-align: right;">0.0882319</td>
+<td style="text-align: left;">CV of mean overshoot across sessions after causal rolling session caps (20D, q=0.90)</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDJPY_stop_limit_tickfill_detail.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">E12_cap_plateau_width_pips</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: left;">Cap width where performance remains &gt;=95% of best</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDJPY_stop_limit_tickfill_caps.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">E13_nonfill_opportunity_cost_pips</td>
+<td style="text-align: right;">0.182388</td>
+<td style="text-align: left;">Estimated opportunity cost at best cap (ideal-realized)*fill</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDJPY_stop_limit_tickfill_caps.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">erosion_overshoot_component</td>
+<td style="text-align: right;">0.223021</td>
+<td style="text-align: left;">Average overshoot pips at tick first-cross</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">erosion_spread_fee_plus_slip</td>
+<td style="text-align: right;">0.207694</td>
+<td style="text-align: left;">Gross-to-per-signal erosion including overshoot realism</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDJPY_stop_limit_tickfill_caps.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">R01_post_pre_row_ratio</td>
+<td style="text-align: right;">0.0150469</td>
+<td style="text-align: left;">Reduced-core rows / pre-filter WFO selected rows</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">R02_top_state_dependency</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: left;">Top-state share from reduced summary</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_summary.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">R03_reselection_stability</td>
+<td style="text-align: right;">0.361111</td>
+<td style="text-align: left;">1-churn proxy / stability pass rate</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_state_churn.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">R01_post_pre_row_ratio</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">Reduced-core rows / pre-filter WFO selected rows</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_monthly.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">R02_top_state_dependency</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: left;">Top-state share from reduced summary</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_summary.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">R01_post_pre_row_ratio</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">Reduced-core rows / pre-filter WFO selected rows</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_monthly.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">R02_top_state_dependency</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: left;">Top-state share from reduced summary</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_summary.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">X01_portable_family_count</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">Families with positive mean gross across all symbols</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/*_oco_candidates.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">X02_family_std_mean</td>
+<td style="text-align: right;">0.343121</td>
+<td style="text-align: left;">Average family std across symbols</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/*_oco_candidates.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">X03_family_spread_mean</td>
+<td style="text-align: right;">0.610392</td>
+<td style="text-align: left;">Average family max-min spread across symbols</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/*_oco_candidates.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">X01_portable_family_count</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">Families with positive mean gross across all symbols</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/*_oco_candidates.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">X02_family_std_mean</td>
+<td style="text-align: right;">0.343121</td>
+<td style="text-align: left;">Average family std across symbols</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/*_oco_candidates.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">X03_family_spread_mean</td>
+<td style="text-align: right;">0.610392</td>
+<td style="text-align: left;">Average family max-min spread across symbols</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/*_oco_candidates.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">X01_portable_family_count</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">Families with positive mean gross across all symbols</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/*_oco_candidates.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">X02_family_std_mean</td>
+<td style="text-align: right;">0.343121</td>
+<td style="text-align: left;">Average family std across symbols</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/*_oco_candidates.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">X03_family_spread_mean</td>
+<td style="text-align: right;">0.610392</td>
+<td style="text-align: left;">Average family max-min spread across symbols</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/*_oco_candidates.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">S01_lb95_dependence_gap</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">IID LB95 minus month-block LB95</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">S02_practical_lb95_gt0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">Practical significance indicator</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">S03_multiplicity_survival</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">Bonferroni or FDR pass indicator</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">S01_lb95_dependence_gap</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">IID LB95 minus month-block LB95</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">S02_practical_lb95_gt0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">Practical significance indicator</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">S03_multiplicity_survival</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">Bonferroni or FDR pass indicator</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">S01_lb95_dependence_gap</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">IID LB95 minus month-block LB95</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">S02_practical_lb95_gt0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">Practical significance indicator</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">S03_multiplicity_survival</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">Bonferroni or FDR pass indicator</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">T01_stress_elasticity</td>
+<td style="text-align: right;">-1</td>
+<td style="text-align: left;">Slope of mean net pips across costplus stress levels</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/EURUSD_oco_robustness_summary.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">T02_first_negative_costplus</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">First costplus level where mean net turns negative</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/EURUSD_oco_robustness_summary.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">T03_post_worst_month_recovery</td>
+<td style="text-align: right;">0.915934</td>
+<td style="text-align: left;">Next-month / abs(worst-month) gross ratio after worst reduced-core month</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">T01_stress_elasticity</td>
+<td style="text-align: right;">-1</td>
+<td style="text-align: left;">Slope of mean net pips across costplus stress levels</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/GBPUSD_oco_robustness_summary.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">T02_first_negative_costplus</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">First costplus level where mean net turns negative</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/GBPUSD_oco_robustness_summary.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">T01_stress_elasticity</td>
+<td style="text-align: right;">-1</td>
+<td style="text-align: left;">Slope of mean net pips across costplus stress levels</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/USDJPY_oco_robustness_summary.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">T02_first_negative_costplus</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">First costplus level where mean net turns negative</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/USDJPY_oco_robustness_summary.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">G01_near_fail_count</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">Count of pass checks with low margin heuristics</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/eurusd_governance_predeploy.json</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">G03_lock_drift_flags</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">Hash/state-universe drift failures in predeploy checks</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/eurusd_governance_predeploy.json</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">G01_near_fail_count</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">Count of pass checks with low margin heuristics</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/gbpusd_governance_predeploy.json</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">G03_lock_drift_flags</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">Hash/state-universe drift failures in predeploy checks</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/gbpusd_governance_predeploy.json</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">G01_near_fail_count</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">Count of pass checks with low margin heuristics</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/usdjpy_governance_predeploy.json</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">G03_lock_drift_flags</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">Hash/state-universe drift failures in predeploy checks</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/usdjpy_governance_predeploy.json</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">EM01_lb95_per_signal_s1</td>
+<td style="text-align: right;">0.954467</td>
+<td style="text-align: left;">LB95 per-signal pips in mild stress</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">EM02_lb95_per_signal_s2</td>
+<td style="text-align: right;">0.885904</td>
+<td style="text-align: left;">LB95 per-signal pips in moderate stress</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">EM03_prob_negative_month_s1</td>
+<td style="text-align: right;">0.0526667</td>
+<td style="text-align: left;">Probability of negative month in mild stress</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">EM04_fill_rate_drop_vs_s0_s1</td>
+<td style="text-align: right;">0.0103174</td>
+<td style="text-align: left;">Fill-rate drop from baseline to mild stress</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">EM05_nan_core_fields</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">NaN count in execution MC core fields</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_checks.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">EM01_lb95_per_signal_s1</td>
+<td style="text-align: right;">0.885835</td>
+<td style="text-align: left;">LB95 per-signal pips in mild stress</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">EM02_lb95_per_signal_s2</td>
+<td style="text-align: right;">0.820324</td>
+<td style="text-align: left;">LB95 per-signal pips in moderate stress</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">EM03_prob_negative_month_s1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">Probability of negative month in mild stress</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">EM04_fill_rate_drop_vs_s0_s1</td>
+<td style="text-align: right;">0.0105115</td>
+<td style="text-align: left;">Fill-rate drop from baseline to mild stress</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">EM05_nan_core_fields</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">NaN count in execution MC core fields</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_checks.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">EM01_lb95_per_signal_s1</td>
+<td style="text-align: right;">1.24084</td>
+<td style="text-align: left;">LB95 per-signal pips in mild stress</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">EM02_lb95_per_signal_s2</td>
+<td style="text-align: right;">1.16332</td>
+<td style="text-align: left;">LB95 per-signal pips in moderate stress</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">EM03_prob_negative_month_s1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">Probability of negative month in mild stress</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">EM04_fill_rate_drop_vs_s0_s1</td>
+<td style="text-align: right;">0.0102528</td>
+<td style="text-align: left;">Fill-rate drop from baseline to mild stress</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">EM05_nan_core_fields</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">NaN count in execution MC core fields</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_checks.csv</td>
+<td style="text-align: left;">2026-02-28T08:46:13Z</td>
+</tr>
+</tbody>
+</table>
+<h2 id="top-state-contributions">Top State Contributions<a class="headerlink" href="#top-state-contributions" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">symbol</th>
+<th style="text-align: left;">family</th>
+<th style="text-align: left;">state_id</th>
+<th style="text-align: right;">bar_ticks</th>
+<th style="text-align: right;">horizon</th>
+<th style="text-align: right;">edge_weight</th>
+<th style="text-align: right;">contrib_share</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">273060</td>
+<td style="text-align: right;">0.0197535</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">225779</td>
+<td style="text-align: right;">0.0163332</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">174293</td>
+<td style="text-align: right;">0.0126086</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q30__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">155374</td>
+<td style="text-align: right;">0.01124</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">145548</td>
+<td style="text-align: right;">0.0105291</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k3</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">143860</td>
+<td style="text-align: right;">0.010407</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">124395</td>
+<td style="text-align: right;">0.00899893</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q30__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">121071</td>
+<td style="text-align: right;">0.00875842</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">117778</td>
+<td style="text-align: right;">0.0085202</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">114804</td>
+<td style="text-align: right;">0.00830505</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__london__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">108523</td>
+<td style="text-align: right;">0.00785068</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k3</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">106722</td>
+<td style="text-align: right;">0.0077204</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">99617.4</td>
+<td style="text-align: right;">0.00720645</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">98737.9</td>
+<td style="text-align: right;">0.00714282</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k5</td>
+<td style="text-align: right;">1000</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">94830.1</td>
+<td style="text-align: right;">0.00686013</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__london__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">91066.4</td>
+<td style="text-align: right;">0.00658785</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k3</td>
+<td style="text-align: right;">1000</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">88464.2</td>
+<td style="text-align: right;">0.00639961</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q30__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">88038.5</td>
+<td style="text-align: right;">0.00636881</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k3</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">87399.5</td>
+<td style="text-align: right;">0.00632259</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k3</td>
+<td style="text-align: right;">1000</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">83510.6</td>
+<td style="text-align: right;">0.00604126</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">316345</td>
+<td style="text-align: right;">0.0189299</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">266813</td>
+<td style="text-align: right;">0.015966</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q50__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">266020</td>
+<td style="text-align: right;">0.0159185</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q50__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">224246</td>
+<td style="text-align: right;">0.0134188</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">209899</td>
+<td style="text-align: right;">0.0125602</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q30__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">191214</td>
+<td style="text-align: right;">0.0114421</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k3</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">180164</td>
+<td style="text-align: right;">0.0107809</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q50__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">175963</td>
+<td style="text-align: right;">0.0105295</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q30__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">161113</td>
+<td style="text-align: right;">0.00964093</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q50__k3</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">150433</td>
+<td style="text-align: right;">0.00900184</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">146357</td>
+<td style="text-align: right;">0.00875792</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k3</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">134204</td>
+<td style="text-align: right;">0.00803069</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">132846</td>
+<td style="text-align: right;">0.00794945</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q30__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">126288</td>
+<td style="text-align: right;">0.00755703</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__london__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">126124</td>
+<td style="text-align: right;">0.00754717</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">122567</td>
+<td style="text-align: right;">0.00733436</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q50__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">122457</td>
+<td style="text-align: right;">0.00732775</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">114025</td>
+<td style="text-align: right;">0.00682318</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q50__k3</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">111797</td>
+<td style="text-align: right;">0.00668987</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__london__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">107845</td>
+<td style="text-align: right;">0.00645336</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">605018</td>
+<td style="text-align: right;">0.0154148</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">531927</td>
+<td style="text-align: right;">0.0135526</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">441263</td>
+<td style="text-align: right;">0.0112426</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k3</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">426780</td>
+<td style="text-align: right;">0.0108736</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q50__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">385493</td>
+<td style="text-align: right;">0.00982171</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k3</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">338588</td>
+<td style="text-align: right;">0.00862664</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q50__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">336760</td>
+<td style="text-align: right;">0.00858006</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">330929</td>
+<td style="text-align: right;">0.00843151</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">295296</td>
+<td style="text-align: right;">0.00752363</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q30__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">281810</td>
+<td style="text-align: right;">0.00718004</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q50__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">276477</td>
+<td style="text-align: right;">0.00704417</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">270214</td>
+<td style="text-align: right;">0.00688459</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">263965</td>
+<td style="text-align: right;">0.00672537</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q50__k3</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">263656</td>
+<td style="text-align: right;">0.00671751</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q30__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">246433</td>
+<td style="text-align: right;">0.00627869</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__all__k3</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">246273</td>
+<td style="text-align: right;">0.00627462</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">239239</td>
+<td style="text-align: right;">0.0060954</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k3</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">228465</td>
+<td style="text-align: right;">0.00582089</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">225064</td>
+<td style="text-align: right;">0.00573426</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">213130</td>
+<td style="text-align: right;">0.00543019</td>
+</tr>
+</tbody>
+</table>
+<h2 id="threshold-robustness-slices">Threshold Robustness Slices<a class="headerlink" href="#threshold-robustness-slices" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">symbol</th>
+<th style="text-align: left;">test_month</th>
+<th style="text-align: right;">quantile</th>
+<th style="text-align: right;">mean_gross_pips</th>
+<th style="text-align: right;">coverage</th>
+<th style="text-align: right;">selected_rows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">aggregate</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.758561</td>
+<td style="text-align: right;">0.191746</td>
+<td style="text-align: right;">72544.3</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">aggregate</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.884677</td>
+<td style="text-align: right;">0.0953233</td>
+<td style="text-align: right;">36168.3</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">aggregate</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">0.960465</td>
+<td style="text-align: right;">0.0475931</td>
+<td style="text-align: right;">18029.7</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">aggregate</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.795246</td>
+<td style="text-align: right;">0.193268</td>
+<td style="text-align: right;">1005.22</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">aggregate</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.784329</td>
+<td style="text-align: right;">0.0945693</td>
+<td style="text-align: right;">491.889</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">aggregate</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">0.690217</td>
+<td style="text-align: right;">0.0459482</td>
+<td style="text-align: right;">238.778</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">aggregate</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">1.31823</td>
+<td style="text-align: right;">0.196447</td>
+<td style="text-align: right;">1120.89</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">aggregate</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">1.39854</td>
+<td style="text-align: right;">0.0964553</td>
+<td style="text-align: right;">548.778</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">aggregate</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">1.32811</td>
+<td style="text-align: right;">0.0468008</td>
+<td style="text-align: right;">264.444</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.sections", "navigation.top", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

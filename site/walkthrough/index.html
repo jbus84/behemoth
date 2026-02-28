@@ -1,0 +1,4166 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Production documentation for the Behemoth trading system">
+      
+      
+        <meta name="author" content="Behemoth">
+      
+      
+      
+        <link rel="prev" href="../REPO_STRUCTURE/">
+      
+      
+        <link rel="next" href="../architecture/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Walkthrough - Behemoth Strategy</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#walkthrough-cbot-behemoth-api-integration" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Behemoth Strategy" class="md-header__button md-logo" aria-label="Behemoth Strategy" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Behemoth Strategy
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Walkthrough
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="teal"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com-jbus84/behemoth" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Github
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Behemoth Strategy" class="md-nav__button md-logo" aria-label="Behemoth Strategy" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Behemoth Strategy
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com-jbus84/behemoth" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Github
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../STRATEGY_MASTER_MANUAL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OCO Strategy Manual
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Analysis
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Analysis
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/catalog_gaps_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Catalog Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_stop_limit_tickfill_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stop-Limit Tickfill Fullcap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_live_governance_lock/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Live Governance Lock
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/remediation_metric_decomposition/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Remediation Metric Decomposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/risk_checklist/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Risk Checklist
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_7" id="__nav_3_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EURUSD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    EURUSD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/eurusd_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/eurusd_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reduced Core Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/eurusd_oco_tick_exact_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tick-Exact Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/eurusd_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GBPUSD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    GBPUSD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/gbpusd_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/gbpusd_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reduced Core Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/gbpusd_oco_tick_exact_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tick-Exact Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/gbpusd_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    USDJPY
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    USDJPY
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/usdjpy_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/usdjpy_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reduced Core Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/usdjpy_oco_tick_exact_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tick-Exact Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/usdjpy_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OCO Strategy Bible
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    OCO Strategy Bible
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/pipeline_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_01_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 01 Data Foundation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_01_data_foundation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 01 Data Foundation Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_02_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 02 Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_02_opportunity_mining/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 02 Opportunity Mining Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_03_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 03 Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_03_monthly_wfo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 03 Monthly WFO Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_04_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 04 Stop-Limit Realism
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_04_execution_realism/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 04 Stop-Limit Realism Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_05_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 05 Reduced Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_05_reduced_core/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 05 Reduced Core Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_06_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 06 Tick-Exact Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_06_tick_exact_and_portability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 06 Tick-Exact + Portability Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_07_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 07 Logical Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_07_logical_and_statistical_audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 07 Logical + Statistical Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_08_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 08 Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_08_robustness_and_stress/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 08 Robustness + Stress Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_09_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 09 Governance Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_09_live_governance_and_deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 09 Governance Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_10_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 10 Risks Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_10_known_risks_and_backlog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 10 Risks Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_11_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 11 Execution MC Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_11_execution_monte_carlo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 11 Execution MC Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/signal_lifecycle_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Signal Lifecycle Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/operator_runbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operator Runbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/metric_dictionary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metric Dictionary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/assumptions_and_threats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assumptions + Threats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/governance_mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance Mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/data_reliability_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Reliability Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_stage_integrity_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage Integrity Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_rule_universe_registry_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rule Universe Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/run_delta_dashboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run Delta Dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/operator_action_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operator Action Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/taxonomy_rules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Taxonomy Rules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/operator_playbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operator Playbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_leakage_integrity_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Leakage + Label Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_execution_risk_prelive_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Risk Preflight
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_execution_drift_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Drift Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_alert_remediation_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alert Remediation Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_governance_explainability_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance Explainability Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_threshold_sensitivity_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Threshold Sensitivity Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_execution_monte_carlo_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Monte Carlo Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_execution_monte_carlo_validation_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Monte Carlo Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_logical_audit_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logical Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_edge_clarity_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Edge Clarity Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../analysis/oco_docs_contract_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docs Contract Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repository Notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Repository Notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DATA_SOURCES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../REPO_STRUCTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repo Structure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Walkthrough
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Walkthrough
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exit-conditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exit Conditions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#files-changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files Changed
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Results
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-optimizations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance &amp; Optimizations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance &amp; Optimizations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#incremental-backtesting-stateful-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Incremental Backtesting (Stateful Mode)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#self-healing-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Healing Execution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#guardrail-parity-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Guardrail Parity Validation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#live-execution-assessment-baseline-vs-incremental" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Live Execution Assessment (Baseline vs. Incremental)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ml-filter-experiment-h1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ML Filter Experiment (H1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#portfolio-breakdown-by-asset-class-h1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Portfolio Breakdown by Asset Class (H1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#timeframe-comparison-cagr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Timeframe Comparison (CAGR)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#diversification-benefit-why-portfolio-sharpe-is-higher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diversification Benefit (Why Portfolio Sharpe is Higher)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detailed-pair-performance-h1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detailed Pair Performance (H1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimized-portfolio-sharpe-025" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimized Portfolio (Sharpe &gt;= 0.25)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-fx-comm-only-no-indices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scenario: FX + Comm Only (No Indices)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../openapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenAPI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../core_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../risk_controls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Risk Controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monitoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data_pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../code_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Code Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../makefile/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Makefile
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../db_schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DB Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../db_schema_diagram/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DB Diagram
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exit-conditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exit Conditions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#files-changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files Changed
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Results
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-optimizations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance &amp; Optimizations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance &amp; Optimizations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#incremental-backtesting-stateful-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Incremental Backtesting (Stateful Mode)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#self-healing-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Healing Execution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#guardrail-parity-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Guardrail Parity Validation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#live-execution-assessment-baseline-vs-incremental" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Live Execution Assessment (Baseline vs. Incremental)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ml-filter-experiment-h1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ML Filter Experiment (H1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#portfolio-breakdown-by-asset-class-h1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Portfolio Breakdown by Asset Class (H1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#timeframe-comparison-cagr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Timeframe Comparison (CAGR)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#diversification-benefit-why-portfolio-sharpe-is-higher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diversification Benefit (Why Portfolio Sharpe is Higher)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detailed-pair-performance-h1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detailed Pair Performance (H1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimized-portfolio-sharpe-025" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimized Portfolio (Sharpe &gt;= 0.25)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-fx-comm-only-no-indices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scenario: FX + Comm Only (No Indices)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="walkthrough-cbot-behemoth-api-integration">Walkthrough — cBot ↔ Behemoth API Integration<a class="headerlink" href="#walkthrough-cbot-behemoth-api-integration" title="Permanent link">&para;</a></h1>
+<h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>sequenceDiagram
+    participant cBot as cBot (cTrader)
+    participant API as Behemoth API
+
+    Note over cBot: Every bar close
+    cBot-&gt;&gt;cBot: Collect 750 closes × 18 symbols (~105KB)
+    cBot-&gt;&gt;API: POST /signals/m15 {bars: {...}}
+    API-&gt;&gt;API: Pair symbols → Kalman → Z-score
+    API-&gt;&gt;API: Check OPEN positions for exits
+    API--&gt;&gt;cBot: {signals: [...], exits: [...]}
+
+    loop Exits first
+        cBot-&gt;&gt;cBot: Close cTrader position
+        cBot-&gt;&gt;API: POST /positions/{id}/close
+    end
+    loop Then entries
+        cBot-&gt;&gt;API: POST /positions (guardrails checked)
+        cBot-&gt;&gt;cBot: Execute trade
+        cBot-&gt;&gt;API: POST /positions/{id}/open
+    end</code></pre>
+<h2 id="exit-conditions">Exit Conditions<a class="headerlink" href="#exit-conditions" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>Test</th>
+<th>Outcome</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Z crosses zero</td>
+<td>LONG: <code>z &lt; 0</code>, SHORT: <code>z &gt; 0</code></td>
+<td><code>Z_CROSS_ZERO</code> (loss)</td>
+</tr>
+<tr>
+<td>Z hits stop</td>
+<td><code>|z| &gt; 4.0</code></td>
+<td><code>Z_STOP_WIN</code> (win)</td>
+</tr>
+<tr>
+<td>500 bars elapsed</td>
+<td>—</td>
+<td><code>TIMEOUT</code></td>
+</tr>
+<tr>
+<td>Friday 21:45 UTC</td>
+<td>—</td>
+<td>cBot-side close</td>
+</tr>
+</tbody>
+</table>
+<h2 id="files-changed">Files Changed<a class="headerlink" href="#files-changed" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="file:///Users/danielfisher/repositories/behemoth/src/behemoth/config.py">config.py</a></td>
+<td>Z_STOP=4.0, Z_LOOKBACK=750</td>
+</tr>
+<tr>
+<td><a href="file:///Users/danielfisher/repositories/behemoth/src/behemoth/core/zscore.py">zscore.py</a></td>
+<td>window=750</td>
+</tr>
+<tr>
+<td><a href="file:///Users/danielfisher/repositories/behemoth/src/behemoth/core/kalman.py">kalman.py</a></td>
+<td>window=750</td>
+</tr>
+<tr>
+<td><a href="file:///Users/danielfisher/repositories/behemoth/pipelines/build_events_m5.py">build_events_m5.py</a></td>
+<td>window=750</td>
+</tr>
+<tr>
+<td><a href="file:///Users/danielfisher/repositories/behemoth/pipelines/build_events_m15.py">build_events_m15.py</a></td>
+<td>window=750</td>
+</tr>
+<tr>
+<td><a href="file:///Users/danielfisher/repositories/behemoth/services/api/signals.py">signals.py</a></td>
+<td>POST endpoint + exit signals + GET fallback</td>
+</tr>
+<tr>
+<td><a href="file:///Users/danielfisher/repositories/behemoth/src/cbot/BehemothTradeManager.cs">BehemothTradeManager.cs</a></td>
+<td>Collects 750 bars × 18 symbols, POSTs to API</td>
+</tr>
+</tbody>
+</table>
+<h2 id="test-results">Test Results<a class="headerlink" href="#test-results" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>## Baseline Performance (Core 14 Portfolio)
+
+Simulated equity curve for M15 with `POSITION_SIZE_PCT = 0.01` and **Loss Streak Guardrail** enabled. This universe includes all 14 FX, Metal, and Oil pairs, but excludes Index CFDs (due to broker-imposed contract sizing limits).
+
+| Metric | All Pairs (w/ Indices) | **Core 14 (Final)** |
+|:---|:---:|:---:|
+| **Trades** | 37,897 | **24,657** |
+| **Win Rate** | 56.8% | **55.6%** |
+| **Mean PnL** | 30.2 bps | **22.4 bps** |
+| **Total PnL** | 1,143,847 | **551,377** |
+| **Max Drawdown** | -10,150 bps | **-11,855 bps** |
+| **Sharpe Ratio** | 4.05 | **3.33** |
+
+&gt; **Guardrail**: Cooldown for 7 days after 3 consecutive losses per pair.
+&gt; **Note**: Including all FX/Metals/Oil pairs provides better diversification while remaining perfectly tractable for 1% risk on $100k+ accounts.
+
+## Backtesting Configuration
+
+To run a full backtest without interruptions:
+
+1. **Bar Count**: Set to `1500` in cBot parameters (ensure z-scores have enough history).
+2. **Risk Limits**: Relaxed in `configs/api.yaml` (`max_daily_loss_pct: 0.99`) to prevent safety halts during testing. **Restart API (`make api`) to apply.**
+3. **Position Sizing**: **Dynamic 1% of Equity** (`POSITION_SIZE_PCT = 0.01`).
+   - cBot sends `Account.Equity` in every request.
+   - API uses this live equity to calculate target: `TargetUSD = Equity * 0.01`.
+   - **Example**: $100k equity → $1,000 trade. Compounding happens automatically.
+4. **Cooldown**: `MIN_GAP_BARS = 20` prevents re-entering a pair immediately after a stop-out.
+
+cBot parameters:
+- **BarSize**: `m15`
+- **BarCount**: `1500`
+- **BaseUrl**: `http://127.0.0.1:8000` (`BarSize=m5`).
+
+## Deployment
+
+```bash
+make deploy-cbot  # copies to ~/cAlgo/Sources/Robots/
+</code></pre></div>
+<p><strong>IMPORTANT</strong>: After <code>make deploy-cbot</code>, rebuild the bot in cTrader Automate.
+Two instances: M15 chart (<code>BarSize=m15</code>) and M5 chart (<code>BarSize=m5</code>).
+The bot now only subscribes to the <strong>10 core symbols</strong> required for the 14 pairs.</p>
+<h2 id="performance-optimizations">Performance &amp; Optimizations<a class="headerlink" href="#performance-optimizations" title="Permanent link">&para;</a></h2>
+<h3 id="incremental-backtesting-stateful-mode">Incremental Backtesting (Stateful Mode)<a class="headerlink" href="#incremental-backtesting-stateful-mode" title="Permanent link">&para;</a></h3>
+<p>To solve the "slow backtest" issue where 750 bars x 10 pairs were sent every 15 minutes:
+1.  <strong>API</strong>: Supports <code>POST /reset/{bar}</code> to clear state and <code>POST /signals</code> with single-bar payloads.
+2.  <strong>cBot</strong>: Sends full history (1500 bars) <strong>only on the first bar</strong>.
+3.  <strong>Updates</strong>: Sends <strong>1 bar</strong> for all subsequent steps.
+4.  <strong>Verification</strong>: Verified that incremental Z-score calculation matches full-batch calculation within <code>0.005</code> tolerance.</p>
+<p><strong>Result</strong>: Backtest speed improved by ~100x (O(1) vs O(N) per step).</p>
+<h3 id="self-healing-execution">Self-Healing Execution<a class="headerlink" href="#self-healing-execution" title="Permanent link">&para;</a></h3>
+<p>To ensure robustness against API restarts or crashes without external databases (Redis):
+1.  <strong>API</strong>: Detects if an incremental update (1 bar) is received but the internal state is missing. Returns <code>409 Conflict</code>.
+2.  <strong>cBot</strong>: Catches the <code>409</code> error, logs a warning, and automatically <strong>resends the full history</strong> (1500 bars) on the next tick to re-hydrate the state.</p>
+<p><strong>Result</strong>: The system automatically recovers from any downtime within 1 bar interval.</p>
+<h3 id="guardrail-parity-validation">Guardrail Parity Validation<a class="headerlink" href="#guardrail-parity-validation" title="Permanent link">&para;</a></h3>
+<p>To ensure that the <strong>1-bar incremental approach</strong> (Live API/SQL) produces results identical to the <strong>Guardrailed Outputs</strong> (Batch Backtest/Pandas):
+-   <strong>Verification</strong>: Created <code>tests/verify_guardrail_parity.py</code> which subjects both implementations to the same synthetic trade sequence (Losses $\rightarrow$ Cooldown $\rightarrow$ Recovery).
+-   <strong>Outcome</strong>: Both implementations produced identical trade sets (Blocked/Allowed decisions matched 100%).
+-   <strong>Conclusion</strong>: The Live API's incremental guardrail logic is mathematically equivalent to the Batch Backtest logic.</p>
+<h3 id="live-execution-assessment-baseline-vs-incremental">Live Execution Assessment (Baseline vs. Incremental)<a class="headerlink" href="#live-execution-assessment-baseline-vs-incremental" title="Permanent link">&para;</a></h3>
+<p>A full 8-year simulation was run to compare the <strong>Optimistic Baseline</strong> (Pandas, retroactively filters open trades during drawdown) vs. the <strong>Realistic Incremental</strong> (SQL, respects causality for in-flight trades).</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Timeframe</th>
+<th style="text-align: left;">Metric</th>
+<th style="text-align: left;">Baseline (Optimistic)</th>
+<th style="text-align: left;">Incremental (Real)</th>
+<th style="text-align: left;">Speed (per bar)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>M5</strong></td>
+<td style="text-align: left;">PnL (bps)</td>
+<td style="text-align: left;">+1,281,855</td>
+<td style="text-align: left;"><strong>+286,480</strong></td>
+<td style="text-align: left;">0.27 ms</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>M5</strong></td>
+<td style="text-align: left;">Sharpe</td>
+<td style="text-align: left;">5.15</td>
+<td style="text-align: left;"><strong>0.92</strong></td>
+<td style="text-align: left;">-</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>M15</strong></td>
+<td style="text-align: left;">PnL (bps)</td>
+<td style="text-align: left;">+1,143,846</td>
+<td style="text-align: left;"><strong>+422,460</strong></td>
+<td style="text-align: left;">0.32 ms</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>M15</strong></td>
+<td style="text-align: left;">Sharpe</td>
+<td style="text-align: left;">4.05</td>
+<td style="text-align: left;"><strong>1.55</strong></td>
+<td style="text-align: left;">-</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>H1</strong></td>
+<td style="text-align: left;">PnL (bps)</td>
+<td style="text-align: left;">+918,092</td>
+<td style="text-align: left;"><strong>+458,583</strong></td>
+<td style="text-align: left;">0.41 ms</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>H1</strong></td>
+<td style="text-align: left;">Sharpe</td>
+<td style="text-align: left;">3.10</td>
+<td style="text-align: left;"><strong>1.52</strong></td>
+<td style="text-align: left;">-</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key Findings</strong>:
+1.  <strong>Causality Gap</strong>: The Baseline backtest incorrectly filters "In-Flight" trades. The Incremental results reflect reality.
+2.  <strong>H1 is Superior</strong>: The 1-Hour strategy delivers the <strong>highest Real PnL (+458k bps)</strong> while maintaining a strong Sharpe (1.52), making it the most robust choice for live deployment.
+3.  <strong>Speed</strong>: The 1-bar processing time is <strong>~0.4ms per entry</strong>, confirming the system is highly scalable.</p>
+<ul>
+<li><strong>Vectorized Calculations</strong>: <code>kalman.py</code> and <code>zscore.py</code> now use <code>pandas</code> rolling windows, reducing complexity from O(N*M) to O(N). Result: ~100x speedup for signal generation.</li>
+</ul>
+<h3 id="ml-filter-experiment-h1">ML Filter Experiment (H1)<a class="headerlink" href="#ml-filter-experiment-h1" title="Permanent link">&para;</a></h3>
+<p>We explored adding a machine learning filter (CatBoost) to predicting trade quality <em>before</em> the guardrail logic.
+-   <strong>Features</strong>: Last 30 bars of Z-Score/Beta, plus cross-sectional features from all pairs.
+-   <strong>Method</strong>: Walk-Forward Optimization (training on 3-year rolling windows, testing on 1-year).
+-   <strong>Target</strong>: Profitable Trade (&gt; 10 bps).</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Metric</th>
+<th style="text-align: left;">H1 (Raw)</th>
+<th style="text-align: left;">H1 (ML Filtered)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Timeframe</strong></td>
+<td style="text-align: left;">8 Years</td>
+<td style="text-align: left;">4 Years (2021-2025)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Trades</strong></td>
+<td style="text-align: left;">14,691</td>
+<td style="text-align: left;">2,496</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Total PnL</strong></td>
+<td style="text-align: left;">+458,583 bps</td>
+<td style="text-align: left;">+83,832 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Sharpe</strong></td>
+<td style="text-align: left;"><strong>1.52</strong></td>
+<td style="text-align: left;">1.49</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Avg PnL</strong></td>
+<td style="text-align: left;">31.2 bps</td>
+<td style="text-align: left;"><strong>33.5 bps</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Recommendation</strong>: Stick to the standard H1 strategy.</p>
+<h3 id="portfolio-breakdown-by-asset-class-h1">Portfolio Breakdown by Asset Class (H1)<a class="headerlink" href="#portfolio-breakdown-by-asset-class-h1" title="Permanent link">&para;</a></h3>
+<p>Performance is driven primarily by <strong>Indices</strong> and <strong>FX</strong>. Metals and Oil contribute positive PnL but with lower Sharpe/CAGR.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Asset Class</th>
+<th style="text-align: left;">Trades</th>
+<th style="text-align: left;">PnL (bps)</th>
+<th style="text-align: left;">Avg PnL</th>
+<th style="text-align: left;">Win Rate</th>
+<th style="text-align: left;">Sharpe</th>
+<th style="text-align: left;">CAGR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Indices</strong></td>
+<td style="text-align: left;">4,319</td>
+<td style="text-align: left;">+297,357</td>
+<td style="text-align: left;">68.9 bps</td>
+<td style="text-align: left;">46.3%</td>
+<td style="text-align: left;"><strong>1.11</strong></td>
+<td style="text-align: left;"><strong>54.8%</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>FX</strong></td>
+<td style="text-align: left;">8,488</td>
+<td style="text-align: left;">+117,727</td>
+<td style="text-align: left;">13.9 bps</td>
+<td style="text-align: left;">46.9%</td>
+<td style="text-align: left;"><strong>1.15</strong></td>
+<td style="text-align: left;"><strong>38.3%</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Oil</strong></td>
+<td style="text-align: left;">1,199</td>
+<td style="text-align: left;">+25,173</td>
+<td style="text-align: left;">21.0 bps</td>
+<td style="text-align: left;">43.6%</td>
+<td style="text-align: left;">0.36</td>
+<td style="text-align: left;">17.6%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Metals</strong></td>
+<td style="text-align: left;">685</td>
+<td style="text-align: left;">+18,326</td>
+<td style="text-align: left;">26.8 bps</td>
+<td style="text-align: left;">53.7%</td>
+<td style="text-align: left;">0.41</td>
+<td style="text-align: left;">14.3%</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: Indices (SPX/DAX, etc.) provide massive alpha on H1 timeframe.</em></p>
+<h3 id="timeframe-comparison-cagr">Timeframe Comparison (CAGR)<a class="headerlink" href="#timeframe-comparison-cagr" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Asset</th>
+<th style="text-align: left;">M5</th>
+<th style="text-align: left;">M15</th>
+<th style="text-align: left;">H1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>FX</strong></td>
+<td style="text-align: left;">30.6%</td>
+<td style="text-align: left;">35.4%</td>
+<td style="text-align: left;"><strong>38.3%</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Indices</strong></td>
+<td style="text-align: left;">46.7%</td>
+<td style="text-align: left;">51.5%</td>
+<td style="text-align: left;"><strong>54.8%</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Oil</strong></td>
+<td style="text-align: left;">12.8%</td>
+<td style="text-align: left;">16.4%</td>
+<td style="text-align: left;"><strong>17.6%</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Metals</strong></td>
+<td style="text-align: left;">-11.5%</td>
+<td style="text-align: left;">21.0%</td>
+<td style="text-align: left;"><strong>14.3%</strong></td>
+</tr>
+</tbody>
+</table>
+<p><em>Conclusion: H1 is the optimal timeframe for all asset classes except Metals (where M15 showed higher CAGR, likely due to volatility capture).</em></p>
+<h3 id="diversification-benefit-why-portfolio-sharpe-is-higher">Diversification Benefit (Why Portfolio Sharpe is Higher)<a class="headerlink" href="#diversification-benefit-why-portfolio-sharpe-is-higher" title="Permanent link">&para;</a></h3>
+<p>The Portfolio Sharpe Ratio (~1.5) is significantly higher than the average individual pair Sharpe (~0.5).
+<strong>Reason</strong>: The strategy's signals are uncorrelated across pairs.
+-   <strong>Average Pairwise Correlation</strong>: <strong>0.015</strong> (near zero).
+-   This means losses in one pair are often offset by gains in another, smoothing the equity curve and boosting risk-adjusted returns.</p>
+<h3 id="detailed-pair-performance-h1">Detailed Pair Performance (H1)<a class="headerlink" href="#detailed-pair-performance-h1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Pair</th>
+<th style="text-align: left;">Class</th>
+<th style="text-align: left;">Sharpe</th>
+<th style="text-align: left;">CAGR</th>
+<th style="text-align: left;">Avg PnL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>SPX/DAX</strong></td>
+<td style="text-align: left;">Indices</td>
+<td style="text-align: left;">1.00</td>
+<td style="text-align: left;"><strong>43.2%</strong></td>
+<td style="text-align: left;">314 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>SPX/Dow</strong></td>
+<td style="text-align: left;">Indices</td>
+<td style="text-align: left;">0.30</td>
+<td style="text-align: left;">27.6%</td>
+<td style="text-align: left;">89 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>SPX/CAC</strong></td>
+<td style="text-align: left;">Indices</td>
+<td style="text-align: left;">1.16</td>
+<td style="text-align: left;">26.8%</td>
+<td style="text-align: left;">124 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>GBP/JPY</strong></td>
+<td style="text-align: left;">FX</td>
+<td style="text-align: left;">1.03</td>
+<td style="text-align: left;">18.4%</td>
+<td style="text-align: left;">39 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>SPX/HK</strong></td>
+<td style="text-align: left;">Indices</td>
+<td style="text-align: left;">0.53</td>
+<td style="text-align: left;">18.3%</td>
+<td style="text-align: left;">62 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CHF/JPY</strong></td>
+<td style="text-align: left;">FX</td>
+<td style="text-align: left;">0.84</td>
+<td style="text-align: left;">17.2%</td>
+<td style="text-align: left;">33 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>AUD/CAD</strong></td>
+<td style="text-align: left;">FX</td>
+<td style="text-align: left;"><strong>1.17</strong></td>
+<td style="text-align: left;">16.9%</td>
+<td style="text-align: left;">28 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Gold/Oil</strong></td>
+<td style="text-align: left;">Oil</td>
+<td style="text-align: left;">0.63</td>
+<td style="text-align: left;">16.5%</td>
+<td style="text-align: left;">37 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Gold/Silver</strong></td>
+<td style="text-align: left;">Metals</td>
+<td style="text-align: left;">0.41</td>
+<td style="text-align: left;">14.3%</td>
+<td style="text-align: left;">27 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>EUR/JPY</strong></td>
+<td style="text-align: left;">FX</td>
+<td style="text-align: left;">0.55</td>
+<td style="text-align: left;">13.7%</td>
+<td style="text-align: left;">23 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>SPX/Nas</strong></td>
+<td style="text-align: left;">Indices</td>
+<td style="text-align: left;">0.33</td>
+<td style="text-align: left;">13.1%</td>
+<td style="text-align: left;">23 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CAC/NZD</strong></td>
+<td style="text-align: left;">Indices</td>
+<td style="text-align: left;">0.46</td>
+<td style="text-align: left;">12.3%</td>
+<td style="text-align: left;">34 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>EUR/AUD</strong></td>
+<td style="text-align: left;">FX</td>
+<td style="text-align: left;">0.28</td>
+<td style="text-align: left;">10.2%</td>
+<td style="text-align: left;">14 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>NZD/CAD</strong></td>
+<td style="text-align: left;">FX</td>
+<td style="text-align: left;">0.53</td>
+<td style="text-align: left;">9.3%</td>
+<td style="text-align: left;">13 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>EUR/GBP</strong></td>
+<td style="text-align: left;">FX</td>
+<td style="text-align: left;">0.21</td>
+<td style="text-align: left;">4.9%</td>
+<td style="text-align: left;">6 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>EUR/CHF</strong></td>
+<td style="text-align: left;">FX</td>
+<td style="text-align: left;">0.19</td>
+<td style="text-align: left;">4.8%</td>
+<td style="text-align: left;">6 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>SPX/FTSE</strong></td>
+<td style="text-align: left;">Indices</td>
+<td style="text-align: left;">0.12</td>
+<td style="text-align: left;">4.4%</td>
+<td style="text-align: left;">6 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>GBP/CAD</strong></td>
+<td style="text-align: left;">FX</td>
+<td style="text-align: left;">0.15</td>
+<td style="text-align: left;">3.5%</td>
+<td style="text-align: left;">4 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Oil/Silver</strong></td>
+<td style="text-align: left;">Oil</td>
+<td style="text-align: left;">0.05</td>
+<td style="text-align: left;">2.8%</td>
+<td style="text-align: left;">4 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>AUD/NZD</strong></td>
+<td style="text-align: left;">FX</td>
+<td style="text-align: left;">-0.10</td>
+<td style="text-align: left;">-3.9%</td>
+<td style="text-align: left;">-3 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>GBP/AUD</strong></td>
+<td style="text-align: left;">FX</td>
+<td style="text-align: left;">-0.23</td>
+<td style="text-align: left;">-10.6%</td>
+<td style="text-align: left;">-8 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>SPX/Nikkei</strong></td>
+<td style="text-align: left;">Indices</td>
+<td style="text-align: left;">-0.42</td>
+<td style="text-align: left;">N/A</td>
+<td style="text-align: left;">-29 bps</td>
+</tr>
+</tbody>
+</table>
+<h3 id="optimized-portfolio-sharpe-025">Optimized Portfolio (Sharpe &gt;= 0.25)<a class="headerlink" href="#optimized-portfolio-sharpe-025" title="Permanent link">&para;</a></h3>
+<p>Filtering out pairs with Sharpe &lt; 0.25 removes "dead weight" and significantly boosts efficiency.
+<strong>Dropped Pairs</strong>: <code>EUR/GBP</code>, <code>EUR/CHF</code>, <code>GBP/CAD</code>, <code>SPX/FTSE</code>, <code>Oil/Silver</code>, <code>AUD/NZD</code>, <code>GBP/AUD</code>, <code>SPX/Nikkei</code>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Metric</th>
+<th style="text-align: left;">Raw H1 Portfolio</th>
+<th style="text-align: left;">Optimized H1 Portfolio</th>
+<th style="text-align: left;">Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Sharpe</strong></td>
+<td style="text-align: left;">1.52</td>
+<td style="text-align: left;"><strong>1.67</strong></td>
+<td style="text-align: left;">+10%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CAGR</strong></td>
+<td style="text-align: left;">~50%</td>
+<td style="text-align: left;"><strong>63.8%</strong></td>
+<td style="text-align: left;">+28%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Avg PnL</strong></td>
+<td style="text-align: left;">31.2 bps</td>
+<td style="text-align: left;"><strong>51.9 bps</strong></td>
+<td style="text-align: left;"><strong>+66%</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Total PnL</strong></td>
+<td style="text-align: left;">+458k bps</td>
+<td style="text-align: left;"><strong>+466k bps</strong></td>
+<td style="text-align: left;">+2%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Trades</strong></td>
+<td style="text-align: left;">~14.6k</td>
+<td style="text-align: left;"><strong>8,988</strong></td>
+<td style="text-align: left;">-38%</td>
+</tr>
+</tbody>
+</table>
+<p><em>Result: By cutting the 8 worst performers, we increase Total PnL (stopped losing money) and massively boost quality (Avg PnL).</em></p>
+<h3 id="scenario-fx-comm-only-no-indices">Scenario: FX + Comm Only (No Indices)<a class="headerlink" href="#scenario-fx-comm-only-no-indices" title="Permanent link">&para;</a></h3>
+<p>For traders who prefer to avoid Equity Indices (SPX, DAX etc.), the strategy remains highly robust on H1.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Metric</th>
+<th style="text-align: left;">H1 (FX/Oil/Metals)</th>
+<th style="text-align: left;">M15 (FX/Oil/Metals)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Sharpe</strong></td>
+<td style="text-align: left;"><strong>1.57</strong></td>
+<td style="text-align: left;">1.18</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CAGR</strong></td>
+<td style="text-align: left;"><strong>43.0%</strong></td>
+<td style="text-align: left;">41.0%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Win Rate</strong></td>
+<td style="text-align: left;">47.6%</td>
+<td style="text-align: left;"><strong>50.4%</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Avg PnL</strong></td>
+<td style="text-align: left;"><strong>26.2 bps</strong></td>
+<td style="text-align: left;">11.4 bps</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Trades</strong></td>
+<td style="text-align: left;">~5,900</td>
+<td style="text-align: left;">~12,700</td>
+</tr>
+</tbody>
+</table>
+<p><em>Conclusion: Even without the massive gains from Indices, the FX/Commodity core allows for ~43% CAGR with excellent risk-adjusted returns.</em>
+- <strong>Internal Tracking</strong>: Auto-PnL calculation ensures accurate sizing even for non-cTrader execution.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.sections", "navigation.top", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

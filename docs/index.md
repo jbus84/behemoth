@@ -1,9 +1,11 @@
 # Behemoth OCO Strategy Documentation
 
-This documentation set is for the active **tick-based OCO stop-limit strategy** with monthly walk-forward governance.
+This documentation set is for the active **tick-based OCO stop-limit strategy** with monthly walk-forward governance, where **CatBoost (Stage 3)** is the core probability-ranking model used to filter broad OCO event flow into executable reduced-core selections under strict causal thresholding.
 
 ## What System Is Active
 - Strategy type: directional OCO candidate selection with stop-limit entry realism and fixed-horizon post-touch outcome labeling.
+- Core model engine: CatBoost-based monthly WFO probability ranking (`pred_prob`) for execution-threshold selection.
+- Model lifecycle policy: one-month validity and monthly retrain (predictions expire at new test-month boundary).
 - Primary symbols: `EURUSD`, `GBPUSD`, `USDJPY`.
 - Core objective: find high-count, positive gross microstructure opportunities and govern them with strict causal validation.
 - Validation posture: stage-gated, artifact-driven, and contract-checked.
@@ -20,12 +22,12 @@ This documentation set is for the active **tick-based OCO stop-limit strategy** 
 - Current generated snapshot: `docs/strategy_bible/generated/pipeline_snapshot.md`
 
 ## Latest Expected Gross (Training Window)
-For the latest completed training window (September-November 2025, evaluated on December 2025), using **reduced-core rows only**, expected gross pips/trade proxies are:
-- EURUSD: `1.061547`
-- GBPUSD: `1.715543`
-- USDJPY: `2.817082`
+Using the latest available **reduced-core `status=ok`** month per symbol (current run includes `2026-01` and partial `2026-02`), expected gross pips/trade proxies are:
+- EURUSD (month `2026-02`): `1.203817`
+- GBPUSD (month `2026-02`): `2.892252`
+- USDJPY (month `2026-02`): `4.776597`
 
-Full table and sources are in `STRATEGY_MASTER_MANUAL.md` Section `6.4`.
+Full table and sources are in `STRATEGY_MASTER_MANUAL.md` Section `6.5`.
 
 ## Standard Refresh Cycle
 ```bash

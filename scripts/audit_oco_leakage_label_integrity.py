@@ -20,6 +20,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from pandas.errors import EmptyDataError
 
 
 @dataclass(frozen=True)
@@ -166,6 +167,13 @@ def _safe_num(s: pd.Series) -> pd.Series:
     return pd.to_numeric(s, errors="coerce")
 
 
+def _safe_read_csv(path: Path) -> pd.DataFrame:
+    try:
+        return pd.read_csv(path).copy()
+    except EmptyDataError:
+        return pd.DataFrame()
+
+
 def _make_issue(
     *,
     symbol: str,
@@ -187,21 +195,24 @@ def _make_issue(
 
 
 def _load_artifacts(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    p = pd.read_parquet(
-        cfg.pred_path,
-        columns=[
-            "test_month",
-            "close_ts",
-            "candidate_uid",
-            "pred_prob",
-            "target_gross_pips",
-            "target_gross_pos",
-            "threshold_mode",
-            "threshold_days",
-            "threshold_exec",
-            "selected_exec",
-        ],
-    ).copy()
+    p = pd.read_parquet(cfg.pred_path).copy()
+    keep_cols = [
+        "test_month",
+        "close_ts",
+        "candidate_uid",
+        "pred_prob",
+        "target_gross_pips",
+        "target_gross_pos",
+        "threshold_mode",
+        "threshold_days",
+        "threshold_exec",
+        "selected_exec",
+        "threshold_source",
+    ]
+    for c in keep_cols:
+        if c not in p.columns:
+            p[c] = np.nan
+    p = p[keep_cols].copy()
     p["test_month"] = p["test_month"].astype(str)
     p["close_ts"] = _dt_utc(p["close_ts"])
     p["candidate_uid"] = p["candidate_uid"].astype(str)
@@ -211,16 +222,17 @@ def _load_artifacts(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame, pd.D
     p["threshold_days"] = _safe_num(p["threshold_days"])
     p["threshold_exec"] = _safe_num(p["threshold_exec"])
     p["selected_exec"] = _safe_num(p["selected_exec"]).fillna(0).astype(int)
+    p["threshold_source"] = p["threshold_source"].astype(str).str.strip().str.lower()
     p = p.dropna(subset=["test_month", "close_ts", "candidate_uid"]).copy()
 
-    m = pd.read_csv(cfg.metrics_path).copy()
+    m = _safe_read_csv(cfg.metrics_path)
     if "test_month" in m.columns:
         m["test_month"] = m["test_month"].astype(str)
     for c in ["train_start", "train_end", "test_start", "test_end"]:
         if c in m.columns:
             m[c] = _dt_utc(m[c])
 
-    t = pd.read_csv(cfg.thresholds_path).copy()
+    t = _safe_read_csv(cfg.thresholds_path)
     if "test_month" in t.columns:
         t["test_month"] = t["test_month"].astype(str)
 
@@ -228,16 +240,18 @@ def _load_artifacts(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame, pd.D
     e["close_ts"] = _dt_utc(e["close_ts"])
     e["candidate_uid"] = e["candidate_uid"].astype(str)
 
-    s = pd.read_csv(cfg.schedule_path).copy()
-    s["test_month"] = s["test_month"].astype(str)
+    s = _safe_read_csv(cfg.schedule_path)
+    if "test_month" in s.columns:
+        s["test_month"] = s["test_month"].astype(str)
     return p, m, t, e, s
 
 
 def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
     checks: list[dict[str, Any]] = []
     issues: list[dict[str, Any]] = []
-    monthly = pd.read_csv(cfg.monthly_path).copy()
-    monthly["test_month"] = monthly["test_month"].astype(str)
+    monthly = _safe_read_csv(cfg.monthly_path)
+    if "test_month" in monthly.columns:
+        monthly["test_month"] = monthly["test_month"].astype(str)
     pred, metrics, thresholds, events, schedule = _load_artifacts(cfg)
     selected = pred[pred["selected_exec"] == 1].copy()
 
@@ -442,6 +456,45 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
             "group_cols": grp_cols,
         },
         "Threshold causality consistency failed (selected<threshold, day-window invalid, or unstable thresholds).",
+    )
+
+    # L13: threshold provenance must be causal and explicitly declared.
+    allowed_by_mode = {
+        "rolling_days": {"rolling_history", "train_fallback", "no_history"},
+        "train_quantile": {"train_quantile"},
+    }
+    src = pred["threshold_source"].astype(str).str.strip().str.lower()
+    mode = pred["threshold_mode"].astype(str).str.strip().str.lower()
+    src_missing = int(src.isin({"", "nan", "none", "null"}).sum())
+    invalid_mode = int((~mode.isin(list(allowed_by_mode.keys()))).sum())
+    invalid_source = 0
+    for mname, allowed in allowed_by_mode.items():
+        mask = mode == mname
+        if int(mask.sum()) > 0:
+            invalid_source += int((~src[mask].isin(list(allowed))).sum())
+    sel_bad_nohist = int((((pred["selected_exec"] == 1) & (src == "no_history"))).sum())
+    sel_bad_unset = int((((pred["selected_exec"] == 1) & (src.isin({"", "nan", "none", "null", "unset"})))).sum())
+    violations = src_missing + invalid_mode + invalid_source + sel_bad_nohist + sel_bad_unset
+    l13_pass = violations == 0
+    add_check(
+        "L13",
+        "threshold_provenance_causality_contract",
+        "pass" if l13_pass else "fail",
+        "high",
+        "threshold_causality",
+        "threshold_source_violation_count",
+        float(violations),
+        "0",
+        "==",
+        {
+            "missing_source_rows": src_missing,
+            "invalid_mode_rows": invalid_mode,
+            "invalid_source_rows": invalid_source,
+            "selected_no_history_rows": sel_bad_nohist,
+            "selected_unset_source_rows": sel_bad_unset,
+            "source_counts": src.value_counts(dropna=False).to_dict(),
+        },
+        "Threshold source provenance is missing, non-causal, or inconsistent with selected rows.",
     )
 
     # L07: label join/rebuild consistency (pred vs source event labels).

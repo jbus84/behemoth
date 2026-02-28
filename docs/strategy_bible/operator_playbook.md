@@ -1,6 +1,6 @@
 # OCO Operator Playbook
 
-- generated_at_utc: `2026-02-27T18:39:11Z`
+- generated_at_utc: `2026-02-28T08:46:14Z`
 - source_rules: `configs/research/docs/operator_action_rules.yaml`
 
 ## Action Codes
@@ -14,9 +14,10 @@
 
 ## Operator Checklist
 1. Review `operator_action_status.csv` after each full pipeline run.
-2. Execute all `red` actions before deployment decisions.
-3. Open a remediation task for persistent `amber` metrics (>=3 consecutive runs).
-4. Block deployment if any `A3_` action remains unresolved.
+2. Confirm Stage-3 model lifecycle: one-month validity and monthly retrain for current test month.
+3. Execute all `red` actions before deployment decisions.
+4. Open a remediation task for persistent `amber` metrics (>=3 consecutive runs).
+5. Block deployment if any `A3_` action remains unresolved.
 
 ## Current Escalations
 | symbol   | metric_id                   | band   | action_code    | owner   | action_summary         |

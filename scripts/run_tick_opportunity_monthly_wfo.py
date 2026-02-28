@@ -4,7 +4,7 @@
 Leakage controls:
 - Candidate universe is filtered using train-only candidate metrics
   (`mean_gross_pips_train`, `train_count`) from mining outputs.
-- Inside 2025, each test month is predicted using only prior 3 months.
+- Each scored test month is predicted using only prior rolling train months.
 """
 
 from __future__ import annotations
@@ -55,6 +55,8 @@ DEFAULTS: dict[str, Any] = {
     "library": "both",  # directional|oco|both
     "train_years_for_state_fit": "2022,2023,2024",
     "eval_year": 2025,
+    "eval_start_month": "",
+    "eval_end_month": "",
     "min_candidate_train_count": 15000,
     "max_candidates_per_library": 300,
     "max_events_per_candidate": 8000,
@@ -136,6 +138,8 @@ def _build_events_for_library(
     candidate_dir: Path,
     train_years_fit: set[int],
     eval_year: int,
+    eval_start_ts: pd.Timestamp | None,
+    eval_end_ts_excl: pd.Timestamp | None,
     min_candidate_train_count: int,
     max_candidates: int,
     max_events_per_candidate: int,
@@ -169,7 +173,10 @@ def _build_events_for_library(
         horizons = sorted(sub["horizon"].astype(int).unique().tolist())
         d = _prepare_frame(path, symbol=symbol, horizons=horizons)
         fit_df = d[d["year"].isin(train_years_fit)].copy().reset_index(drop=True)
-        eval_df = d[d["year"] == int(eval_year)].copy().reset_index(drop=True)
+        if eval_start_ts is not None and eval_end_ts_excl is not None:
+            eval_df = d[(d["close_ts"] >= eval_start_ts) & (d["close_ts"] < eval_end_ts_excl)].copy().reset_index(drop=True)
+        else:
+            eval_df = d[d["year"] == int(eval_year)].copy().reset_index(drop=True)
         if fit_df.empty or eval_df.empty:
             continue
         q_fit = _quantiles(fit_df)
@@ -229,6 +236,25 @@ def _month_bounds(year: int) -> list[tuple[pd.Timestamp, pd.Timestamp]]:
     return out
 
 
+def _month_start(month_txt: str) -> pd.Timestamp:
+    p = pd.Period(str(month_txt), freq="M")
+    return p.to_timestamp(how="start").tz_localize("UTC")
+
+
+def _month_bounds_range(start_month: str, end_month: str) -> list[tuple[pd.Timestamp, pd.Timestamp]]:
+    p0 = pd.Period(str(start_month), freq="M")
+    p1 = pd.Period(str(end_month), freq="M")
+    if p1 < p0:
+        raise ValueError(f"end_month before start_month: {end_month} < {start_month}")
+    periods = pd.period_range(p0, p1, freq="M")
+    out: list[tuple[pd.Timestamp, pd.Timestamp]] = []
+    for p in periods:
+        s = p.to_timestamp(how="start").tz_localize("UTC")
+        e = (p + 1).to_timestamp(how="start").tz_localize("UTC")
+        out.append((s, e))
+    return out
+
+
 def _rolling_day_threshold_vector(
     *,
     train_ts: pd.Series,
@@ -238,7 +264,7 @@ def _rolling_day_threshold_vector(
     q: float,
     lookback_days: int,
     min_history: int,
-) -> np.ndarray:
+) -> tuple[np.ndarray, np.ndarray]:
     tr_t = pd.to_datetime(train_ts, utc=True, errors="coerce")
     te_t = pd.to_datetime(test_ts, utc=True, errors="coerce")
     tr_v = np.asarray(train_p, dtype=float)
@@ -246,8 +272,9 @@ def _rolling_day_threshold_vector(
     tr_ok = np.isfinite(tr_v) & tr_t.notna().to_numpy()
     te_ok = np.isfinite(te_v) & te_t.notna().to_numpy()
     out = np.full(len(te_v), np.nan, dtype=float)
+    src = np.full(len(te_v), "no_history", dtype=object)
     if not np.any(te_ok):
-        return out
+        return out, src
 
     tr_day = tr_t.dt.floor("D")
     te_day = te_t.dt.floor("D")
@@ -265,10 +292,9 @@ def _rolling_day_threshold_vector(
         test_by_day_vals[dd] = g["p"].to_numpy(dtype=float)
         test_by_day_idx[dd] = g["idx"].to_numpy(dtype=np.int64)
 
-    fallback = tr_v[tr_ok]
-    if len(fallback) == 0:
-        fallback = te_v[te_ok]
-    fallback_thr = float(np.quantile(fallback, float(q))) if len(fallback) else float("nan")
+    # Strictly causal fallback: never use unseen same-month test pools.
+    train_fallback = tr_v[tr_ok]
+    train_fallback_thr = float(np.quantile(train_fallback, float(q))) if len(train_fallback) else float("nan")
 
     lookback = pd.Timedelta(days=int(max(1, lookback_days)))
     seen_test_days: list[pd.Timestamp] = []
@@ -283,19 +309,29 @@ def _rolling_day_threshold_vector(
             if start <= d < day:
                 parts.append(test_by_day_vals[d])
         hist = np.concatenate(parts) if parts else np.array([], dtype=float)
+        src_label = "rolling_history"
         if len(hist) < int(max(1, min_history)):
-            hist = fallback
-        thr = float(np.quantile(hist, float(q))) if len(hist) else float(fallback_thr)
+            if len(train_fallback):
+                hist = train_fallback
+                src_label = "train_fallback"
+            else:
+                hist = np.array([], dtype=float)
+                src_label = "no_history"
+        thr = float(np.quantile(hist, float(q))) if len(hist) else float(train_fallback_thr)
+        if (not np.isfinite(thr)) and src_label != "no_history":
+            src_label = "no_history"
         out[test_by_day_idx[day]] = thr
+        src[test_by_day_idx[day]] = src_label
         seen_test_days.append(day)
-    return out
+    return out, src
 
 
 def _wfo_monthly(
     d: pd.DataFrame,
     *,
     library: str,
-    year: int,
+    months: list[tuple[pd.Timestamp, pd.Timestamp]],
+    score_start_ts: pd.Timestamp | None,
     rolling_train_months: int,
     min_month_train_rows: int,
     min_month_test_rows: int,
@@ -320,7 +356,6 @@ def _wfo_monthly(
         x[c] = _safe_numeric(x[c])
     x = x.dropna(subset=feats + ["target_gross_pos", "target_gross_pips", "candidate_uid"]).copy()
 
-    months = _month_bounds(int(year))
     mode = str(threshold_mode).strip().lower()
     if mode not in {"rolling_days", "train_quantile"}:
         raise ValueError("threshold_mode must be rolling_days|train_quantile")
@@ -330,6 +365,8 @@ def _wfo_monthly(
     pred_rows: list[pd.DataFrame] = []
     for i, (test_start, test_end) in enumerate(months):
         if i < int(rolling_train_months):
+            continue
+        if score_start_ts is not None and test_start < score_start_ts:
             continue
         train_start = months[i - int(rolling_train_months)][0]
         train_end = test_start
@@ -398,12 +435,13 @@ def _wfo_monthly(
                 "threshold_days": int(rolling_threshold_days) if mode == "rolling_days" else 0,
                 "threshold_exec": np.full(len(te), np.nan, dtype=float),
                 "selected_exec": np.zeros(len(te), dtype=int),
+                "threshold_source": np.full(len(te), "unset", dtype=object),
             }
         )
         g = te["target_gross_pips"].to_numpy(dtype=float)
         for q in threshold_quantiles:
             if mode == "rolling_days":
-                thr_vec = _rolling_day_threshold_vector(
+                thr_vec, src_vec = _rolling_day_threshold_vector(
                     train_ts=tr["close_ts"],
                     train_p=p_tr,
                     test_ts=te["close_ts"],
@@ -415,6 +453,7 @@ def _wfo_monthly(
             else:
                 thr = float(np.quantile(p_tr, float(q)))
                 thr_vec = np.full(len(p), float(thr), dtype=float)
+                src_vec = np.full(len(p), "train_quantile", dtype=object)
             m = np.isfinite(thr_vec) & (p >= thr_vec)
             if int(m.sum()) <= 0:
                 continue
@@ -438,6 +477,7 @@ def _wfo_monthly(
             if abs(float(q) - exec_q) <= 1e-12:
                 pred_chunk["threshold_exec"] = thr_vec.astype(float)
                 pred_chunk["selected_exec"] = m.astype(int)
+                pred_chunk["threshold_source"] = np.asarray(src_vec, dtype=object)
         pred_rows.append(pred_chunk)
     preds = pd.concat(pred_rows, ignore_index=True) if pred_rows else pd.DataFrame()
     return pd.DataFrame(metric_rows), pd.DataFrame(thr_rows), preds
@@ -450,7 +490,12 @@ def _write_report(report_out: Path, metrics: pd.DataFrame, thresholds: pd.DataFr
     lines.append("## Setup")
     lines.append(f"- library: `{cfg['library']}`")
     lines.append(f"- train_years_for_state_fit: `{cfg['train_years_for_state_fit']}`")
-    lines.append(f"- eval_year: `{cfg['eval_year']}`")
+    eval_start_month = str(cfg.get("eval_start_month", "")).strip()
+    eval_end_month = str(cfg.get("eval_end_month", "")).strip()
+    if eval_start_month and eval_end_month:
+        lines.append(f"- eval_window: `{eval_start_month}` .. `{eval_end_month}`")
+    else:
+        lines.append(f"- eval_year: `{cfg['eval_year']}`")
     lines.append(f"- min_candidate_train_count: `{cfg['min_candidate_train_count']}`")
     lines.append(f"- max_candidates_per_library: `{cfg['max_candidates_per_library']}`")
     lines.append(f"- rolling_train_months: `{cfg['rolling_train_months']}`")
@@ -480,6 +525,8 @@ def main() -> None:
     p.add_argument("--library", default=None)
     p.add_argument("--train-years-for-state-fit", default=None)
     p.add_argument("--eval-year", type=int, default=None)
+    p.add_argument("--eval-start-month", default=None)
+    p.add_argument("--eval-end-month", default=None)
     p.add_argument("--min-candidate-train-count", type=int, default=None)
     p.add_argument("--max-candidates-per-library", type=int, default=None)
     p.add_argument("--max-events-per-candidate", type=int, default=None)
@@ -507,6 +554,8 @@ def main() -> None:
     candidate_dir = Path(str(cfg["candidate_dir"]))
     train_years_fit = set(_parse_ints(str(cfg["train_years_for_state_fit"])))
     eval_year = int(cfg["eval_year"])
+    eval_start_month = str(cfg.get("eval_start_month", "")).strip()
+    eval_end_month = str(cfg.get("eval_end_month", "")).strip()
     libs_raw = str(cfg["library"]).strip().lower()
     oco_include_no_touch = bool(cfg.get("oco_include_no_touch", DEFAULTS["oco_include_no_touch"]))
     threshold_mode = str(cfg.get("threshold_mode", DEFAULTS["threshold_mode"])).strip().lower()
@@ -519,6 +568,23 @@ def main() -> None:
     for lib in libs:
         if lib not in {"directional", "oco"}:
             raise ValueError("library must be directional|oco|both")
+
+    rolling_train_months = int(cfg["rolling_train_months"])
+    if bool(eval_start_month) ^ bool(eval_end_month):
+        raise ValueError("eval_start_month and eval_end_month must be set together")
+    if eval_start_month and eval_end_month:
+        score_start_ts = _month_start(eval_start_month)
+        hist_start_period = pd.Period(eval_start_month, freq="M") - rolling_train_months
+        hist_start_ts = hist_start_period.to_timestamp(how="start").tz_localize("UTC")
+        end_period = pd.Period(eval_end_month, freq="M")
+        months = _month_bounds_range(hist_start_period.strftime("%Y-%m"), end_period.strftime("%Y-%m"))
+        eval_filter_start_ts = hist_start_ts
+        eval_filter_end_ts_excl = (end_period + 1).to_timestamp(how="start").tz_localize("UTC")
+    else:
+        score_start_ts = None
+        months = _month_bounds(int(eval_year))
+        eval_filter_start_ts = None
+        eval_filter_end_ts_excl = None
 
     all_metrics: list[pd.DataFrame] = []
     all_thresholds: list[pd.DataFrame] = []
@@ -534,6 +600,8 @@ def main() -> None:
             candidate_dir=candidate_dir,
             train_years_fit=train_years_fit,
             eval_year=eval_year,
+            eval_start_ts=eval_filter_start_ts,
+            eval_end_ts_excl=eval_filter_end_ts_excl,
             min_candidate_train_count=int(cfg["min_candidate_train_count"]),
             max_candidates=int(cfg["max_candidates_per_library"]),
             max_events_per_candidate=int(cfg["max_events_per_candidate"]),
@@ -546,8 +614,9 @@ def main() -> None:
         m, t, p = _wfo_monthly(
             ev,
             library=lib,
-            year=eval_year,
-            rolling_train_months=int(cfg["rolling_train_months"]),
+            months=months,
+            score_start_ts=score_start_ts,
+            rolling_train_months=rolling_train_months,
             min_month_train_rows=int(cfg["min_month_train_rows"]),
             min_month_test_rows=int(cfg["min_month_test_rows"]),
             min_candidate_rows_in_train_window=int(cfg["min_candidate_rows_in_train_window"]),

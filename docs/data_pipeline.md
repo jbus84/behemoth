@@ -20,6 +20,31 @@ flowchart LR
 - Velocity bars: `data/analysis/tick_velocity/*_tick_velocity.parquet`.
 - Stage configs: `configs/research/experiments/*.yaml`.
 
+## Build Commands (Raw Ticks -> Velocity)
+```bash
+uv run python scripts/build_global_tick_bars.py \
+  --tick-root /Users/danielfisher/Desktop/tick \
+  --output-dir data/global_tickbars \
+  --symbols EURUSD,GBPUSD,USDJPY \
+  --base-ticks 100 \
+  --aggregate-multiples 1,10,20 \
+  --price-source bid \
+  --timestamp-mode as_utc
+
+uv run python scripts/build_tick_velocity_dataset.py \
+  --tick-root /Users/danielfisher/Desktop/tick \
+  --tickbar-dir data/global_tickbars \
+  --out-dir data/analysis/tick_velocity \
+  --symbols EURUSD,GBPUSD,USDJPY \
+  --bar-ticks-grid 100,1000,2000 \
+  --vel-horizons 1,2,5,10 \
+  --target-horizons 1,2,3 \
+  --vol-window 96 \
+  --cost-window 288 \
+  --timestamp-mode as_utc \
+  --overwrite
+```
+
 ## Key Outputs
 - Analysis artifacts: `data/analysis/tick_opportunity_mining/*`.
 - Human-readable reports: `docs/analysis/*.md`.
@@ -33,7 +58,7 @@ flowchart LR
 ## Rolling Historical Evidence
 
 <!-- GENERATED:SYSREF:DATA_PIPELINE:START -->
-- generated_at_utc: `2026-02-27T18:39:10Z`
+- generated_at_utc: `2026-02-28T08:46:14Z`
 - symbols_covered: `EURUSD,GBPUSD,USDJPY`
 - stop-limit_reference: `stage_04_execution_realism`
 - artifact_sources:
