@@ -3100,7 +3100,7 @@
 <ul>
 <li>predictions: <code>data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdchf/USDCHF_oco_monthly_predictions.parquet</code></li>
 <li>quantiles: <code>0.5,0.6,0.7,0.8,0.9,0.95</code></li>
-<li>bootstrap_paths: <code>600</code></li>
+<li>bootstrap_paths: <code>2000</code></li>
 <li>stress_extra_cost_grid: <code>0.1,0.2,0.3,0.5</code></li>
 <li>use_exec_selection: <code>True</code></li>
 <li>execution_quantile: <code>0.9</code></li>
@@ -3131,6 +3131,13 @@
 <th style="text-align: right;">lb95_trade_mean_net_pips_costplus_0.50</th>
 <th style="text-align: right;">pvalue_bonferroni</th>
 <th style="text-align: right;">pvalue_fdr_bh</th>
+<th style="text-align: right;">is_exec_row</th>
+<th style="text-align: right;">max_survivable_cost_lb95_trade</th>
+<th style="text-align: left;">max_survivable_cost_status</th>
+<th style="text-align: right;">survival_bracket_lo</th>
+<th style="text-align: right;">survival_bracket_hi</th>
+<th style="text-align: right;">survival_lb95_lo</th>
+<th style="text-align: right;">survival_lb95_hi</th>
 </tr>
 </thead>
 <tbody>
@@ -3157,6 +3164,13 @@
 <td style="text-align: right;">-0.00189877</td>
 <td style="text-align: right;">0.000176032</td>
 <td style="text-align: right;">3.52064e-05</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.498102</td>
+<td style="text-align: left;">crossing_interpolated</td>
+<td style="text-align: right;">0.3</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.198151</td>
+<td style="text-align: right;">-0.00189877</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.6</td>
@@ -3181,6 +3195,13 @@
 <td style="text-align: right;">0.0509241</td>
 <td style="text-align: right;">0.00016652</td>
 <td style="text-align: right;">3.52064e-05</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">no_failure_in_grid</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.0509241</td>
+<td style="text-align: right;">0.0509241</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.7</td>
@@ -3205,6 +3226,13 @@
 <td style="text-align: right;">0.12229</td>
 <td style="text-align: right;">9.17309e-05</td>
 <td style="text-align: right;">3.29486e-05</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">no_failure_in_grid</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.12229</td>
+<td style="text-align: right;">0.12229</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.8</td>
@@ -3229,6 +3257,13 @@
 <td style="text-align: right;">0.220225</td>
 <td style="text-align: right;">4.48972e-05</td>
 <td style="text-align: right;">3.29486e-05</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">no_failure_in_grid</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.220225</td>
+<td style="text-align: right;">0.220225</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.9</td>
@@ -3253,6 +3288,13 @@
 <td style="text-align: right;">0.384669</td>
 <td style="text-align: right;">9.88457e-05</td>
 <td style="text-align: right;">3.29486e-05</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">no_failure_in_grid</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.384669</td>
+<td style="text-align: right;">0.384669</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.95</td>
@@ -3277,6 +3319,13 @@
 <td style="text-align: right;">0.46588</td>
 <td style="text-align: right;">0.000619528</td>
 <td style="text-align: right;">0.000103255</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">no_failure_in_grid</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.46588</td>
+<td style="text-align: right;">0.46588</td>
 </tr>
 </tbody>
 </table>

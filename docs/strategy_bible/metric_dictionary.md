@@ -42,6 +42,7 @@ Define metric semantics, formulas, units, interpretation bands, and missing-valu
 | S03_multiplicity_survival | 7 | indicator(Bonferroni pass or FDR pass) | binary | 1 pass; 0 fail | disallow |
 | T01_stress_elasticity | 8 | slope of mean net across cost-plus levels | pips/cost | less negative is better | disallow |
 | T02_first_negative_costplus | 8 | first negative cost-plus level (or max tested) | pips | higher is better | disallow |
+| T04_max_survivable_cost_lb95_trade | 8 | max extra cost with `lb95_trade_mean_net_pips_costplus_* > 0` (linear interpolation at crossing) | pips | higher is better | disallow |
 | T03_post_worst_month_recovery | 8 | next-month mean gross / abs(worst-month mean gross) | ratio | >1 strong recovery; 0.75-1 mild; <0.75 weak | disallow |
 | G01_near_fail_count | 9 | count of low-margin pass checks | count | 0 preferred | disallow |
 | G02_open_warning_age_days | 9 | mean age of open warnings from SLA tracker | days | lower is better | allow when no open risks |

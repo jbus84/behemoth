@@ -79,6 +79,7 @@ CORE_METRIC_IDS = {
     "S03_multiplicity_survival",
     "T01_stress_elasticity",
     "T02_first_negative_costplus",
+    "T04_max_survivable_cost_lb95_trade",
     "T03_post_worst_month_recovery",
     "G01_near_fail_count",
     "G03_lock_drift_flags",

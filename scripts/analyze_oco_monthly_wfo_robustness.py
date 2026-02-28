@@ -77,7 +77,7 @@ def _p_adjust_fdr_bh(p: np.ndarray) -> np.ndarray:
 
 def _select_by_quantile(d: pd.DataFrame, q: float) -> pd.DataFrame:
     out: list[pd.DataFrame] = []
-    for m, g in d.groupby("test_month", sort=True):
+    for _m, g in d.groupby("test_month", sort=True):
         thr = float(np.quantile(g["pred_prob"].to_numpy(dtype=float), float(q)))
         x = g[g["pred_prob"] >= thr].copy()
         x["quantile"] = float(q)
@@ -106,6 +106,98 @@ def _select_events(
     return x
 
 
+def _build_state_key_from_candidate_uid(uid: pd.Series) -> pd.Series:
+    parts = uid.astype(str).str.split("|", n=4, expand=True)
+    if parts.shape[1] < 5:
+        return pd.Series(np.nan, index=uid.index, dtype=object)
+    state_id = parts[4].astype(str)
+    bar_ticks = parts[2].astype(str)
+    horizon = parts[3].astype(str)
+    return state_id + "|" + bar_ticks + "|" + horizon
+
+
+def _apply_reduced_core_schedule_filter(
+    d: pd.DataFrame,
+    *,
+    reduced_state_schedule_csv: Path | None,
+) -> tuple[pd.DataFrame, str]:
+    if reduced_state_schedule_csv is None:
+        return d, "all_candidates"
+    p = Path(reduced_state_schedule_csv)
+    if not p.exists():
+        raise FileNotFoundError(f"reduced_state_schedule_csv not found: {p}")
+    s = pd.read_csv(p)
+    if s.empty:
+        return d.iloc[0:0].copy(), "reduced_core_schedule"
+    if "test_month" not in s.columns:
+        raise ValueError("reduced_state_schedule_csv missing required column: test_month")
+    if "state_key" not in s.columns:
+        req = {"state_id", "bar_ticks", "horizon"}
+        miss = sorted(req - set(s.columns))
+        if miss:
+            raise ValueError(
+                "reduced_state_schedule_csv missing state_key and cannot derive it; missing columns: "
+                + ",".join(miss)
+            )
+        s["state_key"] = (
+            s["state_id"].astype(str)
+            + "|"
+            + pd.to_numeric(s["bar_ticks"], errors="coerce").fillna(-1).astype(int).astype(str)
+            + "|"
+            + pd.to_numeric(s["horizon"], errors="coerce").fillna(-1).astype(int).astype(str)
+        )
+    s["test_month"] = s["test_month"].astype(str)
+    s = s[["test_month", "state_key"]].dropna().drop_duplicates().copy()
+    if "candidate_uid" not in d.columns:
+        raise ValueError("predictions parquet missing required column for reduced-core filtering: candidate_uid")
+    dd = d.copy()
+    dd["state_key"] = _build_state_key_from_candidate_uid(dd["candidate_uid"])
+    dd["test_month"] = dd["test_month"].astype(str)
+    dd = dd.merge(s, on=["test_month", "state_key"], how="inner")
+    return dd, "reduced_core_schedule"
+
+
+def _max_survivable_cost_lb95_trade(
+    *,
+    stress_levels: list[float],
+    stress_lb95: list[float],
+) -> tuple[float, str, float, float, float, float]:
+    pairs = sorted(
+        [(float(c), float(v)) for c, v in zip(stress_levels, stress_lb95, strict=False) if np.isfinite(c) and np.isfinite(v)],
+        key=lambda x: x[0],
+    )
+    if not pairs:
+        return float("nan"), "missing_stress_grid", float("nan"), float("nan"), float("nan"), float("nan")
+
+    xs = [x for x, _ in pairs]
+    ys = [y for _, y in pairs]
+    if all(y > 0.0 for y in ys):
+        cmax = float(max(xs))
+        ymax = float(ys[xs.index(cmax)])
+        return cmax, "no_failure_in_grid", cmax, cmax, ymax, ymax
+    if all(y <= 0.0 for y in ys):
+        c0 = float(min(xs))
+        y0 = float(ys[xs.index(c0)])
+        return 0.0, "fails_at_zero_or_first_grid", 0.0, c0, 0.0, y0
+
+    for j in range(1, len(pairs)):
+        lo_c, lo_y = pairs[j - 1]
+        hi_c, hi_y = pairs[j]
+        if lo_y > 0.0 and hi_y <= 0.0:
+            if abs(float(hi_y) - float(lo_y)) <= 1e-12:
+                cross = float(hi_c)
+            else:
+                frac = (0.0 - float(lo_y)) / (float(hi_y) - float(lo_y))
+                cross = float(lo_c) + float(frac) * (float(hi_c) - float(lo_c))
+            cross = float(min(max(cross, float(lo_c)), float(hi_c)))
+            return cross, "crossing_interpolated", float(lo_c), float(hi_c), float(lo_y), float(hi_y)
+
+    # Defensive fallback for unexpected non-monotone edge cases.
+    cmax = float(max(xs))
+    ymax = float(ys[xs.index(cmax)])
+    return cmax, "fallback_no_crossing_found", cmax, cmax, ymax, ymax
+
+
 def run(
     *,
     pred_path: Path,
@@ -114,6 +206,7 @@ def run(
     stress_extra_cost_grid: list[float],
     use_exec_selection: bool,
     execution_quantile: float,
+    reduced_state_schedule_csv: Path | None,
     out_summary_csv: Path,
     out_monthly_csv: Path,
     out_report: Path,
@@ -129,6 +222,10 @@ def run(
     d["pred_prob"] = pd.to_numeric(d["pred_prob"], errors="coerce")
     d["target_gross_pips"] = pd.to_numeric(d["target_gross_pips"], errors="coerce")
     d = d.dropna(subset=["pred_prob", "target_gross_pips"]).copy()
+    d, universe_mode = _apply_reduced_core_schedule_filter(
+        d,
+        reduced_state_schedule_csv=reduced_state_schedule_csv,
+    )
 
     rows: list[dict[str, float | int | str]] = []
     monthly_rows: list[dict[str, float | int | str]] = []
@@ -170,6 +267,8 @@ def run(
         row = {
             "quantile": float(q),
             "selection_mode": str(s["selection_mode"].iloc[0]) if "selection_mode" in s.columns and len(s) else "unknown",
+            "is_exec_row": int(abs(float(q) - float(execution_quantile)) <= 1e-12),
+            "universe_mode": str(universe_mode),
             "rows": int(len(s)),
             "months": int(mon["test_month"].nunique()),
             "coverage": float(len(s) / max(len(d), 1)),
@@ -187,6 +286,18 @@ def run(
             row[f"lb95_trade_mean_net_pips_costplus_{c:.2f}"] = float(
                 _bootstrap_lb95(net, paths=int(bootstrap_paths), seed=int(seed) + i * 23 + int(round(c * 100)))
             )
+        stress_levels = [float(c) for c in stress_extra_cost_grid]
+        stress_lb95 = [row.get(f"lb95_trade_mean_net_pips_costplus_{c:.2f}") for c in stress_levels]
+        max_cost, max_status, lo_c, hi_c, lo_y, hi_y = _max_survivable_cost_lb95_trade(
+            stress_levels=stress_levels,
+            stress_lb95=stress_lb95,
+        )
+        row["max_survivable_cost_lb95_trade"] = float(max_cost)
+        row["max_survivable_cost_status"] = str(max_status)
+        row["survival_bracket_lo"] = float(lo_c)
+        row["survival_bracket_hi"] = float(hi_c)
+        row["survival_lb95_lo"] = float(lo_y)
+        row["survival_lb95_hi"] = float(hi_y)
         rows.append(row)
 
     summary = pd.DataFrame(rows).sort_values("quantile").reset_index(drop=True)
@@ -210,6 +321,12 @@ def run(
     lines.append(f"- stress_extra_cost_grid: `{','.join(str(x) for x in stress_extra_cost_grid)}`")
     lines.append(f"- use_exec_selection: `{bool(use_exec_selection)}`")
     lines.append(f"- execution_quantile: `{float(execution_quantile)}`")
+    lines.append(f"- universe_mode: `{universe_mode}`")
+    lines.append(
+        f"- reduced_state_schedule_csv: `{reduced_state_schedule_csv}`"
+        if reduced_state_schedule_csv is not None
+        else "- reduced_state_schedule_csv: `_none_`"
+    )
     lines.append("")
     lines.append("## Summary")
     lines.append(summary.to_markdown(index=False) if not summary.empty else "_empty_")
@@ -227,9 +344,10 @@ def main() -> None:
     p.add_argument("--pred-path", default="data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fast/EURUSD_oco_monthly_predictions.parquet")
     p.add_argument("--quantiles", default="0.5,0.6,0.7,0.8,0.9,0.95")
     p.add_argument("--bootstrap-paths", type=int, default=2000)
-    p.add_argument("--stress-extra-cost-grid", default="0.1,0.2,0.3,0.5")
+    p.add_argument("--stress-extra-cost-grid", default="0.1,0.2,0.3,0.5,0.75,1.0,1.25,1.5,1.75,2.0")
     p.add_argument("--use-exec-selection", default="true")
     p.add_argument("--execution-quantile", type=float, default=0.9)
+    p.add_argument("--reduced-state-schedule-csv", default="")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--out-summary-csv", default="data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fast/EURUSD_oco_robustness_summary.csv")
     p.add_argument("--out-monthly-csv", default="data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fast/EURUSD_oco_robustness_monthly.csv")
@@ -243,6 +361,9 @@ def main() -> None:
         stress_extra_cost_grid=_parse_float_list(str(args.stress_extra_cost_grid)),
         use_exec_selection=str(args.use_exec_selection).strip().lower() in {"1", "true", "yes", "y"},
         execution_quantile=float(args.execution_quantile),
+        reduced_state_schedule_csv=Path(str(args.reduced_state_schedule_csv))
+        if str(args.reduced_state_schedule_csv).strip()
+        else None,
         out_summary_csv=Path(str(args.out_summary_csv)),
         out_monthly_csv=Path(str(args.out_monthly_csv)),
         out_report=Path(str(args.report_out)),

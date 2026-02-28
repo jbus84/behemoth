@@ -3649,7 +3649,7 @@
 <ul>
 <li>Evaluate bootstrap LB95 and multiplicity-adjusted metrics.</li>
 <li>Evaluate cost-plus stress curve behavior.</li>
-<li>Compute stress diagnostics (<code>T01-T03</code>).</li>
+<li>Compute stress diagnostics (<code>T01-T04</code>).</li>
 </ul>
 <h2 id="exact-calculations">Exact Calculations<a class="headerlink" href="#exact-calculations" title="Permanent link">&para;</a></h2>
 <ul>
@@ -3659,6 +3659,9 @@
 <li>minimum stress level where net turns negative; if never negative, set to max tested level</li>
 <li><code>T03_post_worst_month_recovery</code>:</li>
 <li><code>mean_gross(next_month_after_worst) / abs(mean_gross(worst_month))</code></li>
+<li><code>T04_max_survivable_cost_lb95_trade</code>:</li>
+<li>highest extra round-trip cost where <code>lb95_trade_mean_net_pips_costplus_* &gt; 0</code></li>
+<li>if crossing exists between stress points, estimate crossing with linear interpolation</li>
 </ul>
 <h2 id="causality-leakage-controls">Causality / Leakage Controls<a class="headerlink" href="#causality-leakage-controls" title="Permanent link">&para;</a></h2>
 <ul>
@@ -3674,12 +3677,13 @@
 <ul>
 <li><code>T01</code> less negative is more resilient.</li>
 <li>Higher <code>T02</code> implies deeper cost resilience.</li>
+<li>Higher <code>T04</code> gives a direct operational extra-cost headroom estimate under LB95.</li>
 <li>Higher <code>T03</code> suggests stronger post-worst-month recovery efficiency.</li>
 </ul>
 <h2 id="validation-gates">Validation Gates<a class="headerlink" href="#validation-gates" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Robustness LB95 and monthly consistency are hard promotion criteria.</li>
-<li><code>T01-T03</code> are stress diagnostics for hardening.</li>
+<li><code>T01-T04</code> are stress diagnostics for hardening.</li>
 </ul>
 <h2 id="canonical-analysis-reports">Canonical Analysis Reports<a class="headerlink" href="#canonical-analysis-reports" title="Permanent link">&para;</a></h2>
 <ul>
@@ -3722,11 +3726,11 @@
 <!-- GENERATED:STAGE_08:START -->
 <h3 id="auto-snapshot-stage-08">Auto Snapshot - Stage 08<a class="headerlink" href="#auto-snapshot-stage-08" title="Permanent link">&para;</a></h3>
 <ul>
-<li>generated_at: <code>2026-02-28 14:28:19 UTC</code></li>
+<li>generated_at: <code>2026-02-28 14:54:13 UTC</code></li>
 <li>Robustness summary uses bootstrap lower bounds from the configured smoke/full run artifacts.</li>
 <li>Interpretation: LB95 &gt; 0 indicates conservative positive expectancy under sampled uncertainty.</li>
 <li>Overfit panel adds month-stratified null uplift and dependence-aware LB95 comparisons.</li>
-<li>T01-T03 summarize stress elasticity, negative-cost crossing, and post-worst-month recovery efficiency.</li>
+<li>T01-T04 summarize stress elasticity, negative-cost crossing, max survivable cost, and post-worst-month recovery efficiency.</li>
 </ul>
 <h4 id="key-results">Key Results<a class="headerlink" href="#key-results" title="Permanent link">&para;</a></h4>
 <table>
@@ -3754,19 +3758,19 @@
 <tr>
 <td style="text-align: left;">GBPUSD</td>
 <td style="text-align: right;">0.9</td>
-<td style="text-align: right;">70579</td>
+<td style="text-align: right;">4427</td>
 <td style="text-align: right;">9</td>
-<td style="text-align: right;">1.0077</td>
-<td style="text-align: right;">0.973913</td>
+<td style="text-align: right;">0.808516</td>
+<td style="text-align: right;">0.696371</td>
 <td style="text-align: right;">9</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
 <td style="text-align: right;">0.9</td>
-<td style="text-align: right;">77785</td>
+<td style="text-align: right;">4939</td>
 <td style="text-align: right;">9</td>
-<td style="text-align: right;">1.37716</td>
-<td style="text-align: right;">1.33687</td>
+<td style="text-align: right;">1.40326</td>
+<td style="text-align: right;">1.25936</td>
 <td style="text-align: right;">9</td>
 </tr>
 <tr>
@@ -3893,6 +3897,7 @@
 <th style="text-align: right;">pvalue_fdr_bh</th>
 <th style="text-align: right;">t01_stress_elasticity</th>
 <th style="text-align: right;">t02_first_negative_costplus</th>
+<th style="text-align: right;">t04_max_survivable_cost_lb95_trade</th>
 <th style="text-align: right;">t03_post_worst_month_recovery</th>
 <th style="text-align: right;">lb95_trade_mean_net_pips_costplus_0.10</th>
 <th style="text-align: right;">lb95_trade_mean_net_pips_costplus_0.20</th>
@@ -3908,6 +3913,7 @@
 <td style="text-align: right;">2.91396e-09</td>
 <td style="text-align: right;">-1</td>
 <td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.5</td>
 <td style="text-align: right;">0.915934</td>
 <td style="text-align: right;">0.950816</td>
 <td style="text-align: right;">0.847072</td>
@@ -3921,11 +3927,12 @@
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">-1</td>
 <td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.5</td>
 <td style="text-align: right;">nan</td>
-<td style="text-align: right;">0.874132</td>
-<td style="text-align: right;">0.775311</td>
-<td style="text-align: right;">0.673344</td>
-<td style="text-align: right;">0.475306</td>
+<td style="text-align: right;">0.594654</td>
+<td style="text-align: right;">0.491428</td>
+<td style="text-align: right;">0.391254</td>
+<td style="text-align: right;">0.194756</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -3934,11 +3941,12 @@
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">-1</td>
 <td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.5</td>
 <td style="text-align: right;">nan</td>
-<td style="text-align: right;">1.23403</td>
-<td style="text-align: right;">1.13592</td>
-<td style="text-align: right;">1.03604</td>
-<td style="text-align: right;">0.834248</td>
+<td style="text-align: right;">1.15762</td>
+<td style="text-align: right;">1.05588</td>
+<td style="text-align: right;">0.95754</td>
+<td style="text-align: right;">0.761891</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
@@ -3946,6 +3954,7 @@
 <td style="text-align: right;">9.88457e-05</td>
 <td style="text-align: right;">3.29486e-05</td>
 <td style="text-align: right;">-1</td>
+<td style="text-align: right;">0.5</td>
 <td style="text-align: right;">0.5</td>
 <td style="text-align: right;">1.03157</td>
 <td style="text-align: right;">0.784079</td>

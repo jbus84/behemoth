@@ -241,6 +241,40 @@ def _safe_div(a: float, b: float) -> float:
     return a / b
 
 
+def _max_survivable_cost_from_costplus_cols(
+    row: dict[str, Any] | pd.Series,
+    *,
+    prefix: str = "lb95_trade_mean_net_pips_costplus_",
+) -> float:
+    pairs: list[tuple[float, float]] = []
+    keys = list(row.index) if isinstance(row, pd.Series) else list(row.keys())
+    for c in keys:
+        name = str(c)
+        if not name.startswith(prefix):
+            continue
+        lvl = _num(name.replace(prefix, ""))
+        val = _num(row.get(c))
+        if math.isfinite(lvl) and math.isfinite(val):
+            pairs.append((lvl, val))
+    if not pairs:
+        return float("nan")
+    pairs = sorted(pairs, key=lambda x: x[0])
+    if all(y > 0.0 for _, y in pairs):
+        return float(pairs[-1][0])
+    if all(y <= 0.0 for _, y in pairs):
+        return 0.0
+    for j in range(1, len(pairs)):
+        lo_c, lo_y = pairs[j - 1]
+        hi_c, hi_y = pairs[j]
+        if lo_y > 0.0 and hi_y <= 0.0:
+            if abs(float(hi_y) - float(lo_y)) <= 1e-12:
+                return float(hi_c)
+            frac = (0.0 - float(lo_y)) / (float(hi_y) - float(lo_y))
+            cross = float(lo_c) + float(frac) * (float(hi_c) - float(lo_c))
+            return float(min(max(cross, float(lo_c)), float(hi_c)))
+    return float(pairs[-1][0])
+
+
 def _session_bucket(hour_utc: Any) -> str:
     h = int(_num(hour_utc))
     if 0 <= h <= 7:
@@ -2484,6 +2518,10 @@ def _write_stage_snapshots(
         rm = _safe_read_csv(ctx.get("reduced_monthly_csv"))
         if rb.empty:
             continue
+        if "is_exec_row" in rb.columns:
+            exec_flag = pd.to_numeric(rb["is_exec_row"], errors="coerce").fillna(0).astype(int)
+            if (exec_flag == 1).any():
+                rb = rb.loc[exec_flag == 1]
         if "quantile" in rb.columns:
             qcol = pd.to_numeric(rb["quantile"], errors="coerce")
             rb = rb.loc[qcol == exec_q] if (qcol == exec_q).any() else rb.head(1)
@@ -2511,6 +2549,12 @@ def _write_stage_snapshots(
             neg = [x for x, y in srt if y < 0]
             # No negative crossing in tested stress range uses max tested cost.
             t02_first_negative_cost = _num(min(neg)) if neg else _num(max(cost_levels))
+        t04_max_survivable_cost = _num(row.get("max_survivable_cost_lb95_trade"))
+        if not math.isfinite(t04_max_survivable_cost):
+            t04_max_survivable_cost = _max_survivable_cost_from_costplus_cols(
+                row,
+                prefix="lb95_trade_mean_net_pips_costplus_",
+            )
         t03_recovery = float("nan")
         if not rm.empty and {"test_month", "mean_gross_pips"}.issubset(set(rm.columns)):
             rr = rm.copy().sort_values("test_month")
@@ -2527,11 +2571,20 @@ def _write_stage_snapshots(
                     t03_recovery = _safe_div(nxt, abs(worst))
         row["t01_stress_elasticity"] = t01_elasticity
         row["t02_first_negative_costplus"] = t02_first_negative_cost
+        row["t04_max_survivable_cost_lb95_trade"] = t04_max_survivable_cost
         row["t03_post_worst_month_recovery"] = t03_recovery
         robust_rows.append(row)
         add_metric(8, "lb95_trade_mean_gross_pips", sym, row.get("lb95_trade_mean_gross_pips"), "pips", str(ctx.get("robustness_summary_csv", "")))
         add_edge_metric(8, sym, "T01_stress_elasticity", t01_elasticity, "Slope of mean net pips across costplus stress levels", str(ctx.get("robustness_summary_csv", "")))
         add_edge_metric(8, sym, "T02_first_negative_costplus", t02_first_negative_cost, "First costplus level where mean net turns negative", str(ctx.get("robustness_summary_csv", "")))
+        add_edge_metric(
+            8,
+            sym,
+            "T04_max_survivable_cost_lb95_trade",
+            t04_max_survivable_cost,
+            "Max extra cost (pips) where LB95 trade-mean net remains positive",
+            str(ctx.get("robustness_summary_csv", "")),
+        )
         add_edge_metric(
             8,
             sym,
@@ -2560,6 +2613,7 @@ def _write_stage_snapshots(
         "pvalue_fdr_bh",
         "t01_stress_elasticity",
         "t02_first_negative_costplus",
+        "t04_max_survivable_cost_lb95_trade",
         "t03_post_worst_month_recovery",
     ] + stress_cols[:4]
     stage08_detail = _pick_cols(stage08, stage08_detail_cols) if not stage08.empty else None
@@ -2597,7 +2651,7 @@ def _write_stage_snapshots(
             "Robustness summary uses bootstrap lower bounds from the configured smoke/full run artifacts.",
             "Interpretation: LB95 > 0 indicates conservative positive expectancy under sampled uncertainty.",
             "Overfit panel adds month-stratified null uplift and dependence-aware LB95 comparisons.",
-            "T01-T03 summarize stress elasticity, negative-cost crossing, and post-worst-month recovery efficiency.",
+            "T01-T04 summarize stress elasticity, negative-cost crossing, max survivable cost, and post-worst-month recovery efficiency.",
         ],
         figure_paths=[p for p in [stage08_plot, stage08_overfit_panel] if p.exists()],
         figure_prefix="../figures/oco_bible/",

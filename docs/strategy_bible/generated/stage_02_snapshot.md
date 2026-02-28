@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 02
 
-- generated_at: `2026-02-28 14:28:19 UTC`
+- generated_at: `2026-02-28 14:54:13 UTC`
 - selection_pass candidates are broad hypotheses only.
 - Scatter shows the high-count >0 gross opportunity frontier.
 - M01-M03 quantify concentration risk, horizon smoothness, and positive-edge density.
@@ -67,9 +67,9 @@
 | symbol   |   quantile |   rows |   months |   positive_months |   lb95_trade_mean_gross_pips |   lb95_trade_mean_gross_pips_iid |   lb95_trade_mean_gross_pips_month_block |   pvalue_month_mean_gt0 |   pvalue_bonferroni |   pvalue_fdr_bh |   uplift_vs_null_pips |   pvalue_perm_uplift |   pvalue_perm_fdr_bh | majority_positive_months   | bonferroni_pass_10pct   | fdr_pass_10pct   | perm_fdr_pass_10pct   |
 |:---------|-----------:|-------:|---------:|------------------:|-----------------------------:|---------------------------------:|-----------------------------------------:|------------------------:|--------------------:|----------------:|----------------------:|---------------------:|---------------------:|:---------------------------|:------------------------|:-----------------|:----------------------|
 | EURUSD   |        0.9 |  59955 |        9 |                 9 |                     1.04912  |                              nan |                                      nan |             2.4283e-09  |         1.45698e-08 |     2.91396e-09 |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
-| GBPUSD   |        0.9 |  70579 |        9 |                 9 |                     0.973913 |                              nan |                                      nan |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
+| GBPUSD   |        0.9 |   4427 |        9 |                 9 |                     0.696371 |                              nan |                                      nan |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
 | USDCHF   |        0.9 | 366516 |        9 |                 9 |                     0.885075 |                              nan |                                      nan |             1.64743e-05 |         9.88457e-05 |     3.29486e-05 |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
-| USDJPY   |        0.9 |  77785 |        9 |                 9 |                     1.33687  |                              nan |                                      nan |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
+| USDJPY   |        0.9 |   4939 |        9 |                 9 |                     1.25936  |                              nan |                                      nan |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
 
 - Interpretation: Stage 2 mining is accepted only as hypothesis generation; false-discovery control is enforced downstream via Stage 3/8 out-of-sample evaluation.
 - Multiplicity fields (`pvalue_bonferroni`, `pvalue_fdr_bh`) are reported at the execution quantile and should be used with LB95/month-consistency, not in isolation.

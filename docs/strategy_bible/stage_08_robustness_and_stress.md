@@ -12,7 +12,7 @@ Quantify conservative expectancy and stress elasticity under cost and regime per
 ## Process
 - Evaluate bootstrap LB95 and multiplicity-adjusted metrics.
 - Evaluate cost-plus stress curve behavior.
-- Compute stress diagnostics (`T01-T03`).
+- Compute stress diagnostics (`T01-T04`).
 
 ## Exact Calculations
 - `T01_stress_elasticity`:
@@ -21,6 +21,9 @@ Quantify conservative expectancy and stress elasticity under cost and regime per
 - minimum stress level where net turns negative; if never negative, set to max tested level
 - `T03_post_worst_month_recovery`:
 - `mean_gross(next_month_after_worst) / abs(mean_gross(worst_month))`
+- `T04_max_survivable_cost_lb95_trade`:
+- highest extra round-trip cost where `lb95_trade_mean_net_pips_costplus_* > 0`
+- if crossing exists between stress points, estimate crossing with linear interpolation
 
 ## Causality / Leakage Controls
 - Uses finalized out-of-sample monthly artifacts only.
@@ -33,11 +36,12 @@ Quantify conservative expectancy and stress elasticity under cost and regime per
 ## Interpretation Guide
 - `T01` less negative is more resilient.
 - Higher `T02` implies deeper cost resilience.
+- Higher `T04` gives a direct operational extra-cost headroom estimate under LB95.
 - Higher `T03` suggests stronger post-worst-month recovery efficiency.
 
 ## Validation Gates
 - Robustness LB95 and monthly consistency are hard promotion criteria.
-- `T01-T03` are stress diagnostics for hardening.
+- `T01-T04` are stress diagnostics for hardening.
 
 ## Canonical Analysis Reports
 - `docs/analysis/eurusd_oco_monthly_wfo_robustness_fullcap_report.md`
@@ -76,18 +80,18 @@ uv run python scripts/analyze_oco_monthly_wfo_robustness.py \
 <!-- GENERATED:STAGE_08:START -->
 ### Auto Snapshot - Stage 08
 
-- generated_at: `2026-02-28 14:28:19 UTC`
+- generated_at: `2026-02-28 14:54:13 UTC`
 - Robustness summary uses bootstrap lower bounds from the configured smoke/full run artifacts.
 - Interpretation: LB95 > 0 indicates conservative positive expectancy under sampled uncertainty.
 - Overfit panel adds month-stratified null uplift and dependence-aware LB95 comparisons.
-- T01-T03 summarize stress elasticity, negative-cost crossing, and post-worst-month recovery efficiency.
+- T01-T04 summarize stress elasticity, negative-cost crossing, max survivable cost, and post-worst-month recovery efficiency.
 
 #### Key Results
 | symbol   |   quantile |   rows |   months |   mean_gross_pips |   lb95_trade_mean_gross_pips |   positive_months |
 |:---------|-----------:|-------:|---------:|------------------:|-----------------------------:|------------------:|
 | EURUSD   |        0.9 |  59955 |        9 |          1.08782  |                     1.04912  |                 9 |
-| GBPUSD   |        0.9 |  70579 |        9 |          1.0077   |                     0.973913 |                 9 |
-| USDJPY   |        0.9 |  77785 |        9 |          1.37716  |                     1.33687  |                 9 |
+| GBPUSD   |        0.9 |   4427 |        9 |          0.808516 |                     0.696371 |                 9 |
+| USDJPY   |        0.9 |   4939 |        9 |          1.40326  |                     1.25936  |                 9 |
 | USDCHF   |        0.9 | 366516 |        9 |          0.897313 |                     0.885075 |                 9 |
 
 #### Interpretation Notes
@@ -109,12 +113,12 @@ uv run python scripts/analyze_oco_monthly_wfo_robustness.py \
 | USDJPY   | T03_post_worst_month_recovery | gray   | high       | A9_DATA_GAP    | metric unavailable     | risk    |
 
 #### Details
-| symbol   |   pvalue_month_mean_gt0 |   pvalue_bonferroni |   pvalue_fdr_bh |   t01_stress_elasticity |   t02_first_negative_costplus |   t03_post_worst_month_recovery |   lb95_trade_mean_net_pips_costplus_0.10 |   lb95_trade_mean_net_pips_costplus_0.20 |   lb95_trade_mean_net_pips_costplus_0.30 |   lb95_trade_mean_net_pips_costplus_0.50 |
-|:---------|------------------------:|--------------------:|----------------:|------------------------:|------------------------------:|--------------------------------:|-----------------------------------------:|-----------------------------------------:|-----------------------------------------:|-----------------------------------------:|
-| EURUSD   |             2.4283e-09  |         1.45698e-08 |     2.91396e-09 |                      -1 |                           0.5 |                        0.915934 |                                 0.950816 |                                 0.847072 |                                 0.750602 |                                 0.54953  |
-| GBPUSD   |             0           |         0           |     0           |                      -1 |                           0.5 |                      nan        |                                 0.874132 |                                 0.775311 |                                 0.673344 |                                 0.475306 |
-| USDJPY   |             0           |         0           |     0           |                      -1 |                           0.5 |                      nan        |                                 1.23403  |                                 1.13592  |                                 1.03604  |                                 0.834248 |
-| USDCHF   |             1.64743e-05 |         9.88457e-05 |     3.29486e-05 |                      -1 |                           0.5 |                        1.03157  |                                 0.784079 |                                 0.68417  |                                 0.585102 |                                 0.384669 |
+| symbol   |   pvalue_month_mean_gt0 |   pvalue_bonferroni |   pvalue_fdr_bh |   t01_stress_elasticity |   t02_first_negative_costplus |   t04_max_survivable_cost_lb95_trade |   t03_post_worst_month_recovery |   lb95_trade_mean_net_pips_costplus_0.10 |   lb95_trade_mean_net_pips_costplus_0.20 |   lb95_trade_mean_net_pips_costplus_0.30 |   lb95_trade_mean_net_pips_costplus_0.50 |
+|:---------|------------------------:|--------------------:|----------------:|------------------------:|------------------------------:|-------------------------------------:|--------------------------------:|-----------------------------------------:|-----------------------------------------:|-----------------------------------------:|-----------------------------------------:|
+| EURUSD   |             2.4283e-09  |         1.45698e-08 |     2.91396e-09 |                      -1 |                           0.5 |                                  0.5 |                        0.915934 |                                 0.950816 |                                 0.847072 |                                 0.750602 |                                 0.54953  |
+| GBPUSD   |             0           |         0           |     0           |                      -1 |                           0.5 |                                  0.5 |                      nan        |                                 0.594654 |                                 0.491428 |                                 0.391254 |                                 0.194756 |
+| USDJPY   |             0           |         0           |     0           |                      -1 |                           0.5 |                                  0.5 |                      nan        |                                 1.15762  |                                 1.05588  |                                 0.95754  |                                 0.761891 |
+| USDCHF   |             1.64743e-05 |         9.88457e-05 |     3.29486e-05 |                      -1 |                           0.5 |                                  0.5 |                        1.03157  |                                 0.784079 |                                 0.68417  |                                 0.585102 |                                 0.384669 |
 
 #### Plots
 ![stage_08_robustness_lb95](../figures/oco_bible/stage_08_robustness_lb95.png)
