@@ -36,6 +36,11 @@
 - `configs/research/experiments/gbpusd_oco_reduced_core_2025.yaml`
 - `configs/research/experiments/usdjpy_oco_reduced_core_rolling_2025.yaml`
 - `configs/research/experiments/usdchf_oco_reduced_core_rolling_2025.yaml`
+- `configs/research/experiments/audusd_tick_opportunity_mining.yaml`
+- `configs/research/experiments/audusd_tick_opportunity_ml_dataset.yaml`
+- `configs/research/experiments/audusd_tick_opportunity_monthly_wfo_2025.yaml`
+- `configs/research/experiments/audusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml`
+- `configs/research/experiments/audusd_oco_reduced_core_rolling_2025.yaml`
 - `configs/research/docs/oco_bible_manifest.yaml`
 - `configs/research/governance/oco_rule_universe_registry.yaml`
 - `configs/research/governance/oco_monitoring_exceptions.yaml`
@@ -73,6 +78,12 @@
 - `docs/analysis/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md`
 - `docs/analysis/gbpusd_oco_reduced_core_rolling_report.md`
 - `docs/analysis/gbpusd_oco_tick_exact_rolling_report.md`
+
+### AUDUSD
+- `docs/analysis/audusd_tick_opportunity_mining_report.md`
+- `docs/analysis/audusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md`
+- `docs/analysis/audusd_oco_reduced_core_rolling_report.md`
+- `docs/analysis/audusd_oco_tick_exact_rolling_report.md`
 
 ### USDJPY
 - `docs/analysis/usdjpy_tick_opportunity_mining_report.md`

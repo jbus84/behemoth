@@ -1,0 +1,6 @@
+{
+    // Make VS Code use the uv-created venv
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+    // This extension breaks the above setting
+    "python.useEnvironmentsExtension": false
+}

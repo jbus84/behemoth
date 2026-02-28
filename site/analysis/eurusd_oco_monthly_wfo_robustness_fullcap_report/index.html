@@ -16,7 +16,7 @@
         <link rel="prev" href="../eurusd_oco_tick_exact_rolling_report/">
       
       
-        <link rel="next" href="../gbpusd_tick_opportunity_mining_report/">
+        <link rel="next" href="../audusd_tick_opportunity_mining_report/">
       
       
         
@@ -812,7 +812,7 @@
   <span class="md-ellipsis">
     
   
-    GBPUSD
+    AUDUSD
   
 
     
@@ -825,6 +825,147 @@
         
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AUDUSD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audusd_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audusd_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audusd_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reduced Core Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GBPUSD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -999,10 +1140,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_10" >
         
           
-          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_10" id="__nav_3_10_label" tabindex="0">
             
   
   
@@ -1020,8 +1161,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_9">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_10">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1981,6 +2122,34 @@
     
   
     Assumptions + Threats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/symbol_onboarding_playbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Symbol Onboarding Playbook
   
 
     
@@ -3178,9 +3347,11 @@
 <li>predictions: <code>data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet</code></li>
 <li>quantiles: <code>0.5,0.6,0.7,0.8,0.9,0.95</code></li>
 <li>bootstrap_paths: <code>2000</code></li>
-<li>stress_extra_cost_grid: <code>0.1,0.2,0.3,0.5</code></li>
+<li>stress_extra_cost_grid: <code>0.1,0.2,0.3,0.5,0.75,1.0,1.25,1.5,1.75,2.0</code></li>
 <li>use_exec_selection: <code>True</code></li>
 <li>execution_quantile: <code>0.9</code></li>
+<li>universe_mode: <code>reduced_core_schedule</code></li>
+<li>reduced_state_schedule_csv: <code>data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv</code></li>
 </ul>
 <h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
 <table>
@@ -3188,6 +3359,8 @@
 <tr>
 <th style="text-align: right;">quantile</th>
 <th style="text-align: left;">selection_mode</th>
+<th style="text-align: right;">is_exec_row</th>
+<th style="text-align: left;">universe_mode</th>
 <th style="text-align: right;">rows</th>
 <th style="text-align: right;">months</th>
 <th style="text-align: right;">coverage</th>
@@ -3206,203 +3379,292 @@
 <th style="text-align: right;">lb95_trade_mean_net_pips_costplus_0.30</th>
 <th style="text-align: right;">mean_net_pips_costplus_0.50</th>
 <th style="text-align: right;">lb95_trade_mean_net_pips_costplus_0.50</th>
-<th style="text-align: right;">pvalue_bonferroni</th>
-<th style="text-align: right;">pvalue_fdr_bh</th>
-<th style="text-align: right;">is_exec_row</th>
+<th style="text-align: right;">mean_net_pips_costplus_0.75</th>
+<th style="text-align: right;">lb95_trade_mean_net_pips_costplus_0.75</th>
+<th style="text-align: right;">mean_net_pips_costplus_1.00</th>
+<th style="text-align: right;">lb95_trade_mean_net_pips_costplus_1.00</th>
+<th style="text-align: right;">mean_net_pips_costplus_1.25</th>
+<th style="text-align: right;">lb95_trade_mean_net_pips_costplus_1.25</th>
+<th style="text-align: right;">mean_net_pips_costplus_1.50</th>
+<th style="text-align: right;">lb95_trade_mean_net_pips_costplus_1.50</th>
+<th style="text-align: right;">mean_net_pips_costplus_1.75</th>
+<th style="text-align: right;">lb95_trade_mean_net_pips_costplus_1.75</th>
+<th style="text-align: right;">mean_net_pips_costplus_2.00</th>
+<th style="text-align: right;">lb95_trade_mean_net_pips_costplus_2.00</th>
 <th style="text-align: right;">max_survivable_cost_lb95_trade</th>
 <th style="text-align: left;">max_survivable_cost_status</th>
 <th style="text-align: right;">survival_bracket_lo</th>
 <th style="text-align: right;">survival_bracket_hi</th>
 <th style="text-align: right;">survival_lb95_lo</th>
 <th style="text-align: right;">survival_lb95_hi</th>
+<th style="text-align: right;">pvalue_bonferroni</th>
+<th style="text-align: right;">pvalue_fdr_bh</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td style="text-align: right;">0.5</td>
 <td style="text-align: left;">monthly_quantile</td>
-<td style="text-align: right;">300713</td>
-<td style="text-align: right;">9</td>
-<td style="text-align: right;">0.500006</td>
-<td style="text-align: right;">0.712138</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.553298</td>
-<td style="text-align: right;">0.69692</td>
-<td style="text-align: right;">0.465159</td>
-<td style="text-align: right;">9</td>
-<td style="text-align: right;">6.42542e-11</td>
-<td style="text-align: right;">0.612138</td>
-<td style="text-align: right;">0.597945</td>
-<td style="text-align: right;">0.512138</td>
-<td style="text-align: right;">0.497901</td>
-<td style="text-align: right;">0.412138</td>
-<td style="text-align: right;">0.398003</td>
-<td style="text-align: right;">0.212138</td>
-<td style="text-align: right;">0.198253</td>
-<td style="text-align: right;">3.85525e-10</td>
-<td style="text-align: right;">9.63812e-11</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: left;">no_failure_in_grid</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.198253</td>
-<td style="text-align: right;">0.198253</td>
+<td style="text-align: left;">reduced_core_schedule</td>
+<td style="text-align: right;">5913</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">0.500211</td>
+<td style="text-align: right;">1.69405</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: right;">0.640453</td>
+<td style="text-align: right;">1.6076</td>
+<td style="text-align: right;">1.40604</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">5.66569e-12</td>
+<td style="text-align: right;">1.59405</td>
+<td style="text-align: right;">1.50865</td>
+<td style="text-align: right;">1.49405</td>
+<td style="text-align: right;">1.4033</td>
+<td style="text-align: right;">1.39405</td>
+<td style="text-align: right;">1.30566</td>
+<td style="text-align: right;">1.19405</td>
+<td style="text-align: right;">1.10511</td>
+<td style="text-align: right;">0.944047</td>
+<td style="text-align: right;">0.854284</td>
+<td style="text-align: right;">0.694047</td>
+<td style="text-align: right;">0.605665</td>
+<td style="text-align: right;">0.444047</td>
+<td style="text-align: right;">0.360422</td>
+<td style="text-align: right;">0.194047</td>
+<td style="text-align: right;">0.100943</td>
+<td style="text-align: right;">-0.055953</td>
+<td style="text-align: right;">-0.143901</td>
+<td style="text-align: right;">-0.305953</td>
+<td style="text-align: right;">-0.400006</td>
+<td style="text-align: right;">1.60307</td>
+<td style="text-align: left;">crossing_interpolated</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">1.75</td>
+<td style="text-align: right;">0.100943</td>
+<td style="text-align: right;">-0.143901</td>
+<td style="text-align: right;">3.39941e-11</td>
+<td style="text-align: right;">2.67966e-11</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.6</td>
 <td style="text-align: left;">monthly_quantile</td>
-<td style="text-align: right;">240571</td>
-<td style="text-align: right;">9</td>
-<td style="text-align: right;">0.400006</td>
-<td style="text-align: right;">0.769853</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.556572</td>
-<td style="text-align: right;">0.752783</td>
-<td style="text-align: right;">0.515607</td>
-<td style="text-align: right;">9</td>
-<td style="text-align: right;">2.1662e-11</td>
-<td style="text-align: right;">0.669853</td>
-<td style="text-align: right;">0.6536</td>
-<td style="text-align: right;">0.569853</td>
-<td style="text-align: right;">0.552867</td>
-<td style="text-align: right;">0.469853</td>
-<td style="text-align: right;">0.453642</td>
-<td style="text-align: right;">0.269853</td>
-<td style="text-align: right;">0.253558</td>
-<td style="text-align: right;">1.29972e-10</td>
-<td style="text-align: right;">4.49174e-11</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: left;">no_failure_in_grid</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.253558</td>
-<td style="text-align: right;">0.253558</td>
+<td style="text-align: left;">reduced_core_schedule</td>
+<td style="text-align: right;">4731</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">0.40022</td>
+<td style="text-align: right;">1.71983</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: right;">0.641936</td>
+<td style="text-align: right;">1.62292</td>
+<td style="text-align: right;">1.42207</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">9.25326e-12</td>
+<td style="text-align: right;">1.61983</td>
+<td style="text-align: right;">1.51742</td>
+<td style="text-align: right;">1.51983</td>
+<td style="text-align: right;">1.41346</td>
+<td style="text-align: right;">1.41983</td>
+<td style="text-align: right;">1.31668</td>
+<td style="text-align: right;">1.21983</td>
+<td style="text-align: right;">1.1109</td>
+<td style="text-align: right;">0.969827</td>
+<td style="text-align: right;">0.866296</td>
+<td style="text-align: right;">0.719827</td>
+<td style="text-align: right;">0.618134</td>
+<td style="text-align: right;">0.469827</td>
+<td style="text-align: right;">0.370659</td>
+<td style="text-align: right;">0.219827</td>
+<td style="text-align: right;">0.118405</td>
+<td style="text-align: right;">-0.0301733</td>
+<td style="text-align: right;">-0.130397</td>
+<td style="text-align: right;">-0.280173</td>
+<td style="text-align: right;">-0.378707</td>
+<td style="text-align: right;">1.61898</td>
+<td style="text-align: left;">crossing_interpolated</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">1.75</td>
+<td style="text-align: right;">0.118405</td>
+<td style="text-align: right;">-0.130397</td>
+<td style="text-align: right;">5.55196e-11</td>
+<td style="text-align: right;">2.67966e-11</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.7</td>
 <td style="text-align: left;">monthly_quantile</td>
-<td style="text-align: right;">180431</td>
-<td style="text-align: right;">9</td>
-<td style="text-align: right;">0.300009</td>
-<td style="text-align: right;">0.850979</td>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: right;">0.561683</td>
-<td style="text-align: right;">0.831062</td>
-<td style="text-align: right;">0.574616</td>
-<td style="text-align: right;">9</td>
-<td style="text-align: right;">4.41314e-12</td>
-<td style="text-align: right;">0.750979</td>
-<td style="text-align: right;">0.731274</td>
-<td style="text-align: right;">0.650979</td>
-<td style="text-align: right;">0.631779</td>
-<td style="text-align: right;">0.550979</td>
-<td style="text-align: right;">0.530448</td>
-<td style="text-align: right;">0.350979</td>
-<td style="text-align: right;">0.330732</td>
-<td style="text-align: right;">2.64788e-11</td>
-<td style="text-align: right;">2.64788e-11</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: left;">no_failure_in_grid</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.330732</td>
-<td style="text-align: right;">0.330732</td>
+<td style="text-align: left;">reduced_core_schedule</td>
+<td style="text-align: right;">3549</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">0.300228</td>
+<td style="text-align: right;">1.77554</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: right;">0.64497</td>
+<td style="text-align: right;">1.65344</td>
+<td style="text-align: right;">1.44021</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">1.751e-11</td>
+<td style="text-align: right;">1.67554</td>
+<td style="text-align: right;">1.5588</td>
+<td style="text-align: right;">1.57554</td>
+<td style="text-align: right;">1.46105</td>
+<td style="text-align: right;">1.47554</td>
+<td style="text-align: right;">1.35965</td>
+<td style="text-align: right;">1.27554</td>
+<td style="text-align: right;">1.1582</td>
+<td style="text-align: right;">1.02554</td>
+<td style="text-align: right;">0.912439</td>
+<td style="text-align: right;">0.775542</td>
+<td style="text-align: right;">0.654913</td>
+<td style="text-align: right;">0.525542</td>
+<td style="text-align: right;">0.40956</td>
+<td style="text-align: right;">0.275542</td>
+<td style="text-align: right;">0.161963</td>
+<td style="text-align: right;">0.0255424</td>
+<td style="text-align: right;">-0.0899366</td>
+<td style="text-align: right;">-0.224458</td>
+<td style="text-align: right;">-0.338638</td>
+<td style="text-align: right;">1.66074</td>
+<td style="text-align: left;">crossing_interpolated</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">1.75</td>
+<td style="text-align: right;">0.161963</td>
+<td style="text-align: right;">-0.0899366</td>
+<td style="text-align: right;">1.0506e-10</td>
+<td style="text-align: right;">2.67966e-11</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.8</td>
 <td style="text-align: left;">monthly_quantile</td>
-<td style="text-align: right;">120290</td>
-<td style="text-align: right;">9</td>
-<td style="text-align: right;">0.20001</td>
-<td style="text-align: right;">0.924449</td>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: right;">0.565808</td>
-<td style="text-align: right;">0.900439</td>
-<td style="text-align: right;">0.626996</td>
-<td style="text-align: right;">9</td>
-<td style="text-align: right;">2.24587e-11</td>
-<td style="text-align: right;">0.824449</td>
-<td style="text-align: right;">0.799337</td>
-<td style="text-align: right;">0.724449</td>
-<td style="text-align: right;">0.699587</td>
-<td style="text-align: right;">0.624449</td>
-<td style="text-align: right;">0.599552</td>
-<td style="text-align: right;">0.424449</td>
-<td style="text-align: right;">0.399373</td>
-<td style="text-align: right;">1.34752e-10</td>
-<td style="text-align: right;">4.49174e-11</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: left;">no_failure_in_grid</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.399373</td>
-<td style="text-align: right;">0.399373</td>
+<td style="text-align: left;">reduced_core_schedule</td>
+<td style="text-align: right;">2367</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">0.200237</td>
+<td style="text-align: right;">1.84161</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: right;">0.6485</td>
+<td style="text-align: right;">1.6936</td>
+<td style="text-align: right;">1.4852</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">9.5637e-09</td>
+<td style="text-align: right;">1.74161</td>
+<td style="text-align: right;">1.59459</td>
+<td style="text-align: right;">1.64161</td>
+<td style="text-align: right;">1.48898</td>
+<td style="text-align: right;">1.54161</td>
+<td style="text-align: right;">1.3911</td>
+<td style="text-align: right;">1.34161</td>
+<td style="text-align: right;">1.19527</td>
+<td style="text-align: right;">1.09161</td>
+<td style="text-align: right;">0.948849</td>
+<td style="text-align: right;">0.841614</td>
+<td style="text-align: right;">0.691324</td>
+<td style="text-align: right;">0.591614</td>
+<td style="text-align: right;">0.444867</td>
+<td style="text-align: right;">0.341614</td>
+<td style="text-align: right;">0.190199</td>
+<td style="text-align: right;">0.0916139</td>
+<td style="text-align: right;">-0.0514216</td>
+<td style="text-align: right;">-0.158386</td>
+<td style="text-align: right;">-0.31003</td>
+<td style="text-align: right;">1.69679</td>
+<td style="text-align: left;">crossing_interpolated</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">1.75</td>
+<td style="text-align: right;">0.190199</td>
+<td style="text-align: right;">-0.0514216</td>
+<td style="text-align: right;">5.73822e-08</td>
+<td style="text-align: right;">9.5637e-09</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.9</td>
 <td style="text-align: left;">exec_flag</td>
-<td style="text-align: right;">59955</td>
-<td style="text-align: right;">9</td>
-<td style="text-align: right;">0.0996892</td>
-<td style="text-align: right;">1.08782</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: right;">0.571946</td>
-<td style="text-align: right;">1.04912</td>
-<td style="text-align: right;">0.687661</td>
-<td style="text-align: right;">9</td>
-<td style="text-align: right;">2.4283e-09</td>
-<td style="text-align: right;">0.987816</td>
-<td style="text-align: right;">0.950816</td>
-<td style="text-align: right;">0.887816</td>
-<td style="text-align: right;">0.847072</td>
-<td style="text-align: right;">0.787816</td>
-<td style="text-align: right;">0.750602</td>
-<td style="text-align: right;">0.587816</td>
-<td style="text-align: right;">0.54953</td>
-<td style="text-align: right;">1.45698e-08</td>
-<td style="text-align: right;">2.91396e-09</td>
 <td style="text-align: right;">1</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: left;">no_failure_in_grid</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.54953</td>
-<td style="text-align: right;">0.54953</td>
+<td style="text-align: left;">reduced_core_schedule</td>
+<td style="text-align: right;">4923</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">0.416462</td>
+<td style="text-align: right;">1.69669</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: right;">0.641682</td>
+<td style="text-align: right;">1.60064</td>
+<td style="text-align: right;">1.39255</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">1.78644e-11</td>
+<td style="text-align: right;">1.59669</td>
+<td style="text-align: right;">1.49583</td>
+<td style="text-align: right;">1.49669</td>
+<td style="text-align: right;">1.40248</td>
+<td style="text-align: right;">1.39669</td>
+<td style="text-align: right;">1.29949</td>
+<td style="text-align: right;">1.19669</td>
+<td style="text-align: right;">1.10089</td>
+<td style="text-align: right;">0.946689</td>
+<td style="text-align: right;">0.851062</td>
+<td style="text-align: right;">0.696689</td>
+<td style="text-align: right;">0.598737</td>
+<td style="text-align: right;">0.446689</td>
+<td style="text-align: right;">0.34438</td>
+<td style="text-align: right;">0.196689</td>
+<td style="text-align: right;">0.0995551</td>
+<td style="text-align: right;">-0.053311</td>
+<td style="text-align: right;">-0.152594</td>
+<td style="text-align: right;">-0.303311</td>
+<td style="text-align: right;">-0.404569</td>
+<td style="text-align: right;">1.59871</td>
+<td style="text-align: left;">crossing_interpolated</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">1.75</td>
+<td style="text-align: right;">0.0995551</td>
+<td style="text-align: right;">-0.152594</td>
+<td style="text-align: right;">1.07186e-10</td>
+<td style="text-align: right;">2.67966e-11</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.95</td>
 <td style="text-align: left;">monthly_quantile</td>
-<td style="text-align: right;">30077</td>
-<td style="text-align: right;">9</td>
-<td style="text-align: right;">0.0500101</td>
-<td style="text-align: right;">1.1028</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: right;">0.566646</td>
-<td style="text-align: right;">1.04566</td>
-<td style="text-align: right;">0.636918</td>
-<td style="text-align: right;">8</td>
-<td style="text-align: right;">1.36345e-06</td>
-<td style="text-align: right;">1.0028</td>
-<td style="text-align: right;">0.94757</td>
-<td style="text-align: right;">0.902799</td>
-<td style="text-align: right;">0.840685</td>
-<td style="text-align: right;">0.802799</td>
-<td style="text-align: right;">0.745905</td>
-<td style="text-align: right;">0.602799</td>
-<td style="text-align: right;">0.544546</td>
-<td style="text-align: right;">8.18067e-06</td>
-<td style="text-align: right;">1.36345e-06</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: left;">no_failure_in_grid</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.544546</td>
-<td style="text-align: right;">0.544546</td>
+<td style="text-align: left;">reduced_core_schedule</td>
+<td style="text-align: right;">596</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">0.0504187</td>
+<td style="text-align: right;">1.92215</td>
+<td style="text-align: right;">1.35</td>
+<td style="text-align: right;">0.639262</td>
+<td style="text-align: right;">1.60201</td>
+<td style="text-align: right;">1.57281</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">8.55646e-10</td>
+<td style="text-align: right;">1.82215</td>
+<td style="text-align: right;">1.52583</td>
+<td style="text-align: right;">1.72215</td>
+<td style="text-align: right;">1.42073</td>
+<td style="text-align: right;">1.62215</td>
+<td style="text-align: right;">1.32957</td>
+<td style="text-align: right;">1.42215</td>
+<td style="text-align: right;">1.12315</td>
+<td style="text-align: right;">1.17215</td>
+<td style="text-align: right;">0.867114</td>
+<td style="text-align: right;">0.922148</td>
+<td style="text-align: right;">0.630856</td>
+<td style="text-align: right;">0.672148</td>
+<td style="text-align: right;">0.372961</td>
+<td style="text-align: right;">0.422148</td>
+<td style="text-align: right;">0.132718</td>
+<td style="text-align: right;">0.172148</td>
+<td style="text-align: right;">-0.137836</td>
+<td style="text-align: right;">-0.0778523</td>
+<td style="text-align: right;">-0.366795</td>
+<td style="text-align: right;">1.62264</td>
+<td style="text-align: left;">crossing_interpolated</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">1.75</td>
+<td style="text-align: right;">0.132718</td>
+<td style="text-align: right;">-0.137836</td>
+<td style="text-align: right;">5.13388e-09</td>
+<td style="text-align: right;">1.02678e-09</td>
 </tr>
 </tbody>
 </table>
@@ -3421,435 +3683,291 @@
 <tbody>
 <tr>
 <td style="text-align: right;">0.5</td>
-<td style="text-align: left;">2025-04</td>
-<td style="text-align: right;">80855</td>
-<td style="text-align: right;">1.05906</td>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: right;">0.571455</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: left;">2025-05</td>
-<td style="text-align: right;">44854</td>
-<td style="text-align: right;">0.560195</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.544277</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: left;">2025-06</td>
-<td style="text-align: right;">37807</td>
-<td style="text-align: right;">0.511873</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.546883</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.5</td>
 <td style="text-align: left;">2025-07</td>
-<td style="text-align: right;">31123</td>
-<td style="text-align: right;">0.915677</td>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: right;">0.564952</td>
+<td style="text-align: right;">650</td>
+<td style="text-align: right;">2.12708</td>
+<td style="text-align: right;">1.7</td>
+<td style="text-align: right;">0.689231</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.5</td>
 <td style="text-align: left;">2025-08</td>
-<td style="text-align: right;">26312</td>
-<td style="text-align: right;">0.852904</td>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: right;">0.560581</td>
+<td style="text-align: right;">691</td>
+<td style="text-align: right;">2.85123</td>
+<td style="text-align: right;">2.2</td>
+<td style="text-align: right;">0.704776</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.5</td>
 <td style="text-align: left;">2025-09</td>
-<td style="text-align: right;">25643</td>
-<td style="text-align: right;">0.619155</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.556487</td>
+<td style="text-align: right;">1306</td>
+<td style="text-align: right;">1.77902</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: right;">0.623277</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.5</td>
 <td style="text-align: left;">2025-10</td>
-<td style="text-align: right;">24700</td>
-<td style="text-align: right;">0.34687</td>
-<td style="text-align: right;">0.3</td>
-<td style="text-align: right;">0.533117</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: left;">2025-11</td>
-<td style="text-align: right;">15602</td>
-<td style="text-align: right;">0.217299</td>
-<td style="text-align: right;">0.1</td>
-<td style="text-align: right;">0.508589</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: left;">2025-12</td>
-<td style="text-align: right;">13817</td>
-<td style="text-align: right;">0.381016</td>
-<td style="text-align: right;">0.3</td>
-<td style="text-align: right;">0.534414</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: left;">2025-04</td>
-<td style="text-align: right;">64684</td>
-<td style="text-align: right;">1.11449</td>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: right;">0.572398</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: left;">2025-05</td>
-<td style="text-align: right;">35883</td>
-<td style="text-align: right;">0.614896</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.547697</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: left;">2025-06</td>
-<td style="text-align: right;">30246</td>
-<td style="text-align: right;">0.56225</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.551709</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: left;">2025-07</td>
-<td style="text-align: right;">24898</td>
-<td style="text-align: right;">1.01239</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: right;">0.570729</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: left;">2025-08</td>
-<td style="text-align: right;">21050</td>
-<td style="text-align: right;">0.934043</td>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: right;">0.563515</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: left;">2025-09</td>
-<td style="text-align: right;">20514</td>
-<td style="text-align: right;">0.668987</td>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: right;">0.561324</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: left;">2025-10</td>
-<td style="text-align: right;">19760</td>
-<td style="text-align: right;">0.398735</td>
-<td style="text-align: right;">0.4</td>
-<td style="text-align: right;">0.53917</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: left;">2025-11</td>
-<td style="text-align: right;">12482</td>
-<td style="text-align: right;">0.225989</td>
-<td style="text-align: right;">0.1</td>
-<td style="text-align: right;">0.507451</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: left;">2025-12</td>
-<td style="text-align: right;">11054</td>
-<td style="text-align: right;">0.42998</td>
-<td style="text-align: right;">0.4</td>
-<td style="text-align: right;">0.538719</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: left;">2025-04</td>
-<td style="text-align: right;">48513</td>
-<td style="text-align: right;">1.20123</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0.575578</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: left;">2025-05</td>
-<td style="text-align: right;">26913</td>
-<td style="text-align: right;">0.663995</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.551146</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: left;">2025-06</td>
-<td style="text-align: right;">22684</td>
-<td style="text-align: right;">0.649519</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.557177</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: left;">2025-07</td>
-<td style="text-align: right;">18674</td>
-<td style="text-align: right;">1.15138</td>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: right;">0.58145</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: left;">2025-08</td>
-<td style="text-align: right;">15789</td>
-<td style="text-align: right;">1.02925</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: right;">0.568624</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: left;">2025-09</td>
-<td style="text-align: right;">15386</td>
-<td style="text-align: right;">0.72863</td>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: right;">0.564669</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: left;">2025-10</td>
-<td style="text-align: right;">14820</td>
-<td style="text-align: right;">0.485823</td>
-<td style="text-align: right;">0.4</td>
-<td style="text-align: right;">0.547436</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: left;">2025-11</td>
-<td style="text-align: right;">9361</td>
-<td style="text-align: right;">0.236609</td>
-<td style="text-align: right;">0.1</td>
-<td style="text-align: right;">0.509988</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: left;">2025-12</td>
-<td style="text-align: right;">8291</td>
-<td style="text-align: right;">0.517031</td>
-<td style="text-align: right;">0.4</td>
-<td style="text-align: right;">0.547461</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: left;">2025-04</td>
-<td style="text-align: right;">32342</td>
-<td style="text-align: right;">1.28245</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0.578103</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: left;">2025-05</td>
-<td style="text-align: right;">17943</td>
-<td style="text-align: right;">0.69227</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.550633</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: left;">2025-06</td>
-<td style="text-align: right;">15124</td>
-<td style="text-align: right;">0.697322</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.560434</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: left;">2025-07</td>
-<td style="text-align: right;">12450</td>
-<td style="text-align: right;">1.30219</td>
-<td style="text-align: right;">1.1</td>
-<td style="text-align: right;">0.591486</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: left;">2025-08</td>
-<td style="text-align: right;">10526</td>
-<td style="text-align: right;">1.11778</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: right;">0.569447</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: left;">2025-09</td>
-<td style="text-align: right;">10257</td>
-<td style="text-align: right;">0.853495</td>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: right;">0.578142</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: left;">2025-10</td>
-<td style="text-align: right;">9880</td>
-<td style="text-align: right;">0.548644</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.556073</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: left;">2025-11</td>
-<td style="text-align: right;">6241</td>
-<td style="text-align: right;">0.17196</td>
-<td style="text-align: right;">1.89004e-12</td>
-<td style="text-align: right;">0.50008</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: left;">2025-12</td>
-<td style="text-align: right;">5527</td>
-<td style="text-align: right;">0.638918</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.561788</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: left;">2025-04</td>
-<td style="text-align: right;">20436</td>
-<td style="text-align: right;">1.37946</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0.577559</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: left;">2025-05</td>
-<td style="text-align: right;">6922</td>
-<td style="text-align: right;">0.740826</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.548107</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: left;">2025-06</td>
-<td style="text-align: right;">6612</td>
-<td style="text-align: right;">0.792801</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: right;">0.565185</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: left;">2025-07</td>
-<td style="text-align: right;">5883</td>
-<td style="text-align: right;">1.63758</td>
+<td style="text-align: right;">1341</td>
+<td style="text-align: right;">1.5484</td>
 <td style="text-align: right;">1.3</td>
-<td style="text-align: right;">0.607003</td>
+<td style="text-align: right;">0.645041</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">1026</td>
+<td style="text-align: right;">1.19045</td>
+<td style="text-align: right;">1.1</td>
+<td style="text-align: right;">0.614035</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">899</td>
+<td style="text-align: right;">1.16007</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.604004</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">520</td>
+<td style="text-align: right;">2.15731</td>
+<td style="text-align: right;">1.8</td>
+<td style="text-align: right;">0.694231</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: right;">553</td>
+<td style="text-align: right;">2.90705</td>
+<td style="text-align: right;">2.3</td>
+<td style="text-align: right;">0.716094</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: right;">1045</td>
+<td style="text-align: right;">1.82823</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: right;">0.631579</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">1074</td>
+<td style="text-align: right;">1.54376</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: right;">0.640596</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">820</td>
+<td style="text-align: right;">1.23268</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: right;">0.62439</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">719</td>
+<td style="text-align: right;">1.15132</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.584145</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">390</td>
+<td style="text-align: right;">2.40077</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.715385</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: right;">415</td>
+<td style="text-align: right;">2.94458</td>
+<td style="text-align: right;">2.3</td>
+<td style="text-align: right;">0.720482</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: right;">784</td>
+<td style="text-align: right;">1.83929</td>
+<td style="text-align: right;">1.1</td>
+<td style="text-align: right;">0.619898</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">805</td>
+<td style="text-align: right;">1.63416</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: right;">0.652174</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">616</td>
+<td style="text-align: right;">1.0961</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.612013</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">539</td>
+<td style="text-align: right;">1.318</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.599258</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">260</td>
+<td style="text-align: right;">2.87731</td>
+<td style="text-align: right;">2.4</td>
+<td style="text-align: right;">0.746154</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: right;">277</td>
+<td style="text-align: right;">3.25993</td>
+<td style="text-align: right;">2.7</td>
+<td style="text-align: right;">0.740072</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: right;">523</td>
+<td style="text-align: right;">1.6673</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.600382</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">537</td>
+<td style="text-align: right;">1.63408</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: right;">0.662942</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">410</td>
+<td style="text-align: right;">1.08195</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.587805</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">360</td>
+<td style="text-align: right;">1.43028</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.625</td>
+</tr>
+<tr>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">667</td>
+<td style="text-align: right;">2.12609</td>
+<td style="text-align: right;">1.7</td>
+<td style="text-align: right;">0.686657</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.9</td>
 <td style="text-align: left;">2025-08</td>
-<td style="text-align: right;">5161</td>
-<td style="text-align: right;">1.42325</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0.592133</td>
+<td style="text-align: right;">613</td>
+<td style="text-align: right;">2.88564</td>
+<td style="text-align: right;">2.2</td>
+<td style="text-align: right;">0.714519</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.9</td>
 <td style="text-align: left;">2025-09</td>
-<td style="text-align: right;">4327</td>
-<td style="text-align: right;">1.00014</td>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: right;">0.582621</td>
+<td style="text-align: right;">799</td>
+<td style="text-align: right;">1.79086</td>
+<td style="text-align: right;">1.1</td>
+<td style="text-align: right;">0.627034</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.9</td>
 <td style="text-align: left;">2025-10</td>
-<td style="text-align: right;">4383</td>
-<td style="text-align: right;">0.752841</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: right;">0.588182</td>
+<td style="text-align: right;">1224</td>
+<td style="text-align: right;">1.50392</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: right;">0.634804</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.9</td>
 <td style="text-align: left;">2025-11</td>
-<td style="text-align: right;">3518</td>
-<td style="text-align: right;">0.0554576</td>
-<td style="text-align: right;">-0.1</td>
-<td style="text-align: right;">0.480387</td>
+<td style="text-align: right;">725</td>
+<td style="text-align: right;">1.21338</td>
+<td style="text-align: right;">1.1</td>
+<td style="text-align: right;">0.617931</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.9</td>
 <td style="text-align: left;">2025-12</td>
-<td style="text-align: right;">2713</td>
-<td style="text-align: right;">0.68474</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.568006</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.95</td>
-<td style="text-align: left;">2025-04</td>
-<td style="text-align: right;">8086</td>
-<td style="text-align: right;">1.45648</td>
-<td style="text-align: right;">1.1</td>
-<td style="text-align: right;">0.575068</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.95</td>
-<td style="text-align: left;">2025-05</td>
-<td style="text-align: right;">4486</td>
-<td style="text-align: right;">0.674565</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.546366</td>
-</tr>
-<tr>
-<td style="text-align: right;">0.95</td>
-<td style="text-align: left;">2025-06</td>
-<td style="text-align: right;">3781</td>
-<td style="text-align: right;">0.705528</td>
+<td style="text-align: right;">895</td>
+<td style="text-align: right;">1.13341</td>
 <td style="text-align: right;">0.7</td>
-<td style="text-align: right;">0.561227</td>
+<td style="text-align: right;">0.6</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.95</td>
 <td style="text-align: left;">2025-07</td>
-<td style="text-align: right;">3113</td>
-<td style="text-align: right;">1.77369</td>
-<td style="text-align: right;">1.3</td>
-<td style="text-align: right;">0.598137</td>
+<td style="text-align: right;">65</td>
+<td style="text-align: right;">3.10923</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0.676923</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.95</td>
 <td style="text-align: left;">2025-08</td>
-<td style="text-align: right;">2632</td>
-<td style="text-align: right;">1.78697</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0.590426</td>
+<td style="text-align: right;">70</td>
+<td style="text-align: right;">2.90714</td>
+<td style="text-align: right;">3.25</td>
+<td style="text-align: right;">0.714286</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.95</td>
 <td style="text-align: left;">2025-09</td>
-<td style="text-align: right;">2566</td>
-<td style="text-align: right;">1.08379</td>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: right;">0.584957</td>
+<td style="text-align: right;">131</td>
+<td style="text-align: right;">1.34962</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: right;">0.541985</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.95</td>
 <td style="text-align: left;">2025-10</td>
-<td style="text-align: right;">2470</td>
-<td style="text-align: right;">0.795466</td>
-<td style="text-align: right;">0.65</td>
-<td style="text-align: right;">0.587449</td>
+<td style="text-align: right;">135</td>
+<td style="text-align: right;">2.25926</td>
+<td style="text-align: right;">1.6</td>
+<td style="text-align: right;">0.711111</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.95</td>
 <td style="text-align: left;">2025-11</td>
-<td style="text-align: right;">1561</td>
-<td style="text-align: right;">-0.190519</td>
-<td style="text-align: right;">-0.4</td>
-<td style="text-align: right;">0.434337</td>
+<td style="text-align: right;">104</td>
+<td style="text-align: right;">1.15865</td>
+<td style="text-align: right;">1.05</td>
+<td style="text-align: right;">0.605769</td>
 </tr>
 <tr>
 <td style="text-align: right;">0.95</td>
 <td style="text-align: left;">2025-12</td>
-<td style="text-align: right;">1382</td>
-<td style="text-align: right;">0.741606</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.560058</td>
+<td style="text-align: right;">91</td>
+<td style="text-align: right;">1.51319</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.626374</td>
 </tr>
 </tbody>
 </table>

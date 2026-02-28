@@ -1909,7 +1909,7 @@ def _write_stage_snapshots(
                         near = cc2[cc2["mean_per_signal_full_overshoot"] >= (0.95 * best if math.isfinite(best) else float("nan"))]
                         if len(near) >= 2:
                             e12_plateau_width = _num(near["cap_pips"].max() - near["cap_pips"].min())
-                    if {"mean_per_signal_no_extra_slip", "mean_per_signal_full_overshoot", "fill_rate"}.issubset(set(cc2.columns)):
+                    if not cc2.empty and {"mean_per_signal_no_extra_slip", "mean_per_signal_full_overshoot", "fill_rate"}.issubset(set(cc2.columns)):
                         cc_best = cc2.iloc[cc2["mean_per_signal_full_overshoot"].argmax()]
                         ideal = _num(cc_best.get("mean_per_signal_no_extra_slip"))
                         real = _num(cc_best.get("mean_per_signal_full_overshoot"))
@@ -2240,6 +2240,9 @@ def _write_stage_snapshots(
                         ),
                     }
                 )
+        if math.isnan(r01_overprune): r01_overprune = 0.0
+        if math.isnan(r02_dependency): r02_dependency = 0.0
+        if math.isnan(r03_reselect_stability): r03_reselect_stability = 0.0
         add_edge_metric(5, sym, "R01_post_pre_row_ratio", r01_overprune, "Reduced-core rows / pre-filter WFO selected rows", str(ctx.get("reduced_monthly_csv", "")))
         add_edge_metric(5, sym, "R02_top_state_dependency", r02_dependency, "Top-state share from reduced summary", str(ctx.get("reduced_summary_csv", "")))
         add_edge_metric(5, sym, "R03_reselection_stability", r03_reselect_stability, "1-churn proxy / stability pass rate", str(ctx.get("reduced_churn_csv", "")))
@@ -2585,6 +2588,8 @@ def _write_stage_snapshots(
             "Max extra cost (pips) where LB95 trade-mean net remains positive",
             str(ctx.get("robustness_summary_csv", "")),
         )
+        if math.isnan(t03_recovery):
+            t03_recovery = 0.0
         add_edge_metric(
             8,
             sym,

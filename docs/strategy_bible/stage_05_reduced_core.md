@@ -139,7 +139,7 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 <!-- GENERATED:STAGE_05:START -->
 ### Auto Snapshot - Stage 05
 
-- generated_at: `2026-02-28 14:54:13 UTC`
+- generated_at: `2026-02-28 19:27:56 UTC`
 - State schedule is selected month-by-month using only prior-month train data.
 - Summary emphasizes full-path gross behavior after reduced-core filtering.
 - R01-R03 track pruning severity, state concentration, and re-selection stability.
@@ -148,8 +148,9 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 | symbol   |   rows_total |   mean_gross_pips |   lb95_month_mean_gross_pips |   fill_rate_overall |   positive_months |   months_total |   r01_post_pre_row_ratio |   r02_top_state_dependency |   r03_reselection_stability |
 |:---------|-------------:|------------------:|-----------------------------:|--------------------:|------------------:|---------------:|-------------------------:|---------------------------:|----------------------------:|
 | EURUSD   |         4898 |           1.59847 |                      1.30417 |            0.994922 |                 6 |              9 |                0.0150469 |                       0.35 |                    0.361111 |
-| GBPUSD   |            0 |         nan       |                    nan       |          nan        |                 0 |              9 |                0         |                       0.35 |                  nan        |
-| USDJPY   |            0 |         nan       |                    nan       |          nan        |                 0 |              9 |                0         |                       0.35 |                  nan        |
+| GBPUSD   |            0 |         nan       |                    nan       |          nan        |                 0 |              9 |                0         |                       0.35 |                    0        |
+| AUDUSD   |            0 |         nan       |                    nan       |          nan        |                 0 |              9 |                0         |                       0.35 |                    0        |
+| USDJPY   |            0 |         nan       |                    nan       |          nan        |                 0 |              9 |                0         |                       0.35 |                    0        |
 | USDCHF   |         4074 |           1.33073 |                      1.04729 |            0.976276 |                 6 |              9 |                0.0111155 |                       0.35 |                    0.472222 |
 
 #### Interpretation Notes
@@ -167,6 +168,7 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 #### Details
 | symbol   |   months |   rows_total |   mean_fill_rate |   mean_gross |
 |:---------|---------:|-------------:|-----------------:|-------------:|
+| AUDUSD   |        9 |            0 |       nan        |    nan       |
 | EURUSD   |        9 |         4898 |         0.994601 |      1.67778 |
 | GBPUSD   |        9 |            0 |       nan        |    nan       |
 | USDCHF   |        9 |         4074 |         0.976843 |      1.26051 |
@@ -196,6 +198,15 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 | GBPUSD   | 2025-10      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
 | GBPUSD   | 2025-11      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
 | GBPUSD   | 2025-12      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
+| AUDUSD   | 2025-04      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
+| AUDUSD   | 2025-05      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
+| AUDUSD   | 2025-06      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
+| AUDUSD   | 2025-07      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
+| AUDUSD   | 2025-08      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
+| AUDUSD   | 2025-09      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
+| AUDUSD   | 2025-10      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
+| AUDUSD   | 2025-11      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
+| AUDUSD   | 2025-12      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
 | USDJPY   | 2025-04      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
 | USDJPY   | 2025-05      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
 | USDJPY   | 2025-06      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |

@@ -6,12 +6,7 @@
 - horizon_keep: `[5, 6]`
 - locked_quantile: `0.9`
 - selection_mode: `auto`
-- execution_mode: `stop_limit`
-- stop_limit_detail_csv: `data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/GBPUSD_stop_limit_tickfill_detail.csv`
-- stop_limit_cap_pips: `1.2`
-- stop_limit_slippage_mode: `full_overshoot`
-- stop_limit_match_rate: `1.000000`
-- stop_limit_fill_rate_selected: `0.991742`
+- execution_mode: `gross`
 - state_train_months: `3`
 - min_train_months: `3`
 - overlap_corr_max: `0.85`
@@ -26,7 +21,7 @@
 ## Summary
 | symbol   |   locked_quantile | selection_mode   | execution_mode   |   state_train_months |   months_total |   months_scored |   rows_total |   signal_rows_total |   mean_gross_pips |   monthly_mean_gross_pips |   lb95_month_mean_gross_pips |   mean_signal_pips |   monthly_mean_signal_pips |   lb95_month_mean_signal_pips |   positive_months |   positive_months_signal |   avg_month_rows |   avg_month_signal_rows |   fill_rate_overall |   annualized_rows |   capacity_floor_monthly |   capacity_floor_annual | capacity_pass_monthly_or_annual   |   max_state_churn |   max_top_state_share |   max_state_hhi |   stability_months_pass |
 |:---------|------------------:|:-----------------|:-----------------|---------------------:|---------------:|----------------:|-------------:|--------------------:|------------------:|--------------------------:|-----------------------------:|-------------------:|---------------------------:|------------------------------:|------------------:|-------------------------:|-----------------:|------------------------:|--------------------:|------------------:|-------------------------:|------------------------:|:----------------------------------|------------------:|----------------------:|----------------:|------------------------:|
-| GBPUSD   |               0.9 | auto             | stop_limit       |                    3 |              9 |               0 |            0 |                   0 |               nan |                       nan |                          nan |                nan |                        nan |                           nan |                 0 |                        0 |                0 |                       0 |                 nan |                 0 |                     3000 |                    5000 | False                             |              0.45 |                  0.35 |            0.25 |                       0 |
+| GBPUSD   |               0.9 | auto             | gross            |                    3 |              9 |               0 |            0 |                   0 |               nan |                       nan |                          nan |                nan |                        nan |                           nan |                 0 |                        0 |                0 |                       0 |                 nan |                 0 |                     3000 |                    5000 | False                             |              0.45 |                  0.35 |            0.25 |                       0 |
 
 ## Reduced State Universe
 _empty_

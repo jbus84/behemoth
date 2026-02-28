@@ -1,6 +1,6 @@
 # OCO Operator Playbook
 
-- generated_at_utc: `2026-02-28T14:54:55Z`
+- generated_at_utc: `2026-02-28T19:28:08Z`
 - source_rules: `configs/research/docs/operator_action_rules.yaml`
 
 ## Action Codes
@@ -20,8 +20,9 @@
 5. Block deployment if any `A3_` action remains unresolved.
 
 ## Current Escalations
-| symbol   | metric_id                   | band   | action_code    | owner   | action_summary         |
-|:---------|:----------------------------|:-------|:---------------|:--------|:-----------------------|
-| EURUSD   | T02_first_negative_costplus | red    | A2_RECALIBRATE | risk    | escalate and remediate |
-| GBPUSD   | T02_first_negative_costplus | red    | A2_RECALIBRATE | risk    | escalate and remediate |
-| USDJPY   | T02_first_negative_costplus | red    | A2_RECALIBRATE | risk    | escalate and remediate |
+| symbol   | metric_id                     | band   | action_code    | owner   | action_summary         |
+|:---------|:------------------------------|:-------|:---------------|:--------|:-----------------------|
+| GBPUSD   | T02_first_negative_costplus   | red    | A2_RECALIBRATE | risk    | escalate and remediate |
+| GBPUSD   | T03_post_worst_month_recovery | red    | A2_RECALIBRATE | risk    | escalate and remediate |
+| USDJPY   | T02_first_negative_costplus   | red    | A2_RECALIBRATE | risk    | escalate and remediate |
+| USDJPY   | T03_post_worst_month_recovery | red    | A2_RECALIBRATE | risk    | escalate and remediate |

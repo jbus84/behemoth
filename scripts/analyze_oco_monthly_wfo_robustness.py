@@ -4,11 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import math
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 
 def _parse_float_list(raw: str) -> list[float]:
@@ -112,7 +114,8 @@ def _build_state_key_from_candidate_uid(uid: pd.Series) -> pd.Series:
         return pd.Series(np.nan, index=uid.index, dtype=object)
     state_id = parts[4].astype(str)
     bar_ticks = parts[2].astype(str)
-    horizon = parts[3].astype(str)
+    # parts[3] is e.g. "h6" — strip leading "h" to get the numeric horizon
+    horizon = parts[3].astype(str).str.lstrip("h")
     return state_id + "|" + bar_ticks + "|" + horizon
 
 
@@ -126,9 +129,20 @@ def _apply_reduced_core_schedule_filter(
     p = Path(reduced_state_schedule_csv)
     if not p.exists():
         raise FileNotFoundError(f"reduced_state_schedule_csv not found: {p}")
-    s = pd.read_csv(p)
+    try:
+        s = pd.read_csv(p)
+    except pd.errors.EmptyDataError:
+        raise RuntimeError(
+            f"reduced_state_schedule_csv is empty: {p}\n"
+            "Run the reduced-core mining pipeline first to populate this file, e.g.:\n"
+            "  uv run python scripts/select_oco_reduced_core_rolling.py"
+        ) from None
     if s.empty:
-        return d.iloc[0:0].copy(), "reduced_core_schedule"
+        raise RuntimeError(
+            f"reduced_state_schedule_csv has no rows: {p}\n"
+            "Run the reduced-core mining pipeline first to populate this file, e.g.:\n"
+            "  uv run python scripts/select_oco_reduced_core_rolling.py"
+        )
     if "test_month" not in s.columns:
         raise ValueError("reduced_state_schedule_csv missing required column: test_month")
     if "state_key" not in s.columns:
@@ -222,14 +236,19 @@ def run(
     d["pred_prob"] = pd.to_numeric(d["pred_prob"], errors="coerce")
     d["target_gross_pips"] = pd.to_numeric(d["target_gross_pips"], errors="coerce")
     d = d.dropna(subset=["pred_prob", "target_gross_pips"]).copy()
+    logging.info(f"Loaded {len(d)} trades from {pred_path}")
+
+    # Filter to reduced core schedule if provided
     d, universe_mode = _apply_reduced_core_schedule_filter(
         d,
         reduced_state_schedule_csv=reduced_state_schedule_csv,
     )
+    if reduced_state_schedule_csv:
+        logging.info(f"Filtered to {len(d)} trades using {universe_mode}")
 
     rows: list[dict[str, float | int | str]] = []
     monthly_rows: list[dict[str, float | int | str]] = []
-    for i, q in enumerate(quantiles):
+    for i, q in enumerate(tqdm(quantiles, desc="Processing quantiles")):
         s = _select_events(d, q=float(q), use_exec_selection=bool(use_exec_selection), execution_quantile=float(execution_quantile))
         if s.empty:
             continue

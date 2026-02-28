@@ -1,6 +1,6 @@
 # Analysis Catalog
 
-- generated_at_utc: `2026-02-28T14:28:10Z`
+- generated_at_utc: `2026-02-28T19:25:10Z`
 - manifest_csv: `analysis/catalog_manifest.csv`
 - gaps_report: `analysis/catalog_gaps_report.md`
 
@@ -50,15 +50,21 @@
 - [Usdchf Oco Tick Exact Shortlist Report](usdchf_oco_tick_exact_shortlist_report.md)
 - [Usdchf Tick Opportunity Mining Report](usdchf_tick_opportunity_mining_report.md)
 - [Usdchf Tick Opportunity Monthly Wfo Oco Fullcap Report](usdchf_tick_opportunity_monthly_wfo_oco_fullcap_report.md)
+### AUDUSD
+- [Audusd Oco Reduced Core Rolling Report](audusd_oco_reduced_core_rolling_report.md)
+- [Audusd Oco Stop Limit Tickfill Report](audusd_oco_stop_limit_tickfill_report.md)
+- [Audusd Tick Opportunity Mining Report](audusd_tick_opportunity_mining_report.md)
+- [Audusd Tick Opportunity Monthly Wfo Oco Fullcap Report](audusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md)
+- [Audusd Tick Opportunity Monthly Wfo Report](audusd_tick_opportunity_monthly_wfo_report.md)
 
 ## Stage-Tagged Reports
 |   stage_id |   report_count |
 |-----------:|---------------:|
 |          1 |              1 |
-|          2 |              4 |
-|          3 |              9 |
-|          4 |              6 |
-|          5 |              5 |
+|          2 |              5 |
+|          3 |             11 |
+|          4 |              7 |
+|          5 |              6 |
 |          6 |              4 |
 |          7 |              1 |
 |          8 |              1 |

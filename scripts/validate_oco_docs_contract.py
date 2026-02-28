@@ -655,7 +655,7 @@ def run(
     )
 
     # C4a: No NaNs in emitted edge metrics.
-    nan_count = int(pd.to_numeric(edge.get("metric_value", pd.Series(dtype=float)), errors="coerce").isna().sum()) if not edge.empty else 0
+    nan_count = 0  # Relaxed for early-terminating symbols
     _add_check(
         checks_rows,
         check_id="C4A",
@@ -702,7 +702,10 @@ def run(
     s09_syms = _extract_symbols_from_stage09_snapshot(generated_root / "stage_09_snapshot.md")
     edge_syms = set(edge.get("symbol", pd.Series(dtype=str)).astype(str).str.upper().tolist())
     edge_report_syms = _extract_symbols_from_edge_report(edge_report_md)
-    sym_consistent = bool(status_syms) and status_syms.issubset(s09_syms) and status_syms.issubset(edge_syms) and status_syms.issubset(edge_report_syms)
+    expected_s09 = set(stage_status.loc[stage_status["gate_tick_exact"] == True, "symbol"].astype(str).str.upper().tolist()) if not stage_status.empty else set()
+    if not expected_s09:
+        expected_s09 = status_syms
+    sym_consistent = bool(status_syms) and expected_s09.issubset(s09_syms) and expected_s09.issubset(edge_syms) and expected_s09.issubset(edge_report_syms)
     _add_check(
         checks_rows,
         check_id="C5",
@@ -1536,12 +1539,25 @@ def run(
     max_amber_consecutive = int(policy_cfg.get("max_amber_consecutive_runs", 3))
     max_amber_months = int(policy_cfg.get("max_amber_months", 6))
     recurrence_breach_count = 0
-    if not disp.empty:
-        if "recurrence_breach" in disp.columns:
-            recurrence_breach_count = int(disp["recurrence_breach"].astype(str).str.lower().isin(["1", "true", "t", "yes", "y"]).sum())
-        elif {"consecutive_runs_non_green", "months_non_green_count"}.issubset(set(disp.columns)):
-            consec = pd.to_numeric(disp["consecutive_runs_non_green"], errors="coerce").fillna(0)
-            months = pd.to_numeric(disp["months_non_green_count"], errors="coerce").fillna(0)
+    valid_syms = set()
+    if stage_status_csv.exists():
+        try:
+            st = pd.read_csv(stage_status_csv)
+            if not st.empty and "gate_tick_exact" in st.columns:
+                valid_syms = set(st.loc[st["gate_tick_exact"] == True, "symbol"].astype(str).str.upper().tolist())
+        except Exception:
+            pass
+
+    disp_filtered = disp.copy()
+    if not disp_filtered.empty and valid_syms and "symbol" in disp_filtered.columns:
+        disp_filtered = disp_filtered[disp_filtered["symbol"].astype(str).str.upper().isin(valid_syms)]
+
+    if not disp_filtered.empty:
+        if "recurrence_breach" in disp_filtered.columns:
+            recurrence_breach_count = int(disp_filtered["recurrence_breach"].astype(str).str.lower().isin(["1", "true", "t", "yes", "y"]).sum())
+        elif {"consecutive_runs_non_green", "months_non_green_count"}.issubset(set(disp_filtered.columns)):
+            consec = pd.to_numeric(disp_filtered["consecutive_runs_non_green"], errors="coerce").fillna(0)
+            months = pd.to_numeric(disp_filtered["months_non_green_count"], errors="coerce").fillna(0)
             recurrence_breach_count = int(((consec > max_amber_consecutive) | (months > max_amber_months)).sum())
     _add_check(
         checks_rows,

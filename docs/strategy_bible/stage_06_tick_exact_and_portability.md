@@ -75,7 +75,7 @@ uv run python scripts/verify_oco_tick_exact_shortlist.py \
 <!-- GENERATED:STAGE_06:START -->
 ### Auto Snapshot - Stage 06
 
-- generated_at: `2026-02-28 14:54:13 UTC`
+- generated_at: `2026-02-28 19:27:56 UTC`
 - Verifier recomputes OCO outcomes independently from stored labels.
 - All summary rates should remain near 1.0 for contract consistency.
 
@@ -111,6 +111,6 @@ uv run python scripts/verify_oco_tick_exact_shortlist.py \
 #### Cross-Symbol Portability (X01-X03)
 | family                |   symbols_covered |   mean_across_symbols |   std_across_symbols |   spread_max_min |   x01_all_symbols_positive |
 |:----------------------|------------------:|----------------------:|---------------------:|-----------------:|---------------------------:|
-| oco_first_touch_clean |                 4 |              2.03253  |            0.794745  |         1.93609  |                        nan |
-| oco_first_touch       |                 4 |              0.186995 |            0.0668777 |         0.139407 |                        nan |
+| oco_first_touch_clean |                 5 |              1.8547   |            0.794883  |         1.93609  |                        nan |
+| oco_first_touch       |                 5 |              0.173351 |            0.0654615 |         0.139407 |                        nan |
 <!-- GENERATED:STAGE_06:END -->

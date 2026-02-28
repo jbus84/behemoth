@@ -63,6 +63,10 @@ nav:
           - Reduced Core Rolling: analysis/eurusd_oco_reduced_core_rolling_report.md
           - Tick-Exact Rolling: analysis/eurusd_oco_tick_exact_rolling_report.md
           - WFO Robustness: analysis/eurusd_oco_monthly_wfo_robustness_fullcap_report.md
+      - AUDUSD:
+          - Opportunity Mining: analysis/audusd_tick_opportunity_mining_report.md
+          - Monthly WFO: analysis/audusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md
+          - Reduced Core Rolling: analysis/audusd_oco_reduced_core_rolling_report.md
       - GBPUSD:
           - Opportunity Mining: analysis/gbpusd_tick_opportunity_mining_report.md
           - Monthly WFO: analysis/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md
@@ -103,6 +107,7 @@ nav:
       - Operator Runbook: strategy_bible/operator_runbook.md
       - Metric Dictionary: strategy_bible/metric_dictionary.md
       - Assumptions + Threats: strategy_bible/assumptions_and_threats.md
+      - Symbol Onboarding Playbook: strategy_bible/symbol_onboarding_playbook.md
       - Governance Mapping: strategy_bible/governance_mapping.md
       - Data Reliability Audit: analysis/data_reliability_report.md
       - Stage Integrity Audit: analysis/oco_stage_integrity_report.md

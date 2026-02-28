@@ -63,6 +63,8 @@ def _default_paths(symbol: str) -> SymbolPaths:
     s = str(symbol).upper()
     if s == "EURUSD":
         pred = Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet")
+    elif s == "AUDUSD":
+        pred = Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/AUDUSD_oco_monthly_predictions.parquet")
     elif s == "GBPUSD":
         pred = Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_predictions.parquet")
     elif s == "USDCHF":
@@ -499,7 +501,7 @@ def run(
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Build threshold/cadence sensitivity diagnostics")
-    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY")
+    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD")
     p.add_argument("--lookback-days", default="10,20,30,45")
     p.add_argument("--cadence-days", default="14,30,60")
     p.add_argument("--window-days", default="2,3,5")

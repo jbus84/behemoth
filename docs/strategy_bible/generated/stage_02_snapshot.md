@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 02
 
-- generated_at: `2026-02-28 14:54:13 UTC`
+- generated_at: `2026-02-28 19:27:56 UTC`
 - selection_pass candidates are broad hypotheses only.
 - Scatter shows the high-count >0 gross opportunity frontier.
 - M01-M03 quantify concentration risk, horizon smoothness, and positive-edge density.
@@ -10,6 +10,7 @@
 |:---------|-------------------:|-----------------:|---------------------------:|-----------------------------:|-------------------------:|--------------------------:|-----------------------:|
 | EURUSD   |               2160 |              737 |                   1.19563  |                      15514.1 |                0.0486952 |                 0.0940589 |                      1 |
 | GBPUSD   |               2160 |              762 |                   1.22153  |                      18903.7 |                0.0508144 |                 0.0744663 |                      1 |
+| AUDUSD   |               2160 |              506 |                   0.710042 |                      15439.7 |                0.0620763 |                 0.0443262 |                      1 |
 | USDJPY   |               2160 |              995 |                   1.92264  |                      20211.8 |                0.04021   |                 0.0981752 |                      1 |
 | USDCHF   |               2160 |              505 |                   0.717839 |                      17721.5 |                0.0658555 |                 0.0411884 |                      1 |
 
@@ -30,6 +31,14 @@
 #### Edge Contribution by State Block
 | symbol   | family                | state_id                                    |   bar_ticks |   horizon |   edge_weight |   contrib_share |
 |:---------|:----------------------|:--------------------------------------------|------------:|----------:|--------------:|----------------:|
+| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         6 |      122379   |      0.0240958  |
+| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         6 |       97464.1 |      0.0191901  |
+| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         5 |       95434.4 |      0.0187904  |
+| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         5 |       74287.3 |      0.0146267  |
+| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q30__k2     |         100 |         6 |       74125.1 |      0.0145948  |
+| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         4 |       67908   |      0.0133707  |
+| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q30__k2     |         100 |         5 |       55668.8 |      0.0109609  |
+| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k3              |        1000 |         6 |       55122.6 |      0.0108533  |
 | EURUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         6 |      273060   |      0.0197535  |
 | EURUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         5 |      225779   |      0.0163332  |
 | EURUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         4 |      174293   |      0.0126086  |
@@ -66,9 +75,9 @@
 #### Overfitting Diagnostics (Downstream, Exec Quantile)
 | symbol   |   quantile |   rows |   months |   positive_months |   lb95_trade_mean_gross_pips |   lb95_trade_mean_gross_pips_iid |   lb95_trade_mean_gross_pips_month_block |   pvalue_month_mean_gt0 |   pvalue_bonferroni |   pvalue_fdr_bh |   uplift_vs_null_pips |   pvalue_perm_uplift |   pvalue_perm_fdr_bh | majority_positive_months   | bonferroni_pass_10pct   | fdr_pass_10pct   | perm_fdr_pass_10pct   |
 |:---------|-----------:|-------:|---------:|------------------:|-----------------------------:|---------------------------------:|-----------------------------------------:|------------------------:|--------------------:|----------------:|----------------------:|---------------------:|---------------------:|:---------------------------|:------------------------|:-----------------|:----------------------|
-| EURUSD   |        0.9 |  59955 |        9 |                 9 |                     1.04912  |                              nan |                                      nan |             2.4283e-09  |         1.45698e-08 |     2.91396e-09 |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
+| EURUSD   |        0.9 |   4923 |        6 |                 6 |                     1.60064  |                              nan |                                      nan |             1.78644e-11 |         1.07186e-10 |     2.67966e-11 |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
 | GBPUSD   |        0.9 |   4427 |        9 |                 9 |                     0.696371 |                              nan |                                      nan |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
-| USDCHF   |        0.9 | 366516 |        9 |                 9 |                     0.885075 |                              nan |                                      nan |             1.64743e-05 |         9.88457e-05 |     3.29486e-05 |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
+| USDCHF   |        0.9 |   4173 |        6 |                 6 |                     1.43592  |                              nan |                                      nan |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
 | USDJPY   |        0.9 |   4939 |        9 |                 9 |                     1.25936  |                              nan |                                      nan |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
 
 - Interpretation: Stage 2 mining is accepted only as hypothesis generation; false-discovery control is enforced downstream via Stage 3/8 out-of-sample evaluation.
