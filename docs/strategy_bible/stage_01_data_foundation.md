@@ -150,7 +150,7 @@ uv run python scripts/audit_data_reliability.py \
 <!-- GENERATED:STAGE_01:START -->
 ### Auto Snapshot - Stage 01
 
-- generated_at: `2026-02-28 19:27:56 UTC`
+- generated_at: `2026-02-28 20:57:22 UTC`
 - Contract check uses eval-year event tables consumed by WFO.
 - Null percentages should remain near 0 for required modeling fields.
 - Timezone contract rows include parse rate, monotonicity, DST and offset anomaly checks.
@@ -165,6 +165,7 @@ uv run python scripts/audit_data_reliability.py \
 | AUDUSD   |       5933630 |                        0 |                     0 |                   0 |                          0 |                    0 |                                  0 |                    -1.60736 |           8.46025e-05 |              0.616136 |                   5.00853 |
 | USDJPY   |         80000 |                        0 |                     0 |                   0 |                         15 |                    0 |                                  0 |                    -1.12011 |           0.0158127   |              0.931903 |                  26.1473  |
 | USDCHF   |       5979798 |                        0 |                     0 |                   0 |                          0 |                    0 |                                  0 |                    -1.3165  |           0.000130105 |              0.635497 |                   5.51376 |
+| USDCAD   |       5959668 |                        0 |                     0 |                   0 |                          0 |                    0 |                                  0 |                    -1.04177 |           0.000150344 |              0.57446  |                   6.88175 |
 
 #### Interpretation Notes
 - Contract check uses eval-year event tables consumed by WFO.
@@ -192,6 +193,7 @@ uv run python scripts/audit_data_reliability.py \
 | AUDUSD   |       5933630 |                        0 |                     0 |                   0 |                      0 |                            0 |                   0 |                    -1.60736 |           8.46025e-05 |              0.616136 |                   5.00853 |                          0 |                    0 |                                  0 |
 | USDJPY   |         80000 |                        0 |                     0 |                   0 |                      0 |                            0 |                   0 |                    -1.12011 |           0.0158127   |              0.931903 |                  26.1473  |                         15 |                    0 |                                  0 |
 | USDCHF   |       5979798 |                        0 |                     0 |                   0 |                      0 |                            0 |                   0 |                    -1.3165  |           0.000130105 |              0.635497 |                   5.51376 |                          0 |                    0 |                                  0 |
+| USDCAD   |       5959668 |                        0 |                     0 |                   0 |                      0 |                            0 |                   0 |                    -1.04177 |           0.000150344 |              0.57446  |                   6.88175 |                          0 |                    0 |                                  0 |
 
 #### Plots
 ![stage_01_contract_health](../figures/oco_bible/stage_01_contract_health.png)

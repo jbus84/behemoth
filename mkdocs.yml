@@ -127,6 +127,11 @@ nav:
       - Logical Audit Report: analysis/oco_logical_audit_report.md
       - Edge Clarity Report: analysis/oco_edge_clarity_report.md
       - Docs Contract Report: analysis/oco_docs_contract_report.md
+      - USDCAD:
+        - Mining: analysis/usdcad_tick_opportunity_mining_report.md
+        - WFO Fullcap: analysis/usdcad_tick_opportunity_monthly_wfo_oco_fullcap_report.md
+        - Reduced Core: analysis/usdcad_oco_reduced_core_rolling_report.md
+        - WFO Robustness: analysis/usdcad_oco_monthly_wfo_robustness_fullcap_report.md
   - Repository Notes:
       - Data Sources: DATA_SOURCES.md
       - Repo Structure: REPO_STRUCTURE.md

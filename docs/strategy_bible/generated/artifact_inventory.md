@@ -1,6 +1,6 @@
 # Artifact Inventory
 
-- generated_at: `2026-02-28 19:27:56 UTC`
+- generated_at: `2026-02-28 20:57:22 UTC`
 
 | group              | symbol   | artifact               | path                                                                                                               | exists   | required   |
 |:-------------------|:---------|:-----------------------|:-------------------------------------------------------------------------------------------------------------------|:---------|:-----------|
@@ -44,6 +44,14 @@
 | symbol             | USDCHF   | tick_exact_report_md   | docs/analysis/usdchf_oco_tick_exact_shortlist_report.md                                                            | True     | True       |
 | symbol             | USDCHF   | tick_exact_summary_csv | data/analysis/tick_opportunity_mining/reduced_core_rolling_usdchf/USDCHF_oco_tick_exact_summary.csv                | True     | True       |
 | symbol             | USDCHF   | wfo_report_md          | docs/analysis/usdchf_tick_opportunity_monthly_wfo_oco_fullcap_report.md                                            | True     | True       |
+| symbol             | USDCAD   | mining_report_md       | docs/analysis/usdcad_tick_opportunity_mining_report.md                                                             | True     | True       |
+| symbol             | USDCAD   | reduced_core_report_md | docs/analysis/usdcad_oco_reduced_core_rolling_report.md                                                            | True     | True       |
+| symbol             | USDCAD   | reduced_summary_csv    | data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_reduced_summary.csv                          | True     | True       |
+| symbol             | USDCAD   | robustness_summary_csv | data/analysis/tick_opportunity_mining/full_robustness/USDCAD_oco_robustness_summary.csv                            | True     | True       |
+| symbol             | USDCAD   | stop_limit_summary_csv | data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv                                      | True     | True       |
+| symbol             | USDCAD   | tick_exact_report_md   | configs/research/docs/docs/analysis/usdcad_oco_tick_exact_rolling_report.md                                        | False    | True       |
+| symbol             | USDCAD   | tick_exact_summary_csv | configs/research/docs/data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_tick_exact_summary.csv | False    | True       |
+| symbol             | USDCAD   | wfo_report_md          | docs/analysis/usdcad_tick_opportunity_monthly_wfo_oco_fullcap_report.md                                            | True     | True       |
 | audit              | ALL      | checks_csv             | data/analysis/tick_opportunity_mining/oco_logical_audit_checks.csv                                                 | True     | True       |
 | audit              | ALL      | issues_csv             | data/analysis/tick_opportunity_mining/oco_logical_audit_issues.csv                                                 | True     | True       |
 | audit              | ALL      | report_md              | docs/analysis/oco_logical_audit_report.md                                                                          | True     | True       |

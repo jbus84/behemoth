@@ -97,6 +97,12 @@
 - `docs/analysis/usdchf_oco_reduced_core_rolling_report.md`
 - `docs/analysis/usdchf_oco_tick_exact_shortlist_report.md`
 
+### USDCAD
+- `docs/analysis/usdcad_tick_opportunity_mining_report.md`
+- `docs/analysis/usdcad_tick_opportunity_monthly_wfo_oco_fullcap_report.md`
+- `docs/analysis/usdcad_oco_reduced_core_rolling_report.md`
+- `docs/analysis/usdcad_oco_tick_exact_rolling_report.md`
+
 ## Generated Stage Snapshots
 - `docs/strategy_bible/generated/stage_01_snapshot.md`
 - `docs/strategy_bible/generated/stage_02_snapshot.md`

@@ -78,6 +78,18 @@ symbols:
     reduced_core_report_md: docs/analysis/usdchf_oco_reduced_core_rolling_report.md
     tick_exact_report_md: docs/analysis/usdchf_oco_tick_exact_shortlist_report.md
 
+
+  - symbol: USDCAD
+    reduced_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_reduced_summary.csv
+    tick_exact_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_tick_exact_summary.csv
+    robustness_summary_csv: data/analysis/tick_opportunity_mining/full_robustness/USDCAD_oco_robustness_summary.csv
+    edge_velocity_csv: ""
+    stop_limit_summary_csv: data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv
+    mining_report_md: docs/analysis/usdcad_tick_opportunity_mining_report.md
+    wfo_report_md: docs/analysis/usdcad_tick_opportunity_monthly_wfo_oco_fullcap_report.md
+    reduced_core_report_md: docs/analysis/usdcad_oco_reduced_core_rolling_report.md
+    tick_exact_report_md: docs/analysis/usdcad_oco_tick_exact_rolling_report.md
+    robustness_report_md: docs/analysis/usdcad_oco_monthly_wfo_robustness_fullcap_report.md
 required_artifacts:
   - docs/analysis/index.md
   - docs/analysis/catalog_manifest.csv

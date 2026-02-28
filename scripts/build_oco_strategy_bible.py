@@ -2205,7 +2205,9 @@ def _write_stage_snapshots(
         if not rm.empty:
             m = rm.copy()
             m["symbol"] = sym
-            stage05_monthly_rows.append(m[["symbol", "test_month", "mean_gross_pips", "fill_rate", "rows", "states_selected"]])
+            stage05_monthly_cols = ["symbol", "test_month", "mean_gross_pips", "fill_rate", "rows", "states_selected"]
+            stage05_monthly_avail = [c for c in stage05_monthly_cols if c in m.columns]
+            stage05_monthly_rows.append(m[stage05_monthly_avail])
             m["stability_pass"] = _to_bool_series(m.get("stability_pass", pd.Series(index=m.index, dtype=str)))
             r03_reselect_stability = _num(m["stability_pass"].mean())
         if not rc.empty:

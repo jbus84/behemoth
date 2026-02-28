@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 03
 
-- generated_at: `2026-02-28 19:27:56 UTC`
+- generated_at: `2026-02-28 20:57:22 UTC`
 - Execution threshold summary is aligned to quantile=0.9.
 - Metrics are strictly month-forward (3M train -> 1M test).
 - W13-W15 are informational diagnostics for threshold fragility, calibration drift, and selection turnover.
@@ -13,6 +13,7 @@
 | AUDUSD   |        9 |   0.558639 |     0.24679  |       4.00769e+06 |                  0.780674 |            0.00193246 |                0.113443  |
 | USDJPY   |        9 |   0.52696  |     0.247879 |   51512           |                  0.5354   |            0.00217768 |                0.175758  |
 | USDCHF   |        9 |   0.543015 |     0.249483 |       3.74021e+06 |                  1.30968  |            0.00115577 |                0.166349  |
+| USDCAD   |        9 |   0.554473 |     0.246616 |       3.43002e+06 |                  1.41019  |            0.00197814 |                0.129238  |
 
 #### Interpretation Notes
 - Execution threshold summary is aligned to quantile=0.9.
@@ -38,6 +39,7 @@
 | AUDUSD   |        9 |       0.0965678 |          0.453068 |          400871 |
 | EURUSD   |        9 |       0.0953233 |          0.884677 |          325515 |
 | GBPUSD   |        9 |       0.0945693 |          0.784329 |            4427 |
+| USDCAD   |        9 |       0.0955901 |          0.639585 |          348308 |
 | USDCHF   |        9 |       0.097029  |          0.721884 |          366516 |
 | USDJPY   |        9 |       0.0964553 |          1.39854  |            4939 |
 
@@ -62,12 +64,16 @@
 | USDCHF   | aggregate    |       0.8  |          0.613991 |  0.19583   |       81513.1   |
 | USDCHF   | aggregate    |       0.9  |          0.721884 |  0.097029  |       40724     |
 | USDCHF   | aggregate    |       0.95 |          0.810443 |  0.0471862 |       19976.1   |
+| USDCAD   | aggregate    |       0.8  |          0.537391 |  0.196259  |       77823.9   |
+| USDCAD   | aggregate    |       0.9  |          0.639585 |  0.0955901 |       38700.9   |
+| USDCAD   | aggregate    |       0.95 |          0.74892  |  0.0448588 |       18380.8   |
 
 #### Overfitting Diagnostics (Exec Quantile)
 | symbol   |   quantile |   rows |   months |   positive_months |   lb95_trade_mean_gross_pips |   lb95_trade_mean_gross_pips_iid |   lb95_trade_mean_gross_pips_month_block |   pvalue_month_mean_gt0 |   pvalue_bonferroni |   pvalue_fdr_bh |   uplift_vs_null_pips |   pvalue_perm_uplift |   pvalue_perm_fdr_bh | majority_positive_months   | bonferroni_pass_10pct   | fdr_pass_10pct   | perm_fdr_pass_10pct   |
 |:---------|-----------:|-------:|---------:|------------------:|-----------------------------:|---------------------------------:|-----------------------------------------:|------------------------:|--------------------:|----------------:|----------------------:|---------------------:|---------------------:|:---------------------------|:------------------------|:-----------------|:----------------------|
 | EURUSD   |        0.9 |   4923 |        6 |                 6 |                     1.60064  |                              nan |                                      nan |             1.78644e-11 |         1.07186e-10 |     2.67966e-11 |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
 | GBPUSD   |        0.9 |   4427 |        9 |                 9 |                     0.696371 |                              nan |                                      nan |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
+| USDCAD   |        0.9 |   3951 |        6 |                 6 |                     1.18194  |                              nan |                                      nan |             4.66294e-15 |         2.79776e-14 |     1.39888e-14 |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
 | USDCHF   |        0.9 |   4173 |        6 |                 6 |                     1.43592  |                              nan |                                      nan |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
 | USDJPY   |        0.9 |   4939 |        9 |                 9 |                     1.25936  |                              nan |                                      nan |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
 

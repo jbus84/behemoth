@@ -51,7 +51,7 @@ STAGE_INTEGRATED_MANUAL = {
     "analysis/taxonomy_rules.md",
 }
 
-SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD")
+SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 
 STAGE_KEYWORDS: list[tuple[int, tuple[str, ...]]] = [
     (1, ("data_reliability",)),

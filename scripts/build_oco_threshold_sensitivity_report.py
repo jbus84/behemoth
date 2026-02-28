@@ -501,7 +501,7 @@ def run(
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Build threshold/cadence sensitivity diagnostics")
-    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD")
+    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD")
     p.add_argument("--lookback-days", default="10,20,30,45")
     p.add_argument("--cadence-days", default="14,30,60")
     p.add_argument("--window-days", default="2,3,5")

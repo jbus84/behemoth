@@ -24,7 +24,7 @@ Legacy FastAPI components remain under `services/api/` for integration work, but
 ## Rolling Historical Evidence
 
 <!-- GENERATED:SYSREF:API:START -->
-- generated_at_utc: `2026-02-28T19:28:08Z`
+- generated_at_utc: `2026-02-28T20:57:40Z`
 - symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF`
 - stop-limit_reference: `stage_04_execution_realism`
 - artifact_sources:

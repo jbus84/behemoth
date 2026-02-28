@@ -266,7 +266,7 @@ def run(
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Build monthly stop-limit execution drift report")
-    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD")
+    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD")
     p.add_argument("--detail-dir", default="data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap")
     p.add_argument("--default-cap-pips", type=float, default=1.2)
     p.add_argument("--baseline-months", type=int, default=3)

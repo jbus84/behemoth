@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 08
 
-- generated_at: `2026-02-28 19:27:56 UTC`
+- generated_at: `2026-02-28 20:57:22 UTC`
 - Robustness summary uses bootstrap lower bounds from the configured smoke/full run artifacts.
 - Interpretation: LB95 > 0 indicates conservative positive expectancy under sampled uncertainty.
 - Overfit panel adds month-stratified null uplift and dependence-aware LB95 comparisons.
@@ -13,6 +13,7 @@
 | GBPUSD   |        0.9 |   4427 |        9 |          0.808516 |                     0.696371 |                 9 |
 | USDJPY   |        0.9 |   4939 |        9 |          1.40326  |                     1.25936  |                 9 |
 | USDCHF   |        0.9 |   4173 |        6 |          1.54333  |                     1.43592  |                 6 |
+| USDCAD   |        0.9 |   3951 |        6 |          1.28674  |                     1.18194  |                 6 |
 
 #### Interpretation Notes
 - Robustness summary uses bootstrap lower bounds from the configured smoke/full run artifacts.
@@ -39,6 +40,7 @@
 | GBPUSD   |             0           |         0           |     0           |                      -1 |                          0.5  |                              0.5     |                      nan        |                                 0.594654 |                                 0.491428 |                                 0.391254 |                                 0.194756 |
 | USDJPY   |             0           |         0           |     0           |                      -1 |                          0.5  |                              0.5     |                      nan        |                                 1.15762  |                                 1.05588  |                                 0.95754  |                                 0.761891 |
 | USDCHF   |             0           |         0           |     0           |                      -1 |                          1.75 |                              1.43499 |                        1.03157  |                                 1.33558  |                                 1.22767  |                                 1.13335  |                                 0.932108 |
+| USDCAD   |             4.66294e-15 |         2.79776e-14 |     1.39888e-14 |                      -1 |                          1.5  |                              1.17747 |                      nan        |                                 1.08193  |                                 0.979999 |                                 0.87936  |                                 0.681211 |
 
 #### Plots
 ![stage_08_robustness_lb95](../../figures/oco_bible/stage_08_robustness_lb95.png)

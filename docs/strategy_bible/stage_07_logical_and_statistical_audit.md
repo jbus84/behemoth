@@ -88,7 +88,7 @@ uv run python scripts/audit_oco_pipeline_logical_issues.py
 <!-- GENERATED:STAGE_07:START -->
 ### Auto Snapshot - Stage 07
 
-- generated_at: `2026-02-28 19:27:56 UTC`
+- generated_at: `2026-02-28 20:57:22 UTC`
 - C01..C10 checks are the logical contract gate before robustness sign-off.
 - Open issue rows: 0.
 
@@ -135,6 +135,7 @@ uv run python scripts/audit_oco_pipeline_logical_issues.py
 |:---------|-----------------------------:|--------------------------:|--------------------:|----------------:|-------------------------:|----------------------------:|
 | EURUSD   |                     1.60064  |                         0 |         1.07186e-10 |     2.67966e-11 |                        1 |                           1 |
 | GBPUSD   |                     0.696371 |                         0 |         0           |     0           |                        1 |                           1 |
+| USDCAD   |                     1.18194  |                         0 |         2.79776e-14 |     1.39888e-14 |                        1 |                           1 |
 | USDCHF   |                     1.43592  |                         0 |         0           |     0           |                        1 |                           1 |
 | USDJPY   |                     1.25936  |                         0 |         0           |     0           |                        1 |                           1 |
 <!-- GENERATED:STAGE_07:END -->

@@ -100,7 +100,7 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 <!-- GENERATED:STAGE_02:START -->
 ### Auto Snapshot - Stage 02
 
-- generated_at: `2026-02-28 19:27:56 UTC`
+- generated_at: `2026-02-28 20:57:22 UTC`
 - selection_pass candidates are broad hypotheses only.
 - Scatter shows the high-count >0 gross opportunity frontier.
 - M01-M03 quantify concentration risk, horizon smoothness, and positive-edge density.
@@ -113,6 +113,7 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 | AUDUSD   |               2160 |              506 |                   0.710042 |                      15439.7 |                0.0620763 |                 0.0443262 |                      1 |
 | USDJPY   |               2160 |              995 |                   1.92264  |                      20211.8 |                0.04021   |                 0.0981752 |                      1 |
 | USDCHF   |               2160 |              505 |                   0.717839 |                      17721.5 |                0.0658555 |                 0.0411884 |                      1 |
+| USDCAD   |                720 |              423 |                   0.448224 |                      24014   |                0.0931166 |                 0.042355  |                      1 |
 
 #### Interpretation Notes
 - selection_pass candidates are broad hypotheses only.
@@ -155,6 +156,14 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 | GBPUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q30__k2     |         100 |         6 |      191214   |      0.0114421  |
 | GBPUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k3              |         100 |         6 |      180164   |      0.0107809  |
 | GBPUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         4 |      175963   |      0.0105295  |
+| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         6 |      214555   |      0.0378687  |
+| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         5 |      176951   |      0.0312316  |
+| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         4 |      136070   |      0.0240162  |
+| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__all__k3              |         100 |         6 |      108809   |      0.0192047  |
+| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__london__k2           |         100 |         6 |       96180.9 |      0.0169758  |
+| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         3 |       93635.8 |      0.0165266  |
+| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__all__k3              |         100 |         5 |       83451.2 |      0.014729   |
+| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__high_range_q70__k2   |         100 |         6 |       80799.5 |      0.014261   |
 | USDCHF   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         6 |      159348   |      0.0270343  |
 | USDCHF   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         5 |      128335   |      0.0217727  |
 | USDCHF   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         6 |      100489   |      0.0170485  |
@@ -177,6 +186,7 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 |:---------|-----------:|-------:|---------:|------------------:|-----------------------------:|---------------------------------:|-----------------------------------------:|------------------------:|--------------------:|----------------:|----------------------:|---------------------:|---------------------:|:---------------------------|:------------------------|:-----------------|:----------------------|
 | EURUSD   |        0.9 |   4923 |        6 |                 6 |                     1.60064  |                              nan |                                      nan |             1.78644e-11 |         1.07186e-10 |     2.67966e-11 |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
 | GBPUSD   |        0.9 |   4427 |        9 |                 9 |                     0.696371 |                              nan |                                      nan |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
+| USDCAD   |        0.9 |   3951 |        6 |                 6 |                     1.18194  |                              nan |                                      nan |             4.66294e-15 |         2.79776e-14 |     1.39888e-14 |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
 | USDCHF   |        0.9 |   4173 |        6 |                 6 |                     1.43592  |                              nan |                                      nan |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
 | USDJPY   |        0.9 |   4939 |        9 |                 9 |                     1.25936  |                              nan |                                      nan |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
 
