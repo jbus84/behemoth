@@ -19,7 +19,7 @@ Prometheus/Grafana endpoints are legacy/optional and only required if the API ru
 ## Rolling Historical Evidence
 
 <!-- GENERATED:SYSREF:MONITORING:START -->
-- generated_at_utc: `2026-03-01T12:48:13Z`
+- generated_at_utc: `2026-03-01T16:48:19Z`
 - symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD`
 - stop-limit_reference: `stage_04_execution_realism`
 - artifact_sources:

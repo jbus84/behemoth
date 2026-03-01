@@ -163,7 +163,7 @@ uv run python scripts/build_oco_strategy_bible.py \
 <!-- GENERATED:STAGE_04:START -->
 ### Auto Snapshot - Stage 04
 
-- generated_at: `2026-03-01 12:47:46 UTC`
+- generated_at: `2026-03-01 16:47:53 UTC`
 - Execution realism is applied with tick first-cross overshoot.
 - Session-aware rolling caps are built causally (20D lookback, q=0.90) before E11 dispersion is measured.
 - Cap curve highlights fill-rate versus signal-level expectancy.

@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 08
 
-- generated_at: `2026-03-01 12:47:46 UTC`
+- generated_at: `2026-03-01 16:47:53 UTC`
 - Robustness summary uses bootstrap lower bounds from the configured smoke/full run artifacts.
 - Interpretation: LB95 > 0 indicates conservative positive expectancy under sampled uncertainty.
 - Overfit panel adds month-stratified null uplift and dependence-aware LB95 comparisons.
@@ -29,7 +29,7 @@
 | AUDUSD   | T03_post_worst_month_recovery | red    | high       | A2_RECALIBRATE | escalate and remediate | risk    |
 | EURUSD   | T01_stress_elasticity         | green  | info       | A0_MONITOR     | within policy band     | risk    |
 | EURUSD   | T02_first_negative_costplus   | green  | info       | A0_MONITOR     | within policy band     | risk    |
-| EURUSD   | T03_post_worst_month_recovery | red    | high       | A2_RECALIBRATE | escalate and remediate | risk    |
+| EURUSD   | T03_post_worst_month_recovery | green  | info       | A0_MONITOR     | within policy band     | risk    |
 | GBPUSD   | T01_stress_elasticity         | green  | info       | A0_MONITOR     | within policy band     | risk    |
 | GBPUSD   | T02_first_negative_costplus   | green  | info       | A0_MONITOR     | within policy band     | risk    |
 | GBPUSD   | T03_post_worst_month_recovery | green  | info       | A0_MONITOR     | within policy band     | risk    |

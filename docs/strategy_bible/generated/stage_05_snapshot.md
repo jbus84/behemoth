@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 05
 
-- generated_at: `2026-03-01 12:47:46 UTC`
+- generated_at: `2026-03-01 16:47:53 UTC`
 - State schedule is selected month-by-month using only prior-month train data.
 - Summary emphasizes full-path gross behavior after reduced-core filtering.
 - R01-R03 track pruning severity, state concentration, and re-selection stability.
