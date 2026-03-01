@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 05
 
-- generated_at: `2026-03-01 07:53:15 UTC`
+- generated_at: `2026-03-01 09:52:04 UTC`
 - State schedule is selected month-by-month using only prior-month train data.
 - Summary emphasizes full-path gross behavior after reduced-core filtering.
 - R01-R03 track pruning severity, state concentration, and re-selection stability.
@@ -23,8 +23,11 @@
 #### Action Trigger Summary
 | symbol   | metric_id                | band   | severity   | action_code   | action_summary     | owner    |
 |:---------|:-------------------------|:-------|:-----------|:--------------|:-------------------|:---------|
+| AUDUSD   | R02_top_state_dependency | green  | info       | A0_MONITOR    | within policy band | research |
 | EURUSD   | R02_top_state_dependency | green  | info       | A0_MONITOR    | within policy band | research |
 | GBPUSD   | R02_top_state_dependency | green  | info       | A0_MONITOR    | within policy band | research |
+| USDCAD   | R02_top_state_dependency | green  | info       | A0_MONITOR    | within policy band | research |
+| USDCHF   | R02_top_state_dependency | green  | info       | A0_MONITOR    | within policy band | research |
 | USDJPY   | R02_top_state_dependency | green  | info       | A0_MONITOR    | within policy band | research |
 
 #### Details

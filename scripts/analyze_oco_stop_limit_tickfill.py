@@ -113,7 +113,9 @@ def _rebuild_touch_events(
         d = pd.read_parquet(pred_path, columns=use_cols).copy()
     except Exception:
         # Fallback for files without optional selection columns.
-        d = pd.read_parquet(pred_path, columns=["close_ts", "candidate_uid", "target_gross_pips", "pred_prob"]).copy()
+        d = pd.read_parquet(
+            pred_path, columns=["close_ts", "candidate_uid", "target_gross_pips", "pred_prob"]
+        ).copy()
     d["close_ts"] = pd.to_datetime(d["close_ts"], utc=True, errors="coerce")
     d["target_gross_pips"] = pd.to_numeric(d["target_gross_pips"], errors="coerce")
     d = d.dropna(subset=["close_ts", "candidate_uid", "target_gross_pips"]).copy()
@@ -130,7 +132,12 @@ def _rebuild_touch_events(
             g2 = g[p.notna()].copy()
             if g2.empty:
                 continue
-            thr = float(np.quantile(pd.to_numeric(g2["pred_prob"], errors="coerce").to_numpy(dtype=float), float(quantile)))
+            thr = float(
+                np.quantile(
+                    pd.to_numeric(g2["pred_prob"], errors="coerce").to_numpy(dtype=float),
+                    float(quantile),
+                )
+            )
             out.append(g2[pd.to_numeric(g2["pred_prob"], errors="coerce") >= thr].copy())
         d = pd.concat(out, ignore_index=True) if out else pd.DataFrame(columns=d.columns)
 
@@ -151,10 +158,16 @@ def _rebuild_touch_events(
         vpath = velocity_dir / f"{symbol}_{int(bt)}tick_velocity.parquet"
         if not vpath.exists():
             continue
-        bars = pd.read_parquet(vpath, columns=["timestamp", "close_ts", "close", "high", "low", "hl_first"]).copy()
+        bars = pd.read_parquet(
+            vpath, columns=["timestamp", "close_ts", "close", "high", "low", "hl_first"]
+        ).copy()
         bars["timestamp"] = pd.to_datetime(bars["timestamp"], utc=True, errors="coerce")
         bars["close_ts"] = pd.to_datetime(bars["close_ts"], utc=True, errors="coerce")
-        bars = bars.dropna(subset=["timestamp", "close_ts"]).sort_values("close_ts").reset_index(drop=True)
+        bars = (
+            bars.dropna(subset=["timestamp", "close_ts"])
+            .sort_values("close_ts")
+            .reset_index(drop=True)
+        )
         bars["idx"] = np.arange(len(bars), dtype=np.int64)
 
         g = g_bt.merge(bars[["close_ts", "idx"]], on="close_ts", how="inner")
@@ -167,7 +180,15 @@ def _rebuild_touch_events(
         hlf = pd.to_numeric(bars["hl_first"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
 
         for (h, k), g_hk in g.groupby(["horizon", "barrier_pips"], sort=False):
-            prep = _oco_touch_arrays(close=close, high=high, low=low, hlf=hlf, horizon=int(h), barrier_pips=float(k), pip=pip)
+            prep = _oco_touch_arrays(
+                close=close,
+                high=high,
+                low=low,
+                hlf=hlf,
+                horizon=int(h),
+                barrier_pips=float(k),
+                pip=pip,
+            )
             if prep is None:
                 continue
             pos_map = np.full(len(bars), -1, dtype=np.int64)
@@ -237,7 +258,9 @@ def _first_cross_overshoot_month(
     ticks = pd.read_parquet(tick_file, columns=["timestamp", "bid"]).copy()
     ticks["timestamp"] = pd.to_datetime(ticks["timestamp"], utc=True, errors="coerce")
     ticks["bid"] = pd.to_numeric(ticks["bid"], errors="coerce")
-    ticks = ticks.dropna(subset=["timestamp", "bid"]).sort_values("timestamp").reset_index(drop=True)
+    ticks = (
+        ticks.dropna(subset=["timestamp", "bid"]).sort_values("timestamp").reset_index(drop=True)
+    )
     if ticks.empty or month_events.empty:
         x = month_events.copy()
         x["touch_found_tick"] = 0
@@ -247,9 +270,22 @@ def _first_cross_overshoot_month(
     ts_ns = ticks["timestamp"].astype("int64").to_numpy(dtype=np.int64)
     px = ticks["bid"].to_numpy(dtype=float)
 
-    starts_ns = pd.to_datetime(month_events["touch_open_ts"], utc=True, errors="coerce").astype("int64").to_numpy(dtype=np.int64)
-    ends_ns = pd.to_datetime(month_events["touch_close_ts"], utc=True, errors="coerce").astype("int64").to_numpy(dtype=np.int64)
-    side = pd.to_numeric(month_events["side"], errors="coerce").fillna(0).astype(int).to_numpy(dtype=np.int8)
+    starts_ns = (
+        pd.to_datetime(month_events["touch_open_ts"], utc=True, errors="coerce")
+        .astype("int64")
+        .to_numpy(dtype=np.int64)
+    )
+    ends_ns = (
+        pd.to_datetime(month_events["touch_close_ts"], utc=True, errors="coerce")
+        .astype("int64")
+        .to_numpy(dtype=np.int64)
+    )
+    side = (
+        pd.to_numeric(month_events["side"], errors="coerce")
+        .fillna(0)
+        .astype(int)
+        .to_numpy(dtype=np.int8)
+    )
     barrier = pd.to_numeric(month_events["barrier_px"], errors="coerce").to_numpy(dtype=float)
 
     left_idx = np.searchsorted(ts_ns, starts_ns, side="left")
@@ -301,7 +337,13 @@ def _cap_sweep(d: pd.DataFrame, caps: list[float]) -> pd.DataFrame:
     rows: list[dict[str, float]] = []
     gross = pd.to_numeric(d["target_gross_pips"], errors="coerce").to_numpy(dtype=float)
     ov = pd.to_numeric(d["overshoot_tick_pips"], errors="coerce").to_numpy(dtype=float)
-    found = pd.to_numeric(d["touch_found_tick"], errors="coerce").fillna(0).astype(int).to_numpy(dtype=int) == 1
+    found = (
+        pd.to_numeric(d["touch_found_tick"], errors="coerce")
+        .fillna(0)
+        .astype(int)
+        .to_numpy(dtype=int)
+        == 1
+    )
 
     for c in caps:
         fill = found & np.isfinite(ov) & (ov <= float(c))
@@ -354,7 +396,9 @@ def run_symbol(
         return events, pd.DataFrame(), {"symbol": symbol, "rows": 0}
 
     pip = float(_pip_size(symbol))
-    events["touch_month"] = pd.to_datetime(events["touch_open_ts"], utc=True, errors="coerce").dt.strftime("%Y%m")
+    events["touch_month"] = pd.to_datetime(
+        events["touch_open_ts"], utc=True, errors="coerce"
+    ).dt.strftime("%Y%m")
 
     out_parts: list[pd.DataFrame] = []
     for m, g in events.groupby("touch_month", sort=True):
@@ -366,7 +410,11 @@ def run_symbol(
             out_parts.append(x)
             continue
         out_parts.append(_first_cross_overshoot_month(month_events=g, tick_file=tick_file, pip=pip))
-    out = pd.concat(out_parts, ignore_index=True) if out_parts else events.assign(touch_found_tick=0, overshoot_tick_pips=np.nan)
+    out = (
+        pd.concat(out_parts, ignore_index=True)
+        if out_parts
+        else events.assign(touch_found_tick=0, overshoot_tick_pips=np.nan)
+    )
     # Normalize touch month from final UTC touch_open_ts so downstream joins/audits are stable.
     out["touch_open_ts"] = pd.to_datetime(out["touch_open_ts"], utc=True, errors="coerce")
     out["touch_close_ts"] = pd.to_datetime(out["touch_close_ts"], utc=True, errors="coerce")
@@ -374,7 +422,12 @@ def run_symbol(
 
     overs = pd.to_numeric(out["overshoot_tick_pips"], errors="coerce").to_numpy(dtype=float)
     stats = _summary_stats(overs)
-    found = pd.to_numeric(out["touch_found_tick"], errors="coerce").fillna(0).astype(int).to_numpy(dtype=int)
+    found = (
+        pd.to_numeric(out["touch_found_tick"], errors="coerce")
+        .fillna(0)
+        .astype(int)
+        .to_numpy(dtype=int)
+    )
     base_gross = float(pd.to_numeric(out["target_gross_pips"], errors="coerce").mean())
     summary = {
         "symbol": symbol,
@@ -392,7 +445,9 @@ def run_symbol(
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Tick first-crossing stop-limit analysis for OCO events")
+    p = argparse.ArgumentParser(
+        description="Tick first-crossing stop-limit analysis for OCO events"
+    )
     p.add_argument("--symbols", default="EURUSD,GBPUSD")
     p.add_argument("--pred-paths", default="")
     p.add_argument("--velocity-dir", default="data/analysis/tick_velocity")
@@ -420,8 +475,12 @@ def main() -> None:
         pred_map = {symbols[i]: Path(pred_paths_raw[i]) for i in range(len(symbols))}
     else:
         defaults = {
-            "EURUSD": Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet"),
-            "GBPUSD": Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_predictions.parquet"),
+            "EURUSD": Path(
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet"
+            ),
+            "GBPUSD": Path(
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_predictions.parquet"
+            ),
         }
         for s in symbols:
             if s not in defaults:
@@ -463,6 +522,7 @@ def main() -> None:
     print(f"wrote: {caps_csv}")
 
     lines: list[str] = []
+
     def _table(df: pd.DataFrame) -> str:
         if df.empty:
             return "_empty_"

@@ -222,16 +222,23 @@ def run(
         if rows_total == 0:
             continue
 
-        ts = pd.to_datetime(d.get("close_ts"), utc=True, errors="coerce") if "close_ts" in d.columns else pd.Series(dtype="datetime64[ns, UTC]")
+        ts = (
+            pd.to_datetime(d.get("close_ts"), utc=True, errors="coerce")
+            if "close_ts" in d.columns
+            else pd.Series(dtype="datetime64[ns, UTC]")
+        )
         ts_parse_rate = float(ts.notna().mean()) if len(ts) else float("nan")
         ts_mono = bool(ts.dropna().is_monotonic_increasing) if len(ts) else False
-        ts_dup_rate = float(ts.dropna().duplicated().mean()) if len(ts.dropna()) > 0 else float("nan")
+        ts_dup_rate = (
+            float(ts.dropna().duplicated().mean()) if len(ts.dropna()) > 0 else float("nan")
+        )
         _add_check(
             checks_rows,
             symbol=symbol,
             check_id="DR03",
             check_name="close_ts_parse_rate",
-            passed=np.isfinite(ts_parse_rate) and ts_parse_rate >= float(thresholds.min_close_ts_parse_rate),
+            passed=np.isfinite(ts_parse_rate)
+            and ts_parse_rate >= float(thresholds.min_close_ts_parse_rate),
             severity_if_fail="high",
             metric_name="close_ts_parse_rate",
             metric_value=ts_parse_rate,
@@ -257,7 +264,8 @@ def run(
             symbol=symbol,
             check_id="DR05",
             check_name="duplicate_close_ts_rate",
-            passed=np.isfinite(ts_dup_rate) and ts_dup_rate <= float(thresholds.max_duplicate_close_ts_rate),
+            passed=np.isfinite(ts_dup_rate)
+            and ts_dup_rate <= float(thresholds.max_duplicate_close_ts_rate),
             severity_if_fail="high",
             metric_name="duplicate_close_ts_rate",
             metric_value=ts_dup_rate,
@@ -266,7 +274,23 @@ def run(
             source_path=src,
         )
 
-        core_num = [c for c in ["open", "high", "low", "close", "cost_est_pips", "range_pips", "hour_utc", "spread_z", "tick_rate_z", "vel_cost_units_h1", "hl_first"] if c in d.columns]
+        core_num = [
+            c
+            for c in [
+                "open",
+                "high",
+                "low",
+                "close",
+                "cost_est_pips",
+                "range_pips",
+                "hour_utc",
+                "spread_z",
+                "tick_rate_z",
+                "vel_cost_units_h1",
+                "hl_first",
+            ]
+            if c in d.columns
+        ]
         parse_rates: list[float] = []
         null_rates: list[float] = []
         cnum: dict[str, pd.Series] = {}
@@ -283,7 +307,8 @@ def run(
             symbol=symbol,
             check_id="DR06",
             check_name="numeric_parse_rate_min",
-            passed=np.isfinite(min_parse_rate) and min_parse_rate >= float(thresholds.min_numeric_parse_rate),
+            passed=np.isfinite(min_parse_rate)
+            and min_parse_rate >= float(thresholds.min_numeric_parse_rate),
             severity_if_fail="high",
             metric_name="numeric_parse_rate_min",
             metric_value=min_parse_rate,
@@ -296,7 +321,8 @@ def run(
             symbol=symbol,
             check_id="DR07",
             check_name="core_null_rate_max",
-            passed=np.isfinite(max_null_rate) and max_null_rate <= float(thresholds.max_core_null_rate),
+            passed=np.isfinite(max_null_rate)
+            and max_null_rate <= float(thresholds.max_core_null_rate),
             severity_if_fail="high",
             metric_name="core_null_rate_max",
             metric_value=max_null_rate,
@@ -326,7 +352,8 @@ def run(
             symbol=symbol,
             check_id="DR08",
             check_name="ohlc_consistency",
-            passed=np.isfinite(ohlc_violation_rate) and ohlc_violation_rate <= float(thresholds.max_ohlc_violation_rate),
+            passed=np.isfinite(ohlc_violation_rate)
+            and ohlc_violation_rate <= float(thresholds.max_ohlc_violation_rate),
             severity_if_fail="critical",
             metric_name="ohlc_violation_rate",
             metric_value=ohlc_violation_rate,
@@ -348,7 +375,8 @@ def run(
             symbol=symbol,
             check_id="DR09",
             check_name="cost_range_nonnegative",
-            passed=np.isfinite(nonneg_violation_rate) and nonneg_violation_rate <= float(thresholds.max_nonneg_violation_rate),
+            passed=np.isfinite(nonneg_violation_rate)
+            and nonneg_violation_rate <= float(thresholds.max_nonneg_violation_rate),
             severity_if_fail="high",
             metric_name="nonnegative_violation_rate",
             metric_value=nonneg_violation_rate,
@@ -369,7 +397,8 @@ def run(
             symbol=symbol,
             check_id="DR10",
             check_name="hour_utc_valid_rate",
-            passed=np.isfinite(hour_valid_rate) and hour_valid_rate >= float(thresholds.min_hour_valid_rate),
+            passed=np.isfinite(hour_valid_rate)
+            and hour_valid_rate >= float(thresholds.min_hour_valid_rate),
             severity_if_fail="medium",
             metric_name="hour_utc_valid_rate",
             metric_value=hour_valid_rate,
@@ -381,14 +410,17 @@ def run(
         finite_feature_rate = float("nan")
         ff_cols = [x for x in ["spread_z", "tick_rate_z", "vel_cost_units_h1"] if x in cnum]
         if ff_cols:
-            ok_stack = np.column_stack([np.isfinite(cnum[x].to_numpy(dtype=float)) for x in ff_cols])
+            ok_stack = np.column_stack(
+                [np.isfinite(cnum[x].to_numpy(dtype=float)) for x in ff_cols]
+            )
             finite_feature_rate = float(np.mean(ok_stack.all(axis=1)))
         _add_check(
             checks_rows,
             symbol=symbol,
             check_id="DR11",
             check_name="finite_feature_rate",
-            passed=np.isfinite(finite_feature_rate) and finite_feature_rate >= float(thresholds.min_finite_feature_rate),
+            passed=np.isfinite(finite_feature_rate)
+            and finite_feature_rate >= float(thresholds.min_finite_feature_rate),
             severity_if_fail="medium",
             metric_name="finite_feature_rate",
             metric_value=finite_feature_rate,
@@ -401,13 +433,16 @@ def run(
         if ret1.empty and c is not None:
             pip = float(_pip_size(symbol))
             ret1 = ((c - c.shift(1)) / pip).fillna(0.0)
-        extreme_rate = _robust_extreme_rate(ret1.to_numpy(dtype=float)) if not ret1.empty else float("nan")
+        extreme_rate = (
+            _robust_extreme_rate(ret1.to_numpy(dtype=float)) if not ret1.empty else float("nan")
+        )
         _add_check(
             checks_rows,
             symbol=symbol,
             check_id="DR12",
             check_name="extreme_move_rate",
-            passed=np.isfinite(extreme_rate) and extreme_rate <= float(thresholds.max_extreme_move_rate),
+            passed=np.isfinite(extreme_rate)
+            and extreme_rate <= float(thresholds.max_extreme_move_rate),
             severity_if_fail="medium",
             metric_name="extreme_move_rate",
             metric_value=extreme_rate,
@@ -445,7 +480,8 @@ def run(
             symbol=symbol,
             check_id="DR14",
             check_name="hour_coverage",
-            passed=np.isfinite(hours_covered) and hours_covered >= float(thresholds.min_hours_covered),
+            passed=np.isfinite(hours_covered)
+            and hours_covered >= float(thresholds.min_hours_covered),
             severity_if_fail="medium",
             metric_name="hours_covered",
             metric_value=hours_covered,
@@ -458,7 +494,8 @@ def run(
             symbol=symbol,
             check_id="DR15",
             check_name="hour_concentration",
-            passed=np.isfinite(hour_concentration) and hour_concentration <= float(thresholds.max_hour_concentration),
+            passed=np.isfinite(hour_concentration)
+            and hour_concentration <= float(thresholds.max_hour_concentration),
             severity_if_fail="medium",
             metric_name="max_hour_share",
             metric_value=hour_concentration,
@@ -491,11 +528,15 @@ def run(
     issues = fail.copy()
     if not issues.empty:
         sev_rank = {"critical": 4, "high": 3, "medium": 2, "low": 1}
-        issues["severity_rank"] = issues["severity_if_fail"].astype(str).str.lower().map(sev_rank).fillna(0)
+        issues["severity_rank"] = (
+            issues["severity_if_fail"].astype(str).str.lower().map(sev_rank).fillna(0)
+        )
         issues["issue_id"] = issues["symbol"].astype(str) + "_" + issues["check_id"].astype(str)
         issues["severity"] = issues["severity_if_fail"]
         issues["summary"] = issues["check_name"].astype(str) + " failed"
-        issues = issues.sort_values(["symbol", "severity_rank", "check_id"], ascending=[True, False, True]).reset_index(drop=True)
+        issues = issues.sort_values(
+            ["symbol", "severity_rank", "check_id"], ascending=[True, False, True]
+        ).reset_index(drop=True)
         issues = issues[
             [
                 "issue_id",
@@ -526,7 +567,10 @@ def run(
             high_or_critical_failed=(
                 "severity_if_fail",
                 lambda s: int(
-                    ((checks.loc[s.index, "status"].astype(str).str.lower() != "pass") & s.astype(str).str.lower().isin(["high", "critical"])).sum()
+                    (
+                        (checks.loc[s.index, "status"].astype(str).str.lower() != "pass")
+                        & s.astype(str).str.lower().isin(["high", "critical"])
+                    ).sum()
                 ),
             ),
         )
@@ -538,7 +582,9 @@ def run(
     lines: list[str] = []
     lines.append("# Data Reliability Audit")
     lines.append("")
-    lines.append(f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}`")
+    lines.append(
+        f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}`"
+    )
     lines.append(f"- symbols: `{','.join(symbols)}`")
     lines.append(f"- source_pattern: `{source_pattern}`")
     lines.append("")
@@ -559,14 +605,20 @@ def run(
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Data reliability audit for OCO source datasets")
-    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY")
+    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD")
     p.add_argument(
         "--source-pattern",
         default="data/analysis/tick_velocity/{symbol}_100tick_velocity.parquet",
     )
     p.add_argument("--min-rows", type=int, default=500_000)
-    p.add_argument("--out-checks-csv", default="data/analysis/tick_opportunity_mining/data_reliability_checks.csv")
-    p.add_argument("--out-issues-csv", default="data/analysis/tick_opportunity_mining/data_reliability_issues.csv")
+    p.add_argument(
+        "--out-checks-csv",
+        default="data/analysis/tick_opportunity_mining/data_reliability_checks.csv",
+    )
+    p.add_argument(
+        "--out-issues-csv",
+        default="data/analysis/tick_opportunity_mining/data_reliability_issues.csv",
+    )
     p.add_argument("--report-out", default="docs/analysis/data_reliability_report.md")
     args = p.parse_args()
 
@@ -579,7 +631,9 @@ def main() -> None:
         out_report_md=Path(str(args.report_out)),
     )
     fail_mask = checks["status"].astype(str).str.lower() != "pass"
-    high_crit_fail = fail_mask & checks["severity_if_fail"].astype(str).str.lower().isin(["high", "critical"])
+    high_crit_fail = fail_mask & checks["severity_if_fail"].astype(str).str.lower().isin(
+        ["high", "critical"]
+    )
     print(f"wrote checks: {args.out_checks_csv} rows={len(checks)}")
     print(f"wrote issues: {args.out_issues_csv} rows={len(issues)}")
     print(f"high_or_critical_failures={int(high_crit_fail.sum())}")

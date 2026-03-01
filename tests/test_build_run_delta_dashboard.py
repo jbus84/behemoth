@@ -20,7 +20,9 @@ def _write_snap(run_dir: Path, *, metric_value: float, gate_value: int) -> None:
             }
         ]
     ).to_csv(run_dir / "edge_clarity_stage_metrics.csv", index=False)
-    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": gate_value}]).to_csv(run_dir / "oco_bible_stage_status.csv", index=False)
+    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": gate_value}]).to_csv(
+        run_dir / "oco_bible_stage_status.csv", index=False
+    )
 
 
 def test_build_run_delta_dashboard_outputs_changes(tmp_path: Path) -> None:

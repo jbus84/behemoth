@@ -1,87 +1,34 @@
+# Behemoth (OCO Architecture)
 
-# Behemoth: Kalman + Z-Score MOM (H1)
+**Status**: Production Baseline
+**Strategy**: Tick-based ML Opportunity Cost Optimization (OCO)
 
-**Status**: Partially Implemented (Inference-Only)
-**Strategy**: Kalman Z‑Score Momentum + Loss‑Streak Guardrail (Rule‑Based)
-**Timeframe**: H1 (Hourly)
+This repository holds the quantitative research pipeline and active execution artifacts for the Behemoth OCO strategy. The legacy stat-arb systems have been entirely removed.
 
-> [!IMPORTANT]
-> **Implementation Note**: This repo currently provides **signal inference** only. Execution‑side risk controls described in the manual (kill‑zone, circuit breaker, Z‑based exits, etc.) are **not implemented** in code.
+## 1. Architecture
+The codebase operates as a script-orchestrated pipeline generating static, rolling artifacts:
+- **Ticks to Features**: Processes tick streams into highly structured ML datasets.
+- **Model Training**: WFO orchestration trains and cross-validates tree-based scoring thresholds.
+- **Stop-Limit Scenarios**: Offline simulation (S04) ensures predictive edges survive realistic execution latency and exact-tick fill rates.
+- **Governance**: Models achieving necessary criteria freeze generating static policy maps (`_oco_live_lock.json` and `_oco_allowed_states.csv`).
+- **Docs Contracts**: All strategy changes are gated via programmatic, artifact-driven assertions tracking strategy documentation.
 
-## 1. The Strategy
-We generate signals using a centered **Kalman Filter** and a rule‑based MOM/guardrail policy (no ML).
+## 2. Quickstart
 
-*   **Logic**: Kalman estimates dynamic beta and spread error; rules select MOM entries and guardrail pauses after loss streaks.
-*   **Note**: Claims about market neutrality and Monte Carlo safety are **legacy** and require revalidation against the current H1 pipeline.
-
-## 2. Legacy 4H Portfolio (Not Revalidated)
-These were part of the older 4H system and are retained for reference only.
-
-| Engine | Pair | Sharpe Ratio | Role |
-| :--- | :--- | :--- | :--- |
-| **Monetary** | Gold / Silver | **5.22** | Core Alpha |
-| **Commodity FX** | AUD / NZD | **1.90** | Consistency |
-| **Energy** | Brent / CAD | **1.73** | Inflation Hedge |
-| **US Tech** | Nasdaq / SPX | **1.38** | Volatility Harvest |
-| **Euro FX** | EUR / GBP | **1.12** | Low Vol Income |
-| **Euro Equity** | DAX / FTSE | **1.06** | Diversification |
-
-## 3. Legacy Metrics (Not Revalidated)
-*   **Median Sharpe**: 6.90 (Portfolio Mean)
-*   **Max Drawdown**: 0.076 log units (Worst Case 99%)
-*   **Effective Lookback**: **2 Bars** (8 Hours). Proven via Impulse Response Test.
-*   **Risk of Loss**: 0.0% (Annual Basis, Simulated 10k Years).
-
-## 4. Quickstart
-
-### A. Run H1 Inference
-Generate the latest H1 signal for a pair:
+### Data Pipelines
+To onboard and execute the full routine for a symbol:
 ```bash
-python3 scripts/scan_global_pairs.py
+python scripts/onboard_symbol.py
 ```
 
-### B. Legacy 4H Dashboard
-Legacy dashboard for the 4H portfolio:
+### Automated Documentation and Reporting
+Regenerate all system reference endpoints, diagnostic tables, and validation tests:
 ```bash
-python3 scripts/monitor_pairs.py
+make docs
 ```
 
-### C. Core Docs
-*   **[Master Manual](docs/STRATEGY_MASTER_MANUAL.md)**: Current H1 logic and execution notes.
-*   **Walkthrough**: legacy H1 exploration notes removed with ML cleanup.
-*   **[Red‑Team Debunk](debunk/REDTEAM_REPO_DEBUNK.md)**: Known gaps and risks.
-
-## 5. Execution Rules (Documentation vs Code)
-The manual documents several guards (kill‑zone, circuit breaker, Z‑based exits), but **only entry‑side signal rules** are currently implemented in the inference script.
-
-## 6. Position API (FastAPI + Postgres + Redis)
-This repo now includes a state management service for positions and orders.
-
-Quick start (Docker Compose):
+## 3. Operations
+For execution details, architecture flows, and the comprehensive "Strategy Bible", please run `make docs` and view the generated MkDocs site using:
 ```bash
-make up
-make migrate
+mkdocs serve
 ```
-
-Local dev:
-```bash
-make api
-```
-
-API health:
-```bash
-curl http://localhost:8000/healthz
-```
-
-Migrations (CI/local without Compose):
-```bash
-make migrate-local
-```
-
-Postgres integration test (optional):
-```bash
-make test-postgres
-```
-
----
-*Built by Antigravity. Validation status is documented in `debunk/`.*

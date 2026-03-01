@@ -363,7 +363,7 @@ SYSREF_STOP_LIMIT_REQUIRED_PATHS = {
     "deployment.md",
 }
 
-SYSREF_REQUIRED_SYMBOLS = {"EURUSD", "GBPUSD", "USDJPY", "USDCHF"}
+SYSREF_REQUIRED_SYMBOLS = {"EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"}
 
 STAGE03_CATBOOST_REQUIRED_TERMS = [
     "catboost",
@@ -499,7 +499,9 @@ def _extract_metric_ids_from_dictionary(path: Path) -> set[str]:
         first = parts[1]
         if not first or first in {"metric_id", "---"}:
             continue
-        if re.match(r"^[A-Z][0-9]{2}_", first) or first.startswith(("erosion_", "B", "G", "R", "S", "T", "W", "M", "D", "E", "X")):
+        if re.match(r"^[A-Z][0-9]{2}_", first) or first.startswith(
+            ("erosion_", "B", "G", "R", "S", "T", "W", "M", "D", "E", "X")
+        ):
             ids.add(first)
     return ids
 
@@ -523,14 +525,14 @@ def _extract_symbols_from_stage09_snapshot(path: Path) -> set[str]:
     if not path.exists():
         return set()
     txt = path.read_text(encoding="utf-8", errors="ignore")
-    return set(re.findall(r"\|\s*(EURUSD|GBPUSD|USDJPY|USDCHF)\s*\|", txt))
+    return set(re.findall(r"\|\s*(EURUSD|GBPUSD|USDJPY|USDCHF|AUDUSD|USDCAD)\s*\|", txt))
 
 
 def _extract_symbols_from_edge_report(path: Path) -> set[str]:
     if not path.exists():
         return set()
     txt = path.read_text(encoding="utf-8", errors="ignore")
-    return set(re.findall(r"\|\s*[0-9]+\s*\|\s*(EURUSD|GBPUSD|USDJPY|USDCHF)\s*\|", txt))
+    return set(re.findall(r"\|\s*[0-9]+\s*\|\s*(EURUSD|GBPUSD|USDJPY|USDCHF|AUDUSD|USDCAD)\s*\|", txt))
 
 
 def _analysis_docs_without_generated(docs_root: Path) -> set[str]:
@@ -638,7 +640,9 @@ def run(
     dict_ids = _extract_metric_ids_from_dictionary(metric_dictionary_md)
 
     # C3: Metric dictionary coverage.
-    edge_ids = set(edge.get("metric_id", pd.Series(dtype=str)).dropna().astype(str).unique().tolist())
+    edge_ids = set(
+        edge.get("metric_id", pd.Series(dtype=str)).dropna().astype(str).unique().tolist()
+    )
     missing_metric_defs = sorted(list(edge_ids - dict_ids))
     _add_check(
         checks_rows,
@@ -698,14 +702,30 @@ def run(
 
     # C5: Snapshot/report consistency.
     stage_status = pd.read_csv(stage_status_csv) if stage_status_csv.exists() else pd.DataFrame()
-    status_syms = set(stage_status.get("symbol", pd.Series(dtype=str)).astype(str).str.upper().tolist())
+    status_syms = set(
+        stage_status.get("symbol", pd.Series(dtype=str)).astype(str).str.upper().tolist()
+    )
     s09_syms = _extract_symbols_from_stage09_snapshot(generated_root / "stage_09_snapshot.md")
     edge_syms = set(edge.get("symbol", pd.Series(dtype=str)).astype(str).str.upper().tolist())
     edge_report_syms = _extract_symbols_from_edge_report(edge_report_md)
-    expected_s09 = set(stage_status.loc[stage_status["gate_tick_exact"] == True, "symbol"].astype(str).str.upper().tolist()) if not stage_status.empty else set()
+    expected_s09 = (
+        set(
+            stage_status.loc[stage_status["gate_tick_exact"] == True, "symbol"]
+            .astype(str)
+            .str.upper()
+            .tolist()
+        )
+        if not stage_status.empty
+        else set()
+    )
     if not expected_s09:
         expected_s09 = status_syms
-    sym_consistent = bool(status_syms) and expected_s09.issubset(s09_syms) and expected_s09.issubset(edge_syms) and expected_s09.issubset(edge_report_syms)
+    sym_consistent = (
+        bool(status_syms)
+        and expected_s09.issubset(s09_syms)
+        and expected_s09.issubset(edge_syms)
+        and expected_s09.issubset(edge_report_syms)
+    )
     _add_check(
         checks_rows,
         check_id="C5",
@@ -772,7 +792,9 @@ def run(
 
     # C8: Stage 04 policy sections are documented.
     stage04_doc = _stage_doc_path(docs_root, 4)
-    stage04_txt = stage04_doc.read_text(encoding="utf-8", errors="ignore") if stage04_doc.exists() else ""
+    stage04_txt = (
+        stage04_doc.read_text(encoding="utf-8", errors="ignore") if stage04_doc.exists() else ""
+    )
     missing_policy_sections = [s for s in STAGE04_POLICY_SECTIONS if s not in stage04_txt]
     _add_check(
         checks_rows,
@@ -790,8 +812,12 @@ def run(
 
     # C9: Stage 04 policy CSV exists with required schema.
     stage04_policy_csv = edge_metrics_csv.parent / "stage04_execution_policy_status.csv"
-    stage04_policy = pd.read_csv(stage04_policy_csv) if stage04_policy_csv.exists() else pd.DataFrame()
-    missing_policy_cols = [c for c in STAGE04_POLICY_REQUIRED_COLUMNS if c not in stage04_policy.columns]
+    stage04_policy = (
+        pd.read_csv(stage04_policy_csv) if stage04_policy_csv.exists() else pd.DataFrame()
+    )
+    missing_policy_cols = [
+        c for c in STAGE04_POLICY_REQUIRED_COLUMNS if c not in stage04_policy.columns
+    ]
     _add_check(
         checks_rows,
         check_id="C9",
@@ -815,12 +841,21 @@ def run(
         for sym in syms:
             g = stage04_policy[stage04_policy["symbol"].astype(str).str.upper() == sym].copy()
             for metric_id in sorted(STAGE04_POLICY_REQUIRED_METRICS):
-                m = g[g.get("metric_id", pd.Series(index=g.index, dtype=str)).astype(str) == metric_id].copy()
+                m = g[
+                    g.get("metric_id", pd.Series(index=g.index, dtype=str)).astype(str) == metric_id
+                ].copy()
                 if m.empty:
                     missing_mappings.append(f"{sym}:{metric_id}:missing")
                     continue
-                band_ok = m.get("band", pd.Series(index=m.index, dtype=str)).astype(str).str.strip() != ""
-                action_ok = m.get("action_code", pd.Series(index=m.index, dtype=str)).astype(str).str.strip() != ""
+                band_ok = (
+                    m.get("band", pd.Series(index=m.index, dtype=str)).astype(str).str.strip() != ""
+                )
+                action_ok = (
+                    m.get("action_code", pd.Series(index=m.index, dtype=str))
+                    .astype(str)
+                    .str.strip()
+                    != ""
+                )
                 if not bool((band_ok & action_ok).any()):
                     missing_mappings.append(f"{sym}:{metric_id}:unmapped")
     _add_check(
@@ -839,10 +874,14 @@ def run(
 
     # C11: Stage 04 action codes are from the allowed set.
     invalid_action_rows = 0
-    if not stage04_policy.empty and {"action_code", "metric_id"}.issubset(set(stage04_policy.columns)):
+    if not stage04_policy.empty and {"action_code", "metric_id"}.issubset(
+        set(stage04_policy.columns)
+    ):
         p = stage04_policy.copy()
         p = p[p["metric_id"].astype(str).isin(STAGE04_POLICY_REQUIRED_METRICS)].copy()
-        invalid_action_rows = int((~p["action_code"].astype(str).isin(STAGE04_ALLOWED_ACTION_CODES)).sum())
+        invalid_action_rows = int(
+            (~p["action_code"].astype(str).isin(STAGE04_ALLOWED_ACTION_CODES)).sum()
+        )
     _add_check(
         checks_rows,
         check_id="C11",
@@ -858,7 +897,11 @@ def run(
 
     # C12: Generated Stage 04 snapshot exposes policy status table.
     stage04_snapshot = generated_root / "stage_04_snapshot.md"
-    stage04_snapshot_txt = stage04_snapshot.read_text(encoding="utf-8", errors="ignore") if stage04_snapshot.exists() else ""
+    stage04_snapshot_txt = (
+        stage04_snapshot.read_text(encoding="utf-8", errors="ignore")
+        if stage04_snapshot.exists()
+        else ""
+    )
     snapshot_has_policy = "#### Policy Status" in stage04_snapshot_txt
     _add_check(
         checks_rows,
@@ -877,19 +920,51 @@ def run(
     stage11_symbol_csv = edge_metrics_csv.parent / "execution_mc_symbol_scenarios.csv"
     stage11_month_session_csv = edge_metrics_csv.parent / "execution_mc_month_session_summary.csv"
     stage11_checks_csv = edge_metrics_csv.parent / "execution_mc_checks.csv"
-    stage11_symbol = pd.read_csv(stage11_symbol_csv) if stage11_symbol_csv.exists() else pd.DataFrame()
-    stage11_month_session = pd.read_csv(stage11_month_session_csv) if stage11_month_session_csv.exists() else pd.DataFrame()
-    stage11_checks = pd.read_csv(stage11_checks_csv) if stage11_checks_csv.exists() else pd.DataFrame()
+    stage11_symbol = (
+        pd.read_csv(stage11_symbol_csv) if stage11_symbol_csv.exists() else pd.DataFrame()
+    )
+    stage11_month_session = (
+        pd.read_csv(stage11_month_session_csv)
+        if stage11_month_session_csv.exists()
+        else pd.DataFrame()
+    )
+    stage11_checks = (
+        pd.read_csv(stage11_checks_csv) if stage11_checks_csv.exists() else pd.DataFrame()
+    )
     missing_stage11_cols = [c for c in STAGE11_REQUIRED_COLUMNS if c not in stage11_symbol.columns]
     scenario_ok = False
-    if not stage11_symbol.empty and "scenario_id" in stage11_symbol.columns and "symbol" in stage11_symbol.columns:
+    if (
+        not stage11_symbol.empty
+        and "scenario_id" in stage11_symbol.columns
+        and "symbol" in stage11_symbol.columns
+    ):
         have = set(stage11_symbol["scenario_id"].astype(str).unique().tolist())
         syms = stage11_symbol["symbol"].astype(str).str.upper().unique().tolist()
-        scenario_ok = bool(syms) and all(STAGE11_REQUIRED_SCENARIOS.issubset(set(stage11_symbol[stage11_symbol["symbol"].astype(str).str.upper() == s]["scenario_id"].astype(str).tolist())) for s in syms)
+        scenario_ok = bool(syms) and all(
+            STAGE11_REQUIRED_SCENARIOS.issubset(
+                set(
+                    stage11_symbol[stage11_symbol["symbol"].astype(str).str.upper() == s][
+                        "scenario_id"
+                    ]
+                    .astype(str)
+                    .tolist()
+                )
+            )
+            for s in syms
+        )
         if not STAGE11_REQUIRED_SCENARIOS.issubset(have):
             scenario_ok = False
-    stage11_exists_ok = stage11_symbol_csv.exists() and stage11_month_session_csv.exists() and stage11_checks_csv.exists()
-    stage11_schema_ok = len(missing_stage11_cols) == 0 and scenario_ok and not stage11_month_session.empty and not stage11_checks.empty
+    stage11_exists_ok = (
+        stage11_symbol_csv.exists()
+        and stage11_month_session_csv.exists()
+        and stage11_checks_csv.exists()
+    )
+    stage11_schema_ok = (
+        len(missing_stage11_cols) == 0
+        and scenario_ok
+        and not stage11_month_session.empty
+        and not stage11_checks.empty
+    )
     _add_check(
         checks_rows,
         check_id="C13",
@@ -915,8 +990,14 @@ def run(
 
     # C14: Generated Stage 11 snapshot exists and includes key sections.
     stage11_snapshot = generated_root / "stage_11_snapshot.md"
-    stage11_txt = stage11_snapshot.read_text(encoding="utf-8", errors="ignore") if stage11_snapshot.exists() else ""
-    stage11_snapshot_ok = ("#### Key Results" in stage11_txt) and ("#### Monte Carlo Governance Checks" in stage11_txt)
+    stage11_txt = (
+        stage11_snapshot.read_text(encoding="utf-8", errors="ignore")
+        if stage11_snapshot.exists()
+        else ""
+    )
+    stage11_snapshot_ok = ("#### Key Results" in stage11_txt) and (
+        "#### Monte Carlo Governance Checks" in stage11_txt
+    )
     _add_check(
         checks_rows,
         check_id="C14",
@@ -947,8 +1028,12 @@ def run(
 
     # C16: Catalog manifest covers all non-generated analysis markdown files.
     catalog_manifest_csv = docs_root.parent / "analysis" / "catalog_manifest.csv"
-    catalog_manifest = pd.read_csv(catalog_manifest_csv) if catalog_manifest_csv.exists() else pd.DataFrame()
-    manifest_paths = set(catalog_manifest.get("doc_path", pd.Series(dtype=str)).astype(str).tolist())
+    catalog_manifest = (
+        pd.read_csv(catalog_manifest_csv) if catalog_manifest_csv.exists() else pd.DataFrame()
+    )
+    manifest_paths = set(
+        catalog_manifest.get("doc_path", pd.Series(dtype=str)).astype(str).tolist()
+    )
     required_analysis_paths = _analysis_docs_without_generated(docs_root)
     missing_in_manifest = sorted(list(required_analysis_paths - manifest_paths))
     _add_check(
@@ -1010,26 +1095,44 @@ def run(
     run_delta_gate_changes_csv = edge_metrics_csv.parent / "run_delta_gate_changes.csv"
     run_delta_report_md = docs_root.parent / "analysis" / "run_delta_dashboard.md"
     try:
-        run_registry = pd.read_csv(run_registry_csv) if run_registry_csv.exists() else pd.DataFrame()
+        run_registry = (
+            pd.read_csv(run_registry_csv) if run_registry_csv.exists() else pd.DataFrame()
+        )
     except Exception:
         run_registry = pd.DataFrame()
     try:
-        run_delta_summary = pd.read_csv(run_delta_summary_csv) if run_delta_summary_csv.exists() else pd.DataFrame()
+        run_delta_summary = (
+            pd.read_csv(run_delta_summary_csv) if run_delta_summary_csv.exists() else pd.DataFrame()
+        )
     except Exception:
         run_delta_summary = pd.DataFrame()
     try:
-        run_delta_gate = pd.read_csv(run_delta_gate_changes_csv) if run_delta_gate_changes_csv.exists() else pd.DataFrame()
+        run_delta_gate = (
+            pd.read_csv(run_delta_gate_changes_csv)
+            if run_delta_gate_changes_csv.exists()
+            else pd.DataFrame()
+        )
     except Exception:
         run_delta_gate = pd.DataFrame()
     baseline_count = 0
     if not run_registry.empty and "is_baseline" in run_registry.columns:
-        baseline_count = int(pd.to_numeric(run_registry["is_baseline"], errors="coerce").fillna(0).astype(int).sum())
-    missing_run_delta_summary_cols = [c for c in RUN_DELTA_SUMMARY_REQUIRED_COLUMNS if c not in run_delta_summary.columns]
-    missing_run_delta_gate_cols = [c for c in RUN_DELTA_GATE_REQUIRED_COLUMNS if c not in run_delta_gate.columns]
+        baseline_count = int(
+            pd.to_numeric(run_registry["is_baseline"], errors="coerce").fillna(0).astype(int).sum()
+        )
+    missing_run_delta_summary_cols = [
+        c for c in RUN_DELTA_SUMMARY_REQUIRED_COLUMNS if c not in run_delta_summary.columns
+    ]
+    missing_run_delta_gate_cols = [
+        c for c in RUN_DELTA_GATE_REQUIRED_COLUMNS if c not in run_delta_gate.columns
+    ]
     baseline_ref_ok = False
-    if not run_delta_summary.empty and {"baseline_run_id", "latest_run_id"}.issubset(set(run_delta_summary.columns)):
+    if not run_delta_summary.empty and {"baseline_run_id", "latest_run_id"}.issubset(
+        set(run_delta_summary.columns)
+    ):
         row = run_delta_summary.iloc[0]
-        baseline_ref_ok = bool(str(row.get("baseline_run_id", "")).strip()) and bool(str(row.get("latest_run_id", "")).strip())
+        baseline_ref_ok = bool(str(row.get("baseline_run_id", "")).strip()) and bool(
+            str(row.get("latest_run_id", "")).strip()
+        )
     run_delta_ok = (
         run_registry_csv.exists()
         and run_delta_summary_csv.exists()
@@ -1067,13 +1170,17 @@ def run(
     # C20: Taxonomy has no unclassified docs.
     taxonomy_manifest_csv = docs_root.parent / "analysis" / "catalog_manifest.csv"
     try:
-        taxonomy_manifest = pd.read_csv(taxonomy_manifest_csv) if taxonomy_manifest_csv.exists() else pd.DataFrame()
+        taxonomy_manifest = (
+            pd.read_csv(taxonomy_manifest_csv) if taxonomy_manifest_csv.exists() else pd.DataFrame()
+        )
     except Exception:
         taxonomy_manifest = pd.DataFrame()
     unclassified_count = 0
     legacy_count = 0
     if not taxonomy_manifest.empty and "group" in taxonomy_manifest.columns:
-        unclassified_count = int(taxonomy_manifest["group"].astype(str).str.lower().isin(["unclassified", "misc"]).sum())
+        unclassified_count = int(
+            taxonomy_manifest["group"].astype(str).str.lower().isin(["unclassified", "misc"]).sum()
+        )
         legacy_count = int(taxonomy_manifest["group"].astype(str).str.lower().eq("legacy").sum())
     taxonomy_rules_md = docs_root.parent / "analysis" / "taxonomy_rules.md"
     _add_check(
@@ -1109,15 +1216,23 @@ def run(
     operator_report_md = docs_root.parent / "analysis" / "operator_action_report.md"
     operator_playbook_md = docs_root / "operator_playbook.md"
     try:
-        operator_status = pd.read_csv(operator_status_csv) if operator_status_csv.exists() else pd.DataFrame()
+        operator_status = (
+            pd.read_csv(operator_status_csv) if operator_status_csv.exists() else pd.DataFrame()
+        )
     except Exception:
         operator_status = pd.DataFrame()
-    missing_operator_cols = [c for c in OPERATOR_ACTION_REQUIRED_COLUMNS if c not in operator_status.columns]
+    missing_operator_cols = [
+        c for c in OPERATOR_ACTION_REQUIRED_COLUMNS if c not in operator_status.columns
+    ]
     unresolved_schema_rows = 0
     if not operator_status.empty:
-        req = operator_status[[c for c in ["band", "action_code", "action_summary"] if c in operator_status.columns]].copy()
+        req = operator_status[
+            [c for c in ["band", "action_code", "action_summary"] if c in operator_status.columns]
+        ].copy()
         if not req.empty:
-            unresolved_schema_rows = int((req.astype(str).apply(lambda x: x.str.strip() == "").any(axis=1)).sum())
+            unresolved_schema_rows = int(
+                (req.astype(str).apply(lambda x: x.str.strip() == "").any(axis=1)).sum()
+            )
     operator_ok = (
         operator_status_csv.exists()
         and operator_report_md.exists()
@@ -1181,12 +1296,17 @@ def run(
     if not cmap.empty and "class" in cmap.columns:
         invalid_classes = int((~cmap["class"].astype(str).isin(CANONICAL_ALLOWED_CLASSES)).sum())
         primary = cmap[cmap["doc_path"].astype(str).str.startswith("analysis/")].copy()
-        primary_misclassified = int((~primary["class"].astype(str).isin(["stage_integrated", "governance_core"])).sum())
+        primary_misclassified = int(
+            (~primary["class"].astype(str).isin(["stage_integrated", "governance_core"])).sum()
+        )
     _add_check(
         checks_rows,
         check_id="C27",
         check_name="canonical_map_valid_primary_classification",
-        passed=canonical_map_csv.exists() and len(missing_cmap_cols) == 0 and invalid_classes == 0 and primary_misclassified == 0,
+        passed=canonical_map_csv.exists()
+        and len(missing_cmap_cols) == 0
+        and invalid_classes == 0
+        and primary_misclassified == 0,
         severity_if_fail="high",
         metric_name="canonical_map_invalid_rows",
         metric_value=int(invalid_classes + primary_misclassified + len(missing_cmap_cols)),
@@ -1226,15 +1346,21 @@ def run(
     # C29: Canonical uniqueness for symbol x stage_family among stage-integrated docs.
     dup_count = 0
     missing_count = 0
-    if not cmap.empty and {"symbol", "stage_family", "class", "is_canonical", "doc_path"}.issubset(set(cmap.columns)):
+    if not cmap.empty and {"symbol", "stage_family", "class", "is_canonical", "doc_path"}.issubset(
+        set(cmap.columns)
+    ):
         x = cmap[
             (cmap["class"].astype(str) == "stage_integrated")
-            & (cmap["symbol"].astype(str).isin(["EURUSD", "GBPUSD", "USDJPY", "USDCHF"]))
+            & (cmap["symbol"].astype(str).isin(["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]))
             & (cmap["stage_family"].astype(str) != "none")
         ].copy()
         if not x.empty:
-            x["is_canonical"] = x["is_canonical"].astype(str).str.lower().isin(["1", "true", "t", "yes", "y"])
-            grp = x.groupby(["symbol", "stage_family"], as_index=False).agg(canon_count=("is_canonical", "sum"))
+            x["is_canonical"] = (
+                x["is_canonical"].astype(str).str.lower().isin(["1", "true", "t", "yes", "y"])
+            )
+            grp = x.groupby(["symbol", "stage_family"], as_index=False).agg(
+                canon_count=("is_canonical", "sum")
+            )
             dup_count = int((grp["canon_count"] > 1).sum())
             missing_count = int((grp["canon_count"] < 1).sum())
     _add_check(
@@ -1248,7 +1374,9 @@ def run(
         threshold=0,
         comparator="==",
         source_path=canonical_map_csv,
-        details=json.dumps({"duplicate_groups": dup_count, "missing_groups": missing_count}, sort_keys=True),
+        details=json.dumps(
+            {"duplicate_groups": dup_count, "missing_groups": missing_count}, sort_keys=True
+        ),
     )
 
     # C30: Stage integrity checks exist and have zero high/critical failures.
@@ -1256,7 +1384,11 @@ def run(
     stage_integrity_issues_csv = edge_metrics_csv.parent / "oco_stage_integrity_issues.csv"
     stage_integrity_report_md = docs_root.parent / "analysis" / "oco_stage_integrity_report.md"
     try:
-        si = pd.read_csv(stage_integrity_checks_csv) if stage_integrity_checks_csv.exists() else pd.DataFrame()
+        si = (
+            pd.read_csv(stage_integrity_checks_csv)
+            if stage_integrity_checks_csv.exists()
+            else pd.DataFrame()
+        )
     except Exception:
         si = pd.DataFrame()
     missing_si_cols = [c for c in STAGE_INTEGRITY_REQUIRED_COLUMNS if c not in si.columns]
@@ -1303,7 +1435,11 @@ def run(
     except Exception:
         drift = pd.DataFrame()
     try:
-        drift_alerts = pd.read_csv(execution_drift_alerts_csv) if execution_drift_alerts_csv.exists() else pd.DataFrame()
+        drift_alerts = (
+            pd.read_csv(execution_drift_alerts_csv)
+            if execution_drift_alerts_csv.exists()
+            else pd.DataFrame()
+        )
     except Exception:
         drift_alerts = pd.DataFrame()
     missing_drift_cols = [c for c in EXECUTION_DRIFT_REQUIRED_COLUMNS if c not in drift.columns]
@@ -1348,7 +1484,11 @@ def run(
     except Exception:
         sens = pd.DataFrame()
     try:
-        sens_alerts = pd.read_csv(threshold_sens_alerts_csv) if threshold_sens_alerts_csv.exists() else pd.DataFrame()
+        sens_alerts = (
+            pd.read_csv(threshold_sens_alerts_csv)
+            if threshold_sens_alerts_csv.exists()
+            else pd.DataFrame()
+        )
     except Exception:
         sens_alerts = pd.DataFrame()
     missing_sens_cols = [c for c in THRESHOLD_SENSITIVITY_REQUIRED_COLUMNS if c not in sens.columns]
@@ -1357,8 +1497,24 @@ def run(
         if (not sens.empty and "symbol" in sens.columns)
         else set()
     )
-    rec_count = int(pd.to_numeric(sens.get("is_recommended", pd.Series(dtype=float)), errors="coerce").fillna(0).sum()) if not sens.empty else 0
-    cur_count = int(pd.to_numeric(sens.get("is_current_policy", pd.Series(dtype=float)), errors="coerce").fillna(0).sum()) if not sens.empty else 0
+    rec_count = (
+        int(
+            pd.to_numeric(sens.get("is_recommended", pd.Series(dtype=float)), errors="coerce")
+            .fillna(0)
+            .sum()
+        )
+        if not sens.empty
+        else 0
+    )
+    cur_count = (
+        int(
+            pd.to_numeric(sens.get("is_current_policy", pd.Series(dtype=float)), errors="coerce")
+            .fillna(0)
+            .sum()
+        )
+        if not sens.empty
+        else 0
+    )
     _add_check(
         checks_rows,
         check_id="C32",
@@ -1395,10 +1551,14 @@ def run(
     registry_issues_csv = edge_metrics_csv.parent / "oco_rule_universe_registry_issues.csv"
     registry_report_md = docs_root.parent / "analysis" / "oco_rule_universe_registry_report.md"
     try:
-        reg_checks = pd.read_csv(registry_checks_csv) if registry_checks_csv.exists() else pd.DataFrame()
+        reg_checks = (
+            pd.read_csv(registry_checks_csv) if registry_checks_csv.exists() else pd.DataFrame()
+        )
     except Exception:
         reg_checks = pd.DataFrame()
-    missing_reg_cols = [c for c in RULE_UNIVERSE_REGISTRY_REQUIRED_COLUMNS if c not in reg_checks.columns]
+    missing_reg_cols = [
+        c for c in RULE_UNIVERSE_REGISTRY_REQUIRED_COLUMNS if c not in reg_checks.columns
+    ]
     reg_fail = pd.DataFrame()
     if not reg_checks.empty and {"status", "severity_if_fail"}.issubset(set(reg_checks.columns)):
         reg_fail = reg_checks[reg_checks["status"].astype(str).str.lower() != "pass"].copy()
@@ -1446,7 +1606,10 @@ def run(
         disp = pd.DataFrame()
     missing_disp_cols = [c for c in ALERT_DISPOSITION_REQUIRED_COLUMNS if c not in disp.columns]
     alert_keys_expected: set[str] = set()
-    for _df in [drift_alerts if "drift_alerts" in locals() else pd.DataFrame(), sens_alerts if "sens_alerts" in locals() else pd.DataFrame()]:
+    for _df in [
+        drift_alerts if "drift_alerts" in locals() else pd.DataFrame(),
+        sens_alerts if "sens_alerts" in locals() else pd.DataFrame(),
+    ]:
         if _df.empty:
             continue
         x = _df.copy()
@@ -1457,16 +1620,24 @@ def run(
         x["symbol"] = x.get("symbol", pd.Series(dtype=str)).astype(str).str.upper()
         x["metric_id"] = x.get("metric_id", pd.Series(dtype=str)).astype(str)
         x["test_month"] = x.get("test_month", pd.Series(dtype=str)).astype(str)
-        alert_keys_expected |= {f"{a}|{b}|{c}" for a, b, c in zip(x["symbol"], x["metric_id"], x["test_month"], strict=False)}
+        alert_keys_expected |= {
+            f"{a}|{b}|{c}"
+            for a, b, c in zip(x["symbol"], x["metric_id"], x["test_month"], strict=False)
+        }
     disp_keys: set[str] = set()
     expired_exception_count = 0
     if not disp.empty and {"symbol", "metric_id", "test_month"}.issubset(set(disp.columns)):
         disp["symbol"] = disp["symbol"].astype(str).str.upper()
         disp["metric_id"] = disp["metric_id"].astype(str)
         disp["test_month"] = disp["test_month"].astype(str)
-        disp_keys = {f"{a}|{b}|{c}" for a, b, c in zip(disp["symbol"], disp["metric_id"], disp["test_month"], strict=False)}
+        disp_keys = {
+            f"{a}|{b}|{c}"
+            for a, b, c in zip(disp["symbol"], disp["metric_id"], disp["test_month"], strict=False)
+        }
         if {"status", "is_expired"}.issubset(set(disp.columns)):
-            is_expired = disp["is_expired"].astype(str).str.lower().isin(["1", "true", "t", "yes", "y"])
+            is_expired = (
+                disp["is_expired"].astype(str).str.lower().isin(["1", "true", "t", "yes", "y"])
+            )
             is_exception = disp["status"].astype(str).str.lower().eq("accepted_exception")
             expired_exception_count = int((is_expired & is_exception).sum())
     missing_dispositions = int(len(alert_keys_expected - disp_keys))
@@ -1508,7 +1679,9 @@ def run(
             policy_cfg = loaded if isinstance(loaded, dict) else {}
         except Exception:
             policy_cfg = {}
-    hard_fail_expired = str(policy_cfg.get("hard_fail_on_expired_exception", True)).strip().lower() in {"1", "true", "yes", "y", "t"}
+    hard_fail_expired = str(
+        policy_cfg.get("hard_fail_on_expired_exception", True)
+    ).strip().lower() in {"1", "true", "yes", "y", "t"}
     expired_accepted = 0
     if not disp.empty and {"status", "is_expired"}.issubset(set(disp.columns)):
         is_exp = disp["is_expired"].astype(str).str.lower().isin(["1", "true", "t", "yes", "y"])
@@ -1535,7 +1708,9 @@ def run(
     )
 
     # C36: Recurrence breaches must not remain active when hard-fail recurrence policy is enabled.
-    hard_fail_recurrence = str(policy_cfg.get("hard_fail_on_recurrence_breach", True)).strip().lower() in {"1", "true", "yes", "y", "t"}
+    hard_fail_recurrence = str(
+        policy_cfg.get("hard_fail_on_recurrence_breach", True)
+    ).strip().lower() in {"1", "true", "yes", "y", "t"}
     max_amber_consecutive = int(policy_cfg.get("max_amber_consecutive_runs", 3))
     max_amber_months = int(policy_cfg.get("max_amber_months", 6))
     recurrence_breach_count = 0
@@ -1544,21 +1719,39 @@ def run(
         try:
             st = pd.read_csv(stage_status_csv)
             if not st.empty and "gate_tick_exact" in st.columns:
-                valid_syms = set(st.loc[st["gate_tick_exact"] == True, "symbol"].astype(str).str.upper().tolist())
+                valid_syms = set(
+                    st.loc[st["gate_tick_exact"] == True, "symbol"].astype(str).str.upper().tolist()
+                )
         except Exception:
             pass
 
     disp_filtered = disp.copy()
     if not disp_filtered.empty and valid_syms and "symbol" in disp_filtered.columns:
-        disp_filtered = disp_filtered[disp_filtered["symbol"].astype(str).str.upper().isin(valid_syms)]
+        disp_filtered = disp_filtered[
+            disp_filtered["symbol"].astype(str).str.upper().isin(valid_syms)
+        ]
 
     if not disp_filtered.empty:
         if "recurrence_breach" in disp_filtered.columns:
-            recurrence_breach_count = int(disp_filtered["recurrence_breach"].astype(str).str.lower().isin(["1", "true", "t", "yes", "y"]).sum())
-        elif {"consecutive_runs_non_green", "months_non_green_count"}.issubset(set(disp_filtered.columns)):
-            consec = pd.to_numeric(disp_filtered["consecutive_runs_non_green"], errors="coerce").fillna(0)
-            months = pd.to_numeric(disp_filtered["months_non_green_count"], errors="coerce").fillna(0)
-            recurrence_breach_count = int(((consec > max_amber_consecutive) | (months > max_amber_months)).sum())
+            recurrence_breach_count = int(
+                disp_filtered["recurrence_breach"]
+                .astype(str)
+                .str.lower()
+                .isin(["1", "true", "t", "yes", "y"])
+                .sum()
+            )
+        elif {"consecutive_runs_non_green", "months_non_green_count"}.issubset(
+            set(disp_filtered.columns)
+        ):
+            consec = pd.to_numeric(
+                disp_filtered["consecutive_runs_non_green"], errors="coerce"
+            ).fillna(0)
+            months = pd.to_numeric(disp_filtered["months_non_green_count"], errors="coerce").fillna(
+                0
+            )
+            recurrence_breach_count = int(
+                ((consec > max_amber_consecutive) | (months > max_amber_months)).sum()
+            )
     _add_check(
         checks_rows,
         check_id="C36",
@@ -1584,7 +1777,9 @@ def run(
     # C37: Non-green disposition rows must include required governance metadata.
     metadata_missing = 0
     if not disp.empty:
-        ng = disp[disp.get("band", pd.Series(dtype=str)).astype(str).str.lower().isin(["amber", "red"])].copy()
+        ng = disp[
+            disp.get("band", pd.Series(dtype=str)).astype(str).str.lower().isin(["amber", "red"])
+        ].copy()
         if not ng.empty:
             req_cols = ["owner", "rationale", "action_code", "expires_utc"]
             for c in req_cols:
@@ -1611,7 +1806,9 @@ def run(
     if not disp.empty and {"escalation_level", "evidence_link"}.issubset(set(disp.columns)):
         block_rows = disp[disp["escalation_level"].astype(str).str.lower() == "block"].copy()
         if not block_rows.empty:
-            missing_block_evidence = int((block_rows["evidence_link"].astype(str).str.strip() == "").sum())
+            missing_block_evidence = int(
+                (block_rows["evidence_link"].astype(str).str.strip() == "").sum()
+            )
     _add_check(
         checks_rows,
         check_id="C38",
@@ -1632,11 +1829,29 @@ def run(
         explain_df = pd.read_csv(explain_csv) if explain_csv.exists() else pd.DataFrame()
     except Exception:
         explain_df = pd.DataFrame()
-    missing_explain_cols = [c for c in GOVERNANCE_EXPLAINABILITY_REQUIRED_COLUMNS if c not in explain_df.columns]
-    active_metrics = set(
-        disp[disp.get("band", pd.Series(dtype=str)).astype(str).str.lower().isin(["amber", "red"])]["metric_id"].astype(str).unique().tolist()
-    ) if (not disp.empty and "metric_id" in disp.columns) else set()
-    explain_metrics = set(explain_df.get("metric_id", pd.Series(dtype=str)).astype(str).unique().tolist()) if not explain_df.empty else set()
+    missing_explain_cols = [
+        c for c in GOVERNANCE_EXPLAINABILITY_REQUIRED_COLUMNS if c not in explain_df.columns
+    ]
+    active_metrics = (
+        set(
+            disp[
+                disp.get("band", pd.Series(dtype=str))
+                .astype(str)
+                .str.lower()
+                .isin(["amber", "red"])
+            ]["metric_id"]
+            .astype(str)
+            .unique()
+            .tolist()
+        )
+        if (not disp.empty and "metric_id" in disp.columns)
+        else set()
+    )
+    explain_metrics = (
+        set(explain_df.get("metric_id", pd.Series(dtype=str)).astype(str).unique().tolist())
+        if not explain_df.empty
+        else set()
+    )
     missing_coverage = sorted(list(active_metrics - explain_metrics))
     _add_check(
         checks_rows,
@@ -1701,7 +1916,9 @@ def run(
     # C41: System reference docs exist, generated markers are present, and build status is complete.
     sysref_status_csv = edge_metrics_csv.parent / "system_reference_build_status.csv"
     try:
-        sysref_status = pd.read_csv(sysref_status_csv) if sysref_status_csv.exists() else pd.DataFrame()
+        sysref_status = (
+            pd.read_csv(sysref_status_csv) if sysref_status_csv.exists() else pd.DataFrame()
+        )
     except Exception:
         sysref_status = pd.DataFrame()
     sysref_missing_pages: list[str] = []
@@ -1716,7 +1933,9 @@ def run(
     status_cols = {"page_key", "doc_path", "generated_at_utc"}
     missing_status_cols = [c for c in status_cols if c not in sysref_status.columns]
     status_keys = (
-        set(sysref_status["page_key"].astype(str).tolist()) if (not sysref_status.empty and "page_key" in sysref_status.columns) else set()
+        set(sysref_status["page_key"].astype(str).tolist())
+        if (not sysref_status.empty and "page_key" in sysref_status.columns)
+        else set()
     )
     expected_keys = {k for k, _ in SYSREF_PAGE_SPECS}
     _add_check(
@@ -1759,7 +1978,10 @@ def run(
             sysref_snapshot_gaps.append(rel_path + ":missing_block")
             continue
         has_header = "#### Rolling Snapshot By Symbol" in block
-        has_symbol_row = any(re.search(rf"\|\s*{sym}\s*\|", block) is not None for sym in sorted(SYSREF_REQUIRED_SYMBOLS))
+        has_symbol_row = any(
+            re.search(rf"\|\s*{sym}\s*\|", block) is not None
+            for sym in sorted(SYSREF_REQUIRED_SYMBOLS)
+        )
         has_unavailable = "| unavailable |" in block.lower()
         if not has_header or not (has_symbol_row or has_unavailable):
             sysref_snapshot_gaps.append(rel_path)
@@ -1836,7 +2058,9 @@ def run(
             continue
         now = datetime.now(timezone.utc)
         age_h = float((now - ts.to_pydatetime()).total_seconds() / 3600.0)
-        sysref_max_age_h = age_h if sysref_max_age_h == float("inf") else max(sysref_max_age_h, age_h)
+        sysref_max_age_h = (
+            age_h if sysref_max_age_h == float("inf") else max(sysref_max_age_h, age_h)
+        )
     _add_check(
         checks_rows,
         check_id="C44",
@@ -1872,7 +2096,7 @@ def run(
         details=",".join(stop_limit_missing),
     )
 
-    # C46: Symbol coverage line must include EURUSD, GBPUSD, and USDJPY.
+    # C46: Symbol coverage line must include active pairs.
     symbol_coverage_gaps: list[str] = []
     for key, rel_path in SYSREF_PAGE_SPECS:
         p = docs_root.parent / rel_path
@@ -1903,8 +2127,14 @@ def run(
 
     # C47: Stage 03 must include explicit CatBoost lifecycle/spec semantics.
     stage03_path = docs_root / "stage_03_monthly_wfo.md"
-    stage03_txt = stage03_path.read_text(encoding="utf-8", errors="ignore").lower() if stage03_path.exists() else ""
-    stage03_missing_terms = [t for t in STAGE03_CATBOOST_REQUIRED_TERMS if t.lower() not in stage03_txt]
+    stage03_txt = (
+        stage03_path.read_text(encoding="utf-8", errors="ignore").lower()
+        if stage03_path.exists()
+        else ""
+    )
+    stage03_missing_terms = [
+        t for t in STAGE03_CATBOOST_REQUIRED_TERMS if t.lower() not in stage03_txt
+    ]
     _add_check(
         checks_rows,
         check_id="C47",
@@ -1944,8 +2174,14 @@ def run(
 
     # C49: Stage 05 must explicitly document dependency on Stage 3 outputs.
     stage05_path = docs_root / "stage_05_reduced_core.md"
-    stage05_txt = stage05_path.read_text(encoding="utf-8", errors="ignore").lower() if stage05_path.exists() else ""
-    stage05_missing_terms = [t for t in STAGE05_STAGE3_LINK_REQUIRED_TERMS if t.lower() not in stage05_txt]
+    stage05_txt = (
+        stage05_path.read_text(encoding="utf-8", errors="ignore").lower()
+        if stage05_path.exists()
+        else ""
+    )
+    stage05_missing_terms = [
+        t for t in STAGE05_STAGE3_LINK_REQUIRED_TERMS if t.lower() not in stage05_txt
+    ]
     _add_check(
         checks_rows,
         check_id="C49",
@@ -1986,8 +2222,14 @@ def run(
         if not p.exists():
             missing_tick_builder_scripts.append(rel)
     stage01_path = docs_root / "stage_01_data_foundation.md"
-    stage01_txt = stage01_path.read_text(encoding="utf-8", errors="ignore").lower() if stage01_path.exists() else ""
-    stage01_missing_terms = [t for t in STAGE01_TICK_BUILDER_REQUIRED_TERMS if t.lower() not in stage01_txt]
+    stage01_txt = (
+        stage01_path.read_text(encoding="utf-8", errors="ignore").lower()
+        if stage01_path.exists()
+        else ""
+    )
+    stage01_missing_terms = [
+        t for t in STAGE01_TICK_BUILDER_REQUIRED_TERMS if t.lower() not in stage01_txt
+    ]
     c51_pass = (len(missing_tick_builder_scripts) == 0) and (len(stage01_missing_terms) == 0)
     _add_check(
         checks_rows,
@@ -2044,7 +2286,9 @@ def run(
     lines: list[str] = []
     lines.append("# OCO Docs Contract Report")
     lines.append("")
-    lines.append(f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`")
+    lines.append(
+        f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`"
+    )
     lines.append(f"- checks_csv: `{out_checks_csv}`")
     lines.append(f"- issues_csv: `{out_issues_csv}`")
     lines.append("")
@@ -2053,7 +2297,9 @@ def run(
         lines.append("## Summary")
         lines.append(f"- checks_total: `{int(len(checks))}`")
         lines.append(f"- failed: `{int((status != 'pass').sum())}`")
-        lines.append(f"- high_or_critical_failed: `{int(((status != 'pass') & checks['severity_if_fail'].astype(str).str.lower().isin(['high','critical'])).sum())}`")
+        lines.append(
+            f"- high_or_critical_failed: `{int(((status != 'pass') & checks['severity_if_fail'].astype(str).str.lower().isin(['high', 'critical'])).sum())}`"
+        )
         lines.append("")
         lines.append("## Checks")
         lines.append(_table(checks))
@@ -2069,14 +2315,24 @@ def main() -> None:
     p = argparse.ArgumentParser(description="Validate OCO docs contract")
     p.add_argument("--docs-root", default="docs/strategy_bible")
     p.add_argument("--generated-root", default="docs/strategy_bible/generated")
-    p.add_argument("--edge-metrics-csv", default="data/analysis/tick_opportunity_mining/edge_clarity_stage_metrics.csv")
-    p.add_argument("--stage-status-csv", default="data/analysis/tick_opportunity_mining/oco_bible_stage_status.csv")
+    p.add_argument(
+        "--edge-metrics-csv",
+        default="data/analysis/tick_opportunity_mining/edge_clarity_stage_metrics.csv",
+    )
+    p.add_argument(
+        "--stage-status-csv",
+        default="data/analysis/tick_opportunity_mining/oco_bible_stage_status.csv",
+    )
     p.add_argument("--metric-dictionary-md", default="docs/strategy_bible/metric_dictionary.md")
     p.add_argument("--edge-report-md", default="docs/analysis/oco_edge_clarity_report.md")
     p.add_argument("--mkdocs-yml", default="mkdocs.yml")
     p.add_argument("--max-age-hours", type=float, default=24.0 * 7.0)
-    p.add_argument("--out-checks-csv", default="data/analysis/tick_opportunity_mining/docs_contract_checks.csv")
-    p.add_argument("--out-issues-csv", default="data/analysis/tick_opportunity_mining/docs_contract_issues.csv")
+    p.add_argument(
+        "--out-checks-csv", default="data/analysis/tick_opportunity_mining/docs_contract_checks.csv"
+    )
+    p.add_argument(
+        "--out-issues-csv", default="data/analysis/tick_opportunity_mining/docs_contract_issues.csv"
+    )
     p.add_argument("--report-out", default="docs/analysis/oco_docs_contract_report.md")
     args = p.parse_args()
 
@@ -2094,7 +2350,9 @@ def main() -> None:
         thresholds=Thresholds(max_age_hours=float(args.max_age_hours)),
     )
 
-    failed = int((checks["status"].astype(str).str.lower() != "pass").sum()) if not checks.empty else 0
+    failed = (
+        int((checks["status"].astype(str).str.lower() != "pass").sum()) if not checks.empty else 0
+    )
     print(f"wrote checks: {args.out_checks_csv} rows={len(checks)}")
     print(f"wrote issues: {args.out_issues_csv} rows={len(issues)}")
     print(f"failed_checks={failed}")

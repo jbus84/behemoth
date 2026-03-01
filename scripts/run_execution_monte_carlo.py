@@ -142,7 +142,9 @@ def _simulate_symbol_scenario(
     q = np.where(cap_fill_np, fill_decay_keep, 0.0).astype(float)
 
     # Additional slip above cap plus spread/latency add-ons.
-    extra_slip = float(scenario.spread_add_pips) + np.where(cap_fill_np, np.maximum(0.0, overs - cap_eff), 0.0)
+    extra_slip = float(scenario.spread_add_pips) + np.where(
+        cap_fill_np, np.maximum(0.0, overs - cap_eff), 0.0
+    )
     pnl_pre = np.where(cap_fill_np, gross - extra_slip, 0.0).astype(float)
 
     d["q_keep"] = q
@@ -166,8 +168,8 @@ def _simulate_symbol_scenario(
 
         mu_signal = float(np.mean(pnl_g * q_g))
         # x = pnl_pre * Bernoulli(q)
-        ex2 = float(np.mean((pnl_g ** 2) * q_g))
-        var_signal = max(ex2 - (mu_signal ** 2), 0.0)
+        ex2 = float(np.mean((pnl_g**2) * q_g))
+        var_signal = max(ex2 - (mu_signal**2), 0.0)
         sd_mean_signal = float(np.sqrt(var_signal / max(n, 1)))
 
         mean_fill_rate = float(np.mean(q_g))
@@ -204,8 +206,12 @@ def _simulate_symbol_scenario(
         )
 
         month_n_map[str(month)] = int(month_n_map.get(str(month), 0) + n)
-        month_draw_map[str(month)] = month_draw_map.get(str(month), np.zeros(iterations, dtype=float)) + sum_draws
-        month_fill_map[str(month)] = month_fill_map.get(str(month), np.zeros(iterations, dtype=float)) + fill_count_draws
+        month_draw_map[str(month)] = (
+            month_draw_map.get(str(month), np.zeros(iterations, dtype=float)) + sum_draws
+        )
+        month_fill_map[str(month)] = (
+            month_fill_map.get(str(month), np.zeros(iterations, dtype=float)) + fill_count_draws
+        )
 
     for month in sorted(month_draw_map.keys()):
         n_total = int(month_n_map.get(month, 0))
@@ -244,11 +250,15 @@ def _simulate_symbol_scenario(
             month_matrix.append(month_signal)
             total_sum_draws += month_sum
             total_fill_draws += month_fill
-        month_arr = np.vstack(month_matrix) if month_matrix else np.zeros((0, iterations), dtype=float)
+        month_arr = (
+            np.vstack(month_matrix) if month_matrix else np.zeros((0, iterations), dtype=float)
+        )
         total_signal = total_sum_draws / float(max(total_n, 1))
         total_trade = np.where(total_fill_draws > 1e-9, total_sum_draws / total_fill_draws, 0.0)
         total_fill_rate = total_fill_draws / float(max(total_n, 1))
-        worst_month = np.min(month_arr, axis=0) if month_arr.size else np.zeros(iterations, dtype=float)
+        worst_month = (
+            np.min(month_arr, axis=0) if month_arr.size else np.zeros(iterations, dtype=float)
+        )
         symbol_summary = pd.DataFrame(
             [
                 {
@@ -261,7 +271,9 @@ def _simulate_symbol_scenario(
                     "lb99_per_signal_pips": float(np.quantile(total_signal, 0.01)),
                     "mean_per_trade_pips": float(np.mean(total_trade)),
                     "mean_fill_rate": float(np.mean(total_fill_rate)),
-                    "prob_negative_month": float(np.mean(month_arr < 0.0)) if month_arr.size else float("nan"),
+                    "prob_negative_month": float(np.mean(month_arr < 0.0))
+                    if month_arr.size
+                    else float("nan"),
                     "drawdown_proxy_p95": float(np.quantile(worst_month, 0.05)),
                 }
             ]
@@ -328,11 +340,21 @@ def run_for_symbol(
     )
 
 
-def _write_report(*, out_path: Path, symbols: list[str], iterations: int, seed: int, month_session: pd.DataFrame, symbol_scen: pd.DataFrame) -> None:
+def _write_report(
+    *,
+    out_path: Path,
+    symbols: list[str],
+    iterations: int,
+    seed: int,
+    month_session: pd.DataFrame,
+    symbol_scen: pd.DataFrame,
+) -> None:
     lines: list[str] = []
     lines.append("# OCO Execution Monte Carlo Report")
     lines.append("")
-    lines.append(f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`")
+    lines.append(
+        f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`"
+    )
     lines.append(f"- symbols: `{','.join(symbols)}`")
     lines.append(f"- iterations: `{int(iterations)}`")
     lines.append(f"- seed: `{int(seed)}`")
@@ -342,22 +364,38 @@ def _write_report(*, out_path: Path, symbols: list[str], iterations: int, seed: 
     lines.append(_table(scen_df))
     lines.append("")
     lines.append("## Symbol Scenario Summary")
-    lines.append(_table(symbol_scen.sort_values(["symbol", "scenario_id"]) if not symbol_scen.empty else symbol_scen))
+    lines.append(
+        _table(
+            symbol_scen.sort_values(["symbol", "scenario_id"])
+            if not symbol_scen.empty
+            else symbol_scen
+        )
+    )
     lines.append("")
     lines.append("## Month x Session Summary (head)")
     if month_session.empty:
         lines.append("_empty_")
     else:
-        lines.append(_table(month_session.sort_values(["symbol", "scenario_id", "test_month", "session_bucket"]).head(120)))
+        lines.append(
+            _table(
+                month_session.sort_values(
+                    ["symbol", "scenario_id", "test_month", "session_bucket"]
+                ).head(120)
+            )
+        )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Execution Monte Carlo for OCO stop-limit artifacts")
-    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY")
-    p.add_argument("--detail-dir", default="data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap")
-    p.add_argument("--caps-dir", default="data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap")
+    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD")
+    p.add_argument(
+        "--detail-dir", default="data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap"
+    )
+    p.add_argument(
+        "--caps-dir", default="data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap"
+    )
     p.add_argument("--out-dir", default="data/analysis/tick_opportunity_mining")
     p.add_argument("--iterations", type=int, default=2000)
     p.add_argument("--seed", type=int, default=20260227)
@@ -393,16 +431,22 @@ def main() -> None:
         if not s.empty:
             symbol_parts.append(s)
 
-    month_session = pd.concat(month_session_parts, ignore_index=True) if month_session_parts else pd.DataFrame()
+    month_session = (
+        pd.concat(month_session_parts, ignore_index=True) if month_session_parts else pd.DataFrame()
+    )
     monthly = pd.concat(monthly_parts, ignore_index=True) if monthly_parts else pd.DataFrame()
-    symbol_scenarios = pd.concat(symbol_parts, ignore_index=True) if symbol_parts else pd.DataFrame()
+    symbol_scenarios = (
+        pd.concat(symbol_parts, ignore_index=True) if symbol_parts else pd.DataFrame()
+    )
 
     if not symbol_scenarios.empty:
-        base = symbol_scenarios[symbol_scenarios["scenario_id"] == "S0_baseline"][["symbol", "mean_fill_rate"]].rename(
-            columns={"mean_fill_rate": "base_fill_rate"}
-        )
+        base = symbol_scenarios[symbol_scenarios["scenario_id"] == "S0_baseline"][
+            ["symbol", "mean_fill_rate"]
+        ].rename(columns={"mean_fill_rate": "base_fill_rate"})
         symbol_scenarios = symbol_scenarios.merge(base, on="symbol", how="left")
-        symbol_scenarios["fill_rate_drop_vs_S0"] = symbol_scenarios["base_fill_rate"] - symbol_scenarios["mean_fill_rate"]
+        symbol_scenarios["fill_rate_drop_vs_S0"] = (
+            symbol_scenarios["base_fill_rate"] - symbol_scenarios["mean_fill_rate"]
+        )
 
     out_dir.mkdir(parents=True, exist_ok=True)
     month_session_csv = out_dir / "execution_mc_month_session_summary.csv"

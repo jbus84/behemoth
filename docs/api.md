@@ -19,13 +19,13 @@ Minimum payload contract should include:
 - `symbol`, `event_ts`, `side`, `barrier_pips`, `horizon`, `cap_pips`, `state_id`, `candidate_uid`.
 
 ## Legacy API Stack
-Legacy FastAPI components remain under `services/api/` for integration work, but they are not the source of truth for the current OCO research process.
+Legacy FastAPI components have been removed and are no longer the source of truth for the current OCO research process.
 
 ## Rolling Historical Evidence
 
 <!-- GENERATED:SYSREF:API:START -->
-- generated_at_utc: `2026-03-01T07:53:44Z`
-- symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF`
+- generated_at_utc: `2026-03-01T09:52:30Z`
+- symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD`
 - stop-limit_reference: `stage_04_execution_realism`
 - artifact_sources:
   - `data/analysis/tick_opportunity_mining/oco_execution_drift_monthly.csv`
@@ -43,6 +43,8 @@ Legacy FastAPI components remain under `services/api/` for integration work, but
 | GBPUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 | USDJPY   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 | USDCHF   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| AUDUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| USDCAD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 
 #### Rolling Trend (Last 3 Months)
 | symbol   |   months_used | fill_rate_mean_3m   | overshoot_p95_mean_3m   |
@@ -51,6 +53,8 @@ Legacy FastAPI components remain under `services/api/` for integration work, but
 | GBPUSD   |             0 |                     |                         |
 | USDJPY   |             0 |                     |                         |
 | USDCHF   |             0 |                     |                         |
+| AUDUSD   |             0 |                     |                         |
+| USDCAD   |             0 |                     |                         |
 
 #### Governance Snapshot
 |   checks_failed |   high_critical_failed | max_age_hours_c6   |   run_delta_metric_rows_changed |   run_delta_gate_rows_changed |

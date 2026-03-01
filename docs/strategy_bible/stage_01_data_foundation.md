@@ -150,7 +150,7 @@ uv run python scripts/audit_data_reliability.py \
 <!-- GENERATED:STAGE_01:START -->
 ### Auto Snapshot - Stage 01
 
-- generated_at: `2026-03-01 07:53:15 UTC`
+- generated_at: `2026-03-01 09:52:04 UTC`
 - Contract check uses eval-year event tables consumed by WFO.
 - Null percentages should remain near 0 for required modeling fields.
 - Timezone contract rows include parse rate, monotonicity, DST and offset anomaly checks.
@@ -175,15 +175,18 @@ uv run python scripts/audit_data_reliability.py \
 #### Action Trigger Summary
 | symbol   | metric_id                 | band   | severity   | action_code   | action_summary     | owner    |
 |:---------|:--------------------------|:-------|:-----------|:--------------|:-------------------|:---------|
+| AUDUSD   | D16_spread_regime_shift_z | green  | info       | A0_MONITOR    | within policy band | research |
+| AUDUSD   | D17_gap_burst_ratio       | green  | info       | A0_MONITOR    | within policy band | data     |
+| AUDUSD   | D18_clock_jitter_cv       | green  | info       | A0_MONITOR    | within policy band | data     |
 | EURUSD   | D16_spread_regime_shift_z | green  | info       | A0_MONITOR    | within policy band | research |
 | EURUSD   | D17_gap_burst_ratio       | green  | info       | A0_MONITOR    | within policy band | data     |
 | EURUSD   | D18_clock_jitter_cv       | green  | info       | A0_MONITOR    | within policy band | data     |
 | GBPUSD   | D16_spread_regime_shift_z | green  | info       | A0_MONITOR    | within policy band | research |
 | GBPUSD   | D17_gap_burst_ratio       | green  | info       | A0_MONITOR    | within policy band | data     |
 | GBPUSD   | D18_clock_jitter_cv       | green  | info       | A0_MONITOR    | within policy band | data     |
-| USDJPY   | D16_spread_regime_shift_z | green  | info       | A0_MONITOR    | within policy band | research |
-| USDJPY   | D17_gap_burst_ratio       | green  | info       | A0_MONITOR    | within policy band | data     |
-| USDJPY   | D18_clock_jitter_cv       | green  | info       | A0_MONITOR    | within policy band | data     |
+| USDCAD   | D16_spread_regime_shift_z | green  | info       | A0_MONITOR    | within policy band | research |
+| USDCAD   | D17_gap_burst_ratio       | green  | info       | A0_MONITOR    | within policy band | data     |
+| USDCAD   | D18_clock_jitter_cv       | green  | info       | A0_MONITOR    | within policy band | data     |
 
 #### Details
 | symbol   |   events_rows |   cost_est_pips_null_pct |   range_pips_null_pct |   spread_z_null_pct |   tick_rate_z_null_pct |   vel_cost_units_h1_null_pct |   hl_first_null_pct |   d16_spread_regime_shift_z |   d17_gap_burst_ratio |   d18_clock_jitter_cv |   d18_clock_jitter_cv_raw |   reliability_checks_total |   reliability_failed |   reliability_high_critical_failed |

@@ -84,7 +84,11 @@ def run(
     checks_hc_fail = 0
     if not checks.empty and "status" in checks.columns:
         s = checks["status"].astype(str).str.lower()
-        sev = checks.get("severity_if_fail", pd.Series(index=checks.index, dtype=str)).astype(str).str.lower()
+        sev = (
+            checks.get("severity_if_fail", pd.Series(index=checks.index, dtype=str))
+            .astype(str)
+            .str.lower()
+        )
         checks_fail = int((s != "pass").sum())
         checks_hc_fail = int(((s != "pass") & sev.isin(["high", "critical"]).fillna(False)).sum())
 
@@ -93,7 +97,12 @@ def run(
     if not status.empty and "symbol" in status.columns:
         sym_total = int(status["symbol"].astype(str).nunique())
         if "symbol_all_gates_pass" in status.columns:
-            sym_pass = int(pd.to_numeric(status["symbol_all_gates_pass"], errors="coerce").fillna(0).astype(int).sum())
+            sym_pass = int(
+                pd.to_numeric(status["symbol_all_gates_pass"], errors="coerce")
+                .fillna(0)
+                .astype(int)
+                .sum()
+            )
 
     row = {
         "run_id": str(run_id),
@@ -137,7 +146,12 @@ def run(
 
     if "generated_at_utc" in reg.columns:
         ts = _dt_utc(reg["generated_at_utc"])
-        reg = reg.assign(_ts=ts).sort_values(["_ts", "run_id"], kind="stable").drop(columns=["_ts"]).reset_index(drop=True)
+        reg = (
+            reg.assign(_ts=ts)
+            .sort_values(["_ts", "run_id"], kind="stable")
+            .drop(columns=["_ts"])
+            .reset_index(drop=True)
+        )
 
     registry_csv.parent.mkdir(parents=True, exist_ok=True)
     reg.to_csv(registry_csv, index=False)
@@ -148,12 +162,28 @@ def main() -> None:
     p = argparse.ArgumentParser(description="Register docs run and snapshot key artifacts")
     p.add_argument("--run-id", default="")
     p.add_argument("--label", default="manual")
-    p.add_argument("--edge-metrics-csv", default="data/analysis/tick_opportunity_mining/edge_clarity_stage_metrics.csv")
-    p.add_argument("--stage-metrics-csv", default="data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv")
-    p.add_argument("--stage-status-csv", default="data/analysis/tick_opportunity_mining/oco_bible_stage_status.csv")
-    p.add_argument("--docs-checks-csv", default="data/analysis/tick_opportunity_mining/docs_contract_checks.csv")
-    p.add_argument("--registry-csv", default="data/analysis/tick_opportunity_mining/run_registry.csv")
-    p.add_argument("--snapshots-root", default="data/analysis/tick_opportunity_mining/run_snapshots")
+    p.add_argument(
+        "--edge-metrics-csv",
+        default="data/analysis/tick_opportunity_mining/edge_clarity_stage_metrics.csv",
+    )
+    p.add_argument(
+        "--stage-metrics-csv",
+        default="data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv",
+    )
+    p.add_argument(
+        "--stage-status-csv",
+        default="data/analysis/tick_opportunity_mining/oco_bible_stage_status.csv",
+    )
+    p.add_argument(
+        "--docs-checks-csv",
+        default="data/analysis/tick_opportunity_mining/docs_contract_checks.csv",
+    )
+    p.add_argument(
+        "--registry-csv", default="data/analysis/tick_opportunity_mining/run_registry.csv"
+    )
+    p.add_argument(
+        "--snapshots-root", default="data/analysis/tick_opportunity_mining/run_snapshots"
+    )
     p.add_argument("--set-baseline", action="store_true")
     args = p.parse_args()
 
@@ -173,7 +203,12 @@ def main() -> None:
         set_baseline=bool(args.set_baseline),
     )
 
-    baseline_rows = reg[pd.to_numeric(reg.get("is_baseline", pd.Series(dtype=float)), errors="coerce").fillna(0).astype(int) == 1].copy()
+    baseline_rows = reg[
+        pd.to_numeric(reg.get("is_baseline", pd.Series(dtype=float)), errors="coerce")
+        .fillna(0)
+        .astype(int)
+        == 1
+    ].copy()
     print(f"registered run: {row['run_id']}")
     print(f"registry rows: {len(reg)}")
     print(f"baseline runs: {len(baseline_rows)}")

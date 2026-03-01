@@ -1,26 +1,22 @@
 # OpenAPI
 
-## Status
-OpenAPI is optional and only relevant when the legacy API runtime is actively used.
+## Scope
 
-## Current OCO Pipeline
-The current strategy path is governed by stage contracts and research artifacts, not OpenAPI endpoints.
+- OpenAPI is optional and only needed for integration deployments.
+- OCO strategy governance remains artifact-first with stop-limit execution evidence.
 
-## If You Need API Spec
-Generate and inspect only for integration tasks:
-```bash
-make docs-openapi
-```
+## Operational Contract
 
-Then use either:
-- `docs/openapi.json`
-- legacy FastAPI docs (`/docs`, `/redoc`) when API is running.
+- stop-limit execution realism is mandatory for OCO suitability.
+- rolling evidence must be refreshed before decision use.
+
+## Rolling Historical Evidence
 
 ## Rolling Historical Evidence
 
 <!-- GENERATED:SYSREF:OPENAPI:START -->
-- generated_at_utc: `2026-03-01T07:53:44Z`
-- symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF`
+- generated_at_utc: `2026-03-01T09:52:30Z`
+- symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD`
 - stop-limit_reference: `stage_04_execution_realism`
 - artifact_sources:
   - `data/analysis/tick_opportunity_mining/oco_execution_drift_monthly.csv`
@@ -38,6 +34,8 @@ Then use either:
 | GBPUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 | USDJPY   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 | USDCHF   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| AUDUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| USDCAD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 
 #### Rolling Trend (Last 3 Months)
 | symbol   |   months_used | fill_rate_mean_3m   | overshoot_p95_mean_3m   |
@@ -46,6 +44,8 @@ Then use either:
 | GBPUSD   |             0 |                     |                         |
 | USDJPY   |             0 |                     |                         |
 | USDCHF   |             0 |                     |                         |
+| AUDUSD   |             0 |                     |                         |
+| USDCAD   |             0 |                     |                         |
 
 #### Governance Snapshot
 |   checks_failed |   high_critical_failed | max_age_hours_c6   |   run_delta_metric_rows_changed |   run_delta_gate_rows_changed |

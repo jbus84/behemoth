@@ -1,6 +1,6 @@
 # Analysis Catalog
 
-- generated_at_utc: `2026-03-01T07:47:08Z`
+- generated_at_utc: `2026-03-01T09:52:03Z`
 - manifest_csv: `analysis/catalog_manifest.csv`
 - gaps_report: `analysis/catalog_gaps_report.md`
 
@@ -87,7 +87,7 @@
 |          7 |              1 |
 |          8 |              1 |
 |          9 |              3 |
-|         10 |              2 |
+|         10 |              1 |
 |         11 |              2 |
 
 ## Legacy Reports

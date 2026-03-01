@@ -80,7 +80,7 @@ uv run python scripts/analyze_oco_monthly_wfo_robustness.py \
 <!-- GENERATED:STAGE_08:START -->
 ### Auto Snapshot - Stage 08
 
-- generated_at: `2026-03-01 07:53:15 UTC`
+- generated_at: `2026-03-01 09:52:04 UTC`
 - Robustness summary uses bootstrap lower bounds from the configured smoke/full run artifacts.
 - Interpretation: LB95 > 0 indicates conservative positive expectancy under sampled uncertainty.
 - Overfit panel adds month-stratified null uplift and dependence-aware LB95 comparisons.
@@ -104,15 +104,18 @@ uv run python scripts/analyze_oco_monthly_wfo_robustness.py \
 #### Action Trigger Summary
 | symbol   | metric_id                     | band   | severity   | action_code    | action_summary         | owner   |
 |:---------|:------------------------------|:-------|:-----------|:---------------|:-----------------------|:--------|
+| AUDUSD   | T01_stress_elasticity         | green  | info       | A0_MONITOR     | within policy band     | risk    |
+| AUDUSD   | T02_first_negative_costplus   | amber  | medium     | A1_REVIEW      | review and monitor     | risk    |
+| AUDUSD   | T03_post_worst_month_recovery | red    | high       | A2_RECALIBRATE | escalate and remediate | risk    |
 | EURUSD   | T01_stress_elasticity         | green  | info       | A0_MONITOR     | within policy band     | risk    |
 | EURUSD   | T02_first_negative_costplus   | green  | info       | A0_MONITOR     | within policy band     | risk    |
 | EURUSD   | T03_post_worst_month_recovery | red    | high       | A2_RECALIBRATE | escalate and remediate | risk    |
 | GBPUSD   | T01_stress_elasticity         | green  | info       | A0_MONITOR     | within policy band     | risk    |
 | GBPUSD   | T02_first_negative_costplus   | green  | info       | A0_MONITOR     | within policy band     | risk    |
 | GBPUSD   | T03_post_worst_month_recovery | green  | info       | A0_MONITOR     | within policy band     | risk    |
-| USDJPY   | T01_stress_elasticity         | green  | info       | A0_MONITOR     | within policy band     | risk    |
-| USDJPY   | T02_first_negative_costplus   | green  | info       | A0_MONITOR     | within policy band     | risk    |
-| USDJPY   | T03_post_worst_month_recovery | green  | info       | A0_MONITOR     | within policy band     | risk    |
+| USDCAD   | T01_stress_elasticity         | green  | info       | A0_MONITOR     | within policy band     | risk    |
+| USDCAD   | T02_first_negative_costplus   | green  | info       | A0_MONITOR     | within policy band     | risk    |
+| USDCAD   | T03_post_worst_month_recovery | red    | high       | A2_RECALIBRATE | escalate and remediate | risk    |
 
 #### Details
 | symbol   |   pvalue_month_mean_gt0 |   pvalue_bonferroni |   pvalue_fdr_bh |   t01_stress_elasticity |   t02_first_negative_costplus |   t04_max_survivable_cost_lb95_trade |   t03_post_worst_month_recovery |   lb95_trade_mean_net_pips_costplus_0.10 |   lb95_trade_mean_net_pips_costplus_0.20 |   lb95_trade_mean_net_pips_costplus_0.30 |   lb95_trade_mean_net_pips_costplus_0.50 |

@@ -231,7 +231,7 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 <!-- GENERATED:STAGE_03:START -->
 ### Auto Snapshot - Stage 03
 
-- generated_at: `2026-03-01 07:53:15 UTC`
+- generated_at: `2026-03-01 09:52:04 UTC`
 - Execution threshold summary is aligned to quantile=0.9.
 - Metrics are strictly month-forward (3M train -> 1M test).
 - W13-W15 are informational diagnostics for threshold fragility, calibration drift, and selection turnover.
@@ -254,15 +254,18 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 #### Action Trigger Summary
 | symbol   | metric_id               | band   | severity   | action_code   | action_summary     | owner    |
 |:---------|:------------------------|:-------|:-----------|:--------------|:-------------------|:---------|
+| AUDUSD   | W13_threshold_fragility | green  | info       | A0_MONITOR    | within policy band | research |
+| AUDUSD   | W14_brier_drift_std     | green  | info       | A0_MONITOR    | within policy band | research |
+| AUDUSD   | W15_selection_turnover  | green  | info       | A0_MONITOR    | within policy band | research |
 | EURUSD   | W13_threshold_fragility | green  | info       | A0_MONITOR    | within policy band | research |
 | EURUSD   | W14_brier_drift_std     | green  | info       | A0_MONITOR    | within policy band | research |
 | EURUSD   | W15_selection_turnover  | green  | info       | A0_MONITOR    | within policy band | research |
 | GBPUSD   | W13_threshold_fragility | green  | info       | A0_MONITOR    | within policy band | research |
 | GBPUSD   | W14_brier_drift_std     | green  | info       | A0_MONITOR    | within policy band | research |
 | GBPUSD   | W15_selection_turnover  | green  | info       | A0_MONITOR    | within policy band | research |
-| USDJPY   | W13_threshold_fragility | green  | info       | A0_MONITOR    | within policy band | research |
-| USDJPY   | W14_brier_drift_std     | green  | info       | A0_MONITOR    | within policy band | research |
-| USDJPY   | W15_selection_turnover  | green  | info       | A0_MONITOR    | within policy band | research |
+| USDCAD   | W13_threshold_fragility | green  | info       | A0_MONITOR    | within policy band | research |
+| USDCAD   | W14_brier_drift_std     | green  | info       | A0_MONITOR    | within policy band | research |
+| USDCAD   | W15_selection_turnover  | green  | info       | A0_MONITOR    | within policy band | research |
 
 #### Details
 | symbol   |   months |   mean_coverage |   mean_gross_pips |   rows_selected |

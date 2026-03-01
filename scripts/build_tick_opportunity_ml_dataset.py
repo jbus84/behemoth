@@ -18,21 +18,21 @@ except Exception:
 
 try:
     from scripts.run_tick_opportunity_mining import (
+        _directional_family_states,
         _parse_ints,
         _pip_size,
         _prepare_frame,
         _quantiles,
         _regime_masks,
-        _directional_family_states,
     )
 except ModuleNotFoundError:
     from run_tick_opportunity_mining import (  # type: ignore
+        _directional_family_states,
         _parse_ints,
         _pip_size,
         _prepare_frame,
         _quantiles,
         _regime_masks,
-        _directional_family_states,
     )
 
 
@@ -131,7 +131,9 @@ def _ensure_quality_cols(d: pd.DataFrame) -> pd.DataFrame:
     out = d.copy()
     if "quality_tier" not in out.columns:
         out["quality_tier"] = np.where(out.get("selection_pass", False), "C", "D")
-    out["quality_tier"] = out["quality_tier"].astype(str).str.upper().map(lambda x: x if x in TIER_RANK else "D")
+    out["quality_tier"] = (
+        out["quality_tier"].astype(str).str.upper().map(lambda x: x if x in TIER_RANK else "D")
+    )
     if "quality_score" not in out.columns:
         out["quality_score"] = out["quality_tier"].map(TIER_RANK).astype(int)
     return out
@@ -193,7 +195,10 @@ def _build_directional_events(
         return pd.DataFrame()
     features = _feature_cols(df)
     regime_map = {name: np.asarray(mask, dtype=bool) for name, mask in _regime_masks(df, q_fit)}
-    fam_map = {name: (np.asarray(mask, dtype=bool), np.asarray(side, dtype=np.int8)) for name, mask, side in _directional_family_states(df, q_fit)}
+    fam_map = {
+        name: (np.asarray(mask, dtype=bool), np.asarray(side, dtype=np.int8))
+        for name, mask, side in _directional_family_states(df, q_fit)
+    }
 
     ts = pd.to_datetime(df["close_ts"], utc=True, errors="coerce")
     rows: list[pd.DataFrame] = []
@@ -349,10 +354,14 @@ def _build_oco_events(
     ts = pd.to_datetime(df["close_ts"], utc=True, errors="coerce")
     pip = float(_pip_size(symbol))
 
-    unique_hk = sorted({(int(r["horizon"]), float(_parse_barrier_pips(r))) for _, r in cands.iterrows()})
+    unique_hk = sorted(
+        {(int(r["horizon"]), float(_parse_barrier_pips(r))) for _, r in cands.iterrows()}
+    )
     cache: dict[tuple[int, float], dict[str, np.ndarray]] = {}
     for h, k in unique_hk:
-        prep = _oco_precompute(df, horizon=int(h), barrier_pips=float(k), pip=pip, hold_mode=hold_mode)
+        prep = _oco_precompute(
+            df, horizon=int(h), barrier_pips=float(k), pip=pip, hold_mode=hold_mode
+        )
         if prep:
             cache[(int(h), float(k))] = prep
 
@@ -471,7 +480,21 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
     needed_bar_ticks = sorted(
-        set(pd.to_numeric(pd.concat([dir_cands.get("bar_ticks", pd.Series(dtype=int)), oco_cands.get("bar_ticks", pd.Series(dtype=int))], ignore_index=True), errors="coerce").dropna().astype(int).tolist())
+        set(
+            pd.to_numeric(
+                pd.concat(
+                    [
+                        dir_cands.get("bar_ticks", pd.Series(dtype=int)),
+                        oco_cands.get("bar_ticks", pd.Series(dtype=int)),
+                    ],
+                    ignore_index=True,
+                ),
+                errors="coerce",
+            )
+            .dropna()
+            .astype(int)
+            .tolist()
+        )
     )
     directional_parts: list[pd.DataFrame] = []
     oco_parts: list[pd.DataFrame] = []
@@ -485,8 +508,12 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                 pd.to_numeric(
                     pd.concat(
                         [
-                            dir_cands.loc[dir_cands["bar_ticks"] == bt, "horizon"] if not dir_cands.empty else pd.Series(dtype=int),
-                            oco_cands.loc[oco_cands["bar_ticks"] == bt, "horizon"] if not oco_cands.empty else pd.Series(dtype=int),
+                            dir_cands.loc[dir_cands["bar_ticks"] == bt, "horizon"]
+                            if not dir_cands.empty
+                            else pd.Series(dtype=int),
+                            oco_cands.loc[oco_cands["bar_ticks"] == bt, "horizon"]
+                            if not oco_cands.empty
+                            else pd.Series(dtype=int),
                         ],
                         ignore_index=True,
                     ),
@@ -506,8 +533,16 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             continue
         q_fit = _quantiles(train)
 
-        dc = dir_cands[dir_cands["bar_ticks"] == bt].copy() if not dir_cands.empty else pd.DataFrame()
-        oc = oco_cands[oco_cands["bar_ticks"] == bt].copy() if not oco_cands.empty else pd.DataFrame()
+        dc = (
+            dir_cands[dir_cands["bar_ticks"] == bt].copy()
+            if not dir_cands.empty
+            else pd.DataFrame()
+        )
+        oc = (
+            oco_cands[oco_cands["bar_ticks"] == bt].copy()
+            if not oco_cands.empty
+            else pd.DataFrame()
+        )
 
         if not dc.empty:
             directional_parts.append(
@@ -555,7 +590,9 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             )
         print(f"ok {symbol} {bt}tick")
 
-    directional = pd.concat(directional_parts, ignore_index=True) if directional_parts else pd.DataFrame()
+    directional = (
+        pd.concat(directional_parts, ignore_index=True) if directional_parts else pd.DataFrame()
+    )
     oco = pd.concat(oco_parts, ignore_index=True) if oco_parts else pd.DataFrame()
 
     summary_rows: list[dict[str, Any]] = []
@@ -580,8 +617,12 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                 "candidates": int(d["candidate_uid"].nunique()),
                 "train_rows": int((d["split"] == "train").sum()),
                 "test_rows": int((d["split"] == "test").sum()),
-                "mean_target_gross_pips": float(pd.to_numeric(d["target_gross_pips"], errors="coerce").mean()),
-                "target_pos_rate": float(pd.to_numeric(d["target_gross_pos"], errors="coerce").mean()),
+                "mean_target_gross_pips": float(
+                    pd.to_numeric(d["target_gross_pips"], errors="coerce").mean()
+                ),
+                "target_pos_rate": float(
+                    pd.to_numeric(d["target_gross_pos"], errors="coerce").mean()
+                ),
             }
         )
     return directional, oco, pd.DataFrame(summary_rows)
@@ -607,7 +648,9 @@ def _write_report(
     lines.append(f"- max_candidates_per_library: `{int(cfg['max_candidates_per_library'])}`")
     lines.append(f"- max_events_per_candidate: `{int(cfg['max_events_per_candidate'])}`")
     lines.append(f"- oco_hold_mode: `{cfg.get('oco_hold_mode', DEFAULTS['oco_hold_mode'])}`")
-    lines.append(f"- oco_include_no_touch: `{bool(cfg.get('oco_include_no_touch', DEFAULTS['oco_include_no_touch']))}`")
+    lines.append(
+        f"- oco_include_no_touch: `{bool(cfg.get('oco_include_no_touch', DEFAULTS['oco_include_no_touch']))}`"
+    )
     lines.append("")
 
     if not summary.empty:
@@ -631,7 +674,9 @@ def _write_report(
             "target_gross_pips",
             "target_gross_pos",
         ]
-        x = df.sort_values(["split", "quality_score", "target_abs_gross_pips"], ascending=[True, False, False]).head(n)
+        x = df.sort_values(
+            ["split", "quality_score", "target_abs_gross_pips"], ascending=[True, False, False]
+        ).head(n)
         try:
             return x[cols].to_markdown(index=False)
         except Exception:
@@ -649,7 +694,9 @@ def _write_report(
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Build ML-ready event datasets from tick opportunity candidates")
+    p = argparse.ArgumentParser(
+        description="Build ML-ready event datasets from tick opportunity candidates"
+    )
     p.add_argument("--config", default=None)
     p.add_argument("--symbol", default=None)
     p.add_argument("--dataset-dir", default=None)
@@ -668,9 +715,19 @@ def main() -> None:
 
     cfg = _merge_config(args)
     if isinstance(cfg.get("selection_required"), str):
-        cfg["selection_required"] = str(cfg["selection_required"]).strip().lower() in {"1", "true", "yes", "y"}
+        cfg["selection_required"] = str(cfg["selection_required"]).strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "y",
+        }
     if isinstance(cfg.get("oco_include_no_touch"), str):
-        cfg["oco_include_no_touch"] = str(cfg["oco_include_no_touch"]).strip().lower() in {"1", "true", "yes", "y"}
+        cfg["oco_include_no_touch"] = str(cfg["oco_include_no_touch"]).strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "y",
+        }
 
     directional, oco, summary = run(cfg)
 

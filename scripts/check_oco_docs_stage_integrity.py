@@ -195,7 +195,9 @@ def run(
 
         start_tag = f"<!-- GENERATED:STAGE_{stage_id:02d}:START -->"
         end_tag = f"<!-- GENERATED:STAGE_{stage_id:02d}:END -->"
-        markers_ok = (start_tag in txt) and (end_tag in txt) and (txt.find(start_tag) < txt.find(end_tag))
+        markers_ok = (
+            (start_tag in txt) and (end_tag in txt) and (txt.find(start_tag) < txt.find(end_tag))
+        )
         _add_check(
             checks_rows,
             stage_id=stage_id,
@@ -211,7 +213,9 @@ def run(
             details=f"start={start_tag};end={end_tag}",
         )
 
-        marker_multiplicity_ok = (_marker_count(txt, start_tag) == 1) and (_marker_count(txt, end_tag) == 1)
+        marker_multiplicity_ok = (_marker_count(txt, start_tag) == 1) and (
+            _marker_count(txt, end_tag) == 1
+        )
         _add_check(
             checks_rows,
             stage_id=stage_id,
@@ -325,7 +329,11 @@ def run(
     checks = pd.DataFrame(checks_rows).sort_values(["check_id"]).reset_index(drop=True)
 
     issues_rows: list[dict[str, Any]] = []
-    fail = checks[checks["status"].astype(str).str.lower() != "pass"].copy() if not checks.empty else pd.DataFrame()
+    fail = (
+        checks[checks["status"].astype(str).str.lower() != "pass"].copy()
+        if not checks.empty
+        else pd.DataFrame()
+    )
     for _, r in fail.iterrows():
         issues_rows.append(
             {
@@ -351,7 +359,17 @@ def run(
     issues = (
         pd.DataFrame(issues_rows)
         if issues_rows
-        else pd.DataFrame(columns=["issue_id", "symbol", "check_id", "severity", "component", "summary", "details_json"])
+        else pd.DataFrame(
+            columns=[
+                "issue_id",
+                "symbol",
+                "check_id",
+                "severity",
+                "component",
+                "summary",
+                "details_json",
+            ]
+        )
     )
 
     out_checks_csv.parent.mkdir(parents=True, exist_ok=True)
@@ -361,19 +379,25 @@ def run(
     issues.to_csv(out_issues_csv, index=False)
 
     sev_counts = (
-        issues.groupby(["severity"], as_index=False).agg(count=("issue_id", "count")).sort_values("severity")
+        issues.groupby(["severity"], as_index=False)
+        .agg(count=("issue_id", "count"))
+        .sort_values("severity")
         if not issues.empty
         else pd.DataFrame(columns=["severity", "count"])
     )
     stage_counts = (
-        checks.groupby(["stage_id", "status"], as_index=False).agg(count=("check_id", "count")).sort_values(["stage_id", "status"])
+        checks.groupby(["stage_id", "status"], as_index=False)
+        .agg(count=("check_id", "count"))
+        .sort_values(["stage_id", "status"])
         if not checks.empty
         else pd.DataFrame(columns=["stage_id", "status", "count"])
     )
     lines: list[str] = []
     lines.append("# OCO Stage Integrity Report")
     lines.append("")
-    lines.append(f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`")
+    lines.append(
+        f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`"
+    )
     lines.append(f"- checks_csv: `{out_checks_csv}`")
     lines.append(f"- issues_csv: `{out_issues_csv}`")
     lines.append("")
@@ -396,8 +420,14 @@ def run(
 def main() -> None:
     p = argparse.ArgumentParser(description="Validate Stage 01-10 docs integrity")
     p.add_argument("--docs-root", default="docs/strategy_bible")
-    p.add_argument("--out-checks-csv", default="data/analysis/tick_opportunity_mining/oco_stage_integrity_checks.csv")
-    p.add_argument("--out-issues-csv", default="data/analysis/tick_opportunity_mining/oco_stage_integrity_issues.csv")
+    p.add_argument(
+        "--out-checks-csv",
+        default="data/analysis/tick_opportunity_mining/oco_stage_integrity_checks.csv",
+    )
+    p.add_argument(
+        "--out-issues-csv",
+        default="data/analysis/tick_opportunity_mining/oco_stage_integrity_issues.csv",
+    )
     p.add_argument("--report-out", default="docs/analysis/oco_stage_integrity_report.md")
     args = p.parse_args()
 
@@ -407,7 +437,9 @@ def main() -> None:
         out_issues_csv=Path(str(args.out_issues_csv)),
         out_report_md=Path(str(args.report_out)),
     )
-    failed = int((checks["status"].astype(str).str.lower() != "pass").sum()) if not checks.empty else 0
+    failed = (
+        int((checks["status"].astype(str).str.lower() != "pass").sum()) if not checks.empty else 0
+    )
     print(f"wrote checks: {args.out_checks_csv} rows={len(checks)}")
     print(f"wrote issues: {args.out_issues_csv} rows={len(issues)}")
     print(f"failed_checks={failed}")

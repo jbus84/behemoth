@@ -169,7 +169,9 @@ def _classify_doc(path: Path, docs_root: Path) -> ClassifiedDoc:
         group = "legacy"
     else:
         group = "unclassified"
-    mtime = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    mtime = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     return ClassifiedDoc(
         doc_path=rel,
         title=_human_title(path),
@@ -275,7 +277,11 @@ def _render_gaps(manifest: pd.DataFrame, *, docs_root: Path) -> str:
     lines.append("")
 
     lines.append("## Counts")
-    cnt = manifest.groupby("group", as_index=False).agg(count=("doc_path", "count")).sort_values("group")
+    cnt = (
+        manifest.groupby("group", as_index=False)
+        .agg(count=("doc_path", "count"))
+        .sort_values("group")
+    )
     lines.append(_table(cnt))
     return "\n".join(lines)
 
@@ -284,11 +290,15 @@ def _render_taxonomy_rules() -> str:
     lines: list[str] = []
     lines.append("# Analysis Taxonomy Rules")
     lines.append("")
-    lines.append(f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`")
+    lines.append(
+        f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`"
+    )
     lines.append("")
     lines.append("## Group Assignment Order")
     lines.append("1. `core`: canonical governance reports for the OCO bible.")
-    lines.append("2. `symbol`: filename maps to specific symbol token (`EURUSD`, `GBPUSD`, `USDJPY`).")
+    lines.append(
+        "2. `symbol`: filename maps to specific symbol token (`EURUSD`, `GBPUSD`, `USDJPY`, `USDCHF`, `AUDUSD`, `USDCAD`)."
+    )
     lines.append("3. `stage`: filename keyword maps to stage id.")
     lines.append("4. `legacy`: known historical/legacy analysis families.")
     lines.append("5. `unclassified`: everything else (should be zero in healthy state).")
@@ -330,7 +340,9 @@ def _build_canonical_map(manifest: pd.DataFrame) -> pd.DataFrame:
     m["class"] = "archive"
     m["is_canonical"] = False
     m["reason"] = "default_archive"
-    m["archive_target_path"] = "docs/archive/analysis/" + m["doc_path"].astype(str).str.replace("analysis/", "", regex=False)
+    m["archive_target_path"] = "docs/archive/analysis/" + m["doc_path"].astype(str).str.replace(
+        "analysis/", "", regex=False
+    )
 
     # Canonical within symbol/stage families for primary analysis docs.
     sym_primary = m[
@@ -339,19 +351,19 @@ def _build_canonical_map(manifest: pd.DataFrame) -> pd.DataFrame:
         & (m["stage_family"].astype(str) != "none")
     ].copy()
     if not sym_primary.empty:
-        sym_primary = sym_primary.sort_values(["symbol", "stage_family", "variant_score", "mtime_utc"], ascending=[True, True, False, False])
+        sym_primary = sym_primary.sort_values(
+            ["symbol", "stage_family", "variant_score", "mtime_utc"],
+            ascending=[True, True, False, False],
+        )
         best_idx = sym_primary.groupby(["symbol", "stage_family"], as_index=False).head(1).index
         m.loc[best_idx, "is_canonical"] = True
         m.loc[best_idx, "class"] = "stage_integrated"
         m.loc[best_idx, "reason"] = "best_variant_for_symbol_stage_family"
 
     # Stage-integrated reports.
-    stage_rows = (
-        (m["doc_path"].astype(str).str.startswith("analysis/"))
-        & (
-            pd.to_numeric(m["stage_id"], errors="coerce").between(1, 10)
-            | m["doc_path"].astype(str).isin(STAGE_INTEGRATED_MANUAL)
-        )
+    stage_rows = (m["doc_path"].astype(str).str.startswith("analysis/")) & (
+        pd.to_numeric(m["stage_id"], errors="coerce").between(1, 10)
+        | m["doc_path"].astype(str).isin(STAGE_INTEGRATED_MANUAL)
     )
     m.loc[stage_rows & ~m["is_canonical"].astype(bool), "class"] = "stage_integrated"
     m.loc[stage_rows & ~m["is_canonical"].astype(bool), "reason"] = "mapped_to_stage_01_10"
@@ -387,14 +399,20 @@ def _build_canonical_map(manifest: pd.DataFrame) -> pd.DataFrame:
         "archive_target_path",
         "reason",
     ]
-    return m[out_cols].sort_values(["class", "symbol", "stage_family", "doc_path"]).reset_index(drop=True)
+    return (
+        m[out_cols]
+        .sort_values(["class", "symbol", "stage_family", "doc_path"])
+        .reset_index(drop=True)
+    )
 
 
 def _render_archive_analysis_index(canonical_map: pd.DataFrame) -> str:
     lines: list[str] = []
     lines.append("# Archived Analysis Reports")
     lines.append("")
-    lines.append(f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`")
+    lines.append(
+        f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`"
+    )
     lines.append("")
     arch = canonical_map[canonical_map["class"].astype(str) == "archive"].copy()
     if arch.empty:
@@ -454,8 +472,21 @@ def run(
                 "mtime_utc": c.mtime_utc,
             }
         )
-    manifest = pd.DataFrame(rows).sort_values("doc_path").reset_index(drop=True) if rows else pd.DataFrame(
-        columns=["doc_path", "title", "symbol", "stage_id", "group", "is_core", "is_archive", "mtime_utc"]
+    manifest = (
+        pd.DataFrame(rows).sort_values("doc_path").reset_index(drop=True)
+        if rows
+        else pd.DataFrame(
+            columns=[
+                "doc_path",
+                "title",
+                "symbol",
+                "stage_id",
+                "group",
+                "is_core",
+                "is_archive",
+                "mtime_utc",
+            ]
+        )
     )
 
     out_manifest_csv.parent.mkdir(parents=True, exist_ok=True)
@@ -484,7 +515,9 @@ def run(
         ].copy()
         archive_candidates.to_csv(out_archive_candidates_csv, index=False)
     if out_archive_index_md is not None:
-        out_archive_index_md.write_text(_render_archive_analysis_index(canonical_map), encoding="utf-8")
+        out_archive_index_md.write_text(
+            _render_archive_analysis_index(canonical_map), encoding="utf-8"
+        )
     return manifest, out_index_md, out_gaps_md
 
 
@@ -503,7 +536,9 @@ def main() -> None:
     args = p.parse_args()
 
     archive_dir = Path(str(args.archive_dir)) if str(args.archive_dir).strip() else None
-    out_archive_index_md = Path(str(args.out_archive_index_md)) if str(args.out_archive_index_md).strip() else None
+    out_archive_index_md = (
+        Path(str(args.out_archive_index_md)) if str(args.out_archive_index_md).strip() else None
+    )
 
     manifest, out_index, out_gaps = run(
         docs_root=Path(str(args.docs_root)),

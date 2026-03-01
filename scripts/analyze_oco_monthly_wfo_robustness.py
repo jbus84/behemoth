@@ -95,7 +95,11 @@ def _select_events(
     use_exec_selection: bool,
     execution_quantile: float,
 ) -> pd.DataFrame:
-    if bool(use_exec_selection) and abs(float(q) - float(execution_quantile)) <= 1e-12 and "selected_exec" in d.columns:
+    if (
+        bool(use_exec_selection)
+        and abs(float(q) - float(execution_quantile)) <= 1e-12
+        and "selected_exec" in d.columns
+    ):
         x = d[pd.to_numeric(d["selected_exec"], errors="coerce").fillna(0).astype(int) == 1].copy()
         x["quantile"] = float(q)
         if "threshold_exec" in d.columns:
@@ -163,7 +167,9 @@ def _apply_reduced_core_schedule_filter(
     s["test_month"] = s["test_month"].astype(str)
     s = s[["test_month", "state_key"]].dropna().drop_duplicates().copy()
     if "candidate_uid" not in d.columns:
-        raise ValueError("predictions parquet missing required column for reduced-core filtering: candidate_uid")
+        raise ValueError(
+            "predictions parquet missing required column for reduced-core filtering: candidate_uid"
+        )
     dd = d.copy()
     dd["state_key"] = _build_state_key_from_candidate_uid(dd["candidate_uid"])
     dd["test_month"] = dd["test_month"].astype(str)
@@ -177,11 +183,22 @@ def _max_survivable_cost_lb95_trade(
     stress_lb95: list[float],
 ) -> tuple[float, str, float, float, float, float]:
     pairs = sorted(
-        [(float(c), float(v)) for c, v in zip(stress_levels, stress_lb95, strict=False) if np.isfinite(c) and np.isfinite(v)],
+        [
+            (float(c), float(v))
+            for c, v in zip(stress_levels, stress_lb95, strict=False)
+            if np.isfinite(c) and np.isfinite(v)
+        ],
         key=lambda x: x[0],
     )
     if not pairs:
-        return float("nan"), "missing_stress_grid", float("nan"), float("nan"), float("nan"), float("nan")
+        return (
+            float("nan"),
+            "missing_stress_grid",
+            float("nan"),
+            float("nan"),
+            float("nan"),
+            float("nan"),
+        )
 
     xs = [x for x, _ in pairs]
     ys = [y for _, y in pairs]
@@ -204,7 +221,14 @@ def _max_survivable_cost_lb95_trade(
                 frac = (0.0 - float(lo_y)) / (float(hi_y) - float(lo_y))
                 cross = float(lo_c) + float(frac) * (float(hi_c) - float(lo_c))
             cross = float(min(max(cross, float(lo_c)), float(hi_c)))
-            return cross, "crossing_interpolated", float(lo_c), float(hi_c), float(lo_y), float(hi_y)
+            return (
+                cross,
+                "crossing_interpolated",
+                float(lo_c),
+                float(hi_c),
+                float(lo_y),
+                float(hi_y),
+            )
 
     # Defensive fallback for unexpected non-monotone edge cases.
     cmax = float(max(xs))
@@ -249,7 +273,12 @@ def run(
     rows: list[dict[str, float | int | str]] = []
     monthly_rows: list[dict[str, float | int | str]] = []
     for i, q in enumerate(tqdm(quantiles, desc="Processing quantiles")):
-        s = _select_events(d, q=float(q), use_exec_selection=bool(use_exec_selection), execution_quantile=float(execution_quantile))
+        s = _select_events(
+            d,
+            q=float(q),
+            use_exec_selection=bool(use_exec_selection),
+            execution_quantile=float(execution_quantile),
+        )
         if s.empty:
             continue
         gross = s["target_gross_pips"].to_numpy(dtype=float)
@@ -267,8 +296,14 @@ def run(
             .reset_index(drop=True)
         )
         mon_means = mon["mean_gross"].to_numpy(dtype=float)
-        lb95_month = _bootstrap_lb95(mon_means, paths=int(bootstrap_paths), seed=int(seed) + i * 17 + 3)
-        pval = _normal_pvalue_mean_gt0(float(np.mean(mon_means)), float(np.std(mon_means, ddof=1)) if len(mon_means) > 1 else float("nan"), len(mon_means))
+        lb95_month = _bootstrap_lb95(
+            mon_means, paths=int(bootstrap_paths), seed=int(seed) + i * 17 + 3
+        )
+        pval = _normal_pvalue_mean_gt0(
+            float(np.mean(mon_means)),
+            float(np.std(mon_means, ddof=1)) if len(mon_means) > 1 else float("nan"),
+            len(mon_means),
+        )
         positive_months = int(np.sum(mon_means > 0.0))
 
         for _, r in mon.iterrows():
@@ -285,7 +320,9 @@ def run(
 
         row = {
             "quantile": float(q),
-            "selection_mode": str(s["selection_mode"].iloc[0]) if "selection_mode" in s.columns and len(s) else "unknown",
+            "selection_mode": str(s["selection_mode"].iloc[0])
+            if "selection_mode" in s.columns and len(s)
+            else "unknown",
             "is_exec_row": int(abs(float(q) - float(execution_quantile)) <= 1e-12),
             "universe_mode": str(universe_mode),
             "rows": int(len(s)),
@@ -303,7 +340,9 @@ def run(
             net = gross - float(c)
             row[f"mean_net_pips_costplus_{c:.2f}"] = float(np.mean(net))
             row[f"lb95_trade_mean_net_pips_costplus_{c:.2f}"] = float(
-                _bootstrap_lb95(net, paths=int(bootstrap_paths), seed=int(seed) + i * 23 + int(round(c * 100)))
+                _bootstrap_lb95(
+                    net, paths=int(bootstrap_paths), seed=int(seed) + i * 23 + int(round(c * 100))
+                )
             )
         stress_levels = [float(c) for c in stress_extra_cost_grid]
         stress_lb95 = [row.get(f"lb95_trade_mean_net_pips_costplus_{c:.2f}") for c in stress_levels]
@@ -320,7 +359,9 @@ def run(
         rows.append(row)
 
     summary = pd.DataFrame(rows).sort_values("quantile").reset_index(drop=True)
-    monthly = pd.DataFrame(monthly_rows).sort_values(["quantile", "test_month"]).reset_index(drop=True)
+    monthly = (
+        pd.DataFrame(monthly_rows).sort_values(["quantile", "test_month"]).reset_index(drop=True)
+    )
     if not summary.empty:
         p = summary["pvalue_month_mean_gt0"].to_numpy(dtype=float)
         summary["pvalue_bonferroni"] = _p_adjust_bonferroni(p)
@@ -360,7 +401,10 @@ def run(
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Robustness checks for OCO monthly WFO predictions")
-    p.add_argument("--pred-path", default="data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fast/EURUSD_oco_monthly_predictions.parquet")
+    p.add_argument(
+        "--pred-path",
+        default="data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fast/EURUSD_oco_monthly_predictions.parquet",
+    )
     p.add_argument("--quantiles", default="0.5,0.6,0.7,0.8,0.9,0.95")
     p.add_argument("--bootstrap-paths", type=int, default=2000)
     p.add_argument("--stress-extra-cost-grid", default="0.1,0.2,0.3,0.5,0.75,1.0,1.25,1.5,1.75,2.0")
@@ -368,9 +412,17 @@ def main() -> None:
     p.add_argument("--execution-quantile", type=float, default=0.9)
     p.add_argument("--reduced-state-schedule-csv", default="")
     p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--out-summary-csv", default="data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fast/EURUSD_oco_robustness_summary.csv")
-    p.add_argument("--out-monthly-csv", default="data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fast/EURUSD_oco_robustness_monthly.csv")
-    p.add_argument("--report-out", default="docs/analysis/eurusd_oco_monthly_wfo_robustness_report.md")
+    p.add_argument(
+        "--out-summary-csv",
+        default="data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fast/EURUSD_oco_robustness_summary.csv",
+    )
+    p.add_argument(
+        "--out-monthly-csv",
+        default="data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fast/EURUSD_oco_robustness_monthly.csv",
+    )
+    p.add_argument(
+        "--report-out", default="docs/analysis/eurusd_oco_monthly_wfo_robustness_report.md"
+    )
     args = p.parse_args()
 
     run(
@@ -378,7 +430,8 @@ def main() -> None:
         quantiles=_parse_float_list(str(args.quantiles)),
         bootstrap_paths=int(args.bootstrap_paths),
         stress_extra_cost_grid=_parse_float_list(str(args.stress_extra_cost_grid)),
-        use_exec_selection=str(args.use_exec_selection).strip().lower() in {"1", "true", "yes", "y"},
+        use_exec_selection=str(args.use_exec_selection).strip().lower()
+        in {"1", "true", "yes", "y"},
         execution_quantile=float(args.execution_quantile),
         reduced_state_schedule_csv=Path(str(args.reduced_state_schedule_csv))
         if str(args.reduced_state_schedule_csv).strip()

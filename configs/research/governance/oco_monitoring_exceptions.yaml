@@ -23,7 +23,7 @@ rules:
     review_cadence_days: 30
     evidence_link: docs/analysis/oco_execution_drift_report.md
   - metric_id: TS03_LB95_MONTH_SIGNAL
-    symbols: [EURUSD, GBPUSD, USDJPY]
+    symbols: [EURUSD, GBPUSD, USDJPY, USDCHF, AUDUSD, USDCAD]
     disposition: accepted_exception
     owner: wfo_research
     rationale: "LB95 signal floor is a monitoring warning; hard gates remain positive."

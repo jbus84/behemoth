@@ -1,10 +1,10 @@
 # Analysis Taxonomy Rules
 
-- generated_at_utc: `2026-03-01T07:47:08Z`
+- generated_at_utc: `2026-03-01T09:52:03Z`
 
 ## Group Assignment Order
 1. `core`: canonical governance reports for the OCO bible.
-2. `symbol`: filename maps to specific symbol token (`EURUSD`, `GBPUSD`, `USDJPY`).
+2. `symbol`: filename maps to specific symbol token (`EURUSD`, `GBPUSD`, `USDJPY`, `USDCHF`, `AUDUSD`, `USDCAD`).
 3. `stage`: filename keyword maps to stage id.
 4. `legacy`: known historical/legacy analysis families.
 5. `unclassified`: everything else (should be zero in healthy state).

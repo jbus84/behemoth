@@ -16,10 +16,10 @@ import argparse
 import io
 import re
 import zipfile
+from collections.abc import Iterable
 from dataclasses import dataclass
 from http.cookiejar import CookieJar
 from pathlib import Path
-from typing import Iterable
 from urllib.parse import urlencode
 from urllib.request import HTTPCookieProcessor, Request, build_opener
 
@@ -27,7 +27,10 @@ import numpy as np
 import pandas as pd
 
 BASE_URL = "https://www.histdata.com"
-DOWNLOAD_PAGE = BASE_URL + "/download-free-forex-historical-data/?/ascii/tick-data-quotes/{symbol}/{year}/{month}/"
+DOWNLOAD_PAGE = (
+    BASE_URL
+    + "/download-free-forex-historical-data/?/ascii/tick-data-quotes/{symbol}/{year}/{month}/"
+)
 GET_ENDPOINT = BASE_URL + "/get.php"
 
 
@@ -154,10 +157,16 @@ def _to_parquet(blob: bytes, *, symbol: str, yyyymm: str, out_path: Path) -> int
             "ask": pd.to_numeric(df["ask"], errors="coerce"),
         }
     )
-    out = out.dropna(subset=["timestamp", "bid", "ask"]).sort_values("timestamp").reset_index(drop=True)
+    out = (
+        out.dropna(subset=["timestamp", "bid", "ask"])
+        .sort_values("timestamp")
+        .reset_index(drop=True)
+    )
     out["mid"] = (out["bid"] + out["ask"]) / 2.0
     out["spread"] = out["ask"] - out["bid"]
-    out["log_return"] = np.log(out["mid"] / out["mid"].shift(1)).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    out["log_return"] = (
+        np.log(out["mid"] / out["mid"].shift(1)).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    )
     out.to_parquet(out_path, index=False)
     return int(len(out))
 
@@ -165,7 +174,9 @@ def _to_parquet(blob: bytes, *, symbol: str, yyyymm: str, out_path: Path) -> int
 def main() -> None:
     p = argparse.ArgumentParser(description="Download HistData ticks and convert to parquet")
     p.add_argument("--symbols", required=True, help="comma-separated symbols, e.g. EURUSD,GBPUSD")
-    p.add_argument("--months", required=True, help="comma-separated YYYYMM values, e.g. 202601,202602")
+    p.add_argument(
+        "--months", required=True, help="comma-separated YYYYMM values, e.g. 202601,202602"
+    )
     p.add_argument("--tick-root", default="/Users/danielfisher/Desktop/tick")
     p.add_argument("--skip-existing", default="true", help="true|false")
     args = p.parse_args()
@@ -191,7 +202,9 @@ def main() -> None:
                 skipped += 1
                 continue
 
-            referer = DOWNLOAD_PAGE.format(symbol=symbol.lower(), year=yyyymm[:4], month=str(int(yyyymm[4:6])))
+            referer = DOWNLOAD_PAGE.format(
+                symbol=symbol.lower(), year=yyyymm[:4], month=str(int(yyyymm[4:6]))
+            )
             form = _fetch_download_form(opener, symbol, yyyymm)
             if form.datemonth != yyyymm or form.fxpair.upper() != symbol:
                 print(
@@ -204,7 +217,9 @@ def main() -> None:
             total_rows += int(rows)
             written += 1
 
-    print(f"done symbols={len(symbols)} months={len(months)} written={written} skipped={skipped} total_rows={total_rows}")
+    print(
+        f"done symbols={len(symbols)} months={len(months)} written={written} skipped={skipped} total_rows={total_rows}"
+    )
 
 
 if __name__ == "__main__":

@@ -17,19 +17,26 @@ repos:
         entry: uv run ruff check --fix
         language: system
         types: [python]
-        files: ^(src|services|tests)/
+        files: ^(scripts|tests)/
       - id: ruff-format
         name: ruff format
         entry: uv run ruff format
         language: system
         types: [python]
-        files: ^(src|services|tests)/
+        files: ^(scripts|tests)/
       - id: ty
         name: ty check
         entry: uv run ty check
         language: system
         pass_filenames: false
-        args: ["src", "services"]
+        args: ["scripts"]
+      - id: xenon
+        name: xenon complexity check
+        entry: uv run xenon
+        language: system
+        types: [python]
+        files: ^(scripts|tests)/
+        args: ["--max-absolute", "F", "--max-modules", "E", "--max-average", "C"]
       - id: docs-contract
         name: docs contract
         entry: make docs-contract

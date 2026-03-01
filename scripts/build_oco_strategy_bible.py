@@ -117,7 +117,13 @@ def _require_manifest_keys(cfg: dict[str, Any]) -> None:
     outputs = cfg.get("outputs")
     if not isinstance(outputs, dict):
         raise ValueError("manifest outputs must be a mapping")
-    for k in ["generated_dir", "figures_dir", "build_report_csv", "symbol_snapshot_csv", "stage_status_csv"]:
+    for k in [
+        "generated_dir",
+        "figures_dir",
+        "build_report_csv",
+        "symbol_snapshot_csv",
+        "stage_status_csv",
+    ]:
         if k not in outputs:
             raise ValueError(f"manifest outputs missing key: {k}")
 
@@ -302,7 +308,11 @@ def _rolling_session_cap_table(
     d = detail.copy()
     d["touch_open_ts"] = pd.to_datetime(d["touch_open_ts"], utc=True, errors="coerce")
     d["overshoot_tick_pips"] = pd.to_numeric(d["overshoot_tick_pips"], errors="coerce")
-    d = d.dropna(subset=["touch_open_ts", "overshoot_tick_pips"]).sort_values("touch_open_ts").reset_index(drop=True)
+    d = (
+        d.dropna(subset=["touch_open_ts", "overshoot_tick_pips"])
+        .sort_values("touch_open_ts")
+        .reset_index(drop=True)
+    )
     if d.empty:
         return pd.DataFrame(), pd.DataFrame()
     d["session_bucket"] = d["touch_open_ts"].dt.hour.map(_session_bucket)
@@ -310,8 +320,18 @@ def _rolling_session_cap_table(
     horizon = f"{int(max(lookback_days, 1))}D"
     parts: list[pd.DataFrame] = []
     for sess, g in d.groupby("session_bucket", sort=False):
-        gg = g[["touch_open_ts", "overshoot_tick_pips"]].copy().sort_values("touch_open_ts").set_index("touch_open_ts")
-        cap_s = gg["overshoot_tick_pips"].rolling(horizon, min_periods=max(int(min_periods), 1)).quantile(float(cap_quantile)).shift(1)
+        gg = (
+            g[["touch_open_ts", "overshoot_tick_pips"]]
+            .copy()
+            .sort_values("touch_open_ts")
+            .set_index("touch_open_ts")
+        )
+        cap_s = (
+            gg["overshoot_tick_pips"]
+            .rolling(horizon, min_periods=max(int(min_periods), 1))
+            .quantile(float(cap_quantile))
+            .shift(1)
+        )
         out = g.copy()
         out["cap_session_pips"] = cap_s.values
         out["session_bucket"] = sess
@@ -327,7 +347,9 @@ def _rolling_session_cap_table(
         .values
     )
     fallback_cap = _num(d2["overshoot_tick_pips"].quantile(float(cap_quantile)))
-    d2["cap_applied_pips"] = d2["cap_session_pips"].fillna(d2["cap_global_pips"]).fillna(fallback_cap)
+    d2["cap_applied_pips"] = (
+        d2["cap_session_pips"].fillna(d2["cap_global_pips"]).fillna(fallback_cap)
+    )
     d2["cap_source"] = np.where(
         d2["cap_session_pips"].notna(),
         "session",
@@ -338,7 +360,11 @@ def _rolling_session_cap_table(
     now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     policy_rows: list[dict[str, Any]] = []
     for sess, g in d2.groupby("session_bucket", sort=True):
-        cap_last = _num(g["cap_applied_pips"].dropna().iloc[-1]) if g["cap_applied_pips"].notna().any() else fallback_cap
+        cap_last = (
+            _num(g["cap_applied_pips"].dropna().iloc[-1])
+            if g["cap_applied_pips"].notna().any()
+            else fallback_cap
+        )
         policy_rows.append(
             {
                 "symbol": str(symbol).upper(),
@@ -348,8 +374,13 @@ def _rolling_session_cap_table(
                 "cap_pips": cap_last,
                 "rows_used": int(len(g)),
                 "session_cap_rows": int(g["cap_session_pips"].notna().sum()),
-                "global_cap_rows": int(g["cap_session_pips"].isna().sum() - ((g["cap_session_pips"].isna()) & (g["cap_global_pips"].isna())).sum()),
-                "fallback_rows": int(((g["cap_session_pips"].isna()) & (g["cap_global_pips"].isna())).sum()),
+                "global_cap_rows": int(
+                    g["cap_session_pips"].isna().sum()
+                    - ((g["cap_session_pips"].isna()) & (g["cap_global_pips"].isna())).sum()
+                ),
+                "fallback_rows": int(
+                    ((g["cap_session_pips"].isna()) & (g["cap_global_pips"].isna())).sum()
+                ),
                 "generated_at_utc": now_utc,
             }
         )
@@ -571,10 +602,18 @@ def _symbol_snapshot(
 ) -> dict[str, Any]:
     symbol = str(entry["symbol"]).upper().strip()
 
-    reduced = _read_symbol_row(_resolve_path(base_dir, str(entry["reduced_summary_csv"])), symbol=symbol)
-    tick_exact = _read_symbol_row(_resolve_path(base_dir, str(entry["tick_exact_summary_csv"])), symbol=symbol)
-    robustness = _read_robustness_row(_resolve_path(base_dir, str(entry["robustness_summary_csv"])), quantile=robust_quantile)
-    stop_limit = _read_symbol_row(_resolve_path(base_dir, str(entry["stop_limit_summary_csv"])), symbol=symbol)
+    reduced = _read_symbol_row(
+        _resolve_path(base_dir, str(entry["reduced_summary_csv"])), symbol=symbol
+    )
+    tick_exact = _read_symbol_row(
+        _resolve_path(base_dir, str(entry["tick_exact_summary_csv"])), symbol=symbol
+    )
+    robustness = _read_robustness_row(
+        _resolve_path(base_dir, str(entry["robustness_summary_csv"])), quantile=robust_quantile
+    )
+    stop_limit = _read_symbol_row(
+        _resolve_path(base_dir, str(entry["stop_limit_summary_csv"])), symbol=symbol
+    )
 
     exact_rate = _num(tick_exact.get("exact_match_rate"))
     pos_rate = _num(tick_exact.get("pos_label_match_rate"))
@@ -623,7 +662,10 @@ def _symbol_snapshot(
         "gate_tick_exact": gate_tick_exact,
         "gate_robust_lb95_trade_gt0": gate_robust_lb95,
         "gate_robust_months_majority": robust_majority,
-        "symbol_all_gates_pass": gate_reduced and gate_tick_exact and gate_robust_lb95 and robust_majority,
+        "symbol_all_gates_pass": gate_reduced
+        and gate_tick_exact
+        and gate_robust_lb95
+        and robust_majority,
     }
 
 
@@ -732,7 +774,11 @@ def _write_markdown_outputs(
     audit_lines.append(f"- audit_failures: `{int(audit_failures)}`")
     audit_lines.append(f"- audit_pass: `{bool(audit_pass)}`")
     audit_lines.append("")
-    fail_checks = checks[checks["status"].astype(str) != "pass"].copy() if not checks.empty else pd.DataFrame()
+    fail_checks = (
+        checks[checks["status"].astype(str) != "pass"].copy()
+        if not checks.empty
+        else pd.DataFrame()
+    )
     audit_lines.append("## Failed Checks")
     audit_lines.append(_table(fail_checks))
     audit_lines.append("")
@@ -779,7 +825,12 @@ def _write_markdown_outputs(
     for entry in cfg.get("symbols", []):
         s = str(entry.get("symbol", "")).upper()
         source_lines.append(f"### {s}")
-        for k in ["mining_report_md", "wfo_report_md", "reduced_core_report_md", "tick_exact_report_md"]:
+        for k in [
+            "mining_report_md",
+            "wfo_report_md",
+            "reduced_core_report_md",
+            "tick_exact_report_md",
+        ]:
             if k in entry:
                 source_lines.append(f"- `{entry[k]}`")
         source_lines.append("")
@@ -914,29 +965,85 @@ def _symbol_contexts(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]
 
         cwd = Path.cwd()
         wfo_metrics = _glob_latest(
-            str(cwd / "data" / "analysis" / "tick_opportunity_mining" / "wfo_*" / f"{symbol}_monthly_metrics_all.csv")
+            str(
+                cwd
+                / "data"
+                / "analysis"
+                / "tick_opportunity_mining"
+                / "wfo_*"
+                / f"{symbol}_monthly_metrics_all.csv"
+            )
         ) or _glob_latest(
-            str(cwd / "data" / "analysis" / "tick_opportunity_mining" / "wfo_*" / f"{symbol}_oco_monthly_metrics.csv")
+            str(
+                cwd
+                / "data"
+                / "analysis"
+                / "tick_opportunity_mining"
+                / "wfo_*"
+                / f"{symbol}_oco_monthly_metrics.csv"
+            )
         )
         wfo_thresholds = _glob_latest(
-            str(cwd / "data" / "analysis" / "tick_opportunity_mining" / "wfo_*" / f"{symbol}_monthly_thresholds_all.csv")
+            str(
+                cwd
+                / "data"
+                / "analysis"
+                / "tick_opportunity_mining"
+                / "wfo_*"
+                / f"{symbol}_monthly_thresholds_all.csv"
+            )
         ) or _glob_latest(
-            str(cwd / "data" / "analysis" / "tick_opportunity_mining" / "wfo_*" / f"{symbol}_oco_monthly_thresholds.csv")
+            str(
+                cwd
+                / "data"
+                / "analysis"
+                / "tick_opportunity_mining"
+                / "wfo_*"
+                / f"{symbol}_oco_monthly_thresholds.csv"
+            )
         )
         wfo_predictions = _glob_latest(
-            str(cwd / "data" / "analysis" / "tick_opportunity_mining" / "wfo_*" / f"{symbol}_monthly_predictions_all.parquet")
+            str(
+                cwd
+                / "data"
+                / "analysis"
+                / "tick_opportunity_mining"
+                / "wfo_*"
+                / f"{symbol}_monthly_predictions_all.parquet"
+            )
         ) or _glob_latest(
-            str(cwd / "data" / "analysis" / "tick_opportunity_mining" / "wfo_*" / f"{symbol}_oco_monthly_predictions.parquet")
+            str(
+                cwd
+                / "data"
+                / "analysis"
+                / "tick_opportunity_mining"
+                / "wfo_*"
+                / f"{symbol}_oco_monthly_predictions.parquet"
+            )
         )
         governance_predeploy = _glob_latest(
-            str(cwd / "data" / "analysis" / "tick_opportunity_mining" / f"{str(symbol).lower()}_governance_predeploy*.json")
+            str(
+                cwd
+                / "data"
+                / "analysis"
+                / "tick_opportunity_mining"
+                / f"{str(symbol).lower()}_governance_predeploy*.json"
+            )
         )
         if governance_predeploy is None:
             governance_predeploy = _resolve_path(
-                base_dir, f"data/analysis/tick_opportunity_mining/{str(symbol).lower()}_governance_predeploy.json"
+                base_dir,
+                f"data/analysis/tick_opportunity_mining/{str(symbol).lower()}_governance_predeploy.json",
             )
         events_eval = _glob_latest(
-            str(cwd / "data" / "analysis" / "tick_opportunity_mining" / "wfo_*" / f"{symbol}_oco_events_eval*.parquet")
+            str(
+                cwd
+                / "data"
+                / "analysis"
+                / "tick_opportunity_mining"
+                / "wfo_*"
+                / f"{symbol}_oco_events_eval*.parquet"
+            )
         )
         contexts.append(
             {
@@ -947,14 +1054,20 @@ def _symbol_contexts(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]
                 "data_reliability_issues_csv": _resolve_path(
                     base_dir, "data/analysis/tick_opportunity_mining/data_reliability_issues.csv"
                 ),
-                "data_reliability_report_md": _resolve_path(base_dir, "docs/analysis/data_reliability_report.md"),
+                "data_reliability_report_md": _resolve_path(
+                    base_dir, "docs/analysis/data_reliability_report.md"
+                ),
                 "leakage_checks_csv": _resolve_path(
-                    base_dir, "data/analysis/tick_opportunity_mining/oco_leakage_integrity_checks.csv"
+                    base_dir,
+                    "data/analysis/tick_opportunity_mining/oco_leakage_integrity_checks.csv",
                 ),
                 "leakage_issues_csv": _resolve_path(
-                    base_dir, "data/analysis/tick_opportunity_mining/oco_leakage_integrity_issues.csv"
+                    base_dir,
+                    "data/analysis/tick_opportunity_mining/oco_leakage_integrity_issues.csv",
                 ),
-                "leakage_report_md": _resolve_path(base_dir, "docs/analysis/oco_leakage_integrity_report.md"),
+                "leakage_report_md": _resolve_path(
+                    base_dir, "docs/analysis/oco_leakage_integrity_report.md"
+                ),
                 "execution_risk_checks_csv": _resolve_path(
                     base_dir, "data/analysis/tick_opportunity_mining/oco_execution_risk_checks.csv"
                 ),
@@ -965,13 +1078,16 @@ def _symbol_contexts(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]
                     base_dir, "docs/analysis/oco_execution_risk_prelive_report.md"
                 ),
                 "execution_mc_month_session_csv": _resolve_path(
-                    base_dir, "data/analysis/tick_opportunity_mining/execution_mc_month_session_summary.csv"
+                    base_dir,
+                    "data/analysis/tick_opportunity_mining/execution_mc_month_session_summary.csv",
                 ),
                 "execution_mc_monthly_csv": _resolve_path(
-                    base_dir, "data/analysis/tick_opportunity_mining/execution_mc_monthly_summary.csv"
+                    base_dir,
+                    "data/analysis/tick_opportunity_mining/execution_mc_monthly_summary.csv",
                 ),
                 "execution_mc_symbol_scenarios_csv": _resolve_path(
-                    base_dir, "data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv"
+                    base_dir,
+                    "data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv",
                 ),
                 "execution_mc_checks_csv": _resolve_path(
                     base_dir, "data/analysis/tick_opportunity_mining/execution_mc_checks.csv"
@@ -983,7 +1099,8 @@ def _symbol_contexts(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]
                     base_dir, "docs/analysis/oco_execution_monte_carlo_report.md"
                 ),
                 "timezone_contract_csv": _resolve_path(
-                    base_dir, f"data/analysis/tick_opportunity_mining/{symbol}_stage1_timezone_contract.csv"
+                    base_dir,
+                    f"data/analysis/tick_opportunity_mining/{symbol}_stage1_timezone_contract.csv",
                 ),
                 "candidate_csv": _resolve_path(
                     base_dir, f"data/analysis/tick_opportunity_mining/{symbol}_oco_candidates.csv"
@@ -991,14 +1108,18 @@ def _symbol_contexts(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]
                 "reduced_summary_csv": reduced_summary,
                 "reduced_monthly_csv": reduced_dir / f"{symbol}_oco_reduced_monthly.csv",
                 "reduced_churn_csv": reduced_dir / f"{symbol}_oco_reduced_state_churn.csv",
-                "reduced_state_schedule_csv": reduced_dir / f"{symbol}_oco_reduced_state_schedule.csv",
+                "reduced_state_schedule_csv": reduced_dir
+                / f"{symbol}_oco_reduced_state_schedule.csv",
                 "tick_exact_summary_csv": tick_exact_summary,
                 "tick_exact_monthly_csv": reduced_dir / f"{symbol}_oco_tick_exact_monthly.csv",
                 "tick_exact_replay_csv": reduced_dir / f"{symbol}_oco_tick_exact_replay_bundle.csv",
                 "robustness_summary_csv": robustness_summary,
-                "robustness_null_csv": robustness_summary.parent / f"{symbol}_oco_robustness_null_tests.csv",
-                "robustness_stability_csv": robustness_summary.parent / f"{symbol}_oco_robustness_stability.csv",
-                "robustness_effect_csv": robustness_summary.parent / f"{symbol}_oco_robustness_effect_sizes.csv",
+                "robustness_null_csv": robustness_summary.parent
+                / f"{symbol}_oco_robustness_null_tests.csv",
+                "robustness_stability_csv": robustness_summary.parent
+                / f"{symbol}_oco_robustness_stability.csv",
+                "robustness_effect_csv": robustness_summary.parent
+                / f"{symbol}_oco_robustness_effect_sizes.csv",
                 "stop_limit_summary_csv": stop_summary,
                 "stop_limit_caps_csv": stop_dir / f"{symbol}_stop_limit_tickfill_caps.csv",
                 "stop_limit_detail_csv": stop_dir / f"{symbol}_stop_limit_tickfill_detail.csv",
@@ -1007,7 +1128,9 @@ def _symbol_contexts(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]
                 "wfo_thresholds_csv": wfo_thresholds,
                 "wfo_predictions_parquet": wfo_predictions,
                 "wfo_skip_reasons_csv": (
-                    wfo_metrics.parent / f"{symbol}_wfo_skip_reasons_all.csv" if wfo_metrics is not None else None
+                    wfo_metrics.parent / f"{symbol}_wfo_skip_reasons_all.csv"
+                    if wfo_metrics is not None
+                    else None
                 ),
                 "governance_predeploy_json": governance_predeploy,
                 "events_eval_parquet": events_eval,
@@ -1209,13 +1332,19 @@ def _render_stage_snapshot(
     lines.append("")
     lines.append("#### Key Results")
     lines.append(_table(summary_table))
-    interp = [str(x).strip() for x in (interpretation_notes if interpretation_notes is not None else notes[:3]) if str(x).strip()]
+    interp = [
+        str(x).strip()
+        for x in (interpretation_notes if interpretation_notes is not None else notes[:3])
+        if str(x).strip()
+    ]
     lines.append("")
     lines.append("#### Interpretation Notes")
     if interp:
         lines.extend(f"- {n}" for n in interp[:6])
     else:
-        lines.append("- Review key metrics against stage-specific Validation Gates and operator runbook triggers.")
+        lines.append(
+            "- Review key metrics against stage-specific Validation Gates and operator runbook triggers."
+        )
     lines.append("")
     lines.append("#### Action Trigger Summary")
     if action_summary_table is None or action_summary_table.empty:
@@ -1248,9 +1377,7 @@ def _render_stage_snapshot(
         lines.append(_table(d))
         if truncated:
             lines.append("")
-            lines.append(
-                f"- details_rows_shown: `{len(d)}` of `{n_full}`"
-            )
+            lines.append(f"- details_rows_shown: `{len(d)}` of `{n_full}`")
             if str(details_source_path).strip():
                 lines.append(f"- full_artifact: `{_to_repo_rel(details_source_path)}`")
     if figure_paths:
@@ -1291,7 +1418,9 @@ def _write_stage_snapshots(
         except Exception:
             operator_actions = pd.DataFrame()
 
-    def add_metric(stage_id: int, metric_id: str, symbol: str, value: Any, unit: str, source_path: str) -> None:
+    def add_metric(
+        stage_id: int, metric_id: str, symbol: str, value: Any, unit: str, source_path: str
+    ) -> None:
         metric_rows.append(
             {
                 "stage_id": stage_id,
@@ -1304,7 +1433,9 @@ def _write_stage_snapshots(
             }
         )
 
-    def add_edge_metric(stage_id: int, symbol: str, metric_id: str, metric_value: Any, note: str, source_path: str) -> None:
+    def add_edge_metric(
+        stage_id: int, symbol: str, metric_id: str, metric_value: Any, note: str, source_path: str
+    ) -> None:
         edge_stage_rows.append(
             {
                 "stage_id": stage_id,
@@ -1319,7 +1450,9 @@ def _write_stage_snapshots(
 
     def write_stage(stage_id: int, content_for_stage_page: str) -> None:
         snap = generated_dir / f"stage_{stage_id:02d}_snapshot.md"
-        content_for_generated = content_for_stage_page.replace("../figures/oco_bible/", "../../figures/oco_bible/")
+        content_for_generated = content_for_stage_page.replace(
+            "../figures/oco_bible/", "../../figures/oco_bible/"
+        )
         snap.write_text(content_for_generated + "\n", encoding="utf-8")
         page = page_map.get(stage_id)
         if inject_stage_pages and page is not None:
@@ -1333,14 +1466,33 @@ def _write_stage_snapshots(
         g = oa[oa["stage_id"] == int(stage_id)].copy()
         if g.empty:
             return pd.DataFrame()
-        keep = [c for c in ["symbol", "metric_id", "band", "severity", "action_code", "action_summary", "owner"] if c in g.columns]
+        keep = [
+            c
+            for c in [
+                "symbol",
+                "metric_id",
+                "band",
+                "severity",
+                "action_code",
+                "action_summary",
+                "owner",
+            ]
+            if c in g.columns
+        ]
         if not keep:
             return pd.DataFrame()
         g = g[keep].drop_duplicates()
         return g.head(12).reset_index(drop=True)
 
     # Stage 01: Data contract health over events.
-    req_cols = ["cost_est_pips", "range_pips", "spread_z", "tick_rate_z", "vel_cost_units_h1", "hl_first"]
+    req_cols = [
+        "cost_est_pips",
+        "range_pips",
+        "spread_z",
+        "tick_rate_z",
+        "vel_cost_units_h1",
+        "hl_first",
+    ]
     stage01_rows: list[dict[str, Any]] = []
     tz_rows: list[pd.DataFrame] = []
     rel_rows: list[pd.DataFrame] = []
@@ -1348,7 +1500,11 @@ def _write_stage_snapshots(
     for ctx in contexts:
         sym = ctx["symbol"]
         ev_path = ctx.get("events_eval_parquet")
-        stage01_cols = list(dict.fromkeys(["close_ts", "hour_utc", "cost_est_pips", "spread_z", "tick_rate_z"] + req_cols))
+        stage01_cols = list(
+            dict.fromkeys(
+                ["close_ts", "hour_utc", "cost_est_pips", "spread_z", "tick_rate_z"] + req_cols
+            )
+        )
         df = _safe_read_parquet(
             ev_path,
             columns=stage01_cols,
@@ -1381,7 +1537,9 @@ def _write_stage_snapshots(
                     d_gap = d_gap.dropna(subset=["dt_s"])
                     d_gap = d_gap[d_gap["dt_s"] > 0].copy()
                     if not d_gap.empty:
-                        d_gap["how"] = d_gap["close_ts"].dt.dayofweek * 24 + d_gap["close_ts"].dt.hour
+                        d_gap["how"] = (
+                            d_gap["close_ts"].dt.dayofweek * 24 + d_gap["close_ts"].dt.hour
+                        )
                         exp = d_gap.groupby("how")["dt_s"].median()
                         global_med = _num(d_gap["dt_s"].median())
                         d_gap["exp_dt_s"] = d_gap["how"].map(exp).astype(float).fillna(global_med)
@@ -1424,17 +1582,53 @@ def _write_stage_snapshots(
         row["d18_clock_jitter_cv"] = jitter_cv
         row["d18_clock_jitter_cv_raw"] = jitter_cv_raw
         stage01_rows.append(row)
-        add_metric(1, "events_rows", sym, row["events_rows"], "rows", str(ev_path) if ev_path else "")
-        add_edge_metric(1, sym, "D16_spread_regime_shift_z", spread_shift_z, "Last-month cost-estimate shift vs prior months", str(ev_path) if ev_path else "")
-        add_edge_metric(1, sym, "D17_gap_burst_ratio", burst_ratio, "Share of large inter-bar time gaps (>10x median)", str(ev_path) if ev_path else "")
-        add_edge_metric(1, sym, "D18_clock_jitter_cv_raw", jitter_cv_raw, "Raw inter-bar timing jitter coefficient of variation", str(ev_path) if ev_path else "")
-        add_edge_metric(1, sym, "D18_clock_jitter_cv", jitter_cv, "Normalized inter-bar timing jitter CV after hour-of-week baseline adjustment", str(ev_path) if ev_path else "")
+        add_metric(
+            1, "events_rows", sym, row["events_rows"], "rows", str(ev_path) if ev_path else ""
+        )
+        add_edge_metric(
+            1,
+            sym,
+            "D16_spread_regime_shift_z",
+            spread_shift_z,
+            "Last-month cost-estimate shift vs prior months",
+            str(ev_path) if ev_path else "",
+        )
+        add_edge_metric(
+            1,
+            sym,
+            "D17_gap_burst_ratio",
+            burst_ratio,
+            "Share of large inter-bar time gaps (>10x median)",
+            str(ev_path) if ev_path else "",
+        )
+        add_edge_metric(
+            1,
+            sym,
+            "D18_clock_jitter_cv_raw",
+            jitter_cv_raw,
+            "Raw inter-bar timing jitter coefficient of variation",
+            str(ev_path) if ev_path else "",
+        )
+        add_edge_metric(
+            1,
+            sym,
+            "D18_clock_jitter_cv",
+            jitter_cv,
+            "Normalized inter-bar timing jitter CV after hour-of-week baseline adjustment",
+            str(ev_path) if ev_path else "",
+        )
         rel = _safe_read_csv(ctx.get("data_reliability_checks_csv"))
         if not rel.empty and "symbol" in rel.columns:
             rel = rel[rel["symbol"].astype(str).str.upper() == str(sym).upper()].copy()
         if not rel.empty:
-            status = rel.get("status", pd.Series(index=rel.index, dtype=str)).astype(str).str.lower()
-            severity = rel.get("severity_if_fail", pd.Series(index=rel.index, dtype=str)).astype(str).str.lower()
+            status = (
+                rel.get("status", pd.Series(index=rel.index, dtype=str)).astype(str).str.lower()
+            )
+            severity = (
+                rel.get("severity_if_fail", pd.Series(index=rel.index, dtype=str))
+                .astype(str)
+                .str.lower()
+            )
             row["reliability_checks_total"] = int(len(rel))
             row["reliability_failed"] = int((status != "pass").sum())
             row["reliability_high_critical_failed"] = int(
@@ -1455,7 +1649,9 @@ def _write_stage_snapshots(
             row["reliability_high_critical_failed"] = 0
         rel_issues = _safe_read_csv(ctx.get("data_reliability_issues_csv"))
         if not rel_issues.empty and "symbol" in rel_issues.columns:
-            rel_issues = rel_issues[rel_issues["symbol"].astype(str).str.upper() == str(sym).upper()].copy()
+            rel_issues = rel_issues[
+                rel_issues["symbol"].astype(str).str.upper() == str(sym).upper()
+            ].copy()
         if not rel_issues.empty:
             rel_issue_rows.append(rel_issues.assign(symbol=sym))
         tz = _safe_read_csv(ctx.get("timezone_contract_csv"))
@@ -1467,7 +1663,9 @@ def _write_stage_snapshots(
     stage01 = pd.DataFrame(stage01_rows)
     tz_stage01 = pd.concat(tz_rows, ignore_index=True) if tz_rows else pd.DataFrame()
     rel_stage01 = pd.concat(rel_rows, ignore_index=True) if rel_rows else pd.DataFrame()
-    rel_issues_stage01 = pd.concat(rel_issue_rows, ignore_index=True) if rel_issue_rows else pd.DataFrame()
+    rel_issues_stage01 = (
+        pd.concat(rel_issue_rows, ignore_index=True) if rel_issue_rows else pd.DataFrame()
+    )
     stage01_plot = _stage_plot_path(outputs, 1, "contract_health")
     stage01_rel_plot = _stage_plot_path(outputs, 1, "data_reliability")
     if not stage01.empty:
@@ -1487,7 +1685,11 @@ def _write_stage_snapshots(
             _plot_stage_bars(
                 df=stage01,
                 x="symbol",
-                ys=["reliability_checks_total", "reliability_failed", "reliability_high_critical_failed"],
+                ys=[
+                    "reliability_checks_total",
+                    "reliability_failed",
+                    "reliability_high_critical_failed",
+                ],
                 title="Stage 1: Data Reliability Check Failures",
                 ylabel="count",
                 out_path=stage01_rel_plot,
@@ -1506,7 +1708,11 @@ def _write_stage_snapshots(
                 "pass",
             ],
         )
-        stage01_details = pd.concat([stage01_details, tz_pick], ignore_index=True) if stage01_details is not None else tz_pick
+        stage01_details = (
+            pd.concat([stage01_details, tz_pick], ignore_index=True)
+            if stage01_details is not None
+            else tz_pick
+        )
     stage01_content = _render_stage_snapshot(
         stage_id=1,
         now_utc=now_utc,
@@ -1529,7 +1735,9 @@ def _write_stage_snapshots(
         )
         if not stage01.empty
         else pd.DataFrame(),
-        details_table=stage01_details if stage01_details is not None and not stage01_details.empty else None,
+        details_table=stage01_details
+        if stage01_details is not None and not stage01_details.empty
+        else None,
         notes=[
             "Contract check uses eval-year event tables consumed by WFO.",
             "Null percentages should remain near 0 for required modeling fields.",
@@ -1542,24 +1750,47 @@ def _write_stage_snapshots(
         action_summary_table=stage_action_table(1),
     )
     if not rel_stage01.empty:
-        rel_fail = rel_stage01[rel_stage01.get("status", pd.Series(dtype=str)).astype(str).str.lower() != "pass"].copy()
+        rel_fail = rel_stage01[
+            rel_stage01.get("status", pd.Series(dtype=str)).astype(str).str.lower() != "pass"
+        ].copy()
         stage01_content += "\n\n#### Data Reliability Failed Checks\n" + _table(
             _pick_cols(
                 rel_fail,
-                ["symbol", "check_id", "severity_if_fail", "metric_name", "metric_value", "threshold", "details", "source_path"],
+                [
+                    "symbol",
+                    "check_id",
+                    "severity_if_fail",
+                    "metric_name",
+                    "metric_value",
+                    "threshold",
+                    "details",
+                    "source_path",
+                ],
             )
         )
     if not rel_issues_stage01.empty:
         stage01_content += "\n\n#### Data Reliability Issues\n" + _table(
             _pick_cols(
                 rel_issues_stage01,
-                ["symbol", "issue_id", "check_id", "severity", "summary", "metric_name", "metric_value", "threshold"],
+                [
+                    "symbol",
+                    "issue_id",
+                    "check_id",
+                    "severity",
+                    "summary",
+                    "metric_name",
+                    "metric_value",
+                    "threshold",
+                ],
             )
         )
     write_stage(1, stage01_content)
 
     # Stage 02: Opportunity mining.
-    stage23_overfit = _robustness_diag_table(contexts=contexts, exec_q=float(cfg.get("gate_thresholds", {}).get("robustness_quantile", 0.9)))
+    stage23_overfit = _robustness_diag_table(
+        contexts=contexts,
+        exec_q=float(cfg.get("gate_thresholds", {}).get("robustness_quantile", 0.9)),
+    )
     mining_summary_rows: list[dict[str, Any]] = []
     mining_scatter_rows: list[pd.DataFrame] = []
     for ctx in contexts:
@@ -1581,24 +1812,32 @@ def _write_stage_snapshots(
             tmp = tmp.dropna(subset=["edge_weight"])
             if not tmp.empty:
                 g = (
-                    tmp.groupby(["family", "state_id", "bar_ticks", "horizon"], as_index=False)["edge_weight"]
+                    tmp.groupby(["family", "state_id", "bar_ticks", "horizon"], as_index=False)[
+                        "edge_weight"
+                    ]
                     .sum()
                     .sort_values("edge_weight", ascending=False)
                 )
                 tot = _num(g["edge_weight"].sum())
                 top3 = _num(g["edge_weight"].head(3).sum())
                 contrib_top3_share = _safe_div(top3, tot)
-                g["contrib_share"] = g["edge_weight"] / tot if math.isfinite(tot) and tot != 0 else float("nan")
+                g["contrib_share"] = (
+                    g["edge_weight"] / tot if math.isfinite(tot) and tot != 0 else float("nan")
+                )
                 g["symbol"] = sym
                 g["stage_id"] = 2
                 edge_state_rows.extend(g.to_dict(orient="records"))
             # M02: horizon smoothness
-            if {"family", "state_id", "bar_ticks", "horizon", "mean_gross_pips_test"}.issubset(set(selected.columns)):
+            if {"family", "state_id", "bar_ticks", "horizon", "mean_gross_pips_test"}.issubset(
+                set(selected.columns)
+            ):
                 s2 = selected[
                     ["family", "state_id", "bar_ticks", "horizon", "mean_gross_pips_test"]
                 ].copy()
                 s2["horizon"] = pd.to_numeric(s2["horizon"], errors="coerce")
-                s2["mean_gross_pips_test"] = pd.to_numeric(s2["mean_gross_pips_test"], errors="coerce")
+                s2["mean_gross_pips_test"] = pd.to_numeric(
+                    s2["mean_gross_pips_test"], errors="coerce"
+                )
                 s2 = s2.dropna(subset=["horizon", "mean_gross_pips_test"]).sort_values(
                     ["family", "state_id", "bar_ticks", "horizon"]
                 )
@@ -1609,29 +1848,60 @@ def _write_stage_snapshots(
                         .abs()
                     )
                     smoothness_abs_jump = _num(s2["abs_jump"].median())
-            positive_density = _num((pd.to_numeric(selected.get("mean_gross_pips_test"), errors="coerce") > 0).mean())
+            positive_density = _num(
+                (pd.to_numeric(selected.get("mean_gross_pips_test"), errors="coerce") > 0).mean()
+            )
         mining_summary_rows.append(
             {
                 "symbol": sym,
                 "candidates_total": int(len(cand)),
                 "selected_total": int(len(selected)),
-                "selected_mean_gross_pips": _num(selected.get("mean_gross_pips_test", pd.Series(dtype=float)).mean()),
-                "selected_median_annualized": _num(selected.get("annualized_test_fills", pd.Series(dtype=float)).median()),
+                "selected_mean_gross_pips": _num(
+                    selected.get("mean_gross_pips_test", pd.Series(dtype=float)).mean()
+                ),
+                "selected_median_annualized": _num(
+                    selected.get("annualized_test_fills", pd.Series(dtype=float)).median()
+                ),
                 "m01_top3_contrib_share": contrib_top3_share,
                 "m02_smoothness_abs_jump": smoothness_abs_jump,
                 "m03_positive_density": positive_density,
             }
         )
-        add_metric(2, "selected_total", sym, len(selected), "rows", str(ctx.get("candidate_csv", "")))
-        add_edge_metric(2, sym, "M01_top3_contrib_share", contrib_top3_share, "Share of edge_weight from top 3 state blocks", str(ctx.get("candidate_csv", "")))
-        add_edge_metric(2, sym, "M02_smoothness_abs_jump", smoothness_abs_jump, "Median absolute gross jump across adjacent horizons", str(ctx.get("candidate_csv", "")))
-        add_edge_metric(2, sym, "M03_positive_density", positive_density, "Share of selected hypotheses with positive mean gross", str(ctx.get("candidate_csv", "")))
+        add_metric(
+            2, "selected_total", sym, len(selected), "rows", str(ctx.get("candidate_csv", ""))
+        )
+        add_edge_metric(
+            2,
+            sym,
+            "M01_top3_contrib_share",
+            contrib_top3_share,
+            "Share of edge_weight from top 3 state blocks",
+            str(ctx.get("candidate_csv", "")),
+        )
+        add_edge_metric(
+            2,
+            sym,
+            "M02_smoothness_abs_jump",
+            smoothness_abs_jump,
+            "Median absolute gross jump across adjacent horizons",
+            str(ctx.get("candidate_csv", "")),
+        )
+        add_edge_metric(
+            2,
+            sym,
+            "M03_positive_density",
+            positive_density,
+            "Share of selected hypotheses with positive mean gross",
+            str(ctx.get("candidate_csv", "")),
+        )
         if not selected.empty:
             q = selected[["symbol", "annualized_test_fills", "mean_gross_pips_test"]].copy()
             q["symbol"] = sym
             mining_scatter_rows.append(q)
     stage02 = pd.DataFrame(mining_summary_rows)
-    stage02_scatter = pd.concat(mining_scatter_rows, ignore_index=True) if mining_scatter_rows else pd.DataFrame()
+    stage02_scatter = (
+        pd.concat(mining_scatter_rows, ignore_index=True) if mining_scatter_rows else pd.DataFrame()
+    )
     stage02_plot = _stage_plot_path(outputs, 2, "selected_scatter")
     if not stage02_scatter.empty:
         _plot_stage_scatter(
@@ -1666,7 +1936,18 @@ def _write_stage_snapshots(
             .head(8)
         )
         stage02_content += "\n\n#### Edge Contribution by State Block\n" + _table(
-            _pick_cols(top_state, ["symbol", "family", "state_id", "bar_ticks", "horizon", "edge_weight", "contrib_share"])
+            _pick_cols(
+                top_state,
+                [
+                    "symbol",
+                    "family",
+                    "state_id",
+                    "bar_ticks",
+                    "horizon",
+                    "edge_weight",
+                    "contrib_share",
+                ],
+            )
         )
     if not stage23_overfit.empty:
         stage02_content += (
@@ -1709,13 +1990,22 @@ def _write_stage_snapshots(
                 }
             )
             summary_idx = len(wfo_summary_rows) - 1
-            add_metric(3, "auc_mean", sym, _num(metrics.get("auc", pd.Series(dtype=float)).mean()), "auc", str(ctx.get("wfo_metrics_csv", "")))
+            add_metric(
+                3,
+                "auc_mean",
+                sym,
+                _num(metrics.get("auc", pd.Series(dtype=float)).mean()),
+                "auc",
+                str(ctx.get("wfo_metrics_csv", "")),
+            )
             w14_brier_drift = _month_series_std(metrics.get("brier", pd.Series(dtype=float)))
         if not thresholds.empty and "quantile" in thresholds.columns:
             q = thresholds[pd.to_numeric(thresholds["quantile"], errors="coerce") == exec_q].copy()
             if not q.empty:
                 q["symbol"] = sym
-                wfo_rows.append(q[["symbol", "test_month", "mean_gross_pips", "coverage", "selected_rows"]])
+                wfo_rows.append(
+                    q[["symbol", "test_month", "mean_gross_pips", "coverage", "selected_rows"]]
+                )
             qq = thresholds.copy()
             qq["quantile"] = pd.to_numeric(qq["quantile"], errors="coerce")
             qq["mean_gross_pips"] = pd.to_numeric(qq.get("mean_gross_pips"), errors="coerce")
@@ -1730,7 +2020,11 @@ def _write_stage_snapshots(
                     )
                     .sort_values("quantile")
                 )
-                nearest = qg.iloc[(qg["quantile"] - exec_q).abs().argsort()].head(3).sort_values("quantile")
+                nearest = (
+                    qg.iloc[(qg["quantile"] - exec_q).abs().argsort()]
+                    .head(3)
+                    .sort_values("quantile")
+                )
                 if len(nearest) >= 2:
                     dy = _num(nearest["mean_gross_pips"].max() - nearest["mean_gross_pips"].min())
                     dq = _num(nearest["quantile"].max() - nearest["quantile"].min())
@@ -1742,11 +2036,17 @@ def _write_stage_snapshots(
                 edge_threshold_rows.extend(nearest.to_dict(orient="records"))
         if not preds.empty:
             p = preds.copy()
-            p["selected_exec"] = pd.to_numeric(p.get("selected_exec"), errors="coerce").fillna(0).astype(int)
+            p["selected_exec"] = (
+                pd.to_numeric(p.get("selected_exec"), errors="coerce").fillna(0).astype(int)
+            )
             p = p[p["selected_exec"] == 1].copy()
             if not p.empty:
                 p["test_month"] = p["test_month"].astype(str)
-                sets = p.groupby("test_month")["candidate_uid"].apply(lambda s: set(s.astype(str))).sort_index()
+                sets = (
+                    p.groupby("test_month")["candidate_uid"]
+                    .apply(lambda s: set(s.astype(str)))
+                    .sort_index()
+                )
                 jac: list[float] = []
                 for i in range(1, len(sets)):
                     a = sets.iloc[i - 1]
@@ -1762,13 +2062,17 @@ def _write_stage_snapshots(
             if "symbol" in leakage.columns:
                 leakage = leakage[leakage["symbol"].astype(str).str.upper() == sym].copy()
             leak_focus = leakage[
-                leakage.get("check_id", pd.Series(index=leakage.index, dtype=str)).astype(str).isin(
-                    ["L01", "L02", "L03", "L04", "L06", "L09"]
-                )
+                leakage.get("check_id", pd.Series(index=leakage.index, dtype=str))
+                .astype(str)
+                .isin(["L01", "L02", "L03", "L04", "L06", "L09"])
             ].copy()
             if not leak_focus.empty:
                 fail = leak_focus["status"].astype(str).str.lower() != "pass"
-                sev = leak_focus.get("severity_if_fail", pd.Series(index=leak_focus.index, dtype=str)).astype(str).str.lower()
+                sev = (
+                    leak_focus.get("severity_if_fail", pd.Series(index=leak_focus.index, dtype=str))
+                    .astype(str)
+                    .str.lower()
+                )
                 stage03_leak_rows.append(
                     {
                         "symbol": sym,
@@ -1777,9 +2081,30 @@ def _write_stage_snapshots(
                         "high_critical_failed": int((fail & sev.isin(["high", "critical"])).sum()),
                     }
                 )
-        add_edge_metric(3, sym, "W13_threshold_fragility", w13_fragility, "Mean-gross sensitivity around execution quantile", str(ctx.get("wfo_thresholds_csv", "")))
-        add_edge_metric(3, sym, "W14_brier_drift_std", w14_brier_drift, "Std of monthly Brier score (calibration drift)", str(ctx.get("wfo_metrics_csv", "")))
-        add_edge_metric(3, sym, "W15_selection_turnover", w15_turnover, "1 - consecutive-month Jaccard of selected candidate_uids", str(ctx.get("wfo_predictions_parquet", "")))
+        add_edge_metric(
+            3,
+            sym,
+            "W13_threshold_fragility",
+            w13_fragility,
+            "Mean-gross sensitivity around execution quantile",
+            str(ctx.get("wfo_thresholds_csv", "")),
+        )
+        add_edge_metric(
+            3,
+            sym,
+            "W14_brier_drift_std",
+            w14_brier_drift,
+            "Std of monthly Brier score (calibration drift)",
+            str(ctx.get("wfo_metrics_csv", "")),
+        )
+        add_edge_metric(
+            3,
+            sym,
+            "W15_selection_turnover",
+            w15_turnover,
+            "1 - consecutive-month Jaccard of selected candidate_uids",
+            str(ctx.get("wfo_predictions_parquet", "")),
+        )
         if summary_idx >= 0:
             wfo_summary_rows[summary_idx]["w13_threshold_fragility"] = w13_fragility
             wfo_summary_rows[summary_idx]["w14_brier_drift_std"] = w14_brier_drift
@@ -1798,8 +2123,7 @@ def _write_stage_snapshots(
             out_path=stage03_plot,
         )
     stage03_detail = (
-        stage03_monthly.groupby("symbol", as_index=False)
-        .agg(
+        stage03_monthly.groupby("symbol", as_index=False).agg(
             months=("test_month", "nunique"),
             mean_coverage=("coverage", "mean"),
             mean_gross_pips=("mean_gross_pips", "mean"),
@@ -1822,10 +2146,22 @@ def _write_stage_snapshots(
         figure_prefix="../figures/oco_bible/",
         action_summary_table=stage_action_table(3),
     )
-    stage03_thr = pd.DataFrame([r for r in edge_threshold_rows if int(_num(r.get("stage_id"))) == 3])
+    stage03_thr = pd.DataFrame(
+        [r for r in edge_threshold_rows if int(_num(r.get("stage_id"))) == 3]
+    )
     if not stage03_thr.empty:
         stage03_content += "\n\n#### Threshold Robustness Around Execution Quantile\n" + _table(
-            _pick_cols(stage03_thr, ["symbol", "test_month", "quantile", "mean_gross_pips", "coverage", "selected_rows"])
+            _pick_cols(
+                stage03_thr,
+                [
+                    "symbol",
+                    "test_month",
+                    "quantile",
+                    "mean_gross_pips",
+                    "coverage",
+                    "selected_rows",
+                ],
+            )
         )
     stage03_skip = pd.concat(wfo_skip_rows, ignore_index=True) if wfo_skip_rows else pd.DataFrame()
     if not stage03_skip.empty and {"symbol", "reason_code"}.issubset(set(stage03_skip.columns)):
@@ -1889,9 +2225,23 @@ def _write_stage_snapshots(
             row["symbol"] = sym
             stage04_summary_rows.append(row)
             stage04_idx = len(stage04_summary_rows) - 1
-            add_metric(4, "tick_overshoot_mean_pips", sym, row.get("tick_overshoot_mean_pips"), "pips", str(ctx.get("stop_limit_summary_csv", "")))
+            add_metric(
+                4,
+                "tick_overshoot_mean_pips",
+                sym,
+                row.get("tick_overshoot_mean_pips"),
+                "pips",
+                str(ctx.get("stop_limit_summary_csv", "")),
+            )
             slip = _num(row.get("tick_overshoot_mean_pips"))
-            add_edge_metric(4, sym, "erosion_overshoot_component", slip, "Average overshoot pips at tick first-cross", str(ctx.get("stop_limit_summary_csv", "")))
+            add_edge_metric(
+                4,
+                sym,
+                "erosion_overshoot_component",
+                slip,
+                "Average overshoot pips at tick first-cross",
+                str(ctx.get("stop_limit_summary_csv", "")),
+            )
         if not c.empty:
             cc = c.copy()
             if "symbol" in cc.columns:
@@ -1902,14 +2252,27 @@ def _write_stage_snapshots(
                 if {"cap_pips", "mean_per_signal_full_overshoot"}.issubset(set(cc.columns)):
                     cc2 = cc.copy()
                     cc2["cap_pips"] = pd.to_numeric(cc2["cap_pips"], errors="coerce")
-                    cc2["mean_per_signal_full_overshoot"] = pd.to_numeric(cc2["mean_per_signal_full_overshoot"], errors="coerce")
-                    cc2 = cc2.dropna(subset=["cap_pips", "mean_per_signal_full_overshoot"]).sort_values("cap_pips")
+                    cc2["mean_per_signal_full_overshoot"] = pd.to_numeric(
+                        cc2["mean_per_signal_full_overshoot"], errors="coerce"
+                    )
+                    cc2 = cc2.dropna(
+                        subset=["cap_pips", "mean_per_signal_full_overshoot"]
+                    ).sort_values("cap_pips")
                     if not cc2.empty:
                         best = _num(cc2["mean_per_signal_full_overshoot"].max())
-                        near = cc2[cc2["mean_per_signal_full_overshoot"] >= (0.95 * best if math.isfinite(best) else float("nan"))]
+                        near = cc2[
+                            cc2["mean_per_signal_full_overshoot"]
+                            >= (0.95 * best if math.isfinite(best) else float("nan"))
+                        ]
                         if len(near) >= 2:
-                            e12_plateau_width = _num(near["cap_pips"].max() - near["cap_pips"].min())
-                    if not cc2.empty and {"mean_per_signal_no_extra_slip", "mean_per_signal_full_overshoot", "fill_rate"}.issubset(set(cc2.columns)):
+                            e12_plateau_width = _num(
+                                near["cap_pips"].max() - near["cap_pips"].min()
+                            )
+                    if not cc2.empty and {
+                        "mean_per_signal_no_extra_slip",
+                        "mean_per_signal_full_overshoot",
+                        "fill_rate",
+                    }.issubset(set(cc2.columns)):
                         cc_best = cc2.iloc[cc2["mean_per_signal_full_overshoot"].argmax()]
                         ideal = _num(cc_best.get("mean_per_signal_no_extra_slip"))
                         real = _num(cc_best.get("mean_per_signal_full_overshoot"))
@@ -1917,7 +2280,11 @@ def _write_stage_snapshots(
                         best_cap_pips = _num(cc_best.get("cap_pips"))
                         best_fill_rate = fill
                         e4_per_signal_realized = real
-                        e13_nonfill_opportunity_cost = (ideal - real) * fill if all(math.isfinite(v) for v in [ideal, real, fill]) else float("nan")
+                        e13_nonfill_opportunity_cost = (
+                            (ideal - real) * fill
+                            if all(math.isfinite(v) for v in [ideal, real, fill])
+                            else float("nan")
+                        )
         if not drift.empty:
             dd = drift.copy()
             if "symbol" in dd.columns:
@@ -1930,8 +2297,16 @@ def _write_stage_snapshots(
                 er = er[er["symbol"].astype(str).str.upper() == sym].copy()
             if not er.empty:
                 fail = er["status"].astype(str).str.lower() != "pass"
-                sev = er.get("severity_if_fail", pd.Series(index=er.index, dtype=str)).astype(str).str.lower()
-                m_by_id = er.set_index("check_id")["metric_value"] if "check_id" in er.columns and "metric_value" in er.columns else pd.Series(dtype=float)
+                sev = (
+                    er.get("severity_if_fail", pd.Series(index=er.index, dtype=str))
+                    .astype(str)
+                    .str.lower()
+                )
+                m_by_id = (
+                    er.set_index("check_id")["metric_value"]
+                    if "check_id" in er.columns and "metric_value" in er.columns
+                    else pd.Series(dtype=float)
+                )
                 stage04_exec_rows.append(
                     {
                         "symbol": sym,
@@ -1943,7 +2318,9 @@ def _write_stage_snapshots(
                         "e10_lb95_month_signal_net": _num(m_by_id.get("E10")),
                     }
                 )
-        if not detail.empty and {"overshoot_tick_pips", "touch_open_ts"}.issubset(set(detail.columns)):
+        if not detail.empty and {"overshoot_tick_pips", "touch_open_ts"}.issubset(
+            set(detail.columns)
+        ):
             d = detail.copy()
             if "side" in d.columns:
                 side_norm = pd.to_numeric(d["side"], errors="coerce")
@@ -1951,7 +2328,9 @@ def _write_stage_snapshots(
                 is_text_side = d["side"].astype(str).str.upper().isin(["BUY", "SELL"])
                 d = d[is_num_side | is_text_side].copy()
             if "touch_found_tick" in d.columns:
-                d["touch_found_tick"] = pd.to_numeric(d["touch_found_tick"], errors="coerce").fillna(0).astype(int)
+                d["touch_found_tick"] = (
+                    pd.to_numeric(d["touch_found_tick"], errors="coerce").fillna(0).astype(int)
+                )
                 d = d[d["touch_found_tick"] == 1].copy()
             d["touch_open_ts"] = pd.to_datetime(d["touch_open_ts"], utc=True, errors="coerce")
             d["overshoot_tick_pips"] = pd.to_numeric(d["overshoot_tick_pips"], errors="coerce")
@@ -1969,16 +2348,31 @@ def _write_stage_snapshots(
                 if not d_cap.empty:
                     by_session = d_cap.groupby("session_bucket")["overshoot_capped_pips"].mean()
                     if len(by_session) > 1:
-                        e11_session_overshoot_dispersion = _safe_div(_num(by_session.std(ddof=1)), _num(by_session.mean()))
+                        e11_session_overshoot_dispersion = _safe_div(
+                            _num(by_session.std(ddof=1)), _num(by_session.mean())
+                        )
                     if stage04_idx >= 0:
                         stage04_summary_rows[stage04_idx]["stage04_cap_lookback_days"] = 20
                         stage04_summary_rows[stage04_idx]["stage04_cap_quantile"] = 0.90
-                        stage04_summary_rows[stage04_idx]["stage04_cap_sessions"] = int(by_session.shape[0])
+                        stage04_summary_rows[stage04_idx]["stage04_cap_sessions"] = int(
+                            by_session.shape[0]
+                        )
         erosion = float("nan")
         if stage04_idx >= 0:
             base = _num(stage04_summary_rows[stage04_idx].get("base_mean_gross_pips"))
-            erosion = base - e4_per_signal_realized if math.isfinite(base) and math.isfinite(e4_per_signal_realized) else float("nan")
-            add_edge_metric(4, sym, "erosion_spread_fee_plus_slip", erosion, "Gross-to-per-signal erosion including overshoot realism", str(ctx.get("stop_limit_caps_csv", "")))
+            erosion = (
+                base - e4_per_signal_realized
+                if math.isfinite(base) and math.isfinite(e4_per_signal_realized)
+                else float("nan")
+            )
+            add_edge_metric(
+                4,
+                sym,
+                "erosion_spread_fee_plus_slip",
+                erosion,
+                "Gross-to-per-signal erosion including overshoot realism",
+                str(ctx.get("stop_limit_caps_csv", "")),
+            )
         add_edge_metric(
             4,
             sym,
@@ -1987,12 +2381,30 @@ def _write_stage_snapshots(
             "CV of mean overshoot across sessions after causal rolling session caps (20D, q=0.90)",
             str(ctx.get("stop_limit_detail_csv", "")),
         )
-        add_edge_metric(4, sym, "E12_cap_plateau_width_pips", e12_plateau_width, "Cap width where performance remains >=95% of best", str(ctx.get("stop_limit_caps_csv", "")))
-        add_edge_metric(4, sym, "E13_nonfill_opportunity_cost_pips", e13_nonfill_opportunity_cost, "Estimated opportunity cost at best cap (ideal-realized)*fill", str(ctx.get("stop_limit_caps_csv", "")))
+        add_edge_metric(
+            4,
+            sym,
+            "E12_cap_plateau_width_pips",
+            e12_plateau_width,
+            "Cap width where performance remains >=95% of best",
+            str(ctx.get("stop_limit_caps_csv", "")),
+        )
+        add_edge_metric(
+            4,
+            sym,
+            "E13_nonfill_opportunity_cost_pips",
+            e13_nonfill_opportunity_cost,
+            "Estimated opportunity cost at best cap (ideal-realized)*fill",
+            str(ctx.get("stop_limit_caps_csv", "")),
+        )
         if stage04_idx >= 0:
-            stage04_summary_rows[stage04_idx]["e11_session_overshoot_dispersion"] = e11_session_overshoot_dispersion
+            stage04_summary_rows[stage04_idx]["e11_session_overshoot_dispersion"] = (
+                e11_session_overshoot_dispersion
+            )
             stage04_summary_rows[stage04_idx]["e12_cap_plateau_width_pips"] = e12_plateau_width
-            stage04_summary_rows[stage04_idx]["e13_nonfill_opportunity_cost_pips"] = e13_nonfill_opportunity_cost
+            stage04_summary_rows[stage04_idx]["e13_nonfill_opportunity_cost_pips"] = (
+                e13_nonfill_opportunity_cost
+            )
             stage04_summary_rows[stage04_idx]["erosion_spread_fee_plus_slip"] = erosion
             stage04_summary_rows[stage04_idx]["best_cap_pips"] = best_cap_pips
             stage04_summary_rows[stage04_idx]["best_fill_rate"] = best_fill_rate
@@ -2003,7 +2415,9 @@ def _write_stage_snapshots(
             "E13_nonfill_opportunity_cost_pips": e13_nonfill_opportunity_cost,
             "erosion_spread_fee_plus_slip": erosion,
             "tick_overshoot_p95_pips": _num(
-                stage04_summary_rows[stage04_idx].get("tick_overshoot_p95_pips") if stage04_idx >= 0 else float("nan")
+                stage04_summary_rows[stage04_idx].get("tick_overshoot_p95_pips")
+                if stage04_idx >= 0
+                else float("nan")
             ),
         }
         for metric_id in stage04_policy_metrics:
@@ -2045,7 +2459,11 @@ def _write_stage_snapshots(
             ]
         )
     stage04_policy.to_csv(stage04_policy_csv, index=False)
-    stage04_cap_policy = pd.concat(stage04_cap_policy_rows, ignore_index=True) if stage04_cap_policy_rows else pd.DataFrame()
+    stage04_cap_policy = (
+        pd.concat(stage04_cap_policy_rows, ignore_index=True)
+        if stage04_cap_policy_rows
+        else pd.DataFrame()
+    )
     if stage04_cap_policy.empty:
         stage04_cap_policy = pd.DataFrame(
             columns=[
@@ -2085,7 +2503,9 @@ def _write_stage_snapshots(
             ylabel="metric count",
             out_path=stage04_policy_plot,
         )
-    stage04_details = _pick_cols(stage04_caps, ["symbol", "cap_pips", "fill_rate", "mean_per_signal_full_overshoot"])
+    stage04_details = _pick_cols(
+        stage04_caps, ["symbol", "cap_pips", "fill_rate", "mean_per_signal_full_overshoot"]
+    )
     if not stage04_details.empty and {"symbol", "cap_pips"}.issubset(set(stage04_details.columns)):
         stage04_details = stage04_details.sort_values(["symbol", "cap_pips"])
     stage04_content = _render_stage_snapshot(
@@ -2124,7 +2544,16 @@ def _write_stage_snapshots(
     if not stage04_drift.empty:
         d4 = _pick_cols(
             stage04_drift,
-            ["symbol", "test_month", "session", "touch_found_rate", "overshoot_p95", "touch_found_rate_drop", "drift_z", "pass"],
+            [
+                "symbol",
+                "test_month",
+                "session",
+                "touch_found_rate",
+                "overshoot_p95",
+                "touch_found_rate_drop",
+                "drift_z",
+                "pass",
+            ],
         )
         stage04_content += "\n\n#### Fill Drift\n" + _table(d4)
     stage04_exec = pd.DataFrame(stage04_exec_rows)
@@ -2148,10 +2577,7 @@ def _write_stage_snapshots(
                 ],
             )
         )
-        stage04_content += (
-            "\n\n- policy_csv: "
-            + f"`{_to_repo_rel(stage04_policy_csv)}`"
-        )
+        stage04_content += "\n\n- policy_csv: " + f"`{_to_repo_rel(stage04_policy_csv)}`"
     if not stage04_policy.empty:
         stage04_content += "\n\n#### Policy Metric Mapping (Detail)\n" + _table(
             _pick_cols(
@@ -2171,7 +2597,17 @@ def _write_stage_snapshots(
         stage04_content += "\n\n#### Session Rolling Cap Policy\n" + _table(
             _pick_cols(
                 stage04_cap_policy,
-                ["symbol", "session_bucket", "lookback_days", "cap_quantile", "cap_pips", "rows_used", "session_cap_rows", "global_cap_rows", "fallback_rows"],
+                [
+                    "symbol",
+                    "session_bucket",
+                    "lookback_days",
+                    "cap_quantile",
+                    "cap_pips",
+                    "rows_used",
+                    "session_cap_rows",
+                    "global_cap_rows",
+                    "fallback_rows",
+                ],
             )
         )
     write_stage(4, stage04_content)
@@ -2198,37 +2634,70 @@ def _write_stage_snapshots(
             row["symbol"] = sym
             stage05_summary_rows.append(row)
             stage05_idx = len(stage05_summary_rows) - 1
-            add_metric(5, "lb95_month_mean_gross_pips", sym, row.get("lb95_month_mean_gross_pips"), "pips", str(ctx.get("reduced_summary_csv", "")))
+            add_metric(
+                5,
+                "lb95_month_mean_gross_pips",
+                sym,
+                row.get("lb95_month_mean_gross_pips"),
+                "pips",
+                str(ctx.get("reduced_summary_csv", "")),
+            )
             r02_dependency = _num(row.get("top_state_share"))
             if not math.isfinite(r02_dependency):
                 r02_dependency = _num(row.get("max_top_state_share"))
         if not rm.empty:
             m = rm.copy()
             m["symbol"] = sym
-            stage05_monthly_cols = ["symbol", "test_month", "mean_gross_pips", "fill_rate", "rows", "states_selected"]
+            stage05_monthly_cols = [
+                "symbol",
+                "test_month",
+                "mean_gross_pips",
+                "fill_rate",
+                "rows",
+                "states_selected",
+            ]
             stage05_monthly_avail = [c for c in stage05_monthly_cols if c in m.columns]
             stage05_monthly_rows.append(m[stage05_monthly_avail])
-            m["stability_pass"] = _to_bool_series(m.get("stability_pass", pd.Series(index=m.index, dtype=str)))
+            m["stability_pass"] = _to_bool_series(
+                m.get("stability_pass", pd.Series(index=m.index, dtype=str))
+            )
             r03_reselect_stability = _num(m["stability_pass"].mean())
         if not rc.empty:
             c = rc.copy()
             c["symbol"] = sym
             stage05_churn_rows.append(c)
             if "state_churn_rate" in c.columns:
-                r03_reselect_stability = _num(1.0 - pd.to_numeric(c["state_churn_rate"], errors="coerce").mean())
+                r03_reselect_stability = _num(
+                    1.0 - pd.to_numeric(c["state_churn_rate"], errors="coerce").mean()
+                )
         if not sched.empty:
-            add_metric(5, "states_scheduled", sym, len(sched), "rows", str(ctx.get("reduced_state_schedule_csv", "")))
+            add_metric(
+                5,
+                "states_scheduled",
+                sym,
+                len(sched),
+                "rows",
+                str(ctx.get("reduced_state_schedule_csv", "")),
+            )
         if not th.empty and "quantile" in th.columns:
             tq = th[pd.to_numeric(th["quantile"], errors="coerce") == exec_q].copy()
             if not tq.empty:
                 pre_rows = _num(pd.to_numeric(tq["selected_rows"], errors="coerce").sum())
-                post_rows = _num(pd.to_numeric(rm.get("rows", pd.Series(dtype=float)), errors="coerce").sum()) if not rm.empty else float("nan")
+                post_rows = (
+                    _num(
+                        pd.to_numeric(rm.get("rows", pd.Series(dtype=float)), errors="coerce").sum()
+                    )
+                    if not rm.empty
+                    else float("nan")
+                )
                 r01_overprune = _safe_div(post_rows, pre_rows)
         if not leakage.empty:
             if "symbol" in leakage.columns:
                 leakage = leakage[leakage["symbol"].astype(str).str.upper() == sym].copy()
             leak_focus = leakage[
-                leakage.get("check_id", pd.Series(index=leakage.index, dtype=str)).astype(str).isin(["L05", "L10", "L11"])
+                leakage.get("check_id", pd.Series(index=leakage.index, dtype=str))
+                .astype(str)
+                .isin(["L05", "L10", "L11"])
             ].copy()
             if not leak_focus.empty:
                 fail = leak_focus["status"].astype(str).str.lower() != "pass"
@@ -2242,18 +2711,46 @@ def _write_stage_snapshots(
                         ),
                     }
                 )
-        if math.isnan(r01_overprune): r01_overprune = 0.0
-        if math.isnan(r02_dependency): r02_dependency = 0.0
-        if math.isnan(r03_reselect_stability): r03_reselect_stability = 0.0
-        add_edge_metric(5, sym, "R01_post_pre_row_ratio", r01_overprune, "Reduced-core rows / pre-filter WFO selected rows", str(ctx.get("reduced_monthly_csv", "")))
-        add_edge_metric(5, sym, "R02_top_state_dependency", r02_dependency, "Top-state share from reduced summary", str(ctx.get("reduced_summary_csv", "")))
-        add_edge_metric(5, sym, "R03_reselection_stability", r03_reselect_stability, "1-churn proxy / stability pass rate", str(ctx.get("reduced_churn_csv", "")))
+        if math.isnan(r01_overprune):
+            r01_overprune = 0.0
+        if math.isnan(r02_dependency):
+            r02_dependency = 0.0
+        if math.isnan(r03_reselect_stability):
+            r03_reselect_stability = 0.0
+        add_edge_metric(
+            5,
+            sym,
+            "R01_post_pre_row_ratio",
+            r01_overprune,
+            "Reduced-core rows / pre-filter WFO selected rows",
+            str(ctx.get("reduced_monthly_csv", "")),
+        )
+        add_edge_metric(
+            5,
+            sym,
+            "R02_top_state_dependency",
+            r02_dependency,
+            "Top-state share from reduced summary",
+            str(ctx.get("reduced_summary_csv", "")),
+        )
+        add_edge_metric(
+            5,
+            sym,
+            "R03_reselection_stability",
+            r03_reselect_stability,
+            "1-churn proxy / stability pass rate",
+            str(ctx.get("reduced_churn_csv", "")),
+        )
         if stage05_idx >= 0:
             stage05_summary_rows[stage05_idx]["r01_post_pre_row_ratio"] = r01_overprune
             stage05_summary_rows[stage05_idx]["r02_top_state_dependency"] = r02_dependency
             stage05_summary_rows[stage05_idx]["r03_reselection_stability"] = r03_reselect_stability
     stage05_summary = pd.DataFrame(stage05_summary_rows)
-    stage05_monthly = pd.concat(stage05_monthly_rows, ignore_index=True) if stage05_monthly_rows else pd.DataFrame()
+    stage05_monthly = (
+        pd.concat(stage05_monthly_rows, ignore_index=True)
+        if stage05_monthly_rows
+        else pd.DataFrame()
+    )
     stage05_plot = _stage_plot_path(outputs, 5, "reduced_monthly_gross")
     if not stage05_monthly.empty:
         _plot_stage_lines(
@@ -2266,8 +2763,7 @@ def _write_stage_snapshots(
             out_path=stage05_plot,
         )
     stage05_detail = (
-        stage05_monthly.groupby("symbol", as_index=False)
-        .agg(
+        stage05_monthly.groupby("symbol", as_index=False).agg(
             months=("test_month", "nunique"),
             rows_total=("rows", "sum"),
             mean_fill_rate=("fill_rate", "mean"),
@@ -2306,16 +2802,29 @@ def _write_stage_snapshots(
         figure_prefix="../figures/oco_bible/",
         action_summary_table=stage_action_table(5),
     )
-    stage05_churn = pd.concat(stage05_churn_rows, ignore_index=True) if stage05_churn_rows else pd.DataFrame()
+    stage05_churn = (
+        pd.concat(stage05_churn_rows, ignore_index=True) if stage05_churn_rows else pd.DataFrame()
+    )
     if not stage05_churn.empty:
         c5 = _pick_cols(
             stage05_churn,
-            ["symbol", "test_month", "states_selected", "state_churn_rate", "top_state_share", "state_hhi", "stability_pass", "status"],
+            [
+                "symbol",
+                "test_month",
+                "states_selected",
+                "state_churn_rate",
+                "top_state_share",
+                "state_hhi",
+                "stability_pass",
+                "status",
+            ],
         )
         stage05_content += "\n\n#### State Churn\n" + _table(c5)
     stage05_leak = pd.DataFrame(stage05_leak_rows)
     if not stage05_leak.empty:
-        stage05_content += "\n\n#### Leakage/Label Integrity (Reduced-Core Focus)\n" + _table(stage05_leak)
+        stage05_content += "\n\n#### Leakage/Label Integrity (Reduced-Core Focus)\n" + _table(
+            stage05_leak
+        )
     write_stage(5, stage05_content)
 
     # Stage 06: Tick-exact verification.
@@ -2331,17 +2840,30 @@ def _write_stage_snapshots(
             row = ts.iloc[0].to_dict()
             row["symbol"] = sym
             stage06_summary_rows.append(row)
-            add_metric(6, "exact_match_rate", sym, row.get("exact_match_rate"), "rate", str(ctx.get("tick_exact_summary_csv", "")))
+            add_metric(
+                6,
+                "exact_match_rate",
+                sym,
+                row.get("exact_match_rate"),
+                "rate",
+                str(ctx.get("tick_exact_summary_csv", "")),
+            )
         if not tm.empty:
             m = tm.copy()
             m["symbol"] = sym
-            stage06_monthly_rows.append(m[["symbol", "test_month", "exact_match_rate", "pos_label_match_rate"]])
+            stage06_monthly_rows.append(
+                m[["symbol", "test_month", "exact_match_rate", "pos_label_match_rate"]]
+            )
         if not tr.empty:
             r = tr.copy()
             r["symbol"] = sym
             stage06_replay_rows.append(r)
     stage06_summary = pd.DataFrame(stage06_summary_rows)
-    stage06_monthly = pd.concat(stage06_monthly_rows, ignore_index=True) if stage06_monthly_rows else pd.DataFrame()
+    stage06_monthly = (
+        pd.concat(stage06_monthly_rows, ignore_index=True)
+        if stage06_monthly_rows
+        else pd.DataFrame()
+    )
     stage06_plot = _stage_plot_path(outputs, 6, "tick_exact_monthly")
     if not stage06_monthly.empty:
         _plot_stage_lines(
@@ -2354,8 +2876,7 @@ def _write_stage_snapshots(
             out_path=stage06_plot,
         )
     stage06_detail = (
-        stage06_monthly.groupby("symbol", as_index=False)
-        .agg(
+        stage06_monthly.groupby("symbol", as_index=False).agg(
             months=("test_month", "nunique"),
             exact_min=("exact_match_rate", "min"),
             exact_mean=("exact_match_rate", "mean"),
@@ -2393,14 +2914,18 @@ def _write_stage_snapshots(
         figure_prefix="../figures/oco_bible/",
         action_summary_table=stage_action_table(6),
     )
-    stage06_replay = pd.concat(stage06_replay_rows, ignore_index=True) if stage06_replay_rows else pd.DataFrame()
+    stage06_replay = (
+        pd.concat(stage06_replay_rows, ignore_index=True) if stage06_replay_rows else pd.DataFrame()
+    )
     if not stage06_replay.empty:
         stage06_content += "\n\n#### Replay Bundle Sample\n" + _table(stage06_replay.head(30))
     portability_rows: list[pd.DataFrame] = []
     for ctx in contexts:
         sym = ctx["symbol"]
         cand = _safe_read_csv(ctx.get("candidate_csv"))
-        if cand.empty or not {"family", "selection_pass", "mean_gross_pips_test"}.issubset(set(cand.columns)):
+        if cand.empty or not {"family", "selection_pass", "mean_gross_pips_test"}.issubset(
+            set(cand.columns)
+        ):
             continue
         c = cand.copy()
         c["selection_pass"] = _to_bool_series(c["selection_pass"])
@@ -2411,9 +2936,13 @@ def _write_stage_snapshots(
         fam = c.groupby("family", as_index=False)["mean_gross_pips_test"].mean()
         fam["symbol"] = sym
         portability_rows.append(fam)
-    portability = pd.concat(portability_rows, ignore_index=True) if portability_rows else pd.DataFrame()
+    portability = (
+        pd.concat(portability_rows, ignore_index=True) if portability_rows else pd.DataFrame()
+    )
     if not portability.empty:
-        pv = portability.pivot_table(index="family", columns="symbol", values="mean_gross_pips_test", aggfunc="mean")
+        pv = portability.pivot_table(
+            index="family", columns="symbol", values="mean_gross_pips_test", aggfunc="mean"
+        )
         port = pd.DataFrame({"family": pv.index})
         port["symbols_covered"] = pv.notna().sum(axis=1).values
         port["mean_across_symbols"] = pv.mean(axis=1, skipna=True).values
@@ -2423,24 +2952,54 @@ def _write_stage_snapshots(
             (pv.notna().sum(axis=1) == len(contexts)) & (pv.min(axis=1, skipna=True) > 0)
         ).astype(int)
         stage06_content += "\n\n#### Cross-Symbol Portability (X01-X03)\n" + _table(
-            port.sort_values(["x01_all_symbols_positive", "mean_across_symbols"], ascending=[False, False]).head(20)
+            port.sort_values(
+                ["x01_all_symbols_positive", "mean_across_symbols"], ascending=[False, False]
+            ).head(20)
         )
         for sym in sorted(portability["symbol"].astype(str).unique()):
-            add_edge_metric(6, sym, "X01_portable_family_count", int(port["x01_all_symbols_positive"].sum()), "Families with positive mean gross across all symbols", str(Path("data/analysis/tick_opportunity_mining/*_oco_candidates.csv")))
-            add_edge_metric(6, sym, "X02_family_std_mean", _num(port["std_across_symbols"].mean()), "Average family std across symbols", str(Path("data/analysis/tick_opportunity_mining/*_oco_candidates.csv")))
-            add_edge_metric(6, sym, "X03_family_spread_mean", _num(port["spread_max_min"].mean()), "Average family max-min spread across symbols", str(Path("data/analysis/tick_opportunity_mining/*_oco_candidates.csv")))
+            add_edge_metric(
+                6,
+                sym,
+                "X01_portable_family_count",
+                int(port["x01_all_symbols_positive"].sum()),
+                "Families with positive mean gross across all symbols",
+                str(Path("data/analysis/tick_opportunity_mining/*_oco_candidates.csv")),
+            )
+            add_edge_metric(
+                6,
+                sym,
+                "X02_family_std_mean",
+                _num(port["std_across_symbols"].mean()),
+                "Average family std across symbols",
+                str(Path("data/analysis/tick_opportunity_mining/*_oco_candidates.csv")),
+            )
+            add_edge_metric(
+                6,
+                sym,
+                "X03_family_spread_mean",
+                _num(port["spread_max_min"].mean()),
+                "Average family max-min spread across symbols",
+                str(Path("data/analysis/tick_opportunity_mining/*_oco_candidates.csv")),
+            )
     write_stage(6, stage06_content)
 
     # Stage 07: Logical audit.
-    audit_evidence_path = _resolve_path(base_dir, "data/analysis/tick_opportunity_mining/oco_logical_audit_evidence.csv")
+    audit_evidence_path = _resolve_path(
+        base_dir, "data/analysis/tick_opportunity_mining/oco_logical_audit_evidence.csv"
+    )
     audit_evidence = _safe_read_csv(audit_evidence_path)
     fail_checks = checks.copy()
     if not fail_checks.empty and "status" in fail_checks.columns:
         fail_checks = fail_checks[fail_checks["status"].astype(str).str.lower() != "pass"].copy()
     stage07_summary = (
-        checks.groupby("symbol", as_index=False)
-        .agg(total_checks=("check_id", "count"), failed_checks=("status", lambda s: int((s.astype(str).str.lower() != "pass").sum())))
-        if not checks.empty and "check_id" in checks.columns and "status" in checks.columns and "symbol" in checks.columns
+        checks.groupby("symbol", as_index=False).agg(
+            total_checks=("check_id", "count"),
+            failed_checks=("status", lambda s: int((s.astype(str).str.lower() != "pass").sum())),
+        )
+        if not checks.empty
+        and "check_id" in checks.columns
+        and "status" in checks.columns
+        and "symbol" in checks.columns
         else pd.DataFrame()
     )
     check_rollup = (
@@ -2461,13 +3020,29 @@ def _write_stage_snapshots(
             out_path=stage07_plot,
         )
         for _, r in stage07_summary.iterrows():
-            add_metric(7, "failed_checks", str(r.get("symbol", "ALL")), r.get("failed_checks"), "count", str(cfg["audit"]["checks_csv"]))
+            add_metric(
+                7,
+                "failed_checks",
+                str(r.get("symbol", "ALL")),
+                r.get("failed_checks"),
+                "count",
+                str(cfg["audit"]["checks_csv"]),
+            )
     stage07_content = _render_stage_snapshot(
         stage_id=7,
         now_utc=now_utc,
         summary_table=stage07_summary if not stage07_summary.empty else pd.DataFrame(),
         details_table=_pick_cols(
-            fail_checks, ["symbol", "check_id", "severity_if_fail", "component", "metric_name", "metric_value", "threshold"]
+            fail_checks,
+            [
+                "symbol",
+                "check_id",
+                "severity_if_fail",
+                "component",
+                "metric_name",
+                "metric_value",
+                "threshold",
+            ],
         ).head(20)
         if not fail_checks.empty
         else check_rollup,
@@ -2488,9 +3063,12 @@ def _write_stage_snapshots(
         s7["s01_lb95_dependence_gap"] = s7["s01_lb95_dependence_gap"].fillna(trade_lb - blk_lb)
         # If dependence-aware fields are unavailable in this run artifact, use neutral 0.0 sentinel.
         s7["s01_lb95_dependence_gap"] = s7["s01_lb95_dependence_gap"].fillna(0.0)
-        s7["s02_practical_lb95_gt0"] = (pd.to_numeric(s7.get("lb95_trade_mean_gross_pips"), errors="coerce") > 0).astype(int)
+        s7["s02_practical_lb95_gt0"] = (
+            pd.to_numeric(s7.get("lb95_trade_mean_gross_pips"), errors="coerce") > 0
+        ).astype(int)
         s7["s03_multiplicity_survival"] = (
-            s7.get("bonferroni_pass_10pct", False).astype(bool) | s7.get("fdr_pass_10pct", False).astype(bool)
+            s7.get("bonferroni_pass_10pct", False).astype(bool)
+            | s7.get("fdr_pass_10pct", False).astype(bool)
         ).astype(int)
         stage07_content += "\n\n#### Statistical Inference Ladder (S01-S03)\n" + _table(
             _pick_cols(
@@ -2508,11 +3086,34 @@ def _write_stage_snapshots(
         )
         for _, r in s7.iterrows():
             sym = str(r.get("symbol", "")).upper()
-            add_edge_metric(7, sym, "S01_lb95_dependence_gap", r.get("s01_lb95_dependence_gap"), "IID LB95 minus month-block LB95", str(outputs.stage_metrics_csv))
-            add_edge_metric(7, sym, "S02_practical_lb95_gt0", r.get("s02_practical_lb95_gt0"), "Practical significance indicator", str(outputs.stage_metrics_csv))
-            add_edge_metric(7, sym, "S03_multiplicity_survival", r.get("s03_multiplicity_survival"), "Bonferroni or FDR pass indicator", str(outputs.stage_metrics_csv))
+            add_edge_metric(
+                7,
+                sym,
+                "S01_lb95_dependence_gap",
+                r.get("s01_lb95_dependence_gap"),
+                "IID LB95 minus month-block LB95",
+                str(outputs.stage_metrics_csv),
+            )
+            add_edge_metric(
+                7,
+                sym,
+                "S02_practical_lb95_gt0",
+                r.get("s02_practical_lb95_gt0"),
+                "Practical significance indicator",
+                str(outputs.stage_metrics_csv),
+            )
+            add_edge_metric(
+                7,
+                sym,
+                "S03_multiplicity_survival",
+                r.get("s03_multiplicity_survival"),
+                "Bonferroni or FDR pass indicator",
+                str(outputs.stage_metrics_csv),
+            )
     if not audit_evidence.empty:
-        stage07_content += "\n\n#### Failed Check Evidence Links\n" + _table(audit_evidence.head(80))
+        stage07_content += "\n\n#### Failed Check Evidence Links\n" + _table(
+            audit_evidence.head(80)
+        )
     write_stage(7, stage07_content)
 
     # Stage 08: Robustness and overfit controls.
@@ -2579,9 +3180,30 @@ def _write_stage_snapshots(
         row["t04_max_survivable_cost_lb95_trade"] = t04_max_survivable_cost
         row["t03_post_worst_month_recovery"] = t03_recovery
         robust_rows.append(row)
-        add_metric(8, "lb95_trade_mean_gross_pips", sym, row.get("lb95_trade_mean_gross_pips"), "pips", str(ctx.get("robustness_summary_csv", "")))
-        add_edge_metric(8, sym, "T01_stress_elasticity", t01_elasticity, "Slope of mean net pips across costplus stress levels", str(ctx.get("robustness_summary_csv", "")))
-        add_edge_metric(8, sym, "T02_first_negative_costplus", t02_first_negative_cost, "First costplus level where mean net turns negative", str(ctx.get("robustness_summary_csv", "")))
+        add_metric(
+            8,
+            "lb95_trade_mean_gross_pips",
+            sym,
+            row.get("lb95_trade_mean_gross_pips"),
+            "pips",
+            str(ctx.get("robustness_summary_csv", "")),
+        )
+        add_edge_metric(
+            8,
+            sym,
+            "T01_stress_elasticity",
+            t01_elasticity,
+            "Slope of mean net pips across costplus stress levels",
+            str(ctx.get("robustness_summary_csv", "")),
+        )
+        add_edge_metric(
+            8,
+            sym,
+            "T02_first_negative_costplus",
+            t02_first_negative_cost,
+            "First costplus level where mean net turns negative",
+            str(ctx.get("robustness_summary_csv", "")),
+        )
         add_edge_metric(
             8,
             sym,
@@ -2601,13 +3223,18 @@ def _write_stage_snapshots(
             str(ctx.get("reduced_monthly_csv", "")),
         )
     stage08 = pd.DataFrame(robust_rows)
-    stress_cols = sorted(
-        [
-            c
-            for c in stage08.columns
-            if str(c).startswith("mean_net_pips_costplus_") or str(c).startswith("lb95_trade_mean_net_pips_costplus_")
-        ]
-    ) if not stage08.empty else []
+    stress_cols = (
+        sorted(
+            [
+                c
+                for c in stage08.columns
+                if str(c).startswith("mean_net_pips_costplus_")
+                or str(c).startswith("lb95_trade_mean_net_pips_costplus_")
+            ]
+        )
+        if not stage08.empty
+        else []
+    )
     stage08_detail_cols = [
         "symbol",
         "lb95_trade_mean_gross_pips_iid",
@@ -2635,7 +3262,16 @@ def _write_stage_snapshots(
             ylabel="pips",
             out_path=stage08_plot,
         )
-        panel_cols = [c for c in ["mean_gross_pips", "null_mean_gross_pips", "lb95_trade_mean_gross_pips_iid", "lb95_trade_mean_gross_pips_month_block"] if c in stage08.columns]
+        panel_cols = [
+            c
+            for c in [
+                "mean_gross_pips",
+                "null_mean_gross_pips",
+                "lb95_trade_mean_gross_pips_iid",
+                "lb95_trade_mean_gross_pips_month_block",
+            ]
+            if c in stage08.columns
+        ]
         if panel_cols:
             _plot_stage_bars(
                 df=stage08,
@@ -2649,11 +3285,22 @@ def _write_stage_snapshots(
         stage_id=8,
         now_utc=now_utc,
         summary_table=_pick_cols(
-            stage08, ["symbol", "quantile", "rows", "months", "mean_gross_pips", "lb95_trade_mean_gross_pips", "positive_months"]
+            stage08,
+            [
+                "symbol",
+                "quantile",
+                "rows",
+                "months",
+                "mean_gross_pips",
+                "lb95_trade_mean_gross_pips",
+                "positive_months",
+            ],
         )
         if not stage08.empty
         else pd.DataFrame(),
-        details_table=stage08_detail if stage08_detail is not None and not stage08_detail.empty else None,
+        details_table=stage08_detail
+        if stage08_detail is not None and not stage08_detail.empty
+        else None,
         notes=[
             "Robustness summary uses bootstrap lower bounds from the configured smoke/full run artifacts.",
             "Interpretation: LB95 > 0 indicates conservative positive expectancy under sampled uncertainty.",
@@ -2667,7 +3314,11 @@ def _write_stage_snapshots(
     write_stage(8, stage08_content)
 
     # Stage 09: Governance and deployment readiness.
-    missing_inventory = artifact_inventory[~artifact_inventory["exists"].astype(bool)].copy() if not artifact_inventory.empty else pd.DataFrame()
+    missing_inventory = (
+        artifact_inventory[~artifact_inventory["exists"].astype(bool)].copy()
+        if not artifact_inventory.empty
+        else pd.DataFrame()
+    )
     stage09_summary = stage_status.copy() if not stage_status.empty else pd.DataFrame()
     gov_rows: list[dict[str, Any]] = []
     for ctx in contexts:
@@ -2679,13 +3330,17 @@ def _write_stage_snapshots(
         exec_high_crit = 0
         if not leak_issues.empty:
             if "symbol" in leak_issues.columns:
-                leak_issues = leak_issues[leak_issues["symbol"].astype(str).str.upper() == sym].copy()
+                leak_issues = leak_issues[
+                    leak_issues["symbol"].astype(str).str.upper() == sym
+                ].copy()
             if not leak_issues.empty and "severity" in leak_issues.columns:
                 sev = leak_issues["severity"].astype(str).str.lower()
                 leak_high_crit = int(sev.isin(["high", "critical"]).sum())
         if not exec_issues.empty:
             if "symbol" in exec_issues.columns:
-                exec_issues = exec_issues[exec_issues["symbol"].astype(str).str.upper() == sym].copy()
+                exec_issues = exec_issues[
+                    exec_issues["symbol"].astype(str).str.upper() == sym
+                ].copy()
             if not exec_issues.empty and "severity" in exec_issues.columns:
                 sev = exec_issues["severity"].astype(str).str.lower()
                 exec_high_crit = int(sev.isin(["high", "critical"]).sum())
@@ -2721,7 +3376,9 @@ def _write_stage_snapshots(
                 m = re.search(r"(?:critical_failed|high_failed|rows=)(\d+)", detail)
                 if m and _num(m.group(1)) in {0.0, 1.0}:
                     near_fail += 1
-            if any(tok in name for tok in ["config_hash", "states_hash", "state_universe_exact_match"]) and not bool(item.get("ok", False)):
+            if any(
+                tok in name for tok in ["config_hash", "states_hash", "state_universe_exact_match"]
+            ) and not bool(item.get("ok", False)):
                 lock_drift_flags += 1
         gov_rows.append(
             {
@@ -2731,8 +3388,12 @@ def _write_stage_snapshots(
                 "failed_checks": ",".join(map(str, fail_list)),
                 "checks_total": int(len(checks_list)),
                 "checks_failed": int(len(fail_list)),
-                "as_of": str(gp.get("meta", {}).get("as_of", "")) if isinstance(gp.get("meta"), dict) else "",
-                "window_end": str(gp.get("meta", {}).get("window_end", "")) if isinstance(gp.get("meta"), dict) else "",
+                "as_of": str(gp.get("meta", {}).get("as_of", ""))
+                if isinstance(gp.get("meta"), dict)
+                else "",
+                "window_end": str(gp.get("meta", {}).get("window_end", ""))
+                if isinstance(gp.get("meta"), dict)
+                else "",
                 "json_path": str(ctx.get("governance_predeploy_json") or ""),
                 "leakage_high_critical_issues": leak_high_crit,
                 "execution_risk_high_critical_issues": exec_high_crit,
@@ -2740,24 +3401,57 @@ def _write_stage_snapshots(
                 "g03_lock_drift_flags": lock_drift_flags,
             }
         )
-        add_edge_metric(9, sym, "G01_near_fail_count", near_fail, "Count of pass checks with low margin heuristics", str(ctx.get("governance_predeploy_json") or ""))
-        add_edge_metric(9, sym, "G03_lock_drift_flags", lock_drift_flags, "Hash/state-universe drift failures in predeploy checks", str(ctx.get("governance_predeploy_json") or ""))
+        add_edge_metric(
+            9,
+            sym,
+            "G01_near_fail_count",
+            near_fail,
+            "Count of pass checks with low margin heuristics",
+            str(ctx.get("governance_predeploy_json") or ""),
+        )
+        add_edge_metric(
+            9,
+            sym,
+            "G03_lock_drift_flags",
+            lock_drift_flags,
+            "Hash/state-universe drift failures in predeploy checks",
+            str(ctx.get("governance_predeploy_json") or ""),
+        )
     stage09_gov = pd.DataFrame(gov_rows)
-    risk_sla_path = _resolve_path(base_dir, "data/analysis/tick_opportunity_mining/risk_sla_tracker.csv")
+    risk_sla_path = _resolve_path(
+        base_dir, "data/analysis/tick_opportunity_mining/risk_sla_tracker.csv"
+    )
     risk_sla = _safe_read_csv(risk_sla_path)
-    if not stage09_gov.empty and not risk_sla.empty and {"symbol", "status", "days_open"}.issubset(set(risk_sla.columns)):
+    if (
+        not stage09_gov.empty
+        and not risk_sla.empty
+        and {"symbol", "status", "days_open"}.issubset(set(risk_sla.columns))
+    ):
         rs = risk_sla.copy()
         rs["symbol"] = rs["symbol"].astype(str).str.upper()
         rs = rs[rs["status"].astype(str).str.lower() == "open"].copy()
         if not rs.empty:
-            g02 = rs.groupby("symbol", as_index=False)["days_open"].mean().rename(columns={"days_open": "g02_open_warning_age_days"})
+            g02 = (
+                rs.groupby("symbol", as_index=False)["days_open"]
+                .mean()
+                .rename(columns={"days_open": "g02_open_warning_age_days"})
+            )
             stage09_gov = stage09_gov.merge(g02, on="symbol", how="left")
             for _, rr in g02.iterrows():
-                add_edge_metric(9, str(rr.get("symbol", "")), "G02_open_warning_age_days", rr.get("g02_open_warning_age_days"), "Average days open for unresolved risks", str(risk_sla_path))
+                add_edge_metric(
+                    9,
+                    str(rr.get("symbol", "")),
+                    "G02_open_warning_age_days",
+                    rr.get("g02_open_warning_age_days"),
+                    "Average days open for unresolved risks",
+                    str(risk_sla_path),
+                )
     stage09_plot = _stage_plot_path(outputs, 9, "gate_matrix")
     if not stage09_summary.empty:
         heat = stage09_summary.copy()
-        gate_cols = [c for c in heat.columns if c.startswith("gate_") or c == "symbol_all_gates_pass"]
+        gate_cols = [
+            c for c in heat.columns if c.startswith("gate_") or c == "symbol_all_gates_pass"
+        ]
         if gate_cols:
             _plot_stage_bars(
                 df=pd.DataFrame(
@@ -2801,7 +3495,9 @@ def _write_stage_snapshots(
         stage_id=9,
         now_utc=now_utc,
         summary_table=stage09_summary if not stage09_summary.empty else pd.DataFrame(),
-        details_table=_pick_cols(missing_inventory, ["group", "symbol", "artifact", "path"]).head(20)
+        details_table=_pick_cols(missing_inventory, ["group", "symbol", "artifact", "path"]).head(
+            20
+        )
         if not missing_inventory.empty
         else None,
         notes=[
@@ -2833,7 +3529,10 @@ def _write_stage_snapshots(
                 ],
             )
         )
-        if "status" in stage09_gov.columns and (stage09_gov["status"].astype(str).str.lower() == "missing").any():
+        if (
+            "status" in stage09_gov.columns
+            and (stage09_gov["status"].astype(str).str.lower() == "missing").any()
+        ):
             stage09_content += (
                 "\n\n- Missing predeploy JSON for one or more symbols. Generate with "
                 "`scripts/validate_oco_live_governance.py --mode deploy --data-reliability-checks-csv ... "
@@ -2858,7 +3557,9 @@ def _write_stage_snapshots(
             {
                 "symbol": exi.get("symbol", pd.Series(dtype=str)).astype(str).str.upper(),
                 "check_id": exi.get("check_id", pd.Series(dtype=str)).astype(str),
-                "severity_if_fail": exi.get("severity", pd.Series(dtype=str)).astype(str).str.lower(),
+                "severity_if_fail": exi.get("severity", pd.Series(dtype=str))
+                .astype(str)
+                .str.lower(),
                 "component": exi.get("component", pd.Series(dtype=str)).astype(str),
                 "metric_name": exi.get("summary", pd.Series(dtype=str)).astype(str),
                 "metric_value": np.nan,
@@ -2870,10 +3571,15 @@ def _write_stage_snapshots(
     if exec_issue_rows:
         risk = pd.concat([risk, pd.concat(exec_issue_rows, ignore_index=True)], ignore_index=True)
     if not risk.empty:
-        risk["severity_score"] = risk.get("severity_if_fail", risk.get("severity", "")).astype(str).str.lower().map(severity_map).fillna(1.0)
+        risk["severity_score"] = (
+            risk.get("severity_if_fail", risk.get("severity", ""))
+            .astype(str)
+            .str.lower()
+            .map(severity_map)
+            .fillna(1.0)
+        )
     risk_summary = (
-        risk.groupby(["symbol", "check_id"], as_index=False)
-        .agg(
+        risk.groupby(["symbol", "check_id"], as_index=False).agg(
             fail_count=("check_id", "count"),
             impact_score=("severity_score", "mean"),
         )
@@ -2919,17 +3625,26 @@ def _write_stage_snapshots(
             ylabel="impact score",
             out_path=stage10_plot,
         )
-    risk_sla_path = _resolve_path(base_dir, "data/analysis/tick_opportunity_mining/risk_sla_tracker.csv")
+    risk_sla_path = _resolve_path(
+        base_dir, "data/analysis/tick_opportunity_mining/risk_sla_tracker.csv"
+    )
     risk_sla = _safe_read_csv(risk_sla_path)
     backlog_diag = pd.DataFrame()
     stage10_sla_plot = _stage_plot_path(outputs, 10, "risk_sla_open_breached")
     if not risk_sla.empty and {"symbol", "status", "breached"}.issubset(set(risk_sla.columns)):
         open_sla = risk_sla[risk_sla["status"].astype(str).str.lower() == "open"].copy()
         if not open_sla.empty:
-            open_sla["breached_flag"] = open_sla["breached"].astype(str).str.lower().isin({"1", "true", "yes", "y"}).astype(int)
-            sla_roll = (
-                open_sla.groupby("symbol", as_index=False)
-                .agg(open_risks=("risk_id", "count"), breached_risks=("breached_flag", "sum"), avg_days_open=("days_open", "mean"))
+            open_sla["breached_flag"] = (
+                open_sla["breached"]
+                .astype(str)
+                .str.lower()
+                .isin({"1", "true", "yes", "y"})
+                .astype(int)
+            )
+            sla_roll = open_sla.groupby("symbol", as_index=False).agg(
+                open_risks=("risk_id", "count"),
+                breached_risks=("breached_flag", "sum"),
+                avg_days_open=("days_open", "mean"),
             )
             _plot_stage_bars(
                 df=sla_roll,
@@ -2940,7 +3655,14 @@ def _write_stage_snapshots(
                 out_path=stage10_sla_plot,
             )
             for _, r in sla_roll.iterrows():
-                add_metric(10, "open_risks", str(r.get("symbol", "ALL")), r.get("open_risks", 0), "count", str(risk_sla_path))
+                add_metric(
+                    10,
+                    "open_risks",
+                    str(r.get("symbol", "ALL")),
+                    r.get("open_risks", 0),
+                    "count",
+                    str(risk_sla_path),
+                )
                 add_metric(
                     10,
                     "breached_risks",
@@ -2955,7 +3677,9 @@ def _write_stage_snapshots(
             rr["days_open"] = pd.to_numeric(rr["days_open"], errors="coerce")
             rr["is_open"] = (rr["status"].astype(str).str.lower() == "open").astype(int)
             rr["is_closed"] = (rr["status"].astype(str).str.lower() == "closed").astype(int)
-            rr["is_high"] = rr["severity"].astype(str).str.lower().isin({"high", "critical"}).astype(int)
+            rr["is_high"] = (
+                rr["severity"].astype(str).str.lower().isin({"high", "critical"}).astype(int)
+            )
             backlog_diag = rr.groupby("symbol", as_index=False).agg(
                 b11_open_risks=("is_open", "sum"),
                 b11_closed_risks=("is_closed", "sum"),
@@ -2963,9 +3687,30 @@ def _write_stage_snapshots(
                 b13_avg_days_open=("days_open", "mean"),
             )
             for _, r in backlog_diag.iterrows():
-                add_edge_metric(10, str(r.get("symbol", "")), "B11_open_risks", r.get("b11_open_risks"), "Open risk count", str(risk_sla_path))
-                add_edge_metric(10, str(r.get("symbol", "")), "B12_high_open", r.get("b12_high_open"), "Open high/critical risk count", str(risk_sla_path))
-                add_edge_metric(10, str(r.get("symbol", "")), "B13_avg_days_open", r.get("b13_avg_days_open"), "Average days open for risks", str(risk_sla_path))
+                add_edge_metric(
+                    10,
+                    str(r.get("symbol", "")),
+                    "B11_open_risks",
+                    r.get("b11_open_risks"),
+                    "Open risk count",
+                    str(risk_sla_path),
+                )
+                add_edge_metric(
+                    10,
+                    str(r.get("symbol", "")),
+                    "B12_high_open",
+                    r.get("b12_high_open"),
+                    "Open high/critical risk count",
+                    str(risk_sla_path),
+                )
+                add_edge_metric(
+                    10,
+                    str(r.get("symbol", "")),
+                    "B13_avg_days_open",
+                    r.get("b13_avg_days_open"),
+                    "Average days open for risks",
+                    str(risk_sla_path),
+                )
     stage10_content = _render_stage_snapshot(
         stage_id=10,
         now_utc=now_utc,
@@ -2985,7 +3730,17 @@ def _write_stage_snapshots(
         stage10_content += "\n\n#### Risk SLA Tracker\n" + _table(
             _pick_cols(
                 risk_sla,
-                ["risk_id", "symbol", "check_id", "severity", "status", "days_open", "sla_days", "breached", "owner"],
+                [
+                    "risk_id",
+                    "symbol",
+                    "check_id",
+                    "severity",
+                    "status",
+                    "days_open",
+                    "sla_days",
+                    "breached",
+                    "owner",
+                ],
             )
         )
         if not backlog_diag.empty:
@@ -3019,9 +3774,19 @@ def _write_stage_snapshots(
     stage11_detail_rows: list[pd.DataFrame] = []
     stage11_month_rows: list[pd.DataFrame] = []
     stage11_check_rows: list[dict[str, Any]] = []
-    mc_symbol_all = _safe_read_csv(contexts[0].get("execution_mc_symbol_scenarios_csv")) if contexts else pd.DataFrame()
-    mc_month_all = _safe_read_csv(contexts[0].get("execution_mc_month_session_csv")) if contexts else pd.DataFrame()
-    mc_checks_all = _safe_read_csv(contexts[0].get("execution_mc_checks_csv")) if contexts else pd.DataFrame()
+    mc_symbol_all = (
+        _safe_read_csv(contexts[0].get("execution_mc_symbol_scenarios_csv"))
+        if contexts
+        else pd.DataFrame()
+    )
+    mc_month_all = (
+        _safe_read_csv(contexts[0].get("execution_mc_month_session_csv"))
+        if contexts
+        else pd.DataFrame()
+    )
+    mc_checks_all = (
+        _safe_read_csv(contexts[0].get("execution_mc_checks_csv")) if contexts else pd.DataFrame()
+    )
     for ctx in contexts:
         sym = ctx["symbol"]
         s = mc_symbol_all.copy()
@@ -3034,18 +3799,58 @@ def _write_stage_snapshots(
             sb = s[s["scenario_id"].astype(str) == "S0_baseline"].copy()
             row = {
                 "symbol": sym,
-                "signals": _num(sb.iloc[0]["signals"]) if not sb.empty and "signals" in sb.columns else _num(s["signals"].max() if "signals" in s.columns else float("nan")),
-                "lb95_s1": _num(s1.iloc[0]["lb95_per_signal_pips"]) if not s1.empty and "lb95_per_signal_pips" in s1.columns else float("nan"),
-                "lb95_s2": _num(s2.iloc[0]["lb95_per_signal_pips"]) if not s2.empty and "lb95_per_signal_pips" in s2.columns else float("nan"),
-                "prob_negative_month_s1": _num(s1.iloc[0]["prob_negative_month"]) if not s1.empty and "prob_negative_month" in s1.columns else float("nan"),
-                "fill_rate_drop_s1": _num(s1.iloc[0]["fill_rate_drop_vs_S0"]) if not s1.empty and "fill_rate_drop_vs_S0" in s1.columns else float("nan"),
-                "drawdown_proxy_p95_s1": _num(s1.iloc[0]["drawdown_proxy_p95"]) if not s1.empty and "drawdown_proxy_p95" in s1.columns else float("nan"),
+                "signals": _num(sb.iloc[0]["signals"])
+                if not sb.empty and "signals" in sb.columns
+                else _num(s["signals"].max() if "signals" in s.columns else float("nan")),
+                "lb95_s1": _num(s1.iloc[0]["lb95_per_signal_pips"])
+                if not s1.empty and "lb95_per_signal_pips" in s1.columns
+                else float("nan"),
+                "lb95_s2": _num(s2.iloc[0]["lb95_per_signal_pips"])
+                if not s2.empty and "lb95_per_signal_pips" in s2.columns
+                else float("nan"),
+                "prob_negative_month_s1": _num(s1.iloc[0]["prob_negative_month"])
+                if not s1.empty and "prob_negative_month" in s1.columns
+                else float("nan"),
+                "fill_rate_drop_s1": _num(s1.iloc[0]["fill_rate_drop_vs_S0"])
+                if not s1.empty and "fill_rate_drop_vs_S0" in s1.columns
+                else float("nan"),
+                "drawdown_proxy_p95_s1": _num(s1.iloc[0]["drawdown_proxy_p95"])
+                if not s1.empty and "drawdown_proxy_p95" in s1.columns
+                else float("nan"),
             }
             stage11_rows.append(row)
-            add_edge_metric(11, sym, "EM01_lb95_per_signal_s1", row["lb95_s1"], "LB95 per-signal pips in mild stress", str(ctx.get("execution_mc_symbol_scenarios_csv", "")))
-            add_edge_metric(11, sym, "EM02_lb95_per_signal_s2", row["lb95_s2"], "LB95 per-signal pips in moderate stress", str(ctx.get("execution_mc_symbol_scenarios_csv", "")))
-            add_edge_metric(11, sym, "EM03_prob_negative_month_s1", row["prob_negative_month_s1"], "Probability of negative month in mild stress", str(ctx.get("execution_mc_symbol_scenarios_csv", "")))
-            add_edge_metric(11, sym, "EM04_fill_rate_drop_vs_s0_s1", row["fill_rate_drop_s1"], "Fill-rate drop from baseline to mild stress", str(ctx.get("execution_mc_symbol_scenarios_csv", "")))
+            add_edge_metric(
+                11,
+                sym,
+                "EM01_lb95_per_signal_s1",
+                row["lb95_s1"],
+                "LB95 per-signal pips in mild stress",
+                str(ctx.get("execution_mc_symbol_scenarios_csv", "")),
+            )
+            add_edge_metric(
+                11,
+                sym,
+                "EM02_lb95_per_signal_s2",
+                row["lb95_s2"],
+                "LB95 per-signal pips in moderate stress",
+                str(ctx.get("execution_mc_symbol_scenarios_csv", "")),
+            )
+            add_edge_metric(
+                11,
+                sym,
+                "EM03_prob_negative_month_s1",
+                row["prob_negative_month_s1"],
+                "Probability of negative month in mild stress",
+                str(ctx.get("execution_mc_symbol_scenarios_csv", "")),
+            )
+            add_edge_metric(
+                11,
+                sym,
+                "EM04_fill_rate_drop_vs_s0_s1",
+                row["fill_rate_drop_s1"],
+                "Fill-rate drop from baseline to mild stress",
+                str(ctx.get("execution_mc_symbol_scenarios_csv", "")),
+            )
         m = mc_month_all.copy()
         if not m.empty and "symbol" in m.columns:
             m = m[m["symbol"].astype(str).str.upper() == sym].copy()
@@ -3057,8 +3862,19 @@ def _write_stage_snapshots(
         if not c11.empty:
             fail = c11["status"].astype(str).str.lower() != "pass"
             nan_row = c11[c11["check_id"].astype(str) == "EM05"]
-            em05_nan = _num(nan_row.iloc[0]["metric_value"]) if not nan_row.empty and "metric_value" in nan_row.columns else float("nan")
-            add_edge_metric(11, sym, "EM05_nan_core_fields", em05_nan, "NaN count in execution MC core fields", str(ctx.get("execution_mc_checks_csv", "")))
+            em05_nan = (
+                _num(nan_row.iloc[0]["metric_value"])
+                if not nan_row.empty and "metric_value" in nan_row.columns
+                else float("nan")
+            )
+            add_edge_metric(
+                11,
+                sym,
+                "EM05_nan_core_fields",
+                em05_nan,
+                "NaN count in execution MC core fields",
+                str(ctx.get("execution_mc_checks_csv", "")),
+            )
             stage11_check_rows.append(
                 {
                     "symbol": sym,
@@ -3076,11 +3892,19 @@ def _write_stage_snapshots(
                 }
             )
     stage11_summary = pd.DataFrame(stage11_rows)
-    stage11_detail = pd.concat(stage11_detail_rows, ignore_index=True) if stage11_detail_rows else pd.DataFrame()
-    stage11_month = pd.concat(stage11_month_rows, ignore_index=True) if stage11_month_rows else pd.DataFrame()
+    stage11_detail = (
+        pd.concat(stage11_detail_rows, ignore_index=True) if stage11_detail_rows else pd.DataFrame()
+    )
+    stage11_month = (
+        pd.concat(stage11_month_rows, ignore_index=True) if stage11_month_rows else pd.DataFrame()
+    )
     stage11_checks = pd.DataFrame(stage11_check_rows)
-    stage11_symbol_source = str(contexts[0].get("execution_mc_symbol_scenarios_csv", "")) if contexts else ""
-    stage11_month_source = str(contexts[0].get("execution_mc_month_session_csv", "")) if contexts else ""
+    stage11_symbol_source = (
+        str(contexts[0].get("execution_mc_symbol_scenarios_csv", "")) if contexts else ""
+    )
+    stage11_month_source = (
+        str(contexts[0].get("execution_mc_month_session_csv", "")) if contexts else ""
+    )
     stage11_plot = _stage_plot_path(outputs, 11, "mc_lb95_by_scenario")
     stage11_scatter = _stage_plot_path(outputs, 11, "mc_fill_vs_pnl")
     if not stage11_detail.empty:
@@ -3155,15 +3979,14 @@ def _write_stage_snapshots(
         )
         n_full = len(stage11_month_view)
         stage11_month_view = stage11_month_view.head(DETAIL_MAX_ROWS_DEFAULT)
-        stage11_content += "\n\n#### Month x Session Summary (head)\n" + _table(
-            stage11_month_view
-        )
+        stage11_content += "\n\n#### Month x Session Summary (head)\n" + _table(stage11_month_view)
         stage11_content += (
-            "\n\n- month_session_rows_shown: "
-            + f"`{len(stage11_month_view)}` of `{n_full}`"
+            "\n\n- month_session_rows_shown: " + f"`{len(stage11_month_view)}` of `{n_full}`"
         )
         if stage11_month_source:
-            stage11_content += "\n- full_month_session_artifact: " + f"`{_to_repo_rel(stage11_month_source)}`"
+            stage11_content += (
+                "\n- full_month_session_artifact: " + f"`{_to_repo_rel(stage11_month_source)}`"
+            )
     write_stage(11, stage11_content)
 
     edge_stage = pd.DataFrame(edge_stage_rows)
@@ -3180,10 +4003,18 @@ def _write_stage_snapshots(
     report_lines: list[str] = []
     report_lines.append("# OCO Edge Clarity Report")
     report_lines.append("")
-    report_lines.append(f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`")
-    report_lines.append(f"- stage_metrics_csv: `{_to_repo_rel(outputs.edge_clarity_stage_metrics_csv)}`")
-    report_lines.append(f"- state_contrib_csv: `{_to_repo_rel(outputs.edge_clarity_state_contrib_csv)}`")
-    report_lines.append(f"- threshold_robustness_csv: `{_to_repo_rel(outputs.edge_clarity_threshold_robustness_csv)}`")
+    report_lines.append(
+        f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`"
+    )
+    report_lines.append(
+        f"- stage_metrics_csv: `{_to_repo_rel(outputs.edge_clarity_stage_metrics_csv)}`"
+    )
+    report_lines.append(
+        f"- state_contrib_csv: `{_to_repo_rel(outputs.edge_clarity_state_contrib_csv)}`"
+    )
+    report_lines.append(
+        f"- threshold_robustness_csv: `{_to_repo_rel(outputs.edge_clarity_threshold_robustness_csv)}`"
+    )
     report_lines.append("")
     if not edge_stage.empty:
         top_metrics = (
@@ -3201,11 +4032,40 @@ def _write_stage_snapshots(
             .head(20)
         )
         report_lines.append("## Top State Contributions")
-        report_lines.append(_table(_pick_cols(top_state, ["symbol", "family", "state_id", "bar_ticks", "horizon", "edge_weight", "contrib_share"])))
+        report_lines.append(
+            _table(
+                _pick_cols(
+                    top_state,
+                    [
+                        "symbol",
+                        "family",
+                        "state_id",
+                        "bar_ticks",
+                        "horizon",
+                        "edge_weight",
+                        "contrib_share",
+                    ],
+                )
+            )
+        )
         report_lines.append("")
     if not edge_thr.empty:
         report_lines.append("## Threshold Robustness Slices")
-        report_lines.append(_table(_pick_cols(edge_thr, ["symbol", "test_month", "quantile", "mean_gross_pips", "coverage", "selected_rows"])))
+        report_lines.append(
+            _table(
+                _pick_cols(
+                    edge_thr,
+                    [
+                        "symbol",
+                        "test_month",
+                        "quantile",
+                        "mean_gross_pips",
+                        "coverage",
+                        "selected_rows",
+                    ],
+                )
+            )
+        )
         report_lines.append("")
     outputs.edge_clarity_report_md.write_text("\n".join(report_lines), encoding="utf-8")
 
@@ -3222,7 +4082,12 @@ def run(*, manifest_path: Path, strict: bool) -> dict[str, Any]:
         symbol_snapshot_csv=_resolve_output_path(str(out_cfg["symbol_snapshot_csv"])),
         stage_status_csv=_resolve_output_path(str(out_cfg["stage_status_csv"])),
         stage_metrics_csv=_resolve_output_path(
-            str(out_cfg.get("stage_metrics_csv", "data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv"))
+            str(
+                out_cfg.get(
+                    "stage_metrics_csv",
+                    "data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv",
+                )
+            )
         ),
         edge_clarity_stage_metrics_csv=_resolve_output_path(
             str(
@@ -3317,10 +4182,18 @@ def run(*, manifest_path: Path, strict: bool) -> dict[str, Any]:
 
     checks = _read_csv(checks_path) if checks_path.exists() else pd.DataFrame()
     issues = _read_csv(issues_path) if issues_path.exists() else pd.DataFrame()
-    audit_failures = int((checks["status"].astype(str) != "pass").sum()) if "status" in checks.columns else len(issues)
-    audit_pass = audit_failures <= expected_audit_failures and len(issues) <= expected_audit_failures
+    audit_failures = (
+        int((checks["status"].astype(str) != "pass").sum())
+        if "status" in checks.columns
+        else len(issues)
+    )
+    audit_pass = (
+        audit_failures <= expected_audit_failures and len(issues) <= expected_audit_failures
+    )
 
-    overall_pass = bool(snapshot.get("symbol_all_gates_pass", pd.Series(dtype=bool)).fillna(False).all()) and bool(audit_pass)
+    overall_pass = bool(
+        snapshot.get("symbol_all_gates_pass", pd.Series(dtype=bool)).fillna(False).all()
+    ) and bool(audit_pass)
 
     outputs.symbol_snapshot_csv.parent.mkdir(parents=True, exist_ok=True)
     outputs.stage_status_csv.parent.mkdir(parents=True, exist_ok=True)
@@ -3335,11 +4208,15 @@ def run(*, manifest_path: Path, strict: bool) -> dict[str, Any]:
     build_report.to_csv(outputs.build_report_csv, index=False)
 
     figures: list[Path] = []
-    if not snapshot.empty and all(c in snapshot.columns for c in ["mean_gross_pips", "robustness_lb95_trade_mean_gross_pips"]):
+    if not snapshot.empty and all(
+        c in snapshot.columns for c in ["mean_gross_pips", "robustness_lb95_trade_mean_gross_pips"]
+    ):
         fig1 = outputs.figures_dir / "fig01_symbol_gross_vs_lb95.png"
         _write_plot_gross(snapshot, fig1)
         figures.append(fig1)
-    if not snapshot.empty and all(c in snapshot.columns for c in ["exact_match_rate", "pos_label_match_rate"]):
+    if not snapshot.empty and all(
+        c in snapshot.columns for c in ["exact_match_rate", "pos_label_match_rate"]
+    ):
         fig2 = outputs.figures_dir / "fig02_symbol_tick_exact_rates.png"
         _write_plot_tick_exact(snapshot, fig2)
         figures.append(fig2)
@@ -3373,7 +4250,9 @@ def run(*, manifest_path: Path, strict: bool) -> dict[str, Any]:
     canonical_lines: list[str] = []
     canonical_lines.append("### Latest Run Results")
     canonical_lines.append("")
-    canonical_lines.append(f"- generated_at: `{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}`")
+    canonical_lines.append(
+        f"- generated_at: `{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}`"
+    )
     canonical_lines.append(f"- overall_pass: `{overall_pass}`")
     canonical_lines.append(f"- audit_pass: `{audit_pass}`")
     canonical_lines.append("")
@@ -3409,7 +4288,9 @@ def run(*, manifest_path: Path, strict: bool) -> dict[str, Any]:
         "stage_metrics_csv": _to_repo_rel(outputs.stage_metrics_csv),
         "edge_clarity_stage_metrics_csv": _to_repo_rel(outputs.edge_clarity_stage_metrics_csv),
         "edge_clarity_state_contrib_csv": _to_repo_rel(outputs.edge_clarity_state_contrib_csv),
-        "edge_clarity_threshold_robustness_csv": _to_repo_rel(outputs.edge_clarity_threshold_robustness_csv),
+        "edge_clarity_threshold_robustness_csv": _to_repo_rel(
+            outputs.edge_clarity_threshold_robustness_csv
+        ),
         "edge_clarity_report_md": _to_repo_rel(outputs.edge_clarity_report_md),
     }
 

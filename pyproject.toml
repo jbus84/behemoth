@@ -24,15 +24,7 @@ dependencies = [
     "python-json-logger>=2.0.7"
 ]
 
-[build-system]
-requires = ["setuptools>=68"]
-build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-package-dir = {"" = "src"}
-
-[tool.setuptools.packages.find]
-where = ["src"]
 
 [tool.uv]
 dev-dependencies = [
@@ -49,7 +41,8 @@ dev-dependencies = [
     "mkdocstrings[python]>=0.24.0",
     "pre-commit>=3.7.0",
     "ruff>=0.6.8",
-    "ty>=0.0.16"
+    "ty>=0.0.16",
+    "xenon>=0.9.3",
 ]
 
 [tool.ruff]

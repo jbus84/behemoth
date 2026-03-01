@@ -111,13 +111,34 @@ def run(
     if wfo_config is not None and wfo_config.exists():
         cfg = _load_yaml(wfo_config)
         lr = lock.get("locked_runtime", {})
-        for k in ["threshold_mode", "rolling_threshold_days", "rolling_threshold_min_history", "execution_quantile", "oco_hold_mode", "oco_include_no_touch"]:
-            checks.append(Check(f"wfo_{k}", cfg.get(k) == lr.get(k), f"cfg={cfg.get(k)!r} lock={lr.get(k)!r}"))
+        for k in [
+            "threshold_mode",
+            "rolling_threshold_days",
+            "rolling_threshold_min_history",
+            "execution_quantile",
+            "oco_hold_mode",
+            "oco_include_no_touch",
+        ]:
+            checks.append(
+                Check(f"wfo_{k}", cfg.get(k) == lr.get(k), f"cfg={cfg.get(k)!r} lock={lr.get(k)!r}")
+            )
     if reduced_config is not None and reduced_config.exists():
         cfg = _load_yaml(reduced_config)
         lr = lock.get("locked_runtime", {})
-        for k in ["locked_quantile", "selection_mode", "family_keep", "barrier_keep", "horizon_keep"]:
-            checks.append(Check(f"reduced_{k}", cfg.get(k) == lr.get(k), f"cfg={cfg.get(k)!r} lock={lr.get(k)!r}"))
+        for k in [
+            "locked_quantile",
+            "selection_mode",
+            "family_keep",
+            "barrier_keep",
+            "horizon_keep",
+        ]:
+            checks.append(
+                Check(
+                    f"reduced_{k}",
+                    cfg.get(k) == lr.get(k),
+                    f"cfg={cfg.get(k)!r} lock={lr.get(k)!r}",
+                )
+            )
 
     # State universe check (exact key-set match).
     if state_csv is not None and state_csv.exists():
@@ -128,13 +149,21 @@ def run(
         missing = sorted(list(frozen_key - live_key))
         extra = sorted(list(live_key - frozen_key))
         ok = (len(missing) == 0) and (len(extra) == 0)
-        checks.append(Check("state_universe_exact_match", ok, f"missing={len(missing)} extra={len(extra)}"))
+        checks.append(
+            Check("state_universe_exact_match", ok, f"missing={len(missing)} extra={len(extra)}")
+        )
 
     # Data reliability gate (high/critical failures block deploy/retrain).
     lock_symbol = str(lock.get("symbol", "")).upper().strip()
     if data_reliability_checks_csv is not None:
         if not data_reliability_checks_csv.exists():
-            checks.append(Check("data_reliability_artifact_exists", False, f"missing {data_reliability_checks_csv}"))
+            checks.append(
+                Check(
+                    "data_reliability_artifact_exists",
+                    False,
+                    f"missing {data_reliability_checks_csv}",
+                )
+            )
         else:
             dc = pd.read_csv(data_reliability_checks_csv)
             if "symbol" in dc.columns:
@@ -147,8 +176,14 @@ def run(
                 )
             )
             if len(dc) > 0:
-                status = dc.get("status", pd.Series(index=dc.index, dtype=str)).astype(str).str.lower()
-                severity = dc.get("severity_if_fail", pd.Series(index=dc.index, dtype=str)).astype(str).str.lower()
+                status = (
+                    dc.get("status", pd.Series(index=dc.index, dtype=str)).astype(str).str.lower()
+                )
+                severity = (
+                    dc.get("severity_if_fail", pd.Series(index=dc.index, dtype=str))
+                    .astype(str)
+                    .str.lower()
+                )
                 failed = status != "pass"
                 critical_fail = failed & (severity == "critical")
                 high_fail = failed & (severity == "high")
@@ -183,8 +218,14 @@ def run(
                 )
             )
             if len(lc) > 0:
-                status = lc.get("status", pd.Series(index=lc.index, dtype=str)).astype(str).str.lower()
-                severity = lc.get("severity_if_fail", pd.Series(index=lc.index, dtype=str)).astype(str).str.lower()
+                status = (
+                    lc.get("status", pd.Series(index=lc.index, dtype=str)).astype(str).str.lower()
+                )
+                severity = (
+                    lc.get("severity_if_fail", pd.Series(index=lc.index, dtype=str))
+                    .astype(str)
+                    .str.lower()
+                )
                 failed = status != "pass"
                 critical_fail = failed & (severity == "critical")
                 high_fail = failed & (severity == "high")
@@ -206,7 +247,11 @@ def run(
     # Execution-risk preflight gate (high/critical failures block deploy/retrain).
     if execution_risk_checks_csv is not None:
         if not execution_risk_checks_csv.exists():
-            checks.append(Check("execution_risk_artifact_exists", False, f"missing {execution_risk_checks_csv}"))
+            checks.append(
+                Check(
+                    "execution_risk_artifact_exists", False, f"missing {execution_risk_checks_csv}"
+                )
+            )
         else:
             ec = pd.read_csv(execution_risk_checks_csv)
             if "symbol" in ec.columns:
@@ -219,8 +264,14 @@ def run(
                 )
             )
             if len(ec) > 0:
-                status = ec.get("status", pd.Series(index=ec.index, dtype=str)).astype(str).str.lower()
-                severity = ec.get("severity_if_fail", pd.Series(index=ec.index, dtype=str)).astype(str).str.lower()
+                status = (
+                    ec.get("status", pd.Series(index=ec.index, dtype=str)).astype(str).str.lower()
+                )
+                severity = (
+                    ec.get("severity_if_fail", pd.Series(index=ec.index, dtype=str))
+                    .astype(str)
+                    .str.lower()
+                )
                 failed = status != "pass"
                 critical_fail = failed & (severity == "critical")
                 high_fail = failed & (severity == "high")
@@ -244,10 +295,14 @@ def run(
     due, win_start, win_end = _retrain_window(lock, as_of=as_of)
     if m == "retrain":
         ok = win_start <= as_of <= win_end
-        checks.append(Check("retrain_window", ok, f"as_of={as_of} window=[{win_start},{win_end}] due={due}"))
+        checks.append(
+            Check("retrain_window", ok, f"as_of={as_of} window=[{win_start},{win_end}] due={due}")
+        )
     else:
         ok = as_of <= win_end
-        checks.append(Check("lock_not_expired_for_deploy", ok, f"as_of={as_of} expiry={win_end} due={due}"))
+        checks.append(
+            Check("lock_not_expired_for_deploy", ok, f"as_of={as_of} expiry={win_end} due={due}")
+        )
 
     all_ok = all(c.ok for c in checks)
     meta = {
@@ -262,7 +317,9 @@ def run(
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Validate OCO deployment against frozen governance lock")
+    p = argparse.ArgumentParser(
+        description="Validate OCO deployment against frozen governance lock"
+    )
     p.add_argument("--lock-path", required=True)
     p.add_argument("--mode", choices=["deploy", "retrain"], default="deploy")
     p.add_argument("--as-of", default="")
@@ -285,7 +342,9 @@ def main() -> None:
         data_reliability_checks_csv=Path(str(args.data_reliability_checks_csv))
         if str(args.data_reliability_checks_csv).strip()
         else None,
-        leakage_checks_csv=Path(str(args.leakage_checks_csv)) if str(args.leakage_checks_csv).strip() else None,
+        leakage_checks_csv=Path(str(args.leakage_checks_csv))
+        if str(args.leakage_checks_csv).strip()
+        else None,
         execution_risk_checks_csv=Path(str(args.execution_risk_checks_csv))
         if str(args.execution_risk_checks_csv).strip()
         else None,

@@ -41,36 +41,72 @@ def _default_configs() -> dict[str, SymbolConfig]:
     defaults = {
         "EURUSD": SymbolConfig(
             symbol="EURUSD",
-            pred_path=Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet"),
-            metrics_path=Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_metrics.csv"),
-            thresholds_path=Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_thresholds.csv"),
-            events_path=Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_events_eval2025.parquet"),
-            schedule_path=Path("data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv"),
-            monthly_path=Path("data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv"),
+            pred_path=Path(
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet"
+            ),
+            metrics_path=Path(
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_metrics.csv"
+            ),
+            thresholds_path=Path(
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_thresholds.csv"
+            ),
+            events_path=Path(
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_events_eval2025.parquet"
+            ),
+            schedule_path=Path(
+                "data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv"
+            ),
+            monthly_path=Path(
+                "data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv"
+            ),
             lock_path=Path("configs/research/governance/oco/eurusd_oco_live_lock.json"),
         ),
         "GBPUSD": SymbolConfig(
             symbol="GBPUSD",
-            pred_path=Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_predictions.parquet"),
-            metrics_path=Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_metrics.csv"),
-            thresholds_path=Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_thresholds.csv"),
-            events_path=Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_events_eval2025.parquet"),
-            schedule_path=Path("data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_state_schedule.csv"),
-            monthly_path=Path("data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_monthly.csv"),
+            pred_path=Path(
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_predictions.parquet"
+            ),
+            metrics_path=Path(
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_metrics.csv"
+            ),
+            thresholds_path=Path(
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_thresholds.csv"
+            ),
+            events_path=Path(
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_events_eval2025.parquet"
+            ),
+            schedule_path=Path(
+                "data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_state_schedule.csv"
+            ),
+            monthly_path=Path(
+                "data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_monthly.csv"
+            ),
             lock_path=Path("configs/research/governance/oco/gbpusd_oco_live_lock.json"),
         ),
         "USDJPY": SymbolConfig(
             symbol="USDJPY",
-            pred_path=Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_monthly_predictions.parquet"),
-            metrics_path=Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_monthly_metrics.csv"),
-            thresholds_path=Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_monthly_thresholds.csv"),
-            events_path=Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_events_eval2025.parquet"),
-            schedule_path=Path("data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_state_schedule.csv"),
-            monthly_path=Path("data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_monthly.csv"),
+            pred_path=Path(
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_monthly_predictions.parquet"
+            ),
+            metrics_path=Path(
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_monthly_metrics.csv"
+            ),
+            thresholds_path=Path(
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_monthly_thresholds.csv"
+            ),
+            events_path=Path(
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_events_eval2025.parquet"
+            ),
+            schedule_path=Path(
+                "data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_state_schedule.csv"
+            ),
+            monthly_path=Path(
+                "data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_monthly.csv"
+            ),
             lock_path=Path("configs/research/governance/oco/usdjpy_oco_live_lock.json"),
         ),
     }
-    
+
     lock_dir = Path("configs/research/governance/oco")
     if lock_dir.exists():
         for p in lock_dir.glob("*_oco_live_lock.json"):
@@ -78,12 +114,24 @@ def _default_configs() -> dict[str, SymbolConfig]:
             if s not in defaults:
                 defaults[s] = SymbolConfig(
                     symbol=s,
-                    pred_path=Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s}_oco_monthly_predictions.parquet"),
-                    metrics_path=Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s}_oco_monthly_metrics.csv"),
-                    thresholds_path=Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s}_oco_monthly_thresholds.csv"),
-                    events_path=Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s}_oco_events_eval2025.parquet"),
-                    schedule_path=Path(f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_reduced_state_schedule.csv"),
-                    monthly_path=Path(f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_reduced_monthly.csv"),
+                    pred_path=Path(
+                        f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s}_oco_monthly_predictions.parquet"
+                    ),
+                    metrics_path=Path(
+                        f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s}_oco_monthly_metrics.csv"
+                    ),
+                    thresholds_path=Path(
+                        f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s}_oco_monthly_thresholds.csv"
+                    ),
+                    events_path=Path(
+                        f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s}_oco_events_eval2025.parquet"
+                    ),
+                    schedule_path=Path(
+                        f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_reduced_state_schedule.csv"
+                    ),
+                    monthly_path=Path(
+                        f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_reduced_monthly.csv"
+                    ),
                     lock_path=p,
                 )
     return defaults
@@ -211,7 +259,9 @@ def _make_issue(
     }
 
 
-def _load_artifacts(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def _load_artifacts(
+    cfg: SymbolConfig,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     p = pd.read_parquet(cfg.pred_path).copy()
     keep_cols = [
         "test_month",
@@ -353,8 +403,14 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
     warm_count = int(warm_mask.sum())
     expected = int(cfg.min_train_months)
     first_nonwarm = int(np.argmax((~warm_mask).to_numpy(dtype=bool))) if len(monthly_sorted) else 0
-    prefix_ok = bool((warm_mask.iloc[:expected]).all()) if len(monthly_sorted) >= expected else False
-    l02_pass = (warm_count == expected) and prefix_ok and (first_nonwarm >= expected or len(monthly_sorted) == expected)
+    prefix_ok = (
+        bool((warm_mask.iloc[:expected]).all()) if len(monthly_sorted) >= expected else False
+    )
+    l02_pass = (
+        (warm_count == expected)
+        and prefix_ok
+        and (first_nonwarm >= expected or len(monthly_sorted) == expected)
+    )
     add_check(
         "L02",
         "warmup_months_exact",
@@ -393,7 +449,9 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     # L04: every feature has lineage contract; no obvious lookahead signature.
     unknown = sorted([c for c in used_feats if c not in LINEAGE_MAP])
-    suspicious = sorted([c for c in used_feats if any(x in c.lower() for x in ["future", "lead", "next"])])
+    suspicious = sorted(
+        [c for c in used_feats if any(x in c.lower() for x in ["future", "lead", "next"])]
+    )
     l04_pass = (len(unknown) == 0) and (len(suspicious) == 0)
     add_check(
         "L04",
@@ -438,19 +496,42 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     # L06: threshold temporal causality consistency.
     selected_ok = selected["threshold_exec"].notna() & selected["pred_prob"].notna()
-    selected_consistency = float(
-        np.mean(selected.loc[selected_ok, "pred_prob"] >= selected.loc[selected_ok, "threshold_exec"])
-    ) if selected_ok.any() else np.nan
-    threshold_days_min = float(pd.to_numeric(selected["threshold_days"], errors="coerce").min()) if len(selected) else np.nan
+    selected_consistency = (
+        float(
+            np.mean(
+                selected.loc[selected_ok, "pred_prob"]
+                >= selected.loc[selected_ok, "threshold_exec"]
+            )
+        )
+        if selected_ok.any()
+        else np.nan
+    )
+    threshold_days_min = (
+        float(pd.to_numeric(selected["threshold_days"], errors="coerce").min())
+        if len(selected)
+        else np.nan
+    )
     selected["close_day_utc"] = selected["close_ts"].dt.strftime("%Y-%m-%d")
-    mode_counts = selected["threshold_mode"].astype(str).str.lower().value_counts(dropna=True).to_dict() if "threshold_mode" in selected.columns else {}
+    mode_counts = (
+        selected["threshold_mode"].astype(str).str.lower().value_counts(dropna=True).to_dict()
+        if "threshold_mode" in selected.columns
+        else {}
+    )
     uses_rolling = any("rolling" in k for k in mode_counts)
-    grp_cols = ["test_month", "candidate_uid", "close_day_utc"] if uses_rolling else ["test_month", "candidate_uid"]
+    grp_cols = (
+        ["test_month", "candidate_uid", "close_day_utc"]
+        if uses_rolling
+        else ["test_month", "candidate_uid"]
+    )
     g_thr = (
-        selected.groupby(grp_cols, as_index=False)["threshold_exec"]
-        .nunique(dropna=True)
-        .rename(columns={"threshold_exec": "threshold_nunique"})
-    ) if len(selected) else pd.DataFrame()
+        (
+            selected.groupby(grp_cols, as_index=False)["threshold_exec"]
+            .nunique(dropna=True)
+            .rename(columns={"threshold_exec": "threshold_nunique"})
+        )
+        if len(selected)
+        else pd.DataFrame()
+    )
     unstable = int((g_thr["threshold_nunique"] > 1).sum()) if not g_thr.empty else 0
     l06_pass = (
         np.isfinite(selected_consistency)
@@ -492,8 +573,10 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
         mask = mode == mname
         if int(mask.sum()) > 0:
             invalid_source += int((~src[mask].isin(list(allowed))).sum())
-    sel_bad_nohist = int((((pred["selected_exec"] == 1) & (src == "no_history"))).sum())
-    sel_bad_unset = int((((pred["selected_exec"] == 1) & (src.isin({"", "nan", "none", "null", "unset"})))).sum())
+    sel_bad_nohist = int(((pred["selected_exec"] == 1) & (src == "no_history")).sum())
+    sel_bad_unset = int(
+        ((pred["selected_exec"] == 1) & (src.isin({"", "nan", "none", "null", "unset"}))).sum()
+    )
     violations = src_missing + invalid_mode + invalid_source + sel_bad_nohist + sel_bad_unset
     l13_pass = violations == 0
     add_check(
@@ -522,8 +605,16 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
     e["target_gross_pips"] = _safe_num(e["target_gross_pips"])
     e["target_gross_pos"] = _safe_num(e["target_gross_pos"])
     e_dup = int(e.duplicated(subset=["close_ts", "candidate_uid"]).sum())
-    e = e.sort_values(["candidate_uid", "close_ts"]).drop_duplicates(subset=["close_ts", "candidate_uid"], keep="last")
-    j = pred.merge(e, on=["close_ts", "candidate_uid"], how="left", validate="many_to_one", suffixes=("", "_src"))
+    e = e.sort_values(["candidate_uid", "close_ts"]).drop_duplicates(
+        subset=["close_ts", "candidate_uid"], keep="last"
+    )
+    j = pred.merge(
+        e,
+        on=["close_ts", "candidate_uid"],
+        how="left",
+        validate="many_to_one",
+        suffixes=("", "_src"),
+    )
     match_rate = float(j["target_gross_pips_src"].notna().mean()) if len(j) else np.nan
     diff = (j["target_gross_pips"] - j["target_gross_pips_src"]).abs()
     max_abs_diff = float(diff.dropna().max()) if diff.notna().any() else np.nan
@@ -570,9 +661,21 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
     )
 
     # L09: month partition integrity.
-    month_mismatch = float(np.mean(pred["test_month"] != pred["close_ts"].dt.strftime("%Y-%m"))) if len(pred) else np.nan
-    set_m = set(metrics["test_month"].astype(str).tolist()) if "test_month" in metrics.columns else set()
-    set_t = set(thresholds["test_month"].astype(str).tolist()) if "test_month" in thresholds.columns else set()
+    month_mismatch = (
+        float(np.mean(pred["test_month"] != pred["close_ts"].dt.strftime("%Y-%m")))
+        if len(pred)
+        else np.nan
+    )
+    set_m = (
+        set(metrics["test_month"].astype(str).tolist())
+        if "test_month" in metrics.columns
+        else set()
+    )
+    set_t = (
+        set(thresholds["test_month"].astype(str).tolist())
+        if "test_month" in thresholds.columns
+        else set()
+    )
     sym_diff = sorted(list((set_m - set_t) | (set_t - set_m)))
     l09_pass = np.isfinite(month_mismatch) and month_mismatch <= 0.0 and len(sym_diff) == 0
     add_check(
@@ -591,7 +694,12 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     # L10: feature null-shift after selection.
     feat_keys = [c for c in FEATURE_BASE if c in events.columns]
-    selj = selected.merge(events[["close_ts", "candidate_uid"] + feat_keys], on=["close_ts", "candidate_uid"], how="left", validate="many_to_one")
+    selj = selected.merge(
+        events[["close_ts", "candidate_uid"] + feat_keys],
+        on=["close_ts", "candidate_uid"],
+        how="left",
+        validate="many_to_one",
+    )
     diffs: list[float] = []
     for c in feat_keys:
         all_null = float(events[c].isna().mean())
@@ -617,8 +725,16 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
     # L11: no cross-symbol mix.
     pred_uid_bad = int((pred["candidate_uid"].map(_uid_symbol) != cfg.symbol).sum())
     evt_uid_bad = int((events["candidate_uid"].map(_uid_symbol) != cfg.symbol).sum())
-    sched_bad = int((schedule["symbol"].astype(str).str.upper() != cfg.symbol).sum()) if "symbol" in schedule.columns else 0
-    mon_bad = int((monthly["symbol"].astype(str).str.upper() != cfg.symbol).sum()) if "symbol" in monthly.columns else 0
+    sched_bad = (
+        int((schedule["symbol"].astype(str).str.upper() != cfg.symbol).sum())
+        if "symbol" in schedule.columns
+        else 0
+    )
+    mon_bad = (
+        int((monthly["symbol"].astype(str).str.upper() != cfg.symbol).sum())
+        if "symbol" in monthly.columns
+        else 0
+    )
     l11_pass = (pred_uid_bad + evt_uid_bad + sched_bad + mon_bad) == 0
     add_check(
         "L11",
@@ -670,7 +786,11 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
         float(hash_mism + lock_symbol_bad),
         "0",
         "==",
-        {"hash_mismatches": hash_mism, "lock_symbol_bad": lock_symbol_bad, "hashes_checked": checked},
+        {
+            "hash_mismatches": hash_mism,
+            "lock_symbol_bad": lock_symbol_bad,
+            "hashes_checked": checked,
+        },
         "Governance lock hash chain is inconsistent with current artifacts.",
     )
 
@@ -732,7 +852,17 @@ def run_audit(
             ]
         )
     if issues.empty:
-        issues = pd.DataFrame(columns=["issue_id", "symbol", "check_id", "severity", "component", "summary", "details_json"])
+        issues = pd.DataFrame(
+            columns=[
+                "issue_id",
+                "symbol",
+                "check_id",
+                "severity",
+                "component",
+                "summary",
+                "details_json",
+            ]
+        )
 
     out_checks_csv.parent.mkdir(parents=True, exist_ok=True)
     out_issues_csv.parent.mkdir(parents=True, exist_ok=True)
@@ -746,7 +876,11 @@ def run_audit(
         else pd.DataFrame(columns=["severity", "size"])
     )
     check_roll = (
-        checks.groupby(["symbol", "status"], as_index=False).size().pivot(index="symbol", columns="status", values="size").fillna(0).reset_index()
+        checks.groupby(["symbol", "status"], as_index=False)
+        .size()
+        .pivot(index="symbol", columns="status", values="size")
+        .fillna(0)
+        .reset_index()
         if not checks.empty
         else pd.DataFrame()
     )
@@ -781,8 +915,14 @@ def run_audit(
 def main() -> None:
     p = argparse.ArgumentParser(description="Leakage + label integrity audit for OCO pipeline")
     p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCAD,AUDUSD,USDCHF")
-    p.add_argument("--out-checks-csv", default="data/analysis/tick_opportunity_mining/oco_leakage_integrity_checks.csv")
-    p.add_argument("--out-issues-csv", default="data/analysis/tick_opportunity_mining/oco_leakage_integrity_issues.csv")
+    p.add_argument(
+        "--out-checks-csv",
+        default="data/analysis/tick_opportunity_mining/oco_leakage_integrity_checks.csv",
+    )
+    p.add_argument(
+        "--out-issues-csv",
+        default="data/analysis/tick_opportunity_mining/oco_leakage_integrity_issues.csv",
+    )
     p.add_argument("--report-out", default="docs/analysis/oco_leakage_integrity_report.md")
     args = p.parse_args()
 

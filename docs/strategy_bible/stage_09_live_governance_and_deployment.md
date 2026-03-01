@@ -232,7 +232,7 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 <!-- GENERATED:STAGE_09:START -->
 ### Auto Snapshot - Stage 09
 
-- generated_at: `2026-03-01 07:53:15 UTC`
+- generated_at: `2026-03-01 09:52:04 UTC`
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
 - Missing required artifacts: 4.
 
@@ -251,14 +251,20 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 - Missing required artifacts: 4.
 
 #### Action Trigger Summary
-| symbol   | metric_id            | band   | severity   | action_code   | action_summary     | owner      |
-|:---------|:---------------------|:-------|:-----------|:--------------|:-------------------|:-----------|
-| EURUSD   | G01_near_fail_count  | green  | info       | A0_MONITOR    | within policy band | governance |
-| EURUSD   | G03_lock_drift_flags | green  | info       | A0_MONITOR    | within policy band | governance |
-| GBPUSD   | G01_near_fail_count  | green  | info       | A0_MONITOR    | within policy band | governance |
-| GBPUSD   | G03_lock_drift_flags | green  | info       | A0_MONITOR    | within policy band | governance |
-| USDJPY   | G01_near_fail_count  | green  | info       | A0_MONITOR    | within policy band | governance |
-| USDJPY   | G03_lock_drift_flags | green  | info       | A0_MONITOR    | within policy band | governance |
+| symbol   | metric_id            | band   | severity   | action_code   | action_summary                      | owner      |
+|:---------|:---------------------|:-------|:-----------|:--------------|:------------------------------------|:-----------|
+| AUDUSD   | G01_near_fail_count  | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | governance |
+| AUDUSD   | G03_lock_drift_flags | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | governance |
+| EURUSD   | G01_near_fail_count  | green  | info       | A0_MONITOR    | within policy band                  | governance |
+| EURUSD   | G03_lock_drift_flags | green  | info       | A0_MONITOR    | within policy band                  | governance |
+| GBPUSD   | G01_near_fail_count  | green  | info       | A0_MONITOR    | within policy band                  | governance |
+| GBPUSD   | G03_lock_drift_flags | green  | info       | A0_MONITOR    | within policy band                  | governance |
+| USDCAD   | G01_near_fail_count  | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | governance |
+| USDCAD   | G03_lock_drift_flags | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | governance |
+| USDCHF   | G01_near_fail_count  | green  | info       | A0_MONITOR    | within policy band                  | governance |
+| USDCHF   | G03_lock_drift_flags | green  | info       | A0_MONITOR    | within policy band                  | governance |
+| USDJPY   | G01_near_fail_count  | green  | info       | A0_MONITOR    | within policy band                  | governance |
+| USDJPY   | G03_lock_drift_flags | green  | info       | A0_MONITOR    | within policy band                  | governance |
 
 #### Details
 | group   | symbol   | artifact               | path                                                                                                               |

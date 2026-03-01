@@ -6,7 +6,7 @@ Document one complete OCO signal lifecycle from candidate selection through exec
 ## Scope
 - Strategy family: `oco_first_touch_clean`
 - Runtime contract: stop-limit entry, `from_touch` hold mode
-- Symbols: EURUSD, GBPUSD, USDJPY (example timeline shown on EURUSD)
+- Symbols: EURUSD, GBPUSD, USDJPY, USDCHF, AUDUSD, USDCAD (example timeline shown on EURUSD)
 
 ## Lifecycle Sequence
 ```mermaid

@@ -10,7 +10,7 @@ from typing import Any
 
 import pandas as pd
 
-SYMBOLS = ["EURUSD", "GBPUSD", "USDJPY", "USDCHF"]
+SYMBOLS = ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]
 
 PAGES: list[dict[str, Any]] = [
     {
@@ -36,7 +36,7 @@ PAGES: list[dict[str, Any]] = [
         "path": "api_reference.md",
         "title": "API Reference",
         "summary": [
-            "Reference modules under services/api are integration support, not strategy source of truth.",
+            "Execution endpoints must integrate with the standard OCO stage bounds.",
             "Strategy behavior is defined by stage contracts and rolling evidence artifacts.",
         ],
     },
@@ -109,7 +109,7 @@ PAGES: list[dict[str, Any]] = [
         "title": "Code Reference",
         "summary": [
             "Active code path is script-orchestrated OCO stage execution.",
-            "Legacy API/DB modules are optional integration components.",
+            "All orchestration is strictly driven by the generated configuration artifacts.",
         ],
     },
     {
@@ -145,7 +145,7 @@ PAGES: list[dict[str, Any]] = [
         "title": "Persistence Schema",
         "summary": [
             "Active persistence is artifact-based (CSV/Parquet/Markdown) for OCO governance.",
-            "Relational schema remains optional integration support.",
+            "Historical and rolling state are managed exclusively via the filesystem.",
         ],
     },
     {
@@ -225,15 +225,24 @@ def _reduced_core_latest_rows(data_root: Path) -> pd.DataFrame:
                 continue
             df["symbol"] = df["symbol"].astype(str).str.upper()
             df["test_month"] = df["test_month"].astype(str)
-            rows.append(df.sort_values(["symbol", "test_month"]).groupby("symbol", as_index=False).tail(1))
+            rows.append(
+                df.sort_values(["symbol", "test_month"]).groupby("symbol", as_index=False).tail(1)
+            )
     if not rows:
         return pd.DataFrame()
     out = pd.concat(rows, ignore_index=True)
-    out = out.sort_values(["symbol", "test_month"]).groupby("symbol", as_index=False).tail(1).reset_index(drop=True)
+    out = (
+        out.sort_values(["symbol", "test_month"])
+        .groupby("symbol", as_index=False)
+        .tail(1)
+        .reset_index(drop=True)
+    )
     return out
 
 
-def _build_snapshot_tables(*, repo_root: Path, data_root: Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, list[str]]:
+def _build_snapshot_tables(
+    *, repo_root: Path, data_root: Path
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, list[str]]:
     drift = _read_csv(data_root / "tick_opportunity_mining" / "oco_execution_drift_monthly.csv")
     threshold = _read_csv(data_root / "tick_opportunity_mining" / "oco_threshold_sensitivity.csv")
     actions = _read_csv(data_root / "tick_opportunity_mining" / "operator_action_status.csv")
@@ -247,11 +256,15 @@ def _build_snapshot_tables(*, repo_root: Path, data_root: Path) -> tuple[pd.Data
     if not threshold.empty:
         t = threshold.copy()
         t["symbol"] = t.get("symbol", pd.Series(dtype=str)).astype(str).str.upper()
-        t["is_current_policy"] = pd.to_numeric(t.get("is_current_policy"), errors="coerce").fillna(0)
+        t["is_current_policy"] = pd.to_numeric(t.get("is_current_policy"), errors="coerce").fillna(
+            0
+        )
         cur = t[t["is_current_policy"] > 0].copy()
         if cur.empty:
             cur = (
-                t.sort_values(["symbol", "final_score"], ascending=[True, False]).groupby("symbol", as_index=False).head(1)
+                t.sort_values(["symbol", "final_score"], ascending=[True, False])
+                .groupby("symbol", as_index=False)
+                .head(1)
                 if {"symbol", "final_score"}.issubset(set(t.columns))
                 else pd.DataFrame()
             )
@@ -272,7 +285,9 @@ def _build_snapshot_tables(*, repo_root: Path, data_root: Path) -> tuple[pd.Data
         a["symbol"] = a.get("symbol", pd.Series(dtype=str)).astype(str).str.upper()
         a["band"] = a.get("band", pd.Series(dtype=str)).astype(str).str.lower()
         a = a[a["band"].isin(["amber", "red"])].copy()
-        action_counts = a.groupby("symbol", as_index=False).agg(non_green_actions=("metric_id", "count"))
+        action_counts = a.groupby("symbol", as_index=False).agg(
+            non_green_actions=("metric_id", "count")
+        )
     else:
         action_counts = pd.DataFrame(columns=["symbol", "non_green_actions"])
 
@@ -281,7 +296,9 @@ def _build_snapshot_tables(*, repo_root: Path, data_root: Path) -> tuple[pd.Data
         d["symbol"] = d.get("symbol", pd.Series(dtype=str)).astype(str).str.upper()
         d["band"] = d.get("band", pd.Series(dtype=str)).astype(str).str.lower()
         d = d[d["band"].isin(["amber", "red"])].copy()
-        disp_counts = d.groupby("symbol", as_index=False).agg(non_green_alerts=("metric_id", "count"))
+        disp_counts = d.groupby("symbol", as_index=False).agg(
+            non_green_alerts=("metric_id", "count")
+        )
     else:
         disp_counts = pd.DataFrame(columns=["symbol", "non_green_alerts"])
 
@@ -305,17 +322,23 @@ def _build_snapshot_tables(*, repo_root: Path, data_root: Path) -> tuple[pd.Data
             row["drift_overshoot_p95"] = ""
 
         tr = _symbol_row(threshold_cur, sym)
-        row["w13_fragility"] = _fmt(tr.iloc[0].get("w13_threshold_fragility"), 4) if not tr.empty else ""
+        row["w13_fragility"] = (
+            _fmt(tr.iloc[0].get("w13_threshold_fragility"), 4) if not tr.empty else ""
+        )
         row["policy_quantile"] = _fmt(tr.iloc[0].get("quantile"), 2) if not tr.empty else ""
 
         mr = _symbol_row(mc_s1, sym)
         row["mc_s1_lb95"] = _fmt(mr.iloc[0].get("lb95_per_signal_pips"), 4) if not mr.empty else ""
 
         rr = _symbol_row(reduced, sym)
-        row["reduced_mean_gross"] = _fmt(rr.iloc[0].get("mean_gross_pips"), 4) if not rr.empty else ""
+        row["reduced_mean_gross"] = (
+            _fmt(rr.iloc[0].get("mean_gross_pips"), 4) if not rr.empty else ""
+        )
 
         ar = _symbol_row(action_counts, sym)
-        row["non_green_actions"] = int(ar.iloc[0].get("non_green_actions", 0)) if not ar.empty else 0
+        row["non_green_actions"] = (
+            int(ar.iloc[0].get("non_green_actions", 0)) if not ar.empty else 0
+        )
 
         nr = _symbol_row(disp_counts, sym)
         row["non_green_alerts"] = int(nr.iloc[0].get("non_green_alerts", 0)) if not nr.empty else 0
@@ -325,14 +348,23 @@ def _build_snapshot_tables(*, repo_root: Path, data_root: Path) -> tuple[pd.Data
     by_symbol = pd.DataFrame(rows)
 
     trend_rows: list[dict[str, Any]] = []
-    if not drift.empty and {"symbol", "test_month", "fill_rate", "overshoot_p95_pips"}.issubset(set(drift.columns)):
+    if not drift.empty and {"symbol", "test_month", "fill_rate", "overshoot_p95_pips"}.issubset(
+        set(drift.columns)
+    ):
         dd = drift.copy()
         dd["symbol"] = dd["symbol"].astype(str).str.upper()
         dd["test_month"] = dd["test_month"].astype(str)
         for sym in SYMBOLS:
             g = dd[dd["symbol"] == sym].sort_values("test_month").tail(3)
             if g.empty:
-                trend_rows.append({"symbol": sym, "months_used": 0, "fill_rate_mean_3m": "", "overshoot_p95_mean_3m": ""})
+                trend_rows.append(
+                    {
+                        "symbol": sym,
+                        "months_used": 0,
+                        "fill_rate_mean_3m": "",
+                        "overshoot_p95_mean_3m": "",
+                    }
+                )
                 continue
             trend_rows.append(
                 {
@@ -343,7 +375,10 @@ def _build_snapshot_tables(*, repo_root: Path, data_root: Path) -> tuple[pd.Data
                 }
             )
     else:
-        trend_rows = [{"symbol": s, "months_used": 0, "fill_rate_mean_3m": "", "overshoot_p95_mean_3m": ""} for s in SYMBOLS]
+        trend_rows = [
+            {"symbol": s, "months_used": 0, "fill_rate_mean_3m": "", "overshoot_p95_mean_3m": ""}
+            for s in SYMBOLS
+        ]
     trend = pd.DataFrame(trend_rows)
 
     failed = 0
@@ -355,7 +390,10 @@ def _build_snapshot_tables(*, repo_root: Path, data_root: Path) -> tuple[pd.Data
         failed = int((c["status"] != "pass").sum())
         if "severity_if_fail" in c.columns:
             high_critical_failed = int(
-                ((c["status"] != "pass") & c["severity_if_fail"].astype(str).str.lower().isin(["high", "critical"])).sum()
+                (
+                    (c["status"] != "pass")
+                    & c["severity_if_fail"].astype(str).str.lower().isin(["high", "critical"])
+                ).sum()
             )
         c6 = c[c.get("check_id", pd.Series(dtype=str)).astype(str) == "C6"]
         if not c6.empty:
@@ -368,7 +406,9 @@ def _build_snapshot_tables(*, repo_root: Path, data_root: Path) -> tuple[pd.Data
                 "checks_failed": failed,
                 "high_critical_failed": high_critical_failed,
                 "max_age_hours_c6": max_age_c6,
-                "run_delta_metric_rows_changed": int(delta_row.iloc[0].get("metric_rows_changed", 0))
+                "run_delta_metric_rows_changed": int(
+                    delta_row.iloc[0].get("metric_rows_changed", 0)
+                )
                 if not delta_row.empty
                 else 0,
                 "run_delta_gate_rows_changed": int(delta_row.iloc[0].get("gate_rows_changed", 0))
@@ -426,12 +466,7 @@ def _inject_block(path: Path, key: str, block: str) -> None:
         base = text.rstrip()
         if not base:
             base = f"# {path.stem.replace('_', ' ').title()}"
-        new_text = (
-            base
-            + "\n\n## Rolling Historical Evidence\n\n"
-            + block
-            + "\n"
-        )
+        new_text = base + "\n\n## Rolling Historical Evidence\n\n" + block + "\n"
     path.write_text(new_text, encoding="utf-8")
 
 
@@ -460,7 +495,9 @@ def run(*, docs_root: Path, analysis_root: Path, out_status_csv: Path) -> pd.Dat
     docs_dir = docs_root.resolve()
     repo_root = docs_dir.parent
     generated_at_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    by_symbol, trend, gov, artifact_sources = _build_snapshot_tables(repo_root=repo_root, data_root=analysis_root.parent)
+    by_symbol, trend, gov, artifact_sources = _build_snapshot_tables(
+        repo_root=repo_root, data_root=analysis_root.parent
+    )
     rows: list[dict[str, Any]] = []
 
     for spec in PAGES:
@@ -496,7 +533,9 @@ def run(*, docs_root: Path, analysis_root: Path, out_status_csv: Path) -> pd.Dat
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Build OCO system reference docs with rolling evidence blocks")
+    p = argparse.ArgumentParser(
+        description="Build OCO system reference docs with rolling evidence blocks"
+    )
     p.add_argument("--docs-root", default="docs")
     p.add_argument("--analysis-root", default="data/analysis")
     p.add_argument(

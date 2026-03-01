@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Execution-risk preflight audit on tick replay artifacts.
 
-Checks E01..E10 across EURUSD/GBPUSD/USDJPY and emits:
+Checks E01..E10 across EURUSD/GBPUSD/USDJPY/USDCHF/AUDUSD/USDCAD and emits:
 - checks CSV
 - issues CSV
 - markdown report
@@ -47,24 +47,48 @@ def _default_configs() -> dict[str, SymbolConfig]:
     return {
         "EURUSD": SymbolConfig(
             symbol="EURUSD",
-            pred_path=Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet"),
-            monthly_path=Path("data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv"),
-            detail_path=Path("data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv"),
-            caps_path=Path("data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_caps.csv"),
+            pred_path=Path(
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet"
+            ),
+            monthly_path=Path(
+                "data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv"
+            ),
+            detail_path=Path(
+                "data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv"
+            ),
+            caps_path=Path(
+                "data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_caps.csv"
+            ),
         ),
         "GBPUSD": SymbolConfig(
             symbol="GBPUSD",
-            pred_path=Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_predictions.parquet"),
-            monthly_path=Path("data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_monthly.csv"),
-            detail_path=Path("data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/GBPUSD_stop_limit_tickfill_detail.csv"),
-            caps_path=Path("data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/GBPUSD_stop_limit_tickfill_caps.csv"),
+            pred_path=Path(
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_predictions.parquet"
+            ),
+            monthly_path=Path(
+                "data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_monthly.csv"
+            ),
+            detail_path=Path(
+                "data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/GBPUSD_stop_limit_tickfill_detail.csv"
+            ),
+            caps_path=Path(
+                "data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/GBPUSD_stop_limit_tickfill_caps.csv"
+            ),
         ),
         "USDJPY": SymbolConfig(
             symbol="USDJPY",
-            pred_path=Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_monthly_predictions.parquet"),
-            monthly_path=Path("data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_monthly.csv"),
-            detail_path=Path("data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDJPY_stop_limit_tickfill_detail.csv"),
-            caps_path=Path("data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDJPY_stop_limit_tickfill_caps.csv"),
+            pred_path=Path(
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_monthly_predictions.parquet"
+            ),
+            monthly_path=Path(
+                "data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_monthly.csv"
+            ),
+            detail_path=Path(
+                "data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDJPY_stop_limit_tickfill_detail.csv"
+            ),
+            caps_path=Path(
+                "data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDJPY_stop_limit_tickfill_caps.csv"
+            ),
         ),
     }
 
@@ -185,7 +209,9 @@ def _load_detail(path: Path) -> tuple[pd.DataFrame, int]:
     d["overshoot_tick_pips"] = _safe_num(d["overshoot_tick_pips"])
     d = d.dropna(subset=["close_ts", "candidate_uid"]).copy()
     dup = int(d.duplicated(subset=["close_ts", "candidate_uid"]).sum())
-    d = d.sort_values(["candidate_uid", "close_ts"]).drop_duplicates(subset=["close_ts", "candidate_uid"], keep="last")
+    d = d.sort_values(["candidate_uid", "close_ts"]).drop_duplicates(
+        subset=["close_ts", "candidate_uid"], keep="last"
+    )
     return d, dup
 
 
@@ -199,7 +225,13 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
     monthly = pd.read_csv(cfg.monthly_path).copy()
     monthly["test_month"] = monthly["test_month"].astype(str)
 
-    m = pred.merge(detail, on=["close_ts", "candidate_uid"], how="left", validate="one_to_one", suffixes=("", "_detail"))
+    m = pred.merge(
+        detail,
+        on=["close_ts", "candidate_uid"],
+        how="left",
+        validate="one_to_one",
+        suffixes=("", "_detail"),
+    )
     m["matched"] = m["touch_found_tick"].notna().astype(int)
     m["touch_found_tick"] = _safe_num(m["touch_found_tick"]).fillna(0).astype(int)
     m["overshoot_tick_pips"] = _safe_num(m["overshoot_tick_pips"])
@@ -287,9 +319,17 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
         .sort_values("month_utc")
     )
     min_fill = float(mon["fill_rate"].min()) if not mon.empty else float("nan")
-    low = mon["fill_rate"].to_numpy(dtype=float) < float(cfg.min_fill_rate_monthly) if not mon.empty else np.array([], dtype=bool)
+    low = (
+        mon["fill_rate"].to_numpy(dtype=float) < float(cfg.min_fill_rate_monthly)
+        if not mon.empty
+        else np.array([], dtype=bool)
+    )
     consecutive_low = int(np.sum(low[:-1] & low[1:])) if len(low) > 1 else 0
-    e02_pass = np.isfinite(min_fill) and min_fill >= float(cfg.min_fill_rate_monthly) and consecutive_low == 0
+    e02_pass = (
+        np.isfinite(min_fill)
+        and min_fill >= float(cfg.min_fill_rate_monthly)
+        and consecutive_low == 0
+    )
     add_check(
         "E02",
         "fill_rate_envelope_monthly",
@@ -308,7 +348,12 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
     ov = m.loc[m["touch_found_tick"] == 1, "overshoot_tick_pips"].dropna().to_numpy(dtype=float)
     ov_p95 = float(np.quantile(ov, 0.95)) if len(ov) else float("nan")
     ov_tail = float(np.mean(ov > cap)) if len(ov) else float("nan")
-    e03_pass = np.isfinite(ov_p95) and np.isfinite(ov_tail) and ov_p95 <= cap and ov_tail <= float(cfg.max_tail_above_cap)
+    e03_pass = (
+        np.isfinite(ov_p95)
+        and np.isfinite(ov_tail)
+        and ov_p95 <= cap
+        and ov_tail <= float(cfg.max_tail_above_cap)
+    )
     add_check(
         "E03",
         "overshoot_tail_control",
@@ -332,7 +377,9 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
         e04_pass = True
         metric_v = float("nan")
     else:
-        e04_pass = (lat_med <= float(cfg.latency_med_max_seconds)) and (lat_p95 <= float(cfg.latency_p95_max_seconds))
+        e04_pass = (lat_med <= float(cfg.latency_med_max_seconds)) and (
+            lat_p95 <= float(cfg.latency_p95_max_seconds)
+        )
         metric_v = lat_p95
     add_check(
         "E04",
@@ -372,16 +419,30 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
     c = c.sort_values("cap_pips")
     c["fill_rate"] = _safe_num(c["fill_rate"])
     c["mean_per_signal_full_overshoot"] = _safe_num(c["mean_per_signal_full_overshoot"])
-    diffs = np.diff(c["fill_rate"].to_numpy(dtype=float)) if len(c) > 1 else np.array([], dtype=float)
+    diffs = (
+        np.diff(c["fill_rate"].to_numpy(dtype=float)) if len(c) > 1 else np.array([], dtype=float)
+    )
     mono_viol = int(np.sum(diffs < -1e-9))
     prod_row = c[np.isclose(c["cap_pips"].astype(float), cap, atol=1e-9)]
     if prod_row.empty and len(c) > 0:
         idx = int(np.argmin(np.abs(c["cap_pips"].to_numpy(dtype=float) - cap)))
         prod_row = c.iloc[[idx]].copy()
-    prod_pnl = float(prod_row["mean_per_signal_full_overshoot"].iloc[0]) if not prod_row.empty else float("nan")
+    prod_pnl = (
+        float(prod_row["mean_per_signal_full_overshoot"].iloc[0])
+        if not prod_row.empty
+        else float("nan")
+    )
     best_pnl = float(c["mean_per_signal_full_overshoot"].max()) if len(c) else float("nan")
-    efficiency = float(prod_pnl / best_pnl) if np.isfinite(prod_pnl) and np.isfinite(best_pnl) and abs(best_pnl) > 1e-12 else float("nan")
-    e06_pass = (mono_viol == 0) and np.isfinite(efficiency) and (efficiency >= float(cfg.cap_efficiency_min))
+    efficiency = (
+        float(prod_pnl / best_pnl)
+        if np.isfinite(prod_pnl) and np.isfinite(best_pnl) and abs(best_pnl) > 1e-12
+        else float("nan")
+    )
+    e06_pass = (
+        (mono_viol == 0)
+        and np.isfinite(efficiency)
+        and (efficiency >= float(cfg.cap_efficiency_min))
+    )
     add_check(
         "E06",
         "cap_curve_monotonicity_and_plateau",
@@ -392,17 +453,36 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
         efficiency if np.isfinite(efficiency) else float("nan"),
         f"fill_monotonic and efficiency>={cfg.cap_efficiency_min}",
         ">=",
-        {"monotonicity_violations": mono_viol, "production_cap_pips": cap, "best_pnl": best_pnl, "prod_pnl": prod_pnl},
+        {
+            "monotonicity_violations": mono_viol,
+            "production_cap_pips": cap,
+            "best_pnl": best_pnl,
+            "prod_pnl": prod_pnl,
+        },
         "Cap curve is fragile or non-monotonic for fill behavior.",
     )
 
     # E07: session dispersion.
     filled = m[m["filled"]].copy()
-    sess_share = filled["session"].value_counts(normalize=True) if len(filled) else pd.Series(dtype=float)
+    sess_share = (
+        filled["session"].value_counts(normalize=True) if len(filled) else pd.Series(dtype=float)
+    )
     max_share = float(sess_share.max()) if len(sess_share) else float("nan")
-    sess_ov = m[m["touch_found_tick"] == 1].groupby("session", as_index=False).agg(ov_mean=("overshoot_tick_pips", "mean"))
-    g_mean = float(m.loc[m["touch_found_tick"] == 1, "overshoot_tick_pips"].mean()) if len(m) else float("nan")
-    g_std = float(m.loc[m["touch_found_tick"] == 1, "overshoot_tick_pips"].std(ddof=0)) if len(m) else float("nan")
+    sess_ov = (
+        m[m["touch_found_tick"] == 1]
+        .groupby("session", as_index=False)
+        .agg(ov_mean=("overshoot_tick_pips", "mean"))
+    )
+    g_mean = (
+        float(m.loc[m["touch_found_tick"] == 1, "overshoot_tick_pips"].mean())
+        if len(m)
+        else float("nan")
+    )
+    g_std = (
+        float(m.loc[m["touch_found_tick"] == 1, "overshoot_tick_pips"].std(ddof=0))
+        if len(m)
+        else float("nan")
+    )
     worst_ov = float(sess_ov["ov_mean"].max()) if not sess_ov.empty else float("nan")
     ov_ok = True
     if np.isfinite(g_mean) and np.isfinite(g_std) and np.isfinite(worst_ov):
@@ -418,18 +498,26 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
         max_share if np.isfinite(max_share) else float("nan"),
         f"<={cfg.max_session_share} and overshoot_outlier_session=False",
         "<=",
-        {"worst_session_overshoot_mean": worst_ov, "global_overshoot_mean": g_mean, "global_overshoot_std": g_std},
+        {
+            "worst_session_overshoot_mean": worst_ov,
+            "global_overshoot_mean": g_mean,
+            "global_overshoot_std": g_std,
+        },
         "Execution quality is overly concentrated or session-skewed.",
     )
 
     # E08: state execution fragility.
-    g_state = (
-        m.groupby("candidate_uid", as_index=False)
-        .agg(
-            rows=("candidate_uid", "size"),
-            fill_rate=("filled", "mean"),
-            ov_p95=("overshoot_tick_pips", lambda x: float(np.nanquantile(pd.to_numeric(x, errors='coerce').dropna().to_numpy(), 0.95)) if pd.to_numeric(x, errors='coerce').dropna().shape[0] else np.nan),
-        )
+    g_state = m.groupby("candidate_uid", as_index=False).agg(
+        rows=("candidate_uid", "size"),
+        fill_rate=("filled", "mean"),
+        ov_p95=(
+            "overshoot_tick_pips",
+            lambda x: (
+                float(np.nanquantile(pd.to_numeric(x, errors="coerce").dropna().to_numpy(), 0.95))
+                if pd.to_numeric(x, errors="coerce").dropna().shape[0]
+                else np.nan
+            ),
+        ),
     )
     hv = g_state[g_state["rows"] >= int(cfg.min_state_rows)].copy()
     if not hv.empty:
@@ -450,7 +538,11 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
         bad_frac,
         f"<={cfg.max_bad_state_frac}",
         "<=",
-        {"high_volume_states": int(len(hv)), "bad_states": bad_count, "min_state_rows": int(cfg.min_state_rows)},
+        {
+            "high_volume_states": int(len(hv)),
+            "bad_states": bad_count,
+            "min_state_rows": int(cfg.min_state_rows),
+        },
         "Too many high-volume states fail fill/overshoot quality.",
     )
 
@@ -461,13 +553,30 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
             rows=("candidate_uid", "size"),
             fill_rate=("filled", "mean"),
             mean_signal_net=("net_signal_full_overshoot", "mean"),
-            ov_p95=("overshoot_tick_pips", lambda x: float(np.nanquantile(pd.to_numeric(x, errors='coerce').dropna().to_numpy(), 0.95)) if pd.to_numeric(x, errors='coerce').dropna().shape[0] else np.nan),
+            ov_p95=(
+                "overshoot_tick_pips",
+                lambda x: (
+                    float(
+                        np.nanquantile(pd.to_numeric(x, errors="coerce").dropna().to_numpy(), 0.95)
+                    )
+                    if pd.to_numeric(x, errors="coerce").dropna().shape[0]
+                    else np.nan
+                ),
+            ),
         )
         .sort_values("month_utc")
     )
     worst_month_net = float(mon2["mean_signal_net"].min()) if not mon2.empty else float("nan")
-    catastrophic = int(((mon2["fill_rate"] < 0.85) & (mon2["ov_p95"] > (1.2 * cap))).sum()) if not mon2.empty else 0
-    e09_pass = np.isfinite(worst_month_net) and (worst_month_net >= float(cfg.worst_month_net_min)) and catastrophic == 0
+    catastrophic = (
+        int(((mon2["fill_rate"] < 0.85) & (mon2["ov_p95"] > (1.2 * cap))).sum())
+        if not mon2.empty
+        else 0
+    )
+    e09_pass = (
+        np.isfinite(worst_month_net)
+        and (worst_month_net >= float(cfg.worst_month_net_min))
+        and catastrophic == 0
+    )
     add_check(
         "E09",
         "worst_window_stress_guard",
@@ -483,8 +592,14 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
     )
 
     # E10: execution net viability.
-    monthly_means = mon2["mean_signal_net"].to_numpy(dtype=float) if not mon2.empty else np.array([], dtype=float)
-    lb95_month = _bootstrap_lb95(monthly_means, paths=int(cfg.bootstrap_paths), seed=int(cfg.seed) + 31)
+    monthly_means = (
+        mon2["mean_signal_net"].to_numpy(dtype=float)
+        if not mon2.empty
+        else np.array([], dtype=float)
+    )
+    lb95_month = _bootstrap_lb95(
+        monthly_means, paths=int(cfg.bootstrap_paths), seed=int(cfg.seed) + 31
+    )
     pos_months = int(np.sum(monthly_means > 0.0)) if len(monthly_means) else 0
     months = int(len(monthly_means))
     majority = bool(pos_months >= ((months // 2) + 1)) if months > 0 else False
@@ -505,7 +620,12 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
         lb95_month if np.isfinite(lb95_month) else float("nan"),
         ">=0 and majority_positive_months and rows_floor",
         ">=",
-        {"positive_months": pos_months, "months": months, "rows_total": rows_total, "rows_floor": int(cfg.min_total_rows_for_viability)},
+        {
+            "positive_months": pos_months,
+            "months": months,
+            "rows_total": rows_total,
+            "rows_floor": int(cfg.min_total_rows_for_viability),
+        },
         "Net execution viability is not robust at production cap.",
     )
 
@@ -558,7 +678,17 @@ def run_audit(
             ]
         )
     if issues.empty:
-        issues = pd.DataFrame(columns=["issue_id", "symbol", "check_id", "severity", "component", "summary", "details_json"])
+        issues = pd.DataFrame(
+            columns=[
+                "issue_id",
+                "symbol",
+                "check_id",
+                "severity",
+                "component",
+                "summary",
+                "details_json",
+            ]
+        )
 
     out_checks_csv.parent.mkdir(parents=True, exist_ok=True)
     out_issues_csv.parent.mkdir(parents=True, exist_ok=True)
@@ -572,7 +702,11 @@ def run_audit(
         else pd.DataFrame(columns=["severity", "size"])
     )
     status_roll = (
-        checks.groupby(["symbol", "status"], as_index=False).size().pivot(index="symbol", columns="status", values="size").fillna(0).reset_index()
+        checks.groupby(["symbol", "status"], as_index=False)
+        .size()
+        .pivot(index="symbol", columns="status", values="size")
+        .fillna(0)
+        .reset_index()
         if not checks.empty
         else pd.DataFrame()
     )
@@ -590,7 +724,13 @@ def run_audit(
     lines.append(_table(status_roll))
     lines.append("")
     lines.append("## Failed Issues")
-    lines.append(_table(issues[["issue_id", "symbol", "severity", "component", "summary"]] if not issues.empty else pd.DataFrame()))
+    lines.append(
+        _table(
+            issues[["issue_id", "symbol", "severity", "component", "summary"]]
+            if not issues.empty
+            else pd.DataFrame()
+        )
+    )
     lines.append("")
     lines.append("## Full Check Table")
     lines.append(_table(checks))
@@ -599,10 +739,18 @@ def run_audit(
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Execution-risk preflight audit on OCO tick replay artifacts")
-    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY")
-    p.add_argument("--out-checks-csv", default="data/analysis/tick_opportunity_mining/oco_execution_risk_checks.csv")
-    p.add_argument("--out-issues-csv", default="data/analysis/tick_opportunity_mining/oco_execution_risk_issues.csv")
+    p = argparse.ArgumentParser(
+        description="Execution-risk preflight audit on OCO tick replay artifacts"
+    )
+    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD")
+    p.add_argument(
+        "--out-checks-csv",
+        default="data/analysis/tick_opportunity_mining/oco_execution_risk_checks.csv",
+    )
+    p.add_argument(
+        "--out-issues-csv",
+        default="data/analysis/tick_opportunity_mining/oco_execution_risk_issues.csv",
+    )
     p.add_argument("--report-out", default="docs/analysis/oco_execution_risk_prelive_report.md")
     args = p.parse_args()
 
@@ -613,9 +761,11 @@ def main() -> None:
         report_out=Path(str(args.report_out)),
     )
     fail = checks[checks["status"].astype(str).str.lower() != "pass"]
-    high_crit = int(
-        fail["severity_if_fail"].astype(str).str.lower().isin(["high", "critical"]).sum()
-    ) if not fail.empty else 0
+    high_crit = (
+        int(fail["severity_if_fail"].astype(str).str.lower().isin(["high", "critical"]).sum())
+        if not fail.empty
+        else 0
+    )
     print(f"wrote checks: {args.out_checks_csv} rows={len(checks)}")
     print(f"wrote issues: {args.out_issues_csv} rows={len(issues)}")
     print(f"high_or_critical_failures={high_crit}")

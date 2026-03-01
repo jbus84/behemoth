@@ -108,8 +108,12 @@ def test_build_tick_opportunity_ml_dataset(tmp_path: Path) -> None:
     assert not directional.empty
     assert not oco.empty
     assert not summary.empty
-    assert {"candidate_uid", "target_gross_pips", "target_gross_pos", "split"}.issubset(directional.columns)
-    assert {"candidate_uid", "barrier_pips", "target_gross_pips", "target_gross_pos"}.issubset(oco.columns)
+    assert {"candidate_uid", "target_gross_pips", "target_gross_pos", "split"}.issubset(
+        directional.columns
+    )
+    assert {"candidate_uid", "barrier_pips", "target_gross_pips", "target_gross_pos"}.issubset(
+        oco.columns
+    )
     assert "first_touch_side" not in oco.columns
     assert "both_window_event" not in oco.columns
     assert "touch_step" not in oco.columns

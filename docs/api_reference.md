@@ -1,7 +1,7 @@
 # API Reference
 
 ## Scope
-This page refers to optional legacy API modules under `services/api/`.
+This refers to standard configuration interfaces defined by the OCO artifacts.
 
 ## Current Recommendation
 For current OCO strategy work, use these as implementation references only. The authoritative behavior contracts are documented in:
@@ -9,24 +9,11 @@ For current OCO strategy work, use these as implementation references only. The 
 - `docs/strategy_bible/stage_09_live_governance_and_deployment.md`
 - `docs/strategy_bible/operator_runbook.md`
 
-## Legacy Module Map
-- `services.api.main`
-- `services.api.models`
-- `services.api.schemas`
-- `services.api.risk`
-- `services.api.guardrail`
-- `services.api.settings`
-- `services.api.validation`
-- `services.api.predict`
-- `services.api.weights`
-- `services.api.cache`
-- `services.api.state`
-
 ## Rolling Historical Evidence
 
 <!-- GENERATED:SYSREF:API_REFERENCE:START -->
-- generated_at_utc: `2026-03-01T07:53:44Z`
-- symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF`
+- generated_at_utc: `2026-03-01T09:52:30Z`
+- symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD`
 - stop-limit_reference: `stage_04_execution_realism`
 - artifact_sources:
   - `data/analysis/tick_opportunity_mining/oco_execution_drift_monthly.csv`
@@ -44,6 +31,8 @@ For current OCO strategy work, use these as implementation references only. The 
 | GBPUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 | USDJPY   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 | USDCHF   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| AUDUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| USDCAD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 
 #### Rolling Trend (Last 3 Months)
 | symbol   |   months_used | fill_rate_mean_3m   | overshoot_p95_mean_3m   |
@@ -52,6 +41,8 @@ For current OCO strategy work, use these as implementation references only. The 
 | GBPUSD   |             0 |                     |                         |
 | USDJPY   |             0 |                     |                         |
 | USDCHF   |             0 |                     |                         |
+| AUDUSD   |             0 |                     |                         |
+| USDCAD   |             0 |                     |                         |
 
 #### Governance Snapshot
 |   checks_failed |   high_critical_failed | max_age_hours_c6   |   run_delta_metric_rows_changed |   run_delta_gate_rows_changed |

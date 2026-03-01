@@ -146,7 +146,9 @@ def _build_minimal_bundle(tmp_path: Path, *, bad_time_order: bool = False) -> Sy
     states = tmp_path / "states.csv"
     wfo_cfg.write_text("execution_quantile: 0.9\n", encoding="utf-8")
     red_cfg.write_text("locked_quantile: 0.9\n", encoding="utf-8")
-    pd.DataFrame([{"symbol": "EURUSD", "bar_ticks": 100, "horizon": 6, "state_id": "state_a"}]).to_csv(states, index=False)
+    pd.DataFrame(
+        [{"symbol": "EURUSD", "bar_ticks": 100, "horizon": 6, "state_id": "state_a"}]
+    ).to_csv(states, index=False)
 
     lock = {
         "symbol": "EURUSD",

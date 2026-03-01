@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 02
 
-- generated_at: `2026-03-01 07:53:15 UTC`
+- generated_at: `2026-03-01 09:52:04 UTC`
 - selection_pass candidates are broad hypotheses only.
 - Scatter shows the high-count >0 gross opportunity frontier.
 - M01-M03 quantify concentration risk, horizon smoothness, and positive-edge density.

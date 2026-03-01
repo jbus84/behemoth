@@ -29,7 +29,7 @@ Promotion score (policy-level):
 ## Validation Gates
 Candidate promotion map:
 - `E11`, `E12`, `E13` -> Stage 4 execution hardening gates.
-- `W13`, `W15` -> Stage 3 stability guardrails.
+- `W13`, `W15` -> Stage 3 stability limits.
 - `R02`, `R03` -> reduced-core concentration/stability gate candidates.
 - `G01`, `G02` -> predeploy warning pressure controls.
 

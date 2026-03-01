@@ -17,8 +17,18 @@ def _build_fixture(tmp_path: Path) -> SymbolConfig:
 
     months = ["2025-04", "2025-05", "2025-06", "2025-07"]
     fills = {
-        "state_a": {"2025-04": [1, 0, 0], "2025-05": [1, 1, 0], "2025-06": [1, 1, 1], "2025-07": [1, 1, 0]},
-        "state_b": {"2025-04": [1, 1, 1], "2025-05": [1, 1, 0], "2025-06": [1, 0, 0], "2025-07": [1, 0, 0]},
+        "state_a": {
+            "2025-04": [1, 0, 0],
+            "2025-05": [1, 1, 0],
+            "2025-06": [1, 1, 1],
+            "2025-07": [1, 1, 0],
+        },
+        "state_b": {
+            "2025-04": [1, 1, 1],
+            "2025-05": [1, 1, 0],
+            "2025-06": [1, 0, 0],
+            "2025-07": [1, 0, 0],
+        },
     }
     for month in months:
         for state in ["state_a", "state_b"]:
@@ -137,8 +147,18 @@ def _build_fixture(tmp_path: Path) -> SymbolConfig:
 
     schedule = pd.DataFrame(
         [
-            {"symbol": "EURUSD", "test_month": "2025-07", "state_id": "state_a_0", "gate_pass": True},
-            {"symbol": "EURUSD", "test_month": "2025-07", "state_id": "state_b_0", "gate_pass": False},
+            {
+                "symbol": "EURUSD",
+                "test_month": "2025-07",
+                "state_id": "state_a_0",
+                "gate_pass": True,
+            },
+            {
+                "symbol": "EURUSD",
+                "test_month": "2025-07",
+                "state_id": "state_b_0",
+                "gate_pass": False,
+            },
         ]
     )
     schedule_path = tmp_path / "schedule.csv"

@@ -27,7 +27,7 @@ flowchart TD
 
 ## Architecture Boundary
 - Mandatory: offline/research pipeline and governance artifacts.
-- Optional/legacy: API + DB runtime under `services/api/`.
+- Outputs: Live execution locks and allowed state matrices.
 - Current production research scope: `EURUSD`, `GBPUSD`, `USDJPY`.
 
 ## Next Integration Step
@@ -36,8 +36,8 @@ When execution integration is enabled, treat it as a thin adapter over the Stage
 ## Rolling Historical Evidence
 
 <!-- GENERATED:SYSREF:ARCHITECTURE:START -->
-- generated_at_utc: `2026-03-01T07:53:44Z`
-- symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF`
+- generated_at_utc: `2026-03-01T09:52:30Z`
+- symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD`
 - stop-limit_reference: `stage_04_execution_realism`
 - artifact_sources:
   - `data/analysis/tick_opportunity_mining/oco_execution_drift_monthly.csv`
@@ -55,6 +55,8 @@ When execution integration is enabled, treat it as a thin adapter over the Stage
 | GBPUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 | USDJPY   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 | USDCHF   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| AUDUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| USDCAD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 
 #### Rolling Trend (Last 3 Months)
 | symbol   |   months_used | fill_rate_mean_3m   | overshoot_p95_mean_3m   |
@@ -63,6 +65,8 @@ When execution integration is enabled, treat it as a thin adapter over the Stage
 | GBPUSD   |             0 |                     |                         |
 | USDJPY   |             0 |                     |                         |
 | USDCHF   |             0 |                     |                         |
+| AUDUSD   |             0 |                     |                         |
+| USDCAD   |             0 |                     |                         |
 
 #### Governance Snapshot
 |   checks_failed |   high_critical_failed | max_age_hours_c6   |   run_delta_metric_rows_changed |   run_delta_gate_rows_changed |

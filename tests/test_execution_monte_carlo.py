@@ -100,5 +100,12 @@ def test_run_for_symbol_produces_all_scenarios(tmp_path: Path) -> None:
     assert not group_df.empty
     assert not month_df.empty
     assert not symbol_df.empty
-    assert set(symbol_df["scenario_id"].astype(str).unique().tolist()) == {"S0_baseline", "S1_mild", "S2_moderate", "S3_severe"}
-    assert {"lb95_per_signal_pips", "mean_fill_rate", "prob_negative_month"}.issubset(set(symbol_df.columns))
+    assert set(symbol_df["scenario_id"].astype(str).unique().tolist()) == {
+        "S0_baseline",
+        "S1_mild",
+        "S2_moderate",
+        "S3_severe",
+    }
+    assert {"lb95_per_signal_pips", "mean_fill_rate", "prob_negative_month"}.issubset(
+        set(symbol_df.columns)
+    )

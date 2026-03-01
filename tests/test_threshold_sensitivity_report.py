@@ -18,7 +18,7 @@ def _write_symbol_pred(path: Path, symbol: str) -> None:
             rows.append(
                 {
                     "test_month": m,
-                    "close_ts": f"{m}-01T00:{j%60:02d}:00Z",
+                    "close_ts": f"{m}-01T00:{j % 60:02d}:00Z",
                     "pred_prob": min(0.99, p),
                     "target_gross_pips": gross,
                 }
@@ -61,7 +61,15 @@ def test_threshold_sensitivity_report_outputs(tmp_path: Path) -> None:
     )
     assert not sens.empty
     assert not alerts.empty
-    assert {"symbol", "lookback_days", "cadence_days", "window_days", "final_score", "is_recommended", "is_current_policy"}.issubset(set(sens.columns))
+    assert {
+        "symbol",
+        "lookback_days",
+        "cadence_days",
+        "window_days",
+        "final_score",
+        "is_recommended",
+        "is_current_policy",
+    }.issubset(set(sens.columns))
     for sym in ["EURUSD", "GBPUSD", "USDJPY"]:
         g = sens[sens["symbol"] == sym]
         assert int(g["is_recommended"].sum()) >= 1

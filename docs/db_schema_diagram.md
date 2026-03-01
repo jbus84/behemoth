@@ -10,7 +10,7 @@ flowchart TD
   E --> F
   F --> G[promotion decision]
 
-  H[optional services/api DB] -. integration only .-> G
+
 ```
 
 The relational DB path is optional. The mandatory path is the artifact contract path shown above.
@@ -18,8 +18,8 @@ The relational DB path is optional. The mandatory path is the artifact contract 
 ## Rolling Historical Evidence
 
 <!-- GENERATED:SYSREF:DB_SCHEMA_DIAGRAM:START -->
-- generated_at_utc: `2026-03-01T07:53:44Z`
-- symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF`
+- generated_at_utc: `2026-03-01T09:52:30Z`
+- symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD`
 - stop-limit_reference: `stage_04_execution_realism`
 - artifact_sources:
   - `data/analysis/tick_opportunity_mining/oco_execution_drift_monthly.csv`
@@ -37,6 +37,8 @@ The relational DB path is optional. The mandatory path is the artifact contract 
 | GBPUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 | USDJPY   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 | USDCHF   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| AUDUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| USDCAD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
 
 #### Rolling Trend (Last 3 Months)
 | symbol   |   months_used | fill_rate_mean_3m   | overshoot_p95_mean_3m   |
@@ -45,6 +47,8 @@ The relational DB path is optional. The mandatory path is the artifact contract 
 | GBPUSD   |             0 |                     |                         |
 | USDJPY   |             0 |                     |                         |
 | USDCHF   |             0 |                     |                         |
+| AUDUSD   |             0 |                     |                         |
+| USDCAD   |             0 |                     |                         |
 
 #### Governance Snapshot
 |   checks_failed |   high_critical_failed | max_age_hours_c6   |   run_delta_metric_rows_changed |   run_delta_gate_rows_changed |

@@ -1,7 +1,7 @@
 # Strategy Master Manual - Tick OCO Stop-Limit System
 
-**Version**: 10.3  
-**Date**: February 28, 2026  
+**Version**: 10.3
+**Date**: February 28, 2026
 **Status**: Active
 
 This is the canonical manual for the active OCO research/governance system.
@@ -20,8 +20,7 @@ If any section conflicts with generated stage artifacts, the generated stage art
 - `EURUSD`, `GBPUSD`, `USDJPY`, `USDCHF`
 
 ### 1.3 What This System Is Not
-- Not the legacy mixed MOM/REV portfolio framework.
-- Not Kalman-only directional portfolio blending.
+- Not a mixed MOM/REV portfolio framework.
 - Not an API-first live runtime; current source of truth is artifact-first pipeline governance.
 
 ## 2. Why This System Works (and When It Should Not Be Used)
@@ -234,8 +233,6 @@ Run from repo root:
 
 ```bash
 make docs-contract-ci
-uv run python scripts/build_oco_strategy_bible.py --manifest configs/research/docs/oco_bible_manifest.yaml --strict false
-uv run python scripts/build_oco_system_reference_docs.py
 uv run mkdocs build
 ```
 

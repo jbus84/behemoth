@@ -104,7 +104,18 @@ def _prepare_frame(path: Path, *, symbol: str, horizons: list[int]) -> pd.DataFr
     if d.empty:
         return d
 
-    req = ["open", "high", "low", "close", "cost_est_pips", "range_pips", "hour_utc", "spread_z", "tick_rate_z", "vel_cost_units_h1"]
+    req = [
+        "open",
+        "high",
+        "low",
+        "close",
+        "cost_est_pips",
+        "range_pips",
+        "hour_utc",
+        "spread_z",
+        "tick_rate_z",
+        "vel_cost_units_h1",
+    ]
     miss = [c for c in req if c not in d.columns]
     if miss:
         raise ValueError(f"{path.name} missing columns: {miss}")
@@ -199,7 +210,9 @@ def _regime_masks(test: pd.DataFrame, q: dict[str, float]) -> list[tuple[str, np
     ]
 
 
-def _directional_family_states(test: pd.DataFrame, q: dict[str, float]) -> list[tuple[str, np.ndarray, np.ndarray]]:
+def _directional_family_states(
+    test: pd.DataFrame, q: dict[str, float]
+) -> list[tuple[str, np.ndarray, np.ndarray]]:
     ret1 = test["ret1_pips"].to_numpy(dtype=float)
     ret_sign = np.sign(ret1).astype(np.int8)
     shock = test["ret_abs_z"].to_numpy(dtype=float)
@@ -247,7 +260,9 @@ def _directional_family_states(test: pd.DataFrame, q: dict[str, float]) -> list[
     )
     out.append(("path_follow", (np.abs(hlf) > 0.0) & shock60, np.sign(hlf).astype(np.int8)))
     out.append(("path_revert", (np.abs(hlf) > 0.0) & shock60, (-np.sign(hlf)).astype(np.int8)))
-    out.append(("path_persist_24", (np.abs(hlf24) >= 0.20) & shock60, np.sign(hlf24).astype(np.int8)))
+    out.append(
+        ("path_persist_24", (np.abs(hlf24) >= 0.20) & shock60, np.sign(hlf24).astype(np.int8))
+    )
     out.append(("shock_extreme_revert", (shock80 & (ret_sign != 0)), (-ret_sign).astype(np.int8)))
     return out
 
@@ -324,7 +339,11 @@ def _directional_candidates(
         if ycol not in test.columns:
             continue
         y_test = pd.to_numeric(test[ycol], errors="coerce").to_numpy(dtype=float)
-        y_train = pd.to_numeric(train[ycol], errors="coerce").to_numpy(dtype=float) if ycol in train.columns else np.full(len(train), np.nan)
+        y_train = (
+            pd.to_numeric(train[ycol], errors="coerce").to_numpy(dtype=float)
+            if ycol in train.columns
+            else np.full(len(train), np.nan)
+        )
         valid_test = np.isfinite(y_test)
         valid_train = np.isfinite(y_train)
         if h > 0:
@@ -351,7 +370,11 @@ def _directional_candidates(
                 stats = _metric_from_gross(gross)
                 mean_train = float(np.mean(train_vals)) if len(train_vals) > 0 else float("nan")
                 median_train = float(np.median(train_vals)) if len(train_vals) > 0 else float("nan")
-                metric_val = stats["mean_gross_pips_test"] if str(gross_metric).lower() == "mean" else stats["median_gross_pips_test"]
+                metric_val = (
+                    stats["mean_gross_pips_test"]
+                    if str(gross_metric).lower() == "mean"
+                    else stats["median_gross_pips_test"]
+                )
                 rows.append(
                     {
                         "symbol": symbol,
@@ -372,7 +395,11 @@ def _directional_candidates(
                         "both_window_rate": float("nan"),
                         "p_up_first": float("nan"),
                         "ml_ready_target_type": "directional_sign",
-                        "selection_pass": bool(np.isfinite(metric_val) and metric_val > 0.0 and annual >= float(min_annual_fills)),
+                        "selection_pass": bool(
+                            np.isfinite(metric_val)
+                            and metric_val > 0.0
+                            and annual >= float(min_annual_fills)
+                        ),
                     }
                 )
     return pd.DataFrame(rows)
@@ -412,7 +439,10 @@ def _oco_candidates(
     train_cache: dict[tuple[int, float, str, str], tuple[int, float, float]] = {}
     for h in horizons:
         h = int(h)
-        for stage, dct in [("test", (close_test, high_test, low_test, hlf_test, ts_test, regimes)), ("train", (close_train, high_train, low_train, hlf_train, ts_train, train_regimes))]:
+        for stage, dct in [
+            ("test", (close_test, high_test, low_test, hlf_test, ts_test, regimes)),
+            ("train", (close_train, high_train, low_train, hlf_train, ts_train, train_regimes)),
+        ]:
             close, high, low, hlf, ts, reg_list = dct
             n_eff = len(close) - h - 1
             if n_eff <= 100:
@@ -474,7 +504,11 @@ def _oco_candidates(
                             gross = gross_all[fam_mask]
                             stats = _metric_from_gross(gross)
                             annual = _annualized_count(n, ts.iloc[i0[fam_mask]])
-                            metric_val = stats["mean_gross_pips_test"] if str(gross_metric).lower() == "mean" else stats["median_gross_pips_test"]
+                            metric_val = (
+                                stats["mean_gross_pips_test"]
+                                if str(gross_metric).lower() == "mean"
+                                else stats["median_gross_pips_test"]
+                            )
                             rows.append(
                                 {
                                     "symbol": symbol,
@@ -492,10 +526,16 @@ def _oco_candidates(
                                     "median_gross_pips_test": stats["median_gross_pips_test"],
                                     "gross_std_test": stats["gross_std_test"],
                                     "hit_rate_gross_test": stats["hit_rate_gross_test"],
-                                    "both_window_rate": float(np.mean(both[reg_mask])) if np.any(reg_mask) else float("nan"),
+                                    "both_window_rate": float(np.mean(both[reg_mask]))
+                                    if np.any(reg_mask)
+                                    else float("nan"),
                                     "p_up_first": float(np.mean(side[fam_mask] > 0.0)),
                                     "ml_ready_target_type": "oco_expand",
-                                    "selection_pass": bool(np.isfinite(metric_val) and metric_val > 0.0 and annual >= float(min_annual_fills)),
+                                    "selection_pass": bool(
+                                        np.isfinite(metric_val)
+                                        and metric_val > 0.0
+                                        and annual >= float(min_annual_fills)
+                                    ),
                                     "_tmp_regime": reg_name,
                                     "_tmp_family": fam,
                                     "_tmp_k": float(k),
@@ -535,7 +575,9 @@ def _oco_candidates(
     out["train_count"] = np.array(train_count, dtype=int)
     out["mean_gross_pips_train"] = np.array(mean_train, dtype=float)
     out["median_gross_pips_train"] = np.array(median_train, dtype=float)
-    out = out.drop(columns=[c for c in ["_tmp_regime", "_tmp_family", "_tmp_k"] if c in out.columns])
+    out = out.drop(
+        columns=[c for c in ["_tmp_regime", "_tmp_family", "_tmp_k"] if c in out.columns]
+    )
     return out
 
 
@@ -576,7 +618,10 @@ def _save_report(
             "hit_rate_gross_test",
             "selection_pass",
         ]
-        x = df.sort_values(["selection_pass", "annualized_test_fills", "mean_gross_pips_test"], ascending=[False, False, False]).head(n)
+        x = df.sort_values(
+            ["selection_pass", "annualized_test_fills", "mean_gross_pips_test"],
+            ascending=[False, False, False],
+        ).head(n)
         try:
             return x[cols].to_markdown(index=False)
         except Exception:
@@ -658,7 +703,9 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             )
         print(f"ok {symbol} {bt}tick")
 
-    directional = pd.concat(directional_parts, ignore_index=True) if directional_parts else pd.DataFrame()
+    directional = (
+        pd.concat(directional_parts, ignore_index=True) if directional_parts else pd.DataFrame()
+    )
     oco = pd.concat(oco_parts, ignore_index=True) if oco_parts else pd.DataFrame()
     if not directional.empty:
         directional = _assign_quality_tier(directional, library="directional")
@@ -682,13 +729,35 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                     "rows_total": int(total),
                     "rows_pass": int(passed),
                     "pass_rate": float(passed / max(total, 1)),
-                    "mean_annualized_fills_all": float(pd.to_numeric(g["annualized_test_fills"], errors="coerce").mean()),
-                    "mean_annualized_fills_pass": float(pd.to_numeric(g.loc[g["selection_pass"], "annualized_test_fills"], errors="coerce").mean()) if passed > 0 else float("nan"),
-                    "mean_gross_all": float(pd.to_numeric(g["mean_gross_pips_test"], errors="coerce").mean()),
-                    "mean_gross_pass": float(pd.to_numeric(g.loc[g["selection_pass"], "mean_gross_pips_test"], errors="coerce").mean()) if passed > 0 else float("nan"),
-                    "tier_a_rows": int((g.get("quality_tier", "") == "A").sum()) if "quality_tier" in g.columns else 0,
-                    "tier_b_rows": int((g.get("quality_tier", "") == "B").sum()) if "quality_tier" in g.columns else 0,
-                    "tier_c_rows": int((g.get("quality_tier", "") == "C").sum()) if "quality_tier" in g.columns else 0,
+                    "mean_annualized_fills_all": float(
+                        pd.to_numeric(g["annualized_test_fills"], errors="coerce").mean()
+                    ),
+                    "mean_annualized_fills_pass": float(
+                        pd.to_numeric(
+                            g.loc[g["selection_pass"], "annualized_test_fills"], errors="coerce"
+                        ).mean()
+                    )
+                    if passed > 0
+                    else float("nan"),
+                    "mean_gross_all": float(
+                        pd.to_numeric(g["mean_gross_pips_test"], errors="coerce").mean()
+                    ),
+                    "mean_gross_pass": float(
+                        pd.to_numeric(
+                            g.loc[g["selection_pass"], "mean_gross_pips_test"], errors="coerce"
+                        ).mean()
+                    )
+                    if passed > 0
+                    else float("nan"),
+                    "tier_a_rows": int((g.get("quality_tier", "") == "A").sum())
+                    if "quality_tier" in g.columns
+                    else 0,
+                    "tier_b_rows": int((g.get("quality_tier", "") == "B").sum())
+                    if "quality_tier" in g.columns
+                    else 0,
+                    "tier_c_rows": int((g.get("quality_tier", "") == "C").sum())
+                    if "quality_tier" in g.columns
+                    else 0,
                 }
             )
     summary = pd.DataFrame(summary_rows)
@@ -696,7 +765,9 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Mine high-count gross-positive tick-bar opportunities for ML filtering")
+    p = argparse.ArgumentParser(
+        description="Mine high-count gross-positive tick-bar opportunities for ML filtering"
+    )
     p.add_argument("--config", default=None)
     p.add_argument("--symbol", default=None)
     p.add_argument("--dataset-dir", default=None)

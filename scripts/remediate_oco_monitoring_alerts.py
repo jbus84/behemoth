@@ -45,7 +45,11 @@ def _rule_match(rule: dict[str, Any], *, symbol: str, metric_id: str) -> bool:
     rid = str(rule.get("metric_id", "")).strip()
     if rid != str(metric_id):
         return False
-    syms = [str(x).upper() for x in rule.get("symbols", [])] if isinstance(rule.get("symbols", []), list) else []
+    syms = (
+        [str(x).upper() for x in rule.get("symbols", [])]
+        if isinstance(rule.get("symbols", []), list)
+        else []
+    )
     if not syms:
         return True
     return str(symbol).upper() in syms
@@ -72,7 +76,9 @@ def run(
 ) -> pd.DataFrame:
     d1 = _read_csv(drift_alerts_csv)
     d2 = _read_csv(threshold_alerts_csv)
-    alerts = pd.concat([d1, d2], ignore_index=True) if (not d1.empty or not d2.empty) else pd.DataFrame()
+    alerts = (
+        pd.concat([d1, d2], ignore_index=True) if (not d1.empty or not d2.empty) else pd.DataFrame()
+    )
 
     expected_cols = [
         "symbol",
@@ -149,10 +155,18 @@ def run(
         for (sym, mid), g in p.groupby(["symbol", "metric_id"]):
             key = _key(sym, mid)
             prev_stats[key] = {
-                "consecutive": int(pd.to_numeric(g["consecutive_runs_non_green"], errors="coerce").fillna(1).max()),
-                "months": int(pd.to_numeric(g["months_non_green_count"], errors="coerce").fillna(1).max()),
-                "first_seen_utc": str(g["first_seen_utc"].dropna().astype(str).iloc[0]) if g["first_seen_utc"].notna().any() else "",
-                "last_seen_utc": str(g["last_seen_utc"].dropna().astype(str).iloc[-1]) if g["last_seen_utc"].notna().any() else "",
+                "consecutive": int(
+                    pd.to_numeric(g["consecutive_runs_non_green"], errors="coerce").fillna(1).max()
+                ),
+                "months": int(
+                    pd.to_numeric(g["months_non_green_count"], errors="coerce").fillna(1).max()
+                ),
+                "first_seen_utc": str(g["first_seen_utc"].dropna().astype(str).iloc[0])
+                if g["first_seen_utc"].notna().any()
+                else "",
+                "last_seen_utc": str(g["last_seen_utc"].dropna().astype(str).iloc[-1])
+                if g["last_seen_utc"].notna().any()
+                else "",
             }
 
     months_by_key: dict[str, int] = {}
@@ -179,13 +193,20 @@ def run(
             owner = "research"
             rationale = "No explicit exception rule; remediation required."
             evidence_link = str(r.get("source_path", "")).strip()
-            action_code = "A1_RECALIBRATE_CAP" if metric_id.startswith("E_DRIFT_") else "A2_RECALIBRATE_THRESHOLD"
+            action_code = (
+                "A1_RECALIBRATE_CAP"
+                if metric_id.startswith("E_DRIFT_")
+                else "A2_RECALIBRATE_THRESHOLD"
+            )
             sla_days = int(default_days)
         else:
             status = str(matched.get("disposition", "accepted_exception")).strip().lower()
             owner = str(matched.get("owner", "research")).strip()
             rationale = str(matched.get("rationale", "approved monitoring exception")).strip()
-            evidence_link = str(matched.get("evidence_link", "")).strip() or str(r.get("source_path", "")).strip()
+            evidence_link = (
+                str(matched.get("evidence_link", "")).strip()
+                or str(r.get("source_path", "")).strip()
+            )
             if metric_id.startswith("E_DRIFT_"):
                 action_code = "A2_SESSION_GUARD"
             elif metric_id.startswith("TS03"):
@@ -197,23 +218,33 @@ def run(
         prev_rec = prev_stats.get(k, {})
         prev_consecutive = int(prev_rec.get("consecutive", 0))
         prev_last_seen_raw = str(prev_rec.get("last_seen_utc", "")).strip()
-        prev_last_seen = pd.to_datetime(pd.Series([prev_last_seen_raw]), utc=True, errors="coerce").iloc[0] if prev_last_seen_raw else pd.NaT
+        prev_last_seen = (
+            pd.to_datetime(pd.Series([prev_last_seen_raw]), utc=True, errors="coerce").iloc[0]
+            if prev_last_seen_raw
+            else pd.NaT
+        )
         increment_run = True
         if pd.notna(prev_last_seen):
             increment_run = bool(prev_last_seen.date() < now.date())
         consecutive_runs = (prev_consecutive + 1) if increment_run else max(1, prev_consecutive)
         months_non_green = max(int(prev_rec.get("months", 0)), int(months_by_key.get(k, 1)))
-        first_seen_utc = str(prev_rec.get("first_seen_utc", "")).strip() or now.strftime("%Y-%m-%dT%H:%M:%SZ")
+        first_seen_utc = str(prev_rec.get("first_seen_utc", "")).strip() or now.strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
         last_seen_utc = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         exp = now + timedelta(days=max(1, int(sla_days)))
         expires_utc = exp.strftime("%Y-%m-%dT%H:%M:%SZ")
         is_expired = exp < now
 
-        recurrence_breach = (consecutive_runs > max_amber_consecutive) or (months_non_green > max_amber_months)
+        recurrence_breach = (consecutive_runs > max_amber_consecutive) or (
+            months_non_green > max_amber_months
+        )
         expiry_breach = bool(status == "accepted_exception" and is_expired)
 
-        block = (expiry_breach and hard_fail_expired) or (recurrence_breach and hard_fail_recurrence)
+        block = (expiry_breach and hard_fail_expired) or (
+            recurrence_breach and hard_fail_recurrence
+        )
         if block:
             escalation_level = "block"
         elif str(r.get("band", "")).lower() in {"amber", "red"}:
@@ -239,10 +270,14 @@ def run(
         out_rows.append(
             {
                 "symbol": symbol,
-                "source_alert": "execution_drift" if metric_id.startswith("E_DRIFT_") else "threshold_sensitivity",
+                "source_alert": "execution_drift"
+                if metric_id.startswith("E_DRIFT_")
+                else "threshold_sensitivity",
                 "test_month": str(r.get("test_month", "")),
                 "metric_id": metric_id,
-                "metric_value": pd.to_numeric(pd.Series([r.get("metric_value")]), errors="coerce").iloc[0],
+                "metric_value": pd.to_numeric(
+                    pd.Series([r.get("metric_value")]), errors="coerce"
+                ).iloc[0],
                 "band": str(r.get("band", "")),
                 "severity": str(r.get("severity", "")),
                 "status": status,
@@ -310,10 +345,21 @@ def run(
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Build OCO alert disposition report")
-    p.add_argument("--drift-alerts-csv", default="data/analysis/tick_opportunity_mining/oco_execution_drift_alerts.csv")
-    p.add_argument("--threshold-alerts-csv", default="data/analysis/tick_opportunity_mining/oco_threshold_sensitivity_alerts.csv")
-    p.add_argument("--exceptions-yaml", default="configs/research/governance/oco_monitoring_exceptions.yaml")
-    p.add_argument("--out-disposition-csv", default="data/analysis/tick_opportunity_mining/oco_alert_disposition.csv")
+    p.add_argument(
+        "--drift-alerts-csv",
+        default="data/analysis/tick_opportunity_mining/oco_execution_drift_alerts.csv",
+    )
+    p.add_argument(
+        "--threshold-alerts-csv",
+        default="data/analysis/tick_opportunity_mining/oco_threshold_sensitivity_alerts.csv",
+    )
+    p.add_argument(
+        "--exceptions-yaml", default="configs/research/governance/oco_monitoring_exceptions.yaml"
+    )
+    p.add_argument(
+        "--out-disposition-csv",
+        default="data/analysis/tick_opportunity_mining/oco_alert_disposition.csv",
+    )
     p.add_argument("--report-out", default="docs/analysis/oco_alert_remediation_report.md")
     args = p.parse_args()
 

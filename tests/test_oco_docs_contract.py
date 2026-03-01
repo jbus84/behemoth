@@ -62,7 +62,10 @@ def _write_stage_docs(root: Path) -> None:
         if i == 4:
             txt = txt + _stage04_policy_sections_text()
         if i == 5:
-            txt = txt + "\n\n## Dependency on Stage 3 (CatBoost Outputs)\nstage 3 selected_exec selection_mode\n"
+            txt = (
+                txt
+                + "\n\n## Dependency on Stage 3 (CatBoost Outputs)\nstage 3 selected_exec selection_mode\n"
+            )
         if i == 7:
             txt = txt + "\n\n## Operator MRM Checks\n\n## Escalation Matrix\n"
         if i == 9:
@@ -71,7 +74,9 @@ def _write_stage_docs(root: Path) -> None:
 
 
 def _write_stage04_policy_artifacts(*, generated_root: Path, edge_metrics_csv: Path) -> None:
-    (generated_root / "stage_04_snapshot.md").write_text("#### Policy Status\n| symbol | status |\n|---|---|\n| EURUSD | green |\n", encoding="utf-8")
+    (generated_root / "stage_04_snapshot.md").write_text(
+        "#### Policy Status\n| symbol | status |\n|---|---|\n| EURUSD | green |\n", encoding="utf-8"
+    )
     policy_rows = [
         {
             "symbol": "EURUSD",
@@ -198,9 +203,15 @@ def _write_analysis_catalog_artifacts(docs_root: Path) -> None:
     ]
     for name in files:
         (analysis / name).write_text(f"# {name}\n", encoding="utf-8")
-    (docs_root / "signal_lifecycle_reference.md").write_text("# Signal Lifecycle\n", encoding="utf-8")
-    (docs_root / "operator_runbook.md").write_text("# Operator Runbook\none-month validity monthly retrain\n", encoding="utf-8")
-    (docs_root.parent / "index.md").write_text("# Index\none-month validity monthly retrain\n", encoding="utf-8")
+    (docs_root / "signal_lifecycle_reference.md").write_text(
+        "# Signal Lifecycle\n", encoding="utf-8"
+    )
+    (docs_root / "operator_runbook.md").write_text(
+        "# Operator Runbook\none-month validity monthly retrain\n", encoding="utf-8"
+    )
+    (docs_root.parent / "index.md").write_text(
+        "# Index\none-month validity monthly retrain\n", encoding="utf-8"
+    )
     (docs_root.parent / "STRATEGY_MASTER_MANUAL.md").write_text(
         "# Manual\none-month validity monthly retrain\n",
         encoding="utf-8",
@@ -208,10 +219,14 @@ def _write_analysis_catalog_artifacts(docs_root: Path) -> None:
     scripts_dir = docs_root.parent.parent / "scripts"
     scripts_dir.mkdir(parents=True, exist_ok=True)
     (scripts_dir / "build_global_tick_bars.py").write_text("# fixture script\n", encoding="utf-8")
-    (scripts_dir / "build_tick_velocity_dataset.py").write_text("# fixture script\n", encoding="utf-8")
+    (scripts_dir / "build_tick_velocity_dataset.py").write_text(
+        "# fixture script\n", encoding="utf-8"
+    )
     (analysis / "index.md").write_text("# Analysis Catalog\n", encoding="utf-8")
     (analysis / "catalog_gaps_report.md").write_text("# gaps\n", encoding="utf-8")
-    manifest_rows = [{"doc_path": f"analysis/{name}", "title": name, "group": "core"} for name in files]
+    manifest_rows = [
+        {"doc_path": f"analysis/{name}", "title": name, "group": "core"} for name in files
+    ]
     pd.DataFrame(manifest_rows).to_csv(analysis / "catalog_manifest.csv", index=False)
     canonical_rows = [
         {
@@ -256,7 +271,9 @@ def _write_run_delta_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> No
     snap.mkdir(parents=True, exist_ok=True)
     edge = pd.read_csv(edge_metrics_csv)
     edge.to_csv(snap / "edge_clarity_stage_metrics.csv", index=False)
-    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": 1}]).to_csv(snap / "oco_bible_stage_status.csv", index=False)
+    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": 1}]).to_csv(
+        snap / "oco_bible_stage_status.csv", index=False
+    )
     reg = pd.DataFrame(
         [
             {
@@ -319,7 +336,9 @@ def _write_run_delta_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> No
             }
         ]
     ).to_csv(base / "run_delta_gate_changes.csv", index=False)
-    (docs_root.parent / "analysis" / "run_delta_dashboard.md").write_text("# Run Delta\n", encoding="utf-8")
+    (docs_root.parent / "analysis" / "run_delta_dashboard.md").write_text(
+        "# Run Delta\n", encoding="utf-8"
+    )
 
 
 def _write_operator_action_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> None:
@@ -340,9 +359,13 @@ def _write_operator_action_artifacts(*, docs_root: Path, edge_metrics_csv: Path)
             }
         ]
     ).to_csv(base / "operator_action_status.csv", index=False)
-    (docs_root.parent / "analysis" / "operator_action_report.md").write_text("# Operator Action\n", encoding="utf-8")
+    (docs_root.parent / "analysis" / "operator_action_report.md").write_text(
+        "# Operator Action\n", encoding="utf-8"
+    )
     (docs_root / "operator_playbook.md").write_text("# Operator Playbook\n", encoding="utf-8")
-    (docs_root.parent / "analysis" / "taxonomy_rules.md").write_text("# Taxonomy\n", encoding="utf-8")
+    (docs_root.parent / "analysis" / "taxonomy_rules.md").write_text(
+        "# Taxonomy\n", encoding="utf-8"
+    )
 
 
 def _write_stage_integrity_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> None:
@@ -368,10 +391,20 @@ def _write_stage_integrity_artifacts(*, docs_root: Path, edge_metrics_csv: Path)
             }
         )
     pd.DataFrame(rows).to_csv(base / "oco_stage_integrity_checks.csv", index=False)
-    pd.DataFrame(columns=["issue_id", "symbol", "check_id", "severity", "component", "summary", "details_json"]).to_csv(
-        base / "oco_stage_integrity_issues.csv", index=False
+    pd.DataFrame(
+        columns=[
+            "issue_id",
+            "symbol",
+            "check_id",
+            "severity",
+            "component",
+            "summary",
+            "details_json",
+        ]
+    ).to_csv(base / "oco_stage_integrity_issues.csv", index=False)
+    (docs_root.parent / "analysis" / "oco_stage_integrity_report.md").write_text(
+        "# Stage Integrity\n", encoding="utf-8"
     )
-    (docs_root.parent / "analysis" / "oco_stage_integrity_report.md").write_text("# Stage Integrity\n", encoding="utf-8")
 
 
 def _write_execution_drift_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> None:
@@ -410,7 +443,9 @@ def _write_execution_drift_artifacts(*, docs_root: Path, edge_metrics_csv: Path)
             }
         ]
     ).to_csv(base / "oco_execution_drift_alerts.csv", index=False)
-    (docs_root.parent / "analysis" / "oco_execution_drift_report.md").write_text("# Drift\n", encoding="utf-8")
+    (docs_root.parent / "analysis" / "oco_execution_drift_report.md").write_text(
+        "# Drift\n", encoding="utf-8"
+    )
 
 
 def _write_threshold_sensitivity_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> None:
@@ -451,7 +486,9 @@ def _write_threshold_sensitivity_artifacts(*, docs_root: Path, edge_metrics_csv:
             }
         ]
     ).to_csv(base / "oco_threshold_sensitivity_alerts.csv", index=False)
-    (docs_root.parent / "analysis" / "oco_threshold_sensitivity_report.md").write_text("# Threshold Sensitivity\n", encoding="utf-8")
+    (docs_root.parent / "analysis" / "oco_threshold_sensitivity_report.md").write_text(
+        "# Threshold Sensitivity\n", encoding="utf-8"
+    )
 
 
 def _write_registry_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> None:
@@ -469,10 +506,20 @@ def _write_registry_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> Non
             }
         )
     pd.DataFrame(rows).to_csv(base / "oco_rule_universe_registry_checks.csv", index=False)
-    pd.DataFrame(columns=["issue_id", "symbol", "check_id", "severity", "component", "summary", "details_json"]).to_csv(
-        base / "oco_rule_universe_registry_issues.csv", index=False
+    pd.DataFrame(
+        columns=[
+            "issue_id",
+            "symbol",
+            "check_id",
+            "severity",
+            "component",
+            "summary",
+            "details_json",
+        ]
+    ).to_csv(base / "oco_rule_universe_registry_issues.csv", index=False)
+    (docs_root.parent / "analysis" / "oco_rule_universe_registry_report.md").write_text(
+        "# Rule Registry\n", encoding="utf-8"
     )
-    (docs_root.parent / "analysis" / "oco_rule_universe_registry_report.md").write_text("# Rule Registry\n", encoding="utf-8")
 
 
 def _write_alert_remediation_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> None:
@@ -539,7 +586,9 @@ def _write_alert_remediation_artifacts(*, docs_root: Path, edge_metrics_csv: Pat
         },
     ]
     pd.DataFrame(rows).to_csv(base / "oco_alert_disposition.csv", index=False)
-    (docs_root.parent / "analysis" / "oco_alert_remediation_report.md").write_text("# Alert Remediation\n", encoding="utf-8")
+    (docs_root.parent / "analysis" / "oco_alert_remediation_report.md").write_text(
+        "# Alert Remediation\n", encoding="utf-8"
+    )
 
 
 def _write_governance_explainability_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> None:
@@ -589,7 +638,9 @@ def _write_governance_explainability_artifacts(*, docs_root: Path, edge_metrics_
         },
     ]
     pd.DataFrame(rows).to_csv(base / "oco_governance_explainability.csv", index=False)
-    (docs_root.parent / "analysis" / "oco_governance_explainability_report.md").write_text("# Governance Explainability\n", encoding="utf-8")
+    (docs_root.parent / "analysis" / "oco_governance_explainability_report.md").write_text(
+        "# Governance Explainability\n", encoding="utf-8"
+    )
 
 
 def _write_system_reference_docs(*, docs_root: Path, edge_metrics_csv: Path) -> None:
@@ -649,10 +700,21 @@ def _build_smoke_fixture(tmp_path: Path, *, with_system_reference: bool = True) 
     _write_analysis_catalog_artifacts(docs_root)
 
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    rows = [{"stage_id": 1, "symbol": "EURUSD", "metric_id": m, "metric_value": 1.0, "generated_at_utc": now} for m in sorted(CORE_METRIC_IDS)]
+    rows = [
+        {
+            "stage_id": 1,
+            "symbol": "EURUSD",
+            "metric_id": m,
+            "metric_value": 1.0,
+            "generated_at_utc": now,
+        }
+        for m in sorted(CORE_METRIC_IDS)
+    ]
     edge_metrics_csv = artifact_root / "edge_metrics.csv"
     pd.DataFrame(rows).to_csv(edge_metrics_csv, index=False)
-    _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage04_policy_artifacts(
+        generated_root=generated_root, edge_metrics_csv=edge_metrics_csv
+    )
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
@@ -661,12 +723,16 @@ def _build_smoke_fixture(tmp_path: Path, *, with_system_reference: bool = True) 
     _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
-    _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_governance_explainability_artifacts(
+        docs_root=docs_root, edge_metrics_csv=edge_metrics_csv
+    )
     if with_system_reference:
         _write_system_reference_docs(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
 
     stage_status_csv = tmp_path / "stage_status.csv"
-    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
+    pd.DataFrame(
+        [{"symbol": "EURUSD", "symbol_all_gates_pass": True, "gate_tick_exact": True}]
+    ).to_csv(stage_status_csv, index=False)
     (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
 
     edge_report = tmp_path / "edge_report.md"
@@ -732,11 +798,21 @@ def test_docs_contract_flags_missing_metric_definition(tmp_path: Path) -> None:
     _write_analysis_catalog_artifacts(docs_root)
 
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    rows = [{"stage_id": 1, "symbol": "EURUSD", "metric_id": "D16_spread_regime_shift_z", "metric_value": 1.0, "generated_at_utc": now}]
+    rows = [
+        {
+            "stage_id": 1,
+            "symbol": "EURUSD",
+            "metric_id": "D16_spread_regime_shift_z",
+            "metric_value": 1.0,
+            "generated_at_utc": now,
+        }
+    ]
     edge_metrics = pd.DataFrame(rows)
     edge_metrics_csv = tmp_path / "edge_metrics.csv"
     edge_metrics.to_csv(edge_metrics_csv, index=False)
-    _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage04_policy_artifacts(
+        generated_root=generated_root, edge_metrics_csv=edge_metrics_csv
+    )
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
@@ -745,10 +821,14 @@ def test_docs_contract_flags_missing_metric_definition(tmp_path: Path) -> None:
     _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
-    _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_governance_explainability_artifacts(
+        docs_root=docs_root, edge_metrics_csv=edge_metrics_csv
+    )
 
     stage_status_csv = tmp_path / "stage_status.csv"
-    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
+    pd.DataFrame(
+        [{"symbol": "EURUSD", "symbol_all_gates_pass": True, "gate_tick_exact": True}]
+    ).to_csv(stage_status_csv, index=False)
 
     (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
     edge_report = tmp_path / "edge_report.md"
@@ -805,9 +885,20 @@ def test_docs_contract_flags_invalid_stage04_action_code(tmp_path: Path) -> None
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     edge_metrics_csv = tmp_path / "edge_metrics.csv"
     pd.DataFrame(
-        [{"stage_id": 1, "symbol": "EURUSD", "metric_id": m, "metric_value": 1.0, "generated_at_utc": now} for m in sorted(CORE_METRIC_IDS)]
+        [
+            {
+                "stage_id": 1,
+                "symbol": "EURUSD",
+                "metric_id": m,
+                "metric_value": 1.0,
+                "generated_at_utc": now,
+            }
+            for m in sorted(CORE_METRIC_IDS)
+        ]
     ).to_csv(edge_metrics_csv, index=False)
-    _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage04_policy_artifacts(
+        generated_root=generated_root, edge_metrics_csv=edge_metrics_csv
+    )
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
@@ -816,14 +907,18 @@ def test_docs_contract_flags_invalid_stage04_action_code(tmp_path: Path) -> None
     _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
-    _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_governance_explainability_artifacts(
+        docs_root=docs_root, edge_metrics_csv=edge_metrics_csv
+    )
 
     bad_policy = pd.read_csv(edge_metrics_csv.parent / "stage04_execution_policy_status.csv")
     bad_policy.loc[0, "action_code"] = "BAD_CODE"
     bad_policy.to_csv(edge_metrics_csv.parent / "stage04_execution_policy_status.csv", index=False)
 
     stage_status_csv = tmp_path / "stage_status.csv"
-    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
+    pd.DataFrame(
+        [{"symbol": "EURUSD", "symbol_all_gates_pass": True, "gate_tick_exact": True}]
+    ).to_csv(stage_status_csv, index=False)
     (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
 
     edge_report = tmp_path / "edge_report.md"
@@ -873,9 +968,20 @@ def test_docs_contract_flags_snapshot_details_over_cap(tmp_path: Path) -> None:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     edge_metrics_csv = tmp_path / "edge_metrics.csv"
     pd.DataFrame(
-        [{"stage_id": 1, "symbol": "EURUSD", "metric_id": m, "metric_value": 1.0, "generated_at_utc": now} for m in sorted(CORE_METRIC_IDS)]
+        [
+            {
+                "stage_id": 1,
+                "symbol": "EURUSD",
+                "metric_id": m,
+                "metric_value": 1.0,
+                "generated_at_utc": now,
+            }
+            for m in sorted(CORE_METRIC_IDS)
+        ]
     ).to_csv(edge_metrics_csv, index=False)
-    _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage04_policy_artifacts(
+        generated_root=generated_root, edge_metrics_csv=edge_metrics_csv
+    )
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
@@ -884,7 +990,9 @@ def test_docs_contract_flags_snapshot_details_over_cap(tmp_path: Path) -> None:
     _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
-    _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_governance_explainability_artifacts(
+        docs_root=docs_root, edge_metrics_csv=edge_metrics_csv
+    )
 
     # Build a large details table (>40 rows) to trigger C18 failure.
     lines = ["#### Details", "| a | b |", "| --- | --- |"] + [f"| {i} | x |" for i in range(45)]
@@ -892,7 +1000,9 @@ def test_docs_contract_flags_snapshot_details_over_cap(tmp_path: Path) -> None:
     (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
 
     stage_status_csv = tmp_path / "stage_status.csv"
-    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
+    pd.DataFrame(
+        [{"symbol": "EURUSD", "symbol_all_gates_pass": True, "gate_tick_exact": True}]
+    ).to_csv(stage_status_csv, index=False)
     edge_report = tmp_path / "edge_report.md"
     edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
     metric_dictionary = docs_root / "metric_dictionary.md"
@@ -939,9 +1049,20 @@ def test_docs_contract_flags_missing_run_delta_baseline(tmp_path: Path) -> None:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     edge_metrics_csv = tmp_path / "edge_metrics.csv"
     pd.DataFrame(
-        [{"stage_id": 1, "symbol": "EURUSD", "metric_id": m, "metric_value": 1.0, "generated_at_utc": now} for m in sorted(CORE_METRIC_IDS)]
+        [
+            {
+                "stage_id": 1,
+                "symbol": "EURUSD",
+                "metric_id": m,
+                "metric_value": 1.0,
+                "generated_at_utc": now,
+            }
+            for m in sorted(CORE_METRIC_IDS)
+        ]
     ).to_csv(edge_metrics_csv, index=False)
-    _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage04_policy_artifacts(
+        generated_root=generated_root, edge_metrics_csv=edge_metrics_csv
+    )
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
@@ -950,7 +1071,9 @@ def test_docs_contract_flags_missing_run_delta_baseline(tmp_path: Path) -> None:
     _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
-    _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_governance_explainability_artifacts(
+        docs_root=docs_root, edge_metrics_csv=edge_metrics_csv
+    )
 
     reg = pd.read_csv(edge_metrics_csv.parent / "run_registry.csv")
     reg["is_baseline"] = 0
@@ -958,7 +1081,9 @@ def test_docs_contract_flags_missing_run_delta_baseline(tmp_path: Path) -> None:
 
     (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
     stage_status_csv = tmp_path / "stage_status.csv"
-    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
+    pd.DataFrame(
+        [{"symbol": "EURUSD", "symbol_all_gates_pass": True, "gate_tick_exact": True}]
+    ).to_csv(stage_status_csv, index=False)
     edge_report = tmp_path / "edge_report.md"
     edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
     metric_dictionary = docs_root / "metric_dictionary.md"
@@ -1005,9 +1130,20 @@ def test_docs_contract_flags_unclassified_taxonomy_docs(tmp_path: Path) -> None:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     edge_metrics_csv = tmp_path / "edge_metrics.csv"
     pd.DataFrame(
-        [{"stage_id": 1, "symbol": "EURUSD", "metric_id": m, "metric_value": 1.0, "generated_at_utc": now} for m in sorted(CORE_METRIC_IDS)]
+        [
+            {
+                "stage_id": 1,
+                "symbol": "EURUSD",
+                "metric_id": m,
+                "metric_value": 1.0,
+                "generated_at_utc": now,
+            }
+            for m in sorted(CORE_METRIC_IDS)
+        ]
     ).to_csv(edge_metrics_csv, index=False)
-    _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage04_policy_artifacts(
+        generated_root=generated_root, edge_metrics_csv=edge_metrics_csv
+    )
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
@@ -1016,13 +1152,23 @@ def test_docs_contract_flags_unclassified_taxonomy_docs(tmp_path: Path) -> None:
     _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
-    _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_governance_explainability_artifacts(
+        docs_root=docs_root, edge_metrics_csv=edge_metrics_csv
+    )
 
     manifest = pd.read_csv(docs_root.parent / "analysis" / "catalog_manifest.csv")
     manifest = pd.concat(
         [
             manifest,
-            pd.DataFrame([{"doc_path": "analysis/random_note.md", "title": "Random", "group": "unclassified"}]),
+            pd.DataFrame(
+                [
+                    {
+                        "doc_path": "analysis/random_note.md",
+                        "title": "Random",
+                        "group": "unclassified",
+                    }
+                ]
+            ),
         ],
         ignore_index=True,
     )
@@ -1030,7 +1176,9 @@ def test_docs_contract_flags_unclassified_taxonomy_docs(tmp_path: Path) -> None:
 
     (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
     stage_status_csv = tmp_path / "stage_status.csv"
-    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
+    pd.DataFrame(
+        [{"symbol": "EURUSD", "symbol_all_gates_pass": True, "gate_tick_exact": True}]
+    ).to_csv(stage_status_csv, index=False)
     edge_report = tmp_path / "edge_report.md"
     edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
     metric_dictionary = docs_root / "metric_dictionary.md"
@@ -1077,9 +1225,20 @@ def test_docs_contract_flags_legacy_taxonomy_docs(tmp_path: Path) -> None:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     edge_metrics_csv = tmp_path / "edge_metrics.csv"
     pd.DataFrame(
-        [{"stage_id": 1, "symbol": "EURUSD", "metric_id": m, "metric_value": 1.0, "generated_at_utc": now} for m in sorted(CORE_METRIC_IDS)]
+        [
+            {
+                "stage_id": 1,
+                "symbol": "EURUSD",
+                "metric_id": m,
+                "metric_value": 1.0,
+                "generated_at_utc": now,
+            }
+            for m in sorted(CORE_METRIC_IDS)
+        ]
     ).to_csv(edge_metrics_csv, index=False)
-    _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage04_policy_artifacts(
+        generated_root=generated_root, edge_metrics_csv=edge_metrics_csv
+    )
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
@@ -1088,13 +1247,17 @@ def test_docs_contract_flags_legacy_taxonomy_docs(tmp_path: Path) -> None:
     _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
-    _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_governance_explainability_artifacts(
+        docs_root=docs_root, edge_metrics_csv=edge_metrics_csv
+    )
 
     manifest = pd.read_csv(docs_root.parent / "analysis" / "catalog_manifest.csv")
     manifest = pd.concat(
         [
             manifest,
-            pd.DataFrame([{"doc_path": "analysis/old_note.md", "title": "Legacy", "group": "legacy"}]),
+            pd.DataFrame(
+                [{"doc_path": "analysis/old_note.md", "title": "Legacy", "group": "legacy"}]
+            ),
         ],
         ignore_index=True,
     )
@@ -1102,7 +1265,9 @@ def test_docs_contract_flags_legacy_taxonomy_docs(tmp_path: Path) -> None:
 
     (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
     stage_status_csv = tmp_path / "stage_status.csv"
-    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
+    pd.DataFrame(
+        [{"symbol": "EURUSD", "symbol_all_gates_pass": True, "gate_tick_exact": True}]
+    ).to_csv(stage_status_csv, index=False)
     edge_report = tmp_path / "edge_report.md"
     edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
     metric_dictionary = docs_root / "metric_dictionary.md"
@@ -1149,9 +1314,20 @@ def test_docs_contract_flags_expired_accepted_exception(tmp_path: Path) -> None:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     edge_metrics_csv = tmp_path / "edge_metrics.csv"
     pd.DataFrame(
-        [{"stage_id": 1, "symbol": "EURUSD", "metric_id": m, "metric_value": 1.0, "generated_at_utc": now} for m in sorted(CORE_METRIC_IDS)]
+        [
+            {
+                "stage_id": 1,
+                "symbol": "EURUSD",
+                "metric_id": m,
+                "metric_value": 1.0,
+                "generated_at_utc": now,
+            }
+            for m in sorted(CORE_METRIC_IDS)
+        ]
     ).to_csv(edge_metrics_csv, index=False)
-    _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage04_policy_artifacts(
+        generated_root=generated_root, edge_metrics_csv=edge_metrics_csv
+    )
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
@@ -1160,7 +1336,9 @@ def test_docs_contract_flags_expired_accepted_exception(tmp_path: Path) -> None:
     _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
-    _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_governance_explainability_artifacts(
+        docs_root=docs_root, edge_metrics_csv=edge_metrics_csv
+    )
 
     disp = pd.read_csv(edge_metrics_csv.parent / "oco_alert_disposition.csv")
     disp.loc[0, "status"] = "accepted_exception"
@@ -1169,7 +1347,9 @@ def test_docs_contract_flags_expired_accepted_exception(tmp_path: Path) -> None:
 
     (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
     stage_status_csv = tmp_path / "stage_status.csv"
-    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
+    pd.DataFrame(
+        [{"symbol": "EURUSD", "symbol_all_gates_pass": True, "gate_tick_exact": True}]
+    ).to_csv(stage_status_csv, index=False)
     edge_report = tmp_path / "edge_report.md"
     edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
     metric_dictionary = docs_root / "metric_dictionary.md"
@@ -1216,9 +1396,20 @@ def test_docs_contract_flags_missing_explainability_coverage(tmp_path: Path) -> 
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     edge_metrics_csv = tmp_path / "edge_metrics.csv"
     pd.DataFrame(
-        [{"stage_id": 1, "symbol": "EURUSD", "metric_id": m, "metric_value": 1.0, "generated_at_utc": now} for m in sorted(CORE_METRIC_IDS)]
+        [
+            {
+                "stage_id": 1,
+                "symbol": "EURUSD",
+                "metric_id": m,
+                "metric_value": 1.0,
+                "generated_at_utc": now,
+            }
+            for m in sorted(CORE_METRIC_IDS)
+        ]
     ).to_csv(edge_metrics_csv, index=False)
-    _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage04_policy_artifacts(
+        generated_root=generated_root, edge_metrics_csv=edge_metrics_csv
+    )
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
@@ -1227,7 +1418,9 @@ def test_docs_contract_flags_missing_explainability_coverage(tmp_path: Path) -> 
     _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
-    _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_governance_explainability_artifacts(
+        docs_root=docs_root, edge_metrics_csv=edge_metrics_csv
+    )
 
     explain = pd.read_csv(edge_metrics_csv.parent / "oco_governance_explainability.csv")
     explain = explain[explain["metric_id"].astype(str) != "E_DRIFT_OVERSHOOT_P95"].copy()
@@ -1235,7 +1428,9 @@ def test_docs_contract_flags_missing_explainability_coverage(tmp_path: Path) -> 
 
     (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
     stage_status_csv = tmp_path / "stage_status.csv"
-    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
+    pd.DataFrame(
+        [{"symbol": "EURUSD", "symbol_all_gates_pass": True, "gate_tick_exact": True}]
+    ).to_csv(stage_status_csv, index=False)
     edge_report = tmp_path / "edge_report.md"
     edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
     metric_dictionary = docs_root / "metric_dictionary.md"
@@ -1282,9 +1477,20 @@ def test_docs_contract_flags_machine_local_paths(tmp_path: Path) -> None:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     edge_metrics_csv = tmp_path / "edge_metrics.csv"
     pd.DataFrame(
-        [{"stage_id": 1, "symbol": "EURUSD", "metric_id": m, "metric_value": 1.0, "generated_at_utc": now} for m in sorted(CORE_METRIC_IDS)]
+        [
+            {
+                "stage_id": 1,
+                "symbol": "EURUSD",
+                "metric_id": m,
+                "metric_value": 1.0,
+                "generated_at_utc": now,
+            }
+            for m in sorted(CORE_METRIC_IDS)
+        ]
     ).to_csv(edge_metrics_csv, index=False)
-    _write_stage04_policy_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage04_policy_artifacts(
+        generated_root=generated_root, edge_metrics_csv=edge_metrics_csv
+    )
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
     _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
@@ -1293,7 +1499,9 @@ def test_docs_contract_flags_machine_local_paths(tmp_path: Path) -> None:
     _write_threshold_sensitivity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_registry_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_alert_remediation_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
-    _write_governance_explainability_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
+    _write_governance_explainability_artifacts(
+        docs_root=docs_root, edge_metrics_csv=edge_metrics_csv
+    )
 
     (docs_root.parent / "analysis" / "oco_alert_remediation_report.md").write_text(
         "# Alert Remediation\n\nsource: /Users/tester/fake/path.csv\n",
@@ -1302,7 +1510,9 @@ def test_docs_contract_flags_machine_local_paths(tmp_path: Path) -> None:
 
     (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
     stage_status_csv = tmp_path / "stage_status.csv"
-    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(stage_status_csv, index=False)
+    pd.DataFrame(
+        [{"symbol": "EURUSD", "symbol_all_gates_pass": True, "gate_tick_exact": True}]
+    ).to_csv(stage_status_csv, index=False)
     edge_report = tmp_path / "edge_report.md"
     edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
     metric_dictionary = docs_root / "metric_dictionary.md"
@@ -1362,7 +1572,7 @@ def test_docs_contract_flags_system_reference_symbol_coverage_gap(tmp_path: Path
     f = _build_smoke_fixture(tmp_path, with_system_reference=True)
     api_md = f["docs_root"].parent / "api.md"
     txt = api_md.read_text(encoding="utf-8")
-    txt = txt.replace("EURUSD,GBPUSD,USDJPY", "EURUSD,GBPUSD")
+    txt = txt.replace("EURUSD,GBPUSD,USDJPY,USDCHF", "EURUSD,GBPUSD")
     api_md.write_text(txt, encoding="utf-8")
 
     checks, _issues = run(

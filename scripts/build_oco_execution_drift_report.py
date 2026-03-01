@@ -69,25 +69,38 @@ def _summarize_symbol(
     baseline_months: int,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     if not detail_csv.exists():
-        return pd.DataFrame(), pd.DataFrame([{"symbol": symbol, "issue": "missing_detail_csv", "source_path": str(detail_csv)}])
+        return pd.DataFrame(), pd.DataFrame(
+            [{"symbol": symbol, "issue": "missing_detail_csv", "source_path": str(detail_csv)}]
+        )
 
     d = pd.read_csv(detail_csv).copy()
     required = {"close_ts", "touch_found_tick", "overshoot_tick_pips"}
     if not required.issubset(set(d.columns)):
         return pd.DataFrame(), pd.DataFrame(
-            [{"symbol": symbol, "issue": "missing_required_columns", "columns": ",".join(sorted(list(required - set(d.columns)))), "source_path": str(detail_csv)}]
+            [
+                {
+                    "symbol": symbol,
+                    "issue": "missing_required_columns",
+                    "columns": ",".join(sorted(list(required - set(d.columns)))),
+                    "source_path": str(detail_csv),
+                }
+            ]
         )
     d["close_ts"] = _dt_utc(d["close_ts"])
     d["touch_found_tick"] = _to_num(d["touch_found_tick"]).fillna(0).astype(int)
     d["overshoot_tick_pips"] = _to_num(d["overshoot_tick_pips"])
     d = d[d["close_ts"].notna()].copy()
     if d.empty:
-        return pd.DataFrame(), pd.DataFrame([{"symbol": symbol, "issue": "empty_after_parse", "source_path": str(detail_csv)}])
+        return pd.DataFrame(), pd.DataFrame(
+            [{"symbol": symbol, "issue": "empty_after_parse", "source_path": str(detail_csv)}]
+        )
 
     cap = _load_cap_pips(caps_csv, default_cap=float(production_cap_pips))
     d["test_month"] = d["close_ts"].dt.strftime("%Y-%m")
     d["touch"] = d["touch_found_tick"] == 1
-    d["filled"] = d["touch"] & d["overshoot_tick_pips"].notna() & (d["overshoot_tick_pips"] <= float(cap))
+    d["filled"] = (
+        d["touch"] & d["overshoot_tick_pips"].notna() & (d["overshoot_tick_pips"] <= float(cap))
+    )
     d["no_touch"] = ~d["touch"]
 
     def _p50(x: pd.Series) -> float:
@@ -179,10 +192,30 @@ def run(
     alert_rows: list[dict[str, Any]] = []
     for _, r in monthly.iterrows():
         for metric_id, delta, warn, fail in [
-            ("E_DRIFT_FILL_DROP", float(r.get("delta_fill_rate_drop", np.nan)), float(warn_fill_drop), float(fail_fill_drop)),
-            ("E_DRIFT_NO_TOUCH", float(r.get("delta_no_touch_rate", np.nan)), float(warn_no_touch), float(fail_no_touch)),
-            ("E_DRIFT_OVERSHOOT_P50", float(r.get("delta_overshoot_p50_pips", np.nan)), float(warn_overshoot_p50), float(fail_overshoot_p50)),
-            ("E_DRIFT_OVERSHOOT_P95", float(r.get("delta_overshoot_p95_pips", np.nan)), float(warn_overshoot_p95), float(fail_overshoot_p95)),
+            (
+                "E_DRIFT_FILL_DROP",
+                float(r.get("delta_fill_rate_drop", np.nan)),
+                float(warn_fill_drop),
+                float(fail_fill_drop),
+            ),
+            (
+                "E_DRIFT_NO_TOUCH",
+                float(r.get("delta_no_touch_rate", np.nan)),
+                float(warn_no_touch),
+                float(fail_no_touch),
+            ),
+            (
+                "E_DRIFT_OVERSHOOT_P50",
+                float(r.get("delta_overshoot_p50_pips", np.nan)),
+                float(warn_overshoot_p50),
+                float(fail_overshoot_p50),
+            ),
+            (
+                "E_DRIFT_OVERSHOOT_P95",
+                float(r.get("delta_overshoot_p95_pips", np.nan)),
+                float(warn_overshoot_p95),
+                float(fail_overshoot_p95),
+            ),
         ]:
             band, sev = _band(delta, warn=warn, fail=fail)
             alert_rows.append(
@@ -195,8 +228,13 @@ def run(
                     "fail_threshold": float(fail),
                     "band": band,
                     "severity": sev,
-                    "source_path": str(detail_dir / f"{str(r['symbol']).upper()}_stop_limit_tickfill_detail.csv"),
-                    "details_json": json.dumps({"baseline_months": int(r.get("baseline_months", baseline_months))}, sort_keys=True),
+                    "source_path": str(
+                        detail_dir / f"{str(r['symbol']).upper()}_stop_limit_tickfill_detail.csv"
+                    ),
+                    "details_json": json.dumps(
+                        {"baseline_months": int(r.get("baseline_months", baseline_months))},
+                        sort_keys=True,
+                    ),
                     "evaluated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 }
             )
@@ -209,12 +247,17 @@ def run(
     alerts.to_csv(out_alerts_csv, index=False)
 
     sev_counts = (
-        alerts.groupby(["symbol", "band"], as_index=False).agg(rows=("metric_id", "count")).sort_values(["symbol", "band"])
+        alerts.groupby(["symbol", "band"], as_index=False)
+        .agg(rows=("metric_id", "count"))
+        .sort_values(["symbol", "band"])
         if not alerts.empty
         else pd.DataFrame(columns=["symbol", "band", "rows"])
     )
     latest = (
-        monthly.sort_values(["symbol", "test_month"]).groupby("symbol", as_index=False).tail(1).sort_values("symbol")
+        monthly.sort_values(["symbol", "test_month"])
+        .groupby("symbol", as_index=False)
+        .tail(1)
+        .sort_values("symbol")
         if not monthly.empty
         else pd.DataFrame()
     )
@@ -222,7 +265,9 @@ def run(
     lines: list[str] = []
     lines.append("# OCO Execution Drift Report")
     lines.append("")
-    lines.append(f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`")
+    lines.append(
+        f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`"
+    )
     lines.append(f"- monthly_csv: `{out_monthly_csv}`")
     lines.append(f"- alerts_csv: `{out_alerts_csv}`")
     lines.append("")
@@ -267,7 +312,9 @@ def run(
 def main() -> None:
     p = argparse.ArgumentParser(description="Build monthly stop-limit execution drift report")
     p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD")
-    p.add_argument("--detail-dir", default="data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap")
+    p.add_argument(
+        "--detail-dir", default="data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap"
+    )
     p.add_argument("--default-cap-pips", type=float, default=1.2)
     p.add_argument("--baseline-months", type=int, default=3)
     p.add_argument("--warn-fill-drop", type=float, default=0.02)
@@ -278,8 +325,14 @@ def main() -> None:
     p.add_argument("--fail-overshoot-p50", type=float, default=0.10)
     p.add_argument("--warn-overshoot-p95", type=float, default=0.15)
     p.add_argument("--fail-overshoot-p95", type=float, default=0.30)
-    p.add_argument("--out-monthly-csv", default="data/analysis/tick_opportunity_mining/oco_execution_drift_monthly.csv")
-    p.add_argument("--out-alerts-csv", default="data/analysis/tick_opportunity_mining/oco_execution_drift_alerts.csv")
+    p.add_argument(
+        "--out-monthly-csv",
+        default="data/analysis/tick_opportunity_mining/oco_execution_drift_monthly.csv",
+    )
+    p.add_argument(
+        "--out-alerts-csv",
+        default="data/analysis/tick_opportunity_mining/oco_execution_drift_alerts.csv",
+    )
     p.add_argument("--report-out", default="docs/analysis/oco_execution_drift_report.md")
     args = p.parse_args()
 

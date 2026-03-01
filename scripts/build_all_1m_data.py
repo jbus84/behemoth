@@ -1,7 +1,8 @@
-import polars as pl
-import os
-import glob
 import gc
+import glob
+import os
+
+import polars as pl
 from tqdm import tqdm
 
 SOURCE_DIR = "/Users/danielfisher/Desktop/tick"

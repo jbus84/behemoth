@@ -7,7 +7,9 @@ import pandas as pd
 from scripts.audit_oco_execution_risk_prelive import SymbolConfig, run_audit
 
 
-def _write_bundle(tmp_path: Path, *, bad_join: bool = False, bad_tail: bool = False, bad_viability: bool = False) -> SymbolConfig:
+def _write_bundle(
+    tmp_path: Path, *, bad_join: bool = False, bad_tail: bool = False, bad_viability: bool = False
+) -> SymbolConfig:
     pred = pd.DataFrame(
         [
             {
@@ -100,10 +102,30 @@ def _write_bundle(tmp_path: Path, *, bad_join: bool = False, bad_tail: bool = Fa
 
     caps = pd.DataFrame(
         [
-            {"symbol": "EURUSD", "cap_pips": 0.8, "fill_rate": 0.95, "mean_per_signal_full_overshoot": 0.8},
-            {"symbol": "EURUSD", "cap_pips": 1.0, "fill_rate": 0.97, "mean_per_signal_full_overshoot": 0.85},
-            {"symbol": "EURUSD", "cap_pips": 1.2, "fill_rate": 0.98, "mean_per_signal_full_overshoot": 0.87},
-            {"symbol": "EURUSD", "cap_pips": 1.5, "fill_rate": 0.99, "mean_per_signal_full_overshoot": 0.88},
+            {
+                "symbol": "EURUSD",
+                "cap_pips": 0.8,
+                "fill_rate": 0.95,
+                "mean_per_signal_full_overshoot": 0.8,
+            },
+            {
+                "symbol": "EURUSD",
+                "cap_pips": 1.0,
+                "fill_rate": 0.97,
+                "mean_per_signal_full_overshoot": 0.85,
+            },
+            {
+                "symbol": "EURUSD",
+                "cap_pips": 1.2,
+                "fill_rate": 0.98,
+                "mean_per_signal_full_overshoot": 0.87,
+            },
+            {
+                "symbol": "EURUSD",
+                "cap_pips": 1.5,
+                "fill_rate": 0.99,
+                "mean_per_signal_full_overshoot": 0.88,
+            },
         ]
     )
     caps_path = tmp_path / "caps.csv"

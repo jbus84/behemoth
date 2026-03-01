@@ -53,7 +53,9 @@ def _symbol_files(tick_root: Path, symbol: str) -> list[Path]:
     return sorted((tick_root / symbol).glob(f"{symbol}_*_ticks.parquet"))
 
 
-def _select_tick_exprs(schema_names: set[str], price_source: str) -> tuple[pl.Expr, pl.Expr, pl.Expr]:
+def _select_tick_exprs(
+    schema_names: set[str], price_source: str
+) -> tuple[pl.Expr, pl.Expr, pl.Expr]:
     price_source = str(price_source).lower().strip()
 
     if price_source == "mid":
@@ -112,7 +114,9 @@ def _empty_bar_frame(symbol: str) -> pl.DataFrame:
     )
 
 
-def _bars_from_ticks(df: pl.DataFrame, *, symbol: str, bar_ticks: int, start_tick_index: int) -> tuple[pl.DataFrame, int, pl.DataFrame]:
+def _bars_from_ticks(
+    df: pl.DataFrame, *, symbol: str, bar_ticks: int, start_tick_index: int
+) -> tuple[pl.DataFrame, int, pl.DataFrame]:
     """Build fixed-size tick bars from a tick frame.
 
     Returns:
@@ -172,7 +176,9 @@ def _bars_from_ticks(df: pl.DataFrame, *, symbol: str, bar_ticks: int, start_tic
             .then(pl.lit(-1, dtype=pl.Int8))
             .otherwise(pl.lit(0, dtype=pl.Int8))
             .alias("hl_first"),
-            (pl.col("low_pos_tick") - pl.col("high_pos_tick")).cast(pl.Int32).alias("hl_pos_delta_tick"),
+            (pl.col("low_pos_tick") - pl.col("high_pos_tick"))
+            .cast(pl.Int32)
+            .alias("hl_pos_delta_tick"),
             (
                 (pl.col("low_pos_tick") - pl.col("high_pos_tick")).cast(pl.Float64)
                 / float(max(1, int(bar_ticks) - 1))
@@ -218,7 +224,11 @@ def _build_base_tick_bars(
         raise FileNotFoundError(f"{symbol}: no *_ticks.parquet files under {tick_root}")
 
     first_schema = pl.read_parquet_schema(str(files[0]))
-    names = set(first_schema.names() if hasattr(first_schema, "names") else getattr(first_schema, "keys", lambda: [])())
+    names = set(
+        first_schema.names()
+        if hasattr(first_schema, "names")
+        else getattr(first_schema, "keys", lambda: [])()
+    )
     if "timestamp" not in names:
         raise ValueError(f"{symbol}: missing timestamp")
 
@@ -252,7 +262,9 @@ def _build_base_tick_bars(
         if carry.height:
             part = pl.concat([carry, part], how="vertical")
 
-        bars, tick_idx, carry = _bars_from_ticks(part, symbol=symbol, bar_ticks=base_ticks, start_tick_index=tick_idx)
+        bars, tick_idx, carry = _bars_from_ticks(
+            part, symbol=symbol, bar_ticks=base_ticks, start_tick_index=tick_idx
+        )
         if bars.height:
             chunks.append(bars)
 
@@ -264,12 +276,16 @@ def _build_base_tick_bars(
     return out, dropped_ticks
 
 
-def _aggregate_from_base(base_bars: pl.DataFrame, *, symbol: str, target_ticks: int, base_ticks: int) -> tuple[pl.DataFrame, int]:
+def _aggregate_from_base(
+    base_bars: pl.DataFrame, *, symbol: str, target_ticks: int, base_ticks: int
+) -> tuple[pl.DataFrame, int]:
     if target_ticks == base_ticks:
         return base_bars, 0
 
     if target_ticks < base_ticks or (target_ticks % base_ticks) != 0:
-        raise ValueError(f"target_ticks={target_ticks} must be a multiple of base_ticks={base_ticks}")
+        raise ValueError(
+            f"target_ticks={target_ticks} must be a multiple of base_ticks={base_ticks}"
+        )
 
     factor = target_ticks // base_ticks
     n_complete = (base_bars.height // factor) * factor
@@ -322,7 +338,9 @@ def _aggregate_from_base(base_bars: pl.DataFrame, *, symbol: str, target_ticks: 
             .then(pl.lit(-1, dtype=pl.Int8))
             .otherwise(pl.lit(0, dtype=pl.Int8))
             .alias("hl_first"),
-            (pl.col("low_pos_tick") - pl.col("high_pos_tick")).cast(pl.Int32).alias("hl_pos_delta_tick"),
+            (pl.col("low_pos_tick") - pl.col("high_pos_tick"))
+            .cast(pl.Int32)
+            .alias("hl_pos_delta_tick"),
             (
                 (pl.col("low_pos_tick") - pl.col("high_pos_tick")).cast(pl.Float64)
                 / float(max(1, int(target_ticks) - 1))
@@ -412,14 +430,20 @@ def main() -> None:
     p = argparse.ArgumentParser(description="Build fixed-tick OHLC bars from raw tick parquet data")
     p.add_argument("--tick-root", default="/Users/danielfisher/Desktop/tick")
     p.add_argument("--output-dir", default="data/global_tickbars")
-    p.add_argument("--symbols", default="", help="Comma-separated symbols; default = all directories under tick root")
+    p.add_argument(
+        "--symbols",
+        default="",
+        help="Comma-separated symbols; default = all directories under tick root",
+    )
     p.add_argument("--base-ticks", type=int, default=50, help="Base tick-bar size (default: 50)")
     p.add_argument(
         "--aggregate-multiples",
         default="1,2,4",
         help="Comma-separated multiples of base ticks (default: 1,2,4 -> 50,100,200 if base=50)",
     )
-    p.add_argument("--price-source", choices=["bid", "mid"], default="bid", help="OHLC source price")
+    p.add_argument(
+        "--price-source", choices=["bid", "mid"], default="bid", help="OHLC source price"
+    )
     p.add_argument(
         "--timestamp-mode",
         choices=["as_utc", "ny_local_tagged_utc"],

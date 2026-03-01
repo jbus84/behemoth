@@ -154,7 +154,9 @@ def run(
         report_out.parent.mkdir(parents=True, exist_ok=True)
         empty = pd.DataFrame(columns=out_cols)
         empty.to_csv(out_csv, index=False)
-        report_out.write_text("# OCO Governance Explainability Report\n\n_empty_\n", encoding="utf-8")
+        report_out.write_text(
+            "# OCO Governance Explainability Report\n\n_empty_\n", encoding="utf-8"
+        )
         return empty
 
     x = disp.copy()
@@ -165,7 +167,10 @@ def run(
         report_out.parent.mkdir(parents=True, exist_ok=True)
         empty = pd.DataFrame(columns=out_cols)
         empty.to_csv(out_csv, index=False)
-        report_out.write_text("# OCO Governance Explainability Report\n\n_no active non-green alerts_\n", encoding="utf-8")
+        report_out.write_text(
+            "# OCO Governance Explainability Report\n\n_no active non-green alerts_\n",
+            encoding="utf-8",
+        )
         return empty
 
     now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -181,14 +186,30 @@ def run(
                 continue
             if str(rule.get("metric_id", "")) == metric_id:
                 with suppress(Exception):
-                    rule_days.append(int(rule.get("review_cadence_days", cfg.get("default_expiry_days", 60))))
+                    rule_days.append(
+                        int(rule.get("review_cadence_days", cfg.get("default_expiry_days", 60)))
+                    )
         review_days = int(min(rule_days)) if rule_days else int(cfg.get("default_expiry_days", 60))
 
-        action_codes = sorted(g.get("action_code", pd.Series(dtype=str)).dropna().astype(str).unique().tolist())
+        action_codes = sorted(
+            g.get("action_code", pd.Series(dtype=str)).dropna().astype(str).unique().tolist()
+        )
         owners = sorted(g.get("owner", pd.Series(dtype=str)).dropna().astype(str).unique().tolist())
-        symbols = sorted(g.get("symbol", pd.Series(dtype=str)).dropna().astype(str).str.upper().unique().tolist())
-        evidence_required = bool(g.get("evidence_required", pd.Series(dtype=bool)).astype(str).str.lower().isin(["1", "true", "yes", "y"]).any())
-        evidence_links = [s for s in g.get("evidence_link", pd.Series(dtype=str)).astype(str).tolist() if s.strip() != ""]
+        symbols = sorted(
+            g.get("symbol", pd.Series(dtype=str)).dropna().astype(str).str.upper().unique().tolist()
+        )
+        evidence_required = bool(
+            g.get("evidence_required", pd.Series(dtype=bool))
+            .astype(str)
+            .str.lower()
+            .isin(["1", "true", "yes", "y"])
+            .any()
+        )
+        evidence_links = [
+            s
+            for s in g.get("evidence_link", pd.Series(dtype=str)).astype(str).tolist()
+            if s.strip() != ""
+        ]
 
         action_rationale = "Action selected from policy mapping for the observed band/severity."
         if any(a.startswith("A2") for a in action_codes):
@@ -196,17 +217,31 @@ def run(
         elif any(a.startswith("A1") for a in action_codes):
             action_rationale = "Cap/threshold recalibration is preferred for controlled recovery under amber conditions."
         elif any(a.startswith("A3") for a in action_codes):
-            action_rationale = "Hard halt/recalibration path is required due to governance-critical degradation."
+            action_rationale = (
+                "Hard halt/recalibration path is required due to governance-critical degradation."
+            )
 
         rows.append(
             {
                 "metric_id": metric_id,
-                "source_alert": str(g.get("source_alert", pd.Series(dtype=str)).astype(str).mode().iloc[0]) if "source_alert" in g.columns else "unknown",
+                "source_alert": str(
+                    g.get("source_alert", pd.Series(dtype=str)).astype(str).mode().iloc[0]
+                )
+                if "source_alert" in g.columns
+                else "unknown",
                 "definition": meta.get("definition", "Metric-specific governance diagnostic."),
-                "risk_path": meta.get("risk_path", "Non-green behavior may invalidate execution/governance assumptions."),
-                "threshold_context": meta.get("threshold_context", "Threshold context from corresponding monitoring report."),
+                "risk_path": meta.get(
+                    "risk_path",
+                    "Non-green behavior may invalidate execution/governance assumptions.",
+                ),
+                "threshold_context": meta.get(
+                    "threshold_context", "Threshold context from corresponding monitoring report."
+                ),
                 "action_rationale": action_rationale,
-                "expected_recovery_signal": meta.get("expected_recovery_signal", "Return to green band and stable recurrence profile."),
+                "expected_recovery_signal": meta.get(
+                    "expected_recovery_signal",
+                    "Return to green band and stable recurrence profile.",
+                ),
                 "band_worst": _worst_band(g.get("band", pd.Series(dtype=str))),
                 "severity_worst": _worst_sev(g.get("severity", pd.Series(dtype=str))),
                 "active_rows": int(len(g)),
@@ -233,7 +268,9 @@ def run(
         .agg(metrics=("metric_id", "count"), symbols=("symbol_count", "sum"))
         .sort_values(["source_alert", "band_worst", "severity_worst"])
         if not out.empty
-        else pd.DataFrame(columns=["source_alert", "band_worst", "severity_worst", "metrics", "symbols"])
+        else pd.DataFrame(
+            columns=["source_alert", "band_worst", "severity_worst", "metrics", "symbols"]
+        )
     )
 
     lines: list[str] = []
@@ -256,9 +293,17 @@ def run(
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Build OCO governance explainability report")
-    p.add_argument("--disposition-csv", default="data/analysis/tick_opportunity_mining/oco_alert_disposition.csv")
-    p.add_argument("--exceptions-yaml", default="configs/research/governance/oco_monitoring_exceptions.yaml")
-    p.add_argument("--out-csv", default="data/analysis/tick_opportunity_mining/oco_governance_explainability.csv")
+    p.add_argument(
+        "--disposition-csv",
+        default="data/analysis/tick_opportunity_mining/oco_alert_disposition.csv",
+    )
+    p.add_argument(
+        "--exceptions-yaml", default="configs/research/governance/oco_monitoring_exceptions.yaml"
+    )
+    p.add_argument(
+        "--out-csv",
+        default="data/analysis/tick_opportunity_mining/oco_governance_explainability.csv",
+    )
     p.add_argument("--report-out", default="docs/analysis/oco_governance_explainability_report.md")
     args = p.parse_args()
 

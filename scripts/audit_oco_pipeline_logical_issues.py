@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Logical audit for OCO WFO->selection->stop-limit pipeline.
 
-Checks C01..C10 across EURUSD/GBPUSD/USDJPY and emits:
+Checks C01..C10 across active symbols and emits:
 - checks CSV (pass/fail + metrics)
 - issues CSV (failed checks only, severity-ranked)
 - markdown report
@@ -202,7 +202,9 @@ def _load_selected_events(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame
     p["threshold_exec"] = pd.to_numeric(p["threshold_exec"], errors="coerce")
     p["threshold_days"] = pd.to_numeric(p["threshold_days"], errors="coerce")
     p["selected_exec"] = pd.to_numeric(p["selected_exec"], errors="coerce").fillna(0).astype(int)
-    p = p.dropna(subset=["test_month", "close_ts", "candidate_uid", "pred_prob", "target_gross_pips"]).copy()
+    p = p.dropna(
+        subset=["test_month", "close_ts", "candidate_uid", "pred_prob", "target_gross_pips"]
+    ).copy()
     p = p[p["selected_exec"] == 1].copy()
     p["candidate_uid"] = p["candidate_uid"].astype(str)
     p["state_id"] = p["candidate_uid"].map(_parse_state_id)
@@ -211,13 +213,23 @@ def _load_selected_events(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame
 
     d = pd.read_csv(
         cfg.stop_detail_path,
-        usecols=["close_ts", "candidate_uid", "touch_open_ts", "touch_close_ts", "touch_month", "touch_found_tick", "overshoot_tick_pips"],
+        usecols=[
+            "close_ts",
+            "candidate_uid",
+            "touch_open_ts",
+            "touch_close_ts",
+            "touch_month",
+            "touch_found_tick",
+            "overshoot_tick_pips",
+        ],
     ).copy()
     d["close_ts"] = _dt_utc_mixed(d["close_ts"])
     d["touch_open_ts"] = _dt_utc_mixed(d["touch_open_ts"])
     d["touch_close_ts"] = _dt_utc_mixed(d["touch_close_ts"])
     d["candidate_uid"] = d["candidate_uid"].astype(str)
-    d["touch_found_tick"] = pd.to_numeric(d["touch_found_tick"], errors="coerce").fillna(0).astype(int)
+    d["touch_found_tick"] = (
+        pd.to_numeric(d["touch_found_tick"], errors="coerce").fillna(0).astype(int)
+    )
     d["overshoot_tick_pips"] = pd.to_numeric(d["overshoot_tick_pips"], errors="coerce")
     d = d.dropna(subset=["candidate_uid", "close_ts"]).copy()
 
@@ -229,7 +241,9 @@ def _load_selected_events(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame
     x = p.merge(d, on=["candidate_uid", "close_ts"], how="left", validate="many_to_one")
     x["__matched_detail"] = x["touch_found_tick"].notna().astype(int)
     match_rate = float(x["__matched_detail"].mean()) if len(x) else float("nan")
-    x["touch_found_tick"] = pd.to_numeric(x["touch_found_tick"], errors="coerce").fillna(0).astype(int)
+    x["touch_found_tick"] = (
+        pd.to_numeric(x["touch_found_tick"], errors="coerce").fillna(0).astype(int)
+    )
     x["overshoot_tick_pips"] = pd.to_numeric(x["overshoot_tick_pips"], errors="coerce")
     x["filled"] = (
         (x["touch_found_tick"] == 1)
@@ -248,7 +262,11 @@ def _check_overlap_divergence(
     monthly: pd.DataFrame,
     schedule: pd.DataFrame,
 ) -> tuple[float, float, int]:
-    key_col = "state_key" if ("state_key" in selected.columns and "state_key" in schedule.columns) else "state_id"
+    key_col = (
+        "state_key"
+        if ("state_key" in selected.columns and "state_key" in schedule.columns)
+        else "state_id"
+    )
     month_rows = monthly[monthly["status"] == "ok"][["test_month", "train_months"]].copy()
     if month_rows.empty:
         return float("nan"), float("nan"), 0
@@ -264,7 +282,9 @@ def _check_overlap_divergence(
         states = sorted(set(states))
         if len(states) < 2:
             continue
-        g = selected[selected["test_month"].isin(train_months) & selected[key_col].astype(str).isin(states)].copy()
+        g = selected[
+            selected["test_month"].isin(train_months) & selected[key_col].astype(str).isin(states)
+        ].copy()
         if g.empty:
             continue
         agg = g.groupby([key_col, "test_month"], as_index=False).agg(
@@ -364,11 +384,22 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
             )
 
     # C01: test month and threshold timing consistency.
-    mismatch_rate = float(np.mean(selected["test_month"] != selected["close_month_utc"])) if len(selected) else np.nan
+    mismatch_rate = (
+        float(np.mean(selected["test_month"] != selected["close_month_utc"]))
+        if len(selected)
+        else np.nan
+    )
     selected_ok = selected["threshold_exec"].notna() & selected["pred_prob"].notna()
-    selected_consistency = float(
-        np.mean(selected.loc[selected_ok, "pred_prob"] >= selected.loc[selected_ok, "threshold_exec"])
-    ) if selected_ok.any() else np.nan
+    selected_consistency = (
+        float(
+            np.mean(
+                selected.loc[selected_ok, "pred_prob"]
+                >= selected.loc[selected_ok, "threshold_exec"]
+            )
+        )
+        if selected_ok.any()
+        else np.nan
+    )
     thr_days_min = float(pd.to_numeric(selected["threshold_days"], errors="coerce").min())
     c01_pass = (
         np.isfinite(mismatch_rate)
@@ -405,7 +436,11 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
         else {}
     )
     uses_rolling = any("rolling" in k for k in mode_counts)
-    group_cols = ["test_month", "candidate_uid", "close_day_utc"] if uses_rolling else ["test_month", "candidate_uid"]
+    group_cols = (
+        ["test_month", "candidate_uid", "close_day_utc"]
+        if uses_rolling
+        else ["test_month", "candidate_uid"]
+    )
     g_thr = (
         selected.groupby(group_cols, as_index=False)["threshold_exec"]
         .nunique(dropna=True)
@@ -421,7 +456,12 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
         "unstable_group_rate",
         unstable_rate,
         "0",
-        {"unstable_groups": unstable, "groups_total": int(len(g_thr)), "group_cols": group_cols, "threshold_mode_counts": mode_counts},
+        {
+            "unstable_groups": unstable,
+            "groups_total": int(len(g_thr)),
+            "group_cols": group_cols,
+            "threshold_mode_counts": mode_counts,
+        },
         "Threshold value changes within the expected stability group.",
         "Inconsistent thresholding can invalidate signal-selection reproducibility.",
         "For rolling mode, enforce one threshold per day; for fixed mode, enforce one threshold per month.",
@@ -470,7 +510,9 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
     # C05: stop-limit detail join integrity.
     by_month_match = (
         strategy_rows.assign(
-            matched=pd.to_numeric(strategy_rows["__matched_detail"], errors="coerce").fillna(0).astype(int)
+            matched=pd.to_numeric(strategy_rows["__matched_detail"], errors="coerce")
+            .fillna(0)
+            .astype(int)
         )
         .groupby("test_month", as_index=False)["matched"]
         .mean()
@@ -525,7 +567,9 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
     ok = monthly[monthly["status"] == "ok"].copy()
     s0 = summary.iloc[0]
     rows_total_calc = int(pd.to_numeric(ok["rows"], errors="coerce").sum()) if not ok.empty else 0
-    sig_total_calc = int(pd.to_numeric(ok["signal_rows"], errors="coerce").sum()) if not ok.empty else 0
+    sig_total_calc = (
+        int(pd.to_numeric(ok["signal_rows"], errors="coerce").sum()) if not ok.empty else 0
+    )
     fill_calc = float(rows_total_calc / max(sig_total_calc, 1)) if sig_total_calc > 0 else np.nan
     diff_rows = abs(rows_total_calc - int(s0["rows_total"]))
     diff_sig = abs(sig_total_calc - int(s0["signal_rows_total"]))
@@ -548,13 +592,21 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     # C08: warmup and month continuity.
     months = sorted(monthly["test_month"].astype(str).unique().tolist())
-    idx = pd.period_range(start=min(months), end=max(months), freq="M").astype(str).tolist() if months else []
+    idx = (
+        pd.period_range(start=min(months), end=max(months), freq="M").astype(str).tolist()
+        if months
+        else []
+    )
     missing_months = sorted(set(idx) - set(months))
     warmup_count = int((monthly["status"] == "warmup_skip").sum())
     no_gate_states_count = int((monthly["status"] == "no_gate_states").sum())
     allowed_statuses = {"ok", "warmup_skip", "no_gate_states"}
     unexpected_non_ok = int((~monthly["status"].isin(sorted(allowed_statuses))).sum())
-    c08_pass = len(missing_months) == 0 and warmup_count == int(cfg.min_train_months) and unexpected_non_ok == 0
+    c08_pass = (
+        len(missing_months) == 0
+        and warmup_count == int(cfg.min_train_months)
+        and unexpected_non_ok == 0
+    )
     add_check(
         "C08",
         "pass" if c08_pass else "fail",
@@ -607,11 +659,17 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
     close_ts = _dt_utc_mixed(matched["close_ts"])
     touch_month_ref = pd.to_numeric(matched["touch_month"], errors="coerce")
     touch_month_ref = touch_month_ref.fillna(-1).astype(int).astype(str).str.zfill(6)
-    bad_touch_order = float(np.mean((touch_close < touch_open).fillna(False))) if len(matched) else np.nan
-    touch_before_decision = float(np.mean((touch_open < close_ts).fillna(False))) if len(matched) else np.nan
-    touch_month_mismatch = float(
-        np.mean((touch_open.dt.strftime("%Y%m") != touch_month_ref).fillna(False))
-    ) if len(matched) else np.nan
+    bad_touch_order = (
+        float(np.mean((touch_close < touch_open).fillna(False))) if len(matched) else np.nan
+    )
+    touch_before_decision = (
+        float(np.mean((touch_open < close_ts).fillna(False))) if len(matched) else np.nan
+    )
+    touch_month_mismatch = (
+        float(np.mean((touch_open.dt.strftime("%Y%m") != touch_month_ref).fillna(False)))
+        if len(matched)
+        else np.nan
+    )
     c10_pass = (
         np.isfinite(bad_touch_order)
         and bad_touch_order <= 0.0
@@ -646,11 +704,15 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
     if not issues_df.empty:
         sev_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
         issues_df["sev_rank"] = issues_df["severity"].map(sev_order).fillna(9).astype(int)
-        issues_df = issues_df.sort_values(["sev_rank", "symbol", "check_id"]).drop(columns=["sev_rank"])
+        issues_df = issues_df.sort_values(["sev_rank", "symbol", "check_id"]).drop(
+            columns=["sev_rank"]
+        )
     return checks_df, issues_df
 
 
-def run_audit(symbols: list[str], *, out_checks_csv: Path, out_issues_csv: Path, report_out: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
+def run_audit(
+    symbols: list[str], *, out_checks_csv: Path, out_issues_csv: Path, report_out: Path
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     cfg_map = _default_configs()
     use_syms = [s.upper().strip() for s in symbols if s.strip()]
     bad = [s for s in use_syms if s not in cfg_map]
@@ -699,8 +761,16 @@ def run_audit(symbols: list[str], *, out_checks_csv: Path, out_issues_csv: Path,
         "acceptance_test",
         "details_json",
     ]
-    checks = pd.concat(all_checks, ignore_index=True) if all_checks else pd.DataFrame(columns=checks_cols)
-    issues = pd.concat(all_issues, ignore_index=True) if all_issues else pd.DataFrame(columns=issues_cols)
+    checks = (
+        pd.concat(all_checks, ignore_index=True)
+        if all_checks
+        else pd.DataFrame(columns=checks_cols)
+    )
+    issues = (
+        pd.concat(all_issues, ignore_index=True)
+        if all_issues
+        else pd.DataFrame(columns=issues_cols)
+    )
     if checks.empty:
         checks = pd.DataFrame(columns=checks_cols)
     if issues.empty:
@@ -713,9 +783,7 @@ def run_audit(symbols: list[str], *, out_checks_csv: Path, out_issues_csv: Path,
     issues.to_csv(out_issues_csv, index=False)
 
     sev_counts = (
-        issues.groupby("severity", as_index=False)
-        .size()
-        .sort_values("size", ascending=False)
+        issues.groupby("severity", as_index=False).size().sort_values("size", ascending=False)
         if not issues.empty
         else pd.DataFrame(columns=["severity", "size"])
     )
@@ -729,7 +797,7 @@ def run_audit(symbols: list[str], *, out_checks_csv: Path, out_issues_csv: Path,
         else pd.DataFrame()
     )
     lines: list[str] = []
-    lines.append("# OCO Logical Audit (EURUSD/GBPUSD/USDJPY)")
+    lines.append("# OCO Logical Audit (All Active Symbols)")
     lines.append("")
     lines.append("## Outputs")
     lines.append(f"- checks_csv: `{out_checks_csv}`")
@@ -790,7 +858,7 @@ def run_audit(symbols: list[str], *, out_checks_csv: Path, out_issues_csv: Path,
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Audit OCO logical issues for target symbols")
-    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY")
+    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD")
     p.add_argument(
         "--out-checks-csv",
         default="data/analysis/tick_opportunity_mining/oco_logical_audit_checks.csv",

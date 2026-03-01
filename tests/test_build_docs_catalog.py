@@ -18,7 +18,7 @@ def test_build_docs_catalog_outputs_manifest_and_index(tmp_path: Path) -> None:
     (analysis / "eurusd_tick_opportunity_mining_report.md").write_text("# eur\n", encoding="utf-8")
     (analysis / "oco_execution_monte_carlo_report.md").write_text("# mc\n", encoding="utf-8")
     (analysis / "index.md").write_text("# stale\n", encoding="utf-8")
-    (archive / "kalman_strategy_guide.md").write_text("# old\n", encoding="utf-8")
+    (archive / "legacy_strategy_guide.md").write_text("# old\n", encoding="utf-8")
 
     manifest, out_index, out_gaps = run(
         docs_root=docs_root,
@@ -37,4 +37,4 @@ def test_build_docs_catalog_outputs_manifest_and_index(tmp_path: Path) -> None:
     m = pd.read_csv(analysis / "catalog_manifest.csv")
     assert "analysis/data_reliability_report.md" in set(m["doc_path"].astype(str))
     assert "analysis/eurusd_tick_opportunity_mining_report.md" in set(m["doc_path"].astype(str))
-    assert "archive/kalman_strategy_guide.md" in set(m["doc_path"].astype(str))
+    assert "archive/legacy_strategy_guide.md" in set(m["doc_path"].astype(str))

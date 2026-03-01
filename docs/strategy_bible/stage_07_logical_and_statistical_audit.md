@@ -88,7 +88,7 @@ uv run python scripts/audit_oco_pipeline_logical_issues.py
 <!-- GENERATED:STAGE_07:START -->
 ### Auto Snapshot - Stage 07
 
-- generated_at: `2026-03-01 07:53:15 UTC`
+- generated_at: `2026-03-01 09:52:04 UTC`
 - C01..C10 checks are the logical contract gate before robustness sign-off.
 - Open issue rows: 0.
 
@@ -106,10 +106,16 @@ uv run python scripts/audit_oco_pipeline_logical_issues.py
 #### Action Trigger Summary
 | symbol   | metric_id               | band   | severity   | action_code   | action_summary     | owner    |
 |:---------|:------------------------|:-------|:-----------|:--------------|:-------------------|:---------|
+| AUDUSD   | S01_lb95_dependence_gap | green  | info       | A0_MONITOR    | within policy band | research |
+| AUDUSD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
 | EURUSD   | S01_lb95_dependence_gap | green  | info       | A0_MONITOR    | within policy band | research |
 | EURUSD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
 | GBPUSD   | S01_lb95_dependence_gap | green  | info       | A0_MONITOR    | within policy band | research |
 | GBPUSD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
+| USDCAD   | S01_lb95_dependence_gap | green  | info       | A0_MONITOR    | within policy band | research |
+| USDCAD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
+| USDCHF   | S01_lb95_dependence_gap | green  | info       | A0_MONITOR    | within policy band | research |
+| USDCHF   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
 | USDJPY   | S01_lb95_dependence_gap | green  | info       | A0_MONITOR    | within policy band | research |
 | USDJPY   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
 

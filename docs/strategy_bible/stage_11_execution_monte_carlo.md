@@ -89,7 +89,7 @@ uv run python scripts/validate_execution_monte_carlo.py
 <!-- GENERATED:STAGE_11:START -->
 ### Auto Snapshot - Stage 11
 
-- generated_at: `2026-03-01 07:53:15 UTC`
+- generated_at: `2026-03-01 09:52:04 UTC`
 - Execution Monte Carlo uses month x session stress scenarios derived from Stage 04 tickfill artifacts.
 - EM01-EM05 summarize mild/moderate survival, month negativity risk, fill-rate decay, and data integrity.
 
@@ -105,17 +105,20 @@ uv run python scripts/validate_execution_monte_carlo.py
 - EM01-EM05 summarize mild/moderate survival, month negativity risk, fill-rate decay, and data integrity.
 
 #### Action Trigger Summary
-| symbol   | metric_id                    | band   | severity   | action_code   | action_summary     | owner     |
-|:---------|:-----------------------------|:-------|:-----------|:--------------|:-------------------|:----------|
-| EURUSD   | EM03_prob_negative_month_s1  | green  | info       | A0_MONITOR    | within policy band | risk      |
-| EURUSD   | EM04_fill_rate_drop_vs_s0_s1 | green  | info       | A0_MONITOR    | within policy band | execution |
-| EURUSD   | EM05_nan_core_fields         | green  | info       | A0_MONITOR    | within policy band | data      |
-| GBPUSD   | EM03_prob_negative_month_s1  | green  | info       | A0_MONITOR    | within policy band | risk      |
-| GBPUSD   | EM04_fill_rate_drop_vs_s0_s1 | green  | info       | A0_MONITOR    | within policy band | execution |
-| GBPUSD   | EM05_nan_core_fields         | green  | info       | A0_MONITOR    | within policy band | data      |
-| USDJPY   | EM03_prob_negative_month_s1  | green  | info       | A0_MONITOR    | within policy band | risk      |
-| USDJPY   | EM04_fill_rate_drop_vs_s0_s1 | green  | info       | A0_MONITOR    | within policy band | execution |
-| USDJPY   | EM05_nan_core_fields         | green  | info       | A0_MONITOR    | within policy band | data      |
+| symbol   | metric_id                    | band   | severity   | action_code   | action_summary                      | owner     |
+|:---------|:-----------------------------|:-------|:-----------|:--------------|:------------------------------------|:----------|
+| AUDUSD   | EM03_prob_negative_month_s1  | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | risk      |
+| AUDUSD   | EM04_fill_rate_drop_vs_s0_s1 | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | execution |
+| AUDUSD   | EM05_nan_core_fields         | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | data      |
+| EURUSD   | EM03_prob_negative_month_s1  | green  | info       | A0_MONITOR    | within policy band                  | risk      |
+| EURUSD   | EM04_fill_rate_drop_vs_s0_s1 | green  | info       | A0_MONITOR    | within policy band                  | execution |
+| EURUSD   | EM05_nan_core_fields         | green  | info       | A0_MONITOR    | within policy band                  | data      |
+| GBPUSD   | EM03_prob_negative_month_s1  | green  | info       | A0_MONITOR    | within policy band                  | risk      |
+| GBPUSD   | EM04_fill_rate_drop_vs_s0_s1 | green  | info       | A0_MONITOR    | within policy band                  | execution |
+| GBPUSD   | EM05_nan_core_fields         | green  | info       | A0_MONITOR    | within policy band                  | data      |
+| USDCAD   | EM03_prob_negative_month_s1  | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | risk      |
+| USDCAD   | EM04_fill_rate_drop_vs_s0_s1 | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | execution |
+| USDCAD   | EM05_nan_core_fields         | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | data      |
 
 #### Details
 | symbol   | scenario_id   |   mean_per_signal_pips |   lb95_per_signal_pips |   lb99_per_signal_pips |   mean_per_trade_pips |   mean_fill_rate |   prob_negative_month |   fill_rate_drop_vs_S0 |   drawdown_proxy_p95 |

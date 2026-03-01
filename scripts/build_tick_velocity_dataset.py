@@ -172,8 +172,18 @@ def _build_symbol_dataset(
     out["duration_sec"] = (out["close_ts"] - out["timestamp"]).dt.total_seconds().clip(lower=1e-6)
     out["tick_rate_hz"] = out["tick_volume"] / out["duration_sec"]
 
-    tr_mu = out["tick_rate_hz"].rolling(int(vol_window), min_periods=max(8, int(vol_window) // 3)).mean().shift(1)
-    tr_sd = out["tick_rate_hz"].rolling(int(vol_window), min_periods=max(8, int(vol_window) // 3)).std(ddof=0).shift(1)
+    tr_mu = (
+        out["tick_rate_hz"]
+        .rolling(int(vol_window), min_periods=max(8, int(vol_window) // 3))
+        .mean()
+        .shift(1)
+    )
+    tr_sd = (
+        out["tick_rate_hz"]
+        .rolling(int(vol_window), min_periods=max(8, int(vol_window) // 3))
+        .std(ddof=0)
+        .shift(1)
+    )
     out["tick_rate_z"] = (out["tick_rate_hz"] - tr_mu) / tr_sd.replace(0.0, np.nan)
 
     out["spread_pips"] = out["spread"] / pip
@@ -190,25 +200,56 @@ def _build_symbol_dataset(
         out["hl_pos_frac_mean_24"] = out["hl_pos_frac"].rolling(24, min_periods=8).mean().shift(1)
         out["hl_pos_frac_mean_96"] = out["hl_pos_frac"].rolling(96, min_periods=24).mean().shift(1)
 
-    sp_mu = out["spread_pips"].rolling(int(vol_window), min_periods=max(8, int(vol_window) // 3)).mean().shift(1)
-    sp_sd = out["spread_pips"].rolling(int(vol_window), min_periods=max(8, int(vol_window) // 3)).std(ddof=0).shift(1)
+    sp_mu = (
+        out["spread_pips"]
+        .rolling(int(vol_window), min_periods=max(8, int(vol_window) // 3))
+        .mean()
+        .shift(1)
+    )
+    sp_sd = (
+        out["spread_pips"]
+        .rolling(int(vol_window), min_periods=max(8, int(vol_window) // 3))
+        .std(ddof=0)
+        .shift(1)
+    )
     out["spread_z"] = (out["spread_pips"] - sp_mu) / sp_sd.replace(0.0, np.nan)
 
     out["vel_pips_h1"] = (close - close.shift(1)) / pip
     out[f"vel_{int(bar_ticks)}_pips"] = out["vel_pips_h1"]
     out["accel_pips"] = out["vel_pips_h1"] - out["vel_pips_h1"].shift(1)
 
-    spread_recent = out["spread_pips"].rolling(int(cost_window), min_periods=max(8, int(cost_window) // 4)).median().shift(1)
+    spread_recent = (
+        out["spread_pips"]
+        .rolling(int(cost_window), min_periods=max(8, int(cost_window) // 4))
+        .median()
+        .shift(1)
+    )
     gap_abs_pips = (open_ - close.shift(1)).abs() / pip
-    slip_proxy = gap_abs_pips.rolling(int(cost_window), min_periods=max(8, int(cost_window) // 6)).quantile(0.75).shift(1)
-    slip_fallback = out["range_pips"].rolling(int(cost_window), min_periods=max(8, int(cost_window) // 6)).quantile(0.75).shift(1) * 0.2
+    slip_proxy = (
+        gap_abs_pips.rolling(int(cost_window), min_periods=max(8, int(cost_window) // 6))
+        .quantile(0.75)
+        .shift(1)
+    )
+    slip_fallback = (
+        out["range_pips"]
+        .rolling(int(cost_window), min_periods=max(8, int(cost_window) // 6))
+        .quantile(0.75)
+        .shift(1)
+        * 0.2
+    )
 
     out["slip_proxy_pips"] = slip_proxy.fillna(slip_fallback).fillna(0.1).clip(lower=0.01)
     out["cost_est_pips"] = (
-        spread_recent.fillna(out["spread_pips"].shift(1)).fillna(out["spread_pips"].median()) + out["slip_proxy_pips"]
+        spread_recent.fillna(out["spread_pips"].shift(1)).fillna(out["spread_pips"].median())
+        + out["slip_proxy_pips"]
     )
 
-    vol_ref = out["vel_pips_h1"].rolling(int(vol_window), min_periods=max(8, int(vol_window) // 3)).std(ddof=0).shift(1)
+    vol_ref = (
+        out["vel_pips_h1"]
+        .rolling(int(vol_window), min_periods=max(8, int(vol_window) // 3))
+        .std(ddof=0)
+        .shift(1)
+    )
 
     for h in sorted(set(int(x) for x in vel_horizons if int(x) > 0)):
         vel = (close - close.shift(h)) / pip
@@ -229,25 +270,59 @@ def _build_symbol_dataset(
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Build causal velocity datasets from tick bars")
-    p.add_argument("--tick-root", default=str(DEFAULT_TICK_ROOT), help="Raw tick root (used with --auto-build-bars)")
-    p.add_argument("--tickbar-dir", default=str(DEFAULT_TICKBAR_DIR), help="Input directory for *_Ntick parquet files")
-    p.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR), help="Output directory for per-symbol velocity datasets")
-    p.add_argument("--symbols", default="", help="Comma-separated symbols; default=infer from tickbar dir (or tick root)")
+    p.add_argument(
+        "--tick-root",
+        default=str(DEFAULT_TICK_ROOT),
+        help="Raw tick root (used with --auto-build-bars)",
+    )
+    p.add_argument(
+        "--tickbar-dir",
+        default=str(DEFAULT_TICKBAR_DIR),
+        help="Input directory for *_Ntick parquet files",
+    )
+    p.add_argument(
+        "--out-dir",
+        default=str(DEFAULT_OUT_DIR),
+        help="Output directory for per-symbol velocity datasets",
+    )
+    p.add_argument(
+        "--symbols",
+        default="",
+        help="Comma-separated symbols; default=infer from tickbar dir (or tick root)",
+    )
     p.add_argument("--bar-ticks", type=int, default=100, help="Tick bars per row")
-    p.add_argument("--bar-ticks-grid", default="", help="Optional comma-separated bar sizes (overrides --bar-ticks)")
-    p.add_argument("--vel-horizons", default="1,2,5,10", help="Velocity horizons in bars (h=1 means 1x bar-ticks)")
+    p.add_argument(
+        "--bar-ticks-grid",
+        default="",
+        help="Optional comma-separated bar sizes (overrides --bar-ticks)",
+    )
+    p.add_argument(
+        "--vel-horizons",
+        default="1,2,5,10",
+        help="Velocity horizons in bars (h=1 means 1x bar-ticks)",
+    )
     p.add_argument("--target-horizons", default="1,2,3", help="Forward targets in bars")
-    p.add_argument("--vol-window", type=int, default=96, help="Rolling window for velocity std normalizer")
-    p.add_argument("--cost-window", type=int, default=288, help="Rolling window for spread/slippage context")
-    p.add_argument("--price-source", choices=["bid", "mid"], default="bid", help="Used when auto-building bars")
+    p.add_argument(
+        "--vol-window", type=int, default=96, help="Rolling window for velocity std normalizer"
+    )
+    p.add_argument(
+        "--cost-window", type=int, default=288, help="Rolling window for spread/slippage context"
+    )
+    p.add_argument(
+        "--price-source", choices=["bid", "mid"], default="bid", help="Used when auto-building bars"
+    )
     p.add_argument(
         "--timestamp-mode",
         choices=["as_utc", "ny_local_tagged_utc"],
         default="as_utc",
         help="How to interpret raw tick timestamps when building bars",
     )
-    p.add_argument("--auto-build-bars", action="store_true", help="Build missing *_Ntick bars from raw ticks")
-    p.add_argument("--rebuild-bars", action="store_true", help="Force rebuild *_Ntick bars when auto-building")
+    p.add_argument(
+        "--auto-build-bars", action="store_true", help="Build missing *_Ntick bars from raw ticks"
+    )
+    p.add_argument(
+        "--rebuild-bars", action="store_true", help="Force rebuild *_Ntick bars when auto-building"
+    )
     p.add_argument("--overwrite", action="store_true", help="Overwrite existing output files")
     p.add_argument("--combined-out", default="", help="Optional combined parquet path")
     args = p.parse_args()
@@ -323,7 +398,9 @@ def main() -> None:
                 ds["timestamp_mode"] = str(args.timestamp_mode)
                 ds.to_parquet(out_path, index=False)
                 print(f"ok {symbol} {bar_ticks}tick: rows={len(ds)} -> {out_path}")
-                built.append(ds.assign(_source_symbol=str(symbol), _source_bar_ticks=int(bar_ticks)))
+                built.append(
+                    ds.assign(_source_symbol=str(symbol), _source_bar_ticks=int(bar_ticks))
+                )
             except Exception as e:
                 print(f"fail {symbol} {bar_ticks}tick: {e}")
 

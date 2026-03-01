@@ -86,4 +86,3 @@ def test_rolling_threshold_no_train_history_returns_nan_and_no_history_source() 
     assert set(src.tolist()) == {"no_history"}
     selected = np.isfinite(thr) & (test_p >= thr)
     assert int(selected.sum()) == 0
-

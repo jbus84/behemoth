@@ -62,6 +62,12 @@ def test_execution_drift_report_outputs(tmp_path: Path) -> None:
     )
     assert not monthly.empty
     assert not alerts.empty
-    required = {"symbol", "test_month", "fill_rate", "overshoot_p95_pips", "delta_overshoot_p95_pips"}
+    required = {
+        "symbol",
+        "test_month",
+        "fill_rate",
+        "overshoot_p95_pips",
+        "delta_overshoot_p95_pips",
+    }
     assert required.issubset(set(monthly.columns))
     assert {"symbol", "metric_id", "band"}.issubset(set(alerts.columns))

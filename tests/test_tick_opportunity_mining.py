@@ -70,7 +70,9 @@ def test_tick_opportunity_mining_outputs(tmp_path: Path) -> None:
     assert not directional.empty
     assert not oco.empty
     assert not summary.empty
-    assert {"state_id", "mean_gross_pips_test", "annualized_test_fills", "selection_pass"}.issubset(directional.columns)
+    assert {"state_id", "mean_gross_pips_test", "annualized_test_fills", "selection_pass"}.issubset(
+        directional.columns
+    )
     assert {"state_id", "both_window_rate", "p_up_first", "selection_pass"}.issubset(oco.columns)
     assert directional["selection_pass"].isin([True, False]).all()
     assert oco["selection_pass"].isin([True, False]).all()

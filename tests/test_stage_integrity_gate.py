@@ -41,8 +41,7 @@ def _stage_text(stage_id: int, *, with_markers: bool = True) -> str:
         "## Canonical Analysis Reports\n"
         "- `docs/analysis/example_report.md`\n"
         "## Reproduction Commands\n"
-        "## Traceability\n"
-        + marker
+        "## Traceability\n" + marker
     )
 
 

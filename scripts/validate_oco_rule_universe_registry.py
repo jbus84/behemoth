@@ -167,7 +167,9 @@ def run(
         out_report_md.parent.mkdir(parents=True, exist_ok=True)
         checks.to_csv(out_checks_csv, index=False)
         issues.to_csv(out_issues_csv, index=False)
-        out_report_md.write_text("# OCO Rule Universe Registry Report\n\n_missing registry_\n", encoding="utf-8")
+        out_report_md.write_text(
+            "# OCO Rule Universe Registry Report\n\n_missing registry_\n", encoding="utf-8"
+        )
         return checks, issues
 
     obj = yaml.safe_load(registry_yaml.read_text(encoding="utf-8"))
@@ -202,7 +204,9 @@ def run(
         threshold=1,
         comparator="==",
         source_path=registry_yaml,
-        details=json.dumps({"expected_hash": expected_hash, "actual_hash": actual_hash}, sort_keys=True),
+        details=json.dumps(
+            {"expected_hash": expected_hash, "actual_hash": actual_hash}, sort_keys=True
+        ),
     )
 
     reg_syms = {str(x).upper() for x in obj.get("symbols", []) if str(x).strip()}
@@ -226,7 +230,11 @@ def run(
     allowed_bar = _to_num_set(list(obj.get("allowed_barrier_keep", [])))
     allowed_hor = _to_num_set(list(obj.get("allowed_horizon_keep", [])))
     sel_mode = str(obj.get("selection_mode_contract", ""))
-    rt = obj.get("locked_runtime_contract", {}) if isinstance(obj.get("locked_runtime_contract"), dict) else {}
+    rt = (
+        obj.get("locked_runtime_contract", {})
+        if isinstance(obj.get("locked_runtime_contract"), dict)
+        else {}
+    )
     missing_rt = sorted(list(LOCKED_RUNTIME_KEYS - set(rt.keys())))
     _add_check(
         checks_rows,
@@ -318,10 +326,17 @@ def run(
         if not rs_ok:
             continue
         rs = pd.read_csv(rs_path)
-        fam_vals = {str(x) for x in rs.get("family", pd.Series(dtype=str)).dropna().astype(str).unique().tolist()}
+        fam_vals = {
+            str(x)
+            for x in rs.get("family", pd.Series(dtype=str)).dropna().astype(str).unique().tolist()
+        }
         bar_vals = _to_num_set(rs.get("barrier_pips", pd.Series(dtype=float)).dropna().tolist())
         hor_vals = _to_num_set(rs.get("horizon", pd.Series(dtype=float)).dropna().tolist())
-        reduced_match = fam_vals.issubset(allowed_fam) and bar_vals.issubset(allowed_bar) and hor_vals.issubset(allowed_hor)
+        reduced_match = (
+            fam_vals.issubset(allowed_fam)
+            and bar_vals.issubset(allowed_bar)
+            and hor_vals.issubset(allowed_hor)
+        )
         _add_check(
             checks_rows,
             symbol=symbol,
@@ -374,7 +389,17 @@ def run(
             ]
         )
         if not fail.empty
-        else pd.DataFrame(columns=["issue_id", "symbol", "check_id", "severity", "component", "summary", "details_json"])
+        else pd.DataFrame(
+            columns=[
+                "issue_id",
+                "symbol",
+                "check_id",
+                "severity",
+                "component",
+                "summary",
+                "details_json",
+            ]
+        )
     )
 
     out_checks_csv.parent.mkdir(parents=True, exist_ok=True)
@@ -386,7 +411,9 @@ def run(
     lines: list[str] = []
     lines.append("# OCO Rule Universe Registry Report")
     lines.append("")
-    lines.append(f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`")
+    lines.append(
+        f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`"
+    )
     lines.append(f"- registry_yaml: `{registry_yaml}`")
     lines.append(f"- checks_csv: `{out_checks_csv}`")
     lines.append(f"- issues_csv: `{out_issues_csv}`")
@@ -401,8 +428,14 @@ def run(
                         {"key": "effective_from_utc", "value": obj.get("effective_from_utc")},
                         {"key": "symbols", "value": ",".join(sorted(list(reg_syms)))},
                         {"key": "allowed_families", "value": ",".join(sorted(list(allowed_fam)))},
-                        {"key": "allowed_barrier_keep", "value": ",".join([str(x) for x in sorted(list(allowed_bar))])},
-                        {"key": "allowed_horizon_keep", "value": ",".join([str(x) for x in sorted(list(allowed_hor))])},
+                        {
+                            "key": "allowed_barrier_keep",
+                            "value": ",".join([str(x) for x in sorted(list(allowed_bar))]),
+                        },
+                        {
+                            "key": "allowed_horizon_keep",
+                            "value": ",".join([str(x) for x in sorted(list(allowed_hor))]),
+                        },
                         {"key": "hash_sha256", "value": expected_hash},
                         {"key": "computed_hash_sha256", "value": actual_hash},
                     ]
@@ -421,12 +454,20 @@ def run(
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Validate OCO rule-universe pre-registration")
-    p.add_argument("--registry-yaml", default="configs/research/governance/oco_rule_universe_registry.yaml")
+    p.add_argument(
+        "--registry-yaml", default="configs/research/governance/oco_rule_universe_registry.yaml"
+    )
     p.add_argument("--lock-dir", default="configs/research/governance/oco")
     p.add_argument("--mining-base", default="data/analysis/tick_opportunity_mining")
-    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY")
-    p.add_argument("--out-checks-csv", default="data/analysis/tick_opportunity_mining/oco_rule_universe_registry_checks.csv")
-    p.add_argument("--out-issues-csv", default="data/analysis/tick_opportunity_mining/oco_rule_universe_registry_issues.csv")
+    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD")
+    p.add_argument(
+        "--out-checks-csv",
+        default="data/analysis/tick_opportunity_mining/oco_rule_universe_registry_checks.csv",
+    )
+    p.add_argument(
+        "--out-issues-csv",
+        default="data/analysis/tick_opportunity_mining/oco_rule_universe_registry_issues.csv",
+    )
     p.add_argument("--report-out", default="docs/analysis/oco_rule_universe_registry_report.md")
     p.add_argument("--print-hash-only", action="store_true")
     args = p.parse_args()
@@ -449,7 +490,9 @@ def main() -> None:
         out_issues_csv=Path(str(args.out_issues_csv)),
         out_report_md=Path(str(args.report_out)),
     )
-    failed = int((checks["status"].astype(str).str.lower() != "pass").sum()) if not checks.empty else 0
+    failed = (
+        int((checks["status"].astype(str).str.lower() != "pass").sum()) if not checks.empty else 0
+    )
     print(f"wrote checks: {args.out_checks_csv} rows={len(checks)}")
     print(f"wrote issues: {args.out_issues_csv} rows={len(issues)}")
     print(f"failed_checks={failed}")

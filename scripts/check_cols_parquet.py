@@ -1,4 +1,3 @@
-import sys
 import polars as pl
 
 f = "data/global_15m/EURUSD_15m.parquet"

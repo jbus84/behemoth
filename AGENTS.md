@@ -10,7 +10,7 @@ The active system is the tick-based OCO stop-limit research/governance pipeline 
 - `docs/strategy_bible/`
 - `docs/analysis/`
 
-Do not treat `README.md` as authoritative for current strategy behavior. It still contains legacy Kalman/H1 context.
+Do not treat `README.md` as authoritative for detailed strategy behavior. Read the strategy bible and master manual instead.
 
 ## 2) Active Symbol Universe
 
@@ -18,6 +18,8 @@ Do not treat `README.md` as authoritative for current strategy behavior. It stil
 - `GBPUSD`
 - `USDJPY`
 - `USDCHF`
+- `AUDUSD`
+- `USDCAD`
 
 ## 3) Core Data Paths
 
@@ -78,7 +80,7 @@ Run from repo root:
 ```bash
 git status --short
 uv run pytest -q tests/test_oco_docs_contract.py tests/test_tick_opportunity_mining.py tests/test_tick_opportunity_ml_dataset.py tests/test_oco_leakage_label_integrity.py tests/test_monthly_wfo_threshold_causality.py
-python3 scripts/validate_oco_docs_contract.py --out-checks-csv data/analysis/tick_opportunity_mining/docs_contract_checks.csv --out-issues-csv data/analysis/tick_opportunity_mining/docs_contract_issues.csv --report-out docs/analysis/oco_docs_contract_report.md
+uv run python scripts/validate_oco_docs_contract.py --out-checks-csv data/analysis/tick_opportunity_mining/docs_contract_checks.csv --out-issues-csv data/analysis/tick_opportunity_mining/docs_contract_issues.csv --report-out docs/analysis/oco_docs_contract_report.md
 ```
 
 Current known docs-contract failure may remain:
@@ -197,7 +199,7 @@ Use:
 
 ```bash
 uv run python scripts/download_histdata_ticks.py \
-  --symbols EURUSD,GBPUSD,USDJPY,USDCHF \
+  --symbols EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD \
   --months 202601,202602 \
   --tick-root /Users/danielfisher/Desktop/tick \
   --skip-existing true
@@ -233,4 +235,3 @@ Before finalizing substantial changes:
 3. `mkdocs build` succeeds.
 4. `docs_contract_checks.csv` regenerated and reviewed.
 5. `git status` is clean after commit, and changes are pushed if requested.
-

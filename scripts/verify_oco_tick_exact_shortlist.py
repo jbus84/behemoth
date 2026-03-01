@@ -89,7 +89,9 @@ def _parse_uid_cols(uids: pd.Series) -> pd.DataFrame:
     out["library"] = parts[0].astype(str)
     out["symbol"] = parts[1].astype(str).str.upper()
     out["bar_ticks"] = pd.to_numeric(parts[2], errors="coerce").astype("Int64")
-    out["horizon"] = pd.to_numeric(parts[3].astype(str).str.replace(r"^[hH]", "", regex=True), errors="coerce").astype("Int64")
+    out["horizon"] = pd.to_numeric(
+        parts[3].astype(str).str.replace(r"^[hH]", "", regex=True), errors="coerce"
+    ).astype("Int64")
     out["state_id"] = parts[4].astype(str)
     return out
 
@@ -222,9 +224,15 @@ def _recompute_first_touch(
             num2 = np.isfinite(ex_ok) & np.isfinite(ref[ok_idx])
             use = ok_idx[num2]
             if len(use) > 0:
-                gross_v[use] = side_v[use].astype(float) * ((close[exit_i[use]] - ref[use]) / float(pip)) - float(k)
+                gross_v[use] = side_v[use].astype(float) * (
+                    (close[exit_i[use]] - ref[use]) / float(pip)
+                ) - float(k)
 
-    expected_v = np.zeros(len(i), dtype=float) if bool(include_no_touch) else np.full(len(i), np.nan, dtype=float)
+    expected_v = (
+        np.zeros(len(i), dtype=float)
+        if bool(include_no_touch)
+        else np.full(len(i), np.nan, dtype=float)
+    )
     if bool(include_no_touch):
         ok = np.isfinite(gross_v) & decided_v
         expected_v[ok] = gross_v[ok]
@@ -272,7 +280,9 @@ def _metrics(d: pd.DataFrame, *, abs_tol: float) -> dict[str, float | int]:
     exact = finite & (err <= float(abs_tol))
     sign = finite & (np.sign(target) == np.sign(expected))
     if "target_gross_pos" in x.columns:
-        tgt_pos = pd.to_numeric(x["target_gross_pos"], errors="coerce").fillna(0).astype(int).to_numpy()
+        tgt_pos = (
+            pd.to_numeric(x["target_gross_pos"], errors="coerce").fillna(0).astype(int).to_numpy()
+        )
     else:
         tgt_pos = (target > 0.0).astype(int)
     exp_pos = (expected > 0.0).astype(int)
@@ -285,7 +295,9 @@ def _metrics(d: pd.DataFrame, *, abs_tol: float) -> dict[str, float | int]:
         "rows_mapped": int(np.sum(mapped)),
         "rows_verified": int(np.sum(finite)),
         "mean_abs_err_pips": float(np.mean(err[finite])) if np.any(finite) else float("nan"),
-        "p99_abs_err_pips": float(np.quantile(err[finite], 0.99)) if np.any(finite) else float("nan"),
+        "p99_abs_err_pips": float(np.quantile(err[finite], 0.99))
+        if np.any(finite)
+        else float("nan"),
         "max_abs_err_pips": float(np.max(err[finite])) if np.any(finite) else float("nan"),
         "exact_match_rate": float(np.mean(exact[finite])) if np.any(finite) else float("nan"),
         "sign_match_rate": float(np.mean(sign[finite])) if np.any(finite) else float("nan"),
@@ -309,7 +321,9 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     sample_rows_per_combo = int(cfg.get("sample_rows_per_combo", DEFAULTS["sample_rows_per_combo"]))
     pip = float(_pip_size(symbol))
 
-    states = pd.read_csv(str(cfg.get("shortlist_state_csv", DEFAULTS["shortlist_state_csv"]))).copy()
+    states = pd.read_csv(
+        str(cfg.get("shortlist_state_csv", DEFAULTS["shortlist_state_csv"]))
+    ).copy()
     need_state = {"bar_ticks", "horizon", "state_id"}
     miss_state = [c for c in need_state if c not in states.columns]
     if miss_state:
@@ -336,11 +350,15 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     preds["horizon"] = uid_cols["horizon"]
     preds["state_id"] = uid_cols["state_id"]
     lib_col = "library" if "library" in preds.columns else "uid_library"
-    preds = preds[(preds[lib_col].astype(str) == "oco") & (preds["symbol"].astype(str) == symbol)].copy()
+    preds = preds[
+        (preds[lib_col].astype(str) == "oco") & (preds["symbol"].astype(str) == symbol)
+    ].copy()
     preds["close_ts"] = pd.to_datetime(preds["close_ts"], utc=True, errors="coerce")
     preds["pred_prob"] = pd.to_numeric(preds["pred_prob"], errors="coerce")
     preds["target_gross_pips"] = pd.to_numeric(preds["target_gross_pips"], errors="coerce")
-    preds = preds.dropna(subset=["close_ts", "pred_prob", "target_gross_pips", "bar_ticks", "horizon", "state_id"]).copy()
+    preds = preds.dropna(
+        subset=["close_ts", "pred_prob", "target_gross_pips", "bar_ticks", "horizon", "state_id"]
+    ).copy()
     preds["bar_ticks"] = preds["bar_ticks"].astype(int)
     preds["horizon"] = preds["horizon"].astype(int)
     states["bar_ticks"] = states["bar_ticks"].astype(int)
@@ -381,7 +399,9 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         path = dataset_dir / f"{symbol}_{int(bt)}tick_velocity.parquet"
         if not path.exists():
             raise FileNotFoundError(path)
-        bars = pd.read_parquet(path, columns=["close_ts", "close", "high", "low", "hl_first"]).copy()
+        bars = pd.read_parquet(
+            path, columns=["close_ts", "close", "high", "low", "hl_first"]
+        ).copy()
         bars["close_ts"] = pd.to_datetime(bars["close_ts"], utc=True, errors="coerce")
         bars = bars.dropna(subset=["close_ts"]).sort_values("close_ts").reset_index(drop=True)
         close = pd.to_numeric(bars["close"], errors="coerce").to_numpy(dtype=float)
@@ -430,7 +450,9 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     summary["pass_exact_match"] = summary["exact_match_rate"] >= min_exact
     summary["pass_pos_label_match"] = summary["pos_label_match_rate"] >= min_pos
     summary["pass_clean"] = summary["clean_violation_count"] <= 0
-    summary["overall_pass"] = summary["pass_exact_match"] & summary["pass_pos_label_match"] & summary["pass_clean"]
+    summary["overall_pass"] = (
+        summary["pass_exact_match"] & summary["pass_pos_label_match"] & summary["pass_clean"]
+    )
     summary = summary[
         [
             "symbol",
@@ -469,7 +491,11 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                 **m,
             }
         )
-    state = pd.DataFrame(state_rows).sort_values(["bar_ticks", "horizon", "state_id"]).reset_index(drop=True)
+    state = (
+        pd.DataFrame(state_rows)
+        .sort_values(["bar_ticks", "horizon", "state_id"])
+        .reset_index(drop=True)
+    )
 
     month_rows: list[dict[str, Any]] = []
     for m, g in d.groupby("test_month", sort=True):
@@ -520,7 +546,9 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Verify reduced OCO shortlist with tick-exact first-touch replay")
+    p = argparse.ArgumentParser(
+        description="Verify reduced OCO shortlist with tick-exact first-touch replay"
+    )
     p.add_argument("--config", default=None)
     p.add_argument("--symbol", default=None)
     p.add_argument("--dataset-dir", default=None)
@@ -542,7 +570,12 @@ def main() -> None:
     args = p.parse_args()
     cfg = _merge_config(args)
     if isinstance(cfg.get("oco_include_no_touch"), str):
-        cfg["oco_include_no_touch"] = str(cfg["oco_include_no_touch"]).strip().lower() in {"1", "true", "yes", "y"}
+        cfg["oco_include_no_touch"] = str(cfg["oco_include_no_touch"]).strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "y",
+        }
     run(cfg)
 
 

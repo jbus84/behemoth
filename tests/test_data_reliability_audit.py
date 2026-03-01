@@ -69,13 +69,20 @@ def test_data_reliability_audit_flags_failures(tmp_path: Path, monkeypatch) -> N
     checks, issues = run(
         symbols=["EURUSD"],
         source_pattern="data/analysis/tick_opportunity_mining/wfo_*/*{symbol}_oco_events_eval*.parquet",
-        thresholds=Thresholds(min_rows=100, min_trading_days=1, max_duplicate_close_ts_rate=0.0, max_nonneg_violation_rate=0.0),
+        thresholds=Thresholds(
+            min_rows=100,
+            min_trading_days=1,
+            max_duplicate_close_ts_rate=0.0,
+            max_nonneg_violation_rate=0.0,
+        ),
         out_checks_csv=checks_csv,
         out_issues_csv=issues_csv,
         out_report_md=report_md,
     )
     assert not checks.empty
     assert not issues.empty
-    fail_ids = set(checks.loc[checks["status"].astype(str) != "pass", "check_id"].astype(str).tolist())
+    fail_ids = set(
+        checks.loc[checks["status"].astype(str) != "pass", "check_id"].astype(str).tolist()
+    )
     assert "DR05" in fail_ids
     assert "DR09" in fail_ids

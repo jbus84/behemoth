@@ -106,9 +106,15 @@ def test_rolling_core_uses_train_months_only(tmp_path: Path):
     states_path = tmp_path / "EURUSD_oco_reduced_states.csv"
     assert states_path.exists()
     states = pd.read_csv(states_path)
-    assert {"symbol", "bar_ticks", "horizon", "state_id", "family", "barrier_pips", "regime_desc"}.issubset(
-        set(states.columns)
-    )
+    assert {
+        "symbol",
+        "bar_ticks",
+        "horizon",
+        "state_id",
+        "family",
+        "barrier_pips",
+        "regime_desc",
+    }.issubset(set(states.columns))
 
 
 def test_rolling_core_stop_limit_filters_unfilled_state(tmp_path: Path):

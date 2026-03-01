@@ -200,10 +200,20 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame]:
     if selected.empty:
         raise RuntimeError("selection empty (selection_mode/quantile)")
 
-    state_group_cols = ["symbol", "bar_ticks", "horizon", "state_id", "family", "regime_desc", "barrier_pips"]
+    state_group_cols = [
+        "symbol",
+        "bar_ticks",
+        "horizon",
+        "state_id",
+        "family",
+        "regime_desc",
+        "barrier_pips",
+    ]
     rows: list[dict[str, Any]] = []
     for i, (k, g) in enumerate(selected.groupby(state_group_cols, sort=False), start=1):
-        mon = g.groupby("test_month", as_index=False).agg(rows=("target_gross_pips", "size"), mean_gross=("target_gross_pips", "mean"))
+        mon = g.groupby("test_month", as_index=False).agg(
+            rows=("target_gross_pips", "size"), mean_gross=("target_gross_pips", "mean")
+        )
         gg = g["target_gross_pips"].to_numpy(dtype=float)
         mm = mon["mean_gross"].to_numpy(dtype=float)
         lb_t = _bootstrap_lb95(gg, paths=bootstrap_paths, seed=seed + i * 7)
@@ -236,12 +246,23 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame]:
         & (s["avg_month_rows"] >= float(min_state_avg_rows))
     )
     s = s.sort_values(
-        ["gate_pass", "lb95_month_mean_gross_pips", "lb95_trade_mean_gross_pips", "mean_gross_pips", "avg_month_rows"],
+        [
+            "gate_pass",
+            "lb95_month_mean_gross_pips",
+            "lb95_trade_mean_gross_pips",
+            "mean_gross_pips",
+            "avg_month_rows",
+        ],
         ascending=[False, False, False, False, False],
     ).reset_index(drop=True)
 
     # Overlap pruning on monthly selected-row count vectors.
-    piv = selected.groupby(["state_id", "test_month"], as_index=False).size().pivot(index="state_id", columns="test_month", values="size").fillna(0.0)
+    piv = (
+        selected.groupby(["state_id", "test_month"], as_index=False)
+        .size()
+        .pivot(index="state_id", columns="test_month", values="size")
+        .fillna(0.0)
+    )
     corr = piv.T.corr() if not piv.empty else pd.DataFrame()
 
     selected_ids: list[str] = []
@@ -262,7 +283,11 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame]:
             selected_ids.append(sid)
             selected_corrmax[sid] = 0.0
             continue
-        cvals = [float(corr.loc[sid, t]) for t in selected_ids if (sid in corr.index and t in corr.columns)]
+        cvals = [
+            float(corr.loc[sid, t])
+            for t in selected_ids
+            if (sid in corr.index and t in corr.columns)
+        ]
         cvals = [x for x in cvals if np.isfinite(x)]
         cmax = float(np.max(cvals)) if cvals else 0.0
         if cmax <= float(overlap_corr_max) or len(selected_ids) < int(min_states):
@@ -277,7 +302,9 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame]:
                 break
 
     keep = s[s["state_id"].astype(str).isin(selected_ids)].copy()
-    keep["selected_rank"] = keep["state_id"].astype(str).map({sid: i + 1 for i, sid in enumerate(selected_ids)})
+    keep["selected_rank"] = (
+        keep["state_id"].astype(str).map({sid: i + 1 for i, sid in enumerate(selected_ids)})
+    )
     keep["overlap_corr_max"] = keep["state_id"].astype(str).map(selected_corrmax).fillna(np.nan)
     keep = keep.sort_values("selected_rank").reset_index(drop=True)
 
@@ -294,7 +321,11 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame]:
                 "mean_gross_pips": float(np.mean(gg)) if len(gg) else float("nan"),
                 "median_gross_pips": float(np.median(gg)) if len(gg) else float("nan"),
                 "pos_rate": float(np.mean(gg > 0.0)) if len(gg) else float("nan"),
-                "threshold": float(pd.to_numeric(x.get("threshold", pd.Series(dtype=float)), errors="coerce").mean())
+                "threshold": float(
+                    pd.to_numeric(
+                        x.get("threshold", pd.Series(dtype=float)), errors="coerce"
+                    ).mean()
+                )
                 if ("threshold" in x.columns and len(x))
                 else float("nan"),
             }

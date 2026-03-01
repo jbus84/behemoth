@@ -35,7 +35,9 @@ def _write_inputs(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
         ]
     ).to_csv(stage, index=False)
     pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": True}]).to_csv(status, index=False)
-    pd.DataFrame([{"check_id": "C1", "status": "pass", "severity_if_fail": "high"}]).to_csv(checks, index=False)
+    pd.DataFrame([{"check_id": "C1", "status": "pass", "severity_if_fail": "high"}]).to_csv(
+        checks, index=False
+    )
     return edge, stage, status, checks
 
 

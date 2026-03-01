@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import argparse
 import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -33,6 +32,7 @@ THRESHOLD_SCRIPT = ROOT / "scripts" / "build_oco_threshold_sensitivity_report.py
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _run(cmd: list[str], *, dry_run: bool, label: str) -> None:
     """Run a subprocess, printing the command first."""
@@ -71,6 +71,7 @@ def _months_range(start: str, end: str) -> list[str]:
 # Stage 0: Data Acquisition
 # ---------------------------------------------------------------------------
 
+
 def stage_0_data(symbol: str, months: str, *, dry_run: bool, force: bool) -> None:
     """Download ticks from HistData and build tick bars + velocity features."""
     sym_tick_dir = TICK_ROOT / symbol
@@ -84,9 +85,12 @@ def stage_0_data(symbol: str, months: str, *, dry_run: bool, force: bool) -> Non
     else:
         _uv_run(
             "download_histdata_ticks.py",
-            "--symbols", symbol,
-            "--months", months,
-            "--tick-root", str(TICK_ROOT),
+            "--symbols",
+            symbol,
+            "--months",
+            months,
+            "--tick-root",
+            str(TICK_ROOT),
             dry_run=dry_run,
             label="Stage 0a: Download HistData ticks",
         )
@@ -98,9 +102,12 @@ def stage_0_data(symbol: str, months: str, *, dry_run: bool, force: bool) -> Non
     else:
         _uv_run(
             "build_global_tick_bars.py",
-            "--symbols", symbol,
-            "--tick-root", str(TICK_ROOT),
-            "--output-dir", str(TICKBAR_DIR),
+            "--symbols",
+            symbol,
+            "--tick-root",
+            str(TICK_ROOT),
+            "--output-dir",
+            str(TICKBAR_DIR),
             *(["--overwrite"] if force else []),
             dry_run=dry_run,
             label="Stage 0b: Build global tick bars",
@@ -109,10 +116,13 @@ def stage_0_data(symbol: str, months: str, *, dry_run: bool, force: bool) -> Non
     # Build velocity features
     _uv_run(
         "build_tick_velocity_dataset.py",
-        "--symbols", symbol,
+        "--symbols",
+        symbol,
         "--auto-build-bars",
-        "--tickbar-dir", str(TICKBAR_DIR),
-        "--tick-root", str(TICK_ROOT),
+        "--tickbar-dir",
+        str(TICKBAR_DIR),
+        "--tick-root",
+        str(TICK_ROOT),
         *(["--overwrite"] if force else []),
         dry_run=dry_run,
         label="Stage 0c: Build velocity dataset",
@@ -122,6 +132,7 @@ def stage_0_data(symbol: str, months: str, *, dry_run: bool, force: bool) -> Non
 # ---------------------------------------------------------------------------
 # Stage 1: Config Cloning
 # ---------------------------------------------------------------------------
+
 
 def stage_1_configs(symbol: str, *, dry_run: bool, force: bool) -> list[Path]:
     """Clone EURUSD configs, substituting the new symbol."""
@@ -158,34 +169,39 @@ def stage_1_configs(symbol: str, *, dry_run: bool, force: bool) -> list[Path]:
 # Stage 2: ML Pipeline
 # ---------------------------------------------------------------------------
 
+
 def stage_2_ml_pipeline(symbol: str, *, dry_run: bool) -> None:
     """Run the 6 core ML scripts in sequence."""
     sym = symbol.lower()
 
     _uv_run(
         "build_tick_opportunity_ml_dataset.py",
-        "--config", f"configs/research/experiments/{sym}_tick_opportunity_ml_dataset.yaml",
+        "--config",
+        f"configs/research/experiments/{sym}_tick_opportunity_ml_dataset.yaml",
         dry_run=dry_run,
         label="Stage 2a: Build ML dataset",
     )
 
     _uv_run(
         "run_tick_opportunity_mining.py",
-        "--config", f"configs/research/experiments/{sym}_tick_opportunity_mining.yaml",
+        "--config",
+        f"configs/research/experiments/{sym}_tick_opportunity_mining.yaml",
         dry_run=dry_run,
         label="Stage 2b: Opportunity mining",
     )
 
     _uv_run(
         "run_tick_opportunity_monthly_wfo.py",
-        "--config", f"configs/research/experiments/{sym}_tick_opportunity_monthly_wfo_2025.yaml",
+        "--config",
+        f"configs/research/experiments/{sym}_tick_opportunity_monthly_wfo_2025.yaml",
         dry_run=dry_run,
         label="Stage 2c: Base WFO",
     )
 
     _uv_run(
         "run_tick_opportunity_monthly_wfo.py",
-        "--config", f"configs/research/experiments/{sym}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
+        "--config",
+        f"configs/research/experiments/{sym}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
         dry_run=dry_run,
         label="Stage 2d: OCO Fullcap WFO",
     )
@@ -193,16 +209,20 @@ def stage_2_ml_pipeline(symbol: str, *, dry_run: bool) -> None:
     pred_path = f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{symbol.upper()}_oco_monthly_predictions.parquet"
     _uv_run(
         "analyze_oco_stop_limit_tickfill.py",
-        "--symbols", symbol.upper(),
-        "--pred-paths", pred_path,
-        "--out-dir", "data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap",
+        "--symbols",
+        symbol.upper(),
+        "--pred-paths",
+        pred_path,
+        "--out-dir",
+        "data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap",
         dry_run=dry_run,
         label="Stage 2e: Stop-limit tickfill analysis",
     )
 
     _uv_run(
         "select_oco_reduced_core_rolling.py",
-        "--config", f"configs/research/experiments/{sym}_oco_reduced_core_rolling_2025.yaml",
+        "--config",
+        f"configs/research/experiments/{sym}_oco_reduced_core_rolling_2025.yaml",
         dry_run=dry_run,
         label="Stage 2f: Reduced core rolling selection",
     )
@@ -211,6 +231,7 @@ def stage_2_ml_pipeline(symbol: str, *, dry_run: bool) -> None:
 # ---------------------------------------------------------------------------
 # Stage 3: Conditional steps (tick-exact + robustness)
 # ---------------------------------------------------------------------------
+
 
 def _reduced_core_has_states(symbol: str) -> bool:
     """Check if the reduced core produced any qualifying states."""
@@ -228,13 +249,16 @@ def stage_3_conditional(symbol: str, *, dry_run: bool) -> None:
     SYM = symbol.upper()
 
     if not _reduced_core_has_states(SYM) and not dry_run:
-        print(f"\n  *** {SYM} has no qualifying reduced core states — skipping tick-exact and robustness ***")
+        print(
+            f"\n  *** {SYM} has no qualifying reduced core states — skipping tick-exact and robustness ***"
+        )
         return
 
     # Tick-exact verification uses same config
     _uv_run(
         "verify_oco_tick_exact_shortlist.py",
-        "--config", f"configs/research/experiments/{sym}_oco_reduced_core_rolling_2025.yaml",
+        "--config",
+        f"configs/research/experiments/{sym}_oco_reduced_core_rolling_2025.yaml",
         dry_run=dry_run,
         label="Stage 3a: Tick-exact verification",
     )
@@ -242,19 +266,30 @@ def stage_3_conditional(symbol: str, *, dry_run: bool) -> None:
     # Robustness analysis
     pred_path = f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{SYM}_oco_monthly_predictions.parquet"
     schedule_csv = f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{SYM}_oco_reduced_state_schedule.csv"
-    out_summary = f"data/analysis/tick_opportunity_mining/full_robustness/{SYM}_oco_robustness_summary.csv"
-    out_monthly = f"data/analysis/tick_opportunity_mining/full_robustness/{SYM}_oco_robustness_monthly.csv"
+    out_summary = (
+        f"data/analysis/tick_opportunity_mining/full_robustness/{SYM}_oco_robustness_summary.csv"
+    )
+    out_monthly = (
+        f"data/analysis/tick_opportunity_mining/full_robustness/{SYM}_oco_robustness_monthly.csv"
+    )
     report_out = f"docs/analysis/{sym}_oco_monthly_wfo_robustness_fullcap_report.md"
 
     _uv_run(
         "analyze_oco_monthly_wfo_robustness.py",
-        "--pred-path", pred_path,
-        "--reduced-state-schedule-csv", schedule_csv,
-        "--use-exec-selection", "true",
-        "--execution-quantile", "0.9",
-        "--out-summary-csv", out_summary,
-        "--out-monthly-csv", out_monthly,
-        "--report-out", report_out,
+        "--pred-path",
+        pred_path,
+        "--reduced-state-schedule-csv",
+        schedule_csv,
+        "--use-exec-selection",
+        "true",
+        "--execution-quantile",
+        "0.9",
+        "--out-summary-csv",
+        out_summary,
+        "--out-monthly-csv",
+        out_monthly,
+        "--report-out",
+        report_out,
         dry_run=dry_run,
         label="Stage 3b: WFO robustness analysis",
     )
@@ -264,6 +299,7 @@ def stage_3_conditional(symbol: str, *, dry_run: bool) -> None:
 # Stage 4: Registration — patch hardcoded symbol lists and manifests
 # ---------------------------------------------------------------------------
 
+
 def _patch_python_symbols_tuple(script_path: Path, symbol: str, *, dry_run: bool) -> None:
     """Add symbol to a SYMBOLS = (...) tuple in a Python script."""
     text = script_path.read_text(encoding="utf-8")
@@ -272,13 +308,15 @@ def _patch_python_symbols_tuple(script_path: Path, symbol: str, *, dry_run: bool
         print(f"  skip {script_path.name}: {upper} already present")
         return
     # Match SYMBOLS = ("EURUSD", ...) pattern
-    pat = r'(SYMBOLS\s*=\s*\([^)]+)'
+    pat = r"(SYMBOLS\s*=\s*\([^)]+)"
     m = re.search(pat, text)
     if m:
         old = m.group(1)
         new = old.rstrip() + f', "{upper}"'
         text = text.replace(old, new)
-        print(f"  {'[DRY-RUN] ' if dry_run else ''}patch {script_path.name}: added {upper} to SYMBOLS")
+        print(
+            f"  {'[DRY-RUN] ' if dry_run else ''}patch {script_path.name}: added {upper} to SYMBOLS"
+        )
         if not dry_run:
             script_path.write_text(text, encoding="utf-8")
         return
@@ -354,15 +392,23 @@ def _patch_mkdocs_nav(symbol: str, *, dry_run: bool) -> None:
     # Mining and WFO reports are always created; downstream reports are conditional
     docs_root = ROOT / "docs" / "analysis"
     entries = [f"        - Mining: analysis/{lower}_tick_opportunity_mining_report.md"]
-    entries.append(f"        - WFO Fullcap: analysis/{lower}_tick_opportunity_monthly_wfo_oco_fullcap_report.md")
+    entries.append(
+        f"        - WFO Fullcap: analysis/{lower}_tick_opportunity_monthly_wfo_oco_fullcap_report.md"
+    )
 
     if (docs_root / f"{lower}_oco_reduced_core_rolling_report.md").exists():
-        entries.append(f"        - Reduced Core: analysis/{lower}_oco_reduced_core_rolling_report.md")
+        entries.append(
+            f"        - Reduced Core: analysis/{lower}_oco_reduced_core_rolling_report.md"
+        )
 
     if (docs_root / f"{lower}_oco_tick_exact_rolling_report.md").exists():
-        entries.append(f"        - Tick-Exact Rolling: analysis/{lower}_oco_tick_exact_rolling_report.md")
+        entries.append(
+            f"        - Tick-Exact Rolling: analysis/{lower}_oco_tick_exact_rolling_report.md"
+        )
     if (docs_root / f"{lower}_oco_monthly_wfo_robustness_fullcap_report.md").exists():
-        entries.append(f"        - WFO Robustness: analysis/{lower}_oco_monthly_wfo_robustness_fullcap_report.md")
+        entries.append(
+            f"        - WFO Robustness: analysis/{lower}_oco_monthly_wfo_robustness_fullcap_report.md"
+        )
 
     nav_block = f"      - {upper}:\n" + "\n".join(entries)
 
@@ -386,7 +432,8 @@ def stage_4_registration(symbol: str, *, dry_run: bool) -> None:
     print("\n=== Stage 4: Registration ===")
     _uv_run(
         "freeze_oco_live_governance.py",
-        "--symbols", symbol,
+        "--symbols",
+        symbol,
         dry_run=dry_run,
         label="Stage 4a: Freeze live governance lock",
     )
@@ -405,15 +452,21 @@ def stage_4_registration(symbol: str, *, dry_run: bool) -> None:
 # Stage 5: Docs Rebuild
 # ---------------------------------------------------------------------------
 
+
 def stage_5_docs(*, dry_run: bool) -> None:
     """Run the full docs-contract and docs-build pipeline."""
     _run(["make", "docs-contract"], dry_run=dry_run, label="Stage 5a: Docs contract")
-    _run(["uv", "run", "mkdocs", "build", "--strict"], dry_run=dry_run, label="Stage 5b: MkDocs build")
+    _run(
+        ["uv", "run", "mkdocs", "build", "--strict"],
+        dry_run=dry_run,
+        label="Stage 5b: MkDocs build",
+    )
 
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     p = argparse.ArgumentParser(
@@ -465,9 +518,9 @@ Examples:
             months_list = _months_range(parts[0], parts[1])
             months_str = ",".join(months_list)
 
-    print(f"╔══════════════════════════════════════════╗")
+    print("╔══════════════════════════════════════════╗")
     print(f"║  Onboarding {symbol:<28s} ║")
-    print(f"╚══════════════════════════════════════════╝")
+    print("╚══════════════════════════════════════════╝")
     if args.dry_run:
         print("  MODE: dry-run (no commands will execute)")
     print()

@@ -62,15 +62,25 @@ def _to_num(s: pd.Series) -> pd.Series:
 def _default_paths(symbol: str) -> SymbolPaths:
     s = str(symbol).upper()
     if s == "EURUSD":
-        pred = Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet")
+        pred = Path(
+            "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet"
+        )
     elif s == "AUDUSD":
-        pred = Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/AUDUSD_oco_monthly_predictions.parquet")
+        pred = Path(
+            "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/AUDUSD_oco_monthly_predictions.parquet"
+        )
     elif s == "GBPUSD":
-        pred = Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_predictions.parquet")
+        pred = Path(
+            "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_predictions.parquet"
+        )
     elif s == "USDCHF":
-        pred = Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdchf/USDCHF_oco_monthly_predictions.parquet")
+        pred = Path(
+            "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdchf/USDCHF_oco_monthly_predictions.parquet"
+        )
     else:
-        pred = Path("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_monthly_predictions.parquet")
+        pred = Path(
+            "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_monthly_predictions.parquet"
+        )
     lock = Path(f"configs/research/governance/oco/{s.lower()}_oco_live_lock.json")
     return SymbolPaths(symbol=s, pred_path=pred, lock_path=lock)
 
@@ -111,7 +121,9 @@ def _daily_threshold_triplet(
     out: dict[pd.Timestamp, dict[float, float]] = {}
     q_vals = [float(q) for q in quantiles]
     all_pred = _to_num(d[pred_col]).dropna().to_numpy(dtype=float)
-    fallback = np.quantile(all_pred, q_vals).tolist() if len(all_pred) else [float("nan")] * len(q_vals)
+    fallback = (
+        np.quantile(all_pred, q_vals).tolist() if len(all_pred) else [float("nan")] * len(q_vals)
+    )
 
     days = sorted(pd.Series(d[day_col]).dropna().unique().tolist())
     hist_days: list[pd.Timestamp] = []
@@ -123,9 +135,7 @@ def _daily_threshold_triplet(
         hist_days = keep
         vals = [hist_arrays[x] for x in hist_days if x in hist_arrays and len(hist_arrays[x]) > 0]
         hist = np.concatenate(vals) if vals else np.array([], dtype=float)
-        if len(hist) >= int(max(1, min_history)):
-            q_out = np.quantile(hist, q_vals).tolist()
-        elif len(hist) > 0:
+        if len(hist) >= int(max(1, min_history)) or len(hist) > 0:
             q_out = np.quantile(hist, q_vals).tolist()
         else:
             q_out = fallback
@@ -145,15 +155,28 @@ def _selection_metrics(d: pd.DataFrame, *, sel_col: str) -> dict[str, float]:
     rows_total = int(len(x))
     selected_rows = int(x["_sel"].sum())
     selected_rate = float(selected_rows / rows_total) if rows_total > 0 else float("nan")
-    mean_selected = float(_to_num(x.loc[x["_sel"], "_target"]).mean()) if selected_rows > 0 else float("nan")
-    mean_signal = float(_to_num(x["_signal"]).sum() / rows_total) if rows_total > 0 else float("nan")
-
-    month_rows = (
-        x.groupby("test_month", as_index=False)
-        .agg(rows=("target_gross_pips", "count"), selected=("_sel", "sum"), signal_sum=("_signal", "sum"))
+    mean_selected = (
+        float(_to_num(x.loc[x["_sel"], "_target"]).mean()) if selected_rows > 0 else float("nan")
     )
-    month_rows["mean_signal_pips"] = _to_num(month_rows["signal_sum"]) / _to_num(month_rows["rows"]).replace(0, np.nan)
-    lb95_month_signal = float(np.quantile(_to_num(month_rows["mean_signal_pips"]).dropna().to_numpy(dtype=float), 0.05)) if not month_rows.empty else float("nan")
+    mean_signal = (
+        float(_to_num(x["_signal"]).sum() / rows_total) if rows_total > 0 else float("nan")
+    )
+
+    month_rows = x.groupby("test_month", as_index=False).agg(
+        rows=("target_gross_pips", "count"), selected=("_sel", "sum"), signal_sum=("_signal", "sum")
+    )
+    month_rows["mean_signal_pips"] = _to_num(month_rows["signal_sum"]) / _to_num(
+        month_rows["rows"]
+    ).replace(0, np.nan)
+    lb95_month_signal = (
+        float(
+            np.quantile(
+                _to_num(month_rows["mean_signal_pips"]).dropna().to_numpy(dtype=float), 0.05
+            )
+        )
+        if not month_rows.empty
+        else float("nan")
+    )
     pos_month_ratio = (
         float((_to_num(month_rows["mean_signal_pips"]) > 0).mean())
         if len(_to_num(month_rows["mean_signal_pips"]).dropna()) > 0
@@ -166,9 +189,11 @@ def _selection_metrics(d: pd.DataFrame, *, sel_col: str) -> dict[str, float]:
     brier_month = x[x["_sel"]].groupby("test_month", as_index=False).agg(brier=("_brier", "mean"))
     w14 = float(_to_num(brier_month["brier"]).std(ddof=0)) if len(brier_month) > 0 else float("nan")
 
-    cov = x.groupby("test_month", as_index=False).agg(sel=("_sel", "sum"), rows=("target_gross_pips", "count"))
+    cov = x.groupby("test_month", as_index=False).agg(
+        sel=("_sel", "sum"), rows=("target_gross_pips", "count")
+    )
     cov["coverage"] = _to_num(cov["sel"]) / _to_num(cov["rows"]).replace(0, np.nan)
-    w15 = float(_to_num(cov["coverage"]).diff().abs().dropna().mean()) if len(cov) > 1 else float(0.0)
+    w15 = float(_to_num(cov["coverage"]).diff().abs().dropna().mean()) if len(cov) > 1 else 0.0
 
     return {
         "rows_total": float(rows_total),
@@ -183,7 +208,9 @@ def _selection_metrics(d: pd.DataFrame, *, sel_col: str) -> dict[str, float]:
     }
 
 
-def _governance_window_coverage(*, cadence_days: int, window_days: int, anchor_day: int, year: int) -> tuple[float, float, int]:
+def _governance_window_coverage(
+    *, cadence_days: int, window_days: int, anchor_day: int, year: int
+) -> tuple[float, float, int]:
     start = pd.Timestamp(f"{int(year)}-01-01", tz="UTC")
     end = pd.Timestamp(f"{int(year)}-12-31", tz="UTC")
     anchor = pd.Timestamp(f"{int(year)}-01-{int(max(1, min(anchor_day, 28))):02d}", tz="UTC")
@@ -234,7 +261,11 @@ def run(
     rows: list[dict[str, Any]] = []
     alerts: list[dict[str, Any]] = []
     for symbol in symbols:
-        paths = symbol_paths.get(symbol, _default_paths(symbol)) if symbol_paths is not None else _default_paths(symbol)
+        paths = (
+            symbol_paths.get(symbol, _default_paths(symbol))
+            if symbol_paths is not None
+            else _default_paths(symbol)
+        )
         if not paths.pred_path.exists():
             alerts.append(
                 {
@@ -252,7 +283,9 @@ def run(
                 }
             )
             continue
-        d = pd.read_parquet(paths.pred_path, columns=["test_month", "close_ts", "pred_prob", "target_gross_pips"]).copy()
+        d = pd.read_parquet(
+            paths.pred_path, columns=["test_month", "close_ts", "pred_prob", "target_gross_pips"]
+        ).copy()
         d["close_ts"] = _dt_utc(d["close_ts"])
         d["pred_prob"] = _to_num(d["pred_prob"])
         d["target_gross_pips"] = _to_num(d["target_gross_pips"])
@@ -284,7 +317,9 @@ def run(
             )
             t_low = d["day_utc"].map(lambda x: thr_map.get(pd.Timestamp(x), {}).get(q_low, np.nan))
             t_mid = d["day_utc"].map(lambda x: thr_map.get(pd.Timestamp(x), {}).get(q_mid, np.nan))
-            t_high = d["day_utc"].map(lambda x: thr_map.get(pd.Timestamp(x), {}).get(q_high, np.nan))
+            t_high = d["day_utc"].map(
+                lambda x: thr_map.get(pd.Timestamp(x), {}).get(q_high, np.nan)
+            )
 
             dd = d.copy()
             dd["sel_low"] = dd["pred_prob"] >= _to_num(t_low)
@@ -293,7 +328,9 @@ def run(
             m_low = _selection_metrics(dd, sel_col="sel_low")
             m_mid = _selection_metrics(dd, sel_col="sel_mid")
             m_high = _selection_metrics(dd, sel_col="sel_high")
-            w13 = abs(float(m_high["mean_signal_pips"]) - float(m_low["mean_signal_pips"])) / max(1e-9, 2.0 * (q_high - q_low))
+            w13 = abs(float(m_high["mean_signal_pips"]) - float(m_low["mean_signal_pips"])) / max(
+                1e-9, 2.0 * (q_high - q_low)
+            )
             look_rows.append(
                 {
                     "symbol": symbol,
@@ -331,19 +368,33 @@ def run(
                     x["governance_window_hit_rate"] = float(hit)
                     x["governance_month_hit_rate"] = float(mhit)
                     x["retrain_events_per_year"] = int(events)
-                    x["is_current_policy"] = int((int(r["lookback_days"]) == int(current_lookback)) and (int(cad) == int(policy_cad)) and (int(win) == int(policy_win)))
+                    x["is_current_policy"] = int(
+                        (int(r["lookback_days"]) == int(current_lookback))
+                        and (int(cad) == int(policy_cad))
+                        and (int(win) == int(policy_win))
+                    )
                     combos.append(x)
         z = pd.DataFrame(combos)
         if z.empty:
             continue
-        z["stability_raw"] = _to_num(z["w13_threshold_fragility"]).fillna(np.inf) + 10.0 * _to_num(z["w14_brier_drift_std"]).fillna(np.inf) + _to_num(
-            z["w15_selection_turnover"]
-        ).fillna(np.inf)
-        z["expect_rank"] = _to_num(z["lb95_month_mean_signal_pips"]).rank(method="average", pct=True)
-        z["stability_rank"] = _to_num(z["stability_raw"]).rank(method="average", pct=True, ascending=False)
-        z["governance_score"] = 0.6 * _to_num(z["governance_window_hit_rate"]).fillna(0.0) + 0.4 * _to_num(z["governance_month_hit_rate"]).fillna(0.0)
-        z["final_score"] = 0.4 * _to_num(z["expect_rank"]).fillna(0.0) + 0.4 * _to_num(z["stability_rank"]).fillna(0.0) + 0.2 * _to_num(z["governance_score"]).fillna(
+        z["stability_raw"] = (
+            _to_num(z["w13_threshold_fragility"]).fillna(np.inf)
+            + 10.0 * _to_num(z["w14_brier_drift_std"]).fillna(np.inf)
+            + _to_num(z["w15_selection_turnover"]).fillna(np.inf)
+        )
+        z["expect_rank"] = _to_num(z["lb95_month_mean_signal_pips"]).rank(
+            method="average", pct=True
+        )
+        z["stability_rank"] = _to_num(z["stability_raw"]).rank(
+            method="average", pct=True, ascending=False
+        )
+        z["governance_score"] = 0.6 * _to_num(z["governance_window_hit_rate"]).fillna(
             0.0
+        ) + 0.4 * _to_num(z["governance_month_hit_rate"]).fillna(0.0)
+        z["final_score"] = (
+            0.4 * _to_num(z["expect_rank"]).fillna(0.0)
+            + 0.4 * _to_num(z["stability_rank"]).fillna(0.0)
+            + 0.2 * _to_num(z["governance_score"]).fillna(0.0)
         )
         z = z.sort_values("final_score", ascending=False).reset_index(drop=True)
         z["is_recommended"] = 0
@@ -356,9 +407,21 @@ def run(
         cur_row = cur.iloc[0] if not cur.empty else None
         if top is not None:
             for metric_id, value, warn, fail, mode in [
-                ("TS01_W13_THRESHOLD_FRAGILITY", float(top["w13_threshold_fragility"]), 2.5, 4.0, "ge"),
+                (
+                    "TS01_W13_THRESHOLD_FRAGILITY",
+                    float(top["w13_threshold_fragility"]),
+                    2.5,
+                    4.0,
+                    "ge",
+                ),
                 ("TS02_W14_BRIER_DRIFT_STD", float(top["w14_brier_drift_std"]), 0.01, 0.02, "ge"),
-                ("TS03_LB95_MONTH_SIGNAL", float(top["lb95_month_mean_signal_pips"]), 0.10, 0.00, "le"),
+                (
+                    "TS03_LB95_MONTH_SIGNAL",
+                    float(top["lb95_month_mean_signal_pips"]),
+                    0.10,
+                    0.00,
+                    "le",
+                ),
                 ("TS04_SELECTION_TURNOVER", float(top["w15_selection_turnover"]), 0.15, 0.25, "ge"),
             ]:
                 if not np.isfinite(value):
@@ -390,11 +453,15 @@ def run(
                             },
                             sort_keys=True,
                         ),
-                        "evaluated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        "evaluated_at_utc": datetime.now(timezone.utc).strftime(
+                            "%Y-%m-%dT%H:%M:%SZ"
+                        ),
                     }
                 )
         if (top is not None) and (cur_row is not None):
-            delta = float(top["lb95_month_mean_signal_pips"] - cur_row["lb95_month_mean_signal_pips"])
+            delta = float(
+                top["lb95_month_mean_signal_pips"] - cur_row["lb95_month_mean_signal_pips"]
+            )
             band = "red" if delta < -0.15 else ("amber" if delta < -0.05 else "green")
             sev = "high" if band == "red" else ("medium" if band == "amber" else "info")
             alerts.append(
@@ -452,7 +519,11 @@ def run(
             "is_recommended",
             "is_current_policy",
         ]
-        sensitivity = sensitivity[order_cols].sort_values(["symbol", "final_score"], ascending=[True, False]).reset_index(drop=True)
+        sensitivity = (
+            sensitivity[order_cols]
+            .sort_values(["symbol", "final_score"], ascending=[True, False])
+            .reset_index(drop=True)
+        )
     alerts_df = pd.DataFrame(alerts)
 
     out_sensitivity_csv.parent.mkdir(parents=True, exist_ok=True)
@@ -474,7 +545,9 @@ def run(
     lines: list[str] = []
     lines.append("# OCO Threshold Sensitivity Report")
     lines.append("")
-    lines.append(f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`")
+    lines.append(
+        f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`"
+    )
     lines.append(f"- sensitivity_csv: `{out_sensitivity_csv}`")
     lines.append(f"- alerts_csv: `{out_alerts_csv}`")
     lines.append(f"- governance_policy_yaml: `{governance_policy_yaml}`")
@@ -508,9 +581,17 @@ def main() -> None:
     p.add_argument("--quantile", type=float, default=0.9)
     p.add_argument("--quantile-delta", type=float, default=0.02)
     p.add_argument("--min-history", type=int, default=1000)
-    p.add_argument("--governance-policy-yaml", default="configs/research/governance/oco_live_policy.yaml")
-    p.add_argument("--out-sensitivity-csv", default="data/analysis/tick_opportunity_mining/oco_threshold_sensitivity.csv")
-    p.add_argument("--out-alerts-csv", default="data/analysis/tick_opportunity_mining/oco_threshold_sensitivity_alerts.csv")
+    p.add_argument(
+        "--governance-policy-yaml", default="configs/research/governance/oco_live_policy.yaml"
+    )
+    p.add_argument(
+        "--out-sensitivity-csv",
+        default="data/analysis/tick_opportunity_mining/oco_threshold_sensitivity.csv",
+    )
+    p.add_argument(
+        "--out-alerts-csv",
+        default="data/analysis/tick_opportunity_mining/oco_threshold_sensitivity_alerts.csv",
+    )
     p.add_argument("--report-out", default="docs/analysis/oco_threshold_sensitivity_report.md")
     args = p.parse_args()
 

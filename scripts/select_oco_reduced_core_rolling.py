@@ -186,13 +186,21 @@ def _annualized_from_monthly_rows(monthly: pd.DataFrame) -> float:
 def _default_out_state_csv(symbol: str) -> Path:
     s = str(symbol).upper().strip()
     if s == "EURUSD":
-        return Path("data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_reduced_states.csv")
+        return Path(
+            "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_reduced_states.csv"
+        )
     if s == "GBPUSD":
-        return Path("data/analysis/tick_opportunity_mining/reduced_core_gbpusd/GBPUSD_oco_reduced_states.csv")
-    return Path(f"data/analysis/tick_opportunity_mining/reduced_core_{s.lower()}/{s}_oco_reduced_states.csv")
+        return Path(
+            "data/analysis/tick_opportunity_mining/reduced_core_gbpusd/GBPUSD_oco_reduced_states.csv"
+        )
+    return Path(
+        f"data/analysis/tick_opportunity_mining/reduced_core_{s.lower()}/{s}_oco_reduced_states.csv"
+    )
 
 
-def _prepare_execution_frame(selected: pd.DataFrame, cfg: dict[str, Any]) -> tuple[pd.DataFrame, dict[str, float]]:
+def _prepare_execution_frame(
+    selected: pd.DataFrame, cfg: dict[str, Any]
+) -> tuple[pd.DataFrame, dict[str, float]]:
     mode = str(cfg.get("execution_mode", "gross")).strip().lower()
     if mode not in {"gross", "stop_limit"}:
         raise ValueError("execution_mode must be gross|stop_limit")
@@ -222,7 +230,9 @@ def _prepare_execution_frame(selected: pd.DataFrame, cfg: dict[str, Any]) -> tup
     ).copy()
     d["close_ts"] = pd.to_datetime(d["close_ts"], utc=True, errors="coerce")
     d["candidate_uid"] = d["candidate_uid"].astype(str)
-    d["touch_found_tick"] = pd.to_numeric(d["touch_found_tick"], errors="coerce").fillna(0).astype(int)
+    d["touch_found_tick"] = (
+        pd.to_numeric(d["touch_found_tick"], errors="coerce").fillna(0).astype(int)
+    )
     d["overshoot_tick_pips"] = pd.to_numeric(d["overshoot_tick_pips"], errors="coerce")
     d = d.dropna(subset=["close_ts"]).copy()
     d = d.sort_values(["candidate_uid", "close_ts"]).drop_duplicates(
@@ -287,7 +297,9 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     max_state_churn = float(cfg.get("max_state_churn", DEFAULTS["max_state_churn"]))
     max_top_state_share = float(cfg.get("max_top_state_share", DEFAULTS["max_top_state_share"]))
     max_state_hhi = float(cfg.get("max_state_hhi", DEFAULTS["max_state_hhi"]))
-    enforce_state_stability_gates = bool(cfg.get("enforce_state_stability_gates", DEFAULTS["enforce_state_stability_gates"]))
+    enforce_state_stability_gates = bool(
+        cfg.get("enforce_state_stability_gates", DEFAULTS["enforce_state_stability_gates"])
+    )
     require_lb95_trade_gt0 = bool(cfg["require_lb95_trade_gt0"])
     require_lb95_month_gt0 = bool(cfg["require_lb95_month_gt0"])
     bootstrap_paths = int(cfg["bootstrap_paths"])
@@ -340,7 +352,10 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     selected_all["state_key"] = (
         selected_all["state_id"].astype(str)
         + "|"
-        + pd.to_numeric(selected_all["bar_ticks"], errors="coerce").fillna(-1).astype(int).astype(str)
+        + pd.to_numeric(selected_all["bar_ticks"], errors="coerce")
+        .fillna(-1)
+        .astype(int)
+        .astype(str)
         + "|"
         + pd.to_numeric(selected_all["horizon"], errors="coerce").fillna(-1).astype(int).astype(str)
     )
@@ -423,7 +438,9 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             mm = mon["mean_signal"].to_numpy(dtype=float)
             lb_t = _bootstrap_lb95(gg_signal, paths=bootstrap_paths, seed=seed + i * 1000 + j * 7)
             lb_m = _bootstrap_lb95(mm, paths=bootstrap_paths, seed=seed + i * 1000 + j * 13)
-            fill_rate_train = float(np.mean(pd.to_numeric(g["__filled"], errors="coerce").fillna(0).astype(int)))
+            fill_rate_train = float(
+                np.mean(pd.to_numeric(g["__filled"], errors="coerce").fillna(0).astype(int))
+            )
 
             gate = True
             if require_lb95_trade_gt0:
@@ -448,7 +465,9 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                     "train_avg_month_rows": float(mon["filled_rows"].mean()),
                     "train_mean_gross_pips": float(np.mean(gg_trade)) if len(gg_trade) else np.nan,
                     "train_mean_signal_pips": float(np.mean(gg_signal)),
-                    "train_median_gross_pips": float(np.median(gg_trade)) if len(gg_trade) else np.nan,
+                    "train_median_gross_pips": float(np.median(gg_trade))
+                    if len(gg_trade)
+                    else np.nan,
                     "train_pos_rate": float(np.mean(gg_signal > 0.0)),
                     "train_positive_months": int(np.sum(mm > 0.0)),
                     "train_lb95_trade_mean_gross_pips": float(lb_t),
@@ -552,8 +571,16 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             cvals: list[float] = []
             dvals: list[float] = []
             for t in selected_keys:
-                cp = float(corr_pnl.loc[sk, t]) if (sk in corr_pnl.index and t in corr_pnl.columns) else np.nan
-                ca = float(corr_act.loc[sk, t]) if (sk in corr_act.index and t in corr_act.columns) else np.nan
+                cp = (
+                    float(corr_pnl.loc[sk, t])
+                    if (sk in corr_pnl.index and t in corr_pnl.columns)
+                    else np.nan
+                )
+                ca = (
+                    float(corr_act.loc[sk, t])
+                    if (sk in corr_act.index and t in corr_act.columns)
+                    else np.nan
+                )
                 if np.isfinite(cp):
                     cvals.append(abs(cp))
                 if np.isfinite(cp) and np.isfinite(ca):
@@ -576,7 +603,9 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
         rank_map = {sk: idx + 1 for idx, sk in enumerate(selected_keys)}
         selected_state_df = s[s["state_key"].astype(str).isin(set(selected_keys))].copy()
-        selected_state_df["selected_rank"] = selected_state_df["state_key"].astype(str).map(rank_map)
+        selected_state_df["selected_rank"] = (
+            selected_state_df["state_key"].astype(str).map(rank_map)
+        )
         selected_state_df["overlap_corr_max"] = (
             selected_state_df["state_key"].astype(str).map(selected_corr_max).fillna(np.nan)
         )
@@ -592,7 +621,9 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         sig = pd.to_numeric(test["__pnl_signal"], errors="coerce").to_numpy(dtype=float)
         trd = pd.to_numeric(test["__pnl_trade"], errors="coerce").to_numpy(dtype=float)
         trd = trd[np.isfinite(trd)]
-        filled_rows = int(pd.to_numeric(test["__filled"], errors="coerce").fillna(0).astype(int).sum())
+        filled_rows = int(
+            pd.to_numeric(test["__filled"], errors="coerce").fillna(0).astype(int).sum()
+        )
         signal_rows = int(len(test))
         fill_rate = float(filled_rows / signal_rows) if signal_rows > 0 else np.nan
         state_counts = (
@@ -602,7 +633,8 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             .reset_index(drop=True)
         )
         shares = (
-            pd.to_numeric(state_counts["rows"], errors="coerce").to_numpy(dtype=float) / max(float(signal_rows), 1.0)
+            pd.to_numeric(state_counts["rows"], errors="coerce").to_numpy(dtype=float)
+            / max(float(signal_rows), 1.0)
             if signal_rows > 0 and not state_counts.empty
             else np.array([], dtype=float)
         )
@@ -678,8 +710,12 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                     if np.isfinite(r["train_mean_gross_pips"])
                     else np.nan,
                     "train_mean_signal_pips": float(r["train_mean_signal_pips"]),
-                    "train_lb95_trade_mean_gross_pips": float(r["train_lb95_trade_mean_gross_pips"]),
-                    "train_lb95_month_mean_gross_pips": float(r["train_lb95_month_mean_gross_pips"]),
+                    "train_lb95_trade_mean_gross_pips": float(
+                        r["train_lb95_trade_mean_gross_pips"]
+                    ),
+                    "train_lb95_month_mean_gross_pips": float(
+                        r["train_lb95_month_mean_gross_pips"]
+                    ),
                     "train_positive_months": int(r["train_positive_months"]),
                     "train_fill_rate": float(r["train_fill_rate"]),
                     "gate_pass": bool(r["gate_pass"]),
@@ -698,12 +734,18 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     ok = monthly[monthly["status"] == "ok"].copy()
     ok_vals = pd.to_numeric(ok["mean_gross_pips"], errors="coerce").to_numpy(dtype=float)
     ok_sig_vals = pd.to_numeric(ok["mean_signal_pips"], errors="coerce").to_numpy(dtype=float)
-    overall_lb95_month = _bootstrap_lb95(ok_vals, paths=bootstrap_paths, seed=seed + 999) if len(ok_vals) else np.nan
+    overall_lb95_month = (
+        _bootstrap_lb95(ok_vals, paths=bootstrap_paths, seed=seed + 999) if len(ok_vals) else np.nan
+    )
     overall_lb95_month_signal = (
-        _bootstrap_lb95(ok_sig_vals, paths=bootstrap_paths, seed=seed + 1199) if len(ok_sig_vals) else np.nan
+        _bootstrap_lb95(ok_sig_vals, paths=bootstrap_paths, seed=seed + 1199)
+        if len(ok_sig_vals)
+        else np.nan
     )
     annualized_rows = _annualized_from_monthly_rows(ok)
-    avg_month_rows = float(pd.to_numeric(ok["rows"], errors="coerce").mean()) if not ok.empty else 0.0
+    avg_month_rows = (
+        float(pd.to_numeric(ok["rows"], errors="coerce").mean()) if not ok.empty else 0.0
+    )
     avg_month_signal_rows = (
         float(pd.to_numeric(ok["signal_rows"], errors="coerce").mean()) if not ok.empty else 0.0
     )
@@ -726,7 +768,9 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                 "state_train_months": state_train_months,
                 "months_total": int(len(months)),
                 "months_scored": int(len(ok)),
-                "rows_total": int(pd.to_numeric(ok["rows"], errors="coerce").sum()) if not ok.empty else 0,
+                "rows_total": int(pd.to_numeric(ok["rows"], errors="coerce").sum())
+                if not ok.empty
+                else 0,
                 "signal_rows_total": int(pd.to_numeric(ok["signal_rows"], errors="coerce").sum())
                 if not ok.empty
                 else 0,
@@ -750,30 +794,59 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                 )
                 if not ok.empty
                 else np.nan,
-                "monthly_mean_signal_pips": float(np.nanmean(ok_sig_vals)) if len(ok_sig_vals) else np.nan,
+                "monthly_mean_signal_pips": float(np.nanmean(ok_sig_vals))
+                if len(ok_sig_vals)
+                else np.nan,
                 "lb95_month_mean_signal_pips": float(overall_lb95_month_signal)
                 if np.isfinite(overall_lb95_month_signal)
                 else np.nan,
                 "positive_months": int(np.nansum(ok_vals > 0.0)) if len(ok_vals) else 0,
-                "positive_months_signal": int(np.nansum(ok_sig_vals > 0.0)) if len(ok_sig_vals) else 0,
+                "positive_months_signal": int(np.nansum(ok_sig_vals > 0.0))
+                if len(ok_sig_vals)
+                else 0,
                 "avg_month_rows": float(avg_month_rows),
                 "avg_month_signal_rows": float(avg_month_signal_rows),
-                "fill_rate_overall": float(fill_rate_overall) if np.isfinite(fill_rate_overall) else np.nan,
+                "fill_rate_overall": float(fill_rate_overall)
+                if np.isfinite(fill_rate_overall)
+                else np.nan,
                 "annualized_rows": float(annualized_rows),
                 "capacity_floor_monthly": capacity_floor_monthly,
                 "capacity_floor_annual": capacity_floor_annual,
                 "capacity_pass_monthly_or_annual": bool(
-                    (avg_month_rows >= capacity_floor_monthly) or (annualized_rows >= capacity_floor_annual)
+                    (avg_month_rows >= capacity_floor_monthly)
+                    or (annualized_rows >= capacity_floor_annual)
                 ),
                 "max_state_churn": max_state_churn,
                 "max_top_state_share": max_top_state_share,
                 "max_state_hhi": max_state_hhi,
-                "stability_months_pass": int(pd.to_numeric(ok.get("stability_pass", pd.Series(dtype=float)), errors="coerce").fillna(0).astype(int).sum()) if not ok.empty else 0,
+                "stability_months_pass": int(
+                    pd.to_numeric(ok.get("stability_pass", pd.Series(dtype=float)), errors="coerce")
+                    .fillna(0)
+                    .astype(int)
+                    .sum()
+                )
+                if not ok.empty
+                else 0,
             }
         ]
     )
 
-    churn_df = monthly[["symbol", "test_month", "states_selected", "state_churn_rate", "top_state_share", "state_hhi", "stability_pass", "status"]].copy() if not monthly.empty else pd.DataFrame()
+    churn_df = (
+        monthly[
+            [
+                "symbol",
+                "test_month",
+                "states_selected",
+                "state_churn_rate",
+                "top_state_share",
+                "state_hhi",
+                "stability_pass",
+                "status",
+            ]
+        ].copy()
+        if not monthly.empty
+        else pd.DataFrame()
+    )
 
     out_sched = Path(str(cfg["out_state_schedule_csv"]))
     out_state_raw = str(cfg.get("out_state_csv", "")).strip()
@@ -781,19 +854,33 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         out_state = Path(out_state_raw)
     else:
         if out_sched.name.endswith("_state_schedule.csv"):
-            out_state = out_sched.with_name(out_sched.name.replace("_state_schedule.csv", "_states.csv"))
+            out_state = out_sched.with_name(
+                out_sched.name.replace("_state_schedule.csv", "_states.csv")
+            )
         else:
             out_state = out_sched.with_name(f"{symbol}_oco_reduced_states.csv")
     out_month = Path(str(cfg["out_monthly_csv"]))
     out_sum = Path(str(cfg["out_summary_csv"]))
     out_churn_raw = str(cfg.get("out_state_churn_csv", "")).strip()
-    out_churn = Path(out_churn_raw) if out_churn_raw else out_month.with_name(out_month.name.replace("_monthly.csv", "_state_churn.csv"))
+    out_churn = (
+        Path(out_churn_raw)
+        if out_churn_raw
+        else out_month.with_name(out_month.name.replace("_monthly.csv", "_state_churn.csv"))
+    )
     out_sched.parent.mkdir(parents=True, exist_ok=True)
     out_state.parent.mkdir(parents=True, exist_ok=True)
     out_month.parent.mkdir(parents=True, exist_ok=True)
     out_sum.parent.mkdir(parents=True, exist_ok=True)
     out_churn.parent.mkdir(parents=True, exist_ok=True)
-    state_cols = ["symbol", "bar_ticks", "horizon", "state_id", "family", "barrier_pips", "regime_desc"]
+    state_cols = [
+        "symbol",
+        "bar_ticks",
+        "horizon",
+        "state_id",
+        "family",
+        "barrier_pips",
+        "regime_desc",
+    ]
     if not schedule.empty:
         states = (
             schedule[state_cols]
@@ -824,7 +911,9 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         report_lines.append(f"- stop_limit_cap_pips: `{cfg.get('stop_limit_cap_pips')}`")
         report_lines.append(f"- stop_limit_slippage_mode: `{cfg.get('stop_limit_slippage_mode')}`")
         report_lines.append(f"- stop_limit_match_rate: `{exec_meta.get('match_rate', np.nan):.6f}`")
-        report_lines.append(f"- stop_limit_fill_rate_selected: `{exec_meta.get('fill_rate', np.nan):.6f}`")
+        report_lines.append(
+            f"- stop_limit_fill_rate_selected: `{exec_meta.get('fill_rate', np.nan):.6f}`"
+        )
     report_lines.append(f"- state_train_months: `{state_train_months}`")
     report_lines.append(f"- min_train_months: `{min_train_months}`")
     report_lines.append(f"- overlap_corr_max: `{overlap_corr_max}`")
@@ -910,7 +999,12 @@ def main() -> None:
     args = p.parse_args()
 
     cfg = _merge_config(args)
-    for b in ["strict_gate_only", "require_lb95_trade_gt0", "require_lb95_month_gt0", "enforce_state_stability_gates"]:
+    for b in [
+        "strict_gate_only",
+        "require_lb95_trade_gt0",
+        "require_lb95_month_gt0",
+        "enforce_state_stability_gates",
+    ]:
         if isinstance(cfg.get(b), str):
             cfg[b] = str(cfg[b]).strip().lower() in {"1", "true", "yes", "y"}
     run(cfg)

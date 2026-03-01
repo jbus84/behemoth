@@ -1,8 +1,0 @@
-services:
-  api:
-    environment:
-      CONFIG_PATH: ${REPLAY_CONFIG_PATH:-/app/configs/replay.yaml}
-      VALIDATE_PIPELINE_FILES: "false"
-      RISK_ENABLED: "false"
-    volumes:
-      - ./data:/app/data:ro

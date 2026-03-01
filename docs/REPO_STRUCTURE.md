@@ -1,102 +1,32 @@
 # Repo Structure (Production Baseline)
 
+The active system is a pure tick-based ML Opportunity Cost Optimization (OCO) research pipeline. The legacy stat-arb approach has been entirely removed.
+
 ## Core layout
 
-- `src/behemoth/`: production logic (Kalman, Z-score, guardrail, metrics)
-- `pipelines/`: deterministic batch runs (event generation + diagnostics)
-- `scripts/`: thin wrappers and analysis/validation utilities used by docs/tests
-- `services/api/`: FastAPI position + order state service
-- `docs/`: documentation (MkDocs site uses these markdown files)
-- `mkdocs.yml`: MkDocs configuration
-- `configs/`: YAML config for API and pair weights
-- `configs/prometheus.yml`: Prometheus scrape config
-- `configs/grafana/`: Grafana provisioning
-  - `configs/grafana/datasources`: Prometheus datasource config
-  - `configs/grafana/dashboards`: Prebuilt Grafana dashboard JSON
-- `services/api/migrations/`: Alembic migrations for DB schema
-- `data/baselines/`: golden snapshot metrics for M5/M15 regression tests
+- `configs/research/`: YAML configurations defining features, pairs, rolling windows, and governance thresholds for the OCO ML models.
+  - `docs/`: Configs for documentation generation.
+  - `experiments/`: Parameter definitions for model testing.
+  - `governance/`: Execution locks and allowed state constraints.
+- `scripts/`: The core python orchestration for the OCO pipeline. Contains feature generation, model training, documentation builders, and validation tests.
+- `docs/`: Markdown files for the MkDocs site containing the dynamically-generated "Strategy Bible" and System Reference.
+- `mkdocs.yml`: MkDocs configuration for deploying documentation.
+- `data/`: Local tick data, generated CSV/Parquet models, and configuration artifacts (gitignored).
+- `tests/`: Pytest suite enforcing the OCO documentation contracts and gate integrity.
 
+## Pipeline Orchestration
 
-## Scripts (curated)
+The daily/monthly research and execution pipeline is driven entirely through the `scripts/` directory.
 
-**Script taxonomy**
-- **Production wrappers**: `build_events_m5.py`, `build_events_m15.py`, `replay_pipeline_to_db.py`
-- **Validation & baselines**: `build_baselines.py`, `build_repro_manifest.py`, `validate_*`, `reconcile_db_vs_pipeline.py`, `integrity_audit.py`
-- **Guardrail/robustness studies**: `analyze_*` in this list (kept because referenced by docs)
-- **Visualization**: `scripts/visualization/*`
-
-**Script → doc mapping (primary reference)**
-
-| Script | Primary Doc Section |
-| --- | --- |
-| `scripts/build_events_m5.py` | `docs/STRATEGY_MASTER_MANUAL.md` (Event builders) |
-| `scripts/build_events_m15.py` | `docs/STRATEGY_MASTER_MANUAL.md` (Event builders) |
-| `scripts/build_baselines.py` | `docs/validation.md` |
-| `scripts/build_repro_manifest.py` | `docs/validation.md` |
-| `scripts/validate_api_vs_pipeline.py` | `docs/validation.md` |
-| `scripts/validate_api_predictions_vs_pipeline.py` | `docs/validation.md` |
-| `scripts/validate_db_predictions_vs_pipeline.py` | `docs/validation.md` |
-| `scripts/replay_pipeline_to_db.py` | `docs/monitoring.md`, `docs/deployment.md` |
-| `scripts/export_openapi.py` | `docs/api.md` |
-| `scripts/db_backup_restore_smoke.py` | `docs/deployment.md` |
-| `scripts/report_m5_guardrail_diagnostics.py` | `docs/STRATEGY_MASTER_MANUAL.md` (Guardrail diagnostics) |
-| `scripts/report_mom_guardrail_diagnostics.py` | `docs/STRATEGY_MASTER_MANUAL.md` (Guardrail diagnostics) |
-| `scripts/wfo_mom_loss_streak.py` | `docs/analysis/mom_loss_limiter_wfo.md` |
-| `scripts/analyze_mom_robustness_suite.py` | `docs/STRATEGY_MASTER_MANUAL.md` (Robustness suite) |
-| `scripts/analyze_mom_robustness_suite_m5.py` | `docs/STRATEGY_MASTER_MANUAL.md` (Robustness suite) |
-| `scripts/analyze_guardrail_effectiveness.py` | `docs/STRATEGY_MASTER_MANUAL.md` (Guardrail effectiveness) |
-| `scripts/analyze_dd_timeweighted.py` | `docs/STRATEGY_MASTER_MANUAL.md` (Integrity checks) |
-| `scripts/visualization/plot_guardrail_monthly_and_dd.py` | `docs/STRATEGY_MASTER_MANUAL.md` (Figures) |
-| `scripts/visualization/render_pipeline_diagram.py` | `docs/architecture.md` |
-
-**Where to start**
-- Build or refresh events: `scripts/build_events_m5.py`, `scripts/build_events_m15.py`
-- Validate outputs vs baselines: `scripts/build_baselines.py`, then `uv run pytest -q`
-- Replay into DB and verify API alignment: `scripts/replay_pipeline_to_db.py`, `scripts/validate_db_predictions_vs_pipeline.py`
-
-- `scripts/analyze_dd_timeweighted.py`
-- `scripts/analyze_execution_latency.py`
-- `scripts/analyze_execution_latency_resim.py`
-- `scripts/analyze_guardrail_effectiveness.py`
-- `scripts/analyze_guardrail_entry_exit_timing.py`
-- `scripts/analyze_mom_robustness_suite.py`
-- `scripts/analyze_mom_robustness_suite_m5.py`
-- `scripts/analyze_outlier_filter_with_guardrail.py`
-- `scripts/analyze_pair_stability_filter.py`
-- `scripts/analyze_portfolio_constraints.py`
-- `scripts/analyze_stress_tests.py`
-- `scripts/analyze_tail_risk_guardrail.py`
-- `scripts/analyze_tick_bar_consistency.py`
-- `scripts/build_all_1m_data.py`
-- `scripts/build_baselines.py`
-- `scripts/build_events_m15.py`
-- `scripts/build_events_m5.py`
-- `scripts/build_repro_manifest.py`
-- `scripts/compare_timeout_convention.py`
-- `scripts/db_backup_restore_smoke.py`
-- `scripts/explore_mom_loss_limiter_combos.py`
-- `scripts/explore_mom_loss_limiters.py`
-- `scripts/export_openapi.py`
-- `scripts/integrity_audit.py`
-- `scripts/metrics.py`
-- `scripts/reconcile_db_vs_pipeline.py`
-- `scripts/replay_pipeline_to_db.py`
-- `scripts/report_m5_guardrail_diagnostics.py`
-- `scripts/report_mom_guardrail_diagnostics.py`
-- `scripts/validate_api_predictions_vs_pipeline.py`
-- `scripts/validate_api_vs_pipeline.py`
-- `scripts/validate_db_predictions_vs_pipeline.py`
-- `scripts/wfo_mom_full_params.py`
-- `scripts/wfo_mom_full_params_m5.py`
-- `scripts/wfo_mom_loss_streak.py`
-
-### Visualization
-- `scripts/visualization/plot_guardrail_monthly_and_dd.py`
-- `scripts/visualization/plot_monthly_net.py`
-- `scripts/visualization/plot_session_risk_spx.py`
-- `scripts/visualization/render_pipeline_diagram.py`
+**Key Scripts:**
+- **Onboarding**: `scripts/onboard_symbol.py` (Top-level orchestrator for taking a symbol from tick data to live configuration locks)
+- **Data Prep**: `scripts/build_global_tick_bars.py`, `scripts/build_tick_opportunity_ml_dataset.py`, `scripts/build_tick_velocity_dataset.py`
+- **Analysis**: `scripts/run_tick_opportunity_mining.py`, `scripts/run_tick_opportunity_monthly_wfo.py`, `scripts/run_execution_monte_carlo.py`
+- **Governance**: `scripts/freeze_oco_live_governance.py` (Outputs `_oco_live_lock.json` and `_oco_allowed_states.csv` configuration maps)
+- **Docs Generation**: `scripts/build_oco_strategy_bible.py`, `scripts/build_oco_system_reference_docs.py`, etc.
 
 ## Notes
 
-- The live strategy is rule-based and **does not use ML**.
-- Large data artifacts remain in `data/` and are gitignored, except for `data/baselines/`.
+- The live strategy is heavily reliant on rolling offline artifacts defined by the ML models.
+- Execution relies completely on the generated JSON and CSV configuration locks.
+- The pipeline architecture operates independently of any active realtime API or Database.

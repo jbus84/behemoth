@@ -115,7 +115,9 @@ def run(
         if mid:
             rule_map[mid] = r
 
-    action_defs = cfg.get("action_definitions", {}) if isinstance(cfg.get("action_definitions"), dict) else {}
+    action_defs = (
+        cfg.get("action_definitions", {}) if isinstance(cfg.get("action_definitions"), dict) else {}
+    )
 
     syms: list[str]
     if symbols:
@@ -129,20 +131,36 @@ def run(
     now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     for sym in syms:
-        m_sym = metrics[metrics.get("symbol", pd.Series(dtype=str)).astype(str).str.upper() == sym].copy() if not metrics.empty else pd.DataFrame()
+        m_sym = (
+            metrics[
+                metrics.get("symbol", pd.Series(dtype=str)).astype(str).str.upper() == sym
+            ].copy()
+            if not metrics.empty
+            else pd.DataFrame()
+        )
         for metric_id in sorted(rule_map.keys()):
             rule = rule_map[metric_id]
-            m = m_sym[m_sym.get("metric_id", pd.Series(dtype=str)).astype(str) == metric_id].copy() if not m_sym.empty else pd.DataFrame()
+            m = (
+                m_sym[m_sym.get("metric_id", pd.Series(dtype=str)).astype(str) == metric_id].copy()
+                if not m_sym.empty
+                else pd.DataFrame()
+            )
             if m.empty:
                 rows.append(
                     {
                         "symbol": sym,
-                        "stage_id": pd.to_numeric(pd.Series([rule.get("stage_id")]), errors="coerce").iloc[0],
+                        "stage_id": pd.to_numeric(
+                            pd.Series([rule.get("stage_id")]), errors="coerce"
+                        ).iloc[0],
                         "metric_id": metric_id,
                         "metric_value": np.nan,
                         "mode": str(rule.get("mode", "")),
-                        "warn_threshold": pd.to_numeric(pd.Series([rule.get("warn")]), errors="coerce").iloc[0],
-                        "fail_threshold": pd.to_numeric(pd.Series([rule.get("fail")]), errors="coerce").iloc[0],
+                        "warn_threshold": pd.to_numeric(
+                            pd.Series([rule.get("warn")]), errors="coerce"
+                        ).iloc[0],
+                        "fail_threshold": pd.to_numeric(
+                            pd.Series([rule.get("fail")]), errors="coerce"
+                        ).iloc[0],
                         "band": "gray",
                         "severity": "high",
                         "action_code": "A9_DATA_GAP",
@@ -158,8 +176,12 @@ def run(
             x = m.iloc[0]
             val = float(pd.to_numeric(pd.Series([x.get("metric_value")]), errors="coerce").iloc[0])
             mode = str(rule.get("mode", "ge")).strip()
-            warn = float(pd.to_numeric(pd.Series([rule.get("warn", np.nan)]), errors="coerce").iloc[0])
-            fail = float(pd.to_numeric(pd.Series([rule.get("fail", np.nan)]), errors="coerce").iloc[0])
+            warn = float(
+                pd.to_numeric(pd.Series([rule.get("warn", np.nan)]), errors="coerce").iloc[0]
+            )
+            fail = float(
+                pd.to_numeric(pd.Series([rule.get("fail", np.nan)]), errors="coerce").iloc[0]
+            )
             band = _evaluate(val, mode=mode, warn=warn, fail=fail)
 
             if band == "green":
@@ -178,7 +200,9 @@ def run(
             rows.append(
                 {
                     "symbol": sym,
-                    "stage_id": pd.to_numeric(pd.Series([x.get("stage_id", rule.get("stage_id"))]), errors="coerce").iloc[0],
+                    "stage_id": pd.to_numeric(
+                        pd.Series([x.get("stage_id", rule.get("stage_id"))]), errors="coerce"
+                    ).iloc[0],
                     "metric_id": metric_id,
                     "metric_value": val,
                     "mode": mode,
@@ -224,7 +248,13 @@ def run(
         if not status.empty
         else pd.DataFrame(columns=["symbol", "band", "metrics"])
     )
-    red_amber = status[status["band"].isin(["red", "amber"])].copy().sort_values(["band", "symbol", "metric_id"]) if not status.empty else pd.DataFrame()
+    red_amber = (
+        status[status["band"].isin(["red", "amber"])]
+        .copy()
+        .sort_values(["band", "symbol", "metric_id"])
+        if not status.empty
+        else pd.DataFrame()
+    )
 
     out_status_csv.parent.mkdir(parents=True, exist_ok=True)
     out_report_md.parent.mkdir(parents=True, exist_ok=True)
@@ -266,13 +296,23 @@ def run(
     pb_lines.append("")
     pb_lines.append("## Operator Checklist")
     pb_lines.append("1. Review `operator_action_status.csv` after each full pipeline run.")
-    pb_lines.append("2. Confirm Stage-3 model lifecycle: one-month validity and monthly retrain for current test month.")
+    pb_lines.append(
+        "2. Confirm Stage-3 model lifecycle: one-month validity and monthly retrain for current test month."
+    )
     pb_lines.append("3. Execute all `red` actions before deployment decisions.")
-    pb_lines.append("4. Open a remediation task for persistent `amber` metrics (>=3 consecutive runs).")
+    pb_lines.append(
+        "4. Open a remediation task for persistent `amber` metrics (>=3 consecutive runs)."
+    )
     pb_lines.append("5. Block deployment if any `A3_` action remains unresolved.")
     pb_lines.append("")
     pb_lines.append("## Current Escalations")
-    pb_lines.append(_table(red_amber[["symbol", "metric_id", "band", "action_code", "owner", "action_summary"]] if not red_amber.empty else red_amber))
+    pb_lines.append(
+        _table(
+            red_amber[["symbol", "metric_id", "band", "action_code", "owner", "action_summary"]]
+            if not red_amber.empty
+            else red_amber
+        )
+    )
     out_playbook_md.write_text("\n".join(pb_lines), encoding="utf-8")
 
     return status, out_report_md, out_playbook_md
@@ -280,10 +320,16 @@ def run(
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Build operator action report and playbook")
-    p.add_argument("--edge-metrics-csv", default="data/analysis/tick_opportunity_mining/edge_clarity_stage_metrics.csv")
+    p.add_argument(
+        "--edge-metrics-csv",
+        default="data/analysis/tick_opportunity_mining/edge_clarity_stage_metrics.csv",
+    )
     p.add_argument("--rules-yaml", default="configs/research/docs/operator_action_rules.yaml")
-    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY")
-    p.add_argument("--out-status-csv", default="data/analysis/tick_opportunity_mining/operator_action_status.csv")
+    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD")
+    p.add_argument(
+        "--out-status-csv",
+        default="data/analysis/tick_opportunity_mining/operator_action_status.csv",
+    )
     p.add_argument("--report-out", default="docs/analysis/operator_action_report.md")
     p.add_argument("--playbook-out", default="docs/strategy_bible/operator_playbook.md")
     args = p.parse_args()

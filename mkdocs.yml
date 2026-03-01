@@ -56,7 +56,6 @@ nav:
       - Stop-Limit Tickfill Fullcap: analysis/oco_stop_limit_tickfill_fullcap_report.md
       - Live Governance Lock: analysis/oco_live_governance_lock.md
       - Remediation Metric Decomposition: analysis/remediation_metric_decomposition.md
-      - Risk Checklist: analysis/risk_checklist.md
       - EURUSD:
           - Opportunity Mining: analysis/eurusd_tick_opportunity_mining_report.md
           - Monthly WFO: analysis/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md
@@ -144,7 +143,6 @@ nav:
   - Architecture: architecture.md
   - API: api.md
   - API Reference: api_reference.md
-  - OpenAPI: openapi.md
   - Core Reference: core_reference.md
   - Risk Controls: risk_controls.md
   - Monitoring: monitoring.md

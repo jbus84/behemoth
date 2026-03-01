@@ -13,8 +13,24 @@ from scripts.validate_oco_live_governance import run
 def test_state_universe_hash_stable_under_row_order(tmp_path: Path) -> None:
     a = pd.DataFrame(
         [
-            {"symbol": "EURUSD", "bar_ticks": 100, "horizon": 6, "state_id": "s2", "family": "oco_first_touch_clean", "barrier_pips": 2.0, "regime_desc": "r2"},
-            {"symbol": "EURUSD", "bar_ticks": 100, "horizon": 5, "state_id": "s1", "family": "oco_first_touch_clean", "barrier_pips": 3.0, "regime_desc": "r1"},
+            {
+                "symbol": "EURUSD",
+                "bar_ticks": 100,
+                "horizon": 6,
+                "state_id": "s2",
+                "family": "oco_first_touch_clean",
+                "barrier_pips": 2.0,
+                "regime_desc": "r2",
+            },
+            {
+                "symbol": "EURUSD",
+                "bar_ticks": 100,
+                "horizon": 5,
+                "state_id": "s1",
+                "family": "oco_first_touch_clean",
+                "barrier_pips": 3.0,
+                "regime_desc": "r1",
+            },
         ]
     )
     b = a.iloc[::-1].reset_index(drop=True)
@@ -51,16 +67,32 @@ def test_validate_lock_deploy_and_retrain_window(tmp_path: Path) -> None:
                 "locked_quantile: 0.9",
                 "selection_mode: auto",
                 "family_keep: oco_first_touch_clean",
-                "barrier_keep: \"2,3\"",
-                "horizon_keep: \"5,6\"",
+                'barrier_keep: "2,3"',
+                'horizon_keep: "5,6"',
             ]
         ),
         encoding="utf-8",
     )
     pd.DataFrame(
         [
-            {"symbol": "EURUSD", "bar_ticks": 100, "horizon": 5, "state_id": "s1", "family": "oco_first_touch_clean", "barrier_pips": 2.0, "regime_desc": "r1"},
-            {"symbol": "EURUSD", "bar_ticks": 100, "horizon": 6, "state_id": "s2", "family": "oco_first_touch_clean", "barrier_pips": 3.0, "regime_desc": "r2"},
+            {
+                "symbol": "EURUSD",
+                "bar_ticks": 100,
+                "horizon": 5,
+                "state_id": "s1",
+                "family": "oco_first_touch_clean",
+                "barrier_pips": 2.0,
+                "regime_desc": "r1",
+            },
+            {
+                "symbol": "EURUSD",
+                "bar_ticks": 100,
+                "horizon": 6,
+                "state_id": "s2",
+                "family": "oco_first_touch_clean",
+                "barrier_pips": 3.0,
+                "regime_desc": "r2",
+            },
         ]
     ).to_csv(states, index=False)
 
@@ -97,8 +129,24 @@ def test_validate_lock_deploy_and_retrain_window(tmp_path: Path) -> None:
         },
         "state_universe": {
             "rows": [
-                {"symbol": "EURUSD", "bar_ticks": 100, "horizon": 5, "state_id": "s1", "family": "oco_first_touch_clean", "barrier_pips": 2.0, "regime_desc": "r1"},
-                {"symbol": "EURUSD", "bar_ticks": 100, "horizon": 6, "state_id": "s2", "family": "oco_first_touch_clean", "barrier_pips": 3.0, "regime_desc": "r2"},
+                {
+                    "symbol": "EURUSD",
+                    "bar_ticks": 100,
+                    "horizon": 5,
+                    "state_id": "s1",
+                    "family": "oco_first_touch_clean",
+                    "barrier_pips": 2.0,
+                    "regime_desc": "r1",
+                },
+                {
+                    "symbol": "EURUSD",
+                    "bar_ticks": 100,
+                    "horizon": 6,
+                    "state_id": "s2",
+                    "family": "oco_first_touch_clean",
+                    "barrier_pips": 3.0,
+                    "regime_desc": "r2",
+                },
             ]
         },
         "retrain_policy": {"cadence_days": 30, "window_days": 3},
@@ -151,24 +199,50 @@ def test_validate_lock_blocks_on_high_data_reliability_fail(tmp_path: Path) -> N
                 "locked_quantile: 0.9",
                 "selection_mode: auto",
                 "family_keep: oco_first_touch_clean",
-                "barrier_keep: \"2,3\"",
-                "horizon_keep: \"5,6\"",
+                'barrier_keep: "2,3"',
+                'horizon_keep: "5,6"',
             ]
         ),
         encoding="utf-8",
     )
     pd.DataFrame(
         [
-            {"symbol": "EURUSD", "bar_ticks": 100, "horizon": 5, "state_id": "s1", "family": "oco_first_touch_clean", "barrier_pips": 2.0, "regime_desc": "r1"},
-            {"symbol": "EURUSD", "bar_ticks": 100, "horizon": 6, "state_id": "s2", "family": "oco_first_touch_clean", "barrier_pips": 3.0, "regime_desc": "r2"},
+            {
+                "symbol": "EURUSD",
+                "bar_ticks": 100,
+                "horizon": 5,
+                "state_id": "s1",
+                "family": "oco_first_touch_clean",
+                "barrier_pips": 2.0,
+                "regime_desc": "r1",
+            },
+            {
+                "symbol": "EURUSD",
+                "bar_ticks": 100,
+                "horizon": 6,
+                "state_id": "s2",
+                "family": "oco_first_touch_clean",
+                "barrier_pips": 3.0,
+                "regime_desc": "r2",
+            },
         ]
     ).to_csv(states, index=False)
 
     checks = pd.DataFrame(
         [
-            {"symbol": "EURUSD", "check_id": "DR01", "status": "pass", "severity_if_fail": "critical"},
+            {
+                "symbol": "EURUSD",
+                "check_id": "DR01",
+                "status": "pass",
+                "severity_if_fail": "critical",
+            },
             {"symbol": "EURUSD", "check_id": "DR07", "status": "fail", "severity_if_fail": "high"},
-            {"symbol": "EURUSD", "check_id": "DR12", "status": "fail", "severity_if_fail": "medium"},
+            {
+                "symbol": "EURUSD",
+                "check_id": "DR12",
+                "status": "fail",
+                "severity_if_fail": "medium",
+            },
         ]
     )
     checks.to_csv(checks_csv, index=False)
@@ -206,8 +280,24 @@ def test_validate_lock_blocks_on_high_data_reliability_fail(tmp_path: Path) -> N
         },
         "state_universe": {
             "rows": [
-                {"symbol": "EURUSD", "bar_ticks": 100, "horizon": 5, "state_id": "s1", "family": "oco_first_touch_clean", "barrier_pips": 2.0, "regime_desc": "r1"},
-                {"symbol": "EURUSD", "bar_ticks": 100, "horizon": 6, "state_id": "s2", "family": "oco_first_touch_clean", "barrier_pips": 3.0, "regime_desc": "r2"},
+                {
+                    "symbol": "EURUSD",
+                    "bar_ticks": 100,
+                    "horizon": 5,
+                    "state_id": "s1",
+                    "family": "oco_first_touch_clean",
+                    "barrier_pips": 2.0,
+                    "regime_desc": "r1",
+                },
+                {
+                    "symbol": "EURUSD",
+                    "bar_ticks": 100,
+                    "horizon": 6,
+                    "state_id": "s2",
+                    "family": "oco_first_touch_clean",
+                    "barrier_pips": 3.0,
+                    "regime_desc": "r2",
+                },
             ]
         },
         "retrain_policy": {"cadence_days": 30, "window_days": 3},
@@ -252,22 +342,43 @@ def test_validate_lock_blocks_on_high_leakage_fail(tmp_path: Path) -> None:
                 "locked_quantile: 0.9",
                 "selection_mode: auto",
                 "family_keep: oco_first_touch_clean",
-                "barrier_keep: \"2,3\"",
-                "horizon_keep: \"5,6\"",
+                'barrier_keep: "2,3"',
+                'horizon_keep: "5,6"',
             ]
         ),
         encoding="utf-8",
     )
     pd.DataFrame(
         [
-            {"symbol": "EURUSD", "bar_ticks": 100, "horizon": 5, "state_id": "s1", "family": "oco_first_touch_clean", "barrier_pips": 2.0, "regime_desc": "r1"},
-            {"symbol": "EURUSD", "bar_ticks": 100, "horizon": 6, "state_id": "s2", "family": "oco_first_touch_clean", "barrier_pips": 3.0, "regime_desc": "r2"},
+            {
+                "symbol": "EURUSD",
+                "bar_ticks": 100,
+                "horizon": 5,
+                "state_id": "s1",
+                "family": "oco_first_touch_clean",
+                "barrier_pips": 2.0,
+                "regime_desc": "r1",
+            },
+            {
+                "symbol": "EURUSD",
+                "bar_ticks": 100,
+                "horizon": 6,
+                "state_id": "s2",
+                "family": "oco_first_touch_clean",
+                "barrier_pips": 3.0,
+                "regime_desc": "r2",
+            },
         ]
     ).to_csv(states, index=False)
 
     pd.DataFrame(
         [
-            {"symbol": "EURUSD", "check_id": "L01", "status": "pass", "severity_if_fail": "critical"},
+            {
+                "symbol": "EURUSD",
+                "check_id": "L01",
+                "status": "pass",
+                "severity_if_fail": "critical",
+            },
             {"symbol": "EURUSD", "check_id": "L06", "status": "fail", "severity_if_fail": "high"},
         ]
     ).to_csv(leakage_csv, index=False)
@@ -305,8 +416,24 @@ def test_validate_lock_blocks_on_high_leakage_fail(tmp_path: Path) -> None:
         },
         "state_universe": {
             "rows": [
-                {"symbol": "EURUSD", "bar_ticks": 100, "horizon": 5, "state_id": "s1", "family": "oco_first_touch_clean", "barrier_pips": 2.0, "regime_desc": "r1"},
-                {"symbol": "EURUSD", "bar_ticks": 100, "horizon": 6, "state_id": "s2", "family": "oco_first_touch_clean", "barrier_pips": 3.0, "regime_desc": "r2"},
+                {
+                    "symbol": "EURUSD",
+                    "bar_ticks": 100,
+                    "horizon": 5,
+                    "state_id": "s1",
+                    "family": "oco_first_touch_clean",
+                    "barrier_pips": 2.0,
+                    "regime_desc": "r1",
+                },
+                {
+                    "symbol": "EURUSD",
+                    "bar_ticks": 100,
+                    "horizon": 6,
+                    "state_id": "s2",
+                    "family": "oco_first_touch_clean",
+                    "barrier_pips": 3.0,
+                    "regime_desc": "r2",
+                },
             ]
         },
         "retrain_policy": {"cadence_days": 30, "window_days": 3},
@@ -351,22 +478,43 @@ def test_validate_lock_blocks_on_high_execution_risk_fail(tmp_path: Path) -> Non
                 "locked_quantile: 0.9",
                 "selection_mode: auto",
                 "family_keep: oco_first_touch_clean",
-                "barrier_keep: \"2,3\"",
-                "horizon_keep: \"5,6\"",
+                'barrier_keep: "2,3"',
+                'horizon_keep: "5,6"',
             ]
         ),
         encoding="utf-8",
     )
     pd.DataFrame(
         [
-            {"symbol": "EURUSD", "bar_ticks": 100, "horizon": 5, "state_id": "s1", "family": "oco_first_touch_clean", "barrier_pips": 2.0, "regime_desc": "r1"},
-            {"symbol": "EURUSD", "bar_ticks": 100, "horizon": 6, "state_id": "s2", "family": "oco_first_touch_clean", "barrier_pips": 3.0, "regime_desc": "r2"},
+            {
+                "symbol": "EURUSD",
+                "bar_ticks": 100,
+                "horizon": 5,
+                "state_id": "s1",
+                "family": "oco_first_touch_clean",
+                "barrier_pips": 2.0,
+                "regime_desc": "r1",
+            },
+            {
+                "symbol": "EURUSD",
+                "bar_ticks": 100,
+                "horizon": 6,
+                "state_id": "s2",
+                "family": "oco_first_touch_clean",
+                "barrier_pips": 3.0,
+                "regime_desc": "r2",
+            },
         ]
     ).to_csv(states, index=False)
 
     pd.DataFrame(
         [
-            {"symbol": "EURUSD", "check_id": "E01", "status": "pass", "severity_if_fail": "critical"},
+            {
+                "symbol": "EURUSD",
+                "check_id": "E01",
+                "status": "pass",
+                "severity_if_fail": "critical",
+            },
             {"symbol": "EURUSD", "check_id": "E06", "status": "fail", "severity_if_fail": "high"},
         ]
     ).to_csv(exec_csv, index=False)
@@ -404,8 +552,24 @@ def test_validate_lock_blocks_on_high_execution_risk_fail(tmp_path: Path) -> Non
         },
         "state_universe": {
             "rows": [
-                {"symbol": "EURUSD", "bar_ticks": 100, "horizon": 5, "state_id": "s1", "family": "oco_first_touch_clean", "barrier_pips": 2.0, "regime_desc": "r1"},
-                {"symbol": "EURUSD", "bar_ticks": 100, "horizon": 6, "state_id": "s2", "family": "oco_first_touch_clean", "barrier_pips": 3.0, "regime_desc": "r2"},
+                {
+                    "symbol": "EURUSD",
+                    "bar_ticks": 100,
+                    "horizon": 5,
+                    "state_id": "s1",
+                    "family": "oco_first_touch_clean",
+                    "barrier_pips": 2.0,
+                    "regime_desc": "r1",
+                },
+                {
+                    "symbol": "EURUSD",
+                    "bar_ticks": 100,
+                    "horizon": 6,
+                    "state_id": "s2",
+                    "family": "oco_first_touch_clean",
+                    "barrier_pips": 3.0,
+                    "regime_desc": "r2",
+                },
             ]
         },
         "retrain_policy": {"cadence_days": 30, "window_days": 3},

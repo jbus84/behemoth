@@ -66,7 +66,14 @@ def _pick_runs(reg: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
         work["_ts"] = pd.NaT
     work = work.sort_values(["_ts", "run_id"], kind="stable").reset_index(drop=True)
     latest = work.iloc[-1]
-    b = work[pd.to_numeric(work.get("is_baseline", pd.Series(index=work.index, dtype=float)), errors="coerce").fillna(0).astype(int) == 1].copy()
+    b = work[
+        pd.to_numeric(
+            work.get("is_baseline", pd.Series(index=work.index, dtype=float)), errors="coerce"
+        )
+        .fillna(0)
+        .astype(int)
+        == 1
+    ].copy()
     baseline = b.iloc[-1] if not b.empty else latest
     return baseline, latest
 
@@ -102,7 +109,10 @@ def _metric_delta(baseline_edge: pd.DataFrame, latest_edge: pd.DataFrame) -> pd.
         | (vb.notna() & vl.isna())
         | ((vb.notna()) & (vl.notna()) & ((vl - vb).abs() > 1e-12))
     )
-    return m.sort_values(["changed", "abs_delta", "symbol", "stage_id", "metric_id"], ascending=[False, False, True, True, True]).reset_index(drop=True)
+    return m.sort_values(
+        ["changed", "abs_delta", "symbol", "stage_id", "metric_id"],
+        ascending=[False, False, True, True, True],
+    ).reset_index(drop=True)
 
 
 def _gate_delta(baseline_status: pd.DataFrame, latest_status: pd.DataFrame) -> pd.DataFrame:
@@ -115,7 +125,10 @@ def _gate_delta(baseline_status: pd.DataFrame, latest_status: pd.DataFrame) -> p
 
     gate_cols = sorted(list((set(b.columns) | set(l.columns)) - {"symbol"}))
     rows: list[dict[str, object]] = []
-    symbols = sorted(set(b.get("symbol", pd.Series(dtype=str)).astype(str)) | set(l.get("symbol", pd.Series(dtype=str)).astype(str)))
+    symbols = sorted(
+        set(b.get("symbol", pd.Series(dtype=str)).astype(str))
+        | set(l.get("symbol", pd.Series(dtype=str)).astype(str))
+    )
     for sym in symbols:
         rb = b[b["symbol"] == sym]
         rl = l[l["symbol"] == sym]
@@ -136,8 +149,12 @@ def _gate_delta(baseline_status: pd.DataFrame, latest_status: pd.DataFrame) -> p
             )
     out = pd.DataFrame(rows)
     if out.empty:
-        return pd.DataFrame(columns=["symbol", "gate_id", "baseline_value", "latest_value", "delta", "changed"])
-    return out.sort_values(["changed", "symbol", "gate_id"], ascending=[False, True, True]).reset_index(drop=True)
+        return pd.DataFrame(
+            columns=["symbol", "gate_id", "baseline_value", "latest_value", "delta", "changed"]
+        )
+    return out.sort_values(
+        ["changed", "symbol", "gate_id"], ascending=[False, True, True]
+    ).reset_index(drop=True)
 
 
 def run(
@@ -164,13 +181,27 @@ def run(
     b_sym_total = 0
     l_sym_total = 0
     if not b_status.empty:
-        b_sym_total = int(b_status["symbol"].astype(str).nunique()) if "symbol" in b_status.columns else 0
+        b_sym_total = (
+            int(b_status["symbol"].astype(str).nunique()) if "symbol" in b_status.columns else 0
+        )
         if "symbol_all_gates_pass" in b_status.columns:
-            b_sym_pass = int(pd.to_numeric(b_status["symbol_all_gates_pass"], errors="coerce").fillna(0).astype(int).sum())
+            b_sym_pass = int(
+                pd.to_numeric(b_status["symbol_all_gates_pass"], errors="coerce")
+                .fillna(0)
+                .astype(int)
+                .sum()
+            )
     if not l_status.empty:
-        l_sym_total = int(l_status["symbol"].astype(str).nunique()) if "symbol" in l_status.columns else 0
+        l_sym_total = (
+            int(l_status["symbol"].astype(str).nunique()) if "symbol" in l_status.columns else 0
+        )
         if "symbol_all_gates_pass" in l_status.columns:
-            l_sym_pass = int(pd.to_numeric(l_status["symbol_all_gates_pass"], errors="coerce").fillna(0).astype(int).sum())
+            l_sym_pass = int(
+                pd.to_numeric(l_status["symbol_all_gates_pass"], errors="coerce")
+                .fillna(0)
+                .astype(int)
+                .sum()
+            )
 
     summary = pd.DataFrame(
         [
@@ -181,14 +212,40 @@ def run(
                 "latest_generated_at_utc": str(latest_row.get("generated_at_utc", "")),
                 "metric_rows_baseline": int(len(b_edge)),
                 "metric_rows_latest": int(len(l_edge)),
-                "metric_rows_changed": int(pd.to_numeric(metric_changes.get("changed", pd.Series(dtype=float)), errors="coerce").fillna(0).astype(int).sum()),
-                "gate_rows_changed": int(pd.to_numeric(gate_changes.get("changed", pd.Series(dtype=float)), errors="coerce").fillna(0).astype(int).sum()),
+                "metric_rows_changed": int(
+                    pd.to_numeric(
+                        metric_changes.get("changed", pd.Series(dtype=float)), errors="coerce"
+                    )
+                    .fillna(0)
+                    .astype(int)
+                    .sum()
+                ),
+                "gate_rows_changed": int(
+                    pd.to_numeric(
+                        gate_changes.get("changed", pd.Series(dtype=float)), errors="coerce"
+                    )
+                    .fillna(0)
+                    .astype(int)
+                    .sum()
+                ),
                 "symbols_total_baseline": int(b_sym_total),
                 "symbols_total_latest": int(l_sym_total),
                 "symbols_pass_baseline": int(b_sym_pass),
                 "symbols_pass_latest": int(l_sym_pass),
-                "docs_failed_baseline": int(pd.to_numeric(pd.Series([baseline_row.get("docs_checks_failed", np.nan)]), errors="coerce").fillna(0).iloc[0]),
-                "docs_failed_latest": int(pd.to_numeric(pd.Series([latest_row.get("docs_checks_failed", np.nan)]), errors="coerce").fillna(0).iloc[0]),
+                "docs_failed_baseline": int(
+                    pd.to_numeric(
+                        pd.Series([baseline_row.get("docs_checks_failed", np.nan)]), errors="coerce"
+                    )
+                    .fillna(0)
+                    .iloc[0]
+                ),
+                "docs_failed_latest": int(
+                    pd.to_numeric(
+                        pd.Series([latest_row.get("docs_checks_failed", np.nan)]), errors="coerce"
+                    )
+                    .fillna(0)
+                    .iloc[0]
+                ),
             }
         ]
     )
@@ -201,7 +258,9 @@ def run(
     metric_changes.to_csv(out_metric_changes_csv, index=False)
     gate_changes.to_csv(out_gate_changes_csv, index=False)
 
-    top_metrics = metric_changes[metric_changes.get("changed", pd.Series(dtype=bool)).astype(bool)].copy()
+    top_metrics = metric_changes[
+        metric_changes.get("changed", pd.Series(dtype=bool)).astype(bool)
+    ].copy()
     if not top_metrics.empty:
         top_metrics = top_metrics.sort_values("abs_delta", ascending=False).head(40)
 
@@ -212,7 +271,9 @@ def run(
     lines: list[str] = []
     lines.append("# Run Delta Dashboard")
     lines.append("")
-    lines.append(f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`")
+    lines.append(
+        f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`"
+    )
     lines.append(f"- registry_csv: `{registry_csv}`")
     lines.append(f"- summary_csv: `{out_summary_csv}`")
     lines.append(f"- metric_changes_csv: `{out_metric_changes_csv}`")
@@ -233,10 +294,20 @@ def run(
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Build run delta dashboard")
-    p.add_argument("--registry-csv", default="data/analysis/tick_opportunity_mining/run_registry.csv")
-    p.add_argument("--out-summary-csv", default="data/analysis/tick_opportunity_mining/run_delta_summary.csv")
-    p.add_argument("--out-metric-changes-csv", default="data/analysis/tick_opportunity_mining/run_delta_metric_changes.csv")
-    p.add_argument("--out-gate-changes-csv", default="data/analysis/tick_opportunity_mining/run_delta_gate_changes.csv")
+    p.add_argument(
+        "--registry-csv", default="data/analysis/tick_opportunity_mining/run_registry.csv"
+    )
+    p.add_argument(
+        "--out-summary-csv", default="data/analysis/tick_opportunity_mining/run_delta_summary.csv"
+    )
+    p.add_argument(
+        "--out-metric-changes-csv",
+        default="data/analysis/tick_opportunity_mining/run_delta_metric_changes.csv",
+    )
+    p.add_argument(
+        "--out-gate-changes-csv",
+        default="data/analysis/tick_opportunity_mining/run_delta_gate_changes.csv",
+    )
     p.add_argument("--report-out", default="docs/analysis/run_delta_dashboard.md")
     args = p.parse_args()
 

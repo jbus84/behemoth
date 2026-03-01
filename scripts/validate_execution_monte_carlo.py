@@ -82,14 +82,34 @@ def run(
     ]
 
     for sym in symbols:
-        x = s[s.get("symbol", pd.Series(dtype=str)).astype(str) == sym].copy() if not s.empty else pd.DataFrame()
+        x = (
+            s[s.get("symbol", pd.Series(dtype=str)).astype(str) == sym].copy()
+            if not s.empty
+            else pd.DataFrame()
+        )
         s1 = x[x.get("scenario_id", pd.Series(dtype=str)).astype(str) == "S1_mild"].copy()
         s2 = x[x.get("scenario_id", pd.Series(dtype=str)).astype(str) == "S2_moderate"].copy()
 
-        lb95_s1 = float(pd.to_numeric(s1.get("lb95_per_signal_pips"), errors="coerce").iloc[0]) if not s1.empty else float("nan")
-        lb95_s2 = float(pd.to_numeric(s2.get("lb95_per_signal_pips"), errors="coerce").iloc[0]) if not s2.empty else float("nan")
-        pneg_s1 = float(pd.to_numeric(s1.get("prob_negative_month"), errors="coerce").iloc[0]) if not s1.empty else float("nan")
-        drop_s1 = float(pd.to_numeric(s1.get("fill_rate_drop_vs_S0"), errors="coerce").iloc[0]) if not s1.empty else float("nan")
+        lb95_s1 = (
+            float(pd.to_numeric(s1.get("lb95_per_signal_pips"), errors="coerce").iloc[0])
+            if not s1.empty
+            else float("nan")
+        )
+        lb95_s2 = (
+            float(pd.to_numeric(s2.get("lb95_per_signal_pips"), errors="coerce").iloc[0])
+            if not s2.empty
+            else float("nan")
+        )
+        pneg_s1 = (
+            float(pd.to_numeric(s1.get("prob_negative_month"), errors="coerce").iloc[0])
+            if not s1.empty
+            else float("nan")
+        )
+        drop_s1 = (
+            float(pd.to_numeric(s1.get("fill_rate_drop_vs_S0"), errors="coerce").iloc[0])
+            if not s1.empty
+            else float("nan")
+        )
 
         _add_check(
             checks_rows,
@@ -144,7 +164,9 @@ def run(
             details={"scenario_id": "S1_mild"},
         )
 
-        x_core = x[[c for c in core_cols if c in x.columns]].copy() if not x.empty else pd.DataFrame()
+        x_core = (
+            x[[c for c in core_cols if c in x.columns]].copy() if not x.empty else pd.DataFrame()
+        )
         nan_cnt = int(x_core.isna().sum().sum()) if not x_core.empty else int(10**9)
         _add_check(
             checks_rows,
@@ -161,7 +183,11 @@ def run(
         )
 
     checks = pd.DataFrame(checks_rows).sort_values(["symbol", "check_id"]).reset_index(drop=True)
-    fail = checks[checks["status"].astype(str).str.lower() != "pass"].copy() if not checks.empty else pd.DataFrame()
+    fail = (
+        checks[checks["status"].astype(str).str.lower() != "pass"].copy()
+        if not checks.empty
+        else pd.DataFrame()
+    )
     issues_rows: list[dict[str, Any]] = []
     for _, r in fail.iterrows():
         issues_rows.append(
@@ -194,7 +220,9 @@ def run(
     lines: list[str] = []
     lines.append("# OCO Execution Monte Carlo Validation Report")
     lines.append("")
-    lines.append(f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`")
+    lines.append(
+        f"- generated_at_utc: `{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}`"
+    )
     lines.append(f"- symbol_scenarios_csv: `{symbol_scenarios_csv}`")
     lines.append(f"- checks_csv: `{out_checks_csv}`")
     lines.append(f"- issues_csv: `{out_issues_csv}`")
@@ -211,11 +239,20 @@ def run(
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Validate execution Monte Carlo checks EM01..EM05")
-    p.add_argument("--symbol-scenarios-csv", default="data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv")
-    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY")
-    p.add_argument("--out-checks-csv", default="data/analysis/tick_opportunity_mining/execution_mc_checks.csv")
-    p.add_argument("--out-issues-csv", default="data/analysis/tick_opportunity_mining/execution_mc_issues.csv")
-    p.add_argument("--report-out", default="docs/analysis/oco_execution_monte_carlo_validation_report.md")
+    p.add_argument(
+        "--symbol-scenarios-csv",
+        default="data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv",
+    )
+    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD")
+    p.add_argument(
+        "--out-checks-csv", default="data/analysis/tick_opportunity_mining/execution_mc_checks.csv"
+    )
+    p.add_argument(
+        "--out-issues-csv", default="data/analysis/tick_opportunity_mining/execution_mc_issues.csv"
+    )
+    p.add_argument(
+        "--report-out", default="docs/analysis/oco_execution_monte_carlo_validation_report.md"
+    )
     args = p.parse_args()
 
     checks, issues = run(
@@ -225,7 +262,9 @@ def main() -> None:
         out_report_md=Path(str(args.report_out)),
         symbols=_parse_symbols(args.symbols),
     )
-    failed = int((checks["status"].astype(str).str.lower() != "pass").sum()) if not checks.empty else 0
+    failed = (
+        int((checks["status"].astype(str).str.lower() != "pass").sum()) if not checks.empty else 0
+    )
     print(f"wrote checks: {args.out_checks_csv} rows={len(checks)}")
     print(f"wrote issues: {args.out_issues_csv} rows={len(issues)}")
     print(f"failed_checks={failed}")

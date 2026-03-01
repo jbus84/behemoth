@@ -4,6 +4,9 @@ symbols:
   - EURUSD
   - GBPUSD
   - USDJPY
+  - USDCHF
+  - AUDUSD
+  - USDCAD
 allowed_families:
   - oco_first_touch_clean
 allowed_barrier_keep:
@@ -26,4 +29,4 @@ change_control:
   rationale: >
     Freeze rule-family universe used by reduced-core and governance lock so
     research selection cannot silently expand.
-hash_sha256: "dc2ac188d70deb23d557619be3992361753cf0ae67f0093307beeb5060b0435c"
+hash_sha256: "e35b54548300437309a4a5937a83ddeeb7ef12eb0c1621177c8616a1869affbc"
