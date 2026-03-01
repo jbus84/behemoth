@@ -6,7 +6,7 @@ COLOR_TARGET := \033[0;32m
 COLOR_DOC := \033[0;34m
 COLOR_DESC := \033[2m
 
-.PHONY: test docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift
+.PHONY: test docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift deploy-cbot
 
 test:
 	uv run pytest -q
@@ -14,6 +14,11 @@ test:
 onboard-symbol:
 	@test -n "$(SYMBOL)" || (echo "error: SYMBOL is required, e.g. make onboard-symbol SYMBOL=USDCAD MONTHS=201801-202602" && exit 1)
 	uv run python scripts/onboard_symbol.py --symbol $(SYMBOL) --months $(MONTHS) $(ONBOARD_FLAGS)
+
+deploy-cbot:
+	@echo "Deploying BehemothTradeManager.cs to cTrader Robots directory..."
+	cp src/cbot/BehemothTradeManager.cs ~/cAlgo/Sources/Robots/BehemothTradeManager/BehemothTradeManager/BehemothTradeManager.cs
+	@echo "Deployment complete! Please rebuild the bot in cTrader Automate."
 
 docs:
 	uv run mkdocs serve -a 127.0.0.1:8001
