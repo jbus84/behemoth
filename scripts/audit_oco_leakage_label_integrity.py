@@ -780,7 +780,7 @@ def run_audit(
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Leakage + label integrity audit for OCO pipeline")
-    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCAD,AUDUSD")
+    p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCAD,AUDUSD,USDCHF")
     p.add_argument("--out-checks-csv", default="data/analysis/tick_opportunity_mining/oco_leakage_integrity_checks.csv")
     p.add_argument("--out-issues-csv", default="data/analysis/tick_opportunity_mining/oco_leakage_integrity_issues.csv")
     p.add_argument("--report-out", default="docs/analysis/oco_leakage_integrity_report.md")

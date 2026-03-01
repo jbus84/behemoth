@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 04
 
-- generated_at: `2026-02-28 22:08:13 UTC`
+- generated_at: `2026-03-01 07:42:01 UTC`
 - Execution realism is applied with tick first-cross overshoot.
 - Session-aware rolling caps are built causally (20D lookback, q=0.90) before E11 dispersion is measured.
 - Cap curve highlights fill-rate versus signal-level expectancy.

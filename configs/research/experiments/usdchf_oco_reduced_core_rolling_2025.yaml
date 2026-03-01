@@ -1,7 +1,7 @@
 symbol: USDCHF
 
 candidate_csv: data/analysis/tick_opportunity_mining/USDCHF_oco_candidates.csv
-pred_path: data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdchf/USDCHF_oco_monthly_predictions.parquet
+pred_path: data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCHF_oco_monthly_predictions.parquet
 
 family_keep: oco_first_touch_clean
 barrier_keep: "2,3"
@@ -30,8 +30,8 @@ seed: 42
 capacity_floor_monthly: 3000
 capacity_floor_annual: 5000
 
-out_state_schedule_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling_usdchf/USDCHF_oco_reduced_state_schedule.csv
-out_state_csv: data/analysis/tick_opportunity_mining/reduced_core_usdchf/USDCHF_oco_reduced_states.csv
-out_monthly_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling_usdchf/USDCHF_oco_reduced_monthly.csv
-out_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling_usdchf/USDCHF_oco_reduced_summary.csv
+out_state_schedule_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_state_schedule.csv
+out_state_csv: data/analysis/tick_opportunity_mining/reduced_core/USDCHF_oco_reduced_states.csv
+out_monthly_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_monthly.csv
+out_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_summary.csv
 report_out: docs/analysis/usdchf_oco_reduced_core_rolling_report.md

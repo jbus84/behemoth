@@ -1,0 +1,5520 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Production documentation for the Behemoth trading system">
+      
+      
+        <meta name="author" content="Behemoth">
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>EURUSD Tick Opportunity Monthly WFO (3M->1M) - Behemoth Strategy</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#eurusd-tick-opportunity-monthly-wfo-3m-1m" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Behemoth Strategy" class="md-header__button md-logo" aria-label="Behemoth Strategy" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Behemoth Strategy
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              EURUSD Tick Opportunity Monthly WFO (3M-&gt;1M)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="teal"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com-jbus84/behemoth" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Github
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Behemoth Strategy" class="md-nav__button md-logo" aria-label="Behemoth Strategy" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Behemoth Strategy
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com-jbus84/behemoth" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Github
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../STRATEGY_MASTER_MANUAL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OCO Strategy Manual
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Analysis
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Analysis
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../catalog_gaps_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Catalog Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_stop_limit_tickfill_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stop-Limit Tickfill Fullcap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_live_governance_lock/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Live Governance Lock
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../remediation_metric_decomposition/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Remediation Metric Decomposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../risk_checklist/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Risk Checklist
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_7" id="__nav_3_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EURUSD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    EURUSD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eurusd_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eurusd_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eurusd_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reduced Core Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eurusd_oco_tick_exact_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tick-Exact Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eurusd_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AUDUSD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AUDUSD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audusd_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audusd_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audusd_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reduced Core Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GBPUSD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    GBPUSD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gbpusd_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gbpusd_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reduced Core Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gbpusd_oco_tick_exact_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tick-Exact Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gbpusd_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_10" id="__nav_3_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    USDJPY
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    USDJPY
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usdjpy_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usdjpy_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reduced Core Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usdjpy_oco_tick_exact_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tick-Exact Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usdjpy_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OCO Strategy Bible
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    OCO Strategy Bible
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/pipeline_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_01_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 01 Data Foundation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_01_data_foundation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 01 Data Foundation Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_02_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 02 Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_02_opportunity_mining/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 02 Opportunity Mining Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_03_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 03 Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_03_monthly_wfo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 03 Monthly WFO Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_04_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 04 Stop-Limit Realism
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_04_execution_realism/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 04 Stop-Limit Realism Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_05_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 05 Reduced Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_05_reduced_core/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 05 Reduced Core Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_06_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 06 Tick-Exact Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_06_tick_exact_and_portability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 06 Tick-Exact + Portability Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_07_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 07 Logical Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_07_logical_and_statistical_audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 07 Logical + Statistical Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_08_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 08 Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_08_robustness_and_stress/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 08 Robustness + Stress Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_09_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 09 Governance Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_09_live_governance_and_deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 09 Governance Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_10_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 10 Risks Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_10_known_risks_and_backlog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 10 Risks Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_11_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 11 Execution MC Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_11_execution_monte_carlo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 11 Execution MC Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/signal_lifecycle_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Signal Lifecycle Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/operator_runbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operator Runbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/metric_dictionary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metric Dictionary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/assumptions_and_threats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assumptions + Threats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/symbol_onboarding_playbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Symbol Onboarding Playbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/governance_mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance Mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data_reliability_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Reliability Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_stage_integrity_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage Integrity Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_rule_universe_registry_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rule Universe Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run_delta_dashboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run Delta Dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operator_action_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operator Action Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../taxonomy_rules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Taxonomy Rules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/operator_playbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operator Playbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_leakage_integrity_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Leakage + Label Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_execution_risk_prelive_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Risk Preflight
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_execution_drift_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Drift Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_alert_remediation_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alert Remediation Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_governance_explainability_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance Explainability Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_threshold_sensitivity_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Threshold Sensitivity Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_execution_monte_carlo_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Monte Carlo Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_execution_monte_carlo_validation_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Monte Carlo Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_logical_audit_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logical Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_edge_clarity_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Edge Clarity Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../oco_docs_contract_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docs Contract Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_48" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_48" id="__nav_4_48_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    USDCAD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_48_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_48">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    USDCAD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usdcad_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usdcad_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Fullcap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usdcad_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reduced Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usdcad_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_49" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_49" id="__nav_4_49_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    USDCHF
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_49_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_49">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    USDCHF
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usdchf_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usdchf_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Fullcap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usdchf_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reduced Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usdchf_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repository Notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Repository Notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DATA_SOURCES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../REPO_STRUCTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repo Structure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../walkthrough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Walkthrough
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../openapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenAPI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../risk_controls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Risk Controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monitoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data_pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../config_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../code_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Code Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../makefile/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Makefile
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../db_schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DB Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../db_schema_diagram/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DB Diagram
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monthly-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Monthly Metrics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#threshold-outcomes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Threshold Outcomes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="eurusd-tick-opportunity-monthly-wfo-3m-1m">EURUSD Tick Opportunity Monthly WFO (3M-&gt;1M)<a class="headerlink" href="#eurusd-tick-opportunity-monthly-wfo-3m-1m" title="Permanent link">&para;</a></h1>
+<h2 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h2>
+<ul>
+<li>library: <code>both</code></li>
+<li>train_years_for_state_fit: <code>2022,2023,2024</code></li>
+<li>eval_year: <code>2025</code></li>
+<li>min_candidate_train_count: <code>15000</code></li>
+<li>max_candidates_per_library: <code>300</code></li>
+<li>rolling_train_months: <code>3</code></li>
+<li>oco_include_no_touch: <code>True</code></li>
+<li>threshold_mode: <code>rolling_days</code></li>
+<li>rolling_threshold_days: <code>20</code></li>
+<li>rolling_threshold_min_history: <code>1000</code></li>
+<li>execution_quantile: <code>0.9</code></li>
+<li>oco_hold_mode: <code>from_touch</code></li>
+</ul>
+<h2 id="monthly-metrics">Monthly Metrics<a class="headerlink" href="#monthly-metrics" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">library</th>
+<th style="text-align: left;">test_month</th>
+<th style="text-align: left;">train_start</th>
+<th style="text-align: left;">train_end</th>
+<th style="text-align: left;">test_start</th>
+<th style="text-align: left;">test_end</th>
+<th style="text-align: right;">train_rows</th>
+<th style="text-align: right;">test_rows</th>
+<th style="text-align: right;">train_candidates</th>
+<th style="text-align: right;">test_candidates</th>
+<th style="text-align: right;">base_pos_rate</th>
+<th style="text-align: right;">auc</th>
+<th style="text-align: right;">brier</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: left;">2025-01-01</td>
+<td style="text-align: left;">2025-04-01</td>
+<td style="text-align: left;">2025-04-01</td>
+<td style="text-align: left;">2025-05-01</td>
+<td style="text-align: right;">472645</td>
+<td style="text-align: right;">172826</td>
+<td style="text-align: right;">199</td>
+<td style="text-align: right;">127</td>
+<td style="text-align: right;">0.49334</td>
+<td style="text-align: right;">0.49922</td>
+<td style="text-align: right;">0.252158</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: left;">2025-02-01</td>
+<td style="text-align: left;">2025-05-01</td>
+<td style="text-align: left;">2025-05-01</td>
+<td style="text-align: left;">2025-06-01</td>
+<td style="text-align: right;">261671</td>
+<td style="text-align: right;">79405</td>
+<td style="text-align: right;">103</td>
+<td style="text-align: right;">103</td>
+<td style="text-align: right;">0.500837</td>
+<td style="text-align: right;">0.501597</td>
+<td style="text-align: right;">0.250939</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: left;">2025-03-01</td>
+<td style="text-align: left;">2025-06-01</td>
+<td style="text-align: left;">2025-06-01</td>
+<td style="text-align: left;">2025-07-01</td>
+<td style="text-align: right;">293036</td>
+<td style="text-align: right;">69391</td>
+<td style="text-align: right;">105</td>
+<td style="text-align: right;">105</td>
+<td style="text-align: right;">0.505656</td>
+<td style="text-align: right;">0.501656</td>
+<td style="text-align: right;">0.251795</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: left;">2025-04-01</td>
+<td style="text-align: left;">2025-07-01</td>
+<td style="text-align: left;">2025-07-01</td>
+<td style="text-align: left;">2025-08-01</td>
+<td style="text-align: right;">332870</td>
+<td style="text-align: right;">66344</td>
+<td style="text-align: right;">120</td>
+<td style="text-align: right;">120</td>
+<td style="text-align: right;">0.490203</td>
+<td style="text-align: right;">0.500838</td>
+<td style="text-align: right;">0.252502</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: left;">2025-05-01</td>
+<td style="text-align: left;">2025-08-01</td>
+<td style="text-align: left;">2025-08-01</td>
+<td style="text-align: left;">2025-09-01</td>
+<td style="text-align: right;">266714</td>
+<td style="text-align: right;">64721</td>
+<td style="text-align: right;">131</td>
+<td style="text-align: right;">131</td>
+<td style="text-align: right;">0.505045</td>
+<td style="text-align: right;">0.509396</td>
+<td style="text-align: right;">0.251753</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: left;">2025-06-01</td>
+<td style="text-align: left;">2025-09-01</td>
+<td style="text-align: left;">2025-09-01</td>
+<td style="text-align: left;">2025-10-01</td>
+<td style="text-align: right;">250644</td>
+<td style="text-align: right;">74358</td>
+<td style="text-align: right;">146</td>
+<td style="text-align: right;">146</td>
+<td style="text-align: right;">0.499072</td>
+<td style="text-align: right;">0.499525</td>
+<td style="text-align: right;">0.252088</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: left;">2025-07-01</td>
+<td style="text-align: left;">2025-10-01</td>
+<td style="text-align: left;">2025-10-01</td>
+<td style="text-align: left;">2025-11-01</td>
+<td style="text-align: right;">192541</td>
+<td style="text-align: right;">63592</td>
+<td style="text-align: right;">124</td>
+<td style="text-align: right;">124</td>
+<td style="text-align: right;">0.501305</td>
+<td style="text-align: right;">0.496289</td>
+<td style="text-align: right;">0.253271</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: left;">2025-08-01</td>
+<td style="text-align: left;">2025-11-01</td>
+<td style="text-align: left;">2025-11-01</td>
+<td style="text-align: left;">2025-12-01</td>
+<td style="text-align: right;">246019</td>
+<td style="text-align: right;">60372</td>
+<td style="text-align: right;">162</td>
+<td style="text-align: right;">162</td>
+<td style="text-align: right;">0.502899</td>
+<td style="text-align: right;">0.498849</td>
+<td style="text-align: right;">0.25299</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: left;">2025-09-01</td>
+<td style="text-align: left;">2025-12-01</td>
+<td style="text-align: left;">2025-12-01</td>
+<td style="text-align: left;">2026-01-01</td>
+<td style="text-align: right;">211578</td>
+<td style="text-align: right;">61148</td>
+<td style="text-align: right;">152</td>
+<td style="text-align: right;">152</td>
+<td style="text-align: right;">0.500605</td>
+<td style="text-align: right;">0.500722</td>
+<td style="text-align: right;">0.25346</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: left;">2025-01-01</td>
+<td style="text-align: left;">2025-04-01</td>
+<td style="text-align: left;">2025-04-01</td>
+<td style="text-align: left;">2025-05-01</td>
+<td style="text-align: right;">878355</td>
+<td style="text-align: right;">362828</td>
+<td style="text-align: right;">283</td>
+<td style="text-align: right;">218</td>
+<td style="text-align: right;">0.552154</td>
+<td style="text-align: right;">0.526434</td>
+<td style="text-align: right;">0.247035</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: left;">2025-02-01</td>
+<td style="text-align: left;">2025-05-01</td>
+<td style="text-align: left;">2025-05-01</td>
+<td style="text-align: left;">2025-06-01</td>
+<td style="text-align: right;">637497</td>
+<td style="text-align: right;">187922</td>
+<td style="text-align: right;">225</td>
+<td style="text-align: right;">225</td>
+<td style="text-align: right;">0.531029</td>
+<td style="text-align: right;">0.522918</td>
+<td style="text-align: right;">0.248788</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: left;">2025-03-01</td>
+<td style="text-align: left;">2025-06-01</td>
+<td style="text-align: left;">2025-06-01</td>
+<td style="text-align: left;">2025-07-01</td>
+<td style="text-align: right;">717367</td>
+<td style="text-align: right;">158929</td>
+<td style="text-align: right;">224</td>
+<td style="text-align: right;">224</td>
+<td style="text-align: right;">0.526751</td>
+<td style="text-align: right;">0.524573</td>
+<td style="text-align: right;">0.249347</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: left;">2025-04-01</td>
+<td style="text-align: left;">2025-07-01</td>
+<td style="text-align: left;">2025-07-01</td>
+<td style="text-align: left;">2025-08-01</td>
+<td style="text-align: right;">717893</td>
+<td style="text-align: right;">136601</td>
+<td style="text-align: right;">224</td>
+<td style="text-align: right;">224</td>
+<td style="text-align: right;">0.540033</td>
+<td style="text-align: right;">0.528131</td>
+<td style="text-align: right;">0.248239</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: left;">2025-05-01</td>
+<td style="text-align: left;">2025-08-01</td>
+<td style="text-align: left;">2025-08-01</td>
+<td style="text-align: left;">2025-09-01</td>
+<td style="text-align: right;">445331</td>
+<td style="text-align: right;">114222</td>
+<td style="text-align: right;">207</td>
+<td style="text-align: right;">207</td>
+<td style="text-align: right;">0.539038</td>
+<td style="text-align: right;">0.530142</td>
+<td style="text-align: right;">0.248206</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: left;">2025-06-01</td>
+<td style="text-align: left;">2025-09-01</td>
+<td style="text-align: left;">2025-09-01</td>
+<td style="text-align: left;">2025-10-01</td>
+<td style="text-align: right;">399597</td>
+<td style="text-align: right;">108222</td>
+<td style="text-align: right;">214</td>
+<td style="text-align: right;">214</td>
+<td style="text-align: right;">0.534947</td>
+<td style="text-align: right;">0.520914</td>
+<td style="text-align: right;">0.249741</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: left;">2025-07-01</td>
+<td style="text-align: left;">2025-10-01</td>
+<td style="text-align: left;">2025-10-01</td>
+<td style="text-align: left;">2025-11-01</td>
+<td style="text-align: right;">356893</td>
+<td style="text-align: right;">103539</td>
+<td style="text-align: right;">215</td>
+<td style="text-align: right;">215</td>
+<td style="text-align: right;">0.518046</td>
+<td style="text-align: right;">0.522721</td>
+<td style="text-align: right;">0.250175</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: left;">2025-08-01</td>
+<td style="text-align: left;">2025-11-01</td>
+<td style="text-align: left;">2025-11-01</td>
+<td style="text-align: left;">2025-12-01</td>
+<td style="text-align: right;">305307</td>
+<td style="text-align: right;">62749</td>
+<td style="text-align: right;">199</td>
+<td style="text-align: right;">199</td>
+<td style="text-align: right;">0.508709</td>
+<td style="text-align: right;">0.509241</td>
+<td style="text-align: right;">0.252707</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: left;">2025-09-01</td>
+<td style="text-align: left;">2025-12-01</td>
+<td style="text-align: left;">2025-12-01</td>
+<td style="text-align: left;">2026-01-01</td>
+<td style="text-align: right;">230233</td>
+<td style="text-align: right;">58488</td>
+<td style="text-align: right;">176</td>
+<td style="text-align: right;">176</td>
+<td style="text-align: right;">0.520637</td>
+<td style="text-align: right;">0.532389</td>
+<td style="text-align: right;">0.249392</td>
+</tr>
+</tbody>
+</table>
+<h2 id="threshold-outcomes">Threshold Outcomes<a class="headerlink" href="#threshold-outcomes" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">library</th>
+<th style="text-align: left;">test_month</th>
+<th style="text-align: right;">quantile</th>
+<th style="text-align: left;">threshold_mode</th>
+<th style="text-align: right;">threshold_median</th>
+<th style="text-align: right;">threshold_min</th>
+<th style="text-align: right;">threshold_max</th>
+<th style="text-align: right;">coverage</th>
+<th style="text-align: right;">mean_gross_pips</th>
+<th style="text-align: right;">median_gross_pips</th>
+<th style="text-align: right;">pos_rate</th>
+<th style="text-align: right;">selected_rows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.496411</td>
+<td style="text-align: right;">0.49183</td>
+<td style="text-align: right;">0.499529</td>
+<td style="text-align: right;">0.484279</td>
+<td style="text-align: right;">-0.0698002</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.491577</td>
+<td style="text-align: right;">83696</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.503417</td>
+<td style="text-align: right;">0.500067</td>
+<td style="text-align: right;">0.505484</td>
+<td style="text-align: right;">0.395537</td>
+<td style="text-align: right;">-0.104999</td>
+<td style="text-align: right;">-0.1</td>
+<td style="text-align: right;">0.489577</td>
+<td style="text-align: right;">68359</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.511371</td>
+<td style="text-align: right;">0.509353</td>
+<td style="text-align: right;">0.513203</td>
+<td style="text-align: right;">0.300343</td>
+<td style="text-align: right;">-0.147394</td>
+<td style="text-align: right;">-0.1</td>
+<td style="text-align: right;">0.486736</td>
+<td style="text-align: right;">51907</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.523549</td>
+<td style="text-align: right;">0.520448</td>
+<td style="text-align: right;">0.524931</td>
+<td style="text-align: right;">0.202475</td>
+<td style="text-align: right;">-0.0848341</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.495556</td>
+<td style="text-align: right;">34993</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.547142</td>
+<td style="text-align: right;">0.539034</td>
+<td style="text-align: right;">0.548658</td>
+<td style="text-align: right;">0.105812</td>
+<td style="text-align: right;">-0.144862</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.499863</td>
+<td style="text-align: right;">18287</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.574144</td>
+<td style="text-align: right;">0.560493</td>
+<td style="text-align: right;">0.579069</td>
+<td style="text-align: right;">0.0531633</td>
+<td style="text-align: right;">0.0997061</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.498367</td>
+<td style="text-align: right;">9188</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.499334</td>
+<td style="text-align: right;">0.497972</td>
+<td style="text-align: right;">0.499987</td>
+<td style="text-align: right;">0.486581</td>
+<td style="text-align: right;">0.105979</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.499444</td>
+<td style="text-align: right;">38637</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.504695</td>
+<td style="text-align: right;">0.503352</td>
+<td style="text-align: right;">0.505841</td>
+<td style="text-align: right;">0.38325</td>
+<td style="text-align: right;">0.161366</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.501742</td>
+<td style="text-align: right;">30432</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.510607</td>
+<td style="text-align: right;">0.509555</td>
+<td style="text-align: right;">0.513037</td>
+<td style="text-align: right;">0.284226</td>
+<td style="text-align: right;">0.269135</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.505295</td>
+<td style="text-align: right;">22569</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.518646</td>
+<td style="text-align: right;">0.517428</td>
+<td style="text-align: right;">0.524652</td>
+<td style="text-align: right;">0.187658</td>
+<td style="text-align: right;">0.265096</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.504664</td>
+<td style="text-align: right;">14901</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.539065</td>
+<td style="text-align: right;">0.533395</td>
+<td style="text-align: right;">0.551767</td>
+<td style="text-align: right;">0.0934954</td>
+<td style="text-align: right;">0.403031</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: right;">0.513739</td>
+<td style="text-align: right;">7424</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.565449</td>
+<td style="text-align: right;">0.555473</td>
+<td style="text-align: right;">0.585093</td>
+<td style="text-align: right;">0.0493798</td>
+<td style="text-align: right;">0.950268</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: right;">0.527927</td>
+<td style="text-align: right;">3921</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.497055</td>
+<td style="text-align: right;">0.496388</td>
+<td style="text-align: right;">0.49865</td>
+<td style="text-align: right;">0.495842</td>
+<td style="text-align: right;">0.146598</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.504723</td>
+<td style="text-align: right;">34407</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.504184</td>
+<td style="text-align: right;">0.503729</td>
+<td style="text-align: right;">0.505001</td>
+<td style="text-align: right;">0.405182</td>
+<td style="text-align: right;">0.183547</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.508252</td>
+<td style="text-align: right;">28116</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.512048</td>
+<td style="text-align: right;">0.511039</td>
+<td style="text-align: right;">0.514206</td>
+<td style="text-align: right;">0.311885</td>
+<td style="text-align: right;">0.207005</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: right;">0.509287</td>
+<td style="text-align: right;">21642</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.523639</td>
+<td style="text-align: right;">0.521989</td>
+<td style="text-align: right;">0.527012</td>
+<td style="text-align: right;">0.214134</td>
+<td style="text-align: right;">0.378511</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: right;">0.511542</td>
+<td style="text-align: right;">14859</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.544921</td>
+<td style="text-align: right;">0.542165</td>
+<td style="text-align: right;">0.549647</td>
+<td style="text-align: right;">0.107146</td>
+<td style="text-align: right;">0.60967</td>
+<td style="text-align: right;">0.3</td>
+<td style="text-align: right;">0.517418</td>
+<td style="text-align: right;">7435</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.570363</td>
+<td style="text-align: right;">0.568121</td>
+<td style="text-align: right;">0.575131</td>
+<td style="text-align: right;">0.0523411</td>
+<td style="text-align: right;">0.792236</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: right;">0.525055</td>
+<td style="text-align: right;">3632</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.498994</td>
+<td style="text-align: right;">0.496391</td>
+<td style="text-align: right;">0.502624</td>
+<td style="text-align: right;">0.522293</td>
+<td style="text-align: right;">-0.0996912</td>
+<td style="text-align: right;">-0.1</td>
+<td style="text-align: right;">0.486653</td>
+<td style="text-align: right;">34651</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.507727</td>
+<td style="text-align: right;">0.505849</td>
+<td style="text-align: right;">0.511345</td>
+<td style="text-align: right;">0.419721</td>
+<td style="text-align: right;">-0.0548517</td>
+<td style="text-align: right;">-0.1</td>
+<td style="text-align: right;">0.487934</td>
+<td style="text-align: right;">27846</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.518058</td>
+<td style="text-align: right;">0.516532</td>
+<td style="text-align: right;">0.521614</td>
+<td style="text-align: right;">0.316532</td>
+<td style="text-align: right;">-0.11921</td>
+<td style="text-align: right;">-0.1</td>
+<td style="text-align: right;">0.488048</td>
+<td style="text-align: right;">21000</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.532481</td>
+<td style="text-align: right;">0.531415</td>
+<td style="text-align: right;">0.536514</td>
+<td style="text-align: right;">0.210645</td>
+<td style="text-align: right;">-0.083034</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.49653</td>
+<td style="text-align: right;">13975</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.565554</td>
+<td style="text-align: right;">0.55883</td>
+<td style="text-align: right;">0.568656</td>
+<td style="text-align: right;">0.0985771</td>
+<td style="text-align: right;">-0.26896</td>
+<td style="text-align: right;">-0.1</td>
+<td style="text-align: right;">0.492202</td>
+<td style="text-align: right;">6540</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.605586</td>
+<td style="text-align: right;">0.587276</td>
+<td style="text-align: right;">0.617098</td>
+<td style="text-align: right;">0.0472085</td>
+<td style="text-align: right;">-0.579119</td>
+<td style="text-align: right;">-0.1</td>
+<td style="text-align: right;">0.490102</td>
+<td style="text-align: right;">3132</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.494894</td>
+<td style="text-align: right;">0.490896</td>
+<td style="text-align: right;">0.496465</td>
+<td style="text-align: right;">0.481142</td>
+<td style="text-align: right;">0.307469</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: right;">0.515446</td>
+<td style="text-align: right;">31140</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.504708</td>
+<td style="text-align: right;">0.501463</td>
+<td style="text-align: right;">0.506942</td>
+<td style="text-align: right;">0.383554</td>
+<td style="text-align: right;">0.29948</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: right;">0.51422</td>
+<td style="text-align: right;">24824</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.515069</td>
+<td style="text-align: right;">0.512645</td>
+<td style="text-align: right;">0.516193</td>
+<td style="text-align: right;">0.292193</td>
+<td style="text-align: right;">0.284475</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.506266</td>
+<td style="text-align: right;">18911</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.528688</td>
+<td style="text-align: right;">0.526335</td>
+<td style="text-align: right;">0.530616</td>
+<td style="text-align: right;">0.195315</td>
+<td style="text-align: right;">0.277802</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: right;">0.516336</td>
+<td style="text-align: right;">12641</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.552888</td>
+<td style="text-align: right;">0.55014</td>
+<td style="text-align: right;">0.556166</td>
+<td style="text-align: right;">0.0992414</td>
+<td style="text-align: right;">0.365748</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: right;">0.534797</td>
+<td style="text-align: right;">6423</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.586416</td>
+<td style="text-align: right;">0.579384</td>
+<td style="text-align: right;">0.590313</td>
+<td style="text-align: right;">0.0482842</td>
+<td style="text-align: right;">0.116992</td>
+<td style="text-align: right;">0.3</td>
+<td style="text-align: right;">0.5136</td>
+<td style="text-align: right;">3125</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.499167</td>
+<td style="text-align: right;">0.496526</td>
+<td style="text-align: right;">0.50094</td>
+<td style="text-align: right;">0.523279</td>
+<td style="text-align: right;">0.138643</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.499589</td>
+<td style="text-align: right;">38910</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.507751</td>
+<td style="text-align: right;">0.505432</td>
+<td style="text-align: right;">0.509649</td>
+<td style="text-align: right;">0.415544</td>
+<td style="text-align: right;">0.124172</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.500922</td>
+<td style="text-align: right;">30899</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.517838</td>
+<td style="text-align: right;">0.516302</td>
+<td style="text-align: right;">0.519579</td>
+<td style="text-align: right;">0.311157</td>
+<td style="text-align: right;">0.169097</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.502745</td>
+<td style="text-align: right;">23137</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.532043</td>
+<td style="text-align: right;">0.529936</td>
+<td style="text-align: right;">0.534929</td>
+<td style="text-align: right;">0.198271</td>
+<td style="text-align: right;">0.161121</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.501933</td>
+<td style="text-align: right;">14743</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.557672</td>
+<td style="text-align: right;">0.554317</td>
+<td style="text-align: right;">0.567399</td>
+<td style="text-align: right;">0.0965195</td>
+<td style="text-align: right;">0.18491</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.507315</td>
+<td style="text-align: right;">7177</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.586788</td>
+<td style="text-align: right;">0.578529</td>
+<td style="text-align: right;">0.611139</td>
+<td style="text-align: right;">0.0465585</td>
+<td style="text-align: right;">0.319815</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: right;">0.509821</td>
+<td style="text-align: right;">3462</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.502641</td>
+<td style="text-align: right;">0.501196</td>
+<td style="text-align: right;">0.505267</td>
+<td style="text-align: right;">0.521198</td>
+<td style="text-align: right;">0.0898322</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.496923</td>
+<td style="text-align: right;">33144</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.510552</td>
+<td style="text-align: right;">0.509613</td>
+<td style="text-align: right;">0.514284</td>
+<td style="text-align: right;">0.425698</td>
+<td style="text-align: right;">0.0763104</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.497359</td>
+<td style="text-align: right;">27071</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.519857</td>
+<td style="text-align: right;">0.518268</td>
+<td style="text-align: right;">0.5236</td>
+<td style="text-align: right;">0.322808</td>
+<td style="text-align: right;">0.0649454</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.497759</td>
+<td style="text-align: right;">20528</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.532095</td>
+<td style="text-align: right;">0.529488</td>
+<td style="text-align: right;">0.537059</td>
+<td style="text-align: right;">0.216427</td>
+<td style="text-align: right;">0.126375</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.50149</td>
+<td style="text-align: right;">13763</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.558948</td>
+<td style="text-align: right;">0.552421</td>
+<td style="text-align: right;">0.564093</td>
+<td style="text-align: right;">0.107687</td>
+<td style="text-align: right;">0.167392</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.505841</td>
+<td style="text-align: right;">6848</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.591196</td>
+<td style="text-align: right;">0.578089</td>
+<td style="text-align: right;">0.599391</td>
+<td style="text-align: right;">0.0536388</td>
+<td style="text-align: right;">-0.0836998</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.49399</td>
+<td style="text-align: right;">3411</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.505719</td>
+<td style="text-align: right;">0.502874</td>
+<td style="text-align: right;">0.50994</td>
+<td style="text-align: right;">0.513566</td>
+<td style="text-align: right;">0.0768231</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.500726</td>
+<td style="text-align: right;">31005</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.515582</td>
+<td style="text-align: right;">0.511592</td>
+<td style="text-align: right;">0.519742</td>
+<td style="text-align: right;">0.411764</td>
+<td style="text-align: right;">0.0504646</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.496199</td>
+<td style="text-align: right;">24859</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.52787</td>
+<td style="text-align: right;">0.522101</td>
+<td style="text-align: right;">0.53208</td>
+<td style="text-align: right;">0.31561</td>
+<td style="text-align: right;">0.0632361</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.499003</td>
+<td style="text-align: right;">19054</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.543956</td>
+<td style="text-align: right;">0.536049</td>
+<td style="text-align: right;">0.553102</td>
+<td style="text-align: right;">0.221676</td>
+<td style="text-align: right;">0.0984159</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.494583</td>
+<td style="text-align: right;">13383</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.573044</td>
+<td style="text-align: right;">0.564889</td>
+<td style="text-align: right;">0.584525</td>
+<td style="text-align: right;">0.115915</td>
+<td style="text-align: right;">0.084567</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.491998</td>
+<td style="text-align: right;">6998</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.604058</td>
+<td style="text-align: right;">0.597145</td>
+<td style="text-align: right;">0.615329</td>
+<td style="text-align: right;">0.0551911</td>
+<td style="text-align: right;">0.0789616</td>
+<td style="text-align: right;">-0.1</td>
+<td style="text-align: right;">0.47539</td>
+<td style="text-align: right;">3332</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.503592</td>
+<td style="text-align: right;">0.50238</td>
+<td style="text-align: right;">0.504862</td>
+<td style="text-align: right;">0.487473</td>
+<td style="text-align: right;">0.0669854</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.501375</td>
+<td style="text-align: right;">29808</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.513471</td>
+<td style="text-align: right;">0.512383</td>
+<td style="text-align: right;">0.515474</td>
+<td style="text-align: right;">0.383071</td>
+<td style="text-align: right;">0.117456</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.50508</td>
+<td style="text-align: right;">23424</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.525954</td>
+<td style="text-align: right;">0.52406</td>
+<td style="text-align: right;">0.527488</td>
+<td style="text-align: right;">0.282021</td>
+<td style="text-align: right;">0.0794143</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.503044</td>
+<td style="text-align: right;">17245</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.543436</td>
+<td style="text-align: right;">0.541481</td>
+<td style="text-align: right;">0.546055</td>
+<td style="text-align: right;">0.184781</td>
+<td style="text-align: right;">0.0759802</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.503053</td>
+<td style="text-align: right;">11299</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.579161</td>
+<td style="text-align: right;">0.570377</td>
+<td style="text-align: right;">0.590377</td>
+<td style="text-align: right;">0.0851377</td>
+<td style="text-align: right;">0.187073</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.514022</td>
+<td style="text-align: right;">5206</td>
+</tr>
+<tr>
+<td style="text-align: left;">directional</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.621072</td>
+<td style="text-align: right;">0.611532</td>
+<td style="text-align: right;">0.64124</td>
+<td style="text-align: right;">0.0393799</td>
+<td style="text-align: right;">0.349751</td>
+<td style="text-align: right;">0.3</td>
+<td style="text-align: right;">0.550249</td>
+<td style="text-align: right;">2408</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.535818</td>
+<td style="text-align: right;">0.526093</td>
+<td style="text-align: right;">0.537707</td>
+<td style="text-align: right;">0.523014</td>
+<td style="text-align: right;">1.28626</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.569339</td>
+<td style="text-align: right;">189764</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.54511</td>
+<td style="text-align: right;">0.535388</td>
+<td style="text-align: right;">0.546651</td>
+<td style="text-align: right;">0.418934</td>
+<td style="text-align: right;">1.44153</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.575266</td>
+<td style="text-align: right;">152001</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.555382</td>
+<td style="text-align: right;">0.546134</td>
+<td style="text-align: right;">0.557078</td>
+<td style="text-align: right;">0.314987</td>
+<td style="text-align: right;">1.62799</td>
+<td style="text-align: right;">1.1</td>
+<td style="text-align: right;">0.582241</td>
+<td style="text-align: right;">114286</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.56828</td>
+<td style="text-align: right;">0.558814</td>
+<td style="text-align: right;">0.569925</td>
+<td style="text-align: right;">0.212395</td>
+<td style="text-align: right;">1.94616</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: right;">0.591814</td>
+<td style="text-align: right;">77063</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.586218</td>
+<td style="text-align: right;">0.576708</td>
+<td style="text-align: right;">0.588064</td>
+<td style="text-align: right;">0.106968</td>
+<td style="text-align: right;">2.59165</td>
+<td style="text-align: right;">1.7</td>
+<td style="text-align: right;">0.609595</td>
+<td style="text-align: right;">38811</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.602962</td>
+<td style="text-align: right;">0.593343</td>
+<td style="text-align: right;">0.604264</td>
+<td style="text-align: right;">0.0529562</td>
+<td style="text-align: right;">3.44702</td>
+<td style="text-align: right;">2.1</td>
+<td style="text-align: right;">0.628968</td>
+<td style="text-align: right;">19214</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.537308</td>
+<td style="text-align: right;">0.53232</td>
+<td style="text-align: right;">0.544021</td>
+<td style="text-align: right;">0.462186</td>
+<td style="text-align: right;">0.758564</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.549065</td>
+<td style="text-align: right;">86855</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.545521</td>
+<td style="text-align: right;">0.540422</td>
+<td style="text-align: right;">0.553324</td>
+<td style="text-align: right;">0.364731</td>
+<td style="text-align: right;">0.85698</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.552122</td>
+<td style="text-align: right;">68541</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.555538</td>
+<td style="text-align: right;">0.549795</td>
+<td style="text-align: right;">0.564364</td>
+<td style="text-align: right;">0.268707</td>
+<td style="text-align: right;">1.0171</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">0.560896</td>
+<td style="text-align: right;">50496</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.568046</td>
+<td style="text-align: right;">0.561961</td>
+<td style="text-align: right;">0.578658</td>
+<td style="text-align: right;">0.173434</td>
+<td style="text-align: right;">1.28388</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.568514</td>
+<td style="text-align: right;">32592</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.586371</td>
+<td style="text-align: right;">0.58045</td>
+<td style="text-align: right;">0.600975</td>
+<td style="text-align: right;">0.0840029</td>
+<td style="text-align: right;">1.87928</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: right;">0.590523</td>
+<td style="text-align: right;">15786</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.605504</td>
+<td style="text-align: right;">0.598354</td>
+<td style="text-align: right;">0.62381</td>
+<td style="text-align: right;">0.041464</td>
+<td style="text-align: right;">2.63266</td>
+<td style="text-align: right;">1.8</td>
+<td style="text-align: right;">0.605236</td>
+<td style="text-align: right;">7792</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.523895</td>
+<td style="text-align: right;">0.521141</td>
+<td style="text-align: right;">0.53097</td>
+<td style="text-align: right;">0.467844</td>
+<td style="text-align: right;">0.727918</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.545579</td>
+<td style="text-align: right;">74354</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.532305</td>
+<td style="text-align: right;">0.530213</td>
+<td style="text-align: right;">0.538872</td>
+<td style="text-align: right;">0.374582</td>
+<td style="text-align: right;">0.829188</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.549604</td>
+<td style="text-align: right;">59532</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.542485</td>
+<td style="text-align: right;">0.540638</td>
+<td style="text-align: right;">0.548518</td>
+<td style="text-align: right;">0.28061</td>
+<td style="text-align: right;">0.983526</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.556181</td>
+<td style="text-align: right;">44597</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.555897</td>
+<td style="text-align: right;">0.554367</td>
+<td style="text-align: right;">0.562336</td>
+<td style="text-align: right;">0.18602</td>
+<td style="text-align: right;">1.25491</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.567007</td>
+<td style="text-align: right;">29564</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.576276</td>
+<td style="text-align: right;">0.575402</td>
+<td style="text-align: right;">0.581082</td>
+<td style="text-align: right;">0.0936645</td>
+<td style="text-align: right;">1.80697</td>
+<td style="text-align: right;">1.1</td>
+<td style="text-align: right;">0.580814</td>
+<td style="text-align: right;">14886</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.598215</td>
+<td style="text-align: right;">0.596475</td>
+<td style="text-align: right;">0.601654</td>
+<td style="text-align: right;">0.0470399</td>
+<td style="text-align: right;">2.722</td>
+<td style="text-align: right;">1.6</td>
+<td style="text-align: right;">0.598448</td>
+<td style="text-align: right;">7476</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.525588</td>
+<td style="text-align: right;">0.52459</td>
+<td style="text-align: right;">0.527803</td>
+<td style="text-align: right;">0.482756</td>
+<td style="text-align: right;">1.09687</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">0.560209</td>
+<td style="text-align: right;">65945</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.534326</td>
+<td style="text-align: right;">0.533242</td>
+<td style="text-align: right;">0.536953</td>
+<td style="text-align: right;">0.384243</td>
+<td style="text-align: right;">1.25155</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.568911</td>
+<td style="text-align: right;">52488</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.544862</td>
+<td style="text-align: right;">0.54348</td>
+<td style="text-align: right;">0.547979</td>
+<td style="text-align: right;">0.287633</td>
+<td style="text-align: right;">1.44023</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.577028</td>
+<td style="text-align: right;">39291</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.559196</td>
+<td style="text-align: right;">0.557623</td>
+<td style="text-align: right;">0.56234</td>
+<td style="text-align: right;">0.189881</td>
+<td style="text-align: right;">1.75594</td>
+<td style="text-align: right;">1.1</td>
+<td style="text-align: right;">0.588673</td>
+<td style="text-align: right;">25938</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.580028</td>
+<td style="text-align: right;">0.577712</td>
+<td style="text-align: right;">0.582624</td>
+<td style="text-align: right;">0.0933375</td>
+<td style="text-align: right;">2.35932</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">0.605255</td>
+<td style="text-align: right;">12750</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.599699</td>
+<td style="text-align: right;">0.595796</td>
+<td style="text-align: right;">0.602877</td>
+<td style="text-align: right;">0.0458562</td>
+<td style="text-align: right;">3.3144</td>
+<td style="text-align: right;">2.1</td>
+<td style="text-align: right;">0.61606</td>
+<td style="text-align: right;">6264</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.533197</td>
+<td style="text-align: right;">0.531912</td>
+<td style="text-align: right;">0.534011</td>
+<td style="text-align: right;">0.505752</td>
+<td style="text-align: right;">1.03035</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">0.558891</td>
+<td style="text-align: right;">57768</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.543345</td>
+<td style="text-align: right;">0.54185</td>
+<td style="text-align: right;">0.544414</td>
+<td style="text-align: right;">0.405053</td>
+<td style="text-align: right;">1.19068</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.565015</td>
+<td style="text-align: right;">46266</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.555297</td>
+<td style="text-align: right;">0.553304</td>
+<td style="text-align: right;">0.556899</td>
+<td style="text-align: right;">0.30235</td>
+<td style="text-align: right;">1.40121</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.572926</td>
+<td style="text-align: right;">34535</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.57272</td>
+<td style="text-align: right;">0.570192</td>
+<td style="text-align: right;">0.57538</td>
+<td style="text-align: right;">0.200653</td>
+<td style="text-align: right;">1.67966</td>
+<td style="text-align: right;">1.1</td>
+<td style="text-align: right;">0.588071</td>
+<td style="text-align: right;">22919</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.597227</td>
+<td style="text-align: right;">0.593715</td>
+<td style="text-align: right;">0.601329</td>
+<td style="text-align: right;">0.0996305</td>
+<td style="text-align: right;">2.21984</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: right;">0.611599</td>
+<td style="text-align: right;">11380</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.618629</td>
+<td style="text-align: right;">0.612665</td>
+<td style="text-align: right;">0.626375</td>
+<td style="text-align: right;">0.0494651</td>
+<td style="text-align: right;">2.93623</td>
+<td style="text-align: right;">1.8</td>
+<td style="text-align: right;">0.632743</td>
+<td style="text-align: right;">5650</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.536293</td>
+<td style="text-align: right;">0.531116</td>
+<td style="text-align: right;">0.538094</td>
+<td style="text-align: right;">0.470302</td>
+<td style="text-align: right;">0.806236</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.552881</td>
+<td style="text-align: right;">50897</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.546813</td>
+<td style="text-align: right;">0.540987</td>
+<td style="text-align: right;">0.54859</td>
+<td style="text-align: right;">0.373972</td>
+<td style="text-align: right;">0.887401</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.555347</td>
+<td style="text-align: right;">40472</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.559525</td>
+<td style="text-align: right;">0.553613</td>
+<td style="text-align: right;">0.561875</td>
+<td style="text-align: right;">0.279527</td>
+<td style="text-align: right;">1.00706</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">0.558229</td>
+<td style="text-align: right;">30251</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.577439</td>
+<td style="text-align: right;">0.571797</td>
+<td style="text-align: right;">0.580886</td>
+<td style="text-align: right;">0.187051</td>
+<td style="text-align: right;">1.18671</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.563899</td>
+<td style="text-align: right;">20243</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.604307</td>
+<td style="text-align: right;">0.598486</td>
+<td style="text-align: right;">0.608334</td>
+<td style="text-align: right;">0.0912291</td>
+<td style="text-align: right;">1.42574</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.562747</td>
+<td style="text-align: right;">9873</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.627731</td>
+<td style="text-align: right;">0.620495</td>
+<td style="text-align: right;">0.632042</td>
+<td style="text-align: right;">0.0456284</td>
+<td style="text-align: right;">1.64664</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.561158</td>
+<td style="text-align: right;">4938</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.531944</td>
+<td style="text-align: right;">0.530059</td>
+<td style="text-align: right;">0.53415</td>
+<td style="text-align: right;">0.487826</td>
+<td style="text-align: right;">0.511729</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: right;">0.533291</td>
+<td style="text-align: right;">50509</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.541921</td>
+<td style="text-align: right;">0.540974</td>
+<td style="text-align: right;">0.544719</td>
+<td style="text-align: right;">0.390809</td>
+<td style="text-align: right;">0.584408</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: right;">0.536329</td>
+<td style="text-align: right;">40464</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.553448</td>
+<td style="text-align: right;">0.552292</td>
+<td style="text-align: right;">0.556766</td>
+<td style="text-align: right;">0.293136</td>
+<td style="text-align: right;">0.70511</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.54443</td>
+<td style="text-align: right;">30351</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.567827</td>
+<td style="text-align: right;">0.566279</td>
+<td style="text-align: right;">0.572215</td>
+<td style="text-align: right;">0.193608</td>
+<td style="text-align: right;">0.867235</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.555373</td>
+<td style="text-align: right;">20046</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.58867</td>
+<td style="text-align: right;">0.587344</td>
+<td style="text-align: right;">0.594275</td>
+<td style="text-align: right;">0.0945634</td>
+<td style="text-align: right;">1.1071</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.573894</td>
+<td style="text-align: right;">9791</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.605616</td>
+<td style="text-align: right;">0.604347</td>
+<td style="text-align: right;">0.615024</td>
+<td style="text-align: right;">0.045577</td>
+<td style="text-align: right;">1.25984</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.586141</td>
+<td style="text-align: right;">4719</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.519265</td>
+<td style="text-align: right;">0.511537</td>
+<td style="text-align: right;">0.526245</td>
+<td style="text-align: right;">0.475721</td>
+<td style="text-align: right;">0.325172</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: right;">0.514522</td>
+<td style="text-align: right;">29851</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.531022</td>
+<td style="text-align: right;">0.523138</td>
+<td style="text-align: right;">0.537992</td>
+<td style="text-align: right;">0.381233</td>
+<td style="text-align: right;">0.379801</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: right;">0.519982</td>
+<td style="text-align: right;">23922</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.544831</td>
+<td style="text-align: right;">0.536271</td>
+<td style="text-align: right;">0.551188</td>
+<td style="text-align: right;">0.291128</td>
+<td style="text-align: right;">0.416455</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: right;">0.519707</td>
+<td style="text-align: right;">18268</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.562451</td>
+<td style="text-align: right;">0.55359</td>
+<td style="text-align: right;">0.569157</td>
+<td style="text-align: right;">0.197517</td>
+<td style="text-align: right;">0.47882</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: right;">0.519848</td>
+<td style="text-align: right;">12394</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.591117</td>
+<td style="text-align: right;">0.581854</td>
+<td style="text-align: right;">0.597972</td>
+<td style="text-align: right;">0.102233</td>
+<td style="text-align: right;">0.547295</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: right;">0.520499</td>
+<td style="text-align: right;">6415</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.615366</td>
+<td style="text-align: right;">0.606323</td>
+<td style="text-align: right;">0.621934</td>
+<td style="text-align: right;">0.0538017</td>
+<td style="text-align: right;">0.683975</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: right;">0.5234</td>
+<td style="text-align: right;">3376</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.521732</td>
+<td style="text-align: right;">0.519113</td>
+<td style="text-align: right;">0.523348</td>
+<td style="text-align: right;">0.511626</td>
+<td style="text-align: right;">0.589306</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: right;">0.543209</td>
+<td style="text-align: right;">29924</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.532098</td>
+<td style="text-align: right;">0.529732</td>
+<td style="text-align: right;">0.534107</td>
+<td style="text-align: right;">0.405399</td>
+<td style="text-align: right;">0.685859</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.547847</td>
+<td style="text-align: right;">23711</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.54389</td>
+<td style="text-align: right;">0.542082</td>
+<td style="text-align: right;">0.546669</td>
+<td style="text-align: right;">0.301652</td>
+<td style="text-align: right;">0.831032</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.555971</td>
+<td style="text-align: right;">17643</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.560177</td>
+<td style="text-align: right;">0.558387</td>
+<td style="text-align: right;">0.564045</td>
+<td style="text-align: right;">0.196433</td>
+<td style="text-align: right;">1.09943</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.56776</td>
+<td style="text-align: right;">11489</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.584466</td>
+<td style="text-align: right;">0.583042</td>
+<td style="text-align: right;">0.590158</td>
+<td style="text-align: right;">0.0948229</td>
+<td style="text-align: right;">1.48338</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.57555</td>
+<td style="text-align: right;">5546</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.60927</td>
+<td style="text-align: right;">0.605468</td>
+<td style="text-align: right;">0.618728</td>
+<td style="text-align: right;">0.046112</td>
+<td style="text-align: right;">1.88665</td>
+<td style="text-align: right;">1.1</td>
+<td style="text-align: right;">0.580274</td>
+<td style="text-align: right;">2697</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.sections", "navigation.top", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,7 +1,7 @@
 symbol: GBPUSD
 
 candidate_csv: data/analysis/tick_opportunity_mining/GBPUSD_oco_candidates.csv
-pred_path: data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_predictions.parquet
+pred_path: data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/GBPUSD_oco_monthly_predictions.parquet
 
 family_keep: oco_first_touch_clean
 barrier_keep: "2,3"
@@ -20,7 +20,7 @@ min_train_months: 3
 overlap_corr_max: 0.85
 max_states: 12
 min_states: 4
-min_state_avg_rows: 100
+min_state_avg_rows: 200
 min_positive_months_train: 2
 require_lb95_trade_gt0: true
 require_lb95_month_gt0: true

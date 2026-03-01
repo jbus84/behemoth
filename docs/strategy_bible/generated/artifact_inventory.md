@@ -1,6 +1,6 @@
 # Artifact Inventory
 
-- generated_at: `2026-02-28 22:08:13 UTC`
+- generated_at: `2026-03-01 07:42:01 UTC`
 
 | group              | symbol   | artifact               | path                                                                                                               | exists   | required   |
 |:-------------------|:---------|:-----------------------|:-------------------------------------------------------------------------------------------------------------------|:---------|:-----------|
@@ -23,7 +23,7 @@
 | symbol             | AUDUSD   | mining_report_md       | docs/analysis/audusd_tick_opportunity_mining_report.md                                                             | True     | True       |
 | symbol             | AUDUSD   | reduced_core_report_md | docs/analysis/audusd_oco_reduced_core_rolling_report.md                                                            | True     | True       |
 | symbol             | AUDUSD   | reduced_summary_csv    | data/analysis/tick_opportunity_mining/reduced_core_rolling/AUDUSD_oco_reduced_summary.csv                          | True     | True       |
-| symbol             | AUDUSD   | robustness_summary_csv | configs/research/docs/data/analysis/tick_opportunity_mining/full_robustness/AUDUSD_oco_robustness_summary.csv      | False    | True       |
+| symbol             | AUDUSD   | robustness_summary_csv | data/analysis/tick_opportunity_mining/full_robustness/AUDUSD_oco_robustness_summary.csv                            | True     | True       |
 | symbol             | AUDUSD   | stop_limit_summary_csv | data/analysis/tick_opportunity_mining/stop_limit_tickfill_audusd_fixed/summary.csv                                 | True     | True       |
 | symbol             | AUDUSD   | tick_exact_report_md   | configs/research/docs/docs/analysis/audusd_oco_tick_exact_rolling_report.md                                        | False    | True       |
 | symbol             | AUDUSD   | tick_exact_summary_csv | configs/research/docs/data/analysis/tick_opportunity_mining/reduced_core_rolling/AUDUSD_oco_tick_exact_summary.csv | False    | True       |

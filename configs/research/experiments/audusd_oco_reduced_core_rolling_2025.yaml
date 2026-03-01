@@ -9,7 +9,7 @@ horizon_keep: "5,6"
 locked_quantile: 0.9
 selection_mode: auto
 execution_mode: stop_limit
-stop_limit_detail_csv: data/analysis/tick_opportunity_mining/stop_limit_tickfill_audusd_fixed/AUDUSD_stop_limit_tickfill_detail.csv
+stop_limit_detail_csv: data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/AUDUSD_stop_limit_tickfill_detail.csv
 stop_limit_cap_pips: 1.2
 stop_limit_slippage_mode: full_overshoot
 stop_limit_min_fill_rate: 0.5

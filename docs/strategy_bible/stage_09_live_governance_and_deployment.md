@@ -232,14 +232,14 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 <!-- GENERATED:STAGE_09:START -->
 ### Auto Snapshot - Stage 09
 
-- generated_at: `2026-02-28 22:08:13 UTC`
+- generated_at: `2026-03-01 07:42:01 UTC`
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
-- Missing required artifacts: 5.
+- Missing required artifacts: 4.
 
 #### Key Results
 | symbol   |   gate_reduced_lb95_month_gt0 |   gate_tick_exact |   gate_robust_lb95_trade_gt0 |   gate_robust_months_majority | symbol_all_gates_pass   |
 |:---------|------------------------------:|------------------:|-----------------------------:|------------------------------:|:------------------------|
-| EURUSD   |                             1 |                 1 |                            1 |                             1 | True                    |
+| EURUSD   |                             0 |                 1 |                            1 |                             1 | False                   |
 | GBPUSD   |                             1 |                 1 |                            1 |                             1 | True                    |
 | AUDUSD   |                           nan |               nan |                          nan |                           nan | False                   |
 | USDJPY   |                             1 |                 1 |                            1 |                             1 | True                    |
@@ -248,7 +248,7 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 
 #### Interpretation Notes
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
-- Missing required artifacts: 5.
+- Missing required artifacts: 4.
 
 #### Action Trigger Summary
 | symbol   | metric_id            | band   | severity   | action_code   | action_summary     | owner      |
@@ -263,7 +263,6 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 #### Details
 | group   | symbol   | artifact               | path                                                                                                               |
 |:--------|:---------|:-----------------------|:-------------------------------------------------------------------------------------------------------------------|
-| symbol  | AUDUSD   | robustness_summary_csv | configs/research/docs/data/analysis/tick_opportunity_mining/full_robustness/AUDUSD_oco_robustness_summary.csv      |
 | symbol  | AUDUSD   | tick_exact_report_md   | configs/research/docs/docs/analysis/audusd_oco_tick_exact_rolling_report.md                                        |
 | symbol  | AUDUSD   | tick_exact_summary_csv | configs/research/docs/data/analysis/tick_opportunity_mining/reduced_core_rolling/AUDUSD_oco_tick_exact_summary.csv |
 | symbol  | USDCAD   | tick_exact_report_md   | configs/research/docs/docs/analysis/usdcad_oco_tick_exact_rolling_report.md                                        |

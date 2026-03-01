@@ -1,21 +1,21 @@
 {
   "artifacts": {
-    "predictions_path": "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdchf/USDCHF_oco_monthly_predictions.parquet",
+    "predictions_path": "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCHF_oco_monthly_predictions.parquet",
     "predictions_sha256": "b9aa2412384409fb91ee363255be8486ac51e0a2438cbdc10c120168aab8986e",
-    "reduced_config_path": "configs/research/experiments/usdchf_oco_reduced_core_rolling_2025.yaml",
-    "reduced_config_sha256": "b4fcf7fcc40a5f074a0bbf6e987fe46d8739607fa6c03337bf328c1f13d8eef8",
-    "reduced_states_csv_path": "data/analysis/tick_opportunity_mining/reduced_core_usdchf/USDCHF_oco_reduced_states.csv",
-    "reduced_states_csv_sha256": "75e6ce3b50d6dbf31f749769d24e84e7ab9aa9e5f95bf10a614ce894b5872b4b",
-    "tick_exact_overall_pass": true,
-    "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling_usdchf/USDCHF_oco_tick_exact_summary.csv",
-    "tick_exact_summary_sha256": "60b726d017e8acf2ef7ba8b9bc143c854da5dbee65d54f41ad8cd486efb20d8c",
+    "reduced_config_path": "configs/research/experiments/usdchf_oco_reduced_core_2025.yaml",
+    "reduced_config_sha256": "61cd27e572cd8ae69a5da01c290e04d7e26a64f15a32e1c7c35938dd1b6b2067",
+    "reduced_states_csv_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_state_schedule.csv",
+    "reduced_states_csv_sha256": "fb7bca82856f338615685b1ef7e735cb2ac6123a7711a900db5b27b8347c5fb5",
+    "tick_exact_overall_pass": false,
+    "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_summary.csv",
+    "tick_exact_summary_sha256": "8c7926541d2b4d1631f9f1b9fd30d7160dfec10d5a90c2c44192d7c859012091",
     "wfo_config_path": "configs/research/experiments/usdchf_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
-    "wfo_config_sha256": "a27730727eec0002ca67201bdae3764ae36dfa5fcc8fc1e6f64f1aef6cb49ab0"
+    "wfo_config_sha256": "0911971d802dcb13a49047925ca60592e79ee70436fee63aed003d8fbf70c02c"
   },
-  "frozen_at_utc": "2026-02-28T14:21:21.500404+00:00",
+  "frozen_at_utc": "2026-02-28T23:30:47.873519+00:00",
   "git": {
     "branch": "main",
-    "commit": "eac700ec3c52fc56bfc2edfc8fc9825693c27184",
+    "commit": "1131674a343ef4dde6892428e6e0344451c03ff7",
     "dirty": true
   },
   "locked_runtime": {

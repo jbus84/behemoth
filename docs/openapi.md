@@ -19,7 +19,7 @@ Then use either:
 ## Rolling Historical Evidence
 
 <!-- GENERATED:SYSREF:OPENAPI:START -->
-- generated_at_utc: `2026-02-28T22:08:38Z`
+- generated_at_utc: `2026-03-01T07:42:30Z`
 - symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF`
 - stop-limit_reference: `stage_04_execution_realism`
 - artifact_sources:
