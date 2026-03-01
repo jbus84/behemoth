@@ -77,52 +77,6 @@ def _pick_first_existing(*paths: Path) -> Path:
 def _default_paths(symbol: str) -> dict[str, Path]:
     s = str(symbol).upper().strip()
     sl = s.lower()
-    if s == "EURUSD":
-        return {
-            "wfo_config": Path(
-                "configs/research/experiments/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml"
-            ),
-            "reduced_config": Path(
-                "configs/research/experiments/eurusd_oco_reduced_core_2025.yaml"
-            ),
-            "reduced_states": Path(
-                "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_reduced_states.csv"
-            ),
-            "tick_exact_summary": _pick_first_existing(
-                Path(
-                    "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_tick_exact_summary.csv"
-                ),
-                Path(
-                    "data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_tick_exact_summary.csv"
-                ),
-            ),
-            "predictions": Path(
-                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet"
-            ),
-        }
-    if s == "GBPUSD":
-        return {
-            "wfo_config": Path(
-                "configs/research/experiments/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml"
-            ),
-            "reduced_config": Path(
-                "configs/research/experiments/gbpusd_oco_reduced_core_2025.yaml"
-            ),
-            "reduced_states": Path(
-                "data/analysis/tick_opportunity_mining/reduced_core_gbpusd/GBPUSD_oco_reduced_states.csv"
-            ),
-            "tick_exact_summary": _pick_first_existing(
-                Path(
-                    "data/analysis/tick_opportunity_mining/reduced_core_gbpusd/GBPUSD_oco_tick_exact_summary.csv"
-                ),
-                Path(
-                    "data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_tick_exact_summary.csv"
-                ),
-            ),
-            "predictions": Path(
-                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_predictions.parquet"
-            ),
-        }
     return {
         "wfo_config": _pick_first_existing(
             Path(
@@ -182,6 +136,12 @@ def _state_universe(states_csv: Path) -> tuple[pd.DataFrame, str]:
         raw = "[]"
         sh = hashlib.sha256(raw.encode("utf-8")).hexdigest()
         return pd.DataFrame(), sh
+
+    if "test_month" in d.columns:
+        valid_months = d["test_month"].dropna().unique().tolist()
+        if valid_months:
+            last_m = sorted(valid_months)[-1]
+            d = d[d["test_month"] == last_m].copy()
 
     cols = ["symbol", "bar_ticks", "horizon", "state_id", "family", "barrier_pips", "regime_desc"]
     miss = [c for c in cols if c not in d.columns]

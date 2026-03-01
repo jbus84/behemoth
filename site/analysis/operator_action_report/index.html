@@ -2,108 +2,108 @@
 <!doctype html>
 <html lang="en" class="no-js">
   <head>
-
+    
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
-
+      
         <meta name="description" content="Production documentation for the Behemoth trading system">
-
-
+      
+      
         <meta name="author" content="Behemoth">
-
-
-
+      
+      
+      
         <link rel="prev" href="../run_delta_dashboard/">
-
-
+      
+      
         <link rel="next" href="../taxonomy_rules/">
-
-
-
-
-
+      
+      
+        
+      
+      
       <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
-
-
-
+    
+    
+      
         <title>Operator Action Report - Behemoth Strategy</title>
-
-
-
+      
+    
+    
       <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
-
-
+      
+        
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
 
 
-
-
-
-
-
-
-
-
-
-
+    
+    
+      
+    
+    
+      
+        
+        
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
         <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
-
-
-
+      
+    
+    
       <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
-
+    
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
 
-
-
-
-
+    
+    
   </head>
-
-
-
-
-
-
-
-
-
+  
+  
+    
+    
+      
+    
+    
+    
+    
     <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="teal">
-
-
+  
+    
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
-
-
+      
+        
         <a href="#oco-operator-action-report" class="md-skip">
           Skip to content
         </a>
-
+      
     </div>
     <div data-md-component="announce">
-
+      
     </div>
+    
+    
+      
 
-
-
-
-
+  
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../.." title="Behemoth Strategy" class="md-header__button md-logo" aria-label="Behemoth Strategy" data-md-component="logo">
-
-
+      
+  
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
-
+      
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
     </label>
     <div class="md-header__title" data-md-component="header-title">
@@ -115,35 +115,35 @@
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
-
+            
               Operator Action Report
-
+            
           </span>
         </div>
       </div>
     </div>
-
-
+    
+      
         <form class="md-header__option" data-md-component="palette">
-
-
-
-
+  
+    
+    
+    
     <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="teal"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
-
-
+    
+  
 </form>
-
-
-
+      
+    
+    
       <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
-
-
-
-
-
+    
+    
+    
+      
+      
         <label class="md-header__button md-icon" for="__search">
-
+          
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
         </label>
         <div class="md-search" data-md-component="search" role="dialog">
@@ -152,19 +152,19 @@
     <form class="md-search__form" name="search">
       <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
       <label class="md-search__icon md-icon" for="__search">
-
+        
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
-
+        
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
       </label>
       <nav class="md-search__options" aria-label="Search">
-
+        
         <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
-
+          
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
       </nav>
-
+      
     </form>
     <div class="md-search__output">
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
@@ -178,13 +178,13 @@
     </div>
   </div>
 </div>
-
-
-
+      
+    
+    
       <div class="md-header__source">
         <a href="https://github.com-jbus84/behemoth" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
-
+    
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
   </div>
   <div class="md-source__repository">
@@ -192,45 +192,45 @@
   </div>
 </a>
       </div>
-
+    
   </nav>
-
+  
 </header>
-
+    
     <div class="md-container" data-md-component="container">
-
-
-
-
-
-
+      
+      
+        
+          
+        
+      
       <main class="md-main" data-md-component="main">
         <div class="md-main__inner md-grid">
-
-
-
+          
+            
+              
               <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
                 <div class="md-sidebar__scrollwrap">
                   <div class="md-sidebar__inner">
-
+                    
 
 
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href="../.." title="Behemoth Strategy" class="md-nav__button md-logo" aria-label="Behemoth Strategy" data-md-component="logo">
-
-
+      
+  
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
     Behemoth Strategy
   </label>
-
+  
     <div class="md-nav__source">
       <a href="https://github.com-jbus84/behemoth" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
-
+    
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
   </div>
   <div class="md-source__repository">
@@ -238,3471 +238,3416 @@
   </div>
 </a>
     </div>
-
+  
   <ul class="md-nav__list" data-md-scrollfix>
-
-
-
-
-
-
-
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../.." class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Overview
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../STRATEGY_MASTER_MANUAL/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     OCO Strategy Manual
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
     <li class="md-nav__item md-nav__item--section md-nav__item--nested">
-
-
-
+      
+        
+        
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
-
-
+        
+          
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
-
-
-
+            
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Analysis
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
             <span class="md-nav__icon md-icon"></span>
           </label>
-
+        
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
-
-
+            
+  
     Analysis
-
+  
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-
-
-
-
-
-
-
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Catalog
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../catalog_gaps_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Catalog Gaps
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../oco_stop_limit_tickfill_fullcap_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stop-Limit Tickfill Fullcap
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../oco_live_governance_lock/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Live Governance Lock
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../remediation_metric_decomposition/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Remediation Metric Decomposition
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
-    <li class="md-nav__item">
-      <a href="../risk_checklist/" class="md-nav__link">
-
-
-
-  <span class="md-ellipsis">
-
-
-    Risk Checklist
-
-
-
-  </span>
-
-
-
-      </a>
-    </li>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
     <li class="md-nav__item md-nav__item--nested">
-
-
-
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" >
-
-
-          <label class="md-nav__link" for="__nav_3_7" id="__nav_3_7_label" tabindex="0">
-
-
-
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
+            
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     EURUSD
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
             <span class="md-nav__icon md-icon"></span>
           </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    EURUSD
+  
 
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eurusd_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Opportunity Mining
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eurusd_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monthly WFO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eurusd_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reduced Core Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eurusd_oco_tick_exact_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tick-Exact Rolling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eurusd_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_7" id="__nav_3_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AUDUSD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_7">
             <span class="md-nav__icon md-icon"></span>
-
-
-    EURUSD
-
+            
+  
+    AUDUSD
+  
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-
-
-
-
-
-
-
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
-      <a href="../eurusd_tick_opportunity_mining_report/" class="md-nav__link">
-
-
-
+      <a href="../audusd_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Opportunity Mining
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
-      <a href="../eurusd_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
-
-
-
+      <a href="../audusd_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Monthly WFO
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
-      <a href="../eurusd_oco_reduced_core_rolling_report/" class="md-nav__link">
-
-
-
+      <a href="../audusd_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Reduced Core Rolling
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
-    <li class="md-nav__item">
-      <a href="../eurusd_oco_tick_exact_rolling_report/" class="md-nav__link">
-
-
-
-  <span class="md-ellipsis">
-
-
-    Tick-Exact Rolling
-
-
-
-  </span>
-
-
-
-      </a>
-    </li>
-
-
-
-
-
-
-
-
-
-
-    <li class="md-nav__item">
-      <a href="../eurusd_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
-
-
-
-  <span class="md-ellipsis">
-
-
-    WFO Robustness
-
-
-
-  </span>
-
-
-
-      </a>
-    </li>
-
-
-
-
+              
+            
           </ul>
         </nav>
-
+      
     </li>
+  
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
     <li class="md-nav__item md-nav__item--nested">
-
-
-
+      
+        
+        
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
-
-
+        
+          
           <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
-
-
-
+            
+  
+  
   <span class="md-ellipsis">
+    
+  
+    GBPUSD
+  
 
-
-    AUDUSD
-
-
-
+    
   </span>
-
-
+  
+  
 
             <span class="md-nav__icon md-icon"></span>
           </label>
-
+        
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_8">
             <span class="md-nav__icon md-icon"></span>
-
-
-    AUDUSD
-
+            
+  
+    GBPUSD
+  
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-
-
-
-
-
-
-
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
-      <a href="../audusd_tick_opportunity_mining_report/" class="md-nav__link">
-
-
-
+      <a href="../gbpusd_tick_opportunity_mining_report/" class="md-nav__link">
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Opportunity Mining
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
-      <a href="../audusd_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
-
-
-
+      <a href="../gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Monthly WFO
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
-      <a href="../audusd_oco_reduced_core_rolling_report/" class="md-nav__link">
-
-
-
+      <a href="../gbpusd_oco_reduced_core_rolling_report/" class="md-nav__link">
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Reduced Core Rolling
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gbpusd_oco_tick_exact_rolling_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tick-Exact Rolling
+  
 
+    
+  </span>
+  
+  
 
+      </a>
+    </li>
+  
 
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gbpusd_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WFO Robustness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
-
+      
     </li>
+  
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
     <li class="md-nav__item md-nav__item--nested">
-
-
-
+      
+        
+        
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
-
-
+        
+          
           <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
-
-
-
+            
+  
+  
   <span class="md-ellipsis">
+    
+  
+    USDJPY
+  
 
-
-    GBPUSD
-
-
-
+    
   </span>
-
-
+  
+  
 
             <span class="md-nav__icon md-icon"></span>
           </label>
-
+        
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_9">
             <span class="md-nav__icon md-icon"></span>
-
-
-    GBPUSD
-
+            
+  
+    USDJPY
+  
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-
-
-
-
-
-
-
-    <li class="md-nav__item">
-      <a href="../gbpusd_tick_opportunity_mining_report/" class="md-nav__link">
-
-
-
-  <span class="md-ellipsis">
-
-
-    Opportunity Mining
-
-
-
-  </span>
-
-
-
-      </a>
-    </li>
-
-
-
-
-
-
-
-
-
-
-    <li class="md-nav__item">
-      <a href="../gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
-
-
-
-  <span class="md-ellipsis">
-
-
-    Monthly WFO
-
-
-
-  </span>
-
-
-
-      </a>
-    </li>
-
-
-
-
-
-
-
-
-
-
-    <li class="md-nav__item">
-      <a href="../gbpusd_oco_reduced_core_rolling_report/" class="md-nav__link">
-
-
-
-  <span class="md-ellipsis">
-
-
-    Reduced Core Rolling
-
-
-
-  </span>
-
-
-
-      </a>
-    </li>
-
-
-
-
-
-
-
-
-
-
-    <li class="md-nav__item">
-      <a href="../gbpusd_oco_tick_exact_rolling_report/" class="md-nav__link">
-
-
-
-  <span class="md-ellipsis">
-
-
-    Tick-Exact Rolling
-
-
-
-  </span>
-
-
-
-      </a>
-    </li>
-
-
-
-
-
-
-
-
-
-
-    <li class="md-nav__item">
-      <a href="../gbpusd_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
-
-
-
-  <span class="md-ellipsis">
-
-
-    WFO Robustness
-
-
-
-  </span>
-
-
-
-      </a>
-    </li>
-
-
-
-
-          </ul>
-        </nav>
-
-    </li>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    <li class="md-nav__item md-nav__item--nested">
-
-
-
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_10" >
-
-
-          <label class="md-nav__link" for="__nav_3_10" id="__nav_3_10_label" tabindex="0">
-
-
-
-  <span class="md-ellipsis">
-
-
-    USDJPY
-
-
-
-  </span>
-
-
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_10_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_10">
-            <span class="md-nav__icon md-icon"></span>
-
-
-    USDJPY
-
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-
-
-
-
-
-
-
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../usdjpy_tick_opportunity_mining_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Opportunity Mining
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Monthly WFO
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../usdjpy_oco_reduced_core_rolling_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Reduced Core Rolling
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../usdjpy_oco_tick_exact_rolling_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Tick-Exact Rolling
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../usdjpy_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     WFO Robustness
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
+              
+            
           </ul>
         </nav>
-
+      
     </li>
+  
 
-
-
-
+              
+            
           </ul>
         </nav>
-
+      
     </li>
+  
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
     <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
-
-
-
+      
+        
+        
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
-
-
+        
+          
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
-
-
-
+            
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     OCO Strategy Bible
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
             <span class="md-nav__icon md-icon"></span>
           </label>
-
+        
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
-
-
+            
+  
     OCO Strategy Bible
-
+  
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-
-
-
-
-
-
-
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/generated/pipeline_snapshot/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Pipeline Snapshot
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/generated/stage_01_snapshot/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 01 Data Foundation
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/stage_01_data_foundation/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 01 Data Foundation Spec
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/generated/stage_02_snapshot/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 02 Opportunity Mining
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/stage_02_opportunity_mining/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 02 Opportunity Mining Spec
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/generated/stage_03_snapshot/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 03 Monthly WFO
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/stage_03_monthly_wfo/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 03 Monthly WFO Spec
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/generated/stage_04_snapshot/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 04 Stop-Limit Realism
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/stage_04_execution_realism/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 04 Stop-Limit Realism Spec
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/generated/stage_05_snapshot/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 05 Reduced Core
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/stage_05_reduced_core/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 05 Reduced Core Spec
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/generated/stage_06_snapshot/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 06 Tick-Exact Verification
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/stage_06_tick_exact_and_portability/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 06 Tick-Exact + Portability Spec
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/generated/stage_07_snapshot/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 07 Logical Audit
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/stage_07_logical_and_statistical_audit/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 07 Logical + Statistical Spec
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/generated/stage_08_snapshot/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 08 Robustness
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/stage_08_robustness_and_stress/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 08 Robustness + Stress Spec
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/generated/stage_09_snapshot/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 09 Governance Snapshot
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/stage_09_live_governance_and_deployment/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 09 Governance Spec
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/generated/stage_10_snapshot/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 10 Risks Snapshot
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/stage_10_known_risks_and_backlog/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 10 Risks Spec
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/generated/stage_11_snapshot/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 11 Execution MC Snapshot
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/stage_11_execution_monte_carlo/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage 11 Execution MC Spec
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/signal_lifecycle_reference/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Signal Lifecycle Reference
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/operator_runbook/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Operator Runbook
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/metric_dictionary/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Metric Dictionary
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/assumptions_and_threats/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Assumptions + Threats
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/symbol_onboarding_playbook/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Symbol Onboarding Playbook
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/governance_mapping/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Governance Mapping
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../data_reliability_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Data Reliability Audit
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../oco_stage_integrity_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Stage Integrity Audit
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../oco_rule_universe_registry_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Rule Universe Registry
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../run_delta_dashboard/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Run Delta Dashboard
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
     <li class="md-nav__item md-nav__item--active">
-
+      
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-
-
-
-
-
+      
+      
+        
+      
+      
         <label class="md-nav__link md-nav__link--active" for="__toc">
-
-
-
+          
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Operator Action Report
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
           <span class="md-nav__icon md-icon"></span>
         </label>
-
+      
       <a href="./" class="md-nav__link md-nav__link--active">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Operator Action Report
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
-
-
+      
+        
 
 <nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-
-
-
-
-
-
+  
+  
+  
+    
+  
+  
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-
+      
         <li class="md-nav__item">
   <a href="#action-matrix" class="md-nav__link">
     <span class="md-ellipsis">
-
+      
         Action Matrix
-
+      
     </span>
   </a>
-
+  
 </li>
-
+      
         <li class="md-nav__item">
   <a href="#escalations-amberred" class="md-nav__link">
     <span class="md-ellipsis">
-
+      
         Escalations (Amber/Red)
-
+      
     </span>
   </a>
-
+  
 </li>
-
+      
         <li class="md-nav__item">
   <a href="#full-status" class="md-nav__link">
     <span class="md-ellipsis">
-
+      
         Full Status
-
+      
     </span>
   </a>
-
+  
 </li>
-
+      
     </ul>
-
+  
 </nav>
-
+      
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../taxonomy_rules/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Taxonomy Rules
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../strategy_bible/operator_playbook/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Operator Playbook
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../oco_leakage_integrity_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Leakage + Label Audit
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../oco_execution_risk_prelive_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Execution Risk Preflight
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../oco_execution_drift_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Execution Drift Report
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../oco_alert_remediation_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Alert Remediation Report
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../oco_governance_explainability_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Governance Explainability Report
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../oco_threshold_sensitivity_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Threshold Sensitivity Report
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../oco_execution_monte_carlo_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Execution Monte Carlo Report
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../oco_execution_monte_carlo_validation_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Execution Monte Carlo Validation
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../oco_logical_audit_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Logical Audit Report
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../oco_edge_clarity_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Edge Clarity Report
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../oco_docs_contract_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Docs Contract Report
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
     <li class="md-nav__item md-nav__item--nested">
-
-
-
+      
+        
+        
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_48" >
-
-
+        
+          
           <label class="md-nav__link" for="__nav_4_48" id="__nav_4_48_label" tabindex="0">
-
-
-
+            
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     USDCAD
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
             <span class="md-nav__icon md-icon"></span>
           </label>
-
+        
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_48_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_48">
             <span class="md-nav__icon md-icon"></span>
-
-
+            
+  
     USDCAD
-
+  
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-
-
-
-
-
-
-
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../usdcad_tick_opportunity_mining_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Mining
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../usdcad_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     WFO Fullcap
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../usdcad_oco_reduced_core_rolling_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Reduced Core
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../usdcad_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     WFO Robustness
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
+              
+            
           </ul>
         </nav>
-
+      
     </li>
+  
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
     <li class="md-nav__item md-nav__item--nested">
-
-
-
+      
+        
+        
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_49" >
-
-
+        
+          
           <label class="md-nav__link" for="__nav_4_49" id="__nav_4_49_label" tabindex="0">
-
-
-
+            
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     USDCHF
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
             <span class="md-nav__icon md-icon"></span>
           </label>
-
+        
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_49_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_49">
             <span class="md-nav__icon md-icon"></span>
-
-
+            
+  
     USDCHF
-
+  
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-
-
-
-
-
-
-
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../usdchf_tick_opportunity_mining_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Mining
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../usdchf_tick_opportunity_monthly_wfo_oco_fullcap_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     WFO Fullcap
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../usdchf_oco_reduced_core_rolling_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Reduced Core
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../usdchf_oco_monthly_wfo_robustness_fullcap_report/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     WFO Robustness
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
+              
+            
           </ul>
         </nav>
-
+      
     </li>
+  
 
-
-
-
+              
+            
           </ul>
         </nav>
-
+      
     </li>
+  
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
     <li class="md-nav__item md-nav__item--section md-nav__item--nested">
-
-
-
+      
+        
+        
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
-
-
+        
+          
           <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
-
-
-
+            
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Repository Notes
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
             <span class="md-nav__icon md-icon"></span>
           </label>
-
+        
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
-
-
+            
+  
     Repository Notes
-
+  
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-
-
-
-
-
-
-
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../DATA_SOURCES/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Data Sources
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../REPO_STRUCTURE/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Repo Structure
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../walkthrough/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Walkthrough
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
+              
+            
           </ul>
         </nav>
-
+      
     </li>
+  
 
-
-
-
-
-
-
-
-
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../architecture/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Architecture
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../api/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     API
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../api_reference/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     API Reference
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
-    <li class="md-nav__item">
-      <a href="../../openapi/" class="md-nav__link">
-
-
-
-  <span class="md-ellipsis">
-
-
-    OpenAPI
-
-
-
-  </span>
-
-
-
-      </a>
-    </li>
-
-
-
-
-
-
-
-
-
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../core_reference/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Core Reference
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../risk_controls/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Risk Controls
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../monitoring/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Monitoring
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../data_pipeline/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Data Pipeline
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../validation/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Validation
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../config_reference/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Config Reference
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../code_reference/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Code Reference
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../development/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Development
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../deployment/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Deployment
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../makefile/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     Makefile
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../db_schema/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     DB Schema
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
-
-
-
-
-
-
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../../db_schema_diagram/" class="md-nav__link">
-
-
-
+        
+  
+  
   <span class="md-ellipsis">
-
-
+    
+  
     DB Diagram
+  
 
-
-
+    
   </span>
-
-
+  
+  
 
       </a>
     </li>
+  
 
-
-
+    
   </ul>
 </nav>
                   </div>
                 </div>
               </div>
-
-
-
+            
+            
+              
               <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
                 <div class="md-sidebar__scrollwrap">
                   <div class="md-sidebar__inner">
-
+                    
 
 <nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-
-
-
-
-
-
+  
+  
+  
+    
+  
+  
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-
+      
         <li class="md-nav__item">
   <a href="#action-matrix" class="md-nav__link">
     <span class="md-ellipsis">
-
+      
         Action Matrix
-
+      
     </span>
   </a>
-
+  
 </li>
-
+      
         <li class="md-nav__item">
   <a href="#escalations-amberred" class="md-nav__link">
     <span class="md-ellipsis">
-
+      
         Escalations (Amber/Red)
-
+      
     </span>
   </a>
-
+  
 </li>
-
+      
         <li class="md-nav__item">
   <a href="#full-status" class="md-nav__link">
     <span class="md-ellipsis">
-
+      
         Full Status
-
+      
     </span>
   </a>
-
+  
 </li>
-
+      
     </ul>
-
+  
 </nav>
                   </div>
                 </div>
               </div>
-
-
-
+            
+          
+          
             <div class="md-content" data-md-component="content">
-
+              
               <article class="md-content__inner md-typeset">
-
-
+                
+                  
 
 
 
 <h1 id="oco-operator-action-report">OCO Operator Action Report<a class="headerlink" href="#oco-operator-action-report" title="Permanent link">&para;</a></h1>
 <ul>
-<li>generated_at_utc: <code>2026-03-01T07:53:44Z</code></li>
+<li>generated_at_utc: <code>2026-03-01T12:48:13Z</code></li>
 <li>edge_metrics_csv: <code>data/analysis/tick_opportunity_mining/edge_clarity_stage_metrics.csv</code></li>
 <li>rules_yaml: <code>configs/research/docs/operator_action_rules.yaml</code></li>
 <li>status_csv: <code>data/analysis/tick_opportunity_mining/operator_action_status.csv</code></li>
@@ -3718,6 +3663,26 @@
 </thead>
 <tbody>
 <tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">amber</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: right;">8</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: right;">10</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: left;">green</td>
 <td style="text-align: right;">19</td>
@@ -3731,6 +3696,41 @@
 <td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">green</td>
 <td style="text-align: right;">20</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: left;">amber</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: right;">5</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: right;">13</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: right;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: right;">16</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: right;">1</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -3762,7 +3762,41 @@
 </thead>
 <tbody>
 <tr>
-<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">T02_first_negative_costplus</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">le</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">amber</td>
+<td style="text-align: left;">medium</td>
+<td style="text-align: left;">A1_REVIEW</td>
+<td style="text-align: left;">review and monitor</td>
+<td style="text-align: left;">risk</td>
+<td style="text-align: left;">Strategy should remain positive through conservative costplus scenarios.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/AUDUSD_oco_robustness_summary.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">E11_session_overshoot_dispersion</td>
+<td style="text-align: right;">0.363498</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">amber</td>
+<td style="text-align: left;">medium</td>
+<td style="text-align: left;">A2_RECALIBRATE</td>
+<td style="text-align: left;">review and monitor</td>
+<td style="text-align: left;">execution</td>
+<td style="text-align: left;">Overshoot dispersion increases stop-limit execution uncertainty.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCAD_stop_limit_tickfill_detail.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
 <td style="text-align: right;">8</td>
 <td style="text-align: left;">T03_post_worst_month_recovery</td>
 <td style="text-align: right;">0</td>
@@ -3775,8 +3809,59 @@
 <td style="text-align: left;">escalate and remediate</td>
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Recovery factor below 1 indicates incomplete resilience.</td>
-<td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/AUDUSD_oco_reduced_monthly.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">W13_threshold_fragility</td>
+<td style="text-align: right;">4.39352</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">2.5</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A3_HALT_AND_REMEDIATE</td>
+<td style="text-align: left;">escalate and remediate</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Fragile threshold response suggests unstable selection edge.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_monthly_thresholds_all.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">T03_post_worst_month_recovery</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">le</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A2_RECALIBRATE</td>
+<td style="text-align: left;">escalate and remediate</td>
+<td style="text-align: left;">risk</td>
+<td style="text-align: left;">Recovery factor below 1 indicates incomplete resilience.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_reduced_monthly.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">E11_session_overshoot_dispersion</td>
+<td style="text-align: right;">1.0242</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A3_HALT_AND_REMEDIATE</td>
+<td style="text-align: left;">escalate and remediate</td>
+<td style="text-align: left;">execution</td>
+<td style="text-align: left;">Overshoot dispersion increases stop-limit execution uncertainty.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCHF_stop_limit_tickfill_detail.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 </tbody>
 </table>
@@ -3803,10 +3888,350 @@
 </thead>
 <tbody>
 <tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">D16_spread_regime_shift_z</td>
+<td style="text-align: right;">-1.60736</td>
+<td style="text-align: left;">abs_ge</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Spread regime shift can invalidate cost assumptions.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/AUDUSD_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">D17_gap_burst_ratio</td>
+<td style="text-align: right;">8.46025e-05</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.02</td>
+<td style="text-align: right;">0.05</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">data</td>
+<td style="text-align: left;">Excess large gaps suggest unstable data feed quality.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/AUDUSD_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">D18_clock_jitter_cv</td>
+<td style="text-align: right;">0.616136</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">data</td>
+<td style="text-align: left;">Timestamp jitter threatens ordering assumptions.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/AUDUSD_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">E11_session_overshoot_dispersion</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A9_DATA_GAP</td>
+<td style="text-align: left;">metric unavailable</td>
+<td style="text-align: left;">execution</td>
+<td style="text-align: left;">Overshoot dispersion increases stop-limit execution uncertainty.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_audusd_fixed/AUDUSD_stop_limit_tickfill_detail.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">E12_cap_plateau_width_pips</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">le</td>
+<td style="text-align: right;">0.15</td>
+<td style="text-align: right;">0.05</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A9_DATA_GAP</td>
+<td style="text-align: left;">metric unavailable</td>
+<td style="text-align: left;">execution</td>
+<td style="text-align: left;">Narrow cap plateau indicates unstable cap setting.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_audusd_fixed/AUDUSD_stop_limit_tickfill_caps.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">E13_nonfill_opportunity_cost_pips</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.25</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A9_DATA_GAP</td>
+<td style="text-align: left;">metric unavailable</td>
+<td style="text-align: left;">execution</td>
+<td style="text-align: left;">Large non-fill opportunity cost suggests cap too restrictive.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_audusd_fixed/AUDUSD_stop_limit_tickfill_caps.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">EM03_prob_negative_month_s1</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.3</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A9_DATA_GAP</td>
+<td style="text-align: left;">metric not present in stage metrics</td>
+<td style="text-align: left;">risk</td>
+<td style="text-align: left;">Elevated downside month probability in mild stress is unacceptable.</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">EM04_fill_rate_drop_vs_s0_s1</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.08</td>
+<td style="text-align: right;">0.12</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A9_DATA_GAP</td>
+<td style="text-align: left;">metric not present in stage metrics</td>
+<td style="text-align: left;">execution</td>
+<td style="text-align: left;">Mild stress should not materially degrade fill rates.</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">EM05_nan_core_fields</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">gt</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A9_DATA_GAP</td>
+<td style="text-align: left;">metric not present in stage metrics</td>
+<td style="text-align: left;">data</td>
+<td style="text-align: left;">NaNs in core MC fields invalidate stress outcomes.</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">G01_near_fail_count</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A9_DATA_GAP</td>
+<td style="text-align: left;">metric not present in stage metrics</td>
+<td style="text-align: left;">governance</td>
+<td style="text-align: left;">Near-fails indicate narrowing safety margin.</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">G03_lock_drift_flags</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">gt</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A9_DATA_GAP</td>
+<td style="text-align: left;">metric not present in stage metrics</td>
+<td style="text-align: left;">governance</td>
+<td style="text-align: left;">Any lock drift threatens deployment integrity.</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">R02_top_state_dependency</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">0.85</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Over-dependence on few states weakens diversification robustness.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/AUDUSD_oco_reduced_summary.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">S01_lb95_dependence_gap</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">abs_ge</td>
+<td style="text-align: right;">0.25</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Large dependence gap indicates fragile inferential claims.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">S02_practical_lb95_gt0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">lt</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Practical lower bound should remain positive.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">T01_stress_elasticity</td>
+<td style="text-align: right;">-1</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">risk</td>
+<td style="text-align: left;">High stress elasticity indicates brittle PnL response.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/AUDUSD_oco_robustness_summary.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">T02_first_negative_costplus</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">le</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">amber</td>
+<td style="text-align: left;">medium</td>
+<td style="text-align: left;">A1_REVIEW</td>
+<td style="text-align: left;">review and monitor</td>
+<td style="text-align: left;">risk</td>
+<td style="text-align: left;">Strategy should remain positive through conservative costplus scenarios.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/AUDUSD_oco_robustness_summary.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">T03_post_worst_month_recovery</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">le</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A2_RECALIBRATE</td>
+<td style="text-align: left;">escalate and remediate</td>
+<td style="text-align: left;">risk</td>
+<td style="text-align: left;">Recovery factor below 1 indicates incomplete resilience.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/AUDUSD_oco_reduced_monthly.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">W13_threshold_fragility</td>
+<td style="text-align: right;">0.780674</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">2.5</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Fragile threshold response suggests unstable selection edge.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/AUDUSD_monthly_thresholds_all.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">W14_brier_drift_std</td>
+<td style="text-align: right;">0.00193246</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.01</td>
+<td style="text-align: right;">0.02</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Calibration drift can break probability gating quality.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/AUDUSD_monthly_metrics_all.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">W15_selection_turnover</td>
+<td style="text-align: right;">0.113443</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.25</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Excess turnover implies unstable selected state identity.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/AUDUSD_monthly_predictions_all.parquet</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D16_spread_regime_shift_z</td>
-<td style="text-align: right;">-1.12735</td>
+<td style="text-align: right;">-0.589219</td>
 <td style="text-align: left;">abs_ge</td>
 <td style="text-align: right;">2</td>
 <td style="text-align: right;">3</td>
@@ -3817,13 +4242,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Spread regime shift can invalidate cost assumptions.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D17_gap_burst_ratio</td>
-<td style="text-align: right;">0.000298398</td>
+<td style="text-align: right;">0.000400833</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.02</td>
 <td style="text-align: right;">0.05</td>
@@ -3834,13 +4259,13 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">Excess large gaps suggest unstable data feed quality.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D18_clock_jitter_cv</td>
-<td style="text-align: right;">0.63644</td>
+<td style="text-align: right;">0.619785</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">2</td>
 <td style="text-align: right;">3</td>
@@ -3851,13 +4276,13 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">Timestamp jitter threatens ordering assumptions.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">4</td>
 <td style="text-align: left;">E11_session_overshoot_dispersion</td>
-<td style="text-align: right;">0.199265</td>
+<td style="text-align: right;">0.205455</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.35</td>
 <td style="text-align: right;">0.5</td>
@@ -3868,7 +4293,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Overshoot dispersion increases stop-limit execution uncertainty.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -3885,13 +4310,13 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Narrow cap plateau indicates unstable cap setting.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_caps.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">4</td>
 <td style="text-align: left;">E13_nonfill_opportunity_cost_pips</td>
-<td style="text-align: right;">0.116807</td>
+<td style="text-align: right;">0.119704</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.4</td>
@@ -3902,7 +4327,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Large non-fill opportunity cost suggests cap too restrictive.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_caps.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -3919,7 +4344,7 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Elevated downside month probability in mild stress is unacceptable.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -3936,7 +4361,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Mild stress should not materially degrade fill rates.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -3953,7 +4378,7 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">NaNs in core MC fields invalidate stress outcomes.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_checks.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -3970,7 +4395,7 @@
 <td style="text-align: left;">governance</td>
 <td style="text-align: left;">Near-fails indicate narrowing safety margin.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/eurusd_governance_predeploy.json</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -3987,13 +4412,13 @@
 <td style="text-align: left;">governance</td>
 <td style="text-align: left;">Any lock drift threatens deployment integrity.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/eurusd_governance_predeploy.json</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">5</td>
 <td style="text-align: left;">R02_top_state_dependency</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.35</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.7</td>
 <td style="text-align: right;">0.85</td>
@@ -4004,7 +4429,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Over-dependence on few states weakens diversification robustness.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_summary.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -4021,7 +4446,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Large dependence gap indicates fragile inferential claims.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -4038,7 +4463,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Practical lower bound should remain positive.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -4055,13 +4480,13 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">High stress elasticity indicates brittle PnL response.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/EURUSD_oco_robustness_summary.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">8</td>
 <td style="text-align: left;">T02_first_negative_costplus</td>
-<td style="text-align: right;">1.75</td>
+<td style="text-align: right;">2</td>
 <td style="text-align: left;">le</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: right;">0.5</td>
@@ -4072,47 +4497,47 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Strategy should remain positive through conservative costplus scenarios.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/EURUSD_oco_robustness_summary.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">8</td>
 <td style="text-align: left;">T03_post_worst_month_recovery</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">1.28178</td>
 <td style="text-align: left;">le</td>
 <td style="text-align: right;">0.75</td>
 <td style="text-align: right;">0.5</td>
-<td style="text-align: left;">red</td>
-<td style="text-align: left;">high</td>
-<td style="text-align: left;">A2_RECALIBRATE</td>
-<td style="text-align: left;">escalate and remediate</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Recovery factor below 1 indicates incomplete resilience.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W13_threshold_fragility</td>
-<td style="text-align: right;">1.34602</td>
+<td style="text-align: right;">4.39352</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">2.5</td>
 <td style="text-align: right;">4</td>
-<td style="text-align: left;">green</td>
-<td style="text-align: left;">info</td>
-<td style="text-align: left;">A0_MONITOR</td>
-<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A3_HALT_AND_REMEDIATE</td>
+<td style="text-align: left;">escalate and remediate</td>
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Fragile threshold response suggests unstable selection edge.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_monthly_thresholds_all.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W14_brier_drift_std</td>
-<td style="text-align: right;">0.00162703</td>
+<td style="text-align: right;">0.00124197</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.01</td>
 <td style="text-align: right;">0.02</td>
@@ -4123,13 +4548,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Calibration drift can break probability gating quality.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_monthly_metrics_all.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W15_selection_turnover</td>
-<td style="text-align: right;">0.0799501</td>
+<td style="text-align: right;">0.121457</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.4</td>
@@ -4140,7 +4565,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Excess turnover implies unstable selected state identity.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_monthly_predictions_all.parquet</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4157,7 +4582,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Spread regime shift can invalidate cost assumptions.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/GBPUSD_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4174,7 +4599,7 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">Excess large gaps suggest unstable data feed quality.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/GBPUSD_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4191,7 +4616,7 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">Timestamp jitter threatens ordering assumptions.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/GBPUSD_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4208,7 +4633,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Overshoot dispersion increases stop-limit execution uncertainty.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/GBPUSD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4225,7 +4650,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Narrow cap plateau indicates unstable cap setting.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/GBPUSD_stop_limit_tickfill_caps.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4242,7 +4667,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Large non-fill opportunity cost suggests cap too restrictive.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/GBPUSD_stop_limit_tickfill_caps.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4259,7 +4684,7 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Elevated downside month probability in mild stress is unacceptable.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4276,7 +4701,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Mild stress should not materially degrade fill rates.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4293,7 +4718,7 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">NaNs in core MC fields invalidate stress outcomes.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_checks.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4310,7 +4735,7 @@
 <td style="text-align: left;">governance</td>
 <td style="text-align: left;">Near-fails indicate narrowing safety margin.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/gbpusd_governance_predeploy.json</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4327,7 +4752,7 @@
 <td style="text-align: left;">governance</td>
 <td style="text-align: left;">Any lock drift threatens deployment integrity.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/gbpusd_governance_predeploy.json</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4344,7 +4769,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Over-dependence on few states weakens diversification robustness.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_summary.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4361,7 +4786,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Large dependence gap indicates fragile inferential claims.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4378,7 +4803,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Practical lower bound should remain positive.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4395,7 +4820,7 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">High stress elasticity indicates brittle PnL response.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/GBPUSD_oco_robustness_summary.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4412,7 +4837,7 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Strategy should remain positive through conservative costplus scenarios.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/GBPUSD_oco_robustness_summary.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4429,7 +4854,7 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Recovery factor below 1 indicates incomplete resilience.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_monthly.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4446,7 +4871,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Fragile threshold response suggests unstable selection edge.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/GBPUSD_monthly_thresholds_all.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4463,7 +4888,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Calibration drift can break probability gating quality.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/GBPUSD_monthly_metrics_all.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4480,7 +4905,687 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Excess turnover implies unstable selected state identity.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/GBPUSD_monthly_predictions_all.parquet</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">D16_spread_regime_shift_z</td>
+<td style="text-align: right;">-1.04177</td>
+<td style="text-align: left;">abs_ge</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Spread regime shift can invalidate cost assumptions.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCAD_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">D17_gap_burst_ratio</td>
+<td style="text-align: right;">0.000150344</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.02</td>
+<td style="text-align: right;">0.05</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">data</td>
+<td style="text-align: left;">Excess large gaps suggest unstable data feed quality.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCAD_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">D18_clock_jitter_cv</td>
+<td style="text-align: right;">0.57446</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">data</td>
+<td style="text-align: left;">Timestamp jitter threatens ordering assumptions.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCAD_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">E11_session_overshoot_dispersion</td>
+<td style="text-align: right;">0.363498</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">amber</td>
+<td style="text-align: left;">medium</td>
+<td style="text-align: left;">A2_RECALIBRATE</td>
+<td style="text-align: left;">review and monitor</td>
+<td style="text-align: left;">execution</td>
+<td style="text-align: left;">Overshoot dispersion increases stop-limit execution uncertainty.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCAD_stop_limit_tickfill_detail.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">E12_cap_plateau_width_pips</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">le</td>
+<td style="text-align: right;">0.15</td>
+<td style="text-align: right;">0.05</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">execution</td>
+<td style="text-align: left;">Narrow cap plateau indicates unstable cap setting.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCAD_stop_limit_tickfill_caps.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">E13_nonfill_opportunity_cost_pips</td>
+<td style="text-align: right;">0.137788</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.25</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">execution</td>
+<td style="text-align: left;">Large non-fill opportunity cost suggests cap too restrictive.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCAD_stop_limit_tickfill_caps.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">EM03_prob_negative_month_s1</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.3</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A9_DATA_GAP</td>
+<td style="text-align: left;">metric not present in stage metrics</td>
+<td style="text-align: left;">risk</td>
+<td style="text-align: left;">Elevated downside month probability in mild stress is unacceptable.</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">EM04_fill_rate_drop_vs_s0_s1</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.08</td>
+<td style="text-align: right;">0.12</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A9_DATA_GAP</td>
+<td style="text-align: left;">metric not present in stage metrics</td>
+<td style="text-align: left;">execution</td>
+<td style="text-align: left;">Mild stress should not materially degrade fill rates.</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">EM05_nan_core_fields</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">gt</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A9_DATA_GAP</td>
+<td style="text-align: left;">metric not present in stage metrics</td>
+<td style="text-align: left;">data</td>
+<td style="text-align: left;">NaNs in core MC fields invalidate stress outcomes.</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">G01_near_fail_count</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A9_DATA_GAP</td>
+<td style="text-align: left;">metric not present in stage metrics</td>
+<td style="text-align: left;">governance</td>
+<td style="text-align: left;">Near-fails indicate narrowing safety margin.</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">G03_lock_drift_flags</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">gt</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A9_DATA_GAP</td>
+<td style="text-align: left;">metric not present in stage metrics</td>
+<td style="text-align: left;">governance</td>
+<td style="text-align: left;">Any lock drift threatens deployment integrity.</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">R02_top_state_dependency</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">0.85</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Over-dependence on few states weakens diversification robustness.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_reduced_summary.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">S01_lb95_dependence_gap</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">abs_ge</td>
+<td style="text-align: right;">0.25</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Large dependence gap indicates fragile inferential claims.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">S02_practical_lb95_gt0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">lt</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Practical lower bound should remain positive.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">T01_stress_elasticity</td>
+<td style="text-align: right;">-1</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">risk</td>
+<td style="text-align: left;">High stress elasticity indicates brittle PnL response.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/USDCAD_oco_robustness_summary.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">T02_first_negative_costplus</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: left;">le</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">risk</td>
+<td style="text-align: left;">Strategy should remain positive through conservative costplus scenarios.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/USDCAD_oco_robustness_summary.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">T03_post_worst_month_recovery</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">le</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A2_RECALIBRATE</td>
+<td style="text-align: left;">escalate and remediate</td>
+<td style="text-align: left;">risk</td>
+<td style="text-align: left;">Recovery factor below 1 indicates incomplete resilience.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_reduced_monthly.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">W13_threshold_fragility</td>
+<td style="text-align: right;">1.41019</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">2.5</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Fragile threshold response suggests unstable selection edge.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCAD_monthly_thresholds_all.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">W14_brier_drift_std</td>
+<td style="text-align: right;">0.00197814</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.01</td>
+<td style="text-align: right;">0.02</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Calibration drift can break probability gating quality.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCAD_monthly_metrics_all.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">W15_selection_turnover</td>
+<td style="text-align: right;">0.129238</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.25</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Excess turnover implies unstable selected state identity.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCAD_monthly_predictions_all.parquet</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">D16_spread_regime_shift_z</td>
+<td style="text-align: right;">-1.3165</td>
+<td style="text-align: left;">abs_ge</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Spread regime shift can invalidate cost assumptions.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCHF_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">D17_gap_burst_ratio</td>
+<td style="text-align: right;">0.000130105</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.02</td>
+<td style="text-align: right;">0.05</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">data</td>
+<td style="text-align: left;">Excess large gaps suggest unstable data feed quality.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCHF_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">D18_clock_jitter_cv</td>
+<td style="text-align: right;">0.635497</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">data</td>
+<td style="text-align: left;">Timestamp jitter threatens ordering assumptions.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCHF_oco_events_eval2025.parquet</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">E11_session_overshoot_dispersion</td>
+<td style="text-align: right;">1.0242</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A3_HALT_AND_REMEDIATE</td>
+<td style="text-align: left;">escalate and remediate</td>
+<td style="text-align: left;">execution</td>
+<td style="text-align: left;">Overshoot dispersion increases stop-limit execution uncertainty.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCHF_stop_limit_tickfill_detail.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">E12_cap_plateau_width_pips</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: left;">le</td>
+<td style="text-align: right;">0.15</td>
+<td style="text-align: right;">0.05</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">execution</td>
+<td style="text-align: left;">Narrow cap plateau indicates unstable cap setting.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCHF_stop_limit_tickfill_caps.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">E13_nonfill_opportunity_cost_pips</td>
+<td style="text-align: right;">0.109211</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.25</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">execution</td>
+<td style="text-align: left;">Large non-fill opportunity cost suggests cap too restrictive.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCHF_stop_limit_tickfill_caps.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">EM03_prob_negative_month_s1</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.3</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A9_DATA_GAP</td>
+<td style="text-align: left;">metric not present in stage metrics</td>
+<td style="text-align: left;">risk</td>
+<td style="text-align: left;">Elevated downside month probability in mild stress is unacceptable.</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">EM04_fill_rate_drop_vs_s0_s1</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.08</td>
+<td style="text-align: right;">0.12</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A9_DATA_GAP</td>
+<td style="text-align: left;">metric not present in stage metrics</td>
+<td style="text-align: left;">execution</td>
+<td style="text-align: left;">Mild stress should not materially degrade fill rates.</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">EM05_nan_core_fields</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">gt</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">gray</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A9_DATA_GAP</td>
+<td style="text-align: left;">metric not present in stage metrics</td>
+<td style="text-align: left;">data</td>
+<td style="text-align: left;">NaNs in core MC fields invalidate stress outcomes.</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">G01_near_fail_count</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">governance</td>
+<td style="text-align: left;">Near-fails indicate narrowing safety margin.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/usdchf_governance_predeploy.json</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">G03_lock_drift_flags</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">gt</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">governance</td>
+<td style="text-align: left;">Any lock drift threatens deployment integrity.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/usdchf_governance_predeploy.json</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">R02_top_state_dependency</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">0.85</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Over-dependence on few states weakens diversification robustness.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling_usdchf/USDCHF_oco_reduced_summary.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">S01_lb95_dependence_gap</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">abs_ge</td>
+<td style="text-align: right;">0.25</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Large dependence gap indicates fragile inferential claims.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">S02_practical_lb95_gt0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">lt</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Practical lower bound should remain positive.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">T01_stress_elasticity</td>
+<td style="text-align: right;">-1</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">risk</td>
+<td style="text-align: left;">High stress elasticity indicates brittle PnL response.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/USDCHF_oco_robustness_summary.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">T02_first_negative_costplus</td>
+<td style="text-align: right;">1.75</td>
+<td style="text-align: left;">le</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">risk</td>
+<td style="text-align: left;">Strategy should remain positive through conservative costplus scenarios.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/USDCHF_oco_robustness_summary.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">T03_post_worst_month_recovery</td>
+<td style="text-align: right;">1.03157</td>
+<td style="text-align: left;">le</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">risk</td>
+<td style="text-align: left;">Recovery factor below 1 indicates incomplete resilience.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling_usdchf/USDCHF_oco_reduced_monthly.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">W13_threshold_fragility</td>
+<td style="text-align: right;">1.30968</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">2.5</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Fragile threshold response suggests unstable selection edge.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCHF_monthly_thresholds_all.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">W14_brier_drift_std</td>
+<td style="text-align: right;">0.00115577</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.01</td>
+<td style="text-align: right;">0.02</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Calibration drift can break probability gating quality.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCHF_monthly_metrics_all.csv</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">W15_selection_turnover</td>
+<td style="text-align: right;">0.166349</td>
+<td style="text-align: left;">ge</td>
+<td style="text-align: right;">0.25</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Excess turnover implies unstable selected state identity.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCHF_monthly_predictions_all.parquet</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4497,7 +5602,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Spread regime shift can invalidate cost assumptions.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDJPY_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4514,7 +5619,7 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">Excess large gaps suggest unstable data feed quality.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDJPY_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4531,7 +5636,7 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">Timestamp jitter threatens ordering assumptions.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDJPY_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4548,7 +5653,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Overshoot dispersion increases stop-limit execution uncertainty.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDJPY_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4565,7 +5670,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Narrow cap plateau indicates unstable cap setting.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDJPY_stop_limit_tickfill_caps.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4582,7 +5687,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Large non-fill opportunity cost suggests cap too restrictive.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDJPY_stop_limit_tickfill_caps.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4599,7 +5704,7 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Elevated downside month probability in mild stress is unacceptable.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4616,7 +5721,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Mild stress should not materially degrade fill rates.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4633,7 +5738,7 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">NaNs in core MC fields invalidate stress outcomes.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_checks.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4650,7 +5755,7 @@
 <td style="text-align: left;">governance</td>
 <td style="text-align: left;">Near-fails indicate narrowing safety margin.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/usdjpy_governance_predeploy.json</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4667,7 +5772,7 @@
 <td style="text-align: left;">governance</td>
 <td style="text-align: left;">Any lock drift threatens deployment integrity.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/usdjpy_governance_predeploy.json</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4684,7 +5789,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Over-dependence on few states weakens diversification robustness.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_summary.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4701,7 +5806,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Large dependence gap indicates fragile inferential claims.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4718,7 +5823,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Practical lower bound should remain positive.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4735,7 +5840,7 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">High stress elasticity indicates brittle PnL response.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/USDJPY_oco_robustness_summary.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4752,7 +5857,7 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Strategy should remain positive through conservative costplus scenarios.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/USDJPY_oco_robustness_summary.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4769,7 +5874,7 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Recovery factor below 1 indicates incomplete resilience.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_monthly.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4786,7 +5891,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Fragile threshold response suggests unstable selection edge.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDJPY_monthly_thresholds_all.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4803,7 +5908,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Calibration drift can break probability gating quality.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDJPY_monthly_metrics_all.csv</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4820,7 +5925,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Excess turnover implies unstable selected state identity.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDJPY_monthly_predictions_all.parquet</td>
-<td style="text-align: left;">2026-03-01T07:53:44Z</td>
+<td style="text-align: left;">2026-03-01T12:48:13Z</td>
 </tr>
 </tbody>
 </table>
@@ -4836,54 +5941,54 @@
 
 
 
-
+                
               </article>
             </div>
-
-
+          
+          
 <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
         </div>
-
+        
           <button type="button" class="md-top md-icon" data-md-component="top" hidden>
-
+  
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
   Back to top
 </button>
-
+        
       </main>
-
+      
         <footer class="md-footer">
-
+  
   <div class="md-footer-meta md-typeset">
     <div class="md-footer-meta__inner md-grid">
       <div class="md-copyright">
-
-
+  
+  
     Made with
     <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
       Material for MkDocs
     </a>
-
+  
 </div>
-
+      
     </div>
   </div>
 </footer>
-
+      
     </div>
     <div class="md-dialog" data-md-component="dialog">
       <div class="md-dialog__inner md-typeset"></div>
     </div>
-
-
-
-
-
+    
+    
+    
+      
+      
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.sections", "navigation.top", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
-
-
+    
+    
       <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
-
-
+      
+    
   </body>
 </html>

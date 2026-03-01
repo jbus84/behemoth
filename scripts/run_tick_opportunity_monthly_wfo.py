@@ -346,6 +346,7 @@ def _wfo_monthly(
     d: pd.DataFrame,
     *,
     library: str,
+    symbol: str = "",
     months: list[tuple[pd.Timestamp, pd.Timestamp]],
     score_start_ts: pd.Timestamp | None,
     rolling_train_months: int,
@@ -358,6 +359,7 @@ def _wfo_monthly(
     rolling_threshold_min_history: int,
     execution_quantile: float,
     seed: int,
+    model_export_dir: Path | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     if d.empty:
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
@@ -422,6 +424,29 @@ def _wfo_monthly(
         p_tr = model.predict_proba(tr[feats])[:, 1]
         p = model.predict_proba(te[feats])[:, 1]
         y = te["target_gross_pos"].astype(int).to_numpy()
+
+        # ── Export model binary + threshold config for production API ──
+        if model_export_dir is not None and symbol:
+            import json as _json
+
+            model_export_dir.mkdir(parents=True, exist_ok=True)
+            month_tag = test_start.strftime("%Y-%m")
+            cbm_path = model_export_dir / f"{symbol}_model_{month_tag}.cbm"
+            model.save_model(str(cbm_path))
+            # Compute execution threshold from train predictions
+            exec_thr = float(np.quantile(p_tr, float(exec_q)))
+            thr_meta = {
+                "symbol": symbol,
+                "model_month": month_tag,
+                "threshold_exec": exec_thr,
+                "execution_quantile": float(exec_q),
+                "threshold_source": mode,
+                "train_rows": int(len(tr)),
+                "features": feats,
+            }
+            thr_path = cbm_path.with_suffix(".json")
+            thr_path.write_text(_json.dumps(thr_meta, indent=2))
+            print(f"exported: {cbm_path} + {thr_path}")
         from sklearn.metrics import brier_score_loss, roc_auc_score  # local import
 
         auc = float(roc_auc_score(y, p))
@@ -577,6 +602,7 @@ def main() -> None:
     p.add_argument("--seed", type=int, default=None)
     p.add_argument("--out-dir", default=None)
     p.add_argument("--report-out", default=None)
+    p.add_argument("--model-export-dir", default=None, help="Directory to export .cbm models + .json thresholds")
     args = p.parse_args()
 
     cfg = _merge_config(args)
@@ -654,6 +680,7 @@ def main() -> None:
         m, t, p = _wfo_monthly(
             ev,
             library=lib,
+            symbol=symbol,
             months=months,
             score_start_ts=score_start_ts,
             rolling_train_months=rolling_train_months,
@@ -670,6 +697,7 @@ def main() -> None:
             ),
             execution_quantile=float(cfg.get("execution_quantile", DEFAULTS["execution_quantile"])),
             seed=int(cfg["seed"]),
+            model_export_dir=Path(str(cfg.get("model_export_dir", ""))) if cfg.get("model_export_dir") else None,
         )
         if not m.empty:
             m_out = out_dir / f"{symbol}_{lib}_monthly_metrics.csv"

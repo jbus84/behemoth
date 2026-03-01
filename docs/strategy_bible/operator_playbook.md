@@ -1,6 +1,6 @@
 # OCO Operator Playbook
 
-- generated_at_utc: `2026-03-01T09:52:30Z`
+- generated_at_utc: `2026-03-01T12:48:13Z`
 - source_rules: `configs/research/docs/operator_action_rules.yaml`
 
 ## Action Codes
@@ -25,6 +25,6 @@
 | AUDUSD   | T02_first_negative_costplus      | amber  | A1_REVIEW             | risk      | review and monitor     |
 | USDCAD   | E11_session_overshoot_dispersion | amber  | A2_RECALIBRATE        | execution | review and monitor     |
 | AUDUSD   | T03_post_worst_month_recovery    | red    | A2_RECALIBRATE        | risk      | escalate and remediate |
-| EURUSD   | T03_post_worst_month_recovery    | red    | A2_RECALIBRATE        | risk      | escalate and remediate |
+| EURUSD   | W13_threshold_fragility          | red    | A3_HALT_AND_REMEDIATE | research  | escalate and remediate |
 | USDCAD   | T03_post_worst_month_recovery    | red    | A2_RECALIBRATE        | risk      | escalate and remediate |
 | USDCHF   | E11_session_overshoot_dispersion | red    | A3_HALT_AND_REMEDIATE | execution | escalate and remediate |

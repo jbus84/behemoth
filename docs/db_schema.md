@@ -17,7 +17,7 @@ Persistence is fully handled by rolling pipeline artifacts. No relational schema
 ## Rolling Historical Evidence
 
 <!-- GENERATED:SYSREF:DB_SCHEMA:START -->
-- generated_at_utc: `2026-03-01T09:52:30Z`
+- generated_at_utc: `2026-03-01T12:48:13Z`
 - symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD`
 - stop-limit_reference: `stage_04_execution_realism`
 - artifact_sources:

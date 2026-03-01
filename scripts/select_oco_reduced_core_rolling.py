@@ -362,6 +362,16 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     selected_all, exec_meta = _prepare_execution_frame(selected_all, cfg)
 
     months = sorted(selected_all["test_month"].unique().tolist())
+    if months:
+        last_m = months[-1]
+        y, m = map(int, last_m.split('-'))
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+        next_m = f"{y:04d}-{m:02d}"
+        months.append(next_m)
+
     sched_rows: list[dict[str, Any]] = []
     monthly_rows: list[dict[str, Any]] = []
     prev_selected_keys: set[str] | None = None
