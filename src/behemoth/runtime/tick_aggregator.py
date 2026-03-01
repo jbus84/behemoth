@@ -68,18 +68,19 @@ def _build_bar(
     bar_ticks: int,
 ) -> IncomingTickBar:
     """Build a single bar from exactly ``bar_ticks`` ticks."""
-    mids = [(t.bid + t.ask) / 2 for t in ticks]
-    spreads = [t.ask - t.bid for t in ticks]
+    # Research reference (build_global_tick_bars.py) defaults to price_source="bid"
+    prices = [float(t.bid) for t in ticks]
+    spreads = [float(t.ask - t.bid) for t in ticks]
 
-    open_price = mids[0]
-    close_price = mids[-1]
-    high_price = max(mids)
-    low_price = min(mids)
+    open_price = prices[0]
+    close_price = prices[-1]
+    high_price = max(prices)
+    low_price = min(prices)
     spread_mean = sum(spreads) / len(spreads)
 
     # Microstructure: first occurrence of high and low
-    high_pos = mids.index(high_price)
-    low_pos = mids.index(low_price)
+    high_pos = prices.index(high_price)
+    low_pos = prices.index(low_price)
 
     if high_pos < low_pos:
         hl_first = 1.0
@@ -95,10 +96,10 @@ def _build_bar(
         bar_ticks=bar_ticks,
         timestamp=ticks[0].timestamp,
         close_ts=ticks[-1].timestamp,
-        open=round(open_price, 5),
-        high=round(high_price, 5),
-        low=round(low_price, 5),
-        close=round(close_price, 5),
+        open=open_price,
+        high=high_price,
+        low=low_price,
+        close=close_price,
         spread=spread_mean,
         tick_volume=float(bar_ticks),
         hl_first=hl_first,

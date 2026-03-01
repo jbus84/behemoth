@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -49,7 +50,7 @@ class AppConfig(BaseModel):
     """Runtime configuration for the inference server."""
     vol_window: int = 96
     cost_window: int = 288
-    models_dir: str = "models/oco"
+    models_dir: str = Field(default_factory=lambda: os.getenv("BEHEMOTH_MODELS_DIR", "models/oco"))
     registry_path: str = "configs/research/governance/oco_rule_universe_registry.yaml"
     symbols: list[str] = Field(
         default=["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]
@@ -113,8 +114,13 @@ def _load_models() -> None:
     for sym in _config.symbols:
         # Find latest model file by sorting
         candidates = sorted(_models_dir.glob(f"{sym}_model_*.cbm"))
+        
+        force_month = os.getenv("BEHEMOTH_FORCE_MODEL_MONTH")
+        if force_month:
+            candidates = [c for c in candidates if force_month in c.stem]
+            
         if not candidates:
-            logger.warning("No model found for %s", sym)
+            logger.warning("No model found for %s (force_month=%s)", sym, force_month)
             continue
         latest = candidates[-1]  # lexicographic sort = chronological for YYYY-MM
         month = latest.stem.split("_")[-1]  # e.g. "2025-12"
@@ -235,7 +241,10 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
     threshold_exec = float(thr_cfg.get("threshold_exec", 0.5))
     threshold_source = str(thr_cfg.get("threshold_source", "default"))
     model_month = _model_months.get(sym, "unknown")
-    now = datetime.now(tz=timezone.utc)
+    
+    # In live trading this is functionally current time, but in replay we must
+    # exactly align with the state DB's reconstructed chronological limit.
+    close_ts = _state.get_latest_close_ts(sym) or datetime.now(tz=timezone.utc)
 
     results: list[OcoPrediction] = []
     for cand in candidates:
@@ -248,10 +257,13 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
         arr = np.array([features.to_array()], dtype=float)
         pred_prob = float(model.predict_proba(arr)[:, 1][0])
 
+        # Offline format expects: library|symbol|bar_ticks|h_horizon|candidate_basename
+        canonical_uid = f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+
         results.append(OcoPrediction(
             symbol=sym,
-            close_ts=now,
-            candidate_uid=cand.candidate_uid,
+            close_ts=close_ts,
+            candidate_uid=canonical_uid,
             pred_prob=pred_prob,
             threshold_exec=threshold_exec,
             selected_exec=1 if pred_prob >= threshold_exec else 0,

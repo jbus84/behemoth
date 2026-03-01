@@ -116,6 +116,14 @@ class StateManager:
         ).fetchone()
         return int(r[0]) if r else 0
 
+    def get_latest_close_ts(self, symbol: str) -> Optional[datetime]:
+        """Return the close_ts of the most recent bar."""
+        r = self._con.execute(
+            "SELECT close_ts FROM tick_bars WHERE symbol = ? ORDER BY row_id DESC LIMIT 1",
+            [symbol.upper()],
+        ).fetchone()
+        return r[0] if r else None
+
     def compute_features(
         self,
         symbol: str,

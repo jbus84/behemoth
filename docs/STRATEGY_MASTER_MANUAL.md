@@ -214,6 +214,7 @@ See:
 - `scripts/verify_oco_tick_exact_shortlist.py`
 - `scripts/analyze_oco_monthly_wfo_robustness.py`
 - `scripts/analyze_oco_stop_limit_tickfill.py`
+- `scripts/simulate_api_e2e_replay.py` (E2E Replay Parity Check)
 
 ### 9.2 Governance and Docs
 - `scripts/build_oco_strategy_bible.py`

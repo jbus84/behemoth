@@ -117,6 +117,7 @@ Hard deploy gate table:
 | G9.2 | runtime config keys equal lock values | Critical |
 | G9.3 | state universe exact key-set match | Critical |
 | G9.4 | deploy date not beyond lock window end | High |
+| G9.5 | E2E parity check output matches research (`DRIFT=0`) | Critical |
 
 Diagnostics-first governance checks (informational, not blockers yet):
 - `G01`: near-fail pressure count from validator checks with low margin heuristics.
