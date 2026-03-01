@@ -108,6 +108,7 @@ nav:
       - Assumptions + Threats: strategy_bible/assumptions_and_threats.md
       - Symbol Onboarding Playbook: strategy_bible/symbol_onboarding_playbook.md
       - Governance Mapping: strategy_bible/governance_mapping.md
+      - Governance Glossary: strategy_bible/governance_glossary.md
       - Data Reliability Audit: analysis/data_reliability_report.md
       - Stage Integrity Audit: analysis/oco_stage_integrity_report.md
       - Rule Universe Registry: analysis/oco_rule_universe_registry_report.md

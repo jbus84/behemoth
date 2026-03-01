@@ -27,7 +27,7 @@ Promotion score (policy-level):
 - Stage 9-10 diagnostics: operational readiness context.
 
 ## Validation Gates
-Candidate promotion map:
+Candidate promotion map (see the [Governance Rule Glossary](governance_glossary.md) for full definitions):
 - `E11`, `E12`, `E13` -> Stage 4 execution hardening gates.
 - `W13`, `W15` -> Stage 3 stability limits.
 - `R02`, `R03` -> reduced-core concentration/stability gate candidates.
