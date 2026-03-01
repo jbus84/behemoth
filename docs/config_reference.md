@@ -23,7 +23,7 @@ Any config change affecting stage behavior must be followed by:
 ## Rolling Historical Evidence
 
 <!-- GENERATED:SYSREF:CONFIG_REFERENCE:START -->
-- generated_at_utc: `2026-03-01T07:42:30Z`
+- generated_at_utc: `2026-03-01T07:53:44Z`
 - symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF`
 - stop-limit_reference: `stage_04_execution_realism`
 - artifact_sources:

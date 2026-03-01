@@ -88,7 +88,7 @@ uv run python scripts/audit_oco_pipeline_logical_issues.py
 <!-- GENERATED:STAGE_07:START -->
 ### Auto Snapshot - Stage 07
 
-- generated_at: `2026-03-01 07:42:01 UTC`
+- generated_at: `2026-03-01 07:53:15 UTC`
 - C01..C10 checks are the logical contract gate before robustness sign-off.
 - Open issue rows: 0.
 
