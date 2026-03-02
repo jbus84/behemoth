@@ -20,3 +20,7 @@ models/
 data/*
 !data/baselines/
 !data/baselines/**
+
+# Configuration & Secrets
+.env
+alertmanager.yml
