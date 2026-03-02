@@ -17,13 +17,14 @@ from __future__ import annotations
 import json
 import logging
 import os
-from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+import asyncio
 from pathlib import Path
-from typing import AsyncIterator, Optional
+from contextlib import asynccontextmanager
+from typing import AsyncIterator, Optional, List
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel, Field
+from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 
 from src.behemoth.core.schemas import (
     IncomingTick, 
@@ -50,8 +51,40 @@ _aggregator: TickAggregator | None = None
 _registry: CandidateRegistry | None = None
 _models: dict[str, object] = {}          # symbol -> loaded CatBoostClassifier
 _thresholds: dict[str, dict] = {}        # symbol -> threshold config
-_model_months: dict[str, str] = {}       # symbol -> "YYYY-MM"
 _models_dir: Path = Path("models/oco")
+
+# ── Prometheus Metrics ────────────────────────────────────────────────
+METRIC_INFERENCE_LATENCY = Histogram(
+    "behemoth_inference_latency_seconds",
+    "Time spent in CatBoost inference",
+    ["symbol"],
+    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0)
+)
+
+METRIC_TRADES_TOTAL = Counter(
+    "behemoth_trades_total",
+    "Total trade intents",
+    ["symbol", "status"]  # status: OPEN, FILLED, REJECTED, CLOSED, CANCELLED
+)
+
+METRIC_SLIPPAGE_PIPS = Histogram(
+    "behemoth_slippage_pips",
+    "Realized vs Expected entry slippage",
+    ["symbol"],
+    buckets=(-0.5, -0.2, -0.1, 0.0, 0.1, 0.2, 0.5, 1.0, 2.0)
+)
+
+METRIC_EQUITY_PIPS = Gauge(
+    "behemoth_equity_pips",
+    "Cumulative realized PnL in pips",
+    ["symbol"]
+)
+
+METRIC_BAR_COUNT = Gauge(
+    "behemoth_bar_count",
+    "Current bar count in state manager",
+    ["symbol"]
+)
 
 
 class AppConfig(BaseModel):
@@ -77,6 +110,10 @@ _config = AppConfig()
 async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     """Modern lifespan handler replacing deprecated on_event."""
     global _state, _aggregator, _registry, _models_dir
+    
+    # Start background monitor
+    monitor_task = asyncio.create_task(_monitor_ledger())
+    
     if _config.persist_db_path:
         db_path = Path(_config.persist_db_path)
         db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -102,9 +139,34 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     _load_models()
     logger.info("Behemoth API started. Models dir: %s", _models_dir)
     yield
+    monitor_task.cancel()
+    try:
+        await monitor_task
+    except asyncio.CancelledError:
+        pass
+        
     if _state:
         _state.close()
         _state = None
+
+
+async def _monitor_ledger() -> None:
+    """Background task to sync DuckDB stats to Prometheus."""
+    while True:
+        try:
+            if _state:
+                # Update bar counts
+                for sym in _state.get_all_symbols():
+                    METRIC_BAR_COUNT.labels(symbol=sym).set(_state.bar_count(sym))
+                
+                # Update ledger stats (PnL, Win Rate)
+                stats = _state.get_ledger_stats()
+                for s in stats:
+                    METRIC_EQUITY_PIPS.labels(symbol=s["symbol"]).set(s["total_pnl"])
+                    # We could add a win_rate gauge here if needed
+        except Exception as e:
+            logger.error("Ledger monitor error: %s", e)
+        await asyncio.sleep(60)
 
 
 app = FastAPI(
@@ -199,6 +261,12 @@ class BackfillRequest(BaseModel):
 
 # ── Endpoints ─────────────────────────────────────────────────────────
 
+@app.get("/metrics")
+async def metrics():
+    """Expose Prometheus metrics."""
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
 @app.post("/bars", status_code=201)
 async def ingest_bar(bar: IncomingTickBar) -> dict:
     """Ingest a new tick bar into the state buffer."""
@@ -282,7 +350,9 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
             "barrier_pips": float(cand.barrier_pips),
         })
         arr = np.array([features.to_array()], dtype=float)
-        pred_prob = float(model.predict_proba(arr)[:, 1][0])
+        
+        with METRIC_INFERENCE_LATENCY.labels(symbol=sym).time():
+            pred_prob = float(model.predict_proba(arr)[:, 1][0])
 
         # Offline format expects: library|symbol|bar_ticks|h_horizon|candidate_basename
         canonical_uid = f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
@@ -333,6 +403,7 @@ async def open_trade(req: TradeOpenRequest):
         entry_ts=req.entry_ts,
         horizon=req.horizon,
     )
+    METRIC_TRADES_TOTAL.labels(symbol=req.symbol, status="OPEN").inc()
     return {"status": "ok", "internal_trade_id": internal_id}
 
 
@@ -357,6 +428,13 @@ async def update_trade(req: TradeUpdateRequest):
         exit_ts=req.exit_ts,
         pnl_pips=req.pnl_pips,
     )
+    
+    METRIC_TRADES_TOTAL.labels(symbol="UNKNOWN", status=req.status.value).inc()
+    if req.pnl_pips is not None:
+        # Note: We need a way to look up the symbol from broker_pos_id if we want granular metrics here.
+        # For now, we update a global or handle it in the background worker.
+        pass
+        
     return {"status": "ok"}
 
 

@@ -257,6 +257,32 @@ class StateManager:
             [status, exit_price, exit_ts, pnl_pips, broker_pos_id],
         )
 
+    def get_ledger_stats(self) -> list[dict]:
+        """Aggregate trade statistics for Prometheus gauges."""
+        res = self._con.execute("""
+            SELECT 
+                symbol,
+                SUM(CASE WHEN status = 'CLOSED' THEN pnl_pips ELSE 0 END) as total_pnl,
+                COUNT(CASE WHEN status = 'CLOSED' AND pnl_pips > 0 THEN 1 END) as wins,
+                COUNT(CASE WHEN status = 'CLOSED' THEN 1 END) as closed_trades
+            FROM trades
+            GROUP BY symbol
+        """).fetchall()
+        return [
+            {
+                "symbol": r[0],
+                "total_pnl": r[1] or 0.0,
+                "win_rate": (r[2] / r[3]) if r[3] > 0 else 0.0,
+                "closed_trades": r[3]
+            }
+            for r in res
+        ]
+
+    def get_all_symbols(self) -> list[str]:
+        """Return all unique symbols in the tick_bars table."""
+        res = self._con.execute("SELECT DISTINCT symbol FROM tick_bars").fetchall()
+        return [r[0] for r in res]
+
     def close(self) -> None:
         """Close the DuckDB connection."""
         self._con.close()
