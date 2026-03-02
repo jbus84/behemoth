@@ -174,6 +174,10 @@ class OcoPrediction(BaseModel):
     threshold_exec: float = Field(..., description="The strict rolling execution threshold (q=0.9)")
     selected_exec: int = Field(..., description="1 if pred_prob >= threshold_exec else 0")
     
+    # Structural Parameters (for cBot execution)
+    horizon: int = Field(..., description="The horizon in bars (e.g. 6)")
+    barrier_pips: float = Field(..., description="The OCO barrier distance in pips (e.g. 2.0)")
+
     # Traceability
     threshold_source: str = Field(..., description="e.g. 'rolling_days' or 'train_fallback'")
     model_month: str = Field(..., description="The YYYY-MM identifier of the model doing the inference")

@@ -267,6 +267,8 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
             pred_prob=pred_prob,
             threshold_exec=threshold_exec,
             selected_exec=1 if pred_prob >= threshold_exec else 0,
+            horizon=int(cand.horizon),
+            barrier_pips=float(cand.barrier_pips),
             threshold_source=threshold_source,
             model_month=model_month,
         ))

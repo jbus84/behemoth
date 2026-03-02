@@ -16,6 +16,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import time
+import numpy as np
 import pandas as pd
 import polars as pl
 import tqdm
@@ -140,8 +142,9 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
         bids = stream_df["bid"].to_list()
         asks = stream_df["ask"].to_list()
         
+        tick_latencies = []
+        predict_latencies = []
         predictions_fired = 0
-        api_results: dict[tuple[str, str], float] = {}
         
         for i in tqdm.tqdm(range(len(times)), desc="Streaming Ticks"):
             tick_payload = {
@@ -150,7 +153,12 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
                 "bid": bids[i],
                 "ask": asks[i]
             }
+            
+            t0 = time.perf_counter()
             res = client.post("/ticks", json=tick_payload)
+            t1 = time.perf_counter()
+            tick_latencies.append((t1 - t0) * 1000) # ms
+            
             if res.status_code != 201:
                 print(f"Tick ingest failed: {res.text}")
                 continue
@@ -158,14 +166,17 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
             data = res.json()
             if data.get("bar_completed"):
                 # Bar formed! Trigger prediction logic just like cBot would
+                t0_p = time.perf_counter()
                 pred_res = client.post("/predict", json={"symbol": symbol})
+                t1_p = time.perf_counter()
+                predict_latencies.append((t1_p - t0_p) * 1000) # ms
+                
                 predictions_fired += 1
                 
                 if pred_res.status_code == 200:
                     preds = pred_res.json()
                     for p in preds:
                         if p.get("selected_exec") == 1:
-                            # Normalize timestamp identically to offline expectations
                             # Normalize timestamp identically to offline expectations
                             dt = pd.to_datetime(p["close_ts"])
                             # Ensure we keep microseconds and use Z suffix
@@ -179,6 +190,19 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
                     pass
                 else:
                     print(f"Predict error {pred_res.status_code}: {pred_res.text}")
+
+        # Latency Reporting
+        if predict_latencies:
+            print("\n--- Latency Profile (In-Memory TestClient) ---")
+            print(f"Prediction Count : {len(predict_latencies)}")
+            print(f"P50 Latency      : {np.percentile(predict_latencies, 50):.2f} ms")
+            print(f"P90 Latency      : {np.percentile(predict_latencies, 90):.2f} ms")
+            print(f"P99 Latency      : {np.percentile(predict_latencies, 99):.2f} ms")
+            print(f"Max Latency      : {max(predict_latencies):.2f} ms")
+            
+        if tick_latencies:
+            total_time_s = sum(tick_latencies) / 1000
+            print(f"Avg Ticks/Sec    : {len(tick_latencies) / total_time_s:.1f} ticks/s")
                     
     # 3. Validation Logic
     # Filter API results against Candidate Registry
