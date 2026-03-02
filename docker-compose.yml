@@ -12,6 +12,14 @@ services:
   alertmanager:
     image: prom/alertmanager:latest
     container_name: alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    environment:
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM=${SMTP_FROM}
     volumes:
       - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
     ports:

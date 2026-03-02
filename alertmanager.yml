@@ -7,6 +7,10 @@ route:
 
 receivers:
   - name: 'default-receiver'
-    # Placeholder for webhook/slack/email
-    # webhook_configs:
-    #   - url: 'http://placeholder:5000/alert'
+    email_configs:
+      - to: 'danielfisher0@gmail.com'
+        from: '${SMTP_FROM}'
+        smarthost: '${SMTP_HOST}'
+        auth_username: '${SMTP_USER}'
+        auth_password: '${SMTP_PASS}'
+        require_tls: true
