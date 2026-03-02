@@ -6,7 +6,11 @@ COLOR_TARGET := \033[0;32m
 COLOR_DOC := \033[0;34m
 COLOR_DESC := \033[2m
 
-.PHONY: test docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift deploy-cbot
+.PHONY: test docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift deploy-cbot provision
+
+provision:
+	@echo "Provisioning Alertmanager configuration..."
+	uv run python scripts/provision_observability.py
 
 test:
 	uv run pytest -q
