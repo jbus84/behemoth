@@ -18,7 +18,9 @@ from typing import Sequence
 import yaml
 
 
-_DEFAULT_REGISTRY = Path("configs/research/governance/oco_rule_universe_registry.yaml")
+import os
+
+_DEFAULT_REGISTRY = Path(os.getenv("BEHEMOTH_REGISTRY_PATH", "configs/research/governance/oco_rule_universe_registry.yaml"))
 
 
 @dataclass(frozen=True)
@@ -54,8 +56,11 @@ class CandidateRegistry:
     _caps_by_symbol: dict[str, float] = field(default_factory=dict)
 
     @classmethod
-    def load(cls, lock_dir: Path | str = Path("configs/research/governance/oco")) -> "CandidateRegistry":
+    def load(cls, lock_dir: Path | str | None = None) -> "CandidateRegistry":
         """Load exactly from per-symbol *_oco_live_lock.json files."""
+        if lock_dir is None:
+            lock_dir = Path(os.getenv("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco"))
+        
         import json
         p_dir = Path(lock_dir)
         if not p_dir.exists() or not p_dir.is_dir():

@@ -18,6 +18,7 @@ import json
 import logging
 import os
 import asyncio
+from datetime import datetime, timezone
 from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import AsyncIterator, Optional, List
@@ -51,6 +52,7 @@ _aggregator: TickAggregator | None = None
 _registry: CandidateRegistry | None = None
 _models: dict[str, object] = {}          # symbol -> loaded CatBoostClassifier
 _thresholds: dict[str, dict] = {}        # symbol -> threshold config
+_model_months: dict[str, str] = {}       # symbol -> "2025-12"
 _models_dir: Path = Path("models/oco")
 
 # ── Prometheus Metrics ────────────────────────────────────────────────
@@ -92,7 +94,7 @@ class AppConfig(BaseModel):
     vol_window: int = 96
     cost_window: int = 288
     models_dir: str = Field(default_factory=lambda: os.getenv("BEHEMOTH_MODELS_DIR", "models/oco"))
-    registry_path: str = "configs/research/governance/oco_rule_universe_registry.yaml"
+    registry_path: str = Field(default_factory=lambda: os.getenv("BEHEMOTH_REGISTRY_PATH", "configs/research/governance/oco_rule_universe_registry.yaml"))
     symbols: list[str] = Field(
         default=["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]
     )
@@ -130,7 +132,7 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         )
     _aggregator = TickAggregator(bar_ticks=100)
     try:
-        _registry = CandidateRegistry.load("configs/research/governance/oco")
+        _registry = CandidateRegistry.load(os.getenv("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco"))
         logger.info("Loaded %d candidates from governance locks", len(_registry.all_candidates()))
     except FileNotFoundError:
         _registry = None
