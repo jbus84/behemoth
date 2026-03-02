@@ -125,6 +125,14 @@ def _default_paths(symbol: str) -> dict[str, Path]:
                 f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_{sl}/{s}_oco_monthly_predictions.parquet"
             ),
         ),
+        "tick_fill_caps": _pick_first_existing(
+            Path(
+                f"data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/{s}_stop_limit_tickfill_caps.csv"
+            ),
+            Path(
+                f"data/analysis/tick_opportunity_mining/stop_limit_tickfill/{s}_stop_limit_tickfill_caps.csv"
+            ),
+        ),
     }
 
 
@@ -161,7 +169,6 @@ def _state_universe(states_csv: Path) -> tuple[pd.DataFrame, str]:
     sh = hashlib.sha256(raw.encode("utf-8")).hexdigest()
     return x, sh
 
-
 def _read_tick_exact_ok(path: Path) -> bool | None:
     if not path.exists():
         return None
@@ -169,6 +176,24 @@ def _read_tick_exact_ok(path: Path) -> bool | None:
     if d.empty or "overall_pass" not in d.columns:
         return None
     return bool(d.iloc[0]["overall_pass"])
+
+
+def _pick_optimal_cap(caps_csv: Path, default: float = 1.2, hard_limit: float = 1.2) -> float:
+    """Pick cap that maximizes mean_per_signal_full_overshoot within hard_limit."""
+    if not caps_csv.exists():
+        return float(default)
+    try:
+        d = pd.read_csv(caps_csv)
+        if d.empty or "mean_per_signal_full_overshoot" not in d.columns:
+            return float(default)
+        # Only consider caps within our safety bound
+        valid = d[d["cap_pips"] <= hard_limit].copy()
+        if valid.empty:
+            return float(default)
+        best = valid.loc[valid["mean_per_signal_full_overshoot"].idxmax()]
+        return float(best["cap_pips"])
+    except Exception:
+        return float(default)
 
 
 def _build_manifest(
@@ -217,6 +242,11 @@ def _build_manifest(
             "rolling_threshold_days": int(wfo_cfg.get("rolling_threshold_days", 0)),
             "rolling_threshold_min_history": int(wfo_cfg.get("rolling_threshold_min_history", 0)),
             "execution_quantile": float(wfo_cfg.get("execution_quantile", 0.9)),
+            "production_cap_pips": _pick_optimal_cap(
+                paths["tick_fill_caps"], 
+                default=float(wfo_cfg.get("production_cap_pips", 1.2)),
+                hard_limit=1.2 # Safety bound enforced by Governance
+            ),
             "oco_hold_mode": str(wfo_cfg.get("oco_hold_mode", "")),
             "oco_include_no_touch": bool(wfo_cfg.get("oco_include_no_touch", True)),
         },

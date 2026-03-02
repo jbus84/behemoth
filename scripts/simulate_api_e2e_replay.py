@@ -25,6 +25,14 @@ from fastapi.testclient import TestClient
 
 # server imported lazily to allow env variable injection
 
+class VirtualTrade:
+    def __init__(self, broker_pos_id: str, candidate_uid: str, entry_bar_id: int, horizon: int):
+        self.broker_pos_id = broker_pos_id
+        self.candidate_uid = candidate_uid
+        self.entry_bar_id = entry_bar_id
+        self.horizon = horizon
+        self.active = True
+
 
 def load_expected_predictions(symbol: str, target_month: str) -> dict[tuple[str, str], float]:
     """Load the offline expected probabilities for the target month from Parquet.
@@ -146,6 +154,11 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
         predict_latencies = []
         predictions_fired = 0
         
+        # Virtual Trade Management
+        active_trades: list[VirtualTrade] = []
+        trade_id_counter = 1000
+        horizon_mismatches = 0
+        
         for i in tqdm.tqdm(range(len(times)), desc="Streaming Ticks"):
             tick_payload = {
                 "symbol": symbol,
@@ -190,6 +203,62 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
                     pass
                 else:
                     print(f"Predict error {pred_res.status_code}: {pred_res.text}")
+
+            # ── Check Horizon Exits (Time Decay) ──
+            current_bar_count = data.get("bar_count", 0)
+            still_active = []
+            for vt in active_trades:
+                age = current_bar_count - vt.entry_bar_id
+                if age >= vt.horizon:
+                    # Trigger Virtual Close
+                    t_close = times[i].strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+                    update_payload = {
+                        "broker_pos_id": vt.broker_pos_id,
+                        "status": "CLOSED",
+                        "exit_price": bids[i], # Simulating market close
+                        "exit_ts": t_close,
+                        "pnl_pips": 0.0 # PnL not the focus of this alignment check
+                    }
+                    client.post("/trades/update", json=update_payload)
+                    # print(f" [SIM] Horizon Exit: {vt.candidate_uid} at bar {current_bar_count} (Age: {age})")
+                else:
+                    still_active.append(vt)
+            active_trades = still_active
+
+            # ── Process New Predictions ──
+            if data.get("bar_completed") and 'preds' in locals():
+                for p in preds:
+                    if p.get("selected_exec") == 1:
+                        cand = p["candidate_uid"]
+                        horizon = p["horizon"]
+                        
+                        # 1. Register with API Ledger
+                        pos_id = str(trade_id_counter)
+                        trade_id_counter += 1
+                        
+                        open_payload = {
+                            "symbol": symbol,
+                            "candidate_uid": cand,
+                            "broker_pos_id": pos_id,
+                            "side": "Buy", # Simplified
+                            "entry_price": asks[i],
+                            "entry_ts": times[i].strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                            "horizon": horizon
+                        }
+                        client.post("/trades/open", json=open_payload)
+                        
+                        # 2. Add to Virtual Tracker
+                        active_trades.append(VirtualTrade(
+                            broker_pos_id=pos_id,
+                            candidate_uid=cand,
+                            entry_bar_id=current_bar_count,
+                            horizon=horizon
+                        ))
+
+                        # 3. Normalize for drift check
+                        dt = pd.to_datetime(p["close_ts"])
+                        ts_str = dt.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+                        api_results[(cand, ts_str)] = float(p["pred_prob"])
 
         # Latency Reporting
         if predict_latencies:

@@ -51,6 +51,7 @@ class CandidateRegistry:
 
     _candidates_by_symbol: dict[str, list[CandidateSpec]] = field(default_factory=dict)
     _frozen_timestamps: dict[str, str] = field(default_factory=dict)
+    _caps_by_symbol: dict[str, float] = field(default_factory=dict)
 
     @classmethod
     def load(cls, lock_dir: Path | str = Path("configs/research/governance/oco")) -> "CandidateRegistry":
@@ -72,6 +73,10 @@ class CandidateRegistry:
                 candidates = [CandidateSpec.from_row(r) for r in rows]
                 reg._candidates_by_symbol[sym] = candidates
                 reg._frozen_timestamps[sym] = data.get("frozen_at_utc", "")
+                
+                # Extract execution cap from locked_runtime
+                locked = data.get("locked_runtime", {})
+                reg._caps_by_symbol[sym] = float(locked.get("production_cap_pips", 1.2))
             except Exception as e:
                 import logging
                 logging.getLogger("behemoth.api").error("Failed to parse %s: %s", p.name, e)
@@ -86,6 +91,10 @@ class CandidateRegistry:
     def get_candidates(self, symbol: str) -> list[CandidateSpec]:
         """Return all valid candidate specs for a symbol."""
         return self._candidates_by_symbol.get(symbol.upper(), [])
+
+    def get_cap_pips(self, symbol: str) -> float:
+        """Return the locked production cap for a symbol."""
+        return self._caps_by_symbol.get(symbol.upper(), 1.2)
 
     def all_candidates(self) -> list[CandidateSpec]:
         """Return all candidates across all symbols."""

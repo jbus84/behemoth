@@ -38,7 +38,33 @@ CREATE TABLE IF NOT EXISTS tick_bars (
     tick_volume DOUBLE,
     hl_first DOUBLE,
     hl_pos_frac DOUBLE
-)
+);
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+    event_ts TIMESTAMP WITH TIME ZONE,
+    symbol VARCHAR,
+    candidate_uid VARCHAR,
+    pred_prob DOUBLE,
+    threshold DOUBLE,
+    features_json VARCHAR,
+    model_month VARCHAR
+);
+
+CREATE TABLE IF NOT EXISTS trades (
+    internal_trade_id VARCHAR PRIMARY KEY,
+    broker_pos_id VARCHAR,
+    symbol VARCHAR,
+    candidate_uid VARCHAR,
+    side VARCHAR,
+    entry_price DOUBLE,
+    entry_ts TIMESTAMP WITH TIME ZONE,
+    entry_bar_id INTEGER,
+    horizon_bars INTEGER,
+    exit_price DOUBLE,
+    exit_ts TIMESTAMP WITH TIME ZONE,
+    pnl_pips DOUBLE,
+    status VARCHAR
+);
 """
 
 _INSERT_SQL = (
@@ -52,6 +78,10 @@ FROM tick_bars
 WHERE symbol = ?
 ORDER BY row_id ASC
 """
+
+_AUDIT_INSERT_SQL = (
+    "INSERT INTO audit_logs VALUES (CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?)"
+)
 
 
 class StateManager:
@@ -152,6 +182,79 @@ class StateManager:
             horizon=horizon,
             barrier_pips=barrier_pips,
             cfg=self._cfg,
+        )
+
+    def log_audit_event(
+        self,
+        symbol: str,
+        candidate_uid: str,
+        pred_prob: float,
+        threshold: float,
+        features: ModelFeatures,
+        model_month: str,
+    ) -> None:
+        """Record an execution decision snapshot into the persistent audit trail."""
+        self._con.execute(
+            _AUDIT_INSERT_SQL,
+            [
+                symbol.upper(),
+                candidate_uid,
+                float(pred_prob),
+                float(threshold),
+                features.model_dump_json(),
+                model_month,
+            ],
+        )
+
+    def open_trade(
+        self,
+        symbol: str,
+        candidate_uid: str,
+        broker_pos_id: str,
+        side: str,
+        entry_price: float,
+        entry_ts: datetime,
+        horizon: int,
+    ) -> str:
+        """Record the opening of a position from the cBot."""
+        import uuid
+        internal_id = str(uuid.uuid4())
+        
+        # Fetch current bar count for the symbol to anchor the horizon
+        res = self._con.execute(
+            "SELECT MAX(row_id) FROM tick_bars WHERE symbol = ?", [symbol.upper()]
+        ).fetchone()
+        entry_bar_id = res[0] if res and res[0] is not None else 0
+
+        self._con.execute(
+            "INSERT INTO trades (internal_trade_id, broker_pos_id, symbol, candidate_uid, side, entry_price, entry_ts, entry_bar_id, horizon_bars, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN')",
+            [internal_id, broker_pos_id, symbol.upper(), candidate_uid, side, float(entry_price), entry_ts, entry_bar_id, horizon],
+        )
+        return internal_id
+
+    def get_active_trades(self, symbol: str) -> list[dict]:
+        """Fetch all currently OPEN trades for state recovery."""
+        res = self._con.execute(
+            "SELECT broker_pos_id, entry_bar_id, horizon_bars FROM trades WHERE symbol = ? AND status = 'OPEN'",
+            [symbol.upper()],
+        ).fetchall()
+        return [
+            {"broker_pos_id": r[0], "entry_bar_id": r[1], "horizon": r[2]}
+            for r in res
+        ]
+
+    def update_trade(
+        self,
+        broker_pos_id: str,
+        status: str,
+        exit_price: Optional[float] = None,
+        exit_ts: Optional[datetime] = None,
+        pnl_pips: Optional[float] = None,
+    ) -> None:
+        """Update a trade status and exit data (CLOSED/CANCELLED)."""
+        self._con.execute(
+            "UPDATE trades SET status = ?, exit_price = ?, exit_ts = ?, pnl_pips = ? WHERE broker_pos_id = ?",
+            [status, exit_price, exit_ts, pnl_pips, broker_pos_id],
         )
 
     def close(self) -> None:

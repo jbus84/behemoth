@@ -25,7 +25,15 @@ from typing import AsyncIterator, Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from src.behemoth.core.schemas import IncomingTick, IncomingTickBar, ModelFeatures, OcoPrediction
+from src.behemoth.core.schemas import (
+    IncomingTick, 
+    IncomingTickBar, 
+    ModelFeatures, 
+    OcoPrediction,
+    TradeOpenRequest,
+    TradeUpdateRequest,
+    ActiveTrade
+)
 from src.behemoth.runtime.state import StateManager
 from src.behemoth.runtime.tick_aggregator import TickAggregator
 from src.behemoth.core.registry import CandidateRegistry
@@ -55,6 +63,9 @@ class AppConfig(BaseModel):
     symbols: list[str] = Field(
         default=["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]
     )
+    persist_db_path: Optional[str] = Field(
+        default_factory=lambda: os.getenv("BEHEMOTH_STATE_DB", "data/db/behemoth_runtime.db")
+    )
 
 
 _config = AppConfig()
@@ -66,10 +77,20 @@ _config = AppConfig()
 async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     """Modern lifespan handler replacing deprecated on_event."""
     global _state, _aggregator, _registry, _models_dir
-    _state = StateManager(
-        vol_window=_config.vol_window,
-        cost_window=_config.cost_window,
-    )
+    if _config.persist_db_path:
+        db_path = Path(_config.persist_db_path)
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        logger.info("Using persistent State DB: %s", db_path)
+        _state = StateManager(
+            vol_window=_config.vol_window,
+            cost_window=_config.cost_window,
+            persist_path=str(db_path),
+        )
+    else:
+        _state = StateManager(
+            vol_window=_config.vol_window,
+            cost_window=_config.cost_window,
+        )
     _aggregator = TickAggregator(bar_ticks=100)
     try:
         _registry = CandidateRegistry.load("configs/research/governance/oco")
@@ -129,7 +150,7 @@ def _load_models() -> None:
         model.load_model(str(latest))
         _models[sym] = model
         _model_months[sym] = month
-        logger.info("Loaded model for %s: %s (month=%s)", sym, latest.name, month)
+        logger.info("Loaded model for %s (month %s): %s", sym, month, latest.name)
 
         # Load paired threshold JSON
         thr_path = latest.with_suffix(".json")
@@ -139,6 +160,12 @@ def _load_models() -> None:
         else:
             _thresholds[sym] = {}
             logger.warning("No threshold JSON for %s at %s", sym, thr_path)
+
+def _get_cap_pips(symbol: str) -> float:
+    """Get production Stop-Limit cap for a symbol from governance registry."""
+    if _registry is None:
+        return 1.2
+    return _registry.get_cap_pips(symbol)
 
 
 # ── Request / Response Models ─────────────────────────────────────────
@@ -260,15 +287,28 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
         # Offline format expects: library|symbol|bar_ticks|h_horizon|candidate_basename
         canonical_uid = f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
 
+        selected_exec = 1 if pred_prob >= threshold_exec else 0
+
+        if selected_exec == 1:
+            _state.log_audit_event(
+                symbol=sym,
+                candidate_uid=canonical_uid,
+                pred_prob=pred_prob,
+                threshold=threshold_exec,
+                features=features,
+                model_month=model_month,
+            )
+
         results.append(OcoPrediction(
             symbol=sym,
             close_ts=close_ts,
             candidate_uid=canonical_uid,
             pred_prob=pred_prob,
             threshold_exec=threshold_exec,
-            selected_exec=1 if pred_prob >= threshold_exec else 0,
+            selected_exec=selected_exec,
             horizon=int(cand.horizon),
             barrier_pips=float(cand.barrier_pips),
+            cap_pips=_get_cap_pips(sym),
             threshold_source=threshold_source,
             model_month=model_month,
         ))
@@ -276,6 +316,48 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
     # Sort by pred_prob descending
     results.sort(key=lambda p: p.pred_prob, reverse=True)
     return results
+
+
+@app.post("/trades/open")
+async def open_trade(req: TradeOpenRequest):
+    """Record an execution entry on the broker."""
+    if _state is None:
+        raise HTTPException(status_code=503, detail="State manager not initialized")
+    
+    internal_id = _state.open_trade(
+        symbol=req.symbol,
+        candidate_uid=req.candidate_uid,
+        broker_pos_id=req.broker_pos_id,
+        side=req.side,
+        entry_price=req.entry_price,
+        entry_ts=req.entry_ts,
+        horizon=req.horizon,
+    )
+    return {"status": "ok", "internal_trade_id": internal_id}
+
+
+@app.get("/trades/active", response_model=list[ActiveTrade])
+async def get_active_trades(symbol: str):
+    """Fetch all OPEN trades for a symbol (used by cBot for recovery)."""
+    if _state is None:
+        raise HTTPException(status_code=503, detail="State manager not initialized")
+    return _state.get_active_trades(symbol)
+
+
+@app.post("/trades/update")
+async def update_trade(req: TradeUpdateRequest):
+    """Update a trade status (CLOSED/CANCELLED)."""
+    if _state is None:
+        raise HTTPException(status_code=503, detail="State manager not initialized")
+    
+    _state.update_trade(
+        broker_pos_id=req.broker_pos_id,
+        status=req.status.value,
+        exit_price=req.exit_price,
+        exit_ts=req.exit_ts,
+        pnl_pips=req.pnl_pips,
+    )
+    return {"status": "ok"}
 
 
 @app.get("/health", response_model=HealthResponse)

@@ -12,10 +12,10 @@
     "wfo_config_path": "configs/research/experiments/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
     "wfo_config_sha256": "34d334848ed48542b19d6c40af233f32fac8fdbbf534ea8290ddb477931010e0"
   },
-  "frozen_at_utc": "2026-03-01T12:41:13.062640+00:00",
+  "frozen_at_utc": "2026-03-02T12:23:03.165883+00:00",
   "git": {
     "branch": "main",
-    "commit": "bb315b723198cd09ae1f80bb663838c36e56d178",
+    "commit": "eab1f2c25a7b29c09cb50055d362f94bcbb4e642",
     "dirty": true
   },
   "locked_runtime": {
@@ -26,6 +26,7 @@
     "locked_quantile": 0.9,
     "oco_hold_mode": "from_touch",
     "oco_include_no_touch": true,
+    "production_cap_pips": 1.2,
     "rolling_threshold_days": 20,
     "rolling_threshold_min_history": 1000,
     "selection_mode": "auto",

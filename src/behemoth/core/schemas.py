@@ -1,4 +1,6 @@
+from __future__ import annotations
 from datetime import datetime
+from enum import Enum
 from typing import ClassVar, Optional
 
 from pydantic import BaseModel, Field
@@ -177,7 +179,41 @@ class OcoPrediction(BaseModel):
     # Structural Parameters (for cBot execution)
     horizon: int = Field(..., description="The horizon in bars (e.g. 6)")
     barrier_pips: float = Field(..., description="The OCO barrier distance in pips (e.g. 2.0)")
+    cap_pips: float = Field(..., description="The Stop-Limit overshoot cap in pips (e.g. 1.2)")
 
     # Traceability
     threshold_source: str = Field(..., description="e.g. 'rolling_days' or 'train_fallback'")
     model_month: str = Field(..., description="The YYYY-MM identifier of the model doing the inference")
+
+
+class TradeStatus(str, Enum):
+    OPEN = "OPEN"
+    CLOSED = "CLOSED"
+    CANCELLED = "CANCELLED"
+
+
+class TradeOpenRequest(BaseModel):
+    """Sent by cBot when a position is opened."""
+    symbol: str
+    candidate_uid: str
+    broker_pos_id: str
+    side: str  # Buy / Sell
+    entry_price: float
+    entry_ts: datetime
+    horizon: int
+
+
+class ActiveTrade(BaseModel):
+    """Returned by API for state recovery."""
+    broker_pos_id: str
+    entry_bar_id: int
+    horizon: int
+
+
+class TradeUpdateRequest(BaseModel):
+    """Sent by cBot when a position is closed or cancelled."""
+    broker_pos_id: str
+    status: TradeStatus
+    exit_price: Optional[float] = None
+    exit_ts: Optional[datetime] = None
+    pnl_pips: Optional[float] = None
