@@ -212,6 +212,7 @@ class ActiveTrade(BaseModel):
 
 class TradeUpdateRequest(BaseModel):
     """Sent by cBot when a position is closed or cancelled."""
+    symbol: str
     broker_pos_id: str
     status: TradeStatus
     exit_price: Optional[float] = None

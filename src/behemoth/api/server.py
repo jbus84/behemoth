@@ -429,7 +429,7 @@ async def update_trade(req: TradeUpdateRequest):
         pnl_pips=req.pnl_pips,
     )
     
-    METRIC_TRADES_TOTAL.labels(symbol="UNKNOWN", status=req.status.value).inc()
+    METRIC_TRADES_TOTAL.labels(symbol=req.symbol, status=req.status.value).inc()
     if req.pnl_pips is not None:
         # Note: We need a way to look up the symbol from broker_pos_id if we want granular metrics here.
         # For now, we update a global or handle it in the background worker.
