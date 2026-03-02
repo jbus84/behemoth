@@ -1,0 +1,38 @@
+groups:
+  - name: behemoth_alerts
+    rules:
+      - alert: ModelDriftNegativePnL
+        expr: rate(behemoth_equity_pips[24h]) < 0
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "Model Drift detected on {{ $labels.symbol }}"
+          description: "Realized PnL trend has been negative for the last 24 hours on {{ $labels.symbol }}."
+
+      - alert: HighInferenceLatency
+        expr: histogram_quantile(0.99, sum by (symbol, le) (rate(behemoth_inference_latency_seconds_bucket[5m]))) > 0.2
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Inference Latency on {{ $labels.symbol }}"
+          description: "P99 latency is {{ $value }}s, exceeding the 200ms threshold."
+
+      - alert: SlippageCapViolation
+        expr: behemoth_slippage_pips > 1.2
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Slippage Cap Violated on {{ $labels.symbol }}"
+          description: "Realized slippage of {{ $value }} pips exceeds the 1.2 pip governance cap."
+
+      - alert: cBotHandshakeTimeout
+        expr: changes(behemoth_bar_count[1h]) == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "cBot Handshake Lost on {{ $labels.symbol }}"
+          description: "No bar updates received for over 1 hour. Check cBot connectivity."

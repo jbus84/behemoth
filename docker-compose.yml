@@ -4,13 +4,25 @@ services:
     container_name: behemoth-prometheus
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus_rules.yml:/etc/prometheus/prometheus_rules.yml
     ports:
       - "9090:9090"
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    ports:
+      - "9093:9093"
     restart: unless-stopped
 
   grafana:
     image: grafana/grafana:10.4.3
     container_name: behemoth-grafana
+    volumes:
+      - ./provisioning:/etc/grafana/provisioning
     ports:
       - "3000:3000"
     environment:
