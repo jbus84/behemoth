@@ -26,7 +26,7 @@ These workflows are the baseline governance checks for docs and analysis consist
 ## Rolling Historical Evidence
 
 <!-- GENERATED:SYSREF:DEVELOPMENT:START -->
-- generated_at_utc: `2026-03-03T12:43:32Z`
+- generated_at_utc: `2026-03-03T16:44:25Z`
 - symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD`
 - stop-limit_reference: `stage_04_execution_realism`
 - artifact_sources:

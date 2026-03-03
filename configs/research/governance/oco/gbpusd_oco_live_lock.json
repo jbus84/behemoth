@@ -12,10 +12,10 @@
     "wfo_config_path": "configs/research/experiments/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
     "wfo_config_sha256": "12f9a50fda9038e68f19708874e2cc03e0f9c8726bdf71431bcef07daabde7bc"
   },
-  "frozen_at_utc": "2026-03-03T11:39:02.523500+00:00",
+  "frozen_at_utc": "2026-03-03T15:36:29.457082+00:00",
   "git": {
     "branch": "main",
-    "commit": "e74dcf2cff9dfd22239b57c1224892330636dc98",
+    "commit": "26e1ede719f4245b01df50d8694edca1f489e875",
     "dirty": true
   },
   "locked_runtime": {

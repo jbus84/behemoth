@@ -14,6 +14,26 @@
 - execution_quantile: `0.9`
 - oco_hold_mode: `from_touch`
 
+## Feature Importance
+| feature               |   mean_importance |
+|:----------------------|------------------:|
+| cost_est_pips         |         11.1881   |
+| hl_pos_frac_mean_24   |         10.3165   |
+| tick_rate_z           |         10.0134   |
+| spread_z              |          9.69397  |
+| hour_utc              |          8.49644  |
+| range_pips            |          7.98086  |
+| ret_z                 |          7.2671   |
+| ret_abs_z             |          6.53105  |
+| ret1_pips             |          6.40168  |
+| hl_first_mean_24      |          6.15699  |
+| vel_abs_cost_units_h1 |          5.95095  |
+| vel_cost_units_h1     |          5.62476  |
+| barrier_pips          |          4.58963  |
+| horizon               |          1.48641  |
+| hl_first              |          0.343552 |
+| bar_ticks             |          0.253372 |
+
 ## Monthly Metrics
 | library     | test_month   | train_start   | train_end   | test_start   | test_end   |   train_rows |   test_rows |   train_candidates |   test_candidates |   base_pos_rate |      auc |    brier |
 |:------------|:-------------|:--------------|:------------|:-------------|:-----------|-------------:|------------:|-------------------:|------------------:|----------------:|---------:|---------:|

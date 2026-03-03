@@ -12,10 +12,10 @@
     "wfo_config_path": "configs/research/experiments/audusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
     "wfo_config_sha256": "0dbf25e73649bf874c06064c26b25d02d1369f8bb0cecf23952087b6e24ff882"
   },
-  "frozen_at_utc": "2026-03-03T12:22:44.622283+00:00",
+  "frozen_at_utc": "2026-03-03T16:21:44.309168+00:00",
   "git": {
     "branch": "main",
-    "commit": "e74dcf2cff9dfd22239b57c1224892330636dc98",
+    "commit": "26e1ede719f4245b01df50d8694edca1f489e875",
     "dirty": true
   },
   "locked_runtime": {

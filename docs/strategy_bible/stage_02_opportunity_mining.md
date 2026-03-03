@@ -100,7 +100,7 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 <!-- GENERATED:STAGE_02:START -->
 ### Auto Snapshot - Stage 02
 
-- generated_at: `2026-03-03 12:43:04 UTC`
+- generated_at: `2026-03-03 16:43:59 UTC`
 - selection_pass candidates are broad hypotheses only.
 - Scatter shows the high-count >0 gross opportunity frontier.
 - M01-M03 quantify concentration risk, horizon smoothness, and positive-edge density.
