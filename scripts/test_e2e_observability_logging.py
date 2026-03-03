@@ -7,20 +7,16 @@ Verifies:
 4. Metric Scrape -> /metrics formatting.
 """
 
-import os
-import json
 import logging
-import time
+import os
 from datetime import datetime, timezone
-import pytest
+
 from fastapi.testclient import TestClient
-from prometheus_client import REGISTRY
 
 # Use a temporary database for testing to avoid lock conflicts
 os.environ["BEHEMOTH_STATE_DB"] = "/tmp/behemoth_test_observability.db"
 
 from src.behemoth.api.server import app
-from src.behemoth.core.schemas import IncomingTick, TradeOpenRequest, TradeUpdateRequest, TradeStatus
 
 # Configure logging to capture output
 logging.basicConfig(level=logging.INFO)
@@ -30,7 +26,7 @@ client = TestClient(app)
 
 def test_observability_lifecycle():
     symbol = "EURUSD"
-    
+
     with TestClient(app) as client:
         # 1. Warmup: Send Ticks
         # ...
@@ -44,11 +40,11 @@ def test_observability_lifecycle():
             }
             resp = client.post("/ticks", json=tick)
             assert resp.status_code == 201
-        
+
         # 2. Prediction (Trigger Metrics)
         logger.info("Step 2: Triggering Prediction...")
         resp = client.post("/predict", json={"symbol": symbol})
-        assert resp.status_code in [200, 422, 503] 
+        assert resp.status_code in [200, 422, 503]
 
         # 3. Trade Lifecycle (Trigger Ledger & Counters)
         logger.info("Step 3: Opening Trade...")
@@ -63,7 +59,7 @@ def test_observability_lifecycle():
         }
         resp = client.post("/trades/open", json=trade_req)
         assert resp.status_code == 200
-        
+
         # Update Trade
         logger.info("Step 4: Closing Trade...")
         update_req = {
@@ -82,12 +78,12 @@ def test_observability_lifecycle():
         metrics_resp = client.get("/metrics")
         assert metrics_resp.status_code == 200
         data = metrics_resp.text
-        
+
         # Check for presence of custom metrics
         assert "behemoth_trades_total" in data
         assert "behemoth_equity_pips" in data
         assert "behemoth_bar_count" in data
-        
+
         logger.info("E2E Observability Test PASSED")
 
 if __name__ == "__main__":

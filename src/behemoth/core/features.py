@@ -2,7 +2,7 @@
 
 This is the SINGLE SOURCE OF TRUTH for computing the 16-feature vector.
 Both the research pipeline (``scripts/build_tick_velocity_dataset.py``)
-and the production runtime (``src/behemoth/runtime/state.py``) MUST
+and the production runtime (``behemoth.runtime.state``) MUST
 delegate to this module.  Any change to feature calculation happens
 here and only here.
 

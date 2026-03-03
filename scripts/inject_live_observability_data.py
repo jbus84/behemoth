@@ -4,17 +4,17 @@ Pumps real HTTP requests into the running API at http://localhost:8001
 to verify that the Docker-based Prometheus/Grafana stack captures the data.
 """
 
-import requests
 import time
-import random
 from datetime import datetime, timezone
+
+import requests
 
 BASE_URL = "http://localhost:8001"
 SYMBOL = "EURUSD"
 
 def inject_data():
     print(f"🚀 Starting Live Injection for {SYMBOL}...")
-    
+
     # 1. Ingest Ticks
     print("Step 1: Ingesting 50 ticks...")
     for i in range(50):
@@ -27,7 +27,7 @@ def inject_data():
         resp = requests.post(f"{BASE_URL}/ticks", json=tick)
         if resp.status_code != 201:
             print(f"❌ Tick error: {resp.text}")
-    
+
     # 2. Trigger Predictions (Latency Histogram)
     print("Step 2: Triggering 5 predictions...")
     for _ in range(5):
@@ -47,7 +47,7 @@ def inject_data():
         "horizon": 12
     }
     requests.post(f"{BASE_URL}/trades/open", json=trade_req)
-    
+
     time.sleep(2)  # Wait for ledger sync (60s loop, but stats are immediate in memory)
 
     print(f"Step 4: Closing Trade {pos_id} with profit...")

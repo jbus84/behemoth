@@ -213,10 +213,10 @@ def _build_events_for_library(
 
 def _feature_cols(d: pd.DataFrame) -> list[str]:
     """Dynamically determine the 16 model feature columns present in the frame.
-    
-    IMPORTANT: The returned list includes 13 market features AND 3 structural parameters 
+
+    IMPORTANT: The returned list includes 13 market features AND 3 structural parameters
     (bar_ticks, horizon, barrier_pips). These structural parameters are critical meta-learning
-    state constraints that allow the CatBoost model to partition its thresholds contextually. 
+    state constraints that allow the CatBoost model to partition its thresholds contextually.
     Do NOT remove them under the mistaken belief that they are 'leakage'.
     """
     base = [
@@ -434,7 +434,7 @@ def _wfo_monthly(
         # --- Feature Importance ---
         fi = model.get_feature_importance()
         imp_dict = {"test_month": test_start.strftime("%Y-%m")}
-        for f_name, f_val in zip(feats, fi):
+        for f_name, f_val in zip(feats, fi, strict=False):
             imp_dict[f_name] = float(f_val)
         importance_rows.append(imp_dict)
 
@@ -444,7 +444,7 @@ def _wfo_monthly(
             month_tag = test_start.strftime("%Y-%m")
             cbm_path = model_export_dir / f"{symbol}_model_{month_tag}.cbm"
             model.save_model(str(cbm_path))
-            
+
             # Export Importances CSV
             imp_df = pd.DataFrame({"feature": feats, "importance": fi}).sort_values("importance", ascending=False)
             imp_path = model_export_dir / f"{symbol}_feature_importance_{month_tag}.csv"
@@ -550,9 +550,9 @@ def _wfo_monthly(
 
 
 def _write_report(
-    report_out: Path, 
-    metrics: pd.DataFrame, 
-    thresholds: pd.DataFrame, 
+    report_out: Path,
+    metrics: pd.DataFrame,
+    thresholds: pd.DataFrame,
     importance: pd.DataFrame,
     cfg: dict[str, Any]
 ) -> None:

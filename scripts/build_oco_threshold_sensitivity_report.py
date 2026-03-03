@@ -139,7 +139,7 @@ def _daily_threshold_triplet(
             q_out = np.quantile(hist, q_vals).tolist()
         else:
             q_out = fallback
-        out[cur_day] = {float(q): float(v) for q, v in zip(q_vals, q_out)}
+        out[cur_day] = {float(q): float(v) for q, v in zip(q_vals, q_out, strict=False)}
 
         arr = _to_num(d.loc[d[day_col] == cur_day, pred_col]).dropna().to_numpy(dtype=float)
         hist_days.append(cur_day)

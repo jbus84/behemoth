@@ -420,7 +420,7 @@ def _oco_candidates(
     regimes = _regime_masks(test, q)
     train_q = _quantiles(train)
     train_regimes = _regime_masks(train, train_q)
-    train_regime_map = {k: np.asarray(v, dtype=bool) for k, v in train_regimes}
+    {k: np.asarray(v, dtype=bool) for k, v in train_regimes}
 
     pip = float(_pip_size(symbol))
     close_test = pd.to_numeric(test["close"], errors="coerce").to_numpy(dtype=float)

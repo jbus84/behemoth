@@ -6,8 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from src.behemoth.core.registry import CandidateRegistry, CandidateSpec
-
+from src.behemoth.core.registry import CandidateRegistry
 
 LOCK_DIR = Path("configs/research/governance/oco")
 

@@ -10,9 +10,7 @@ Provides a single-page HTML dashboard showing:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
-from fastapi import APIRouter, Request
+from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])

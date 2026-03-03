@@ -10,10 +10,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
-import pytest
 
-from src.behemoth.core.schemas import IncomingTick, IncomingTickBar
-
+from src.behemoth.core.schemas import IncomingTick
 
 # ── Helpers ───────────────────────────────────────────────────────────
 

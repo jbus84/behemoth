@@ -21,7 +21,7 @@ import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
 from contextlib import asynccontextmanager
-from typing import AsyncIterator, Optional, List
+from typing import AsyncIterator, Optional
 
 from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel, Field
@@ -110,7 +110,7 @@ _config = AppConfig()
 # ── Lifespan ──────────────────────────────────────────────────────────
 
 @asynccontextmanager
-async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Modern lifespan handler replacing deprecated on_event."""
     global _state, _aggregators, _registry, _models_dir
     
@@ -310,17 +310,7 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
     if not candidates:
         raise HTTPException(status_code=422, detail=f"No candidates registered for {sym}")
 
-    # Check warmup (use largest required bar size as strict limit for the endpoint)
-    # If the candidate doesn't exist, this fails below anyway
-    warmup_needed = max(_config.vol_window, _config.cost_window) + 1
-    for cand in candidates:
-        bar_count = _state.bar_count(sym, cand.bar_ticks)
-        if bar_count < warmup_needed:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Insufficient warmup bars for {sym} at {cand.bar_ticks} ticks. "
-                       f"Have {bar_count}, need ≥{warmup_needed}.",
-            )
+    _check_warmup(sym, candidates)
 
     # Load model
     model = _models.get(sym)
@@ -358,26 +348,75 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
     # exactly align with the state DB's reconstructed chronological limit.
     close_ts = _state.get_latest_close_ts(sym) or datetime.now(tz=timezone.utc)
 
+    results = _build_predictions(
+        sym=sym,
+        candidates=candidates,
+        model=model,
+        base_features_by_ticks=base_features_by_ticks,
+        close_ts=close_ts,
+        thr_cfg=thr_cfg,
+    )
+
+    # Sort by pred_prob descending
+    results.sort(key=lambda p: p.pred_prob, reverse=True)
+    return results
+
+
+def _check_warmup(sym: str, candidates: list[Any]) -> None:
+    """Validate sufficient bars exist for the requested candidates."""
+    if _state is None:
+        return
+    warmup_needed = max(_config.vol_window, _config.cost_window) + 1
+    for cand in candidates:
+        bar_count = _state.bar_count(sym, cand.bar_ticks)
+        if bar_count < warmup_needed:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Insufficient warmup bars for {sym} at {cand.bar_ticks} ticks. "
+                f"Have {bar_count}, need ≥{warmup_needed}.",
+            )
+
+
+def _build_predictions(
+    sym: str,
+    candidates: list[Any],
+    model: Any,
+    base_features_by_ticks: dict[int, ModelFeatures],
+    close_ts: datetime,
+    thr_cfg: dict[str, Any],
+) -> list[OcoPrediction]:
+    """Construction predictions for each candidate using the loaded model."""
+    import numpy as np
+
+    threshold_exec = float(thr_cfg.get("threshold_exec", 0.5))
+    threshold_source = str(thr_cfg.get("threshold_source", "default"))
+    model_month = _model_months.get(sym, "unknown")
+
     results: list[OcoPrediction] = []
     for cand in candidates:
         # Override structural features per candidate
         base_features = base_features_by_ticks[int(cand.bar_ticks)]
-        features = base_features.model_copy(update={
-            "bar_ticks": float(cand.bar_ticks),
-            "horizon": float(cand.horizon),
-            "barrier_pips": float(cand.barrier_pips),
-        })
+        features = base_features.model_copy(
+            update={
+                "bar_ticks": float(cand.bar_ticks),
+                "horizon": float(cand.horizon),
+                "barrier_pips": float(cand.barrier_pips),
+            }
+        )
         arr = np.array([features.to_array()], dtype=float)
-        
-        with METRIC_INFERENCE_LATENCY.labels(symbol=sym).time():
-            pred_prob = float(model.predict_proba(arr)[:, 1][0])
+
+        if model is not None:
+            with METRIC_INFERENCE_LATENCY.labels(symbol=sym).time():
+                pred_prob = float(model.predict_proba(arr)[:, 1][0])
+        else:
+            pred_prob = 0.0
 
         # Offline format expects: library|symbol|bar_ticks|h_horizon|candidate_basename
         canonical_uid = f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
 
         selected_exec = 1 if pred_prob >= threshold_exec else 0
 
-        if selected_exec == 1:
+        if selected_exec == 1 and _state is not None:
             _state.log_audit_event(
                 symbol=sym,
                 candidate_uid=canonical_uid,
@@ -387,22 +426,21 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
                 model_month=model_month,
             )
 
-        results.append(OcoPrediction(
-            symbol=sym,
-            close_ts=close_ts,
-            candidate_uid=canonical_uid,
-            pred_prob=pred_prob,
-            threshold_exec=threshold_exec,
-            selected_exec=selected_exec,
-            horizon=int(cand.horizon),
-            barrier_pips=float(cand.barrier_pips),
-            cap_pips=_get_cap_pips(sym),
-            threshold_source=threshold_source,
-            model_month=model_month,
-        ))
-
-    # Sort by pred_prob descending
-    results.sort(key=lambda p: p.pred_prob, reverse=True)
+        results.append(
+            OcoPrediction(
+                symbol=sym,
+                close_ts=close_ts,
+                candidate_uid=canonical_uid,
+                pred_prob=pred_prob,
+                threshold_exec=threshold_exec,
+                selected_exec=selected_exec,
+                horizon=int(cand.horizon),
+                barrier_pips=float(cand.barrier_pips),
+                cap_pips=_get_cap_pips(sym),
+                threshold_source=threshold_source,
+                model_month=model_month,
+            )
+        )
     return results
 
 
@@ -546,6 +584,7 @@ async def ingest_tick(tick: IncomingTick) -> dict:
         raise HTTPException(status_code=503, detail="Not initialized")
 
     completed_bar_ticks = []
+    bars = []
     for agg in _aggregators.values():
         bars.extend(agg.add_ticks([tick]))
         

@@ -98,7 +98,7 @@ def _parse_uid_cols(uids: pd.Series) -> pd.DataFrame:
 
 def _select_month_q(d: pd.DataFrame, q: float) -> pd.DataFrame:
     out: list[pd.DataFrame] = []
-    for m, g in d.groupby("test_month", sort=True):
+    for _m, g in d.groupby("test_month", sort=True):
         thr = float(np.quantile(g["pred_prob"].to_numpy(dtype=float), float(q)))
         x = g[g["pred_prob"] >= thr].copy()
         x["threshold"] = float(thr)
@@ -395,8 +395,9 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     d["map_ok"] = False
 
     dataset_dir = Path(str(cfg.get("dataset_dir", DEFAULTS["dataset_dir"])))
-    for bt, gb in d.groupby("bar_ticks", sort=True):
-        path = dataset_dir / f"{symbol}_{int(bt)}tick_velocity.parquet"
+    for bt_val, gb in d.groupby("bar_ticks", sort=True):
+        bt = int(bt_val)
+        path = dataset_dir / f"{symbol}_{bt}tick_velocity.parquet"
         if not path.exists():
             raise FileNotFoundError(path)
         bars = pd.read_parquet(
@@ -411,7 +412,8 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         idx_map = pd.Series(np.arange(len(bars), dtype=np.int64), index=bars["close_ts"])
         idx_map = idx_map[~idx_map.index.duplicated(keep="first")]
         bt_index = gb.index
-        for (h, k), g in gb.groupby(["horizon", "barrier_pips"], sort=False):
+        for (h_val, k_val), g in gb.groupby(["horizon", "barrier_pips"], sort=False):
+            h, k = int(h_val), float(k_val)
             gi = g.index
             mapped = idx_map.reindex(g["close_ts"]).to_numpy(dtype=float)
             idx = np.full(len(g), -1, dtype=np.int64)
@@ -435,7 +437,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             d.loc[gi, "expected_both_window"] = out["expected_both_window"]
             d.loc[gi, "expected_clean"] = out["expected_clean"]
             d.loc[gi, "map_ok"] = out["map_ok"]
-        d.loc[bt_index, "bar_ticks"] = int(bt)
+        d.loc[bt_index, "bar_ticks"] = bt
 
     summary_row = _metrics(d, abs_tol=abs_tol)
     summary = pd.DataFrame([summary_row])
@@ -481,7 +483,8 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     ]
 
     state_rows: list[dict[str, Any]] = []
-    for k, g in d.groupby(["bar_ticks", "horizon", "state_id"], sort=True):
+    for k_val, g in d.groupby(["bar_ticks", "horizon", "state_id"], sort=True):
+        k = k_val
         m = _metrics(g, abs_tol=abs_tol)
         state_rows.append(
             {

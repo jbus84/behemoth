@@ -710,7 +710,7 @@ def run(
     edge_report_syms = _extract_symbols_from_edge_report(edge_report_md)
     expected_s09 = (
         set(
-            stage_status.loc[stage_status["gate_tick_exact"] == True, "symbol"]
+            stage_status.loc[stage_status["gate_tick_exact"], "symbol"]
             .astype(str)
             .str.upper()
             .tolist()
@@ -1720,7 +1720,7 @@ def run(
             st = pd.read_csv(stage_status_csv)
             if not st.empty and "gate_tick_exact" in st.columns:
                 valid_syms = set(
-                    st.loc[st["gate_tick_exact"] == True, "symbol"].astype(str).str.upper().tolist()
+                    st.loc[st["gate_tick_exact"], "symbol"].astype(str).str.upper().tolist()
                 )
         except Exception:
             pass

@@ -24,3 +24,4 @@ data/*
 # Configuration & Secrets
 .env
 alertmanager.yml
+.smellcheck-cache/

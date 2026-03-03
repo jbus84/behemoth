@@ -1,8 +1,9 @@
-import json
-import logging
 from datetime import datetime, timezone
+
 from fastapi.testclient import TestClient
+
 from src.behemoth.api.server import app
+
 
 def test_horizon_ledger():
     with TestClient(app) as client:
@@ -32,7 +33,7 @@ def test_horizon_ledger():
         print(f"Recovery Endpoint: {resp.status_code}")
         assert resp.status_code == 200
         active = resp.json()
-        
+
         found = [t for t in active if t["broker_pos_id"] == "88888"]
         assert len(found) == 1
         assert found[0]["horizon"] == 24

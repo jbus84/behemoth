@@ -172,7 +172,7 @@ def _simulate_symbol_scenario(
         var_signal = max(ex2 - (mu_signal**2), 0.0)
         sd_mean_signal = float(np.sqrt(var_signal / max(n, 1)))
 
-        mean_fill_rate = float(np.mean(q_g))
+        float(np.mean(q_g))
         var_fill_count = float(np.sum(q_g * (1.0 - q_g)))
         sd_fill_count = float(np.sqrt(max(var_fill_count, 0.0)))
         mean_fill_count = float(np.sum(q_g))

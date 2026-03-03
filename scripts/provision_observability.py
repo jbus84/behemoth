@@ -2,6 +2,7 @@ import os
 import re
 from pathlib import Path
 
+
 def provision_alertmanager():
     template_path = Path("alertmanager.yml.template")
     output_path = Path("alertmanager.yml")
@@ -14,7 +15,7 @@ def provision_alertmanager():
     # Load .env if it exists
     env_vars = {}
     if env_path.exists():
-        with open(env_path, "r") as f:
+        with open(env_path) as f:
             for line in f:
                 if line.strip() and not line.startswith("#"):
                     key, value = line.strip().split("=", 1)
@@ -23,7 +24,7 @@ def provision_alertmanager():
     # Prefer actual environment variables
     env_vars.update(os.environ)
 
-    with open(template_path, "r") as f:
+    with open(template_path) as f:
         content = f.read()
 
     # Simple regex substitution for ${VAR}

@@ -12,14 +12,13 @@ pipeline output to within a strict floating-point tolerance.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import pandas as pd
 import pytest
 
 from src.behemoth.core.schemas import IncomingTickBar, ModelFeatures
-
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
@@ -34,7 +33,7 @@ def _make_synthetic_bars(
     base_price = 1.10000
     bars: list[IncomingTickBar] = []
     t = datetime(2025, 6, 1, 8, 0, 0, tzinfo=timezone.utc)
-    for i in range(n):
+    for _i in range(n):
         move = rng.normal(0, 0.00050)
         o = base_price + move
         h = o + abs(rng.normal(0, 0.00030))
@@ -158,7 +157,7 @@ class TestDuckDBStateFeatures:
 
     def test_pandas_reference_has_expected_columns(self, pandas_reference: pd.DataFrame):
         """Sanity check that the pandas reference generates valid features."""
-        for col in ModelFeatures.model_fields.keys():
+        for col in ModelFeatures.model_fields:
             if col in ("horizon", "barrier_pips", "bar_ticks"):
                 continue  # structural, not rolling
             assert col in pandas_reference.columns, f"Missing: {col}"

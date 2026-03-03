@@ -9,7 +9,7 @@ COLOR_DESC := \033[2m
 # Active symbol list — single source of truth for multi-symbol targets
 REBUILD_SYMBOLS := EURUSD GBPUSD USDJPY USDCHF AUDUSD USDCAD
 
-.PHONY: test docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift deploy-cbot provision retrain-all rebuild-all
+.PHONY: test docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift deploy-cbot provision retrain-all rebuild-all quality ty vulture smellcheck radon xenon
 
 provision:
 	@echo "Provisioning Alertmanager configuration..."
@@ -17,6 +17,29 @@ provision:
 
 test:
 	uv run pytest -q
+
+quality: ty lint vulture smellcheck radon xenon
+	@echo "\n✅ All quality checks complete"
+
+ty:
+	@echo "\n--- Type Checking (ty) ---"
+	uv run ty check
+
+vulture:
+	@echo "\n--- Dead Code Detection (vulture) ---"
+	uv run vulture src/ scripts/ --exclude .venv,data,docs
+
+smellcheck:
+	@echo "\n--- Code Smell Detection (smellcheck) ---"
+	uv run smellcheck src/
+
+radon:
+	@echo "\n--- Cyclomatic Complexity (radon) ---"
+	uv run radon cc src/ -s
+
+xenon:
+	@echo "\n--- Complexity Enforcement (xenon) ---"
+	uv run xenon --max-absolute B --max-modules A src/
 
 onboard-symbol:
 	@test -n "$(SYMBOL)" || (echo "error: SYMBOL is required, e.g. make onboard-symbol SYMBOL=USDCAD MONTHS=201801-202602" && exit 1)
@@ -110,6 +133,12 @@ help:
 	@printf "$(COLOR_HEADER)Targets:$(COLOR_RESET)\n"
 	@printf "\n$(COLOR_SECTION)== Quality ==$(COLOR_RESET)\n"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "test" "Run pytest"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "quality" "Run all quality checks (ty, lint, vulture, smellcheck, radon, xenon)"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "ty" "Run ty type checker"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "vulture" "Run dead code detection"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "smellcheck" "Run code smell detection"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "radon" "Run complexity analysis"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "xenon" "Run complexity enforcement"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "lint" "Run ruff lint"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "format" "Run ruff format"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "check-legacy-drift" "Check repo for legacy/forbidden code drift"

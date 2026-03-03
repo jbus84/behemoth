@@ -7,13 +7,10 @@ without needing CatBoost models (mocked where necessary).
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from unittest.mock import patch
-
 import pytest
 from fastapi.testclient import TestClient
 
-from src.behemoth.api.server import app, _state, AppConfig
+from src.behemoth.api.server import app
 
 
 @pytest.fixture

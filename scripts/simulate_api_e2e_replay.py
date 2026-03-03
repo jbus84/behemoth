@@ -12,11 +12,9 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any
-
 import time
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import polars as pl
@@ -36,7 +34,7 @@ class VirtualTrade:
 
 def load_expected_predictions(symbol: str, target_month: str) -> dict[tuple[str, str], float]:
     """Load the offline expected probabilities for the target month from Parquet.
-    
+
     Returns:
         dict: (candidate_uid, close_ts_iso) -> pred_prob
     """
@@ -55,23 +53,23 @@ def load_expected_predictions(symbol: str, target_month: str) -> dict[tuple[str,
 
     print(f"Loading expected probabilities from {parquet_path}...")
     df = pd.read_parquet(parquet_path)
-    
+
     # Filter for month
     target_month_str = str(target_month)
     if "-" in target_month_str:
         target_month_str = target_month_str.replace("-", "")
-    
+
     df["close_ts_dt"] = pd.to_datetime(df["close_ts"], utc=True)
     df["month_str"] = df["close_ts_dt"].dt.strftime("%Y%m")
     selected = df[df["month_str"] == target_month_str].copy()
-    
+
     expected = {}
     for _, row in selected.iterrows():
         dt = row["close_ts_dt"]
         ts = dt.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
         cand_uid = str(row["candidate_uid"])
         expected[(cand_uid, ts)] = float(row["pred_prob"])
-        
+
     print(f"Loaded {len(expected):,} expected offline predictions from {target_month}")
     return expected
 
@@ -89,7 +87,7 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
     ticks_lazy = pl.scan_parquet(str(tick_path)).select([
         "timestamp", "bid", "ask"
     ]).drop_nulls().sort("timestamp")
-    
+
     if max_ticks:
         ticks_df = ticks_lazy.collect().slice(args_offset, max_ticks)
     else:
@@ -103,7 +101,7 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
 
     # Warmup parameters
     WARMUP_COUNT = 2_000
-    
+
     # Set model month dynamically before importing the FastAPI app
     formatted_month = str(target_month)
     if len(formatted_month) == 6 and "-" not in formatted_month:
@@ -121,7 +119,7 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
         health = client.get("/health").json()
         if health["status"] != "ok":
             print(f"WARNING: API Health is {health['status']}. Missing models?")
-            
+
         print(f"1. Warmup: Sending first {min(WARMUP_COUNT, total_ticks):,} ticks via /backfill")
         warmup_df = ticks_df.slice(0, WARMUP_COUNT)
         warmup_payload = {
@@ -134,31 +132,31 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
                     "bid": bid,
                     "ask": ask
                 }
-                for ts, bid, ask in zip(warmup_df["timestamp"], warmup_df["bid"], warmup_df["ask"])
+                for ts, bid, ask in zip(warmup_df["timestamp"], warmup_df["bid"], warmup_df["ask"], strict=False)
             ]
         }
         res = client.post("/backfill", json=warmup_payload)
         if res.status_code != 201:
             print(f"Backfill failed: {res.text}")
             sys.exit(1)
-            
+
         print("2. Streaming Phase")
         stream_df = ticks_df.slice(WARMUP_COUNT, total_ticks)
-        
+
         # We iteratively stream ticks. To avoid high memory on JSON lists, we use iterators.
         times = stream_df["timestamp"].to_list()
         bids = stream_df["bid"].to_list()
         asks = stream_df["ask"].to_list()
-        
+
         tick_latencies = []
         predict_latencies = []
         predictions_fired = 0
-        
+
         # Virtual Trade Management
         active_trades: list[VirtualTrade] = []
         trade_id_counter = 1000
         horizon_mismatches = 0
-        
+
         for i in tqdm.tqdm(range(len(times)), desc="Streaming Ticks"):
             tick_payload = {
                 "symbol": symbol,
@@ -166,16 +164,16 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
                 "bid": bids[i],
                 "ask": asks[i]
             }
-            
+
             t0 = time.perf_counter()
             res = client.post("/ticks", json=tick_payload)
             t1 = time.perf_counter()
             tick_latencies.append((t1 - t0) * 1000) # ms
-            
+
             if res.status_code != 201:
                 print(f"Tick ingest failed: {res.text}")
                 continue
-                
+
             data = res.json()
             if data.get("bar_completed"):
                 # Bar formed! Trigger prediction logic just like cBot would
@@ -183,9 +181,9 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
                 pred_res = client.post("/predict", json={"symbol": symbol})
                 t1_p = time.perf_counter()
                 predict_latencies.append((t1_p - t0_p) * 1000) # ms
-                
+
                 predictions_fired += 1
-                
+
                 if pred_res.status_code == 200:
                     preds = pred_res.json()
                     for p in preds:
@@ -195,7 +193,7 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
                             # Ensure we keep microseconds and use Z suffix
                             ts_str = dt.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
                             cand = p["candidate_uid"]
-                            
+
                             # Store probability for verification
                             api_results[(cand, ts_str)] = float(p["pred_prob"])
                 elif pred_res.status_code == 422:
@@ -231,11 +229,11 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
                     if p.get("selected_exec") == 1:
                         cand = p["candidate_uid"]
                         horizon = p["horizon"]
-                        
+
                         # 1. Register with API Ledger
                         pos_id = str(trade_id_counter)
                         trade_id_counter += 1
-                        
+
                         open_payload = {
                             "symbol": symbol,
                             "candidate_uid": cand,
@@ -246,7 +244,7 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
                             "horizon": horizon
                         }
                         client.post("/trades/open", json=open_payload)
-                        
+
                         # 2. Add to Virtual Tracker
                         active_trades.append(VirtualTrade(
                             broker_pos_id=pos_id,
@@ -268,29 +266,29 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
             print(f"P90 Latency      : {np.percentile(predict_latencies, 90):.2f} ms")
             print(f"P99 Latency      : {np.percentile(predict_latencies, 99):.2f} ms")
             print(f"Max Latency      : {max(predict_latencies):.2f} ms")
-            
+
         if tick_latencies:
             total_time_s = sum(tick_latencies) / 1000
             print(f"Avg Ticks/Sec    : {len(tick_latencies) / total_time_s:.1f} ticks/s")
-                    
+
     # 3. Validation Logic
     # Filter API results against Candidate Registry
     from src.behemoth.core.registry import CandidateRegistry
     registry = CandidateRegistry.load("configs/research/governance/oco")
     active_candidates = registry.get_candidates(symbol)
     active_uids = {f"oco|{symbol}|{c.bar_ticks}|h{c.horizon}|{c.candidate_uid}" for c in active_candidates}
-    
+
     print(f"Verifying {len(api_results):,} API predictions against research ground truth...")
-    
+
     mismatches = 0
     missing = 0
     total_checked = 0
-    
+
     import math
     for (cand, ts), api_prob in api_results.items():
         if cand not in active_uids:
             continue
-            
+
         total_checked += 1
         expected_prob = expected_probs.get((cand, ts))
         if expected_prob is None:
@@ -300,7 +298,7 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
             if missing <= 5:
                 print(f" [MISSING] in research: {cand} at {ts} (API: {api_prob:.6f})")
             continue
-            
+
         if not math.isclose(api_prob, expected_prob, abs_tol=1e-5):
             mismatches += 1
             if mismatches <= 5:

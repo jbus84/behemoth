@@ -19,7 +19,6 @@ from src.behemoth.core.schemas import (
     OcoPrediction,
 )
 
-
 # ── IncomingTick ──────────────────────────────────────────────────────
 
 class TestIncomingTick:
@@ -144,7 +143,7 @@ class TestModelFeatures:
         """The model array must be in the exact order expected by CatBoost."""
         vals = [0.8, 5.2, 1.3, 0.5, 0.5, 1.6, 1.6, -0.2, 0.1, 14.0,
                 1.0, 0.3, 0.55, 100.0, 30.0, 3.0]
-        f = ModelFeatures(**dict(zip(self.EXPECTED_FIELDS, vals)))
+        f = ModelFeatures(**dict(zip(self.EXPECTED_FIELDS, vals, strict=False)))
         reconstructed = [getattr(f, k) for k in self.EXPECTED_FIELDS]
         assert reconstructed == vals
 

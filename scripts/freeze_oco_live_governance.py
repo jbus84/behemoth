@@ -243,7 +243,7 @@ def _build_manifest(
             "rolling_threshold_min_history": int(wfo_cfg.get("rolling_threshold_min_history", 0)),
             "execution_quantile": float(wfo_cfg.get("execution_quantile", 0.9)),
             "production_cap_pips": _pick_optimal_cap(
-                paths["tick_fill_caps"], 
+                paths["tick_fill_caps"],
                 default=float(wfo_cfg.get("production_cap_pips", 1.2)),
                 hard_limit=1.2 # Safety bound enforced by Governance
             ),

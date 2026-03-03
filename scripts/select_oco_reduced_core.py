@@ -123,7 +123,7 @@ def _parse_barrier_row(row: pd.Series) -> float:
 
 def _select_month_q(d: pd.DataFrame, q: float) -> pd.DataFrame:
     parts: list[pd.DataFrame] = []
-    for m, g in d.groupby("test_month", sort=True):
+    for _m, g in d.groupby("test_month", sort=True):
         thr = float(np.quantile(g["pred_prob"].to_numpy(dtype=float), float(q)))
         x = g[g["pred_prob"] >= thr].copy()
         x["threshold"] = float(thr)
