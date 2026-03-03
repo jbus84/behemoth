@@ -49,7 +49,7 @@ logger = logging.getLogger("behemoth.api")
 # ── Global State ──────────────────────────────────────────────────────
 
 _state: StateManager | None = None
-_aggregator: TickAggregator | None = None
+_aggregators: dict[int, TickAggregator] = {}
 _registry: CandidateRegistry | None = None
 _models: dict[str, object] = {}          # symbol -> loaded CatBoostClassifier
 _thresholds: dict[str, dict] = {}        # symbol -> threshold config
@@ -112,7 +112,7 @@ _config = AppConfig()
 @asynccontextmanager
 async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     """Modern lifespan handler replacing deprecated on_event."""
-    global _state, _aggregator, _registry, _models_dir
+    global _state, _aggregators, _registry, _models_dir
     
     # Start background monitor
     monitor_task = asyncio.create_task(_monitor_ledger())
@@ -131,13 +131,19 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
             vol_window=_config.vol_window,
             cost_window=_config.cost_window,
         )
-    _aggregator = TickAggregator(bar_ticks=100)
     try:
         _registry = CandidateRegistry.load(os.getenv("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco"))
         logger.info("Loaded %d candidates from governance locks", len(_registry.all_candidates()))
+        
+        unique_bar_ticks = {int(c.bar_ticks) for c in _registry.all_candidates()}
+        for bt in unique_bar_ticks:
+            _aggregators[bt] = TickAggregator(bar_ticks=bt)
+            logger.info("Initialized TickAggregator for %d ticks", bt)
+            
     except FileNotFoundError:
         _registry = None
-        logger.warning("Governance lock dir not found — using empty registry")
+        _aggregators[100] = TickAggregator(bar_ticks=100) # Fallback
+        logger.warning("Governance lock dir not found — using empty registry and default 100-tick aggregator")
     _models_dir = Path(_config.models_dir)
     _load_models()
     logger.info("Behemoth API started. Models dir: %s", _models_dir)
@@ -158,9 +164,9 @@ async def _monitor_ledger() -> None:
     while True:
         try:
             if _state:
-                # Update bar counts
+                # Update bar counts (using 100-ticks as standard tracking metric)
                 for sym in _state.get_all_symbols():
-                    METRIC_BAR_COUNT.labels(symbol=sym).set(_state.bar_count(sym))
+                    METRIC_BAR_COUNT.labels(symbol=sym).set(_state.bar_count(sym, 100))
                 
                 # Update ledger stats (PnL, Win Rate)
                 stats = _state.get_ledger_stats()
@@ -279,7 +285,7 @@ async def ingest_bar(bar: IncomingTickBar) -> dict:
     return {
         "ok": True,
         "symbol": bar.symbol,
-        "bar_count": _state.bar_count(bar.symbol),
+        "bar_count": _state.bar_count(bar.symbol, bar.bar_ticks),
     }
 
 
@@ -304,15 +310,17 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
     if not candidates:
         raise HTTPException(status_code=422, detail=f"No candidates registered for {sym}")
 
-    # Check warmup
-    bar_count = _state.bar_count(sym)
+    # Check warmup (use largest required bar size as strict limit for the endpoint)
+    # If the candidate doesn't exist, this fails below anyway
     warmup_needed = max(_config.vol_window, _config.cost_window) + 1
-    if bar_count < warmup_needed:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Insufficient warmup bars for {sym}. "
-                   f"Have {bar_count}, need ≥{warmup_needed}.",
-        )
+    for cand in candidates:
+        bar_count = _state.bar_count(sym, cand.bar_ticks)
+        if bar_count < warmup_needed:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Insufficient warmup bars for {sym} at {cand.bar_ticks} ticks. "
+                       f"Have {bar_count}, need ≥{warmup_needed}.",
+            )
 
     # Load model
     model = _models.get(sym)
@@ -467,7 +475,7 @@ async def health() -> HealthResponse:
     bar_counts: dict[str, int] = {}
     if _state:
         for sym in _config.symbols:
-            bar_counts[sym] = _state.bar_count(sym)
+            bar_counts[sym] = _state.bar_count(sym, 100)
 
     return HealthResponse(
         status="ok" if _models else "no_models",
@@ -484,7 +492,7 @@ async def status() -> list[StatusSymbol]:
     for sym in _config.symbols:
         out.append(StatusSymbol(
             symbol=sym,
-            bar_count=_state.bar_count(sym) if _state else 0,
+            bar_count=_state.bar_count(sym, 100) if _state else 0,
             model_loaded=sym in _models,
             model_month=_model_months.get(sym),
             has_threshold=bool(_thresholds.get(sym)),
@@ -505,15 +513,18 @@ async def backfill(req: BackfillRequest) -> dict:
 
     Called by the cBot on startup with ``MarketData.GetTicks()`` output.
     """
-    if _state is None or _aggregator is None:
+    if _state is None or not _aggregators:
         raise HTTPException(status_code=503, detail="Not initialized")
 
-    bars = _aggregator.add_ticks(req.ticks)
+    bars = []
+    for agg in _aggregators.values():
+        bars.extend(agg.add_ticks(req.ticks))
+        
     for bar in bars:
         _state.append_bar(bar)
 
     sym = req.symbol.upper()
-    count = _state.bar_count(sym)
+    count = _state.bar_count(sym, req.bar_ticks)
     warmup_needed = max(_config.vol_window, _config.cost_window) + 1
     return {
         "ok": True,
@@ -531,10 +542,13 @@ async def ingest_tick(tick: IncomingTick) -> dict:
 
     Called by the cBot on each ``OnTick()`` event.
     """
-    if _state is None or _aggregator is None:
+    if _state is None or not _aggregators:
         raise HTTPException(status_code=503, detail="Not initialized")
 
-    bars = _aggregator.add_ticks([tick])
+    bars = []
+    for agg in _aggregators.values():
+        bars.extend(agg.add_ticks([tick]))
+        
     bar_completed = False
     for bar in bars:
         _state.append_bar(bar)
@@ -545,5 +559,5 @@ async def ingest_tick(tick: IncomingTick) -> dict:
         "ok": True,
         "symbol": sym,
         "bar_completed": bar_completed,
-        "bar_count": _state.bar_count(sym),
+        "bar_count": _state.bar_count(sym, 100), # Return standard 100-tick count as baseline
     }

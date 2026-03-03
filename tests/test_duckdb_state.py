@@ -228,7 +228,7 @@ class TestDuckDBStateLifecycle:
         bars = _make_synthetic_bars(n=1)
         sm = StateManager()
         sm.append_bar(bars[0])
-        assert sm.bar_count("EURUSD") == 1
+        assert sm.bar_count("EURUSD", 100) == 1
 
     def test_bar_count_increments(self):
         from src.behemoth.runtime.state import StateManager
@@ -236,7 +236,7 @@ class TestDuckDBStateLifecycle:
         sm = StateManager()
         for b in bars:
             sm.append_bar(b)
-        assert sm.bar_count("EURUSD") == 10
+        assert sm.bar_count("EURUSD", 100) == 10
 
     def test_insufficient_warmup_returns_none(self):
         """With fewer bars than vol_window, compute_features should return None."""

@@ -121,6 +121,7 @@ namespace cAlgo.Robots
             {
                 var now = Server.Time;
 
+                bool skipPrediction = false;
                 // Friday protection
                 if (now.DayOfWeek == DayOfWeek.Friday)
                 {
@@ -130,9 +131,11 @@ namespace cAlgo.Robots
                         {
                             var closeOk = ClosePosition(pos);
                         }
-                        return;
                     }
-                    if (now.Hour >= 20) return;
+                    if (now.Hour >= 20)
+                    {
+                        skipPrediction = true;
+                    }
                 }
 
                 var lastTick = _historicalTicks.LastValue;
@@ -176,7 +179,10 @@ namespace cAlgo.Robots
                                 }
                             }
 
-                            TriggerPrediction();
+                            if (!skipPrediction)
+                            {
+                                TriggerPrediction();
+                            }
                         }
                     }
                 }

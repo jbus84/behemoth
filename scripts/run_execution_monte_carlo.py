@@ -143,7 +143,7 @@ def _simulate_symbol_scenario(
 
     # Additional slip above cap plus spread/latency add-ons.
     extra_slip = float(scenario.spread_add_pips) + np.where(
-        cap_fill_np, np.maximum(0.0, overs - cap_eff), 0.0
+        cap_fill_np, overs, 0.0
     )
     pnl_pre = np.where(cap_fill_np, gross - extra_slip, 0.0).astype(float)
 

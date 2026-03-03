@@ -77,7 +77,7 @@ SELECT * FROM (
     SELECT row_id, ts, close_ts, open_price, high_price, low_price,
            close_price, spread, tick_volume, hl_first, hl_pos_frac
     FROM tick_bars
-    WHERE symbol = ?
+    WHERE symbol = ? AND bar_ticks = ?
     ORDER BY row_id DESC
     LIMIT 600
 ) sub
@@ -122,7 +122,8 @@ class StateManager:
     def append_bar(self, bar: IncomingTickBar) -> None:
         """Append a validated tick bar to the state buffer."""
         sym = bar.symbol.upper()
-        idx = self._row_counters.get(sym, 0)
+        key = f"{sym}_{bar.bar_ticks}"
+        idx = self._row_counters.get(key, 0)
         self._con.execute(
             _INSERT_SQL,
             [
@@ -141,23 +142,23 @@ class StateManager:
                 bar.hl_pos_frac,
             ],
         )
-        self._row_counters[sym] = idx + 1
+        self._row_counters[key] = idx + 1
 
         if (idx + 1) % 100 == 0:
-            self._prune(sym, idx + 1)
+            self._prune(sym, bar.bar_ticks, idx + 1)
 
-    def _prune(self, symbol: str, current_idx: int) -> None:
+    def _prune(self, symbol: str, bar_ticks: int, current_idx: int) -> None:
         """Delete old rows to prevent unbounded growth."""
         self._con.execute(
-            "DELETE FROM tick_bars WHERE symbol = ? AND row_id < ?",
-            [symbol, current_idx - 600],
+            "DELETE FROM tick_bars WHERE symbol = ? AND bar_ticks = ? AND row_id < ?",
+            [symbol, bar_ticks, current_idx - 600],
         )
 
-    def bar_count(self, symbol: str) -> int:
-        """Return the number of bars currently stored for a symbol."""
+    def bar_count(self, symbol: str, bar_ticks: int) -> int:
+        """Return the number of bars currently stored for a symbol + horizon."""
         r = self._con.execute(
-            "SELECT COUNT(*) FROM tick_bars WHERE symbol = ?",
-            [symbol.upper()],
+            "SELECT COUNT(*) FROM tick_bars WHERE symbol = ? AND bar_ticks = ?",
+            [symbol.upper(), bar_ticks],
         ).fetchone()
         return int(r[0]) if r else 0
 
@@ -184,11 +185,11 @@ class StateManager:
         Returns None if the buffer has insufficient warmup history.
         """
         sym = symbol.upper()
-        n = self.bar_count(sym)
+        n = self.bar_count(sym, bar_ticks)
         if n < self._cfg.full_warmup_bars:
             return None
 
-        df = self._con.execute(_SELECT_SQL, [sym]).fetchdf()
+        df = self._con.execute(_SELECT_SQL, [sym, bar_ticks]).fetchdf()
 
         return compute_features_from_bars(
             df,
