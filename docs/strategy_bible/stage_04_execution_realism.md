@@ -163,7 +163,7 @@ uv run python scripts/build_oco_strategy_bible.py \
 <!-- GENERATED:STAGE_04:START -->
 ### Auto Snapshot - Stage 04
 
-- generated_at: `2026-03-03 16:43:59 UTC`
+- generated_at: `2026-03-03 22:07:07 UTC`
 - Execution realism is applied with tick first-cross overshoot.
 - Session-aware rolling caps are built causally (20D lookback, q=0.90) before E11 dispersion is measured.
 - Cap curve highlights fill-rate versus signal-level expectancy.
@@ -174,12 +174,12 @@ uv run python scripts/build_oco_strategy_bible.py \
 #### Key Results
 | symbol   |   rows |   touch_found_rate |   base_mean_gross_pips |   tick_overshoot_mean_pips |   tick_overshoot_p95_pips |   e11_session_overshoot_dispersion |   e12_cap_plateau_width_pips |   e13_nonfill_opportunity_cost_pips |
 |:---------|-------:|-------------------:|-----------------------:|---------------------------:|--------------------------:|-----------------------------------:|-----------------------------:|------------------------------------:|
-| EURUSD   | 378368 |           0.999979 |               0.826811 |                   0.188771 |                       0.7 |                           0.2019   |                          1.2 |                            0.119973 |
-| GBPUSD   | 378368 |           0.999979 |               0.826811 |                   0.188771 |                       0.7 |                           0.279804 |                          1.2 |                            0.119252 |
-| AUDUSD   | 398006 |           0        |               0.645227 |                 nan        |                     nan   |                         nan        |                        nan   |                          nan        |
-| USDJPY   | 378368 |           0.999979 |               0.826811 |                   0.188771 |                       0.7 |                           0.136435 |                          1.2 |                            0.190838 |
-| USDCHF   | 378368 |           0.999979 |               0.826811 |                   0.188771 |                       0.7 |                           0.977749 |                          1.2 |                            0.111455 |
-| USDCAD   | 378368 |           0.999979 |               0.826811 |                   0.188771 |                       0.7 |                           0.356867 |                          1   |                            0.146888 |
+| EURUSD   | 378368 |           0.999979 |               0.826811 |                   0.188771 |                       0.7 |                           0.2019   |                          1.2 |                           0.119973  |
+| GBPUSD   | 378368 |           0.999979 |               0.826811 |                   0.188771 |                       0.7 |                           0.279804 |                          1.2 |                           0.119252  |
+| AUDUSD   | 378368 |           0.999979 |               0.826811 |                   0.188771 |                       0.7 |                           0.288903 |                          1.2 |                           0.0953413 |
+| USDJPY   | 378368 |           0.999979 |               0.826811 |                   0.188771 |                       0.7 |                           0.136435 |                          1.2 |                           0.190838  |
+| USDCHF   | 378368 |           0.999979 |               0.826811 |                   0.188771 |                       0.7 |                           0.977749 |                          1.2 |                           0.111455  |
+| USDCAD   | 378368 |           0.999979 |               0.826811 |                   0.188771 |                       0.7 |                           0.356867 |                          1   |                           0.146888  |
 
 #### Interpretation Notes
 - Execution realism is applied with tick first-cross overshoot.
@@ -205,12 +205,12 @@ uv run python scripts/build_oco_strategy_bible.py \
 #### Details
 | symbol   |   cap_pips |   fill_rate |   mean_per_signal_full_overshoot |
 |:---------|-----------:|------------:|---------------------------------:|
-| AUDUSD   |        0.5 |    0        |                       nan        |
-| AUDUSD   |        0.8 |    0        |                       nan        |
-| AUDUSD   |        1   |    0        |                       nan        |
-| AUDUSD   |        1.2 |    0        |                       nan        |
-| AUDUSD   |        1.5 |    0        |                       nan        |
-| AUDUSD   |        2   |    0        |                       nan        |
+| AUDUSD   |        0.5 |    0.966251 |                         0.523834 |
+| AUDUSD   |        0.8 |    0.984308 |                         0.537494 |
+| AUDUSD   |        1   |    0.989476 |                         0.546538 |
+| AUDUSD   |        1.2 |    0.991391 |                         0.551972 |
+| AUDUSD   |        1.5 |    0.99445  |                         0.553214 |
+| AUDUSD   |        2   |    0.996675 |                         0.555719 |
 | EURUSD   |        0.5 |    0.930683 |                         1.15307  |
 | EURUSD   |        0.8 |    0.963601 |                         1.21006  |
 | EURUSD   |        1   |    0.974583 |                         1.22508  |
@@ -254,50 +254,50 @@ uv run python scripts/build_oco_strategy_bible.py \
 | USDJPY   |             10 |               0 |                      0 |                  0.969299 |           0.0191173  |                    1.00093  |
 
 #### Policy Status
-| symbol   |   metrics_total |   green_metric_count |   amber_metric_count |   red_metric_count | worst_band   | recommended_action_code   | recommended_action_summary                                            | red_metrics   | amber_metrics           |
-|:---------|----------------:|---------------------:|---------------------:|-------------------:|:-------------|:--------------------------|:----------------------------------------------------------------------|:--------------|:------------------------|
-| AUDUSD   |               5 |                    0 |                    0 |                  0 | unknown      | A9_DATA_GAP               | missing metric value; regenerate Stage 04 artifacts before deployment |               |                         |
-| EURUSD   |               5 |                    4 |                    1 |                  0 | amber        | A2_SESSION_GUARD          | overshoot tail elevated; apply session guard and monitor              |               | tick_overshoot_p95_pips |
-| GBPUSD   |               5 |                    4 |                    1 |                  0 | amber        | A2_SESSION_GUARD          | overshoot tail elevated; apply session guard and monitor              |               | tick_overshoot_p95_pips |
-| USDCAD   |               5 |                    4 |                    1 |                  0 | amber        | A2_SESSION_GUARD          | overshoot tail elevated; apply session guard and monitor              |               | tick_overshoot_p95_pips |
-| USDCHF   |               5 |                    4 |                    1 |                  0 | amber        | A2_SESSION_GUARD          | overshoot tail elevated; apply session guard and monitor              |               | tick_overshoot_p95_pips |
-| USDJPY   |               5 |                    4 |                    1 |                  0 | amber        | A2_SESSION_GUARD          | overshoot tail elevated; apply session guard and monitor              |               | tick_overshoot_p95_pips |
+| symbol   |   metrics_total |   green_metric_count |   amber_metric_count |   red_metric_count | worst_band   | recommended_action_code   | recommended_action_summary                               | red_metrics   | amber_metrics           |
+|:---------|----------------:|---------------------:|---------------------:|-------------------:|:-------------|:--------------------------|:---------------------------------------------------------|:--------------|:------------------------|
+| AUDUSD   |               5 |                    4 |                    1 |                  0 | amber        | A2_SESSION_GUARD          | overshoot tail elevated; apply session guard and monitor |               | tick_overshoot_p95_pips |
+| EURUSD   |               5 |                    4 |                    1 |                  0 | amber        | A2_SESSION_GUARD          | overshoot tail elevated; apply session guard and monitor |               | tick_overshoot_p95_pips |
+| GBPUSD   |               5 |                    4 |                    1 |                  0 | amber        | A2_SESSION_GUARD          | overshoot tail elevated; apply session guard and monitor |               | tick_overshoot_p95_pips |
+| USDCAD   |               5 |                    4 |                    1 |                  0 | amber        | A2_SESSION_GUARD          | overshoot tail elevated; apply session guard and monitor |               | tick_overshoot_p95_pips |
+| USDCHF   |               5 |                    4 |                    1 |                  0 | amber        | A2_SESSION_GUARD          | overshoot tail elevated; apply session guard and monitor |               | tick_overshoot_p95_pips |
+| USDJPY   |               5 |                    4 |                    1 |                  0 | amber        | A2_SESSION_GUARD          | overshoot tail elevated; apply session guard and monitor |               | tick_overshoot_p95_pips |
 
 - policy_csv: `data/analysis/tick_opportunity_mining/stage04_execution_policy_status.csv`
 
 #### Policy Metric Mapping (Detail)
-| symbol   | metric_id                         |   metric_value | band    | action_code      | green_threshold   | amber_threshold   |
-|:---------|:----------------------------------|---------------:|:--------|:-----------------|:------------------|:------------------|
-| EURUSD   | E11_session_overshoot_dispersion  |      0.2019    | green   | A0_MONITOR       | <= 1.0000         | <= 1.3000         |
-| EURUSD   | E12_cap_plateau_width_pips        |      1.2       | green   | A0_MONITOR       | >= 0.5000         | >= 0.3000         |
-| EURUSD   | E13_nonfill_opportunity_cost_pips |      0.119973  | green   | A0_MONITOR       | <= 0.2000         | <= 0.3500         |
-| EURUSD   | erosion_spread_fee_plus_slip      |     -0.43362   | green   | A0_MONITOR       | <= 0.3000         | <= 0.5000         |
-| EURUSD   | tick_overshoot_p95_pips           |      0.7       | amber   | A2_SESSION_GUARD | <= 0.7000         | <= 1.0000         |
-| GBPUSD   | E11_session_overshoot_dispersion  |      0.279804  | green   | A0_MONITOR       | <= 1.0000         | <= 1.3000         |
-| GBPUSD   | E12_cap_plateau_width_pips        |      1.2       | green   | A0_MONITOR       | >= 0.5000         | >= 0.3000         |
-| GBPUSD   | E13_nonfill_opportunity_cost_pips |      0.119252  | green   | A0_MONITOR       | <= 0.2000         | <= 0.3500         |
-| GBPUSD   | erosion_spread_fee_plus_slip      |     -0.0573813 | green   | A0_MONITOR       | <= 0.3000         | <= 0.5000         |
-| GBPUSD   | tick_overshoot_p95_pips           |      0.7       | amber   | A2_SESSION_GUARD | <= 0.7000         | <= 1.0000         |
-| AUDUSD   | E11_session_overshoot_dispersion  |    nan         | unknown | A9_DATA_GAP      |                   |                   |
-| AUDUSD   | E12_cap_plateau_width_pips        |    nan         | unknown | A9_DATA_GAP      |                   |                   |
-| AUDUSD   | E13_nonfill_opportunity_cost_pips |    nan         | unknown | A9_DATA_GAP      |                   |                   |
-| AUDUSD   | erosion_spread_fee_plus_slip      |    nan         | unknown | A9_DATA_GAP      |                   |                   |
-| AUDUSD   | tick_overshoot_p95_pips           |    nan         | unknown | A9_DATA_GAP      |                   |                   |
-| USDJPY   | E11_session_overshoot_dispersion  |      0.136435  | green   | A0_MONITOR       | <= 1.0000         | <= 1.3000         |
-| USDJPY   | E12_cap_plateau_width_pips        |      1.2       | green   | A0_MONITOR       | >= 0.5000         | >= 0.3000         |
-| USDJPY   | E13_nonfill_opportunity_cost_pips |      0.190838  | green   | A0_MONITOR       | <= 0.2000         | <= 0.3500         |
-| USDJPY   | erosion_spread_fee_plus_slip      |     -0.323768  | green   | A0_MONITOR       | <= 0.3000         | <= 0.5000         |
-| USDJPY   | tick_overshoot_p95_pips           |      0.7       | amber   | A2_SESSION_GUARD | <= 0.7000         | <= 1.0000         |
-| USDCHF   | E11_session_overshoot_dispersion  |      0.977749  | green   | A0_MONITOR       | <= 1.0000         | <= 1.3000         |
-| USDCHF   | E12_cap_plateau_width_pips        |      1.2       | green   | A0_MONITOR       | >= 0.5000         | >= 0.3000         |
-| USDCHF   | E13_nonfill_opportunity_cost_pips |      0.111455  | green   | A0_MONITOR       | <= 0.2000         | <= 0.3500         |
-| USDCHF   | erosion_spread_fee_plus_slip      |      0.0561062 | green   | A0_MONITOR       | <= 0.3000         | <= 0.5000         |
-| USDCHF   | tick_overshoot_p95_pips           |      0.7       | amber   | A2_SESSION_GUARD | <= 0.7000         | <= 1.0000         |
-| USDCAD   | E11_session_overshoot_dispersion  |      0.356867  | green   | A0_MONITOR       | <= 1.0000         | <= 1.3000         |
-| USDCAD   | E12_cap_plateau_width_pips        |      1         | green   | A0_MONITOR       | >= 0.5000         | >= 0.3000         |
-| USDCAD   | E13_nonfill_opportunity_cost_pips |      0.146888  | green   | A0_MONITOR       | <= 0.2000         | <= 0.3500         |
-| USDCAD   | erosion_spread_fee_plus_slip      |      0.186664  | green   | A0_MONITOR       | <= 0.3000         | <= 0.5000         |
-| USDCAD   | tick_overshoot_p95_pips           |      0.7       | amber   | A2_SESSION_GUARD | <= 0.7000         | <= 1.0000         |
+| symbol   | metric_id                         |   metric_value | band   | action_code      | green_threshold   | amber_threshold   |
+|:---------|:----------------------------------|---------------:|:-------|:-----------------|:------------------|:------------------|
+| EURUSD   | E11_session_overshoot_dispersion  |      0.2019    | green  | A0_MONITOR       | <= 1.0000         | <= 1.3000         |
+| EURUSD   | E12_cap_plateau_width_pips        |      1.2       | green  | A0_MONITOR       | >= 0.5000         | >= 0.3000         |
+| EURUSD   | E13_nonfill_opportunity_cost_pips |      0.119973  | green  | A0_MONITOR       | <= 0.2000         | <= 0.3500         |
+| EURUSD   | erosion_spread_fee_plus_slip      |     -0.43362   | green  | A0_MONITOR       | <= 0.3000         | <= 0.5000         |
+| EURUSD   | tick_overshoot_p95_pips           |      0.7       | amber  | A2_SESSION_GUARD | <= 0.7000         | <= 1.0000         |
+| GBPUSD   | E11_session_overshoot_dispersion  |      0.279804  | green  | A0_MONITOR       | <= 1.0000         | <= 1.3000         |
+| GBPUSD   | E12_cap_plateau_width_pips        |      1.2       | green  | A0_MONITOR       | >= 0.5000         | >= 0.3000         |
+| GBPUSD   | E13_nonfill_opportunity_cost_pips |      0.119252  | green  | A0_MONITOR       | <= 0.2000         | <= 0.3500         |
+| GBPUSD   | erosion_spread_fee_plus_slip      |     -0.0573813 | green  | A0_MONITOR       | <= 0.3000         | <= 0.5000         |
+| GBPUSD   | tick_overshoot_p95_pips           |      0.7       | amber  | A2_SESSION_GUARD | <= 0.7000         | <= 1.0000         |
+| AUDUSD   | E11_session_overshoot_dispersion  |      0.288903  | green  | A0_MONITOR       | <= 1.0000         | <= 1.3000         |
+| AUDUSD   | E12_cap_plateau_width_pips        |      1.2       | green  | A0_MONITOR       | >= 0.5000         | >= 0.3000         |
+| AUDUSD   | E13_nonfill_opportunity_cost_pips |      0.0953413 | green  | A0_MONITOR       | <= 0.2000         | <= 0.3500         |
+| AUDUSD   | erosion_spread_fee_plus_slip      |      0.271092  | green  | A0_MONITOR       | <= 0.3000         | <= 0.5000         |
+| AUDUSD   | tick_overshoot_p95_pips           |      0.7       | amber  | A2_SESSION_GUARD | <= 0.7000         | <= 1.0000         |
+| USDJPY   | E11_session_overshoot_dispersion  |      0.136435  | green  | A0_MONITOR       | <= 1.0000         | <= 1.3000         |
+| USDJPY   | E12_cap_plateau_width_pips        |      1.2       | green  | A0_MONITOR       | >= 0.5000         | >= 0.3000         |
+| USDJPY   | E13_nonfill_opportunity_cost_pips |      0.190838  | green  | A0_MONITOR       | <= 0.2000         | <= 0.3500         |
+| USDJPY   | erosion_spread_fee_plus_slip      |     -0.323768  | green  | A0_MONITOR       | <= 0.3000         | <= 0.5000         |
+| USDJPY   | tick_overshoot_p95_pips           |      0.7       | amber  | A2_SESSION_GUARD | <= 0.7000         | <= 1.0000         |
+| USDCHF   | E11_session_overshoot_dispersion  |      0.977749  | green  | A0_MONITOR       | <= 1.0000         | <= 1.3000         |
+| USDCHF   | E12_cap_plateau_width_pips        |      1.2       | green  | A0_MONITOR       | >= 0.5000         | >= 0.3000         |
+| USDCHF   | E13_nonfill_opportunity_cost_pips |      0.111455  | green  | A0_MONITOR       | <= 0.2000         | <= 0.3500         |
+| USDCHF   | erosion_spread_fee_plus_slip      |      0.0561062 | green  | A0_MONITOR       | <= 0.3000         | <= 0.5000         |
+| USDCHF   | tick_overshoot_p95_pips           |      0.7       | amber  | A2_SESSION_GUARD | <= 0.7000         | <= 1.0000         |
+| USDCAD   | E11_session_overshoot_dispersion  |      0.356867  | green  | A0_MONITOR       | <= 1.0000         | <= 1.3000         |
+| USDCAD   | E12_cap_plateau_width_pips        |      1         | green  | A0_MONITOR       | >= 0.5000         | >= 0.3000         |
+| USDCAD   | E13_nonfill_opportunity_cost_pips |      0.146888  | green  | A0_MONITOR       | <= 0.2000         | <= 0.3500         |
+| USDCAD   | erosion_spread_fee_plus_slip      |      0.186664  | green  | A0_MONITOR       | <= 0.3000         | <= 0.5000         |
+| USDCAD   | tick_overshoot_p95_pips           |      0.7       | amber  | A2_SESSION_GUARD | <= 0.7000         | <= 1.0000         |
 
 #### Session Rolling Cap Policy
 | symbol   | session_bucket   |   lookback_days |   cap_quantile |   cap_pips |   rows_used |   session_cap_rows |   global_cap_rows |   fallback_rows |
@@ -310,6 +310,10 @@ uv run python scripts/build_oco_strategy_bible.py \
 | GBPUSD   | LATE             |              20 |            0.9 |       0.4  |        5804 |               4883 |               921 |               0 |
 | GBPUSD   | LONDON           |              20 |            0.9 |       0.3  |      164544 |             164344 |               200 |               0 |
 | GBPUSD   | NY               |              20 |            0.9 |       0.4  |       60439 |              60239 |               200 |               0 |
+| AUDUSD   | ASIA             |              20 |            0.9 |       0.2  |      125519 |             125319 |                 8 |             192 |
+| AUDUSD   | LATE             |              20 |            0.9 |       0.1  |       29760 |              29560 |               200 |               0 |
+| AUDUSD   | LONDON           |              20 |            0.9 |       0.2  |      153982 |             153782 |               200 |               0 |
+| AUDUSD   | NY               |              20 |            0.9 |       0.4  |      130074 |             129874 |               200 |               0 |
 | USDJPY   | ASIA             |              20 |            0.9 |       0.4  |      194490 |             194290 |                 0 |             200 |
 | USDJPY   | LATE             |              20 |            0.9 |       0.5  |       23571 |              23371 |               200 |               0 |
 | USDJPY   | LONDON           |              20 |            0.9 |       0.4  |      120207 |             120007 |               200 |               0 |

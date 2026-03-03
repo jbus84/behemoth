@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 07
 
-- generated_at: `2026-03-03 16:43:59 UTC`
+- generated_at: `2026-03-03 22:07:07 UTC`
 - C01..C10 checks are the logical contract gate before robustness sign-off.
 - Open issue rows: 0.
 
@@ -18,17 +18,17 @@
 #### Action Trigger Summary
 | symbol   | metric_id               | band   | severity   | action_code   | action_summary     | owner    |
 |:---------|:------------------------|:-------|:-----------|:--------------|:-------------------|:---------|
-| AUDUSD   | S01_lb95_dependence_gap | green  | info       | A0_MONITOR    | within policy band | research |
+| AUDUSD   | S01_lb95_dependence_gap | gray   | high       | A9_DATA_GAP   | metric unavailable | research |
 | AUDUSD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
-| EURUSD   | S01_lb95_dependence_gap | green  | info       | A0_MONITOR    | within policy band | research |
+| EURUSD   | S01_lb95_dependence_gap | gray   | high       | A9_DATA_GAP   | metric unavailable | research |
 | EURUSD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
-| GBPUSD   | S01_lb95_dependence_gap | green  | info       | A0_MONITOR    | within policy band | research |
+| GBPUSD   | S01_lb95_dependence_gap | gray   | high       | A9_DATA_GAP   | metric unavailable | research |
 | GBPUSD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
-| USDCAD   | S01_lb95_dependence_gap | green  | info       | A0_MONITOR    | within policy band | research |
+| USDCAD   | S01_lb95_dependence_gap | gray   | high       | A9_DATA_GAP   | metric unavailable | research |
 | USDCAD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
-| USDCHF   | S01_lb95_dependence_gap | green  | info       | A0_MONITOR    | within policy band | research |
+| USDCHF   | S01_lb95_dependence_gap | gray   | high       | A9_DATA_GAP   | metric unavailable | research |
 | USDCHF   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
-| USDJPY   | S01_lb95_dependence_gap | green  | info       | A0_MONITOR    | within policy band | research |
+| USDJPY   | S01_lb95_dependence_gap | gray   | high       | A9_DATA_GAP   | metric unavailable | research |
 | USDJPY   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
 
 #### Details
@@ -51,9 +51,9 @@
 #### Statistical Inference Ladder (S01-S03)
 | symbol   |   lb95_trade_mean_gross_pips |   s01_lb95_dependence_gap |   pvalue_bonferroni |   pvalue_fdr_bh |   s02_practical_lb95_gt0 |   s03_multiplicity_survival |
 |:---------|-----------------------------:|--------------------------:|--------------------:|----------------:|-------------------------:|----------------------------:|
-| AUDUSD   |                     0.952247 |                         0 |                   0 |               0 |                        1 |                           1 |
-| EURUSD   |                     2.5027   |                         0 |                   0 |               0 |                        1 |                           1 |
-| GBPUSD   |                     2.57413  |                         0 |                   0 |               0 |                        1 |                           1 |
-| USDCAD   |                     1.41111  |                         0 |                   0 |               0 |                        1 |                           1 |
-| USDCHF   |                     1.37476  |                         0 |                   0 |               0 |                        1 |                           1 |
-| USDJPY   |                     3.41566  |                         0 |                   0 |               0 |                        1 |                           1 |
+| AUDUSD   |                     0.952247 |                  0.11299  |                   0 |               0 |                        1 |                           1 |
+| EURUSD   |                     2.5027   |                  0.69806  |                   0 |               0 |                        1 |                           1 |
+| GBPUSD   |                     2.57413  |                  0.124853 |                   0 |               0 |                        1 |                           1 |
+| USDCAD   |                     1.41111  |                  0.201013 |                   0 |               0 |                        1 |                           1 |
+| USDCHF   |                     1.37476  |                  0.160085 |                   0 |               0 |                        1 |                           1 |
+| USDJPY   |                     3.41566  |                  0.25702  |                   0 |               0 |                        1 |                           1 |

@@ -79,7 +79,7 @@ def _reduced_states_for_symbol(base: Path, symbol: str) -> Path:
     s = str(symbol).upper()
     s_low = s.lower()
 
-    folder = "reduced_core" if s in ("EURUSD", "AUDUSD") else f"reduced_core_{s_low}"
+    folder = "reduced_core" if s in ("EURUSD", "AUDUSD", "USDCAD") else f"reduced_core_{s_low}"
 
     return base / folder / f"{s}_oco_reduced_states.csv"
 

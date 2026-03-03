@@ -1163,8 +1163,8 @@ def _robustness_diag_table(*, contexts: list[dict[str, Any]], exec_q: float) -> 
         p_fdr = _num(row.get("pvalue_fdr_bh"))
         p_perm = _num(row.get("pvalue_perm_uplift"))
         p_perm_fdr = _num(row.get("pvalue_perm_fdr_bh"))
-        lb_iid = _num(row.get("lb95_trade_mean_gross_pips_iid"))
-        lb_block = _num(row.get("lb95_trade_mean_gross_pips_month_block"))
+        lb_iid = _num(row.get("lb95_trade_mean_gross_pips", row.get("lb95_trade_mean_gross_pips_iid")))
+        lb_block = _num(row.get("lb95_month_mean_gross_pips", row.get("lb95_trade_mean_gross_pips_month_block")))
         uplift = _num(row.get("uplift_vs_null_pips"))
         rows.append(
             {

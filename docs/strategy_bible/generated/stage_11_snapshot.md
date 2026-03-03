@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 11
 
-- generated_at: `2026-03-03 16:43:59 UTC`
+- generated_at: `2026-03-03 22:07:07 UTC`
 - Execution Monte Carlo uses month x session stress scenarios derived from Stage 04 tickfill artifacts.
 - EM01-EM05 summarize mild/moderate survival, month negativity risk, fill-rate decay, and data integrity.
 
@@ -21,8 +21,8 @@
 #### Action Trigger Summary
 | symbol   | metric_id                    | band   | severity   | action_code   | action_summary                      | owner     |
 |:---------|:-----------------------------|:-------|:-----------|:--------------|:------------------------------------|:----------|
-| AUDUSD   | EM03_prob_negative_month_s1  | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | risk      |
-| AUDUSD   | EM04_fill_rate_drop_vs_s0_s1 | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | execution |
+| AUDUSD   | EM03_prob_negative_month_s1  | green  | info       | A0_MONITOR    | within policy band                  | risk      |
+| AUDUSD   | EM04_fill_rate_drop_vs_s0_s1 | green  | info       | A0_MONITOR    | within policy band                  | execution |
 | AUDUSD   | EM05_nan_core_fields         | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | data      |
 | EURUSD   | EM03_prob_negative_month_s1  | green  | info       | A0_MONITOR    | within policy band                  | risk      |
 | EURUSD   | EM04_fill_rate_drop_vs_s0_s1 | green  | info       | A0_MONITOR    | within policy band                  | execution |
@@ -30,8 +30,8 @@
 | GBPUSD   | EM03_prob_negative_month_s1  | green  | info       | A0_MONITOR    | within policy band                  | risk      |
 | GBPUSD   | EM04_fill_rate_drop_vs_s0_s1 | green  | info       | A0_MONITOR    | within policy band                  | execution |
 | GBPUSD   | EM05_nan_core_fields         | green  | info       | A0_MONITOR    | within policy band                  | data      |
-| USDCAD   | EM03_prob_negative_month_s1  | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | risk      |
-| USDCAD   | EM04_fill_rate_drop_vs_s0_s1 | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | execution |
+| USDCAD   | EM03_prob_negative_month_s1  | green  | info       | A0_MONITOR    | within policy band                  | risk      |
+| USDCAD   | EM04_fill_rate_drop_vs_s0_s1 | green  | info       | A0_MONITOR    | within policy band                  | execution |
 | USDCAD   | EM05_nan_core_fields         | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | data      |
 
 #### Details
