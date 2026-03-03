@@ -17,7 +17,7 @@ If any section conflicts with generated stage artifacts, the generated stage art
 - Enforce stop-limit execution realism (tick overshoot caps, no-touch handling) before promotion.
 
 ### 1.2 Active Universe
-- `EURUSD`, `GBPUSD`, `USDJPY`, `USDCHF`
+- `EURUSD`, `GBPUSD`, `USDJPY`, `USDCHF`, `AUDUSD`, `USDCAD`
 
 ### 1.3 What This System Is Not
 - Not a mixed MOM/REV portfolio framework.

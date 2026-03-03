@@ -38,7 +38,7 @@ def test_threshold_sensitivity_report_outputs(tmp_path: Path) -> None:
     policy = tmp_path / "policy.yaml"
     policy.write_text("cadence_days: 30\nwindow_days: 3\nanchor_day_utc: 1\n", encoding="utf-8")
     symbol_paths: dict[str, SymbolPaths] = {}
-    for sym in ["EURUSD", "GBPUSD", "USDJPY"]:
+    for sym in ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]:
         pred = tmp_path / f"{sym}_pred.parquet"
         lock = tmp_path / f"{sym}_lock.json"
         _write_symbol_pred(pred, sym)
@@ -46,7 +46,7 @@ def test_threshold_sensitivity_report_outputs(tmp_path: Path) -> None:
         symbol_paths[sym] = SymbolPaths(symbol=sym, pred_path=pred, lock_path=lock)
 
     sens, alerts = run(
-        symbols=["EURUSD", "GBPUSD", "USDJPY"],
+        symbols=["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"],
         lookback_days=[10, 20],
         cadence_days=[14, 30],
         window_days=[2, 3],
@@ -70,7 +70,7 @@ def test_threshold_sensitivity_report_outputs(tmp_path: Path) -> None:
         "is_recommended",
         "is_current_policy",
     }.issubset(set(sens.columns))
-    for sym in ["EURUSD", "GBPUSD", "USDJPY"]:
+    for sym in ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]:
         g = sens[sens["symbol"] == sym]
         assert int(g["is_recommended"].sum()) >= 1
         assert int(g["is_current_policy"].sum()) >= 1

@@ -61,27 +61,19 @@ def _to_num(s: pd.Series) -> pd.Series:
 
 def _default_paths(symbol: str) -> SymbolPaths:
     s = str(symbol).upper()
-    if s == "EURUSD":
-        pred = Path(
-            "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet"
-        )
-    elif s == "AUDUSD":
-        pred = Path(
-            "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/AUDUSD_oco_monthly_predictions.parquet"
-        )
-    elif s == "GBPUSD":
-        pred = Path(
-            "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_predictions.parquet"
-        )
-    elif s == "USDCHF":
-        pred = Path(
-            "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdchf/USDCHF_oco_monthly_predictions.parquet"
-        )
+    s_low = s.lower()
+
+    # EURUSD and AUDUSD happen to use the same top-level folder name (fullcap), but the others are suffixed
+    if s in ("EURUSD", "AUDUSD"):
+        folder = "wfo_2025_m3to1_oco_fullcap"
     else:
-        pred = Path(
-            "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_monthly_predictions.parquet"
-        )
-    lock = Path(f"configs/research/governance/oco/{s.lower()}_oco_live_lock.json")
+        folder = f"wfo_2025_m3to1_oco_fullcap_{s_low}"
+
+    pred = Path(
+        f"data/analysis/tick_opportunity_mining/{folder}/{s}_oco_monthly_predictions.parquet"
+    )
+
+    lock = Path(f"configs/research/governance/oco/{s_low}_oco_live_lock.json")
     return SymbolPaths(symbol=s, pred_path=pred, lock_path=lock)
 
 

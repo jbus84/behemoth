@@ -788,6 +788,36 @@ def test_docs_contract_smoke_pass(tmp_path: Path) -> None:
     assert (checks["status"].astype(str) == "pass").all()
 
 
+def test_docs_contract_flags_nan_metric_values(tmp_path: Path) -> None:
+    f = _build_smoke_fixture(tmp_path, with_system_reference=True)
+
+    edge_df = pd.read_csv(f["edge_metrics_csv"])
+    edge_df.loc[0, "metric_value"] = float("nan")
+    edge_df.to_csv(f["edge_metrics_csv"], index=False)
+
+    out_checks = tmp_path / "checks.csv"
+    out_issues = tmp_path / "issues.csv"
+    out_report = tmp_path / "report.md"
+
+    checks, issues = run(
+        docs_root=f["docs_root"],
+        generated_root=f["generated_root"],
+        edge_metrics_csv=f["edge_metrics_csv"],
+        stage_status_csv=f["stage_status_csv"],
+        metric_dictionary_md=f["metric_dictionary_md"],
+        edge_report_md=f["edge_report_md"],
+        mkdocs_yml=f["mkdocs_yml"],
+        out_checks_csv=out_checks,
+        out_issues_csv=out_issues,
+        out_report_md=out_report,
+        thresholds=Thresholds(max_age_hours=24.0),
+    )
+
+    c4a = checks[checks["check_id"] == "C4A"]
+    assert not c4a.empty
+    assert c4a.iloc[0]["status"] == "fail"
+
+
 def test_docs_contract_flags_missing_metric_definition(tmp_path: Path) -> None:
     docs_root = tmp_path / "docs" / "strategy_bible"
     docs_root.mkdir(parents=True, exist_ok=True)
