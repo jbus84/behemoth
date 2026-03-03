@@ -43,6 +43,15 @@ class ModelFeatures(BaseModel):
     the production runtime.  Both paths delegate to the canonical builder in
     ``src.behemoth.core.features.compute_features_from_bars()``.
 
+    Rationale for Structural Constraints
+    ------------------------------------
+    The vector includes 13 continuous market features and 3 structural parameters
+    (``bar_ticks``, ``horizon``, ``barrier_pips``). These structural parameters are critical 
+    meta-learning state constraints. They allow the tree model to correctly partition 
+    its thresholds based on the exact domain space it is evaluating (e.g., separating logic
+    for a 30-pip barrier vs. a 2-pip barrier). Do not remove them to prevent WFO leakage; 
+    their inclusion is deliberate and structurally necessary.
+
     Warmup
     ------
     Full-precision computation requires **289 tick bars** in the rolling buffer
@@ -203,11 +212,18 @@ class TradeOpenRequest(BaseModel):
     horizon: int
 
 
+class TradeTouchRequest(BaseModel):
+    """Sent by cBot when a position's barrier is touched."""
+    symbol: str
+    broker_pos_id: str
+
+
 class ActiveTrade(BaseModel):
     """Returned by API for state recovery."""
     broker_pos_id: str
     entry_bar_id: int
     horizon: int
+    touch_bar_id: Optional[int] = None
 
 
 class TradeUpdateRequest(BaseModel):

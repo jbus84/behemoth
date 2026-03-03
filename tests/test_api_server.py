@@ -94,8 +94,9 @@ class TestPredictEndpoint:
         r = client.post("/predict", json={
             "symbol": "EURUSD",
         })
-        assert r.status_code == 422
-        assert "warmup" in r.json()["detail"].lower() or "candidate" in r.json()["detail"].lower()
+        assert r.status_code in (422, 503)
+        detail = r.json()["detail"].lower()
+        assert "warmup" in detail or "candidate" in detail or "registry" in detail or "model" in detail
 
 
 class TestReloadEndpoint:

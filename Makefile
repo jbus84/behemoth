@@ -6,7 +6,10 @@ COLOR_TARGET := \033[0;32m
 COLOR_DOC := \033[0;34m
 COLOR_DESC := \033[2m
 
-.PHONY: test docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift deploy-cbot provision
+# Active symbol list — single source of truth for multi-symbol targets
+REBUILD_SYMBOLS := EURUSD GBPUSD USDJPY USDCHF AUDUSD USDCAD
+
+.PHONY: test docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift deploy-cbot provision retrain-all rebuild-all
 
 provision:
 	@echo "Provisioning Alertmanager configuration..."
@@ -18,6 +21,35 @@ test:
 onboard-symbol:
 	@test -n "$(SYMBOL)" || (echo "error: SYMBOL is required, e.g. make onboard-symbol SYMBOL=USDCAD MONTHS=201801-202602" && exit 1)
 	uv run python scripts/onboard_symbol.py --symbol $(SYMBOL) --months $(MONTHS) $(ONBOARD_FLAGS)
+
+retrain-all:
+	@echo "══════════════════════════════════════════"
+	@echo "  Retraining all symbols (Stages 2-5)    "
+	@echo "══════════════════════════════════════════"
+	@for sym in $(REBUILD_SYMBOLS); do \
+		echo "\n=== Retraining $$sym ==="; \
+		uv run python scripts/onboard_symbol.py --symbol $$sym --skip-data --skip-docs || exit 1; \
+	done
+	@echo "\n=== Running docs-contract ==="
+	$(MAKE) docs-contract
+	@echo "\n=== Building mkdocs ==="
+	uv run mkdocs build --strict
+	@echo "\n✅ Full retrain complete"
+
+rebuild-all:
+	@test -n "$(MONTHS)" || (echo "error: MONTHS required, e.g. make rebuild-all MONTHS=201801-202602" && exit 1)
+	@echo "══════════════════════════════════════════"
+	@echo "  Full rebuild for all symbols (Stages 0-5)"
+	@echo "══════════════════════════════════════════"
+	@for sym in $(REBUILD_SYMBOLS); do \
+		echo "\n=== Rebuilding $$sym ==="; \
+		uv run python scripts/onboard_symbol.py --symbol $$sym --months $(MONTHS) --force --skip-docs || exit 1; \
+	done
+	@echo "\n=== Running docs-contract ==="
+	$(MAKE) docs-contract
+	@echo "\n=== Building mkdocs ==="
+	uv run mkdocs build --strict
+	@echo "\n✅ Full rebuild complete"
 
 deploy-cbot:
 	@echo "Deploying BehemothTradeManager.cs to cTrader Robots directory..."
@@ -83,6 +115,9 @@ help:
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "check-legacy-drift" "Check repo for legacy/forbidden code drift"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "precommit-install" "Install pre-commit hooks"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "precommit-run" "Run pre-commit on all files"
+	@printf "\n$(COLOR_SECTION)== Pipeline ==$(COLOR_RESET)\n"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "retrain-all" "Re-run ML pipeline + docs for all symbols (skip data download)"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "rebuild-all" "Full rebuild: data + ML + docs for all symbols (MONTHS=... required)"
 	@printf "\n$(COLOR_SECTION)== Docs ==$(COLOR_RESET)\n"
 	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "docs" "Serve docs locally"
 	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "docs-build" "Build docs"

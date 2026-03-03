@@ -33,6 +33,7 @@ from src.behemoth.core.schemas import (
     ModelFeatures, 
     OcoPrediction,
     TradeOpenRequest,
+    TradeTouchRequest,
     TradeUpdateRequest,
     ActiveTrade
 )
@@ -322,15 +323,21 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
                    f"Export models via run_tick_opportunity_monthly_wfo.py first.",
         )
 
-    # Compute base rolling features once (horizon/barrier set later per candidate)
-    base_features = _state.compute_features(
-        symbol=sym,
-        bar_ticks=candidates[0].bar_ticks,
-        horizon=candidates[0].horizon,
-        barrier_pips=candidates[0].barrier_pips,
-    )
-    if base_features is None:
-        raise HTTPException(status_code=422, detail=f"Feature computation failed for {sym}")
+    # Compute base rolling features per bar_ticks group
+    base_features_by_ticks: dict[int, ModelFeatures] = {}
+    
+    for cand in candidates:
+        bt = int(cand.bar_ticks)
+        if bt not in base_features_by_ticks:
+            feats = _state.compute_features(
+                symbol=sym,
+                bar_ticks=bt,
+                horizon=cand.horizon,
+                barrier_pips=cand.barrier_pips,
+            )
+            if feats is None:
+                raise HTTPException(status_code=422, detail=f"Feature computation failed for {sym}")
+            base_features_by_ticks[bt] = feats
 
     import numpy as np
 
@@ -346,6 +353,7 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
     results: list[OcoPrediction] = []
     for cand in candidates:
         # Override structural features per candidate
+        base_features = base_features_by_ticks[int(cand.bar_ticks)]
         features = base_features.model_copy(update={
             "bar_ticks": float(cand.bar_ticks),
             "horizon": float(cand.horizon),
@@ -415,6 +423,19 @@ async def get_active_trades(symbol: str):
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
     return _state.get_active_trades(symbol)
+
+
+@app.post("/trades/touch")
+async def touch_trade(req: TradeTouchRequest):
+    """Record that a position's barrier was touched."""
+    if _state is None:
+        raise HTTPException(status_code=503, detail="State manager not initialized")
+        
+    sym = req.symbol.upper()
+    res = _state._con.execute("SELECT MAX(row_id) FROM tick_bars WHERE symbol = ?", [sym]).fetchone()
+    touch_bar_id = res[0] if res and res[0] is not None else 0
+    _state.touch_trade(req.broker_pos_id, touch_bar_id)
+    return {"status": "ok"}
 
 
 @app.post("/trades/update")

@@ -163,7 +163,7 @@ uv run python scripts/build_oco_strategy_bible.py \
 <!-- GENERATED:STAGE_04:START -->
 ### Auto Snapshot - Stage 04
 
-- generated_at: `2026-03-01 16:47:53 UTC`
+- generated_at: `2026-03-03 12:43:04 UTC`
 - Execution realism is applied with tick first-cross overshoot.
 - Session-aware rolling caps are built causally (20D lookback, q=0.90) before E11 dispersion is measured.
 - Cap curve highlights fill-rate versus signal-level expectancy.
@@ -174,12 +174,12 @@ uv run python scripts/build_oco_strategy_bible.py \
 #### Key Results
 | symbol   |   rows |   touch_found_rate |   base_mean_gross_pips |   tick_overshoot_mean_pips |   tick_overshoot_p95_pips |   e11_session_overshoot_dispersion |   e12_cap_plateau_width_pips |   e13_nonfill_opportunity_cost_pips |
 |:---------|-------:|-------------------:|-----------------------:|---------------------------:|--------------------------:|-----------------------------------:|-----------------------------:|------------------------------------:|
-| EURUSD   | 395199 |           0.999954 |               1.50325  |                   0.143567 |                       0.5 |                           0.205455 |                          1.2 |                            0.119704 |
-| GBPUSD   | 395199 |           0.999954 |               1.50325  |                   0.143567 |                       0.5 |                           0.26181  |                          1.2 |                            0.11825  |
+| EURUSD   | 378368 |           0.999979 |               0.826811 |                   0.188771 |                       0.7 |                           0.2019   |                          1.2 |                            0.119973 |
+| GBPUSD   | 378368 |           0.999979 |               0.826811 |                   0.188771 |                       0.7 |                           0.279804 |                          1.2 |                            0.119252 |
 | AUDUSD   | 398006 |           0        |               0.645227 |                 nan        |                     nan   |                         nan        |                        nan   |                          nan        |
-| USDJPY   | 395199 |           0.999954 |               1.50325  |                   0.143567 |                       0.5 |                           0.133612 |                          1.2 |                            0.192508 |
-| USDCHF   | 395199 |           0.999954 |               1.50325  |                   0.143567 |                       0.5 |                           1.0242   |                          1.2 |                            0.109211 |
-| USDCAD   | 395199 |           0.999954 |               1.50325  |                   0.143567 |                       0.5 |                           0.363498 |                          1   |                            0.137788 |
+| USDJPY   | 378368 |           0.999979 |               0.826811 |                   0.188771 |                       0.7 |                           0.136435 |                          1.2 |                            0.190838 |
+| USDCHF   | 378368 |           0.999979 |               0.826811 |                   0.188771 |                       0.7 |                           0.977749 |                          1.2 |                            0.111455 |
+| USDCAD   | 378368 |           0.999979 |               0.826811 |                   0.188771 |                       0.7 |                           0.356867 |                          1   |                            0.146888 |
 
 #### Interpretation Notes
 - Execution realism is applied with tick first-cross overshoot.
@@ -211,36 +211,36 @@ uv run python scripts/build_oco_strategy_bible.py \
 | AUDUSD   |        1.2 |    0        |                       nan        |
 | AUDUSD   |        1.5 |    0        |                       nan        |
 | AUDUSD   |        2   |    0        |                       nan        |
-| EURUSD   |        0.5 |    0.941543 |                         1.2288   |
-| EURUSD   |        0.8 |    0.973479 |                         1.29099  |
-| EURUSD   |        1   |    0.98417  |                         1.30549  |
-| EURUSD   |        1.2 |    0.988052 |                         1.31966  |
-| EURUSD   |        1.5 |    0.992224 |                         1.34152  |
-| EURUSD   |        2   |    0.995658 |                         1.34217  |
-| GBPUSD   |        0.5 |    0.948832 |                         0.831411 |
-| GBPUSD   |        0.8 |    0.980955 |                         0.858803 |
-| GBPUSD   |        1   |    0.988796 |                         0.87368  |
-| GBPUSD   |        1.2 |    0.990858 |                         0.875675 |
-| GBPUSD   |        1.5 |    0.993398 |                         0.878747 |
-| GBPUSD   |        2   |    0.995567 |                         0.87675  |
-| USDCAD   |        0.5 |    0.921385 |                         0.556883 |
-| USDCAD   |        0.8 |    0.96325  |                         0.591826 |
-| USDCAD   |        1   |    0.975668 |                         0.603404 |
-| USDCAD   |        1.2 |    0.979827 |                         0.611363 |
-| USDCAD   |        1.5 |    0.985285 |                         0.626289 |
-| USDCAD   |        2   |    0.991328 |                         0.632537 |
-| USDCHF   |        0.5 |    0.946351 |                         0.678917 |
-| USDCHF   |        0.8 |    0.96817  |                         0.706963 |
-| USDCHF   |        1   |    0.974277 |                         0.707902 |
-| USDCHF   |        1.2 |    0.977236 |                         0.71137  |
-| USDCHF   |        1.5 |    0.982412 |                         0.725124 |
-| USDCHF   |        2   |    0.986462 |                         0.728158 |
-| USDJPY   |        0.5 |    0.918872 |                         1.0593   |
-| USDJPY   |        0.8 |    0.963719 |                         1.11047  |
-| USDJPY   |        1   |    0.978787 |                         1.13374  |
-| USDJPY   |        1.2 |    0.983461 |                         1.13861  |
-| USDJPY   |        1.5 |    0.990209 |                         1.1564   |
-| USDJPY   |        2   |    0.993945 |                         1.16424  |
+| EURUSD   |        0.5 |    0.930683 |                         1.15307  |
+| EURUSD   |        0.8 |    0.963601 |                         1.21006  |
+| EURUSD   |        1   |    0.974583 |                         1.22508  |
+| EURUSD   |        1.2 |    0.978576 |                         1.23861  |
+| EURUSD   |        1.5 |    0.982888 |                         1.25881  |
+| EURUSD   |        2   |    0.98646  |                         1.26043  |
+| GBPUSD   |        0.5 |    0.947971 |                         0.836742 |
+| GBPUSD   |        0.8 |    0.980369 |                         0.863707 |
+| GBPUSD   |        1   |    0.988455 |                         0.879063 |
+| GBPUSD   |        1.2 |    0.990569 |                         0.880922 |
+| GBPUSD   |        1.5 |    0.993143 |                         0.884192 |
+| GBPUSD   |        2   |    0.995389 |                         0.882237 |
+| USDCAD   |        0.5 |    0.91443  |                         0.564499 |
+| USDCAD   |        0.8 |    0.961186 |                         0.60258  |
+| USDCAD   |        1   |    0.975072 |                         0.611766 |
+| USDCAD   |        1.2 |    0.979739 |                         0.620148 |
+| USDCAD   |        1.5 |    0.985356 |                         0.634768 |
+| USDCAD   |        2   |    0.991421 |                         0.640147 |
+| USDCHF   |        0.5 |    0.945482 |                         0.716679 |
+| USDCHF   |        0.8 |    0.968466 |                         0.74844  |
+| USDCHF   |        1   |    0.974801 |                         0.750607 |
+| USDCHF   |        1.2 |    0.977753 |                         0.754365 |
+| USDCHF   |        1.5 |    0.982961 |                         0.767683 |
+| USDCHF   |        2   |    0.986856 |                         0.770705 |
+| USDJPY   |        0.5 |    0.920052 |                         1.04681  |
+| USDJPY   |        0.8 |    0.964269 |                         1.09684  |
+| USDJPY   |        1   |    0.979043 |                         1.11966  |
+| USDJPY   |        1.2 |    0.983558 |                         1.12492  |
+| USDJPY   |        1.5 |    0.990274 |                         1.14272  |
+| USDJPY   |        2   |    0.993999 |                         1.15058  |
 
 #### Plots
 ![stage_04_stop_limit_caps](../figures/oco_bible/stage_04_stop_limit_caps.png)
@@ -254,72 +254,72 @@ uv run python scripts/build_oco_strategy_bible.py \
 | USDJPY   |             10 |               0 |                      0 |                  0.969299 |           0.0191173  |                    1.00093  |
 
 #### Policy Status
-| symbol   |   metrics_total |   green_metric_count |   amber_metric_count |   red_metric_count | worst_band   | recommended_action_code   | recommended_action_summary                                            | red_metrics                  | amber_metrics                    |
-|:---------|----------------:|---------------------:|---------------------:|-------------------:|:-------------|:--------------------------|:----------------------------------------------------------------------|:-----------------------------|:---------------------------------|
-| AUDUSD   |               5 |                    0 |                    0 |                  0 | unknown      | A9_DATA_GAP               | missing metric value; regenerate Stage 04 artifacts before deployment |                              |                                  |
-| EURUSD   |               5 |                    5 |                    0 |                  0 | green        | A0_MONITOR                | within execution policy limits; monitor only                          |                              |                                  |
-| GBPUSD   |               5 |                    4 |                    0 |                  1 | red          | A3_HALT_RECALIBRATE       | execution erosion too high; halt symbol until recalibrated            | erosion_spread_fee_plus_slip |                                  |
-| USDCAD   |               5 |                    4 |                    0 |                  1 | red          | A3_HALT_RECALIBRATE       | execution erosion too high; halt symbol until recalibrated            | erosion_spread_fee_plus_slip |                                  |
-| USDCHF   |               5 |                    3 |                    1 |                  1 | red          | A3_HALT_RECALIBRATE       | execution erosion too high; halt symbol until recalibrated            | erosion_spread_fee_plus_slip | E11_session_overshoot_dispersion |
-| USDJPY   |               5 |                    4 |                    1 |                  0 | amber        | A1_RECALIBRATE_CAP        | execution erosion elevated; recalibrate cap/slippage assumptions      |                              | erosion_spread_fee_plus_slip     |
+| symbol   |   metrics_total |   green_metric_count |   amber_metric_count |   red_metric_count | worst_band   | recommended_action_code   | recommended_action_summary                                            | red_metrics   | amber_metrics           |
+|:---------|----------------:|---------------------:|---------------------:|-------------------:|:-------------|:--------------------------|:----------------------------------------------------------------------|:--------------|:------------------------|
+| AUDUSD   |               5 |                    0 |                    0 |                  0 | unknown      | A9_DATA_GAP               | missing metric value; regenerate Stage 04 artifacts before deployment |               |                         |
+| EURUSD   |               5 |                    4 |                    1 |                  0 | amber        | A2_SESSION_GUARD          | overshoot tail elevated; apply session guard and monitor              |               | tick_overshoot_p95_pips |
+| GBPUSD   |               5 |                    4 |                    1 |                  0 | amber        | A2_SESSION_GUARD          | overshoot tail elevated; apply session guard and monitor              |               | tick_overshoot_p95_pips |
+| USDCAD   |               5 |                    4 |                    1 |                  0 | amber        | A2_SESSION_GUARD          | overshoot tail elevated; apply session guard and monitor              |               | tick_overshoot_p95_pips |
+| USDCHF   |               5 |                    4 |                    1 |                  0 | amber        | A2_SESSION_GUARD          | overshoot tail elevated; apply session guard and monitor              |               | tick_overshoot_p95_pips |
+| USDJPY   |               5 |                    4 |                    1 |                  0 | amber        | A2_SESSION_GUARD          | overshoot tail elevated; apply session guard and monitor              |               | tick_overshoot_p95_pips |
 
 - policy_csv: `data/analysis/tick_opportunity_mining/stage04_execution_policy_status.csv`
 
 #### Policy Metric Mapping (Detail)
-| symbol   | metric_id                         |   metric_value | band    | action_code         | green_threshold   | amber_threshold   |
-|:---------|:----------------------------------|---------------:|:--------|:--------------------|:------------------|:------------------|
-| EURUSD   | E11_session_overshoot_dispersion  |       0.205455 | green   | A0_MONITOR          | <= 1.0000         | <= 1.3000         |
-| EURUSD   | E12_cap_plateau_width_pips        |       1.2      | green   | A0_MONITOR          | >= 0.5000         | >= 0.3000         |
-| EURUSD   | E13_nonfill_opportunity_cost_pips |       0.119704 | green   | A0_MONITOR          | <= 0.2000         | <= 0.3500         |
-| EURUSD   | erosion_spread_fee_plus_slip      |       0.161086 | green   | A0_MONITOR          | <= 0.3000         | <= 0.5000         |
-| EURUSD   | tick_overshoot_p95_pips           |       0.5      | green   | A0_MONITOR          | <= 0.7000         | <= 1.0000         |
-| GBPUSD   | E11_session_overshoot_dispersion  |       0.26181  | green   | A0_MONITOR          | <= 1.0000         | <= 1.3000         |
-| GBPUSD   | E12_cap_plateau_width_pips        |       1.2      | green   | A0_MONITOR          | >= 0.5000         | >= 0.3000         |
-| GBPUSD   | E13_nonfill_opportunity_cost_pips |       0.11825  | green   | A0_MONITOR          | <= 0.2000         | <= 0.3500         |
-| GBPUSD   | erosion_spread_fee_plus_slip      |       0.624507 | red     | A3_HALT_RECALIBRATE | <= 0.3000         | <= 0.5000         |
-| GBPUSD   | tick_overshoot_p95_pips           |       0.5      | green   | A0_MONITOR          | <= 0.7000         | <= 1.0000         |
-| AUDUSD   | E11_session_overshoot_dispersion  |     nan        | unknown | A9_DATA_GAP         |                   |                   |
-| AUDUSD   | E12_cap_plateau_width_pips        |     nan        | unknown | A9_DATA_GAP         |                   |                   |
-| AUDUSD   | E13_nonfill_opportunity_cost_pips |     nan        | unknown | A9_DATA_GAP         |                   |                   |
-| AUDUSD   | erosion_spread_fee_plus_slip      |     nan        | unknown | A9_DATA_GAP         |                   |                   |
-| AUDUSD   | tick_overshoot_p95_pips           |     nan        | unknown | A9_DATA_GAP         |                   |                   |
-| USDJPY   | E11_session_overshoot_dispersion  |       0.133612 | green   | A0_MONITOR          | <= 1.0000         | <= 1.3000         |
-| USDJPY   | E12_cap_plateau_width_pips        |       1.2      | green   | A0_MONITOR          | >= 0.5000         | >= 0.3000         |
-| USDJPY   | E13_nonfill_opportunity_cost_pips |       0.192508 | green   | A0_MONITOR          | <= 0.2000         | <= 0.3500         |
-| USDJPY   | erosion_spread_fee_plus_slip      |       0.339011 | amber   | A1_RECALIBRATE_CAP  | <= 0.3000         | <= 0.5000         |
-| USDJPY   | tick_overshoot_p95_pips           |       0.5      | green   | A0_MONITOR          | <= 0.7000         | <= 1.0000         |
-| USDCHF   | E11_session_overshoot_dispersion  |       1.0242   | amber   | A2_SESSION_GUARD    | <= 1.0000         | <= 1.3000         |
-| USDCHF   | E12_cap_plateau_width_pips        |       1.2      | green   | A0_MONITOR          | >= 0.5000         | >= 0.3000         |
-| USDCHF   | E13_nonfill_opportunity_cost_pips |       0.109211 | green   | A0_MONITOR          | <= 0.2000         | <= 0.3500         |
-| USDCHF   | erosion_spread_fee_plus_slip      |       0.775096 | red     | A3_HALT_RECALIBRATE | <= 0.3000         | <= 0.5000         |
-| USDCHF   | tick_overshoot_p95_pips           |       0.5      | green   | A0_MONITOR          | <= 0.7000         | <= 1.0000         |
-| USDCAD   | E11_session_overshoot_dispersion  |       0.363498 | green   | A0_MONITOR          | <= 1.0000         | <= 1.3000         |
-| USDCAD   | E12_cap_plateau_width_pips        |       1        | green   | A0_MONITOR          | >= 0.5000         | >= 0.3000         |
-| USDCAD   | E13_nonfill_opportunity_cost_pips |       0.137788 | green   | A0_MONITOR          | <= 0.2000         | <= 0.3500         |
-| USDCAD   | erosion_spread_fee_plus_slip      |       0.870716 | red     | A3_HALT_RECALIBRATE | <= 0.3000         | <= 0.5000         |
-| USDCAD   | tick_overshoot_p95_pips           |       0.5      | green   | A0_MONITOR          | <= 0.7000         | <= 1.0000         |
+| symbol   | metric_id                         |   metric_value | band    | action_code      | green_threshold   | amber_threshold   |
+|:---------|:----------------------------------|---------------:|:--------|:-----------------|:------------------|:------------------|
+| EURUSD   | E11_session_overshoot_dispersion  |      0.2019    | green   | A0_MONITOR       | <= 1.0000         | <= 1.3000         |
+| EURUSD   | E12_cap_plateau_width_pips        |      1.2       | green   | A0_MONITOR       | >= 0.5000         | >= 0.3000         |
+| EURUSD   | E13_nonfill_opportunity_cost_pips |      0.119973  | green   | A0_MONITOR       | <= 0.2000         | <= 0.3500         |
+| EURUSD   | erosion_spread_fee_plus_slip      |     -0.43362   | green   | A0_MONITOR       | <= 0.3000         | <= 0.5000         |
+| EURUSD   | tick_overshoot_p95_pips           |      0.7       | amber   | A2_SESSION_GUARD | <= 0.7000         | <= 1.0000         |
+| GBPUSD   | E11_session_overshoot_dispersion  |      0.279804  | green   | A0_MONITOR       | <= 1.0000         | <= 1.3000         |
+| GBPUSD   | E12_cap_plateau_width_pips        |      1.2       | green   | A0_MONITOR       | >= 0.5000         | >= 0.3000         |
+| GBPUSD   | E13_nonfill_opportunity_cost_pips |      0.119252  | green   | A0_MONITOR       | <= 0.2000         | <= 0.3500         |
+| GBPUSD   | erosion_spread_fee_plus_slip      |     -0.0573813 | green   | A0_MONITOR       | <= 0.3000         | <= 0.5000         |
+| GBPUSD   | tick_overshoot_p95_pips           |      0.7       | amber   | A2_SESSION_GUARD | <= 0.7000         | <= 1.0000         |
+| AUDUSD   | E11_session_overshoot_dispersion  |    nan         | unknown | A9_DATA_GAP      |                   |                   |
+| AUDUSD   | E12_cap_plateau_width_pips        |    nan         | unknown | A9_DATA_GAP      |                   |                   |
+| AUDUSD   | E13_nonfill_opportunity_cost_pips |    nan         | unknown | A9_DATA_GAP      |                   |                   |
+| AUDUSD   | erosion_spread_fee_plus_slip      |    nan         | unknown | A9_DATA_GAP      |                   |                   |
+| AUDUSD   | tick_overshoot_p95_pips           |    nan         | unknown | A9_DATA_GAP      |                   |                   |
+| USDJPY   | E11_session_overshoot_dispersion  |      0.136435  | green   | A0_MONITOR       | <= 1.0000         | <= 1.3000         |
+| USDJPY   | E12_cap_plateau_width_pips        |      1.2       | green   | A0_MONITOR       | >= 0.5000         | >= 0.3000         |
+| USDJPY   | E13_nonfill_opportunity_cost_pips |      0.190838  | green   | A0_MONITOR       | <= 0.2000         | <= 0.3500         |
+| USDJPY   | erosion_spread_fee_plus_slip      |     -0.323768  | green   | A0_MONITOR       | <= 0.3000         | <= 0.5000         |
+| USDJPY   | tick_overshoot_p95_pips           |      0.7       | amber   | A2_SESSION_GUARD | <= 0.7000         | <= 1.0000         |
+| USDCHF   | E11_session_overshoot_dispersion  |      0.977749  | green   | A0_MONITOR       | <= 1.0000         | <= 1.3000         |
+| USDCHF   | E12_cap_plateau_width_pips        |      1.2       | green   | A0_MONITOR       | >= 0.5000         | >= 0.3000         |
+| USDCHF   | E13_nonfill_opportunity_cost_pips |      0.111455  | green   | A0_MONITOR       | <= 0.2000         | <= 0.3500         |
+| USDCHF   | erosion_spread_fee_plus_slip      |      0.0561062 | green   | A0_MONITOR       | <= 0.3000         | <= 0.5000         |
+| USDCHF   | tick_overshoot_p95_pips           |      0.7       | amber   | A2_SESSION_GUARD | <= 0.7000         | <= 1.0000         |
+| USDCAD   | E11_session_overshoot_dispersion  |      0.356867  | green   | A0_MONITOR       | <= 1.0000         | <= 1.3000         |
+| USDCAD   | E12_cap_plateau_width_pips        |      1         | green   | A0_MONITOR       | >= 0.5000         | >= 0.3000         |
+| USDCAD   | E13_nonfill_opportunity_cost_pips |      0.146888  | green   | A0_MONITOR       | <= 0.2000         | <= 0.3500         |
+| USDCAD   | erosion_spread_fee_plus_slip      |      0.186664  | green   | A0_MONITOR       | <= 0.3000         | <= 0.5000         |
+| USDCAD   | tick_overshoot_p95_pips           |      0.7       | amber   | A2_SESSION_GUARD | <= 0.7000         | <= 1.0000         |
 
 #### Session Rolling Cap Policy
 | symbol   | session_bucket   |   lookback_days |   cap_quantile |   cap_pips |   rows_used |   session_cap_rows |   global_cap_rows |   fallback_rows |
 |:---------|:-----------------|----------------:|---------------:|-----------:|------------:|-------------------:|------------------:|----------------:|
-| EURUSD   | ASIA             |              20 |            0.9 |        0.2 |      120404 |             120204 |                72 |             128 |
-| EURUSD   | LATE             |              20 |            0.9 |        0.2 |       13652 |              12729 |               923 |               0 |
-| EURUSD   | LONDON           |              20 |            0.9 |        0.3 |      152319 |             152119 |               200 |               0 |
-| EURUSD   | NY               |              20 |            0.9 |        0.7 |      108450 |             108250 |               128 |              72 |
-| GBPUSD   | ASIA             |              20 |            0.9 |        0.3 |      170822 |             170622 |                 6 |             194 |
-| GBPUSD   | LATE             |              20 |            0.9 |        0.3 |        5891 |               4867 |              1024 |               0 |
-| GBPUSD   | LONDON           |              20 |            0.9 |        0.3 |      173809 |             173609 |               200 |               0 |
-| GBPUSD   | NY               |              20 |            0.9 |        0.6 |       63280 |              63080 |               200 |               0 |
-| USDJPY   | ASIA             |              20 |            0.9 |        0.4 |      194384 |             194184 |                 0 |             200 |
-| USDJPY   | LATE             |              20 |            0.9 |        0.4 |       23720 |              23520 |               200 |               0 |
-| USDJPY   | LONDON           |              20 |            0.9 |        0.4 |      119880 |             119680 |               200 |               0 |
-| USDJPY   | NY               |              20 |            0.9 |        0.6 |      121207 |             121007 |               200 |               0 |
-| USDCHF   | ASIA             |              20 |            0.9 |        0.2 |      165298 |             165098 |                 1 |             199 |
-| USDCHF   | LATE             |              20 |            0.9 |        0.3 |        4630 |               3906 |               724 |               0 |
-| USDCHF   | LONDON           |              20 |            0.9 |        0.2 |      152685 |             152485 |               200 |               0 |
-| USDCHF   | NY               |              20 |            0.9 |        2.6 |       42069 |              41869 |               200 |               0 |
-| USDCAD   | ASIA             |              20 |            0.9 |        0.2 |       48295 |              48095 |                62 |             138 |
-| USDCAD   | LATE             |              20 |            0.9 |        0.3 |        4794 |               4005 |               789 |               0 |
-| USDCAD   | LONDON           |              20 |            0.9 |        0.2 |      174580 |             174380 |               138 |              62 |
-| USDCAD   | NY               |              20 |            0.9 |        0.3 |      119175 |             118975 |               200 |               0 |
+| EURUSD   | ASIA             |              20 |            0.9 |       0.2  |      127667 |             127467 |                72 |             128 |
+| EURUSD   | LATE             |              20 |            0.9 |       0.4  |       14903 |              14126 |               777 |               0 |
+| EURUSD   | LONDON           |              20 |            0.9 |       0.3  |      163194 |             162994 |               200 |               0 |
+| EURUSD   | NY               |              20 |            0.9 |       0.7  |      119732 |             119532 |               128 |              72 |
+| GBPUSD   | ASIA             |              20 |            0.9 |       0.3  |      161014 |             160814 |                 6 |             194 |
+| GBPUSD   | LATE             |              20 |            0.9 |       0.4  |        5804 |               4883 |               921 |               0 |
+| GBPUSD   | LONDON           |              20 |            0.9 |       0.3  |      164544 |             164344 |               200 |               0 |
+| GBPUSD   | NY               |              20 |            0.9 |       0.4  |       60439 |              60239 |               200 |               0 |
+| USDJPY   | ASIA             |              20 |            0.9 |       0.4  |      194490 |             194290 |                 0 |             200 |
+| USDJPY   | LATE             |              20 |            0.9 |       0.5  |       23571 |              23371 |               200 |               0 |
+| USDJPY   | LONDON           |              20 |            0.9 |       0.4  |      120207 |             120007 |               200 |               0 |
+| USDJPY   | NY               |              20 |            0.9 |       0.6  |      120421 |             120221 |               200 |               0 |
+| USDCHF   | ASIA             |              20 |            0.9 |       0.2  |      170015 |             169815 |                 1 |             199 |
+| USDCHF   | LATE             |              20 |            0.9 |       0.2  |        4857 |               4055 |               802 |               0 |
+| USDCHF   | LONDON           |              20 |            0.9 |       0.2  |      150730 |             150530 |               200 |               0 |
+| USDCHF   | NY               |              20 |            0.9 |       2.33 |       43283 |              43083 |               200 |               0 |
+| USDCAD   | ASIA             |              20 |            0.9 |       0.2  |       63540 |              63340 |                62 |             138 |
+| USDCAD   | LATE             |              20 |            0.9 |       0.3  |        5710 |               4982 |               728 |               0 |
+| USDCAD   | LONDON           |              20 |            0.9 |       0.2  |      179333 |             179133 |               138 |              62 |
+| USDCAD   | NY               |              20 |            0.9 |       0.5  |      129597 |             129397 |               200 |               0 |
 <!-- GENERATED:STAGE_04:END -->

@@ -31,19 +31,8 @@ namespace cAlgo.Robots
         private HttpClient _client;
         private Ticks _historicalTicks;
 
-        // Map broker name (e.g. XBRUSD) to internal API name (e.g. BCOUSD)
-        // If not mapped, uses broker name directly.
         private string GetInternalSymbolName(string brokerName)
         {
-            if (brokerName == "XBRUSD") return "BCOUSD";
-            if (brokerName == "US 500") return "SPXUSD";
-            if (brokerName == "US 30") return "UDXUSD";
-            if (brokerName == "US TECH 100") return "NSXUSD";
-            if (brokerName == "GERMANY 40") return "GRXEUR";
-            if (brokerName == "FRANCE 40") return "FRXEUR";
-            if (brokerName == "UK 100") return "UKXGBP";
-            if (brokerName == "JAPAN 225") return "JPXJPY";
-            if (brokerName == "HONG KONG 50") return "HKXHKD";
             return brokerName;
         }
 
@@ -53,6 +42,7 @@ namespace cAlgo.Robots
         };
 
         private string _internalSymbol;
+        private Dictionary<int, int> _posAgeBars = new Dictionary<int, int>();
 
         protected override void OnStart()
         {
@@ -169,7 +159,23 @@ namespace cAlgo.Robots
                         var tickResp = JsonSerializer.Deserialize<TickResponse>(body, _jsonOpts);
                         if (tickResp != null && tickResp.bar_completed)
                         {
-                            Print($"[BAR COMPLETED] Triggering prediction...");
+                            Print($"[BAR COMPLETED] Tracking horizons and triggering prediction...");
+                            
+                            var ocoPositions = Positions.Where(p => p.SymbolName == Symbol.Name && p.Label != null && p.Label.StartsWith("Oco_")).ToList();
+                            foreach(var pos in ocoPositions)
+                            {
+                                if (!_posAgeBars.ContainsKey(pos.Id)) _posAgeBars[pos.Id] = 0;
+                                _posAgeBars[pos.Id]++;
+                                
+                                int horizon = ExtractHorizon(pos.Label);
+                                if (_posAgeBars[pos.Id] >= horizon)
+                                {
+                                    Print($"[HORIZON EXIT] Closing {pos.Id} after {horizon} bars");
+                                    ClosePositionAsync(pos);
+                                    _posAgeBars.Remove(pos.Id);
+                                }
+                            }
+
                             TriggerPrediction();
                         }
                     }
@@ -179,6 +185,16 @@ namespace cAlgo.Robots
             {
                 Print($"[WARN] OnTick fast-fail: {ex.Message}");
             }
+        }
+
+        private int ExtractHorizon(string label)
+        {
+            int idx = label.LastIndexOf("|H");
+            if (idx != -1)
+            {
+                if (int.TryParse(label.Substring(idx + 2), out int h)) return h;
+            }
+            return 6;
         }
 
         private void TriggerPrediction()
@@ -223,25 +239,9 @@ namespace cAlgo.Robots
                 {
                     Print($"[EXECUTE] {pred.candidate_uid} (Prob: {pred.pred_prob:F3} >= Thr: {pred.threshold_exec:F3})");
                     
-                    // The candidate_uid format is: library|symbol|bar_ticks|hN|state_id
-                    // e.g. oco_first_touch_clean|EURUSD|100|h5|oco_first_touch_clean__low_abs_vol__k2
-                    
                     try 
                     {
-                        var parts = pred.candidate_uid.Split('|');
-                        var hPart = parts.FirstOrDefault(p => p.StartsWith("h")); // e.g. "h5"
-                        // Parse horizon (default to 6 if failed)
-                        int horizon = 6;
-                        if (hPart != null && hPart.Length > 1) int.TryParse(hPart.Substring(1), out horizon);
-                        
-                        // Parse barrier length from state_id part if possible, or assume config defaults
-                        // But wait! The actual model doesn't tell us direction (Long/Short). 
-                        // It predicts "absolute opportunity" which implies we place BOTH a BuyStop and SellStop! 
-                        // That's what OCO (One Cancels Other) means.
-                        
-                        // Place OCO Orders
-                        PlaceOcoOrders(pred.candidate_uid, horizon);
-                        break; // Only execute the top candidate that passed threshold
+                        PlaceOcoOrders(pred);
                     }
                     catch (Exception ex)
                     {
@@ -251,25 +251,58 @@ namespace cAlgo.Robots
             }
         }
 
-        private void PlaceOcoOrders(string candidateUid, int horizonBars)
+        private void PlaceOcoOrders(OcoPrediction pred)
         {
-            // OCO Logic: Place Buy Stop above current price, Sell Stop below
-            // Since we don't have the exact barrier pip size easily extracted from UID in C# without reliable parsing,
-            // we could parse it from the state string (e.g. k2 = barrier 2).
-            double barrierPips = 2.0; 
-            if (candidateUid.Contains("k3")) barrierPips = 3.0;
-            
+            double barrierPips = pred.barrier_pips; 
             double volume = Symbol.QuantityToVolumeInUnits(LotSize);
-            string groupLabel = $"Oco_{candidateUid}_{Server.Time:yyyyMMddHHmmss}";
+            string groupLabel = $"Oco_{pred.candidate_uid}_{Server.Time:yyyyMMddHHmmss}|H{pred.horizon}";
 
             double buyPrice = Symbol.Ask + (barrierPips * Symbol.PipSize);
             double sellPrice = Symbol.Bid - (barrierPips * Symbol.PipSize);
 
-            // Execute as Async to avoid blocking
             PlaceStopOrderAsync(TradeType.Buy, Symbol.Name, volume, buyPrice, groupLabel);
             PlaceStopOrderAsync(TradeType.Sell, Symbol.Name, volume, sellPrice, groupLabel);
             
             Print($"[OCO PLACED] {groupLabel} | BuyStop: {buyPrice:F4} | SellStop: {sellPrice:F4}");
+        }
+
+        protected override void OnPendingOrderFilled(PendingOrderFilledEventArgs args)
+        {
+            var pos = args.Position;
+            if (pos.Label != null && pos.Label.StartsWith("Oco_"))
+            {
+                // Cancel the opposite leg
+                var ordersToCancel = PendingOrders.Where(o => o.Label == pos.Label && o.Id != args.PendingOrder.Id).ToList();
+                foreach (var order in ordersToCancel)
+                {
+                    CancelPendingOrderAsync(order);
+                    Print($"[OCO CANCEL] Cancelled opposite leg for {pos.Label}");
+                }
+                
+                // Track touch via API
+                TrackTouchAsync(pos.Id.ToString());
+            }
+        }
+
+        protected override void OnPositionClosed(PositionClosedEventArgs args)
+        {
+            var pos = args.Position;
+            if (pos.Label != null && pos.Label.StartsWith("Oco_"))
+            {
+                _posAgeBars.Remove(pos.Id);
+            }
+        }
+
+        private async void TrackTouchAsync(string brokerPosId)
+        {
+            try {
+                var payload = new { symbol = _internalSymbol, broker_pos_id = brokerPosId };
+                var json = JsonSerializer.Serialize(payload, _jsonOpts);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                await _client.PostAsync($"{BaseUrl}/trades/touch", content);
+            } catch (Exception ex) {
+                Print($"[API ERR] TrackTouchAsync: {ex}");
+            }
         }
 
         protected override void OnStop()
@@ -293,6 +326,9 @@ namespace cAlgo.Robots
         public double pred_prob { get; set; }
         public double threshold_exec { get; set; }
         public int selected_exec { get; set; }
+        public int horizon { get; set; }
+        public double barrier_pips { get; set; }
+        public double cap_pips { get; set; }
         public string threshold_source { get; set; }
         public string model_month { get; set; }
     }

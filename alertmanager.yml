@@ -9,8 +9,8 @@ receivers:
   - name: 'default-receiver'
     email_configs:
       - to: 'danielfisher0@gmail.com'
-        from: '${SMTP_FROM}'
-        smarthost: '${SMTP_HOST}'
-        auth_username: '${SMTP_USER}'
-        auth_password: '${SMTP_PASS}'
+        from: 'danielfisher0@gmail.com'
+        smarthost: 'smtp.gmail.com:587'
+        auth_username: 'danielfisher0@gmail.com'
+        auth_password: 'dummy'
         require_tls: true

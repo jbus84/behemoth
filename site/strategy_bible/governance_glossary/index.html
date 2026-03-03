@@ -2215,10 +2215,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#stage-4-execution-realism" class="md-nav__link">
+  <a href="#stage-4-execution-realism-prelive-risk" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Stage 4: Execution Realism
+        Stage 4: Execution Realism (Prelive Risk)
       
     </span>
   </a>
@@ -2312,17 +2312,6 @@
     <span class="md-ellipsis">
       
         Interpretation Guide
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#traceability" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Traceability
       
     </span>
   </a>
@@ -3818,10 +3807,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#stage-4-execution-realism" class="md-nav__link">
+  <a href="#stage-4-execution-realism-prelive-risk" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Stage 4: Execution Realism
+        Stage 4: Execution Realism (Prelive Risk)
       
     </span>
   </a>
@@ -3921,17 +3910,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#traceability" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Traceability
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -3963,6 +3941,81 @@
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><strong><code>DR01_required_columns_present</code></strong></td>
+<td>Data Reliability</td>
+<td>Validates all necessary OHLC, spread, and velocity feature columns are present in the bar schema.</td>
+</tr>
+<tr>
+<td><strong><code>DR02_minimum_rows</code></strong></td>
+<td>Data Reliability</td>
+<td>Enforces a minimum sample size (e.g. 500,000 tick bars) to ensure statistical validity.</td>
+</tr>
+<tr>
+<td><strong><code>DR03_close_ts_parse_rate</code></strong></td>
+<td>Data Reliability</td>
+<td>High limit on the ratio of corrupted or un-parseable timestamps.</td>
+</tr>
+<tr>
+<td><strong><code>DR04_close_ts_monotonic</code></strong></td>
+<td>Data Reliability</td>
+<td>Hard-fails if time travels backward (non-monotonic sorting), which breaks causality.</td>
+</tr>
+<tr>
+<td><strong><code>DR05_duplicate_close_ts_rate</code></strong></td>
+<td>Data Reliability</td>
+<td>Protects against structural broker data replication errors (max allowed duplicates).</td>
+</tr>
+<tr>
+<td><strong><code>DR06_numeric_parse_rate_min</code></strong></td>
+<td>Data Reliability</td>
+<td>Protects against structural type corruption in price-fields.</td>
+</tr>
+<tr>
+<td><strong><code>DR07_core_null_rate_max</code></strong></td>
+<td>Data Reliability</td>
+<td>Bounds how many <code>NaN</code> or missing values are permitted in core fields.</td>
+</tr>
+<tr>
+<td><strong><code>DR08_ohlc_consistency</code></strong></td>
+<td>Data Reliability</td>
+<td>Enforces Open/High/Low/Close geometry (High must be max, Low must be min).</td>
+</tr>
+<tr>
+<td><strong><code>DR09_cost_range_nonnegative</code></strong></td>
+<td>Data Reliability</td>
+<td>Prevents impossible negative spreads or negative bar ranges.</td>
+</tr>
+<tr>
+<td><strong><code>DR10_hour_utc_valid_rate</code></strong></td>
+<td>Data Reliability</td>
+<td>Ensures the <code>hour_utc</code> parses exclusively into valid 0-23 integers.</td>
+</tr>
+<tr>
+<td><strong><code>DR11_finite_feature_rate</code></strong></td>
+<td>Data Reliability</td>
+<td>Ensures z-scored and velocity statistical features haven't exploded to Infinity.</td>
+</tr>
+<tr>
+<td><strong><code>DR12_extreme_move_rate</code></strong></td>
+<td>Data Reliability</td>
+<td>Flags abnormal spikes or mathematically erratic price jumps vs. robust median.</td>
+</tr>
+<tr>
+<td><strong><code>DR13_trading_day_coverage</code></strong></td>
+<td>Data Reliability</td>
+<td>Ensures the dataset actually covers sufficient trading days (e.g., min 220 calendar days).</td>
+</tr>
+<tr>
+<td><strong><code>DR14_hour_coverage</code></strong></td>
+<td>Data Reliability</td>
+<td>Ensures the dataset isn't missing large blocks of hours within days.</td>
+</tr>
+<tr>
+<td><strong><code>DR15_hour_concentration</code></strong></td>
+<td>Data Reliability</td>
+<td>Prevents the dataset from artificially occurring mostly at one time of day.</td>
+</tr>
 <tr>
 <td><strong><code>D16_spread_regime_shift_z</code></strong></td>
 <td>Data Foundation</td>
@@ -4013,6 +4066,13 @@
 </tbody>
 </table>
 <h3 id="stage-3-monthly-walk-forward-optimization-wfo">Stage 3: Monthly Walk-Forward Optimization (WFO)<a class="headerlink" href="#stage-3-monthly-walk-forward-optimization-wfo" title="Permanent link">&para;</a></h3>
+<p><em>(Note: Walk-Forward checks start at <code>W13</code> historically tied to external validation metrics; <code>W01</code> through <code>W12</code> are deprecated/non-existent.)</em>
+| Code | Governance Category | Purpose / Abstract Meaning |
+| --- | --- | --- |
+| <strong><code>W13_threshold_fragility</code></strong> | WFO Stability | Checks the steepness of the profit curve around the execution threshold. Steep slopes fail this check to avoid edge-case overfitting. |
+| <strong><code>W14_brier_drift_std</code></strong> | WFO Stability | Tracks the standard deviation of the CatBoost model's probabilistic Brier score. High drift indicates the model is struggling to calibrate out-of-sample. |
+| <strong><code>W15_selection_turnover</code></strong> | WFO Stability | Evaluates how often the model flips strategies month-over-month (Jaccard distance). Punishes hyperactive threshold jumping. |</p>
+<h3 id="stage-4-execution-realism-prelive-risk">Stage 4: Execution Realism (Prelive Risk)<a class="headerlink" href="#stage-4-execution-realism-prelive-risk" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
@@ -4023,36 +4083,59 @@
 </thead>
 <tbody>
 <tr>
-<td><strong><code>W13_threshold_fragility</code></strong></td>
-<td>WFO Stability</td>
-<td>Checks the steepness of the profit curve around the execution threshold. Steep slopes fail this check to avoid edge-case overfitting.</td>
+<td><strong><code>E01_join_integrity</code></strong></td>
+<td>Execution Hardening</td>
+<td>Enforces near-perfect join match rates against tick data with zero duplicated timestamp keys.</td>
 </tr>
 <tr>
-<td><strong><code>W14_brier_drift_std</code></strong></td>
-<td>WFO Stability</td>
-<td>Tracks the standard deviation of the CatBoost model's probabilistic Brier score. High drift indicates the model is struggling to calibrate out-of-sample.</td>
+<td><strong><code>E02_fill_rate_envelope</code></strong></td>
+<td>Execution Hardening</td>
+<td>Checks the actual simulated fill percentage against required limits, assuring strategy triggers actually execute.</td>
 </tr>
 <tr>
-<td><strong><code>W15_selection_turnover</code></strong></td>
-<td>WFO Stability</td>
-<td>Evaluates how often the model flips strategies month-over-month (Jaccard distance). Punishes hyperactive threshold jumping.</td>
+<td><strong><code>E03_overshoot_tail</code></strong></td>
+<td>Execution Hardening</td>
+<td>Asserts the 95th percentile of price overshoot doesn't aggressively exceed the production limit cap.</td>
 </tr>
-</tbody>
-</table>
-<h3 id="stage-4-execution-realism">Stage 4: Execution Realism<a class="headerlink" href="#stage-4-execution-realism" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
 <tr>
-<th>Code</th>
-<th>Governance Category</th>
-<th>Purpose / Abstract Meaning</th>
+<td><strong><code>E04_latency_control</code></strong></td>
+<td>Execution Hardening</td>
+<td>Validates the actual measured touch-to-fill latency conforms to realistic broker latency medians and tails.</td>
 </tr>
-</thead>
-<tbody>
+<tr>
+<td><strong><code>E05_no_touch_rate</code></strong></td>
+<td>Execution Hardening</td>
+<td>Limits the percentage of orders that enter the book but never touch the limit price.</td>
+</tr>
+<tr>
+<td><strong><code>E06_cap_curve_monotonicity</code></strong></td>
+<td>Execution Hardening</td>
+<td>Ensures profit scaling behaves monotonically up to the barrier plateau, proving the barrier mathematically acts as a ceiling.</td>
+</tr>
+<tr>
+<td><strong><code>E07_session_dispersion</code></strong></td>
+<td>Execution Hardening</td>
+<td>Enforces variance limits on overshoot globally to detect reliance on hyper-specific timezone volatility.</td>
+</tr>
+<tr>
+<td><strong><code>E08_state_fragility</code></strong></td>
+<td>Execution Hardening</td>
+<td>Detects if performance depends excessively on statistically fragile, low-volume sub-states.</td>
+</tr>
+<tr>
+<td><strong><code>E09_worst_window_stress</code></strong></td>
+<td>Execution Hardening</td>
+<td>Guards against catastrophic out-of-sample monthly tail drops. Guarantees worst-month performance exceeds the acceptable floor constraint.</td>
+</tr>
+<tr>
+<td><strong><code>E10_execution_net_viability</code></strong></td>
+<td>Execution Hardening</td>
+<td>Final aggregate execution check. Mandates strictly positive theoretical net-spread Lower Bound 95% over acceptable trade volumes.</td>
+</tr>
 <tr>
 <td><strong><code>E11_session_overshoot_dispersion</code></strong></td>
 <td>Execution Hardening</td>
-<td>Checks the variance of profit overshoot after enforcing causal session caps. Detects models exploiting specific, unfillable timezone volatilities.</td>
+<td>Checks the variance of profit overshoot after enforcing causal session caps specifically.</td>
 </tr>
 <tr>
 <td><strong><code>E12_cap_plateau_width_pips</code></strong></td>
@@ -4217,18 +4300,23 @@
 </thead>
 <tbody>
 <tr>
+<td><strong><code>B10.1</code> - <code>B10.7</code></strong></td>
+<td>Base SLA Backlog</td>
+<td>The structural process risks implemented and evaluated manually (e.g. documentation freshness, escalation SLAs).</td>
+</tr>
+<tr>
 <td><strong><code>B11_open_risks</code></strong></td>
-<td>SLA Backlog</td>
-<td>The absolute count of manually recorded Jira/runbook risks currently marked open.</td>
+<td>SLA Targets</td>
+<td>The absolute count of manually recorded Jira/runbook risks currently marked open for a given symbol.</td>
 </tr>
 <tr>
 <td><strong><code>B12_high_open</code></strong></td>
-<td>SLA Backlog</td>
+<td>SLA Targets</td>
 <td>The count of High/Critical severity open infrastructural risks.</td>
 </tr>
 <tr>
 <td><strong><code>B13_avg_days_open</code></strong></td>
-<td>SLA Backlog</td>
+<td>SLA Targets</td>
 <td>Tracks team compliance on fixing known alpha threats within service-level agreements.</td>
 </tr>
 </tbody>
@@ -4275,11 +4363,6 @@
 <li><strong>Early Stages (D -&gt; E):</strong> Focuses heavily on the mechanics of data integrity, CatBoost model stability, and realistic spread/slippage parameterization.</li>
 <li><strong>Middle Stages (R -&gt; T):</strong> Focuses on the composition of the selected sub-universe and mathematically proving the statistical edge is immune to multiple-comparisons and cost-friction shocks.</li>
 <li><strong>Late Stages (G -&gt; EM):</strong> Focuses on human operational SLA compliance, code-drift prevention, and absolute final-mile execution non-determinism checks.</li>
-</ul>
-<h2 id="traceability">Traceability<a class="headerlink" href="#traceability" title="Permanent link">&para;</a></h2>
-<ul>
-<li><a href="../governance_mapping/"><code>governance_mapping.md</code></a></li>
-<li><a href="../metric_dictionary/"><code>metric_dictionary.md</code></a></li>
 </ul>
 
 

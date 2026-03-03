@@ -212,6 +212,13 @@ def _build_events_for_library(
 
 
 def _feature_cols(d: pd.DataFrame) -> list[str]:
+    """Dynamically determine the 16 model feature columns present in the frame.
+    
+    IMPORTANT: The returned list includes 13 market features AND 3 structural parameters 
+    (bar_ticks, horizon, barrier_pips). These structural parameters are critical meta-learning
+    state constraints that allow the CatBoost model to partition its thresholds contextually. 
+    Do NOT remove them under the mistaken belief that they are 'leakage'.
+    """
     base = [
         "cost_est_pips",
         "range_pips",
@@ -313,7 +320,6 @@ def _rolling_day_threshold_vector(
     )
 
     lookback = pd.Timedelta(days=int(max(1, lookback_days)))
-    seen_test_days: list[pd.Timestamp] = []
     train_items = list(train_by_day.items())
     for day in sorted(test_by_day_idx.keys()):
         start = day - lookback
@@ -321,9 +327,6 @@ def _rolling_day_threshold_vector(
         for d, arr in train_items:
             if start <= d < day:
                 parts.append(arr)
-        for d in seen_test_days:
-            if start <= d < day:
-                parts.append(test_by_day_vals[d])
         hist = np.concatenate(parts) if parts else np.array([], dtype=float)
         src_label = "rolling_history"
         if len(hist) < int(max(1, min_history)):
@@ -338,7 +341,6 @@ def _rolling_day_threshold_vector(
             src_label = "no_history"
         out[test_by_day_idx[day]] = thr
         src[test_by_day_idx[day]] = src_label
-        seen_test_days.append(day)
     return out, src
 
 

@@ -160,6 +160,9 @@ class TestOcoPrediction:
             pred_prob=0.72,
             threshold_exec=0.65,
             selected_exec=1,
+            horizon=30,
+            barrier_pips=3.0,
+            cap_pips=1.5,
             threshold_source="rolling_history",
             model_month="2025-12",
         )
@@ -174,6 +177,9 @@ class TestOcoPrediction:
                 pred_prob=1.5,  # out of bounds
                 threshold_exec=0.65,
                 selected_exec=0,
+                horizon=30,
+                barrier_pips=3.0,
+                cap_pips=1.5,
                 threshold_source="rolling_history",
                 model_month="2025-12",
             )

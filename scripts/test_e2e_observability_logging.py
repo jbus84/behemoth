@@ -67,6 +67,7 @@ def test_observability_lifecycle():
         # Update Trade
         logger.info("Step 4: Closing Trade...")
         update_req = {
+            "symbol": symbol,
             "broker_pos_id": "pos_12345",
             "status": "CLOSED",
             "exit_price": 1.0865,

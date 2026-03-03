@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS trades (
     entry_ts TIMESTAMP WITH TIME ZONE,
     entry_bar_id INTEGER,
     horizon_bars INTEGER,
+    touch_bar_id INTEGER,
     exit_price DOUBLE,
     exit_ts TIMESTAMP WITH TIME ZONE,
     pnl_pips DOUBLE,
@@ -72,10 +73,14 @@ _INSERT_SQL = (
 )
 
 _SELECT_SQL = """
-SELECT row_id, ts, close_ts, open_price, high_price, low_price,
-       close_price, spread, tick_volume, hl_first, hl_pos_frac
-FROM tick_bars
-WHERE symbol = ?
+SELECT * FROM (
+    SELECT row_id, ts, close_ts, open_price, high_price, low_price,
+           close_price, spread, tick_volume, hl_first, hl_pos_frac
+    FROM tick_bars
+    WHERE symbol = ?
+    ORDER BY row_id DESC
+    LIMIT 600
+) sub
 ORDER BY row_id ASC
 """
 
@@ -137,6 +142,16 @@ class StateManager:
             ],
         )
         self._row_counters[sym] = idx + 1
+
+        if (idx + 1) % 100 == 0:
+            self._prune(sym, idx + 1)
+
+    def _prune(self, symbol: str, current_idx: int) -> None:
+        """Delete old rows to prevent unbounded growth."""
+        self._con.execute(
+            "DELETE FROM tick_bars WHERE symbol = ? AND row_id < ?",
+            [symbol, current_idx - 600],
+        )
 
     def bar_count(self, symbol: str) -> int:
         """Return the number of bars currently stored for a symbol."""
@@ -235,13 +250,20 @@ class StateManager:
     def get_active_trades(self, symbol: str) -> list[dict]:
         """Fetch all currently OPEN trades for state recovery."""
         res = self._con.execute(
-            "SELECT broker_pos_id, entry_bar_id, horizon_bars FROM trades WHERE symbol = ? AND status = 'OPEN'",
+            "SELECT broker_pos_id, entry_bar_id, horizon_bars, touch_bar_id FROM trades WHERE symbol = ? AND status = 'OPEN'",
             [symbol.upper()],
         ).fetchall()
         return [
-            {"broker_pos_id": r[0], "entry_bar_id": r[1], "horizon": r[2]}
+            {"broker_pos_id": r[0], "entry_bar_id": r[1], "horizon": r[2], "touch_bar_id": r[3]}
             for r in res
         ]
+
+    def touch_trade(self, broker_pos_id: str, touch_bar_id: int) -> None:
+        """Record the bar id when a position's barrier was touched."""
+        self._con.execute(
+            "UPDATE trades SET touch_bar_id = ? WHERE broker_pos_id = ?",
+            [touch_bar_id, broker_pos_id],
+        )
 
     def update_trade(
         self,

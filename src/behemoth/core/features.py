@@ -27,7 +27,6 @@ to guarantee full-precision rolling statistics and avoid partial-window noise.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -171,8 +170,8 @@ def compute_features_from_bars(
 
     # ── ret_z, ret_abs_z ──
     vol_ref = vel_h1.rolling(vw, min_periods=mp_vol).std(ddof=0).shift(1)
-    ret_z_s = vel_h1 / (vol_ref * math.sqrt(1.0))
-    ret_abs_z_s = vel_h1.abs() / (vol_ref * math.sqrt(1.0))
+    ret_z_s = vel_h1 / vol_ref
+    ret_abs_z_s = vel_h1.abs() / vol_ref
 
     # ── cost_est_pips ──
     spread_recent = spread_pips.rolling(cw, min_periods=mp_cost).median().shift(1)
