@@ -710,7 +710,7 @@ def run(
     edge_report_syms = _extract_symbols_from_edge_report(edge_report_md)
     expected_s09 = (
         set(
-            stage_status.loc[stage_status["gate_tick_exact"], "symbol"]
+            stage_status.loc[stage_status["gate_tick_exact"].fillna(False).astype(bool), "symbol"]
             .astype(str)
             .str.upper()
             .tolist()
