@@ -118,6 +118,14 @@ class StateManager:
 
         self._con.execute(_CREATE_SQL)
         self._row_counters: dict[str, int] = {}
+        
+        # Hydrate counters from persistent store to survive restarts
+        res = self._con.execute(
+            "SELECT symbol, bar_ticks, MAX(row_id) FROM tick_bars GROUP BY symbol, bar_ticks"
+        ).fetchall()
+        for r in res:
+            if r[2] is not None:
+                self._row_counters[f"{r[0].upper()}_{r[1]}"] = int(r[2]) + 1
 
     def append_bar(self, bar: IncomingTickBar) -> None:
         """Append a validated tick bar to the state buffer."""

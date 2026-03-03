@@ -165,8 +165,13 @@ def compute_features_from_bars(
     # ── range_pips ──
     range_pips_s = (high - low) / pip
 
+    # ── temporal gap masking (weekend protection) ──
+    bar_gap_sec = (timestamp - timestamp.shift(1)).dt.total_seconds()
+    is_weekend_gap = bar_gap_sec > 43200.0  # 12 hours
+    
     # ── ret1_pips (vel_pips_h1) ──
     vel_h1 = (close - close.shift(1)) / pip
+    vel_h1 = vel_h1.mask(is_weekend_gap, np.nan)
 
     # ── ret_z, ret_abs_z ──
     vol_ref = vel_h1.rolling(vw, min_periods=mp_vol).std(ddof=0).shift(1)
@@ -176,6 +181,7 @@ def compute_features_from_bars(
     # ── cost_est_pips ──
     spread_recent = spread_pips.rolling(cw, min_periods=mp_cost).median().shift(1)
     gap_abs = (open_ - close.shift(1)).abs() / pip
+    gap_abs = gap_abs.mask(is_weekend_gap, np.nan)
     slip_proxy = gap_abs.rolling(cw, min_periods=mp_cost_slip).quantile(0.75).shift(1)
     slip_fallback = (
         range_pips_s.rolling(cw, min_periods=mp_cost_slip).quantile(0.75).shift(1) * 0.2

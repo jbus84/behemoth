@@ -108,6 +108,8 @@ namespace cAlgo.Robots
                 {
                     Print("[ERROR] Backfill request timed out.");
                 }
+                
+                RecoverActiveTradesAsync();
             }
             catch (Exception ex)
             {
@@ -303,8 +305,10 @@ namespace cAlgo.Robots
                     Print($"[OCO CANCEL] Cancelled opposite leg for {pos.Label}");
                 }
                 
-                // Track touch via API
-                TrackTouchAsync(pos.Id.ToString());
+                // Track API Open
+                string candidateUid = pos.Label.Split('|')[0].Replace("Oco_", "");
+                int horizon = ExtractHorizon(pos.Label);
+                TrackOpenTradeAsync(Symbol.Name, candidateUid, pos.Id.ToString(), pos.TradeType.ToString(), pos.EntryPrice, pos.EntryTime, horizon);
             }
         }
 
@@ -314,19 +318,62 @@ namespace cAlgo.Robots
             if (pos.Label != null && pos.Label.StartsWith("Oco_"))
             {
                 _posAgeBars.Remove(pos.Id);
+                double pnlPips = pos.GrossProfit / (pos.VolumeInUnits * Symbol.PipValue); 
+                TrackUpdateTradeAsync(pos.Id.ToString(), "CLOSED", pos.ExitPrice ?? pos.EntryPrice, Server.Time, pnlPips);
             }
         }
 
-        private async void TrackTouchAsync(string brokerPosId)
+        private async void TrackOpenTradeAsync(string symbol, string candidateUid, string brokerPosId, string side, double entryPrice, DateTime entryTs, int horizon)
         {
             try {
-                var payload = new { symbol = _internalSymbol, broker_pos_id = brokerPosId };
-                var json = JsonSerializer.Serialize(payload, _jsonOpts);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-                await _client.PostAsync($"{BaseUrl}/trades/touch", content);
-            } catch (Exception ex) {
-                Print($"[API ERR] TrackTouchAsync: {ex}");
-            }
+                var payload = new { symbol = symbol, candidate_uid = candidateUid, broker_pos_id = brokerPosId, side = side, entry_price = entryPrice, entry_ts = entryTs.ToUniversalTime().ToString("O"), horizon = horizon };
+                var content = new StringContent(JsonSerializer.Serialize(payload, _jsonOpts), Encoding.UTF8, "application/json");
+                await _client.PostAsync($"{BaseUrl}/trades/open", content);
+            } catch (Exception ex) { Print($"[API ERR] TrackOpenTradeAsync: {ex}"); }
+        }
+
+        private async void TrackUpdateTradeAsync(string brokerPosId, string status, double exitPrice, DateTime exitTs, double pnlPips)
+        {
+            try {
+                var payload = new { symbol = _internalSymbol, broker_pos_id = brokerPosId, status = status, exit_price = exitPrice, exit_ts = exitTs.ToUniversalTime().ToString("O"), pnl_pips = pnlPips };
+                var content = new StringContent(JsonSerializer.Serialize(payload, _jsonOpts), Encoding.UTF8, "application/json");
+                await _client.PostAsync($"{BaseUrl}/trades/update", content);
+            } catch (Exception ex) { Print($"[API ERR] TrackUpdateTradeAsync: {ex}"); }
+        }
+
+        private async void RecoverActiveTradesAsync()
+        {
+            try {
+                var resp = await _client.GetAsync($"{BaseUrl}/trades/active?symbol={_internalSymbol}");
+                if (resp.IsSuccessStatusCode)
+                {
+                    var body = await resp.Content.ReadAsStringAsync();
+                    var activeTrades = JsonSerializer.Deserialize<List<ActiveTradeDTO>>(body, _jsonOpts);
+                    if (activeTrades != null && activeTrades.Count > 0)
+                    {
+                        var statusResp = await _client.GetAsync($"{BaseUrl}/status");
+                        if (statusResp.IsSuccessStatusCode)
+                        {
+                            var statusBody = await statusResp.Content.ReadAsStringAsync();
+                            var statusList = JsonSerializer.Deserialize<List<StatusSymbolDTO>>(statusBody, _jsonOpts);
+                            var myStatus = statusList?.FirstOrDefault(s => s.symbol == _internalSymbol);
+                            if (myStatus != null)
+                            {
+                                int currentBarCount = myStatus.bar_count;
+                                foreach (var t in activeTrades)
+                                {
+                                    if (int.TryParse(t.broker_pos_id, out int pid))
+                                    {
+                                        int elapsed = currentBarCount - t.entry_bar_id;
+                                        _posAgeBars[pid] = Math.Max(0, elapsed);
+                                        Print($"[RECOVERY] Hydrated POS {pid} - Age: {_posAgeBars[pid]} / {t.horizon}");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ex) { Print($"[API ERR] RecoverActiveTradesAsync: {ex}"); }
         }
 
         protected override void OnStop()
@@ -357,5 +404,19 @@ namespace cAlgo.Robots
         public double cap_pips { get; set; }
         public string threshold_source { get; set; }
         public string model_month { get; set; }
+    }
+
+    public class ActiveTradeDTO
+    {
+        public string broker_pos_id { get; set; }
+        public int entry_bar_id { get; set; }
+        public int horizon { get; set; }
+        public int? touch_bar_id { get; set; }
+    }
+
+    public class StatusSymbolDTO
+    {
+        public string symbol { get; set; }
+        public int bar_count { get; set; }
     }
 }
