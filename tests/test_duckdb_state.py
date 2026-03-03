@@ -246,3 +246,124 @@ class TestDuckDBStateLifecycle:
             sm.append_bar(b)
         result = sm.compute_features(symbol="EURUSD", bar_ticks=100, horizon=30, barrier_pips=3.0)
         assert result is None
+
+
+class TestDuckDBTradeTracking:
+    """Test DuckDB state manager's trade lifecycle and ledger functions."""
+
+    @pytest.fixture
+    def sm(self):
+        from src.behemoth.runtime.state import StateManager
+        sm = StateManager()
+        # Create a dummy bar to anchor entry_bar_id to row 1
+        bars = _make_synthetic_bars(n=1)
+        sm.append_bar(bars[0])
+        yield sm
+        sm.close()
+
+    def test_open_trade(self, sm):
+        trade_id = sm.open_trade(
+            symbol="EURUSD",
+            candidate_uid="cand_1",
+            broker_pos_id="bp_100",
+            side="BUY",
+            entry_price=1.1000,
+            entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            horizon=12,
+        )
+        assert trade_id is not None
+
+        # Verify it went into 'OPEN' state
+        active = sm.get_active_trades("EURUSD")
+        assert len(active) == 1
+        assert active[0]["broker_pos_id"] == "bp_100"
+        assert active[0]["entry_bar_id"] == 0
+        assert active[0]["horizon"] == 12
+        assert active[0]["touch_bar_id"] is None
+
+    def test_touch_trade(self, sm):
+        sm.open_trade(
+            symbol="EURUSD",
+            candidate_uid="cand_1",
+            broker_pos_id="bp_100",
+            side="BUY",
+            entry_price=1.1000,
+            entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            horizon=12,
+        )
+        sm.touch_trade("bp_100", 5)
+
+        active = sm.get_active_trades("EURUSD")
+        assert len(active) == 1
+        assert active[0]["touch_bar_id"] == 5
+
+    def test_update_trade_closed(self, sm):
+        sm.open_trade(
+            symbol="EURUSD", candidate_uid="cand_1", broker_pos_id="bp_100",
+            side="BUY", entry_price=1.1000, entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            horizon=12
+        )
+        # Close the trade
+        sm.update_trade(
+            broker_pos_id="bp_100",
+            status="CLOSED",
+            exit_price=1.1050,
+            exit_ts=datetime(2025, 1, 1, 1, tzinfo=timezone.utc),
+            pnl_pips=50.0,
+        )
+
+        # Should no longer be active
+        assert len(sm.get_active_trades("EURUSD")) == 0
+
+        # Test Ledger Stats sum it correctly
+        stats = sm.get_ledger_stats()
+        assert len(stats) == 1
+        assert stats[0]["symbol"] == "EURUSD"
+        assert stats[0]["total_pnl"] == 50.0
+        assert stats[0]["win_rate"] == 1.0
+        assert stats[0]["closed_trades"] == 1
+
+    def test_get_latest_close_ts(self, sm):
+        ts = sm.get_latest_close_ts("EURUSD")
+        assert ts is not None
+        assert ts.year == 2025
+
+        ts_none = sm.get_latest_close_ts("GBPUSD")
+        assert ts_none is None
+
+    def test_log_audit_event(self, sm):
+        from src.behemoth.core.schemas import ModelFeatures
+        dummy_features = ModelFeatures(
+            cost_est_pips=1.0, range_pips=10.0, ret1_pips=2.0, ret_z=0.5, ret_abs_z=0.5,
+            vel_cost_units_h1=2.0, vel_abs_cost_units_h1=2.0, spread_z=0.1, tick_rate_z=0.1,
+            hour_utc=10.0, hl_first=1.0, hl_first_mean_24=0.5, hl_pos_frac_mean_24=0.5,
+            bar_ticks=100.0, horizon=24.0, barrier_pips=15.0
+        )
+        sm.log_audit_event("EURUSD", "cand1", 0.9, 0.5, dummy_features, "2025-01")
+        res = sm._con.execute("SELECT COUNT(*) FROM audit_logs").fetchone()
+        assert res[0] == 1
+
+    def test_get_all_symbols(self, sm):
+        syms = sm.get_all_symbols()
+        assert "EURUSD" in syms
+
+    def test_state_close(self, sm):
+        """Test DB connection cleanup."""
+        sm.close()
+        with pytest.raises(Exception):
+            sm.bar_count("EURUSD", 100)
+
+    def test_db_path_file_hydration(self, tmp_path, monkeypatch):
+        """Test StateManager creation with a file path and verify counter hydration."""
+        from src.behemoth.runtime.state import StateManager
+        db_file = tmp_path / "test_hydrate.db"
+
+        sm1 = StateManager(persist_path=str(db_file))
+        bars = _make_synthetic_bars(n=1)
+        sm1.append_bar(bars[0])
+        sm1.close()
+
+        # Reopen, should read the file and hydrate row_counters
+        sm2 = StateManager(persist_path=str(db_file))
+        assert sm2._row_counters["EURUSD_100"] == 1
+        sm2.close()

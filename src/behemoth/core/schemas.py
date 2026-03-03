@@ -1,7 +1,8 @@
 from __future__ import annotations
+
 from datetime import datetime
 from enum import Enum
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 from pydantic import BaseModel, Field
 
@@ -29,11 +30,11 @@ class IncomingTickBar(BaseModel):
     tick_volume: float = Field(..., ge=0, description="Total tick volume during bar")
 
     # Optional detailed intra-bar structure metrics (often emitted by our build_global_tick_bars.py)
-    high_pos_tick: Optional[float] = None
-    low_pos_tick: Optional[float] = None
-    hl_first: Optional[float] = None
-    hl_pos_delta_tick: Optional[float] = None
-    hl_pos_frac: Optional[float] = None
+    high_pos_tick: float | None = None
+    low_pos_tick: float | None = None
+    hl_first: float | None = None
+    hl_pos_delta_tick: float | None = None
+    hl_pos_frac: float | None = None
 
 
 class ModelFeatures(BaseModel):
@@ -46,10 +47,10 @@ class ModelFeatures(BaseModel):
     Rationale for Structural Constraints
     ------------------------------------
     The vector includes 13 continuous market features and 3 structural parameters
-    (``bar_ticks``, ``horizon``, ``barrier_pips``). These structural parameters are critical 
-    meta-learning state constraints. They allow the tree model to correctly partition 
+    (``bar_ticks``, ``horizon``, ``barrier_pips``). These structural parameters are critical
+    meta-learning state constraints. They allow the tree model to correctly partition
     its thresholds based on the exact domain space it is evaluating (e.g., separating logic
-    for a 30-pip barrier vs. a 2-pip barrier). Do not remove them to prevent WFO leakage; 
+    for a 30-pip barrier vs. a 2-pip barrier). Do not remove them to prevent WFO leakage;
     their inclusion is deliberate and structurally necessary.
 
     Warmup
@@ -171,7 +172,7 @@ class ModelFeatures(BaseModel):
 
     def to_array(self) -> list[float]:
         """Return feature values in schema order (for CatBoost input)."""
-        return [getattr(self, k) for k in self.model_fields.keys()]
+        return [getattr(self, k) for k in self.model_fields]
 
 
 class OcoPrediction(BaseModel):
@@ -179,12 +180,12 @@ class OcoPrediction(BaseModel):
     symbol: str
     close_ts: datetime
     candidate_uid: str = Field(..., description="The exact candidate state identity, e.g. EURUSD_b100_h30_bar... ")
-    
+
     # Model WFO Outputs
     pred_prob: float = Field(..., ge=0.0, le=1.0, description="CatBoost classifier raw probability")
     threshold_exec: float = Field(..., description="The strict rolling execution threshold (q=0.9)")
     selected_exec: int = Field(..., description="1 if pred_prob >= threshold_exec else 0")
-    
+
     # Structural Parameters (for cBot execution)
     horizon: int = Field(..., description="The horizon in bars (e.g. 6)")
     barrier_pips: float = Field(..., description="The OCO barrier distance in pips (e.g. 2.0)")
@@ -223,7 +224,7 @@ class ActiveTrade(BaseModel):
     broker_pos_id: str
     entry_bar_id: int
     horizon: int
-    touch_bar_id: Optional[int] = None
+    touch_bar_id: int | None = None
 
 
 class TradeUpdateRequest(BaseModel):
@@ -231,6 +232,6 @@ class TradeUpdateRequest(BaseModel):
     symbol: str
     broker_pos_id: str
     status: TradeStatus
-    exit_price: Optional[float] = None
-    exit_ts: Optional[datetime] = None
-    pnl_pips: Optional[float] = None
+    exit_price: float | None = None
+    exit_ts: datetime | None = None
+    pnl_pips: float | None = None
