@@ -376,6 +376,8 @@ def _wfo_monthly(
         x[c] = _safe_numeric(x[c])
     x = x.dropna(subset=feats + ["target_gross_pos", "target_gross_pips", "candidate_uid"]).copy()
 
+    import json as _json
+
     mode = str(threshold_mode).strip().lower()
     if mode not in {"rolling_days", "train_quantile"}:
         raise ValueError("threshold_mode must be rolling_days|train_quantile")
@@ -383,6 +385,8 @@ def _wfo_monthly(
     metric_rows: list[dict[str, Any]] = []
     thr_rows: list[dict[str, Any]] = []
     pred_rows: list[pd.DataFrame] = []
+    importance_rows: list[dict[str, Any]] = []
+
     for i, (test_start, test_end) in enumerate(months):
         if i < int(rolling_train_months):
             continue
@@ -427,14 +431,25 @@ def _wfo_monthly(
         p = model.predict_proba(te[feats])[:, 1]
         y = te["target_gross_pos"].astype(int).to_numpy()
 
+        # --- Feature Importance ---
+        fi = model.get_feature_importance()
+        imp_dict = {"test_month": test_start.strftime("%Y-%m")}
+        for f_name, f_val in zip(feats, fi):
+            imp_dict[f_name] = float(f_val)
+        importance_rows.append(imp_dict)
+
         # ── Export model binary + threshold config for production API ──
         if model_export_dir is not None and symbol:
-            import json as _json
-
             model_export_dir.mkdir(parents=True, exist_ok=True)
             month_tag = test_start.strftime("%Y-%m")
             cbm_path = model_export_dir / f"{symbol}_model_{month_tag}.cbm"
             model.save_model(str(cbm_path))
+            
+            # Export Importances CSV
+            imp_df = pd.DataFrame({"feature": feats, "importance": fi}).sort_values("importance", ascending=False)
+            imp_path = model_export_dir / f"{symbol}_feature_importance_{month_tag}.csv"
+            imp_df.to_csv(imp_path, index=False)
+
             # Compute execution threshold from train predictions
             exec_thr = float(np.quantile(p_tr, float(exec_q)))
             thr_meta = {
@@ -448,7 +463,8 @@ def _wfo_monthly(
             }
             thr_path = cbm_path.with_suffix(".json")
             thr_path.write_text(_json.dumps(thr_meta, indent=2))
-            print(f"exported: {cbm_path} + {thr_path}")
+            print(f"exported: {cbm_path} + {thr_path} + {imp_path}")
+
         from sklearn.metrics import brier_score_loss, roc_auc_score  # local import
 
         auc = float(roc_auc_score(y, p))
@@ -528,11 +544,17 @@ def _wfo_monthly(
                 pred_chunk["threshold_source"] = np.asarray(src_vec, dtype=object)
         pred_rows.append(pred_chunk)
     preds = pd.concat(pred_rows, ignore_index=True) if pred_rows else pd.DataFrame()
-    return pd.DataFrame(metric_rows), pd.DataFrame(thr_rows), preds
+    importance = pd.DataFrame(importance_rows) if importance_rows else pd.DataFrame()
+    return pd.DataFrame(metric_rows), pd.DataFrame(thr_rows), preds, importance
+
 
 
 def _write_report(
-    report_out: Path, metrics: pd.DataFrame, thresholds: pd.DataFrame, cfg: dict[str, Any]
+    report_out: Path, 
+    metrics: pd.DataFrame, 
+    thresholds: pd.DataFrame, 
+    importance: pd.DataFrame,
+    cfg: dict[str, Any]
 ) -> None:
     lines: list[str] = []
     lines.append("# EURUSD Tick Opportunity Monthly WFO (3M->1M)")
@@ -563,6 +585,16 @@ def _write_report(
         f"- execution_quantile: `{cfg.get('execution_quantile', DEFAULTS['execution_quantile'])}`"
     )
     lines.append(f"- oco_hold_mode: `{cfg.get('oco_hold_mode', DEFAULTS['oco_hold_mode'])}`")
+    lines.append("")
+    lines.append("## Feature Importance")
+    if not importance.empty:
+        # Calculate mean importance across all months (ignoring 'test_month' col)
+        numeric_cols = [c for c in importance.columns if c != "test_month"]
+        mean_imp = importance[numeric_cols].mean().sort_values(ascending=False).to_frame("mean_importance")
+        mean_imp.index.name = "feature"
+        lines.append(mean_imp.reset_index().to_markdown(index=False))
+    else:
+        lines.append("_empty_")
     lines.append("")
     lines.append("## Monthly Metrics")
     lines.append(metrics.to_markdown(index=False) if not metrics.empty else "_empty_")
@@ -657,6 +689,7 @@ def main() -> None:
     all_metrics: list[pd.DataFrame] = []
     all_thresholds: list[pd.DataFrame] = []
     all_preds: list[pd.DataFrame] = []
+    all_importance: list[pd.DataFrame] = []
     out_dir = Path(str(cfg["out_dir"]))
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -679,7 +712,7 @@ def main() -> None:
         ev_path = out_dir / f"{symbol}_{lib}_events_eval{eval_year}.parquet"
         ev.to_parquet(ev_path, index=False)
         print(f"wrote: {ev_path}")
-        m, t, p = _wfo_monthly(
+        m, t, p, imp = _wfo_monthly(
             ev,
             library=lib,
             symbol=symbol,
@@ -716,22 +749,31 @@ def main() -> None:
             p.to_parquet(p_out, index=False)
             print(f"wrote: {p_out}")
             all_preds.append(p)
+        if not imp.empty:
+            imp_out = out_dir / f"{symbol}_{lib}_monthly_importance.csv"
+            imp.to_csv(imp_out, index=False)
+            print(f"wrote: {imp_out}")
+            all_importance.append(imp)
 
     metrics = pd.concat(all_metrics, ignore_index=True) if all_metrics else pd.DataFrame()
     thresholds = pd.concat(all_thresholds, ignore_index=True) if all_thresholds else pd.DataFrame()
     preds = pd.concat(all_preds, ignore_index=True) if all_preds else pd.DataFrame()
+    importance = pd.concat(all_importance, ignore_index=True) if all_importance else pd.DataFrame()
     met_all = out_dir / f"{symbol}_monthly_metrics_all.csv"
     thr_all = out_dir / f"{symbol}_monthly_thresholds_all.csv"
+    imp_all = out_dir / f"{symbol}_monthly_importance_all.csv"
     metrics.to_csv(met_all, index=False)
     thresholds.to_csv(thr_all, index=False)
+    importance.to_csv(imp_all, index=False)
     preds_all = out_dir / f"{symbol}_monthly_predictions_all.parquet"
     preds.to_parquet(preds_all, index=False)
     print(f"wrote: {met_all}")
     print(f"wrote: {thr_all}")
+    print(f"wrote: {imp_all}")
     print(f"wrote: {preds_all}")
 
     report_out = Path(str(cfg["report_out"]))
-    _write_report(report_out, metrics, thresholds, cfg)
+    _write_report(report_out, metrics, thresholds, importance, cfg)
     print(f"wrote: {report_out}")
 
 
