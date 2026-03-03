@@ -77,11 +77,11 @@ def _lock_for_symbol(lock_dir: Path, symbol: str) -> Path:
 
 def _reduced_states_for_symbol(base: Path, symbol: str) -> Path:
     s = str(symbol).upper()
-    if s == "EURUSD":
-        return base / "reduced_core" / "EURUSD_oco_reduced_states.csv"
-    if s == "GBPUSD":
-        return base / "reduced_core_gbpusd" / "GBPUSD_oco_reduced_states.csv"
-    return base / "reduced_core_usdjpy" / "USDJPY_oco_reduced_states.csv"
+    s_low = s.lower()
+
+    folder = "reduced_core" if s in ("EURUSD", "AUDUSD", "USDCAD") else f"reduced_core_{s_low}"
+
+    return base / folder / f"{s}_oco_reduced_states.csv"
 
 
 def _add_check(

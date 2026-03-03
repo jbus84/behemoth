@@ -659,7 +659,7 @@ def run(
     )
 
     # C4a: No NaNs in emitted edge metrics.
-    nan_count = 0  # Relaxed for early-terminating symbols
+    nan_count = int(pd.to_numeric(edge["metric_value"], errors="coerce").isna().sum()) if not edge.empty else 0
     _add_check(
         checks_rows,
         check_id="C4A",

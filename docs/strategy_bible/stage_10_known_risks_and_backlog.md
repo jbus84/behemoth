@@ -50,7 +50,7 @@ Status workflow:
 | R10.5 | Audit cleanliness regression after upstream changes | 4 | 2 | 8 | Open | Stage 7 C01-C10 with zero critical/high failures |
 
 ## Pair Scope Constraint (Current Deployment)
-- Active OCO production scope remains `EURUSD`, `GBPUSD`, and `USDJPY`.
+- Active OCO production scope is `EURUSD`, `GBPUSD`, `USDJPY`, `USDCHF`, `AUDUSD`, and `USDCAD`.
 - Pair scope governance is maintained by:
 - `docs/analysis/oco_rule_universe_registry_report.md`
 - Scope expansion requires a full Stage 1-10 replay and fresh governance lock artifacts.
@@ -163,7 +163,7 @@ If any trigger occurs, required action is immediate:
 <!-- GENERATED:STAGE_10:START -->
 ### Auto Snapshot - Stage 10
 
-- generated_at: `2026-03-03 16:43:59 UTC`
+- generated_at: `2026-03-03 22:07:07 UTC`
 - Risk backlog is derived from current logical-audit failures.
 - When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.
 

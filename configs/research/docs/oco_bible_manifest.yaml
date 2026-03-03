@@ -51,7 +51,7 @@ symbols:
     tick_exact_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/AUDUSD_oco_tick_exact_summary.csv
     robustness_summary_csv: data/analysis/tick_opportunity_mining/full_robustness/AUDUSD_oco_robustness_summary.csv
     edge_velocity_csv: ""
-    stop_limit_summary_csv: data/analysis/tick_opportunity_mining/stop_limit_tickfill_audusd_fixed/summary.csv
+    stop_limit_summary_csv: data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/summary.csv
     mining_report_md: docs/analysis/audusd_tick_opportunity_mining_report.md
     wfo_report_md: docs/analysis/audusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md
     reduced_core_report_md: docs/analysis/audusd_oco_reduced_core_rolling_report.md

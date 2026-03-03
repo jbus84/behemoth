@@ -220,3 +220,11 @@ def test_run_audit_writes_outputs(tmp_path: Path, monkeypatch):
     assert out_checks.exists()
     assert out_issues.exists()
     assert out_report.exists()
+
+
+def test_default_configs_includes_all_symbols() -> None:
+    from scripts.audit_oco_pipeline_logical_issues import _default_configs
+    configs = _default_configs()
+    assert set(configs.keys()) == {"EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"}
+    assert "reduced_core_rolling/EURUSD" in str(configs["EURUSD"].monthly_path.as_posix())
+    assert "reduced_core_rolling_usdcad/USDCAD" in str(configs["USDCAD"].monthly_path.as_posix())

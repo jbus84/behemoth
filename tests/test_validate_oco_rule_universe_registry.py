@@ -114,3 +114,11 @@ def test_rule_universe_registry_flags_lock_mismatch(tmp_path: Path) -> None:
     ru07 = checks[(checks["check_id"] == "RU07") & (checks["symbol"] == "EURUSD")]
     assert not ru07.empty
     assert ru07.iloc[0]["status"] == "fail"
+
+
+def test_reduced_states_for_symbol_paths() -> None:
+    from scripts.validate_oco_rule_universe_registry import _reduced_states_for_symbol
+    base = Path("/base")
+    assert "reduced_core/EURUSD_oco_reduced_states.csv" in str(_reduced_states_for_symbol(base, "EURUSD").as_posix())
+    assert "reduced_core/AUDUSD_oco_reduced_states.csv" in str(_reduced_states_for_symbol(base, "AUDUSD").as_posix())
+    assert "reduced_core_usdcad/USDCAD_oco_reduced_states.csv" in str(_reduced_states_for_symbol(base, "USDCAD").as_posix())

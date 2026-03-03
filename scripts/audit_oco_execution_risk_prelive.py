@@ -44,53 +44,34 @@ class SymbolConfig:
 
 
 def _default_configs() -> dict[str, SymbolConfig]:
-    return {
-        "EURUSD": SymbolConfig(
-            symbol="EURUSD",
+    configs = {}
+    for s in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]:
+        s_low = s.lower()
+        if s in ("EURUSD", "AUDUSD"):
+            pred_folder = "wfo_2025_m3to1_oco_fullcap"
+            red_folder = "reduced_core_rolling"
+            stop_folder = "stop_limit_tickfill_fullcap"
+        else:
+            pred_folder = f"wfo_2025_m3to1_oco_fullcap_{s_low}"
+            red_folder = f"reduced_core_rolling_{s_low}"
+            stop_folder = "stop_limit_tickfill_fullcap"
+
+        configs[s] = SymbolConfig(
+            symbol=s,
             pred_path=Path(
-                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet"
+                f"data/analysis/tick_opportunity_mining/{pred_folder}/{s}_oco_monthly_predictions.parquet"
             ),
             monthly_path=Path(
-                "data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv"
+                f"data/analysis/tick_opportunity_mining/{red_folder}/{s}_oco_reduced_monthly.csv"
             ),
             detail_path=Path(
-                "data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv"
+                f"data/analysis/tick_opportunity_mining/{stop_folder}/{s}_stop_limit_tickfill_detail.csv"
             ),
             caps_path=Path(
-                "data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_caps.csv"
+                f"data/analysis/tick_opportunity_mining/{stop_folder}/{s}_stop_limit_tickfill_caps.csv"
             ),
-        ),
-        "GBPUSD": SymbolConfig(
-            symbol="GBPUSD",
-            pred_path=Path(
-                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_predictions.parquet"
-            ),
-            monthly_path=Path(
-                "data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_monthly.csv"
-            ),
-            detail_path=Path(
-                "data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/GBPUSD_stop_limit_tickfill_detail.csv"
-            ),
-            caps_path=Path(
-                "data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/GBPUSD_stop_limit_tickfill_caps.csv"
-            ),
-        ),
-        "USDJPY": SymbolConfig(
-            symbol="USDJPY",
-            pred_path=Path(
-                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_monthly_predictions.parquet"
-            ),
-            monthly_path=Path(
-                "data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_monthly.csv"
-            ),
-            detail_path=Path(
-                "data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDJPY_stop_limit_tickfill_detail.csv"
-            ),
-            caps_path=Path(
-                "data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDJPY_stop_limit_tickfill_caps.csv"
-            ),
-        ),
-    }
+        )
+    return configs
 
 
 def _parse_symbols(raw: str) -> list[str]:

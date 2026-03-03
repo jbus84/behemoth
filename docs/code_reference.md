@@ -27,7 +27,7 @@
 ## Rolling Historical Evidence
 
 <!-- GENERATED:SYSREF:CODE_REFERENCE:START -->
-- generated_at_utc: `2026-03-03T16:44:25Z`
+- generated_at_utc: `2026-03-03T22:01:56Z`
 - symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD`
 - stop-limit_reference: `stage_04_execution_realism`
 - artifact_sources:
