@@ -34,7 +34,6 @@ import pandas as pd
 
 from src.behemoth.core.schemas import ModelFeatures
 
-
 # ── Constants ─────────────────────────────────────────────────────────
 
 class FeatureConstants:
@@ -149,7 +148,7 @@ def compute_features_from_bars(
     # ── Temporal gap masking (weekend protection) ──
     bar_gap_sec = (timestamp - timestamp.shift(1)).dt.total_seconds()
     is_weekend_gap = bar_gap_sec > FeatureConstants.WEEKEND_GAP_SEC
-    
+
     hour_utc = float(close_ts.iloc[-1].hour)
     durations = (close_ts - timestamp).dt.total_seconds().clip(lower=FeatureConstants.DURATION_MIN_SEC)
 
@@ -266,17 +265,17 @@ def _compute_cost_features(
     mp_cost_slip = cfg.min_periods_cost_slip
 
     spread_recent = spread_pips.rolling(cw, min_periods=mp_cost).median().shift(1)
-    
+
     gap_abs = (open_ - close.shift(1)).abs() / pip
     gap_abs = gap_abs.mask(is_weekend_gap, np.nan)
-    
+
     slip_proxy = gap_abs.rolling(cw, min_periods=mp_cost_slip).quantile(FeatureConstants.SLIP_QUANTILE).shift(1)
     slip_fallback = (
-        range_pips_s.rolling(cw, min_periods=mp_cost_slip).quantile(FeatureConstants.SLIP_QUANTILE).shift(1) 
+        range_pips_s.rolling(cw, min_periods=mp_cost_slip).quantile(FeatureConstants.SLIP_QUANTILE).shift(1)
         * FeatureConstants.SLIP_FALLBACK_FACTOR
     )
     slip_proxy_pips = slip_proxy.fillna(slip_fallback).fillna(FeatureConstants.SLIP_FALLBACK_DEFAULT).clip(lower=FeatureConstants.SLIP_MIN_CLIP)
-    
+
     cost_est = (
         spread_recent.fillna(spread_pips.shift(1)).fillna(spread_pips.median())
         + slip_proxy_pips
@@ -291,13 +290,13 @@ def _compute_structural_features(df: pd.DataFrame) -> tuple[pd.Series, pd.Series
     """Compute smoothing of micro-structural markers."""
     hl_first_s = df["hl_first"].astype(float)
     hl_pos_frac_s = df["hl_pos_frac"].astype(float)
-    
+
     hl_first_mean_24 = hl_first_s.rolling(
         FeatureConstants.STRUCTURAL_WINDOW, min_periods=FeatureConstants.STRUCTURAL_MIN_PERIODS
     ).mean().shift(1)
-    
+
     hl_pos_frac_mean_24 = hl_pos_frac_s.rolling(
         FeatureConstants.STRUCTURAL_WINDOW, min_periods=FeatureConstants.STRUCTURAL_MIN_PERIODS
     ).mean().shift(1)
-    
+
     return hl_first_mean_24, hl_pos_frac_mean_24

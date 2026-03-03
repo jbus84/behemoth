@@ -11,14 +11,9 @@ The candidate UID format matches the WFO output:
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
-
-import yaml
-
-
-import os
 
 _DEFAULT_REGISTRY = Path(os.getenv("BEHEMOTH_REGISTRY_PATH", "configs/research/governance/oco_rule_universe_registry.yaml"))
 
@@ -35,7 +30,7 @@ class CandidateSpec:
     regime_desc: str = ""
 
     @staticmethod
-    def from_row(row: dict) -> "CandidateSpec":
+    def from_row(row: dict) -> CandidateSpec:
         """Build from a state_universe row in the live lock JSON."""
         return CandidateSpec(
             symbol=row["symbol"],
@@ -56,11 +51,11 @@ class CandidateRegistry:
     _caps_by_symbol: dict[str, float] = field(default_factory=dict)
 
     @classmethod
-    def load(cls, lock_dir: Path | str | None = None) -> "CandidateRegistry":
+    def load(cls, lock_dir: Path | str | None = None) -> CandidateRegistry:
         """Load exactly from per-symbol *_oco_live_lock.json files."""
         if lock_dir is None:
             lock_dir = Path(os.getenv("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco"))
-        
+
         import json
         p_dir = Path(lock_dir)
         if not p_dir.exists() or not p_dir.is_dir():
@@ -78,7 +73,7 @@ class CandidateRegistry:
                 candidates = [CandidateSpec.from_row(r) for r in rows]
                 reg._candidates_by_symbol[sym] = candidates
                 reg._frozen_timestamps[sym] = data.get("frozen_at_utc", "")
-                
+
                 # Extract execution cap from locked_runtime
                 locked = data.get("locked_runtime", {})
                 reg._caps_by_symbol[sym] = float(locked.get("production_cap_pips", 1.2))

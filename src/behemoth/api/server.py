@@ -14,33 +14,32 @@ Model loading:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
-import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timezone
 from pathlib import Path
-from contextlib import asynccontextmanager
-from typing import AsyncIterator, Optional
 
 from fastapi import FastAPI, HTTPException, Response
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 from pydantic import BaseModel, Field
-from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 
+from src.behemoth.core.registry import CandidateRegistry
 from src.behemoth.core.schemas import (
-    IncomingTick, 
-    IncomingTickBar, 
-    ModelFeatures, 
+    ActiveTrade,
+    IncomingTick,
+    IncomingTickBar,
+    ModelFeatures,
     OcoPrediction,
     TradeOpenRequest,
     TradeTouchRequest,
     TradeUpdateRequest,
-    ActiveTrade
 )
 from src.behemoth.runtime.state import StateManager
 from src.behemoth.runtime.tick_aggregator import TickAggregator
-from src.behemoth.core.registry import CandidateRegistry
-from src.behemoth.core.features import FeatureConfig, compute_features_from_bars
 
 logger = logging.getLogger("behemoth.api")
 
@@ -99,7 +98,7 @@ class AppConfig(BaseModel):
     symbols: list[str] = Field(
         default=["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]
     )
-    persist_db_path: Optional[str] = Field(
+    persist_db_path: str | None = Field(
         default_factory=lambda: os.getenv("BEHEMOTH_STATE_DB", "data/db/behemoth_runtime.db")
     )
 
@@ -113,10 +112,10 @@ _config = AppConfig()
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Modern lifespan handler replacing deprecated on_event."""
     global _state, _aggregators, _registry, _models_dir
-    
+
     # Start background monitor
     monitor_task = asyncio.create_task(_monitor_ledger())
-    
+
     if _config.persist_db_path:
         db_path = Path(_config.persist_db_path)
         db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -134,12 +133,12 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     try:
         _registry = CandidateRegistry.load(os.getenv("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco"))
         logger.info("Loaded %d candidates from governance locks", len(_registry.all_candidates()))
-        
+
         unique_bar_ticks = {int(c.bar_ticks) for c in _registry.all_candidates()}
         for bt in unique_bar_ticks:
             _aggregators[bt] = TickAggregator(bar_ticks=bt)
             logger.info("Initialized TickAggregator for %d ticks", bt)
-            
+
     except FileNotFoundError:
         _registry = None
         _aggregators[100] = TickAggregator(bar_ticks=100) # Fallback
@@ -149,11 +148,9 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     logger.info("Behemoth API started. Models dir: %s", _models_dir)
     yield
     monitor_task.cancel()
-    try:
+    with suppress(asyncio.CancelledError):
         await monitor_task
-    except asyncio.CancelledError:
-        pass
-        
+
     if _state:
         _state.close()
         _state = None
@@ -167,7 +164,7 @@ async def _monitor_ledger() -> None:
                 # Update bar counts (using 100-ticks as standard tracking metric)
                 for sym in _state.get_all_symbols():
                     METRIC_BAR_COUNT.labels(symbol=sym).set(_state.bar_count(sym, 100))
-                
+
                 # Update ledger stats (PnL, Win Rate)
                 stats = _state.get_ledger_stats()
                 for s in stats:
@@ -187,6 +184,7 @@ app = FastAPI(
 
 # Mount dashboard sub-router
 from src.behemoth.api.dashboard import router as dashboard_router
+
 app.include_router(dashboard_router)
 
 
@@ -206,11 +204,11 @@ def _load_models() -> None:
     for sym in _config.symbols:
         # Find latest model file by sorting
         candidates = sorted(_models_dir.glob(f"{sym}_model_*.cbm"))
-        
+
         force_month = os.getenv("BEHEMOTH_FORCE_MODEL_MONTH")
         if force_month:
             candidates = [c for c in candidates if force_month in c.stem]
-            
+
         if not candidates:
             logger.warning("No model found for %s (force_month=%s)", sym, force_month)
             continue
@@ -257,7 +255,7 @@ class StatusSymbol(BaseModel):
     symbol: str
     bar_count: int
     model_loaded: bool
-    model_month: Optional[str] = None
+    model_month: str | None = None
     has_threshold: bool
 
 
@@ -323,7 +321,7 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
 
     # Compute base rolling features per bar_ticks group
     base_features_by_ticks: dict[int, ModelFeatures] = {}
-    
+
     for cand in candidates:
         bt = int(cand.bar_ticks)
         if bt not in base_features_by_ticks:
@@ -337,13 +335,12 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
                 raise HTTPException(status_code=422, detail=f"Feature computation failed for {sym}")
             base_features_by_ticks[bt] = feats
 
-    import numpy as np
 
     thr_cfg = _thresholds.get(sym, {})
-    threshold_exec = float(thr_cfg.get("threshold_exec", 0.5))
-    threshold_source = str(thr_cfg.get("threshold_source", "default"))
-    model_month = _model_months.get(sym, "unknown")
-    
+    float(thr_cfg.get("threshold_exec", 0.5))
+    str(thr_cfg.get("threshold_source", "default"))
+    _model_months.get(sym, "unknown")
+
     # In live trading this is functionally current time, but in replay we must
     # exactly align with the state DB's reconstructed chronological limit.
     close_ts = _state.get_latest_close_ts(sym) or datetime.now(tz=timezone.utc)
@@ -449,7 +446,7 @@ async def open_trade(req: TradeOpenRequest):
     """Record an execution entry on the broker."""
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
-    
+
     internal_id = _state.open_trade(
         symbol=req.symbol,
         candidate_uid=req.candidate_uid,
@@ -476,7 +473,7 @@ async def touch_trade(req: TradeTouchRequest):
     """Record that a position's barrier was touched."""
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
-        
+
     sym = req.symbol.upper()
     res = _state._con.execute("SELECT MAX(row_id) FROM tick_bars WHERE symbol = ?", [sym]).fetchone()
     touch_bar_id = res[0] if res and res[0] is not None else 0
@@ -489,7 +486,7 @@ async def update_trade(req: TradeUpdateRequest):
     """Update a trade status (CLOSED/CANCELLED)."""
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
-    
+
     _state.update_trade(
         broker_pos_id=req.broker_pos_id,
         status=req.status.value,
@@ -497,23 +494,25 @@ async def update_trade(req: TradeUpdateRequest):
         exit_ts=req.exit_ts,
         pnl_pips=req.pnl_pips,
     )
-    
+
     METRIC_TRADES_TOTAL.labels(symbol=req.symbol, status=req.status.value).inc()
     if req.pnl_pips is not None:
         # Note: We need a way to look up the symbol from broker_pos_id if we want granular metrics here.
         # For now, we update a global or handle it in the background worker.
         pass
-        
+
     return {"status": "ok"}
 
 
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     """System health: model validity, buffer depths."""
+    if _state is None:
+        raise HTTPException(status_code=503, detail="State manager not initialized")
+
     bar_counts: dict[str, int] = {}
-    if _state:
-        for sym in _config.symbols:
-            bar_counts[sym] = _state.bar_count(sym, 100)
+    for sym in _config.symbols:
+        bar_counts[sym] = _state.bar_count(sym, 100)
 
     return HealthResponse(
         status="ok" if _models else "no_models",
@@ -557,7 +556,7 @@ async def backfill(req: BackfillRequest) -> dict:
     bars = []
     for agg in _aggregators.values():
         bars.extend(agg.add_ticks(req.ticks))
-        
+
     for bar in bars:
         _state.append_bar(bar)
 
@@ -587,7 +586,7 @@ async def ingest_tick(tick: IncomingTick) -> dict:
     bars = []
     for agg in _aggregators.values():
         bars.extend(agg.add_ticks([tick]))
-        
+
     bar_completed = False
     for bar in bars:
         _state.append_bar(bar)

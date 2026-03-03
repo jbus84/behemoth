@@ -14,8 +14,7 @@ Design:
   and calls the shared builder for mathematical correctness.
 """
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime
 
 import duckdb
 
@@ -117,7 +116,7 @@ class StateManager:
 
         self._con.execute(_CREATE_SQL)
         self._row_counters: dict[str, int] = {}
-        
+
         # Hydrate counters from persistent store to survive restarts
         res = self._con.execute(
             "SELECT symbol, bar_ticks, MAX(row_id) FROM tick_bars GROUP BY symbol, bar_ticks"
@@ -169,7 +168,7 @@ class StateManager:
         ).fetchone()
         return int(r[0]) if r else 0
 
-    def get_latest_close_ts(self, symbol: str) -> Optional[datetime]:
+    def get_latest_close_ts(self, symbol: str) -> datetime | None:
         """Return the close_ts of the most recent bar."""
         r = self._con.execute(
             "SELECT close_ts FROM tick_bars WHERE symbol = ? ORDER BY row_id DESC LIMIT 1",
@@ -183,7 +182,7 @@ class StateManager:
         bar_ticks: int,
         horizon: int,
         barrier_pips: float,
-    ) -> Optional[ModelFeatures]:
+    ) -> ModelFeatures | None:
         """Compute the 16-parameter feature vector for the latest bar.
 
         Delegates all rolling-window math to the canonical builder in
@@ -242,7 +241,7 @@ class StateManager:
         """Record the opening of a position from the cBot."""
         import uuid
         internal_id = str(uuid.uuid4())
-        
+
         # Fetch current bar count for the symbol to anchor the horizon
         res = self._con.execute(
             "SELECT MAX(row_id) FROM tick_bars WHERE symbol = ?", [symbol.upper()]
@@ -277,9 +276,9 @@ class StateManager:
         self,
         broker_pos_id: str,
         status: str,
-        exit_price: Optional[float] = None,
-        exit_ts: Optional[datetime] = None,
-        pnl_pips: Optional[float] = None,
+        exit_price: float | None = None,
+        exit_ts: datetime | None = None,
+        pnl_pips: float | None = None,
     ) -> None:
         """Update a trade status and exit data (CLOSED/CANCELLED)."""
         self._con.execute(
@@ -290,7 +289,7 @@ class StateManager:
     def get_ledger_stats(self) -> list[dict]:
         """Aggregate trade statistics for Prometheus gauges."""
         res = self._con.execute("""
-            SELECT 
+            SELECT
                 symbol,
                 SUM(CASE WHEN status = 'CLOSED' THEN pnl_pips ELSE 0 END) as total_pnl,
                 COUNT(CASE WHEN status = 'CLOSED' AND pnl_pips > 0 THEN 1 END) as wins,
