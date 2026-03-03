@@ -121,4 +121,4 @@ def test_reduced_states_for_symbol_paths() -> None:
     base = Path("/base")
     assert "reduced_core/EURUSD_oco_reduced_states.csv" in str(_reduced_states_for_symbol(base, "EURUSD").as_posix())
     assert "reduced_core/AUDUSD_oco_reduced_states.csv" in str(_reduced_states_for_symbol(base, "AUDUSD").as_posix())
-    assert "reduced_core_usdcad/USDCAD_oco_reduced_states.csv" in str(_reduced_states_for_symbol(base, "USDCAD").as_posix())
+    assert "reduced_core/USDCAD_oco_reduced_states.csv" in str(_reduced_states_for_symbol(base, "USDCAD").as_posix())
