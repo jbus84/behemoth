@@ -35,6 +35,28 @@ import pandas as pd
 from src.behemoth.core.schemas import ModelFeatures
 
 
+# ── Constants ─────────────────────────────────────────────────────────
+
+class FeatureConstants:
+    """Hardcoded physical constants and thresholds for feature computation."""
+
+    # Masking thresholds
+    WEEKEND_GAP_SEC = 43200.0  # 12 hours
+
+    # Slip proxy quantiles and factors
+    SLIP_QUANTILE = 0.75
+    SLIP_FALLBACK_FACTOR = 0.2
+    SLIP_FALLBACK_DEFAULT = 0.1
+    SLIP_MIN_CLIP = 0.01
+
+    # Structural feature rolling
+    STRUCTURAL_WINDOW = 24
+    STRUCTURAL_MIN_PERIODS = 8
+
+    # Safe float clipping
+    DURATION_MIN_SEC = 1e-6
+
+
 # ── Configuration ─────────────────────────────────────────────────────
 
 @dataclass(frozen=True)
@@ -122,110 +144,160 @@ def compute_features_from_bars(
         return None
 
     pip = pip_size(symbol)
+    close, open_, high, low, close_ts, timestamp = _extract_core_series(df)
 
-    # Resolve column names (DuckDB uses _price suffix, pandas uses raw names)
-    close_col = "close_price" if "close_price" in df.columns else "close"
-    open_col = "open_price" if "open_price" in df.columns else "open"
-    high_col = "high_price" if "high_price" in df.columns else "high"
-    low_col = "low_price" if "low_price" in df.columns else "low"
-    ts_col = "ts" if "ts" in df.columns else "timestamp"
-
-    close = df[close_col].astype(float)
-    open_ = df[open_col].astype(float)
-    high = df[high_col].astype(float)
-    low = df[low_col].astype(float)
-
-    close_ts = pd.to_datetime(df["close_ts"], utc=True)
-    timestamp = pd.to_datetime(df[ts_col], utc=True)
-
-    vw = cfg.vol_window
-    cw = cfg.cost_window
-    mp_vol = cfg.min_periods_vol
-    mp_cost = cfg.min_periods_cost
-    mp_cost_slip = cfg.min_periods_cost_slip
-
-    # ── hour_utc ──
+    # ── Temporal gap masking (weekend protection) ──
+    bar_gap_sec = (timestamp - timestamp.shift(1)).dt.total_seconds()
+    is_weekend_gap = bar_gap_sec > FeatureConstants.WEEKEND_GAP_SEC
+    
     hour_utc = float(close_ts.iloc[-1].hour)
+    durations = (close_ts - timestamp).dt.total_seconds().clip(lower=FeatureConstants.DURATION_MIN_SEC)
 
-    # ── duration + tick_rate ──
-    duration_sec = (close_ts - timestamp).dt.total_seconds().clip(lower=1e-6)
-    tick_rate_hz = df["tick_volume"].astype(float) / duration_sec
+    # ── Sub-components ──
+    tick_rate_z, spread_z, spread_pips = _compute_micro_features(df, pip, durations, cfg)
+    vel_h1, ret_z, ret_abs_z = _compute_velocity_features(close, pip, is_weekend_gap, cfg)
+    range_pips = (high - low) / pip
+    cost_est, vel_cu, vel_abs_cu = _compute_cost_features(
+        spread_pips, range_pips, open_, close, pip, is_weekend_gap, vel_h1, cfg
+    )
+    hl_first_m24, hl_pos_frac_m24 = _compute_structural_features(df)
 
-    # ── tick_rate_z ──
+    # ── Final Build ──
+    return _build_model_features(
+        df=df,
+        feats=(cost_est, range_pips, vel_h1, ret_z, ret_abs_z, vel_cu, vel_abs_cu, spread_z, tick_rate_z, hl_first_m24, hl_pos_frac_m24),
+        context=(hour_utc, bar_ticks, horizon, barrier_pips)
+    )
+
+
+def _extract_core_series(df: pd.DataFrame) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series, pd.Series, pd.Series]:
+    """Resolve column names and return strongly-typed base series."""
+    cc = "close_price" if "close_price" in df.columns else "close"
+    oc = "open_price" if "open_price" in df.columns else "open"
+    hc = "high_price" if "high_price" in df.columns else "high"
+    lc = "low_price" if "low_price" in df.columns else "low"
+    tc = "ts" if "ts" in df.columns else "timestamp"
+
+    close = df[cc].astype(float)
+    open_ = df[oc].astype(float)
+    high = df[hc].astype(float)
+    low = df[lc].astype(float)
+    close_ts = pd.to_datetime(df["close_ts"], utc=True)
+    timestamp = pd.to_datetime(df[tc], utc=True)
+    return close, open_, high, low, close_ts, timestamp
+
+
+def _build_model_features(df: pd.DataFrame, feats: tuple, context: tuple) -> ModelFeatures:
+    """Safely extract the last row into the ModelFeatures schema."""
+    cost_est, range_pips, vel_h1, ret_z, ret_abs_z, vel_cu, vel_abs_cu, spread_z, tick_rate_z, hl_first_m24, hl_pos_frac_m24 = feats
+    hour_utc, bar_ticks, horizon, barrier_pips = context
+
+    i = len(df) - 1
+
+    def _safe(series: pd.Series) -> float:
+        v = float(series.iloc[i])
+        return v if np.isfinite(v) else float("nan")
+
+    return ModelFeatures(
+        cost_est_pips=_safe(cost_est),
+        range_pips=_safe(range_pips),
+        ret1_pips=_safe(vel_h1),
+        ret_z=_safe(ret_z),
+        ret_abs_z=_safe(ret_abs_z),
+        vel_cost_units_h1=_safe(vel_cu),
+        vel_abs_cost_units_h1=_safe(vel_abs_cu),
+        spread_z=_safe(spread_z),
+        tick_rate_z=_safe(tick_rate_z),
+        hour_utc=hour_utc,
+        hl_first=_safe(df["hl_first"].astype(float)),
+        hl_first_mean_24=_safe(hl_first_m24),
+        hl_pos_frac_mean_24=_safe(hl_pos_frac_m24),
+        bar_ticks=float(bar_ticks),
+        horizon=float(horizon),
+        barrier_pips=float(barrier_pips),
+    )
+
+
+def _compute_micro_features(
+    df: pd.DataFrame, pip: float, durations: pd.Series, cfg: FeatureConfig
+) -> tuple[pd.Series, pd.Series, pd.Series]:
+    vw = cfg.vol_window
+    mp_vol = cfg.min_periods_vol
+
+    tick_rate_hz = df["tick_volume"].astype(float) / durations
     tr_mu = tick_rate_hz.rolling(vw, min_periods=mp_vol).mean().shift(1)
     tr_sd = tick_rate_hz.rolling(vw, min_periods=mp_vol).std(ddof=0).shift(1)
     tick_rate_z_s = (tick_rate_hz - tr_mu) / tr_sd.replace(0.0, np.nan)
 
-    # ── spread_z ──
     spread_pips = df["spread"].astype(float) / pip
     sp_mu = spread_pips.rolling(vw, min_periods=mp_vol).mean().shift(1)
     sp_sd = spread_pips.rolling(vw, min_periods=mp_vol).std(ddof=0).shift(1)
     spread_z_s = (spread_pips - sp_mu) / sp_sd.replace(0.0, np.nan)
+    return tick_rate_z_s, spread_z_s, spread_pips
 
-    # ── range_pips ──
-    range_pips_s = (high - low) / pip
 
-    # ── temporal gap masking (weekend protection) ──
-    bar_gap_sec = (timestamp - timestamp.shift(1)).dt.total_seconds()
-    is_weekend_gap = bar_gap_sec > 43200.0  # 12 hours
-    
-    # ── ret1_pips (vel_pips_h1) ──
+def _compute_velocity_features(
+    close: pd.Series, pip: float, is_weekend_gap: pd.Series, cfg: FeatureConfig
+) -> tuple[pd.Series, pd.Series, pd.Series]:
+    vw = cfg.vol_window
+    mp_vol = cfg.min_periods_vol
+
     vel_h1 = (close - close.shift(1)) / pip
     vel_h1 = vel_h1.mask(is_weekend_gap, np.nan)
 
-    # ── ret_z, ret_abs_z ──
     vol_ref = vel_h1.rolling(vw, min_periods=mp_vol).std(ddof=0).shift(1)
     ret_z_s = vel_h1 / vol_ref.replace(0.0, np.nan)
     ret_abs_z_s = vel_h1.abs() / vol_ref.replace(0.0, np.nan)
+    return vel_h1, ret_z_s, ret_abs_z_s
 
-    # ── cost_est_pips ──
+
+def _compute_cost_features(
+    spread_pips: pd.Series,
+    range_pips_s: pd.Series,
+    open_: pd.Series,
+    close: pd.Series,
+    pip: float,
+    is_weekend_gap: pd.Series,
+    vel_h1: pd.Series,
+    cfg: FeatureConfig
+) -> tuple[pd.Series, pd.Series, pd.Series]:
+    cw = cfg.cost_window
+    mp_cost = cfg.min_periods_cost
+    mp_cost_slip = cfg.min_periods_cost_slip
+
     spread_recent = spread_pips.rolling(cw, min_periods=mp_cost).median().shift(1)
+    
     gap_abs = (open_ - close.shift(1)).abs() / pip
     gap_abs = gap_abs.mask(is_weekend_gap, np.nan)
-    slip_proxy = gap_abs.rolling(cw, min_periods=mp_cost_slip).quantile(0.75).shift(1)
+    
+    slip_proxy = gap_abs.rolling(cw, min_periods=mp_cost_slip).quantile(FeatureConstants.SLIP_QUANTILE).shift(1)
     slip_fallback = (
-        range_pips_s.rolling(cw, min_periods=mp_cost_slip).quantile(0.75).shift(1) * 0.2
+        range_pips_s.rolling(cw, min_periods=mp_cost_slip).quantile(FeatureConstants.SLIP_QUANTILE).shift(1) 
+        * FeatureConstants.SLIP_FALLBACK_FACTOR
     )
-    slip_proxy_pips = slip_proxy.fillna(slip_fallback).fillna(0.1).clip(lower=0.01)
+    slip_proxy_pips = slip_proxy.fillna(slip_fallback).fillna(FeatureConstants.SLIP_FALLBACK_DEFAULT).clip(lower=FeatureConstants.SLIP_MIN_CLIP)
+    
     cost_est = (
         spread_recent.fillna(spread_pips.shift(1)).fillna(spread_pips.median())
         + slip_proxy_pips
     )
 
-    # ── vel_cost_units_h1, vel_abs_cost_units_h1 ──
     vel_cu_h1 = vel_h1 / cost_est.replace(0.0, np.nan)
     vel_abs_cu_h1 = vel_h1.abs() / cost_est.replace(0.0, np.nan)
+    return cost_est, vel_cu_h1, vel_abs_cu_h1
 
-    # ── hl_first_mean_24, hl_pos_frac_mean_24 ──
+
+def _compute_structural_features(df: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
+    """Compute smoothing of micro-structural markers."""
     hl_first_s = df["hl_first"].astype(float)
     hl_pos_frac_s = df["hl_pos_frac"].astype(float)
-    hl_first_mean_24 = hl_first_s.rolling(24, min_periods=8).mean().shift(1)
-    hl_pos_frac_mean_24 = hl_pos_frac_s.rolling(24, min_periods=8).mean().shift(1)
-
-    # ── Extract last row ──
-    i = n - 1
-
-    def _safe(series: pd.Series) -> float:
-        v = float(series.iloc[i])
-        if not np.isfinite(v):
-            return float("nan")
-        return v
-
-    return ModelFeatures(
-        cost_est_pips=_safe(cost_est),
-        range_pips=_safe(range_pips_s),
-        ret1_pips=_safe(vel_h1),
-        ret_z=_safe(ret_z_s),
-        ret_abs_z=_safe(ret_abs_z_s),
-        vel_cost_units_h1=_safe(vel_cu_h1),
-        vel_abs_cost_units_h1=_safe(vel_abs_cu_h1),
-        spread_z=_safe(spread_z_s),
-        tick_rate_z=_safe(tick_rate_z_s),
-        hour_utc=hour_utc,
-        hl_first=_safe(hl_first_s),
-        hl_first_mean_24=_safe(hl_first_mean_24),
-        hl_pos_frac_mean_24=_safe(hl_pos_frac_mean_24),
-        bar_ticks=float(bar_ticks),
-        horizon=float(horizon),
-        barrier_pips=float(barrier_pips),
-    )
+    
+    hl_first_mean_24 = hl_first_s.rolling(
+        FeatureConstants.STRUCTURAL_WINDOW, min_periods=FeatureConstants.STRUCTURAL_MIN_PERIODS
+    ).mean().shift(1)
+    
+    hl_pos_frac_mean_24 = hl_pos_frac_s.rolling(
+        FeatureConstants.STRUCTURAL_WINDOW, min_periods=FeatureConstants.STRUCTURAL_MIN_PERIODS
+    ).mean().shift(1)
+    
+    return hl_first_mean_24, hl_pos_frac_mean_24

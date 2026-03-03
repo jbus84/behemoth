@@ -72,24 +72,9 @@ def _build_bar(
     prices = [float(t.bid) for t in ticks]
     spreads = [float(t.ask - t.bid) for t in ticks]
 
-    open_price = prices[0]
-    close_price = prices[-1]
-    high_price = max(prices)
-    low_price = min(prices)
-    spread_mean = sum(spreads) / len(spreads)
+    open_price, close_price, high_price, low_price, spread_mean = _compute_price_stats(prices, spreads)
 
-    # Microstructure: first occurrence of high and low
-    high_pos = prices.index(high_price)
-    low_pos = prices.index(low_price)
-
-    if high_pos < low_pos:
-        hl_first = 1.0
-    elif high_pos > low_pos:
-        hl_first = -1.0
-    else:
-        hl_first = 0.0
-
-    hl_pos_frac = (low_pos - high_pos) / max(1, bar_ticks - 1)
+    hl_first, hl_pos_frac = _compute_microstructure(prices, high_price, low_price, bar_ticks)
 
     return IncomingTickBar(
         symbol=symbol,
@@ -104,4 +89,33 @@ def _build_bar(
         tick_volume=float(bar_ticks),
         hl_first=hl_first,
         hl_pos_frac=hl_pos_frac,
+    )
+
+
+def _compute_microstructure(
+    prices: list[float], high_price: float, low_price: float, bar_ticks: int
+) -> tuple[float, float]:
+    """Compute the microstructural sequence makers for a bar."""
+    high_pos = prices.index(high_price)
+    low_pos = prices.index(low_price)
+
+    if high_pos < low_pos:
+        hl_first = 1.0
+    elif high_pos > low_pos:
+        hl_first = -1.0
+    else:
+        hl_first = 0.0
+
+    hl_pos_frac = (low_pos - high_pos) / max(1, bar_ticks - 1)
+    return hl_first, hl_pos_frac
+
+
+def _compute_price_stats(prices: list[float], spreads: list[float]) -> tuple[float, float, float, float, float]:
+    """Compute basic OHLC and spread statistics from a tick window."""
+    return (
+        prices[0],
+        prices[-1],
+        max(prices),
+        min(prices),
+        sum(spreads) / len(spreads),
     )
