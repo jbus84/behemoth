@@ -545,13 +545,14 @@ async def ingest_tick(tick: IncomingTick) -> dict:
     if _state is None or not _aggregators:
         raise HTTPException(status_code=503, detail="Not initialized")
 
-    bars = []
+    completed_bar_ticks = []
     for agg in _aggregators.values():
         bars.extend(agg.add_ticks([tick]))
         
     bar_completed = False
     for bar in bars:
         _state.append_bar(bar)
+        completed_bar_ticks.append(bar.bar_ticks)
         bar_completed = True
 
     sym = tick.symbol.upper()
@@ -559,5 +560,6 @@ async def ingest_tick(tick: IncomingTick) -> dict:
         "ok": True,
         "symbol": sym,
         "bar_completed": bar_completed,
+        "completed_bar_ticks": completed_bar_ticks,
         "bar_count": _state.bar_count(sym, 100), # Return standard 100-tick count as baseline
     }

@@ -167,15 +167,20 @@ namespace cAlgo.Robots
                             var ocoPositions = Positions.Where(p => p.SymbolName == Symbol.Name && p.Label != null && p.Label.StartsWith("Oco_")).ToList();
                             foreach(var pos in ocoPositions)
                             {
-                                if (!_posAgeBars.ContainsKey(pos.Id)) _posAgeBars[pos.Id] = 0;
-                                _posAgeBars[pos.Id]++;
+                                int pos_bar_ticks = ExtractBarTicks(pos.Label);
                                 
-                                int horizon = ExtractHorizon(pos.Label);
-                                if (_posAgeBars[pos.Id] >= horizon)
+                                if (tickResp.completed_bar_ticks != null && tickResp.completed_bar_ticks.Contains(pos_bar_ticks))
                                 {
-                                    Print($"[HORIZON EXIT] Closing {pos.Id} after {horizon} bars");
-                                    ClosePositionAsync(pos);
-                                    _posAgeBars.Remove(pos.Id);
+                                    if (!_posAgeBars.ContainsKey(pos.Id)) _posAgeBars[pos.Id] = 0;
+                                    _posAgeBars[pos.Id]++;
+                                    
+                                    int horizon = ExtractHorizon(pos.Label);
+                                    if (_posAgeBars[pos.Id] >= horizon)
+                                    {
+                                        Print($"[HORIZON EXIT] Closing {pos.Id} after {horizon} bars ({pos_bar_ticks}-tick)");
+                                        ClosePositionAsync(pos);
+                                        _posAgeBars.Remove(pos.Id);
+                                    }
                                 }
                             }
 
@@ -201,6 +206,18 @@ namespace cAlgo.Robots
                 if (int.TryParse(label.Substring(idx + 2), out int h)) return h;
             }
             return 6;
+        }
+
+        private int ExtractBarTicks(string label)
+        {
+            int tIdx = label.IndexOf("|T");
+            int hIdx = label.IndexOf("|H");
+            if (tIdx != -1 && hIdx != -1 && hIdx > tIdx)
+            {
+                int len = hIdx - (tIdx + 2);
+                if (int.TryParse(label.Substring(tIdx + 2, len), out int bt)) return bt;
+            }
+            return 100; // Default fallback
         }
 
         private void TriggerPrediction()
@@ -261,15 +278,16 @@ namespace cAlgo.Robots
         {
             double barrierPips = pred.barrier_pips; 
             double volume = Symbol.QuantityToVolumeInUnits(LotSize);
-            string groupLabel = $"Oco_{pred.candidate_uid}_{Server.Time:yyyyMMddHHmmss}|H{pred.horizon}";
+            string groupLabel = $"Oco_{pred.candidate_uid}_{Server.Time:yyyyMMddHHmmss}|T{pred.bar_ticks}|H{pred.horizon}";
 
             double buyPrice = Symbol.Ask + (barrierPips * Symbol.PipSize);
             double sellPrice = Symbol.Bid - (barrierPips * Symbol.PipSize);
+            double stopLimitRangePips = pred.cap_pips;
 
-            PlaceStopOrderAsync(TradeType.Buy, Symbol.Name, volume, buyPrice, groupLabel);
-            PlaceStopOrderAsync(TradeType.Sell, Symbol.Name, volume, sellPrice, groupLabel);
+            PlaceStopLimitOrderAsync(TradeType.Buy, Symbol.Name, volume, buyPrice, stopLimitRangePips, groupLabel);
+            PlaceStopLimitOrderAsync(TradeType.Sell, Symbol.Name, volume, sellPrice, stopLimitRangePips, groupLabel);
             
-            Print($"[OCO PLACED] {groupLabel} | BuyStop: {buyPrice:F4} | SellStop: {sellPrice:F4}");
+            Print($"[OCO PLACED] {groupLabel} | BuyStopLimit: {buyPrice:F4} | SellStopLimit: {sellPrice:F4} | Cap: {stopLimitRangePips}");
         }
 
         protected override void OnPendingOrderFilled(PendingOrderFilledEventArgs args)
@@ -322,6 +340,7 @@ namespace cAlgo.Robots
         public bool ok { get; set; }
         public string symbol { get; set; }
         public bool bar_completed { get; set; }
+        public List<int> completed_bar_ticks { get; set; }
         public int bar_count { get; set; }
     }
 
@@ -332,6 +351,7 @@ namespace cAlgo.Robots
         public double pred_prob { get; set; }
         public double threshold_exec { get; set; }
         public int selected_exec { get; set; }
+        public int bar_ticks { get; set; }
         public int horizon { get; set; }
         public double barrier_pips { get; set; }
         public double cap_pips { get; set; }
