@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 05
 
-- generated_at: `2026-03-04 07:32:11 UTC`
+- generated_at: `2026-03-04 19:24:58 UTC`
 - State schedule is selected month-by-month using only prior-month train data.
 - Summary emphasizes full-path gross behavior after reduced-core filtering.
 - R01-R03 track pruning severity, state concentration, and re-selection stability.
@@ -116,4 +116,5 @@
 | GBPUSD   |              3 |               0 |                    |
 | AUDUSD   |              3 |               0 |                    |
 | USDJPY   |              3 |               0 |                    |
+| USDCHF   |              3 |               0 |                    |
 | USDCAD   |              3 |               0 |                    |

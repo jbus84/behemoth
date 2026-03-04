@@ -88,15 +88,18 @@ uv run python scripts/audit_oco_pipeline_logical_issues.py
 <!-- GENERATED:STAGE_07:START -->
 ### Auto Snapshot - Stage 07
 
-- generated_at: `2026-03-04 07:32:11 UTC`
+- generated_at: `2026-03-04 19:24:58 UTC`
 - C01..C10 checks are the logical contract gate before robustness sign-off.
 - Open issue rows: 0.
 
 #### Key Results
 | symbol   |   total_checks |   failed_checks |
 |:---------|---------------:|----------------:|
+| AUDUSD   |             10 |               0 |
 | EURUSD   |             10 |               0 |
 | GBPUSD   |             10 |               0 |
+| USDCAD   |             10 |               0 |
+| USDCHF   |             10 |               0 |
 | USDJPY   |             10 |               0 |
 
 #### Interpretation Notes
@@ -122,16 +125,16 @@ uv run python scripts/audit_oco_pipeline_logical_issues.py
 #### Details
 | check_id   | status   |   size |
 |:-----------|:---------|-------:|
-| C01        | pass     |      3 |
-| C02        | pass     |      3 |
-| C03        | pass     |      3 |
-| C04        | pass     |      3 |
-| C05        | pass     |      3 |
-| C06        | pass     |      3 |
-| C07        | pass     |      3 |
-| C08        | pass     |      3 |
-| C09        | pass     |      3 |
-| C10        | pass     |      3 |
+| C01        | pass     |      6 |
+| C02        | pass     |      6 |
+| C03        | pass     |      6 |
+| C04        | pass     |      6 |
+| C05        | pass     |      6 |
+| C06        | pass     |      6 |
+| C07        | pass     |      6 |
+| C08        | pass     |      6 |
+| C09        | pass     |      6 |
+| C10        | pass     |      6 |
 
 #### Plots
 ![stage_07_audit_failures](../figures/oco_bible/stage_07_audit_failures.png)
