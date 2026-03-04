@@ -259,22 +259,7 @@ def run(
             else _default_paths(symbol)
         )
         if not paths.pred_path.exists():
-            alerts.append(
-                {
-                    "symbol": symbol,
-                    "test_month": "",
-                    "metric_id": "TS_DATA_MISSING",
-                    "metric_value": np.nan,
-                    "warn_threshold": np.nan,
-                    "fail_threshold": np.nan,
-                    "band": "red",
-                    "severity": "high",
-                    "source_path": str(paths.pred_path),
-                    "details_json": json.dumps({"reason": "missing_predictions"}, sort_keys=True),
-                    "evaluated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                }
-            )
-            continue
+            raise FileNotFoundError(f"Missing prediction data for {symbol} at {paths.pred_path}")
         d = pd.read_parquet(
             paths.pred_path, columns=["test_month", "close_ts", "pred_prob", "target_gross_pips"]
         ).copy()

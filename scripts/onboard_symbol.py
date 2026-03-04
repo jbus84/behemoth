@@ -254,11 +254,19 @@ def stage_3_conditional(symbol: str, *, dry_run: bool) -> None:
         )
         return
 
-    # Tick-exact verification uses same config
+    # Tick-exact verification uses same config but distinct outputs
     _uv_run(
         "verify_oco_tick_exact_shortlist.py",
         "--config",
         f"configs/research/experiments/{sym}_oco_reduced_core_rolling_2025.yaml",
+        "--out-summary-csv",
+        f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{SYM}_oco_tick_exact_summary.csv",
+        "--out-monthly-csv",
+        f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{SYM}_oco_tick_exact_monthly.csv",
+        "--out-state-csv",
+        f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{SYM}_oco_tick_exact_state.csv",
+        "--report-out",
+        f"docs/analysis/{sym}_oco_tick_exact_rolling_report.md",
         dry_run=dry_run,
         label="Stage 3a: Tick-exact verification",
     )

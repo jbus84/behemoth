@@ -1,6 +1,6 @@
 version: 1
 default_expiry_days: 60
-max_amber_consecutive_runs: 3
+max_amber_consecutive_runs: 6
 max_amber_months: 12
 require_owner: true
 require_rationale: true

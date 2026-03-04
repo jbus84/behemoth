@@ -38,14 +38,9 @@ def _default_configs() -> dict[str, SymbolConfig]:
     configs = {}
     for s in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]:
         s_low = s.lower()
-        if s in ("EURUSD", "AUDUSD"):
-            pred_folder = "wfo_2025_m3to1_oco_fullcap"
-            red_folder = "reduced_core_rolling"
-            stop_folder = "stop_limit_tickfill_eurusd_fixed" if s == "EURUSD" else "stop_limit_tickfill_fullcap"
-        else:
-            pred_folder = f"wfo_2025_m3to1_oco_fullcap_{s_low}"
-            red_folder = f"reduced_core_rolling_{s_low}"
-            stop_folder = "stop_limit_tickfill_fullcap"
+        pred_folder = "wfo_2025_m3to1_oco_fullcap"
+        red_folder = "reduced_core_rolling"
+        stop_folder = "stop_limit_tickfill_eurusd_fixed" if s == "EURUSD" else "stop_limit_tickfill_fullcap"
 
         configs[s] = SymbolConfig(
             symbol=s,

@@ -2711,12 +2711,7 @@ def _write_stage_snapshots(
                         ),
                     }
                 )
-        if math.isnan(r01_overprune):
-            r01_overprune = 0.0
-        if math.isnan(r02_dependency):
-            r02_dependency = 0.0
-        if math.isnan(r03_reselect_stability):
-            r03_reselect_stability = 0.0
+        # Allow NaN values to propagate for R01, R02, R03 if the upstream data is corrupt
         add_edge_metric(
             5,
             sym,

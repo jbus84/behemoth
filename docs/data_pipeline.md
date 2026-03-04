@@ -58,7 +58,7 @@ uv run python scripts/build_tick_velocity_dataset.py \
 ## Rolling Historical Evidence
 
 <!-- GENERATED:SYSREF:DATA_PIPELINE:START -->
-- generated_at_utc: `2026-03-03T22:01:56Z`
+- generated_at_utc: `2026-03-04T07:32:43Z`
 - symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD`
 - stop-limit_reference: `stage_04_execution_realism`
 - artifact_sources:

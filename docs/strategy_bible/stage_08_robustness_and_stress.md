@@ -80,7 +80,7 @@ uv run python scripts/analyze_oco_monthly_wfo_robustness.py \
 <!-- GENERATED:STAGE_08:START -->
 ### Auto Snapshot - Stage 08
 
-- generated_at: `2026-03-03 22:07:07 UTC`
+- generated_at: `2026-03-04 07:32:11 UTC`
 - Robustness summary uses bootstrap lower bounds from the configured smoke/full run artifacts.
 - Interpretation: LB95 > 0 indicates conservative positive expectancy under sampled uncertainty.
 - Overfit panel adds month-stratified null uplift and dependence-aware LB95 comparisons.
@@ -102,30 +102,30 @@ uv run python scripts/analyze_oco_monthly_wfo_robustness.py \
 - Overfit panel adds month-stratified null uplift and dependence-aware LB95 comparisons.
 
 #### Action Trigger Summary
-| symbol   | metric_id                     | band   | severity   | action_code    | action_summary         | owner   |
-|:---------|:------------------------------|:-------|:-----------|:---------------|:-----------------------|:--------|
-| AUDUSD   | T01_stress_elasticity         | green  | info       | A0_MONITOR     | within policy band     | risk    |
-| AUDUSD   | T02_first_negative_costplus   | green  | info       | A0_MONITOR     | within policy band     | risk    |
-| AUDUSD   | T03_post_worst_month_recovery | red    | high       | A2_RECALIBRATE | escalate and remediate | risk    |
-| EURUSD   | T01_stress_elasticity         | green  | info       | A0_MONITOR     | within policy band     | risk    |
-| EURUSD   | T02_first_negative_costplus   | green  | info       | A0_MONITOR     | within policy band     | risk    |
-| EURUSD   | T03_post_worst_month_recovery | red    | high       | A2_RECALIBRATE | escalate and remediate | risk    |
-| GBPUSD   | T01_stress_elasticity         | green  | info       | A0_MONITOR     | within policy band     | risk    |
-| GBPUSD   | T02_first_negative_costplus   | green  | info       | A0_MONITOR     | within policy band     | risk    |
-| GBPUSD   | T03_post_worst_month_recovery | green  | info       | A0_MONITOR     | within policy band     | risk    |
-| USDCAD   | T01_stress_elasticity         | green  | info       | A0_MONITOR     | within policy band     | risk    |
-| USDCAD   | T02_first_negative_costplus   | green  | info       | A0_MONITOR     | within policy band     | risk    |
-| USDCAD   | T03_post_worst_month_recovery | red    | high       | A2_RECALIBRATE | escalate and remediate | risk    |
+| symbol   | metric_id                     | band   | severity   | action_code   | action_summary     | owner   |
+|:---------|:------------------------------|:-------|:-----------|:--------------|:-------------------|:--------|
+| AUDUSD   | T01_stress_elasticity         | green  | info       | A0_MONITOR    | within policy band | risk    |
+| AUDUSD   | T02_first_negative_costplus   | green  | info       | A0_MONITOR    | within policy band | risk    |
+| AUDUSD   | T03_post_worst_month_recovery | amber  | medium     | A1_REVIEW     | review and monitor | risk    |
+| EURUSD   | T01_stress_elasticity         | green  | info       | A0_MONITOR    | within policy band | risk    |
+| EURUSD   | T02_first_negative_costplus   | green  | info       | A0_MONITOR    | within policy band | risk    |
+| EURUSD   | T03_post_worst_month_recovery | green  | info       | A0_MONITOR    | within policy band | risk    |
+| GBPUSD   | T01_stress_elasticity         | green  | info       | A0_MONITOR    | within policy band | risk    |
+| GBPUSD   | T02_first_negative_costplus   | green  | info       | A0_MONITOR    | within policy band | risk    |
+| GBPUSD   | T03_post_worst_month_recovery | green  | info       | A0_MONITOR    | within policy band | risk    |
+| USDCAD   | T01_stress_elasticity         | green  | info       | A0_MONITOR    | within policy band | risk    |
+| USDCAD   | T02_first_negative_costplus   | green  | info       | A0_MONITOR    | within policy band | risk    |
+| USDCAD   | T03_post_worst_month_recovery | green  | info       | A0_MONITOR    | within policy band | risk    |
 
 #### Details
 | symbol   |   pvalue_month_mean_gt0 |   pvalue_bonferroni |   pvalue_fdr_bh |   t01_stress_elasticity |   t02_first_negative_costplus |   t04_max_survivable_cost_lb95_trade |   t03_post_worst_month_recovery |   lb95_trade_mean_net_pips_costplus_0.10 |   lb95_trade_mean_net_pips_costplus_0.20 |   lb95_trade_mean_net_pips_costplus_0.30 |   lb95_trade_mean_net_pips_costplus_0.50 |
 |:---------|------------------------:|--------------------:|----------------:|------------------------:|------------------------------:|-------------------------------------:|--------------------------------:|-----------------------------------------:|-----------------------------------------:|-----------------------------------------:|-----------------------------------------:|
-| EURUSD   |                       0 |                   0 |               0 |                      -1 |                          2    |                             2        |                       nan       |                                 2.4017   |                                  2.30075 |                                 2.20463  |                                 2.00484  |
-| GBPUSD   |                       0 |                   0 |               0 |                      -1 |                          2    |                             2        |                         1.33224 |                                 2.47431  |                                  2.37179 |                                 2.2695   |                                 2.06504  |
-| AUDUSD   |                       0 |                   0 |               0 |                      -1 |                          1.25 |                             0.952033 |                       nan       |                                 0.858455 |                                  0.75712 |                                 0.653463 |                                 0.454145 |
-| USDJPY   |                       0 |                   0 |               0 |                      -1 |                          2    |                             2        |                         1.04299 |                                 3.31926  |                                  3.21768 |                                 3.11615  |                                 2.91812  |
-| USDCHF   |                       0 |                   0 |               0 |                      -1 |                          1.5  |                             1.37441  |                         1.03157 |                                 1.27737  |                                  1.17565 |                                 1.07228  |                                 0.876746 |
-| USDCAD   |                       0 |                   0 |               0 |                      -1 |                          1.75 |                             1.41285  |                       nan       |                                 1.31144  |                                  1.21327 |                                 1.1118   |                                 0.912847 |
+| EURUSD   |                       0 |                   0 |               0 |                      -1 |                          2    |                             2        |                        1.6805   |                                 2.4017   |                                  2.30075 |                                 2.20463  |                                 2.00484  |
+| GBPUSD   |                       0 |                   0 |               0 |                      -1 |                          2    |                             2        |                        1.33224  |                                 2.47431  |                                  2.37179 |                                 2.2695   |                                 2.06504  |
+| AUDUSD   |                       0 |                   0 |               0 |                      -1 |                          1.25 |                             0.952033 |                        0.529206 |                                 0.858455 |                                  0.75712 |                                 0.653463 |                                 0.454145 |
+| USDJPY   |                       0 |                   0 |               0 |                      -1 |                          2    |                             2        |                        1.04299  |                                 3.31926  |                                  3.21768 |                                 3.11615  |                                 2.91812  |
+| USDCHF   |                       0 |                   0 |               0 |                      -1 |                          1.5  |                             1.37441  |                        1.03157  |                                 1.27737  |                                  1.17565 |                                 1.07228  |                                 0.876746 |
+| USDCAD   |                       0 |                   0 |               0 |                      -1 |                          1.75 |                             1.41285  |                        1.58167  |                                 1.31144  |                                  1.21327 |                                 1.1118   |                                 0.912847 |
 
 #### Plots
 ![stage_08_robustness_lb95](../figures/oco_bible/stage_08_robustness_lb95.png)

@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 07
 
-- generated_at: `2026-03-03 22:07:07 UTC`
+- generated_at: `2026-03-04 07:32:11 UTC`
 - C01..C10 checks are the logical contract gate before robustness sign-off.
 - Open issue rows: 0.
 
@@ -16,20 +16,20 @@
 - Open issue rows: 0.
 
 #### Action Trigger Summary
-| symbol   | metric_id               | band   | severity   | action_code   | action_summary     | owner    |
-|:---------|:------------------------|:-------|:-----------|:--------------|:-------------------|:---------|
-| AUDUSD   | S01_lb95_dependence_gap | gray   | high       | A9_DATA_GAP   | metric unavailable | research |
-| AUDUSD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
-| EURUSD   | S01_lb95_dependence_gap | gray   | high       | A9_DATA_GAP   | metric unavailable | research |
-| EURUSD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
-| GBPUSD   | S01_lb95_dependence_gap | gray   | high       | A9_DATA_GAP   | metric unavailable | research |
-| GBPUSD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
-| USDCAD   | S01_lb95_dependence_gap | gray   | high       | A9_DATA_GAP   | metric unavailable | research |
-| USDCAD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
-| USDCHF   | S01_lb95_dependence_gap | gray   | high       | A9_DATA_GAP   | metric unavailable | research |
-| USDCHF   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
-| USDJPY   | S01_lb95_dependence_gap | gray   | high       | A9_DATA_GAP   | metric unavailable | research |
-| USDJPY   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR    | within policy band | research |
+| symbol   | metric_id               | band   | severity   | action_code    | action_summary         | owner    |
+|:---------|:------------------------|:-------|:-----------|:---------------|:-----------------------|:---------|
+| AUDUSD   | S01_lb95_dependence_gap | green  | info       | A0_MONITOR     | within policy band     | research |
+| AUDUSD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR     | within policy band     | research |
+| EURUSD   | S01_lb95_dependence_gap | red    | high       | A2_RECALIBRATE | escalate and remediate | research |
+| EURUSD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR     | within policy band     | research |
+| GBPUSD   | S01_lb95_dependence_gap | green  | info       | A0_MONITOR     | within policy band     | research |
+| GBPUSD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR     | within policy band     | research |
+| USDCAD   | S01_lb95_dependence_gap | green  | info       | A0_MONITOR     | within policy band     | research |
+| USDCAD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR     | within policy band     | research |
+| USDCHF   | S01_lb95_dependence_gap | green  | info       | A0_MONITOR     | within policy band     | research |
+| USDCHF   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR     | within policy band     | research |
+| USDJPY   | S01_lb95_dependence_gap | amber  | medium     | A1_REVIEW      | review and monitor     | research |
+| USDJPY   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR     | within policy band     | research |
 
 #### Details
 | check_id   | status   |   size |

@@ -1,6 +1,6 @@
 # OCO Operator Playbook
 
-- generated_at_utc: `2026-03-03T22:01:57Z`
+- generated_at_utc: `2026-03-04T07:32:10Z`
 - source_rules: `configs/research/docs/operator_action_rules.yaml`
 
 ## Action Codes
@@ -22,9 +22,9 @@
 ## Current Escalations
 | symbol   | metric_id                        | band   | action_code           | owner     | action_summary         |
 |:---------|:---------------------------------|:-------|:----------------------|:----------|:-----------------------|
+| AUDUSD   | T03_post_worst_month_recovery    | amber  | A1_REVIEW             | risk      | review and monitor     |
 | USDCAD   | E11_session_overshoot_dispersion | amber  | A2_RECALIBRATE        | execution | review and monitor     |
-| AUDUSD   | T03_post_worst_month_recovery    | red    | A2_RECALIBRATE        | risk      | escalate and remediate |
-| EURUSD   | T03_post_worst_month_recovery    | red    | A2_RECALIBRATE        | risk      | escalate and remediate |
+| USDJPY   | S01_lb95_dependence_gap          | amber  | A1_REVIEW             | research  | review and monitor     |
+| EURUSD   | S01_lb95_dependence_gap          | red    | A2_RECALIBRATE        | research  | escalate and remediate |
 | EURUSD   | W13_threshold_fragility          | red    | A3_HALT_AND_REMEDIATE | research  | escalate and remediate |
-| USDCAD   | T03_post_worst_month_recovery    | red    | A2_RECALIBRATE        | risk      | escalate and remediate |
 | USDCHF   | E11_session_overshoot_dispersion | red    | A3_HALT_AND_REMEDIATE | execution | escalate and remediate |

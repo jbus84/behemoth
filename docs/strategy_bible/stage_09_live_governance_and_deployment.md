@@ -233,23 +233,23 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 <!-- GENERATED:STAGE_09:START -->
 ### Auto Snapshot - Stage 09
 
-- generated_at: `2026-03-03 22:07:07 UTC`
+- generated_at: `2026-03-04 07:32:11 UTC`
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
-- Missing required artifacts: 4.
+- Missing required artifacts: 1.
 
 #### Key Results
-| symbol   |   gate_reduced_lb95_month_gt0 |   gate_tick_exact |   gate_robust_lb95_trade_gt0 |   gate_robust_months_majority | symbol_all_gates_pass   |
-|:---------|------------------------------:|------------------:|-----------------------------:|------------------------------:|:------------------------|
-| EURUSD   |                             0 |                 1 |                            1 |                             1 | False                   |
-| GBPUSD   |                             1 |                 1 |                            1 |                             1 | True                    |
-| AUDUSD   |                           nan |               nan |                          nan |                           nan | False                   |
-| USDJPY   |                             1 |                 1 |                            1 |                             1 | True                    |
-| USDCHF   |                             1 |                 1 |                            1 |                             1 | True                    |
-| USDCAD   |                           nan |               nan |                          nan |                           nan | False                   |
+| symbol   | gate_reduced_lb95_month_gt0   | gate_tick_exact   | gate_robust_lb95_trade_gt0   | gate_robust_months_majority   | symbol_all_gates_pass   |
+|:---------|:------------------------------|:------------------|:-----------------------------|:------------------------------|:------------------------|
+| EURUSD   | True                          | True              | True                         | True                          | True                    |
+| GBPUSD   | True                          | True              | True                         | True                          | True                    |
+| AUDUSD   | True                          | False             | True                         | True                          | False                   |
+| USDJPY   | True                          | True              | True                         | True                          | True                    |
+| USDCHF   | True                          | True              | True                         | True                          | True                    |
+| USDCAD   | True                          | True              | True                         | True                          | True                    |
 
 #### Interpretation Notes
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
-- Missing required artifacts: 4.
+- Missing required artifacts: 1.
 
 #### Action Trigger Summary
 | symbol   | metric_id            | band   | severity   | action_code   | action_summary                      | owner      |
@@ -268,12 +268,9 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 | USDJPY   | G03_lock_drift_flags | green  | info       | A0_MONITOR    | within policy band                  | governance |
 
 #### Details
-| group   | symbol   | artifact               | path                                                                                                               |
-|:--------|:---------|:-----------------------|:-------------------------------------------------------------------------------------------------------------------|
-| symbol  | AUDUSD   | tick_exact_report_md   | configs/research/docs/docs/analysis/audusd_oco_tick_exact_rolling_report.md                                        |
-| symbol  | AUDUSD   | tick_exact_summary_csv | configs/research/docs/data/analysis/tick_opportunity_mining/reduced_core_rolling/AUDUSD_oco_tick_exact_summary.csv |
-| symbol  | USDCAD   | tick_exact_report_md   | configs/research/docs/docs/analysis/usdcad_oco_tick_exact_rolling_report.md                                        |
-| symbol  | USDCAD   | tick_exact_summary_csv | configs/research/docs/data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_tick_exact_summary.csv |
+| group   | symbol   | artifact             | path                                                                          |
+|:--------|:---------|:---------------------|:------------------------------------------------------------------------------|
+| symbol  | USDCHF   | tick_exact_report_md | configs/research/docs/docs/analysis/usdchf_oco_tick_exact_shortlist_report.md |
 
 #### Plots
 ![stage_09_gate_matrix](../figures/oco_bible/stage_09_gate_matrix.png)

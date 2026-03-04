@@ -92,9 +92,9 @@ docs-contract:
 	uv run python scripts/validate_oco_rule_universe_registry.py
 	uv run python scripts/remediate_oco_monitoring_alerts.py
 	uv run python scripts/build_oco_governance_explainability_report.py
+	uv run python scripts/build_operator_action_report.py
 	uv run python scripts/build_oco_strategy_bible.py --manifest configs/research/docs/oco_bible_manifest.yaml --strict false
 	uv run python scripts/build_oco_system_reference_docs.py
-	uv run python scripts/build_operator_action_report.py
 	uv run python scripts/build_symbol_onboarding_playbook.py
 	uv run python scripts/check_oco_docs_stage_integrity.py
 	uv run python scripts/validate_oco_docs_contract.py
@@ -104,9 +104,9 @@ docs-contract-ci:
 	uv run python scripts/validate_oco_rule_universe_registry.py
 	uv run python scripts/remediate_oco_monitoring_alerts.py
 	uv run python scripts/build_oco_governance_explainability_report.py
+	uv run python scripts/build_operator_action_report.py
 	uv run python scripts/build_oco_strategy_bible.py --manifest configs/research/docs/oco_bible_manifest.yaml --strict false
 	uv run python scripts/build_oco_system_reference_docs.py
-	uv run python scripts/build_operator_action_report.py
 	uv run python scripts/check_oco_docs_stage_integrity.py
 	uv run python scripts/validate_oco_docs_contract.py
 

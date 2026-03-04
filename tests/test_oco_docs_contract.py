@@ -410,7 +410,7 @@ def _write_stage_integrity_artifacts(*, docs_root: Path, edge_metrics_csv: Path)
 def _write_execution_drift_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> None:
     base = edge_metrics_csv.parent
     monthly_rows = []
-    for sym in ["EURUSD", "GBPUSD", "USDJPY"]:
+    for sym in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]:
         monthly_rows.append(
             {
                 "symbol": sym,
@@ -451,7 +451,7 @@ def _write_execution_drift_artifacts(*, docs_root: Path, edge_metrics_csv: Path)
 def _write_threshold_sensitivity_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> None:
     base = edge_metrics_csv.parent
     rows = []
-    for sym in ["EURUSD", "GBPUSD", "USDJPY"]:
+    for sym in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]:
         rows.append(
             {
                 "symbol": sym,
@@ -494,7 +494,7 @@ def _write_threshold_sensitivity_artifacts(*, docs_root: Path, edge_metrics_csv:
 def _write_registry_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> None:
     base = edge_metrics_csv.parent
     rows = []
-    for sym in ["EURUSD", "GBPUSD", "USDJPY"]:
+    for sym in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]:
         rows.append(
             {
                 "symbol": sym,
@@ -703,11 +703,12 @@ def _build_smoke_fixture(tmp_path: Path, *, with_system_reference: bool = True) 
     rows = [
         {
             "stage_id": 1,
-            "symbol": "EURUSD",
+            "symbol": sym,
             "metric_id": m,
             "metric_value": 1.0,
             "generated_at_utc": now,
         }
+        for sym in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]
         for m in sorted(CORE_METRIC_IDS)
     ]
     edge_metrics_csv = artifact_root / "edge_metrics.csv"
@@ -730,13 +731,18 @@ def _build_smoke_fixture(tmp_path: Path, *, with_system_reference: bool = True) 
         _write_system_reference_docs(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
 
     stage_status_csv = tmp_path / "stage_status.csv"
-    pd.DataFrame(
-        [{"symbol": "EURUSD", "symbol_all_gates_pass": True, "gate_tick_exact": True}]
-    ).to_csv(stage_status_csv, index=False)
-    (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
+    sym_rows = [
+        {"symbol": s, "symbol_all_gates_pass": True, "gate_tick_exact": True}
+        for s in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]
+    ]
+    pd.DataFrame(sym_rows).to_csv(stage_status_csv, index=False)
+    
+    mock_s09_md = "".join(f"| {s} | pass |\n" for s in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"])
+    (generated_root / "stage_09_snapshot.md").write_text(mock_s09_md, encoding="utf-8")
 
     edge_report = tmp_path / "edge_report.md"
-    edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
+    mock_edge_md = "".join(f"| 1 | {s} | D16_spread_regime_shift_z | 1.0 |\n" for s in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"])
+    edge_report.write_text(mock_edge_md, encoding="utf-8")
     metric_dictionary = docs_root / "metric_dictionary.md"
     metric_dictionary.write_text(
         "\n".join(

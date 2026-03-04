@@ -64,44 +64,44 @@ def _default_configs() -> dict[str, SymbolConfig]:
         "GBPUSD": SymbolConfig(
             symbol="GBPUSD",
             pred_path=Path(
-                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_predictions.parquet"
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/GBPUSD_oco_monthly_predictions.parquet"
             ),
             metrics_path=Path(
-                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_metrics.csv"
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/GBPUSD_oco_monthly_metrics.csv"
             ),
             thresholds_path=Path(
-                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_thresholds.csv"
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/GBPUSD_oco_monthly_thresholds.csv"
             ),
             events_path=Path(
-                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_events_eval2025.parquet"
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/GBPUSD_oco_events_eval2025.parquet"
             ),
             schedule_path=Path(
-                "data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_state_schedule.csv"
+                "data/analysis/tick_opportunity_mining/reduced_core_rolling/GBPUSD_oco_reduced_state_schedule.csv"
             ),
             monthly_path=Path(
-                "data/analysis/tick_opportunity_mining/reduced_core_rolling_gbpusd/GBPUSD_oco_reduced_monthly.csv"
+                "data/analysis/tick_opportunity_mining/reduced_core_rolling/GBPUSD_oco_reduced_monthly.csv"
             ),
             lock_path=Path("configs/research/governance/oco/gbpusd_oco_live_lock.json"),
         ),
         "USDJPY": SymbolConfig(
             symbol="USDJPY",
             pred_path=Path(
-                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_monthly_predictions.parquet"
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDJPY_oco_monthly_predictions.parquet"
             ),
             metrics_path=Path(
-                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_monthly_metrics.csv"
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDJPY_oco_monthly_metrics.csv"
             ),
             thresholds_path=Path(
-                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_monthly_thresholds.csv"
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDJPY_oco_monthly_thresholds.csv"
             ),
             events_path=Path(
-                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_events_eval2025.parquet"
+                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDJPY_oco_events_eval2025.parquet"
             ),
             schedule_path=Path(
-                "data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_state_schedule.csv"
+                "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_reduced_state_schedule.csv"
             ),
             monthly_path=Path(
-                "data/analysis/tick_opportunity_mining/reduced_core_rolling_usdjpy/USDJPY_oco_reduced_monthly.csv"
+                "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_reduced_monthly.csv"
             ),
             lock_path=Path("configs/research/governance/oco/usdjpy_oco_live_lock.json"),
         ),

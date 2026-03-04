@@ -227,4 +227,4 @@ def test_default_configs_includes_all_symbols() -> None:
     configs = _default_configs()
     assert set(configs.keys()) == {"EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"}
     assert "reduced_core_rolling/EURUSD" in str(configs["EURUSD"].monthly_path.as_posix())
-    assert "reduced_core_rolling_usdcad/USDCAD" in str(configs["USDCAD"].monthly_path.as_posix())
+    assert "reduced_core_rolling/USDCAD" in str(configs["USDCAD"].monthly_path.as_posix())

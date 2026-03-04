@@ -1,6 +1,6 @@
 # Analysis Catalog
 
-- generated_at_utc: `2026-03-03T22:01:23Z`
+- generated_at_utc: `2026-03-04T07:32:08Z`
 - manifest_csv: `analysis/catalog_manifest.csv`
 - gaps_report: `analysis/catalog_gaps_report.md`
 
@@ -50,7 +50,7 @@
 - [Usdchf Oco Monthly Wfo Robustness Fullcap Report](usdchf_oco_monthly_wfo_robustness_fullcap_report.md)
 - [Usdchf Oco Reduced Core Rolling Report](usdchf_oco_reduced_core_rolling_report.md)
 - [Usdchf Oco Stop Limit Tickfill Report](usdchf_oco_stop_limit_tickfill_report.md)
-- [Usdchf Oco Tick Exact Shortlist Report](usdchf_oco_tick_exact_shortlist_report.md)
+- [Usdchf Oco Tick Exact Rolling Report](usdchf_oco_tick_exact_rolling_report.md)
 - [Usdchf Tick Opportunity Mining Report](usdchf_tick_opportunity_mining_report.md)
 - [Usdchf Tick Opportunity Monthly Wfo Oco Fullcap Report](usdchf_tick_opportunity_monthly_wfo_oco_fullcap_report.md)
 - [Usdchf Tick Opportunity Monthly Wfo Report](usdchf_tick_opportunity_monthly_wfo_report.md)
@@ -58,12 +58,14 @@
 - [Audusd Oco Monthly Wfo Robustness Fullcap Report](audusd_oco_monthly_wfo_robustness_fullcap_report.md)
 - [Audusd Oco Reduced Core Rolling Report](audusd_oco_reduced_core_rolling_report.md)
 - [Audusd Oco Stop Limit Tickfill Report](audusd_oco_stop_limit_tickfill_report.md)
+- [Audusd Oco Tick Exact Rolling Report](audusd_oco_tick_exact_rolling_report.md)
 - [Audusd Tick Opportunity Mining Report](audusd_tick_opportunity_mining_report.md)
 - [Audusd Tick Opportunity Monthly Wfo Oco Fullcap Report](audusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md)
 - [Audusd Tick Opportunity Monthly Wfo Report](audusd_tick_opportunity_monthly_wfo_report.md)
 ### USDCAD
 - [Usdcad Oco Monthly Wfo Robustness Fullcap Report](usdcad_oco_monthly_wfo_robustness_fullcap_report.md)
 - [Usdcad Oco Reduced Core Rolling Report](usdcad_oco_reduced_core_rolling_report.md)
+- [Usdcad Oco Tick Exact Rolling Report](usdcad_oco_tick_exact_rolling_report.md)
 - [Usdcad Tick Opportunity Mining Report](usdcad_tick_opportunity_mining_report.md)
 - [Usdcad Tick Opportunity Monthly Wfo Oco Fullcap Report](usdcad_tick_opportunity_monthly_wfo_oco_fullcap_report.md)
 - [Usdcad Tick Opportunity Monthly Wfo Report](usdcad_tick_opportunity_monthly_wfo_report.md)
@@ -76,7 +78,7 @@
 |          3 |             19 |
 |          4 |              8 |
 |          5 |              7 |
-|          6 |              4 |
+|          6 |              6 |
 |          7 |              1 |
 |          8 |              1 |
 |          9 |              3 |

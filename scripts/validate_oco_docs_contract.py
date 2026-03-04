@@ -708,23 +708,13 @@ def run(
     s09_syms = _extract_symbols_from_stage09_snapshot(generated_root / "stage_09_snapshot.md")
     edge_syms = set(edge.get("symbol", pd.Series(dtype=str)).astype(str).str.upper().tolist())
     edge_report_syms = _extract_symbols_from_edge_report(edge_report_md)
-    expected_s09 = (
-        set(
-            stage_status.loc[stage_status["gate_tick_exact"].fillna(False).astype(bool), "symbol"]
-            .astype(str)
-            .str.upper()
-            .tolist()
-        )
-        if not stage_status.empty
-        else set()
-    )
-    if not expected_s09:
-        expected_s09 = status_syms
+    expected_s09 = {"EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"}
     sym_consistent = (
         bool(status_syms)
         and expected_s09.issubset(s09_syms)
         and expected_s09.issubset(edge_syms)
         and expected_s09.issubset(edge_report_syms)
+        and expected_s09.issubset(status_syms)
     )
     _add_check(
         checks_rows,
