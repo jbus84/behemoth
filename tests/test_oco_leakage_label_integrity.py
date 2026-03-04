@@ -150,6 +150,11 @@ def _build_minimal_bundle(tmp_path: Path, *, bad_time_order: bool = False) -> Sy
         [{"symbol": "EURUSD", "bar_ticks": 100, "horizon": 6, "state_id": "state_a"}]
     ).to_csv(states, index=False)
 
+    preds = tmp_path / "predictions.parquet"
+    preds.write_bytes(b"dummy_predictions")
+    te_summary = tmp_path / "tick_exact_summary.csv"
+    te_summary.write_text("overall_pass\nTrue\n", encoding="utf-8")
+
     lock = {
         "symbol": "EURUSD",
         "artifacts": {
@@ -159,6 +164,10 @@ def _build_minimal_bundle(tmp_path: Path, *, bad_time_order: bool = False) -> Sy
             "reduced_config_sha256": _sha(red_cfg),
             "reduced_states_csv_path": str(states),
             "reduced_states_csv_sha256": _sha(states),
+            "predictions_path": str(preds),
+            "predictions_sha256": _sha(preds),
+            "tick_exact_summary_path": str(te_summary),
+            "tick_exact_summary_sha256": _sha(te_summary),
         },
     }
     lock_path.write_text(json.dumps(lock), encoding="utf-8")

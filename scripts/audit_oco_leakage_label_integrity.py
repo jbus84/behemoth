@@ -769,6 +769,8 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
             ("wfo_config_path", "wfo_config_sha256"),
             ("reduced_config_path", "reduced_config_sha256"),
             ("reduced_states_csv_path", "reduced_states_csv_sha256"),
+            ("predictions_path", "predictions_sha256"),
+            ("tick_exact_summary_path", "tick_exact_summary_sha256"),
         ]:
             p = Path(str(art.get(pkey, "")))
             exp = str(art.get(hkey, ""))

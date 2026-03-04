@@ -155,8 +155,12 @@ def _select_candidates(
         x = x[x["selection_pass"].astype(bool)].copy()
     min_rank = TIER_RANK.get(str(min_quality_tier).upper().strip(), 1)
     x = x[x["quality_tier"].map(TIER_RANK) >= int(min_rank)].copy()
+    if "train_count" not in x.columns:
+        x["train_count"] = 0
+    if "mean_gross_pips_train" not in x.columns:
+        x["mean_gross_pips_train"] = 0.0
     x = x.sort_values(
-        ["quality_score", "annualized_test_fills", "mean_gross_pips_test"],
+        ["quality_score", "train_count", "mean_gross_pips_train"],
         ascending=[False, False, False],
     ).reset_index(drop=True)
     if int(max_candidates) > 0:
