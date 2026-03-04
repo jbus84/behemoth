@@ -450,14 +450,36 @@ def _wfo_monthly(
             imp_path = model_export_dir / f"{symbol}_feature_importance_{month_tag}.csv"
             imp_df.to_csv(imp_path, index=False)
 
-            # Compute execution threshold from train predictions
-            exec_thr = float(np.quantile(p_tr, float(exec_q)))
+            # Compute execution threshold for live API.
+            # In rolling_days mode, compute the rolling threshold vector at
+            # exec_q and export the median as a representative static scalar.
+            # This closely tracks what WFO scoring actually applied, reducing
+            # backtest/live parity drift.
+            if mode == "rolling_days":
+                exec_thr_vec, _ = _rolling_day_threshold_vector(
+                    train_ts=tr["close_ts"],
+                    train_p=p_tr,
+                    test_ts=te["close_ts"],
+                    test_p=p,
+                    q=exec_q,
+                    lookback_days=int(rolling_threshold_days),
+                    min_history=int(rolling_threshold_min_history),
+                )
+                finite_thr = exec_thr_vec[np.isfinite(exec_thr_vec)]
+                exec_thr = (
+                    float(np.median(finite_thr)) if len(finite_thr) > 0
+                    else float(np.quantile(p_tr, exec_q))
+                )
+            else:
+                exec_thr = float(np.quantile(p_tr, float(exec_q)))
             thr_meta = {
                 "symbol": symbol,
                 "model_month": month_tag,
                 "threshold_exec": exec_thr,
                 "execution_quantile": float(exec_q),
                 "threshold_source": mode,
+                "rolling_threshold_days": int(rolling_threshold_days) if mode == "rolling_days" else 0,
+                "rolling_threshold_min_history": int(rolling_threshold_min_history) if mode == "rolling_days" else 0,
                 "train_rows": int(len(tr)),
                 "features": feats,
             }

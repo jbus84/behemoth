@@ -370,11 +370,12 @@ def _directional_candidates(
                 stats = _metric_from_gross(gross)
                 mean_train = float(np.mean(train_vals)) if len(train_vals) > 0 else float("nan")
                 median_train = float(np.median(train_vals)) if len(train_vals) > 0 else float("nan")
-                metric_val = (
-                    stats["mean_gross_pips_test"]
-                    if str(gross_metric).lower() == "mean"
-                    else stats["median_gross_pips_test"]
-                )
+                train_annual = _annualized_count(
+                    int(np.sum(tmask)),
+                    pd.to_datetime(train["close_ts"], utc=True, errors="coerce").iloc[
+                        np.flatnonzero(tmask)
+                    ],
+                ) if int(np.sum(tmask)) > 0 else 0.0
                 rows.append(
                     {
                         "symbol": symbol,
@@ -396,9 +397,9 @@ def _directional_candidates(
                         "p_up_first": float("nan"),
                         "ml_ready_target_type": "directional_sign",
                         "selection_pass": bool(
-                            np.isfinite(metric_val)
-                            and metric_val > 0.0
-                            and annual >= float(min_annual_fills)
+                            np.isfinite(mean_train)
+                            and mean_train > 0.0
+                            and train_annual >= float(min_annual_fills)
                         ),
                     }
                 )
@@ -531,11 +532,7 @@ def _oco_candidates(
                                     else float("nan"),
                                     "p_up_first": float(np.mean(side[fam_mask] > 0.0)),
                                     "ml_ready_target_type": "oco_expand",
-                                    "selection_pass": bool(
-                                        np.isfinite(metric_val)
-                                        and metric_val > 0.0
-                                        and annual >= float(min_annual_fills)
-                                    ),
+                                    "selection_pass": True,  # placeholder; set from train after join
                                     "_tmp_regime": reg_name,
                                     "_tmp_family": fam,
                                     "_tmp_k": float(k),
@@ -575,6 +572,12 @@ def _oco_candidates(
     out["train_count"] = np.array(train_count, dtype=int)
     out["mean_gross_pips_train"] = np.array(mean_train, dtype=float)
     out["median_gross_pips_train"] = np.array(median_train, dtype=float)
+    # Recompute selection_pass from train metrics (causal — no test leakage).
+    out["selection_pass"] = (
+        np.isfinite(out["mean_gross_pips_train"])
+        & (out["mean_gross_pips_train"] > 0.0)
+        & (out["train_count"] > 0)
+    )
     out = out.drop(
         columns=[c for c in ["_tmp_regime", "_tmp_family", "_tmp_k"] if c in out.columns]
     )
