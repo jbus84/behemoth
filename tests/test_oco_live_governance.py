@@ -95,6 +95,10 @@ def test_validate_lock_deploy_and_retrain_window(tmp_path: Path) -> None:
             },
         ]
     ).to_csv(states, index=False)
+    preds = tmp_path / "predictions.parquet"
+    preds.write_bytes(b"dummy_predictions")
+    te_summary = tmp_path / "tick_exact_summary.csv"
+    te_summary.write_text("overall_pass\nTrue\n", encoding="utf-8")
 
     def _sha(path: Path) -> str:
         import hashlib
@@ -106,6 +110,7 @@ def test_validate_lock_deploy_and_retrain_window(tmp_path: Path) -> None:
     lock = {
         "frozen_at_utc": "2026-02-25T00:00:00+00:00",
         "symbol": "EURUSD",
+        "git": {"commit": "abc123", "branch": "main", "dirty": False},
         "artifacts": {
             "wfo_config_path": str(wfo),
             "wfo_config_sha256": _sha(wfo),
@@ -113,6 +118,10 @@ def test_validate_lock_deploy_and_retrain_window(tmp_path: Path) -> None:
             "reduced_config_sha256": _sha(reduced),
             "reduced_states_csv_path": str(states),
             "reduced_states_csv_sha256": _sha(states),
+            "predictions_path": str(preds),
+            "predictions_sha256": _sha(preds),
+            "tick_exact_summary_path": str(te_summary),
+            "tick_exact_summary_sha256": _sha(te_summary),
             "tick_exact_overall_pass": True,
         },
         "locked_runtime": {
@@ -248,6 +257,11 @@ def test_validate_lock_blocks_on_high_data_reliability_fail(tmp_path: Path) -> N
     )
     checks.to_csv(checks_csv, index=False)
 
+    preds = tmp_path / "predictions.parquet"
+    preds.write_bytes(b"dummy_predictions")
+    te_summary = tmp_path / "tick_exact_summary.csv"
+    te_summary.write_text("overall_pass\nTrue\n", encoding="utf-8")
+
     def _sha(path: Path) -> str:
         import hashlib
 
@@ -258,6 +272,7 @@ def test_validate_lock_blocks_on_high_data_reliability_fail(tmp_path: Path) -> N
     lock = {
         "frozen_at_utc": "2026-02-25T00:00:00+00:00",
         "symbol": "EURUSD",
+        "git": {"commit": "abc123", "branch": "main", "dirty": False},
         "artifacts": {
             "wfo_config_path": str(wfo),
             "wfo_config_sha256": _sha(wfo),
@@ -265,6 +280,10 @@ def test_validate_lock_blocks_on_high_data_reliability_fail(tmp_path: Path) -> N
             "reduced_config_sha256": _sha(reduced),
             "reduced_states_csv_path": str(states),
             "reduced_states_csv_sha256": _sha(states),
+            "predictions_path": str(preds),
+            "predictions_sha256": _sha(preds),
+            "tick_exact_summary_path": str(te_summary),
+            "tick_exact_summary_sha256": _sha(te_summary),
             "tick_exact_overall_pass": True,
         },
         "locked_runtime": {
@@ -385,6 +404,11 @@ def test_validate_lock_blocks_on_high_leakage_fail(tmp_path: Path) -> None:
         ]
     ).to_csv(leakage_csv, index=False)
 
+    preds = tmp_path / "predictions.parquet"
+    preds.write_bytes(b"dummy_predictions")
+    te_summary = tmp_path / "tick_exact_summary.csv"
+    te_summary.write_text("overall_pass\nTrue\n", encoding="utf-8")
+
     def _sha(path: Path) -> str:
         import hashlib
 
@@ -395,6 +419,7 @@ def test_validate_lock_blocks_on_high_leakage_fail(tmp_path: Path) -> None:
     lock = {
         "frozen_at_utc": "2026-02-25T00:00:00+00:00",
         "symbol": "EURUSD",
+        "git": {"commit": "abc123", "branch": "main", "dirty": False},
         "artifacts": {
             "wfo_config_path": str(wfo),
             "wfo_config_sha256": _sha(wfo),
@@ -402,6 +427,10 @@ def test_validate_lock_blocks_on_high_leakage_fail(tmp_path: Path) -> None:
             "reduced_config_sha256": _sha(reduced),
             "reduced_states_csv_path": str(states),
             "reduced_states_csv_sha256": _sha(states),
+            "predictions_path": str(preds),
+            "predictions_sha256": _sha(preds),
+            "tick_exact_summary_path": str(te_summary),
+            "tick_exact_summary_sha256": _sha(te_summary),
             "tick_exact_overall_pass": True,
         },
         "locked_runtime": {
@@ -522,6 +551,11 @@ def test_validate_lock_blocks_on_high_execution_risk_fail(tmp_path: Path) -> Non
         ]
     ).to_csv(exec_csv, index=False)
 
+    preds = tmp_path / "predictions.parquet"
+    preds.write_bytes(b"dummy_predictions")
+    te_summary = tmp_path / "tick_exact_summary.csv"
+    te_summary.write_text("overall_pass\nTrue\n", encoding="utf-8")
+
     def _sha(path: Path) -> str:
         import hashlib
 
@@ -532,6 +566,7 @@ def test_validate_lock_blocks_on_high_execution_risk_fail(tmp_path: Path) -> Non
     lock = {
         "frozen_at_utc": "2026-02-25T00:00:00+00:00",
         "symbol": "EURUSD",
+        "git": {"commit": "abc123", "branch": "main", "dirty": False},
         "artifacts": {
             "wfo_config_path": str(wfo),
             "wfo_config_sha256": _sha(wfo),
@@ -539,6 +574,10 @@ def test_validate_lock_blocks_on_high_execution_risk_fail(tmp_path: Path) -> Non
             "reduced_config_sha256": _sha(reduced),
             "reduced_states_csv_path": str(states),
             "reduced_states_csv_sha256": _sha(states),
+            "predictions_path": str(preds),
+            "predictions_sha256": _sha(preds),
+            "tick_exact_summary_path": str(te_summary),
+            "tick_exact_summary_sha256": _sha(te_summary),
             "tick_exact_overall_pass": True,
         },
         "locked_runtime": {

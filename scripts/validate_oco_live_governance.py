@@ -98,6 +98,8 @@ def run(
         ("wfo_config_hash", "wfo_config_path", "wfo_config_sha256"),
         ("reduced_config_hash", "reduced_config_path", "reduced_config_sha256"),
         ("reduced_states_hash", "reduced_states_csv_path", "reduced_states_csv_sha256"),
+        ("predictions_hash", "predictions_path", "predictions_sha256"),
+        ("tick_exact_summary_hash", "tick_exact_summary_path", "tick_exact_summary_sha256"),
     ]:
         p = Path(str(artifacts.get(pkey, "")))
         if not p.exists():
@@ -114,6 +116,17 @@ def run(
             "tick_exact_overall_pass",
             te_pass is True,
             f"tick_exact_overall_pass={te_pass!r} (must be True)",
+        )
+    )
+
+    # Git provenance gate — lock must be produced from a clean worktree.
+    git_info = lock.get("git", {})
+    git_dirty = git_info.get("dirty", True)
+    checks.append(
+        Check(
+            "lock_provenance_clean",
+            git_dirty is False,
+            f"git.dirty={git_dirty!r} (must be False)",
         )
     )
 
