@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 09
 
-- generated_at: `2026-03-04 19:24:58 UTC`
+- generated_at: `2026-03-04 20:04:19 UTC`
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
 - Missing required artifacts: 1.
 
@@ -11,7 +11,7 @@
 | GBPUSD   | True                          | True              | True                         | True                          | True                    |
 | AUDUSD   | True                          | False             | True                         | True                          | False                   |
 | USDJPY   | True                          | True              | True                         | True                          | True                    |
-| USDCHF   | True                          | True              | True                         | True                          | True                    |
+| USDCHF   | True                          | False             | True                         | True                          | False                   |
 | USDCAD   | True                          | True              | True                         | True                          | True                    |
 
 #### Interpretation Notes

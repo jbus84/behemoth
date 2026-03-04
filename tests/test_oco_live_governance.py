@@ -113,6 +113,7 @@ def test_validate_lock_deploy_and_retrain_window(tmp_path: Path) -> None:
             "reduced_config_sha256": _sha(reduced),
             "reduced_states_csv_path": str(states),
             "reduced_states_csv_sha256": _sha(states),
+            "tick_exact_overall_pass": True,
         },
         "locked_runtime": {
             "threshold_mode": "rolling_days",
@@ -264,6 +265,7 @@ def test_validate_lock_blocks_on_high_data_reliability_fail(tmp_path: Path) -> N
             "reduced_config_sha256": _sha(reduced),
             "reduced_states_csv_path": str(states),
             "reduced_states_csv_sha256": _sha(states),
+            "tick_exact_overall_pass": True,
         },
         "locked_runtime": {
             "threshold_mode": "rolling_days",
@@ -400,6 +402,7 @@ def test_validate_lock_blocks_on_high_leakage_fail(tmp_path: Path) -> None:
             "reduced_config_sha256": _sha(reduced),
             "reduced_states_csv_path": str(states),
             "reduced_states_csv_sha256": _sha(states),
+            "tick_exact_overall_pass": True,
         },
         "locked_runtime": {
             "threshold_mode": "rolling_days",
@@ -536,6 +539,7 @@ def test_validate_lock_blocks_on_high_execution_risk_fail(tmp_path: Path) -> Non
             "reduced_config_sha256": _sha(reduced),
             "reduced_states_csv_path": str(states),
             "reduced_states_csv_sha256": _sha(states),
+            "tick_exact_overall_pass": True,
         },
         "locked_runtime": {
             "threshold_mode": "rolling_days",

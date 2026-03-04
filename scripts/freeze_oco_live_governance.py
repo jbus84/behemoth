@@ -101,10 +101,6 @@ def _default_paths(symbol: str) -> dict[str, Path]:
         ),
         "tick_exact_summary": _pick_first_existing(
             Path(
-                f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_reduced_summary.csv"
-            ),
-            Path(f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_reduced_summary.csv"),
-            Path(
                 f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_tick_exact_summary.csv"
             ),
             Path(
@@ -116,6 +112,10 @@ def _default_paths(symbol: str) -> dict[str, Path]:
             Path(
                 f"data/analysis/tick_opportunity_mining/reduced_core_{sl}/{s}_oco_tick_exact_summary.csv"
             ),
+            Path(
+                f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_reduced_summary.csv"
+            ),
+            Path(f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_reduced_summary.csv"),
         ),
         "predictions": _pick_first_existing(
             Path(

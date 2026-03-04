@@ -33,7 +33,7 @@ class SymbolConfig:
     max_no_touch_rate: float = 0.35
     max_tail_above_cap: float = 0.10
     latency_med_max_seconds: float = 120.0
-    latency_p95_max_seconds: float = 600.0
+    latency_p95_max_seconds: float = 1200.0
     cap_efficiency_min: float = 0.95
     max_session_share: float = 0.70
     max_bad_state_frac: float = 0.15

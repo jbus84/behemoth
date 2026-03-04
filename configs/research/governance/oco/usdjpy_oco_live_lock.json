@@ -7,15 +7,15 @@
     "reduced_states_csv_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_reduced_state_schedule.csv",
     "reduced_states_csv_sha256": "e6762eaef49ff39b6fe88da33dd30e4fe299bea68ce3aa275a1e4bc5990f5d07",
     "tick_exact_overall_pass": true,
-    "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_reduced_summary.csv",
+    "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_tick_exact_summary.csv",
     "tick_exact_summary_sha256": "96a52ad4a034ee61ab0c2b19b180c6630b78be068782ac691e950ab5d66b48a6",
     "wfo_config_path": "configs/research/experiments/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
     "wfo_config_sha256": "2990d96682a77bd19f44bd467c7d4ec30e8b49498eb7467300653783371656e8"
   },
-  "frozen_at_utc": "2026-03-03T15:53:38.093196+00:00",
+  "frozen_at_utc": "2026-03-04T20:03:18.377891+00:00",
   "git": {
     "branch": "main",
-    "commit": "26e1ede719f4245b01df50d8694edca1f489e875",
+    "commit": "eb8212ed6ee86d81356cc1e8a1ec76152ca0b0c3",
     "dirty": true
   },
   "locked_runtime": {

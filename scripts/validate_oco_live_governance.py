@@ -107,6 +107,16 @@ def run(
         exp = str(artifacts.get(hkey, ""))
         checks.append(Check(label, got == exp, f"expected={exp} got={got}"))
 
+    # Tick-exact overall pass gate.
+    te_pass = artifacts.get("tick_exact_overall_pass")
+    checks.append(
+        Check(
+            "tick_exact_overall_pass",
+            te_pass is True,
+            f"tick_exact_overall_pass={te_pass!r} (must be True)",
+        )
+    )
+
     # Runtime config lock checks if explicit files are provided.
     if wfo_config is not None and wfo_config.exists():
         cfg = _load_yaml(wfo_config)
