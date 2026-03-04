@@ -203,6 +203,7 @@ def _build_manifest(
     cadence_days: int,
     anchor_day_utc: int,
     window_days: int,
+    git_snapshot: dict[str, Any],
 ) -> dict[str, Any]:
     s = str(symbol).upper().strip()
     for p in paths.values():
@@ -218,7 +219,7 @@ def _build_manifest(
         "schema_version": 1,
         "frozen_at_utc": now.isoformat(),
         "symbol": s,
-        "git": _git_info(),
+        "git": git_snapshot,
         "artifacts": {
             "wfo_config_path": str(paths["wfo_config"]),
             "wfo_config_sha256": _sha256(paths["wfo_config"]),
@@ -274,6 +275,7 @@ def run(
     window_days: int,
 ) -> list[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
+    git_snapshot = _git_info()
     out_paths: list[Path] = []
     for s in symbols:
         paths = _default_paths(s)
@@ -283,6 +285,7 @@ def run(
             cadence_days=int(cadence_days),
             anchor_day_utc=int(anchor_day_utc),
             window_days=int(window_days),
+            git_snapshot=git_snapshot,
         )
         mp = out_dir / f"{str(s).lower()}_oco_live_lock.json"
         mp.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
