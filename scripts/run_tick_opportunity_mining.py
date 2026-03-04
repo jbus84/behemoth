@@ -286,22 +286,26 @@ def _metric_from_gross(gross: np.ndarray) -> dict[str, float]:
 
 
 def _assign_quality_tier(df: pd.DataFrame, *, library: str) -> pd.DataFrame:
+    """Assign quality tiers (A/B/C/D) using train-only metrics.
+
+    This avoids test-metric leakage into quality_score, which downstream
+    consumers (e.g. build_tick_opportunity_ml_dataset) use for ranking.
+    """
     if df.empty:
         return df
     out = df.copy()
-    mean_g = pd.to_numeric(out["mean_gross_pips_test"], errors="coerce").fillna(-np.inf)
-    hit = pd.to_numeric(out["hit_rate_gross_test"], errors="coerce").fillna(0.0)
-    std = pd.to_numeric(out["gross_std_test"], errors="coerce").fillna(np.inf)
-    annual = pd.to_numeric(out["annualized_test_fills"], errors="coerce").fillna(0.0)
+    mean_g = pd.to_numeric(out["mean_gross_pips_train"], errors="coerce").fillna(-np.inf)
+    med_g = pd.to_numeric(out["median_gross_pips_train"], errors="coerce").fillna(-np.inf)
+    tc = pd.to_numeric(out["train_count"], errors="coerce").fillna(0.0)
     both = pd.to_numeric(out.get("both_window_rate", np.nan), errors="coerce").fillna(1.0)
     sel = out["selection_pass"].astype(bool)
 
     if str(library).lower() == "directional":
-        a = (mean_g >= 0.25) & (hit >= 0.52) & (std <= 6.0) & (annual >= 10000.0)
-        b = (mean_g >= 0.10) & (hit >= 0.505) & (std <= 8.0) & (annual >= 5000.0)
+        a = (mean_g >= 0.25) & (med_g >= 0.05) & (tc >= 40000)
+        b = (mean_g >= 0.10) & (med_g >= 0.0) & (tc >= 20000)
     else:
-        a = (mean_g >= 1.0) & (hit >= 0.55) & (both <= 0.55) & (annual >= 10000.0)
-        b = (mean_g >= 0.40) & (hit >= 0.52) & (both <= 0.70) & (annual >= 5000.0)
+        a = (mean_g >= 1.0) & (med_g >= 0.3) & (both <= 0.55) & (tc >= 40000)
+        b = (mean_g >= 0.40) & (med_g >= 0.1) & (both <= 0.70) & (tc >= 20000)
     tier = np.where(a, "A", np.where(b, "B", np.where(sel, "C", "D")))
     out["quality_tier"] = tier
     out["quality_score"] = np.where(
@@ -573,10 +577,12 @@ def _oco_candidates(
     out["mean_gross_pips_train"] = np.array(mean_train, dtype=float)
     out["median_gross_pips_train"] = np.array(median_train, dtype=float)
     # Recompute selection_pass from train metrics (causal — no test leakage).
+    # train_count >= 500 enforces a capacity floor analogous to the original
+    # annualized_test_fills gate, preserving the script's "high-count" intent.
     out["selection_pass"] = (
         np.isfinite(out["mean_gross_pips_train"])
         & (out["mean_gross_pips_train"] > 0.0)
-        & (out["train_count"] > 0)
+        & (out["train_count"] >= 500)
     )
     out = out.drop(
         columns=[c for c in ["_tmp_regime", "_tmp_family", "_tmp_k"] if c in out.columns]

@@ -383,12 +383,21 @@ def _build_predictions(
     close_ts: datetime,
     thr_cfg: dict[str, Any],
 ) -> list[OcoPrediction]:
-    """Construction predictions for each candidate using the loaded model."""
+    """Build predictions for each candidate using the loaded model.
+
+    Note: threshold_exec is a static scalar (median of rolling-day threshold
+    vector from WFO export). This approximates but does not exactly reproduce
+    the per-row dynamic rolling-day threshold used in offline WFO scoring.
+    """
     import numpy as np
 
     threshold_exec = float(thr_cfg.get("threshold_exec", 0.5))
     threshold_source = str(thr_cfg.get("threshold_source", "default"))
     model_month = _model_months.get(sym, "unknown")
+    logger.debug(
+        "Predict %s: threshold_exec=%.4f source=%s month=%s (static approximation)",
+        sym, threshold_exec, threshold_source, model_month,
+    )
 
     results: list[OcoPrediction] = []
     for cand in candidates:
