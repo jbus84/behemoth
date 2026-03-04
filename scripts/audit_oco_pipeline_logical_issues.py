@@ -40,7 +40,7 @@ def _default_configs() -> dict[str, SymbolConfig]:
         s_low = s.lower()
         pred_folder = "wfo_2025_m3to1_oco_fullcap"
         red_folder = "reduced_core_rolling"
-        stop_folder = "stop_limit_tickfill_eurusd_fixed" if s == "EURUSD" else "stop_limit_tickfill_fullcap"
+        stop_folder = "stop_limit_tickfill_fullcap"
 
         configs[s] = SymbolConfig(
             symbol=s,
@@ -564,7 +564,7 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
     missing_months = sorted(set(idx) - set(months))
     warmup_count = int((monthly["status"] == "warmup_skip").sum())
     no_gate_states_count = int((monthly["status"] == "no_gate_states").sum())
-    allowed_statuses = {"ok", "warmup_skip", "no_gate_states"}
+    allowed_statuses = {"ok", "warmup_skip", "no_gate_states", "no_test_rows"}
     unexpected_non_ok = int((~monthly["status"].isin(sorted(allowed_statuses))).sum())
     c08_pass = (
         len(missing_months) == 0

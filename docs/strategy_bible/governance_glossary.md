@@ -80,6 +80,16 @@ This glossary centralizes the definitions of every individual governance diagnos
 | **`S01_lb95_dependence_gap`** | Statistical Audit | Validates that assuming independent-and-identically-distributed (IID) events doesn't aggressively inflate the Lower Bound 95% threshold compared to cluster-aware stats. |
 | **`S02_practical_lb95_gt0`** | Statistical Audit | The ultimate hard-gate: The trade-weighted, dependence-aware 95% confidence lower-bound of gross profit MUST remain above zero. |
 | **`S03_multiplicity_survival`** | Statistical Audit | Proves the discovery survives Bonferroni or False Discovery Rate (FDR) penalties for p-hacking across thousands of tested barriers. |
+| **`C01_threshold_timing`** | Pipeline Logical Audit | Enforces that every selected row satisfies `pred_prob >= threshold_exec`, month labels align with close timestamps, and threshold lookback is at least 1 day. Prevents leakage or malformed execution selection. |
+| **`C02_threshold_stability`** | Pipeline Logical Audit | Asserts each (month, candidate) group uses exactly one threshold value. In rolling mode, stability is checked per day. Prevents inconsistent thresholding that invalidates signal-selection reproducibility. |
+| **`C03_state_gate_integrity`** | Pipeline Logical Audit | Ensures no selected states failed train-time gate checks. Prevents weak, ungated states from inflating apparent diversification or capacity. |
+| **`C04_overlap_divergence`** | Pipeline Logical Audit | Detects when activity-count-based correlation diverges significantly from PnL-based correlation across states. Flags hidden co-movement understated by the portfolio overlap filter. |
+| **`C05_stop_limit_join`** | Pipeline Logical Audit | Validates stop-limit detail join integrity: zero duplicate keys and ≥99.5% monthly match rate between prediction rows and tick-level detail records. |
+| **`C06_fill_rate_monotonicity`** | Pipeline Logical Audit | Asserts fill rate increases (or stays flat) monotonically as the stop-limit cap widens. Violations imply inconsistent cap simulation or merge logic. |
+| **`C07_denominator_consistency`** | Pipeline Logical Audit | Verifies that summary-level row counts, signal counts, and fill rates are exactly reproducible from the monthly table. Prevents misstated capacity or expectancy. |
+| **`C08_warmup_continuity`** | Pipeline Logical Audit | Enforces contiguous month coverage with exactly `min_train_months` warmup rows and no unexpected status values. Prevents silent omission of difficult months. |
+| **`C09_bootstrap_reproducibility`** | Pipeline Logical Audit | Recomputes LB95 gross and signal confidence bounds from the monthly series and asserts they match the summary output to within ≤1e-8. Guards against mislabeled robustness claims. |
+| **`C10_timestamp_causality`** | Pipeline Logical Audit | Validates strict temporal ordering: `close_ts ≤ touch_open_ts ≤ touch_close_ts`, and touch month labels match the actual touch timestamp. Catches timezone coercion or bar alignment bugs that invalidate execution simulation. |
 
 ### Stage 8: Robustness & Stress
 | Code | Governance Category | Purpose / Abstract Meaning |

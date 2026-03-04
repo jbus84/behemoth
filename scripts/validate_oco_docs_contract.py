@@ -1373,14 +1373,25 @@ def run(
     stage_integrity_checks_csv = edge_metrics_csv.parent / "oco_stage_integrity_checks.csv"
     stage_integrity_issues_csv = edge_metrics_csv.parent / "oco_stage_integrity_issues.csv"
     stage_integrity_report_md = docs_root.parent / "analysis" / "oco_stage_integrity_report.md"
-    try:
-        si = (
-            pd.read_csv(stage_integrity_checks_csv)
-            if stage_integrity_checks_csv.exists()
-            else pd.DataFrame()
-        )
-    except Exception:
-        si = pd.DataFrame()
+    
+    # Also load quantitative audits to catch structural pipeline fails in the docs contract
+    quant_audit_files = [
+        stage_integrity_checks_csv,
+        edge_metrics_csv.parent / "oco_execution_risk_checks.csv",
+        edge_metrics_csv.parent / "oco_logical_audit_checks.csv",
+        edge_metrics_csv.parent / "oco_leakage_integrity_checks.csv",
+    ]
+    
+    si_dfs = []
+    for f in quant_audit_files:
+        try:
+            if f.exists():
+                si_dfs.append(pd.read_csv(f))
+        except Exception:
+            pass
+            
+    si = pd.concat(si_dfs, ignore_index=True) if si_dfs else pd.DataFrame()
+
     missing_si_cols = [c for c in STAGE_INTEGRITY_REQUIRED_COLUMNS if c not in si.columns]
     si_fail = pd.DataFrame()
     if not si.empty and {"status", "severity_if_fail"}.issubset(set(si.columns)):

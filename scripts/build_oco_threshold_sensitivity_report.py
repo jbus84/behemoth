@@ -63,11 +63,7 @@ def _default_paths(symbol: str) -> SymbolPaths:
     s = str(symbol).upper()
     s_low = s.lower()
 
-    # EURUSD and AUDUSD happen to use the same top-level folder name (fullcap), but the others are suffixed
-    if s in ("EURUSD", "AUDUSD"):
-        folder = "wfo_2025_m3to1_oco_fullcap"
-    else:
-        folder = f"wfo_2025_m3to1_oco_fullcap_{s_low}"
+    folder = "wfo_2025_m3to1_oco_fullcap"
 
     pred = Path(
         f"data/analysis/tick_opportunity_mining/{folder}/{s}_oco_monthly_predictions.parquet"

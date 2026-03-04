@@ -215,21 +215,23 @@ def _rebuild_touch_events(
             touch_idx = idx + np.nan_to_num(touch_step, nan=0.0).astype(np.int64)
 
             use = decided & np.isfinite(touch_step) & (touch_idx >= 0) & (touch_idx < len(bars))
-            if not np.any(use):
-                continue
-            iu = np.flatnonzero(use)
-            g3 = g2.iloc[iu].copy()
-            side3 = side[iu].astype(np.int8)
-            ref3 = ref[iu].astype(float)
-            touch_idx3 = touch_idx[iu].astype(np.int64)
+            side[~use] = 0
+            touch_idx[~use] = 0
+
+            g3 = g2.copy()
+            side3 = side.astype(np.int8)
+            ref3 = ref.astype(float)
+            touch_idx3 = touch_idx.astype(np.int64)
             k3 = float(k)
             barrier_px = ref3 + side3.astype(float) * (k3 * pip)
 
             g3["side"] = side3
             g3["touch_idx"] = touch_idx3
-            g3["touch_open_ts"] = bars["timestamp"].to_numpy()[touch_idx3]
-            g3["touch_close_ts"] = bars["close_ts"].to_numpy()[touch_idx3]
-            g3["barrier_px"] = barrier_px
+            ts = bars["timestamp"].to_numpy()[touch_idx3]
+            cts = bars["close_ts"].to_numpy()[touch_idx3]
+            g3["touch_open_ts"] = np.where(use, ts, pd.NaT)
+            g3["touch_close_ts"] = np.where(use, cts, pd.NaT)
+            g3["barrier_px"] = np.where(use, barrier_px, np.nan)
             events.append(
                 g3[
                     [
@@ -246,7 +248,23 @@ def _rebuild_touch_events(
                     ]
                 ].copy()
             )
-    return pd.concat(events, ignore_index=True) if events else pd.DataFrame()
+    events_df = pd.concat(events, ignore_index=True) if events else pd.DataFrame(columns=["candidate_uid"])
+
+    out = d[["close_ts", "candidate_uid", "target_gross_pips", "bar_ticks", "horizon", "barrier_pips"]].copy()
+    if not events_df.empty:
+        events_df = events_df.drop_duplicates(subset=["candidate_uid", "close_ts"])
+        drop_cols = ["target_gross_pips", "bar_ticks", "horizon", "barrier_pips"]
+        events_df = events_df.drop(columns=[c for c in drop_cols if c in events_df.columns], errors="ignore")
+        out = out.merge(events_df, on=["candidate_uid", "close_ts"], how="left")
+    else:
+        out["side"] = 0
+        out["barrier_px"] = np.nan
+        out["touch_open_ts"] = pd.NaT
+        out["touch_close_ts"] = pd.NaT
+
+    out["side"] = out["side"].fillna(0).astype(np.int8)
+    out["barrier_px"] = pd.to_numeric(out["barrier_px"], errors="coerce")
+    return out
 
 
 def _first_cross_overshoot_month(
@@ -267,16 +285,18 @@ def _first_cross_overshoot_month(
         x["overshoot_tick_pips"] = np.nan
         return x
 
-    ts_ns = ticks["timestamp"].astype("int64").to_numpy(dtype=np.int64)
+    ts_ns = ticks["timestamp"].astype("datetime64[ns, UTC]").astype("int64").to_numpy(dtype=np.int64)
     px = ticks["bid"].to_numpy(dtype=float)
 
     starts_ns = (
         pd.to_datetime(month_events["touch_open_ts"], utc=True, errors="coerce")
+        .astype("datetime64[ns, UTC]")
         .astype("int64")
         .to_numpy(dtype=np.int64)
     )
     ends_ns = (
         pd.to_datetime(month_events["touch_close_ts"], utc=True, errors="coerce")
+        .astype("datetime64[ns, UTC]")
         .astype("int64")
         .to_numpy(dtype=np.int64)
     )
@@ -398,7 +418,7 @@ def run_symbol(
     pip = float(_pip_size(symbol))
     events["touch_month"] = pd.to_datetime(
         events["touch_open_ts"], utc=True, errors="coerce"
-    ).dt.strftime("%Y%m")
+    ).dt.strftime("%Y%m").fillna("missing")
 
     out_parts: list[pd.DataFrame] = []
     for m, g in events.groupby("touch_month", sort=True):
@@ -474,18 +494,19 @@ def main() -> None:
             raise ValueError("--pred-paths must match --symbols length when provided")
         pred_map = {symbols[i]: Path(pred_paths_raw[i]) for i in range(len(symbols))}
     else:
-        defaults = {
-            "EURUSD": Path(
-                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet"
-            ),
-            "GBPUSD": Path(
-                "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_predictions.parquet"
-            ),
-        }
         for s in symbols:
-            if s not in defaults:
-                raise ValueError(f"Provide --pred-paths for symbol {s}")
-            pred_map[s] = defaults[s]
+            s_up = s.upper()
+            defaults = {
+                "EURUSD": Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"),
+                "GBPUSD": Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"),
+                "USDJPY": Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"),
+                "USDCHF": Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"),
+                "AUDUSD": Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"),
+                "USDCAD": Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"),
+            }
+            if s_up not in defaults:
+                raise ValueError(f"Provide --pred-paths for symbol {s_up}")
+            pred_map[s_up] = defaults[s_up]
 
     summary_rows: list[dict[str, Any]] = []
     cap_rows: list[pd.DataFrame] = []
