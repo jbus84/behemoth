@@ -183,7 +183,10 @@ class OcoPrediction(BaseModel):
 
     # Model WFO Outputs
     pred_prob: float = Field(..., ge=0.0, le=1.0, description="CatBoost classifier raw probability")
-    threshold_exec: float = Field(..., description="The strict rolling execution threshold (q=0.9)")
+    threshold_exec: float = Field(
+        ...,
+        description="Execution threshold actually applied to this prediction row",
+    )
     selected_exec: int = Field(..., description="1 if pred_prob >= threshold_exec else 0")
 
     # Structural Parameters (for cBot execution)
@@ -192,7 +195,10 @@ class OcoPrediction(BaseModel):
     cap_pips: float = Field(..., description="The Stop-Limit overshoot cap in pips (e.g. 1.2)")
 
     # Traceability
-    threshold_source: str = Field(..., description="e.g. 'rolling_days' or 'train_fallback'")
+    threshold_source: str = Field(
+        ...,
+        description="Threshold provenance for this row, e.g. 'rolling_days:schedule'",
+    )
     model_month: str = Field(..., description="The YYYY-MM identifier of the model doing the inference")
 
 

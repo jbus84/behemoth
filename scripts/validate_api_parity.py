@@ -1,19 +1,13 @@
 #!/usr/bin/env python3
-"""Validate offline-vs-API parity for OCO selection.
-
-Usage:
-    uv run python scripts/validate_api_parity.py --symbol EURUSD --month 2025-01
-"""
+"""Validate offline-vs-API parity for OCO selection."""
 
 import argparse
-import json
 import logging
 import sys
-from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
-import numpy as np
+import json
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("validate_api_parity")
@@ -24,6 +18,7 @@ def run(
     predictions_parquet: Path,
     threshold_json: Path,
     tolerance: float = 0.0,
+    allow_empty_month: bool = False,
 ) -> bool:
     if not predictions_parquet.exists():
         logger.error("Predictions parquet not found: %s", predictions_parquet)
@@ -41,32 +36,53 @@ def run(
         thr_cfg = json.load(f)
 
     month = thr_cfg.get("model_month")
+    if not month:
+        logger.error("threshold JSON missing model_month: %s", threshold_json)
+        return False
     if month and "test_month" in df.columns:
         df = df[df["test_month"] == month].copy()
 
     if df.empty:
-        logger.warning("No predictions found in %s matching model_month %s for %s", predictions_parquet, month, symbol)
-        return True
+        msg = (
+            "No predictions found in %s matching model_month %s for %s"
+            % (predictions_parquet, month, symbol)
+        )
+        if allow_empty_month:
+            logger.warning(msg)
+            return True
+        logger.error(msg)
+        return False
+
+    if "selected_exec" not in df.columns:
+        logger.error("predictions parquet missing required column: selected_exec")
+        return False
+    if "pred_prob" not in df.columns or "close_ts" not in df.columns:
+        logger.error("predictions parquet missing required columns: pred_prob/close_ts")
+        return False
     
     schedule = thr_cfg.get("threshold_schedule", {})
     static_exec = float(thr_cfg.get("threshold_exec", 0.5))
     
     logger.info("Validating parity for %s month %s (%d rows)", symbol, month, len(df))
 
-    # Re-calculate 'selected_exec' using the API lookup logic
-    # (pred_prob >= threshold)
-    
+    # Re-calculate selected_exec using API lookup logic.
     def api_logic(row):
         close_ts = pd.to_datetime(row["close_ts"], utc=True)
         day_str = close_ts.strftime("%Y-%m-%d")
-        
+
         # Mirror of server.py _build_predictions
         if schedule and day_str in schedule:
             thr = float(schedule[day_str])
         else:
             thr = static_exec
-            
-        return pd.Series({"api_selected": (1 if row["pred_prob"] >= thr else 0), "api_threshold": thr, "lookup_key": day_str})
+
+        return pd.Series(
+            {
+                "api_selected": (1 if row["pred_prob"] >= thr else 0),
+                "api_threshold": thr,
+                "lookup_key": day_str,
+            }
+        )
 
     debug_df = df.apply(api_logic, axis=1)
     df = pd.concat([df, debug_df], axis=1)
@@ -80,7 +96,21 @@ def run(
         logger.error("Parity Failure: %d mismatches found! (Rate: %.4f)", mismatch_count, mismatch_rate)
         # Detailed sample of mismatches
         print("\nSample Mismatches:")
-        print(mismatches[["close_ts", "candidate_uid", "pred_prob", "selected_exec", "api_selected", "api_threshold", "lookup_key"]].head(20).to_string())
+        print(
+            mismatches[
+                [
+                    "close_ts",
+                    "candidate_uid",
+                    "pred_prob",
+                    "selected_exec",
+                    "api_selected",
+                    "api_threshold",
+                    "lookup_key",
+                ]
+            ]
+            .head(20)
+            .to_string()
+        )
         return mismatch_rate <= tolerance
     else:
         logger.info("Parity Success: 100%% match between offline and API logic.")
@@ -92,13 +122,19 @@ def main():
     p.add_argument("--predictions", type=Path, required=True)
     p.add_argument("--threshold-json", type=Path, required=True)
     p.add_argument("--tolerance", type=float, default=0.0)
+    p.add_argument(
+        "--allow-empty-month",
+        action="store_true",
+        help="Allow passing when no predictions match model_month (not recommended).",
+    )
     args = p.parse_args()
 
     success = run(
         symbol=args.symbol,
         predictions_parquet=args.predictions,
         threshold_json=args.threshold_json,
-        tolerance=args.tolerance
+        tolerance=args.tolerance,
+        allow_empty_month=bool(args.allow_empty_month),
     )
     if not success:
         sys.exit(1)

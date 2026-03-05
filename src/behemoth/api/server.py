@@ -383,20 +383,15 @@ def _build_predictions(
     close_ts: datetime,
     thr_cfg: dict[str, Any],
 ) -> list[OcoPrediction]:
-    """Build predictions for each candidate using the loaded model.
-
-    Note: threshold_exec is a static scalar (median of rolling-day threshold
-    vector from WFO export). This approximates but does not exactly reproduce
-    the per-row dynamic rolling-day threshold used in offline WFO scoring.
-    """
+    """Build predictions for each candidate using the loaded model."""
     import numpy as np
 
     threshold_exec = float(thr_cfg.get("threshold_exec", 0.5))
-    threshold_source = str(thr_cfg.get("threshold_source", "default"))
+    threshold_mode = str(thr_cfg.get("threshold_source", "default"))
     model_month = _model_months.get(sym, "unknown")
     logger.debug(
-        "Predict %s: threshold_exec=%.4f source=%s month=%s (static approximation)",
-        sym, threshold_exec, threshold_source, model_month,
+        "Predict %s: threshold_exec=%.4f mode=%s month=%s",
+        sym, threshold_exec, threshold_mode, model_month,
     )
 
     results: list[OcoPrediction] = []
@@ -418,18 +413,17 @@ def _build_predictions(
         else:
             pred_prob = 0.0
 
-        # Dynamic Threshold Lookup
-        # Close the parity gap by using the pre-calculated daily threshold schedule
-        # if the backtest was run in rolling_days mode.
+        # Dynamic threshold lookup. If the model export includes a per-day
+        # schedule, use it; otherwise, fall back to the static scalar.
         schedule = thr_cfg.get("threshold_schedule", {})
         day_str = close_ts.strftime("%Y-%m-%d")
-        
+
         if schedule and day_str in schedule:
             curr_threshold = float(schedule[day_str])
-            thr_source = "schedule"
+            curr_source = f"{threshold_mode}:schedule"
         else:
             curr_threshold = threshold_exec
-            thr_source = "static_fallback"
+            curr_source = f"{threshold_mode}:static_fallback"
 
         # Offline format expects: library|symbol|bar_ticks|h_horizon|candidate_basename
         canonical_uid = f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
@@ -441,7 +435,7 @@ def _build_predictions(
                 symbol=sym,
                 candidate_uid=canonical_uid,
                 pred_prob=pred_prob,
-                threshold=threshold_exec,
+                threshold=curr_threshold,
                 features=features,
                 model_month=model_month,
             )
@@ -452,12 +446,12 @@ def _build_predictions(
                 close_ts=close_ts,
                 candidate_uid=canonical_uid,
                 pred_prob=pred_prob,
-                threshold_exec=threshold_exec,
+                threshold_exec=curr_threshold,
                 selected_exec=selected_exec,
                 horizon=int(cand.horizon),
                 barrier_pips=float(cand.barrier_pips),
                 cap_pips=_get_cap_pips(sym),
-                threshold_source=threshold_source,
+                threshold_source=curr_source,
                 model_month=model_month,
             )
         )

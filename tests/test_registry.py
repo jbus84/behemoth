@@ -57,5 +57,6 @@ class TestCandidateGeneration:
 
     def test_all_candidates_count(self, registry):
         all_cands = registry.all_candidates()
-        assert len(all_cands) > 10  # sum of all symbols
-
+        expected = sum(len(registry.get_candidates(sym)) for sym in registry.symbols)
+        assert len(all_cands) == expected
+        assert len(all_cands) > 0

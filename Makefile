@@ -120,7 +120,7 @@ freeze-oco: audit-all docs-contract-ci
 	@echo "\n--- Verifying API Parity ---"
 	@for sym in $(REBUILD_SYMBOLS); do \
 		echo "Parity check: $$sym"; \
-		JSON=$$(ls models/oco/$${sym}_model_*.json | head -n 1); \
+		JSON=$$(ls models/oco/$${sym}_model_*.json | sort | tail -n 1); \
 		if [ -z "$$JSON" ]; then echo "Error: No model JSON found for $$sym"; exit 1; fi; \
 		uv run python scripts/validate_api_parity.py --symbol $$sym \
 			--predictions data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/$${sym}_oco_monthly_predictions.parquet \

@@ -94,19 +94,25 @@ def run(
 
     artifacts = lock.get("artifacts", {})
     # Integrity checks against frozen paths and hashes.
-    for label, pkey, hkey in [
-        ("wfo_config_hash", "wfo_config_path", "wfo_config_sha256"),
-        ("reduced_config_hash", "reduced_config_path", "reduced_config_sha256"),
-        ("reduced_states_hash", "reduced_states_csv_path", "reduced_states_csv_sha256"),
-        ("predictions_hash", "predictions_path", "predictions_sha256"),
-        ("tick_exact_summary_hash", "tick_exact_summary_path", "tick_exact_summary_sha256"),
+    for label, pkey, hkey, required in [
+        ("wfo_config_hash", "wfo_config_path", "wfo_config_sha256", True),
+        ("reduced_config_hash", "reduced_config_path", "reduced_config_sha256", True),
+        ("reduced_states_hash", "reduced_states_csv_path", "reduced_states_csv_sha256", True),
+        ("predictions_hash", "predictions_path", "predictions_sha256", True),
+        ("tick_exact_summary_hash", "tick_exact_summary_path", "tick_exact_summary_sha256", True),
+        ("reduced_summary_hash", "reduced_summary_path", "reduced_summary_sha256", False),
     ]:
-        p = Path(str(artifacts.get(pkey, "")))
-        if not p.exists():
+        p_txt = str(artifacts.get(pkey, "")).strip()
+        exp = str(artifacts.get(hkey, "")).strip()
+        if not p_txt:
+            if required:
+                checks.append(Check(label, False, f"missing {pkey}"))
+            continue
+        p = Path(p_txt)
+        if (not p.exists()) or p.is_dir():
             checks.append(Check(label, False, f"missing {p}"))
             continue
         got = _sha256(p)
-        exp = str(artifacts.get(hkey, ""))
         checks.append(Check(label, got == exp, f"expected={exp} got={got}"))
 
     # Tick-exact overall pass gate.
@@ -118,6 +124,29 @@ def run(
             f"tick_exact_overall_pass={te_pass!r} (must be True)",
         )
     )
+    if "capacity_overall_pass" in artifacts:
+        cap_pass = artifacts.get("capacity_overall_pass")
+        checks.append(
+            Check(
+                "capacity_overall_pass",
+                cap_pass is True,
+                f"capacity_overall_pass={cap_pass!r} (must be True)",
+            )
+        )
+        if "live_deployable" in artifacts:
+            live_deployable = artifacts.get("live_deployable")
+            expected_live_deployable = (te_pass is True) and (cap_pass is True)
+            checks.append(
+                Check(
+                    "live_deployable_consistent",
+                    isinstance(live_deployable, bool)
+                    and (live_deployable == expected_live_deployable),
+                    (
+                        f"live_deployable={live_deployable!r} "
+                        f"expected={expected_live_deployable!r}"
+                    ),
+                )
+            )
 
     # Git provenance gate — lock must be produced from a clean worktree.
     git_info = lock.get("git", {})

@@ -237,6 +237,8 @@ def _build_manifest(
     red_cfg = _load_yaml(paths["reduced_config"])
     states, states_sha = _state_universe(paths["reduced_states"])
     now = datetime.now(timezone.utc)
+    tick_ok = _read_tick_exact_ok(paths["tick_exact_summary"])
+    cap_ok = _read_capacity_ok(paths["reduced_summary"])
 
     manifest: dict[str, Any] = {
         "schema_version": 1,
@@ -254,14 +256,12 @@ def _build_manifest(
             "predictions_sha256": _sha256(paths["predictions"]),
             "tick_exact_summary_path": str(paths["tick_exact_summary"]),
             "tick_exact_summary_sha256": _sha256(paths["tick_exact_summary"]),
-            "tick_exact_overall_pass": _read_tick_exact_ok(paths["tick_exact_summary"]),
+            "tick_exact_overall_pass": tick_ok,
             "reduced_summary_path": str(paths["reduced_summary"]),
             "reduced_summary_sha256": _sha256(paths["reduced_summary"]),
-            "capacity_overall_pass": _read_capacity_ok(paths["reduced_summary"]),
-            "live_deployable": (
-                (_read_tick_exact_ok(paths["tick_exact_summary"]) is not False)
-                and (_read_capacity_ok(paths["reduced_summary"]) is not False)
-            ),
+            "capacity_overall_pass": cap_ok,
+            # Unknown (`None`) should not silently pass deployability.
+            "live_deployable": (tick_ok is True) and (cap_ok is True),
         },
         "locked_runtime": {
             "locked_quantile": float(red_cfg.get("locked_quantile", 0.9)),
@@ -303,9 +303,15 @@ def run(
     cadence_days: int,
     anchor_day_utc: int,
     window_days: int,
+    allow_dirty: bool,
 ) -> list[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     git_snapshot = _git_info()
+    if (not bool(allow_dirty)) and bool(git_snapshot.get("dirty", True)):
+        raise RuntimeError(
+            "Refusing to freeze from a dirty git worktree. "
+            "Commit/stash changes first, or pass --allow-dirty."
+        )
     out_paths: list[Path] = []
     for s in symbols:
         paths = _default_paths(s)
@@ -341,6 +347,11 @@ def main() -> None:
     p.add_argument(
         "--window-days", type=int, default=3, help="Allowed +/- days around anchor for retrain"
     )
+    p.add_argument(
+        "--allow-dirty",
+        action="store_true",
+        help="Allow freeze from a dirty git worktree (not recommended).",
+    )
     args = p.parse_args()
 
     syms = _split_csv(str(args.symbols))
@@ -359,6 +370,7 @@ def main() -> None:
         cadence_days=cadence_days,
         anchor_day_utc=anchor_day_utc,
         window_days=window_days,
+        allow_dirty=bool(args.allow_dirty),
     )
 
 
