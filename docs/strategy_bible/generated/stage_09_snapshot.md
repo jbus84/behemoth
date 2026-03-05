@@ -1,8 +1,8 @@
 ### Auto Snapshot - Stage 09
 
-- generated_at: `2026-03-05 14:41:51 UTC`
+- generated_at: `2026-03-05 16:30:22 UTC`
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
-- Missing required artifacts: 1.
+- Missing required artifacts: 0.
 
 #### Key Results
 | symbol   | gate_reduced_lb95_month_gt0   | gate_tick_exact   | gate_robust_lb95_trade_gt0   | gate_robust_months_majority   | symbol_all_gates_pass   |
@@ -16,7 +16,7 @@
 
 #### Interpretation Notes
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
-- Missing required artifacts: 1.
+- Missing required artifacts: 0.
 
 #### Action Trigger Summary
 | symbol   | metric_id            | band   | severity   | action_code   | action_summary                      | owner      |
@@ -33,11 +33,6 @@
 | USDCHF   | G03_lock_drift_flags | green  | info       | A0_MONITOR    | within policy band                  | governance |
 | USDJPY   | G01_near_fail_count  | green  | info       | A0_MONITOR    | within policy band                  | governance |
 | USDJPY   | G03_lock_drift_flags | green  | info       | A0_MONITOR    | within policy band                  | governance |
-
-#### Details
-| group   | symbol   | artifact             | path                                                                          |
-|:--------|:---------|:---------------------|:------------------------------------------------------------------------------|
-| symbol  | USDCHF   | tick_exact_report_md | configs/research/docs/docs/analysis/usdchf_oco_tick_exact_shortlist_report.md |
 
 #### Plots
 ![stage_09_gate_matrix](../../figures/oco_bible/stage_09_gate_matrix.png)
