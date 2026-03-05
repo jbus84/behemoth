@@ -1,6 +1,6 @@
 # Analysis Catalog
 
-- generated_at_utc: `2026-03-05T00:46:55Z`
+- generated_at_utc: `2026-03-05T07:55:55Z`
 - manifest_csv: `analysis/catalog_manifest.csv`
 - gaps_report: `analysis/catalog_gaps_report.md`
 
@@ -80,7 +80,7 @@
 |   stage_id |   report_count |
 |-----------:|---------------:|
 |          1 |              1 |
-|          2 |              6 |
+|          2 |             12 |
 |          3 |             19 |
 |          4 |              8 |
 |          5 |              7 |

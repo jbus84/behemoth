@@ -233,7 +233,7 @@ uv run python scripts/build_oco_threshold_sensitivity_report.py
 <!-- GENERATED:STAGE_09:START -->
 ### Auto Snapshot - Stage 09
 
-- generated_at: `2026-03-05 00:54:34 UTC`
+- generated_at: `2026-03-05 07:55:58 UTC`
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
 - Missing required artifacts: 1.
 

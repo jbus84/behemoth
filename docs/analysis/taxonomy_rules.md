@@ -1,6 +1,6 @@
 # Analysis Taxonomy Rules
 
-- generated_at_utc: `2026-03-05T00:46:55Z`
+- generated_at_utc: `2026-03-05T07:55:55Z`
 
 ## Group Assignment Order
 1. `core`: canonical governance reports for the OCO bible.
@@ -13,7 +13,7 @@
 |   stage_id | keywords                                                                  |
 |-----------:|:--------------------------------------------------------------------------|
 |          1 | data_reliability                                                          |
-|          2 | mining, opportunity_mining                                                |
+|          2 | mining, opportunity_mining, ml_ready                                      |
 |          3 | monthly_wfo, _wfo_, threshold_sensitivity                                 |
 |          4 | stop_limit, execution_risk, execution_drift                               |
 |          5 | reduced_core, rule_universe_registry                                      |

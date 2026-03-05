@@ -55,7 +55,7 @@ SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 
 STAGE_KEYWORDS: list[tuple[int, tuple[str, ...]]] = [
     (1, ("data_reliability",)),
-    (2, ("mining", "opportunity_mining")),
+    (2, ("mining", "opportunity_mining", "ml_ready")),
     (3, ("monthly_wfo", "_wfo_", "threshold_sensitivity")),
     (4, ("stop_limit", "execution_risk", "execution_drift")),
     (5, ("reduced_core", "rule_universe_registry")),
@@ -108,6 +108,8 @@ def _variant_score(name_l: str) -> int:
 def _stage_family(name_l: str) -> str:
     if "_tick_opportunity_mining_report" in name_l:
         return "stage02_mining"
+    if "_tick_opportunity_ml_ready_report" in name_l:
+        return "stage02_ml_ready"
     if "_tick_opportunity_monthly_wfo_oco_" in name_l:
         return "stage03_wfo"
     if "stop_limit_tickfill" in name_l:

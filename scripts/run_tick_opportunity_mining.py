@@ -297,7 +297,7 @@ def _assign_quality_tier(df: pd.DataFrame, *, library: str) -> pd.DataFrame:
     mean_g = pd.to_numeric(out["mean_gross_pips_train"], errors="coerce").fillna(-np.inf)
     med_g = pd.to_numeric(out["median_gross_pips_train"], errors="coerce").fillna(-np.inf)
     tc = pd.to_numeric(out["train_count"], errors="coerce").fillna(0.0)
-    both = pd.to_numeric(out.get("both_window_rate", np.nan), errors="coerce").fillna(1.0)
+    both = pd.to_numeric(out.get("both_window_rate_train", out.get("both_window_rate", np.nan)), errors="coerce").fillna(1.0)
     sel = out["selection_pass"].astype(bool)
 
     if str(library).lower() == "directional":
@@ -558,6 +558,7 @@ def _oco_candidates(
                                 int(np.sum(fam_mask)),
                                 float(np.mean(vals)) if len(vals) > 0 else float("nan"),
                                 float(np.median(vals)) if len(vals) > 0 else float("nan"),
+                                float(np.mean(both[reg_mask])) if np.any(reg_mask) else float("nan"),
                             )
 
     out = pd.DataFrame(rows)
@@ -567,15 +568,18 @@ def _oco_candidates(
     train_count: list[int] = []
     mean_train: list[float] = []
     median_train: list[float] = []
+    both_train: list[float] = []
     for _, r in out.iterrows():
         key = (int(r["horizon"]), float(r["_tmp_k"]), str(r["_tmp_regime"]), str(r["_tmp_family"]))
-        tr = train_cache.get(key, (0, float("nan"), float("nan")))
+        tr = train_cache.get(key, (0, float("nan"), float("nan"), float("nan")))
         train_count.append(int(tr[0]))
         mean_train.append(float(tr[1]))
         median_train.append(float(tr[2]))
+        both_train.append(float(tr[3]))
     out["train_count"] = np.array(train_count, dtype=int)
     out["mean_gross_pips_train"] = np.array(mean_train, dtype=float)
     out["median_gross_pips_train"] = np.array(median_train, dtype=float)
+    out["both_window_rate_train"] = np.array(both_train, dtype=float)
     # Recompute selection_pass from train metrics (causal — no test leakage).
     # train_count >= 500 enforces a capacity floor analogous to the original
     # annualized_test_fills gate, preserving the script's "high-count" intent.

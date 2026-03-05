@@ -1,6 +1,6 @@
 # OCO Operator Playbook
 
-- generated_at_utc: `2026-03-05T00:54:33Z`
+- generated_at_utc: `2026-03-05T07:55:57Z`
 - source_rules: `configs/research/docs/operator_action_rules.yaml`
 
 ## Action Codes

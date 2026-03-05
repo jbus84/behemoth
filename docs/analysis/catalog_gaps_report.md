@@ -1,6 +1,6 @@
 # Analysis Catalog Gaps
 
-- generated_at_utc: `2026-03-05T00:46:55Z`
+- generated_at_utc: `2026-03-05T07:55:55Z`
 
 ## Missing Core Reports
 _empty_
