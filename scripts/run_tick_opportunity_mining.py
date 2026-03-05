@@ -297,7 +297,10 @@ def _assign_quality_tier(df: pd.DataFrame, *, library: str) -> pd.DataFrame:
     mean_g = pd.to_numeric(out["mean_gross_pips_train"], errors="coerce").fillna(-np.inf)
     med_g = pd.to_numeric(out["median_gross_pips_train"], errors="coerce").fillna(-np.inf)
     tc = pd.to_numeric(out["train_count"], errors="coerce").fillna(0.0)
-    both = pd.to_numeric(out.get("both_window_rate_train", out.get("both_window_rate", np.nan)), errors="coerce").fillna(1.0)
+    if "both_window_rate_train" in out.columns:
+        both = pd.to_numeric(out["both_window_rate_train"], errors="coerce").fillna(1.0)
+    else:
+        both = pd.Series(1.0, index=out.index)
     sel = out["selection_pass"].astype(bool)
 
     if str(library).lower() == "directional":

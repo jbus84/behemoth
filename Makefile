@@ -51,7 +51,7 @@ retrain-all:
 	@echo "══════════════════════════════════════════"
 	@for sym in $(REBUILD_SYMBOLS); do \
 		echo "\n=== Retraining $$sym ==="; \
-		uv run python scripts/onboard_symbol.py --symbol $$sym --skip-data --skip-docs || exit 1; \
+		uv run python scripts/onboard_symbol.py --symbol $$sym --skip-data --skip-docs --model-export-dir models/oco || exit 1; \
 	done
 	@echo "\n=== Running docs-contract ==="
 	$(MAKE) docs-contract
@@ -109,6 +109,26 @@ docs-contract-ci:
 	uv run python scripts/build_oco_system_reference_docs.py
 	uv run python scripts/check_oco_docs_stage_integrity.py
 	uv run python scripts/validate_oco_docs_contract.py
+
+audit-all:
+	@echo "\n--- Running Core Audits ---"
+	uv run python scripts/audit_oco_pipeline_logical_issues.py
+	uv run python scripts/audit_oco_leakage_label_integrity.py
+	uv run python scripts/audit_oco_execution_risk_prelive.py
+
+freeze-oco: audit-all docs-contract-ci
+	@echo "\n--- Verifying API Parity ---"
+	@for sym in $(REBUILD_SYMBOLS); do \
+		echo "Parity check: $$sym"; \
+		JSON=$$(ls models/oco/$${sym}_model_*.json | head -n 1); \
+		if [ -z "$$JSON" ]; then echo "Error: No model JSON found for $$sym"; exit 1; fi; \
+		uv run python scripts/validate_api_parity.py --symbol $$sym \
+			--predictions data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/$${sym}_oco_monthly_predictions.parquet \
+			--threshold-json $$JSON || exit 1; \
+	done
+	@echo "\n--- Refreezing Governance Locks ---"
+	uv run python scripts/freeze_oco_live_governance.py --symbols $(shell echo $(REBUILD_SYMBOLS) | sed 's/ /,/g')
+	@echo "\n✅ Successfully audited and frozen all locks."
 
 docs-clean:
 	rm -rf site

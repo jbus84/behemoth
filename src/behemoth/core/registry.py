@@ -69,6 +69,13 @@ class CandidateRegistry:
                 if not sym:
                     continue
 
+                # Quarantine Policy: Skip if marked as not deployable
+                deployable = data.get("artifacts", {}).get("live_deployable", True)
+                if not deployable:
+                    import logging
+                    logging.getLogger("behemoth.api").warning("Quarantining %s: live_deployable=False in governance lock.", sym)
+                    continue
+
                 rows = data.get("state_universe", {}).get("rows", [])
                 candidates = [CandidateSpec.from_row(r) for r in rows]
                 reg._candidates_by_symbol[sym] = candidates

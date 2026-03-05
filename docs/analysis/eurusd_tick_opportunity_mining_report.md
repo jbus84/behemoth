@@ -45,7 +45,7 @@
 |         100 |         4 | oco_first_touch_clean | oco_first_touch_clean__all__k2    | B              |                  179967 |              0.968473  |                      0.6 |          2.78025 |              0.596993 | True             |
 |         100 |         3 | oco_first_touch_clean | oco_first_touch_clean__all__k2    | B              |                  177749 |              0.662607  |                      0.3 |          2.44591 |              0.568836 | True             |
 |         100 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k3    | B              |                  176130 |              0.816781  |                      0.4 |          3.46837 |              0.560042 | True             |
-|         100 |         5 | oco_first_touch_clean | oco_first_touch_clean__all__k2    | A              |                  175745 |              1.28469   |                      0.8 |          3.08676 |              0.625621 | True             |
+|         100 |         5 | oco_first_touch_clean | oco_first_touch_clean__all__k2    | B              |                  175745 |              1.28469   |                      0.8 |          3.08676 |              0.625621 | True             |
 |         100 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k2    | A              |                  168977 |              1.61596   |                      1.1 |          3.37351 |              0.652977 | True             |
 |         100 |         2 | oco_first_touch       | oco_first_touch__all__k2          | C              |                  168857 |              0.131986  |                      0.1 |          2.4066  |              0.51527  | True             |
 |         100 |         5 | oco_first_touch_clean | oco_first_touch_clean__all__k3    | B              |                  168514 |              0.633312  |                      0.3 |          3.20421 |              0.547762 | True             |
@@ -53,12 +53,12 @@
 |         100 |         6 | oco_first_touch       | oco_first_touch__low_cost_q30__k2 | C              |                  160530 |              0.0643227 |                      0.1 |          4.2405  |              0.506649 | True             |
 |         100 |         2 | oco_first_touch_clean | oco_first_touch_clean__all__k2    | C              |                  159375 |              0.397901  |                      0.2 |          2.05673 |              0.544333 | True             |
 |         100 |         5 | oco_first_touch       | oco_first_touch__low_cost_q30__k2 | C              |                  156028 |              0.0579478 |                      0.1 |          3.8299  |              0.506899 | True             |
-|         100 |         4 | oco_first_touch_clean | oco_first_touch_clean__all__k3    | B              |                  154448 |              0.479034  |                      0.2 |          2.9258  |              0.537624 | True             |
+|         100 |         4 | oco_first_touch_clean | oco_first_touch_clean__all__k3    | C              |                  154448 |              0.479034  |                      0.2 |          2.9258  |              0.537624 | True             |
 |         100 |         4 | oco_first_touch       | oco_first_touch__low_cost_q30__k2 | C              |                  148036 |              0.0342051 |                      0.1 |          3.41984 |              0.506538 | True             |
 |         100 |         3 | oco_first_touch       | oco_first_touch__all__k3          | C              |                  135461 |              0.143527  |                      0.1 |          2.95825 |              0.515943 | True             |
 
 ## Selection Summary
 | library     |   rows_total |   rows_pass |   pass_rate |   mean_annualized_fills_all |   mean_annualized_fills_pass |   mean_gross_all |   mean_gross_pass |   tier_a_rows |   tier_b_rows |   tier_c_rows |
 |:------------|-------------:|------------:|------------:|----------------------------:|-----------------------------:|-----------------:|------------------:|--------------:|--------------:|--------------:|
-| directional |         2088 |         388 |    0.185824 |                     10758.3 |                      24863.3 |        0.0750059 |         0.0775602 |             0 |            34 |           356 |
-| oco         |         2160 |        1828 |    0.846296 |                     12567.5 |                      13729.3 |        2.20345   |         2.72708   |            56 |           252 |          1522 |
+| directional |         2088 |         388 |    0.185824 |                     10758.3 |                      24863.3 |        0.0750059 |         0.0775602 |             0 |            24 |           364 |
+| oco         |         2160 |        1800 |    0.833333 |                     12567.5 |                      13935.9 |        2.20345   |         2.73323   |            30 |           165 |          1605 |

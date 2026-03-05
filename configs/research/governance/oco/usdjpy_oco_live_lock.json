@@ -1,22 +1,26 @@
 {
   "artifacts": {
+    "capacity_overall_pass": true,
+    "live_deployable": true,
     "predictions_path": "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDJPY_oco_monthly_predictions.parquet",
     "predictions_sha256": "c6bf018dc775a0d62d3c7e8fcd6fe9e3dc531e31e1a7d2ec6091c5c5ee9d320e",
     "reduced_config_path": "configs/research/experiments/usdjpy_oco_reduced_core_2025.yaml",
     "reduced_config_sha256": "1deee84cc3d4846f05be60752e8c6250ef93632dc33078a0a061fa8ac4a69313",
     "reduced_states_csv_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_reduced_state_schedule.csv",
     "reduced_states_csv_sha256": "e6762eaef49ff39b6fe88da33dd30e4fe299bea68ce3aa275a1e4bc5990f5d07",
+    "reduced_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_reduced_summary.csv",
+    "reduced_summary_sha256": "dd1bfe1cde0c6ea4bd05a76b5010e9c38d9463c6d2115e242fd9575a60afcb55",
     "tick_exact_overall_pass": true,
     "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_tick_exact_summary.csv",
     "tick_exact_summary_sha256": "96a52ad4a034ee61ab0c2b19b180c6630b78be068782ac691e950ab5d66b48a6",
     "wfo_config_path": "configs/research/experiments/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
     "wfo_config_sha256": "2990d96682a77bd19f44bd467c7d4ec30e8b49498eb7467300653783371656e8"
   },
-  "frozen_at_utc": "2026-03-05T07:57:27.350672+00:00",
+  "frozen_at_utc": "2026-03-05T14:58:38.915698+00:00",
   "git": {
     "branch": "main",
-    "commit": "2e10d89812a287a32182cea8c3b56cade63b5d96",
-    "dirty": false
+    "commit": "62503b7f09d81849c1de8fbd6473848ba546a757",
+    "dirty": true
   },
   "locked_runtime": {
     "barrier_keep": "2,3",

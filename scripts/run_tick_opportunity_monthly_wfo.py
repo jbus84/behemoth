@@ -10,6 +10,7 @@ Leakage controls:
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 from typing import Any
 
@@ -465,6 +466,15 @@ def _wfo_monthly(
                     lookback_days=int(rolling_threshold_days),
                     min_history=int(rolling_threshold_min_history),
                 )
+                # Create a schedule of daily thresholds for the test month
+                schedule: dict[str, float] = {}
+                # exec_thr_vec and te["close_ts"] correspond 1:1
+                te_t = pd.to_datetime(te["close_ts"], utc=True, errors="coerce")
+                te_day = te_t.dt.strftime("%Y-%m-%d").to_numpy()
+                for d_str, t_val in zip(te_day, exec_thr_vec, strict=False):
+                    if d_str not in schedule and np.isfinite(t_val):
+                        schedule[d_str] = float(t_val)
+
                 finite_thr = exec_thr_vec[np.isfinite(exec_thr_vec)]
                 exec_thr = (
                     float(np.median(finite_thr)) if len(finite_thr) > 0
@@ -472,10 +482,13 @@ def _wfo_monthly(
                 )
             else:
                 exec_thr = float(np.quantile(p_tr, float(exec_q)))
+                schedule = {}
+
             thr_meta = {
                 "symbol": symbol,
                 "model_month": month_tag,
-                "threshold_exec": exec_thr,
+                "threshold_exec": exec_thr,  # Median/Baseline
+                "threshold_schedule": schedule, # Daily precision
                 "execution_quantile": float(exec_q),
                 "threshold_source": mode,
                 "rolling_threshold_days": int(rolling_threshold_days) if mode == "rolling_days" else 0,
@@ -484,7 +497,7 @@ def _wfo_monthly(
                 "features": feats,
             }
             thr_path = cbm_path.with_suffix(".json")
-            thr_path.write_text(_json.dumps(thr_meta, indent=2))
+            thr_path.write_text(json.dumps(thr_meta, indent=2))
             print(f"exported: {cbm_path} + {thr_path} + {imp_path}")
 
         from sklearn.metrics import brier_score_loss, roc_auc_score  # local import

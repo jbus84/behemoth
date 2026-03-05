@@ -112,10 +112,18 @@ def _default_paths(symbol: str) -> dict[str, Path]:
             Path(
                 f"data/analysis/tick_opportunity_mining/reduced_core_{sl}/{s}_oco_tick_exact_summary.csv"
             ),
+        ),
+        "reduced_summary": _pick_first_existing(
             Path(
                 f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_reduced_summary.csv"
             ),
             Path(f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_reduced_summary.csv"),
+            Path(
+                f"data/analysis/tick_opportunity_mining/reduced_core_rolling_{sl}/{s}_oco_reduced_summary.csv"
+            ),
+            Path(
+                f"data/analysis/tick_opportunity_mining/reduced_core_{sl}/{s}_oco_reduced_summary.csv"
+            ),
         ),
         "predictions": _pick_first_existing(
             Path(
@@ -172,10 +180,25 @@ def _state_universe(states_csv: Path) -> tuple[pd.DataFrame, str]:
 def _read_tick_exact_ok(path: Path) -> bool | None:
     if not path.exists():
         return None
-    d = pd.read_csv(path)
-    if d.empty or "overall_pass" not in d.columns:
+    try:
+        d = pd.read_csv(path)
+        if d.empty or "overall_pass" not in d.columns:
+            return None
+        return bool(d.iloc[0]["overall_pass"])
+    except Exception:
         return None
-    return bool(d.iloc[0]["overall_pass"])
+
+
+def _read_capacity_ok(path: Path) -> bool | None:
+    if not path.exists():
+        return None
+    try:
+        d = pd.read_csv(path)
+        if d.empty or "capacity_pass_monthly_or_annual" not in d.columns:
+            return None
+        return bool(d.iloc[0]["capacity_pass_monthly_or_annual"])
+    except Exception:
+        return None
 
 
 def _pick_optimal_cap(caps_csv: Path, default: float = 1.2, hard_limit: float = 1.2) -> float:
@@ -232,6 +255,13 @@ def _build_manifest(
             "tick_exact_summary_path": str(paths["tick_exact_summary"]),
             "tick_exact_summary_sha256": _sha256(paths["tick_exact_summary"]),
             "tick_exact_overall_pass": _read_tick_exact_ok(paths["tick_exact_summary"]),
+            "reduced_summary_path": str(paths["reduced_summary"]),
+            "reduced_summary_sha256": _sha256(paths["reduced_summary"]),
+            "capacity_overall_pass": _read_capacity_ok(paths["reduced_summary"]),
+            "live_deployable": (
+                (_read_tick_exact_ok(paths["tick_exact_summary"]) is not False)
+                and (_read_capacity_ok(paths["reduced_summary"]) is not False)
+            ),
         },
         "locked_runtime": {
             "locked_quantile": float(red_cfg.get("locked_quantile", 0.9)),

@@ -170,7 +170,7 @@ def stage_1_configs(symbol: str, *, dry_run: bool, force: bool) -> list[Path]:
 # ---------------------------------------------------------------------------
 
 
-def stage_2_ml_pipeline(symbol: str, *, dry_run: bool) -> None:
+def stage_2_ml_pipeline(symbol: str, *, model_export_dir: str | None = None, dry_run: bool) -> None:
     """Run the 6 core ML scripts in sequence."""
     sym = symbol.lower()
 
@@ -190,18 +190,28 @@ def stage_2_ml_pipeline(symbol: str, *, dry_run: bool) -> None:
         label="Stage 2b: Opportunity mining",
     )
 
+    wfo_args_base = [
+        "--config", f"configs/research/experiments/{sym}_tick_opportunity_monthly_wfo_2025.yaml"
+    ]
+    if model_export_dir:
+        wfo_args_base += ["--model-export-dir", model_export_dir]
+
     _uv_run(
         "run_tick_opportunity_monthly_wfo.py",
-        "--config",
-        f"configs/research/experiments/{sym}_tick_opportunity_monthly_wfo_2025.yaml",
+        *wfo_args_base,
         dry_run=dry_run,
         label="Stage 2c: Base WFO",
     )
 
+    wfo_args_oco = [
+        "--config", f"configs/research/experiments/{sym}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml"
+    ]
+    if model_export_dir:
+        wfo_args_oco += ["--model-export-dir", model_export_dir]
+
     _uv_run(
         "run_tick_opportunity_monthly_wfo.py",
-        "--config",
-        f"configs/research/experiments/{sym}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
+        *wfo_args_oco,
         dry_run=dry_run,
         label="Stage 2d: OCO Fullcap WFO",
     )
@@ -506,6 +516,7 @@ Examples:
     p.add_argument("--skip-docs", action="store_true", help="Skip Stage 5 (docs rebuild)")
     p.add_argument("--dry-run", action="store_true", help="Print commands without executing")
     p.add_argument("--force", action="store_true", help="Force re-download/rebuild all stages")
+    p.add_argument("--model-export-dir", default=None, help="Directory to export .cbm models + .json thresholds")
     args = p.parse_args()
 
     symbol = str(args.symbol).strip().upper()
@@ -545,7 +556,7 @@ Examples:
 
     # Stage 2
     if not args.skip_ml:
-        stage_2_ml_pipeline(symbol, dry_run=args.dry_run)
+        stage_2_ml_pipeline(symbol, model_export_dir=args.model_export_dir, dry_run=args.dry_run)
     else:
         print("\n  --- Stage 2 skipped (--skip-ml) ---")
 

@@ -14,44 +14,42 @@
 ## Summary
 | library     |    rows |   candidates |   train_rows |   test_rows |   mean_target_gross_pips |   target_pos_rate |
 |:------------|--------:|-------------:|-------------:|------------:|-------------------------:|------------------:|
-| directional | 4220190 |          120 |      2282325 |     1937865 |                0.0658575 |          0.503461 |
-| oco         | 4767727 |          120 |      2400000 |     2367727 |                2.54408   |          0.600974 |
+| directional | 4209513 |          120 |      2400000 |     1809513 |                0.0914834 |          0.502782 |
+| oco         | 4776128 |          120 |      2400000 |     2376128 |                2.31935   |          0.599647 |
 
 ## Directional Sample
 | split   |   bar_ticks |   horizon | family               | state_id                               | quality_tier   |   target_gross_pips |   target_gross_pos |
 |:--------|------------:|----------:|:---------------------|:---------------------------------------|:---------------|--------------------:|-------------------:|
-| test    |         100 |         5 | shock_extreme_revert | shock_extreme_revert__high_abs_vel_q80 | B              |               197.2 |                  1 |
-| test    |         100 |         5 | shock_extreme_revert | shock_extreme_revert__high_range_q70   | B              |               197.2 |                  1 |
-| test    |         100 |         5 | shock_revert         | shock_revert__ny_overlap               | B              |               197.2 |                  1 |
-| test    |         100 |         5 | shock_extreme_revert | shock_extreme_revert__ny_overlap       | B              |               197.2 |                  1 |
-| test    |         100 |         5 | path_persist_24      | path_persist_24__ny_overlap            | B              |              -197.2 |                  0 |
-| test    |         100 |         4 | shock_revert         | shock_revert__ny_overlap               | B              |               196.4 |                  1 |
-| test    |         100 |         4 | shock_extreme_revert | shock_extreme_revert__ny_overlap       | B              |               196.4 |                  1 |
-| test    |         100 |         3 | shock_extreme_revert | shock_extreme_revert__ny_overlap       | B              |               195   |                  1 |
-| test    |         100 |         6 | shock_extreme_revert | shock_extreme_revert__all              | B              |               192.2 |                  1 |
-| test    |         100 |         6 | shock_revert         | shock_revert__ny_overlap               | B              |               192.2 |                  1 |
-| test    |         100 |         6 | shock_extreme_revert | shock_extreme_revert__ny_overlap       | B              |               192.2 |                  1 |
-| test    |         100 |         6 | path_persist_24      | path_persist_24__ny_overlap            | B              |              -192.2 |                  0 |
-| test    |         100 |         5 | shock_extreme_revert | shock_extreme_revert__all              | B              |               150.9 |                  1 |
-| test    |         100 |         5 | shock_revert         | shock_revert__ny_overlap               | B              |               150.9 |                  1 |
-| test    |         100 |         5 | shock_extreme_revert | shock_extreme_revert__ny_overlap       | B              |               150.9 |                  1 |
-| test    |         100 |         6 | shock_revert         | shock_revert__ny_overlap               | B              |               146.1 |                  1 |
-| test    |         100 |         6 | shock_extreme_revert | shock_extreme_revert__ny_overlap       | B              |               146.1 |                  1 |
-| test    |         100 |         3 | shock_extreme_revert | shock_extreme_revert__ny_overlap       | B              |               146   |                  1 |
-| test    |         100 |         4 | shock_extreme_revert | shock_extreme_revert__all              | B              |               145   |                  1 |
-| test    |         100 |         4 | shock_revert         | shock_revert__ny_overlap               | B              |               145   |                  1 |
+| test    |        1000 |         3 | path_follow          | path_follow__all                       | B              |               202.4 |                  1 |
+| test    |        1000 |         3 | shock_revert         | shock_revert__all                      | B              |               202.4 |                  1 |
+| test    |        1000 |         3 | path_follow          | path_follow__high_abs_vel_q70          | B              |               202.4 |                  1 |
+| test    |        1000 |         3 | shock_revert         | shock_revert__high_abs_vel_q70         | B              |               202.4 |                  1 |
+| test    |        1000 |         3 | path_follow          | path_follow__high_range_q70            | B              |               202.4 |                  1 |
+| test    |        1000 |         3 | shock_extreme_revert | shock_extreme_revert__all              | B              |               202.4 |                  1 |
+| test    |        1000 |         3 | path_follow          | path_follow__low_cost_q50              | B              |               202.4 |                  1 |
+| test    |        1000 |         3 | path_follow          | path_follow__high_abs_vel_q80          | B              |               202.4 |                  1 |
+| test    |        1000 |         3 | shock_extreme_revert | shock_extreme_revert__high_abs_vel_q70 | B              |               202.4 |                  1 |
+| test    |        1000 |         3 | shock_revert         | shock_revert__high_range_q70           | B              |               202.4 |                  1 |
+| test    |        1000 |         2 | path_follow          | path_follow__all                       | B              |              -196.5 |                  0 |
+| test    |        1000 |         2 | path_follow          | path_follow__high_abs_vel_q70          | B              |              -196.5 |                  0 |
+| test    |        1000 |         2 | path_follow          | path_follow__low_cost_q50              | B              |              -196.5 |                  0 |
+| test    |        1000 |         2 | path_follow          | path_follow__high_abs_vel_q80          | B              |              -196.5 |                  0 |
+| test    |        2000 |         4 | path_follow          | path_follow__all                       | B              |               190.9 |                  1 |
+| test    |        1000 |         6 | path_follow          | path_follow__all                       | B              |               189.8 |                  1 |
+| test    |        1000 |         6 | shock_revert         | shock_revert__all                      | B              |               189.8 |                  1 |
+| test    |        1000 |         6 | path_follow          | path_follow__high_abs_vel_q70          | B              |               189.8 |                  1 |
+| test    |        1000 |         6 | shock_revert         | shock_revert__high_abs_vel_q70         | B              |               189.8 |                  1 |
+| test    |        1000 |         6 | path_follow          | path_follow__high_range_q70            | B              |               189.8 |                  1 |
 
 ## OCO Sample
 | split   |   bar_ticks |   horizon | family                | state_id                                    | quality_tier   |   target_gross_pips |   target_gross_pos |
 |:--------|------------:|----------:|:----------------------|:--------------------------------------------|:---------------|--------------------:|-------------------:|
+| test    |        1000 |         3 | oco_first_touch_clean | oco_first_touch_clean__all__k10             | A              |              -203.5 |                  0 |
+| test    |        1000 |         3 | oco_first_touch_clean | oco_first_touch_clean__all__k10             | A              |              -202.4 |                  0 |
 | test    |        1000 |         3 | oco_first_touch_clean | oco_first_touch_clean__all__k8              | A              |              -201.5 |                  0 |
-| test    |        1000 |         3 | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k8     | A              |              -201.5 |                  0 |
 | test    |        1000 |         3 | oco_first_touch_clean | oco_first_touch_clean__all__k8              | A              |              -200.4 |                  0 |
-| test    |        1000 |         3 | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k8     | A              |              -200.4 |                  0 |
 | test    |        1000 |         2 | oco_first_touch_clean | oco_first_touch_clean__all__k3              | A              |               199.6 |                  1 |
-| test    |        1000 |         2 | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k3     | A              |               199.6 |                  1 |
 | test    |        1000 |         3 | oco_first_touch_clean | oco_first_touch_clean__all__k8              | A              |              -199.6 |                  0 |
-| test    |        1000 |         3 | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k8     | A              |              -199.6 |                  0 |
 | test    |        1000 |         3 | oco_first_touch_clean | oco_first_touch_clean__all__k5              | A              |              -198.5 |                  0 |
 | test    |        1000 |         3 | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k5     | A              |              -198.5 |                  0 |
 | test    |        1000 |         2 | oco_first_touch_clean | oco_first_touch_clean__all__k5              | A              |               197.6 |                  1 |
@@ -64,3 +62,5 @@
 | test    |         100 |         5 | oco_first_touch_clean | oco_first_touch_clean__ny_overlap__k2       | A              |              -196.1 |                  0 |
 | test    |         100 |         6 | oco_first_touch_clean | oco_first_touch_clean__high_abs_vel_q70__k2 | A              |               196   |                  1 |
 | test    |         100 |         6 | oco_first_touch_clean | oco_first_touch_clean__ny_overlap__k2       | A              |               196   |                  1 |
+| test    |         100 |         4 | oco_first_touch_clean | oco_first_touch_clean__ny_overlap__k2       | A              |               194.9 |                  1 |
+| test    |         100 |         4 | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     | A              |              -194.8 |                  0 |

@@ -418,10 +418,23 @@ def _build_predictions(
         else:
             pred_prob = 0.0
 
+        # Dynamic Threshold Lookup
+        # Close the parity gap by using the pre-calculated daily threshold schedule
+        # if the backtest was run in rolling_days mode.
+        schedule = thr_cfg.get("threshold_schedule", {})
+        day_str = close_ts.strftime("%Y-%m-%d")
+        
+        if schedule and day_str in schedule:
+            curr_threshold = float(schedule[day_str])
+            thr_source = "schedule"
+        else:
+            curr_threshold = threshold_exec
+            thr_source = "static_fallback"
+
         # Offline format expects: library|symbol|bar_ticks|h_horizon|candidate_basename
         canonical_uid = f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
 
-        selected_exec = 1 if pred_prob >= threshold_exec else 0
+        selected_exec = 1 if pred_prob >= curr_threshold else 0
 
         if selected_exec == 1 and _state is not None:
             _state.log_audit_event(

@@ -14,53 +14,53 @@
 ## Summary
 | library     |    rows |   candidates |   train_rows |   test_rows |   mean_target_gross_pips |   target_pos_rate |
 |:------------|--------:|-------------:|-------------:|------------:|-------------------------:|------------------:|
-| directional | 4465510 |          120 |      2317981 |     2147529 |                0.0699635 |          0.503486 |
-| oco         | 4600229 |          120 |      2400000 |     2200229 |                1.34615   |          0.527588 |
+| directional | 4663589 |          120 |      2400000 |     2263589 |                0.0647909 |          0.502473 |
+| oco         | 4740359 |          120 |      2400000 |     2340359 |                1.04443   |          0.522612 |
 
 ## Directional Sample
-| split   |   bar_ticks |   horizon | family               | state_id                             | quality_tier   |   target_gross_pips |   target_gross_pos |
-|:--------|------------:|----------:|:---------------------|:-------------------------------------|:---------------|--------------------:|-------------------:|
-| test    |         100 |         6 | shock_extreme_revert | shock_extreme_revert__high_range_q80 | B              |                64.7 |                  1 |
-| test    |         100 |         6 | liquidity_revert     | liquidity_revert__all                | B              |                64.7 |                  1 |
-| test    |         100 |         6 | shock_extreme_revert | shock_extreme_revert__high_range_q70 | B              |               -63.5 |                  0 |
-| test    |         100 |         6 | shock_extreme_revert | shock_extreme_revert__high_range_q80 | B              |               -63.5 |                  0 |
-| test    |         100 |         6 | liquidity_revert     | liquidity_revert__all                | B              |               -63.5 |                  0 |
-| test    |         100 |         5 | liquidity_revert     | liquidity_revert__all                | B              |                58.3 |                  1 |
-| test    |        1000 |         1 | shock_revert         | shock_revert__all                    | B              |               -58.3 |                  0 |
-| test    |        1000 |         1 | path_follow          | path_follow__high_abs_vel_q70        | B              |               -58.3 |                  0 |
-| test    |        1000 |         1 | shock_revert         | shock_revert__high_abs_vel_q70       | B              |               -58.3 |                  0 |
-| test    |         100 |         6 | shock_extreme_revert | shock_extreme_revert__high_range_q70 | B              |               -56.7 |                  0 |
-| test    |         100 |         6 | shock_extreme_revert | shock_extreme_revert__high_range_q80 | B              |               -56.7 |                  0 |
-| test    |        1000 |         2 | path_follow          | path_follow__low_cost_q50            | B              |                56.7 |                  1 |
-| test    |         100 |         6 | liquidity_revert     | liquidity_revert__all                | B              |               -55.6 |                  0 |
-| test    |         100 |         6 | shock_extreme_revert | shock_extreme_revert__high_range_q70 | B              |               -53.7 |                  0 |
-| test    |         100 |         6 | shock_extreme_revert | shock_extreme_revert__high_range_q80 | B              |               -53.7 |                  0 |
-| test    |        1000 |         1 | shock_revert         | shock_revert__all                    | B              |               -52.7 |                  0 |
-| test    |        1000 |         1 | path_follow          | path_follow__high_abs_vel_q70        | B              |               -52.7 |                  0 |
-| test    |        1000 |         1 | shock_revert         | shock_revert__high_abs_vel_q70       | B              |               -52.7 |                  0 |
-| test    |         100 |         5 | liquidity_revert     | liquidity_revert__all                | B              |               -52.5 |                  0 |
-| test    |         100 |         6 | shock_extreme_revert | shock_extreme_revert__high_range_q70 | B              |                52.4 |                  1 |
+| split   |   bar_ticks |   horizon | family      | state_id         | quality_tier   |   target_gross_pips |   target_gross_pos |
+|:--------|------------:|----------:|:------------|:-----------------|:---------------|--------------------:|-------------------:|
+| test    |        1000 |         6 | path_follow | path_follow__all | B              |               114.7 |                  1 |
+| test    |        1000 |         5 | path_follow | path_follow__all | B              |               111.8 |                  1 |
+| test    |        1000 |         4 | path_follow | path_follow__all | B              |               110   |                  1 |
+| test    |        1000 |         5 | path_follow | path_follow__all | B              |              -103.8 |                  0 |
+| test    |        1000 |         4 | path_follow | path_follow__all | B              |              -100.9 |                  0 |
+| test    |        1000 |         3 | path_follow | path_follow__all | B              |               -99.1 |                  0 |
+| test    |        1000 |         6 | path_follow | path_follow__all | B              |                96.6 |                  1 |
+| test    |        1000 |         5 | path_follow | path_follow__all | B              |                94.8 |                  1 |
+| test    |        1000 |         6 | path_follow | path_follow__all | B              |                93.9 |                  1 |
+| test    |        1000 |         6 | path_follow | path_follow__all | B              |               -83.6 |                  0 |
+| test    |        1000 |         6 | path_follow | path_follow__all | B              |                81.3 |                  1 |
+| test    |        1000 |         5 | path_follow | path_follow__all | B              |                80.7 |                  1 |
+| test    |        1000 |         5 | path_follow | path_follow__all | B              |                78.5 |                  1 |
+| test    |        1000 |         4 | path_follow | path_follow__all | B              |                78.1 |                  1 |
+| test    |        1000 |         6 | path_follow | path_follow__all | B              |               -77.9 |                  0 |
+| test    |        1000 |         6 | path_follow | path_follow__all | B              |                77.1 |                  1 |
+| test    |        1000 |         6 | path_follow | path_follow__all | B              |                76.8 |                  1 |
+| test    |        1000 |         4 | path_follow | path_follow__all | B              |               -75.7 |                  0 |
+| test    |        1000 |         5 | path_follow | path_follow__all | B              |                74.5 |                  1 |
+| test    |        1000 |         4 | path_follow | path_follow__all | B              |                74.2 |                  1 |
 
 ## OCO Sample
-| split   |   bar_ticks |   horizon | family                | state_id                       | quality_tier   |   target_gross_pips |   target_gross_pos |
-|:--------|------------:|----------:|:----------------------|:-------------------------------|:---------------|--------------------:|-------------------:|
-| test    |        1000 |         5 | oco_first_touch_clean | oco_first_touch_clean__all__k5 | A              |               109.9 |                  1 |
-| test    |        1000 |         4 | oco_first_touch_clean | oco_first_touch_clean__all__k5 | A              |               107   |                  1 |
-| test    |        1000 |         3 | oco_first_touch_clean | oco_first_touch_clean__all__k5 | A              |               105.2 |                  1 |
-| test    |        1000 |         4 | oco_first_touch_clean | oco_first_touch_clean__all__k5 | A              |                98.5 |                  1 |
-| test    |        1000 |         2 | oco_first_touch_clean | oco_first_touch_clean__all__k3 | A              |                95.8 |                  1 |
-| test    |        1000 |         3 | oco_first_touch_clean | oco_first_touch_clean__all__k5 | A              |                95.6 |                  1 |
-| test    |        1000 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k5 | A              |                93.3 |                  1 |
-| test    |        1000 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k8 | A              |                90.3 |                  1 |
-| test    |        1000 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k5 | A              |                89.6 |                  1 |
-| test    |        1000 |         5 | oco_first_touch_clean | oco_first_touch_clean__all__k5 | A              |                89   |                  1 |
-| test    |        1000 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k8 | A              |               -86.8 |                  0 |
-| test    |        1000 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k8 | A              |                86.6 |                  1 |
-| test    |        1000 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k8 | A              |                84.4 |                  1 |
-| test    |        1000 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k5 | A              |                84   |                  1 |
-| test    |        1000 |         4 | oco_first_touch_clean | oco_first_touch_clean__all__k5 | A              |                81.2 |                  1 |
-| test    |        1000 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k8 | A              |                81   |                  1 |
-| test    |        1000 |         5 | oco_first_touch_clean | oco_first_touch_clean__all__k5 | A              |                80.7 |                  1 |
-| test    |        1000 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k5 | A              |                78.7 |                  1 |
-| test    |        1000 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k8 | A              |                78.6 |                  1 |
-| test    |        1000 |         4 | oco_first_touch_clean | oco_first_touch_clean__all__k5 | A              |                78.6 |                  1 |
+| split   |   bar_ticks |   horizon | family                | state_id                        | quality_tier   |   target_gross_pips |   target_gross_pos |
+|:--------|------------:|----------:|:----------------------|:--------------------------------|:---------------|--------------------:|-------------------:|
+| test    |        1000 |         4 | oco_first_touch_clean | oco_first_touch_clean__all__k5  | A              |               107   |                  1 |
+| test    |        1000 |         5 | oco_first_touch_clean | oco_first_touch_clean__all__k8  | A              |               106.9 |                  1 |
+| test    |        1000 |         3 | oco_first_touch_clean | oco_first_touch_clean__all__k5  | A              |               105.2 |                  1 |
+| test    |        1000 |         4 | oco_first_touch_clean | oco_first_touch_clean__all__k8  | A              |               104   |                  1 |
+| test    |        1000 |         4 | oco_first_touch_clean | oco_first_touch_clean__all__k5  | A              |                98.5 |                  1 |
+| test    |        1000 |         3 | oco_first_touch_clean | oco_first_touch_clean__all__k5  | A              |                95.6 |                  1 |
+| test    |        1000 |         4 | oco_first_touch_clean | oco_first_touch_clean__all__k8  | A              |                95.5 |                  1 |
+| test    |        1000 |         2 | oco_first_touch_clean | oco_first_touch_clean__all__k5  | A              |                93.8 |                  1 |
+| test    |        1000 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k8  | A              |                90.3 |                  1 |
+| test    |        1000 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k10 | A              |                88.3 |                  1 |
+| test    |        1000 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k8  | A              |               -86.8 |                  0 |
+| test    |        1000 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k8  | A              |                86.6 |                  1 |
+| test    |        1000 |         5 | oco_first_touch_clean | oco_first_touch_clean__all__k8  | A              |                86   |                  1 |
+| test    |        1000 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k10 | A              |                84.6 |                  1 |
+| test    |        1000 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k8  | A              |                84.4 |                  1 |
+| test    |        1000 |         4 | oco_first_touch_clean | oco_first_touch_clean__all__k8  | A              |               -83.8 |                  0 |
+| test    |        1000 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k10 | A              |                82.4 |                  1 |
+| test    |        1000 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k10 | A              |                81.4 |                  1 |
+| test    |        1000 |         4 | oco_first_touch_clean | oco_first_touch_clean__all__k5  | A              |                81.2 |                  1 |
+| test    |        1000 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k8  | A              |                81   |                  1 |
