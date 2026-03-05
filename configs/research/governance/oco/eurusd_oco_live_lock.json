@@ -21,11 +21,11 @@
     "wfo_config_path": "configs/research/experiments/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
     "wfo_config_sha256": "34d334848ed48542b19d6c40af233f32fac8fdbbf534ea8290ddb477931010e0"
   },
-  "frozen_at_utc": "2026-03-05T17:43:37.773584+00:00",
+  "frozen_at_utc": "2026-03-05T17:46:55.911182+00:00",
   "git": {
     "branch": "main",
-    "commit": "c84bded3bc3bbe1a24729f31fd0fa897bb170247",
-    "dirty": true
+    "commit": "d321d3dafb1b7fc8e223eec2963aaa8aba5944a8",
+    "dirty": false
   },
   "locked_runtime": {
     "barrier_keep": "2,3",
