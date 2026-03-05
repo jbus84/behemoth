@@ -2,6 +2,11 @@
   "artifacts": {
     "capacity_overall_pass": true,
     "live_deployable": false,
+    "model_cbm_path": "models/oco/USDCHF_model_2025-12.cbm",
+    "model_cbm_sha256": "1446dc614fc0eb6b44ef1215f87899b7a4465feecb9a6f9107559ca366a187c9",
+    "model_month": "2025-12",
+    "model_threshold_json_path": "models/oco/USDCHF_model_2025-12.json",
+    "model_threshold_json_sha256": "1f749c9f50d3f40b28d2248c7f48bb8ee6237748fef2ba66d65dff2033540fa6",
     "predictions_path": "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCHF_oco_monthly_predictions.parquet",
     "predictions_sha256": "a2068cea61c2bd04308bde77944475bd0504ec799539463c1a70e8da03ebf01e",
     "reduced_config_path": "configs/research/experiments/usdchf_oco_reduced_core_2025.yaml",
@@ -16,11 +21,11 @@
     "wfo_config_path": "configs/research/experiments/usdchf_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
     "wfo_config_sha256": "0911971d802dcb13a49047925ca60592e79ee70436fee63aed003d8fbf70c02c"
   },
-  "frozen_at_utc": "2026-03-05T16:31:18.569554+00:00",
+  "frozen_at_utc": "2026-03-05T17:43:37.895876+00:00",
   "git": {
     "branch": "main",
-    "commit": "3ecdffe646ee29ee3c3a8807b078f3cf80801822",
-    "dirty": false
+    "commit": "c84bded3bc3bbe1a24729f31fd0fa897bb170247",
+    "dirty": true
   },
   "locked_runtime": {
     "barrier_keep": "2,3",

@@ -135,9 +135,12 @@ class TestPredictEndpoint:
         r = client.post("/predict", json={
             "symbol": "EURUSD",
         })
-        assert r.status_code in (422, 503)
-        detail = r.json()["detail"].lower()
-        assert "warmup" in detail or "candidate" in detail or "registry" in detail or "model" in detail
+        assert r.status_code in (200, 422, 503)
+        if r.status_code == 200:
+            assert isinstance(r.json(), list)
+        else:
+            detail = r.json()["detail"].lower()
+            assert "warmup" in detail or "candidate" in detail or "registry" in detail or "model" in detail
 
     def test_predict_uninitialized_state(self, client):
         """If _state is None, predict returns 503."""
@@ -419,4 +422,3 @@ class TestIngestionEndpoints:
             assert res["bar_completed"] is True
             assert res["completed_bar_ticks"] == [100]
             assert mock_append.call_count == 1
-

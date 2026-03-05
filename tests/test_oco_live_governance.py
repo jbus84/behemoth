@@ -97,6 +97,10 @@ def test_validate_lock_deploy_and_retrain_window(tmp_path: Path) -> None:
     ).to_csv(states, index=False)
     preds = tmp_path / "predictions.parquet"
     preds.write_bytes(b"dummy_predictions")
+    model_cbm = tmp_path / "EURUSD_model_2026-02.cbm"
+    model_cbm.write_bytes(b"dummy_model")
+    model_thr = tmp_path / "EURUSD_model_2026-02.json"
+    model_thr.write_text('{"model_month":"2026-02"}', encoding="utf-8")
     te_summary = tmp_path / "tick_exact_summary.csv"
     te_summary.write_text("overall_pass\nTrue\n", encoding="utf-8")
 
@@ -120,6 +124,11 @@ def test_validate_lock_deploy_and_retrain_window(tmp_path: Path) -> None:
             "reduced_states_csv_sha256": _sha(states),
             "predictions_path": str(preds),
             "predictions_sha256": _sha(preds),
+            "model_cbm_path": str(model_cbm),
+            "model_cbm_sha256": _sha(model_cbm),
+            "model_threshold_json_path": str(model_thr),
+            "model_threshold_json_sha256": _sha(model_thr),
+            "model_month": "2026-02",
             "tick_exact_summary_path": str(te_summary),
             "tick_exact_summary_sha256": _sha(te_summary),
             "tick_exact_overall_pass": True,
@@ -259,6 +268,10 @@ def test_validate_lock_blocks_on_high_data_reliability_fail(tmp_path: Path) -> N
 
     preds = tmp_path / "predictions.parquet"
     preds.write_bytes(b"dummy_predictions")
+    model_cbm = tmp_path / "EURUSD_model_2026-02.cbm"
+    model_cbm.write_bytes(b"dummy_model")
+    model_thr = tmp_path / "EURUSD_model_2026-02.json"
+    model_thr.write_text('{"model_month":"2026-02"}', encoding="utf-8")
     te_summary = tmp_path / "tick_exact_summary.csv"
     te_summary.write_text("overall_pass\nTrue\n", encoding="utf-8")
 
@@ -282,6 +295,11 @@ def test_validate_lock_blocks_on_high_data_reliability_fail(tmp_path: Path) -> N
             "reduced_states_csv_sha256": _sha(states),
             "predictions_path": str(preds),
             "predictions_sha256": _sha(preds),
+            "model_cbm_path": str(model_cbm),
+            "model_cbm_sha256": _sha(model_cbm),
+            "model_threshold_json_path": str(model_thr),
+            "model_threshold_json_sha256": _sha(model_thr),
+            "model_month": "2026-02",
             "tick_exact_summary_path": str(te_summary),
             "tick_exact_summary_sha256": _sha(te_summary),
             "tick_exact_overall_pass": True,
@@ -406,6 +424,10 @@ def test_validate_lock_blocks_on_high_leakage_fail(tmp_path: Path) -> None:
 
     preds = tmp_path / "predictions.parquet"
     preds.write_bytes(b"dummy_predictions")
+    model_cbm = tmp_path / "EURUSD_model_2026-02.cbm"
+    model_cbm.write_bytes(b"dummy_model")
+    model_thr = tmp_path / "EURUSD_model_2026-02.json"
+    model_thr.write_text('{"model_month":"2026-02"}', encoding="utf-8")
     te_summary = tmp_path / "tick_exact_summary.csv"
     te_summary.write_text("overall_pass\nTrue\n", encoding="utf-8")
 
@@ -429,6 +451,11 @@ def test_validate_lock_blocks_on_high_leakage_fail(tmp_path: Path) -> None:
             "reduced_states_csv_sha256": _sha(states),
             "predictions_path": str(preds),
             "predictions_sha256": _sha(preds),
+            "model_cbm_path": str(model_cbm),
+            "model_cbm_sha256": _sha(model_cbm),
+            "model_threshold_json_path": str(model_thr),
+            "model_threshold_json_sha256": _sha(model_thr),
+            "model_month": "2026-02",
             "tick_exact_summary_path": str(te_summary),
             "tick_exact_summary_sha256": _sha(te_summary),
             "tick_exact_overall_pass": True,
@@ -553,6 +580,10 @@ def test_validate_lock_blocks_on_high_execution_risk_fail(tmp_path: Path) -> Non
 
     preds = tmp_path / "predictions.parquet"
     preds.write_bytes(b"dummy_predictions")
+    model_cbm = tmp_path / "EURUSD_model_2026-02.cbm"
+    model_cbm.write_bytes(b"dummy_model")
+    model_thr = tmp_path / "EURUSD_model_2026-02.json"
+    model_thr.write_text('{"model_month":"2026-02"}', encoding="utf-8")
     te_summary = tmp_path / "tick_exact_summary.csv"
     te_summary.write_text("overall_pass\nTrue\n", encoding="utf-8")
 
@@ -576,6 +607,11 @@ def test_validate_lock_blocks_on_high_execution_risk_fail(tmp_path: Path) -> Non
             "reduced_states_csv_sha256": _sha(states),
             "predictions_path": str(preds),
             "predictions_sha256": _sha(preds),
+            "model_cbm_path": str(model_cbm),
+            "model_cbm_sha256": _sha(model_cbm),
+            "model_threshold_json_path": str(model_thr),
+            "model_threshold_json_sha256": _sha(model_thr),
+            "model_month": "2026-02",
             "tick_exact_summary_path": str(te_summary),
             "tick_exact_summary_sha256": _sha(te_summary),
             "tick_exact_overall_pass": True,

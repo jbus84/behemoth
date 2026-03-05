@@ -99,6 +99,13 @@ def run(
         ("reduced_config_hash", "reduced_config_path", "reduced_config_sha256", True),
         ("reduced_states_hash", "reduced_states_csv_path", "reduced_states_csv_sha256", True),
         ("predictions_hash", "predictions_path", "predictions_sha256", True),
+        ("model_cbm_hash", "model_cbm_path", "model_cbm_sha256", True),
+        (
+            "model_threshold_json_hash",
+            "model_threshold_json_path",
+            "model_threshold_json_sha256",
+            True,
+        ),
         ("tick_exact_summary_hash", "tick_exact_summary_path", "tick_exact_summary_sha256", True),
         ("reduced_summary_hash", "reduced_summary_path", "reduced_summary_sha256", False),
     ]:
@@ -114,6 +121,40 @@ def run(
             continue
         got = _sha256(p)
         checks.append(Check(label, got == exp, f"expected={exp} got={got}"))
+
+    model_month = str(artifacts.get("model_month", "")).strip()
+    model_cbm_path = Path(str(artifacts.get("model_cbm_path", "")).strip()) if str(
+        artifacts.get("model_cbm_path", "")
+    ).strip() else None
+    model_thr_path = Path(str(artifacts.get("model_threshold_json_path", "")).strip()) if str(
+        artifacts.get("model_threshold_json_path", "")
+    ).strip() else None
+    if model_month:
+        cbm_month = ""
+        if model_cbm_path is not None:
+            cbm_month = model_cbm_path.stem.split("_")[-1]
+        checks.append(
+            Check(
+                "model_month_matches_cbm_name",
+                bool(cbm_month) and (cbm_month == model_month),
+                f"lock={model_month!r} cbm={cbm_month!r}",
+            )
+        )
+        thr_month = ""
+        if model_thr_path is not None and model_thr_path.exists():
+            try:
+                thr_month = str(
+                    json.loads(model_thr_path.read_text(encoding="utf-8")).get("model_month", "")
+                ).strip()
+            except Exception:
+                thr_month = ""
+        checks.append(
+            Check(
+                "model_month_matches_threshold_json",
+                bool(thr_month) and (thr_month == model_month),
+                f"lock={model_month!r} threshold_json={thr_month!r}",
+            )
+        )
 
     # Tick-exact overall pass gate.
     te_pass = artifacts.get("tick_exact_overall_pass")

@@ -2,6 +2,11 @@
   "artifacts": {
     "capacity_overall_pass": true,
     "live_deployable": true,
+    "model_cbm_path": "models/oco/GBPUSD_model_2025-12.cbm",
+    "model_cbm_sha256": "34dc6b71e991a99bfeadbdc25dbacf587e1caa854a58ee752282a620e3f31f31",
+    "model_month": "2025-12",
+    "model_threshold_json_path": "models/oco/GBPUSD_model_2025-12.json",
+    "model_threshold_json_sha256": "a820d9879eae7e44255fc3d726f7e33694eba3d533cd0f23a2a2468c44cf3a4a",
     "predictions_path": "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/GBPUSD_oco_monthly_predictions.parquet",
     "predictions_sha256": "6c5a289c97ae6345bfe5889cd7155e987dca4a42f85f7d345f30c5bc4897b480",
     "reduced_config_path": "configs/research/experiments/gbpusd_oco_reduced_core_2025.yaml",
@@ -16,11 +21,11 @@
     "wfo_config_path": "configs/research/experiments/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
     "wfo_config_sha256": "12f9a50fda9038e68f19708874e2cc03e0f9c8726bdf71431bcef07daabde7bc"
   },
-  "frozen_at_utc": "2026-03-05T16:31:18.489544+00:00",
+  "frozen_at_utc": "2026-03-05T17:43:37.809057+00:00",
   "git": {
     "branch": "main",
-    "commit": "3ecdffe646ee29ee3c3a8807b078f3cf80801822",
-    "dirty": false
+    "commit": "c84bded3bc3bbe1a24729f31fd0fa897bb170247",
+    "dirty": true
   },
   "locked_runtime": {
     "barrier_keep": "2,3",

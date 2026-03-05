@@ -37,6 +37,10 @@ DEFAULTS: dict[str, Any] = {
     "report_out": "docs/analysis/eurusd_tick_opportunity_mining_report.md",
 }
 
+CANDIDATE_SCHEMA_VERSION = "2.0"
+SELECTION_PASS_BASIS = "train_only"
+QUALITY_TIER_BASIS = "train_only"
+
 
 def _parse_ints(raw: str) -> list[int]:
     return [int(x.strip()) for x in str(raw).split(",") if x.strip()]
@@ -319,6 +323,17 @@ def _assign_quality_tier(df: pd.DataFrame, *, library: str) -> pd.DataFrame:
     return out
 
 
+def _stamp_candidate_contract(df: pd.DataFrame) -> pd.DataFrame:
+    """Stamp causal-selection contract metadata for downstream strict validation."""
+    if df.empty:
+        return df
+    out = df.copy()
+    out["candidate_schema_version"] = CANDIDATE_SCHEMA_VERSION
+    out["selection_pass_basis"] = SELECTION_PASS_BASIS
+    out["quality_tier_basis"] = QUALITY_TIER_BASIS
+    return out
+
+
 def _directional_candidates(
     *,
     train: pd.DataFrame,
@@ -512,11 +527,6 @@ def _oco_candidates(
                             gross = gross_all[fam_mask]
                             stats = _metric_from_gross(gross)
                             annual = _annualized_count(n, ts.iloc[i0[fam_mask]])
-                            metric_val = (
-                                stats["mean_gross_pips_test"]
-                                if str(gross_metric).lower() == "mean"
-                                else stats["median_gross_pips_test"]
-                            )
                             rows.append(
                                 {
                                     "symbol": symbol,
@@ -725,8 +735,10 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     oco = pd.concat(oco_parts, ignore_index=True) if oco_parts else pd.DataFrame()
     if not directional.empty:
         directional = _assign_quality_tier(directional, library="directional")
+        directional = _stamp_candidate_contract(directional)
     if not oco.empty:
         oco = _assign_quality_tier(oco, library="oco")
+        oco = _stamp_candidate_contract(oco)
 
     frames = []
     if not directional.empty:

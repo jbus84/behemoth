@@ -152,6 +152,10 @@ def _build_minimal_bundle(tmp_path: Path, *, bad_time_order: bool = False) -> Sy
 
     preds = tmp_path / "predictions.parquet"
     preds.write_bytes(b"dummy_predictions")
+    model_cbm = tmp_path / "EURUSD_model_2025-05.cbm"
+    model_cbm.write_bytes(b"dummy_model")
+    model_thr = tmp_path / "EURUSD_model_2025-05.json"
+    model_thr.write_text('{"model_month":"2025-05"}', encoding="utf-8")
     te_summary = tmp_path / "tick_exact_summary.csv"
     te_summary.write_text("overall_pass\nTrue\n", encoding="utf-8")
 
@@ -166,6 +170,10 @@ def _build_minimal_bundle(tmp_path: Path, *, bad_time_order: bool = False) -> Sy
             "reduced_states_csv_sha256": _sha(states),
             "predictions_path": str(preds),
             "predictions_sha256": _sha(preds),
+            "model_cbm_path": str(model_cbm),
+            "model_cbm_sha256": _sha(model_cbm),
+            "model_threshold_json_path": str(model_thr),
+            "model_threshold_json_sha256": _sha(model_thr),
             "tick_exact_summary_path": str(te_summary),
             "tick_exact_summary_sha256": _sha(te_summary),
         },

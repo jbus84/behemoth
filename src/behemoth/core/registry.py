@@ -11,11 +11,21 @@ The candidate UID format matches the WFO output:
 
 from __future__ import annotations
 
+import hashlib
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 _DEFAULT_REGISTRY = Path(os.getenv("BEHEMOTH_REGISTRY_PATH", "configs/research/governance/oco_rule_universe_registry.yaml"))
+
+
+def _sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 @dataclass(frozen=True)
@@ -49,6 +59,7 @@ class CandidateRegistry:
     _candidates_by_symbol: dict[str, list[CandidateSpec]] = field(default_factory=dict)
     _frozen_timestamps: dict[str, str] = field(default_factory=dict)
     _caps_by_symbol: dict[str, float] = field(default_factory=dict)
+    _model_bindings_by_symbol: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     @classmethod
     def load(cls, lock_dir: Path | str | None = None) -> CandidateRegistry:
@@ -75,6 +86,39 @@ class CandidateRegistry:
                     import logging
                     logging.getLogger("behemoth.api").warning("Quarantining %s: live_deployable=False in governance lock.", sym)
                     continue
+                artifacts = data.get("artifacts", {})
+                cbm_path_txt = str(artifacts.get("model_cbm_path", "")).strip()
+                cbm_sha = str(artifacts.get("model_cbm_sha256", "")).strip()
+                thr_path_txt = str(artifacts.get("model_threshold_json_path", "")).strip()
+                thr_sha = str(artifacts.get("model_threshold_json_sha256", "")).strip()
+                model_month = str(artifacts.get("model_month", "")).strip()
+                if (not cbm_path_txt) or (not cbm_sha) or (not thr_path_txt) or (not thr_sha):
+                    import logging
+                    logging.getLogger("behemoth.api").error(
+                        "Quarantining %s: missing required model artifact hash fields in governance lock.",
+                        sym,
+                    )
+                    continue
+                cbm_path = Path(cbm_path_txt)
+                thr_path = Path(thr_path_txt)
+                if (not cbm_path.exists()) or (not thr_path.exists()):
+                    import logging
+                    logging.getLogger("behemoth.api").error(
+                        "Quarantining %s: locked model artifacts not found (%s, %s).",
+                        sym,
+                        cbm_path,
+                        thr_path,
+                    )
+                    continue
+                got_cbm_sha = _sha256(cbm_path)
+                got_thr_sha = _sha256(thr_path)
+                if (got_cbm_sha != cbm_sha) or (got_thr_sha != thr_sha):
+                    import logging
+                    logging.getLogger("behemoth.api").error(
+                        "Quarantining %s: model artifact hash mismatch with governance lock.",
+                        sym,
+                    )
+                    continue
 
                 rows = data.get("state_universe", {}).get("rows", [])
                 candidates = [CandidateSpec.from_row(r) for r in rows]
@@ -84,6 +128,13 @@ class CandidateRegistry:
                 # Extract execution cap from locked_runtime
                 locked = data.get("locked_runtime", {})
                 reg._caps_by_symbol[sym] = float(locked.get("production_cap_pips", 1.2))
+                reg._model_bindings_by_symbol[sym] = {
+                    "model_cbm_path": cbm_path_txt,
+                    "model_cbm_sha256": cbm_sha,
+                    "model_threshold_json_path": thr_path_txt,
+                    "model_threshold_json_sha256": thr_sha,
+                    "model_month": model_month,
+                }
             except Exception as e:
                 import logging
                 logging.getLogger("behemoth.api").error("Failed to parse %s: %s", p.name, e)
@@ -103,10 +154,13 @@ class CandidateRegistry:
         """Return the locked production cap for a symbol."""
         return self._caps_by_symbol.get(symbol.upper(), 1.2)
 
+    def get_model_binding(self, symbol: str) -> dict[str, Any] | None:
+        """Return frozen model artifact binding for a symbol."""
+        return self._model_bindings_by_symbol.get(symbol.upper())
+
     def all_candidates(self) -> list[CandidateSpec]:
         """Return all candidates across all symbols."""
         out: list[CandidateSpec] = []
         for cands in self._candidates_by_symbol.values():
             out.extend(cands)
         return out
-

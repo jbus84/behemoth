@@ -18,6 +18,15 @@ except Exception:
 
 try:
     from scripts.run_tick_opportunity_mining import (
+        CANDIDATE_SCHEMA_VERSION as MINING_CANDIDATE_SCHEMA_VERSION,
+    )
+    from scripts.run_tick_opportunity_mining import (
+        QUALITY_TIER_BASIS as MINING_QUALITY_TIER_BASIS,
+    )
+    from scripts.run_tick_opportunity_mining import (
+        SELECTION_PASS_BASIS as MINING_SELECTION_PASS_BASIS,
+    )
+    from scripts.run_tick_opportunity_mining import (
         _directional_family_states,
         _parse_ints,
         _pip_size,
@@ -26,6 +35,15 @@ try:
         _regime_masks,
     )
 except ModuleNotFoundError:
+    from run_tick_opportunity_mining import (
+        CANDIDATE_SCHEMA_VERSION as MINING_CANDIDATE_SCHEMA_VERSION,
+    )
+    from run_tick_opportunity_mining import (
+        QUALITY_TIER_BASIS as MINING_QUALITY_TIER_BASIS,
+    )
+    from run_tick_opportunity_mining import (
+        SELECTION_PASS_BASIS as MINING_SELECTION_PASS_BASIS,
+    )
     from run_tick_opportunity_mining import (  # type: ignore
         _directional_family_states,
         _parse_ints,
@@ -53,6 +71,24 @@ DEFAULTS: dict[str, Any] = {
 }
 
 TIER_RANK = {"D": 0, "C": 1, "B": 2, "A": 3}
+EXPECTED_CANDIDATE_SCHEMA_VERSION = str(MINING_CANDIDATE_SCHEMA_VERSION)
+EXPECTED_SELECTION_PASS_BASIS = str(MINING_SELECTION_PASS_BASIS)
+EXPECTED_QUALITY_TIER_BASIS = str(MINING_QUALITY_TIER_BASIS)
+REQUIRED_CANDIDATE_COLUMNS = {
+    "symbol",
+    "bar_ticks",
+    "horizon",
+    "family",
+    "state_id",
+    "regime_desc",
+    "selection_pass",
+    "quality_tier",
+    "train_count",
+    "mean_gross_pips_train",
+    "candidate_schema_version",
+    "selection_pass_basis",
+    "quality_tier_basis",
+}
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -127,15 +163,56 @@ def _sample_positions_balanced(
     return np.array(sorted(out[: int(max_events)]), dtype=np.int64)
 
 
+def _validate_candidate_schema(d: pd.DataFrame, *, path: Path) -> pd.DataFrame:
+    if d.empty:
+        return d
+    missing = sorted(REQUIRED_CANDIDATE_COLUMNS - set(d.columns))
+    if missing:
+        raise ValueError(f"{path} missing required candidate columns: {missing}")
+    out = d.copy()
+    ver = out["candidate_schema_version"].astype(str).str.strip()
+    if not ver.eq(EXPECTED_CANDIDATE_SCHEMA_VERSION).all():
+        bad = sorted(ver.dropna().unique().tolist())
+        raise ValueError(
+            f"{path} candidate_schema_version must be {EXPECTED_CANDIDATE_SCHEMA_VERSION!r}, got {bad!r}"
+        )
+    sel_basis = out["selection_pass_basis"].astype(str).str.strip().str.lower()
+    if not sel_basis.eq(EXPECTED_SELECTION_PASS_BASIS).all():
+        bad = sorted(sel_basis.dropna().unique().tolist())
+        raise ValueError(
+            f"{path} selection_pass_basis must be {EXPECTED_SELECTION_PASS_BASIS!r}, got {bad!r}"
+        )
+    tier_basis = out["quality_tier_basis"].astype(str).str.strip().str.lower()
+    if not tier_basis.eq(EXPECTED_QUALITY_TIER_BASIS).all():
+        bad = sorted(tier_basis.dropna().unique().tolist())
+        raise ValueError(
+            f"{path} quality_tier_basis must be {EXPECTED_QUALITY_TIER_BASIS!r}, got {bad!r}"
+        )
+    tier = out["quality_tier"].astype(str).str.upper().str.strip()
+    if not tier.isin(TIER_RANK).all():
+        bad = sorted(tier[~tier.isin(TIER_RANK)].dropna().unique().tolist())
+        raise ValueError(f"{path} has invalid quality_tier values: {bad!r}")
+    expected_score = tier.map(TIER_RANK).astype(int)
+    if "quality_score" in out.columns:
+        got = pd.to_numeric(out["quality_score"], errors="coerce")
+        if not got.eq(expected_score).fillna(False).all():
+            raise ValueError(
+                f"{path} quality_score inconsistent with quality_tier; rerun run_tick_opportunity_mining.py"
+            )
+    out["quality_score"] = expected_score
+    return out
+
+
+def _load_candidate_csv(path: Path) -> pd.DataFrame:
+    if not path.exists():
+        return pd.DataFrame()
+    return _validate_candidate_schema(pd.read_csv(path), path=path)
+
+
 def _ensure_quality_cols(d: pd.DataFrame) -> pd.DataFrame:
     out = d.copy()
-    if "quality_tier" not in out.columns:
-        out["quality_tier"] = np.where(out.get("selection_pass", False), "C", "D")
-    out["quality_tier"] = (
-        out["quality_tier"].astype(str).str.upper().map(lambda x: x if x in TIER_RANK else "D")
-    )
-    if "quality_score" not in out.columns:
-        out["quality_score"] = out["quality_tier"].map(TIER_RANK).astype(int)
+    out["quality_tier"] = out["quality_tier"].astype(str).str.upper().str.strip()
+    out["quality_score"] = out["quality_tier"].map(TIER_RANK).astype(int)
     return out
 
 
@@ -155,10 +232,6 @@ def _select_candidates(
         x = x[x["selection_pass"].astype(bool)].copy()
     min_rank = TIER_RANK.get(str(min_quality_tier).upper().strip(), 1)
     x = x[x["quality_tier"].map(TIER_RANK) >= int(min_rank)].copy()
-    if "train_count" not in x.columns:
-        x["train_count"] = 0
-    if "mean_gross_pips_train" not in x.columns:
-        x["mean_gross_pips_train"] = 0.0
     x = x.sort_values(
         ["quality_score", "train_count", "mean_gross_pips_train"],
         ascending=[False, False, False],
@@ -466,14 +539,14 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     d_path = candidate_dir / f"{symbol}_directional_candidates.csv"
     o_path = candidate_dir / f"{symbol}_oco_candidates.csv"
     dir_cands = _select_candidates(
-        pd.read_csv(d_path) if d_path.exists() else pd.DataFrame(),
+        _load_candidate_csv(d_path),
         symbol=symbol,
         selection_required=selection_required,
         min_quality_tier=min_quality_tier,
         max_candidates=max_candidates,
     )
     oco_cands = _select_candidates(
-        pd.read_csv(o_path) if o_path.exists() else pd.DataFrame(),
+        _load_candidate_csv(o_path),
         symbol=symbol,
         selection_required=selection_required,
         min_quality_tier=min_quality_tier,

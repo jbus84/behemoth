@@ -8,13 +8,14 @@ Endpoints:
 
 Model loading:
     On startup (or hot-reload via POST /reload), the server loads the
-    latest CatBoost ``.cbm`` binary and its paired threshold JSON from
-    ``models/oco/<SYMBOL>_model_<MONTH>.cbm``.
+    CatBoost ``.cbm`` binary and paired threshold JSON pinned in the
+    governance lock for each symbol.
 """
 
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 import os
@@ -28,6 +29,7 @@ from fastapi import FastAPI, HTTPException, Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 from pydantic import BaseModel, Field
 
+from src.behemoth.api.dashboard import router as dashboard_router
 from src.behemoth.core.registry import CandidateRegistry
 from src.behemoth.core.schemas import (
     ActiveTrade,
@@ -55,6 +57,14 @@ _models: dict[str, object] = {}          # symbol -> loaded CatBoostClassifier
 _thresholds: dict[str, dict] = {}        # symbol -> threshold config
 _model_months: dict[str, str] = {}       # symbol -> "2025-12"
 _models_dir: Path = Path("models/oco")
+
+
+def _sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 # ── Prometheus Metrics ────────────────────────────────────────────────
 METRIC_INFERENCE_LATENCY = Histogram(
@@ -183,15 +193,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Mount dashboard sub-router
-from src.behemoth.api.dashboard import router as dashboard_router
-
 app.include_router(dashboard_router)
 
 
 def _load_models() -> None:
-    """Scan models directory and load latest .cbm per symbol."""
+    """Load governance-pinned model artifacts per symbol."""
     global _models, _thresholds, _model_months
+    _models = {}
+    _thresholds = {}
+    _model_months = {}
     if not _models_dir.exists():
         logger.warning("Models directory %s does not exist yet.", _models_dir)
         return
@@ -202,34 +212,52 @@ def _load_models() -> None:
         logger.error("CatBoost not installed — predictions will be unavailable.")
         return
 
+    if _registry is None:
+        logger.error("Governance registry unavailable — refusing to load models without lock binding.")
+        return
+
     for sym in _config.symbols:
-        # Find latest model file by sorting
-        candidates = sorted(_models_dir.glob(f"{sym}_model_*.cbm"))
-
-        force_month = os.getenv("BEHEMOTH_FORCE_MODEL_MONTH")
-        if force_month:
-            candidates = [c for c in candidates if force_month in c.stem]
-
-        if not candidates:
-            logger.warning("No model found for %s (force_month=%s)", sym, force_month)
+        binding = _registry.get_model_binding(sym)
+        if not binding:
+            logger.error("No governance model binding for %s — skipping model load.", sym)
             continue
-        latest = candidates[-1]  # lexicographic sort = chronological for YYYY-MM
-        month = latest.stem.split("_")[-1]  # e.g. "2025-12"
+        model_path = Path(str(binding.get("model_cbm_path", "")))
+        thr_path = Path(str(binding.get("model_threshold_json_path", "")))
+        exp_model_sha = str(binding.get("model_cbm_sha256", "")).strip()
+        exp_thr_sha = str(binding.get("model_threshold_json_sha256", "")).strip()
+        lock_month = str(binding.get("model_month", "")).strip()
+        if (not model_path.exists()) or (not thr_path.exists()):
+            logger.error(
+                "Locked artifacts missing for %s: model=%s threshold=%s",
+                sym,
+                model_path,
+                thr_path,
+            )
+            continue
+        got_model_sha = _sha256(model_path)
+        got_thr_sha = _sha256(thr_path)
+        if (got_model_sha != exp_model_sha) or (got_thr_sha != exp_thr_sha):
+            logger.error("Locked artifact hash mismatch for %s — refusing model load.", sym)
+            continue
+        month = model_path.stem.split("_")[-1]
+        if lock_month and (month != lock_month):
+            logger.error(
+                "Locked model month mismatch for %s: lock=%s file=%s",
+                sym,
+                lock_month,
+                month,
+            )
+            continue
 
         model = CatBoostClassifier()
-        model.load_model(str(latest))
+        model.load_model(str(model_path))
         _models[sym] = model
         _model_months[sym] = month
-        logger.info("Loaded model for %s (month %s): %s", sym, month, latest.name)
+        logger.info("Loaded lock-bound model for %s (month %s): %s", sym, month, model_path.name)
 
         # Load paired threshold JSON
-        thr_path = latest.with_suffix(".json")
-        if thr_path.exists():
-            _thresholds[sym] = json.loads(thr_path.read_text())
-            logger.info("Loaded threshold config for %s", sym)
-        else:
-            _thresholds[sym] = {}
-            logger.warning("No threshold JSON for %s at %s", sym, thr_path)
+        _thresholds[sym] = json.loads(thr_path.read_text())
+        logger.info("Loaded threshold config for %s", sym)
 
 def _get_cap_pips(symbol: str) -> float:
     """Get production Stop-Limit cap for a symbol from governance registry."""

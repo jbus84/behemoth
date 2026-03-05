@@ -74,6 +74,19 @@ def _pick_first_existing(*paths: Path) -> Path:
     return paths[0]
 
 
+def _latest_model_pair(symbol: str, *, models_dir: Path = Path("models/oco")) -> tuple[Path, Path]:
+    """Return latest exported model binary and paired threshold JSON for symbol."""
+    s = str(symbol).upper().strip()
+    candidates = sorted(models_dir.glob(f"{s}_model_*.cbm"))
+    if not candidates:
+        raise FileNotFoundError(models_dir / f"{s}_model_*.cbm")
+    model_path = candidates[-1]
+    thr_path = model_path.with_suffix(".json")
+    if not thr_path.exists():
+        raise FileNotFoundError(thr_path)
+    return model_path, thr_path
+
+
 def _default_paths(symbol: str) -> dict[str, Path]:
     s = str(symbol).upper().strip()
     sl = s.lower()
@@ -235,10 +248,12 @@ def _build_manifest(
 
     wfo_cfg = _load_yaml(paths["wfo_config"])
     red_cfg = _load_yaml(paths["reduced_config"])
+    model_cbm, model_thr = _latest_model_pair(s)
     states, states_sha = _state_universe(paths["reduced_states"])
     now = datetime.now(timezone.utc)
     tick_ok = _read_tick_exact_ok(paths["tick_exact_summary"])
     cap_ok = _read_capacity_ok(paths["reduced_summary"])
+    model_month = model_cbm.stem.split("_")[-1]
 
     manifest: dict[str, Any] = {
         "schema_version": 1,
@@ -254,6 +269,11 @@ def _build_manifest(
             "reduced_states_csv_sha256": _sha256(paths["reduced_states"]),
             "predictions_path": str(paths["predictions"]),
             "predictions_sha256": _sha256(paths["predictions"]),
+            "model_cbm_path": str(model_cbm),
+            "model_cbm_sha256": _sha256(model_cbm),
+            "model_threshold_json_path": str(model_thr),
+            "model_threshold_json_sha256": _sha256(model_thr),
+            "model_month": str(model_month),
             "tick_exact_summary_path": str(paths["tick_exact_summary"]),
             "tick_exact_summary_sha256": _sha256(paths["tick_exact_summary"]),
             "tick_exact_overall_pass": tick_ok,

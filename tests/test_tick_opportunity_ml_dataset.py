@@ -6,6 +6,11 @@ import numpy as np
 import pandas as pd
 
 from scripts.build_tick_opportunity_ml_dataset import run
+from scripts.run_tick_opportunity_mining import (
+    CANDIDATE_SCHEMA_VERSION,
+    QUALITY_TIER_BASIS,
+    SELECTION_PASS_BASIS,
+)
 
 
 def _synth_tick_velocity(path: Path, *, symbol: str) -> None:
@@ -67,9 +72,14 @@ def test_build_tick_opportunity_ml_dataset(tmp_path: Path) -> None:
                 "regime_desc": "all",
                 "annualized_test_fills": 10000.0,
                 "mean_gross_pips_test": 0.15,
+                "train_count": 50000,
+                "mean_gross_pips_train": 0.18,
                 "selection_pass": True,
                 "quality_tier": "B",
                 "quality_score": 2,
+                "candidate_schema_version": CANDIDATE_SCHEMA_VERSION,
+                "selection_pass_basis": SELECTION_PASS_BASIS,
+                "quality_tier_basis": QUALITY_TIER_BASIS,
             }
         ]
     ).to_csv(cand_dir / f"{symbol}_directional_candidates.csv", index=False)
@@ -85,9 +95,14 @@ def test_build_tick_opportunity_ml_dataset(tmp_path: Path) -> None:
                 "regime_desc": "all;barrier=2.0",
                 "annualized_test_fills": 10000.0,
                 "mean_gross_pips_test": 0.4,
+                "train_count": 52000,
+                "mean_gross_pips_train": 0.45,
                 "selection_pass": True,
                 "quality_tier": "B",
                 "quality_score": 2,
+                "candidate_schema_version": CANDIDATE_SCHEMA_VERSION,
+                "selection_pass_basis": SELECTION_PASS_BASIS,
+                "quality_tier_basis": QUALITY_TIER_BASIS,
             }
         ]
     ).to_csv(cand_dir / f"{symbol}_oco_candidates.csv", index=False)
@@ -117,3 +132,68 @@ def test_build_tick_opportunity_ml_dataset(tmp_path: Path) -> None:
     assert "first_touch_side" not in oco.columns
     assert "both_window_event" not in oco.columns
     assert "touch_step" not in oco.columns
+
+
+def test_build_tick_opportunity_ml_dataset_rejects_stale_candidate_schema(tmp_path: Path) -> None:
+    symbol = "EURUSD"
+    dataset_dir = tmp_path / "tick_velocity"
+    cand_dir = tmp_path / "candidates"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    cand_dir.mkdir(parents=True, exist_ok=True)
+    _synth_tick_velocity(dataset_dir / f"{symbol}_1000tick_velocity.parquet", symbol=symbol)
+
+    # Missing candidate_schema_version and train-only basis metadata.
+    pd.DataFrame(
+        [
+            {
+                "symbol": symbol,
+                "bar_ticks": 1000,
+                "horizon": 2,
+                "family": "path_follow",
+                "state_id": "path_follow__all",
+                "regime_desc": "all",
+                "annualized_test_fills": 10000.0,
+                "mean_gross_pips_test": 0.15,
+                "train_count": 50000,
+                "mean_gross_pips_train": 0.18,
+                "selection_pass": True,
+                "quality_tier": "B",
+                "quality_score": 2,
+            }
+        ]
+    ).to_csv(cand_dir / f"{symbol}_directional_candidates.csv", index=False)
+    pd.DataFrame(
+        [
+            {
+                "symbol": symbol,
+                "bar_ticks": 1000,
+                "horizon": 2,
+                "family": "oco_first_touch",
+                "state_id": "oco_first_touch__all__k2",
+                "regime_desc": "all;barrier=2.0",
+                "annualized_test_fills": 10000.0,
+                "mean_gross_pips_test": 0.4,
+                "train_count": 52000,
+                "mean_gross_pips_train": 0.45,
+                "selection_pass": True,
+                "quality_tier": "B",
+                "quality_score": 2,
+            }
+        ]
+    ).to_csv(cand_dir / f"{symbol}_oco_candidates.csv", index=False)
+
+    cfg = {
+        "symbol": symbol,
+        "dataset_dir": str(dataset_dir),
+        "candidate_dir": str(cand_dir),
+        "train_years": "2022,2023,2024",
+        "test_year": 2025,
+        "selection_required": True,
+        "min_quality_tier": "C",
+        "max_candidates_per_library": 10,
+        "max_events_per_candidate": 1000,
+    }
+    import pytest
+
+    with pytest.raises(ValueError, match="candidate_schema_version"):
+        run(cfg)

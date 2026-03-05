@@ -35,6 +35,14 @@ class TestCandidateGeneration:
     def test_unknown_symbol_returns_empty(self, registry):
         assert registry.get_candidates("XYZABC") == []
 
+    def test_model_binding_present(self, registry):
+        binding = registry.get_model_binding("EURUSD")
+        assert binding is not None
+        assert binding["model_cbm_path"].endswith(".cbm")
+        assert binding["model_threshold_json_path"].endswith(".json")
+        assert len(str(binding["model_cbm_sha256"])) == 64
+        assert len(str(binding["model_threshold_json_sha256"])) == 64
+
     def test_candidate_fields_populated(self, registry):
         cands = registry.get_candidates("GBPUSD")
         assert cands, "Expected GBPUSD to have candidates"
