@@ -10,8 +10,8 @@
 - stop_limit_detail_csv: `data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv`
 - stop_limit_cap_pips: `1.2`
 - stop_limit_slippage_mode: `full_overshoot`
-- stop_limit_match_rate: `0.999311`
-- stop_limit_fill_rate_selected: `0.983275`
+- stop_limit_match_rate: `0.999332`
+- stop_limit_fill_rate_selected: `0.990340`
 - state_train_months: `3`
 - min_train_months: `3`
 - overlap_corr_max: `0.85`
@@ -26,7 +26,7 @@
 ## Summary
 | symbol   |   locked_quantile | selection_mode   | execution_mode   |   state_train_months |   months_total |   months_scored |   rows_total |   signal_rows_total |   mean_gross_pips |   monthly_mean_gross_pips |   lb95_month_mean_gross_pips |   mean_signal_pips |   monthly_mean_signal_pips |   lb95_month_mean_signal_pips |   positive_months |   positive_months_signal |   avg_month_rows |   avg_month_signal_rows |   fill_rate_overall |   annualized_rows |   capacity_floor_monthly |   capacity_floor_annual | capacity_pass_monthly_or_annual   |   max_state_churn |   max_top_state_share |   max_state_hhi |   stability_months_pass |
 |:---------|------------------:|:-----------------|:-----------------|---------------------:|---------------:|----------------:|-------------:|--------------------:|------------------:|--------------------------:|-----------------------------:|-------------------:|---------------------------:|------------------------------:|------------------:|-------------------------:|-----------------:|------------------------:|--------------------:|------------------:|-------------------------:|------------------------:|:----------------------------------|------------------:|----------------------:|----------------:|------------------------:|
-| EURUSD   |               0.9 | auto             | stop_limit       |                    3 |             15 |              11 |         6562 |                6715 |               nan |                   2.04718 |                      1.70804 |            2.41089 |                    1.83684 |                       1.44023 |                10 |                       10 |          596.545 |                 610.455 |            0.977215 |           7158.55 |                     3000 |                    5000 | True                              |              0.45 |                  0.35 |            0.25 |                       0 |
+| EURUSD   |               0.9 | auto             | stop_limit       |                    3 |             15 |              11 |         6628 |                6715 |           2.45668 |                   1.99027 |                      1.67265 |            2.42485 |                    1.96604 |                       1.65281 |                11 |                       11 |          602.545 |                 610.455 |            0.987044 |           7230.55 |                     3000 |                    5000 | True                              |              0.45 |                  0.35 |            0.25 |                       0 |
 
 ## Reduced State Universe
 | symbol   |   bar_ticks |   horizon | state_id                                    | family                |   barrier_pips | regime_desc                  |
@@ -54,7 +54,7 @@
 | EURUSD   | 2025-11      | 2025-08,2025-09,2025-10 |                 2 |    328 |           332 |    0.987952 |          0.832012 |           0.821988 |                 0.6 |   0.554217 |           0.5      |          0.521084 |    0.500889 |                0 | ok             |
 | EURUSD   | 2025-12      | 2025-09,2025-10,2025-11 |                 2 |    332 |           334 |    0.994012 |          1.39819  |           1.38982  |                 1.4 |   0.637725 |           0.666667 |          0.55988  |    0.507171 |                0 | ok             |
 | EURUSD   | 2026-01      | 2025-10,2025-11,2025-12 |                 2 |    341 |           345 |    0.988406 |          2.64897  |           2.61826  |                 2   |   0.678261 |           0.666667 |          0.571014 |    0.510086 |                0 | ok             |
-| EURUSD   | 2026-02      | 2025-11,2025-12,2026-01 |                 1 |      0 |            66 |    0        |        nan        |           0        |               nan   |   0        |           1        |          1        |    1        |                0 | ok             |
+| EURUSD   | 2026-02      | 2025-11,2025-12,2026-01 |                 1 |     66 |            66 |    1        |          1.42121  |           1.42121  |                 1.5 |   0.636364 |           1        |          1        |    1        |                0 | ok             |
 | EURUSD   | 2026-03      | 2025-12,2026-01,2026-02 |                 0 |      0 |             0 |  nan        |        nan        |         nan        |               nan   | nan        |         nan        |        nan        |  nan        |              nan | no_gate_states |
 
 ## State Stability

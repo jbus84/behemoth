@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#oco-logical-audit-eurusdgbpusdusdjpy" class="md-skip">
+        <a href="#oco-logical-audit-all-active-symbols" class="md-skip">
           Skip to content
         </a>
       
@@ -3717,7 +3717,7 @@
 
 
 
-<h1 id="oco-logical-audit-eurusdgbpusdusdjpy">OCO Logical Audit (EURUSD/GBPUSD/USDJPY)<a class="headerlink" href="#oco-logical-audit-eurusdgbpusdusdjpy" title="Permanent link">&para;</a></h1>
+<h1 id="oco-logical-audit-all-active-symbols">OCO Logical Audit (All Active Symbols)<a class="headerlink" href="#oco-logical-audit-all-active-symbols" title="Permanent link">&para;</a></h1>
 <h2 id="outputs">Outputs<a class="headerlink" href="#outputs" title="Permanent link">&para;</a></h2>
 <ul>
 <li>checks_csv: <code>data/analysis/tick_opportunity_mining/oco_logical_audit_checks.csv</code></li>
@@ -3735,11 +3735,23 @@
 </thead>
 <tbody>
 <tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: right;">10</td>
+</tr>
+<tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">10</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
+<td style="text-align: right;">10</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">10</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
 <td style="text-align: right;">10</td>
 </tr>
 <tr>
@@ -3802,7 +3814,7 @@
 <td style="text-align: left;">medium</td>
 <td style="text-align: left;">overlap_diversification</td>
 <td style="text-align: left;">median_abs_corr_diff</td>
-<td style="text-align: right;">0.157227</td>
+<td style="text-align: right;">0.192582</td>
 <td style="text-align: left;">&lt;=0.40</td>
 </tr>
 <tr>
@@ -3843,7 +3855,7 @@
 <td style="text-align: left;">wfo_windowing</td>
 <td style="text-align: left;">warmup_count</td>
 <td style="text-align: right;">3</td>
-<td style="text-align: left;">==3, missing_months=0, unexpected_non_ok=0 (allowed=['no_gate_states', 'ok', 'warmup_skip'])</td>
+<td style="text-align: left;">==3, missing_months=0, unexpected_non_ok=0 (allowed=['no_gate_states', 'no_test_rows', 'ok', 'warmup_skip'])</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -3902,7 +3914,7 @@
 <td style="text-align: left;">medium</td>
 <td style="text-align: left;">overlap_diversification</td>
 <td style="text-align: left;">median_abs_corr_diff</td>
-<td style="text-align: right;">0.216054</td>
+<td style="text-align: right;">0.319869</td>
 <td style="text-align: left;">&lt;=0.40</td>
 </tr>
 <tr>
@@ -3943,7 +3955,7 @@
 <td style="text-align: left;">wfo_windowing</td>
 <td style="text-align: left;">warmup_count</td>
 <td style="text-align: right;">3</td>
-<td style="text-align: left;">==3, missing_months=0, unexpected_non_ok=0 (allowed=['no_gate_states', 'ok', 'warmup_skip'])</td>
+<td style="text-align: left;">==3, missing_months=0, unexpected_non_ok=0 (allowed=['no_gate_states', 'no_test_rows', 'ok', 'warmup_skip'])</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4002,7 +4014,7 @@
 <td style="text-align: left;">medium</td>
 <td style="text-align: left;">overlap_diversification</td>
 <td style="text-align: left;">median_abs_corr_diff</td>
-<td style="text-align: right;">0.300268</td>
+<td style="text-align: right;">0.21387</td>
 <td style="text-align: left;">&lt;=0.40</td>
 </tr>
 <tr>
@@ -4043,7 +4055,7 @@
 <td style="text-align: left;">wfo_windowing</td>
 <td style="text-align: left;">warmup_count</td>
 <td style="text-align: right;">3</td>
-<td style="text-align: left;">==3, missing_months=0, unexpected_non_ok=0 (allowed=['no_gate_states', 'ok', 'warmup_skip'])</td>
+<td style="text-align: left;">==3, missing_months=0, unexpected_non_ok=0 (allowed=['no_gate_states', 'no_test_rows', 'ok', 'warmup_skip'])</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4052,11 +4064,311 @@
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">robustness_metric</td>
 <td style="text-align: left;">lb95_gross_abs_diff</td>
-<td style="text-align: right;">4.44089e-16</td>
+<td style="text-align: right;">0</td>
 <td style="text-align: left;">&lt;=1e-8 (and signal diff&lt;=1e-8)</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">C10</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">critical</td>
+<td style="text-align: left;">timestamp_causality</td>
+<td style="text-align: left;">max_timestamp_violation_rate</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0 (and touch_order=0, touch_month_mismatch=0)</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">C01</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">critical</td>
+<td style="text-align: left;">threshold_timing</td>
+<td style="text-align: left;">selected_consistency</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">pred_prob &gt;= threshold_exec for selected rows; month mismatch=0; threshold_days&gt;=1</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">C02</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">threshold_timing</td>
+<td style="text-align: left;">unstable_group_rate</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">C03</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">state_selection</td>
+<td style="text-align: left;">selected_non_gate_states</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">C04</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">medium</td>
+<td style="text-align: left;">overlap_diversification</td>
+<td style="text-align: left;">median_abs_corr_diff</td>
+<td style="text-align: right;">0.0910845</td>
+<td style="text-align: left;">&lt;=0.40</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">C05</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">stop_limit_join</td>
+<td style="text-align: left;">min_month_match_rate</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">&gt;=0.995 and duplicate_keys=0</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">C06</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">stop_limit_model</td>
+<td style="text-align: left;">monotonicity_violations</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">C07</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">critical</td>
+<td style="text-align: left;">metrics_semantics</td>
+<td style="text-align: left;">rows_total_diff</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0 (and signal diff=0, fill diff&lt;=1e-9)</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">C08</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">medium</td>
+<td style="text-align: left;">wfo_windowing</td>
+<td style="text-align: left;">warmup_count</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">==3, missing_months=0, unexpected_non_ok=0 (allowed=['no_gate_states', 'no_test_rows', 'ok', 'warmup_skip'])</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">C09</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">robustness_metric</td>
+<td style="text-align: left;">lb95_gross_abs_diff</td>
+<td style="text-align: right;">2.22045e-16</td>
+<td style="text-align: left;">&lt;=1e-8 (and signal diff&lt;=1e-8)</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">C10</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">critical</td>
+<td style="text-align: left;">timestamp_causality</td>
+<td style="text-align: left;">max_timestamp_violation_rate</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0 (and touch_order=0, touch_month_mismatch=0)</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">C01</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">critical</td>
+<td style="text-align: left;">threshold_timing</td>
+<td style="text-align: left;">selected_consistency</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">pred_prob &gt;= threshold_exec for selected rows; month mismatch=0; threshold_days&gt;=1</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">C02</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">threshold_timing</td>
+<td style="text-align: left;">unstable_group_rate</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">C03</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">state_selection</td>
+<td style="text-align: left;">selected_non_gate_states</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">C04</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">medium</td>
+<td style="text-align: left;">overlap_diversification</td>
+<td style="text-align: left;">median_abs_corr_diff</td>
+<td style="text-align: right;">0.18577</td>
+<td style="text-align: left;">&lt;=0.40</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">C05</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">stop_limit_join</td>
+<td style="text-align: left;">min_month_match_rate</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">&gt;=0.995 and duplicate_keys=0</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">C06</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">stop_limit_model</td>
+<td style="text-align: left;">monotonicity_violations</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">C07</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">critical</td>
+<td style="text-align: left;">metrics_semantics</td>
+<td style="text-align: left;">rows_total_diff</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0 (and signal diff=0, fill diff&lt;=1e-9)</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">C08</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">medium</td>
+<td style="text-align: left;">wfo_windowing</td>
+<td style="text-align: left;">warmup_count</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">==3, missing_months=0, unexpected_non_ok=0 (allowed=['no_gate_states', 'no_test_rows', 'ok', 'warmup_skip'])</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">C09</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">robustness_metric</td>
+<td style="text-align: left;">lb95_gross_abs_diff</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">&lt;=1e-8 (and signal diff&lt;=1e-8)</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">C10</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">critical</td>
+<td style="text-align: left;">timestamp_causality</td>
+<td style="text-align: left;">max_timestamp_violation_rate</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0 (and touch_order=0, touch_month_mismatch=0)</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: left;">C01</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">critical</td>
+<td style="text-align: left;">threshold_timing</td>
+<td style="text-align: left;">selected_consistency</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">pred_prob &gt;= threshold_exec for selected rows; month mismatch=0; threshold_days&gt;=1</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: left;">C02</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">threshold_timing</td>
+<td style="text-align: left;">unstable_group_rate</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: left;">C03</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">state_selection</td>
+<td style="text-align: left;">selected_non_gate_states</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: left;">C04</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">medium</td>
+<td style="text-align: left;">overlap_diversification</td>
+<td style="text-align: left;">median_abs_corr_diff</td>
+<td style="text-align: right;">0.229357</td>
+<td style="text-align: left;">&lt;=0.40</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: left;">C05</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">stop_limit_join</td>
+<td style="text-align: left;">min_month_match_rate</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">&gt;=0.995 and duplicate_keys=0</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: left;">C06</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">stop_limit_model</td>
+<td style="text-align: left;">monotonicity_violations</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: left;">C07</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">critical</td>
+<td style="text-align: left;">metrics_semantics</td>
+<td style="text-align: left;">rows_total_diff</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0 (and signal diff=0, fill diff&lt;=1e-9)</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: left;">C08</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">medium</td>
+<td style="text-align: left;">wfo_windowing</td>
+<td style="text-align: left;">warmup_count</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">==3, missing_months=0, unexpected_non_ok=0 (allowed=['no_gate_states', 'no_test_rows', 'ok', 'warmup_skip'])</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: left;">C09</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">robustness_metric</td>
+<td style="text-align: left;">lb95_gross_abs_diff</td>
+<td style="text-align: right;">2.22045e-16</td>
+<td style="text-align: left;">&lt;=1e-8 (and signal diff&lt;=1e-8)</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
 <td style="text-align: left;">C10</td>
 <td style="text-align: left;">pass</td>
 <td style="text-align: left;">critical</td>

@@ -42,7 +42,7 @@
 |         100 |         3 | oco_first_touch       | oco_first_touch__all__k2                | C              |                137695   |              0.0861039 |              0.1         |          2.6449  |              0.505313 | True             |
 |         100 |         6 | oco_first_touch       | oco_first_touch__all__k3                | C              |                132752   |              0.073765  |              7.79821e-13 |          3.70346 |              0.504577 | True             |
 |         100 |         4 | oco_first_touch_clean | oco_first_touch_clean__all__k2          | B              |                130868   |              0.735728  |              0.4         |          2.511   |              0.573093 | True             |
-|         100 |         5 | oco_first_touch_clean | oco_first_touch_clean__all__k2          | B              |                130624   |              0.982476  |              0.6         |          2.78482 |              0.593926 | True             |
+|         100 |         5 | oco_first_touch_clean | oco_first_touch_clean__all__k2          | A              |                130624   |              0.982476  |              0.6         |          2.78482 |              0.593926 | True             |
 |         100 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k2          | A              |                127733   |              1.24751   |              0.8         |          3.03128 |              0.617468 | True             |
 |         100 |         3 | oco_first_touch_clean | oco_first_touch_clean__all__k2          | B              |                125500   |              0.497735  |              0.2         |          2.22006 |              0.55016  | True             |
 |         100 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k3          | B              |                122410   |              0.602762  |              0.3         |          3.12263 |              0.543417 | True             |
@@ -60,5 +60,5 @@
 ## Selection Summary
 | library     |   rows_total |   rows_pass |   pass_rate |   mean_annualized_fills_all |   mean_annualized_fills_pass |   mean_gross_all |   mean_gross_pass |   tier_a_rows |   tier_b_rows |   tier_c_rows |
 |:------------|-------------:|------------:|------------:|----------------------------:|-----------------------------:|-----------------:|------------------:|--------------:|--------------:|--------------:|
-| directional |         2088 |         303 |    0.145115 |                     8272.98 |                      23626.6 |        0.0230459 |         0.0675896 |             0 |            30 |           273 |
-| oco         |         2160 |         505 |    0.233796 |                     8747.38 |                      28123.7 |        1.65323   |         0.717839  |            30 |           123 |           352 |
+| directional |         2088 |         285 |    0.136494 |                     8272.98 |                      24829.6 |        0.0230459 |         0.0494542 |             0 |            27 |           258 |
+| oco         |         2160 |        1489 |    0.689352 |                     8747.38 |                      10884.3 |        1.65323   |         2.58074   |            31 |           105 |          1353 |

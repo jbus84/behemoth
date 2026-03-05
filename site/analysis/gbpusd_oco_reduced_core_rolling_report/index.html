@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#oco-tick-exact-shortlist-verification" class="md-skip">
+        <a href="#gbpusd-oco-reduced-core-rolling-selection" class="md-skip">
           Skip to content
         </a>
       
@@ -1023,10 +1023,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#by-state" class="md-nav__link">
+  <a href="#reduced-state-universe" class="md-nav__link">
     <span class="md-ellipsis">
       
-        By State
+        Reduced State Universe
       
     </span>
   </a>
@@ -1034,10 +1034,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#by-month" class="md-nav__link">
+  <a href="#monthly-portfolio" class="md-nav__link">
     <span class="md-ellipsis">
       
-        By Month
+        Monthly Portfolio
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-stability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State Stability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-schedule-top-rows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State Schedule (Top Rows)
       
     </span>
   </a>
@@ -3659,10 +3681,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#by-state" class="md-nav__link">
+  <a href="#reduced-state-universe" class="md-nav__link">
     <span class="md-ellipsis">
       
-        By State
+        Reduced State Universe
       
     </span>
   </a>
@@ -3670,10 +3692,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#by-month" class="md-nav__link">
+  <a href="#monthly-portfolio" class="md-nav__link">
     <span class="md-ellipsis">
       
-        By Month
+        Monthly Portfolio
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-stability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State Stability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-schedule-top-rows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State Schedule (Top Rows)
       
     </span>
   </a>
@@ -3697,16 +3741,30 @@
 
 
 
-<h1 id="oco-tick-exact-shortlist-verification">OCO Tick-Exact Shortlist Verification<a class="headerlink" href="#oco-tick-exact-shortlist-verification" title="Permanent link">&para;</a></h1>
+<h1 id="gbpusd-oco-reduced-core-rolling-selection">GBPUSD OCO Reduced-Core Rolling Selection<a class="headerlink" href="#gbpusd-oco-reduced-core-rolling-selection" title="Permanent link">&para;</a></h1>
 <h2 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h2>
 <ul>
-<li>symbol: <code>GBPUSD</code></li>
-<li>family_required: <code>oco_first_touch_clean</code></li>
+<li>family_keep: <code>oco_first_touch_clean</code></li>
+<li>barrier_keep: <code>[2.0, 3.0]</code></li>
+<li>horizon_keep: <code>[5, 6]</code></li>
 <li>locked_quantile: <code>0.9</code></li>
 <li>selection_mode: <code>auto</code></li>
-<li>oco_hold_mode: <code>from_touch</code></li>
-<li>oco_include_no_touch: <code>True</code></li>
-<li>abs_tol_pips: <code>1e-09</code></li>
+<li>execution_mode: <code>stop_limit</code></li>
+<li>stop_limit_detail_csv: <code>data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/GBPUSD_stop_limit_tickfill_detail.csv</code></li>
+<li>stop_limit_cap_pips: <code>1.2</code></li>
+<li>stop_limit_slippage_mode: <code>full_overshoot</code></li>
+<li>stop_limit_match_rate: <code>0.999351</code></li>
+<li>stop_limit_fill_rate_selected: <code>0.994150</code></li>
+<li>state_train_months: <code>3</code></li>
+<li>min_train_months: <code>3</code></li>
+<li>overlap_corr_max: <code>0.85</code></li>
+<li>overlap_divergence_max: <code>0.4</code></li>
+<li>max_state_churn: <code>0.45</code></li>
+<li>max_top_state_share: <code>0.35</code></li>
+<li>max_state_hhi: <code>0.25</code></li>
+<li>enforce_state_stability_gates: <code>False</code></li>
+<li>max_states/min_states: <code>12/4</code></li>
+<li>strict_gate_only: <code>True</code></li>
 </ul>
 <h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
 <table>
@@ -3714,335 +3772,931 @@
 <tr>
 <th style="text-align: left;">symbol</th>
 <th style="text-align: right;">locked_quantile</th>
-<th style="text-align: left;">oco_hold_mode</th>
-<th style="text-align: left;">oco_include_no_touch</th>
-<th style="text-align: right;">rows_selected</th>
-<th style="text-align: right;">rows_mapped</th>
-<th style="text-align: right;">rows_verified</th>
-<th style="text-align: right;">mean_abs_err_pips</th>
-<th style="text-align: right;">p99_abs_err_pips</th>
-<th style="text-align: right;">max_abs_err_pips</th>
-<th style="text-align: right;">exact_match_rate</th>
-<th style="text-align: right;">sign_match_rate</th>
-<th style="text-align: right;">pos_label_match_rate</th>
-<th style="text-align: right;">clean_violation_count</th>
-<th style="text-align: right;">both_window_count</th>
-<th style="text-align: right;">undecided_count</th>
-<th style="text-align: right;">min_exact_match_rate</th>
-<th style="text-align: right;">min_pos_label_match_rate</th>
-<th style="text-align: left;">pass_exact_match</th>
-<th style="text-align: left;">pass_pos_label_match</th>
-<th style="text-align: left;">pass_clean</th>
-<th style="text-align: left;">overall_pass</th>
+<th style="text-align: left;">selection_mode</th>
+<th style="text-align: left;">execution_mode</th>
+<th style="text-align: right;">state_train_months</th>
+<th style="text-align: right;">months_total</th>
+<th style="text-align: right;">months_scored</th>
+<th style="text-align: right;">rows_total</th>
+<th style="text-align: right;">signal_rows_total</th>
+<th style="text-align: right;">mean_gross_pips</th>
+<th style="text-align: right;">monthly_mean_gross_pips</th>
+<th style="text-align: right;">lb95_month_mean_gross_pips</th>
+<th style="text-align: right;">mean_signal_pips</th>
+<th style="text-align: right;">monthly_mean_signal_pips</th>
+<th style="text-align: right;">lb95_month_mean_signal_pips</th>
+<th style="text-align: right;">positive_months</th>
+<th style="text-align: right;">positive_months_signal</th>
+<th style="text-align: right;">avg_month_rows</th>
+<th style="text-align: right;">avg_month_signal_rows</th>
+<th style="text-align: right;">fill_rate_overall</th>
+<th style="text-align: right;">annualized_rows</th>
+<th style="text-align: right;">capacity_floor_monthly</th>
+<th style="text-align: right;">capacity_floor_annual</th>
+<th style="text-align: left;">capacity_pass_monthly_or_annual</th>
+<th style="text-align: right;">max_state_churn</th>
+<th style="text-align: right;">max_top_state_share</th>
+<th style="text-align: right;">max_state_hhi</th>
+<th style="text-align: right;">stability_months_pass</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
 <td style="text-align: right;">0.9</td>
-<td style="text-align: left;">from_touch</td>
+<td style="text-align: left;">auto</td>
+<td style="text-align: left;">stop_limit</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">6928</td>
+<td style="text-align: right;">6978</td>
+<td style="text-align: right;">2.53606</td>
+<td style="text-align: right;">2.56976</td>
+<td style="text-align: right;">2.29926</td>
+<td style="text-align: right;">2.51788</td>
+<td style="text-align: right;">2.54922</td>
+<td style="text-align: right;">2.31593</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">1154.67</td>
+<td style="text-align: right;">1163</td>
+<td style="text-align: right;">0.992835</td>
+<td style="text-align: right;">13856</td>
+<td style="text-align: right;">3000</td>
+<td style="text-align: right;">5000</td>
 <td style="text-align: left;">True</td>
-<td style="text-align: right;">33524</td>
-<td style="text-align: right;">33524</td>
-<td style="text-align: right;">33524</td>
+<td style="text-align: right;">0.45</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0.999</td>
-<td style="text-align: right;">0.999</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">True</td>
 </tr>
 </tbody>
 </table>
-<h2 id="by-state">By State<a class="headerlink" href="#by-state" title="Permanent link">&para;</a></h2>
+<h2 id="reduced-state-universe">Reduced State Universe<a class="headerlink" href="#reduced-state-universe" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
+<th style="text-align: left;">symbol</th>
 <th style="text-align: right;">bar_ticks</th>
 <th style="text-align: right;">horizon</th>
 <th style="text-align: left;">state_id</th>
-<th style="text-align: right;">rows_selected</th>
-<th style="text-align: right;">rows_mapped</th>
-<th style="text-align: right;">rows_verified</th>
-<th style="text-align: right;">mean_abs_err_pips</th>
-<th style="text-align: right;">p99_abs_err_pips</th>
-<th style="text-align: right;">max_abs_err_pips</th>
-<th style="text-align: right;">exact_match_rate</th>
-<th style="text-align: right;">sign_match_rate</th>
-<th style="text-align: right;">pos_label_match_rate</th>
-<th style="text-align: right;">clean_violation_count</th>
-<th style="text-align: right;">both_window_count</th>
-<th style="text-align: right;">undecided_count</th>
+<th style="text-align: left;">family</th>
+<th style="text-align: right;">barrier_pips</th>
+<th style="text-align: left;">regime_desc</th>
 </tr>
 </thead>
 <tbody>
 <tr>
+<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: right;">100</td>
 <td style="text-align: right;">5</td>
-<td style="text-align: left;">oco_first_touch_clean__ny_overlap__k2</td>
-<td style="text-align: right;">1973</td>
-<td style="text-align: right;">1973</td>
-<td style="text-align: right;">1973</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">oco_first_touch_clean__asia__k2</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">asia;barrier=2.0</td>
 </tr>
 <tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q30__k2</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">low_cost_q30;barrier=2.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">oco_first_touch_clean__asia__k2</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">asia;barrier=2.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q70__k2</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">high_abs_vel_q70;barrier=2.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: right;">100</td>
 <td style="text-align: right;">6</td>
 <td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q80__k2</td>
-<td style="text-align: right;">6417</td>
-<td style="text-align: right;">6417</td>
-<td style="text-align: right;">6417</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">high_abs_vel_q80;barrier=2.0</td>
 </tr>
 <tr>
+<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: right;">100</td>
 <td style="text-align: right;">6</td>
 <td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
-<td style="text-align: right;">7290</td>
-<td style="text-align: right;">7290</td>
-<td style="text-align: right;">7290</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">high_range_q70;barrier=2.0</td>
 </tr>
 <tr>
+<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: right;">100</td>
 <td style="text-align: right;">6</td>
 <td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
-<td style="text-align: right;">7632</td>
-<td style="text-align: right;">7632</td>
-<td style="text-align: right;">7632</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">high_range_q80;barrier=2.0</td>
 </tr>
 <tr>
+<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: right;">100</td>
 <td style="text-align: right;">6</td>
-<td style="text-align: left;">oco_first_touch_clean__london__k2</td>
-<td style="text-align: right;">6891</td>
-<td style="text-align: right;">6891</td>
-<td style="text-align: right;">6891</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr>
-<td style="text-align: right;">100</td>
-<td style="text-align: right;">6</td>
-<td style="text-align: left;">oco_first_touch_clean__ny_overlap__k2</td>
-<td style="text-align: right;">3321</td>
-<td style="text-align: right;">3321</td>
-<td style="text-align: right;">3321</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q50__k2</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">low_cost_q50;barrier=2.0</td>
 </tr>
 </tbody>
 </table>
-<h2 id="by-month">By Month<a class="headerlink" href="#by-month" title="Permanent link">&para;</a></h2>
+<h2 id="monthly-portfolio">Monthly Portfolio<a class="headerlink" href="#monthly-portfolio" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
+<th style="text-align: left;">symbol</th>
 <th style="text-align: left;">test_month</th>
-<th style="text-align: right;">rows_selected</th>
-<th style="text-align: right;">rows_mapped</th>
-<th style="text-align: right;">rows_verified</th>
-<th style="text-align: right;">mean_abs_err_pips</th>
-<th style="text-align: right;">p99_abs_err_pips</th>
-<th style="text-align: right;">max_abs_err_pips</th>
-<th style="text-align: right;">exact_match_rate</th>
-<th style="text-align: right;">sign_match_rate</th>
-<th style="text-align: right;">pos_label_match_rate</th>
-<th style="text-align: right;">clean_violation_count</th>
-<th style="text-align: right;">both_window_count</th>
-<th style="text-align: right;">undecided_count</th>
+<th style="text-align: left;">train_months</th>
+<th style="text-align: right;">states_selected</th>
+<th style="text-align: right;">rows</th>
+<th style="text-align: right;">signal_rows</th>
+<th style="text-align: right;">fill_rate</th>
+<th style="text-align: right;">mean_gross_pips</th>
+<th style="text-align: right;">mean_signal_pips</th>
+<th style="text-align: right;">median_gross_pips</th>
+<th style="text-align: right;">pos_rate</th>
+<th style="text-align: right;">state_churn_rate</th>
+<th style="text-align: right;">top_state_share</th>
+<th style="text-align: right;">state_hhi</th>
+<th style="text-align: right;">stability_pass</th>
+<th style="text-align: left;">status</th>
 </tr>
 </thead>
 <tbody>
 <tr>
+<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">2025-04</td>
-<td style="text-align: right;">7207</td>
-<td style="text-align: right;">7207</td>
-<td style="text-align: right;">7207</td>
+<td style="text-align: left;"></td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">warmup_skip</td>
 </tr>
 <tr>
+<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">2025-05</td>
-<td style="text-align: right;">4831</td>
-<td style="text-align: right;">4831</td>
-<td style="text-align: right;">4831</td>
+<td style="text-align: left;">2025-04</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">warmup_skip</td>
 </tr>
 <tr>
+<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">2025-06</td>
-<td style="text-align: right;">4427</td>
-<td style="text-align: right;">4427</td>
-<td style="text-align: right;">4427</td>
+<td style="text-align: left;">2025-04,2025-05</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">warmup_skip</td>
 </tr>
 <tr>
+<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">2025-07</td>
-<td style="text-align: right;">4802</td>
-<td style="text-align: right;">4802</td>
-<td style="text-align: right;">4802</td>
+<td style="text-align: left;">2025-04,2025-05,2025-06</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">1516</td>
+<td style="text-align: right;">1530</td>
+<td style="text-align: right;">0.99085</td>
+<td style="text-align: right;">2.61431</td>
+<td style="text-align: right;">2.59039</td>
+<td style="text-align: right;">2.1</td>
+<td style="text-align: right;">0.691503</td>
 <td style="text-align: right;">0</td>
+<td style="text-align: right;">0.618954</td>
+<td style="text-align: right;">0.5283</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
 </tr>
 <tr>
+<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">2025-08</td>
-<td style="text-align: right;">2930</td>
-<td style="text-align: right;">2930</td>
-<td style="text-align: right;">2930</td>
+<td style="text-align: left;">2025-05,2025-06,2025-07</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">1084</td>
+<td style="text-align: right;">1088</td>
+<td style="text-align: right;">0.996324</td>
+<td style="text-align: right;">2.93893</td>
+<td style="text-align: right;">2.92812</td>
+<td style="text-align: right;">2.2</td>
+<td style="text-align: right;">0.689338</td>
+<td style="text-align: right;">0.666667</td>
+<td style="text-align: right;">0.517463</td>
+<td style="text-align: right;">0.50061</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
 </tr>
 <tr>
+<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">2025-09</td>
-<td style="text-align: right;">3163</td>
-<td style="text-align: right;">3163</td>
-<td style="text-align: right;">3163</td>
+<td style="text-align: left;">2025-06,2025-07,2025-08</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">1179</td>
+<td style="text-align: right;">1183</td>
+<td style="text-align: right;">0.996619</td>
+<td style="text-align: right;">2.32341</td>
+<td style="text-align: right;">2.31555</td>
+<td style="text-align: right;">1.8</td>
+<td style="text-align: right;">0.671175</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">0.469992</td>
+<td style="text-align: right;">0.381077</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
 </tr>
 <tr>
+<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">2025-10</td>
-<td style="text-align: right;">2293</td>
-<td style="text-align: right;">2293</td>
-<td style="text-align: right;">2293</td>
+<td style="text-align: left;">2025-07,2025-08,2025-09</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">1045</td>
+<td style="text-align: right;">1053</td>
+<td style="text-align: right;">0.992403</td>
+<td style="text-align: right;">2.51713</td>
+<td style="text-align: right;">2.49801</td>
+<td style="text-align: right;">2.1</td>
+<td style="text-align: right;">0.661918</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">0.522317</td>
+<td style="text-align: right;">0.500996</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
 </tr>
 <tr>
+<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">2025-11</td>
-<td style="text-align: right;">1816</td>
-<td style="text-align: right;">1816</td>
-<td style="text-align: right;">1816</td>
+<td style="text-align: left;">2025-08,2025-09,2025-10</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">839</td>
+<td style="text-align: right;">854</td>
+<td style="text-align: right;">0.982436</td>
+<td style="text-align: right;">3.06412</td>
+<td style="text-align: right;">3.0103</td>
+<td style="text-align: right;">2.6</td>
+<td style="text-align: right;">0.680328</td>
+<td style="text-align: right;">0.666667</td>
+<td style="text-align: right;">0.523419</td>
+<td style="text-align: right;">0.501097</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
 </tr>
 <tr>
+<td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">2025-12</td>
-<td style="text-align: right;">2055</td>
-<td style="text-align: right;">2055</td>
-<td style="text-align: right;">2055</td>
+<td style="text-align: left;">2025-09,2025-10,2025-11</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">1265</td>
+<td style="text-align: right;">1270</td>
+<td style="text-align: right;">0.996063</td>
+<td style="text-align: right;">1.96063</td>
+<td style="text-align: right;">1.95291</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">0.644094</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">0.375591</td>
+<td style="text-align: right;">0.341332</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2026-01</td>
+<td style="text-align: left;">2025-10,2025-11,2025-12</td>
+<td style="text-align: right;">3</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
 <td style="text-align: right;">0</td>
+<td style="text-align: left;">no_test_rows</td>
+</tr>
+</tbody>
+</table>
+<h2 id="state-stability">State Stability<a class="headerlink" href="#state-stability" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">symbol</th>
+<th style="text-align: left;">test_month</th>
+<th style="text-align: right;">states_selected</th>
+<th style="text-align: right;">state_churn_rate</th>
+<th style="text-align: right;">top_state_share</th>
+<th style="text-align: right;">state_hhi</th>
+<th style="text-align: right;">stability_pass</th>
+<th style="text-align: left;">status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">warmup_skip</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">warmup_skip</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">warmup_skip</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.618954</td>
+<td style="text-align: right;">0.5283</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.666667</td>
+<td style="text-align: right;">0.517463</td>
+<td style="text-align: right;">0.50061</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">0.469992</td>
+<td style="text-align: right;">0.381077</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">0.522317</td>
+<td style="text-align: right;">0.500996</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.666667</td>
+<td style="text-align: right;">0.523419</td>
+<td style="text-align: right;">0.501097</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">0.375591</td>
+<td style="text-align: right;">0.341332</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2026-01</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">no_test_rows</td>
+</tr>
+</tbody>
+</table>
+<h2 id="state-schedule-top-rows">State Schedule (Top Rows)<a class="headerlink" href="#state-schedule-top-rows" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">symbol</th>
+<th style="text-align: left;">test_month</th>
+<th style="text-align: left;">train_months</th>
+<th style="text-align: right;">selected_rank</th>
+<th style="text-align: left;">state_id</th>
+<th style="text-align: left;">state_key</th>
+<th style="text-align: right;">bar_ticks</th>
+<th style="text-align: right;">horizon</th>
+<th style="text-align: left;">family</th>
+<th style="text-align: left;">regime_desc</th>
+<th style="text-align: right;">barrier_pips</th>
+<th style="text-align: right;">overlap_corr_max</th>
+<th style="text-align: right;">overlap_div_max</th>
+<th style="text-align: right;">train_rows</th>
+<th style="text-align: right;">train_months_count</th>
+<th style="text-align: right;">train_avg_month_rows</th>
+<th style="text-align: right;">train_mean_gross_pips</th>
+<th style="text-align: right;">train_mean_signal_pips</th>
+<th style="text-align: right;">train_lb95_trade_mean_gross_pips</th>
+<th style="text-align: right;">train_lb95_month_mean_gross_pips</th>
+<th style="text-align: right;">train_positive_months</th>
+<th style="text-align: right;">train_fill_rate</th>
+<th style="text-align: left;">gate_pass</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: left;">2025-04,2025-05,2025-06</td>
 <td style="text-align: right;">1</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_range_q80;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">4238</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">1403.33</td>
+<td style="text-align: right;">2.83732</td>
+<td style="text-align: right;">2.81857</td>
+<td style="text-align: right;">2.69863</td>
+<td style="text-align: right;">2.57278</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: left;">2025-04,2025-05,2025-06</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">oco_first_touch_clean__asia__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__asia__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">asia;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.643727</td>
+<td style="text-align: right;">0.345576</td>
+<td style="text-align: right;">3415</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">1136.33</td>
+<td style="text-align: right;">2.28225</td>
+<td style="text-align: right;">2.27824</td>
+<td style="text-align: right;">2.1541</td>
+<td style="text-align: right;">2.21352</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: left;">2025-05,2025-06,2025-07</td>
 <td style="text-align: right;">1</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_range_q80;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">3129</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">1033.33</td>
+<td style="text-align: right;">2.75135</td>
+<td style="text-align: right;">2.72585</td>
+<td style="text-align: right;">2.57999</td>
+<td style="text-align: right;">2.57278</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: left;">2025-05,2025-06,2025-07</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q70__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_abs_vel_q70;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.603347</td>
+<td style="text-align: right;">0.314179</td>
+<td style="text-align: right;">2617</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">869.333</td>
+<td style="text-align: right;">2.48654</td>
+<td style="text-align: right;">2.47799</td>
+<td style="text-align: right;">2.31948</td>
+<td style="text-align: right;">2.32294</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: left;">2025-06,2025-07,2025-08</td>
 <td style="text-align: right;">1</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_range_q80;barrier=2.0</td>
+<td style="text-align: right;">2</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
+<td style="text-align: right;">2485</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">820.333</td>
+<td style="text-align: right;">2.85632</td>
+<td style="text-align: right;">2.82873</td>
+<td style="text-align: right;">2.66859</td>
+<td style="text-align: right;">2.63987</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: left;">2025-06,2025-07,2025-08</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q30__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q30__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">5</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">low_cost_q30;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.782196</td>
+<td style="text-align: right;">0.211308</td>
+<td style="text-align: right;">1336</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">444</td>
+<td style="text-align: right;">2.0729</td>
+<td style="text-align: right;">2.06669</td>
+<td style="text-align: right;">1.89227</td>
+<td style="text-align: right;">2.05185</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: left;">2025-06,2025-07,2025-08</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">oco_first_touch_clean__asia__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__asia__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">5</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">asia;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.779305</td>
+<td style="text-align: right;">0.147682</td>
+<td style="text-align: right;">950</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">316.333</td>
+<td style="text-align: right;">1.68135</td>
+<td style="text-align: right;">1.67958</td>
+<td style="text-align: right;">1.45089</td>
+<td style="text-align: right;">1.56614</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: left;">2025-07,2025-08,2025-09</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_range_q80;barrier=2.0</td>
+<td style="text-align: right;">2</td>
 <td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">2066</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">682.333</td>
+<td style="text-align: right;">3.07851</td>
+<td style="text-align: right;">3.05019</td>
+<td style="text-align: right;">2.86144</td>
+<td style="text-align: right;">2.98176</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: left;">2025-07,2025-08,2025-09</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q70__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_abs_vel_q70;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.64129</td>
+<td style="text-align: right;">0.332163</td>
+<td style="text-align: right;">1916</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">636</td>
+<td style="text-align: right;">2.49607</td>
+<td style="text-align: right;">2.48565</td>
+<td style="text-align: right;">2.29693</td>
+<td style="text-align: right;">2.41017</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: left;">2025-08,2025-09,2025-10</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_range_q80;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1669</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">553</td>
+<td style="text-align: right;">3.03412</td>
+<td style="text-align: right;">3.01594</td>
+<td style="text-align: right;">2.79528</td>
+<td style="text-align: right;">2.86284</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: left;">2025-08,2025-09,2025-10</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_range_q70;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.567885</td>
+<td style="text-align: right;">0.265311</td>
+<td style="text-align: right;">1662</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">549.667</td>
+<td style="text-align: right;">2.94348</td>
+<td style="text-align: right;">2.92046</td>
+<td style="text-align: right;">2.69798</td>
+<td style="text-align: right;">2.76852</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: left;">2025-09,2025-10,2025-11</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_range_q80;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1553</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">512</td>
+<td style="text-align: right;">3.04655</td>
+<td style="text-align: right;">3.0132</td>
+<td style="text-align: right;">2.79944</td>
+<td style="text-align: right;">2.86284</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: left;">2025-09,2025-10,2025-11</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q80__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q80__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_abs_vel_q80;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.811078</td>
+<td style="text-align: right;">0.120213</td>
+<td style="text-align: right;">1536</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">508</td>
+<td style="text-align: right;">2.62605</td>
+<td style="text-align: right;">2.60553</td>
+<td style="text-align: right;">2.3841</td>
+<td style="text-align: right;">2.53854</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: left;">2025-09,2025-10,2025-11</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">oco_first_touch_clean__asia__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__asia__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">asia;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.757521</td>
+<td style="text-align: right;">0.189774</td>
+<td style="text-align: right;">1740</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">578</td>
+<td style="text-align: right;">2.30271</td>
+<td style="text-align: right;">2.29477</td>
+<td style="text-align: right;">2.09543</td>
+<td style="text-align: right;">2.02368</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2026-01</td>
+<td style="text-align: left;">2025-10,2025-11,2025-12</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_range_q80;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1328</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">437.333</td>
+<td style="text-align: right;">2.90282</td>
+<td style="text-align: right;">2.86785</td>
+<td style="text-align: right;">2.66133</td>
+<td style="text-align: right;">2.58535</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2026-01</td>
+<td style="text-align: left;">2025-10,2025-11,2025-12</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_range_q70;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.790731</td>
+<td style="text-align: right;">0.164428</td>
+<td style="text-align: right;">1311</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">433.667</td>
+<td style="text-align: right;">2.5053</td>
+<td style="text-align: right;">2.48619</td>
+<td style="text-align: right;">2.26814</td>
+<td style="text-align: right;">2.15503</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">GBPUSD</td>
+<td style="text-align: left;">2026-01</td>
+<td style="text-align: left;">2025-10,2025-11,2025-12</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q50__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q50__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">low_cost_q50;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.782831</td>
+<td style="text-align: right;">0.326557</td>
+<td style="text-align: right;">1328</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">440</td>
+<td style="text-align: right;">1.95174</td>
+<td style="text-align: right;">1.93998</td>
+<td style="text-align: right;">1.74543</td>
+<td style="text-align: right;">1.67442</td>
+<td style="text-align: left;">3</td>
 </tr>
 </tbody>
 </table>

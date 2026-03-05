@@ -3675,7 +3675,7 @@
 
 <h1 id="oco-alert-remediation-report">OCO Alert Remediation Report<a class="headerlink" href="#oco-alert-remediation-report" title="Permanent link">&para;</a></h1>
 <ul>
-<li>generated_at_utc: <code>2026-03-03T22:01:24Z</code></li>
+<li>generated_at_utc: <code>2026-03-05T00:54:32Z</code></li>
 <li>drift_alerts_csv: <code>data/analysis/tick_opportunity_mining/oco_execution_drift_alerts.csv</code></li>
 <li>threshold_alerts_csv: <code>data/analysis/tick_opportunity_mining/oco_threshold_sensitivity_alerts.csv</code></li>
 <li>exceptions_yaml: <code>configs/research/governance/oco_monitoring_exceptions.yaml</code></li>
@@ -3702,31 +3702,17 @@
 </tr>
 <tr>
 <td style="text-align: left;">execution_drift</td>
-<td style="text-align: left;">accepted_exception</td>
-<td style="text-align: left;">gray</td>
-<td style="text-align: left;">monitor</td>
-<td style="text-align: right;">2</td>
-</tr>
-<tr>
-<td style="text-align: left;">execution_drift</td>
-<td style="text-align: left;">remediated</td>
-<td style="text-align: left;">amber</td>
-<td style="text-align: left;">block</td>
-<td style="text-align: right;">1</td>
-</tr>
-<tr>
-<td style="text-align: left;">execution_drift</td>
 <td style="text-align: left;">remediated</td>
 <td style="text-align: left;">amber</td>
 <td style="text-align: left;">warn</td>
-<td style="text-align: right;">3</td>
+<td style="text-align: right;">7</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution_drift</td>
 <td style="text-align: left;">remediated</td>
 <td style="text-align: left;">red</td>
 <td style="text-align: left;">warn</td>
-<td style="text-align: right;">4</td>
+<td style="text-align: right;">1</td>
 </tr>
 <tr>
 <td style="text-align: left;">threshold_sensitivity</td>
@@ -3738,70 +3724,7 @@
 </tbody>
 </table>
 <h2 id="policy-violations">Policy Violations<a class="headerlink" href="#policy-violations" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th style="text-align: left;">symbol</th>
-<th style="text-align: left;">source_alert</th>
-<th style="text-align: left;">test_month</th>
-<th style="text-align: left;">metric_id</th>
-<th style="text-align: right;">metric_value</th>
-<th style="text-align: left;">band</th>
-<th style="text-align: left;">severity</th>
-<th style="text-align: left;">status</th>
-<th style="text-align: left;">action_code</th>
-<th style="text-align: left;">owner</th>
-<th style="text-align: left;">rationale</th>
-<th style="text-align: left;">expires_utc</th>
-<th style="text-align: left;">is_expired</th>
-<th style="text-align: left;">source_path</th>
-<th style="text-align: left;">evaluated_at_utc</th>
-<th style="text-align: left;">first_seen_utc</th>
-<th style="text-align: left;">last_seen_utc</th>
-<th style="text-align: right;">consecutive_runs_non_green</th>
-<th style="text-align: right;">months_non_green_count</th>
-<th style="text-align: right;">sla_days</th>
-<th style="text-align: right;">days_to_expiry</th>
-<th style="text-align: left;">escalation_level</th>
-<th style="text-align: left;">evidence_required</th>
-<th style="text-align: left;">evidence_link</th>
-<th style="text-align: left;">expiry_breach</th>
-<th style="text-align: left;">recurrence_breach</th>
-<th style="text-align: left;">policy_violation_code</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align: left;">AUDUSD</td>
-<td style="text-align: left;">execution_drift</td>
-<td style="text-align: left;">2025-04</td>
-<td style="text-align: left;">E_DRIFT_OVERSHOOT_P50</td>
-<td style="text-align: right;">0.0666667</td>
-<td style="text-align: left;">amber</td>
-<td style="text-align: left;">medium</td>
-<td style="text-align: left;">remediated</td>
-<td style="text-align: left;">A1_RECALIBRATE_CAP</td>
-<td style="text-align: left;">research</td>
-<td style="text-align: left;">No explicit exception rule; remediation required.</td>
-<td style="text-align: left;">2026-05-02T22:01:24Z</td>
-<td style="text-align: left;">False</td>
-<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/AUDUSD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: left;">2026-02-28T19:15:18Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">9</td>
-<td style="text-align: right;">60</td>
-<td style="text-align: right;">60</td>
-<td style="text-align: left;">block</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/AUDUSD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">False</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">recurrence_limit_exceeded</td>
-</tr>
-</tbody>
-</table>
+<p><em>empty</em></p>
 <h2 id="dispositions">Dispositions<a class="headerlink" href="#dispositions" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -3840,6 +3763,35 @@
 <td style="text-align: left;">AUDUSD</td>
 <td style="text-align: left;">execution_drift</td>
 <td style="text-align: left;">2025-04</td>
+<td style="text-align: left;">E_DRIFT_NO_TOUCH</td>
+<td style="text-align: right;">0.0111254</td>
+<td style="text-align: left;">amber</td>
+<td style="text-align: left;">medium</td>
+<td style="text-align: left;">remediated</td>
+<td style="text-align: left;">A1_RECALIBRATE_CAP</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">No explicit exception rule; remediation required.</td>
+<td style="text-align: left;">2026-05-04T00:54:32Z</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/AUDUSD_stop_limit_tickfill_detail.csv</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">60</td>
+<td style="text-align: right;">60</td>
+<td style="text-align: left;">warn</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/AUDUSD_stop_limit_tickfill_detail.csv</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">execution_drift</td>
+<td style="text-align: left;">2025-04</td>
 <td style="text-align: left;">E_DRIFT_OVERSHOOT_P50</td>
 <td style="text-align: right;">0.0666667</td>
 <td style="text-align: left;">amber</td>
@@ -3848,22 +3800,22 @@
 <td style="text-align: left;">A1_RECALIBRATE_CAP</td>
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">No explicit exception rule; remediation required.</td>
-<td style="text-align: left;">2026-05-02T22:01:24Z</td>
+<td style="text-align: left;">2026-05-04T00:54:32Z</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/AUDUSD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
 <td style="text-align: left;">2026-02-28T19:15:18Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: right;">3</td>
 <td style="text-align: right;">9</td>
 <td style="text-align: right;">60</td>
 <td style="text-align: right;">60</td>
-<td style="text-align: left;">block</td>
+<td style="text-align: left;">warn</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/AUDUSD_stop_limit_tickfill_detail.csv</td>
 <td style="text-align: left;">False</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">recurrence_limit_exceeded</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;"></td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -3877,13 +3829,13 @@
 <td style="text-align: left;">A2_SESSION_GUARD</td>
 <td style="text-align: left;">execution_research</td>
 <td style="text-align: left;">Observed overshoot p50 drift is moderate and not persistent across symbols.</td>
-<td style="text-align: left;">2026-04-02T22:01:24Z</td>
+<td style="text-align: left;">2026-04-04T00:54:32Z</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
 <td style="text-align: left;">2026-02-27T14:36:45Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: right;">3</td>
 <td style="text-align: right;">4</td>
 <td style="text-align: right;">30</td>
 <td style="text-align: right;">30</td>
@@ -3906,13 +3858,13 @@
 <td style="text-align: left;">A2_SESSION_GUARD</td>
 <td style="text-align: left;">execution_research</td>
 <td style="text-align: left;">Tail drift remains amber-only and below fail thresholds.</td>
-<td style="text-align: left;">2026-04-02T22:01:24Z</td>
+<td style="text-align: left;">2026-04-04T00:54:32Z</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
 <td style="text-align: left;">2026-02-27T14:36:45Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: right;">3</td>
 <td style="text-align: right;">2</td>
 <td style="text-align: right;">30</td>
 <td style="text-align: right;">30</td>
@@ -3935,13 +3887,13 @@
 <td style="text-align: left;">A2_SESSION_GUARD</td>
 <td style="text-align: left;">execution_research</td>
 <td style="text-align: left;">Observed overshoot p50 drift is moderate and not persistent across symbols.</td>
-<td style="text-align: left;">2026-04-02T22:01:24Z</td>
+<td style="text-align: left;">2026-04-04T00:54:32Z</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
 <td style="text-align: left;">2026-02-27T14:36:45Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: right;">3</td>
 <td style="text-align: right;">4</td>
 <td style="text-align: right;">30</td>
 <td style="text-align: right;">30</td>
@@ -3964,133 +3916,17 @@
 <td style="text-align: left;">A2_SESSION_GUARD</td>
 <td style="text-align: left;">execution_research</td>
 <td style="text-align: left;">Observed overshoot p50 drift is moderate and not persistent across symbols.</td>
-<td style="text-align: left;">2026-04-02T22:01:24Z</td>
+<td style="text-align: left;">2026-04-04T00:54:32Z</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
 <td style="text-align: left;">2026-02-27T14:36:45Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: right;">3</td>
 <td style="text-align: right;">4</td>
 <td style="text-align: right;">30</td>
 <td style="text-align: right;">30</td>
 <td style="text-align: left;">warn</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">docs/analysis/oco_execution_drift_report.md</td>
-<td style="text-align: left;">False</td>
-<td style="text-align: left;">False</td>
-<td style="text-align: left;"></td>
-</tr>
-<tr>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">execution_drift</td>
-<td style="text-align: left;">2026-02</td>
-<td style="text-align: left;">E_DRIFT_FILL_DROP</td>
-<td style="text-align: right;">0.98735</td>
-<td style="text-align: left;">red</td>
-<td style="text-align: left;">high</td>
-<td style="text-align: left;">remediated</td>
-<td style="text-align: left;">A1_RECALIBRATE_CAP</td>
-<td style="text-align: left;">research</td>
-<td style="text-align: left;">No explicit exception rule; remediation required.</td>
-<td style="text-align: left;">2026-05-02T22:01:24Z</td>
-<td style="text-align: left;">False</td>
-<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: left;">2026-03-03T12:43:03Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">60</td>
-<td style="text-align: right;">60</td>
-<td style="text-align: left;">warn</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">False</td>
-<td style="text-align: left;">False</td>
-<td style="text-align: left;"></td>
-</tr>
-<tr>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">execution_drift</td>
-<td style="text-align: left;">2026-02</td>
-<td style="text-align: left;">E_DRIFT_NO_TOUCH</td>
-<td style="text-align: right;">0.999947</td>
-<td style="text-align: left;">red</td>
-<td style="text-align: left;">high</td>
-<td style="text-align: left;">remediated</td>
-<td style="text-align: left;">A1_RECALIBRATE_CAP</td>
-<td style="text-align: left;">research</td>
-<td style="text-align: left;">No explicit exception rule; remediation required.</td>
-<td style="text-align: left;">2026-05-02T22:01:24Z</td>
-<td style="text-align: left;">False</td>
-<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: left;">2026-03-03T12:43:03Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">60</td>
-<td style="text-align: right;">60</td>
-<td style="text-align: left;">warn</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">False</td>
-<td style="text-align: left;">False</td>
-<td style="text-align: left;"></td>
-</tr>
-<tr>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">execution_drift</td>
-<td style="text-align: left;">2026-02</td>
-<td style="text-align: left;">E_DRIFT_OVERSHOOT_P50</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">gray</td>
-<td style="text-align: left;">high</td>
-<td style="text-align: left;">accepted_exception</td>
-<td style="text-align: left;">A2_SESSION_GUARD</td>
-<td style="text-align: left;">execution_research</td>
-<td style="text-align: left;">Observed overshoot p50 drift is moderate and not persistent across symbols.</td>
-<td style="text-align: left;">2026-04-02T22:01:24Z</td>
-<td style="text-align: left;">False</td>
-<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: left;">2026-02-27T14:36:45Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">4</td>
-<td style="text-align: right;">30</td>
-<td style="text-align: right;">30</td>
-<td style="text-align: left;">monitor</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">docs/analysis/oco_execution_drift_report.md</td>
-<td style="text-align: left;">False</td>
-<td style="text-align: left;">False</td>
-<td style="text-align: left;"></td>
-</tr>
-<tr>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">execution_drift</td>
-<td style="text-align: left;">2026-02</td>
-<td style="text-align: left;">E_DRIFT_OVERSHOOT_P95</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">gray</td>
-<td style="text-align: left;">high</td>
-<td style="text-align: left;">accepted_exception</td>
-<td style="text-align: left;">A2_SESSION_GUARD</td>
-<td style="text-align: left;">execution_research</td>
-<td style="text-align: left;">Tail drift remains amber-only and below fail thresholds.</td>
-<td style="text-align: left;">2026-04-02T22:01:24Z</td>
-<td style="text-align: left;">False</td>
-<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: left;">2026-02-27T14:36:45Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">2</td>
-<td style="text-align: right;">30</td>
-<td style="text-align: right;">30</td>
-<td style="text-align: left;">monitor</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">docs/analysis/oco_execution_drift_report.md</td>
 <td style="text-align: left;">False</td>
@@ -4109,13 +3945,13 @@
 <td style="text-align: left;">A1_RECALIBRATE_CAP</td>
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">No explicit exception rule; remediation required.</td>
-<td style="text-align: left;">2026-05-02T22:01:24Z</td>
+<td style="text-align: left;">2026-05-04T00:54:32Z</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCAD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
 <td style="text-align: left;">2026-02-28T20:20:55Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">3</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: right;">5</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: right;">60</td>
 <td style="text-align: right;">60</td>
@@ -4138,14 +3974,43 @@
 <td style="text-align: left;">A1_RECALIBRATE_CAP</td>
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">No explicit exception rule; remediation required.</td>
-<td style="text-align: left;">2026-05-02T22:01:24Z</td>
+<td style="text-align: left;">2026-05-04T00:54:32Z</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCHF_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
 <td style="text-align: left;">2026-02-28T14:27:31Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">3</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: right;">5</td>
 <td style="text-align: right;">1</td>
+<td style="text-align: right;">60</td>
+<td style="text-align: right;">60</td>
+<td style="text-align: left;">warn</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCHF_stop_limit_tickfill_detail.csv</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">execution_drift</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: left;">E_DRIFT_FILL_DROP</td>
+<td style="text-align: right;">0.0233245</td>
+<td style="text-align: left;">amber</td>
+<td style="text-align: left;">medium</td>
+<td style="text-align: left;">remediated</td>
+<td style="text-align: left;">A1_RECALIBRATE_CAP</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">No explicit exception rule; remediation required.</td>
+<td style="text-align: left;">2026-05-04T00:54:32Z</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCHF_stop_limit_tickfill_detail.csv</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: left;">2026-02-28T14:27:31Z</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">2</td>
 <td style="text-align: right;">60</td>
 <td style="text-align: right;">60</td>
 <td style="text-align: left;">warn</td>
@@ -4167,13 +4032,13 @@
 <td style="text-align: left;">A1_RECALIBRATE_CAP</td>
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">No explicit exception rule; remediation required.</td>
-<td style="text-align: left;">2026-05-02T22:01:24Z</td>
+<td style="text-align: left;">2026-05-04T00:54:32Z</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCHF_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
 <td style="text-align: left;">2026-02-28T14:27:31Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">3</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: right;">5</td>
 <td style="text-align: right;">2</td>
 <td style="text-align: right;">60</td>
 <td style="text-align: right;">60</td>
@@ -4189,21 +4054,21 @@
 <td style="text-align: left;">execution_drift</td>
 <td style="text-align: left;">2025-08</td>
 <td style="text-align: left;">E_DRIFT_FILL_DROP</td>
-<td style="text-align: right;">0.0402991</td>
-<td style="text-align: left;">red</td>
-<td style="text-align: left;">high</td>
+<td style="text-align: right;">0.0398148</td>
+<td style="text-align: left;">amber</td>
+<td style="text-align: left;">medium</td>
 <td style="text-align: left;">remediated</td>
 <td style="text-align: left;">A1_RECALIBRATE_CAP</td>
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">No explicit exception rule; remediation required.</td>
-<td style="text-align: left;">2026-05-02T22:01:24Z</td>
+<td style="text-align: left;">2026-05-04T00:54:32Z</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCHF_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
 <td style="text-align: left;">2026-02-28T14:27:31Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">3</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">2</td>
 <td style="text-align: right;">60</td>
 <td style="text-align: right;">60</td>
 <td style="text-align: left;">warn</td>
@@ -4225,13 +4090,13 @@
 <td style="text-align: left;">A1_RECALIBRATE_CAP</td>
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">No explicit exception rule; remediation required.</td>
-<td style="text-align: left;">2026-05-02T22:01:24Z</td>
+<td style="text-align: left;">2026-05-04T00:54:32Z</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCHF_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
 <td style="text-align: left;">2026-02-28T14:27:31Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">3</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: right;">5</td>
 <td style="text-align: right;">2</td>
 <td style="text-align: right;">60</td>
 <td style="text-align: right;">60</td>
@@ -4254,13 +4119,13 @@
 <td style="text-align: left;">A1_RECALIBRATE_CAP</td>
 <td style="text-align: left;">wfo_research</td>
 <td style="text-align: left;">LB95 signal floor is a monitoring warning; hard gates remain positive.</td>
-<td style="text-align: left;">2026-04-02T22:01:24Z</td>
+<td style="text-align: left;">2026-04-04T00:54:32Z</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/AUDUSD_oco_monthly_predictions.parquet</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
 <td style="text-align: left;">2026-02-28T19:03:40Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">3</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: right;">5</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">30</td>
 <td style="text-align: right;">30</td>
@@ -4283,13 +4148,13 @@
 <td style="text-align: left;">A1_RECALIBRATE_CAP</td>
 <td style="text-align: left;">wfo_research</td>
 <td style="text-align: left;">LB95 signal floor is a monitoring warning; hard gates remain positive.</td>
-<td style="text-align: left;">2026-04-02T22:01:24Z</td>
+<td style="text-align: left;">2026-04-04T00:54:32Z</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
 <td style="text-align: left;">2026-02-27T14:36:45Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: right;">3</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: right;">30</td>
 <td style="text-align: right;">30</td>
@@ -4312,13 +4177,13 @@
 <td style="text-align: left;">A1_RECALIBRATE_CAP</td>
 <td style="text-align: left;">wfo_research</td>
 <td style="text-align: left;">LB95 signal floor is a monitoring warning; hard gates remain positive.</td>
-<td style="text-align: left;">2026-04-02T22:01:24Z</td>
+<td style="text-align: left;">2026-04-04T00:54:32Z</td>
 <td style="text-align: left;">False</td>
-<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_gbpusd/GBPUSD_oco_monthly_predictions.parquet</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/GBPUSD_oco_monthly_predictions.parquet</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
 <td style="text-align: left;">2026-02-27T14:36:45Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: right;">3</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: right;">30</td>
 <td style="text-align: right;">30</td>
@@ -4334,20 +4199,20 @@
 <td style="text-align: left;">threshold_sensitivity</td>
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">TS03_LB95_MONTH_SIGNAL</td>
-<td style="text-align: right;">0.0935097</td>
+<td style="text-align: right;">0.0294629</td>
 <td style="text-align: left;">amber</td>
 <td style="text-align: left;">medium</td>
 <td style="text-align: left;">accepted_exception</td>
 <td style="text-align: left;">A1_RECALIBRATE_CAP</td>
 <td style="text-align: left;">wfo_research</td>
 <td style="text-align: left;">LB95 signal floor is a monitoring warning; hard gates remain positive.</td>
-<td style="text-align: left;">2026-04-02T22:01:24Z</td>
+<td style="text-align: left;">2026-04-04T00:54:32Z</td>
 <td style="text-align: left;">False</td>
-<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_monthly_predictions.parquet</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCAD_oco_monthly_predictions.parquet</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
 <td style="text-align: left;">2026-02-28T20:15:16Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">3</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: right;">5</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">30</td>
 <td style="text-align: right;">30</td>
@@ -4370,13 +4235,13 @@
 <td style="text-align: left;">A1_RECALIBRATE_CAP</td>
 <td style="text-align: left;">wfo_research</td>
 <td style="text-align: left;">LB95 signal floor is a monitoring warning; hard gates remain positive.</td>
-<td style="text-align: left;">2026-04-02T22:01:24Z</td>
+<td style="text-align: left;">2026-04-04T00:54:32Z</td>
 <td style="text-align: left;">False</td>
-<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdchf/USDCHF_oco_monthly_predictions.parquet</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCHF_oco_monthly_predictions.parquet</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
 <td style="text-align: left;">2026-02-28T14:27:31Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">3</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: right;">5</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">30</td>
 <td style="text-align: right;">30</td>
@@ -4399,13 +4264,13 @@
 <td style="text-align: left;">A1_RECALIBRATE_CAP</td>
 <td style="text-align: left;">wfo_research</td>
 <td style="text-align: left;">LB95 signal floor is a monitoring warning; hard gates remain positive.</td>
-<td style="text-align: left;">2026-04-02T22:01:24Z</td>
+<td style="text-align: left;">2026-04-04T00:54:32Z</td>
 <td style="text-align: left;">False</td>
-<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdjpy/USDJPY_oco_monthly_predictions.parquet</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDJPY_oco_monthly_predictions.parquet</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
 <td style="text-align: left;">2026-02-27T14:36:45Z</td>
-<td style="text-align: left;">2026-03-03T22:01:24Z</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: left;">2026-03-05T00:54:32Z</td>
+<td style="text-align: right;">3</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: right;">30</td>
 <td style="text-align: right;">30</td>

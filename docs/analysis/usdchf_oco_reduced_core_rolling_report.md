@@ -10,7 +10,7 @@
 - stop_limit_detail_csv: `data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCHF_stop_limit_tickfill_detail.csv`
 - stop_limit_cap_pips: `1.2`
 - stop_limit_slippage_mode: `full_overshoot`
-- stop_limit_match_rate: `0.998172`
+- stop_limit_match_rate: `0.999566`
 - stop_limit_fill_rate_selected: `0.985304`
 - state_train_months: `3`
 - min_train_months: `3`

@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#oco-tick-exact-shortlist-verification" class="md-skip">
+        <a href="#usdjpy-oco-reduced-core-rolling-selection" class="md-skip">
           Skip to content
         </a>
       
@@ -1220,10 +1220,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#by-state" class="md-nav__link">
+  <a href="#reduced-state-universe" class="md-nav__link">
     <span class="md-ellipsis">
       
-        By State
+        Reduced State Universe
       
     </span>
   </a>
@@ -1231,10 +1231,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#by-month" class="md-nav__link">
+  <a href="#monthly-portfolio" class="md-nav__link">
     <span class="md-ellipsis">
       
-        By Month
+        Monthly Portfolio
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-stability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State Stability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-schedule-top-rows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State Schedule (Top Rows)
       
     </span>
   </a>
@@ -3659,10 +3681,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#by-state" class="md-nav__link">
+  <a href="#reduced-state-universe" class="md-nav__link">
     <span class="md-ellipsis">
       
-        By State
+        Reduced State Universe
       
     </span>
   </a>
@@ -3670,10 +3692,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#by-month" class="md-nav__link">
+  <a href="#monthly-portfolio" class="md-nav__link">
     <span class="md-ellipsis">
       
-        By Month
+        Monthly Portfolio
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-stability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State Stability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-schedule-top-rows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State Schedule (Top Rows)
       
     </span>
   </a>
@@ -3697,16 +3741,30 @@
 
 
 
-<h1 id="oco-tick-exact-shortlist-verification">OCO Tick-Exact Shortlist Verification<a class="headerlink" href="#oco-tick-exact-shortlist-verification" title="Permanent link">&para;</a></h1>
+<h1 id="usdjpy-oco-reduced-core-rolling-selection">USDJPY OCO Reduced-Core Rolling Selection<a class="headerlink" href="#usdjpy-oco-reduced-core-rolling-selection" title="Permanent link">&para;</a></h1>
 <h2 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h2>
 <ul>
-<li>symbol: <code>USDJPY</code></li>
-<li>family_required: <code>oco_first_touch_clean</code></li>
+<li>family_keep: <code>oco_first_touch_clean</code></li>
+<li>barrier_keep: <code>[2.0, 3.0]</code></li>
+<li>horizon_keep: <code>[5, 6]</code></li>
 <li>locked_quantile: <code>0.9</code></li>
 <li>selection_mode: <code>auto</code></li>
-<li>oco_hold_mode: <code>from_touch</code></li>
-<li>oco_include_no_touch: <code>True</code></li>
-<li>abs_tol_pips: <code>1e-09</code></li>
+<li>execution_mode: <code>stop_limit</code></li>
+<li>stop_limit_detail_csv: <code>data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDJPY_stop_limit_tickfill_detail.csv</code></li>
+<li>stop_limit_cap_pips: <code>1.2</code></li>
+<li>stop_limit_slippage_mode: <code>full_overshoot</code></li>
+<li>stop_limit_match_rate: <code>0.998827</code></li>
+<li>stop_limit_fill_rate_selected: <code>0.987140</code></li>
+<li>state_train_months: <code>3</code></li>
+<li>min_train_months: <code>3</code></li>
+<li>overlap_corr_max: <code>0.85</code></li>
+<li>overlap_divergence_max: <code>0.4</code></li>
+<li>max_state_churn: <code>0.45</code></li>
+<li>max_top_state_share: <code>0.35</code></li>
+<li>max_state_hhi: <code>0.25</code></li>
+<li>enforce_state_stability_gates: <code>False</code></li>
+<li>max_states/min_states: <code>12/4</code></li>
+<li>strict_gate_only: <code>True</code></li>
 </ul>
 <h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
 <table>
@@ -3714,301 +3772,897 @@
 <tr>
 <th style="text-align: left;">symbol</th>
 <th style="text-align: right;">locked_quantile</th>
-<th style="text-align: left;">oco_hold_mode</th>
-<th style="text-align: left;">oco_include_no_touch</th>
-<th style="text-align: right;">rows_selected</th>
-<th style="text-align: right;">rows_mapped</th>
-<th style="text-align: right;">rows_verified</th>
-<th style="text-align: right;">mean_abs_err_pips</th>
-<th style="text-align: right;">p99_abs_err_pips</th>
-<th style="text-align: right;">max_abs_err_pips</th>
-<th style="text-align: right;">exact_match_rate</th>
-<th style="text-align: right;">sign_match_rate</th>
-<th style="text-align: right;">pos_label_match_rate</th>
-<th style="text-align: right;">clean_violation_count</th>
-<th style="text-align: right;">both_window_count</th>
-<th style="text-align: right;">undecided_count</th>
-<th style="text-align: right;">min_exact_match_rate</th>
-<th style="text-align: right;">min_pos_label_match_rate</th>
-<th style="text-align: left;">pass_exact_match</th>
-<th style="text-align: left;">pass_pos_label_match</th>
-<th style="text-align: left;">pass_clean</th>
-<th style="text-align: left;">overall_pass</th>
+<th style="text-align: left;">selection_mode</th>
+<th style="text-align: left;">execution_mode</th>
+<th style="text-align: right;">state_train_months</th>
+<th style="text-align: right;">months_total</th>
+<th style="text-align: right;">months_scored</th>
+<th style="text-align: right;">rows_total</th>
+<th style="text-align: right;">signal_rows_total</th>
+<th style="text-align: right;">mean_gross_pips</th>
+<th style="text-align: right;">monthly_mean_gross_pips</th>
+<th style="text-align: right;">lb95_month_mean_gross_pips</th>
+<th style="text-align: right;">mean_signal_pips</th>
+<th style="text-align: right;">monthly_mean_signal_pips</th>
+<th style="text-align: right;">lb95_month_mean_signal_pips</th>
+<th style="text-align: right;">positive_months</th>
+<th style="text-align: right;">positive_months_signal</th>
+<th style="text-align: right;">avg_month_rows</th>
+<th style="text-align: right;">avg_month_signal_rows</th>
+<th style="text-align: right;">fill_rate_overall</th>
+<th style="text-align: right;">annualized_rows</th>
+<th style="text-align: right;">capacity_floor_monthly</th>
+<th style="text-align: right;">capacity_floor_annual</th>
+<th style="text-align: left;">capacity_pass_monthly_or_annual</th>
+<th style="text-align: right;">max_state_churn</th>
+<th style="text-align: right;">max_top_state_share</th>
+<th style="text-align: right;">max_state_hhi</th>
+<th style="text-align: right;">stability_months_pass</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td style="text-align: left;">USDJPY</td>
 <td style="text-align: right;">0.9</td>
-<td style="text-align: left;">from_touch</td>
+<td style="text-align: left;">auto</td>
+<td style="text-align: left;">stop_limit</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">8101</td>
+<td style="text-align: right;">8186</td>
+<td style="text-align: right;">3.30796</td>
+<td style="text-align: right;">3.26221</td>
+<td style="text-align: right;">2.96223</td>
+<td style="text-align: right;">3.27361</td>
+<td style="text-align: right;">3.22711</td>
+<td style="text-align: right;">2.92169</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">1350.17</td>
+<td style="text-align: right;">1364.33</td>
+<td style="text-align: right;">0.989616</td>
+<td style="text-align: right;">16202</td>
+<td style="text-align: right;">3000</td>
+<td style="text-align: right;">5000</td>
 <td style="text-align: left;">True</td>
-<td style="text-align: right;">30552</td>
-<td style="text-align: right;">30552</td>
-<td style="text-align: right;">30552</td>
+<td style="text-align: right;">0.45</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0.999</td>
-<td style="text-align: right;">0.999</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">True</td>
 </tr>
 </tbody>
 </table>
-<h2 id="by-state">By State<a class="headerlink" href="#by-state" title="Permanent link">&para;</a></h2>
+<h2 id="reduced-state-universe">Reduced State Universe<a class="headerlink" href="#reduced-state-universe" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
+<th style="text-align: left;">symbol</th>
 <th style="text-align: right;">bar_ticks</th>
 <th style="text-align: right;">horizon</th>
 <th style="text-align: left;">state_id</th>
-<th style="text-align: right;">rows_selected</th>
-<th style="text-align: right;">rows_mapped</th>
-<th style="text-align: right;">rows_verified</th>
-<th style="text-align: right;">mean_abs_err_pips</th>
-<th style="text-align: right;">p99_abs_err_pips</th>
-<th style="text-align: right;">max_abs_err_pips</th>
-<th style="text-align: right;">exact_match_rate</th>
-<th style="text-align: right;">sign_match_rate</th>
-<th style="text-align: right;">pos_label_match_rate</th>
-<th style="text-align: right;">clean_violation_count</th>
-<th style="text-align: right;">both_window_count</th>
-<th style="text-align: right;">undecided_count</th>
+<th style="text-align: left;">family</th>
+<th style="text-align: right;">barrier_pips</th>
+<th style="text-align: left;">regime_desc</th>
 </tr>
 </thead>
 <tbody>
 <tr>
+<td style="text-align: left;">USDJPY</td>
 <td style="text-align: right;">100</td>
-<td style="text-align: right;">6</td>
+<td style="text-align: right;">5</td>
 <td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q80__k2</td>
-<td style="text-align: right;">8048</td>
-<td style="text-align: right;">8048</td>
-<td style="text-align: right;">8048</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">high_abs_vel_q80;barrier=2.0</td>
 </tr>
 <tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q50__k2</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">low_cost_q50;barrier=2.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q70__k2</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">high_abs_vel_q70;barrier=2.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
 <td style="text-align: right;">100</td>
 <td style="text-align: right;">6</td>
 <td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
-<td style="text-align: right;">8511</td>
-<td style="text-align: right;">8511</td>
-<td style="text-align: right;">8511</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">high_range_q70;barrier=2.0</td>
 </tr>
 <tr>
+<td style="text-align: left;">USDJPY</td>
 <td style="text-align: right;">100</td>
 <td style="text-align: right;">6</td>
 <td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
-<td style="text-align: right;">9063</td>
-<td style="text-align: right;">9063</td>
-<td style="text-align: right;">9063</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">high_range_q80;barrier=2.0</td>
 </tr>
 <tr>
+<td style="text-align: left;">USDJPY</td>
 <td style="text-align: right;">100</td>
 <td style="text-align: right;">6</td>
 <td style="text-align: left;">oco_first_touch_clean__london__k2</td>
-<td style="text-align: right;">4930</td>
-<td style="text-align: right;">4930</td>
-<td style="text-align: right;">4930</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">london;barrier=2.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q30__k3</td>
+<td style="text-align: left;">oco_first_touch_clean</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">low_cost_q30;barrier=3.0</td>
 </tr>
 </tbody>
 </table>
-<h2 id="by-month">By Month<a class="headerlink" href="#by-month" title="Permanent link">&para;</a></h2>
+<h2 id="monthly-portfolio">Monthly Portfolio<a class="headerlink" href="#monthly-portfolio" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
+<th style="text-align: left;">symbol</th>
 <th style="text-align: left;">test_month</th>
-<th style="text-align: right;">rows_selected</th>
-<th style="text-align: right;">rows_mapped</th>
-<th style="text-align: right;">rows_verified</th>
-<th style="text-align: right;">mean_abs_err_pips</th>
-<th style="text-align: right;">p99_abs_err_pips</th>
-<th style="text-align: right;">max_abs_err_pips</th>
-<th style="text-align: right;">exact_match_rate</th>
-<th style="text-align: right;">sign_match_rate</th>
-<th style="text-align: right;">pos_label_match_rate</th>
-<th style="text-align: right;">clean_violation_count</th>
-<th style="text-align: right;">both_window_count</th>
-<th style="text-align: right;">undecided_count</th>
+<th style="text-align: left;">train_months</th>
+<th style="text-align: right;">states_selected</th>
+<th style="text-align: right;">rows</th>
+<th style="text-align: right;">signal_rows</th>
+<th style="text-align: right;">fill_rate</th>
+<th style="text-align: right;">mean_gross_pips</th>
+<th style="text-align: right;">mean_signal_pips</th>
+<th style="text-align: right;">median_gross_pips</th>
+<th style="text-align: right;">pos_rate</th>
+<th style="text-align: right;">state_churn_rate</th>
+<th style="text-align: right;">top_state_share</th>
+<th style="text-align: right;">state_hhi</th>
+<th style="text-align: right;">stability_pass</th>
+<th style="text-align: left;">status</th>
 </tr>
 </thead>
 <tbody>
 <tr>
+<td style="text-align: left;">USDJPY</td>
 <td style="text-align: left;">2025-04</td>
-<td style="text-align: right;">7793</td>
-<td style="text-align: right;">7793</td>
-<td style="text-align: right;">7793</td>
+<td style="text-align: left;"></td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">warmup_skip</td>
 </tr>
 <tr>
+<td style="text-align: left;">USDJPY</td>
 <td style="text-align: left;">2025-05</td>
-<td style="text-align: right;">5042</td>
-<td style="text-align: right;">5042</td>
-<td style="text-align: right;">5042</td>
+<td style="text-align: left;">2025-04</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">warmup_skip</td>
 </tr>
 <tr>
+<td style="text-align: left;">USDJPY</td>
 <td style="text-align: left;">2025-06</td>
-<td style="text-align: right;">3455</td>
-<td style="text-align: right;">3455</td>
-<td style="text-align: right;">3455</td>
+<td style="text-align: left;">2025-04,2025-05</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">warmup_skip</td>
 </tr>
 <tr>
+<td style="text-align: left;">USDJPY</td>
 <td style="text-align: left;">2025-07</td>
-<td style="text-align: right;">3634</td>
-<td style="text-align: right;">3634</td>
-<td style="text-align: right;">3634</td>
+<td style="text-align: left;">2025-04,2025-05,2025-06</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">1907</td>
+<td style="text-align: right;">1927</td>
+<td style="text-align: right;">0.989621</td>
+<td style="text-align: right;">3.8302</td>
+<td style="text-align: right;">3.79045</td>
+<td style="text-align: right;">3.3</td>
+<td style="text-align: right;">0.726518</td>
 <td style="text-align: right;">0</td>
+<td style="text-align: right;">0.500778</td>
+<td style="text-align: right;">0.500001</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
 </tr>
 <tr>
+<td style="text-align: left;">USDJPY</td>
 <td style="text-align: left;">2025-08</td>
-<td style="text-align: right;">2554</td>
-<td style="text-align: right;">2554</td>
-<td style="text-align: right;">2554</td>
+<td style="text-align: left;">2025-05,2025-06,2025-07</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">1120</td>
+<td style="text-align: right;">1141</td>
+<td style="text-align: right;">0.981595</td>
+<td style="text-align: right;">3.765</td>
+<td style="text-align: right;">3.69571</td>
+<td style="text-align: right;">3.1</td>
+<td style="text-align: right;">0.740578</td>
+<td style="text-align: right;">0.666667</td>
+<td style="text-align: right;">0.585451</td>
+<td style="text-align: right;">0.514604</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
 </tr>
 <tr>
+<td style="text-align: left;">USDJPY</td>
 <td style="text-align: left;">2025-09</td>
-<td style="text-align: right;">2008</td>
-<td style="text-align: right;">2008</td>
-<td style="text-align: right;">2008</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">2025-06,2025-07,2025-08</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">1094</td>
+<td style="text-align: right;">1105</td>
+<td style="text-align: right;">0.990045</td>
+<td style="text-align: right;">3.14132</td>
+<td style="text-align: right;">3.11005</td>
+<td style="text-align: right;">2.6</td>
+<td style="text-align: right;">0.718552</td>
 <td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.516742</td>
+<td style="text-align: right;">0.500561</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
 </tr>
 <tr>
+<td style="text-align: left;">USDJPY</td>
 <td style="text-align: left;">2025-10</td>
-<td style="text-align: right;">2358</td>
-<td style="text-align: right;">2358</td>
-<td style="text-align: right;">2358</td>
+<td style="text-align: left;">2025-07,2025-08,2025-09</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">1531</td>
+<td style="text-align: right;">1545</td>
+<td style="text-align: right;">0.990939</td>
+<td style="text-align: right;">3.43442</td>
+<td style="text-align: right;">3.4033</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0.719094</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">0.469903</td>
+<td style="text-align: right;">0.406992</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
 </tr>
 <tr>
+<td style="text-align: left;">USDJPY</td>
 <td style="text-align: left;">2025-11</td>
-<td style="text-align: right;">1830</td>
-<td style="text-align: right;">1830</td>
-<td style="text-align: right;">1830</td>
+<td style="text-align: left;">2025-08,2025-09,2025-10</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">1079</td>
+<td style="text-align: right;">1084</td>
+<td style="text-align: right;">0.995387</td>
+<td style="text-align: right;">2.81455</td>
+<td style="text-align: right;">2.80157</td>
+<td style="text-align: right;">2.3</td>
+<td style="text-align: right;">0.678967</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">0.506458</td>
+<td style="text-align: right;">0.500083</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
 </tr>
 <tr>
+<td style="text-align: left;">USDJPY</td>
 <td style="text-align: left;">2025-12</td>
-<td style="text-align: right;">1878</td>
-<td style="text-align: right;">1878</td>
-<td style="text-align: right;">1878</td>
+<td style="text-align: left;">2025-09,2025-10,2025-11</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">1370</td>
+<td style="text-align: right;">1384</td>
+<td style="text-align: right;">0.989884</td>
+<td style="text-align: right;">2.58774</td>
+<td style="text-align: right;">2.56156</td>
+<td style="text-align: right;">2.3</td>
+<td style="text-align: right;">0.689306</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">0.34104</td>
+<td style="text-align: right;">0.333599</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2026-01</td>
+<td style="text-align: left;">2025-10,2025-11,2025-12</td>
+<td style="text-align: right;">2</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
 <td style="text-align: right;">0</td>
+<td style="text-align: left;">no_test_rows</td>
+</tr>
+</tbody>
+</table>
+<h2 id="state-stability">State Stability<a class="headerlink" href="#state-stability" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">symbol</th>
+<th style="text-align: left;">test_month</th>
+<th style="text-align: right;">states_selected</th>
+<th style="text-align: right;">state_churn_rate</th>
+<th style="text-align: right;">top_state_share</th>
+<th style="text-align: right;">state_hhi</th>
+<th style="text-align: right;">stability_pass</th>
+<th style="text-align: left;">status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">warmup_skip</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">warmup_skip</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: left;">warmup_skip</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.500778</td>
+<td style="text-align: right;">0.500001</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.666667</td>
+<td style="text-align: right;">0.585451</td>
+<td style="text-align: right;">0.514604</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: right;">2</td>
 <td style="text-align: right;">1</td>
+<td style="text-align: right;">0.516742</td>
+<td style="text-align: right;">0.500561</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">0.469903</td>
+<td style="text-align: right;">0.406992</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">0.506458</td>
+<td style="text-align: right;">0.500083</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">0.34104</td>
+<td style="text-align: right;">0.333599</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">ok</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2026-01</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">nan</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">no_test_rows</td>
+</tr>
+</tbody>
+</table>
+<h2 id="state-schedule-top-rows">State Schedule (Top Rows)<a class="headerlink" href="#state-schedule-top-rows" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">symbol</th>
+<th style="text-align: left;">test_month</th>
+<th style="text-align: left;">train_months</th>
+<th style="text-align: right;">selected_rank</th>
+<th style="text-align: left;">state_id</th>
+<th style="text-align: left;">state_key</th>
+<th style="text-align: right;">bar_ticks</th>
+<th style="text-align: right;">horizon</th>
+<th style="text-align: left;">family</th>
+<th style="text-align: left;">regime_desc</th>
+<th style="text-align: right;">barrier_pips</th>
+<th style="text-align: right;">overlap_corr_max</th>
+<th style="text-align: right;">overlap_div_max</th>
+<th style="text-align: right;">train_rows</th>
+<th style="text-align: right;">train_months_count</th>
+<th style="text-align: right;">train_avg_month_rows</th>
+<th style="text-align: right;">train_mean_gross_pips</th>
+<th style="text-align: right;">train_mean_signal_pips</th>
+<th style="text-align: right;">train_lb95_trade_mean_gross_pips</th>
+<th style="text-align: right;">train_lb95_month_mean_gross_pips</th>
+<th style="text-align: right;">train_positive_months</th>
+<th style="text-align: right;">train_fill_rate</th>
+<th style="text-align: left;">gate_pass</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: left;">2025-04,2025-05,2025-06</td>
 <td style="text-align: right;">1</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_range_q80;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">5094</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">1664</td>
+<td style="text-align: right;">4.06034</td>
+<td style="text-align: right;">3.97903</td>
+<td style="text-align: right;">3.83933</td>
+<td style="text-align: right;">3.70948</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: left;">2025-04,2025-05,2025-06</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_range_q70;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.70356</td>
+<td style="text-align: right;">0.295784</td>
+<td style="text-align: right;">4742</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">1555.33</td>
+<td style="text-align: right;">3.8829</td>
+<td style="text-align: right;">3.82067</td>
+<td style="text-align: right;">3.6797</td>
+<td style="text-align: right;">3.67288</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: left;">2025-05,2025-06,2025-07</td>
 <td style="text-align: right;">1</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_range_q70;barrier=2.0</td>
+<td style="text-align: right;">2</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
+<td style="text-align: right;">3390</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">1118</td>
+<td style="text-align: right;">3.74744</td>
+<td style="text-align: right;">3.70764</td>
+<td style="text-align: right;">3.53814</td>
+<td style="text-align: right;">3.67288</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: left;">2025-05,2025-06,2025-07</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">oco_first_touch_clean__london__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__london__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">london;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.257754</td>
+<td style="text-align: right;">0.0713631</td>
+<td style="text-align: right;">2130</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">702.667</td>
+<td style="text-align: right;">3.11129</td>
+<td style="text-align: right;">3.07915</td>
+<td style="text-align: right;">2.90591</td>
+<td style="text-align: right;">2.90496</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: left;">2025-06,2025-07,2025-08</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_range_q80;barrier=2.0</td>
+<td style="text-align: right;">2</td>
 <td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">2659</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">873.667</td>
+<td style="text-align: right;">3.80004</td>
+<td style="text-align: right;">3.74573</td>
+<td style="text-align: right;">3.57251</td>
+<td style="text-align: right;">3.64979</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-09</td>
+<td style="text-align: left;">2025-06,2025-07,2025-08</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q70__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_abs_vel_q70;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.665517</td>
+<td style="text-align: right;">0.332448</td>
+<td style="text-align: right;">2293</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">757.667</td>
+<td style="text-align: right;">3.37277</td>
+<td style="text-align: right;">3.34335</td>
+<td style="text-align: right;">3.14736</td>
+<td style="text-align: right;">3.22681</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: left;">2025-07,2025-08,2025-09</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_range_q80;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">2239</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">735.667</td>
+<td style="text-align: right;">3.76964</td>
+<td style="text-align: right;">3.71577</td>
+<td style="text-align: right;">3.51628</td>
+<td style="text-align: right;">3.47956</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: left;">2025-07,2025-08,2025-09</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_range_q70;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.809329</td>
+<td style="text-align: right;">0.168011</td>
+<td style="text-align: right;">2168</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">714.333</td>
+<td style="text-align: right;">3.57368</td>
+<td style="text-align: right;">3.53247</td>
+<td style="text-align: right;">3.33616</td>
+<td style="text-align: right;">3.23543</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: left;">2025-07,2025-08,2025-09</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q30__k3</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q30__k3</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">low_cost_q30;barrier=3.0</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0.452691</td>
+<td style="text-align: right;">0.22243</td>
+<td style="text-align: right;">712</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">234.667</td>
+<td style="text-align: right;">1.975</td>
+<td style="text-align: right;">1.95281</td>
+<td style="text-align: right;">1.61039</td>
+<td style="text-align: right;">1.39477</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: left;">2025-08,2025-09,2025-10</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_range_q80;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">2003</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">659</td>
+<td style="text-align: right;">3.70536</td>
+<td style="text-align: right;">3.65726</td>
+<td style="text-align: right;">3.44916</td>
+<td style="text-align: right;">3.43355</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: left;">2025-08,2025-09,2025-10</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q70__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_abs_vel_q70;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.641471</td>
+<td style="text-align: right;">0.255636</td>
+<td style="text-align: right;">1805</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">596</td>
+<td style="text-align: right;">3.35626</td>
+<td style="text-align: right;">3.32465</td>
+<td style="text-align: right;">3.09589</td>
+<td style="text-align: right;">3.05578</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: left;">2025-09,2025-10,2025-11</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_range_q80;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1795</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">592</td>
+<td style="text-align: right;">3.33829</td>
+<td style="text-align: right;">3.30295</td>
+<td style="text-align: right;">3.08735</td>
+<td style="text-align: right;">2.98176</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: left;">2025-09,2025-10,2025-11</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q80__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q80__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">5</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_abs_vel_q80;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.820982</td>
+<td style="text-align: right;">0.0995321</td>
+<td style="text-align: right;">1541</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">508.667</td>
+<td style="text-align: right;">2.78748</td>
+<td style="text-align: right;">2.76035</td>
+<td style="text-align: right;">2.5335</td>
+<td style="text-align: right;">2.49143</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: left;">2025-09,2025-10,2025-11</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q50__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__low_cost_q50__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">5</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">low_cost_q50;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.741929</td>
+<td style="text-align: right;">0.117196</td>
+<td style="text-align: right;">1511</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">498</td>
+<td style="text-align: right;">2.47738</td>
+<td style="text-align: right;">2.4495</td>
+<td style="text-align: right;">2.25727</td>
+<td style="text-align: right;">2.0385</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2026-01</td>
+<td style="text-align: left;">2025-10,2025-11,2025-12</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_range_q70;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1601</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">528</td>
+<td style="text-align: right;">3.25215</td>
+<td style="text-align: right;">3.21761</td>
+<td style="text-align: right;">2.98866</td>
+<td style="text-align: right;">2.97957</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">2026-01</td>
+<td style="text-align: left;">2025-10,2025-11,2025-12</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">oco_first_touch_clean</td>
+<td style="text-align: right;">high_range_q80;barrier=2.0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.802397</td>
+<td style="text-align: right;">0.175749</td>
+<td style="text-align: right;">1730</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">570.667</td>
+<td style="text-align: right;">3.24416</td>
+<td style="text-align: right;">3.2104</td>
+<td style="text-align: right;">3.00751</td>
+<td style="text-align: right;">2.86901</td>
+<td style="text-align: left;">3</td>
 </tr>
 </tbody>
 </table>

@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 05
 
-- generated_at: `2026-03-04 20:04:19 UTC`
+- generated_at: `2026-03-05 00:54:34 UTC`
 - State schedule is selected month-by-month using only prior-month train data.
 - Summary emphasizes full-path gross behavior after reduced-core filtering.
 - R01-R03 track pruning severity, state concentration, and re-selection stability.
@@ -8,7 +8,7 @@
 #### Key Results
 | symbol   |   rows_total |   mean_gross_pips |   lb95_month_mean_gross_pips |   fill_rate_overall |   positive_months |   months_total |   r01_post_pre_row_ratio |   r02_top_state_dependency |   r03_reselection_stability |
 |:---------|-------------:|------------------:|-----------------------------:|--------------------:|------------------:|---------------:|-------------------------:|---------------------------:|----------------------------:|
-| EURUSD   |         6562 |        nan        |                     1.70804  |            0.977215 |                10 |             15 |               0.0152593  |                       0.35 |                    0.363636 |
+| EURUSD   |         6628 |          2.45668  |                     1.67265  |            0.987044 |                11 |             15 |               0.0154128  |                       0.35 |                    0.363636 |
 | GBPUSD   |         6928 |          2.53606  |                     2.29926  |            0.992835 |                 6 |             10 |               0.0176677  |                       0.35 |                    0.37381  |
 | AUDUSD   |         4202 |          0.959424 |                     0.754892 |            0.994086 |                 6 |             10 |               0.00945836 |                       0.35 |                    0.440476 |
 | USDJPY   |         8101 |          3.30796  |                     2.96223  |            0.989616 |                 6 |             10 |               0.0176464  |                       0.35 |                    0.333333 |
@@ -34,7 +34,7 @@
 | symbol   |   months |   rows_total |   mean_fill_rate |   mean_gross |
 |:---------|---------:|-------------:|-----------------:|-------------:|
 | AUDUSD   |       10 |         4202 |         0.994046 |     0.959656 |
-| EURUSD   |       15 |         6562 |         0.897529 |     2.04718  |
+| EURUSD   |       15 |         6628 |         0.988438 |     1.99027  |
 | GBPUSD   |       10 |         6928 |         0.992449 |     2.56976  |
 | USDCAD   |       10 |         3544 |         0.991843 |     1.28907  |
 | USDCHF   |       10 |         4077 |         0.976204 |     1.24516  |

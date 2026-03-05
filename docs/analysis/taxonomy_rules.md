@@ -1,6 +1,6 @@
 # Analysis Taxonomy Rules
 
-- generated_at_utc: `2026-03-04T20:04:17Z`
+- generated_at_utc: `2026-03-05T00:46:55Z`
 
 ## Group Assignment Order
 1. `core`: canonical governance reports for the OCO bible.

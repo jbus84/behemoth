@@ -4228,6 +4228,56 @@
 <td>Statistical Audit</td>
 <td>Proves the discovery survives Bonferroni or False Discovery Rate (FDR) penalties for p-hacking across thousands of tested barriers.</td>
 </tr>
+<tr>
+<td><strong><code>C01_threshold_timing</code></strong></td>
+<td>Pipeline Logical Audit</td>
+<td>Enforces that every selected row satisfies <code>pred_prob &gt;= threshold_exec</code>, month labels align with close timestamps, and threshold lookback is at least 1 day. Prevents leakage or malformed execution selection.</td>
+</tr>
+<tr>
+<td><strong><code>C02_threshold_stability</code></strong></td>
+<td>Pipeline Logical Audit</td>
+<td>Asserts each (month, candidate) group uses exactly one threshold value. In rolling mode, stability is checked per day. Prevents inconsistent thresholding that invalidates signal-selection reproducibility.</td>
+</tr>
+<tr>
+<td><strong><code>C03_state_gate_integrity</code></strong></td>
+<td>Pipeline Logical Audit</td>
+<td>Ensures no selected states failed train-time gate checks. Prevents weak, ungated states from inflating apparent diversification or capacity.</td>
+</tr>
+<tr>
+<td><strong><code>C04_overlap_divergence</code></strong></td>
+<td>Pipeline Logical Audit</td>
+<td>Detects when activity-count-based correlation diverges significantly from PnL-based correlation across states. Flags hidden co-movement understated by the portfolio overlap filter.</td>
+</tr>
+<tr>
+<td><strong><code>C05_stop_limit_join</code></strong></td>
+<td>Pipeline Logical Audit</td>
+<td>Validates stop-limit detail join integrity: zero duplicate keys and ≥99.5% monthly match rate between prediction rows and tick-level detail records.</td>
+</tr>
+<tr>
+<td><strong><code>C06_fill_rate_monotonicity</code></strong></td>
+<td>Pipeline Logical Audit</td>
+<td>Asserts fill rate increases (or stays flat) monotonically as the stop-limit cap widens. Violations imply inconsistent cap simulation or merge logic.</td>
+</tr>
+<tr>
+<td><strong><code>C07_denominator_consistency</code></strong></td>
+<td>Pipeline Logical Audit</td>
+<td>Verifies that summary-level row counts, signal counts, and fill rates are exactly reproducible from the monthly table. Prevents misstated capacity or expectancy.</td>
+</tr>
+<tr>
+<td><strong><code>C08_warmup_continuity</code></strong></td>
+<td>Pipeline Logical Audit</td>
+<td>Enforces contiguous month coverage with exactly <code>min_train_months</code> warmup rows and no unexpected status values. Prevents silent omission of difficult months.</td>
+</tr>
+<tr>
+<td><strong><code>C09_bootstrap_reproducibility</code></strong></td>
+<td>Pipeline Logical Audit</td>
+<td>Recomputes LB95 gross and signal confidence bounds from the monthly series and asserts they match the summary output to within ≤1e-8. Guards against mislabeled robustness claims.</td>
+</tr>
+<tr>
+<td><strong><code>C10_timestamp_causality</code></strong></td>
+<td>Pipeline Logical Audit</td>
+<td>Validates strict temporal ordering: <code>close_ts ≤ touch_open_ts ≤ touch_close_ts</code>, and touch month labels match the actual touch timestamp. Catches timezone coercion or bar alignment bugs that invalidate execution simulation.</td>
+</tr>
 </tbody>
 </table>
 <h3 id="stage-8-robustness-stress">Stage 8: Robustness &amp; Stress<a class="headerlink" href="#stage-8-robustness-stress" title="Permanent link">&para;</a></h3>
