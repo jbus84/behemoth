@@ -2,29 +2,29 @@
   "artifacts": {
     "capacity_overall_pass": true,
     "live_deployable": true,
-    "model_cbm_path": "models/oco/USDCHF_model_2025-12.cbm",
-    "model_cbm_sha256": "1446dc614fc0eb6b44ef1215f87899b7a4465feecb9a6f9107559ca366a187c9",
-    "model_month": "2025-12",
-    "model_threshold_json_path": "models/oco/USDCHF_model_2025-12.json",
-    "model_threshold_json_sha256": "1f749c9f50d3f40b28d2248c7f48bb8ee6237748fef2ba66d65dff2033540fa6",
+    "model_cbm_path": "models/oco/USDCHF_model_2026-02.cbm",
+    "model_cbm_sha256": "8d80b92bc6e268f0a6ba35cbeecc614f73421f4bed6b3478c2e7812deeccafab",
+    "model_month": "2026-02",
+    "model_threshold_json_path": "models/oco/USDCHF_model_2026-02.json",
+    "model_threshold_json_sha256": "553c28722f70cef8e109da9d4207add2b5ae616f045cacd7f7b8be80a3071f57",
     "predictions_path": "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCHF_oco_monthly_predictions.parquet",
-    "predictions_sha256": "a2068cea61c2bd04308bde77944475bd0504ec799539463c1a70e8da03ebf01e",
+    "predictions_sha256": "759cc858a790656e8300b1c3ff70300488c6bdf9eb875cf6d3f90642d5f63880",
     "reduced_config_path": "configs/research/experiments/usdchf_oco_reduced_core_2025.yaml",
     "reduced_config_sha256": "61cd27e572cd8ae69a5da01c290e04d7e26a64f15a32e1c7c35938dd1b6b2067",
     "reduced_states_csv_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_state_schedule.csv",
-    "reduced_states_csv_sha256": "341ebb5dab739354bc780c1cb1a44878f94c803742c07fced67512b326c847e0",
+    "reduced_states_csv_sha256": "e59457f2d44dec2a0f7cef6a6d9ac8b70a98897abb5bf91a06d7538e0cb93e87",
     "reduced_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_summary.csv",
-    "reduced_summary_sha256": "b37df4bb00163dbc33e8c63948fe738749524d92717a7626c71c798691788026",
+    "reduced_summary_sha256": "75829c838f6d6b5bf2412a4de44140f15c1eedf23a505442bee7a2954407eeab",
     "tick_exact_overall_pass": true,
     "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_tick_exact_summary.csv",
-    "tick_exact_summary_sha256": "a956e1fdbcf9da48f1be95b7230de03d344c4b04bf8fa09df9577e83a5583965",
+    "tick_exact_summary_sha256": "4570f884f734ab7e3e6923070268d277f3c9349fcf9db98c7cdae29cf9adc4d7",
     "wfo_config_path": "configs/research/experiments/usdchf_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
-    "wfo_config_sha256": "0911971d802dcb13a49047925ca60592e79ee70436fee63aed003d8fbf70c02c"
+    "wfo_config_sha256": "bbc7a83f53f5c3f20cd7250f0b3c51d7d51319e00cb0ea5158dd61065d773148"
   },
-  "frozen_at_utc": "2026-03-05T17:46:56.018695+00:00",
+  "frozen_at_utc": "2026-03-06T14:28:51.269331+00:00",
   "git": {
     "branch": "main",
-    "commit": "d321d3dafb1b7fc8e223eec2963aaa8aba5944a8",
+    "commit": "abda5baa7a8bb49ab390885b4de387b82298b63a",
     "dirty": false
   },
   "locked_runtime": {
@@ -49,37 +49,19 @@
   },
   "schema_version": 1,
   "state_universe": {
-    "count": 3,
+    "count": 1,
     "rows": [
       {
         "bar_ticks": 100,
         "barrier_pips": 2.0,
         "family": "oco_first_touch_clean",
-        "horizon": 5,
-        "regime_desc": "asia;barrier=2.0",
-        "state_id": "oco_first_touch_clean__asia__k2",
-        "symbol": "USDCHF"
-      },
-      {
-        "bar_ticks": 100,
-        "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
         "horizon": 6,
-        "regime_desc": "high_range_q70;barrier=2.0",
-        "state_id": "oco_first_touch_clean__high_range_q70__k2",
-        "symbol": "USDCHF"
-      },
-      {
-        "bar_ticks": 100,
-        "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
-        "horizon": 6,
-        "regime_desc": "london;barrier=2.0",
-        "state_id": "oco_first_touch_clean__london__k2",
+        "regime_desc": "high_abs_vel_q70;barrier=2.0",
+        "state_id": "oco_first_touch_clean__high_abs_vel_q70__k2",
         "symbol": "USDCHF"
       }
     ],
-    "sha256": "586a7779c20b25f42253358efadda80979e992b1d0c627b88003904386c083f9"
+    "sha256": "fb0606021cd0e82d6f5ca6f6259a3b91e875010c7f0395a1d5225ee18daf5955"
   },
   "symbol": "USDCHF"
 }

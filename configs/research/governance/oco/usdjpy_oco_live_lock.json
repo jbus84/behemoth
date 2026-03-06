@@ -2,29 +2,29 @@
   "artifacts": {
     "capacity_overall_pass": true,
     "live_deployable": true,
-    "model_cbm_path": "models/oco/USDJPY_model_2025-12.cbm",
-    "model_cbm_sha256": "01b63bcaf5e3004431f539a145557b4ace84ba25a111379c6dd3f83dc3066940",
-    "model_month": "2025-12",
-    "model_threshold_json_path": "models/oco/USDJPY_model_2025-12.json",
-    "model_threshold_json_sha256": "f14412a0522351ad77a7116b112befc3f42fcb989c80c75853447b35627f0e5f",
+    "model_cbm_path": "models/oco/USDJPY_model_2026-02.cbm",
+    "model_cbm_sha256": "4f4aff3e95128023ac982d86e42d54c03d5dfca7bb6d843a0233a128cd17ecd9",
+    "model_month": "2026-02",
+    "model_threshold_json_path": "models/oco/USDJPY_model_2026-02.json",
+    "model_threshold_json_sha256": "eac748297f8ea578ade56e59cacca3f78eb740caf258640098281ffee64e7ecb",
     "predictions_path": "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDJPY_oco_monthly_predictions.parquet",
-    "predictions_sha256": "c6bf018dc775a0d62d3c7e8fcd6fe9e3dc531e31e1a7d2ec6091c5c5ee9d320e",
+    "predictions_sha256": "3b07076d78e0f1c5c6d79bbf9935eb85944d5d7f6e3a57df3e7b70c87d7a5336",
     "reduced_config_path": "configs/research/experiments/usdjpy_oco_reduced_core_2025.yaml",
     "reduced_config_sha256": "1deee84cc3d4846f05be60752e8c6250ef93632dc33078a0a061fa8ac4a69313",
     "reduced_states_csv_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_reduced_state_schedule.csv",
-    "reduced_states_csv_sha256": "e6762eaef49ff39b6fe88da33dd30e4fe299bea68ce3aa275a1e4bc5990f5d07",
+    "reduced_states_csv_sha256": "35b61a5ff031c743e73b7ed1f0c759cbe467bcb6208f33e1d082f1418e650f21",
     "reduced_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_reduced_summary.csv",
-    "reduced_summary_sha256": "dd1bfe1cde0c6ea4bd05a76b5010e9c38d9463c6d2115e242fd9575a60afcb55",
+    "reduced_summary_sha256": "d10121ce5aaba863ed3b676a005fbcb9420a499a4e5e82bbe1982fd43d11c420",
     "tick_exact_overall_pass": true,
     "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_tick_exact_summary.csv",
-    "tick_exact_summary_sha256": "96a52ad4a034ee61ab0c2b19b180c6630b78be068782ac691e950ab5d66b48a6",
+    "tick_exact_summary_sha256": "1e73b29ec5c0184a22f5ae4d708f975cce6561447237da7e995facf0eac4838a",
     "wfo_config_path": "configs/research/experiments/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
-    "wfo_config_sha256": "2990d96682a77bd19f44bd467c7d4ec30e8b49498eb7467300653783371656e8"
+    "wfo_config_sha256": "938642f549dead9ff81a6d52cde56b35a893869aed67082848422ad774aca61a"
   },
-  "frozen_at_utc": "2026-03-05T17:46:55.980643+00:00",
+  "frozen_at_utc": "2026-03-06T14:28:51.230208+00:00",
   "git": {
     "branch": "main",
-    "commit": "d321d3dafb1b7fc8e223eec2963aaa8aba5944a8",
+    "commit": "abda5baa7a8bb49ab390885b4de387b82298b63a",
     "dirty": false
   },
   "locked_runtime": {
@@ -56,8 +56,8 @@
         "barrier_pips": 2.0,
         "family": "oco_first_touch_clean",
         "horizon": 6,
-        "regime_desc": "high_range_q70;barrier=2.0",
-        "state_id": "oco_first_touch_clean__high_range_q70__k2",
+        "regime_desc": "high_range_q80;barrier=2.0",
+        "state_id": "oco_first_touch_clean__high_range_q80__k2",
         "symbol": "USDJPY"
       },
       {
@@ -65,12 +65,12 @@
         "barrier_pips": 2.0,
         "family": "oco_first_touch_clean",
         "horizon": 6,
-        "regime_desc": "high_range_q80;barrier=2.0",
-        "state_id": "oco_first_touch_clean__high_range_q80__k2",
+        "regime_desc": "london;barrier=2.0",
+        "state_id": "oco_first_touch_clean__london__k2",
         "symbol": "USDJPY"
       }
     ],
-    "sha256": "c8e5378b570f2ad7b7fd665b118ea7e426c807d3733513dd00042b226385b090"
+    "sha256": "fcee68b6bdb3de0a7c75910ec7390434e1764b61d93a989da716a7886a16caab"
   },
   "symbol": "USDJPY"
 }

@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 09
 
-- generated_at: `2026-03-06 13:50:11 UTC`
+- generated_at: `2026-03-06 14:33:18 UTC`
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
 - Missing required artifacts: 0.
 
@@ -41,9 +41,9 @@
 #### Predeploy Validator Status
 | symbol   | status   | blocker   |   checks_total |   checks_failed |   leakage_high_critical_issues |   execution_risk_high_critical_issues |   g01_near_fail_count |   g03_lock_drift_flags | as_of      | window_end   | failed_checks   |
 |:---------|:---------|:----------|---------------:|----------------:|-------------------------------:|--------------------------------------:|----------------------:|-----------------------:|:-----------|:-------------|:----------------|
-| EURUSD   | pass     | False     |             25 |               0 |                              1 |                                     0 |                     0 |                      0 | 2026-02-26 | 2026-03-31   |                 |
-| GBPUSD   | pass     | False     |             25 |               0 |                              1 |                                     0 |                     0 |                      0 | 2026-02-26 | 2026-03-31   |                 |
-| AUDUSD   | pass     | False     |             36 |               0 |                              1 |                                     0 |                     0 |                      0 | 2026-03-05 | 2026-04-07   |                 |
-| USDJPY   | pass     | False     |             25 |               0 |                              1 |                                     0 |                     0 |                      0 | 2026-02-26 | 2026-03-31   |                 |
-| USDCHF   | pass     | False     |             36 |               0 |                              1 |                                     0 |                     0 |                      0 | 2026-03-05 | 2026-04-07   |                 |
-| USDCAD   | pass     | False     |             36 |               0 |                              1 |                                     0 |                     0 |                      0 | 2026-03-05 | 2026-04-07   |                 |
+| EURUSD   | pass     | False     |             25 |               0 |                              0 |                                     0 |                     0 |                      0 | 2026-02-26 | 2026-03-31   |                 |
+| GBPUSD   | pass     | False     |             25 |               0 |                              0 |                                     0 |                     0 |                      0 | 2026-02-26 | 2026-03-31   |                 |
+| AUDUSD   | pass     | False     |             36 |               0 |                              0 |                                     0 |                     0 |                      0 | 2026-03-05 | 2026-04-07   |                 |
+| USDJPY   | pass     | False     |             25 |               0 |                              0 |                                     0 |                     0 |                      0 | 2026-02-26 | 2026-03-31   |                 |
+| USDCHF   | pass     | False     |             36 |               0 |                              0 |                                     0 |                     0 |                      0 | 2026-03-05 | 2026-04-07   |                 |
+| USDCAD   | pass     | False     |             36 |               0 |                              0 |                                     0 |                     0 |                      0 | 2026-03-05 | 2026-04-07   |                 |
