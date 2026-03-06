@@ -9,7 +9,7 @@ COLOR_DESC := \033[2m
 # Active symbol list — single source of truth for multi-symbol targets
 REBUILD_SYMBOLS := EURUSD GBPUSD USDJPY USDCHF AUDUSD USDCAD
 
-.PHONY: test docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift deploy-cbot provision retrain-all rebuild-all quality ty vulture smellcheck radon xenon
+.PHONY: test docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift deploy-cbot provision retrain-all rebuild-all quality ty vulture smellcheck radon xenon audit-all freeze-oco
 
 provision:
 	@echo "Provisioning Alertmanager configuration..."
@@ -122,7 +122,12 @@ audit-all:
 	uv run python scripts/audit_oco_leakage_label_integrity.py
 	uv run python scripts/audit_oco_execution_risk_prelive.py
 
-freeze-oco: audit-all docs-contract-ci
+freeze-oco:
+	@if [ -n "$$(git status --porcelain)" ]; then \
+		echo "error: freeze-oco requires a clean git worktree before running."; \
+		echo "hint: commit/stash current changes, then rerun make freeze-oco"; \
+		exit 1; \
+	fi
 	@echo "\n--- Verifying API Parity ---"
 	@for sym in $(REBUILD_SYMBOLS); do \
 		echo "Parity check: $$sym"; \
@@ -131,9 +136,12 @@ freeze-oco: audit-all docs-contract-ci
 		uv run python scripts/validate_api_parity.py --symbol $$sym \
 			--predictions data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/$${sym}_oco_monthly_predictions.parquet \
 			--threshold-json $$JSON || exit 1; \
-	done
+		done
 	@echo "\n--- Refreezing Governance Locks ---"
 	uv run python scripts/freeze_oco_live_governance.py --symbols $(shell echo $(REBUILD_SYMBOLS) | sed 's/ /,/g')
+	@echo "\n--- Running Core Audits ---"
+	$(MAKE) audit-all
+	$(MAKE) docs-contract-ci
 	@echo "\n✅ Successfully audited and frozen all locks."
 
 docs-clean:
