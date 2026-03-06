@@ -39,7 +39,7 @@ Define and verify the minimum data-quality contract required for causal OCO rese
 uv run python scripts/build_global_tick_bars.py \
   --tick-root /Users/danielfisher/Desktop/tick \
   --output-dir data/global_tickbars \
-  --symbols EURUSD,GBPUSD,USDJPY,USDCHF \
+  --symbols EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD \
   --base-ticks 100 \
   --aggregate-multiples 1,10,20 \
   --price-source bid \
@@ -50,7 +50,7 @@ uv run python scripts/build_tick_velocity_dataset.py \
   --tick-root /Users/danielfisher/Desktop/tick \
   --tickbar-dir data/global_tickbars \
   --out-dir data/analysis/tick_velocity \
-  --symbols EURUSD,GBPUSD,USDJPY,USDCHF \
+  --symbols EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD \
   --bar-ticks-grid 100,1000,2000 \
   --vel-horizons 1,2,5,10 \
   --target-horizons 1,2,3 \
@@ -115,7 +115,7 @@ Hard gates come from `DR*` checks in reliability audit.
 uv run python scripts/build_global_tick_bars.py \
   --tick-root /Users/danielfisher/Desktop/tick \
   --output-dir data/global_tickbars \
-  --symbols EURUSD,GBPUSD,USDJPY,USDCHF \
+  --symbols EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD \
   --base-ticks 100 \
   --aggregate-multiples 1,10,20 \
   --price-source bid \
@@ -125,7 +125,7 @@ uv run python scripts/build_tick_velocity_dataset.py \
   --tick-root /Users/danielfisher/Desktop/tick \
   --tickbar-dir data/global_tickbars \
   --out-dir data/analysis/tick_velocity \
-  --symbols EURUSD,GBPUSD,USDJPY,USDCHF \
+  --symbols EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD \
   --bar-ticks-grid 100,1000,2000 \
   --vel-horizons 1,2,5,10 \
   --target-horizons 1,2,3 \
@@ -135,7 +135,7 @@ uv run python scripts/build_tick_velocity_dataset.py \
   --overwrite
 
 uv run python scripts/audit_data_reliability.py \
-  --symbols EURUSD,GBPUSD,USDJPY,USDCHF \
+  --symbols EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD \
   --out-checks-csv data/analysis/tick_opportunity_mining/data_reliability_checks.csv \
   --out-issues-csv data/analysis/tick_opportunity_mining/data_reliability_issues.csv \
   --report-out docs/analysis/data_reliability_report.md
@@ -150,7 +150,7 @@ uv run python scripts/audit_data_reliability.py \
 <!-- GENERATED:STAGE_01:START -->
 ### Auto Snapshot - Stage 01
 
-- generated_at: `2026-03-05 16:30:22 UTC`
+- generated_at: `2026-03-05 20:17:32 UTC`
 - Contract check uses eval-year event tables consumed by WFO.
 - Null percentages should remain near 0 for required modeling fields.
 - Timezone contract rows include parse rate, monotonicity, DST and offset anomaly checks.
@@ -162,10 +162,10 @@ uv run python scripts/audit_data_reliability.py \
 |:---------|--------------:|-------------------------:|----------------------:|--------------------:|---------------------------:|---------------------:|-----------------------------------:|----------------------------:|----------------------:|----------------------:|--------------------------:|
 | EURUSD   |       6000000 |                        0 |                     0 |                   0 |                         15 |                    0 |                                  0 |                   -0.589219 |           0.000400833 |              0.619785 |                   8.78933 |
 | GBPUSD   |       6000000 |                        0 |                     0 |                   0 |                         15 |                    0 |                                  0 |                   -1.778    |           0.0002085   |              0.592694 |                   7.41284 |
-| AUDUSD   |       5933630 |                        0 |                     0 |                   0 |                          0 |                    0 |                                  0 |                   -1.60736  |           8.46025e-05 |              0.616136 |                   5.00853 |
+| AUDUSD   |       5933630 |                        0 |                     0 |                   0 |                         15 |                    0 |                                  0 |                   -1.60736  |           8.46025e-05 |              0.616136 |                   5.00853 |
 | USDJPY   |       6000000 |                        0 |                     0 |                   0 |                         15 |                    0 |                                  0 |                   -1.12367  |           0.0002315   |              0.608004 |                  10.4984  |
-| USDCHF   |       5979798 |                        0 |                     0 |                   0 |                          0 |                    0 |                                  0 |                   -1.3165   |           0.000130105 |              0.635497 |                   5.51376 |
-| USDCAD   |       5959668 |                        0 |                     0 |                   0 |                          0 |                    0 |                                  0 |                   -1.04177  |           0.000150344 |              0.57446  |                   6.88175 |
+| USDCHF   |       5979798 |                        0 |                     0 |                   0 |                         15 |                    0 |                                  0 |                   -1.3165   |           0.000130105 |              0.635497 |                   5.51376 |
+| USDCAD   |       5959668 |                        0 |                     0 |                   0 |                         15 |                    0 |                                  0 |                   -1.04177  |           0.000150344 |              0.57446  |                   6.88175 |
 
 #### Interpretation Notes
 - Contract check uses eval-year event tables consumed by WFO.
@@ -193,10 +193,10 @@ uv run python scripts/audit_data_reliability.py \
 |:---------|--------------:|-------------------------:|----------------------:|--------------------:|-----------------------:|-----------------------------:|--------------------:|----------------------------:|----------------------:|----------------------:|--------------------------:|---------------------------:|---------------------:|-----------------------------------:|
 | EURUSD   |       6000000 |                        0 |                     0 |                   0 |                      0 |                            0 |                   0 |                   -0.589219 |           0.000400833 |              0.619785 |                   8.78933 |                         15 |                    0 |                                  0 |
 | GBPUSD   |       6000000 |                        0 |                     0 |                   0 |                      0 |                            0 |                   0 |                   -1.778    |           0.0002085   |              0.592694 |                   7.41284 |                         15 |                    0 |                                  0 |
-| AUDUSD   |       5933630 |                        0 |                     0 |                   0 |                      0 |                            0 |                   0 |                   -1.60736  |           8.46025e-05 |              0.616136 |                   5.00853 |                          0 |                    0 |                                  0 |
+| AUDUSD   |       5933630 |                        0 |                     0 |                   0 |                      0 |                            0 |                   0 |                   -1.60736  |           8.46025e-05 |              0.616136 |                   5.00853 |                         15 |                    0 |                                  0 |
 | USDJPY   |       6000000 |                        0 |                     0 |                   0 |                      0 |                            0 |                   0 |                   -1.12367  |           0.0002315   |              0.608004 |                  10.4984  |                         15 |                    0 |                                  0 |
-| USDCHF   |       5979798 |                        0 |                     0 |                   0 |                      0 |                            0 |                   0 |                   -1.3165   |           0.000130105 |              0.635497 |                   5.51376 |                          0 |                    0 |                                  0 |
-| USDCAD   |       5959668 |                        0 |                     0 |                   0 |                      0 |                            0 |                   0 |                   -1.04177  |           0.000150344 |              0.57446  |                   6.88175 |                          0 |                    0 |                                  0 |
+| USDCHF   |       5979798 |                        0 |                     0 |                   0 |                      0 |                            0 |                   0 |                   -1.3165   |           0.000130105 |              0.635497 |                   5.51376 |                         15 |                    0 |                                  0 |
+| USDCAD   |       5959668 |                        0 |                     0 |                   0 |                      0 |                            0 |                   0 |                   -1.04177  |           0.000150344 |              0.57446  |                   6.88175 |                         15 |                    0 |                                  0 |
 
 #### Plots
 ![stage_01_contract_health](../figures/oco_bible/stage_01_contract_health.png)

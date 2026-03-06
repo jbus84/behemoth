@@ -175,7 +175,7 @@ uv run python scripts/verify_oco_tick_exact_shortlist.py \
   --symbol <SYM> \
   --dataset-dir data/analysis/tick_velocity \
   --pred-path data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_<sym>/<SYM>_oco_monthly_predictions.parquet \
-  --shortlist-state-csv data/analysis/tick_opportunity_mining/reduced_core_<sym>/<SYM>_oco_reduced_states.csv \
+  --shortlist-state-csv data/analysis/tick_opportunity_mining/reduced_core_rolling/<SYM>_oco_reduced_state_schedule.csv \
   --locked-quantile 0.9 \
   --selection-mode auto \
   --family-required oco_first_touch_clean \
@@ -226,7 +226,29 @@ This downloads monthly ZIPs from HistData and writes canonical parquet. It does 
 - `uv run` can hit sandbox cache permission issues in restricted execution; rerun with elevated permissions when needed.
 - Do not delete or rewrite user data under `/Users/danielfisher/Desktop/tick` unless explicitly asked.
 
-## 12) Definition of Done for Agent Changes
+## 12) Docs-Driven Blindspots to Check Explicitly
+
+- `docs-contract pass` means docs/artifact contract integrity; it does **not** guarantee all symbols are deployable.
+- Treat `stage_09_snapshot` predeploy coverage as mandatory:
+  - if `failed_checks` contains `missing_predeploy_json`, governance is incomplete.
+  - if `g01_near_fail_count` or `g03_lock_drift_flags` are `nan`, treat as data gap.
+- Confirm symbol-level readiness via:
+  - `docs/strategy_bible/generated/stage_09_snapshot.md`
+  - `docs/analysis/operator_action_report.md`
+  - `docs/analysis/oco_alert_remediation_report.md`
+- Governance freeze default symbol source is the registry (`configs/research/governance/oco_rule_universe_registry.yaml`).
+  - If running with `--symbols` subset, verify you are not unintentionally leaving symbols stale.
+- Tiered strictness policy:
+  - fail hard on missing predeploy/governance coverage gaps,
+  - treat non-green strategy gates as monitored blockers unless user explicitly requests strict all-symbol enforcement.
+
+Quick go/no-go checklist:
+1. No `missing_predeploy_json` rows for active symbols in Stage 9.
+2. No `A9_DATA_GAP` caused by missing governance diagnostics (`G01/G03`).
+3. No unresolved high/critical blockers in operator/remediation reports.
+4. Docs contract and mkdocs build both pass on fresh artifacts.
+
+## 13) Definition of Done for Agent Changes
 
 Before finalizing substantial changes:
 

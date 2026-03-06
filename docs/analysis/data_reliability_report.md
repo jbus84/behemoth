@@ -1,14 +1,17 @@
 # Data Reliability Audit
 
-- generated_at_utc: `2026-02-27 18:05:52 UTC`
-- symbols: `EURUSD,GBPUSD,USDJPY`
+- generated_at_utc: `2026-03-05 19:31:18 UTC`
+- symbols: `AUDUSD,EURUSD,GBPUSD,USDCAD,USDCHF,USDJPY`
 - source_pattern: `data/analysis/tick_velocity/{symbol}_100tick_velocity.parquet`
 
 ## Symbol Summary
 | symbol   |   checks_total |   checks_failed |   high_or_critical_failed |
 |:---------|---------------:|----------------:|--------------------------:|
+| AUDUSD   |             15 |               0 |                         0 |
 | EURUSD   |             15 |               0 |                         0 |
 | GBPUSD   |             15 |               0 |                         0 |
+| USDCAD   |             15 |               0 |                         0 |
+| USDCHF   |             15 |               0 |                         0 |
 | USDJPY   |             15 |               0 |                         0 |
 
 ## Failed Checks

@@ -1,7 +1,7 @@
 {
   "artifacts": {
     "capacity_overall_pass": true,
-    "live_deployable": false,
+    "live_deployable": true,
     "model_cbm_path": "models/oco/USDCHF_model_2025-12.cbm",
     "model_cbm_sha256": "1446dc614fc0eb6b44ef1215f87899b7a4465feecb9a6f9107559ca366a187c9",
     "model_month": "2025-12",
@@ -15,9 +15,9 @@
     "reduced_states_csv_sha256": "341ebb5dab739354bc780c1cb1a44878f94c803742c07fced67512b326c847e0",
     "reduced_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_summary.csv",
     "reduced_summary_sha256": "b37df4bb00163dbc33e8c63948fe738749524d92717a7626c71c798691788026",
-    "tick_exact_overall_pass": false,
+    "tick_exact_overall_pass": true,
     "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_tick_exact_summary.csv",
-    "tick_exact_summary_sha256": "75e5cfe643f3e76027fc91e445dfe6d837f1b875bc83606f9bf14cd2ec189324",
+    "tick_exact_summary_sha256": "a956e1fdbcf9da48f1be95b7230de03d344c4b04bf8fa09df9577e83a5583965",
     "wfo_config_path": "configs/research/experiments/usdchf_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
     "wfo_config_sha256": "0911971d802dcb13a49047925ca60592e79ee70436fee63aed003d8fbf70c02c"
   },

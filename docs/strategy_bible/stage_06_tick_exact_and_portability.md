@@ -63,8 +63,13 @@ Verify label/path correctness at tick level and assess whether family-level edge
 ## Reproduction Commands
 ```bash
 uv run python scripts/verify_oco_tick_exact_shortlist.py \
-  --symbols EURUSD,GBPUSD,USDJPY,USDCHF
+  --symbol EURUSD \
+  --dataset-dir data/analysis/tick_velocity \
+  --pred-path data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet \
+  --shortlist-state-csv data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv
 ```
+
+Run once per active symbol; if `shortlist_state_csv` is a rolling schedule, the verifier uses the latest `test_month`.
 
 ## Traceability
 - `scripts/verify_oco_tick_exact_shortlist.py`
@@ -75,19 +80,19 @@ uv run python scripts/verify_oco_tick_exact_shortlist.py \
 <!-- GENERATED:STAGE_06:START -->
 ### Auto Snapshot - Stage 06
 
-- generated_at: `2026-03-05 16:30:22 UTC`
+- generated_at: `2026-03-05 20:17:32 UTC`
 - Verifier recomputes OCO outcomes independently from stored labels.
 - All summary rates should remain near 1.0 for contract consistency.
 
 #### Key Results
 | symbol   |   rows_selected |   rows_verified |   exact_match_rate |   pos_label_match_rate | overall_pass   |
 |:---------|----------------:|----------------:|-------------------:|-----------------------:|:---------------|
-| EURUSD   |           28655 |           28655 |           1        |               1        | True           |
-| GBPUSD   |           33524 |           33524 |           1        |               1        | True           |
-| AUDUSD   |           29804 |           29804 |           0.976043 |               0.995403 | False          |
-| USDJPY   |           30552 |           30552 |           1        |               1        | True           |
-| USDCHF   |           30450 |           30450 |           0.985517 |               0.997209 | False          |
-| USDCAD   |           34234 |           34234 |           1        |               1        | True           |
+| EURUSD   |           28655 |           28655 |                  1 |                      1 | True           |
+| GBPUSD   |           33524 |           33524 |                  1 |                      1 | True           |
+| AUDUSD   |           12584 |           12584 |                  1 |                      1 | True           |
+| USDJPY   |           30552 |           30552 |                  1 |                      1 | True           |
+| USDCHF   |           18337 |           18337 |                  1 |                      1 | True           |
+| USDCAD   |           34234 |           34234 |                  1 |                      1 | True           |
 
 #### Interpretation Notes
 - Verifier recomputes OCO outcomes independently from stored labels.
@@ -102,12 +107,12 @@ uv run python scripts/verify_oco_tick_exact_shortlist.py \
 #### Details
 | symbol   |   months |   exact_min |   exact_mean |   pos_min |   pos_mean |
 |:---------|---------:|------------:|-------------:|----------:|-----------:|
-| AUDUSD   |        9 |    0.955958 |     0.988379 |  0.992012 |   0.997488 |
-| EURUSD   |       14 |    1        |     1        |  1        |   1        |
-| GBPUSD   |        9 |    1        |     1        |  1        |   1        |
-| USDCAD   |        9 |    1        |     1        |  1        |   1        |
-| USDCHF   |        9 |    0.978034 |     0.988734 |  0.995215 |   0.998223 |
-| USDJPY   |        9 |    1        |     1        |  1        |   1        |
+| AUDUSD   |        9 |           1 |            1 |         1 |          1 |
+| EURUSD   |       14 |           1 |            1 |         1 |          1 |
+| GBPUSD   |        9 |           1 |            1 |         1 |          1 |
+| USDCAD   |        9 |           1 |            1 |         1 |          1 |
+| USDCHF   |        9 |           1 |            1 |         1 |          1 |
+| USDJPY   |        9 |           1 |            1 |         1 |          1 |
 
 #### Plots
 ![stage_06_tick_exact_monthly](../figures/oco_bible/stage_06_tick_exact_monthly.png)

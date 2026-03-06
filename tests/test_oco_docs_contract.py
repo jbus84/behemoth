@@ -736,7 +736,7 @@ def _build_smoke_fixture(tmp_path: Path, *, with_system_reference: bool = True) 
         for s in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]
     ]
     pd.DataFrame(sym_rows).to_csv(stage_status_csv, index=False)
-    
+
     mock_s09_md = "".join(f"| {s} | pass |\n" for s in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"])
     (generated_root / "stage_09_snapshot.md").write_text(mock_s09_md, encoding="utf-8")
 
@@ -1627,3 +1627,114 @@ def test_docs_contract_flags_system_reference_symbol_coverage_gap(tmp_path: Path
     c46 = checks[checks["check_id"].astype(str) == "C46"]
     assert not c46.empty
     assert (c46["status"].astype(str) == "fail").all()
+
+
+def test_docs_contract_flags_missing_stage09_predeploy_coverage(tmp_path: Path) -> None:
+    f = _build_smoke_fixture(tmp_path, with_system_reference=True)
+    base = f["edge_metrics_csv"].parent
+    all_syms = ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]
+
+    for sym in all_syms:
+        if sym == "AUDUSD":
+            continue
+        (base / f"{sym.lower()}_governance_predeploy.json").write_text("{}", encoding="utf-8")
+
+    (f["generated_root"] / "stage_09_snapshot.md").write_text(
+        "\n".join(
+            [
+                "#### Predeploy Validator Status",
+                "| symbol | status | blocker | checks_total | checks_failed | leakage_high_critical_issues | execution_risk_high_critical_issues | g01_near_fail_count | g03_lock_drift_flags | as_of | window_end | failed_checks |",
+                "|:--|:--|:--|--:|--:|--:|--:|--:|--:|:--|:--|:--|",
+                "| EURUSD | pass | False | 25 | 0 | 0 | 0 | 0 | 0 | 2026-02-26 | 2026-03-31 | |",
+                "| GBPUSD | pass | False | 25 | 0 | 0 | 0 | 0 | 0 | 2026-02-26 | 2026-03-31 | |",
+                "| AUDUSD | missing | True | 1 | 1 | 0 | 0 | 0 | 0 | nan | nan | missing_predeploy_json |",
+                "| USDJPY | pass | False | 25 | 0 | 0 | 0 | 0 | 0 | 2026-02-26 | 2026-03-31 | |",
+                "| USDCHF | pass | False | 25 | 0 | 0 | 0 | 0 | 0 | 2026-02-26 | 2026-03-31 | |",
+                "| USDCAD | pass | False | 25 | 0 | 0 | 0 | 0 | 0 | 2026-02-26 | 2026-03-31 | |",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    checks, _issues = run(
+        docs_root=f["docs_root"],
+        generated_root=f["generated_root"],
+        edge_metrics_csv=f["edge_metrics_csv"],
+        stage_status_csv=f["stage_status_csv"],
+        metric_dictionary_md=f["metric_dictionary_md"],
+        edge_report_md=f["edge_report_md"],
+        mkdocs_yml=f["mkdocs_yml"],
+        out_checks_csv=tmp_path / "checks.csv",
+        out_issues_csv=tmp_path / "issues.csv",
+        out_report_md=tmp_path / "report.md",
+        thresholds=Thresholds(max_age_hours=24.0),
+    )
+    c52 = checks[checks["check_id"].astype(str) == "C52"]
+    assert not c52.empty
+    assert (c52["status"].astype(str) == "fail").all()
+
+
+def test_docs_contract_flags_nan_stage09_governance_diagnostics(tmp_path: Path) -> None:
+    f = _build_smoke_fixture(tmp_path, with_system_reference=True)
+    base = f["edge_metrics_csv"].parent
+    all_syms = ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]
+    for sym in all_syms:
+        (base / f"{sym.lower()}_governance_predeploy.json").write_text("{}", encoding="utf-8")
+
+    (f["generated_root"] / "stage_09_snapshot.md").write_text(
+        "\n".join(
+            [
+                "#### Predeploy Validator Status",
+                "| symbol | status | blocker | checks_total | checks_failed | leakage_high_critical_issues | execution_risk_high_critical_issues | g01_near_fail_count | g03_lock_drift_flags | as_of | window_end | failed_checks |",
+                "|:--|:--|:--|--:|--:|--:|--:|--:|--:|:--|:--|:--|",
+                "| EURUSD | pass | False | 25 | 0 | 0 | 0 | 0 | 0 | 2026-02-26 | 2026-03-31 | |",
+                "| GBPUSD | pass | False | 25 | 0 | 0 | 0 | 0 | 0 | 2026-02-26 | 2026-03-31 | |",
+                "| AUDUSD | pass | False | 25 | 0 | 0 | 0 | nan | nan | 2026-02-26 | 2026-03-31 | |",
+                "| USDJPY | pass | False | 25 | 0 | 0 | 0 | 0 | 0 | 2026-02-26 | 2026-03-31 | |",
+                "| USDCHF | pass | False | 25 | 0 | 0 | 0 | 0 | 0 | 2026-02-26 | 2026-03-31 | |",
+                "| USDCAD | pass | False | 25 | 0 | 0 | 0 | 0 | 0 | 2026-02-26 | 2026-03-31 | |",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    checks, _issues = run(
+        docs_root=f["docs_root"],
+        generated_root=f["generated_root"],
+        edge_metrics_csv=f["edge_metrics_csv"],
+        stage_status_csv=f["stage_status_csv"],
+        metric_dictionary_md=f["metric_dictionary_md"],
+        edge_report_md=f["edge_report_md"],
+        mkdocs_yml=f["mkdocs_yml"],
+        out_checks_csv=tmp_path / "checks.csv",
+        out_issues_csv=tmp_path / "issues.csv",
+        out_report_md=tmp_path / "report.md",
+        thresholds=Thresholds(max_age_hours=24.0),
+    )
+    c53 = checks[checks["check_id"].astype(str) == "C53"]
+    assert not c53.empty
+    assert (c53["status"].astype(str) == "fail").all()
+
+
+def test_docs_contract_optional_strict_symbol_gate_mode(tmp_path: Path) -> None:
+    f = _build_smoke_fixture(tmp_path, with_system_reference=True)
+    stage_status = pd.read_csv(f["stage_status_csv"])
+    stage_status.loc[stage_status["symbol"] == "USDCHF", "symbol_all_gates_pass"] = False
+    stage_status.to_csv(f["stage_status_csv"], index=False)
+
+    checks, _issues = run(
+        docs_root=f["docs_root"],
+        generated_root=f["generated_root"],
+        edge_metrics_csv=f["edge_metrics_csv"],
+        stage_status_csv=f["stage_status_csv"],
+        metric_dictionary_md=f["metric_dictionary_md"],
+        edge_report_md=f["edge_report_md"],
+        mkdocs_yml=f["mkdocs_yml"],
+        out_checks_csv=tmp_path / "checks.csv",
+        out_issues_csv=tmp_path / "issues.csv",
+        out_report_md=tmp_path / "report.md",
+        thresholds=Thresholds(max_age_hours=24.0, fail_if_any_symbol_gate_fails=True),
+    )
+    c54 = checks[checks["check_id"].astype(str) == "C54"]
+    assert not c54.empty
+    assert (c54["status"].astype(str) == "fail").all()

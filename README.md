@@ -1,34 +1,70 @@
-# Behemoth (OCO Architecture)
+# Behemoth (Tick OCO Governance Pipeline)
 
-**Status**: Production Baseline
-**Strategy**: Tick-based ML Opportunity Cost Optimization (OCO)
+**Status**: Active production research baseline  
+**Strategy**: Tick-based OCO stop-limit selection with docs-driven governance
 
-This repository holds the quantitative research pipeline and active execution artifacts for the Behemoth OCO strategy. The legacy stat-arb systems have been entirely removed.
+## What This Repo Is
+This repository is an artifact-first, stage-gated pipeline for OCO research and governance.  
+The strategy lifecycle is encoded as reproducible scripts + generated artifacts + docs contracts.
 
-## 1. Architecture
-The codebase operates as a script-orchestrated pipeline generating static, rolling artifacts:
-- **Ticks to Features**: Processes tick streams into highly structured ML datasets.
-- **Model Training**: WFO orchestration trains and cross-validates tree-based scoring thresholds.
-- **Stop-Limit Scenarios**: Offline simulation (S04) ensures predictive edges survive realistic execution latency and exact-tick fill rates.
-- **Governance**: Models achieving necessary criteria freeze generating static policy maps (`_oco_live_lock.json` and `_oco_allowed_states.csv`).
-- **Docs Contracts**: All strategy changes are gated via programmatic, artifact-driven assertions tracking strategy documentation.
+## Source of Truth
+For strategy behavior and operating policy, use:
+- `docs/STRATEGY_MASTER_MANUAL.md`
+- `docs/strategy_bible/`
+- `docs/analysis/`
 
-## 2. Quickstart
+`README.md` is onboarding-level and intentionally high level.
 
-### Data Pipelines
-To onboard and execute the full routine for a symbol:
+Artifact priority (highest first):
+1. `data/analysis/tick_opportunity_mining/*` governed artifacts
+2. `docs/strategy_bible/generated/*` snapshots
+3. `docs/analysis/*` governed reports
+4. narrative docs (`README.md`, manuals)
+
+## Active Symbol Universe
+- `EURUSD`
+- `GBPUSD`
+- `USDJPY`
+- `USDCHF`
+- `AUDUSD`
+- `USDCAD`
+
+## Docs-Driven Contract: What It Guarantees
+`scripts/validate_oco_docs_contract.py` enforces that:
+- required docs/snapshots exist and are structurally complete,
+- core governance/report artifacts are present, recent, and schema-valid,
+- rule-universe and monitoring explainability/disposition artifacts are coherent.
+
+## Docs-Driven Contract: What It Does Not Guarantee
+A passing docs contract alone does not mean all symbols are deploy-ready.  
+Always verify symbol-level governance posture in:
+- `docs/strategy_bible/generated/stage_09_snapshot.md`
+- `docs/analysis/operator_action_report.md`
+- `docs/analysis/oco_alert_remediation_report.md`
+
+## Core Operator Commands
 ```bash
-python scripts/onboard_symbol.py
-```
+# Refresh docs/governance contracts
+make docs-contract-ci
 
-### Automated Documentation and Reporting
-Regenerate all system reference endpoints, diagnostic tables, and validation tests:
-```bash
+# Build docs site
+uv run mkdocs build --strict
+
+# Serve docs locally
 make docs
 ```
 
-## 3. Operations
-For execution details, architecture flows, and the comprehensive "Strategy Bible", please run `make docs` and view the generated MkDocs site using:
+## Governance Freeze
 ```bash
-mkdocs serve
+# Freeze governance locks for all active symbols (defaults to registry symbols)
+uv run python scripts/freeze_oco_live_governance.py
 ```
+
+Registry source:
+- `configs/research/governance/oco_rule_universe_registry.yaml`
+
+## Practical Release Check (Short)
+1. Run `make docs-contract-ci`.
+2. Confirm Stage 9 predeploy coverage has no missing symbols.
+3. Confirm no unresolved red/high blockers in operator/remediation reports.
+4. Rebuild docs with `uv run mkdocs build --strict`.

@@ -67,6 +67,25 @@ def _split_csv(raw: str) -> list[str]:
     return [x.strip().upper() for x in str(raw).split(",") if x.strip()]
 
 
+def _symbols_from_registry(path: Path) -> list[str]:
+    if not path.exists():
+        return []
+    obj = _load_yaml(path)
+    raw = obj.get("symbols", [])
+    if not isinstance(raw, list):
+        return []
+    out = [str(x).strip().upper() for x in raw if str(x).strip()]
+    return list(dict.fromkeys(out))
+
+
+def _subset_omissions(selected: list[str], universe: list[str]) -> list[str]:
+    sel = set(selected)
+    uni = set(universe)
+    if not sel or not uni:
+        return []
+    return sorted(list(uni - sel)) if sel < uni else []
+
+
 def _pick_first_existing(*paths: Path) -> Path:
     for p in paths:
         if p.exists():
@@ -356,10 +375,23 @@ def run(
 
 
 def main() -> None:
+    default_symbols = "EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD"
     p = argparse.ArgumentParser(description="Freeze OCO live governance artifacts")
-    p.add_argument("--symbols", default="EURUSD,GBPUSD")
+    p.add_argument(
+        "--symbols",
+        default="",
+        help=(
+            "Comma-separated symbols. If omitted, symbols are loaded from "
+            "--registry-yaml (fallback to active six-symbol default)."
+        ),
+    )
     p.add_argument("--out-dir", default="configs/research/governance/oco")
     p.add_argument("--policy-config", default="configs/research/governance/oco_live_policy.yaml")
+    p.add_argument(
+        "--registry-yaml",
+        default="configs/research/governance/oco_rule_universe_registry.yaml",
+        help="Rule-universe registry used as default symbol source.",
+    )
     p.add_argument("--cadence-days", type=int, default=30)
     p.add_argument(
         "--anchor-day-utc", type=int, default=1, help="Calendar day-of-month retrain anchor"
@@ -374,7 +406,24 @@ def main() -> None:
     )
     args = p.parse_args()
 
-    syms = _split_csv(str(args.symbols))
+    reg_path = Path(str(args.registry_yaml))
+    registry_symbols = _symbols_from_registry(reg_path)
+    explicit_symbols = bool(str(args.symbols).strip())
+    if explicit_symbols:
+        syms = _split_csv(str(args.symbols))
+        omitted = _subset_omissions(syms, registry_symbols)
+        if omitted:
+            print(
+                "warning: --symbols is a subset of registry symbols; omitted="
+                + ",".join(omitted)
+            )
+    elif registry_symbols:
+        syms = registry_symbols
+    else:
+        syms = _split_csv(default_symbols)
+        print(
+            "warning: registry symbols unavailable; falling back to built-in active default symbols"
+        )
     cadence_days = int(args.cadence_days)
     anchor_day_utc = int(args.anchor_day_utc)
     window_days = int(args.window_days)

@@ -146,7 +146,7 @@ flowchart TD
 ## Reproduction Commands
 ```bash
 uv run python scripts/analyze_oco_stop_limit_tickfill.py \
-  --symbols EURUSD,GBPUSD,USDJPY,USDCHF
+  --symbols EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD
 uv run python scripts/build_oco_execution_drift_report.py
 
 uv run python scripts/build_oco_strategy_bible.py \
@@ -163,7 +163,7 @@ uv run python scripts/build_oco_strategy_bible.py \
 <!-- GENERATED:STAGE_04:START -->
 ### Auto Snapshot - Stage 04
 
-- generated_at: `2026-03-05 16:30:22 UTC`
+- generated_at: `2026-03-05 20:17:32 UTC`
 - Execution realism is applied with tick first-cross overshoot.
 - Session-aware rolling caps are built causally (20D lookback, q=0.90) before E11 dispersion is measured.
 - Cap curve highlights fill-rate versus signal-level expectancy.

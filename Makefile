@@ -51,8 +51,11 @@ retrain-all:
 	@echo "══════════════════════════════════════════"
 	@for sym in $(REBUILD_SYMBOLS); do \
 		echo "\n=== Retraining $$sym ==="; \
-		uv run python scripts/onboard_symbol.py --symbol $$sym --skip-data --skip-docs --model-export-dir models/oco || exit 1; \
+		uv run python scripts/onboard_symbol.py --symbol $$sym --skip-data --skip-docs --skip-registration --model-export-dir models/oco || exit 1; \
 	done
+	@echo "\n=== Running Stage-1 data reliability audit (all active symbols) ==="
+	uv run python scripts/audit_data_reliability.py \
+		--symbols $(shell echo $(REBUILD_SYMBOLS) | sed 's/ /,/g')
 	@echo "\n=== Running docs-contract ==="
 	$(MAKE) docs-contract
 	@echo "\n=== Building mkdocs ==="
@@ -66,8 +69,11 @@ rebuild-all:
 	@echo "══════════════════════════════════════════"
 	@for sym in $(REBUILD_SYMBOLS); do \
 		echo "\n=== Rebuilding $$sym ==="; \
-		uv run python scripts/onboard_symbol.py --symbol $$sym --months $(MONTHS) --force --skip-docs || exit 1; \
+		uv run python scripts/onboard_symbol.py --symbol $$sym --months $(MONTHS) --force --skip-docs --skip-registration || exit 1; \
 	done
+	@echo "\n=== Running Stage-1 data reliability audit (all active symbols) ==="
+	uv run python scripts/audit_data_reliability.py \
+		--symbols $(shell echo $(REBUILD_SYMBOLS) | sed 's/ /,/g')
 	@echo "\n=== Running docs-contract ==="
 	$(MAKE) docs-contract
 	@echo "\n=== Building mkdocs ==="

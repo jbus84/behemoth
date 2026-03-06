@@ -24,7 +24,7 @@ Strategy decisions must be based on refreshed artifacts (freshness SLA in Stage 
 ## Rolling Historical Evidence
 
 <!-- GENERATED:SYSREF:RISK_CONTROLS:START -->
-- generated_at_utc: `2026-03-05T16:30:52Z`
+- generated_at_utc: `2026-03-05T20:18:12Z`
 - symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD`
 - stop-limit_reference: `stage_04_execution_realism`
 - artifact_sources:

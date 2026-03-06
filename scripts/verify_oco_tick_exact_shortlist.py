@@ -96,6 +96,43 @@ def _parse_uid_cols(uids: pd.Series) -> pd.DataFrame:
     return out
 
 
+def _normalize_shortlist_states(states: pd.DataFrame, *, symbol: str) -> pd.DataFrame:
+    x = states.copy()
+    if "symbol" in x.columns:
+        x = x[x["symbol"].astype(str).str.upper() == str(symbol).upper()].copy()
+    if "test_month" in x.columns:
+        months = x["test_month"].dropna().astype(str).str.strip()
+        months = months[(months != "") & (months.str.lower() != "nan")]
+        if not months.empty:
+            latest_month = sorted(months.unique().tolist())[-1]
+            x = x[x["test_month"].astype(str).str.strip() == latest_month].copy()
+    return x
+
+
+def _default_shortlist_candidates(symbol: str) -> list[Path]:
+    s = str(symbol).upper().strip()
+    sl = s.lower()
+    return [
+        Path(f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_reduced_state_schedule.csv"),
+        Path(f"configs/research/governance/oco/{sl}_oco_allowed_states.csv"),
+        Path(f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_reduced_states.csv"),
+    ]
+
+
+def _resolve_shortlist_state_csv(raw_path: str | None, *, symbol: str) -> Path:
+    raw = str(raw_path or "").strip()
+    p = Path(raw) if raw else None
+    default_p = Path(DEFAULTS["shortlist_state_csv"])
+    if p is not None and p.exists() and p != default_p:
+        return p
+    for cand in _default_shortlist_candidates(symbol):
+        if cand.exists():
+            return cand
+    if p is not None:
+        return p
+    return _default_shortlist_candidates(symbol)[0]
+
+
 def _select_month_q(d: pd.DataFrame, q: float) -> pd.DataFrame:
     out: list[pd.DataFrame] = []
     for _m, g in d.groupby("test_month", sort=True):
@@ -321,9 +358,12 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     sample_rows_per_combo = int(cfg.get("sample_rows_per_combo", DEFAULTS["sample_rows_per_combo"]))
     pip = float(_pip_size(symbol))
 
-    states = pd.read_csv(
-        str(cfg.get("shortlist_state_csv", DEFAULTS["shortlist_state_csv"]))
-    ).copy()
+    shortlist_path = _resolve_shortlist_state_csv(
+        str(cfg.get("shortlist_state_csv", DEFAULTS["shortlist_state_csv"])),
+        symbol=symbol,
+    )
+    states = pd.read_csv(shortlist_path).copy()
+    states = _normalize_shortlist_states(states, symbol=symbol)
     need_state = {"bar_ticks", "horizon", "state_id"}
     miss_state = [c for c in need_state if c not in states.columns]
     if miss_state:
@@ -334,7 +374,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     states["horizon"] = pd.to_numeric(states["horizon"], errors="coerce").astype("Int64")
     states = states.dropna(subset=["bar_ticks", "horizon", "state_id"]).copy()
     if states.empty:
-        raise RuntimeError("shortlist state table empty after filtering")
+        raise RuntimeError(f"shortlist state table empty after filtering: {shortlist_path}")
     if "barrier_pips" not in states.columns:
         states["barrier_pips"] = states["state_id"].astype(str).map(_parse_barrier_from_state)
 
@@ -527,6 +567,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     lines.append(f"- oco_hold_mode: `{oco_hold_mode}`")
     lines.append(f"- oco_include_no_touch: `{oco_include_no_touch}`")
     lines.append(f"- abs_tol_pips: `{abs_tol}`")
+    lines.append(f"- shortlist_state_csv: `{shortlist_path}`")
     lines.append("")
     lines.append("## Summary")
     lines.append(summary.to_markdown(index=False) if not summary.empty else "_empty_")

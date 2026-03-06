@@ -74,7 +74,7 @@ Stress-test stop-limit execution realism using month x session Monte Carlo scena
 ## Reproduction Commands
 ```bash
 uv run python scripts/run_execution_monte_carlo.py \
-  --symbols EURUSD,GBPUSD,USDJPY,USDCHF
+  --symbols EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD
 
 uv run python scripts/validate_execution_monte_carlo.py
 ```
@@ -89,7 +89,7 @@ uv run python scripts/validate_execution_monte_carlo.py
 <!-- GENERATED:STAGE_11:START -->
 ### Auto Snapshot - Stage 11
 
-- generated_at: `2026-03-05 16:30:22 UTC`
+- generated_at: `2026-03-05 20:17:32 UTC`
 - Execution Monte Carlo uses month x session stress scenarios derived from Stage 04 tickfill artifacts.
 - EM01-EM05 summarize mild/moderate survival, month negativity risk, fill-rate decay, and data integrity.
 

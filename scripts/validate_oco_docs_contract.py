@@ -22,6 +22,7 @@ except Exception:
 @dataclass(frozen=True)
 class Thresholds:
     max_age_hours: float = 24.0 * 7.0
+    fail_if_any_symbol_gate_fails: bool = False
 
 
 REQUIRED_STAGE_DOCS = {
@@ -424,6 +425,25 @@ def _parse_symbols(raw: str) -> list[str]:
     return [x.strip().upper() for x in str(raw).split(",") if x.strip()]
 
 
+def _load_registry_symbols(path: Path) -> set[str]:
+    if yaml is None or not path.exists():
+        return set()
+    try:
+        obj = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except Exception:
+        return set()
+    if not isinstance(obj, dict):
+        return set()
+    raw = obj.get("symbols", [])
+    if not isinstance(raw, list):
+        return set()
+    return {str(x).strip().upper() for x in raw if str(x).strip()}
+
+
+def _as_bool(s: pd.Series) -> pd.Series:
+    return s.astype(str).str.strip().str.lower().isin({"1", "true", "t", "yes", "y"})
+
+
 def _count_machine_local_path_tokens(text: str) -> int:
     if not text:
         return 0
@@ -576,6 +596,33 @@ def _max_details_rows_in_snapshot(path: Path) -> int:
         else:
             i += 1
     return max_rows
+
+
+def _parse_markdown_table_after_heading(text: str, heading: str) -> pd.DataFrame:
+    i = text.find(heading)
+    if i < 0:
+        return pd.DataFrame()
+    tail = text[i + len(heading) :].splitlines()
+    table_lines: list[str] = []
+    started = False
+    for line in tail:
+        s = line.strip()
+        if s.startswith("|"):
+            table_lines.append(s)
+            started = True
+            continue
+        if started:
+            break
+    if len(table_lines) < 3:
+        return pd.DataFrame()
+    header = [c.strip() for c in table_lines[0].strip("|").split("|")]
+    rows: list[dict[str, str]] = []
+    for line in table_lines[2:]:
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        if len(cells) < len(header):
+            cells.extend([""] * (len(header) - len(cells)))
+        rows.append({k: v for k, v in zip(header, cells[: len(header)], strict=False)})
+    return pd.DataFrame(rows)
 
 
 def run(
@@ -1373,7 +1420,7 @@ def run(
     stage_integrity_checks_csv = edge_metrics_csv.parent / "oco_stage_integrity_checks.csv"
     stage_integrity_issues_csv = edge_metrics_csv.parent / "oco_stage_integrity_issues.csv"
     stage_integrity_report_md = docs_root.parent / "analysis" / "oco_stage_integrity_report.md"
-    
+
     # Also load quantitative audits to catch structural pipeline fails in the docs contract
     quant_audit_files = [
         stage_integrity_checks_csv,
@@ -1381,7 +1428,7 @@ def run(
         edge_metrics_csv.parent / "oco_logical_audit_checks.csv",
         edge_metrics_csv.parent / "oco_leakage_integrity_checks.csv",
     ]
-    
+
     si_dfs = []
     for f in quant_audit_files:
         try:
@@ -1389,7 +1436,7 @@ def run(
                 si_dfs.append(pd.read_csv(f))
         except Exception:
             pass
-            
+
     si = pd.concat(si_dfs, ignore_index=True) if si_dfs else pd.DataFrame()
 
     missing_si_cols = [c for c in STAGE_INTEGRITY_REQUIRED_COLUMNS if c not in si.columns]
@@ -1449,7 +1496,11 @@ def run(
         if (not drift.empty and "symbol" in drift.columns)
         else set()
     )
+    registry_yaml = Path("configs/research/governance/oco_rule_universe_registry.yaml")
+    registry_syms = _load_registry_symbols(registry_yaml)
     expected_syms = set(status_syms) if status_syms else set(SYSREF_REQUIRED_SYMBOLS)
+    if registry_syms:
+        expected_syms = expected_syms & registry_syms if expected_syms else set(registry_syms)
     _add_check(
         checks_rows,
         check_id="C31",
@@ -2249,6 +2300,140 @@ def run(
         + "|".join(stage01_missing_terms),
     )
 
+    # C52: Stage 09 predeploy coverage must include all expected symbols once snapshot table exists.
+    stage09_snapshot = generated_root / "stage_09_snapshot.md"
+    stage09_txt = (
+        stage09_snapshot.read_text(encoding="utf-8", errors="ignore")
+        if stage09_snapshot.exists()
+        else ""
+    )
+    predeploy_df = _parse_markdown_table_after_heading(stage09_txt, "#### Predeploy Validator Status")
+    predeploy_has_table = not predeploy_df.empty
+    missing_predeploy_files: list[str] = []
+    missing_predeploy_rows: list[str] = []
+    if predeploy_has_table:
+        for sym in sorted(expected_syms):
+            if not list(edge_metrics_csv.parent.glob(f"{sym.lower()}_governance_predeploy*.json")):
+                missing_predeploy_files.append(sym)
+        if {"symbol", "failed_checks"}.issubset(set(predeploy_df.columns)):
+            x = predeploy_df.copy()
+            x["symbol"] = x["symbol"].astype(str).str.upper().str.strip()
+            x["failed_checks"] = x["failed_checks"].astype(str)
+            missing_predeploy_rows = sorted(
+                x[
+                    x["symbol"].isin(expected_syms)
+                    & x["failed_checks"].str.contains("missing_predeploy_json", case=False, regex=False)
+                ]["symbol"].unique().tolist()
+            )
+        if {"symbol", "status"}.issubset(set(predeploy_df.columns)):
+            x = predeploy_df.copy()
+            x["symbol"] = x["symbol"].astype(str).str.upper().str.strip()
+            x["status"] = x["status"].astype(str).str.lower().str.strip()
+            missing_predeploy_rows = sorted(
+                list(
+                    set(missing_predeploy_rows)
+                    | set(
+                        x[
+                            x["symbol"].isin(expected_syms)
+                            & x["status"].isin(["missing", "fail"])
+                            & x.get("failed_checks", pd.Series(index=x.index, dtype=str))
+                            .astype(str)
+                            .str.contains("missing_predeploy_json", case=False, regex=False)
+                        ]["symbol"].tolist()
+                    )
+                )
+            )
+    c52_violations = sorted(list(set(missing_predeploy_files) | set(missing_predeploy_rows)))
+    _add_check(
+        checks_rows,
+        check_id="C52",
+        check_name="stage09_predeploy_json_coverage_for_expected_symbols",
+        passed=(not predeploy_has_table) or (len(c52_violations) == 0),
+        severity_if_fail="high",
+        metric_name="missing_predeploy_symbol_coverage",
+        metric_value=int(len(c52_violations)),
+        threshold=0,
+        comparator="==",
+        source_path=stage09_snapshot,
+        details=json.dumps(
+            {
+                "predeploy_table_present": predeploy_has_table,
+                "expected_symbols": sorted(list(expected_syms)),
+                "missing_predeploy_files": missing_predeploy_files,
+                "missing_predeploy_rows": missing_predeploy_rows,
+                "violations": c52_violations,
+            },
+            sort_keys=True,
+        ),
+    )
+
+    # C53: Governance diagnostics g01/g03 must be non-NaN once predeploy status table exists.
+    g_nan_rows: list[str] = []
+    if predeploy_has_table and {"symbol", "g01_near_fail_count", "g03_lock_drift_flags"}.issubset(
+        set(predeploy_df.columns)
+    ):
+        x = predeploy_df.copy()
+        x["symbol"] = x["symbol"].astype(str).str.upper().str.strip()
+        g01 = x["g01_near_fail_count"].astype(str).str.strip().str.lower()
+        g03 = x["g03_lock_drift_flags"].astype(str).str.strip().str.lower()
+        nan_mask = g01.isin(["nan", "", "none"]) | g03.isin(["nan", "", "none"])
+        g_nan_rows = sorted(x[x["symbol"].isin(expected_syms) & nan_mask]["symbol"].unique().tolist())
+    _add_check(
+        checks_rows,
+        check_id="C53",
+        check_name="stage09_governance_diagnostics_non_nan_for_expected_symbols",
+        passed=(not predeploy_has_table) or (len(g_nan_rows) == 0),
+        severity_if_fail="high",
+        metric_name="nan_governance_diagnostics_rows",
+        metric_value=int(len(g_nan_rows)),
+        threshold=0,
+        comparator="==",
+        source_path=stage09_snapshot,
+        details=json.dumps(
+            {
+                "predeploy_table_present": predeploy_has_table,
+                "expected_symbols": sorted(list(expected_syms)),
+                "nan_rows": g_nan_rows,
+            },
+            sort_keys=True,
+        ),
+    )
+
+    # C54: Optional strict mode to fail docs contract when any expected symbol fails stage gates.
+    strict_mode = bool(thresholds.fail_if_any_symbol_gate_fails)
+    strict_gate_fails: list[str] = []
+    if strict_mode and not stage_status.empty and {"symbol", "symbol_all_gates_pass"}.issubset(
+        set(stage_status.columns)
+    ):
+        st = stage_status.copy()
+        st["symbol"] = st["symbol"].astype(str).str.upper().str.strip()
+        st["symbol_all_gates_pass"] = _as_bool(st["symbol_all_gates_pass"])
+        strict_gate_fails = sorted(
+            st[
+                st["symbol"].isin(expected_syms) & (~st["symbol_all_gates_pass"])
+            ]["symbol"].unique().tolist()
+        )
+    _add_check(
+        checks_rows,
+        check_id="C54",
+        check_name="optional_strict_all_symbol_gate_pass",
+        passed=(not strict_mode) or (len(strict_gate_fails) == 0),
+        severity_if_fail="high",
+        metric_name="strict_mode_symbol_gate_fail_count",
+        metric_value=int(len(strict_gate_fails)),
+        threshold=0,
+        comparator="==",
+        source_path=stage_status_csv,
+        details=json.dumps(
+            {
+                "strict_mode_enabled": strict_mode,
+                "expected_symbols": sorted(list(expected_syms)),
+                "failing_symbols": strict_gate_fails,
+            },
+            sort_keys=True,
+        ),
+    )
+
     checks = pd.DataFrame(checks_rows)
     checks = checks.sort_values(["check_id"]).reset_index(drop=True)
 
@@ -2329,6 +2514,14 @@ def main() -> None:
     p.add_argument("--mkdocs-yml", default="mkdocs.yml")
     p.add_argument("--max-age-hours", type=float, default=24.0 * 7.0)
     p.add_argument(
+        "--fail-if-any-symbol-gates-fail",
+        action="store_true",
+        help=(
+            "Optional strict mode: fail docs contract when any expected symbol has "
+            "symbol_all_gates_pass != true."
+        ),
+    )
+    p.add_argument(
         "--out-checks-csv", default="data/analysis/tick_opportunity_mining/docs_contract_checks.csv"
     )
     p.add_argument(
@@ -2348,7 +2541,10 @@ def main() -> None:
         out_checks_csv=Path(str(args.out_checks_csv)),
         out_issues_csv=Path(str(args.out_issues_csv)),
         out_report_md=Path(str(args.report_out)),
-        thresholds=Thresholds(max_age_hours=float(args.max_age_hours)),
+        thresholds=Thresholds(
+            max_age_hours=float(args.max_age_hours),
+            fail_if_any_symbol_gate_fails=bool(args.fail_if_any_symbol_gates_fail),
+        ),
     )
 
     failed = (

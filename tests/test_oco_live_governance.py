@@ -6,7 +6,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from scripts.freeze_oco_live_governance import _state_universe
+from scripts.freeze_oco_live_governance import (
+    _state_universe,
+    _subset_omissions,
+    _symbols_from_registry,
+)
 from scripts.validate_oco_live_governance import run
 
 
@@ -42,6 +46,32 @@ def test_state_universe_hash_stable_under_row_order(tmp_path: Path) -> None:
     _, h1 = _state_universe(p1)
     _, h2 = _state_universe(p2)
     assert h1 == h2
+
+
+def test_symbols_from_registry_parses_and_normalizes(tmp_path: Path) -> None:
+    registry = tmp_path / "registry.yaml"
+    registry.write_text(
+        "\n".join(
+            [
+                "symbols:",
+                "  - eurusd",
+                "  - GBPUSD",
+                "  - EURUSD",
+                "  - usdcad",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    symbols = _symbols_from_registry(registry)
+    assert symbols == ["EURUSD", "GBPUSD", "USDCAD"]
+
+
+def test_subset_omissions_reports_missing_registry_symbols() -> None:
+    omitted = _subset_omissions(
+        selected=["EURUSD", "GBPUSD"],
+        universe=["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"],
+    )
+    assert omitted == ["AUDUSD", "USDJPY"]
 
 
 def test_validate_lock_deploy_and_retrain_window(tmp_path: Path) -> None:
@@ -192,6 +222,169 @@ def test_validate_lock_deploy_and_retrain_window(tmp_path: Path) -> None:
         reduced_config=reduced,
     )
     assert not ok_retrain_bad
+
+
+def test_validate_lock_state_csv_defaults_to_lock_artifact_latest_month(tmp_path: Path) -> None:
+    wfo = tmp_path / "wfo.yaml"
+    reduced = tmp_path / "reduced.yaml"
+    states_schedule = tmp_path / "states_schedule.csv"
+    wfo.write_text(
+        "\n".join(
+            [
+                "threshold_mode: rolling_days",
+                "rolling_threshold_days: 20",
+                "rolling_threshold_min_history: 1000",
+                "execution_quantile: 0.9",
+                "oco_hold_mode: from_touch",
+                "oco_include_no_touch: true",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    reduced.write_text(
+        "\n".join(
+            [
+                "locked_quantile: 0.9",
+                "selection_mode: auto",
+                "family_keep: oco_first_touch_clean",
+                'barrier_keep: "2,3"',
+                'horizon_keep: "5,6"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    pd.DataFrame(
+        [
+            {
+                "test_month": "2026-01",
+                "symbol": "EURUSD",
+                "bar_ticks": 100,
+                "horizon": 5,
+                "state_id": "s1",
+                "family": "oco_first_touch_clean",
+                "barrier_pips": 2.0,
+                "regime_desc": "r1",
+            },
+            {
+                "test_month": "2026-01",
+                "symbol": "EURUSD",
+                "bar_ticks": 100,
+                "horizon": 6,
+                "state_id": "s2",
+                "family": "oco_first_touch_clean",
+                "barrier_pips": 3.0,
+                "regime_desc": "r2",
+            },
+            {
+                "test_month": "2025-12",
+                "symbol": "EURUSD",
+                "bar_ticks": 100,
+                "horizon": 6,
+                "state_id": "legacy_extra",
+                "family": "oco_first_touch_clean",
+                "barrier_pips": 2.0,
+                "regime_desc": "legacy",
+            },
+            {
+                "test_month": "2026-01",
+                "symbol": "GBPUSD",
+                "bar_ticks": 100,
+                "horizon": 6,
+                "state_id": "other_symbol",
+                "family": "oco_first_touch_clean",
+                "barrier_pips": 2.0,
+                "regime_desc": "other",
+            },
+        ]
+    ).to_csv(states_schedule, index=False)
+    preds = tmp_path / "predictions.parquet"
+    preds.write_bytes(b"dummy_predictions")
+    model_cbm = tmp_path / "EURUSD_model_2026-02.cbm"
+    model_cbm.write_bytes(b"dummy_model")
+    model_thr = tmp_path / "EURUSD_model_2026-02.json"
+    model_thr.write_text('{"model_month":"2026-02"}', encoding="utf-8")
+    te_summary = tmp_path / "tick_exact_summary.csv"
+    te_summary.write_text("overall_pass\nTrue\n", encoding="utf-8")
+
+    def _sha(path: Path) -> str:
+        import hashlib
+
+        h = hashlib.sha256()
+        h.update(path.read_bytes())
+        return h.hexdigest()
+
+    lock = {
+        "frozen_at_utc": "2026-02-25T00:00:00+00:00",
+        "symbol": "EURUSD",
+        "git": {"commit": "abc123", "branch": "main", "dirty": False},
+        "artifacts": {
+            "wfo_config_path": str(wfo),
+            "wfo_config_sha256": _sha(wfo),
+            "reduced_config_path": str(reduced),
+            "reduced_config_sha256": _sha(reduced),
+            "reduced_states_csv_path": str(states_schedule),
+            "reduced_states_csv_sha256": _sha(states_schedule),
+            "predictions_path": str(preds),
+            "predictions_sha256": _sha(preds),
+            "model_cbm_path": str(model_cbm),
+            "model_cbm_sha256": _sha(model_cbm),
+            "model_threshold_json_path": str(model_thr),
+            "model_threshold_json_sha256": _sha(model_thr),
+            "model_month": "2026-02",
+            "tick_exact_summary_path": str(te_summary),
+            "tick_exact_summary_sha256": _sha(te_summary),
+            "tick_exact_overall_pass": True,
+        },
+        "locked_runtime": {
+            "threshold_mode": "rolling_days",
+            "rolling_threshold_days": 20,
+            "rolling_threshold_min_history": 1000,
+            "execution_quantile": 0.9,
+            "oco_hold_mode": "from_touch",
+            "oco_include_no_touch": True,
+            "locked_quantile": 0.9,
+            "selection_mode": "auto",
+            "family_keep": "oco_first_touch_clean",
+            "barrier_keep": "2,3",
+            "horizon_keep": "5,6",
+        },
+        "state_universe": {
+            "rows": [
+                {
+                    "symbol": "EURUSD",
+                    "bar_ticks": 100,
+                    "horizon": 5,
+                    "state_id": "s1",
+                    "family": "oco_first_touch_clean",
+                    "barrier_pips": 2.0,
+                    "regime_desc": "r1",
+                },
+                {
+                    "symbol": "EURUSD",
+                    "bar_ticks": 100,
+                    "horizon": 6,
+                    "state_id": "s2",
+                    "family": "oco_first_touch_clean",
+                    "barrier_pips": 3.0,
+                    "regime_desc": "r2",
+                },
+            ]
+        },
+        "retrain_policy": {"cadence_days": 30, "window_days": 3},
+    }
+    lock_path = tmp_path / "lock.json"
+    lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+    ok_deploy, checks_out, _ = run(
+        lock_path=lock_path,
+        mode="deploy",
+        as_of=date(2026, 2, 26),
+        state_csv=None,
+        wfo_config=wfo,
+        reduced_config=reduced,
+    )
+    assert ok_deploy
+    assert any(c.name == "state_universe_exact_match" and c.ok for c in checks_out)
 
 
 def test_validate_lock_blocks_on_high_data_reliability_fail(tmp_path: Path) -> None:

@@ -1,7 +1,7 @@
 {
   "artifacts": {
     "capacity_overall_pass": true,
-    "live_deployable": false,
+    "live_deployable": true,
     "model_cbm_path": "models/oco/AUDUSD_model_2025-12.cbm",
     "model_cbm_sha256": "d5e704019e5a711155b4327f17848d044ab09ea20594936086bc07e8fe56914c",
     "model_month": "2025-12",
@@ -15,9 +15,9 @@
     "reduced_states_csv_sha256": "869e4ec309e938097a4713b9cb0f4af22b2cc250297201532752798b5ed93e65",
     "reduced_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/AUDUSD_oco_reduced_summary.csv",
     "reduced_summary_sha256": "965f1dc2be6f5b6c9451b37222e9e0398688ebfeb2a42ec72b28fa6b63049bd4",
-    "tick_exact_overall_pass": false,
+    "tick_exact_overall_pass": true,
     "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/AUDUSD_oco_tick_exact_summary.csv",
-    "tick_exact_summary_sha256": "ae4b4d5dd587b88db806983a23d81a5eaea07a4e7b5b4c78b95d59b0936b8249",
+    "tick_exact_summary_sha256": "78f4d546d39470fc7f248d29faa9bd8777692ace75042e351e9190962c6a2b18",
     "wfo_config_path": "configs/research/experiments/audusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
     "wfo_config_sha256": "0dbf25e73649bf874c06064c26b25d02d1369f8bb0cecf23952087b6e24ff882"
   },

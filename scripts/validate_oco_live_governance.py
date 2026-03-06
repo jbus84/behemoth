@@ -59,6 +59,24 @@ def _states_key(df: pd.DataFrame) -> pd.DataFrame:
     return x
 
 
+def _normalize_live_state_frame(df: pd.DataFrame, *, lock_symbol: str) -> pd.DataFrame:
+    x = df.copy()
+    if "symbol" in x.columns and lock_symbol:
+        x = x[x["symbol"].astype(str).str.upper() == lock_symbol].copy()
+    if "test_month" in x.columns:
+        months = (
+            x["test_month"]
+            .dropna()
+            .astype(str)
+            .str.strip()
+        )
+        months = months[(months != "") & (months.str.lower() != "nan")]
+        if not months.empty:
+            latest_month = sorted(months.unique().tolist())[-1]
+            x = x[x["test_month"].astype(str).str.strip() == latest_month].copy()
+    return x
+
+
 def _parse_date(raw: str | None) -> date:
     if raw and str(raw).strip():
         return datetime.strptime(str(raw).strip(), "%Y-%m-%d").date()
@@ -91,6 +109,7 @@ def run(
 ) -> tuple[bool, list[Check], dict[str, Any]]:
     lock = json.loads(lock_path.read_text(encoding="utf-8"))
     checks: list[Check] = []
+    lock_symbol = str(lock.get("symbol", "")).upper().strip()
 
     artifacts = lock.get("artifacts", {})
     # Integrity checks against frozen paths and hashes.
@@ -234,8 +253,14 @@ def run(
             )
 
     # State universe check (exact key-set match).
-    if state_csv is not None and state_csv.exists():
-        live = _states_key(pd.read_csv(state_csv))
+    effective_state_csv = state_csv
+    if effective_state_csv is None:
+        p_txt = str(artifacts.get("reduced_states_csv_path", "")).strip()
+        if p_txt:
+            effective_state_csv = Path(p_txt)
+    if effective_state_csv is not None and effective_state_csv.exists():
+        live_raw = pd.read_csv(effective_state_csv)
+        live = _states_key(_normalize_live_state_frame(live_raw, lock_symbol=lock_symbol))
         frozen = _states_key(pd.DataFrame(lock.get("state_universe", {}).get("rows", [])))
         live_key = set(map(tuple, live.to_records(index=False).tolist()))
         frozen_key = set(map(tuple, frozen.to_records(index=False).tolist()))
@@ -247,7 +272,6 @@ def run(
         )
 
     # Data reliability gate (high/critical failures block deploy/retrain).
-    lock_symbol = str(lock.get("symbol", "")).upper().strip()
     if data_reliability_checks_csv is not None:
         if not data_reliability_checks_csv.exists():
             checks.append(

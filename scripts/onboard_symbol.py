@@ -175,19 +175,19 @@ def stage_2_ml_pipeline(symbol: str, *, model_export_dir: str | None = None, dry
     sym = symbol.lower()
 
     _uv_run(
-        "build_tick_opportunity_ml_dataset.py",
-        "--config",
-        f"configs/research/experiments/{sym}_tick_opportunity_ml_dataset.yaml",
-        dry_run=dry_run,
-        label="Stage 2a: Build ML dataset",
-    )
-
-    _uv_run(
         "run_tick_opportunity_mining.py",
         "--config",
         f"configs/research/experiments/{sym}_tick_opportunity_mining.yaml",
         dry_run=dry_run,
-        label="Stage 2b: Opportunity mining",
+        label="Stage 2a: Opportunity mining",
+    )
+
+    _uv_run(
+        "build_tick_opportunity_ml_dataset.py",
+        "--config",
+        f"configs/research/experiments/{sym}_tick_opportunity_ml_dataset.yaml",
+        dry_run=dry_run,
+        label="Stage 2b: Build ML dataset",
     )
 
     wfo_args_base = [
@@ -269,6 +269,8 @@ def stage_3_conditional(symbol: str, *, dry_run: bool) -> None:
         "verify_oco_tick_exact_shortlist.py",
         "--config",
         f"configs/research/experiments/{sym}_oco_reduced_core_rolling_2025.yaml",
+        "--shortlist-state-csv",
+        f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{SYM}_oco_reduced_state_schedule.csv",
         "--out-summary-csv",
         f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{SYM}_oco_tick_exact_summary.csv",
         "--out-monthly-csv",
@@ -513,6 +515,11 @@ Examples:
     )
     p.add_argument("--skip-data", action="store_true", help="Skip Stage 0 (data acquisition)")
     p.add_argument("--skip-ml", action="store_true", help="Skip Stage 2 (ML pipeline)")
+    p.add_argument(
+        "--skip-registration",
+        action="store_true",
+        help="Skip Stage 4 (registration + governance freeze).",
+    )
     p.add_argument("--skip-docs", action="store_true", help="Skip Stage 5 (docs rebuild)")
     p.add_argument("--dry-run", action="store_true", help="Print commands without executing")
     p.add_argument("--force", action="store_true", help="Force re-download/rebuild all stages")
@@ -564,7 +571,10 @@ Examples:
     stage_3_conditional(symbol, dry_run=args.dry_run)
 
     # Stage 4
-    stage_4_registration(symbol, dry_run=args.dry_run)
+    if not args.skip_registration:
+        stage_4_registration(symbol, dry_run=args.dry_run)
+    else:
+        print("\n  --- Stage 4 skipped (--skip-registration) ---")
 
     # Stage 5
     if not args.skip_docs:

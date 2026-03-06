@@ -124,7 +124,7 @@ flowchart TD
 ## Reproduction Commands
 ```bash
 uv run python scripts/select_oco_reduced_core_rolling.py \
-  --symbols EURUSD,GBPUSD,USDJPY,USDCHF
+  --symbols EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD
 uv run python scripts/validate_oco_rule_universe_registry.py
 ```
 
@@ -139,7 +139,7 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 <!-- GENERATED:STAGE_05:START -->
 ### Auto Snapshot - Stage 05
 
-- generated_at: `2026-03-05 16:30:22 UTC`
+- generated_at: `2026-03-05 20:17:32 UTC`
 - State schedule is selected month-by-month using only prior-month train data.
 - Summary emphasizes full-path gross behavior after reduced-core filtering.
 - R01-R03 track pruning severity, state concentration, and re-selection stability.
