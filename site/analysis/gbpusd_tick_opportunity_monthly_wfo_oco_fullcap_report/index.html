@@ -3702,7 +3702,7 @@
 <ul>
 <li>library: <code>oco</code></li>
 <li>train_years_for_state_fit: <code>2022,2023,2024</code></li>
-<li>eval_year: <code>2025</code></li>
+<li>eval_window: <code>2025-01</code> .. <code>2026-02</code></li>
 <li>min_candidate_train_count: <code>15000</code></li>
 <li>max_candidates_per_library: <code>300</code></li>
 <li>rolling_train_months: <code>3</code></li>
@@ -3724,67 +3724,67 @@
 <tbody>
 <tr>
 <td style="text-align: left;">cost_est_pips</td>
-<td style="text-align: right;">13.0043</td>
-</tr>
-<tr>
-<td style="text-align: left;">spread_z</td>
-<td style="text-align: right;">10.0368</td>
+<td style="text-align: right;">13.1149</td>
 </tr>
 <tr>
 <td style="text-align: left;">hl_pos_frac_mean_24</td>
-<td style="text-align: right;">9.92283</td>
+<td style="text-align: right;">10.2682</td>
 </tr>
 <tr>
-<td style="text-align: left;">hour_utc</td>
-<td style="text-align: right;">9.64861</td>
+<td style="text-align: left;">spread_z</td>
+<td style="text-align: right;">9.81108</td>
 </tr>
 <tr>
 <td style="text-align: left;">tick_rate_z</td>
-<td style="text-align: right;">9.39283</td>
+<td style="text-align: right;">9.67823</td>
+</tr>
+<tr>
+<td style="text-align: left;">hour_utc</td>
+<td style="text-align: right;">9.42804</td>
 </tr>
 <tr>
 <td style="text-align: left;">range_pips</td>
-<td style="text-align: right;">7.69945</td>
+<td style="text-align: right;">7.85865</td>
 </tr>
 <tr>
 <td style="text-align: left;">ret1_pips</td>
-<td style="text-align: right;">6.94979</td>
+<td style="text-align: right;">6.41753</td>
 </tr>
 <tr>
 <td style="text-align: left;">ret_abs_z</td>
-<td style="text-align: right;">6.17774</td>
+<td style="text-align: right;">6.37562</td>
 </tr>
 <tr>
 <td style="text-align: left;">ret_z</td>
-<td style="text-align: right;">6.00655</td>
+<td style="text-align: right;">6.0619</td>
 </tr>
 <tr>
 <td style="text-align: left;">hl_first_mean_24</td>
-<td style="text-align: right;">5.82172</td>
+<td style="text-align: right;">5.76829</td>
 </tr>
 <tr>
 <td style="text-align: left;">vel_abs_cost_units_h1</td>
-<td style="text-align: right;">5.32605</td>
+<td style="text-align: right;">5.25357</td>
 </tr>
 <tr>
 <td style="text-align: left;">vel_cost_units_h1</td>
-<td style="text-align: right;">5.32403</td>
+<td style="text-align: right;">5.20225</td>
 </tr>
 <tr>
 <td style="text-align: left;">barrier_pips</td>
-<td style="text-align: right;">3.00691</td>
+<td style="text-align: right;">3.01994</td>
 </tr>
 <tr>
 <td style="text-align: left;">horizon</td>
-<td style="text-align: right;">1.4807</td>
+<td style="text-align: right;">1.49655</td>
 </tr>
 <tr>
 <td style="text-align: left;">hl_first</td>
-<td style="text-align: right;">0.189359</td>
+<td style="text-align: right;">0.215203</td>
 </tr>
 <tr>
 <td style="text-align: left;">bar_ticks</td>
-<td style="text-align: right;">0.0122672</td>
+<td style="text-align: right;">0.0301197</td>
 </tr>
 </tbody>
 </table>
@@ -3810,18 +3810,63 @@
 <tbody>
 <tr>
 <td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-01</td>
+<td style="text-align: left;">2024-10-01</td>
+<td style="text-align: left;">2025-01-01</td>
+<td style="text-align: left;">2025-01-01</td>
+<td style="text-align: left;">2025-02-01</td>
+<td style="text-align: right;">944044</td>
+<td style="text-align: right;">396427</td>
+<td style="text-align: right;">282</td>
+<td style="text-align: right;">282</td>
+<td style="text-align: right;">0.537292</td>
+<td style="text-align: right;">0.523006</td>
+<td style="text-align: right;">0.248777</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-02</td>
+<td style="text-align: left;">2024-11-01</td>
+<td style="text-align: left;">2025-02-01</td>
+<td style="text-align: left;">2025-02-01</td>
+<td style="text-align: left;">2025-03-01</td>
+<td style="text-align: right;">1072361</td>
+<td style="text-align: right;">282205</td>
+<td style="text-align: right;">292</td>
+<td style="text-align: right;">292</td>
+<td style="text-align: right;">0.52802</td>
+<td style="text-align: right;">0.522028</td>
+<td style="text-align: right;">0.249309</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-03</td>
+<td style="text-align: left;">2024-12-01</td>
+<td style="text-align: left;">2025-03-01</td>
+<td style="text-align: left;">2025-03-01</td>
+<td style="text-align: left;">2025-04-01</td>
+<td style="text-align: right;">979623</td>
+<td style="text-align: right;">329265</td>
+<td style="text-align: right;">288</td>
+<td style="text-align: right;">288</td>
+<td style="text-align: right;">0.514701</td>
+<td style="text-align: right;">0.527206</td>
+<td style="text-align: right;">0.249843</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
 <td style="text-align: left;">2025-04</td>
 <td style="text-align: left;">2025-01-01</td>
 <td style="text-align: left;">2025-04-01</td>
 <td style="text-align: left;">2025-04-01</td>
 <td style="text-align: left;">2025-05-01</td>
-<td style="text-align: right;">1393907</td>
-<td style="text-align: right;">820535</td>
-<td style="text-align: right;">278</td>
-<td style="text-align: right;">278</td>
-<td style="text-align: right;">0.535682</td>
-<td style="text-align: right;">0.518728</td>
-<td style="text-align: right;">0.249407</td>
+<td style="text-align: right;">964656</td>
+<td style="text-align: right;">571010</td>
+<td style="text-align: right;">270</td>
+<td style="text-align: right;">270</td>
+<td style="text-align: right;">0.535101</td>
+<td style="text-align: right;">0.516725</td>
+<td style="text-align: right;">0.249484</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
@@ -3830,13 +3875,13 @@
 <td style="text-align: left;">2025-05-01</td>
 <td style="text-align: left;">2025-05-01</td>
 <td style="text-align: left;">2025-06-01</td>
-<td style="text-align: right;">1664143</td>
-<td style="text-align: right;">490994</td>
-<td style="text-align: right;">282</td>
-<td style="text-align: right;">282</td>
-<td style="text-align: right;">0.531218</td>
-<td style="text-align: right;">0.522922</td>
-<td style="text-align: right;">0.249011</td>
+<td style="text-align: right;">1156622</td>
+<td style="text-align: right;">341618</td>
+<td style="text-align: right;">275</td>
+<td style="text-align: right;">275</td>
+<td style="text-align: right;">0.530871</td>
+<td style="text-align: right;">0.522729</td>
+<td style="text-align: right;">0.249006</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
@@ -3845,13 +3890,13 @@
 <td style="text-align: left;">2025-06-01</td>
 <td style="text-align: left;">2025-06-01</td>
 <td style="text-align: left;">2025-07-01</td>
-<td style="text-align: right;">1699274</td>
-<td style="text-align: right;">440266</td>
-<td style="text-align: right;">271</td>
-<td style="text-align: right;">271</td>
-<td style="text-align: right;">0.53315</td>
-<td style="text-align: right;">0.524326</td>
-<td style="text-align: right;">0.248997</td>
+<td style="text-align: right;">1200737</td>
+<td style="text-align: right;">310839</td>
+<td style="text-align: right;">269</td>
+<td style="text-align: right;">269</td>
+<td style="text-align: right;">0.533878</td>
+<td style="text-align: right;">0.521453</td>
+<td style="text-align: right;">0.249221</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
@@ -3860,13 +3905,13 @@
 <td style="text-align: left;">2025-07-01</td>
 <td style="text-align: left;">2025-07-01</td>
 <td style="text-align: left;">2025-08-01</td>
-<td style="text-align: right;">1857943</td>
-<td style="text-align: right;">475378</td>
-<td style="text-align: right;">296</td>
-<td style="text-align: right;">296</td>
-<td style="text-align: right;">0.530965</td>
-<td style="text-align: right;">0.528243</td>
-<td style="text-align: right;">0.248769</td>
+<td style="text-align: right;">1293301</td>
+<td style="text-align: right;">329133</td>
+<td style="text-align: right;">288</td>
+<td style="text-align: right;">288</td>
+<td style="text-align: right;">0.531904</td>
+<td style="text-align: right;">0.524946</td>
+<td style="text-align: right;">0.249015</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
@@ -3875,13 +3920,13 @@
 <td style="text-align: left;">2025-08-01</td>
 <td style="text-align: left;">2025-08-01</td>
 <td style="text-align: left;">2025-09-01</td>
-<td style="text-align: right;">1371034</td>
-<td style="text-align: right;">367938</td>
-<td style="text-align: right;">276</td>
-<td style="text-align: right;">276</td>
-<td style="text-align: right;">0.527456</td>
-<td style="text-align: right;">0.5253</td>
-<td style="text-align: right;">0.249516</td>
+<td style="text-align: right;">952035</td>
+<td style="text-align: right;">254406</td>
+<td style="text-align: right;">269</td>
+<td style="text-align: right;">269</td>
+<td style="text-align: right;">0.527712</td>
+<td style="text-align: right;">0.528036</td>
+<td style="text-align: right;">0.24915</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
@@ -3890,13 +3935,13 @@
 <td style="text-align: left;">2025-09-01</td>
 <td style="text-align: left;">2025-09-01</td>
 <td style="text-align: left;">2025-10-01</td>
-<td style="text-align: right;">1266695</td>
-<td style="text-align: right;">412900</td>
-<td style="text-align: right;">278</td>
-<td style="text-align: right;">278</td>
-<td style="text-align: right;">0.538297</td>
-<td style="text-align: right;">0.520229</td>
-<td style="text-align: right;">0.250176</td>
+<td style="text-align: right;">906067</td>
+<td style="text-align: right;">294491</td>
+<td style="text-align: right;">279</td>
+<td style="text-align: right;">279</td>
+<td style="text-align: right;">0.536736</td>
+<td style="text-align: right;">0.523156</td>
+<td style="text-align: right;">0.249892</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
@@ -3905,13 +3950,13 @@
 <td style="text-align: left;">2025-10-01</td>
 <td style="text-align: left;">2025-10-01</td>
 <td style="text-align: left;">2025-11-01</td>
-<td style="text-align: right;">1291134</td>
-<td style="text-align: right;">480467</td>
-<td style="text-align: right;">291</td>
-<td style="text-align: right;">291</td>
-<td style="text-align: right;">0.52409</td>
-<td style="text-align: right;">0.526654</td>
-<td style="text-align: right;">0.249128</td>
+<td style="text-align: right;">904866</td>
+<td style="text-align: right;">336104</td>
+<td style="text-align: right;">287</td>
+<td style="text-align: right;">287</td>
+<td style="text-align: right;">0.525257</td>
+<td style="text-align: right;">0.524408</td>
+<td style="text-align: right;">0.249287</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
@@ -3920,13 +3965,13 @@
 <td style="text-align: left;">2025-11-01</td>
 <td style="text-align: left;">2025-11-01</td>
 <td style="text-align: left;">2025-12-01</td>
-<td style="text-align: right;">1298477</td>
-<td style="text-align: right;">402808</td>
-<td style="text-align: right;">290</td>
-<td style="text-align: right;">290</td>
-<td style="text-align: right;">0.527763</td>
-<td style="text-align: right;">0.517378</td>
-<td style="text-align: right;">0.250386</td>
+<td style="text-align: right;">912101</td>
+<td style="text-align: right;">282985</td>
+<td style="text-align: right;">287</td>
+<td style="text-align: right;">287</td>
+<td style="text-align: right;">0.52719</td>
+<td style="text-align: right;">0.518549</td>
+<td style="text-align: right;">0.250467</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
@@ -3935,13 +3980,43 @@
 <td style="text-align: left;">2025-12-01</td>
 <td style="text-align: left;">2025-12-01</td>
 <td style="text-align: left;">2026-01-01</td>
-<td style="text-align: right;">1310457</td>
-<td style="text-align: right;">380914</td>
-<td style="text-align: right;">289</td>
-<td style="text-align: right;">289</td>
-<td style="text-align: right;">0.51309</td>
-<td style="text-align: right;">0.518843</td>
-<td style="text-align: right;">0.251096</td>
+<td style="text-align: right;">919060</td>
+<td style="text-align: right;">266482</td>
+<td style="text-align: right;">286</td>
+<td style="text-align: right;">286</td>
+<td style="text-align: right;">0.513194</td>
+<td style="text-align: right;">0.519245</td>
+<td style="text-align: right;">0.251151</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2026-01</td>
+<td style="text-align: left;">2025-10-01</td>
+<td style="text-align: left;">2026-01-01</td>
+<td style="text-align: left;">2026-01-01</td>
+<td style="text-align: left;">2026-02-01</td>
+<td style="text-align: right;">859780</td>
+<td style="text-align: right;">337021</td>
+<td style="text-align: right;">279</td>
+<td style="text-align: right;">279</td>
+<td style="text-align: right;">0.528371</td>
+<td style="text-align: right;">0.521595</td>
+<td style="text-align: right;">0.249852</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2026-02</td>
+<td style="text-align: left;">2025-11-01</td>
+<td style="text-align: left;">2026-02-01</td>
+<td style="text-align: left;">2026-02-01</td>
+<td style="text-align: left;">2026-03-01</td>
+<td style="text-align: right;">864447</td>
+<td style="text-align: right;">334112</td>
+<td style="text-align: right;">276</td>
+<td style="text-align: right;">276</td>
+<td style="text-align: right;">0.525752</td>
+<td style="text-align: right;">0.525276</td>
+<td style="text-align: right;">0.249375</td>
 </tr>
 </tbody>
 </table>
@@ -3966,759 +4041,1179 @@
 <tbody>
 <tr>
 <td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-04</td>
+<td style="text-align: left;">2025-01</td>
 <td style="text-align: right;">0.5</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.517662</td>
-<td style="text-align: right;">0.515748</td>
-<td style="text-align: right;">0.527312</td>
-<td style="text-align: right;">0.558586</td>
-<td style="text-align: right;">0.669716</td>
+<td style="text-align: right;">0.523964</td>
+<td style="text-align: right;">0.521845</td>
+<td style="text-align: right;">0.525822</td>
+<td style="text-align: right;">0.521907</td>
+<td style="text-align: right;">0.707352</td>
 <td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.546768</td>
-<td style="text-align: right;">458339</td>
+<td style="text-align: right;">0.551745</td>
+<td style="text-align: right;">206898</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-04</td>
+<td style="text-align: left;">2025-01</td>
 <td style="text-align: right;">0.6</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.527814</td>
-<td style="text-align: right;">0.525986</td>
-<td style="text-align: right;">0.536096</td>
-<td style="text-align: right;">0.445792</td>
-<td style="text-align: right;">0.745572</td>
+<td style="text-align: right;">0.531846</td>
+<td style="text-align: right;">0.530246</td>
+<td style="text-align: right;">0.533379</td>
+<td style="text-align: right;">0.427579</td>
+<td style="text-align: right;">0.767541</td>
 <td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.552394</td>
-<td style="text-align: right;">365788</td>
+<td style="text-align: right;">0.556388</td>
+<td style="text-align: right;">169504</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-04</td>
+<td style="text-align: left;">2025-01</td>
 <td style="text-align: right;">0.7</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.539417</td>
-<td style="text-align: right;">0.537415</td>
-<td style="text-align: right;">0.546603</td>
-<td style="text-align: right;">0.32923</td>
-<td style="text-align: right;">0.854791</td>
+<td style="text-align: right;">0.541273</td>
+<td style="text-align: right;">0.540171</td>
+<td style="text-align: right;">0.543297</td>
+<td style="text-align: right;">0.325608</td>
+<td style="text-align: right;">0.846183</td>
 <td style="text-align: right;">0.7</td>
-<td style="text-align: right;">0.560762</td>
-<td style="text-align: right;">270145</td>
+<td style="text-align: right;">0.562605</td>
+<td style="text-align: right;">129080</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-04</td>
+<td style="text-align: left;">2025-01</td>
 <td style="text-align: right;">0.8</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.55465</td>
-<td style="text-align: right;">0.552464</td>
-<td style="text-align: right;">0.560847</td>
-<td style="text-align: right;">0.215518</td>
-<td style="text-align: right;">0.992132</td>
+<td style="text-align: right;">0.554352</td>
+<td style="text-align: right;">0.553324</td>
+<td style="text-align: right;">0.556566</td>
+<td style="text-align: right;">0.222152</td>
+<td style="text-align: right;">0.962527</td>
 <td style="text-align: right;">0.8</td>
-<td style="text-align: right;">0.569588</td>
-<td style="text-align: right;">176840</td>
+<td style="text-align: right;">0.570656</td>
+<td style="text-align: right;">88067</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-04</td>
+<td style="text-align: left;">2025-01</td>
 <td style="text-align: right;">0.9</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.575869</td>
-<td style="text-align: right;">0.573594</td>
-<td style="text-align: right;">0.580932</td>
-<td style="text-align: right;">0.110229</td>
-<td style="text-align: right;">1.14315</td>
+<td style="text-align: right;">0.575051</td>
+<td style="text-align: right;">0.572095</td>
+<td style="text-align: right;">0.576807</td>
+<td style="text-align: right;">0.114689</td>
+<td style="text-align: right;">1.15299</td>
 <td style="text-align: right;">1</td>
-<td style="text-align: right;">0.57804</td>
-<td style="text-align: right;">90447</td>
+<td style="text-align: right;">0.586218</td>
+<td style="text-align: right;">45466</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-01</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.592208</td>
+<td style="text-align: right;">0.584131</td>
+<td style="text-align: right;">0.593807</td>
+<td style="text-align: right;">0.0589415</td>
+<td style="text-align: right;">1.29093</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: right;">0.600188</td>
+<td style="text-align: right;">23366</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-02</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.528795</td>
+<td style="text-align: right;">0.525455</td>
+<td style="text-align: right;">0.532432</td>
+<td style="text-align: right;">0.460169</td>
+<td style="text-align: right;">0.55631</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: right;">0.543292</td>
+<td style="text-align: right;">129862</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-02</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.537099</td>
+<td style="text-align: right;">0.533792</td>
+<td style="text-align: right;">0.541174</td>
+<td style="text-align: right;">0.366932</td>
+<td style="text-align: right;">0.612251</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.547735</td>
+<td style="text-align: right;">103550</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-02</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.54722</td>
+<td style="text-align: right;">0.543818</td>
+<td style="text-align: right;">0.551754</td>
+<td style="text-align: right;">0.273645</td>
+<td style="text-align: right;">0.681368</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.553856</td>
+<td style="text-align: right;">77224</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-02</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.561092</td>
+<td style="text-align: right;">0.557632</td>
+<td style="text-align: right;">0.565791</td>
+<td style="text-align: right;">0.176017</td>
+<td style="text-align: right;">0.772941</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">0.561573</td>
+<td style="text-align: right;">49673</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-02</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.580072</td>
+<td style="text-align: right;">0.578075</td>
+<td style="text-align: right;">0.584039</td>
+<td style="text-align: right;">0.0836484</td>
+<td style="text-align: right;">0.885555</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">0.567568</td>
+<td style="text-align: right;">23606</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-02</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.597926</td>
+<td style="text-align: right;">0.593294</td>
+<td style="text-align: right;">0.602591</td>
+<td style="text-align: right;">0.0406407</td>
+<td style="text-align: right;">0.907054</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">0.564217</td>
+<td style="text-align: right;">11469</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-03</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.525018</td>
+<td style="text-align: right;">0.522905</td>
+<td style="text-align: right;">0.530335</td>
+<td style="text-align: right;">0.417512</td>
+<td style="text-align: right;">0.448959</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: right;">0.539433</td>
+<td style="text-align: right;">137472</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-03</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.531833</td>
+<td style="text-align: right;">0.530245</td>
+<td style="text-align: right;">0.537893</td>
+<td style="text-align: right;">0.344464</td>
+<td style="text-align: right;">0.489009</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.542814</td>
+<td style="text-align: right;">113420</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-03</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.540364</td>
+<td style="text-align: right;">0.538471</td>
+<td style="text-align: right;">0.546907</td>
+<td style="text-align: right;">0.267311</td>
+<td style="text-align: right;">0.547337</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.546753</td>
+<td style="text-align: right;">88016</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-03</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.551991</td>
+<td style="text-align: right;">0.548875</td>
+<td style="text-align: right;">0.559441</td>
+<td style="text-align: right;">0.185179</td>
+<td style="text-align: right;">0.561414</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.548079</td>
+<td style="text-align: right;">60973</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-03</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.57023</td>
+<td style="text-align: right;">0.564124</td>
+<td style="text-align: right;">0.578862</td>
+<td style="text-align: right;">0.0982795</td>
+<td style="text-align: right;">0.575615</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.550587</td>
+<td style="text-align: right;">32360</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-03</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.587754</td>
+<td style="text-align: right;">0.577089</td>
+<td style="text-align: right;">0.596726</td>
+<td style="text-align: right;">0.0539414</td>
+<td style="text-align: right;">0.590547</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.549237</td>
+<td style="text-align: right;">17761</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.518331</td>
+<td style="text-align: right;">0.513642</td>
+<td style="text-align: right;">0.528087</td>
+<td style="text-align: right;">0.574181</td>
+<td style="text-align: right;">0.675519</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.544657</td>
+<td style="text-align: right;">327863</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.528135</td>
+<td style="text-align: right;">0.523797</td>
+<td style="text-align: right;">0.536671</td>
+<td style="text-align: right;">0.462738</td>
+<td style="text-align: right;">0.747534</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.549162</td>
+<td style="text-align: right;">264228</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.538955</td>
+<td style="text-align: right;">0.534242</td>
+<td style="text-align: right;">0.546868</td>
+<td style="text-align: right;">0.346968</td>
+<td style="text-align: right;">0.834365</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.555042</td>
+<td style="text-align: right;">198122</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.552915</td>
+<td style="text-align: right;">0.547758</td>
+<td style="text-align: right;">0.559947</td>
+<td style="text-align: right;">0.232071</td>
+<td style="text-align: right;">0.973058</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.564102</td>
+<td style="text-align: right;">132515</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-04</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.573907</td>
+<td style="text-align: right;">0.566966</td>
+<td style="text-align: right;">0.57962</td>
+<td style="text-align: right;">0.117669</td>
+<td style="text-align: right;">1.18377</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.576946</td>
+<td style="text-align: right;">67190</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
 <td style="text-align: left;">2025-04</td>
 <td style="text-align: right;">0.95</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.594397</td>
-<td style="text-align: right;">0.591011</td>
-<td style="text-align: right;">0.599011</td>
-<td style="text-align: right;">0.0532262</td>
-<td style="text-align: right;">1.24645</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0.582681</td>
-<td style="text-align: right;">43674</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-05</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.523042</td>
-<td style="text-align: right;">0.519138</td>
-<td style="text-align: right;">0.525878</td>
-<td style="text-align: right;">0.517984</td>
-<td style="text-align: right;">0.609599</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.547162</td>
-<td style="text-align: right;">254327</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-05</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.531199</td>
-<td style="text-align: right;">0.526858</td>
-<td style="text-align: right;">0.534315</td>
-<td style="text-align: right;">0.413665</td>
-<td style="text-align: right;">0.670041</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.551576</td>
-<td style="text-align: right;">203107</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-05</td>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.541386</td>
-<td style="text-align: right;">0.536888</td>
-<td style="text-align: right;">0.544854</td>
-<td style="text-align: right;">0.306613</td>
-<td style="text-align: right;">0.767476</td>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: right;">0.559321</td>
-<td style="text-align: right;">150545</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-05</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.5558</td>
-<td style="text-align: right;">0.550817</td>
-<td style="text-align: right;">0.559116</td>
-<td style="text-align: right;">0.196935</td>
-<td style="text-align: right;">0.886742</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: right;">0.567274</td>
-<td style="text-align: right;">96694</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-05</td>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.57577</td>
-<td style="text-align: right;">0.570622</td>
-<td style="text-align: right;">0.578593</td>
-<td style="text-align: right;">0.0921193</td>
-<td style="text-align: right;">1.01787</td>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: right;">0.573093</td>
-<td style="text-align: right;">45230</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-05</td>
-<td style="text-align: right;">0.95</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.592297</td>
-<td style="text-align: right;">0.585362</td>
-<td style="text-align: right;">0.595333</td>
-<td style="text-align: right;">0.0402001</td>
-<td style="text-align: right;">0.999797</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: right;">0.561556</td>
-<td style="text-align: right;">19738</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-06</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.527633</td>
-<td style="text-align: right;">0.52673</td>
-<td style="text-align: right;">0.528874</td>
-<td style="text-align: right;">0.46804</td>
-<td style="text-align: right;">0.698449</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.553503</td>
-<td style="text-align: right;">206062</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-06</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.536354</td>
-<td style="text-align: right;">0.535215</td>
-<td style="text-align: right;">0.537488</td>
-<td style="text-align: right;">0.373077</td>
-<td style="text-align: right;">0.762717</td>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: right;">0.558157</td>
-<td style="text-align: right;">164253</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-06</td>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.547079</td>
-<td style="text-align: right;">0.54606</td>
-<td style="text-align: right;">0.548611</td>
-<td style="text-align: right;">0.275263</td>
-<td style="text-align: right;">0.850798</td>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: right;">0.564482</td>
-<td style="text-align: right;">121189</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-06</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.562081</td>
-<td style="text-align: right;">0.560643</td>
-<td style="text-align: right;">0.563334</td>
-<td style="text-align: right;">0.17911</td>
-<td style="text-align: right;">0.92869</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: right;">0.569164</td>
-<td style="text-align: right;">78856</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-06</td>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.580966</td>
-<td style="text-align: right;">0.579271</td>
-<td style="text-align: right;">0.582072</td>
-<td style="text-align: right;">0.0848237</td>
-<td style="text-align: right;">1.02812</td>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: right;">0.573705</td>
-<td style="text-align: right;">37345</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-06</td>
-<td style="text-align: right;">0.95</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.595191</td>
-<td style="text-align: right;">0.592331</td>
-<td style="text-align: right;">0.597007</td>
-<td style="text-align: right;">0.0395465</td>
-<td style="text-align: right;">1.06763</td>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: right;">0.5674</td>
-<td style="text-align: right;">17411</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-07</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.528253</td>
-<td style="text-align: right;">0.527709</td>
-<td style="text-align: right;">0.529037</td>
-<td style="text-align: right;">0.487067</td>
-<td style="text-align: right;">0.694975</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.553474</td>
-<td style="text-align: right;">231541</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-07</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.536847</td>
-<td style="text-align: right;">0.536224</td>
-<td style="text-align: right;">0.537624</td>
-<td style="text-align: right;">0.388954</td>
-<td style="text-align: right;">0.778406</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.559432</td>
-<td style="text-align: right;">184900</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-07</td>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.547403</td>
-<td style="text-align: right;">0.546581</td>
-<td style="text-align: right;">0.548626</td>
-<td style="text-align: right;">0.288562</td>
-<td style="text-align: right;">0.895889</td>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: right;">0.56889</td>
-<td style="text-align: right;">137176</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-07</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.562427</td>
-<td style="text-align: right;">0.561179</td>
-<td style="text-align: right;">0.563983</td>
-<td style="text-align: right;">0.186281</td>
-<td style="text-align: right;">1.0289</td>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: right;">0.577331</td>
-<td style="text-align: right;">88554</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-07</td>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.582964</td>
-<td style="text-align: right;">0.5794</td>
-<td style="text-align: right;">0.583759</td>
-<td style="text-align: right;">0.0886495</td>
-<td style="text-align: right;">1.20562</td>
+<td style="text-align: right;">0.593173</td>
+<td style="text-align: right;">0.583902</td>
+<td style="text-align: right;">0.598754</td>
+<td style="text-align: right;">0.0564789</td>
+<td style="text-align: right;">1.40135</td>
 <td style="text-align: right;">1.1</td>
-<td style="text-align: right;">0.595724</td>
-<td style="text-align: right;">42142</td>
+<td style="text-align: right;">0.58214</td>
+<td style="text-align: right;">32250</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.522764</td>
+<td style="text-align: right;">0.518639</td>
+<td style="text-align: right;">0.525843</td>
+<td style="text-align: right;">0.513579</td>
+<td style="text-align: right;">0.602634</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.546715</td>
+<td style="text-align: right;">175448</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.530839</td>
+<td style="text-align: right;">0.526562</td>
+<td style="text-align: right;">0.534233</td>
+<td style="text-align: right;">0.408679</td>
+<td style="text-align: right;">0.673599</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.551321</td>
+<td style="text-align: right;">139612</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.541023</td>
+<td style="text-align: right;">0.536485</td>
+<td style="text-align: right;">0.544505</td>
+<td style="text-align: right;">0.300915</td>
+<td style="text-align: right;">0.775104</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">0.55932</td>
+<td style="text-align: right;">102798</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.555154</td>
+<td style="text-align: right;">0.550231</td>
+<td style="text-align: right;">0.558283</td>
+<td style="text-align: right;">0.19415</td>
+<td style="text-align: right;">0.898372</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.565714</td>
+<td style="text-align: right;">66325</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.575005</td>
+<td style="text-align: right;">0.570072</td>
+<td style="text-align: right;">0.577459</td>
+<td style="text-align: right;">0.0887248</td>
+<td style="text-align: right;">1.05067</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.573144</td>
+<td style="text-align: right;">30310</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-05</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.591485</td>
+<td style="text-align: right;">0.584676</td>
+<td style="text-align: right;">0.594128</td>
+<td style="text-align: right;">0.0385899</td>
+<td style="text-align: right;">1.14036</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.572025</td>
+<td style="text-align: right;">13183</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.526122</td>
+<td style="text-align: right;">0.524377</td>
+<td style="text-align: right;">0.52692</td>
+<td style="text-align: right;">0.46645</td>
+<td style="text-align: right;">0.693733</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.552186</td>
+<td style="text-align: right;">144991</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.534845</td>
+<td style="text-align: right;">0.532704</td>
+<td style="text-align: right;">0.536015</td>
+<td style="text-align: right;">0.372653</td>
+<td style="text-align: right;">0.760747</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.557638</td>
+<td style="text-align: right;">115835</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.545779</td>
+<td style="text-align: right;">0.544706</td>
+<td style="text-align: right;">0.547557</td>
+<td style="text-align: right;">0.276146</td>
+<td style="text-align: right;">0.846107</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">0.565246</td>
+<td style="text-align: right;">85837</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.561084</td>
+<td style="text-align: right;">0.56017</td>
+<td style="text-align: right;">0.562753</td>
+<td style="text-align: right;">0.179073</td>
+<td style="text-align: right;">0.920534</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.571115</td>
+<td style="text-align: right;">55663</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.581258</td>
+<td style="text-align: right;">0.577294</td>
+<td style="text-align: right;">0.582091</td>
+<td style="text-align: right;">0.0869067</td>
+<td style="text-align: right;">1.04983</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.578256</td>
+<td style="text-align: right;">27014</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-06</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.597059</td>
+<td style="text-align: right;">0.590351</td>
+<td style="text-align: right;">0.598788</td>
+<td style="text-align: right;">0.0417065</td>
+<td style="text-align: right;">1.17777</td>
+<td style="text-align: right;">1.1</td>
+<td style="text-align: right;">0.583308</td>
+<td style="text-align: right;">12964</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.528298</td>
+<td style="text-align: right;">0.526985</td>
+<td style="text-align: right;">0.528938</td>
+<td style="text-align: right;">0.489364</td>
+<td style="text-align: right;">0.668945</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.551203</td>
+<td style="text-align: right;">161066</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.536975</td>
+<td style="text-align: right;">0.535582</td>
+<td style="text-align: right;">0.538295</td>
+<td style="text-align: right;">0.389004</td>
+<td style="text-align: right;">0.759451</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.557079</td>
+<td style="text-align: right;">128034</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.547611</td>
+<td style="text-align: right;">0.545756</td>
+<td style="text-align: right;">0.548989</td>
+<td style="text-align: right;">0.288473</td>
+<td style="text-align: right;">0.824472</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">0.562994</td>
+<td style="text-align: right;">94946</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.562228</td>
+<td style="text-align: right;">0.560284</td>
+<td style="text-align: right;">0.563521</td>
+<td style="text-align: right;">0.186323</td>
+<td style="text-align: right;">0.947371</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.571822</td>
+<td style="text-align: right;">61325</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-07</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.582921</td>
+<td style="text-align: right;">0.579739</td>
+<td style="text-align: right;">0.583775</td>
+<td style="text-align: right;">0.0874327</td>
+<td style="text-align: right;">1.11894</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.585155</td>
+<td style="text-align: right;">28777</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
 <td style="text-align: left;">2025-07</td>
 <td style="text-align: right;">0.95</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.598087</td>
-<td style="text-align: right;">0.591759</td>
-<td style="text-align: right;">0.600056</td>
-<td style="text-align: right;">0.0400271</td>
-<td style="text-align: right;">1.35073</td>
-<td style="text-align: right;">1.3</td>
-<td style="text-align: right;">0.599485</td>
-<td style="text-align: right;">19028</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-08</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.530411</td>
-<td style="text-align: right;">0.528937</td>
-<td style="text-align: right;">0.53086</td>
-<td style="text-align: right;">0.474534</td>
-<td style="text-align: right;">0.672315</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.544974</td>
-<td style="text-align: right;">174599</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-08</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.540727</td>
-<td style="text-align: right;">0.539217</td>
-<td style="text-align: right;">0.542272</td>
-<td style="text-align: right;">0.381148</td>
-<td style="text-align: right;">0.747459</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.550688</td>
-<td style="text-align: right;">140239</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-08</td>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.552466</td>
-<td style="text-align: right;">0.55086</td>
-<td style="text-align: right;">0.554598</td>
-<td style="text-align: right;">0.2876</td>
-<td style="text-align: right;">0.831945</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.557811</td>
-<td style="text-align: right;">105819</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-08</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.567566</td>
-<td style="text-align: right;">0.565579</td>
-<td style="text-align: right;">0.570636</td>
-<td style="text-align: right;">0.187097</td>
-<td style="text-align: right;">0.959573</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: right;">0.56826</td>
-<td style="text-align: right;">68840</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-08</td>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.589263</td>
-<td style="text-align: right;">0.587751</td>
-<td style="text-align: right;">0.594981</td>
-<td style="text-align: right;">0.0913659</td>
-<td style="text-align: right;">1.08756</td>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: right;">0.576167</td>
-<td style="text-align: right;">33617</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-08</td>
-<td style="text-align: right;">0.95</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.608599</td>
-<td style="text-align: right;">0.606217</td>
-<td style="text-align: right;">0.621324</td>
-<td style="text-align: right;">0.0435291</td>
-<td style="text-align: right;">1.21216</td>
+<td style="text-align: right;">0.598725</td>
+<td style="text-align: right;">0.592498</td>
+<td style="text-align: right;">0.599979</td>
+<td style="text-align: right;">0.0401631</td>
+<td style="text-align: right;">1.08098</td>
 <td style="text-align: right;">1</td>
-<td style="text-align: right;">0.589973</td>
-<td style="text-align: right;">16016</td>
+<td style="text-align: right;">0.580074</td>
+<td style="text-align: right;">13219</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-09</td>
+<td style="text-align: left;">2025-08</td>
 <td style="text-align: right;">0.5</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.52326</td>
-<td style="text-align: right;">0.514639</td>
-<td style="text-align: right;">0.529607</td>
-<td style="text-align: right;">0.426285</td>
-<td style="text-align: right;">0.739219</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.555823</td>
-<td style="text-align: right;">176013</td>
+<td style="text-align: right;">0.531932</td>
+<td style="text-align: right;">0.530801</td>
+<td style="text-align: right;">0.533704</td>
+<td style="text-align: right;">0.481026</td>
+<td style="text-align: right;">0.681019</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.549258</td>
+<td style="text-align: right;">122376</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-09</td>
+<td style="text-align: left;">2025-08</td>
 <td style="text-align: right;">0.6</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.533493</td>
-<td style="text-align: right;">0.527685</td>
-<td style="text-align: right;">0.539803</td>
-<td style="text-align: right;">0.338685</td>
-<td style="text-align: right;">0.777041</td>
+<td style="text-align: right;">0.541823</td>
+<td style="text-align: right;">0.540575</td>
+<td style="text-align: right;">0.544435</td>
+<td style="text-align: right;">0.384676</td>
+<td style="text-align: right;">0.744109</td>
 <td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.559184</td>
-<td style="text-align: right;">139843</td>
+<td style="text-align: right;">0.552573</td>
+<td style="text-align: right;">97864</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-09</td>
+<td style="text-align: left;">2025-08</td>
 <td style="text-align: right;">0.7</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.545212</td>
-<td style="text-align: right;">0.539869</td>
-<td style="text-align: right;">0.551889</td>
-<td style="text-align: right;">0.252465</td>
-<td style="text-align: right;">0.822919</td>
+<td style="text-align: right;">0.552901</td>
+<td style="text-align: right;">0.55154</td>
+<td style="text-align: right;">0.556265</td>
+<td style="text-align: right;">0.287666</td>
+<td style="text-align: right;">0.848524</td>
 <td style="text-align: right;">0.7</td>
-<td style="text-align: right;">0.562234</td>
-<td style="text-align: right;">104243</td>
+<td style="text-align: right;">0.559385</td>
+<td style="text-align: right;">73184</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-09</td>
+<td style="text-align: left;">2025-08</td>
 <td style="text-align: right;">0.8</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.560826</td>
-<td style="text-align: right;">0.555409</td>
-<td style="text-align: right;">0.567812</td>
-<td style="text-align: right;">0.164778</td>
-<td style="text-align: right;">0.922682</td>
+<td style="text-align: right;">0.567137</td>
+<td style="text-align: right;">0.565647</td>
+<td style="text-align: right;">0.572262</td>
+<td style="text-align: right;">0.18893</td>
+<td style="text-align: right;">0.959659</td>
 <td style="text-align: right;">0.8</td>
-<td style="text-align: right;">0.570043</td>
-<td style="text-align: right;">68037</td>
+<td style="text-align: right;">0.567752</td>
+<td style="text-align: right;">48065</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-09</td>
+<td style="text-align: left;">2025-08</td>
 <td style="text-align: right;">0.9</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.582815</td>
-<td style="text-align: right;">0.577515</td>
-<td style="text-align: right;">0.591094</td>
-<td style="text-align: right;">0.0783095</td>
-<td style="text-align: right;">0.940273</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: right;">0.567359</td>
-<td style="text-align: right;">32334</td>
+<td style="text-align: right;">0.588836</td>
+<td style="text-align: right;">0.586533</td>
+<td style="text-align: right;">0.595177</td>
+<td style="text-align: right;">0.0894279</td>
+<td style="text-align: right;">1.19276</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.584238</td>
+<td style="text-align: right;">22751</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-08</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.608349</td>
+<td style="text-align: right;">0.605349</td>
+<td style="text-align: right;">0.618858</td>
+<td style="text-align: right;">0.0423418</td>
+<td style="text-align: right;">1.43551</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: right;">0.598496</td>
+<td style="text-align: right;">10772</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
 <td style="text-align: left;">2025-09</td>
-<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">0.5</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.603384</td>
-<td style="text-align: right;">0.595256</td>
-<td style="text-align: right;">0.6364</td>
-<td style="text-align: right;">0.0353984</td>
-<td style="text-align: right;">0.850007</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: right;">0.568555</td>
-<td style="text-align: right;">14616</td>
+<td style="text-align: right;">0.522613</td>
+<td style="text-align: right;">0.515906</td>
+<td style="text-align: right;">0.530208</td>
+<td style="text-align: right;">0.439202</td>
+<td style="text-align: right;">0.675188</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.553112</td>
+<td style="text-align: right;">129341</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-10</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.529038</td>
-<td style="text-align: right;">0.524298</td>
-<td style="text-align: right;">0.531092</td>
-<td style="text-align: right;">0.48518</td>
-<td style="text-align: right;">0.612472</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.541501</td>
-<td style="text-align: right;">233113</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-10</td>
+<td style="text-align: left;">2025-09</td>
 <td style="text-align: right;">0.6</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.539022</td>
-<td style="text-align: right;">0.535113</td>
-<td style="text-align: right;">0.540747</td>
-<td style="text-align: right;">0.378611</td>
-<td style="text-align: right;">0.694632</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.548848</td>
-<td style="text-align: right;">181910</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-10</td>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.549803</td>
-<td style="text-align: right;">0.546664</td>
-<td style="text-align: right;">0.551597</td>
-<td style="text-align: right;">0.274914</td>
-<td style="text-align: right;">0.784905</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.556633</td>
-<td style="text-align: right;">132087</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-10</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.563528</td>
-<td style="text-align: right;">0.560842</td>
-<td style="text-align: right;">0.565765</td>
-<td style="text-align: right;">0.174345</td>
-<td style="text-align: right;">0.908782</td>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: right;">0.565235</td>
-<td style="text-align: right;">83767</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-10</td>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.583791</td>
-<td style="text-align: right;">0.58094</td>
-<td style="text-align: right;">0.587352</td>
-<td style="text-align: right;">0.0780844</td>
-<td style="text-align: right;">1.05206</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: right;">0.570861</td>
-<td style="text-align: right;">37517</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-10</td>
-<td style="text-align: right;">0.95</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.603491</td>
-<td style="text-align: right;">0.597164</td>
-<td style="text-align: right;">0.610449</td>
-<td style="text-align: right;">0.0340356</td>
-<td style="text-align: right;">1.208</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: right;">0.576775</td>
-<td style="text-align: right;">16353</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-11</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.527455</td>
-<td style="text-align: right;">0.526324</td>
-<td style="text-align: right;">0.529553</td>
-<td style="text-align: right;">0.473598</td>
-<td style="text-align: right;">0.634104</td>
-<td style="text-align: right;">0.4</td>
+<td style="text-align: right;">0.533182</td>
+<td style="text-align: right;">0.525845</td>
 <td style="text-align: right;">0.540397</td>
-<td style="text-align: right;">190769</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">0.351393</td>
+<td style="text-align: right;">0.744344</td>
 <td style="text-align: right;">0.6</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.536286</td>
-<td style="text-align: right;">0.535003</td>
-<td style="text-align: right;">0.538762</td>
-<td style="text-align: right;">0.381979</td>
-<td style="text-align: right;">0.690947</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.54569</td>
-<td style="text-align: right;">153864</td>
+<td style="text-align: right;">0.560223</td>
+<td style="text-align: right;">103482</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-11</td>
+<td style="text-align: left;">2025-09</td>
 <td style="text-align: right;">0.7</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.547957</td>
-<td style="text-align: right;">0.546073</td>
-<td style="text-align: right;">0.550749</td>
-<td style="text-align: right;">0.285938</td>
-<td style="text-align: right;">0.702058</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.547006</td>
-<td style="text-align: right;">115178</td>
+<td style="text-align: right;">0.544789</td>
+<td style="text-align: right;">0.539819</td>
+<td style="text-align: right;">0.552354</td>
+<td style="text-align: right;">0.263071</td>
+<td style="text-align: right;">0.797936</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">0.563442</td>
+<td style="text-align: right;">77472</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-11</td>
+<td style="text-align: left;">2025-09</td>
 <td style="text-align: right;">0.8</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.562644</td>
-<td style="text-align: right;">0.55997</td>
-<td style="text-align: right;">0.565714</td>
-<td style="text-align: right;">0.190264</td>
-<td style="text-align: right;">0.737907</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.550979</td>
-<td style="text-align: right;">76640</td>
+<td style="text-align: right;">0.55955</td>
+<td style="text-align: right;">0.554684</td>
+<td style="text-align: right;">0.567996</td>
+<td style="text-align: right;">0.177048</td>
+<td style="text-align: right;">0.892251</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.572335</td>
+<td style="text-align: right;">52139</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-11</td>
+<td style="text-align: left;">2025-09</td>
 <td style="text-align: right;">0.9</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.583925</td>
-<td style="text-align: right;">0.580532</td>
-<td style="text-align: right;">0.588233</td>
-<td style="text-align: right;">0.0941342</td>
-<td style="text-align: right;">0.77281</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.551559</td>
-<td style="text-align: right;">37918</td>
+<td style="text-align: right;">0.581202</td>
+<td style="text-align: right;">0.576509</td>
+<td style="text-align: right;">0.590722</td>
+<td style="text-align: right;">0.0888992</td>
+<td style="text-align: right;">0.971914</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.577196</td>
+<td style="text-align: right;">26180</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-11</td>
+<td style="text-align: left;">2025-09</td>
 <td style="text-align: right;">0.95</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.608121</td>
-<td style="text-align: right;">0.601549</td>
-<td style="text-align: right;">0.61285</td>
-<td style="text-align: right;">0.0414838</td>
-<td style="text-align: right;">0.630126</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.549013</td>
-<td style="text-align: right;">16710</td>
+<td style="text-align: right;">0.599719</td>
+<td style="text-align: right;">0.591833</td>
+<td style="text-align: right;">0.612641</td>
+<td style="text-align: right;">0.0442492</td>
+<td style="text-align: right;">0.860747</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.569258</td>
+<td style="text-align: right;">13031</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-12</td>
+<td style="text-align: left;">2025-10</td>
 <td style="text-align: right;">0.5</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.524921</td>
-<td style="text-align: right;">0.486902</td>
-<td style="text-align: right;">0.529504</td>
-<td style="text-align: right;">0.525124</td>
-<td style="text-align: right;">0.369281</td>
-<td style="text-align: right;">0.3</td>
-<td style="text-align: right;">0.524354</td>
-<td style="text-align: right;">200027</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-12</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.535621</td>
-<td style="text-align: right;">0.504163</td>
-<td style="text-align: right;">0.538371</td>
-<td style="text-align: right;">0.424358</td>
-<td style="text-align: right;">0.420292</td>
-<td style="text-align: right;">0.3</td>
-<td style="text-align: right;">0.528241</td>
-<td style="text-align: right;">161644</td>
-</tr>
-<tr>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">2025-12</td>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.548647</td>
-<td style="text-align: right;">0.518612</td>
-<td style="text-align: right;">0.549804</td>
-<td style="text-align: right;">0.316757</td>
-<td style="text-align: right;">0.510119</td>
+<td style="text-align: right;">0.528429</td>
+<td style="text-align: right;">0.524376</td>
+<td style="text-align: right;">0.530885</td>
+<td style="text-align: right;">0.498872</td>
+<td style="text-align: right;">0.603734</td>
 <td style="text-align: right;">0.4</td>
-<td style="text-align: right;">0.537474</td>
-<td style="text-align: right;">120657</td>
+<td style="text-align: right;">0.540439</td>
+<td style="text-align: right;">167673</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.538693</td>
+<td style="text-align: right;">0.534405</td>
+<td style="text-align: right;">0.540809</td>
+<td style="text-align: right;">0.393185</td>
+<td style="text-align: right;">0.677584</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.54639</td>
+<td style="text-align: right;">132151</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.550263</td>
+<td style="text-align: right;">0.546426</td>
+<td style="text-align: right;">0.552303</td>
+<td style="text-align: right;">0.286286</td>
+<td style="text-align: right;">0.76291</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.553158</td>
+<td style="text-align: right;">96222</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.56459</td>
+<td style="text-align: right;">0.560846</td>
+<td style="text-align: right;">0.566947</td>
+<td style="text-align: right;">0.18427</td>
+<td style="text-align: right;">0.882129</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">0.561275</td>
+<td style="text-align: right;">61934</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.58549</td>
+<td style="text-align: right;">0.581106</td>
+<td style="text-align: right;">0.588858</td>
+<td style="text-align: right;">0.0850183</td>
+<td style="text-align: right;">0.96442</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">0.56371</td>
+<td style="text-align: right;">28575</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-10</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.605599</td>
+<td style="text-align: right;">0.600935</td>
+<td style="text-align: right;">0.610871</td>
+<td style="text-align: right;">0.0355277</td>
+<td style="text-align: right;">1.08734</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.570471</td>
+<td style="text-align: right;">11941</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.528099</td>
+<td style="text-align: right;">0.52696</td>
+<td style="text-align: right;">0.530596</td>
+<td style="text-align: right;">0.462742</td>
+<td style="text-align: right;">0.649001</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: right;">0.540875</td>
+<td style="text-align: right;">130949</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.537796</td>
+<td style="text-align: right;">0.535102</td>
+<td style="text-align: right;">0.540333</td>
+<td style="text-align: right;">0.369921</td>
+<td style="text-align: right;">0.693162</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.544153</td>
+<td style="text-align: right;">104682</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.5493</td>
+<td style="text-align: right;">0.545581</td>
+<td style="text-align: right;">0.552564</td>
+<td style="text-align: right;">0.27434</td>
+<td style="text-align: right;">0.760285</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.54887</td>
+<td style="text-align: right;">77634</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.563451</td>
+<td style="text-align: right;">0.559283</td>
+<td style="text-align: right;">0.567071</td>
+<td style="text-align: right;">0.182748</td>
+<td style="text-align: right;">0.809274</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.549338</td>
+<td style="text-align: right;">51715</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.584344</td>
+<td style="text-align: right;">0.580136</td>
+<td style="text-align: right;">0.589591</td>
+<td style="text-align: right;">0.0868562</td>
+<td style="text-align: right;">0.809154</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.546727</td>
+<td style="text-align: right;">24579</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-11</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.606646</td>
+<td style="text-align: right;">0.600104</td>
+<td style="text-align: right;">0.613533</td>
+<td style="text-align: right;">0.0379879</td>
+<td style="text-align: right;">0.594512</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.530419</td>
+<td style="text-align: right;">10750</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.525724</td>
+<td style="text-align: right;">0.485327</td>
+<td style="text-align: right;">0.530034</td>
+<td style="text-align: right;">0.523315</td>
+<td style="text-align: right;">0.364946</td>
+<td style="text-align: right;">0.3</td>
+<td style="text-align: right;">0.526525</td>
+<td style="text-align: right;">139454</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.537001</td>
+<td style="text-align: right;">0.501996</td>
+<td style="text-align: right;">0.539039</td>
+<td style="text-align: right;">0.420753</td>
+<td style="text-align: right;">0.421583</td>
+<td style="text-align: right;">0.3</td>
+<td style="text-align: right;">0.532103</td>
+<td style="text-align: right;">112123</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2025-12</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.549388</td>
+<td style="text-align: right;">0.516158</td>
+<td style="text-align: right;">0.551222</td>
+<td style="text-align: right;">0.315335</td>
+<td style="text-align: right;">0.491244</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: right;">0.536469</td>
+<td style="text-align: right;">84031</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
 <td style="text-align: left;">2025-12</td>
 <td style="text-align: right;">0.8</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.563657</td>
-<td style="text-align: right;">0.538137</td>
-<td style="text-align: right;">0.567999</td>
-<td style="text-align: right;">0.206351</td>
-<td style="text-align: right;">0.573713</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.541767</td>
-<td style="text-align: right;">78602</td>
+<td style="text-align: right;">0.563691</td>
+<td style="text-align: right;">0.535894</td>
+<td style="text-align: right;">0.5689</td>
+<td style="text-align: right;">0.200501</td>
+<td style="text-align: right;">0.565527</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: right;">0.54183</td>
+<td style="text-align: right;">53430</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
 <td style="text-align: left;">2025-12</td>
 <td style="text-align: right;">0.9</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.587176</td>
-<td style="text-align: right;">0.56162</td>
-<td style="text-align: right;">0.599385</td>
-<td style="text-align: right;">0.0934043</td>
-<td style="text-align: right;">0.774783</td>
+<td style="text-align: right;">0.585927</td>
+<td style="text-align: right;">0.558992</td>
+<td style="text-align: right;">0.602048</td>
+<td style="text-align: right;">0.0882461</td>
+<td style="text-align: right;">0.757255</td>
 <td style="text-align: right;">0.6</td>
-<td style="text-align: right;">0.550915</td>
-<td style="text-align: right;">35579</td>
+<td style="text-align: right;">0.552262</td>
+<td style="text-align: right;">23516</td>
 </tr>
 <tr>
 <td style="text-align: left;">oco</td>
 <td style="text-align: left;">2025-12</td>
 <td style="text-align: right;">0.95</td>
 <td style="text-align: left;">rolling_days</td>
-<td style="text-align: right;">0.614764</td>
-<td style="text-align: right;">0.589049</td>
-<td style="text-align: right;">0.634791</td>
-<td style="text-align: right;">0.0368981</td>
-<td style="text-align: right;">1.12965</td>
+<td style="text-align: right;">0.612059</td>
+<td style="text-align: right;">0.59459</td>
+<td style="text-align: right;">0.635445</td>
+<td style="text-align: right;">0.0307413</td>
+<td style="text-align: right;">0.892969</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.550171</td>
+<td style="text-align: right;">8192</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2026-01</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.523197</td>
+<td style="text-align: right;">0.519401</td>
+<td style="text-align: right;">0.523968</td>
+<td style="text-align: right;">0.505924</td>
+<td style="text-align: right;">0.600992</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: right;">0.54196</td>
+<td style="text-align: right;">170507</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2026-01</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.532595</td>
+<td style="text-align: right;">0.528846</td>
+<td style="text-align: right;">0.53456</td>
+<td style="text-align: right;">0.417137</td>
+<td style="text-align: right;">0.648007</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.546008</td>
+<td style="text-align: right;">140584</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2026-01</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.543537</td>
+<td style="text-align: right;">0.539125</td>
+<td style="text-align: right;">0.546944</td>
+<td style="text-align: right;">0.322383</td>
+<td style="text-align: right;">0.716123</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.550207</td>
+<td style="text-align: right;">108650</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2026-01</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.558112</td>
+<td style="text-align: right;">0.551424</td>
+<td style="text-align: right;">0.563109</td>
+<td style="text-align: right;">0.220609</td>
+<td style="text-align: right;">0.827385</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.557323</td>
+<td style="text-align: right;">74350</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2026-01</td>
 <td style="text-align: right;">0.9</td>
-<td style="text-align: right;">0.579296</td>
-<td style="text-align: right;">14055</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.580226</td>
+<td style="text-align: right;">0.57148</td>
+<td style="text-align: right;">0.588841</td>
+<td style="text-align: right;">0.107521</td>
+<td style="text-align: right;">0.947628</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">0.562133</td>
+<td style="text-align: right;">36237</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2026-01</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.602355</td>
+<td style="text-align: right;">0.589171</td>
+<td style="text-align: right;">0.618158</td>
+<td style="text-align: right;">0.0461366</td>
+<td style="text-align: right;">1.14006</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.569812</td>
+<td style="text-align: right;">15549</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2026-02</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.526413</td>
+<td style="text-align: right;">0.51968</td>
+<td style="text-align: right;">0.528103</td>
+<td style="text-align: right;">0.439733</td>
+<td style="text-align: right;">0.678646</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.547114</td>
+<td style="text-align: right;">146920</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2026-02</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.537405</td>
+<td style="text-align: right;">0.528253</td>
+<td style="text-align: right;">0.53944</td>
+<td style="text-align: right;">0.330365</td>
+<td style="text-align: right;">0.752951</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.551672</td>
+<td style="text-align: right;">110379</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2026-02</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.549975</td>
+<td style="text-align: right;">0.538709</td>
+<td style="text-align: right;">0.552322</td>
+<td style="text-align: right;">0.227376</td>
+<td style="text-align: right;">0.826003</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">0.556516</td>
+<td style="text-align: right;">75969</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2026-02</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.56657</td>
+<td style="text-align: right;">0.552302</td>
+<td style="text-align: right;">0.568582</td>
+<td style="text-align: right;">0.132809</td>
+<td style="text-align: right;">0.942129</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">0.56113</td>
+<td style="text-align: right;">44373</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2026-02</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.59351</td>
+<td style="text-align: right;">0.573555</td>
+<td style="text-align: right;">0.597312</td>
+<td style="text-align: right;">0.0475828</td>
+<td style="text-align: right;">1.03272</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.56158</td>
+<td style="text-align: right;">15898</td>
+</tr>
+<tr>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">2026-02</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: left;">rolling_days</td>
+<td style="text-align: right;">0.62458</td>
+<td style="text-align: right;">0.592273</td>
+<td style="text-align: right;">0.632014</td>
+<td style="text-align: right;">0.0157522</td>
+<td style="text-align: right;">1.04991</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.552727</td>
+<td style="text-align: right;">5263</td>
 </tr>
 </tbody>
 </table>

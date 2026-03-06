@@ -20,7 +20,7 @@ min_train_months: 3
 overlap_corr_max: 0.85
 max_states: 12
 min_states: 4
-min_state_avg_rows: 100
+min_state_avg_rows: 200
 min_positive_months_train: 2
 require_lb95_trade_gt0: true
 require_lb95_month_gt0: true

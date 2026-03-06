@@ -1,18 +1,18 @@
 ### Auto Snapshot - Stage 06
 
-- generated_at: `2026-03-05 20:17:32 UTC`
+- generated_at: `2026-03-06 10:46:49 UTC`
 - Verifier recomputes OCO outcomes independently from stored labels.
 - All summary rates should remain near 1.0 for contract consistency.
 
 #### Key Results
 | symbol   |   rows_selected |   rows_verified |   exact_match_rate |   pos_label_match_rate | overall_pass   |
 |:---------|----------------:|----------------:|-------------------:|-----------------------:|:---------------|
-| EURUSD   |           28655 |           28655 |                  1 |                      1 | True           |
-| GBPUSD   |           33524 |           33524 |                  1 |                      1 | True           |
-| AUDUSD   |           12584 |           12584 |                  1 |                      1 | True           |
-| USDJPY   |           30552 |           30552 |                  1 |                      1 | True           |
-| USDCHF   |           18337 |           18337 |                  1 |                      1 | True           |
-| USDCAD   |           34234 |           34234 |                  1 |                      1 | True           |
+| EURUSD   |            4505 |            4505 |                  1 |                      1 | True           |
+| GBPUSD   |           13914 |           13914 |                  1 |                      1 | True           |
+| AUDUSD   |           11245 |           11245 |                  1 |                      1 | True           |
+| USDJPY   |           16821 |           16821 |                  1 |                      1 | True           |
+| USDCHF   |            4728 |            4728 |                  1 |                      1 | True           |
+| USDCAD   |            5251 |            5251 |                  1 |                      1 | True           |
 
 #### Interpretation Notes
 - Verifier recomputes OCO outcomes independently from stored labels.
@@ -27,12 +27,12 @@
 #### Details
 | symbol   |   months |   exact_min |   exact_mean |   pos_min |   pos_mean |
 |:---------|---------:|------------:|-------------:|----------:|-----------:|
-| AUDUSD   |        9 |           1 |            1 |         1 |          1 |
+| AUDUSD   |       14 |           1 |            1 |         1 |          1 |
 | EURUSD   |       14 |           1 |            1 |         1 |          1 |
-| GBPUSD   |        9 |           1 |            1 |         1 |          1 |
-| USDCAD   |        9 |           1 |            1 |         1 |          1 |
-| USDCHF   |        9 |           1 |            1 |         1 |          1 |
-| USDJPY   |        9 |           1 |            1 |         1 |          1 |
+| GBPUSD   |       14 |           1 |            1 |         1 |          1 |
+| USDCAD   |       14 |           1 |            1 |         1 |          1 |
+| USDCHF   |       14 |           1 |            1 |         1 |          1 |
+| USDJPY   |       14 |           1 |            1 |         1 |          1 |
 
 #### Plots
 ![stage_06_tick_exact_monthly](../../figures/oco_bible/stage_06_tick_exact_monthly.png)

@@ -3756,20 +3756,19 @@
 </ul>
 <h2 id="freeze-command">Freeze Command<a class="headerlink" href="#freeze-command" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/freeze_oco_live_governance.py<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--symbols<span class="w"> </span>EURUSD,GBPUSD<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--out-dir<span class="w"> </span>configs/research/governance/oco
 </code></pre></div>
 <h2 id="validate-command-deploy">Validate Command (Deploy)<a class="headerlink" href="#validate-command-deploy" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/validate_oco_live_governance.py<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--lock-path<span class="w"> </span>configs/research/governance/oco/eurusd_oco_live_lock.json<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>deploy<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--state-csv<span class="w"> </span>data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_reduced_states.csv<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--wfo-config<span class="w"> </span>configs/research/experiments/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--reduced-config<span class="w"> </span>configs/research/experiments/eurusd_oco_reduced_core_2025.yaml<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--data-reliability-checks-csv<span class="w"> </span>data/analysis/tick_opportunity_mining/data_reliability_checks.csv<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--leakage-checks-csv<span class="w"> </span>data/analysis/tick_opportunity_mining/oco_leakage_integrity_checks.csv<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--execution-risk-checks-csv<span class="w"> </span>data/analysis/tick_opportunity_mining/oco_execution_risk_checks.csv
 </code></pre></div>
+<p>When <code>--state-csv</code> is omitted, validator loads the lock artifact state CSV and compares latest schedule month against frozen universe keys.</p>
 <h2 id="validate-command-retrain-window">Validate Command (Retrain Window)<a class="headerlink" href="#validate-command-retrain-window" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/validate_oco_live_governance.py<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--lock-path<span class="w"> </span>configs/research/governance/oco/eurusd_oco_live_lock.json<span class="w"> </span><span class="se">\</span>

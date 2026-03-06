@@ -2161,17 +2161,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#details" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Details
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#plots" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4254,17 +4243,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#details" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Details
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#plots" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4567,14 +4545,15 @@
 <h2 id="reproduction-commands">Reproduction Commands<a class="headerlink" href="#reproduction-commands" title="Permanent link">&para;</a></h2>
 <p>Freeze:
 <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/freeze_oco_live_governance.py<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--symbols<span class="w"> </span>EURUSD,GBPUSD,USDJPY,USDCHF<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--out-dir<span class="w"> </span>configs/research/governance/oco
 </code></pre></div></p>
+<p>Defaults:
+- If <code>--symbols</code> is omitted, symbols are loaded from <code>configs/research/governance/oco_rule_universe_registry.yaml</code>.
+- Use an explicit <code>--symbols</code> list only for deliberate subset operations.</p>
 <p>Validate deploy:
 <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/validate_oco_live_governance.py<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--lock-path<span class="w"> </span>configs/research/governance/oco/eurusd_oco_live_lock.json<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>deploy<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--state-csv<span class="w"> </span>data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_reduced_states.csv<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--wfo-config<span class="w"> </span>configs/research/experiments/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--reduced-config<span class="w"> </span>configs/research/experiments/eurusd_oco_reduced_core_2025.yaml<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--data-reliability-checks-csv<span class="w"> </span>data/analysis/tick_opportunity_mining/data_reliability_checks.csv<span class="w"> </span><span class="se">\</span>
@@ -4586,6 +4565,8 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/build_oco_governance_explainability_report.py
 uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/build_oco_threshold_sensitivity_report.py
 </code></pre></div></p>
+<p>State universe default:
+- If <code>--state-csv</code> is omitted, validator uses <code>artifacts.reduced_states_csv_path</code> from the lock and normalizes rolling schedules to latest <code>test_month</code>.</p>
 <h2 id="traceability">Traceability<a class="headerlink" href="#traceability" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>scripts/freeze_oco_live_governance.py</code></li>
@@ -4601,9 +4582,9 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <!-- GENERATED:STAGE_09:START -->
 <h3 id="auto-snapshot-stage-09">Auto Snapshot - Stage 09<a class="headerlink" href="#auto-snapshot-stage-09" title="Permanent link">&para;</a></h3>
 <ul>
-<li>generated_at: <code>2026-03-05 12:51:13 UTC</code></li>
+<li>generated_at: <code>2026-03-06 09:30:42 UTC</code></li>
 <li>Governance snapshot combines symbol gate matrix with artifact inventory completeness.</li>
-<li>Missing required artifacts: 1.</li>
+<li>Missing required artifacts: 0.</li>
 </ul>
 <h4 id="key-results">Key Results<a class="headerlink" href="#key-results" title="Permanent link">&para;</a></h4>
 <table>
@@ -4637,10 +4618,10 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <tr>
 <td style="text-align: left;">AUDUSD</td>
 <td style="text-align: left;">True</td>
-<td style="text-align: left;">False</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
-<td style="text-align: left;">False</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4653,10 +4634,10 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <tr>
 <td style="text-align: left;">USDCHF</td>
 <td style="text-align: left;">True</td>
-<td style="text-align: left;">False</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
-<td style="text-align: left;">False</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
@@ -4671,7 +4652,7 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <h4 id="interpretation-notes">Interpretation Notes<a class="headerlink" href="#interpretation-notes" title="Permanent link">&para;</a></h4>
 <ul>
 <li>Governance snapshot combines symbol gate matrix with artifact inventory completeness.</li>
-<li>Missing required artifacts: 1.</li>
+<li>Missing required artifacts: 0.</li>
 </ul>
 <h4 id="action-trigger-summary">Action Trigger Summary<a class="headerlink" href="#action-trigger-summary" title="Permanent link">&para;</a></h4>
 <table>
@@ -4690,19 +4671,19 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <tr>
 <td style="text-align: left;">AUDUSD</td>
 <td style="text-align: left;">G01_near_fail_count</td>
-<td style="text-align: left;">gray</td>
-<td style="text-align: left;">high</td>
-<td style="text-align: left;">A9_DATA_GAP</td>
-<td style="text-align: left;">metric not present in stage metrics</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
 <td style="text-align: left;">governance</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
 <td style="text-align: left;">G03_lock_drift_flags</td>
-<td style="text-align: left;">gray</td>
-<td style="text-align: left;">high</td>
-<td style="text-align: left;">A9_DATA_GAP</td>
-<td style="text-align: left;">metric not present in stage metrics</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
 <td style="text-align: left;">governance</td>
 </tr>
 <tr>
@@ -4744,19 +4725,19 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <tr>
 <td style="text-align: left;">USDCAD</td>
 <td style="text-align: left;">G01_near_fail_count</td>
-<td style="text-align: left;">gray</td>
-<td style="text-align: left;">high</td>
-<td style="text-align: left;">A9_DATA_GAP</td>
-<td style="text-align: left;">metric not present in stage metrics</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
 <td style="text-align: left;">governance</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
 <td style="text-align: left;">G03_lock_drift_flags</td>
-<td style="text-align: left;">gray</td>
-<td style="text-align: left;">high</td>
-<td style="text-align: left;">A9_DATA_GAP</td>
-<td style="text-align: left;">metric not present in stage metrics</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
 <td style="text-align: left;">governance</td>
 </tr>
 <tr>
@@ -4794,25 +4775,6 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <td style="text-align: left;">A0_MONITOR</td>
 <td style="text-align: left;">within policy band</td>
 <td style="text-align: left;">governance</td>
-</tr>
-</tbody>
-</table>
-<h4 id="details">Details<a class="headerlink" href="#details" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th style="text-align: left;">group</th>
-<th style="text-align: left;">symbol</th>
-<th style="text-align: left;">artifact</th>
-<th style="text-align: left;">path</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align: left;">symbol</td>
-<td style="text-align: left;">USDCHF</td>
-<td style="text-align: left;">tick_exact_report_md</td>
-<td style="text-align: left;">configs/research/docs/docs/analysis/usdchf_oco_tick_exact_shortlist_report.md</td>
 </tr>
 </tbody>
 </table>
@@ -4868,17 +4830,17 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
-<td style="text-align: left;">missing</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: right;">36</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">nan</td>
-<td style="text-align: left;">nan</td>
-<td style="text-align: left;">missing_predeploy_json</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">2026-03-05</td>
+<td style="text-align: left;">2026-04-07</td>
+<td style="text-align: left;"></td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -4896,37 +4858,34 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
-<td style="text-align: left;">fail</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: right;">19</td>
-<td style="text-align: right;">3</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: right;">36</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: left;">2026-02-28</td>
-<td style="text-align: left;">2026-04-02</td>
-<td style="text-align: left;">data_reliability_rows_present,leakage_rows_present,execution_risk_rows_present</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">2026-03-05</td>
+<td style="text-align: left;">2026-04-07</td>
+<td style="text-align: left;"></td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
-<td style="text-align: left;">missing</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: right;">36</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: right;">nan</td>
-<td style="text-align: left;">nan</td>
-<td style="text-align: left;">nan</td>
-<td style="text-align: left;">missing_predeploy_json</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">2026-03-05</td>
+<td style="text-align: left;">2026-04-07</td>
+<td style="text-align: left;"></td>
 </tr>
 </tbody>
 </table>
-<ul>
-<li>Missing predeploy JSON for one or more symbols. Generate with <code>scripts/validate_oco_live_governance.py --mode deploy --data-reliability-checks-csv ... --leakage-checks-csv ... --execution-risk-checks-csv ... --out-json ...</code> per symbol.</li>
-</ul>
 <!-- GENERATED:STAGE_09:END -->
 
 
