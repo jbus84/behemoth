@@ -3675,7 +3675,7 @@
 
 <h1 id="oco-operator-action-report">OCO Operator Action Report<a class="headerlink" href="#oco-operator-action-report" title="Permanent link">&para;</a></h1>
 <ul>
-<li>generated_at_utc: <code>2026-03-06T09:30:41Z</code></li>
+<li>generated_at_utc: <code>2026-03-06T13:44:50Z</code></li>
 <li>edge_metrics_csv: <code>data/analysis/tick_opportunity_mining/edge_clarity_stage_metrics.csv</code></li>
 <li>rules_yaml: <code>configs/research/docs/operator_action_rules.yaml</code></li>
 <li>status_csv: <code>data/analysis/tick_opportunity_mining/operator_action_status.csv</code></li>
@@ -3692,11 +3692,6 @@
 <tbody>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
-<td style="text-align: left;">amber</td>
-<td style="text-align: right;">1</td>
-</tr>
-<tr>
-<td style="text-align: left;">AUDUSD</td>
 <td style="text-align: left;">gray</td>
 <td style="text-align: right;">1</td>
 </tr>
@@ -3704,6 +3699,11 @@
 <td style="text-align: left;">AUDUSD</td>
 <td style="text-align: left;">green</td>
 <td style="text-align: right;">18</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: right;">1</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -3733,7 +3733,12 @@
 <tr>
 <td style="text-align: left;">USDCAD</td>
 <td style="text-align: left;">green</td>
-<td style="text-align: right;">18</td>
+<td style="text-align: right;">17</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: right;">1</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
@@ -3743,12 +3748,12 @@
 <tr>
 <td style="text-align: left;">USDCHF</td>
 <td style="text-align: left;">green</td>
-<td style="text-align: right;">18</td>
+<td style="text-align: right;">17</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
 <td style="text-align: left;">red</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: right;">2</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -3785,44 +3790,27 @@
 </thead>
 <tbody>
 <tr>
-<td style="text-align: left;">AUDUSD</td>
-<td style="text-align: right;">8</td>
-<td style="text-align: left;">T03_post_worst_month_recovery</td>
-<td style="text-align: right;">0.529206</td>
-<td style="text-align: left;">le</td>
-<td style="text-align: right;">0.75</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: left;">amber</td>
-<td style="text-align: left;">medium</td>
-<td style="text-align: left;">A1_REVIEW</td>
-<td style="text-align: left;">review and monitor</td>
-<td style="text-align: left;">risk</td>
-<td style="text-align: left;">Recovery factor below 1 indicates incomplete resilience.</td>
-<td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/AUDUSD_oco_reduced_monthly.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
-</tr>
-<tr>
 <td style="text-align: left;">USDCAD</td>
-<td style="text-align: right;">4</td>
-<td style="text-align: left;">E11_session_overshoot_dispersion</td>
-<td style="text-align: right;">0.356605</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">W13_threshold_fragility</td>
+<td style="text-align: right;">2.5201</td>
 <td style="text-align: left;">ge</td>
-<td style="text-align: right;">0.35</td>
-<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">2.5</td>
+<td style="text-align: right;">4</td>
 <td style="text-align: left;">amber</td>
 <td style="text-align: left;">medium</td>
 <td style="text-align: left;">A2_RECALIBRATE</td>
 <td style="text-align: left;">review and monitor</td>
-<td style="text-align: left;">execution</td>
-<td style="text-align: left;">Overshoot dispersion increases stop-limit execution uncertainty.</td>
-<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCAD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Fragile threshold response suggests unstable selection edge.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCAD_monthly_thresholds_all.csv</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
 <td style="text-align: right;">7</td>
 <td style="text-align: left;">S01_lb95_dependence_gap</td>
-<td style="text-align: right;">0.25702</td>
+<td style="text-align: right;">0.346812</td>
 <td style="text-align: left;">abs_ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.5</td>
@@ -3833,13 +3821,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Large dependence gap indicates fragile inferential claims.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
-<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">AUDUSD</td>
 <td style="text-align: right;">7</td>
 <td style="text-align: left;">S01_lb95_dependence_gap</td>
-<td style="text-align: right;">0.69806</td>
+<td style="text-align: right;">0.682423</td>
 <td style="text-align: left;">abs_ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.5</td>
@@ -3850,13 +3838,30 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Large dependence gap indicates fragile inferential claims.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">S01_lb95_dependence_gap</td>
+<td style="text-align: right;">0.849355</td>
+<td style="text-align: left;">abs_ge</td>
+<td style="text-align: right;">0.25</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A2_RECALIBRATE</td>
+<td style="text-align: left;">escalate and remediate</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Large dependence gap indicates fragile inferential claims.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W13_threshold_fragility</td>
-<td style="text-align: right;">4.35448</td>
+<td style="text-align: right;">4.12988</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">2.5</td>
 <td style="text-align: right;">4</td>
@@ -3867,13 +3872,30 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Fragile threshold response suggests unstable selection edge.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_monthly_thresholds_all.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCAD</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">S01_lb95_dependence_gap</td>
+<td style="text-align: right;">0.911565</td>
+<td style="text-align: left;">abs_ge</td>
+<td style="text-align: right;">0.25</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A2_RECALIBRATE</td>
+<td style="text-align: left;">escalate and remediate</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Large dependence gap indicates fragile inferential claims.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
 <td style="text-align: right;">4</td>
 <td style="text-align: left;">E11_session_overshoot_dispersion</td>
-<td style="text-align: right;">0.976806</td>
+<td style="text-align: right;">0.821574</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.35</td>
 <td style="text-align: right;">0.5</td>
@@ -3884,7 +3906,24 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Overshoot dispersion increases stop-limit execution uncertainty.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCHF_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">S01_lb95_dependence_gap</td>
+<td style="text-align: right;">0.688646</td>
+<td style="text-align: left;">abs_ge</td>
+<td style="text-align: right;">0.25</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A2_RECALIBRATE</td>
+<td style="text-align: left;">escalate and remediate</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: left;">Large dependence gap indicates fragile inferential claims.</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 </tbody>
 </table>
@@ -3914,7 +3953,7 @@
 <td style="text-align: left;">AUDUSD</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D16_spread_regime_shift_z</td>
-<td style="text-align: right;">-1.60736</td>
+<td style="text-align: right;">-1.13896</td>
 <td style="text-align: left;">abs_ge</td>
 <td style="text-align: right;">2</td>
 <td style="text-align: right;">3</td>
@@ -3925,13 +3964,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Spread regime shift can invalidate cost assumptions.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/AUDUSD_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D17_gap_burst_ratio</td>
-<td style="text-align: right;">8.46025e-05</td>
+<td style="text-align: right;">0.000131</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.02</td>
 <td style="text-align: right;">0.05</td>
@@ -3942,13 +3981,13 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">Excess large gaps suggest unstable data feed quality.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/AUDUSD_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D18_clock_jitter_cv</td>
-<td style="text-align: right;">0.616136</td>
+<td style="text-align: right;">0.610206</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">2</td>
 <td style="text-align: right;">3</td>
@@ -3959,13 +3998,13 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">Timestamp jitter threatens ordering assumptions.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/AUDUSD_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
 <td style="text-align: right;">4</td>
 <td style="text-align: left;">E11_session_overshoot_dispersion</td>
-<td style="text-align: right;">0.288899</td>
+<td style="text-align: right;">0.300633</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.35</td>
 <td style="text-align: right;">0.5</td>
@@ -3976,13 +4015,13 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Overshoot dispersion increases stop-limit execution uncertainty.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/AUDUSD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
 <td style="text-align: right;">4</td>
 <td style="text-align: left;">E12_cap_plateau_width_pips</td>
-<td style="text-align: right;">1.2</td>
+<td style="text-align: right;">1.5</td>
 <td style="text-align: left;">le</td>
 <td style="text-align: right;">0.15</td>
 <td style="text-align: right;">0.05</td>
@@ -3993,13 +4032,13 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Narrow cap plateau indicates unstable cap setting.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/AUDUSD_stop_limit_tickfill_caps.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
 <td style="text-align: right;">4</td>
 <td style="text-align: left;">E13_nonfill_opportunity_cost_pips</td>
-<td style="text-align: right;">0.0933759</td>
+<td style="text-align: right;">0.0973822</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.4</td>
@@ -4010,7 +4049,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Large non-fill opportunity cost suggests cap too restrictive.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/AUDUSD_stop_limit_tickfill_caps.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
@@ -4027,7 +4066,7 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Elevated downside month probability in mild stress is unacceptable.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
@@ -4044,7 +4083,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Mild stress should not materially degrade fill rates.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
@@ -4061,7 +4100,7 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">NaNs in core MC fields invalidate stress outcomes.</td>
 <td style="text-align: left;"></td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
@@ -4078,7 +4117,7 @@
 <td style="text-align: left;">governance</td>
 <td style="text-align: left;">Near-fails indicate narrowing safety margin.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/audusd_governance_predeploy.json</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
@@ -4095,7 +4134,7 @@
 <td style="text-align: left;">governance</td>
 <td style="text-align: left;">Any lock drift threatens deployment integrity.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/audusd_governance_predeploy.json</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
@@ -4112,24 +4151,24 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Over-dependence on few states weakens diversification robustness.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/AUDUSD_oco_reduced_summary.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
 <td style="text-align: right;">7</td>
 <td style="text-align: left;">S01_lb95_dependence_gap</td>
-<td style="text-align: right;">0.11299</td>
+<td style="text-align: right;">0.682423</td>
 <td style="text-align: left;">abs_ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.5</td>
-<td style="text-align: left;">green</td>
-<td style="text-align: left;">info</td>
-<td style="text-align: left;">A0_MONITOR</td>
-<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A2_RECALIBRATE</td>
+<td style="text-align: left;">escalate and remediate</td>
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Large dependence gap indicates fragile inferential claims.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
@@ -4146,7 +4185,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Practical lower bound should remain positive.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
@@ -4163,13 +4202,13 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">High stress elasticity indicates brittle PnL response.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/AUDUSD_oco_robustness_summary.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
 <td style="text-align: right;">8</td>
 <td style="text-align: left;">T02_first_negative_costplus</td>
-<td style="text-align: right;">1.25</td>
+<td style="text-align: right;">2</td>
 <td style="text-align: left;">le</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: right;">0.5</td>
@@ -4180,30 +4219,30 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Strategy should remain positive through conservative costplus scenarios.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/AUDUSD_oco_robustness_summary.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
 <td style="text-align: right;">8</td>
 <td style="text-align: left;">T03_post_worst_month_recovery</td>
-<td style="text-align: right;">0.529206</td>
+<td style="text-align: right;">1.79224</td>
 <td style="text-align: left;">le</td>
 <td style="text-align: right;">0.75</td>
 <td style="text-align: right;">0.5</td>
-<td style="text-align: left;">amber</td>
-<td style="text-align: left;">medium</td>
-<td style="text-align: left;">A1_REVIEW</td>
-<td style="text-align: left;">review and monitor</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Recovery factor below 1 indicates incomplete resilience.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/AUDUSD_oco_reduced_monthly.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W13_threshold_fragility</td>
-<td style="text-align: right;">0.602263</td>
+<td style="text-align: right;">1.01306</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">2.5</td>
 <td style="text-align: right;">4</td>
@@ -4214,13 +4253,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Fragile threshold response suggests unstable selection edge.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/AUDUSD_monthly_thresholds_all.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W14_brier_drift_std</td>
-<td style="text-align: right;">0.00193246</td>
+<td style="text-align: right;">0.00077758</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.01</td>
 <td style="text-align: right;">0.02</td>
@@ -4231,13 +4270,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Calibration drift can break probability gating quality.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/AUDUSD_monthly_metrics_all.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W15_selection_turnover</td>
-<td style="text-align: right;">0.118638</td>
+<td style="text-align: right;">0.141851</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.4</td>
@@ -4248,13 +4287,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Excess turnover implies unstable selected state identity.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/AUDUSD_monthly_predictions_all.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D16_spread_regime_shift_z</td>
-<td style="text-align: right;">-0.589219</td>
+<td style="text-align: right;">-0.564371</td>
 <td style="text-align: left;">abs_ge</td>
 <td style="text-align: right;">2</td>
 <td style="text-align: right;">3</td>
@@ -4265,13 +4304,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Spread regime shift can invalidate cost assumptions.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D17_gap_burst_ratio</td>
-<td style="text-align: right;">0.000400833</td>
+<td style="text-align: right;">0.0003995</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.02</td>
 <td style="text-align: right;">0.05</td>
@@ -4282,13 +4321,13 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">Excess large gaps suggest unstable data feed quality.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D18_clock_jitter_cv</td>
-<td style="text-align: right;">0.619785</td>
+<td style="text-align: right;">0.620643</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">2</td>
 <td style="text-align: right;">3</td>
@@ -4299,13 +4338,13 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">Timestamp jitter threatens ordering assumptions.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">4</td>
 <td style="text-align: left;">E11_session_overshoot_dispersion</td>
-<td style="text-align: right;">0.202143</td>
+<td style="text-align: right;">0.20533</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.35</td>
 <td style="text-align: right;">0.5</td>
@@ -4316,7 +4355,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Overshoot dispersion increases stop-limit execution uncertainty.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -4333,13 +4372,13 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Narrow cap plateau indicates unstable cap setting.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_caps.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">4</td>
 <td style="text-align: left;">E13_nonfill_opportunity_cost_pips</td>
-<td style="text-align: right;">0.121883</td>
+<td style="text-align: right;">0.120942</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.4</td>
@@ -4350,7 +4389,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Large non-fill opportunity cost suggests cap too restrictive.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_caps.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -4367,7 +4406,7 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Elevated downside month probability in mild stress is unacceptable.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -4384,7 +4423,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Mild stress should not materially degrade fill rates.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -4401,7 +4440,7 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">NaNs in core MC fields invalidate stress outcomes.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_checks.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -4418,7 +4457,7 @@
 <td style="text-align: left;">governance</td>
 <td style="text-align: left;">Near-fails indicate narrowing safety margin.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/eurusd_governance_predeploy.json</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -4435,7 +4474,7 @@
 <td style="text-align: left;">governance</td>
 <td style="text-align: left;">Any lock drift threatens deployment integrity.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/eurusd_governance_predeploy.json</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -4452,13 +4491,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Over-dependence on few states weakens diversification robustness.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_summary.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">7</td>
 <td style="text-align: left;">S01_lb95_dependence_gap</td>
-<td style="text-align: right;">0.69806</td>
+<td style="text-align: right;">0.849355</td>
 <td style="text-align: left;">abs_ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.5</td>
@@ -4469,7 +4508,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Large dependence gap indicates fragile inferential claims.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -4486,7 +4525,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Practical lower bound should remain positive.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -4503,7 +4542,7 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">High stress elasticity indicates brittle PnL response.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/EURUSD_oco_robustness_summary.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
@@ -4520,13 +4559,13 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Strategy should remain positive through conservative costplus scenarios.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/EURUSD_oco_robustness_summary.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">8</td>
 <td style="text-align: left;">T03_post_worst_month_recovery</td>
-<td style="text-align: right;">1.6805</td>
+<td style="text-align: right;">1.83081</td>
 <td style="text-align: left;">le</td>
 <td style="text-align: right;">0.75</td>
 <td style="text-align: right;">0.5</td>
@@ -4537,13 +4576,13 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Recovery factor below 1 indicates incomplete resilience.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W13_threshold_fragility</td>
-<td style="text-align: right;">4.35448</td>
+<td style="text-align: right;">4.12988</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">2.5</td>
 <td style="text-align: right;">4</td>
@@ -4554,13 +4593,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Fragile threshold response suggests unstable selection edge.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_monthly_thresholds_all.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W14_brier_drift_std</td>
-<td style="text-align: right;">0.00124197</td>
+<td style="text-align: right;">0.00156103</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.01</td>
 <td style="text-align: right;">0.02</td>
@@ -4571,13 +4610,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Calibration drift can break probability gating quality.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_monthly_metrics_all.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W15_selection_turnover</td>
-<td style="text-align: right;">0.12283</td>
+<td style="text-align: right;">0.115805</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.4</td>
@@ -4588,13 +4627,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Excess turnover implies unstable selected state identity.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_monthly_predictions_all.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D16_spread_regime_shift_z</td>
-<td style="text-align: right;">-1.778</td>
+<td style="text-align: right;">-1.39328</td>
 <td style="text-align: left;">abs_ge</td>
 <td style="text-align: right;">2</td>
 <td style="text-align: right;">3</td>
@@ -4605,13 +4644,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Spread regime shift can invalidate cost assumptions.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/GBPUSD_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D17_gap_burst_ratio</td>
-<td style="text-align: right;">0.0002085</td>
+<td style="text-align: right;">0.000325333</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.02</td>
 <td style="text-align: right;">0.05</td>
@@ -4622,13 +4661,13 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">Excess large gaps suggest unstable data feed quality.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/GBPUSD_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D18_clock_jitter_cv</td>
-<td style="text-align: right;">0.592694</td>
+<td style="text-align: right;">0.593775</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">2</td>
 <td style="text-align: right;">3</td>
@@ -4639,13 +4678,13 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">Timestamp jitter threatens ordering assumptions.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/GBPUSD_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
 <td style="text-align: right;">4</td>
 <td style="text-align: left;">E11_session_overshoot_dispersion</td>
-<td style="text-align: right;">0.278869</td>
+<td style="text-align: right;">0.270871</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.35</td>
 <td style="text-align: right;">0.5</td>
@@ -4656,7 +4695,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Overshoot dispersion increases stop-limit execution uncertainty.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/GBPUSD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4673,13 +4712,13 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Narrow cap plateau indicates unstable cap setting.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/GBPUSD_stop_limit_tickfill_caps.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
 <td style="text-align: right;">4</td>
 <td style="text-align: left;">E13_nonfill_opportunity_cost_pips</td>
-<td style="text-align: right;">0.119252</td>
+<td style="text-align: right;">0.120835</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.4</td>
@@ -4690,7 +4729,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Large non-fill opportunity cost suggests cap too restrictive.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/GBPUSD_stop_limit_tickfill_caps.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4707,7 +4746,7 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Elevated downside month probability in mild stress is unacceptable.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4724,7 +4763,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Mild stress should not materially degrade fill rates.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4741,7 +4780,7 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">NaNs in core MC fields invalidate stress outcomes.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_checks.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4758,7 +4797,7 @@
 <td style="text-align: left;">governance</td>
 <td style="text-align: left;">Near-fails indicate narrowing safety margin.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/gbpusd_governance_predeploy.json</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4775,7 +4814,7 @@
 <td style="text-align: left;">governance</td>
 <td style="text-align: left;">Any lock drift threatens deployment integrity.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/gbpusd_governance_predeploy.json</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4792,13 +4831,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Over-dependence on few states weakens diversification robustness.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/GBPUSD_oco_reduced_summary.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
 <td style="text-align: right;">7</td>
 <td style="text-align: left;">S01_lb95_dependence_gap</td>
-<td style="text-align: right;">0.124853</td>
+<td style="text-align: right;">0.0854387</td>
 <td style="text-align: left;">abs_ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.5</td>
@@ -4809,7 +4848,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Large dependence gap indicates fragile inferential claims.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4826,7 +4865,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Practical lower bound should remain positive.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4843,7 +4882,7 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">High stress elasticity indicates brittle PnL response.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/GBPUSD_oco_robustness_summary.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -4860,13 +4899,13 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Strategy should remain positive through conservative costplus scenarios.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/GBPUSD_oco_robustness_summary.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
 <td style="text-align: right;">8</td>
 <td style="text-align: left;">T03_post_worst_month_recovery</td>
-<td style="text-align: right;">1.08338</td>
+<td style="text-align: right;">1.14889</td>
 <td style="text-align: left;">le</td>
 <td style="text-align: right;">0.75</td>
 <td style="text-align: right;">0.5</td>
@@ -4877,13 +4916,13 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Recovery factor below 1 indicates incomplete resilience.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/GBPUSD_oco_reduced_monthly.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W13_threshold_fragility</td>
-<td style="text-align: right;">1.30032</td>
+<td style="text-align: right;">1.3026</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">2.5</td>
 <td style="text-align: right;">4</td>
@@ -4894,13 +4933,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Fragile threshold response suggests unstable selection edge.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/GBPUSD_monthly_thresholds_all.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W14_brier_drift_std</td>
-<td style="text-align: right;">0.000778954</td>
+<td style="text-align: right;">0.000638987</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.01</td>
 <td style="text-align: right;">0.02</td>
@@ -4911,13 +4950,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Calibration drift can break probability gating quality.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/GBPUSD_monthly_metrics_all.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W15_selection_turnover</td>
-<td style="text-align: right;">0.0593122</td>
+<td style="text-align: right;">0.0662832</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.4</td>
@@ -4928,13 +4967,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Excess turnover implies unstable selected state identity.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/GBPUSD_monthly_predictions_all.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D16_spread_regime_shift_z</td>
-<td style="text-align: right;">-1.04177</td>
+<td style="text-align: right;">-1.3148</td>
 <td style="text-align: left;">abs_ge</td>
 <td style="text-align: right;">2</td>
 <td style="text-align: right;">3</td>
@@ -4945,13 +4984,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Spread regime shift can invalidate cost assumptions.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCAD_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D17_gap_burst_ratio</td>
-<td style="text-align: right;">0.000150344</td>
+<td style="text-align: right;">0.000342333</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.02</td>
 <td style="text-align: right;">0.05</td>
@@ -4962,13 +5001,13 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">Excess large gaps suggest unstable data feed quality.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCAD_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D18_clock_jitter_cv</td>
-<td style="text-align: right;">0.57446</td>
+<td style="text-align: right;">0.581902</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">2</td>
 <td style="text-align: right;">3</td>
@@ -4979,30 +5018,30 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">Timestamp jitter threatens ordering assumptions.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCAD_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
 <td style="text-align: right;">4</td>
 <td style="text-align: left;">E11_session_overshoot_dispersion</td>
-<td style="text-align: right;">0.356605</td>
+<td style="text-align: right;">0.333909</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.35</td>
 <td style="text-align: right;">0.5</td>
-<td style="text-align: left;">amber</td>
-<td style="text-align: left;">medium</td>
-<td style="text-align: left;">A2_RECALIBRATE</td>
-<td style="text-align: left;">review and monitor</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Overshoot dispersion increases stop-limit execution uncertainty.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCAD_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
 <td style="text-align: right;">4</td>
 <td style="text-align: left;">E12_cap_plateau_width_pips</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.8</td>
 <td style="text-align: left;">le</td>
 <td style="text-align: right;">0.15</td>
 <td style="text-align: right;">0.05</td>
@@ -5013,13 +5052,13 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Narrow cap plateau indicates unstable cap setting.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCAD_stop_limit_tickfill_caps.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
 <td style="text-align: right;">4</td>
 <td style="text-align: left;">E13_nonfill_opportunity_cost_pips</td>
-<td style="text-align: right;">0.145914</td>
+<td style="text-align: right;">0.165545</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.4</td>
@@ -5030,7 +5069,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Large non-fill opportunity cost suggests cap too restrictive.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCAD_stop_limit_tickfill_caps.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
@@ -5047,7 +5086,7 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Elevated downside month probability in mild stress is unacceptable.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
@@ -5064,7 +5103,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Mild stress should not materially degrade fill rates.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
@@ -5081,7 +5120,7 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">NaNs in core MC fields invalidate stress outcomes.</td>
 <td style="text-align: left;"></td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
@@ -5098,7 +5137,7 @@
 <td style="text-align: left;">governance</td>
 <td style="text-align: left;">Near-fails indicate narrowing safety margin.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/usdcad_governance_predeploy.json</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
@@ -5115,7 +5154,7 @@
 <td style="text-align: left;">governance</td>
 <td style="text-align: left;">Any lock drift threatens deployment integrity.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/usdcad_governance_predeploy.json</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
@@ -5132,24 +5171,24 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Over-dependence on few states weakens diversification robustness.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_reduced_summary.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
 <td style="text-align: right;">7</td>
 <td style="text-align: left;">S01_lb95_dependence_gap</td>
-<td style="text-align: right;">0.201013</td>
+<td style="text-align: right;">0.911565</td>
 <td style="text-align: left;">abs_ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.5</td>
-<td style="text-align: left;">green</td>
-<td style="text-align: left;">info</td>
-<td style="text-align: left;">A0_MONITOR</td>
-<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A2_RECALIBRATE</td>
+<td style="text-align: left;">escalate and remediate</td>
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Large dependence gap indicates fragile inferential claims.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
@@ -5166,7 +5205,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Practical lower bound should remain positive.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
@@ -5183,13 +5222,13 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">High stress elasticity indicates brittle PnL response.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/USDCAD_oco_robustness_summary.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
 <td style="text-align: right;">8</td>
 <td style="text-align: left;">T02_first_negative_costplus</td>
-<td style="text-align: right;">1.75</td>
+<td style="text-align: right;">2</td>
 <td style="text-align: left;">le</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: right;">0.5</td>
@@ -5200,13 +5239,13 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Strategy should remain positive through conservative costplus scenarios.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/USDCAD_oco_robustness_summary.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
 <td style="text-align: right;">8</td>
 <td style="text-align: left;">T03_post_worst_month_recovery</td>
-<td style="text-align: right;">1.58167</td>
+<td style="text-align: right;">3.62638</td>
 <td style="text-align: left;">le</td>
 <td style="text-align: right;">0.75</td>
 <td style="text-align: right;">0.5</td>
@@ -5217,30 +5256,30 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Recovery factor below 1 indicates incomplete resilience.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_reduced_monthly.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W13_threshold_fragility</td>
-<td style="text-align: right;">1.40148</td>
+<td style="text-align: right;">2.5201</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">2.5</td>
 <td style="text-align: right;">4</td>
-<td style="text-align: left;">green</td>
-<td style="text-align: left;">info</td>
-<td style="text-align: left;">A0_MONITOR</td>
-<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">amber</td>
+<td style="text-align: left;">medium</td>
+<td style="text-align: left;">A2_RECALIBRATE</td>
+<td style="text-align: left;">review and monitor</td>
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Fragile threshold response suggests unstable selection edge.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCAD_monthly_thresholds_all.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W14_brier_drift_std</td>
-<td style="text-align: right;">0.00197814</td>
+<td style="text-align: right;">0.00223613</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.01</td>
 <td style="text-align: right;">0.02</td>
@@ -5251,13 +5290,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Calibration drift can break probability gating quality.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCAD_monthly_metrics_all.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W15_selection_turnover</td>
-<td style="text-align: right;">0.130087</td>
+<td style="text-align: right;">0.139755</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.4</td>
@@ -5268,13 +5307,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Excess turnover implies unstable selected state identity.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCAD_monthly_predictions_all.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D16_spread_regime_shift_z</td>
-<td style="text-align: right;">-1.3165</td>
+<td style="text-align: right;">-1.20704</td>
 <td style="text-align: left;">abs_ge</td>
 <td style="text-align: right;">2</td>
 <td style="text-align: right;">3</td>
@@ -5285,13 +5324,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Spread regime shift can invalidate cost assumptions.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCHF_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D17_gap_burst_ratio</td>
-<td style="text-align: right;">0.000130105</td>
+<td style="text-align: right;">0.000224333</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.02</td>
 <td style="text-align: right;">0.05</td>
@@ -5302,13 +5341,13 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">Excess large gaps suggest unstable data feed quality.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCHF_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D18_clock_jitter_cv</td>
-<td style="text-align: right;">0.635497</td>
+<td style="text-align: right;">0.621472</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">2</td>
 <td style="text-align: right;">3</td>
@@ -5319,13 +5358,13 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">Timestamp jitter threatens ordering assumptions.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCHF_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
 <td style="text-align: right;">4</td>
 <td style="text-align: left;">E11_session_overshoot_dispersion</td>
-<td style="text-align: right;">0.976806</td>
+<td style="text-align: right;">0.821574</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.35</td>
 <td style="text-align: right;">0.5</td>
@@ -5336,7 +5375,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Overshoot dispersion increases stop-limit execution uncertainty.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCHF_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
@@ -5353,13 +5392,13 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Narrow cap plateau indicates unstable cap setting.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCHF_stop_limit_tickfill_caps.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
 <td style="text-align: right;">4</td>
 <td style="text-align: left;">E13_nonfill_opportunity_cost_pips</td>
-<td style="text-align: right;">0.110524</td>
+<td style="text-align: right;">0.11134</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.4</td>
@@ -5370,7 +5409,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Large non-fill opportunity cost suggests cap too restrictive.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCHF_stop_limit_tickfill_caps.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
@@ -5387,7 +5426,7 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Elevated downside month probability in mild stress is unacceptable.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
@@ -5404,7 +5443,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Mild stress should not materially degrade fill rates.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
@@ -5421,7 +5460,7 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">NaNs in core MC fields invalidate stress outcomes.</td>
 <td style="text-align: left;"></td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
@@ -5438,7 +5477,7 @@
 <td style="text-align: left;">governance</td>
 <td style="text-align: left;">Near-fails indicate narrowing safety margin.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/usdchf_governance_predeploy.json</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
@@ -5455,7 +5494,7 @@
 <td style="text-align: left;">governance</td>
 <td style="text-align: left;">Any lock drift threatens deployment integrity.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/usdchf_governance_predeploy.json</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
@@ -5472,24 +5511,24 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Over-dependence on few states weakens diversification robustness.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_summary.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
 <td style="text-align: right;">7</td>
 <td style="text-align: left;">S01_lb95_dependence_gap</td>
-<td style="text-align: right;">0.160085</td>
+<td style="text-align: right;">0.688646</td>
 <td style="text-align: left;">abs_ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.5</td>
-<td style="text-align: left;">green</td>
-<td style="text-align: left;">info</td>
-<td style="text-align: left;">A0_MONITOR</td>
-<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A2_RECALIBRATE</td>
+<td style="text-align: left;">escalate and remediate</td>
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Large dependence gap indicates fragile inferential claims.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
@@ -5506,7 +5545,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Practical lower bound should remain positive.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
@@ -5523,13 +5562,13 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">High stress elasticity indicates brittle PnL response.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/USDCHF_oco_robustness_summary.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
 <td style="text-align: right;">8</td>
 <td style="text-align: left;">T02_first_negative_costplus</td>
-<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">2</td>
 <td style="text-align: left;">le</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: right;">0.5</td>
@@ -5540,13 +5579,13 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Strategy should remain positive through conservative costplus scenarios.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/USDCHF_oco_robustness_summary.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
 <td style="text-align: right;">8</td>
 <td style="text-align: left;">T03_post_worst_month_recovery</td>
-<td style="text-align: right;">1.61149</td>
+<td style="text-align: right;">2.81389</td>
 <td style="text-align: left;">le</td>
 <td style="text-align: right;">0.75</td>
 <td style="text-align: right;">0.5</td>
@@ -5557,13 +5596,13 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Recovery factor below 1 indicates incomplete resilience.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_monthly.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W13_threshold_fragility</td>
-<td style="text-align: right;">1.48632</td>
+<td style="text-align: right;">1.34019</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">2.5</td>
 <td style="text-align: right;">4</td>
@@ -5574,13 +5613,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Fragile threshold response suggests unstable selection edge.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCHF_monthly_thresholds_all.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W14_brier_drift_std</td>
-<td style="text-align: right;">0.00115577</td>
+<td style="text-align: right;">0.00152487</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.01</td>
 <td style="text-align: right;">0.02</td>
@@ -5591,13 +5630,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Calibration drift can break probability gating quality.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCHF_monthly_metrics_all.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W15_selection_turnover</td>
-<td style="text-align: right;">0.168319</td>
+<td style="text-align: right;">0.177854</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.4</td>
@@ -5608,13 +5647,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Excess turnover implies unstable selected state identity.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCHF_monthly_predictions_all.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D16_spread_regime_shift_z</td>
-<td style="text-align: right;">-1.12367</td>
+<td style="text-align: right;">-0.763532</td>
 <td style="text-align: left;">abs_ge</td>
 <td style="text-align: right;">2</td>
 <td style="text-align: right;">3</td>
@@ -5625,13 +5664,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Spread regime shift can invalidate cost assumptions.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDJPY_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D17_gap_burst_ratio</td>
-<td style="text-align: right;">0.0002315</td>
+<td style="text-align: right;">0.000360833</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.02</td>
 <td style="text-align: right;">0.05</td>
@@ -5642,13 +5681,13 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">Excess large gaps suggest unstable data feed quality.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDJPY_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">D18_clock_jitter_cv</td>
-<td style="text-align: right;">0.608004</td>
+<td style="text-align: right;">0.610349</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">2</td>
 <td style="text-align: right;">3</td>
@@ -5659,13 +5698,13 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">Timestamp jitter threatens ordering assumptions.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDJPY_oco_events_eval2025.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
 <td style="text-align: right;">4</td>
 <td style="text-align: left;">E11_session_overshoot_dispersion</td>
-<td style="text-align: right;">0.136441</td>
+<td style="text-align: right;">0.125103</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.35</td>
 <td style="text-align: right;">0.5</td>
@@ -5676,7 +5715,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Overshoot dispersion increases stop-limit execution uncertainty.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDJPY_stop_limit_tickfill_detail.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -5693,13 +5732,13 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Narrow cap plateau indicates unstable cap setting.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDJPY_stop_limit_tickfill_caps.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
 <td style="text-align: right;">4</td>
 <td style="text-align: left;">E13_nonfill_opportunity_cost_pips</td>
-<td style="text-align: right;">0.190838</td>
+<td style="text-align: right;">0.196782</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.4</td>
@@ -5710,7 +5749,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Large non-fill opportunity cost suggests cap too restrictive.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDJPY_stop_limit_tickfill_caps.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -5727,7 +5766,7 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Elevated downside month probability in mild stress is unacceptable.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -5744,7 +5783,7 @@
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">Mild stress should not materially degrade fill rates.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -5761,7 +5800,7 @@
 <td style="text-align: left;">data</td>
 <td style="text-align: left;">NaNs in core MC fields invalidate stress outcomes.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_checks.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -5778,7 +5817,7 @@
 <td style="text-align: left;">governance</td>
 <td style="text-align: left;">Near-fails indicate narrowing safety margin.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/usdjpy_governance_predeploy.json</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -5795,7 +5834,7 @@
 <td style="text-align: left;">governance</td>
 <td style="text-align: left;">Any lock drift threatens deployment integrity.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/usdjpy_governance_predeploy.json</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -5812,13 +5851,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Over-dependence on few states weakens diversification robustness.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_reduced_summary.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
 <td style="text-align: right;">7</td>
 <td style="text-align: left;">S01_lb95_dependence_gap</td>
-<td style="text-align: right;">0.25702</td>
+<td style="text-align: right;">0.346812</td>
 <td style="text-align: left;">abs_ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.5</td>
@@ -5829,7 +5868,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Large dependence gap indicates fragile inferential claims.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -5846,7 +5885,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Practical lower bound should remain positive.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_metrics.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -5863,7 +5902,7 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">High stress elasticity indicates brittle PnL response.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/USDJPY_oco_robustness_summary.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -5880,13 +5919,13 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Strategy should remain positive through conservative costplus scenarios.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/full_robustness/USDJPY_oco_robustness_summary.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
 <td style="text-align: right;">8</td>
 <td style="text-align: left;">T03_post_worst_month_recovery</td>
-<td style="text-align: right;">0.919414</td>
+<td style="text-align: right;">1.06499</td>
 <td style="text-align: left;">le</td>
 <td style="text-align: right;">0.75</td>
 <td style="text-align: right;">0.5</td>
@@ -5897,13 +5936,13 @@
 <td style="text-align: left;">risk</td>
 <td style="text-align: left;">Recovery factor below 1 indicates incomplete resilience.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_reduced_monthly.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W13_threshold_fragility</td>
-<td style="text-align: right;">1.40588</td>
+<td style="text-align: right;">1.92839</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">2.5</td>
 <td style="text-align: right;">4</td>
@@ -5914,13 +5953,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Fragile threshold response suggests unstable selection edge.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDJPY_monthly_thresholds_all.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W14_brier_drift_std</td>
-<td style="text-align: right;">0.000967283</td>
+<td style="text-align: right;">0.000864564</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.01</td>
 <td style="text-align: right;">0.02</td>
@@ -5931,13 +5970,13 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Calibration drift can break probability gating quality.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDJPY_monthly_metrics_all.csv</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
 <td style="text-align: right;">3</td>
 <td style="text-align: left;">W15_selection_turnover</td>
-<td style="text-align: right;">0.0180458</td>
+<td style="text-align: right;">0.0425828</td>
 <td style="text-align: left;">ge</td>
 <td style="text-align: right;">0.25</td>
 <td style="text-align: right;">0.4</td>
@@ -5948,7 +5987,7 @@
 <td style="text-align: left;">research</td>
 <td style="text-align: left;">Excess turnover implies unstable selected state identity.</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDJPY_monthly_predictions_all.parquet</td>
-<td style="text-align: left;">2026-03-06T09:30:41Z</td>
+<td style="text-align: left;">2026-03-06T13:44:50Z</td>
 </tr>
 </tbody>
 </table>

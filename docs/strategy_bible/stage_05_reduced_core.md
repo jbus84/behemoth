@@ -139,7 +139,7 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 <!-- GENERATED:STAGE_05:START -->
 ### Auto Snapshot - Stage 05
 
-- generated_at: `2026-03-06 10:46:49 UTC`
+- generated_at: `2026-03-06 13:50:11 UTC`
 - State schedule is selected month-by-month using only prior-month train data.
 - Summary emphasizes full-path gross behavior after reduced-core filtering.
 - R01-R03 track pruning severity, state concentration, and re-selection stability.

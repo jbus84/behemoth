@@ -22,7 +22,7 @@ uv run mkdocs build
 ## Rolling Historical Evidence
 
 <!-- GENERATED:SYSREF:VALIDATION:START -->
-- generated_at_utc: `2026-03-06T10:47:16Z`
+- generated_at_utc: `2026-03-06T13:50:40Z`
 - symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD`
 - stop-limit_reference: `stage_04_execution_realism`
 - artifact_sources:

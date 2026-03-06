@@ -1,6 +1,6 @@
 # Analysis Catalog
 
-- generated_at_utc: `2026-03-06T10:46:47Z`
+- generated_at_utc: `2026-03-06T13:50:08Z`
 - manifest_csv: `analysis/catalog_manifest.csv`
 - gaps_report: `analysis/catalog_gaps_report.md`
 
