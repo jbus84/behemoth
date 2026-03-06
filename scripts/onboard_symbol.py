@@ -193,8 +193,6 @@ def stage_2_ml_pipeline(symbol: str, *, model_export_dir: str | None = None, dry
     wfo_args_base = [
         "--config", f"configs/research/experiments/{sym}_tick_opportunity_monthly_wfo_2025.yaml"
     ]
-    if model_export_dir:
-        wfo_args_base += ["--model-export-dir", model_export_dir]
 
     _uv_run(
         "run_tick_opportunity_monthly_wfo.py",
@@ -207,6 +205,8 @@ def stage_2_ml_pipeline(symbol: str, *, model_export_dir: str | None = None, dry
         "--config", f"configs/research/experiments/{sym}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml"
     ]
     if model_export_dir:
+        # Export deployable API models only from the fullcap OCO run so
+        # thresholds always align with freeze/parity artifacts.
         wfo_args_oco += ["--model-export-dir", model_export_dir]
 
     _uv_run(
