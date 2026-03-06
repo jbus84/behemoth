@@ -55,6 +55,48 @@ class TestMetricsEndpoint:
         assert r.headers["content-type"].startswith("text/plain")
         assert "behemoth_" in r.text
 
+
+class TestFtmoRiskEndpoints:
+    def test_ftmo_limits_endpoint(self, client):
+        r = client.get("/risk/ftmo/limits")
+        assert r.status_code == 200
+        body = r.json()
+        assert "enabled" in body
+        if body["enabled"]:
+            assert body["profile_id"] is not None
+            assert body["daily_loss_limit_hard"] is not None
+            assert body["max_loss_limit_hard"] is not None
+
+    def test_ftmo_snapshot_and_status(self, client):
+        r = client.post(
+            "/risk/ftmo/snapshot",
+            json={
+                "symbol": "EURUSD",
+                "balance": 10000.0,
+                "equity": 9950.0,
+                "snapshot_ts": "2025-01-01T10:00:00Z",
+            },
+        )
+        assert r.status_code == 201
+        status = client.get("/risk/ftmo/status?symbol=EURUSD")
+        assert status.status_code == 200
+        body = status.json()
+        assert "allow_trading" in body
+        assert body["snapshot_available"] in (True, False)
+
+    def test_ftmo_reservations_status_and_release(self, client):
+        status = client.get("/risk/ftmo/reservations/status?symbol=EURUSD")
+        assert status.status_code == 200
+        body = status.json()
+        assert "active_count" in body
+        release = client.post(
+            "/risk/ftmo/reservations/release",
+            json={"candidate_uid": "missing_candidate_uid"},
+        )
+        assert release.status_code == 200
+        assert "released_count" in release.json()
+
+
 class TestStatusEndpoint:
     def test_status_returns_list(self, client):
         r = client.get("/status")
@@ -130,10 +172,15 @@ class TestBarsEndpoint:
 
 
 class TestPredictEndpoint:
+    def test_predict_requires_size(self, client):
+        r = client.post("/predict", json={"symbol": "EURUSD"})
+        assert r.status_code == 422
+
     def test_predict_insufficient_warmup(self, client):
         """With no bars ingested, predict should return 422."""
         r = client.post("/predict", json={
             "symbol": "EURUSD",
+            "requested_volume_units": 10000,
         })
         assert r.status_code in (200, 422, 503)
         if r.status_code == 200:
@@ -148,7 +195,7 @@ class TestPredictEndpoint:
         original_state = server._state
         server._state = None
         try:
-            r = client.post("/predict", json={"symbol": "EURUSD"})
+            r = client.post("/predict", json={"symbol": "EURUSD", "requested_volume_units": 10000})
             assert r.status_code == 503
             assert "State manager not initialized" in r.json()["detail"]
         finally:
@@ -160,7 +207,7 @@ class TestPredictEndpoint:
         original_registry = server._registry
         server._registry = None
         try:
-            r = client.post("/predict", json={"symbol": "EURUSD"})
+            r = client.post("/predict", json={"symbol": "EURUSD", "requested_volume_units": 10000})
             assert r.status_code == 503
             assert "Candidate registry not loaded" in r.json()["detail"]
         finally:
@@ -173,7 +220,7 @@ class TestPredictEndpoint:
         from src.behemoth.api import server
 
         with mock.patch.object(server._registry, 'get_candidates', return_value=[]):
-            r = client.post("/predict", json={"symbol": "EURUSD"})
+            r = client.post("/predict", json={"symbol": "EURUSD", "requested_volume_units": 10000})
             assert r.status_code == 422
             assert "No candidates registered" in r.json()["detail"]
 
@@ -196,7 +243,7 @@ class TestPredictEndpoint:
             original_models = server._models
             server._models = {}  # Empty models
             try:
-                r = client.post("/predict", json={"symbol": "EURUSD"})
+                r = client.post("/predict", json={"symbol": "EURUSD", "requested_volume_units": 10000})
                 assert r.status_code == 503
                 assert "No CatBoost model loaded" in r.json()["detail"]
             finally:
@@ -219,7 +266,7 @@ class TestPredictEndpoint:
             mock.patch.dict(server._models, {"EURUSD": mock.MagicMock()}),
             mock.patch.object(server._state, 'compute_features', return_value=None),
         ):
-            r = client.post("/predict", json={"symbol": "EURUSD"})
+            r = client.post("/predict", json={"symbol": "EURUSD", "requested_volume_units": 10000})
             assert r.status_code == 422
             assert "Feature computation failed" in r.json()["detail"]
 
@@ -255,13 +302,104 @@ class TestPredictEndpoint:
             mock.patch.object(server._state, 'compute_features', return_value=dummy_features),
             mock.patch.object(server._state, 'get_latest_close_ts', return_value=datetime(2025, 1, 1, tzinfo=timezone.utc)),
         ):
-            r = client.post("/predict", json={"symbol": "EURUSD"})
+            snap = client.post(
+                "/risk/ftmo/snapshot",
+                json={
+                    "symbol": "EURUSD",
+                    "balance": 10000.0,
+                    "equity": 10000.0,
+                    "snapshot_ts": "2025-01-01T00:00:00Z",
+                },
+            )
+            assert snap.status_code == 201
+            r = client.post("/predict", json={"symbol": "EURUSD", "requested_volume_units": 10000})
             assert r.status_code == 200
             results = r.json()
             assert isinstance(results, list)
             assert len(results) == 1
             assert results[0]["pred_prob"] == 0.85
             assert results[0]["selected_exec"] == 1
+            assert "risk_blocked" in results[0]
+
+    def test_predict_allocator_blocks_when_budget_exceeded(self, client):
+        import unittest.mock as mock
+        from datetime import datetime, timezone
+
+        import numpy as np
+
+        from src.behemoth.api import server
+        from src.behemoth.core.schemas import ModelFeatures
+
+        cand_small = mock.MagicMock()
+        cand_small.bar_ticks = 100
+        cand_small.horizon = 6
+        cand_small.barrier_pips = 3.0
+        cand_small.candidate_uid = "cand_small"
+
+        cand_large = mock.MagicMock()
+        cand_large.bar_ticks = 100
+        cand_large.horizon = 6
+        cand_large.barrier_pips = 200.0
+        cand_large.candidate_uid = "cand_large"
+
+        dummy_features = ModelFeatures(
+            cost_est_pips=0.1, range_pips=10.0, ret1_pips=2.0, ret_z=0.5, ret_abs_z=0.5,
+            vel_cost_units_h1=2.0, vel_abs_cost_units_h1=2.0, spread_z=0.1, tick_rate_z=0.1,
+            hour_utc=10.0, hl_first=1.0, hl_first_mean_24=0.5, hl_pos_frac_mean_24=0.5,
+            bar_ticks=100.0, horizon=6.0, barrier_pips=3.0
+        )
+        dummy_model = mock.MagicMock()
+        dummy_model.predict_proba.side_effect = [
+            np.array([[0.1, 0.90]]),
+            np.array([[0.1, 0.85]]),
+        ]
+
+        with (
+            mock.patch.object(server._registry, "get_candidates", return_value=[cand_small, cand_large]),
+            mock.patch.object(server, "_check_warmup", return_value=None),
+            mock.patch.dict(server._models, {"EURUSD": dummy_model}),
+            mock.patch.object(server._state, "compute_features", return_value=dummy_features),
+            mock.patch.object(server._state, "get_latest_close_ts", return_value=datetime(2025, 1, 1, tzinfo=timezone.utc)),
+            mock.patch.object(
+                server,
+                "_resolve_ftmo_account_eval",
+                return_value={
+                    "enabled": True,
+                    "profile_id": "ftmo_10k_challenge_2step",
+                    "allow_trading": True,
+                    "block_reason": None,
+                    "snapshot_available": True,
+                    "daily_loss_headroom": 200.0,
+                    "max_loss_headroom": 200.0,
+                    "daily_loss_used": 0.0,
+                    "max_loss_used": 0.0,
+                    "trading_day_id": "2025-01-01",
+                },
+            ),
+        ):
+            snap = client.post(
+                "/risk/ftmo/snapshot",
+                json={
+                    "symbol": "EURUSD",
+                    "balance": 10000.0,
+                    "equity": 10000.0,
+                    "snapshot_ts": "2025-01-01T00:00:00Z",
+                },
+            )
+            assert snap.status_code == 201
+            r = client.post(
+                "/predict",
+                json={"symbol": "EURUSD", "requested_volume_units": 10000},
+            )
+            assert r.status_code == 200
+            rows = r.json()
+            assert len(rows) == 2
+            blocked = [x for x in rows if x["risk_block_reason"] == "FTMO_RESERVED_BUDGET_EXCEEDED"]
+            admitted = [x for x in rows if x["selected_exec"] == 1]
+            assert len(blocked) == 1
+            assert len(admitted) == 1
+            assert admitted[0]["risk_reserved"] is True
+            assert admitted[0]["risk_reservation_id"] is not None
 
 
 class TestReloadEndpoint:

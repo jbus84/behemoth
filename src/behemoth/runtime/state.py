@@ -14,7 +14,8 @@ Design:
   and calls the shared builder for mathematical correctness.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Any
 
 import duckdb
 
@@ -64,6 +65,30 @@ CREATE TABLE IF NOT EXISTS trades (
     pnl_pips DOUBLE,
     status VARCHAR
 );
+
+CREATE TABLE IF NOT EXISTS ftmo_account_snapshots (
+    snapshot_ts TIMESTAMP WITH TIME ZONE,
+    symbol VARCHAR,
+    balance DOUBLE,
+    equity DOUBLE
+);
+
+CREATE TABLE IF NOT EXISTS ftmo_risk_reservations (
+    reservation_id VARCHAR PRIMARY KEY,
+    created_ts TIMESTAMP WITH TIME ZONE,
+    updated_ts TIMESTAMP WITH TIME ZONE,
+    symbol VARCHAR,
+    candidate_uid VARCHAR,
+    broker_pos_id VARCHAR,
+    status VARCHAR,
+    reserved_loss_ccy DOUBLE,
+    barrier_pips DOUBLE,
+    cap_pips DOUBLE,
+    cost_est_pips DOUBLE,
+    volume_units DOUBLE,
+    side VARCHAR,
+    source VARCHAR
+);
 """
 
 _INSERT_SQL = (
@@ -84,6 +109,14 @@ ORDER BY row_id ASC
 
 _AUDIT_INSERT_SQL = (
     "INSERT INTO audit_logs VALUES (CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?)"
+)
+
+_FTMO_SNAPSHOT_INSERT_SQL = (
+    "INSERT INTO ftmo_account_snapshots VALUES (?, ?, ?, ?)"
+)
+
+_FTMO_RISK_RES_INSERT_SQL = (
+    "INSERT INTO ftmo_risk_reservations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 )
 
 
@@ -311,6 +344,351 @@ class StateManager:
         """Return all unique symbols in the tick_bars table."""
         res = self._con.execute("SELECT DISTINCT symbol FROM tick_bars").fetchall()
         return [r[0] for r in res]
+
+    def record_ftmo_account_snapshot(
+        self,
+        *,
+        symbol: str,
+        balance: float,
+        equity: float,
+        snapshot_ts: datetime,
+    ) -> None:
+        """Persist an account-level FTMO snapshot emitted by cBot."""
+        ts = snapshot_ts
+        ts = ts.replace(tzinfo=timezone.utc) if ts.tzinfo is None else ts.astimezone(timezone.utc)
+        self._con.execute(
+            _FTMO_SNAPSHOT_INSERT_SQL,
+            [ts, symbol.upper(), float(balance), float(equity)],
+        )
+
+    def get_latest_ftmo_account_snapshot(self, symbol: str | None = None) -> dict | None:
+        """Return the latest account snapshot, optionally filtered by symbol."""
+        if symbol:
+            row = self._con.execute(
+                """
+                SELECT snapshot_ts, symbol, balance, equity
+                FROM ftmo_account_snapshots
+                WHERE symbol = ?
+                ORDER BY snapshot_ts DESC
+                LIMIT 1
+                """,
+                [symbol.upper()],
+            ).fetchone()
+        else:
+            row = self._con.execute(
+                """
+                SELECT snapshot_ts, symbol, balance, equity
+                FROM ftmo_account_snapshots
+                ORDER BY snapshot_ts DESC
+                LIMIT 1
+                """
+            ).fetchone()
+        if not row:
+            return None
+        ts = row[0]
+        if isinstance(ts, datetime):
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            else:
+                ts = ts.astimezone(timezone.utc)
+        return {
+            "snapshot_ts": ts,
+            "symbol": row[1],
+            "balance": float(row[2]),
+            "equity": float(row[3]),
+        }
+
+    def get_ftmo_snapshots_since(
+        self,
+        *,
+        since_ts: datetime,
+        symbol: str | None = None,
+    ) -> list[dict]:
+        """Return ordered FTMO snapshots since a UTC timestamp."""
+        s = since_ts
+        s = s.replace(tzinfo=timezone.utc) if s.tzinfo is None else s.astimezone(timezone.utc)
+        if symbol:
+            rows = self._con.execute(
+                """
+                SELECT snapshot_ts, symbol, balance, equity
+                FROM ftmo_account_snapshots
+                WHERE snapshot_ts >= ? AND symbol = ?
+                ORDER BY snapshot_ts ASC
+                """,
+                [s, symbol.upper()],
+            ).fetchall()
+        else:
+            rows = self._con.execute(
+                """
+                SELECT snapshot_ts, symbol, balance, equity
+                FROM ftmo_account_snapshots
+                WHERE snapshot_ts >= ?
+                ORDER BY snapshot_ts ASC
+                """,
+                [s],
+            ).fetchall()
+        out: list[dict] = []
+        for r in rows:
+            ts = r[0]
+            if isinstance(ts, datetime):
+                if ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=timezone.utc)
+                else:
+                    ts = ts.astimezone(timezone.utc)
+            out.append(
+                {
+                    "snapshot_ts": ts,
+                    "symbol": r[1],
+                    "balance": float(r[2]),
+                    "equity": float(r[3]),
+                }
+            )
+        return out
+
+    def create_ftmo_risk_reservation(
+        self,
+        *,
+        symbol: str,
+        candidate_uid: str,
+        reserved_loss_ccy: float,
+        barrier_pips: float,
+        cap_pips: float,
+        cost_est_pips: float,
+        volume_units: float,
+        side: str | None = None,
+        source: str = "predict_allocator",
+        status: str = "PENDING",
+    ) -> str:
+        """Create a FTMO risk reservation row and return reservation id."""
+        import uuid
+
+        rid = str(uuid.uuid4())
+        now_utc = datetime.now(tz=timezone.utc)
+        self._con.execute(
+            _FTMO_RISK_RES_INSERT_SQL,
+            [
+                rid,
+                now_utc,
+                now_utc,
+                symbol.upper(),
+                candidate_uid,
+                None,
+                status.upper(),
+                float(reserved_loss_ccy),
+                float(barrier_pips),
+                float(cap_pips),
+                float(cost_est_pips),
+                float(volume_units),
+                side,
+                source,
+            ],
+        )
+        return rid
+
+    def promote_ftmo_risk_reservation(
+        self,
+        *,
+        broker_pos_id: str,
+        reservation_id: str | None = None,
+        candidate_uid: str | None = None,
+        symbol: str | None = None,
+    ) -> str | None:
+        """Promote a pending reservation to OPEN after broker fill."""
+        now_utc = datetime.now(tz=timezone.utc)
+        if reservation_id:
+            row = self._con.execute(
+                """
+                SELECT reservation_id
+                FROM ftmo_risk_reservations
+                WHERE reservation_id = ? AND status = 'PENDING'
+                LIMIT 1
+                """,
+                [reservation_id],
+            ).fetchone()
+            if not row:
+                return None
+            self._con.execute(
+                """
+                UPDATE ftmo_risk_reservations
+                SET status = 'OPEN', broker_pos_id = ?, updated_ts = ?
+                WHERE reservation_id = ?
+                """,
+                [broker_pos_id, now_utc, reservation_id],
+            )
+            return str(reservation_id)
+
+        if not candidate_uid:
+            return None
+
+        params: list = [candidate_uid]
+        query = """
+            SELECT reservation_id
+            FROM ftmo_risk_reservations
+            WHERE candidate_uid = ? AND status = 'PENDING'
+        """
+        if symbol:
+            query += " AND symbol = ?"
+            params.append(symbol.upper())
+        query += " ORDER BY created_ts ASC LIMIT 1"
+        row = self._con.execute(query, params).fetchone()
+        if not row:
+            return None
+        rid = str(row[0])
+        self._con.execute(
+            """
+            UPDATE ftmo_risk_reservations
+            SET status = 'OPEN', broker_pos_id = ?, updated_ts = ?
+            WHERE reservation_id = ?
+            """,
+            [broker_pos_id, now_utc, rid],
+        )
+        return rid
+
+    def release_ftmo_risk_reservation(
+        self,
+        *,
+        reservation_id: str | None = None,
+        broker_pos_id: str | None = None,
+        candidate_uid: str | None = None,
+        symbol: str | None = None,
+        reason: str = "released",
+    ) -> int:
+        """Release active reservation rows and return affected row count."""
+        now_utc = datetime.now(tz=timezone.utc)
+        safe_reason = str(reason).replace("|", "_").replace("'", "_")
+        params: list = [now_utc]
+        where = ["status IN ('PENDING', 'OPEN')"]
+        if reservation_id:
+            where.append("reservation_id = ?")
+            params.append(reservation_id)
+        if broker_pos_id:
+            where.append("broker_pos_id = ?")
+            params.append(broker_pos_id)
+        if candidate_uid:
+            where.append("candidate_uid = ?")
+            params.append(candidate_uid)
+        if symbol:
+            where.append("symbol = ?")
+            params.append(symbol.upper())
+        if len(where) == 1:
+            return 0
+        where_sql = " AND ".join(where)
+        before = self._con.execute(
+            f"SELECT COUNT(*) FROM ftmo_risk_reservations WHERE {where_sql}",
+            params[1:],
+        ).fetchone()
+        before_count = int(before[0]) if before and before[0] is not None else 0
+        if before_count <= 0:
+            return 0
+        self._con.execute(
+            f"""
+            UPDATE ftmo_risk_reservations
+            SET status = 'RELEASED', updated_ts = ?, source = source || '|{safe_reason}'
+            WHERE {where_sql}
+            """,
+            params,
+        )
+        return before_count
+
+    def expire_stale_ftmo_pending_reservations(self, *, max_age_seconds: int) -> int:
+        """Expire pending reservations older than max_age_seconds."""
+        now_utc = datetime.now(tz=timezone.utc)
+        cutoff = now_utc.timestamp() - float(max_age_seconds)
+        cutoff_ts = datetime.fromtimestamp(cutoff, tz=timezone.utc)
+        before = self._con.execute(
+            """
+            SELECT COUNT(*)
+            FROM ftmo_risk_reservations
+            WHERE status = 'PENDING' AND created_ts < ?
+            """,
+            [cutoff_ts],
+        ).fetchone()
+        before_count = int(before[0]) if before and before[0] is not None else 0
+        if before_count <= 0:
+            return 0
+        self._con.execute(
+            """
+            UPDATE ftmo_risk_reservations
+            SET status = 'EXPIRED', updated_ts = ?
+            WHERE status = 'PENDING'
+              AND created_ts < ?
+            """,
+            [now_utc, cutoff_ts],
+        )
+        return before_count
+
+    def sum_active_ftmo_reserved_loss_ccy(
+        self,
+        *,
+        symbol: str | None = None,
+        include_pending: bool = True,
+        include_open: bool = True,
+    ) -> float:
+        """Return total active reserved FTMO loss in account currency."""
+        statuses: list[str] = []
+        if include_pending:
+            statuses.append("PENDING")
+        if include_open:
+            statuses.append("OPEN")
+        if not statuses:
+            return 0.0
+        placeholders = ",".join(["?"] * len(statuses))
+        params: list[Any] = list(statuses)
+        query = f"""
+            SELECT COALESCE(SUM(reserved_loss_ccy), 0.0)
+            FROM ftmo_risk_reservations
+            WHERE status IN ({placeholders})
+        """
+        if symbol:
+            query += " AND symbol = ?"
+            params.append(symbol.upper())
+        row = self._con.execute(query, params).fetchone()
+        if not row or row[0] is None:
+            return 0.0
+        return float(row[0])
+
+    def list_active_ftmo_risk_reservations(self, *, symbol: str | None = None) -> list[dict]:
+        """Return active PENDING/OPEN FTMO reservations."""
+        params: list[Any] = []
+        query = """
+            SELECT reservation_id, created_ts, updated_ts, symbol, candidate_uid, broker_pos_id,
+                   status, reserved_loss_ccy, barrier_pips, cap_pips, cost_est_pips, volume_units,
+                   side, source
+            FROM ftmo_risk_reservations
+            WHERE status IN ('PENDING', 'OPEN')
+        """
+        if symbol:
+            query += " AND symbol = ?"
+            params.append(symbol.upper())
+        query += " ORDER BY created_ts ASC"
+        rows = self._con.execute(query, params).fetchall()
+        out: list[dict] = []
+        for r in rows:
+            created_ts = r[1]
+            if isinstance(created_ts, datetime):
+                created_ts = created_ts.replace(tzinfo=timezone.utc) if created_ts.tzinfo is None else created_ts.astimezone(timezone.utc)
+            updated_ts = r[2]
+            if isinstance(updated_ts, datetime):
+                updated_ts = updated_ts.replace(tzinfo=timezone.utc) if updated_ts.tzinfo is None else updated_ts.astimezone(timezone.utc)
+            out.append(
+                {
+                    "reservation_id": str(r[0]),
+                    "created_ts": created_ts,
+                    "updated_ts": updated_ts,
+                    "symbol": str(r[3]),
+                    "candidate_uid": str(r[4]),
+                    "broker_pos_id": r[5],
+                    "status": str(r[6]),
+                    "reserved_loss_ccy": float(r[7]),
+                    "barrier_pips": float(r[8]),
+                    "cap_pips": float(r[9]),
+                    "cost_est_pips": float(r[10]),
+                    "volume_units": float(r[11]),
+                    "side": r[12],
+                    "source": r[13],
+                }
+            )
+        return out
 
     def close(self) -> None:
         """Close the DuckDB connection."""

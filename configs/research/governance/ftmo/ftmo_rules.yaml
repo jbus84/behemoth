@@ -1,0 +1,64 @@
+default_profile_id: ftmo_10k_challenge_2step
+
+profiles:
+  ftmo_10k_challenge_2step:
+    mode: challenge_2step
+    currency: USD
+    initial_balance: 10000.0
+    daily_loss_limit: 500.0
+    max_loss_limit: 1000.0
+    profit_target_phase1: 1000.0
+    profit_target_phase2: 500.0
+    min_trading_days: 4
+    daily_reset_timezone: Europe/Prague
+    daily_reset_hour: 0
+    daily_reset_minute: 0
+    official_source_url: https://ftmo.com/en/how-to-pass-ftmo-challenge/
+    internal_buffers:
+      daily_loss_buffer_pct: 0.15
+      max_loss_buffer_pct: 0.15
+    cost_gate:
+      commission_round_turn_pips: 0.60
+      slippage_floor_pips: 0.20
+      min_edge_buffer_pips: 0.10
+      max_cost_to_barrier_ratio: 0.70
+      require_account_snapshot: true
+    allocator:
+      allocator_enabled: true
+      allocator_budget_fraction_daily: 1.0
+      allocator_budget_fraction_max: 1.0
+      allocator_min_headroom_buffer_ccy: 25.0
+      allocator_reserve_pending: true
+      allocator_reserve_open: true
+      allocator_priority: net_edge_first
+
+  ftmo_10k_one_step:
+    mode: one_step
+    currency: USD
+    initial_balance: 10000.0
+    daily_loss_limit: 300.0
+    max_loss_limit: 600.0
+    profit_target_phase1: 1000.0
+    profit_target_phase2: 0.0
+    min_trading_days: 4
+    daily_reset_timezone: Europe/Prague
+    daily_reset_hour: 0
+    daily_reset_minute: 0
+    official_source_url: https://ftmo.com/en/how-to-pass-ftmo-challenge/
+    internal_buffers:
+      daily_loss_buffer_pct: 0.15
+      max_loss_buffer_pct: 0.15
+    cost_gate:
+      commission_round_turn_pips: 0.60
+      slippage_floor_pips: 0.20
+      min_edge_buffer_pips: 0.10
+      max_cost_to_barrier_ratio: 0.70
+      require_account_snapshot: true
+    allocator:
+      allocator_enabled: true
+      allocator_budget_fraction_daily: 1.0
+      allocator_budget_fraction_max: 1.0
+      allocator_min_headroom_buffer_ccy: 25.0
+      allocator_reserve_pending: true
+      allocator_reserve_open: true
+      allocator_priority: net_edge_first

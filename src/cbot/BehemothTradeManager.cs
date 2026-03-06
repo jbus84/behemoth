@@ -28,6 +28,15 @@ namespace cAlgo.Robots
         [Parameter("Warmup Ticks", DefaultValue = 30000, MinValue = 100)]
         public int WarmupTicks { get; set; }
 
+        [Parameter("Enable FTMO Guards", DefaultValue = true)]
+        public bool EnableFtmoGuards { get; set; }
+
+        [Parameter("FTMO Profile ID", DefaultValue = "ftmo_10k_challenge_2step")]
+        public string FtmoProfileId { get; set; }
+
+        [Parameter("Hard Stop On Risk Block", DefaultValue = true)]
+        public bool HardStopOnRiskBlock { get; set; }
+
         private HttpClient _client;
         private Ticks _historicalTicks;
 
@@ -107,6 +116,11 @@ namespace cAlgo.Robots
                 else
                 {
                     Print("[ERROR] Backfill request timed out.");
+                }
+
+                if (EnableFtmoGuards)
+                {
+                    SubmitFtmoSnapshot();
                 }
                 
                 RecoverActiveTradesAsync();
@@ -188,6 +202,10 @@ namespace cAlgo.Robots
 
                             if (!skipPrediction)
                             {
+                                if (EnableFtmoGuards)
+                                {
+                                    SubmitFtmoSnapshot();
+                                }
                                 TriggerPrediction();
                             }
                         }
@@ -226,7 +244,19 @@ namespace cAlgo.Robots
         {
             try
             {
-                var payload = new { symbol = _internalSymbol };
+                if (EnableFtmoGuards && HardStopOnRiskBlock && !CheckFtmoStatus())
+                {
+                    Print("[FTMO BLOCK] Account-level guard blocked trading; skipping /predict cycle.");
+                    return;
+                }
+
+                double volumeUnits = Symbol.QuantityToVolumeInUnits(LotSize);
+                var payload = new
+                {
+                    symbol = _internalSymbol,
+                    requested_volume_units = volumeUnits,
+                    requested_lot_size = LotSize
+                };
                 var json = JsonSerializer.Serialize(payload, _jsonOpts);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -260,6 +290,11 @@ namespace cAlgo.Robots
         {
             foreach (var pred in predictions)
             {
+                if (EnableFtmoGuards && pred.risk_blocked)
+                {
+                    Print($"[FTMO BLOCK] {pred.candidate_uid} blocked: {pred.risk_block_reason}");
+                    continue;
+                }
                 if (pred.selected_exec == 1)
                 {
                     Print($"[EXECUTE] {pred.candidate_uid} (Prob: {pred.pred_prob:F3} >= Thr: {pred.threshold_exec:F3})");
@@ -276,11 +311,88 @@ namespace cAlgo.Robots
             }
         }
 
+        private bool SubmitFtmoSnapshot()
+        {
+            try
+            {
+                var payload = new
+                {
+                    symbol = _internalSymbol,
+                    balance = Account.Balance,
+                    equity = Account.Equity,
+                    snapshot_ts = Server.Time.ToUniversalTime().ToString("O")
+                };
+                var json = JsonSerializer.Serialize(payload, _jsonOpts);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var task = _client.PostAsync($"{BaseUrl}/risk/ftmo/snapshot", content);
+                if (!task.Wait(TimeSpan.FromSeconds(2)))
+                {
+                    Print("[FTMO SNAPSHOT] Timeout");
+                    return false;
+                }
+                if (!task.Result.IsSuccessStatusCode)
+                {
+                    Print($"[FTMO SNAPSHOT] API rejected snapshot: {task.Result.StatusCode}");
+                    return false;
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Print($"[FTMO SNAPSHOT ERR] {ex.Message}");
+                return false;
+            }
+        }
+
+        private bool CheckFtmoStatus()
+        {
+            try
+            {
+                var statusTask = _client.GetAsync($"{BaseUrl}/risk/ftmo/status?symbol={_internalSymbol}");
+                if (!statusTask.Wait(TimeSpan.FromSeconds(2)))
+                {
+                    Print("[FTMO STATUS] Timeout");
+                    return !HardStopOnRiskBlock;
+                }
+                var resp = statusTask.Result;
+                if (!resp.IsSuccessStatusCode)
+                {
+                    Print($"[FTMO STATUS] API error: {resp.StatusCode}");
+                    return !HardStopOnRiskBlock;
+                }
+                var body = resp.Content.ReadAsStringAsync().Result;
+                var status = JsonSerializer.Deserialize<FtmoStatusDTO>(body, _jsonOpts);
+                if (status == null)
+                {
+                    Print("[FTMO STATUS] Invalid payload.");
+                    return !HardStopOnRiskBlock;
+                }
+                if (!string.IsNullOrWhiteSpace(status.profile_id) && !string.IsNullOrWhiteSpace(FtmoProfileId))
+                {
+                    if (!string.Equals(status.profile_id, FtmoProfileId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Print($"[FTMO STATUS] Profile mismatch: API={status.profile_id}, cBot={FtmoProfileId}");
+                    }
+                }
+                if (!status.allow_trading)
+                {
+                    Print($"[FTMO STATUS] Trading blocked: {status.block_reason}");
+                }
+                return status.allow_trading;
+            }
+            catch (Exception ex)
+            {
+                Print($"[FTMO STATUS ERR] {ex.Message}");
+                return !HardStopOnRiskBlock;
+            }
+        }
+
         private void PlaceOcoOrders(OcoPrediction pred)
         {
             double barrierPips = pred.barrier_pips; 
             double volume = Symbol.QuantityToVolumeInUnits(LotSize);
-            string groupLabel = $"Oco_{pred.candidate_uid}_{Server.Time:yyyyMMddHHmmss}|T{pred.bar_ticks}|H{pred.horizon}";
+            string rid = string.IsNullOrWhiteSpace(pred.risk_reservation_id) ? "NA" : pred.risk_reservation_id;
+            string groupLabel = $"Oco_{pred.candidate_uid}_{Server.Time:yyyyMMddHHmmss}|RID{rid}|T{pred.bar_ticks}|H{pred.horizon}";
 
             double buyPrice = Symbol.Ask + (barrierPips * Symbol.PipSize);
             double sellPrice = Symbol.Bid - (barrierPips * Symbol.PipSize);
@@ -308,7 +420,8 @@ namespace cAlgo.Robots
                 // Track API Open
                 string candidateUid = pos.Label.Split('|')[0].Replace("Oco_", "");
                 int horizon = ExtractHorizon(pos.Label);
-                TrackOpenTradeAsync(Symbol.Name, candidateUid, pos.Id.ToString(), pos.TradeType.ToString(), pos.EntryPrice, pos.EntryTime, horizon);
+                string reservationId = ExtractReservationId(pos.Label);
+                TrackOpenTradeAsync(Symbol.Name, candidateUid, pos.Id.ToString(), pos.TradeType.ToString(), pos.EntryPrice, pos.EntryTime, horizon, reservationId);
             }
         }
 
@@ -323,10 +436,21 @@ namespace cAlgo.Robots
             }
         }
 
-        private async void TrackOpenTradeAsync(string symbol, string candidateUid, string brokerPosId, string side, double entryPrice, DateTime entryTs, int horizon)
+        private string ExtractReservationId(string label)
+        {
+            int ridIdx = label.IndexOf("|RID", StringComparison.Ordinal);
+            if (ridIdx == -1) return null;
+            int nextSep = label.IndexOf("|", ridIdx + 1, StringComparison.Ordinal);
+            if (nextSep == -1) nextSep = label.Length;
+            string token = label.Substring(ridIdx + 4, nextSep - (ridIdx + 4));
+            if (string.IsNullOrWhiteSpace(token) || token == "NA") return null;
+            return token;
+        }
+
+        private async void TrackOpenTradeAsync(string symbol, string candidateUid, string brokerPosId, string side, double entryPrice, DateTime entryTs, int horizon, string reservationId = null)
         {
             try {
-                var payload = new { symbol = symbol, candidate_uid = candidateUid, broker_pos_id = brokerPosId, side = side, entry_price = entryPrice, entry_ts = entryTs.ToUniversalTime().ToString("O"), horizon = horizon };
+                var payload = new { symbol = symbol, candidate_uid = candidateUid, broker_pos_id = brokerPosId, side = side, entry_price = entryPrice, entry_ts = entryTs.ToUniversalTime().ToString("O"), horizon = horizon, reservation_id = reservationId };
                 var content = new StringContent(JsonSerializer.Serialize(payload, _jsonOpts), Encoding.UTF8, "application/json");
                 await _client.PostAsync($"{BaseUrl}/trades/open", content);
             } catch (Exception ex) { Print($"[API ERR] TrackOpenTradeAsync: {ex}"); }
@@ -404,6 +528,10 @@ namespace cAlgo.Robots
         public double cap_pips { get; set; }
         public string threshold_source { get; set; }
         public string model_month { get; set; }
+        public bool risk_blocked { get; set; }
+        public string risk_block_reason { get; set; }
+        public Dictionary<string, JsonElement> risk_metrics_snapshot { get; set; }
+        public string risk_reservation_id { get; set; }
     }
 
     public class ActiveTradeDTO
@@ -418,5 +546,15 @@ namespace cAlgo.Robots
     {
         public string symbol { get; set; }
         public int bar_count { get; set; }
+    }
+
+    public class FtmoStatusDTO
+    {
+        public bool enabled { get; set; }
+        public string symbol { get; set; }
+        public string profile_id { get; set; }
+        public bool allow_trading { get; set; }
+        public string block_reason { get; set; }
+        public bool snapshot_available { get; set; }
     }
 }

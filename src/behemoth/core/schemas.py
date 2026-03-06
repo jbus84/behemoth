@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from pydantic import BaseModel, Field
 
@@ -172,7 +172,7 @@ class ModelFeatures(BaseModel):
 
     def to_array(self) -> list[float]:
         """Return feature values in schema order (for CatBoost input)."""
-        return [getattr(self, k) for k in self.model_fields]
+        return [getattr(self, k) for k in type(self).model_fields]
 
 
 class OcoPrediction(BaseModel):
@@ -190,6 +190,10 @@ class OcoPrediction(BaseModel):
     selected_exec: int = Field(..., description="1 if pred_prob >= threshold_exec else 0")
 
     # Structural Parameters (for cBot execution)
+    bar_ticks: int = Field(
+        default=100,
+        description="Tick-bar granularity of the candidate (e.g. 100)",
+    )
     horizon: int = Field(..., description="The horizon in bars (e.g. 6)")
     barrier_pips: float = Field(..., description="The OCO barrier distance in pips (e.g. 2.0)")
     cap_pips: float = Field(..., description="The Stop-Limit overshoot cap in pips (e.g. 1.2)")
@@ -200,6 +204,38 @@ class OcoPrediction(BaseModel):
         description="Threshold provenance for this row, e.g. 'rolling_days:schedule'",
     )
     model_month: str = Field(..., description="The YYYY-MM identifier of the model doing the inference")
+    risk_blocked: bool = Field(
+        default=False,
+        description="True when a FTMO guardrail blocked an otherwise-selected execution row.",
+    )
+    risk_block_reason: str | None = Field(
+        default=None,
+        description="Machine-readable FTMO block reason code if risk_blocked is true.",
+    )
+    risk_metrics_snapshot: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Account and cost viability context used during risk evaluation.",
+    )
+    risk_reserved: bool = Field(
+        default=False,
+        description="True when the FTMO portfolio allocator reserved budget for this row.",
+    )
+    risk_reserved_amount_ccy: float | None = Field(
+        default=None,
+        description="Worst-case reserved loss in account currency for this row.",
+    )
+    risk_headroom_after_ccy: float | None = Field(
+        default=None,
+        description="Remaining allocator headroom after considering this row.",
+    )
+    risk_rank_score: float | None = Field(
+        default=None,
+        description="Allocator ranking score used when budget constraints apply.",
+    )
+    risk_reservation_id: str | None = Field(
+        default=None,
+        description="Reservation identifier created by the API allocator for this candidate.",
+    )
 
 
 class TradeStatus(str, Enum):
@@ -217,6 +253,7 @@ class TradeOpenRequest(BaseModel):
     entry_price: float
     entry_ts: datetime
     horizon: int
+    reservation_id: str | None = None
 
 
 class TradeTouchRequest(BaseModel):
@@ -241,3 +278,11 @@ class TradeUpdateRequest(BaseModel):
     exit_price: float | None = None
     exit_ts: datetime | None = None
     pnl_pips: float | None = None
+
+
+class FtmoAccountSnapshotRequest(BaseModel):
+    """Periodic account snapshot used for FTMO guardrail enforcement."""
+    symbol: str
+    balance: float = Field(..., gt=0.0)
+    equity: float = Field(..., gt=0.0)
+    snapshot_ts: datetime | None = None

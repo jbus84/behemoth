@@ -367,3 +367,79 @@ class TestDuckDBTradeTracking:
         sm2 = StateManager(persist_path=str(db_file))
         assert sm2._row_counters["EURUSD_100"] == 1
         sm2.close()
+
+
+class TestFtmoReservationLedger:
+    @pytest.fixture
+    def sm(self):
+        from src.behemoth.runtime.state import StateManager
+        sm = StateManager()
+        yield sm
+        sm.close()
+
+    def test_create_and_sum_active_reservations(self, sm):
+        sm.create_ftmo_risk_reservation(
+            symbol="EURUSD",
+            candidate_uid="oco|EURUSD|100|h5|cand_a",
+            reserved_loss_ccy=120.0,
+            barrier_pips=3.0,
+            cap_pips=1.2,
+            cost_est_pips=1.0,
+            volume_units=10000.0,
+        )
+        sm.create_ftmo_risk_reservation(
+            symbol="USDJPY",
+            candidate_uid="oco|USDJPY|100|h5|cand_b",
+            reserved_loss_ccy=80.0,
+            barrier_pips=3.0,
+            cap_pips=1.2,
+            cost_est_pips=1.0,
+            volume_units=10000.0,
+            status="OPEN",
+        )
+        total = sm.sum_active_ftmo_reserved_loss_ccy(include_pending=True, include_open=True)
+        assert total == 200.0
+        eur_only = sm.sum_active_ftmo_reserved_loss_ccy(
+            symbol="EURUSD",
+            include_pending=True,
+            include_open=True,
+        )
+        assert eur_only == 120.0
+
+    def test_promote_and_release_reservation(self, sm):
+        rid = sm.create_ftmo_risk_reservation(
+            symbol="EURUSD",
+            candidate_uid="oco|EURUSD|100|h5|cand_a",
+            reserved_loss_ccy=90.0,
+            barrier_pips=2.0,
+            cap_pips=1.2,
+            cost_est_pips=0.8,
+            volume_units=10000.0,
+        )
+        promoted = sm.promote_ftmo_risk_reservation(
+            reservation_id=rid,
+            broker_pos_id="bp_1",
+        )
+        assert promoted == rid
+        released = sm.release_ftmo_risk_reservation(broker_pos_id="bp_1")
+        assert released == 1
+        assert sm.sum_active_ftmo_reserved_loss_ccy(include_pending=True, include_open=True) == 0.0
+
+    def test_expire_stale_pending_reservations(self, sm):
+        rid = sm.create_ftmo_risk_reservation(
+            symbol="EURUSD",
+            candidate_uid="oco|EURUSD|100|h5|cand_old",
+            reserved_loss_ccy=30.0,
+            barrier_pips=2.0,
+            cap_pips=1.2,
+            cost_est_pips=0.8,
+            volume_units=10000.0,
+        )
+        sm._con.execute(
+            "UPDATE ftmo_risk_reservations SET created_ts = ? WHERE reservation_id = ?",
+            [datetime(2020, 1, 1, tzinfo=timezone.utc), rid],
+        )
+        expired = sm.expire_stale_ftmo_pending_reservations(max_age_seconds=60)
+        assert expired == 1
+        rows = sm.list_active_ftmo_risk_reservations()
+        assert rows == []
