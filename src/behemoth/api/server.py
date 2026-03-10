@@ -18,7 +18,9 @@ import asyncio
 import hashlib
 import json
 import logging
+import math
 import os
+import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
@@ -31,6 +33,12 @@ from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, ge
 from pydantic import BaseModel, Field
 
 from src.behemoth.api.dashboard import router as dashboard_router
+from src.behemoth.core.historical_governance_validation import (
+    failed_checks,
+    summarize_failures,
+    validate_historical_governance,
+)
+from src.behemoth.core.historical_registry import HistoricalCandidateRegistry
 from src.behemoth.core.registry import CandidateRegistry
 from src.behemoth.core.schemas import (
     ActiveTrade,
@@ -62,12 +70,18 @@ logger = logging.getLogger("behemoth.api")
 _state: StateManager | None = None
 _aggregators: dict[int, TickAggregator] = {}
 _registry: CandidateRegistry | None = None
-_models: dict[str, object] = {}          # symbol -> loaded CatBoostClassifier
-_thresholds: dict[str, dict] = {}        # symbol -> threshold config
-_model_months: dict[str, str] = {}       # symbol -> "2025-12"
+_historical_registry: HistoricalCandidateRegistry | None = None
+_models: dict[str, object] = {}          # cache key -> loaded CatBoostClassifier
+_thresholds: dict[str, dict] = {}        # cache key -> threshold config
+_model_months: dict[str, str] = {}       # cache key -> "2025-12"
 _models_dir: Path = Path("models/oco")
 _ftmo_rules_path: Path = Path("configs/research/governance/ftmo/ftmo_rules.yaml")
 _ftmo_profile: FtmoProfile | None = None
+_historical_entries_loaded: int = 0
+_historical_preflight_failed_checks: int = 0
+_historical_preflight_summary: str = ""
+_feed_state: dict[str, dict[str, Any]] = {}
+_MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 
 
 def _sha256(path: Path) -> str:
@@ -182,9 +196,89 @@ class AppConfig(BaseModel):
     ftmo_pending_reservation_ttl_sec: int = Field(
         default_factory=lambda: int(os.getenv("BEHEMOTH_FTMO_PENDING_RESERVATION_TTL_SEC", "1800"))
     )
+    ftmo_fx_rate_max_age_sec: int = Field(
+        default_factory=lambda: int(os.getenv("BEHEMOTH_FTMO_FX_RATE_MAX_AGE_SEC", "600"))
+    )
+    governance_mode: str = Field(
+        default_factory=lambda: str(os.getenv("BEHEMOTH_GOVERNANCE_MODE", "live")).strip().lower()
+    )
+    governance_history_dir: str = Field(
+        default_factory=lambda: os.getenv(
+            "BEHEMOTH_GOVERNANCE_HISTORY_DIR",
+            "configs/research/governance/oco_history",
+        )
+    )
+    governance_missing_month_policy: str = Field(
+        default_factory=lambda: str(
+            os.getenv("BEHEMOTH_GOVERNANCE_MISSING_MONTH_POLICY", "error")
+        )
+        .strip()
+        .lower()
+    )
+    force_model_month: str = Field(
+        default_factory=lambda: str(os.getenv("BEHEMOTH_FORCE_MODEL_MONTH", "")).strip()
+    )
+    record_raw_ticks: bool = Field(
+        default_factory=lambda: str(os.getenv("BEHEMOTH_RECORD_RAW_TICKS", "false")).strip().lower()
+        in {"1", "true", "yes", "y"}
+    )
 
 
 _config = AppConfig()
+
+
+def _is_historical_mode() -> bool:
+    return str(_config.governance_mode).strip().lower() in {
+        "historical",
+        "historical_auto",
+    }
+
+
+def _cache_key(symbol: str, model_month: str | None = None) -> str:
+    sym = str(symbol).upper().strip()
+    if _is_historical_mode() and model_month:
+        return f"{sym}|{str(model_month).strip()}"
+    return sym
+
+
+def _has_loaded_model_for_symbol(symbol: str) -> bool:
+    sym = str(symbol).upper().strip()
+    if sym in _models:
+        return True
+    pref = f"{sym}|"
+    return any(k.startswith(pref) for k in _models)
+
+
+def _latest_loaded_month_for_symbol(symbol: str) -> str | None:
+    sym = str(symbol).upper().strip()
+    if sym in _model_months:
+        return _model_months.get(sym)
+    pref = f"{sym}|"
+    months = [m for k, m in _model_months.items() if k.startswith(pref)]
+    if not months:
+        return None
+    return sorted(months)[-1]
+
+
+def _run_historical_preflight(history_dir: Path) -> None:
+    global _historical_preflight_failed_checks, _historical_preflight_summary
+    checks = validate_historical_governance(
+        history_dir,
+        required_symbols=[str(s).upper().strip() for s in _config.symbols],
+    )
+    bad = failed_checks(checks)
+    _historical_preflight_failed_checks = len(bad)
+    _historical_preflight_summary = summarize_failures(checks, limit=10)
+    if bad:
+        raise RuntimeError(
+            "Historical governance preflight failed: "
+            f"failed_checks={len(bad)} { _historical_preflight_summary }"
+        )
+    logger.info(
+        "Historical governance preflight passed: checks=%d history_dir=%s",
+        len(checks),
+        history_dir,
+    )
 
 
 # ── Lifespan ──────────────────────────────────────────────────────────
@@ -192,7 +286,9 @@ _config = AppConfig()
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Modern lifespan handler replacing deprecated on_event."""
-    global _state, _aggregators, _registry, _models_dir, _ftmo_rules_path, _ftmo_profile
+    global _state, _aggregators, _registry, _historical_registry, _feed_state
+    global _models_dir, _ftmo_rules_path, _ftmo_profile
+    global _historical_entries_loaded, _historical_preflight_failed_checks, _historical_preflight_summary
 
     # Start background monitor
     monitor_task = asyncio.create_task(_monitor_ledger())
@@ -211,36 +307,64 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
             vol_window=_config.vol_window,
             cost_window=_config.cost_window,
         )
+    _feed_state = {}
     try:
-        _registry = CandidateRegistry.load(os.getenv("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco"))
-        logger.info("Loaded %d candidates from governance locks", len(_registry.all_candidates()))
+        _aggregators = {}
+        if _is_historical_mode():
+            hist_dir = Path(str(_config.governance_history_dir))
+            _historical_registry = HistoricalCandidateRegistry.load(hist_dir)
+            _run_historical_preflight(hist_dir)
+            _registry = None
+            _historical_entries_loaded = len(_historical_registry._entries)
+            logger.info(
+                "Loaded %d month-scoped historical lock entries from %s",
+                _historical_entries_loaded,
+                hist_dir,
+            )
+            unique_bar_ticks = {int(c.bar_ticks) for c in _historical_registry.all_candidates()}
+        else:
+            _registry = CandidateRegistry.load(
+                os.getenv("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco")
+            )
+            _historical_registry = None
+            _historical_entries_loaded = 0
+            _historical_preflight_failed_checks = 0
+            _historical_preflight_summary = ""
+            logger.info("Loaded %d candidates from governance locks", len(_registry.all_candidates()))
+            unique_bar_ticks = {int(c.bar_ticks) for c in _registry.all_candidates()}
 
-        unique_bar_ticks = {int(c.bar_ticks) for c in _registry.all_candidates()}
+        if not unique_bar_ticks:
+            unique_bar_ticks = {100}
         for bt in unique_bar_ticks:
             _aggregators[bt] = TickAggregator(bar_ticks=bt)
             logger.info("Initialized TickAggregator for %d ticks", bt)
 
     except FileNotFoundError:
         _registry = None
-        _aggregators[100] = TickAggregator(bar_ticks=100) # Fallback
-        logger.warning("Governance lock dir not found — using empty registry and default 100-tick aggregator")
+        _historical_registry = None
+        _historical_entries_loaded = 0
+        _historical_preflight_failed_checks = 0
+        _historical_preflight_summary = ""
+        _aggregators = {100: TickAggregator(bar_ticks=100)}
+        logger.warning(
+            "Governance lock source not found — using empty registry and default 100-tick aggregator"
+        )
     _models_dir = Path(_config.models_dir)
     _load_models()
     _ftmo_rules_path = Path(_config.ftmo_rules_path)
     _ftmo_profile = None
-    if _config.ftmo_enabled:
-        try:
-            _ftmo_profile = load_ftmo_profile(
-                _ftmo_rules_path,
-                _config.ftmo_profile_id,
-            )
-            logger.info(
-                "Loaded FTMO profile %s from %s",
-                _ftmo_profile.profile_id,
-                _ftmo_rules_path,
-            )
-        except Exception as exc:
-            logger.error("Failed to load FTMO rules: %s", exc)
+    try:
+        _ftmo_profile = load_ftmo_profile(
+            _ftmo_rules_path,
+            _config.ftmo_profile_id,
+        )
+        logger.info(
+            "Loaded FTMO profile %s from %s",
+            _ftmo_profile.profile_id,
+            _ftmo_rules_path,
+        )
+    except Exception as exc:
+        logger.error("Failed to load FTMO rules: %s", exc)
     logger.info("Behemoth API started. Models dir: %s", _models_dir)
     yield
     monitor_task.cancel()
@@ -291,8 +415,86 @@ app = FastAPI(
 app.include_router(dashboard_router)
 
 
+def _catboost_cls() -> Any | None:
+    try:
+        from catboost import CatBoostClassifier
+    except ImportError:
+        logger.error("CatBoost not installed — predictions will be unavailable.")
+        return None
+    return CatBoostClassifier
+
+
+def _load_model_binding_into_cache(
+    *,
+    symbol: str,
+    binding: dict[str, Any],
+    cache_key: str,
+    expected_month: str | None,
+) -> tuple[bool, str]:
+    cb_cls = _catboost_cls()
+    if cb_cls is None:
+        return False, "catboost_unavailable"
+
+    model_path = Path(str(binding.get("model_cbm_path", "")))
+    thr_path = Path(str(binding.get("model_threshold_json_path", "")))
+    exp_model_sha = str(binding.get("model_cbm_sha256", "")).strip()
+    exp_thr_sha = str(binding.get("model_threshold_json_sha256", "")).strip()
+    lock_month = str(binding.get("model_month", "")).strip()
+
+    if (not model_path.exists()) or (not thr_path.exists()):
+        logger.error(
+            "Locked artifacts missing for %s: model=%s threshold=%s",
+            symbol,
+            model_path,
+            thr_path,
+        )
+        return False, "artifact_missing"
+
+    got_model_sha = _sha256(model_path)
+    got_thr_sha = _sha256(thr_path)
+    if (got_model_sha != exp_model_sha) or (got_thr_sha != exp_thr_sha):
+        logger.error("Locked artifact hash mismatch for %s — refusing model load.", symbol)
+        return False, "artifact_hash_mismatch"
+
+    month = model_path.stem.split("_")[-1]
+    if lock_month and (month != lock_month):
+        logger.error(
+            "Locked model month mismatch for %s: lock=%s file=%s",
+            symbol,
+            lock_month,
+            month,
+        )
+        return False, "lock_month_mismatch"
+    if expected_month and month != expected_month:
+        logger.error(
+            "Expected model month mismatch for %s: expected=%s file=%s",
+            symbol,
+            expected_month,
+            month,
+        )
+        return False, "expected_month_mismatch"
+
+    model = cb_cls()
+    model.load_model(str(model_path))
+    thr_cfg = json.loads(thr_path.read_text())
+    thr_month = str(thr_cfg.get("model_month", "")).strip()
+    if thr_month and thr_month != month:
+        logger.error(
+            "Threshold JSON model month mismatch for %s: model=%s threshold=%s",
+            symbol,
+            month,
+            thr_month,
+        )
+        return False, "threshold_month_mismatch"
+    _models[cache_key] = model
+    _model_months[cache_key] = month
+    _thresholds[cache_key] = thr_cfg
+    logger.info("Loaded lock-bound model for %s (month %s): %s", symbol, month, model_path.name)
+    return True, month
+
+
 def _load_models() -> None:
-    """Load governance-pinned model artifacts per symbol."""
+    """Load model cache according to governance mode."""
     global _models, _thresholds, _model_months
     _models = {}
     _thresholds = {}
@@ -301,14 +503,15 @@ def _load_models() -> None:
         logger.warning("Models directory %s does not exist yet.", _models_dir)
         return
 
-    try:
-        from catboost import CatBoostClassifier
-    except ImportError:
-        logger.error("CatBoost not installed — predictions will be unavailable.")
+    if _is_historical_mode():
+        # Historical mode uses lazy per-(symbol,month) loading on /predict.
+        logger.info("Historical governance mode enabled: model cache is lazy-loaded by month.")
         return
 
     if _registry is None:
-        logger.error("Governance registry unavailable — refusing to load models without lock binding.")
+        logger.error(
+            "Governance registry unavailable — refusing to load models without lock binding."
+        )
         return
 
     for sym in _config.symbols:
@@ -316,73 +519,35 @@ def _load_models() -> None:
         if not binding:
             logger.error("No governance model binding for %s — skipping model load.", sym)
             continue
-        model_path = Path(str(binding.get("model_cbm_path", "")))
-        thr_path = Path(str(binding.get("model_threshold_json_path", "")))
-        exp_model_sha = str(binding.get("model_cbm_sha256", "")).strip()
-        exp_thr_sha = str(binding.get("model_threshold_json_sha256", "")).strip()
-        lock_month = str(binding.get("model_month", "")).strip()
-        if (not model_path.exists()) or (not thr_path.exists()):
-            logger.error(
-                "Locked artifacts missing for %s: model=%s threshold=%s",
-                sym,
-                model_path,
-                thr_path,
-            )
-            continue
-        got_model_sha = _sha256(model_path)
-        got_thr_sha = _sha256(thr_path)
-        if (got_model_sha != exp_model_sha) or (got_thr_sha != exp_thr_sha):
-            logger.error("Locked artifact hash mismatch for %s — refusing model load.", sym)
-            continue
-        month = model_path.stem.split("_")[-1]
-        if lock_month and (month != lock_month):
-            logger.error(
-                "Locked model month mismatch for %s: lock=%s file=%s",
-                sym,
-                lock_month,
-                month,
-            )
-            continue
-
-        model = CatBoostClassifier()
-        model.load_model(str(model_path))
-        _models[sym] = model
-        _model_months[sym] = month
-        logger.info("Loaded lock-bound model for %s (month %s): %s", sym, month, model_path.name)
-
-        # Load paired threshold JSON
-        _thresholds[sym] = json.loads(thr_path.read_text())
-        logger.info("Loaded threshold config for %s", sym)
-
-def _get_cap_pips(symbol: str) -> float:
-    """Get production Stop-Limit cap for a symbol from governance registry."""
-    if _registry is None:
-        return 1.2
-    return _registry.get_cap_pips(symbol)
-
+        cache_key = _cache_key(sym)
+        _load_model_binding_into_cache(
+            symbol=sym,
+            binding=binding,
+            cache_key=cache_key,
+            expected_month=str(binding.get("model_month", "")).strip() or None,
+        )
 
 def _pip_size_for_symbol(sym: str) -> float:
     return 0.01 if sym.upper().endswith("JPY") else 0.0001
 
 
-def _default_price_for_symbol(sym: str) -> float:
-    defaults = {
-        "USDJPY": 150.0,
-        "USDCHF": 0.90,
-        "USDCAD": 1.35,
-        "EURUSD": 1.08,
-        "GBPUSD": 1.27,
-        "AUDUSD": 0.66,
-    }
-    return float(defaults.get(sym.upper(), 1.0))
+def _parse_fx_ccy(sym: str) -> tuple[str, str] | None:
+    s = str(sym).upper().strip()
+    if len(s) < 6:
+        return None
+    base = s[:3]
+    quote = s[3:6]
+    if not (base.isalpha() and quote.isalpha()):
+        return None
+    return base, quote
 
 
-def _latest_price_for_symbol(sym: str) -> float:
+def _latest_tick_price_snapshot(sym: str) -> dict[str, Any] | None:
     if _state is None:
-        return _default_price_for_symbol(sym)
+        return None
     row = _state._con.execute(
         """
-        SELECT close_price
+        SELECT close_price, close_ts
         FROM tick_bars
         WHERE symbol = ?
         ORDER BY row_id DESC
@@ -390,20 +555,145 @@ def _latest_price_for_symbol(sym: str) -> float:
         """,
         [sym.upper()],
     ).fetchone()
-    if row and row[0] is not None:
-        return float(row[0])
-    return _default_price_for_symbol(sym)
+    if not row or row[0] is None:
+        return None
+    close_ts = row[1]
+    if isinstance(close_ts, datetime):
+        if close_ts.tzinfo is None:
+            close_ts = close_ts.replace(tzinfo=timezone.utc)
+        else:
+            close_ts = close_ts.astimezone(timezone.utc)
+    return {
+        "symbol": sym.upper(),
+        "price": float(row[0]),
+        "close_ts": close_ts,
+    }
 
 
-def _pip_value_per_unit_ccy(sym: str, *, price: float) -> float | None:
-    s = sym.upper()
-    pip = _pip_size_for_symbol(s)
-    if s.endswith("USD"):
-        return pip
-    if s.startswith("USD"):
-        p = max(float(price), 1e-9)
-        return pip / p
+def _snapshot_age_sec(snapshot: dict[str, Any], *, now_utc: datetime) -> float | None:
+    ts = snapshot.get("close_ts")
+    if not isinstance(ts, datetime):
+        return None
+    now = now_utc if now_utc.tzinfo is not None else now_utc.replace(tzinfo=timezone.utc)
+    delta = (now - ts).total_seconds()
+    return max(0.0, float(delta))
+
+
+def _quote_to_usd_rate(
+    quote_ccy: str,
+    *,
+    now_utc: datetime,
+    max_age_sec: int,
+) -> dict[str, Any] | None:
+    q = str(quote_ccy).upper().strip()
+    if q == "USD":
+        return {
+            "conversion_pair": "USDUSD",
+            "conversion_rate": 1.0,
+            "conversion_age_sec": 0.0,
+        }
+
+    direct_sym = f"{q}USD"
+    direct = _latest_tick_price_snapshot(direct_sym)
+    if direct is not None:
+        age = _snapshot_age_sec(direct, now_utc=now_utc)
+        if (age is None) or (age <= float(max_age_sec)):
+            return {
+                "conversion_pair": direct_sym,
+                "conversion_rate": float(direct["price"]),
+                "conversion_age_sec": age if age is not None else 0.0,
+            }
+
+    inverse_sym = f"USD{q}"
+    inverse = _latest_tick_price_snapshot(inverse_sym)
+    if inverse is not None:
+        px = max(float(inverse["price"]), 1e-12)
+        age = _snapshot_age_sec(inverse, now_utc=now_utc)
+        if (age is None) or (age <= float(max_age_sec)):
+            return {
+                "conversion_pair": inverse_sym,
+                "conversion_rate": 1.0 / px,
+                "conversion_age_sec": age if age is not None else 0.0,
+            }
     return None
+
+
+def _pip_value_per_unit_usd(
+    sym: str,
+    *,
+    now_utc: datetime,
+    max_age_sec: int,
+) -> dict[str, Any]:
+    pair = _parse_fx_ccy(sym)
+    if pair is None:
+        return {
+            "pip_value_per_unit_usd": None,
+            "conversion_status": "invalid_symbol",
+            "conversion_pair": None,
+            "conversion_rate": None,
+            "conversion_age_sec": None,
+        }
+
+    base, quote = pair
+    pip = _pip_size_for_symbol(sym)
+
+    if quote == "USD":
+        return {
+            "pip_value_per_unit_usd": float(pip),
+            "conversion_status": "direct_quote_usd",
+            "conversion_pair": "USDUSD",
+            "conversion_rate": 1.0,
+            "conversion_age_sec": 0.0,
+        }
+
+    if base == "USD":
+        snap = _latest_tick_price_snapshot(sym)
+        if snap is None:
+            return {
+                "pip_value_per_unit_usd": None,
+                "conversion_status": "missing_usd_base_spot",
+                "conversion_pair": sym.upper(),
+                "conversion_rate": None,
+                "conversion_age_sec": None,
+            }
+        age = _snapshot_age_sec(snap, now_utc=now_utc)
+        if (age is not None) and (age > float(max_age_sec)):
+            return {
+                "pip_value_per_unit_usd": None,
+                "conversion_status": "stale_usd_base_spot",
+                "conversion_pair": sym.upper(),
+                "conversion_rate": float(snap["price"]),
+                "conversion_age_sec": float(age),
+            }
+        px = max(float(snap["price"]), 1e-12)
+        return {
+            "pip_value_per_unit_usd": float(pip) / px,
+            "conversion_status": "direct_base_usd",
+            "conversion_pair": sym.upper(),
+            "conversion_rate": float(snap["price"]),
+            "conversion_age_sec": age if age is not None else 0.0,
+        }
+
+    rate = _quote_to_usd_rate(
+        quote,
+        now_utc=now_utc,
+        max_age_sec=max_age_sec,
+    )
+    if rate is None:
+        return {
+            "pip_value_per_unit_usd": None,
+            "conversion_status": "missing_or_stale_cross_rate",
+            "conversion_pair": None,
+            "conversion_rate": None,
+            "conversion_age_sec": None,
+        }
+    return {
+        "pip_value_per_unit_usd": float(pip) * float(rate["conversion_rate"]),
+        "conversion_status": "cross_quote_to_usd",
+        "conversion_pair": str(rate["conversion_pair"]),
+        "conversion_rate": float(rate["conversion_rate"]),
+        "conversion_age_sec": float(rate["conversion_age_sec"]),
+    }
 
 
 def _resolve_requested_volume_units(req: PredictRequest) -> float:
@@ -421,6 +711,80 @@ def _resolve_requested_volume_units(req: PredictRequest) -> float:
         status_code=422,
         detail="One of requested_volume_units or requested_lot_size is required",
     )
+
+
+def _candidate_regime_name(cand: Any) -> str:
+    txt = str(getattr(cand, "regime_desc", "") or "").strip()
+    if txt and txt.lower() not in {"nan", "none"}:
+        return txt.split(";")[0].strip().lower()
+    sid = str(getattr(cand, "candidate_uid", "") or "").strip()
+    parts = sid.split("__")
+    if len(parts) >= 3:
+        return "__".join(parts[1:-1]).strip().lower()
+    return "all"
+
+
+def _regime_cmp(value: float, threshold: float, *, op: str) -> bool:
+    if not (math.isfinite(float(value)) and math.isfinite(float(threshold))):
+        return True
+    if op == "<=":
+        return float(value) <= float(threshold)
+    if op == ">=":
+        return float(value) >= float(threshold)
+    return True
+
+
+def _regime_is_active(
+    regime_name: str,
+    *,
+    features: ModelFeatures,
+    close_ts_utc: datetime,
+    regime_q: dict[str, float] | None,
+) -> bool:
+    r = str(regime_name or "").strip().lower()
+    q = regime_q or {}
+    if r in {"", "all"}:
+        return True
+    if "_and_" in r:
+        return all(
+            _regime_is_active(
+                sub,
+                features=features,
+                close_ts_utc=close_ts_utc,
+                regime_q=q,
+            )
+            for sub in r.split("_and_")
+        )
+
+    h = int(close_ts_utc.hour)
+    if r == "london":
+        return h in {7, 8, 9, 10, 11}
+    if r == "ny_overlap":
+        return h in {13, 14, 15, 16}
+    if r == "asia":
+        return h in {0, 1, 2, 3, 4, 5}
+    if r == "low_cost_q30":
+        return _regime_cmp(float(features.cost_est_pips), float(q.get("cost_q30", float("nan"))), op="<=")
+    if r == "low_cost_q50":
+        return _regime_cmp(float(features.cost_est_pips), float(q.get("cost_q50", float("nan"))), op="<=")
+    if r == "high_range_q70":
+        return _regime_cmp(float(features.range_pips), float(q.get("rng_q70", float("nan"))), op=">=")
+    if r == "high_range_q80":
+        return _regime_cmp(float(features.range_pips), float(q.get("rng_q80", float("nan"))), op=">=")
+    if r == "high_abs_vel_q70":
+        return _regime_cmp(
+            float(features.vel_abs_cost_units_h1),
+            float(q.get("vel_q70", float("nan"))),
+            op=">=",
+        )
+    if r == "high_abs_vel_q80":
+        return _regime_cmp(
+            float(features.vel_abs_cost_units_h1),
+            float(q.get("vel_q80", float("nan"))),
+            op=">=",
+        )
+    # Unknown regime token: keep permissive for forward compatibility.
+    return True
 
 
 @dataclass
@@ -444,8 +808,180 @@ class _CandidateDecision:
     risk_reservation_id: str | None = None
 
 
-def _resolve_ftmo_account_eval(sym: str, now_utc: datetime) -> dict[str, Any]:
-    if (not _config.ftmo_enabled) or (_ftmo_profile is None) or (_state is None):
+@dataclass
+class _ResolvedRuntimeContract:
+    symbol: str
+    model_month: str
+    cache_key: str
+    candidates: list[Any]
+    model_binding: dict[str, Any]
+    cap_pips: float
+    source: str
+    lock_path: str | None = None
+
+
+def _normalize_model_month(raw: str | None) -> str | None:
+    txt = str(raw or "").strip()
+    if not txt:
+        return None
+    if len(txt) == 6 and txt.isdigit():
+        txt = f"{txt[:4]}-{txt[4:]}"
+    if _MONTH_RE.match(txt):
+        return txt
+    return None
+
+
+def _month_from_close_ts(ts: datetime) -> str:
+    v = ts if ts.tzinfo is not None else ts.replace(tzinfo=timezone.utc)
+    return v.strftime("%Y-%m")
+
+
+def _as_utc_ts(ts: datetime) -> datetime:
+    if ts.tzinfo is None:
+        return ts.replace(tzinfo=timezone.utc)
+    return ts.astimezone(timezone.utc)
+
+
+def _new_feed_tracker() -> dict[str, Any]:
+    return {
+        "total_received": 0,
+        "total_accepted": 0,
+        "total_dropped": 0,
+        "duplicate_timestamps": 0,
+        "monotonic_violations": 0,
+        "symbol_tick_seq": 0,
+        "last_tick_ts_utc": None,
+        "last_ingest_utc": None,
+        "last_drop_reason": None,
+    }
+
+
+def _get_feed_tracker(symbol: str) -> dict[str, Any]:
+    sym = str(symbol).upper().strip()
+    row = _feed_state.get(sym)
+    if row is None:
+        row = _new_feed_tracker()
+        _feed_state[sym] = row
+    return row
+
+
+def _resolve_missing_historical_month(symbol: str, requested_month: str) -> str | None:
+    if _historical_registry is None:
+        return None
+    months = _historical_registry.months_for_symbol(symbol)
+    if not months:
+        return None
+    policy = str(_config.governance_missing_month_policy).strip().lower()
+    if policy in {"latest", "latest_available"}:
+        return months[-1]
+    if policy in {"nearest_previous", "previous", "floor"}:
+        prior = [m for m in months if m <= requested_month]
+        return prior[-1] if prior else None
+    return None
+
+
+def _resolve_runtime_contract(sym: str, close_ts: datetime) -> _ResolvedRuntimeContract:
+    symbol = str(sym).upper().strip()
+
+    if _is_historical_mode():
+        if _historical_registry is None:
+            raise HTTPException(status_code=503, detail="Historical governance registry not loaded")
+
+        forced_month = _normalize_model_month(_config.force_model_month)
+        if _config.force_model_month and forced_month is None:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid BEHEMOTH_FORCE_MODEL_MONTH={_config.force_model_month!r}; expected YYYY-MM",
+            )
+        requested_month = forced_month or _month_from_close_ts(close_ts)
+        entry = _historical_registry.get_entry(symbol, requested_month)
+        resolved_month = requested_month
+        if entry is None:
+            fallback_month = _resolve_missing_historical_month(symbol, requested_month)
+            if fallback_month is not None:
+                entry = _historical_registry.get_entry(symbol, fallback_month)
+                resolved_month = fallback_month
+
+        if entry is None:
+            available = _historical_registry.months_for_symbol(symbol)
+            avail_txt = ",".join(available) if available else "<none>"
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"No historical lock for {symbol} month {requested_month} "
+                    f"(policy={_config.governance_missing_month_policy}). "
+                    f"available_months={avail_txt}"
+                ),
+            )
+
+        model_binding = dict(entry.model_binding)
+        return _ResolvedRuntimeContract(
+            symbol=symbol,
+            model_month=resolved_month,
+            cache_key=_cache_key(symbol, resolved_month),
+            candidates=list(entry.candidates),
+            model_binding=model_binding,
+            cap_pips=float(entry.cap_pips),
+            source="historical",
+            lock_path=str(entry.lock_path),
+        )
+
+    if _registry is None:
+        raise HTTPException(status_code=503, detail="Candidate registry not loaded")
+
+    model_binding = _registry.get_model_binding(symbol)
+    if not model_binding:
+        raise HTTPException(status_code=503, detail=f"No model binding registered for {symbol}")
+    model_month = (
+        _normalize_model_month(str(model_binding.get("model_month", "")).strip())
+        or "unknown"
+    )
+    return _ResolvedRuntimeContract(
+        symbol=symbol,
+        model_month=model_month,
+        cache_key=_cache_key(symbol),
+        candidates=_registry.get_candidates(symbol),
+        model_binding=dict(model_binding),
+        cap_pips=float(_registry.get_cap_pips(symbol)),
+        source="live",
+        lock_path=None,
+    )
+
+
+def _ensure_model_and_threshold(contract: _ResolvedRuntimeContract) -> tuple[Any, dict[str, Any]]:
+    model = _models.get(contract.cache_key)
+    thr_cfg = _thresholds.get(contract.cache_key)
+    if model is not None and isinstance(thr_cfg, dict):
+        return model, thr_cfg
+
+    ok, reason = _load_model_binding_into_cache(
+        symbol=contract.symbol,
+        binding=contract.model_binding,
+        cache_key=contract.cache_key,
+        expected_month=(contract.model_month if contract.model_month != "unknown" else None),
+    )
+    if not ok:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Unable to load lock-bound model for {contract.symbol}: {reason}",
+        )
+    model = _models.get(contract.cache_key)
+    thr_cfg = _thresholds.get(contract.cache_key)
+    if model is None:
+        raise HTTPException(
+            status_code=503,
+            detail=f"No CatBoost model loaded for {contract.symbol} (cache={contract.cache_key})",
+        )
+    return model, thr_cfg if isinstance(thr_cfg, dict) else {}
+
+
+def _resolve_ftmo_account_eval(
+    sym: str,
+    now_utc: datetime,
+    *,
+    ftmo_enabled_effective: bool,
+) -> dict[str, Any]:
+    if (not ftmo_enabled_effective) or (_ftmo_profile is None) or (_state is None):
         return {
             "enabled": False,
             "profile_id": None,
@@ -572,6 +1108,10 @@ def _ftmo_limits_payload() -> FtmoLimitsResponse:
 class PredictRequest(BaseModel):
     """Prediction request with explicit intended size for FTMO allocation."""
     symbol: str
+    ftmo_enabled_override: bool = Field(
+        ...,
+        description="Request-scoped FTMO guard toggle (must be explicitly provided by caller).",
+    )
     requested_volume_units: float | None = Field(
         default=None,
         gt=0.0,
@@ -589,6 +1129,12 @@ class HealthResponse(BaseModel):
     utc_now: datetime
     models_loaded: dict[str, str]
     bar_counts: dict[str, int]
+    model_cache_entries: int = 0
+    governance_mode: str | None = None
+    governance_missing_month_policy: str | None = None
+    historical_locks_loaded: int | None = None
+    historical_preflight_failed_checks: int | None = None
+    historical_preflight_summary: str | None = None
 
 
 class StatusSymbol(BaseModel):
@@ -597,6 +1143,26 @@ class StatusSymbol(BaseModel):
     model_loaded: bool
     model_month: str | None = None
     has_threshold: bool
+
+
+class FeedStatusSymbol(BaseModel):
+    symbol: str
+    total_received: int = 0
+    total_accepted: int = 0
+    total_dropped: int = 0
+    duplicate_timestamps: int = 0
+    monotonic_violations: int = 0
+    symbol_tick_seq: int = 0
+    last_tick_ts_utc: datetime | None = None
+    last_ingest_utc: datetime | None = None
+    last_drop_reason: str | None = None
+
+
+class FeedStatusResponse(BaseModel):
+    as_of_utc: datetime
+    governance_mode: str
+    record_raw_ticks: bool
+    symbols: list[FeedStatusSymbol]
 
 
 class BackfillRequest(BaseModel):
@@ -701,7 +1267,11 @@ async def get_ftmo_status(symbol: str | None = None) -> FtmoStatusResponse:
     """Return current FTMO guardrail status and account headroom."""
     sym = str(symbol or "").strip().upper() or None
     now_utc = datetime.now(tz=timezone.utc)
-    eval_out = _resolve_ftmo_account_eval(sym or "ALL", now_utc)
+    eval_out = _resolve_ftmo_account_eval(
+        sym or "ALL",
+        now_utc,
+        ftmo_enabled_effective=bool(_config.ftmo_enabled),
+    )
     return FtmoStatusResponse(
         enabled=bool(eval_out.get("enabled", False)),
         symbol=sym,
@@ -788,32 +1358,30 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
     pred_prob descending.
     """
     sym = req.symbol.upper()
+    ftmo_enabled_effective = bool(req.ftmo_enabled_override)
     requested_volume_units = _resolve_requested_volume_units(req)
 
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
 
-    # Get candidates from registry
-    if _registry is None:
-        raise HTTPException(status_code=503, detail="Candidate registry not loaded")
+    close_ts = _state.get_latest_close_ts(sym) or datetime.now(tz=timezone.utc)
+    if close_ts.tzinfo is None:
+        close_ts = close_ts.replace(tzinfo=timezone.utc)
+    else:
+        close_ts = close_ts.astimezone(timezone.utc)
 
-    candidates = _registry.get_candidates(sym)
+    contract = _resolve_runtime_contract(sym, close_ts)
+    candidates = contract.candidates
     if not candidates:
         raise HTTPException(status_code=422, detail=f"No candidates registered for {sym}")
 
     _check_warmup(sym, candidates)
 
-    # Load model
-    model = _models.get(sym)
-    if model is None:
-        raise HTTPException(
-            status_code=503,
-            detail=f"No CatBoost model loaded for {sym}. "
-                   f"Export models via run_tick_opportunity_monthly_wfo.py first.",
-        )
+    model, thr_cfg = _ensure_model_and_threshold(contract)
 
     # Compute base rolling features per bar_ticks group
     base_features_by_ticks: dict[int, ModelFeatures] = {}
+    regime_quantiles_by_ticks: dict[int, dict[str, float]] = {}
 
     for cand in candidates:
         bt = int(cand.bar_ticks)
@@ -827,17 +1395,13 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
             if feats is None:
                 raise HTTPException(status_code=422, detail=f"Feature computation failed for {sym}")
             base_features_by_ticks[bt] = feats
+            regime_quantiles_by_ticks[bt] = _state.compute_regime_quantiles(sym, bt)
 
-
-    thr_cfg = _thresholds.get(sym, {})
-    float(thr_cfg.get("threshold_exec", 0.5))
-    str(thr_cfg.get("threshold_source", "default"))
-    _model_months.get(sym, "unknown")
-
-    # In live trading this is functionally current time, but in replay we must
-    # exactly align with the state DB's reconstructed chronological limit.
-    close_ts = _state.get_latest_close_ts(sym) or datetime.now(tz=timezone.utc)
-    ftmo_account_eval = _resolve_ftmo_account_eval(sym, close_ts)
+    ftmo_account_eval = _resolve_ftmo_account_eval(
+        sym,
+        close_ts,
+        ftmo_enabled_effective=ftmo_enabled_effective,
+    )
     _state.expire_stale_ftmo_pending_reservations(
         max_age_seconds=max(60, int(_config.ftmo_pending_reservation_ttl_sec)),
     )
@@ -847,10 +1411,15 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
         candidates=candidates,
         model=model,
         base_features_by_ticks=base_features_by_ticks,
+        regime_quantiles_by_ticks=regime_quantiles_by_ticks,
         close_ts=close_ts,
         thr_cfg=thr_cfg,
         ftmo_account_eval=ftmo_account_eval,
+        ftmo_enabled_effective=ftmo_enabled_effective,
+        ftmo_enabled_override=bool(req.ftmo_enabled_override),
         requested_volume_units=requested_volume_units,
+        model_month=contract.model_month,
+        cap_pips=contract.cap_pips,
     )
 
     # Sort by pred_prob descending
@@ -878,28 +1447,39 @@ def _build_predictions(
     candidates: list[Any],
     model: Any,
     base_features_by_ticks: dict[int, ModelFeatures],
+    regime_quantiles_by_ticks: dict[int, dict[str, float]],
     close_ts: datetime,
     thr_cfg: dict[str, Any],
     ftmo_account_eval: dict[str, Any],
+    ftmo_enabled_effective: bool,
+    ftmo_enabled_override: bool,
     requested_volume_units: float,
+    model_month: str,
+    cap_pips: float,
 ) -> list[OcoPrediction]:
     """Build predictions for each candidate using model + FTMO portfolio allocator."""
     import numpy as np
 
     threshold_exec = float(thr_cfg.get("threshold_exec", 0.5))
     threshold_mode = str(thr_cfg.get("threshold_source", "default"))
-    model_month = _model_months.get(sym, "unknown")
     logger.debug(
         "Predict %s: threshold_exec=%.4f mode=%s month=%s",
         sym, threshold_exec, threshold_mode, model_month,
     )
 
     decisions: list[_CandidateDecision] = []
-    price_now = _latest_price_for_symbol(sym)
-    pip_value_per_unit = _pip_value_per_unit_ccy(sym, price=price_now)
-
-    if _config.ftmo_enabled and (_ftmo_profile is not None) and pip_value_per_unit is None:
-        pip_value_per_unit = 0.0
+    close_ts_utc = close_ts if close_ts.tzinfo is not None else close_ts.replace(tzinfo=timezone.utc)
+    fx_conv = _pip_value_per_unit_usd(
+        sym,
+        now_utc=close_ts_utc,
+        max_age_sec=max(1, int(_config.ftmo_fx_rate_max_age_sec)),
+    )
+    pip_value_per_unit = fx_conv.get("pip_value_per_unit_usd")
+    pip_value_per_unit = float(pip_value_per_unit) if pip_value_per_unit is not None else None
+    fx_status = str(fx_conv.get("conversion_status") or "unknown")
+    fx_pair = fx_conv.get("conversion_pair")
+    fx_rate = fx_conv.get("conversion_rate")
+    fx_age = fx_conv.get("conversion_age_sec")
 
     for cand in candidates:
         base_features = base_features_by_ticks[int(cand.bar_ticks)]
@@ -909,6 +1489,13 @@ def _build_predictions(
                 "horizon": float(cand.horizon),
                 "barrier_pips": float(cand.barrier_pips),
             }
+        )
+        regime_name = _candidate_regime_name(cand)
+        regime_active = _regime_is_active(
+            regime_name,
+            features=features,
+            close_ts_utc=close_ts_utc,
+            regime_q=regime_quantiles_by_ticks.get(int(cand.bar_ticks), {}),
         )
         arr = np.array([features.to_array()], dtype=float)
 
@@ -931,9 +1518,12 @@ def _build_predictions(
             curr_source = f"{threshold_mode}:static_fallback"
 
         canonical_uid = f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
-        preselected_exec = 1 if pred_prob >= curr_threshold else 0
+        preselected_exec = 1 if (regime_active and pred_prob >= curr_threshold) else 0
         risk_metrics_snapshot: dict[str, Any] = {
             "ftmo_enabled": bool(ftmo_account_eval.get("enabled", False)),
+            "ftmo_enabled_effective": bool(ftmo_enabled_effective),
+            "ftmo_enabled_override": bool(ftmo_enabled_override),
+            "ftmo_mode_source": "request_override",
             "ftmo_profile_id": ftmo_account_eval.get("profile_id"),
             "ftmo_allow_trading": bool(ftmo_account_eval.get("allow_trading", True)),
             "ftmo_account_block_reason": ftmo_account_eval.get("block_reason"),
@@ -944,13 +1534,21 @@ def _build_predictions(
             "max_loss_used": ftmo_account_eval.get("max_loss_used"),
             "trading_day_id": ftmo_account_eval.get("trading_day_id"),
             "requested_volume_units": float(requested_volume_units),
+            "allocator_pip_value_per_unit_usd": pip_value_per_unit,
+            "allocator_fx_conversion_status": fx_status,
+            "allocator_fx_conversion_pair": fx_pair,
+            "allocator_fx_conversion_rate": fx_rate,
+            "allocator_fx_conversion_age_sec": fx_age,
+            "allocator_fx_rate_max_age_sec": int(max(1, int(_config.ftmo_fx_rate_max_age_sec))),
+            "regime_name": regime_name,
+            "regime_active": bool(regime_active),
         }
         trade_eval: dict[str, Any] = {"allow_trade": True, "block_reason": None}
         selected_exec = preselected_exec
         risk_blocked = False
         risk_block_reason: str | None = None
 
-        if preselected_exec == 1 and _config.ftmo_enabled and (_ftmo_profile is not None):
+        if preselected_exec == 1 and ftmo_enabled_effective and (_ftmo_profile is not None):
             trade_eval = evaluate_trade_guard(
                 _ftmo_profile,
                 account_eval=ftmo_account_eval,
@@ -994,7 +1592,7 @@ def _build_predictions(
         )
 
     allocator_enabled = bool(
-        _config.ftmo_enabled
+        ftmo_enabled_effective
         and _ftmo_profile is not None
         and _ftmo_profile.allocator.allocator_enabled
         and _state is not None
@@ -1056,7 +1654,7 @@ def _build_predictions(
 
             gross_loss_pips = max(
                 0.0,
-                float(d.cand.barrier_pips) + float(_get_cap_pips(sym)) + float(est_cost),
+                float(d.cand.barrier_pips) + float(cap_pips) + float(est_cost),
             )
             reserve_ccy = float(gross_loss_pips) * float(pip_value_per_unit) * float(requested_volume_units)
             d.risk_metrics_snapshot["allocator_gross_loss_pips"] = float(gross_loss_pips)
@@ -1090,7 +1688,7 @@ def _build_predictions(
                     candidate_uid=d.candidate_uid,
                     reserved_loss_ccy=float(d.risk_reserved_amount_ccy),
                     barrier_pips=float(d.cand.barrier_pips),
-                    cap_pips=float(_get_cap_pips(sym)),
+                    cap_pips=float(cap_pips),
                     cost_est_pips=float(d.features.cost_est_pips),
                     volume_units=float(requested_volume_units),
                     source="predict_allocator",
@@ -1106,6 +1704,27 @@ def _build_predictions(
                 threshold=d.curr_threshold,
                 features=d.features,
                 model_month=model_month,
+                close_ts=close_ts,
+            )
+
+        if (
+            _state is not None
+            and ftmo_enabled_effective
+            and (_ftmo_profile is not None)
+            and d.preselected_exec == 1
+        ):
+            event_status = "ADMITTED" if d.selected_exec == 1 else "BLOCKED"
+            _state.log_ftmo_allocator_event(
+                symbol=sym,
+                candidate_uid=d.candidate_uid,
+                status=event_status,
+                block_reason=d.risk_block_reason,
+                reserved_loss_ccy=d.risk_reserved_amount_ccy,
+                requested_volume_units=float(requested_volume_units),
+                pred_prob=float(d.pred_prob),
+                threshold_exec=float(d.curr_threshold),
+                risk_rank_score=d.risk_rank_score,
+                reservation_id=d.risk_reservation_id,
             )
 
         results.append(
@@ -1119,7 +1738,7 @@ def _build_predictions(
                 bar_ticks=int(d.cand.bar_ticks),
                 horizon=int(d.cand.horizon),
                 barrier_pips=float(d.cand.barrier_pips),
-                cap_pips=_get_cap_pips(sym),
+                cap_pips=float(cap_pips),
                 threshold_source=d.curr_source,
                 model_month=model_month,
                 risk_blocked=d.risk_blocked,
@@ -1220,11 +1839,30 @@ async def health() -> HealthResponse:
     for sym in _config.symbols:
         bar_counts[sym] = _state.bar_count(sym, 100)
 
+    mode = str(_config.governance_mode).strip().lower()
+    has_runtime_contracts = bool(_models)
+    if _is_historical_mode():
+        has_runtime_contracts = has_runtime_contracts or (_historical_entries_loaded > 0)
+
     return HealthResponse(
-        status="ok" if _models else "no_models",
+        status="ok" if has_runtime_contracts else "no_models",
         utc_now=datetime.now(tz=timezone.utc),
         models_loaded=dict(_model_months),
         bar_counts=bar_counts,
+        model_cache_entries=len(_models),
+        governance_mode=mode,
+        governance_missing_month_policy=(
+            str(_config.governance_missing_month_policy).strip().lower()
+            if _is_historical_mode()
+            else None
+        ),
+        historical_locks_loaded=_historical_entries_loaded if _is_historical_mode() else None,
+        historical_preflight_failed_checks=(
+            _historical_preflight_failed_checks if _is_historical_mode() else None
+        ),
+        historical_preflight_summary=(
+            _historical_preflight_summary if _is_historical_mode() else None
+        ),
     )
 
 
@@ -1233,21 +1871,81 @@ async def status() -> list[StatusSymbol]:
     """Per-symbol detailed status."""
     out: list[StatusSymbol] = []
     for sym in _config.symbols:
+        has_threshold = bool(_thresholds.get(sym))
+        if (not has_threshold) and _is_historical_mode():
+            pref = f"{sym}|"
+            has_threshold = any(k.startswith(pref) for k in _thresholds)
         out.append(StatusSymbol(
             symbol=sym,
             bar_count=_state.bar_count(sym, 100) if _state else 0,
-            model_loaded=sym in _models,
-            model_month=_model_months.get(sym),
-            has_threshold=bool(_thresholds.get(sym)),
+            model_loaded=_has_loaded_model_for_symbol(sym),
+            model_month=_latest_loaded_month_for_symbol(sym),
+            has_threshold=has_threshold,
         ))
     return out
+
+
+@app.get("/runtime/feed/status", response_model=FeedStatusResponse)
+async def runtime_feed_status() -> FeedStatusResponse:
+    """Return per-symbol live feed ingest health and monotonicity counters."""
+    symbols = sorted(set(_config.symbols) | set(_feed_state.keys()))
+    rows: list[FeedStatusSymbol] = []
+    for sym in symbols:
+        st = _get_feed_tracker(sym)
+        rows.append(
+            FeedStatusSymbol(
+                symbol=sym,
+                total_received=int(st["total_received"]),
+                total_accepted=int(st["total_accepted"]),
+                total_dropped=int(st["total_dropped"]),
+                duplicate_timestamps=int(st["duplicate_timestamps"]),
+                monotonic_violations=int(st["monotonic_violations"]),
+                symbol_tick_seq=int(st["symbol_tick_seq"]),
+                last_tick_ts_utc=st["last_tick_ts_utc"],
+                last_ingest_utc=st["last_ingest_utc"],
+                last_drop_reason=st["last_drop_reason"],
+            )
+        )
+    return FeedStatusResponse(
+        as_of_utc=datetime.now(tz=timezone.utc),
+        governance_mode=str(_config.governance_mode).strip().lower(),
+        record_raw_ticks=bool(_config.record_raw_ticks),
+        symbols=rows,
+    )
 
 
 @app.post("/reload")
 async def reload_models() -> dict:
     """Hot-reload models from disk without restarting the server."""
+    global _registry, _historical_registry, _historical_entries_loaded
+    global _historical_preflight_failed_checks, _historical_preflight_summary
+
+    if _is_historical_mode():
+        hist_dir = Path(str(_config.governance_history_dir))
+        _historical_registry = HistoricalCandidateRegistry.load(hist_dir)
+        _run_historical_preflight(hist_dir)
+        _registry = None
+        _historical_entries_loaded = len(_historical_registry._entries)
+    else:
+        _registry = CandidateRegistry.load(
+            os.getenv("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco")
+        )
+        _historical_registry = None
+        _historical_entries_loaded = 0
+        _historical_preflight_failed_checks = 0
+        _historical_preflight_summary = ""
+
     _load_models()
-    return {"ok": True, "models_loaded": dict(_model_months)}
+    return {
+        "ok": True,
+        "models_loaded": dict(_model_months),
+        "model_cache_entries": len(_models),
+        "governance_mode": str(_config.governance_mode).strip().lower(),
+        "historical_locks_loaded": _historical_entries_loaded if _is_historical_mode() else None,
+        "historical_preflight_failed_checks": (
+            _historical_preflight_failed_checks if _is_historical_mode() else None
+        ),
+    }
 
 
 @app.post("/backfill", status_code=201)
@@ -1288,6 +1986,38 @@ async def ingest_tick(tick: IncomingTick) -> dict:
     if _state is None or not _aggregators:
         raise HTTPException(status_code=503, detail="Not initialized")
 
+    sym = tick.symbol.upper()
+    tick_ts_utc = _as_utc_ts(tick.timestamp)
+    now_utc = datetime.now(tz=timezone.utc)
+    feed = _get_feed_tracker(sym)
+    feed["total_received"] = int(feed["total_received"]) + 1
+    feed["last_ingest_utc"] = now_utc
+
+    last_tick_ts = feed.get("last_tick_ts_utc")
+    if isinstance(last_tick_ts, datetime) and tick_ts_utc <= last_tick_ts:
+        if tick_ts_utc == last_tick_ts:
+            drop_reason = "duplicate_timestamp"
+            feed["duplicate_timestamps"] = int(feed["duplicate_timestamps"]) + 1
+        else:
+            drop_reason = "non_monotonic_timestamp"
+            feed["monotonic_violations"] = int(feed["monotonic_violations"]) + 1
+        feed["total_dropped"] = int(feed["total_dropped"]) + 1
+        feed["last_drop_reason"] = drop_reason
+        return {
+            "ok": True,
+            "symbol": sym,
+            "tick_accepted": False,
+            "drop_reason": drop_reason,
+            "symbol_tick_seq": int(feed["symbol_tick_seq"]),
+            "last_tick_ts_utc": last_tick_ts,
+            "bar_completed": False,
+            "completed_bar_ticks": [],
+            "bar_count": _state.bar_count(sym, 100),
+        }
+
+    if _config.record_raw_ticks and _is_historical_mode():
+        _state.record_raw_tick(tick, source="historical_backtest")
+
     completed_bar_ticks = []
     bars = []
     for agg in _aggregators.values():
@@ -1299,11 +2029,18 @@ async def ingest_tick(tick: IncomingTick) -> dict:
         completed_bar_ticks.append(bar.bar_ticks)
         bar_completed = True
 
-    sym = tick.symbol.upper()
+    feed["total_accepted"] = int(feed["total_accepted"]) + 1
+    feed["symbol_tick_seq"] = int(feed["symbol_tick_seq"]) + 1
+    feed["last_tick_ts_utc"] = tick_ts_utc
+    feed["last_drop_reason"] = None
     return {
         "ok": True,
         "symbol": sym,
+        "tick_accepted": True,
+        "drop_reason": None,
+        "symbol_tick_seq": int(feed["symbol_tick_seq"]),
+        "last_tick_ts_utc": tick_ts_utc,
         "bar_completed": bar_completed,
         "completed_bar_ticks": completed_bar_ticks,
-        "bar_count": _state.bar_count(sym, 100), # Return standard 100-tick count as baseline
+        "bar_count": _state.bar_count(sym, 100),  # Return standard 100-tick count as baseline
     }

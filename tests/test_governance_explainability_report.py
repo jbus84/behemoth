@@ -92,3 +92,51 @@ def test_governance_explainability_handles_empty(tmp_path: Path) -> None:
     assert out.empty
     assert (tmp_path / "explain.csv").exists()
     assert (tmp_path / "report.md").exists()
+
+
+def test_governance_explainability_handles_blank_source_alert(tmp_path: Path) -> None:
+    disp = pd.DataFrame(
+        [
+            {
+                "symbol": "EURUSD",
+                "source_alert": "",
+                "test_month": "2026-02",
+                "metric_id": "FTMO_ALLOC_BLOCK_RATE",
+                "metric_value": 0.4,
+                "band": "amber",
+                "severity": "medium",
+                "status": "remediated",
+                "action_code": "A1_REVIEW",
+                "owner": "risk",
+                "rationale": "monitor",
+                "expires_utc": "2099-01-01T00:00:00Z",
+                "is_expired": False,
+                "source_path": "x",
+                "evaluated_at_utc": "2026-02-01T00:00:00Z",
+                "first_seen_utc": "2026-02-01T00:00:00Z",
+                "last_seen_utc": "2026-02-01T00:00:00Z",
+                "consecutive_runs_non_green": 1,
+                "months_non_green_count": 1,
+                "sla_days": 30,
+                "days_to_expiry": 29.0,
+                "escalation_level": "warn",
+                "evidence_required": False,
+                "evidence_link": "",
+                "expiry_breach": False,
+                "recurrence_breach": False,
+                "policy_violation_code": "",
+            }
+        ]
+    )
+    disp_path = tmp_path / "disp.csv"
+    disp.to_csv(disp_path, index=False)
+    cfg_path = tmp_path / "exceptions.yaml"
+    cfg_path.write_text("version: 1\n", encoding="utf-8")
+    out = run(
+        disposition_csv=disp_path,
+        exceptions_yaml=cfg_path,
+        out_csv=tmp_path / "explain.csv",
+        report_out=tmp_path / "report.md",
+    )
+    assert not out.empty
+    assert out.iloc[0]["source_alert"] == "unknown"

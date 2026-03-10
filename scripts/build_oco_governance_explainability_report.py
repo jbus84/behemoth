@@ -72,6 +72,42 @@ METRIC_META: dict[str, dict[str, str]] = {
         "threshold_context": "Difference metric in threshold sensitivity candidate table.",
         "expected_recovery_signal": "Policy gap narrows or current policy aligns with recommended row.",
     },
+    "FTMO_ALLOC_BLOCK_RATE": {
+        "definition": "Share of preselected candidates blocked by the FTMO allocator budget layer.",
+        "risk_path": "Persistently high block rate indicates reduced live opportunity capture.",
+        "threshold_context": "Compared to warn/fail bands in FTMO allocator monitoring alerts.",
+        "expected_recovery_signal": "Block rate returns to green with stable admitted coverage.",
+    },
+    "FTMO_ALLOC_BUDGET_EXCEEDED_RATE": {
+        "definition": "Share of preselected candidates blocked due to reserved budget exhaustion.",
+        "risk_path": "Frequent budget exhaustion suggests sizing/headroom mismatch under live flow.",
+        "threshold_context": "Computed over recent allocator events using monitoring lookback window.",
+        "expected_recovery_signal": "Budget-exceeded blocks drop below warn threshold.",
+    },
+    "FTMO_ALLOC_PIP_VALUE_UNAVAILABLE_RATE": {
+        "definition": "Share of preselected candidates blocked by missing FX pip-value conversion.",
+        "risk_path": "Conversion failures can suppress valid trades and indicate data path fragility.",
+        "threshold_context": "Derived from allocator block reason FTMO_PIP_VALUE_UNAVAILABLE.",
+        "expected_recovery_signal": "Conversion-unavailable block rate remains near zero.",
+    },
+    "FTMO_ALLOC_STALE_PENDING_COUNT": {
+        "definition": "Count of pending reservations older than configured pending staleness horizon.",
+        "risk_path": "Stale pending reservations can overstate reserved loss and throttle allocator capacity.",
+        "threshold_context": "Counted against stale-pending warn/fail count bands.",
+        "expected_recovery_signal": "Pending stale count returns to zero after reconciliation.",
+    },
+    "FTMO_ALLOC_OPEN_WITHOUT_BROKER_POS_COUNT": {
+        "definition": "Count of OPEN reservations lacking linked broker position id.",
+        "risk_path": "Unlinked open reservations imply lifecycle mismatch between allocator and execution ledger.",
+        "threshold_context": "Counted directly from runtime reservation ledger.",
+        "expected_recovery_signal": "All open reservations carry broker position linkage.",
+    },
+    "FTMO_ALLOC_ADMITTED_MISSING_RESERVATION_ID_COUNT": {
+        "definition": "Count of admitted allocator decisions without valid reservation linkage.",
+        "risk_path": "Missing reservation linkage weakens loss-budget accounting integrity.",
+        "threshold_context": "Count includes missing or unknown reservation ids on admitted events.",
+        "expected_recovery_signal": "Admitted events consistently map to valid reservations.",
+    },
 }
 
 
@@ -206,9 +242,9 @@ def run(
             .any()
         )
         evidence_links = [
-            s
+            str(s)
             for s in g.get("evidence_link", pd.Series(dtype=str)).astype(str).tolist()
-            if s.strip() != ""
+            if str(s).strip() != ""
         ]
 
         action_rationale = "Action selected from policy mapping for the observed band/severity."
@@ -221,14 +257,19 @@ def run(
                 "Hard halt/recalibration path is required due to governance-critical degradation."
             )
 
+        source_alert_series = g.get("source_alert", pd.Series(dtype=str)).astype(str).str.strip()
+        source_alert_series = source_alert_series[source_alert_series != ""]
+        source_alert_mode = source_alert_series.mode()
+        source_alert = (
+            str(source_alert_mode.iloc[0])
+            if not source_alert_mode.empty
+            else "unknown"
+        )
+
         rows.append(
             {
                 "metric_id": metric_id,
-                "source_alert": str(
-                    g.get("source_alert", pd.Series(dtype=str)).astype(str).mode().iloc[0]
-                )
-                if "source_alert" in g.columns
-                else "unknown",
+                "source_alert": source_alert,
                 "definition": meta.get("definition", "Metric-specific governance diagnostic."),
                 "risk_path": meta.get(
                     "risk_path",

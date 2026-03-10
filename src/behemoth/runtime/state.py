@@ -19,8 +19,12 @@ from typing import Any
 
 import duckdb
 
-from src.behemoth.core.features import FeatureConfig, compute_features_from_bars
-from src.behemoth.core.schemas import IncomingTickBar, ModelFeatures
+from src.behemoth.core.features import (
+    FeatureConfig,
+    compute_features_from_bars,
+    compute_regime_quantiles_from_bars,
+)
+from src.behemoth.core.schemas import IncomingTick, IncomingTickBar, ModelFeatures
 
 _CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS tick_bars (
@@ -41,6 +45,7 @@ CREATE TABLE IF NOT EXISTS tick_bars (
 
 CREATE TABLE IF NOT EXISTS audit_logs (
     event_ts TIMESTAMP WITH TIME ZONE,
+    close_ts TIMESTAMP WITH TIME ZONE,
     symbol VARCHAR,
     candidate_uid VARCHAR,
     pred_prob DOUBLE,
@@ -89,6 +94,31 @@ CREATE TABLE IF NOT EXISTS ftmo_risk_reservations (
     side VARCHAR,
     source VARCHAR
 );
+
+CREATE TABLE IF NOT EXISTS ftmo_allocator_events (
+    event_ts TIMESTAMP WITH TIME ZONE,
+    symbol VARCHAR,
+    candidate_uid VARCHAR,
+    status VARCHAR,
+    block_reason VARCHAR,
+    reserved_loss_ccy DOUBLE,
+    requested_volume_units DOUBLE,
+    pred_prob DOUBLE,
+    threshold_exec DOUBLE,
+    risk_rank_score DOUBLE,
+    reservation_id VARCHAR
+);
+
+CREATE TABLE IF NOT EXISTS raw_ticks (
+    tick_ts TIMESTAMP WITH TIME ZONE,
+    ingest_ts TIMESTAMP WITH TIME ZONE,
+    symbol VARCHAR,
+    bid DOUBLE,
+    ask DOUBLE,
+    spread DOUBLE,
+    tick_volume DOUBLE,
+    source VARCHAR
+);
 """
 
 _INSERT_SQL = (
@@ -107,9 +137,21 @@ SELECT * FROM (
 ORDER BY row_id ASC
 """
 
-_AUDIT_INSERT_SQL = (
-    "INSERT INTO audit_logs VALUES (CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?)"
+_AUDIT_INSERT_SQL = """
+INSERT INTO audit_logs (
+    event_ts,
+    close_ts,
+    symbol,
+    candidate_uid,
+    pred_prob,
+    threshold,
+    features_json,
+    model_month
+) VALUES (
+    CURRENT_TIMESTAMP,
+    ?, ?, ?, ?, ?, ?, ?
 )
+"""
 
 _FTMO_SNAPSHOT_INSERT_SQL = (
     "INSERT INTO ftmo_account_snapshots VALUES (?, ?, ?, ?)"
@@ -117,6 +159,14 @@ _FTMO_SNAPSHOT_INSERT_SQL = (
 
 _FTMO_RISK_RES_INSERT_SQL = (
     "INSERT INTO ftmo_risk_reservations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+)
+
+_FTMO_ALLOC_EVENT_INSERT_SQL = (
+    "INSERT INTO ftmo_allocator_events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+)
+
+_RAW_TICK_INSERT_SQL = (
+    "INSERT INTO raw_ticks VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
 )
 
 
@@ -148,6 +198,7 @@ class StateManager:
             self._con = duckdb.connect()
 
         self._con.execute(_CREATE_SQL)
+        self._ensure_audit_log_schema()
         self._row_counters: dict[str, int] = {}
 
         # Hydrate counters from persistent store to survive restarts
@@ -157,6 +208,25 @@ class StateManager:
         for r in res:
             if r[2] is not None:
                 self._row_counters[f"{r[0].upper()}_{r[1]}"] = int(r[2]) + 1
+
+    def _ensure_audit_log_schema(self) -> None:
+        """Add new audit columns for backward-compatible schema migration."""
+        try:
+            cols = self._con.execute(
+                """
+                SELECT lower(column_name)
+                FROM information_schema.columns
+                WHERE lower(table_name) = 'audit_logs'
+                """
+            ).fetchall()
+            colset = {str(r[0]).lower() for r in cols}
+            if "close_ts" not in colset:
+                self._con.execute(
+                    "ALTER TABLE audit_logs ADD COLUMN close_ts TIMESTAMP WITH TIME ZONE"
+                )
+        except Exception:
+            # Best-effort migration only; avoid startup hard failure.
+            pass
 
     def append_bar(self, bar: IncomingTickBar) -> None:
         """Append a validated tick bar to the state buffer."""
@@ -239,6 +309,15 @@ class StateManager:
             cfg=self._cfg,
         )
 
+    def compute_regime_quantiles(self, symbol: str, bar_ticks: int) -> dict[str, float]:
+        """Compute runtime regime quantiles from the recent bar buffer."""
+        sym = symbol.upper()
+        n = self.bar_count(sym, bar_ticks)
+        if n < self._cfg.full_warmup_bars:
+            return {}
+        df = self._con.execute(_SELECT_SQL, [sym, bar_ticks]).fetchdf()
+        return compute_regime_quantiles_from_bars(df, symbol=sym, cfg=self._cfg)
+
     def log_audit_event(
         self,
         symbol: str,
@@ -247,11 +326,13 @@ class StateManager:
         threshold: float,
         features: ModelFeatures,
         model_month: str,
+        close_ts: datetime | None = None,
     ) -> None:
         """Record an execution decision snapshot into the persistent audit trail."""
         self._con.execute(
             _AUDIT_INSERT_SQL,
             [
+                close_ts,
                 symbol.upper(),
                 candidate_uid,
                 float(pred_prob),
@@ -689,6 +770,68 @@ class StateManager:
                 }
             )
         return out
+
+    def log_ftmo_allocator_event(
+        self,
+        *,
+        symbol: str,
+        candidate_uid: str,
+        status: str,
+        block_reason: str | None,
+        reserved_loss_ccy: float | None,
+        requested_volume_units: float,
+        pred_prob: float,
+        threshold_exec: float,
+        risk_rank_score: float | None,
+        reservation_id: str | None,
+    ) -> None:
+        """Persist allocator decision events for monitoring and reconciliation."""
+        now_utc = datetime.now(tz=timezone.utc)
+        self._con.execute(
+            _FTMO_ALLOC_EVENT_INSERT_SQL,
+            [
+                now_utc,
+                symbol.upper(),
+                candidate_uid,
+                str(status).upper(),
+                block_reason,
+                float(reserved_loss_ccy) if reserved_loss_ccy is not None else None,
+                float(requested_volume_units),
+                float(pred_prob),
+                float(threshold_exec),
+                float(risk_rank_score) if risk_rank_score is not None else None,
+                reservation_id,
+            ],
+        )
+
+    def record_raw_tick(self, tick: IncomingTick, *, source: str = "live") -> None:
+        """Persist a single raw tick for replay/reconciliation workflows."""
+        ts = tick.timestamp
+        ts = ts.replace(tzinfo=timezone.utc) if ts.tzinfo is None else ts.astimezone(timezone.utc)
+        self._con.execute(
+            _RAW_TICK_INSERT_SQL,
+            [
+                ts,
+                datetime.now(tz=timezone.utc),
+                tick.symbol.upper(),
+                float(tick.bid),
+                float(tick.ask),
+                float(tick.ask - tick.bid),
+                float(tick.tick_volume),
+                str(source),
+            ],
+        )
+
+    def raw_tick_count(self, symbol: str | None = None) -> int:
+        """Return stored raw tick rows, optionally filtered by symbol."""
+        if symbol:
+            row = self._con.execute(
+                "SELECT COUNT(*) FROM raw_ticks WHERE symbol = ?",
+                [symbol.upper()],
+            ).fetchone()
+        else:
+            row = self._con.execute("SELECT COUNT(*) FROM raw_ticks").fetchone()
+        return int(row[0]) if row and row[0] is not None else 0
 
     def close(self) -> None:
         """Close the DuckDB connection."""

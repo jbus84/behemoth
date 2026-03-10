@@ -27,7 +27,7 @@
 ## Rolling Historical Evidence
 
 <!-- GENERATED:SYSREF:CODE_REFERENCE:START -->
-- generated_at_utc: `2026-03-06T14:33:50Z`
+- generated_at_utc: `2026-03-10T10:13:43Z`
 - symbols_covered: `EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD`
 - stop-limit_reference: `stage_04_execution_realism`
 - artifact_sources:
@@ -35,19 +35,21 @@
   - `data/analysis/tick_opportunity_mining/oco_threshold_sensitivity.csv`
   - `data/analysis/tick_opportunity_mining/operator_action_status.csv`
   - `data/analysis/tick_opportunity_mining/oco_alert_disposition.csv`
+  - `data/analysis/tick_opportunity_mining/ftmo_allocator_monitoring_metrics.csv`
+  - `data/analysis/tick_opportunity_mining/ftmo_reservation_reconciliation.csv`
   - `data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv`
   - `data/analysis/tick_opportunity_mining/docs_contract_checks.csv`
   - `data/analysis/tick_opportunity_mining/run_delta_summary.csv`
 
 #### Rolling Snapshot By Symbol
-| symbol   | latest_month   | drift_fill_rate   | drift_overshoot_p95   | w13_fragility   | policy_quantile   | mc_s1_lb95   | reduced_mean_gross   |   non_green_actions |   non_green_alerts |
-|:---------|:---------------|:------------------|:----------------------|:----------------|:------------------|:-------------|:---------------------|--------------------:|-------------------:|
-| EURUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
-| GBPUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
-| USDJPY   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
-| USDCHF   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
-| AUDUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
-| USDCAD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |
+| symbol   | latest_month   | drift_fill_rate   | drift_overshoot_p95   | w13_fragility   | policy_quantile   | mc_s1_lb95   | reduced_mean_gross   |   non_green_actions |   non_green_alerts | ftmo_block_rate   | ftmo_budget_exceeded_rate   |   ftmo_stale_pending_count | ftmo_reconciliation_pass   |
+|:---------|:---------------|:------------------|:----------------------|:----------------|:------------------|:-------------|:---------------------|--------------------:|-------------------:|:------------------|:----------------------------|---------------------------:|:---------------------------|
+| EURUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |                   |                             |                          0 |                            |
+| GBPUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |                   |                             |                          0 |                            |
+| USDJPY   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |                   |                             |                          0 |                            |
+| USDCHF   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |                   |                             |                          0 |                            |
+| AUDUSD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |                   |                             |                          0 |                            |
+| USDCAD   |                |                   |                       |                 |                   |              |                      |                   0 |                  0 |                   |                             |                          0 |                            |
 
 #### Rolling Trend (Last 3 Months)
 | symbol   |   months_used | fill_rate_mean_3m   | overshoot_p95_mean_3m   |

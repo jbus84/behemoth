@@ -70,14 +70,18 @@ def run(
     *,
     drift_alerts_csv: Path,
     threshold_alerts_csv: Path,
+    ftmo_alerts_csv: Path | None,
     exceptions_yaml: Path,
     out_disposition_csv: Path,
     report_out: Path,
 ) -> pd.DataFrame:
     d1 = _read_csv(drift_alerts_csv)
     d2 = _read_csv(threshold_alerts_csv)
+    d3 = _read_csv(ftmo_alerts_csv) if ftmo_alerts_csv is not None else pd.DataFrame()
     alerts = (
-        pd.concat([d1, d2], ignore_index=True) if (not d1.empty or not d2.empty) else pd.DataFrame()
+        pd.concat([d1, d2, d3], ignore_index=True)
+        if (not d1.empty or not d2.empty or not d3.empty)
+        else pd.DataFrame()
     )
 
     expected_cols = [
@@ -267,12 +271,20 @@ def run(
             violations.append("recurrence_limit_exceeded")
 
         days_to_expiry = float((exp - now).total_seconds() / 86400.0)
+        source_alert = str(r.get("source_alert", "")).strip().lower()
+        if source_alert in {"", "nan", "none", "null"}:
+            if metric_id.startswith("E_DRIFT_"):
+                source_alert = "execution_drift"
+            elif metric_id.startswith("TS"):
+                source_alert = "threshold_sensitivity"
+            elif metric_id.startswith("FTMO_"):
+                source_alert = "ftmo_allocator"
+            else:
+                source_alert = "other"
         out_rows.append(
             {
                 "symbol": symbol,
-                "source_alert": "execution_drift"
-                if metric_id.startswith("E_DRIFT_")
-                else "threshold_sensitivity",
+                "source_alert": source_alert,
                 "test_month": str(r.get("test_month", "")),
                 "metric_id": metric_id,
                 "metric_value": pd.to_numeric(
@@ -328,6 +340,7 @@ def run(
     lines.append(f"- generated_at_utc: `{now.strftime('%Y-%m-%dT%H:%M:%SZ')}`")
     lines.append(f"- drift_alerts_csv: `{drift_alerts_csv}`")
     lines.append(f"- threshold_alerts_csv: `{threshold_alerts_csv}`")
+    lines.append(f"- ftmo_alerts_csv: `{ftmo_alerts_csv}`")
     lines.append(f"- exceptions_yaml: `{exceptions_yaml}`")
     lines.append(f"- disposition_csv: `{out_disposition_csv}`")
     lines.append("")
@@ -354,6 +367,10 @@ def main() -> None:
         default="data/analysis/tick_opportunity_mining/oco_threshold_sensitivity_alerts.csv",
     )
     p.add_argument(
+        "--ftmo-alerts-csv",
+        default="data/analysis/tick_opportunity_mining/ftmo_allocator_monitoring_alerts.csv",
+    )
+    p.add_argument(
         "--exceptions-yaml", default="configs/research/governance/oco_monitoring_exceptions.yaml"
     )
     p.add_argument(
@@ -366,6 +383,7 @@ def main() -> None:
     d = run(
         drift_alerts_csv=Path(str(args.drift_alerts_csv)),
         threshold_alerts_csv=Path(str(args.threshold_alerts_csv)),
+        ftmo_alerts_csv=Path(str(args.ftmo_alerts_csv)),
         exceptions_yaml=Path(str(args.exceptions_yaml)),
         out_disposition_csv=Path(str(args.out_disposition_csv)),
         report_out=Path(str(args.report_out)),

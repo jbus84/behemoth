@@ -169,6 +169,56 @@ def compute_features_from_bars(
     )
 
 
+def compute_regime_quantiles_from_bars(
+    df: pd.DataFrame,
+    *,
+    symbol: str,
+    cfg: FeatureConfig = FeatureConfig(),
+) -> dict[str, float]:
+    """Compute regime-quantile cutoffs from a recent bar buffer.
+
+    Quantile names and feature definitions mirror ``run_tick_opportunity_mining._quantiles``.
+    Values are computed on the available warmup buffer and are intended for runtime
+    regime gating (e.g. ``high_abs_vel_q80``) in API inference.
+    """
+    n = len(df)
+    if n < cfg.full_warmup_bars:
+        return {}
+
+    pip = pip_size(symbol)
+    close, open_, high, low, _close_ts, timestamp = _extract_core_series(df)
+    bar_gap_sec = (timestamp - timestamp.shift(1)).dt.total_seconds()
+    is_weekend_gap = bar_gap_sec > FeatureConstants.WEEKEND_GAP_SEC
+    durations = (_close_ts - timestamp).dt.total_seconds().clip(lower=FeatureConstants.DURATION_MIN_SEC)
+
+    tick_rate_z, spread_z, spread_pips = _compute_micro_features(df, pip, durations, cfg)
+    vel_h1, _ret_z, ret_abs_z = _compute_velocity_features(close, pip, is_weekend_gap, cfg)
+    range_pips = (high - low) / pip
+    cost_est, _vel_cu, vel_abs_cu = _compute_cost_features(
+        spread_pips, range_pips, open_, close, pip, is_weekend_gap, vel_h1, cfg
+    )
+
+    def _q(series: pd.Series, quantile: float) -> float:
+        s = pd.to_numeric(series, errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
+        if len(s) == 0:
+            return float("nan")
+        return float(s.quantile(float(quantile)))
+
+    return {
+        "cost_q30": _q(cost_est, 0.30),
+        "cost_q50": _q(cost_est, 0.50),
+        "rng_q70": _q(range_pips, 0.70),
+        "rng_q80": _q(range_pips, 0.80),
+        "shock_q60": _q(ret_abs_z, 0.60),
+        "shock_q70": _q(ret_abs_z, 0.70),
+        "shock_q80": _q(ret_abs_z, 0.80),
+        "vel_q70": _q(vel_abs_cu, 0.70),
+        "vel_q80": _q(vel_abs_cu, 0.80),
+        "spread_q70": _q(spread_z, 0.70),
+        "tick_q30": _q(tick_rate_z, 0.30),
+    }
+
+
 def _extract_core_series(df: pd.DataFrame) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series, pd.Series, pd.Series]:
     """Resolve column names and return strongly-typed base series."""
     cc = "close_price" if "close_price" in df.columns else "close"

@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 02
 
-- generated_at: `2026-03-06 14:33:18 UTC`
+- generated_at: `2026-03-10 10:13:11 UTC`
 - selection_pass candidates are broad hypotheses only.
 - Scatter shows the high-count >0 gross opportunity frontier.
 - M01-M03 quantify concentration risk, horizon smoothness, and positive-edge density.
@@ -8,12 +8,12 @@
 #### Key Results
 | symbol   |   candidates_total |   selected_total |   selected_mean_gross_pips |   selected_median_annualized |   m01_top3_contrib_share |   m02_smoothness_abs_jump |   m03_positive_density |
 |:---------|-------------------:|-----------------:|---------------------------:|-----------------------------:|-------------------------:|--------------------------:|-----------------------:|
-| EURUSD   |               2160 |             1800 |                   2.73323  |                      4641.46 |                0.0326985 |                 0.247311  |               0.882222 |
-| GBPUSD   |               2160 |             1685 |                   3.32768  |                      4814.26 |                0.0337978 |                 0.288919  |               0.910386 |
-| AUDUSD   |               2160 |             1672 |                   2.1009   |                      2459.85 |                0.032903  |                 0.20972   |               0.910885 |
-| USDJPY   |               2160 |             1742 |                   4.35846  |                      8170.66 |                0.0307445 |                 0.339244  |               0.889208 |
-| USDCHF   |               2160 |             1489 |                   2.58074  |                      2808.79 |                0.0354318 |                 0.24956   |               0.8818   |
-| USDCAD   |                720 |              669 |                   0.404258 |                      9234.52 |                0.0896167 |                 0.0592627 |               0.898356 |
+| EURUSD   |               2160 |             1800 |                    2.64374 |                      4286.41 |                0.033429  |                  0.230968 |               0.866111 |
+| GBPUSD   |               2160 |             1685 |                    3.29965 |                      4651.94 |                0.0343731 |                  0.281952 |               0.91632  |
+| AUDUSD   |               2160 |             1672 |                    2.10498 |                      2388.72 |                0.0328751 |                  0.207299 |               0.911483 |
+| USDJPY   |               2160 |             1742 |                    4.33631 |                      7724.87 |                0.0307505 |                  0.336361 |               0.88806  |
+| USDCHF   |               2160 |             1489 |                    2.5432  |                      2573.09 |                0.036151  |                  0.236804 |               0.893889 |
+| USDCAD   |               2160 |             1507 |                    2.61221 |                      2670.19 |                0.0416342 |                  0.250343 |               0.891175 |
 
 #### Interpretation Notes
 - selection_pass candidates are broad hypotheses only.
@@ -32,64 +32,64 @@
 #### Edge Contribution by State Block
 | symbol   | family                | state_id                                    |   bar_ticks |   horizon |   edge_weight |   contrib_share |
 |:---------|:----------------------|:--------------------------------------------|------------:|----------:|--------------:|----------------:|
-| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         6 |      122379   |      0.0127718  |
-| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         6 |       97464.1 |      0.0101715  |
-| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         5 |       95434.4 |      0.00995972 |
-| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         5 |       74287.3 |      0.00775278 |
-| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q30__k2     |         100 |         6 |       74125.1 |      0.00773585 |
-| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         4 |       67908   |      0.00708701 |
-| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q30__k2     |         100 |         5 |       55668.8 |      0.00580971 |
-| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k3              |        1000 |         6 |       55122.6 |      0.00575271 |
-| EURUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         6 |      273060   |      0.0132643  |
-| EURUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         5 |      225779   |      0.0109676  |
-| EURUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         4 |      174293   |      0.00846657 |
-| EURUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q30__k2     |         100 |         6 |      155374   |      0.00754755 |
-| EURUSD   | oco_first_touch_clean | oco_first_touch_clean__high_range_q70__k2   |         100 |         6 |      145548   |      0.00707023 |
-| EURUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k3              |         100 |         6 |      143860   |      0.00698821 |
-| EURUSD   | oco_first_touch_clean | oco_first_touch_clean__high_range_q70__k2   |         100 |         5 |      124395   |      0.00604271 |
-| EURUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q30__k2     |         100 |         5 |      121071   |      0.00588121 |
-| GBPUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         6 |      316345   |      0.0125907  |
-| GBPUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         5 |      266813   |      0.0106193  |
-| GBPUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         6 |      266020   |      0.0105877  |
-| GBPUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         5 |      224246   |      0.00892514 |
-| GBPUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         4 |      209899   |      0.0083541  |
-| GBPUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q30__k2     |         100 |         6 |      191214   |      0.00761041 |
-| GBPUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k3              |         100 |         6 |      180164   |      0.00717062 |
-| GBPUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         4 |      175963   |      0.00700343 |
-| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         6 |      214555   |      0.0364454  |
-| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         5 |      176951   |      0.0300578  |
-| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         4 |      136070   |      0.0231136  |
-| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__all__k3              |         100 |         6 |      108809   |      0.0184828  |
-| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__london__k2           |         100 |         6 |       96180.9 |      0.0163377  |
-| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         3 |       93635.8 |      0.0159054  |
-| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__all__k3              |         100 |         5 |       83451.2 |      0.0141754  |
-| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__high_range_q70__k2   |         100 |         6 |       80799.5 |      0.013725   |
-| USDCHF   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         6 |      159348   |      0.0145451  |
-| USDCHF   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         5 |      128335   |      0.0117142  |
-| USDCHF   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         6 |      100489   |      0.00917252 |
-| USDCHF   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         4 |       96283.3 |      0.00878859 |
-| USDCHF   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         5 |       78759.7 |      0.00718906 |
-| USDCHF   | oco_first_touch_clean | oco_first_touch_clean__all__k3              |         100 |         6 |       73784.2 |      0.0067349  |
-| USDCHF   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q30__k2     |         100 |         6 |       73666.3 |      0.00672415 |
-| USDCHF   | oco_first_touch_clean | oco_first_touch_clean__high_abs_vel_q70__k2 |         100 |         6 |       65565.3 |      0.0059847  |
-| USDJPY   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         6 |      605018   |      0.0117861  |
-| USDJPY   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         5 |      531927   |      0.0103623  |
-| USDJPY   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         4 |      441263   |      0.00859607 |
-| USDJPY   | oco_first_touch_clean | oco_first_touch_clean__all__k3              |         100 |         6 |      426780   |      0.00831393 |
-| USDJPY   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         6 |      385493   |      0.00750965 |
-| USDJPY   | oco_first_touch_clean | oco_first_touch_clean__all__k3              |         100 |         5 |      338588   |      0.0065959  |
-| USDJPY   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         5 |      336760   |      0.00656029 |
-| USDJPY   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         3 |      330929   |      0.00644671 |
+| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         6 |      122379   |      0.0127609  |
+| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         6 |       97464.1 |      0.0101629  |
+| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         5 |       95434.4 |      0.00995126 |
+| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         5 |       74287.3 |      0.00774619 |
+| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q30__k2     |         100 |         6 |       74125.1 |      0.00772927 |
+| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         4 |       67908   |      0.00708099 |
+| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q30__k2     |         100 |         5 |       55668.8 |      0.00580477 |
+| AUDUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k3              |        1000 |         6 |       55122.6 |      0.00574782 |
+| EURUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         6 |      273060   |      0.0135606  |
+| EURUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         5 |      225779   |      0.0112126  |
+| EURUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         4 |      174293   |      0.00865572 |
+| EURUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q30__k2     |         100 |         6 |      155374   |      0.00771617 |
+| EURUSD   | oco_first_touch_clean | oco_first_touch_clean__high_range_q70__k2   |         100 |         6 |      145548   |      0.00722818 |
+| EURUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k3              |         100 |         6 |      143860   |      0.00714433 |
+| EURUSD   | oco_first_touch_clean | oco_first_touch_clean__high_range_q70__k2   |         100 |         5 |      124395   |      0.00617771 |
+| EURUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q30__k2     |         100 |         5 |      121071   |      0.0060126  |
+| GBPUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         6 |      316345   |      0.012805   |
+| GBPUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         5 |      266813   |      0.0108001  |
+| GBPUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         6 |      266020   |      0.010768   |
+| GBPUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         5 |      224246   |      0.00907705 |
+| GBPUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         4 |      209899   |      0.00849629 |
+| GBPUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q30__k2     |         100 |         6 |      191214   |      0.00773995 |
+| GBPUSD   | oco_first_touch_clean | oco_first_touch_clean__all__k3              |         100 |         6 |      180164   |      0.00729267 |
+| GBPUSD   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         4 |      175963   |      0.00712264 |
+| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         6 |      214555   |      0.0169318  |
+| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         5 |      176951   |      0.0139642  |
+| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         4 |      136070   |      0.0107381  |
+| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__all__k3              |         100 |         6 |      108809   |      0.00858676 |
+| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         3 |       93635.8 |      0.00738934 |
+| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__all__k3              |         100 |         5 |       83451.2 |      0.00658562 |
+| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__ny_overlap__k2       |         100 |         6 |       80948.6 |      0.00638812 |
+| USDCAD   | oco_first_touch_clean | oco_first_touch_clean__high_range_q70__k2   |         100 |         6 |       80799.5 |      0.00637635 |
+| USDCHF   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         6 |      159348   |      0.0148403  |
+| USDCHF   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         5 |      128335   |      0.011952   |
+| USDCHF   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         6 |      100489   |      0.0093587  |
+| USDCHF   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         4 |       96283.3 |      0.00896698 |
+| USDCHF   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         5 |       78759.7 |      0.00733499 |
+| USDCHF   | oco_first_touch_clean | oco_first_touch_clean__all__k3              |         100 |         6 |       73784.2 |      0.00687161 |
+| USDCHF   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q30__k2     |         100 |         6 |       73666.3 |      0.00686064 |
+| USDCHF   | oco_first_touch_clean | oco_first_touch_clean__high_abs_vel_q70__k2 |         100 |         6 |       65565.3 |      0.00610618 |
+| USDJPY   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         6 |      605018   |      0.0117884  |
+| USDJPY   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         5 |      531927   |      0.0103643  |
+| USDJPY   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         4 |      441263   |      0.00859776 |
+| USDJPY   | oco_first_touch_clean | oco_first_touch_clean__all__k3              |         100 |         6 |      426780   |      0.00831557 |
+| USDJPY   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         6 |      385493   |      0.00751112 |
+| USDJPY   | oco_first_touch_clean | oco_first_touch_clean__all__k3              |         100 |         5 |      338588   |      0.0065972  |
+| USDJPY   | oco_first_touch_clean | oco_first_touch_clean__low_cost_q50__k2     |         100 |         5 |      336760   |      0.00656158 |
+| USDJPY   | oco_first_touch_clean | oco_first_touch_clean__all__k2              |         100 |         3 |      330929   |      0.00644798 |
 
 #### Overfitting Diagnostics (Downstream, Exec Quantile)
 | symbol   |   quantile |   rows |   months |   positive_months |   lb95_trade_mean_gross_pips |   lb95_trade_mean_gross_pips_iid |   lb95_trade_mean_gross_pips_month_block |   pvalue_month_mean_gt0 |   pvalue_bonferroni |   pvalue_fdr_bh |   uplift_vs_null_pips |   pvalue_perm_uplift |   pvalue_perm_fdr_bh | majority_positive_months   | bonferroni_pass_10pct   | fdr_pass_10pct   | perm_fdr_pass_10pct   |
 |:---------|-----------:|-------:|---------:|------------------:|-----------------------------:|---------------------------------:|-----------------------------------------:|------------------------:|--------------------:|----------------:|----------------------:|---------------------:|---------------------:|:---------------------------|:------------------------|:-----------------|:----------------------|
-| AUDUSD   |        0.9 |   8335 |       11 |                11 |                      1.75361 |                          1.75361 |                                  1.07118 |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
-| EURUSD   |        0.9 |   6197 |       11 |                11 |                      2.51145 |                          2.51145 |                                  1.66209 |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
-| GBPUSD   |        0.9 |  12754 |       11 |                11 |                      2.5427  |                          2.5427  |                                  2.45726 |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
-| USDCAD   |        0.9 |   8460 |       11 |                11 |                      2.07781 |                          2.07781 |                                  1.16625 |             5.36238e-13 |         3.21743e-12 |     3.21743e-12 |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
-| USDCHF   |        0.9 |   9685 |       11 |                11 |                      1.99965 |                          1.99965 |                                  1.31101 |             1.77636e-14 |         1.06581e-13 |     3.55271e-14 |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
-| USDJPY   |        0.9 |  12137 |       11 |                11 |                      3.95632 |                          3.95632 |                                  3.6095  |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
+| AUDUSD   |        0.9 |   7789 |       11 |                11 |                      1.59632 |                          1.59632 |                                  1.18207 |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
+| EURUSD   |        0.9 |   5934 |       10 |                10 |                      2.72549 |                          2.72549 |                                  1.82044 |             1.88738e-15 |         1.13243e-14 |     5.66214e-15 |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
+| GBPUSD   |        0.9 |  12161 |       11 |                11 |                      2.69625 |                          2.69625 |                                  2.50797 |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
+| USDCAD   |        0.9 |   7809 |       11 |                11 |                      2.21911 |                          2.21911 |                                  1.29081 |             8.88178e-16 |         5.32907e-15 |     5.32907e-15 |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
+| USDCHF   |        0.9 |  10408 |       11 |                11 |                      2.07321 |                          2.07321 |                                  1.28667 |             4.32987e-14 |         2.59792e-13 |     2.59792e-13 |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
+| USDJPY   |        0.9 |  13266 |       11 |                11 |                      3.79579 |                          3.79579 |                                  3.40256 |             0           |         0           |     0           |                   nan |                  nan |                  nan | True                       | True                    | True             | False                 |
 
 - Interpretation: Stage 2 mining is accepted only as hypothesis generation; false-discovery control is enforced downstream via Stage 3/8 out-of-sample evaluation.
 - Multiplicity fields (`pvalue_bonferroni`, `pvalue_fdr_bh`) are reported at the execution quantile and should be used with LB95/month-consistency, not in isolation.

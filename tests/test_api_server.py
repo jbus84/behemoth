@@ -107,6 +107,15 @@ class TestStatusEndpoint:
         symbols = {s["symbol"] for s in body}
         assert symbols == {"EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"}
 
+    def test_runtime_feed_status_returns_symbols(self, client):
+        r = client.get("/runtime/feed/status")
+        assert r.status_code == 200
+        body = r.json()
+        assert "as_of_utc" in body
+        assert "symbols" in body
+        listed = {row["symbol"] for row in body["symbols"]}
+        assert {"EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"}.issubset(listed)
+
 
 class TestBarsEndpoint:
     def test_ingest_bar(self, client):
@@ -173,14 +182,27 @@ class TestBarsEndpoint:
 
 class TestPredictEndpoint:
     def test_predict_requires_size(self, client):
-        r = client.post("/predict", json={"symbol": "EURUSD"})
+        r = client.post(
+            "/predict",
+            json={"symbol": "EURUSD", "ftmo_enabled_override": True},
+        )
         assert r.status_code == 422
+
+    def test_predict_requires_ftmo_override(self, client):
+        r = client.post(
+            "/predict",
+            json={"symbol": "EURUSD", "requested_volume_units": 10000},
+        )
+        assert r.status_code == 422
+        detail = str(r.json().get("detail", "")).lower()
+        assert "ftmo_enabled_override" in detail
 
     def test_predict_insufficient_warmup(self, client):
         """With no bars ingested, predict should return 422."""
         r = client.post("/predict", json={
             "symbol": "EURUSD",
             "requested_volume_units": 10000,
+            "ftmo_enabled_override": True,
         })
         assert r.status_code in (200, 422, 503)
         if r.status_code == 200:
@@ -195,7 +217,14 @@ class TestPredictEndpoint:
         original_state = server._state
         server._state = None
         try:
-            r = client.post("/predict", json={"symbol": "EURUSD", "requested_volume_units": 10000})
+            r = client.post(
+                "/predict",
+                json={
+                    "symbol": "EURUSD",
+                    "requested_volume_units": 10000,
+                    "ftmo_enabled_override": True,
+                },
+            )
             assert r.status_code == 503
             assert "State manager not initialized" in r.json()["detail"]
         finally:
@@ -207,7 +236,14 @@ class TestPredictEndpoint:
         original_registry = server._registry
         server._registry = None
         try:
-            r = client.post("/predict", json={"symbol": "EURUSD", "requested_volume_units": 10000})
+            r = client.post(
+                "/predict",
+                json={
+                    "symbol": "EURUSD",
+                    "requested_volume_units": 10000,
+                    "ftmo_enabled_override": True,
+                },
+            )
             assert r.status_code == 503
             assert "Candidate registry not loaded" in r.json()["detail"]
         finally:
@@ -220,7 +256,14 @@ class TestPredictEndpoint:
         from src.behemoth.api import server
 
         with mock.patch.object(server._registry, 'get_candidates', return_value=[]):
-            r = client.post("/predict", json={"symbol": "EURUSD", "requested_volume_units": 10000})
+            r = client.post(
+                "/predict",
+                json={
+                    "symbol": "EURUSD",
+                    "requested_volume_units": 10000,
+                    "ftmo_enabled_override": True,
+                },
+            )
             assert r.status_code == 422
             assert "No candidates registered" in r.json()["detail"]
 
@@ -239,15 +282,30 @@ class TestPredictEndpoint:
         with (
             mock.patch.object(server._registry, 'get_candidates', return_value=[dummy_cand]),
             mock.patch.object(server, '_check_warmup', return_value=None),
+            mock.patch.object(
+                server,
+                "_load_model_binding_into_cache",
+                return_value=(False, "artifact_missing"),
+            ),
         ):
             original_models = server._models
+            original_thresholds = server._thresholds
             server._models = {}  # Empty models
+            server._thresholds = {}
             try:
-                r = client.post("/predict", json={"symbol": "EURUSD", "requested_volume_units": 10000})
+                r = client.post(
+                    "/predict",
+                    json={
+                        "symbol": "EURUSD",
+                        "requested_volume_units": 10000,
+                        "ftmo_enabled_override": True,
+                    },
+                )
                 assert r.status_code == 503
-                assert "No CatBoost model loaded" in r.json()["detail"]
+                assert "Unable to load lock-bound model" in r.json()["detail"]
             finally:
                 server._models = original_models
+                server._thresholds = original_thresholds
 
     def test_predict_feature_computation_fails(self, client):
         """If _state.compute_features returns None, predict returns 422."""
@@ -266,7 +324,14 @@ class TestPredictEndpoint:
             mock.patch.dict(server._models, {"EURUSD": mock.MagicMock()}),
             mock.patch.object(server._state, 'compute_features', return_value=None),
         ):
-            r = client.post("/predict", json={"symbol": "EURUSD", "requested_volume_units": 10000})
+            r = client.post(
+                "/predict",
+                json={
+                    "symbol": "EURUSD",
+                    "requested_volume_units": 10000,
+                    "ftmo_enabled_override": True,
+                },
+            )
             assert r.status_code == 422
             assert "Feature computation failed" in r.json()["detail"]
 
@@ -312,7 +377,14 @@ class TestPredictEndpoint:
                 },
             )
             assert snap.status_code == 201
-            r = client.post("/predict", json={"symbol": "EURUSD", "requested_volume_units": 10000})
+            r = client.post(
+                "/predict",
+                json={
+                    "symbol": "EURUSD",
+                    "requested_volume_units": 10000,
+                    "ftmo_enabled_override": True,
+                },
+            )
             assert r.status_code == 200
             results = r.json()
             assert isinstance(results, list)
@@ -320,6 +392,147 @@ class TestPredictEndpoint:
             assert results[0]["pred_prob"] == 0.85
             assert results[0]["selected_exec"] == 1
             assert "risk_blocked" in results[0]
+            assert results[0]["risk_metrics_snapshot"]["ftmo_enabled_effective"] is True
+            assert results[0]["risk_metrics_snapshot"]["ftmo_enabled_override"] is True
+            assert results[0]["risk_metrics_snapshot"]["ftmo_mode_source"] == "request_override"
+
+    def test_predict_override_false_disables_ftmo_guard_eval(self, client):
+        import unittest.mock as mock
+        from datetime import datetime, timezone
+
+        import numpy as np
+
+        from src.behemoth.api import server
+        from src.behemoth.core.schemas import ModelFeatures
+
+        dummy_cand = mock.MagicMock()
+        dummy_cand.bar_ticks = 100
+        dummy_cand.horizon = 24
+        dummy_cand.barrier_pips = 15.0
+        dummy_cand.candidate_uid = "cand1"
+
+        dummy_features = ModelFeatures(
+            cost_est_pips=1.0,
+            range_pips=10.0,
+            ret1_pips=2.0,
+            ret_z=0.5,
+            ret_abs_z=0.5,
+            vel_cost_units_h1=2.0,
+            vel_abs_cost_units_h1=2.0,
+            spread_z=0.1,
+            tick_rate_z=0.1,
+            hour_utc=10.0,
+            hl_first=1.0,
+            hl_first_mean_24=0.5,
+            hl_pos_frac_mean_24=0.5,
+            bar_ticks=100.0,
+            horizon=24.0,
+            barrier_pips=15.0,
+        )
+
+        dummy_model = mock.MagicMock()
+        dummy_model.predict_proba.return_value = np.array([[0.1, 0.85]])
+
+        with (
+            mock.patch.object(server._registry, "get_candidates", return_value=[dummy_cand]),
+            mock.patch.object(server, "_check_warmup", return_value=None),
+            mock.patch.dict(server._models, {"EURUSD": dummy_model}),
+            mock.patch.object(server._state, "compute_features", return_value=dummy_features),
+            mock.patch.object(
+                server._state,
+                "get_latest_close_ts",
+                return_value=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            ),
+            mock.patch.object(server, "evaluate_trade_guard", side_effect=AssertionError("guard should be skipped")),
+        ):
+            r = client.post(
+                "/predict",
+                json={
+                    "symbol": "EURUSD",
+                    "requested_volume_units": 10000,
+                    "ftmo_enabled_override": False,
+                },
+            )
+            assert r.status_code == 200
+            results = r.json()
+            assert len(results) == 1
+            assert results[0]["selected_exec"] == 1
+            assert results[0]["risk_metrics_snapshot"]["ftmo_enabled_effective"] is False
+            assert results[0]["risk_metrics_snapshot"]["ftmo_enabled_override"] is False
+
+    def test_predict_blocks_candidate_when_regime_inactive(self, client):
+        import unittest.mock as mock
+        from datetime import datetime, timezone
+
+        import numpy as np
+
+        from src.behemoth.api import server
+        from src.behemoth.core.schemas import ModelFeatures
+
+        dummy_cand = mock.MagicMock()
+        dummy_cand.bar_ticks = 100
+        dummy_cand.horizon = 6
+        dummy_cand.barrier_pips = 2.0
+        dummy_cand.candidate_uid = "oco_first_touch_clean__london__k2"
+        dummy_cand.regime_desc = "london;barrier=2.0"
+
+        dummy_features = ModelFeatures(
+            cost_est_pips=0.3,
+            range_pips=6.0,
+            ret1_pips=1.0,
+            ret_z=0.4,
+            ret_abs_z=0.4,
+            vel_cost_units_h1=1.2,
+            vel_abs_cost_units_h1=1.2,
+            spread_z=0.2,
+            tick_rate_z=0.1,
+            hour_utc=2.0,
+            hl_first=1.0,
+            hl_first_mean_24=0.5,
+            hl_pos_frac_mean_24=0.5,
+            bar_ticks=100.0,
+            horizon=6.0,
+            barrier_pips=2.0,
+        )
+        dummy_model = mock.MagicMock()
+        dummy_model.predict_proba.return_value = np.array([[0.01, 0.95]])
+
+        with (
+            mock.patch.object(server._registry, "get_candidates", return_value=[dummy_cand]),
+            mock.patch.object(server, "_check_warmup", return_value=None),
+            mock.patch.dict(server._models, {"EURUSD": dummy_model}),
+            mock.patch.object(server._state, "compute_features", return_value=dummy_features),
+            mock.patch.object(server._state, "compute_regime_quantiles", return_value={}),
+            mock.patch.object(
+                server._state,
+                "get_latest_close_ts",
+                return_value=datetime(2025, 1, 1, 2, 0, tzinfo=timezone.utc),
+            ),
+        ):
+            snap = client.post(
+                "/risk/ftmo/snapshot",
+                json={
+                    "symbol": "EURUSD",
+                    "balance": 10000.0,
+                    "equity": 10000.0,
+                    "snapshot_ts": "2025-01-01T02:00:00Z",
+                },
+            )
+            assert snap.status_code == 201
+            r = client.post(
+                "/predict",
+                json={
+                    "symbol": "EURUSD",
+                    "requested_volume_units": 10000,
+                    "ftmo_enabled_override": True,
+                },
+            )
+            assert r.status_code == 200
+            rows = r.json()
+            assert len(rows) == 1
+            assert rows[0]["selected_exec"] == 0
+            assert rows[0]["risk_metrics_snapshot"]["regime_name"] == "london"
+            assert rows[0]["risk_metrics_snapshot"]["regime_active"] is False
 
     def test_predict_allocator_blocks_when_budget_exceeded(self, client):
         import unittest.mock as mock
@@ -389,7 +602,11 @@ class TestPredictEndpoint:
             assert snap.status_code == 201
             r = client.post(
                 "/predict",
-                json={"symbol": "EURUSD", "requested_volume_units": 10000},
+                json={
+                    "symbol": "EURUSD",
+                    "requested_volume_units": 10000,
+                    "ftmo_enabled_override": True,
+                },
             )
             assert r.status_code == 200
             rows = r.json()
@@ -557,6 +774,68 @@ class TestIngestionEndpoints:
             })
             assert r.status_code == 201
             res = r.json()
+            assert res["tick_accepted"] is True
             assert res["bar_completed"] is True
             assert res["completed_bar_ticks"] == [100]
             assert mock_append.call_count == 1
+
+    def test_ingest_tick_drops_duplicate_timestamp(self, client):
+        import unittest.mock as mock
+
+        from src.behemoth.api import server
+
+        dummy_agg = mock.MagicMock()
+        dummy_agg.add_ticks.return_value = []
+
+        with (
+            mock.patch.dict(server._aggregators, {100: dummy_agg}, clear=True),
+            mock.patch.object(server._state, "bar_count", return_value=0),
+        ):
+            t = {
+                "symbol": "EURUSD",
+                "timestamp": "2025-01-01T00:00:10Z",
+                "bid": 1.1,
+                "ask": 1.1001,
+            }
+            r1 = client.post("/ticks", json=t)
+            assert r1.status_code == 201
+            assert r1.json()["tick_accepted"] is True
+
+            r2 = client.post("/ticks", json=t)
+            assert r2.status_code == 201
+            body = r2.json()
+            assert body["tick_accepted"] is False
+            assert body["drop_reason"] == "duplicate_timestamp"
+            assert body["bar_completed"] is False
+            assert body["completed_bar_ticks"] == []
+            assert dummy_agg.add_ticks.call_count == 1
+
+    def test_ingest_tick_records_raw_tick_historical_only(self, client):
+        import unittest.mock as mock
+
+        from src.behemoth.api import server
+
+        orig_mode = server._config.governance_mode
+        orig_record = server._config.record_raw_ticks
+        try:
+            server._config.governance_mode = "historical"
+            server._config.record_raw_ticks = True
+            with (
+                mock.patch.object(server._state, "record_raw_tick") as mock_raw,
+                mock.patch.object(server._state, "bar_count", return_value=0),
+                mock.patch.dict(server._aggregators, {100: mock.MagicMock(add_ticks=mock.MagicMock(return_value=[]))}, clear=True),
+            ):
+                r = client.post(
+                    "/ticks",
+                    json={
+                        "symbol": "EURUSD",
+                        "timestamp": "2025-01-01T00:00:00Z",
+                        "bid": 1.1,
+                        "ask": 1.1001,
+                    },
+                )
+                assert r.status_code == 201
+                mock_raw.assert_called_once()
+        finally:
+            server._config.governance_mode = orig_mode
+            server._config.record_raw_ticks = orig_record

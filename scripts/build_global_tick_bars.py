@@ -18,6 +18,45 @@ import polars as pl
 UTC_TS = pl.Datetime("ns", "UTC")
 
 
+def _timestamp_timezone(dtype: pl.DataType) -> str | None:
+    if isinstance(dtype, pl.Datetime):
+        return dtype.time_zone
+    return None
+
+
+def _validate_timestamp_schema(
+    *,
+    schema: dict[str, pl.DataType],
+    symbol: str,
+    file_path: Path,
+    timestamp_mode: str,
+) -> None:
+    if "timestamp" not in schema:
+        raise ValueError(f"{symbol}: missing timestamp in {file_path}")
+    ts_dtype = schema["timestamp"]
+    if not isinstance(ts_dtype, pl.Datetime):
+        raise ValueError(f"{symbol}: timestamp must be Datetime in {file_path}, found={ts_dtype}")
+
+    tz = _timestamp_timezone(ts_dtype)
+    mode = str(timestamp_mode).strip().lower()
+    if mode == "as_utc":
+        if tz != "UTC":
+            raise ValueError(
+                f"{symbol}: timestamp_mode=as_utc requires timezone-aware UTC timestamps; "
+                f"file={file_path} dtype={ts_dtype}. "
+                "Use --timestamp-mode ny_local_tagged_utc if raw timestamps are local and tagged as UTC."
+            )
+        return
+    if mode == "ny_local_tagged_utc":
+        if tz is not None:
+            raise ValueError(
+                f"{symbol}: timestamp_mode=ny_local_tagged_utc requires naive timestamps; "
+                f"file={file_path} dtype={ts_dtype}."
+            )
+        return
+    raise ValueError(f"unsupported timestamp_mode: {timestamp_mode}")
+
+
 def _timestamp_expr(timestamp_mode: str) -> pl.Expr:
     mode = str(timestamp_mode).strip().lower()
     ts = pl.col("timestamp")
@@ -224,13 +263,16 @@ def _build_base_tick_bars(
         raise FileNotFoundError(f"{symbol}: no *_ticks.parquet files under {tick_root}")
 
     first_schema = pl.read_parquet_schema(str(files[0]))
-    names = set(
-        first_schema.names()
-        if hasattr(first_schema, "names")
-        else getattr(first_schema, "keys", lambda: [])()
-    )
+    schema = dict(first_schema.items())
+    names = set(schema.keys())
     if "timestamp" not in names:
         raise ValueError(f"{symbol}: missing timestamp")
+    _validate_timestamp_schema(
+        schema=schema,
+        symbol=symbol,
+        file_path=files[0],
+        timestamp_mode=timestamp_mode,
+    )
 
     price_expr, ask_expr, spread_expr = _select_tick_exprs(names, price_source=price_source)
 
@@ -246,6 +288,13 @@ def _build_base_tick_bars(
     tick_idx = 0
 
     for fp in files:
+        part_schema = dict(pl.read_parquet_schema(str(fp)).items())
+        _validate_timestamp_schema(
+            schema=part_schema,
+            symbol=symbol,
+            file_path=fp,
+            timestamp_mode=timestamp_mode,
+        )
         part = (
             pl.scan_parquet(str(fp))
             .select(

@@ -12,6 +12,7 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -20,6 +21,27 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_TICK_ROOT = "/Users/danielfisher/Desktop/tick"
 DEFAULT_TICKBAR_DIR = "data/global_tickbars"
 DEFAULT_OUT_DIR = "data/analysis/tick_velocity"
+
+
+def _is_utc_tz(tz: Any) -> bool:
+    if tz is None:
+        return False
+    txt = str(tz).strip().upper()
+    return txt in {"UTC", "UTC+00:00", "UTC+00:00:00"}
+
+
+def _require_utc_timestamp(s: pd.Series, *, column: str, source: Path) -> pd.Series:
+    parsed = pd.to_datetime(s, errors="coerce", utc=False)
+    try:
+        tz = parsed.dt.tz
+    except Exception:
+        tz = None
+    if not _is_utc_tz(tz):
+        raise ValueError(
+            f"{source.name}: column '{column}' must be timezone-aware UTC; "
+            f"received tz={tz!r}"
+        )
+    return parsed.dt.tz_convert("UTC")
 
 
 def _parse_symbols(raw: str | None) -> list[str]:
@@ -135,8 +157,12 @@ def _build_symbol_dataset(
         {
             "symbol": str(symbol).upper(),
             "bar_ticks": int(bar_ticks),
-            "timestamp": pd.to_datetime(d["timestamp"], utc=True, errors="coerce"),
-            "close_ts": pd.to_datetime(d["close_ts"], utc=True, errors="coerce"),
+            "timestamp": _require_utc_timestamp(
+                d["timestamp"], column="timestamp", source=bar_path
+            ),
+            "close_ts": _require_utc_timestamp(
+                d["close_ts"], column="close_ts", source=bar_path
+            ),
             "open": pd.to_numeric(d["open"], errors="coerce").astype(float),
             "high": pd.to_numeric(d["high"], errors="coerce").astype(float),
             "low": pd.to_numeric(d["low"], errors="coerce").astype(float),

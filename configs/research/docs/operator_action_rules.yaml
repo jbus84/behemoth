@@ -179,6 +179,66 @@ rules:
     action_warn: A3_HALT_AND_REMEDIATE
     action_fail: A3_HALT_AND_REMEDIATE
 
+  - metric_id: FTMO_ALLOC_BLOCK_RATE
+    stage_id: 10
+    mode: ge
+    warn: 0.35
+    fail: 0.55
+    owner: risk
+    rationale: High allocator blocking reduces live execution coverage.
+    action_warn: A1_REVIEW
+    action_fail: A2_RECALIBRATE
+
+  - metric_id: FTMO_ALLOC_BUDGET_EXCEEDED_RATE
+    stage_id: 10
+    mode: ge
+    warn: 0.15
+    fail: 0.30
+    owner: risk
+    rationale: Budget-exceeded blocks imply allocator budget mis-sizing versus flow.
+    action_warn: A1_REVIEW
+    action_fail: A2_RECALIBRATE
+
+  - metric_id: FTMO_ALLOC_PIP_VALUE_UNAVAILABLE_RATE
+    stage_id: 10
+    mode: ge
+    warn: 0.005
+    fail: 0.02
+    owner: data
+    rationale: Missing FX conversion for pip value breaks reservation accounting.
+    action_warn: A9_DATA_GAP
+    action_fail: A9_DATA_GAP
+
+  - metric_id: FTMO_ALLOC_STALE_PENDING_COUNT
+    stage_id: 10
+    mode: ge
+    warn: 1
+    fail: 3
+    owner: execution
+    rationale: Stale pending reservations can incorrectly consume FTMO budget headroom.
+    action_warn: A1_REVIEW
+    action_fail: A3_HALT_AND_REMEDIATE
+
+  - metric_id: FTMO_ALLOC_OPEN_WITHOUT_BROKER_POS_COUNT
+    stage_id: 10
+    mode: ge
+    warn: 1
+    fail: 2
+    owner: execution
+    rationale: Open reservations without broker ids indicate lifecycle desynchronization.
+    action_warn: A1_REVIEW
+    action_fail: A3_HALT_AND_REMEDIATE
+
+  - metric_id: FTMO_ALLOC_ADMITTED_MISSING_RESERVATION_ID_COUNT
+    stage_id: 10
+    mode: ge
+    warn: 1
+    fail: 2
+    owner: risk
+    rationale: Admitted trades must always map to a concrete reservation id.
+    action_warn: A2_RECALIBRATE
+    action_fail: A3_HALT_AND_REMEDIATE
+
   - metric_id: EM03_prob_negative_month_s1
     stage_id: 11
     mode: ge

@@ -1,6 +1,6 @@
 # Analysis Catalog
 
-- generated_at_utc: `2026-03-06T18:57:13Z`
+- generated_at_utc: `2026-03-10T10:04:34Z`
 - manifest_csv: `analysis/catalog_manifest.csv`
 - gaps_report: `analysis/catalog_gaps_report.md`
 
@@ -25,6 +25,11 @@
 
 ## Symbol Reports
 ### EURUSD
+- [Eurusd Candidate 2025 07 H6 London K2 Drift](EURUSD_candidate_2025-07_h6_london_k2_drift.md)
+- [Eurusd Ctrader Vs Research Reconciliation](EURUSD_ctrader_vs_research_reconciliation.md)
+- [Eurusd Ctrader Vs Research Reconciliation 20250707 20250709](EURUSD_ctrader_vs_research_reconciliation_20250707_20250709.md)
+- [Eurusd Ctrader Vs Research Reconciliation 20251208 20251210](EURUSD_ctrader_vs_research_reconciliation_20251208_20251210.md)
+- [Eurusd Runtime Db Run Summary](EURUSD_runtime_db_run_summary.md)
 - [Eurusd Oco Monthly Wfo Robustness Fullcap Report](eurusd_oco_monthly_wfo_robustness_fullcap_report.md)
 - [Eurusd Oco Reduced Core Rolling Report](eurusd_oco_reduced_core_rolling_report.md)
 - [Eurusd Oco Tick Exact Rolling Report](eurusd_oco_tick_exact_rolling_report.md)
@@ -33,6 +38,7 @@
 - [Eurusd Tick Opportunity Monthly Wfo Oco Fullcap Report](eurusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md)
 - [Eurusd Tick Opportunity Monthly Wfo Report](eurusd_tick_opportunity_monthly_wfo_report.md)
 - [Oco Stop Limit Tickfill Eurusd Fixed Report](oco_stop_limit_tickfill_eurusd_fixed_report.md)
+- [Runtime Db Summary Eurusd 2025 07](runtime_db_summary_eurusd_2025_07.md)
 ### GBPUSD
 - [Gbpusd Oco Monthly Wfo Robustness Fullcap Report](gbpusd_oco_monthly_wfo_robustness_fullcap_report.md)
 - [Gbpusd Oco Reduced Core Rolling Report](gbpusd_oco_reduced_core_rolling_report.md)
@@ -88,11 +94,11 @@
 |          7 |              1 |
 |          8 |              1 |
 |          9 |              3 |
-|         10 |              2 |
+|         10 |              4 |
 |         11 |              2 |
 
 ## Legacy Reports
 _empty_
 
 ## Unclassified Reports
-_empty_
+- [Ctrader Backtest Reconciliation Runbook](ctrader_backtest_reconciliation_runbook.md)

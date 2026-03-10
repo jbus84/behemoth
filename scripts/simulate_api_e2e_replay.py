@@ -110,6 +110,9 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
     import os
     os.environ["BEHEMOTH_FORCE_MODEL_MONTH"] = formatted_month
     os.environ["BEHEMOTH_MODELS_DIR"] = "data/models"
+    os.environ["BEHEMOTH_GOVERNANCE_MODE"] = "historical_auto"
+    os.environ["BEHEMOTH_GOVERNANCE_HISTORY_DIR"] = "configs/research/governance/oco_history"
+    os.environ["BEHEMOTH_GOVERNANCE_MISSING_MONTH_POLICY"] = "error"
 
     from src.behemoth.api.server import app
 
@@ -178,7 +181,14 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
             if data.get("bar_completed"):
                 # Bar formed! Trigger prediction logic just like cBot would
                 t0_p = time.perf_counter()
-                pred_res = client.post("/predict", json={"symbol": symbol})
+                pred_res = client.post(
+                    "/predict",
+                    json={
+                        "symbol": symbol,
+                        "requested_volume_units": 10000,
+                        "ftmo_enabled_override": True,
+                    },
+                )
                 t1_p = time.perf_counter()
                 predict_latencies.append((t1_p - t0_p) * 1000) # ms
 

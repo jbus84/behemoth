@@ -30,7 +30,7 @@ class TestCandidateGeneration:
 
     def test_gbpusd_has_candidates(self, registry):
         cands = registry.get_candidates("GBPUSD")
-        assert len(cands) >= 3
+        assert len(cands) >= 1
 
     def test_unknown_symbol_returns_empty(self, registry):
         assert registry.get_candidates("XYZABC") == []

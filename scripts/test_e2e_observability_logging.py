@@ -43,7 +43,14 @@ def test_observability_lifecycle():
 
         # 2. Prediction (Trigger Metrics)
         logger.info("Step 2: Triggering Prediction...")
-        resp = client.post("/predict", json={"symbol": symbol})
+        resp = client.post(
+            "/predict",
+            json={
+                "symbol": symbol,
+                "requested_volume_units": 10000,
+                "ftmo_enabled_override": True,
+            },
+        )
         assert resp.status_code in [200, 422, 503]
 
         # 3. Trade Lifecycle (Trigger Ledger & Counters)

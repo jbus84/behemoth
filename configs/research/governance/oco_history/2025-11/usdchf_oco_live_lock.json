@@ -1,0 +1,80 @@
+{
+  "artifacts": {
+    "capacity_overall_pass": true,
+    "live_deployable": true,
+    "model_cbm_path": "models/oco/USDCHF_model_2025-11.cbm",
+    "model_cbm_sha256": "05f07c215e728ce0cedb7fbd326d404af5997e1da2e6999dbdc0d985b0af22cc",
+    "model_month": "2025-11",
+    "model_threshold_json_path": "models/oco/USDCHF_model_2025-11.json",
+    "model_threshold_json_sha256": "69f7f1abc22aafd860308159f23549c4d4400fb3eadc5747ef0e67b33643aa99",
+    "predictions_path": "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCHF_oco_monthly_predictions.parquet",
+    "predictions_sha256": "759cc858a790656e8300b1c3ff70300488c6bdf9eb875cf6d3f90642d5f63880",
+    "reduced_config_path": "configs/research/experiments/usdchf_oco_reduced_core_2025.yaml",
+    "reduced_config_sha256": "61cd27e572cd8ae69a5da01c290e04d7e26a64f15a32e1c7c35938dd1b6b2067",
+    "reduced_states_csv_path": "configs/research/governance/oco_history/2025-11/usdchf_oco_allowed_states.csv",
+    "reduced_states_csv_sha256": "87e88faebe99c82eeb91d6d67d87b3599de55c6c4a7c66b2922703b8f6c259a2",
+    "reduced_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_summary.csv",
+    "reduced_summary_sha256": "75829c838f6d6b5bf2412a4de44140f15c1eedf23a505442bee7a2954407eeab",
+    "tick_exact_overall_pass": true,
+    "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_tick_exact_summary.csv",
+    "tick_exact_summary_sha256": "4570f884f734ab7e3e6923070268d277f3c9349fcf9db98c7cdae29cf9adc4d7",
+    "wfo_config_path": "configs/research/experiments/usdchf_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
+    "wfo_config_sha256": "bbc7a83f53f5c3f20cd7250f0b3c51d7d51319e00cb0ea5158dd61065d773148"
+  },
+  "frozen_at_utc": "2026-03-08T21:52:44.125277+00:00",
+  "git": {
+    "branch": "main",
+    "commit": "fd54fa8236156014ad32e6b9122e582994543fe1",
+    "dirty": true
+  },
+  "historical_backtest": {
+    "mode": "month_locked",
+    "target_month": "2025-11"
+  },
+  "locked_runtime": {
+    "barrier_keep": "2,3",
+    "execution_quantile": 0.9,
+    "family_keep": "oco_first_touch_clean",
+    "horizon_keep": "5,6",
+    "locked_quantile": 0.9,
+    "oco_hold_mode": "from_touch",
+    "oco_include_no_touch": true,
+    "production_cap_pips": 1.2,
+    "rolling_threshold_days": 20,
+    "rolling_threshold_min_history": 1000,
+    "selection_mode": "auto",
+    "threshold_mode": "rolling_days"
+  },
+  "retrain_policy": {
+    "anchor_day_utc": 1,
+    "cadence_days": 30,
+    "mode": "calendar_window",
+    "window_days": 3
+  },
+  "schema_version": 1,
+  "state_universe": {
+    "count": 2,
+    "rows": [
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 6,
+        "regime_desc": "london;barrier=2.0",
+        "state_id": "oco_first_touch_clean__london__k2",
+        "symbol": "USDCHF"
+      },
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 6,
+        "regime_desc": "low_cost_q30_and_high_abs_vel_q70;barrier=2.0",
+        "state_id": "oco_first_touch_clean__low_cost_q30_and_high_abs_vel_q70__k2",
+        "symbol": "USDCHF"
+      }
+    ],
+    "sha256": "95d55fa1a93d4749d42c7f0b7f03b6455b196ac528b8e353ebbe2cb56c2a497c"
+  },
+  "symbol": "USDCHF"
+}

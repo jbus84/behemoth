@@ -202,10 +202,12 @@ uv run python scripts/download_histdata_ticks.py \
   --symbols EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD \
   --months 202601,202602 \
   --tick-root /Users/danielfisher/Desktop/tick \
+  --source-tz-policy america_new_york \
   --skip-existing true
 ```
 
 This downloads monthly ZIPs from HistData and writes canonical parquet. It does not keep ZIP/CSV artifacts.
+Default policy localizes HistData raw timestamps as `America/New_York` then converts to UTC.
 
 ## 10) Governance/Docs Integration Notes
 

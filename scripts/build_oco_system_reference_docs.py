@@ -164,6 +164,8 @@ MANDATORY_ARTIFACTS = [
     "data/analysis/tick_opportunity_mining/oco_threshold_sensitivity.csv",
     "data/analysis/tick_opportunity_mining/operator_action_status.csv",
     "data/analysis/tick_opportunity_mining/oco_alert_disposition.csv",
+    "data/analysis/tick_opportunity_mining/ftmo_allocator_monitoring_metrics.csv",
+    "data/analysis/tick_opportunity_mining/ftmo_reservation_reconciliation.csv",
     "data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv",
     "data/analysis/tick_opportunity_mining/docs_contract_checks.csv",
     "data/analysis/tick_opportunity_mining/run_delta_summary.csv",
@@ -250,6 +252,12 @@ def _build_snapshot_tables(
     mc = _read_csv(data_root / "tick_opportunity_mining" / "execution_mc_symbol_scenarios.csv")
     checks = _read_csv(data_root / "tick_opportunity_mining" / "docs_contract_checks.csv")
     run_delta = _read_csv(data_root / "tick_opportunity_mining" / "run_delta_summary.csv")
+    ftmo_metrics = _read_csv(
+        data_root / "tick_opportunity_mining" / "ftmo_allocator_monitoring_metrics.csv"
+    )
+    ftmo_recon = _read_csv(
+        data_root / "tick_opportunity_mining" / "ftmo_reservation_reconciliation.csv"
+    )
     reduced = _reduced_core_latest_rows(data_root)
 
     drift_last = _latest_by_symbol(drift, "test_month")
@@ -302,6 +310,28 @@ def _build_snapshot_tables(
     else:
         disp_counts = pd.DataFrame(columns=["symbol", "non_green_alerts"])
 
+    ftmo_by_symbol = pd.DataFrame()
+    if not ftmo_metrics.empty and {"symbol", "metric_id", "metric_value"}.issubset(
+        set(ftmo_metrics.columns)
+    ):
+        fm = ftmo_metrics.copy()
+        fm["symbol"] = fm["symbol"].astype(str).str.upper()
+        fm["metric_id"] = fm["metric_id"].astype(str)
+        fm["metric_value"] = pd.to_numeric(fm["metric_value"], errors="coerce")
+        ftmo_by_symbol = fm.pivot_table(
+            index="symbol",
+            columns="metric_id",
+            values="metric_value",
+            aggfunc="first",
+        ).reset_index()
+
+    recon_by_symbol = pd.DataFrame()
+    if not ftmo_recon.empty and {"symbol", "reconciliation_pass"}.issubset(set(ftmo_recon.columns)):
+        rc = ftmo_recon.copy()
+        rc["symbol"] = rc["symbol"].astype(str).str.upper()
+        rc = rc[rc["symbol"] != "ALL"].copy()
+        recon_by_symbol = rc.sort_values("symbol")
+
     def _symbol_row(df: pd.DataFrame, sym: str) -> pd.DataFrame:
         if df.empty or "symbol" not in df.columns:
             return pd.DataFrame()
@@ -342,6 +372,26 @@ def _build_snapshot_tables(
 
         nr = _symbol_row(disp_counts, sym)
         row["non_green_alerts"] = int(nr.iloc[0].get("non_green_alerts", 0)) if not nr.empty else 0
+
+        fr = _symbol_row(ftmo_by_symbol, sym)
+        row["ftmo_block_rate"] = (
+            _fmt(fr.iloc[0].get("FTMO_ALLOC_BLOCK_RATE"), 4) if not fr.empty else ""
+        )
+        row["ftmo_budget_exceeded_rate"] = (
+            _fmt(fr.iloc[0].get("FTMO_ALLOC_BUDGET_EXCEEDED_RATE"), 4) if not fr.empty else ""
+        )
+        row["ftmo_stale_pending_count"] = (
+            int(pd.to_numeric(pd.Series([fr.iloc[0].get("FTMO_ALLOC_STALE_PENDING_COUNT")]), errors="coerce").fillna(0).iloc[0])
+            if not fr.empty
+            else 0
+        )
+
+        rr = _symbol_row(recon_by_symbol, sym)
+        row["ftmo_reconciliation_pass"] = (
+            str(rr.iloc[0].get("reconciliation_pass", "")).strip().lower()
+            if not rr.empty
+            else ""
+        )
 
         rows.append(row)
 

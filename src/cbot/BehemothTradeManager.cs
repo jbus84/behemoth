@@ -39,10 +39,44 @@ namespace cAlgo.Robots
 
         private HttpClient _client;
         private Ticks _historicalTicks;
+        private static readonly HashSet<string> ActiveSymbols = new HashSet<string>
+        {
+            "EURUSD",
+            "GBPUSD",
+            "USDJPY",
+            "USDCHF",
+            "AUDUSD",
+            "USDCAD",
+        };
 
         private string GetInternalSymbolName(string brokerName)
         {
-            return brokerName;
+            if (string.IsNullOrWhiteSpace(brokerName))
+            {
+                return brokerName;
+            }
+
+            string raw = brokerName.Trim().ToUpperInvariant();
+            string lettersOnly = new string(raw.Where(char.IsLetter).ToArray());
+            if (lettersOnly.Length >= 6)
+            {
+                string canonical = lettersOnly.Substring(0, 6);
+                if (ActiveSymbols.Contains(canonical))
+                {
+                    return canonical;
+                }
+            }
+
+            if (raw.Length >= 6)
+            {
+                string prefix = raw.Substring(0, 6);
+                if (ActiveSymbols.Contains(prefix))
+                {
+                    return prefix;
+                }
+            }
+
+            return raw;
         }
 
         private static readonly JsonSerializerOptions _jsonOpts = new JsonSerializerOptions
@@ -52,6 +86,12 @@ namespace cAlgo.Robots
 
         private string _internalSymbol;
         private Dictionary<int, int> _posAgeBars = new Dictionary<int, int>();
+        private int _consecutiveTickIngestFailures = 0;
+        private int _consecutivePredictFailures = 0;
+        private bool _tickFeedHealthy = true;
+        private bool _predictPathHealthy = true;
+        private const int MaxConsecutiveTickIngestFailures = 20;
+        private const int MaxConsecutivePredictFailures = 5;
 
         protected override void OnStart()
         {
@@ -59,6 +99,8 @@ namespace cAlgo.Robots
             {
                 _client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
                 _internalSymbol = GetInternalSymbolName(Symbol.Name);
+                PendingOrders.Filled += OnPendingOrderFilled;
+                Positions.Closed += OnPositionClosed;
                 
                 Print($"[INIT] Starting Tick Backfill for {_internalSymbol} (Broker: {Symbol.Name})");
                 
@@ -154,14 +196,12 @@ namespace cAlgo.Robots
                     }
                 }
 
-                var lastTick = _historicalTicks.LastValue;
-
                 var payload = new
                 {
                     symbol = _internalSymbol,
-                    timestamp = lastTick.Time.ToUniversalTime().ToString("O"),
-                    bid = lastTick.Bid,
-                    ask = lastTick.Ask,
+                    timestamp = now.ToUniversalTime().ToString("O"),
+                    bid = Symbol.Bid,
+                    ask = Symbol.Ask,
                     tick_volume = 1.0
                 };
 
@@ -172,48 +212,80 @@ namespace cAlgo.Robots
                 if (task.Wait(TimeSpan.FromSeconds(2)))
                 {
                     var resp = task.Result;
-                    if (resp.IsSuccessStatusCode)
+                    if (!resp.IsSuccessStatusCode)
                     {
-                        var body = resp.Content.ReadAsStringAsync().Result;
-                        var tickResp = JsonSerializer.Deserialize<TickResponse>(body, _jsonOpts);
-                        if (tickResp != null && tickResp.bar_completed)
-                        {
-                            Print($"[BAR COMPLETED] Tracking horizons and triggering prediction...");
-                            
-                            var ocoPositions = Positions.Where(p => p.SymbolName == Symbol.Name && p.Label != null && p.Label.StartsWith("Oco_")).ToList();
-                            foreach(var pos in ocoPositions)
-                            {
-                                int pos_bar_ticks = ExtractBarTicks(pos.Label);
-                                
-                                if (tickResp.completed_bar_ticks != null && tickResp.completed_bar_ticks.Contains(pos_bar_ticks))
-                                {
-                                    if (!_posAgeBars.ContainsKey(pos.Id)) _posAgeBars[pos.Id] = 0;
-                                    _posAgeBars[pos.Id]++;
-                                    
-                                    int horizon = ExtractHorizon(pos.Label);
-                                    if (_posAgeBars[pos.Id] >= horizon)
-                                    {
-                                        Print($"[HORIZON EXIT] Closing {pos.Id} after {horizon} bars ({pos_bar_ticks}-tick)");
-                                        ClosePositionAsync(pos);
-                                        _posAgeBars.Remove(pos.Id);
-                                    }
-                                }
-                            }
+                        var errBody = resp.Content.ReadAsStringAsync().Result;
+                        RegisterTickIngestFailure($"http_{(int)resp.StatusCode}");
+                        Print($"[TICK ERROR] {resp.StatusCode} body={errBody}");
+                        return;
+                    }
 
-                            if (!skipPrediction)
+                    var body = resp.Content.ReadAsStringAsync().Result;
+                    var tickResp = JsonSerializer.Deserialize<TickResponse>(body, _jsonOpts);
+                    if (tickResp == null)
+                    {
+                        RegisterTickIngestFailure("malformed_response");
+                        Print("[TICK ERROR] malformed response from /ticks");
+                        return;
+                    }
+                    if (!tickResp.tick_accepted)
+                    {
+                        string reason = string.IsNullOrWhiteSpace(tickResp.drop_reason) ? "rejected" : tickResp.drop_reason;
+                        RegisterTickIngestFailure(reason);
+                        Print($"[TICK DROP] reason={reason} seq={tickResp.symbol_tick_seq}");
+                        return;
+                    }
+
+                    RegisterTickIngestSuccess();
+
+                    if (tickResp.bar_completed)
+                    {
+                        Print($"[BAR COMPLETED] Tracking horizons and triggering prediction...");
+                        
+                        var ocoPositions = Positions.Where(p => p.SymbolName == Symbol.Name && p.Label != null && p.Label.StartsWith("Oco_")).ToList();
+                        foreach(var pos in ocoPositions)
+                        {
+                            int pos_bar_ticks = ExtractBarTicks(pos.Label);
+                            
+                            if (tickResp.completed_bar_ticks != null && tickResp.completed_bar_ticks.Contains(pos_bar_ticks))
                             {
-                                if (EnableFtmoGuards)
+                                if (!_posAgeBars.ContainsKey(pos.Id)) _posAgeBars[pos.Id] = 0;
+                                _posAgeBars[pos.Id]++;
+                                
+                                int horizon = ExtractHorizon(pos.Label);
+                                if (_posAgeBars[pos.Id] >= horizon)
                                 {
-                                    SubmitFtmoSnapshot();
+                                    Print($"[HORIZON EXIT] Closing {pos.Id} after {horizon} bars ({pos_bar_ticks}-tick)");
+                                    ClosePositionAsync(pos);
+                                    _posAgeBars.Remove(pos.Id);
                                 }
-                                TriggerPrediction();
                             }
                         }
+
+                        if (!skipPrediction)
+                        {
+                            if (IsTradingBlockedByRuntimeGuard())
+                            {
+                                Print($"[RUNTIME GUARD] Trading blocked: {CurrentRuntimeGuardReason()}");
+                                return;
+                            }
+                            if (EnableFtmoGuards)
+                            {
+                                SubmitFtmoSnapshot();
+                            }
+                            TriggerPrediction();
+                        }
                     }
+                }
+                else
+                {
+                    RegisterTickIngestFailure("timeout");
+                    Print("[TICK ERROR] /ticks timeout");
                 }
             }
             catch (Exception ex)
             {
+                RegisterTickIngestFailure("exception");
                 Print($"[WARN] OnTick fast-fail: {ex.Message}");
             }
         }
@@ -240,6 +312,58 @@ namespace cAlgo.Robots
             return 100; // Default fallback
         }
 
+        private bool IsTradingBlockedByRuntimeGuard()
+        {
+            return !_tickFeedHealthy || !_predictPathHealthy;
+        }
+
+        private string CurrentRuntimeGuardReason()
+        {
+            if (!_tickFeedHealthy) return "tick_ingest_unhealthy";
+            if (!_predictPathHealthy) return "predict_path_unhealthy";
+            return "none";
+        }
+
+        private void RegisterTickIngestFailure(string reason)
+        {
+            _consecutiveTickIngestFailures++;
+            if (_consecutiveTickIngestFailures >= MaxConsecutiveTickIngestFailures && _tickFeedHealthy)
+            {
+                _tickFeedHealthy = false;
+                Print($"[RUNTIME GUARD] Tick ingest unhealthy; blocking new entries. reason={reason} failures={_consecutiveTickIngestFailures}");
+            }
+        }
+
+        private void RegisterTickIngestSuccess()
+        {
+            _consecutiveTickIngestFailures = 0;
+            if (!_tickFeedHealthy)
+            {
+                _tickFeedHealthy = true;
+                Print("[RUNTIME GUARD] Tick ingest recovered; entry block cleared.");
+            }
+        }
+
+        private void RegisterPredictFailure(string reason)
+        {
+            _consecutivePredictFailures++;
+            if (_consecutivePredictFailures >= MaxConsecutivePredictFailures && _predictPathHealthy)
+            {
+                _predictPathHealthy = false;
+                Print($"[RUNTIME GUARD] Predict path unhealthy; blocking new entries. reason={reason} failures={_consecutivePredictFailures}");
+            }
+        }
+
+        private void RegisterPredictSuccess()
+        {
+            _consecutivePredictFailures = 0;
+            if (!_predictPathHealthy)
+            {
+                _predictPathHealthy = true;
+                Print("[RUNTIME GUARD] Predict path recovered; entry block cleared.");
+            }
+        }
+
         private void TriggerPrediction()
         {
             try
@@ -254,6 +378,7 @@ namespace cAlgo.Robots
                 var payload = new
                 {
                     symbol = _internalSymbol,
+                    ftmo_enabled_override = EnableFtmoGuards,
                     requested_volume_units = volumeUnits,
                     requested_lot_size = LotSize
                 };
@@ -271,17 +396,31 @@ namespace cAlgo.Robots
                         
                         if (predictions != null)
                         {
+                            RegisterPredictSuccess();
                             ProcessPredictions(predictions);
+                        }
+                        else
+                        {
+                            RegisterPredictFailure("malformed_response");
+                            Print("[PREDICT ERROR] malformed response body");
                         }
                     }
                     else
                     {
-                        Print($"[PREDICT ERROR] {resp.StatusCode}");
+                        var body = resp.Content.ReadAsStringAsync().Result;
+                        RegisterPredictFailure($"http_{(int)resp.StatusCode}");
+                        Print($"[PREDICT ERROR] {resp.StatusCode} body={body}");
                     }
+                }
+                else
+                {
+                    RegisterPredictFailure("timeout");
+                    Print("[PREDICT ERROR] timeout");
                 }
             }
             catch (Exception ex)
             {
+                RegisterPredictFailure("exception");
                 Print($"[ERROR] TriggerPrediction failed: {ex.Message}");
             }
         }
@@ -404,7 +543,7 @@ namespace cAlgo.Robots
             Print($"[OCO PLACED] {groupLabel} | BuyStopLimit: {buyPrice:F4} | SellStopLimit: {sellPrice:F4} | Cap: {stopLimitRangePips}");
         }
 
-        protected override void OnPendingOrderFilled(PendingOrderFilledEventArgs args)
+        private void OnPendingOrderFilled(PendingOrderFilledEventArgs args)
         {
             var pos = args.Position;
             if (pos.Label != null && pos.Label.StartsWith("Oco_"))
@@ -425,14 +564,15 @@ namespace cAlgo.Robots
             }
         }
 
-        protected override void OnPositionClosed(PositionClosedEventArgs args)
+        private void OnPositionClosed(PositionClosedEventArgs args)
         {
             var pos = args.Position;
             if (pos.Label != null && pos.Label.StartsWith("Oco_"))
             {
                 _posAgeBars.Remove(pos.Id);
                 double pnlPips = pos.GrossProfit / (pos.VolumeInUnits * Symbol.PipValue); 
-                TrackUpdateTradeAsync(pos.Id.ToString(), "CLOSED", pos.ExitPrice ?? pos.EntryPrice, Server.Time, pnlPips);
+                double closePx = pos.TradeType == TradeType.Buy ? Symbol.Bid : Symbol.Ask;
+                TrackUpdateTradeAsync(pos.Id.ToString(), "CLOSED", closePx, Server.Time, pnlPips);
             }
         }
 
@@ -502,6 +642,8 @@ namespace cAlgo.Robots
 
         protected override void OnStop()
         {
+            PendingOrders.Filled -= OnPendingOrderFilled;
+            Positions.Closed -= OnPositionClosed;
             _client?.Dispose();
         }
     }
@@ -510,6 +652,10 @@ namespace cAlgo.Robots
     {
         public bool ok { get; set; }
         public string symbol { get; set; }
+        public bool tick_accepted { get; set; } = true;
+        public string drop_reason { get; set; }
+        public int symbol_tick_seq { get; set; }
+        public string last_tick_ts_utc { get; set; }
         public bool bar_completed { get; set; }
         public List<int> completed_bar_ticks { get; set; }
         public int bar_count { get; set; }

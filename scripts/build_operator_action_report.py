@@ -93,6 +93,7 @@ def _severity_from_band(band: str) -> str:
 def run(
     *,
     edge_metrics_csv: Path,
+    extra_metrics_csv: Path | None,
     rules_yaml: Path,
     out_status_csv: Path,
     out_report_md: Path,
@@ -100,6 +101,21 @@ def run(
     symbols: list[str] | None,
 ) -> tuple[pd.DataFrame, Path, Path]:
     metrics = _read_csv(edge_metrics_csv)
+    if extra_metrics_csv is not None:
+        extra = _read_csv(extra_metrics_csv)
+        if not extra.empty:
+            if metrics.empty:
+                metrics = extra.copy()
+            else:
+                metrics = pd.concat([metrics, extra], ignore_index=True)
+                if {"symbol", "metric_id"}.issubset(set(metrics.columns)):
+                    metrics["symbol"] = metrics["symbol"].astype(str).str.upper()
+                    metrics["metric_id"] = metrics["metric_id"].astype(str)
+                    metrics = (
+                        metrics.sort_values(["symbol", "metric_id"])
+                        .drop_duplicates(subset=["symbol", "metric_id"], keep="last")
+                        .reset_index(drop=True)
+                    )
     if not metrics.empty:
         if "symbol" in metrics.columns:
             metrics["symbol"] = metrics["symbol"].astype(str).str.upper()
@@ -266,6 +282,7 @@ def run(
     report_lines.append("")
     report_lines.append(f"- generated_at_utc: `{now_utc}`")
     report_lines.append(f"- edge_metrics_csv: `{edge_metrics_csv}`")
+    report_lines.append(f"- extra_metrics_csv: `{extra_metrics_csv}`")
     report_lines.append(f"- rules_yaml: `{rules_yaml}`")
     report_lines.append(f"- status_csv: `{out_status_csv}`")
     report_lines.append("")
@@ -324,6 +341,10 @@ def main() -> None:
         "--edge-metrics-csv",
         default="data/analysis/tick_opportunity_mining/edge_clarity_stage_metrics.csv",
     )
+    p.add_argument(
+        "--extra-metrics-csv",
+        default="data/analysis/tick_opportunity_mining/ftmo_allocator_monitoring_metrics.csv",
+    )
     p.add_argument("--rules-yaml", default="configs/research/docs/operator_action_rules.yaml")
     p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD")
     p.add_argument(
@@ -337,6 +358,7 @@ def main() -> None:
     symbols = _parse_symbols(args.symbols)
     status, report, playbook = run(
         edge_metrics_csv=Path(str(args.edge_metrics_csv)),
+        extra_metrics_csv=Path(str(args.extra_metrics_csv)),
         rules_yaml=Path(str(args.rules_yaml)),
         out_status_csv=Path(str(args.out_status_csv)),
         out_report_md=Path(str(args.report_out)),

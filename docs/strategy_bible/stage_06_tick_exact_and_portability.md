@@ -80,19 +80,19 @@ Run once per active symbol; if `shortlist_state_csv` is a rolling schedule, the 
 <!-- GENERATED:STAGE_06:START -->
 ### Auto Snapshot - Stage 06
 
-- generated_at: `2026-03-06 14:33:18 UTC`
+- generated_at: `2026-03-10 10:13:11 UTC`
 - Verifier recomputes OCO outcomes independently from stored labels.
 - All summary rates should remain near 1.0 for contract consistency.
 
 #### Key Results
 | symbol   |   rows_selected |   rows_verified |   exact_match_rate |   pos_label_match_rate | overall_pass   |
 |:---------|----------------:|----------------:|-------------------:|-----------------------:|:---------------|
-| EURUSD   |            4505 |            4505 |                  1 |                      1 | True           |
-| GBPUSD   |           13914 |           13914 |                  1 |                      1 | True           |
-| AUDUSD   |           11245 |           11245 |                  1 |                      1 | True           |
-| USDJPY   |           16821 |           16821 |                  1 |                      1 | True           |
-| USDCHF   |            4728 |            4728 |                  1 |                      1 | True           |
-| USDCAD   |            5251 |            5251 |                  1 |                      1 | True           |
+| EURUSD   |            4489 |            4489 |                  1 |                      1 | True           |
+| GBPUSD   |           21828 |           21828 |                  1 |                      1 | True           |
+| AUDUSD   |           10963 |           10963 |                  1 |                      1 | True           |
+| USDJPY   |           16287 |           16287 |                  1 |                      1 | True           |
+| USDCHF   |            3476 |            3476 |                  1 |                      1 | True           |
+| USDCAD   |            8111 |            8111 |                  1 |                      1 | True           |
 
 #### Interpretation Notes
 - Verifier recomputes OCO outcomes independently from stored labels.
@@ -120,6 +120,6 @@ Run once per active symbol; if `shortlist_state_csv` is a rolling schedule, the 
 #### Cross-Symbol Portability (X01-X03)
 | family                |   symbols_covered |   mean_across_symbols |   std_across_symbols |   spread_max_min |   x01_all_symbols_positive |
 |:----------------------|------------------:|----------------------:|---------------------:|-----------------:|---------------------------:|
-| oco_first_touch_clean |                 6 |               4.01114 |             2.11258  |         6.32425  |                        nan |
-| oco_first_touch       |                 6 |               0.15973 |             0.044625 |         0.129843 |                        nan |
+| oco_first_touch_clean |                 6 |              4.49316  |            1.34368   |        3.62955   |                        nan |
+| oco_first_touch       |                 6 |              0.127387 |            0.0372793 |        0.0999865 |                        nan |
 <!-- GENERATED:STAGE_06:END -->

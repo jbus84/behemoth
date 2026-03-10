@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 10
 
-- generated_at: `2026-03-06 14:33:18 UTC`
+- generated_at: `2026-03-10 10:13:11 UTC`
 - Risk backlog is derived from current logical-audit failures.
 - When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.
 
@@ -14,10 +14,20 @@
 - When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.
 
 #### Action Trigger Summary
-| trigger            | threshold_or_signal   | action_code                   | action_summary                                                          |
-|:-------------------|:----------------------|:------------------------------|:------------------------------------------------------------------------|
-| hard_gate_fail     | status=fail           | A3_HALT_RECALIBRATE           | Block promotion and rerun upstream stage diagnostics before continuing. |
-| monitoring_warning | band=amber            | A0_MONITOR/A1_RECALIBRATE_CAP | Apply stage runbook remediation and confirm next-run recovery.          |
+| symbol   | metric_id                                        | band   | severity   | action_code           | action_summary         | owner     |
+|:---------|:-------------------------------------------------|:-------|:-----------|:----------------------|:-----------------------|:----------|
+| AUDUSD   | FTMO_ALLOC_ADMITTED_MISSING_RESERVATION_ID_COUNT | green  | info       | A0_MONITOR            | within policy band     | risk      |
+| AUDUSD   | FTMO_ALLOC_BLOCK_RATE                            | green  | info       | A0_MONITOR            | within policy band     | risk      |
+| AUDUSD   | FTMO_ALLOC_BUDGET_EXCEEDED_RATE                  | green  | info       | A0_MONITOR            | within policy band     | risk      |
+| AUDUSD   | FTMO_ALLOC_OPEN_WITHOUT_BROKER_POS_COUNT         | green  | info       | A0_MONITOR            | within policy band     | execution |
+| AUDUSD   | FTMO_ALLOC_PIP_VALUE_UNAVAILABLE_RATE            | green  | info       | A0_MONITOR            | within policy band     | data      |
+| AUDUSD   | FTMO_ALLOC_STALE_PENDING_COUNT                   | green  | info       | A0_MONITOR            | within policy band     | execution |
+| EURUSD   | FTMO_ALLOC_ADMITTED_MISSING_RESERVATION_ID_COUNT | green  | info       | A0_MONITOR            | within policy band     | risk      |
+| EURUSD   | FTMO_ALLOC_BLOCK_RATE                            | green  | info       | A0_MONITOR            | within policy band     | risk      |
+| EURUSD   | FTMO_ALLOC_BUDGET_EXCEEDED_RATE                  | red    | high       | A2_RECALIBRATE        | escalate and remediate | risk      |
+| EURUSD   | FTMO_ALLOC_OPEN_WITHOUT_BROKER_POS_COUNT         | green  | info       | A0_MONITOR            | within policy band     | execution |
+| EURUSD   | FTMO_ALLOC_PIP_VALUE_UNAVAILABLE_RATE            | green  | info       | A0_MONITOR            | within policy band     | data      |
+| EURUSD   | FTMO_ALLOC_STALE_PENDING_COUNT                   | red    | high       | A3_HALT_AND_REMEDIATE | escalate and remediate | execution |
 
 #### Details
 | symbol   | severity_if_fail   |   total_checks |   failed_checks |

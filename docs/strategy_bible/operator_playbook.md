@@ -1,6 +1,6 @@
 # OCO Operator Playbook
 
-- generated_at_utc: `2026-03-06T14:33:18Z`
+- generated_at_utc: `2026-03-10T10:13:10Z`
 - source_rules: `configs/research/docs/operator_action_rules.yaml`
 
 ## Action Codes
@@ -25,6 +25,8 @@
 | USDCAD   | W13_threshold_fragility          | amber  | A2_RECALIBRATE        | research  | review and monitor     |
 | USDJPY   | S01_lb95_dependence_gap          | amber  | A1_REVIEW             | research  | review and monitor     |
 | AUDUSD   | S01_lb95_dependence_gap          | red    | A2_RECALIBRATE        | research  | escalate and remediate |
+| EURUSD   | FTMO_ALLOC_BUDGET_EXCEEDED_RATE  | red    | A2_RECALIBRATE        | risk      | escalate and remediate |
+| EURUSD   | FTMO_ALLOC_STALE_PENDING_COUNT   | red    | A3_HALT_AND_REMEDIATE | execution | escalate and remediate |
 | EURUSD   | S01_lb95_dependence_gap          | red    | A2_RECALIBRATE        | research  | escalate and remediate |
 | EURUSD   | W13_threshold_fragility          | red    | A3_HALT_AND_REMEDIATE | research  | escalate and remediate |
 | USDCAD   | S01_lb95_dependence_gap          | red    | A2_RECALIBRATE        | research  | escalate and remediate |

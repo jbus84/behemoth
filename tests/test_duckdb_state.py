@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.behemoth.core.schemas import IncomingTickBar, ModelFeatures
+from src.behemoth.core.schemas import IncomingTick, IncomingTickBar, ModelFeatures
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
@@ -368,6 +368,29 @@ class TestDuckDBTradeTracking:
         assert sm2._row_counters["EURUSD_100"] == 1
         sm2.close()
 
+    def test_record_raw_tick(self):
+        from src.behemoth.runtime.state import StateManager
+
+        sm = StateManager()
+        tick = IncomingTick(
+            symbol="EURUSD",
+            timestamp=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            bid=1.1000,
+            ask=1.1002,
+            tick_volume=1.0,
+        )
+        sm.record_raw_tick(tick, source="historical_backtest")
+        assert sm.raw_tick_count("EURUSD") == 1
+        row = sm._con.execute(
+            "SELECT symbol, bid, ask, spread, source FROM raw_ticks"
+        ).fetchone()
+        assert row[0] == "EURUSD"
+        assert row[1] == pytest.approx(1.1)
+        assert row[2] == pytest.approx(1.1002)
+        assert row[3] == pytest.approx(0.0002)
+        assert row[4] == "historical_backtest"
+        sm.close()
+
 
 class TestFtmoReservationLedger:
     @pytest.fixture
@@ -443,3 +466,24 @@ class TestFtmoReservationLedger:
         assert expired == 1
         rows = sm.list_active_ftmo_risk_reservations()
         assert rows == []
+
+    def test_log_ftmo_allocator_event(self, sm):
+        sm.log_ftmo_allocator_event(
+            symbol="EURUSD",
+            candidate_uid="oco|EURUSD|100|h5|cand_a",
+            status="ADMITTED",
+            block_reason=None,
+            reserved_loss_ccy=25.0,
+            requested_volume_units=10000.0,
+            pred_prob=0.8,
+            threshold_exec=0.6,
+            risk_rank_score=0.2,
+            reservation_id="r1",
+        )
+        rows = sm._con.execute(
+            "SELECT symbol, status, reservation_id FROM ftmo_allocator_events"
+        ).fetchall()
+        assert len(rows) == 1
+        assert rows[0][0] == "EURUSD"
+        assert rows[0][1] == "ADMITTED"
+        assert rows[0][2] == "r1"

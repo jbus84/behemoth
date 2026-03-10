@@ -18,10 +18,12 @@ import re
 import zipfile
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import timedelta, timezone
 from http.cookiejar import CookieJar
 from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import HTTPCookieProcessor, Request, build_opener
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -32,6 +34,7 @@ DOWNLOAD_PAGE = (
     + "/download-free-forex-historical-data/?/ascii/tick-data-quotes/{symbol}/{year}/{month}/"
 )
 GET_ENDPOINT = BASE_URL + "/get.php"
+SOURCE_TZ_POLICIES = {"america_new_york", "fixed_est", "as_utc_legacy"}
 
 
 @dataclass(frozen=True)
@@ -133,7 +136,49 @@ def _infer_csv_member(names: Iterable[str], *, symbol: str, yyyymm: str) -> str:
     raise FileNotFoundError(f"no CSV member in HistData ZIP for {symbol} {yyyymm}")
 
 
-def _to_parquet(blob: bytes, *, symbol: str, yyyymm: str, out_path: Path) -> int:
+def _parse_source_tz_policy(raw: str) -> str:
+    v = str(raw).strip().lower()
+    if v not in SOURCE_TZ_POLICIES:
+        allowed = ",".join(sorted(SOURCE_TZ_POLICIES))
+        raise ValueError(f"invalid --source-tz-policy={raw!r}; allowed={allowed}")
+    return v
+
+
+def _convert_histdata_timestamps(raw: pd.Series, *, source_tz_policy: str) -> pd.Series:
+    ts_naive = pd.to_datetime(raw, format="%Y%m%d %H%M%S%f", errors="coerce")
+    policy = _parse_source_tz_policy(source_tz_policy)
+    if policy == "as_utc_legacy":
+        return ts_naive.dt.tz_localize("UTC")
+
+    if policy == "fixed_est":
+        source_tz = timezone(timedelta(hours=-5))
+    else:
+        source_tz = ZoneInfo("America/New_York")
+
+    try:
+        localized = ts_naive.dt.tz_localize(
+            source_tz,
+            ambiguous="infer",
+            nonexistent="shift_forward",
+        )
+    except Exception:
+        # Fallback path for ambiguous periods where sequence-based inference fails.
+        localized = ts_naive.dt.tz_localize(
+            source_tz,
+            ambiguous=False,
+            nonexistent="shift_forward",
+        )
+    return localized.dt.tz_convert("UTC")
+
+
+def _to_parquet(
+    blob: bytes,
+    *,
+    symbol: str,
+    yyyymm: str,
+    out_path: Path,
+    source_tz_policy: str,
+) -> int:
     with zipfile.ZipFile(io.BytesIO(blob)) as zf:
         csv_name = _infer_csv_member(zf.namelist(), symbol=symbol, yyyymm=yyyymm)
         with zf.open(csv_name) as fp:
@@ -149,7 +194,9 @@ def _to_parquet(blob: bytes, *, symbol: str, yyyymm: str, out_path: Path) -> int
         out.to_parquet(out_path, index=False)
         return 0
 
-    ts = pd.to_datetime(df["datetime_raw"], format="%Y%m%d %H%M%S%f", errors="coerce", utc=True)
+    ts = _convert_histdata_timestamps(
+        df["datetime_raw"], source_tz_policy=source_tz_policy
+    )
     out = pd.DataFrame(
         {
             "timestamp": ts,
@@ -179,12 +226,22 @@ def main() -> None:
     )
     p.add_argument("--tick-root", default="/Users/danielfisher/Desktop/tick")
     p.add_argument("--skip-existing", default="true", help="true|false")
+    p.add_argument(
+        "--source-tz-policy",
+        default="america_new_york",
+        choices=sorted(SOURCE_TZ_POLICIES),
+        help=(
+            "Interpretation policy for HistData raw timestamps before UTC conversion: "
+            "america_new_york (DST-aware), fixed_est (UTC-5 constant), as_utc_legacy."
+        ),
+    )
     args = p.parse_args()
 
     symbols = _parse_symbols(args.symbols)
     months = _parse_months(args.months)
     tick_root = Path(str(args.tick_root))
     skip_existing = str(args.skip_existing).strip().lower() in {"1", "true", "yes", "y"}
+    source_tz_policy = _parse_source_tz_policy(str(args.source_tz_policy))
 
     cookie_jar = CookieJar()
     opener = build_opener(HTTPCookieProcessor(cookie_jar))
@@ -212,13 +269,20 @@ def main() -> None:
                     f"datemonth={form.datemonth}, fxpair={form.fxpair}"
                 )
             blob = _download_zip(opener, form=form, referer=referer)
-            rows = _to_parquet(blob, symbol=symbol, yyyymm=yyyymm, out_path=out_path)
+            rows = _to_parquet(
+                blob,
+                symbol=symbol,
+                yyyymm=yyyymm,
+                out_path=out_path,
+                source_tz_policy=source_tz_policy,
+            )
             print(f"wrote {out_path} rows={rows}")
             total_rows += int(rows)
             written += 1
 
     print(
-        f"done symbols={len(symbols)} months={len(months)} written={written} skipped={skipped} total_rows={total_rows}"
+        f"done symbols={len(symbols)} months={len(months)} written={written} "
+        f"skipped={skipped} total_rows={total_rows} source_tz_policy={source_tz_policy}"
     )
 
 

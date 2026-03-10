@@ -31,7 +31,14 @@ def inject_data():
     # 2. Trigger Predictions (Latency Histogram)
     print("Step 2: Triggering 5 predictions...")
     for _ in range(5):
-        requests.post(f"{BASE_URL}/predict", json={"symbol": SYMBOL})
+        requests.post(
+            f"{BASE_URL}/predict",
+            json={
+                "symbol": SYMBOL,
+                "requested_volume_units": 10000,
+                "ftmo_enabled_override": True,
+            },
+        )
         time.sleep(0.5)
 
     # 3. Simulate Trade Lifecycle

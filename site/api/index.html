@@ -3815,7 +3815,7 @@
 <h2 id="rolling-historical-evidence">Rolling Historical Evidence<a class="headerlink" href="#rolling-historical-evidence" title="Permanent link">&para;</a></h2>
 <!-- GENERATED:SYSREF:API:START -->
 <ul>
-<li>generated_at_utc: <code>2026-03-06T14:33:50Z</code></li>
+<li>generated_at_utc: <code>2026-03-10T10:13:43Z</code></li>
 <li>symbols_covered: <code>EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD</code></li>
 <li>stop-limit_reference: <code>stage_04_execution_realism</code></li>
 <li>artifact_sources:</li>
@@ -3823,6 +3823,8 @@
 <li><code>data/analysis/tick_opportunity_mining/oco_threshold_sensitivity.csv</code></li>
 <li><code>data/analysis/tick_opportunity_mining/operator_action_status.csv</code></li>
 <li><code>data/analysis/tick_opportunity_mining/oco_alert_disposition.csv</code></li>
+<li><code>data/analysis/tick_opportunity_mining/ftmo_allocator_monitoring_metrics.csv</code></li>
+<li><code>data/analysis/tick_opportunity_mining/ftmo_reservation_reconciliation.csv</code></li>
 <li><code>data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</code></li>
 <li><code>data/analysis/tick_opportunity_mining/docs_contract_checks.csv</code></li>
 <li><code>data/analysis/tick_opportunity_mining/run_delta_summary.csv</code></li>
@@ -3841,6 +3843,10 @@
 <th style="text-align: left;">reduced_mean_gross</th>
 <th style="text-align: right;">non_green_actions</th>
 <th style="text-align: right;">non_green_alerts</th>
+<th style="text-align: left;">ftmo_block_rate</th>
+<th style="text-align: left;">ftmo_budget_exceeded_rate</th>
+<th style="text-align: right;">ftmo_stale_pending_count</th>
+<th style="text-align: left;">ftmo_reconciliation_pass</th>
 </tr>
 </thead>
 <tbody>
@@ -3855,6 +3861,10 @@
 <td style="text-align: left;"></td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;"></td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
@@ -3867,6 +3877,10 @@
 <td style="text-align: left;"></td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;"></td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
@@ -3879,6 +3893,10 @@
 <td style="text-align: left;"></td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;"></td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
@@ -3891,6 +3909,10 @@
 <td style="text-align: left;"></td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;"></td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
@@ -3903,6 +3925,10 @@
 <td style="text-align: left;"></td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;"></td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
@@ -3915,6 +3941,10 @@
 <td style="text-align: left;"></td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;"></td>
 </tr>
 </tbody>
 </table>

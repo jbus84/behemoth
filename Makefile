@@ -9,7 +9,7 @@ COLOR_DESC := \033[2m
 # Active symbol list — single source of truth for multi-symbol targets
 REBUILD_SYMBOLS := EURUSD GBPUSD USDJPY USDCHF AUDUSD USDCAD
 
-.PHONY: test docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift deploy-cbot provision retrain-all rebuild-all quality ty vulture smellcheck radon xenon audit-all freeze-oco
+.PHONY: test docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift deploy-cbot provision retrain-all rebuild-all quality ty vulture smellcheck radon xenon audit-all freeze-oco freeze-oco-history validate-oco-history summarize-runtime-db-run reconcile-ctrader-run
 
 provision:
 	@echo "Provisioning Alertmanager configuration..."
@@ -95,6 +95,8 @@ docs-contract:
 	uv run python scripts/build_docs_catalog.py
 	uv run python scripts/build_oco_execution_drift_report.py
 	uv run python scripts/build_oco_threshold_sensitivity_report.py
+	uv run python scripts/build_ftmo_allocator_monitoring_report.py
+	uv run python scripts/reconcile_ftmo_reservations.py
 	uv run python scripts/validate_oco_rule_universe_registry.py
 	uv run python scripts/remediate_oco_monitoring_alerts.py
 	uv run python scripts/build_oco_governance_explainability_report.py
@@ -107,6 +109,8 @@ docs-contract:
 
 docs-contract-ci:
 	uv run python scripts/build_docs_catalog.py
+	uv run python scripts/build_ftmo_allocator_monitoring_report.py
+	uv run python scripts/reconcile_ftmo_reservations.py
 	uv run python scripts/validate_oco_rule_universe_registry.py
 	uv run python scripts/remediate_oco_monitoring_alerts.py
 	uv run python scripts/build_oco_governance_explainability_report.py
@@ -143,6 +147,42 @@ freeze-oco:
 	$(MAKE) audit-all
 	$(MAKE) docs-contract-ci
 	@echo "\n✅ Successfully audited and frozen all locks."
+
+freeze-oco-history:
+	uv run python scripts/freeze_oco_historical_governance.py --symbols $(shell echo $(REBUILD_SYMBOLS) | sed 's/ /,/g')
+	$(MAKE) validate-oco-history
+	@echo "\n✅ Historical month-scoped locks generated."
+
+validate-oco-history:
+	uv run python scripts/validate_oco_historical_governance.py \
+		--history-dir configs/research/governance/oco_history \
+		--symbols $(shell echo $(REBUILD_SYMBOLS) | sed 's/ /,/g')
+
+summarize-runtime-db-run:
+	@test -n "$(SYMBOL)" || (echo "error: SYMBOL is required, e.g. make summarize-runtime-db-run SYMBOL=EURUSD START_TS=2025-07-01T00:00:00Z END_TS=2025-08-01T00:00:00Z" && exit 1)
+	uv run python scripts/summarize_runtime_db_run.py \
+		--runtime-db $(or $(RUNTIME_DB),data/db/behemoth_runtime.db) \
+		--symbol $(SYMBOL) \
+		--start-ts $(START_TS) \
+		--end-ts $(END_TS) \
+		--out-csv $(or $(OUT_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_runtime_db_run_summary.csv) \
+		--report-out $(or $(REPORT_OUT),docs/analysis/$(SYMBOL)_runtime_db_run_summary.md)
+
+reconcile-ctrader-run:
+	@test -n "$(SYMBOL)" || (echo "error: SYMBOL is required" && exit 1)
+	@test -n "$(PRED_PATH)" || (echo "error: PRED_PATH is required, e.g. data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet" && exit 1)
+	uv run python scripts/reconcile_ctrader_vs_research.py \
+		--symbol $(SYMBOL) \
+		--runtime-db $(or $(RUNTIME_DB),data/db/behemoth_runtime.db) \
+		--predictions-parquet $(PRED_PATH) \
+		$(if $(HISTORY_DIR),--history-dir $(HISTORY_DIR),) \
+		--start-ts $(START_TS) \
+		--end-ts $(END_TS) \
+		--strict-window $(or $(STRICT_WINDOW),true) \
+		--timestamp-tolerance-sec $(or $(TOL_SEC),2.0) \
+		--out-checks-csv $(or $(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_ctrader_vs_research_checks.csv) \
+		--out-mismatches-csv $(or $(OUT_MISMATCHES_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_ctrader_vs_research_mismatches.csv) \
+		--report-out $(or $(REPORT_OUT),docs/analysis/$(SYMBOL)_ctrader_vs_research_reconciliation.md)
 
 docs-clean:
 	rm -rf site
@@ -181,6 +221,10 @@ help:
 	@printf "\n$(COLOR_SECTION)== Pipeline ==$(COLOR_RESET)\n"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "retrain-all" "Re-run ML pipeline + docs for all symbols (skip data download)"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "rebuild-all" "Full rebuild: data + ML + docs for all symbols (MONTHS=... required)"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "freeze-oco-history" "Freeze month-scoped historical governance locks for replay/backtests"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "validate-oco-history" "Validate historical lock integrity and index coverage"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "summarize-runtime-db-run" "Summarize runtime DB rows for one symbol/window"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "reconcile-ctrader-run" "Reconcile cTrader runtime signals against research predictions"
 	@printf "\n$(COLOR_SECTION)== Docs ==$(COLOR_RESET)\n"
 	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "docs" "Serve docs locally"
 	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "docs-build" "Build docs"

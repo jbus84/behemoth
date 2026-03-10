@@ -79,6 +79,7 @@ def test_remediation_outputs_dispositions(tmp_path: Path) -> None:
     disposition = run(
         drift_alerts_csv=drift_path,
         threshold_alerts_csv=threshold_path,
+        ftmo_alerts_csv=None,
         exceptions_yaml=exceptions_path,
         out_disposition_csv=tmp_path / "disposition.csv",
         report_out=tmp_path / "report.md",
@@ -116,6 +117,7 @@ def test_remediation_recurrence_increments_across_runs(tmp_path: Path) -> None:
     d1 = run(
         drift_alerts_csv=drift_path,
         threshold_alerts_csv=threshold_path,
+        ftmo_alerts_csv=None,
         exceptions_yaml=exceptions_path,
         out_disposition_csv=out_csv,
         report_out=report,
@@ -126,6 +128,7 @@ def test_remediation_recurrence_increments_across_runs(tmp_path: Path) -> None:
     d2 = run(
         drift_alerts_csv=drift_path,
         threshold_alerts_csv=threshold_path,
+        ftmo_alerts_csv=None,
         exceptions_yaml=exceptions_path,
         out_disposition_csv=out_csv,
         report_out=report,
@@ -139,6 +142,7 @@ def test_remediation_handles_empty_alerts(tmp_path: Path) -> None:
     disposition = run(
         drift_alerts_csv=tmp_path / "missing_drift.csv",
         threshold_alerts_csv=tmp_path / "missing_threshold.csv",
+        ftmo_alerts_csv=tmp_path / "missing_ftmo.csv",
         exceptions_yaml=tmp_path / "missing_exceptions.yaml",
         out_disposition_csv=tmp_path / "disposition.csv",
         report_out=tmp_path / "report.md",
@@ -146,3 +150,35 @@ def test_remediation_handles_empty_alerts(tmp_path: Path) -> None:
     assert disposition.empty
     assert (tmp_path / "disposition.csv").exists()
     assert (tmp_path / "report.md").exists()
+
+
+def test_remediation_includes_ftmo_alerts_source(tmp_path: Path) -> None:
+    drift_path, threshold_path, exceptions_path = _write_alert_inputs(tmp_path)
+    ftmo = pd.DataFrame(
+        [
+            {
+                "source_alert": "ftmo_allocator",
+                "symbol": "USDCHF",
+                "test_month": "2026-02",
+                "metric_id": "FTMO_ALLOC_STALE_PENDING_COUNT",
+                "metric_value": 2.0,
+                "band": "amber",
+                "severity": "medium",
+                "source_path": "runtime.db",
+            }
+        ]
+    )
+    ftmo_path = tmp_path / "ftmo_alerts.csv"
+    ftmo.to_csv(ftmo_path, index=False)
+
+    disposition = run(
+        drift_alerts_csv=drift_path,
+        threshold_alerts_csv=threshold_path,
+        ftmo_alerts_csv=ftmo_path,
+        exceptions_yaml=exceptions_path,
+        out_disposition_csv=tmp_path / "disposition.csv",
+        report_out=tmp_path / "report.md",
+    )
+    row = disposition[disposition["metric_id"].astype(str) == "FTMO_ALLOC_STALE_PENDING_COUNT"]
+    assert not row.empty
+    assert row.iloc[0]["source_alert"] == "ftmo_allocator"

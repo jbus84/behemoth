@@ -4607,7 +4607,7 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <!-- GENERATED:STAGE_10:START -->
 <h3 id="auto-snapshot-stage-10">Auto Snapshot - Stage 10<a class="headerlink" href="#auto-snapshot-stage-10" title="Permanent link">&para;</a></h3>
 <ul>
-<li>generated_at: <code>2026-03-06 14:33:18 UTC</code></li>
+<li>generated_at: <code>2026-03-10 10:13:11 UTC</code></li>
 <li>Risk backlog is derived from current logical-audit failures.</li>
 <li>When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.</li>
 </ul>
@@ -4635,24 +4635,123 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <table>
 <thead>
 <tr>
-<th style="text-align: left;">trigger</th>
-<th style="text-align: left;">threshold_or_signal</th>
+<th style="text-align: left;">symbol</th>
+<th style="text-align: left;">metric_id</th>
+<th style="text-align: left;">band</th>
+<th style="text-align: left;">severity</th>
 <th style="text-align: left;">action_code</th>
 <th style="text-align: left;">action_summary</th>
+<th style="text-align: left;">owner</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td style="text-align: left;">hard_gate_fail</td>
-<td style="text-align: left;">status=fail</td>
-<td style="text-align: left;">A3_HALT_RECALIBRATE</td>
-<td style="text-align: left;">Block promotion and rerun upstream stage diagnostics before continuing.</td>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">FTMO_ALLOC_ADMITTED_MISSING_RESERVATION_ID_COUNT</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">risk</td>
 </tr>
 <tr>
-<td style="text-align: left;">monitoring_warning</td>
-<td style="text-align: left;">band=amber</td>
-<td style="text-align: left;">A0_MONITOR/A1_RECALIBRATE_CAP</td>
-<td style="text-align: left;">Apply stage runbook remediation and confirm next-run recovery.</td>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">FTMO_ALLOC_BLOCK_RATE</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">risk</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">FTMO_ALLOC_BUDGET_EXCEEDED_RATE</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">risk</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">FTMO_ALLOC_OPEN_WITHOUT_BROKER_POS_COUNT</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">execution</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">FTMO_ALLOC_PIP_VALUE_UNAVAILABLE_RATE</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">data</td>
+</tr>
+<tr>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">FTMO_ALLOC_STALE_PENDING_COUNT</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">execution</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">FTMO_ALLOC_ADMITTED_MISSING_RESERVATION_ID_COUNT</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">risk</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">FTMO_ALLOC_BLOCK_RATE</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">risk</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">FTMO_ALLOC_BUDGET_EXCEEDED_RATE</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A2_RECALIBRATE</td>
+<td style="text-align: left;">escalate and remediate</td>
+<td style="text-align: left;">risk</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">FTMO_ALLOC_OPEN_WITHOUT_BROKER_POS_COUNT</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">execution</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">FTMO_ALLOC_PIP_VALUE_UNAVAILABLE_RATE</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: left;">info</td>
+<td style="text-align: left;">A0_MONITOR</td>
+<td style="text-align: left;">within policy band</td>
+<td style="text-align: left;">data</td>
+</tr>
+<tr>
+<td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">FTMO_ALLOC_STALE_PENDING_COUNT</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">A3_HALT_AND_REMEDIATE</td>
+<td style="text-align: left;">escalate and remediate</td>
+<td style="text-align: left;">execution</td>
 </tr>
 </tbody>
 </table>
