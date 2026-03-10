@@ -14,6 +14,11 @@ class IncomingTick(BaseModel):
     bid: float = Field(..., gt=0, description="Bid price")
     ask: float = Field(..., gt=0, description="Ask price")
     tick_volume: float = Field(default=1.0, ge=0, description="Tick volume (usually 1)")
+    client_tick_seq: int | None = Field(
+        default=None,
+        ge=0,
+        description="Optional per-symbol monotonic tick sequence from cBot for ingest diagnostics.",
+    )
 
 
 class IncomingTickBar(BaseModel):

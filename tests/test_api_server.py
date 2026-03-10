@@ -252,10 +252,19 @@ class TestPredictEndpoint:
     def test_predict_no_candidates(self, client):
         """If registry returns empty candidates, predict returns 422."""
         import unittest.mock as mock
+        from types import SimpleNamespace
 
         from src.behemoth.api import server
 
-        with mock.patch.object(server._registry, 'get_candidates', return_value=[]):
+        with mock.patch.object(
+            server,
+            "_resolve_runtime_contract",
+            return_value=SimpleNamespace(
+                candidates=[],
+                model_month="2025-01",
+                cap_pips=1.2,
+            ),
+        ):
             r = client.post(
                 "/predict",
                 json={
@@ -269,47 +278,52 @@ class TestPredictEndpoint:
 
     def test_predict_no_model(self, client):
         """If CatBoost model isn't loaded, predict returns 503."""
+        from fastapi import HTTPException
         import unittest.mock as mock
+        from types import SimpleNamespace
 
         from src.behemoth.api import server
 
-        # We dummy out the warmup check and feature computation so we hit the model check
         dummy_cand = mock.MagicMock()
         dummy_cand.bar_ticks = 100
         dummy_cand.horizon = 12
         dummy_cand.barrier_pips = 10.0
 
         with (
-            mock.patch.object(server._registry, 'get_candidates', return_value=[dummy_cand]),
-            mock.patch.object(server, '_check_warmup', return_value=None),
             mock.patch.object(
                 server,
-                "_load_model_binding_into_cache",
-                return_value=(False, "artifact_missing"),
+                "_resolve_runtime_contract",
+                return_value=SimpleNamespace(
+                    candidates=[dummy_cand],
+                    model_month="2025-01",
+                    cap_pips=1.2,
+                ),
+            ),
+            mock.patch.object(server, "_check_warmup", return_value=None),
+            mock.patch.object(
+                server,
+                "_ensure_model_and_threshold",
+                side_effect=HTTPException(
+                    status_code=503,
+                    detail="Unable to load lock-bound model for EURUSD: artifact_missing",
+                ),
             ),
         ):
-            original_models = server._models
-            original_thresholds = server._thresholds
-            server._models = {}  # Empty models
-            server._thresholds = {}
-            try:
-                r = client.post(
-                    "/predict",
-                    json={
-                        "symbol": "EURUSD",
-                        "requested_volume_units": 10000,
-                        "ftmo_enabled_override": True,
-                    },
-                )
-                assert r.status_code == 503
-                assert "Unable to load lock-bound model" in r.json()["detail"]
-            finally:
-                server._models = original_models
-                server._thresholds = original_thresholds
+            r = client.post(
+                "/predict",
+                json={
+                    "symbol": "EURUSD",
+                    "requested_volume_units": 10000,
+                    "ftmo_enabled_override": True,
+                },
+            )
+            assert r.status_code == 503
+            assert "Unable to load lock-bound model" in r.json()["detail"]
 
     def test_predict_feature_computation_fails(self, client):
         """If _state.compute_features returns None, predict returns 422."""
         import unittest.mock as mock
+        from types import SimpleNamespace
 
         from src.behemoth.api import server
 
@@ -319,10 +333,22 @@ class TestPredictEndpoint:
         dummy_cand.barrier_pips = 10.0
 
         with (
-            mock.patch.object(server._registry, 'get_candidates', return_value=[dummy_cand]),
-            mock.patch.object(server, '_check_warmup', return_value=None),
-            mock.patch.dict(server._models, {"EURUSD": mock.MagicMock()}),
-            mock.patch.object(server._state, 'compute_features', return_value=None),
+            mock.patch.object(
+                server,
+                "_resolve_runtime_contract",
+                return_value=SimpleNamespace(
+                    candidates=[dummy_cand],
+                    model_month="2025-01",
+                    cap_pips=1.2,
+                ),
+            ),
+            mock.patch.object(server, "_check_warmup", return_value=None),
+            mock.patch.object(
+                server,
+                "_ensure_model_and_threshold",
+                return_value=(mock.MagicMock(), {"threshold_exec": 0.5, "threshold_source": "test"}),
+            ),
+            mock.patch.object(server._state, "compute_features", return_value=None),
         ):
             r = client.post(
                 "/predict",
@@ -339,6 +365,7 @@ class TestPredictEndpoint:
         """Mock the pipeline to simulate a successful prediction return."""
         import unittest.mock as mock
         from datetime import datetime, timezone
+        from types import SimpleNamespace
 
         from src.behemoth.api import server
         from src.behemoth.core.schemas import ModelFeatures
@@ -361,11 +388,19 @@ class TestPredictEndpoint:
         dummy_model.predict_proba.return_value = np.array([[0.1, 0.85]])  # 85% probability
 
         with (
-            mock.patch.object(server._registry, 'get_candidates', return_value=[dummy_cand]),
-            mock.patch.object(server, '_check_warmup', return_value=None),
-            mock.patch.dict(server._models, {"EURUSD": dummy_model}),
-            mock.patch.object(server._state, 'compute_features', return_value=dummy_features),
-            mock.patch.object(server._state, 'get_latest_close_ts', return_value=datetime(2025, 1, 1, tzinfo=timezone.utc)),
+            mock.patch.object(
+                server,
+                "_resolve_runtime_contract",
+                return_value=SimpleNamespace(
+                    candidates=[dummy_cand],
+                    model_month="2025-01",
+                    cap_pips=1.2,
+                ),
+            ),
+            mock.patch.object(server, "_ensure_model_and_threshold", return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"})),
+            mock.patch.object(server, "_check_warmup", return_value=None),
+            mock.patch.object(server._state, "compute_features", return_value=dummy_features),
+            mock.patch.object(server._state, "get_latest_close_ts", return_value=datetime(2025, 1, 1, tzinfo=timezone.utc)),
         ):
             snap = client.post(
                 "/risk/ftmo/snapshot",
@@ -396,9 +431,181 @@ class TestPredictEndpoint:
             assert results[0]["risk_metrics_snapshot"]["ftmo_enabled_override"] is True
             assert results[0]["risk_metrics_snapshot"]["ftmo_mode_source"] == "request_override"
 
+    def test_predict_scopes_candidates_to_completed_bar_ticks(self, client):
+        import unittest.mock as mock
+        from datetime import datetime, timezone
+        from types import SimpleNamespace
+
+        import numpy as np
+
+        from src.behemoth.api import server
+        from src.behemoth.core.schemas import ModelFeatures
+
+        cand_100 = mock.MagicMock()
+        cand_100.bar_ticks = 100
+        cand_100.horizon = 6
+        cand_100.barrier_pips = 2.0
+        cand_100.candidate_uid = "cand_100"
+        cand_100.regime_desc = "all;barrier=2.0"
+
+        cand_1000 = mock.MagicMock()
+        cand_1000.bar_ticks = 1000
+        cand_1000.horizon = 6
+        cand_1000.barrier_pips = 2.0
+        cand_1000.candidate_uid = "cand_1000"
+        cand_1000.regime_desc = "all;barrier=2.0"
+
+        feat_100 = ModelFeatures(
+            cost_est_pips=0.3,
+            range_pips=6.0,
+            ret1_pips=1.0,
+            ret_z=0.4,
+            ret_abs_z=0.4,
+            vel_cost_units_h1=1.2,
+            vel_abs_cost_units_h1=1.2,
+            spread_z=0.2,
+            tick_rate_z=0.1,
+            hour_utc=10.0,
+            hl_first=1.0,
+            hl_first_mean_24=0.5,
+            hl_pos_frac_mean_24=0.5,
+            bar_ticks=100.0,
+            horizon=6.0,
+            barrier_pips=2.0,
+        )
+        feat_1000 = feat_100.model_copy(update={"bar_ticks": 1000.0})
+
+        def _compute_features(*, symbol, bar_ticks, horizon, barrier_pips):
+            if int(bar_ticks) == 100:
+                return feat_100
+            if int(bar_ticks) == 1000:
+                return feat_1000
+            return None
+
+        dummy_model = mock.MagicMock()
+        dummy_model.predict_proba.side_effect = [
+            np.array([[0.1, 0.80]]),
+            np.array([[0.1, 0.90]]),
+        ]
+
+        with (
+            mock.patch.object(
+                server,
+                "_resolve_runtime_contract",
+                return_value=SimpleNamespace(
+                    candidates=[cand_100, cand_1000],
+                    model_month="2025-01",
+                    cap_pips=1.2,
+                ),
+            ),
+            mock.patch.object(
+                server,
+                "_ensure_model_and_threshold",
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+            ),
+            mock.patch.object(server, "_check_warmup", return_value=None),
+            mock.patch.object(server._state, "compute_features", side_effect=_compute_features),
+            mock.patch.object(server._state, "compute_regime_quantiles", return_value={}),
+            mock.patch.object(
+                server._state,
+                "get_latest_close_ts",
+                return_value=datetime(2025, 1, 1, 10, 0, tzinfo=timezone.utc),
+            ),
+        ):
+            r = client.post(
+                "/predict",
+                json={
+                    "symbol": "EURUSD",
+                    "requested_volume_units": 10000,
+                    "ftmo_enabled_override": False,
+                    "completed_bar_ticks": [100],
+                },
+            )
+            assert r.status_code == 200
+            rows = r.json()
+            assert len(rows) == 1
+            assert rows[0]["bar_ticks"] == 100
+            assert rows[0]["candidate_uid"].endswith("|cand_100")
+
+    def test_predict_returns_empty_when_completed_ticks_exclude_all_candidates(self, client):
+        import unittest.mock as mock
+        from datetime import datetime, timezone
+        from types import SimpleNamespace
+
+        import numpy as np
+
+        from src.behemoth.api import server
+        from src.behemoth.core.schemas import ModelFeatures
+
+        cand_1000 = mock.MagicMock()
+        cand_1000.bar_ticks = 1000
+        cand_1000.horizon = 6
+        cand_1000.barrier_pips = 2.0
+        cand_1000.candidate_uid = "cand_1000"
+        cand_1000.regime_desc = "all;barrier=2.0"
+
+        feat_1000 = ModelFeatures(
+            cost_est_pips=0.3,
+            range_pips=6.0,
+            ret1_pips=1.0,
+            ret_z=0.4,
+            ret_abs_z=0.4,
+            vel_cost_units_h1=1.2,
+            vel_abs_cost_units_h1=1.2,
+            spread_z=0.2,
+            tick_rate_z=0.1,
+            hour_utc=10.0,
+            hl_first=1.0,
+            hl_first_mean_24=0.5,
+            hl_pos_frac_mean_24=0.5,
+            bar_ticks=1000.0,
+            horizon=6.0,
+            barrier_pips=2.0,
+        )
+
+        dummy_model = mock.MagicMock()
+        dummy_model.predict_proba.return_value = np.array([[0.1, 0.90]])
+
+        with (
+            mock.patch.object(
+                server,
+                "_resolve_runtime_contract",
+                return_value=SimpleNamespace(
+                    candidates=[cand_1000],
+                    model_month="2025-01",
+                    cap_pips=1.2,
+                ),
+            ),
+            mock.patch.object(
+                server,
+                "_ensure_model_and_threshold",
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+            ),
+            mock.patch.object(server, "_check_warmup", return_value=None),
+            mock.patch.object(server._state, "compute_features", return_value=feat_1000),
+            mock.patch.object(server._state, "compute_regime_quantiles", return_value={}),
+            mock.patch.object(
+                server._state,
+                "get_latest_close_ts",
+                return_value=datetime(2025, 1, 1, 10, 0, tzinfo=timezone.utc),
+            ),
+        ):
+            r = client.post(
+                "/predict",
+                json={
+                    "symbol": "EURUSD",
+                    "requested_volume_units": 10000,
+                    "ftmo_enabled_override": False,
+                    "completed_bar_ticks": [100],
+                },
+            )
+            assert r.status_code == 200
+            assert r.json() == []
+
     def test_predict_override_false_disables_ftmo_guard_eval(self, client):
         import unittest.mock as mock
         from datetime import datetime, timezone
+        from types import SimpleNamespace
 
         import numpy as np
 
@@ -434,9 +641,21 @@ class TestPredictEndpoint:
         dummy_model.predict_proba.return_value = np.array([[0.1, 0.85]])
 
         with (
-            mock.patch.object(server._registry, "get_candidates", return_value=[dummy_cand]),
+            mock.patch.object(
+                server,
+                "_resolve_runtime_contract",
+                return_value=SimpleNamespace(
+                    candidates=[dummy_cand],
+                    model_month="2025-01",
+                    cap_pips=1.2,
+                ),
+            ),
+            mock.patch.object(
+                server,
+                "_ensure_model_and_threshold",
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+            ),
             mock.patch.object(server, "_check_warmup", return_value=None),
-            mock.patch.dict(server._models, {"EURUSD": dummy_model}),
             mock.patch.object(server._state, "compute_features", return_value=dummy_features),
             mock.patch.object(
                 server._state,
@@ -463,6 +682,7 @@ class TestPredictEndpoint:
     def test_predict_blocks_candidate_when_regime_inactive(self, client):
         import unittest.mock as mock
         from datetime import datetime, timezone
+        from types import SimpleNamespace
 
         import numpy as np
 
@@ -498,9 +718,21 @@ class TestPredictEndpoint:
         dummy_model.predict_proba.return_value = np.array([[0.01, 0.95]])
 
         with (
-            mock.patch.object(server._registry, "get_candidates", return_value=[dummy_cand]),
+            mock.patch.object(
+                server,
+                "_resolve_runtime_contract",
+                return_value=SimpleNamespace(
+                    candidates=[dummy_cand],
+                    model_month="2025-01",
+                    cap_pips=1.2,
+                ),
+            ),
+            mock.patch.object(
+                server,
+                "_ensure_model_and_threshold",
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+            ),
             mock.patch.object(server, "_check_warmup", return_value=None),
-            mock.patch.dict(server._models, {"EURUSD": dummy_model}),
             mock.patch.object(server._state, "compute_features", return_value=dummy_features),
             mock.patch.object(server._state, "compute_regime_quantiles", return_value={}),
             mock.patch.object(
@@ -537,6 +769,7 @@ class TestPredictEndpoint:
     def test_predict_allocator_blocks_when_budget_exceeded(self, client):
         import unittest.mock as mock
         from datetime import datetime, timezone
+        from types import SimpleNamespace
 
         import numpy as np
 
@@ -568,9 +801,21 @@ class TestPredictEndpoint:
         ]
 
         with (
-            mock.patch.object(server._registry, "get_candidates", return_value=[cand_small, cand_large]),
+            mock.patch.object(
+                server,
+                "_resolve_runtime_contract",
+                return_value=SimpleNamespace(
+                    candidates=[cand_small, cand_large],
+                    model_month="2025-01",
+                    cap_pips=1.2,
+                ),
+            ),
+            mock.patch.object(
+                server,
+                "_ensure_model_and_threshold",
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+            ),
             mock.patch.object(server, "_check_warmup", return_value=None),
-            mock.patch.dict(server._models, {"EURUSD": dummy_model}),
             mock.patch.object(server._state, "compute_features", return_value=dummy_features),
             mock.patch.object(server._state, "get_latest_close_ts", return_value=datetime(2025, 1, 1, tzinfo=timezone.utc)),
             mock.patch.object(
@@ -810,6 +1055,48 @@ class TestIngestionEndpoints:
             assert body["completed_bar_ticks"] == []
             assert dummy_agg.add_ticks.call_count == 1
 
+    def test_ingest_tick_accepts_duplicate_timestamp_when_client_tick_seq_monotonic(self, client):
+        import unittest.mock as mock
+
+        from src.behemoth.api import server
+
+        dummy_agg = mock.MagicMock()
+        dummy_agg.add_ticks.return_value = []
+
+        with (
+            mock.patch.dict(server._aggregators, {100: dummy_agg}, clear=True),
+            mock.patch.object(server._state, "bar_count", return_value=0),
+        ):
+            r1 = client.post(
+                "/ticks",
+                json={
+                    "symbol": "EURUSD",
+                    "timestamp": "2025-01-01T00:00:10Z",
+                    "bid": 1.1,
+                    "ask": 1.1001,
+                    "client_tick_seq": 1,
+                },
+            )
+            assert r1.status_code == 201
+            assert r1.json()["tick_accepted"] is True
+
+            r2 = client.post(
+                "/ticks",
+                json={
+                    "symbol": "EURUSD",
+                    "timestamp": "2025-01-01T00:00:10Z",
+                    "bid": 1.1,
+                    "ask": 1.1001,
+                    "client_tick_seq": 2,
+                },
+            )
+            assert r2.status_code == 201
+            body = r2.json()
+            assert body["tick_accepted"] is True
+            assert body["drop_reason"] is None
+            assert body["symbol_tick_seq"] == 2
+            assert dummy_agg.add_ticks.call_count == 2
+
     def test_ingest_tick_records_raw_tick_historical_only(self, client):
         import unittest.mock as mock
 
@@ -839,3 +1126,139 @@ class TestIngestionEndpoints:
         finally:
             server._config.governance_mode = orig_mode
             server._config.record_raw_ticks = orig_record
+
+    def test_ingest_tick_drops_duplicate_client_tick_seq(self, client):
+        import unittest.mock as mock
+
+        from src.behemoth.api import server
+
+        dummy_agg = mock.MagicMock()
+        dummy_agg.add_ticks.return_value = []
+
+        with (
+            mock.patch.dict(server._aggregators, {100: dummy_agg}, clear=True),
+            mock.patch.object(server._state, "bar_count", return_value=0),
+        ):
+            r1 = client.post(
+                "/ticks",
+                json={
+                    "symbol": "EURUSD",
+                    "timestamp": "2025-01-01T00:00:10Z",
+                    "bid": 1.1,
+                    "ask": 1.1001,
+                    "client_tick_seq": 1,
+                },
+            )
+            assert r1.status_code == 201
+            assert r1.json()["tick_accepted"] is True
+
+            r2 = client.post(
+                "/ticks",
+                json={
+                    "symbol": "EURUSD",
+                    "timestamp": "2025-01-01T00:00:11Z",
+                    "bid": 1.1,
+                    "ask": 1.1001,
+                    "client_tick_seq": 1,
+                },
+            )
+            assert r2.status_code == 201
+            assert r2.json()["tick_accepted"] is False
+            assert r2.json()["drop_reason"] == "duplicate_client_tick_seq"
+
+            r3 = client.post(
+                "/ticks",
+                json={
+                    "symbol": "EURUSD",
+                    "timestamp": "2025-01-01T00:00:12Z",
+                    "bid": 1.1,
+                    "ask": 1.1001,
+                    "client_tick_seq": 0,
+                },
+            )
+            assert r3.status_code == 201
+            assert r3.json()["tick_accepted"] is False
+            assert r3.json()["drop_reason"] == "non_monotonic_client_tick_seq"
+
+    def test_ingest_ticks_batch_success(self, client):
+        import unittest.mock as mock
+
+        from src.behemoth.api import server
+        from src.behemoth.runtime.tick_aggregator import IncomingTickBar
+
+        dummy_agg = mock.MagicMock()
+        dummy_bar = IncomingTickBar(
+            symbol="EURUSD",
+            bar_ticks=100,
+            timestamp="2025-01-01T00:00:00Z",
+            close_ts="2025-01-01T00:00:10Z",
+            open=1.0,
+            high=1.0,
+            low=1.0,
+            close=1.0,
+            spread=0.0,
+            tick_volume=100.0,
+            hl_first=1.0,
+            hl_pos_frac=0.5,
+        )
+        dummy_agg.add_ticks.side_effect = [[], [dummy_bar]]
+
+        with (
+            mock.patch.dict(server._aggregators, {100: dummy_agg}, clear=True),
+            mock.patch.object(server._state, "append_bar") as mock_append,
+            mock.patch.object(server._state, "bar_count", return_value=150),
+        ):
+            r = client.post(
+                "/ticks/batch",
+                json={
+                    "symbol": "EURUSD",
+                    "ticks": [
+                        {
+                            "symbol": "EURUSD",
+                            "timestamp": "2025-01-01T00:00:10Z",
+                            "bid": 1.1,
+                            "ask": 1.1001,
+                            "client_tick_seq": 1,
+                        },
+                        {
+                            "symbol": "EURUSD",
+                            "timestamp": "2025-01-01T00:00:11Z",
+                            "bid": 1.1,
+                            "ask": 1.1001,
+                            "client_tick_seq": 2,
+                        },
+                    ],
+                },
+            )
+            assert r.status_code == 201
+            body = r.json()
+            assert body["accepted_count"] == 2
+            assert body["dropped_count"] == 0
+            assert body["bar_completed"] is True
+            assert body["completed_bar_ticks"] == [100]
+            assert mock_append.call_count == 1
+
+    def test_ingest_ticks_batch_symbol_mismatch(self, client):
+        import unittest.mock as mock
+
+        from src.behemoth.api import server
+
+        with (
+            mock.patch.object(server._state, "bar_count", return_value=0),
+            mock.patch.dict(server._aggregators, {100: mock.MagicMock(add_ticks=mock.MagicMock(return_value=[]))}, clear=True),
+        ):
+            r = client.post(
+                "/ticks/batch",
+                json={
+                    "symbol": "EURUSD",
+                    "ticks": [
+                        {
+                            "symbol": "GBPUSD",
+                            "timestamp": "2025-01-01T00:00:10Z",
+                            "bid": 1.1,
+                            "ask": 1.1001,
+                        }
+                    ],
+                },
+            )
+            assert r.status_code == 422

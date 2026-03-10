@@ -243,6 +243,35 @@ def _filter_months(
     return out
 
 
+def _prune_stale_symbol_month_files(
+    *,
+    out_dir: Path,
+    symbol: str,
+    available_months: list[str],
+) -> int:
+    """Remove stale month lock/state files for a symbol no longer in available month set."""
+    sym = str(symbol).upper().strip()
+    sym_l = sym.lower()
+    keep = set(str(m).strip() for m in available_months if _MONTH_RE.match(str(m).strip()))
+    removed = 0
+    if not out_dir.exists():
+        return 0
+    for month_dir in out_dir.iterdir():
+        if not month_dir.is_dir() or not _MONTH_RE.match(month_dir.name):
+            continue
+        if month_dir.name in keep:
+            continue
+        for fp in (
+            month_dir / f"{sym_l}_oco_live_lock.json",
+            month_dir / f"{sym_l}_oco_allowed_states.csv",
+        ):
+            if fp.exists():
+                fp.unlink()
+                removed += 1
+                print(f"removed stale: {fp}")
+    return removed
+
+
 def run(
     *,
     symbols: list[str],
@@ -276,6 +305,7 @@ def run(
         state_schedule = pd.read_csv(paths["state_schedule"])
         sched_months = sorted(state_schedule["test_month"].dropna().astype(str).unique().tolist())
         available = sorted(list(set(model_pairs.keys()) & set(sched_months)))
+        _prune_stale_symbol_month_files(out_dir=out_dir, symbol=sym, available_months=available)
         month_list = _filter_months(
             months=available,
             explicit_months=months,

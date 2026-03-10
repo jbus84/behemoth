@@ -713,6 +713,21 @@ def _resolve_requested_volume_units(req: PredictRequest) -> float:
     )
 
 
+def _normalize_completed_bar_ticks(raw: list[int] | None) -> set[int]:
+    """Normalize client-provided completed bar-tick identifiers."""
+    out: set[int] = set()
+    if not raw:
+        return out
+    for v in raw:
+        try:
+            iv = int(v)
+        except Exception:
+            continue
+        if iv > 0:
+            out.add(iv)
+    return out
+
+
 def _candidate_regime_name(cand: Any) -> str:
     txt = str(getattr(cand, "regime_desc", "") or "").strip()
     if txt and txt.lower() not in {"nan", "none"}:
@@ -847,9 +862,13 @@ def _new_feed_tracker() -> dict[str, Any]:
         "total_received": 0,
         "total_accepted": 0,
         "total_dropped": 0,
+        "total_batches": 0,
         "duplicate_timestamps": 0,
         "monotonic_violations": 0,
+        "duplicate_client_tick_seq": 0,
+        "client_seq_violations": 0,
         "symbol_tick_seq": 0,
+        "last_client_tick_seq": None,
         "last_tick_ts_utc": None,
         "last_ingest_utc": None,
         "last_drop_reason": None,
@@ -1122,6 +1141,14 @@ class PredictRequest(BaseModel):
         gt=0.0,
         description="Optional intended lot size (converted to units using 100k FX lot).",
     )
+    completed_bar_ticks: list[int] = Field(
+        default_factory=list,
+        description=(
+            "Bar-tick granularities that just completed on the caller side "
+            "(e.g. [100], [100,1000]). When provided, prediction is scoped to "
+            "matching candidate bar_ticks only."
+        ),
+    )
 
 
 class HealthResponse(BaseModel):
@@ -1150,9 +1177,13 @@ class FeedStatusSymbol(BaseModel):
     total_received: int = 0
     total_accepted: int = 0
     total_dropped: int = 0
+    total_batches: int = 0
     duplicate_timestamps: int = 0
     monotonic_violations: int = 0
+    duplicate_client_tick_seq: int = 0
+    client_seq_violations: int = 0
     symbol_tick_seq: int = 0
+    last_client_tick_seq: int | None = None
     last_tick_ts_utc: datetime | None = None
     last_ingest_utc: datetime | None = None
     last_drop_reason: str | None = None
@@ -1169,6 +1200,12 @@ class BackfillRequest(BaseModel):
     """Batch of raw ticks for instant warmup."""
     symbol: str
     bar_ticks: int = 100
+    ticks: list[IncomingTick]
+
+
+class TickBatchRequest(BaseModel):
+    """Batch of live ticks with optional symbol-level assertion."""
+    symbol: str | None = None
     ticks: list[IncomingTick]
 
 
@@ -1372,6 +1409,11 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
 
     contract = _resolve_runtime_contract(sym, close_ts)
     candidates = contract.candidates
+    completed_ticks = _normalize_completed_bar_ticks(req.completed_bar_ticks)
+    if completed_ticks:
+        candidates = [c for c in candidates if int(getattr(c, "bar_ticks", 0)) in completed_ticks]
+        if not candidates:
+            return []
     if not candidates:
         raise HTTPException(status_code=422, detail=f"No candidates registered for {sym}")
 
@@ -1898,9 +1940,17 @@ async def runtime_feed_status() -> FeedStatusResponse:
                 total_received=int(st["total_received"]),
                 total_accepted=int(st["total_accepted"]),
                 total_dropped=int(st["total_dropped"]),
+                total_batches=int(st["total_batches"]),
                 duplicate_timestamps=int(st["duplicate_timestamps"]),
                 monotonic_violations=int(st["monotonic_violations"]),
+                duplicate_client_tick_seq=int(st["duplicate_client_tick_seq"]),
+                client_seq_violations=int(st["client_seq_violations"]),
                 symbol_tick_seq=int(st["symbol_tick_seq"]),
+                last_client_tick_seq=(
+                    int(st["last_client_tick_seq"])
+                    if st.get("last_client_tick_seq") is not None
+                    else None
+                ),
                 last_tick_ts_utc=st["last_tick_ts_utc"],
                 last_ingest_utc=st["last_ingest_utc"],
                 last_drop_reason=st["last_drop_reason"],
@@ -1977,12 +2027,35 @@ async def backfill(req: BackfillRequest) -> dict:
     }
 
 
-@app.post("/ticks", status_code=201)
-async def ingest_tick(tick: IncomingTick) -> dict:
-    """Accept a single live tick, buffer it, and auto-emit bars.
+def _reject_tick(
+    *,
+    sym: str,
+    feed: dict[str, Any],
+    drop_reason: str,
+    last_tick_ts_utc: datetime | None,
+) -> dict[str, Any]:
+    feed["total_dropped"] = int(feed["total_dropped"]) + 1
+    feed["last_drop_reason"] = str(drop_reason)
+    return {
+        "ok": True,
+        "symbol": sym,
+        "tick_accepted": False,
+        "drop_reason": str(drop_reason),
+        "symbol_tick_seq": int(feed["symbol_tick_seq"]),
+        "last_tick_ts_utc": last_tick_ts_utc,
+        "last_client_tick_seq": (
+            int(feed["last_client_tick_seq"])
+            if feed.get("last_client_tick_seq") is not None
+            else None
+        ),
+        "bar_completed": False,
+        "completed_bar_ticks": [],
+        "bar_count": _state.bar_count(sym, 100) if _state is not None else 0,
+    }
 
-    Called by the cBot on each ``OnTick()`` event.
-    """
+
+def _ingest_tick_internal(tick: IncomingTick) -> dict[str, Any]:
+    """Ingest one tick with feed monotonicity checks and bar emission."""
     if _state is None or not _aggregators:
         raise HTTPException(status_code=503, detail="Not initialized")
 
@@ -1993,27 +2066,57 @@ async def ingest_tick(tick: IncomingTick) -> dict:
     feed["total_received"] = int(feed["total_received"]) + 1
     feed["last_ingest_utc"] = now_utc
 
+    client_tick_seq = tick.client_tick_seq
+    client_seq_int: int | None = None
+    if client_tick_seq is not None:
+        try:
+            client_seq_int = int(client_tick_seq)
+        except Exception:
+            client_seq_int = None
+        if client_seq_int is not None:
+            last_client_seq = feed.get("last_client_tick_seq")
+            if last_client_seq is not None and client_seq_int <= int(last_client_seq):
+                if client_seq_int == int(last_client_seq):
+                    feed["duplicate_client_tick_seq"] = int(feed["duplicate_client_tick_seq"]) + 1
+                    return _reject_tick(
+                        sym=sym,
+                        feed=feed,
+                        drop_reason="duplicate_client_tick_seq",
+                        last_tick_ts_utc=feed.get("last_tick_ts_utc"),
+                    )
+                feed["client_seq_violations"] = int(feed["client_seq_violations"]) + 1
+                return _reject_tick(
+                    sym=sym,
+                    feed=feed,
+                    drop_reason="non_monotonic_client_tick_seq",
+                    last_tick_ts_utc=feed.get("last_tick_ts_utc"),
+                )
+
     last_tick_ts = feed.get("last_tick_ts_utc")
     if isinstance(last_tick_ts, datetime) and tick_ts_utc <= last_tick_ts:
-        if tick_ts_utc == last_tick_ts:
-            drop_reason = "duplicate_timestamp"
-            feed["duplicate_timestamps"] = int(feed["duplicate_timestamps"]) + 1
+        # When client_tick_seq is present, use it as the canonical ingest order and
+        # keep timestamp monotonicity counters informational-only.
+        if client_seq_int is not None:
+            if tick_ts_utc == last_tick_ts:
+                feed["duplicate_timestamps"] = int(feed["duplicate_timestamps"]) + 1
+            else:
+                feed["monotonic_violations"] = int(feed["monotonic_violations"]) + 1
         else:
-            drop_reason = "non_monotonic_timestamp"
+            if tick_ts_utc == last_tick_ts:
+                feed["duplicate_timestamps"] = int(feed["duplicate_timestamps"]) + 1
+                return _reject_tick(
+                    sym=sym,
+                    feed=feed,
+                    drop_reason="duplicate_timestamp",
+                    last_tick_ts_utc=last_tick_ts,
+                )
             feed["monotonic_violations"] = int(feed["monotonic_violations"]) + 1
-        feed["total_dropped"] = int(feed["total_dropped"]) + 1
-        feed["last_drop_reason"] = drop_reason
-        return {
-            "ok": True,
-            "symbol": sym,
-            "tick_accepted": False,
-            "drop_reason": drop_reason,
-            "symbol_tick_seq": int(feed["symbol_tick_seq"]),
-            "last_tick_ts_utc": last_tick_ts,
-            "bar_completed": False,
-            "completed_bar_ticks": [],
-            "bar_count": _state.bar_count(sym, 100),
-        }
+            return _reject_tick(
+                sym=sym,
+                feed=feed,
+                drop_reason="non_monotonic_timestamp",
+                last_tick_ts_utc=last_tick_ts,
+            )
 
     if _config.record_raw_ticks and _is_historical_mode():
         _state.record_raw_tick(tick, source="historical_backtest")
@@ -2031,7 +2134,12 @@ async def ingest_tick(tick: IncomingTick) -> dict:
 
     feed["total_accepted"] = int(feed["total_accepted"]) + 1
     feed["symbol_tick_seq"] = int(feed["symbol_tick_seq"]) + 1
-    feed["last_tick_ts_utc"] = tick_ts_utc
+    if isinstance(last_tick_ts, datetime):
+        feed["last_tick_ts_utc"] = tick_ts_utc if tick_ts_utc > last_tick_ts else last_tick_ts
+    else:
+        feed["last_tick_ts_utc"] = tick_ts_utc
+    if client_seq_int is not None:
+        feed["last_client_tick_seq"] = int(client_seq_int)
     feed["last_drop_reason"] = None
     return {
         "ok": True,
@@ -2039,8 +2147,83 @@ async def ingest_tick(tick: IncomingTick) -> dict:
         "tick_accepted": True,
         "drop_reason": None,
         "symbol_tick_seq": int(feed["symbol_tick_seq"]),
-        "last_tick_ts_utc": tick_ts_utc,
+        "last_tick_ts_utc": feed.get("last_tick_ts_utc"),
+        "last_client_tick_seq": (
+            int(feed["last_client_tick_seq"])
+            if feed.get("last_client_tick_seq") is not None
+            else None
+        ),
         "bar_completed": bar_completed,
         "completed_bar_ticks": completed_bar_ticks,
         "bar_count": _state.bar_count(sym, 100),  # Return standard 100-tick count as baseline
+    }
+
+
+@app.post("/ticks", status_code=201)
+async def ingest_tick(tick: IncomingTick) -> dict:
+    """Accept a single live tick, buffer it, and auto-emit bars.
+
+    Called by the cBot on each ``OnTick()`` event.
+    """
+    return _ingest_tick_internal(tick)
+
+
+@app.post("/ticks/batch", status_code=201)
+async def ingest_ticks_batch(req: TickBatchRequest) -> dict:
+    """Accept a batch of live ticks for lower-overhead ingest."""
+    if _state is None or not _aggregators:
+        raise HTTPException(status_code=503, detail="Not initialized")
+    if not req.ticks:
+        raise HTTPException(status_code=422, detail="ticks must be non-empty")
+
+    symbols_seen = {str(t.symbol).upper().strip() for t in req.ticks if str(t.symbol).strip() != ""}
+    if not symbols_seen:
+        raise HTTPException(status_code=422, detail="ticks must include symbol")
+    if req.symbol is not None and str(req.symbol).strip() != "":
+        req_sym = str(req.symbol).upper().strip()
+        if symbols_seen != {req_sym}:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Batch symbol mismatch: request symbol={req_sym} tick_symbols={sorted(symbols_seen)}",
+            )
+        batch_sym = req_sym
+    else:
+        if len(symbols_seen) != 1:
+            raise HTTPException(
+                status_code=422,
+                detail=f"ticks must contain exactly one symbol per batch; got={sorted(symbols_seen)}",
+            )
+        batch_sym = next(iter(symbols_seen))
+
+    feed = _get_feed_tracker(batch_sym)
+    feed["total_batches"] = int(feed["total_batches"]) + 1
+
+    accepted = 0
+    dropped = 0
+    completed_bar_ticks: list[int] = []
+    for tick in req.ticks:
+        out = _ingest_tick_internal(tick)
+        if bool(out.get("tick_accepted", False)):
+            accepted += 1
+        else:
+            dropped += 1
+        if bool(out.get("bar_completed", False)):
+            completed_bar_ticks.extend([int(x) for x in out.get("completed_bar_ticks", [])])
+
+    return {
+        "ok": True,
+        "symbol": batch_sym,
+        "ticks_received": len(req.ticks),
+        "accepted_count": int(accepted),
+        "dropped_count": int(dropped),
+        "bar_completed": len(completed_bar_ticks) > 0,
+        "completed_bar_ticks": completed_bar_ticks,
+        "symbol_tick_seq": int(feed["symbol_tick_seq"]),
+        "last_tick_ts_utc": feed.get("last_tick_ts_utc"),
+        "last_client_tick_seq": (
+            int(feed["last_client_tick_seq"])
+            if feed.get("last_client_tick_seq") is not None
+            else None
+        ),
+        "bar_count": _state.bar_count(batch_sym, 100),
     }

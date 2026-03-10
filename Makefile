@@ -176,6 +176,7 @@ reconcile-ctrader-run:
 		--runtime-db $(or $(RUNTIME_DB),data/db/behemoth_runtime.db) \
 		--predictions-parquet $(PRED_PATH) \
 		$(if $(HISTORY_DIR),--history-dir $(HISTORY_DIR),) \
+		$(if $(TICK_ROOT),--tick-root $(TICK_ROOT),) \
 		--start-ts $(START_TS) \
 		--end-ts $(END_TS) \
 		--strict-window $(or $(STRICT_WINDOW),true) \

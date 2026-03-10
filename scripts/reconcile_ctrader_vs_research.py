@@ -269,19 +269,86 @@ def _load_research_predictions_window(
         con.close()
 
 
+def _month_tags_between(start: pd.Timestamp | None, end: pd.Timestamp | None) -> list[str]:
+    if start is None or end is None or not (start < end):
+        return []
+    end_inclusive = end - pd.Timedelta(microseconds=1)
+    if end_inclusive < start:
+        return []
+    s0 = start.tz_convert("UTC").tz_localize(None) if start.tzinfo is not None else start
+    e0 = (
+        end_inclusive.tz_convert("UTC").tz_localize(None)
+        if end_inclusive.tzinfo is not None
+        else end_inclusive
+    )
+    pr = pd.period_range(start=s0.to_period("M"), end=e0.to_period("M"), freq="M")
+    return [str(p).replace("-", "") for p in pr]
+
+
+def _quote_sql_path(path: Path) -> str:
+    return "'" + str(path).replace("'", "''") + "'"
+
+
+def _load_hist_tick_timestamps(
+    *,
+    symbol: str,
+    start: pd.Timestamp | None,
+    end: pd.Timestamp | None,
+    tick_root: Path | None,
+) -> pd.Series:
+    if tick_root is None or start is None or end is None or not (start < end):
+        return pd.Series(dtype="datetime64[ns, UTC]")
+    sym = str(symbol).upper().strip()
+    months = _month_tags_between(start, end)
+    files = [
+        tick_root / sym / f"{sym}_{m}_ticks.parquet"
+        for m in months
+        if (tick_root / sym / f"{sym}_{m}_ticks.parquet").exists()
+    ]
+    if not files:
+        return pd.Series(dtype="datetime64[ns, UTC]")
+
+    files_sql = "[" + ",".join(_quote_sql_path(p) for p in files) + "]"
+    con = duckdb.connect()
+    try:
+        sql = (
+            f"SELECT timestamp AS ts FROM read_parquet({files_sql}) "
+            "WHERE timestamp >= ? AND timestamp < ? ORDER BY timestamp"
+        )
+        df = con.execute(sql, [start.to_pydatetime(), end.to_pydatetime()]).fetchdf()
+    finally:
+        con.close()
+    if "ts" not in df.columns:
+        return pd.Series(dtype="datetime64[ns, UTC]")
+    return _to_utc(df["ts"])
+
+
+def _median_intertick_ms(ts: pd.Series) -> float:
+    if ts.empty:
+        return float("nan")
+    x = _to_utc(ts).dropna().sort_values()
+    if len(x) < 2:
+        return float("nan")
+    dt_ms = x.diff().dt.total_seconds().dropna() * 1000.0
+    if dt_ms.empty:
+        return float("nan")
+    return float(dt_ms.median())
+
+
 def run(
     *,
     symbol: str,
     runtime_db_path: Path,
     predictions_parquet: Path,
-    history_dir: Path | None,
-    start_ts: str | None,
-    end_ts: str | None,
-    strict_window: bool,
-    timestamp_tolerance_sec: float,
-    out_checks_csv: Path,
-    out_mismatches_csv: Path,
-    report_out: Path,
+    history_dir: Path | None = None,
+    tick_root: Path | None = None,
+    start_ts: str | None = None,
+    end_ts: str | None = None,
+    strict_window: bool = True,
+    timestamp_tolerance_sec: float = 2.0,
+    out_checks_csv: Path = Path("data/analysis/backtest_reconcile/ctrader_vs_research_checks.csv"),
+    out_mismatches_csv: Path = Path("data/analysis/backtest_reconcile/ctrader_vs_research_mismatches.csv"),
+    report_out: Path = Path("docs/analysis/ctrader_vs_research_reconciliation.md"),
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     sym = str(symbol).upper().strip()
     start = _parse_ts(start_ts)
@@ -346,6 +413,15 @@ def run(
             """
             SELECT symbol, event_ts, close_ts, candidate_uid, pred_prob, threshold, model_month
             FROM audit_logs
+            WHERE upper(symbol) = ?
+            """,
+            [sym],
+        )
+        raw_ticks = _safe_query(
+            con,
+            """
+            SELECT symbol, tick_ts
+            FROM raw_ticks
             WHERE upper(symbol) = ?
             """,
             [sym],
@@ -452,9 +528,15 @@ def run(
         audit["model_month"] = audit.get("model_month", pd.Series(dtype=str)).astype(str)
         audit["candidate_uid"] = audit.get("candidate_uid", pd.Series(dtype=str)).astype(str)
 
+    if not raw_ticks.empty:
+        raw_ticks["tick_ts"] = _to_utc(raw_ticks.get("tick_ts", pd.Series(dtype=object)))
+
     trades_window = trades[_window_mask(trades["entry_ts"], start, end)] if not trades.empty else pd.DataFrame()
     audit_event_window = audit[_window_mask(audit["event_ts"], start, end)] if not audit.empty else pd.DataFrame()
     audit_close_window = audit[_window_mask(audit["close_ts"], start, end)] if not audit.empty else pd.DataFrame()
+    raw_ticks_window = (
+        raw_ticks[_window_mask(raw_ticks["tick_ts"], start, end)] if not raw_ticks.empty else pd.DataFrame()
+    )
 
     audit_window = audit_close_window if len(audit_close_window) > 0 else audit_event_window
     audit_window_source = "close_ts" if len(audit_close_window) > 0 else "event_ts"
@@ -604,6 +686,89 @@ def run(
         operator="<=",
         detail=f"audit_window_source={audit_window_source}",
     )
+
+    hist_tick_ts = _load_hist_tick_timestamps(
+        symbol=sym,
+        start=start,
+        end=end,
+        tick_root=tick_root,
+    )
+    runtime_raw_tick_rows = int(len(raw_ticks_window))
+    hist_tick_rows = int(len(hist_tick_ts))
+    raw_tick_coverage_ratio = (
+        float(runtime_raw_tick_rows) / float(hist_tick_rows)
+        if hist_tick_rows > 0
+        else float("nan")
+    )
+    runtime_raw_median_intertick_ms = _median_intertick_ms(
+        raw_ticks_window.get("tick_ts", pd.Series(dtype=object))
+    )
+    hist_median_intertick_ms = _median_intertick_ms(hist_tick_ts)
+    intertick_ratio_runtime_vs_hist = (
+        float(runtime_raw_median_intertick_ms) / float(hist_median_intertick_ms)
+        if pd.notna(runtime_raw_median_intertick_ms)
+        and pd.notna(hist_median_intertick_ms)
+        and float(hist_median_intertick_ms) > 0.0
+        else float("nan")
+    )
+
+    _add_check(
+        checks,
+        check_id="RAW_TICK_ROWS_WINDOW_PRESENT",
+        ok=runtime_raw_tick_rows > 0,
+        severity="high",
+        metric="runtime_raw_tick_rows_window",
+        value=int(runtime_raw_tick_rows),
+        expected=">0",
+        operator=">",
+        detail="runtime raw_ticks rows in requested window",
+    )
+    if hist_tick_rows > 0:
+        _add_check(
+            checks,
+            check_id="RAW_TICK_COVERAGE_RATIO_GE_0_95",
+            ok=float(raw_tick_coverage_ratio) >= 0.95,
+            severity="high",
+            metric="raw_tick_coverage_ratio_runtime_vs_hist",
+            value=float(raw_tick_coverage_ratio),
+            expected=0.95,
+            operator=">=",
+            detail=f"tick_root={tick_root}",
+        )
+        _add_check(
+            checks,
+            check_id="RUNTIME_MEDIAN_INTERTICK_MS_LE_2X_HIST",
+            ok=(
+                float(intertick_ratio_runtime_vs_hist) <= 2.0
+                if pd.notna(intertick_ratio_runtime_vs_hist)
+                else False
+            ),
+            severity="high",
+            metric="median_intertick_ratio_runtime_vs_hist",
+            value=(
+                float(intertick_ratio_runtime_vs_hist)
+                if pd.notna(intertick_ratio_runtime_vs_hist)
+                else float("nan")
+            ),
+            expected=2.0,
+            operator="<=",
+            detail=(
+                f"runtime_median_ms={runtime_raw_median_intertick_ms}; "
+                f"hist_median_ms={hist_median_intertick_ms}"
+            ),
+        )
+    else:
+        _add_check(
+            checks,
+            check_id="HIST_TICK_ROWS_WINDOW_INFO",
+            ok=True,
+            severity="medium",
+            metric="hist_tick_rows_window",
+            value=int(hist_tick_rows),
+            expected="informational",
+            operator="info",
+            detail=f"tick_root={tick_root}; no HistData rows found for requested window",
+        )
 
     _add_check(
         checks,
@@ -973,6 +1138,28 @@ def run(
                 "trades_window_rows": int(len(trades_window)),
                 "audit_symbol_rows": int(len(audit)),
                 "audit_window_rows": int(len(audit_window)),
+                "runtime_raw_tick_rows_window": int(runtime_raw_tick_rows),
+                "hist_tick_rows_window": int(hist_tick_rows),
+                "raw_tick_coverage_ratio_runtime_vs_hist": (
+                    float(raw_tick_coverage_ratio)
+                    if pd.notna(raw_tick_coverage_ratio)
+                    else float("nan")
+                ),
+                "runtime_median_intertick_ms": (
+                    float(runtime_raw_median_intertick_ms)
+                    if pd.notna(runtime_raw_median_intertick_ms)
+                    else float("nan")
+                ),
+                "hist_median_intertick_ms": (
+                    float(hist_median_intertick_ms)
+                    if pd.notna(hist_median_intertick_ms)
+                    else float("nan")
+                ),
+                "median_intertick_ratio_runtime_vs_hist": (
+                    float(intertick_ratio_runtime_vs_hist)
+                    if pd.notna(intertick_ratio_runtime_vs_hist)
+                    else float("nan")
+                ),
                 "research_window_rows": int(len(research_window)),
                 "research_selected_rows_window": int(len(research_sel)),
                 "selected_key_missing_count": int(len(missing)),
@@ -1040,6 +1227,7 @@ def main() -> None:
     p.add_argument("--runtime-db", default="data/db/behemoth_runtime.db")
     p.add_argument("--predictions-parquet", required=True)
     p.add_argument("--history-dir", default="")
+    p.add_argument("--tick-root", default="/Users/danielfisher/Desktop/tick")
     p.add_argument("--start-ts", default="")
     p.add_argument("--end-ts", default="")
     p.add_argument("--strict-window", default="true", choices=["true", "false"])
@@ -1063,6 +1251,7 @@ def main() -> None:
         runtime_db_path=Path(str(args.runtime_db)),
         predictions_parquet=Path(str(args.predictions_parquet)),
         history_dir=(Path(str(args.history_dir)) if str(args.history_dir).strip() else None),
+        tick_root=(Path(str(args.tick_root)) if str(args.tick_root).strip() else None),
         start_ts=str(args.start_ts).strip() or None,
         end_ts=str(args.end_ts).strip() or None,
         strict_window=(str(args.strict_window).strip().lower() == "true"),

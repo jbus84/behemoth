@@ -3,28 +3,28 @@
     "capacity_overall_pass": true,
     "live_deployable": true,
     "model_cbm_path": "models/oco/EURUSD_model_2026-01.cbm",
-    "model_cbm_sha256": "b3b50b0ad876f9681fd1edfa9aa12ac09fe4618bb7863f049f2cf787ca6caf71",
+    "model_cbm_sha256": "504afb88bb5bbfd36bb8a657a9d05c8b71b5d5d0faefcc44d77e8be83d451a4a",
     "model_month": "2026-01",
     "model_threshold_json_path": "models/oco/EURUSD_model_2026-01.json",
-    "model_threshold_json_sha256": "c5939899a722d4648cf19c4ccfc3a7f5d225b678a5822b0fd1b54e18abc2d805",
+    "model_threshold_json_sha256": "fad1d91cb199be285f5dc04354b6a3f61af242b9f89f8979c676044814ea84fe",
     "predictions_path": "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet",
-    "predictions_sha256": "f064d24a40b7aaf0bb852dfc0944d59d567d74ceaf6a82e3634e39027edd0ad9",
+    "predictions_sha256": "97057ba26472978d33ddb1e185c0e2e8792f8205038b8e04d47eda1a6b8c5b60",
     "reduced_config_path": "configs/research/experiments/eurusd_oco_reduced_core_2025.yaml",
     "reduced_config_sha256": "d8e47b43d7ad62629c5c2b651d03cf8215cc900b8198719d5653da9dae51034a",
     "reduced_states_csv_path": "configs/research/governance/oco_history/2026-01/eurusd_oco_allowed_states.csv",
-    "reduced_states_csv_sha256": "b6d71bec86ba05b9020620ae7ea162ff16ecdcbbbf71b6e0da2a3e3c21626d16",
+    "reduced_states_csv_sha256": "d436031f8d3061e14b0aeb48dce5730e23f890316e53c7f4f0469a55493f86cc",
     "reduced_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_summary.csv",
-    "reduced_summary_sha256": "71bd526a37aa8b951bad0eb161c8d66405fa6ab0707197fb152d7f79c96e143b",
+    "reduced_summary_sha256": "495e95669a7fac17803cacc24cd6fa0b441d08ad2165af631b88778828ea5f38",
     "tick_exact_overall_pass": true,
     "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_tick_exact_summary.csv",
-    "tick_exact_summary_sha256": "88068d5e6f74f13290956e4fab0af00c197d9d09caaee0f9f10767b59abea68e",
+    "tick_exact_summary_sha256": "ca570181aa92b4d9a6a2a2e14f92c6b881012850e74c8cc3dcf641fc5f4f4097",
     "wfo_config_path": "configs/research/experiments/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
     "wfo_config_sha256": "34d334848ed48542b19d6c40af233f32fac8fdbbf534ea8290ddb477931010e0"
   },
-  "frozen_at_utc": "2026-03-08T21:52:43.460070+00:00",
+  "frozen_at_utc": "2026-03-10T11:42:16.880834+00:00",
   "git": {
     "branch": "main",
-    "commit": "fd54fa8236156014ad32e6b9122e582994543fe1",
+    "commit": "d8e2204e2b371440c50e0b713d7e93ca859349e8",
     "dirty": true
   },
   "historical_backtest": {
@@ -60,12 +60,12 @@
         "barrier_pips": 2.0,
         "family": "oco_first_touch_clean",
         "horizon": 6,
-        "regime_desc": "asia;barrier=2.0",
-        "state_id": "oco_first_touch_clean__asia__k2",
+        "regime_desc": "london;barrier=2.0",
+        "state_id": "oco_first_touch_clean__london__k2",
         "symbol": "EURUSD"
       }
     ],
-    "sha256": "a312c50b176593e59b53ce0c8d4d6ef74bb31b23ceab8673daf9d6a84f7870ce"
+    "sha256": "f816ea3b34e0038863d84f0ae0de039ca0567868ee26c2da1a9f3d687672706b"
   },
   "symbol": "EURUSD"
 }

@@ -3,28 +3,28 @@
     "capacity_overall_pass": true,
     "live_deployable": true,
     "model_cbm_path": "models/oco/USDCAD_model_2025-11.cbm",
-    "model_cbm_sha256": "de61feca42a5b8c3d5fa49e0e22b8e7184260edd313a02f5fe5c2e9e785f353f",
+    "model_cbm_sha256": "a6bed81ea95c9f7b61e9a29dc17ac65132d9e1ae712e30c37a95cbf70716b06b",
     "model_month": "2025-11",
     "model_threshold_json_path": "models/oco/USDCAD_model_2025-11.json",
-    "model_threshold_json_sha256": "33994381a540752f8662d4b6c131b07887bd1c062e1df6824dd50952c849826e",
+    "model_threshold_json_sha256": "41688ab71e86c552f296556efa488c0d7a20b75fca9c6ddd7b2906c91e17b65f",
     "predictions_path": "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/USDCAD_oco_monthly_predictions.parquet",
-    "predictions_sha256": "3662da5105dbd5479a3ac45c6e88d53596684f8af3828eb181e23469c0bb13f4",
+    "predictions_sha256": "06ad8a2b9ba64054a7d2ef8ad4b82350ce345b32deda5261d7f9c9ee4f0332c4",
     "reduced_config_path": "configs/research/experiments/usdcad_oco_reduced_core_2025.yaml",
     "reduced_config_sha256": "3410a90099ef6974357aeaf2a206baa17d85d64ce6f1b1a979617ec4bd2b5725",
     "reduced_states_csv_path": "configs/research/governance/oco_history/2025-11/usdcad_oco_allowed_states.csv",
-    "reduced_states_csv_sha256": "0216ceaca61d75a2868d90cb13f55a0d49010a01c5234c707becc0c664a247b8",
+    "reduced_states_csv_sha256": "83fcbe2ce0a9f21477192244201ce4b49f0fc984a5642974504143eb078eec71",
     "reduced_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_reduced_summary.csv",
-    "reduced_summary_sha256": "a511472f07063e56ef2d84f0ad9b87c5904706f77ddf8988b8b5633201063df6",
+    "reduced_summary_sha256": "5981c6848823762ffe39713230fe1093d34bf562c11d76d11b0ad6233da150de",
     "tick_exact_overall_pass": true,
     "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_tick_exact_summary.csv",
-    "tick_exact_summary_sha256": "ff6a64d61abbf4cf1f284c06ee1c219a4a715e5b839ceb1ecd21bf2fd210f671",
+    "tick_exact_summary_sha256": "b9c23fdba0449f89d2cafb4492050649a15e2e8d9032d685d2037985c156c376",
     "wfo_config_path": "configs/research/experiments/usdcad_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
     "wfo_config_sha256": "473c30f335111f2f8bbe666c765dd7f5646f697212e485d6798ad7da15fa45a1"
   },
-  "frozen_at_utc": "2026-03-08T21:52:44.518234+00:00",
+  "frozen_at_utc": "2026-03-10T11:42:18.332417+00:00",
   "git": {
     "branch": "main",
-    "commit": "fd54fa8236156014ad32e6b9122e582994543fe1",
+    "commit": "d8e2204e2b371440c50e0b713d7e93ca859349e8",
     "dirty": true
   },
   "historical_backtest": {
@@ -53,17 +53,8 @@
   },
   "schema_version": 1,
   "state_universe": {
-    "count": 2,
+    "count": 1,
     "rows": [
-      {
-        "bar_ticks": 100,
-        "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
-        "horizon": 6,
-        "regime_desc": "low_cost_q30;barrier=2.0",
-        "state_id": "oco_first_touch_clean__low_cost_q30__k2",
-        "symbol": "USDCAD"
-      },
       {
         "bar_ticks": 100,
         "barrier_pips": 2.0,
@@ -74,7 +65,7 @@
         "symbol": "USDCAD"
       }
     ],
-    "sha256": "4b1e9ab795390adf0331ed682f11d1095378f1b6f65a6cf21e3f4757214b2530"
+    "sha256": "607c01d64bdfc35b49ac78dacf9e5a9bd2330a1ed7c763e570efeb006af1cd52"
   },
   "symbol": "USDCAD"
 }
