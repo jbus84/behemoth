@@ -29,6 +29,7 @@ Provide deterministic daily, weekly, and monthly operating actions for OCO pipel
 | --- | --- | --- | --- | --- | --- | --- |
 | Stage-3 model staleness | latest prediction month `<` current test month | high | research lead | block deployment; rerun Stage 3 monthly WFO and downstream Stage 5+ | `data/analysis/tick_opportunity_mining/wfo_*/<SYMBOL>_oco_monthly_predictions.parquet` | immediate |
 | Reduced-core capacity drop | `rows` below configured floor | high | research lead | hold release and rerun reduced-core selection | `docs/analysis/*_oco_reduced_core_rolling_report.md` | immediate |
+| Stage 12 API parity red | `gate_api_parity=false` for any active symbol | critical | research lead | block deployment; rerun historical API parity and resolve signal/execution drift before promotion | `data/analysis/backtest_reconcile/<SYMBOL>_stage12_api_parity_summary.csv` | immediate |
 | Registry drift | any `RU*` high/critical failure | high | research lead | enforce universe lock refresh before promotion | `docs/analysis/oco_rule_universe_registry_report.md` | immediate |
 | Robustness degradation | Stage 8 LB95 turns non-positive | high | risk + research | freeze promotion and re-evaluate assumptions | `docs/analysis/oco_edge_clarity_report.md` | immediate |
 
@@ -74,6 +75,19 @@ flowchart TD
     K -->|Yes| L[Keep monitor status]
 ```
 
+## Stage 12 Operating Note
+- Stage 12 is the canonical historical API parity gate against reduced-core truth.
+- Truth source for this gate is repo-side reduced-core output, not cTrader backtest output.
+- Historical parity uses three non-negotiable mechanics:
+- `history_tail` warmup preserves exact fixed-tick bar phase across the full prior history.
+- locked prediction-universe gating limits API evaluation to repo `(candidate_uid, close_ts)` rows for that model month.
+- execution parity is validated only after signal parity is measured against reduced-core truth.
+- Practical meaning:
+- if Stage 12 is red, do not rely on Stage 3, Stage 5, Stage 6, or cTrader-side sanity checks to infer deployability.
+- if `selected_extra_runtime > 0`, treat it as over-admission by the API.
+- if `selected_missing_expected > 0`, treat it as missed reduced-core truth.
+- if execution parity is red with signal parity green, treat it as lifecycle translation drift rather than model drift.
+
 ## Escalation Matrix
 | condition | escalation path |
 | --- | --- |
@@ -99,3 +113,4 @@ flowchart TD
 - `docs/strategy_bible/stage_07_logical_and_statistical_audit.md`
 - `docs/strategy_bible/stage_09_live_governance_and_deployment.md`
 - `docs/strategy_bible/stage_10_known_risks_and_backlog.md`
+- `docs/strategy_bible/stage_12_api_parity.md`

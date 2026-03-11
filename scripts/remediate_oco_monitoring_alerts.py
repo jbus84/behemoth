@@ -25,6 +25,19 @@ def _table(df: pd.DataFrame) -> str:
         return "```\n" + df.to_string(index=False) + "\n```"
 
 
+def _normalize_source_alert(value: Any, metric_id: str) -> str:
+    source_alert = str(value).strip().lower()
+    if source_alert in {"", "nan", "none", "null"}:
+        if metric_id.startswith("E_DRIFT_"):
+            return "execution_drift"
+        if metric_id.startswith("TS"):
+            return "threshold_sensitivity"
+        if metric_id.startswith("FTMO_"):
+            return "ftmo_allocator"
+        return "other"
+    return source_alert
+
+
 def _read_yaml(path: Path) -> dict[str, Any]:
     if (yaml is None) or (not path.exists()):
         return {}
@@ -128,6 +141,15 @@ def run(
     alerts["band"] = alerts.get("band", pd.Series(dtype=str)).astype(str).str.lower()
     alerts["severity"] = alerts.get("severity", pd.Series(dtype=str)).astype(str).str.lower()
     alerts["test_month"] = alerts.get("test_month", pd.Series(dtype=str)).astype(str)
+    alerts["source_alert"] = [
+        _normalize_source_alert(v, metric_id)
+        for v, metric_id in zip(
+            alerts.get("source_alert", pd.Series([""] * len(alerts))),
+            alerts["metric_id"],
+            strict=False,
+        )
+    ]
+    all_alerts = alerts.copy()
     alerts = alerts[alerts["band"] != "green"].copy()
 
     cfg = _read_yaml(exceptions_yaml)
@@ -179,6 +201,15 @@ def run(
             non_empty_months = g["test_month"].astype(str)
             non_empty_months = non_empty_months[non_empty_months.str.strip() != ""]
             months_by_key[_key(sym, mid)] = int(non_empty_months.nunique())
+
+    latest_test_month_by_scope: dict[tuple[str, str], str] = {}
+    if not all_alerts.empty:
+        for (source_alert, sym), g in all_alerts.groupby(["source_alert", "symbol"]):
+            months = pd.to_datetime(g["test_month"], format="%Y-%m", errors="coerce")
+            if months.notna().any():
+                latest_test_month_by_scope[(str(source_alert), str(sym))] = months.max().strftime(
+                    "%Y-%m"
+                )
 
     out_rows: list[dict[str, Any]] = []
     for _, r in alerts.iterrows():
@@ -241,8 +272,17 @@ def run(
         expires_utc = exp.strftime("%Y-%m-%dT%H:%M:%SZ")
         is_expired = exp < now
 
-        recurrence_breach = (consecutive_runs > max_amber_consecutive) or (
-            months_non_green > max_amber_months
+        source_alert = _normalize_source_alert(r.get("source_alert", ""), metric_id)
+        latest_scope_month = latest_test_month_by_scope.get((source_alert, symbol), "")
+        row_test_month = str(r.get("test_month", "")).strip()
+        is_current_scope_row = (
+            row_test_month == ""
+            or latest_scope_month == ""
+            or row_test_month == latest_scope_month
+        )
+        recurrence_applies = status != "accepted_exception" and is_current_scope_row
+        recurrence_breach = recurrence_applies and (
+            (consecutive_runs > max_amber_consecutive) or (months_non_green > max_amber_months)
         )
         expiry_breach = bool(status == "accepted_exception" and is_expired)
 
@@ -271,16 +311,6 @@ def run(
             violations.append("recurrence_limit_exceeded")
 
         days_to_expiry = float((exp - now).total_seconds() / 86400.0)
-        source_alert = str(r.get("source_alert", "")).strip().lower()
-        if source_alert in {"", "nan", "none", "null"}:
-            if metric_id.startswith("E_DRIFT_"):
-                source_alert = "execution_drift"
-            elif metric_id.startswith("TS"):
-                source_alert = "threshold_sensitivity"
-            elif metric_id.startswith("FTMO_"):
-                source_alert = "ftmo_allocator"
-            else:
-                source_alert = "other"
         out_rows.append(
             {
                 "symbol": symbol,

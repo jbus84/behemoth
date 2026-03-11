@@ -37,6 +37,7 @@ REQUIRED_STAGE_DOCS = {
     9: "stage_09_live_governance_and_deployment.md",
     10: "stage_10_known_risks_and_backlog.md",
     11: "stage_11_execution_monte_carlo.md",
+    12: "stage_12_api_parity.md",
 }
 
 REQUIRED_HEADINGS = [
@@ -89,6 +90,9 @@ CORE_METRIC_IDS = {
     "EM03_prob_negative_month_s1",
     "EM04_fill_rate_drop_vs_s0_s1",
     "EM05_nan_core_fields",
+    "AP03_signal_parity_pass",
+    "AP05_execution_parity_pass",
+    "AP06_api_parity_stage_pass",
 }
 
 CANONICAL_NAV_PATHS = [
@@ -103,6 +107,7 @@ CANONICAL_NAV_PATHS = [
     "strategy_bible/stage_09_live_governance_and_deployment.md",
     "strategy_bible/stage_10_known_risks_and_backlog.md",
     "strategy_bible/stage_11_execution_monte_carlo.md",
+    "strategy_bible/stage_12_api_parity.md",
     "strategy_bible/signal_lifecycle_reference.md",
     "strategy_bible/operator_runbook.md",
     "strategy_bible/metric_dictionary.md",
@@ -161,6 +166,17 @@ STAGE11_REQUIRED_COLUMNS = [
 ]
 
 STAGE11_REQUIRED_SCENARIOS = {"S0_baseline", "S1_mild", "S2_moderate", "S3_severe"}
+
+STAGE12_REQUIRED_COLUMNS = [
+    "symbol",
+    "signal_parity_pass",
+    "execution_parity_pass",
+    "stage12_api_parity_pass",
+    "selected_missing_expected",
+    "selected_extra_runtime",
+    "execution_failed_checks_high_critical",
+    "stage12_api_parity_verdict",
+]
 
 CORE_REPORT_PATHS = [
     "analysis/index.md",
@@ -520,7 +536,7 @@ def _extract_metric_ids_from_dictionary(path: Path) -> set[str]:
         if not first or first in {"metric_id", "---"}:
             continue
         if re.match(r"^[A-Z][0-9]{2}_", first) or first.startswith(
-            ("erosion_", "B", "G", "R", "S", "T", "W", "M", "D", "E", "X")
+            ("erosion_", "AP", "B", "G", "R", "S", "T", "W", "M", "D", "E", "X")
         ):
             ids.add(first)
     return ids
@@ -1784,9 +1800,14 @@ def run(
         ]
 
     if not disp_filtered.empty:
+        is_exception = (
+            disp_filtered["status"].astype(str).str.lower().eq("accepted_exception")
+            if "status" in disp_filtered.columns
+            else pd.Series(False, index=disp_filtered.index)
+        )
         if "recurrence_breach" in disp_filtered.columns:
             recurrence_breach_count = int(
-                disp_filtered["recurrence_breach"]
+                disp_filtered.loc[~is_exception, "recurrence_breach"]
                 .astype(str)
                 .str.lower()
                 .isin(["1", "true", "t", "yes", "y"])
@@ -1796,11 +1817,11 @@ def run(
             set(disp_filtered.columns)
         ):
             consec = pd.to_numeric(
-                disp_filtered["consecutive_runs_non_green"], errors="coerce"
+                disp_filtered.loc[~is_exception, "consecutive_runs_non_green"], errors="coerce"
             ).fillna(0)
-            months = pd.to_numeric(disp_filtered["months_non_green_count"], errors="coerce").fillna(
-                0
-            )
+            months = pd.to_numeric(
+                disp_filtered.loc[~is_exception, "months_non_green_count"], errors="coerce"
+            ).fillna(0)
             recurrence_breach_count = int(
                 ((consec > max_amber_consecutive) | (months > max_amber_months)).sum()
             )
@@ -2394,6 +2415,67 @@ def run(
                 "predeploy_table_present": predeploy_has_table,
                 "expected_symbols": sorted(list(expected_syms)),
                 "nan_rows": g_nan_rows,
+            },
+            sort_keys=True,
+        ),
+    )
+
+    # C55: Stage 12 API parity artifacts must exist with required schema.
+    stage12_summary_csv = (
+        edge_metrics_csv.parent.parent / "backtest_reconcile" / "EURUSD_stage12_api_parity_summary.csv"
+    )
+    stage12_summary = (
+        pd.read_csv(stage12_summary_csv) if stage12_summary_csv.exists() else pd.DataFrame()
+    )
+    missing_stage12_cols = [c for c in STAGE12_REQUIRED_COLUMNS if c not in stage12_summary.columns]
+    _add_check(
+        checks_rows,
+        check_id="C55",
+        check_name="stage12_api_parity_artifacts_schema",
+        passed=stage12_summary_csv.exists() and len(missing_stage12_cols) == 0,
+        severity_if_fail="critical",
+        metric_name="missing_stage12_columns",
+        metric_value=int(len(missing_stage12_cols)),
+        threshold=0,
+        comparator="==",
+        source_path=stage12_summary_csv,
+        details=",".join(missing_stage12_cols),
+    )
+
+    # C56: Stage 12 API parity must be green for all expected symbols.
+    api_gate_cols = ["gate_api_signal_parity", "gate_api_execution_parity", "gate_api_parity"]
+    missing_api_gate_cols: list[str] = []
+    api_gate_fails: list[str] = []
+    if stage_status.empty:
+        missing_api_gate_cols = api_gate_cols.copy()
+    else:
+        missing_api_gate_cols = [c for c in api_gate_cols if c not in stage_status.columns]
+        if not missing_api_gate_cols:
+            st12 = stage_status.copy()
+            st12["symbol"] = st12["symbol"].astype(str).str.upper().str.strip()
+            for c in api_gate_cols:
+                st12[c] = _as_bool(st12[c])
+            fail_mask = st12["symbol"].isin(expected_syms) & (
+                (~st12["gate_api_signal_parity"])
+                | (~st12["gate_api_execution_parity"])
+                | (~st12["gate_api_parity"])
+            )
+            api_gate_fails = sorted(st12.loc[fail_mask, "symbol"].unique().tolist())
+    _add_check(
+        checks_rows,
+        check_id="C56",
+        check_name="stage12_api_parity_all_symbols_green",
+        passed=(len(missing_api_gate_cols) == 0) and (len(api_gate_fails) == 0),
+        severity_if_fail="critical",
+        metric_name="stage12_api_parity_fail_count",
+        metric_value=int(len(missing_api_gate_cols) + len(api_gate_fails)),
+        threshold=0,
+        comparator="==",
+        source_path=stage_status_csv,
+        details=json.dumps(
+            {
+                "missing_gate_columns": missing_api_gate_cols,
+                "failing_symbols": api_gate_fails,
             },
             sort_keys=True,
         ),

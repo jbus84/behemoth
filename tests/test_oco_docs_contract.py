@@ -43,6 +43,7 @@ def _write_stage_docs(root: Path) -> None:
         9: "stage_09_live_governance_and_deployment.md",
         10: "stage_10_known_risks_and_backlog.md",
         11: "stage_11_execution_monte_carlo.md",
+        12: "stage_12_api_parity.md",
     }
     for i, n in names.items():
         txt = _stage_doc_text()
@@ -133,6 +134,35 @@ def _write_stage11_mc_artifacts(*, generated_root: Path, edge_metrics_csv: Path)
     )
 
 
+def _write_stage12_api_parity_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> None:
+    base = docs_root.parent.parent / "data" / "analysis" / "backtest_reconcile"
+    base.mkdir(parents=True, exist_ok=True)
+    summary = pd.DataFrame(
+        [
+            {
+                "symbol": "EURUSD",
+                "signal_parity_pass": True,
+                "execution_parity_pass": True,
+                "stage12_api_parity_pass": True,
+                "selected_missing_expected": 0,
+                "selected_extra_runtime": 0,
+                "execution_failed_checks_high_critical": 0,
+                "stage12_api_parity_verdict": "green",
+            }
+        ]
+    )
+    summary.to_csv(base / "EURUSD_stage12_api_parity_summary.csv", index=False)
+    pd.DataFrame(
+        [{"symbol": "EURUSD", "check_family": "signal", "check_id": "AP03", "status": "pass"}]
+    ).to_csv(base / "EURUSD_stage12_api_parity_checks.csv", index=False)
+    pd.DataFrame(columns=["symbol", "type"]).to_csv(
+        base / "EURUSD_stage12_api_parity_mismatches.csv", index=False
+    )
+    report = docs_root.parent / "analysis" / "EURUSD_stage12_api_parity_report.md"
+    report.parent.mkdir(parents=True, exist_ok=True)
+    report.write_text("# Stage 12 API Parity\n", encoding="utf-8")
+
+
 def _mkdocs_text() -> str:
     paths = [
         "analysis/index.md",
@@ -153,6 +183,7 @@ def _mkdocs_text() -> str:
         "strategy_bible/stage_09_live_governance_and_deployment.md",
         "strategy_bible/stage_10_known_risks_and_backlog.md",
         "strategy_bible/stage_11_execution_monte_carlo.md",
+        "strategy_bible/stage_12_api_parity.md",
         "strategy_bible/signal_lifecycle_reference.md",
         "strategy_bible/operator_runbook.md",
         "strategy_bible/metric_dictionary.md",
@@ -227,6 +258,13 @@ def _write_analysis_catalog_artifacts(docs_root: Path) -> None:
     manifest_rows = [
         {"doc_path": f"analysis/{name}", "title": name, "group": "core"} for name in files
     ]
+    manifest_rows.append(
+        {
+            "doc_path": "analysis/EURUSD_stage12_api_parity_report.md",
+            "title": "EURUSD Stage 12 API Parity",
+            "group": "core",
+        }
+    )
     pd.DataFrame(manifest_rows).to_csv(analysis / "catalog_manifest.csv", index=False)
     canonical_rows = [
         {
@@ -271,7 +309,17 @@ def _write_run_delta_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> No
     snap.mkdir(parents=True, exist_ok=True)
     edge = pd.read_csv(edge_metrics_csv)
     edge.to_csv(snap / "edge_clarity_stage_metrics.csv", index=False)
-    pd.DataFrame([{"symbol": "EURUSD", "symbol_all_gates_pass": 1}]).to_csv(
+    pd.DataFrame(
+        [
+            {
+                "symbol": "EURUSD",
+                "symbol_all_gates_pass": 1,
+                "gate_api_signal_parity": 1,
+                "gate_api_execution_parity": 1,
+                "gate_api_parity": 1,
+            }
+        ]
+    ).to_csv(
         snap / "oco_bible_stage_status.csv", index=False
     )
     reg = pd.DataFrame(
@@ -371,7 +419,7 @@ def _write_operator_action_artifacts(*, docs_root: Path, edge_metrics_csv: Path)
 def _write_stage_integrity_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> None:
     base = edge_metrics_csv.parent
     rows = []
-    for stage_id in range(1, 11):
+    for stage_id in range(1, 13):
         rows.append(
             {
                 "symbol": "ALL",
@@ -717,6 +765,7 @@ def _build_smoke_fixture(tmp_path: Path, *, with_system_reference: bool = True) 
         generated_root=generated_root, edge_metrics_csv=edge_metrics_csv
     )
     _write_stage11_mc_artifacts(generated_root=generated_root, edge_metrics_csv=edge_metrics_csv)
+    _write_stage12_api_parity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_run_delta_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_operator_action_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
     _write_stage_integrity_artifacts(docs_root=docs_root, edge_metrics_csv=edge_metrics_csv)
@@ -732,7 +781,14 @@ def _build_smoke_fixture(tmp_path: Path, *, with_system_reference: bool = True) 
 
     stage_status_csv = tmp_path / "stage_status.csv"
     sym_rows = [
-        {"symbol": s, "symbol_all_gates_pass": True, "gate_tick_exact": True}
+        {
+            "symbol": s,
+            "symbol_all_gates_pass": True,
+            "gate_tick_exact": True,
+            "gate_api_signal_parity": True,
+            "gate_api_execution_parity": True,
+            "gate_api_parity": True,
+        }
         for s in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]
     ]
     pd.DataFrame(sym_rows).to_csv(stage_status_csv, index=False)
@@ -863,7 +919,16 @@ def test_docs_contract_flags_missing_metric_definition(tmp_path: Path) -> None:
 
     stage_status_csv = tmp_path / "stage_status.csv"
     pd.DataFrame(
-        [{"symbol": "EURUSD", "symbol_all_gates_pass": True, "gate_tick_exact": True}]
+        [
+            {
+                "symbol": "EURUSD",
+                "symbol_all_gates_pass": True,
+                "gate_tick_exact": True,
+                "gate_api_signal_parity": True,
+                "gate_api_execution_parity": True,
+                "gate_api_parity": True,
+            }
+        ]
     ).to_csv(stage_status_csv, index=False)
 
     (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
@@ -953,7 +1018,16 @@ def test_docs_contract_flags_invalid_stage04_action_code(tmp_path: Path) -> None
 
     stage_status_csv = tmp_path / "stage_status.csv"
     pd.DataFrame(
-        [{"symbol": "EURUSD", "symbol_all_gates_pass": True, "gate_tick_exact": True}]
+        [
+            {
+                "symbol": "EURUSD",
+                "symbol_all_gates_pass": True,
+                "gate_tick_exact": True,
+                "gate_api_signal_parity": True,
+                "gate_api_execution_parity": True,
+                "gate_api_parity": True,
+            }
+        ]
     ).to_csv(stage_status_csv, index=False)
     (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
 
@@ -1037,7 +1111,16 @@ def test_docs_contract_flags_snapshot_details_over_cap(tmp_path: Path) -> None:
 
     stage_status_csv = tmp_path / "stage_status.csv"
     pd.DataFrame(
-        [{"symbol": "EURUSD", "symbol_all_gates_pass": True, "gate_tick_exact": True}]
+        [
+            {
+                "symbol": "EURUSD",
+                "symbol_all_gates_pass": True,
+                "gate_tick_exact": True,
+                "gate_api_signal_parity": True,
+                "gate_api_execution_parity": True,
+                "gate_api_parity": True,
+            }
+        ]
     ).to_csv(stage_status_csv, index=False)
     edge_report = tmp_path / "edge_report.md"
     edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
@@ -1118,7 +1201,16 @@ def test_docs_contract_flags_missing_run_delta_baseline(tmp_path: Path) -> None:
     (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
     stage_status_csv = tmp_path / "stage_status.csv"
     pd.DataFrame(
-        [{"symbol": "EURUSD", "symbol_all_gates_pass": True, "gate_tick_exact": True}]
+        [
+            {
+                "symbol": "EURUSD",
+                "symbol_all_gates_pass": True,
+                "gate_tick_exact": True,
+                "gate_api_signal_parity": True,
+                "gate_api_execution_parity": True,
+                "gate_api_parity": True,
+            }
+        ]
     ).to_csv(stage_status_csv, index=False)
     edge_report = tmp_path / "edge_report.md"
     edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
@@ -1213,7 +1305,16 @@ def test_docs_contract_flags_unclassified_taxonomy_docs(tmp_path: Path) -> None:
     (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
     stage_status_csv = tmp_path / "stage_status.csv"
     pd.DataFrame(
-        [{"symbol": "EURUSD", "symbol_all_gates_pass": True, "gate_tick_exact": True}]
+        [
+            {
+                "symbol": "EURUSD",
+                "symbol_all_gates_pass": True,
+                "gate_tick_exact": True,
+                "gate_api_signal_parity": True,
+                "gate_api_execution_parity": True,
+                "gate_api_parity": True,
+            }
+        ]
     ).to_csv(stage_status_csv, index=False)
     edge_report = tmp_path / "edge_report.md"
     edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
@@ -1302,7 +1403,16 @@ def test_docs_contract_flags_legacy_taxonomy_docs(tmp_path: Path) -> None:
     (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
     stage_status_csv = tmp_path / "stage_status.csv"
     pd.DataFrame(
-        [{"symbol": "EURUSD", "symbol_all_gates_pass": True, "gate_tick_exact": True}]
+        [
+            {
+                "symbol": "EURUSD",
+                "symbol_all_gates_pass": True,
+                "gate_tick_exact": True,
+                "gate_api_signal_parity": True,
+                "gate_api_execution_parity": True,
+                "gate_api_parity": True,
+            }
+        ]
     ).to_csv(stage_status_csv, index=False)
     edge_report = tmp_path / "edge_report.md"
     edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
@@ -1384,7 +1494,16 @@ def test_docs_contract_flags_expired_accepted_exception(tmp_path: Path) -> None:
     (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
     stage_status_csv = tmp_path / "stage_status.csv"
     pd.DataFrame(
-        [{"symbol": "EURUSD", "symbol_all_gates_pass": True, "gate_tick_exact": True}]
+        [
+            {
+                "symbol": "EURUSD",
+                "symbol_all_gates_pass": True,
+                "gate_tick_exact": True,
+                "gate_api_signal_parity": True,
+                "gate_api_execution_parity": True,
+                "gate_api_parity": True,
+            }
+        ]
     ).to_csv(stage_status_csv, index=False)
     edge_report = tmp_path / "edge_report.md"
     edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
@@ -1419,6 +1538,34 @@ def test_docs_contract_flags_expired_accepted_exception(tmp_path: Path) -> None:
     c35 = checks[checks["check_id"].astype(str) == "C35"]
     assert not c35.empty
     assert (c35["status"].astype(str) == "fail").all()
+
+
+def test_docs_contract_ignores_recurrence_for_accepted_exception(tmp_path: Path) -> None:
+    fixture = _build_smoke_fixture(tmp_path)
+    disp_csv = fixture["edge_metrics_csv"].parent / "oco_alert_disposition.csv"
+    disp = pd.read_csv(disp_csv)
+    disp.loc[0, "status"] = "accepted_exception"
+    disp.loc[0, "recurrence_breach"] = True
+    disp.loc[0, "consecutive_runs_non_green"] = 99
+    disp.loc[0, "months_non_green_count"] = 99
+    disp.to_csv(disp_csv, index=False)
+
+    checks, _issues = run(
+        docs_root=fixture["docs_root"],
+        generated_root=fixture["generated_root"],
+        edge_metrics_csv=fixture["edge_metrics_csv"],
+        stage_status_csv=fixture["stage_status_csv"],
+        metric_dictionary_md=fixture["metric_dictionary_md"],
+        edge_report_md=fixture["edge_report_md"],
+        mkdocs_yml=fixture["mkdocs_yml"],
+        out_checks_csv=tmp_path / "checks.csv",
+        out_issues_csv=tmp_path / "issues.csv",
+        out_report_md=tmp_path / "report.md",
+        thresholds=Thresholds(max_age_hours=24.0),
+    )
+    c36 = checks[checks["check_id"].astype(str) == "C36"]
+    assert not c36.empty
+    assert (c36["status"].astype(str) == "pass").all()
 
 
 def test_docs_contract_flags_missing_explainability_coverage(tmp_path: Path) -> None:
@@ -1465,7 +1612,16 @@ def test_docs_contract_flags_missing_explainability_coverage(tmp_path: Path) -> 
     (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
     stage_status_csv = tmp_path / "stage_status.csv"
     pd.DataFrame(
-        [{"symbol": "EURUSD", "symbol_all_gates_pass": True, "gate_tick_exact": True}]
+        [
+            {
+                "symbol": "EURUSD",
+                "symbol_all_gates_pass": True,
+                "gate_tick_exact": True,
+                "gate_api_signal_parity": True,
+                "gate_api_execution_parity": True,
+                "gate_api_parity": True,
+            }
+        ]
     ).to_csv(stage_status_csv, index=False)
     edge_report = tmp_path / "edge_report.md"
     edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
@@ -1547,7 +1703,16 @@ def test_docs_contract_flags_machine_local_paths(tmp_path: Path) -> None:
     (generated_root / "stage_09_snapshot.md").write_text("| EURUSD | pass |\n", encoding="utf-8")
     stage_status_csv = tmp_path / "stage_status.csv"
     pd.DataFrame(
-        [{"symbol": "EURUSD", "symbol_all_gates_pass": True, "gate_tick_exact": True}]
+        [
+            {
+                "symbol": "EURUSD",
+                "symbol_all_gates_pass": True,
+                "gate_tick_exact": True,
+                "gate_api_signal_parity": True,
+                "gate_api_execution_parity": True,
+                "gate_api_parity": True,
+            }
+        ]
     ).to_csv(stage_status_csv, index=False)
     edge_report = tmp_path / "edge_report.md"
     edge_report.write_text("| 1 | EURUSD | D16_spread_regime_shift_z | 1.0 |\n", encoding="utf-8")
@@ -1738,3 +1903,29 @@ def test_docs_contract_optional_strict_symbol_gate_mode(tmp_path: Path) -> None:
     c54 = checks[checks["check_id"].astype(str) == "C54"]
     assert not c54.empty
     assert (c54["status"].astype(str) == "fail").all()
+
+
+def test_docs_contract_flags_stage12_api_parity_failure(tmp_path: Path) -> None:
+    f = _build_smoke_fixture(tmp_path, with_system_reference=True)
+    stage_status = pd.read_csv(f["stage_status_csv"])
+    stage_status.loc[stage_status["symbol"] == "USDCHF", "gate_api_signal_parity"] = False
+    stage_status.loc[stage_status["symbol"] == "USDCHF", "gate_api_parity"] = False
+    stage_status.loc[stage_status["symbol"] == "USDCHF", "symbol_all_gates_pass"] = False
+    stage_status.to_csv(f["stage_status_csv"], index=False)
+
+    checks, _issues = run(
+        docs_root=f["docs_root"],
+        generated_root=f["generated_root"],
+        edge_metrics_csv=f["edge_metrics_csv"],
+        stage_status_csv=f["stage_status_csv"],
+        metric_dictionary_md=f["metric_dictionary_md"],
+        edge_report_md=f["edge_report_md"],
+        mkdocs_yml=f["mkdocs_yml"],
+        out_checks_csv=tmp_path / "checks.csv",
+        out_issues_csv=tmp_path / "issues.csv",
+        out_report_md=tmp_path / "report.md",
+        thresholds=Thresholds(max_age_hours=24.0),
+    )
+    c56 = checks[checks["check_id"].astype(str) == "C56"]
+    assert not c56.empty
+    assert (c56["status"].astype(str) == "fail").all()

@@ -1,19 +1,16 @@
 # Analysis Catalog Gaps
 
-- generated_at_utc: `2026-03-10T10:04:35Z`
+- generated_at_utc: `2026-03-11T20:18:41Z`
 
 ## Missing Core Reports
 _empty_
 
 ## Unclassified Reports
-| doc_path                                            | group        | symbol   |
-|:----------------------------------------------------|:-------------|:---------|
-| analysis/ctrader_backtest_reconciliation_runbook.md | unclassified | ALL      |
+_empty_
 
 ## Counts
-| group        |   count |
-|:-------------|--------:|
-| core         |      17 |
-| stage        |       8 |
-| symbol       |      51 |
-| unclassified |       1 |
+| group   |   count |
+|:--------|--------:|
+| core    |      17 |
+| stage   |       9 |
+| symbol  |      96 |

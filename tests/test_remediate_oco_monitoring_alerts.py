@@ -138,6 +138,87 @@ def test_remediation_recurrence_increments_across_runs(tmp_path: Path) -> None:
     assert int(r2["consecutive_runs_non_green"]) >= int(r1["consecutive_runs_non_green"]) + 1
 
 
+def test_remediation_accepted_exception_does_not_trigger_recurrence_breach(tmp_path: Path) -> None:
+    drift_path, threshold_path, exceptions_path = _write_alert_inputs(tmp_path)
+    out_csv = tmp_path / "disposition.csv"
+    report = tmp_path / "report.md"
+    run(
+        drift_alerts_csv=drift_path,
+        threshold_alerts_csv=threshold_path,
+        ftmo_alerts_csv=None,
+        exceptions_yaml=exceptions_path,
+        out_disposition_csv=out_csv,
+        report_out=report,
+    )
+    prev = pd.read_csv(out_csv)
+    prev["last_seen_utc"] = "2025-01-01T00:00:00Z"
+    prev.loc[
+        prev["metric_id"].astype(str) == "E_DRIFT_OVERSHOOT_P95", "consecutive_runs_non_green"
+    ] = 99
+    prev.to_csv(out_csv, index=False)
+
+    disposition = run(
+        drift_alerts_csv=drift_path,
+        threshold_alerts_csv=threshold_path,
+        ftmo_alerts_csv=None,
+        exceptions_yaml=exceptions_path,
+        out_disposition_csv=out_csv,
+        report_out=report,
+    )
+    row = disposition[disposition["metric_id"].astype(str) == "E_DRIFT_OVERSHOOT_P95"].iloc[0]
+    assert row["status"] == "accepted_exception"
+    assert bool(row["recurrence_breach"]) is False
+    assert row["escalation_level"] == "warn"
+
+
+def test_remediation_recurrence_only_applies_to_current_scope_month(tmp_path: Path) -> None:
+    drift_path, threshold_path, exceptions_path = _write_alert_inputs(tmp_path)
+    drift = pd.read_csv(drift_path)
+    drift = pd.concat(
+        [
+            drift,
+            pd.DataFrame(
+                [
+                    {
+                        "symbol": "USDCHF",
+                        "test_month": "2025-12",
+                        "metric_id": "E_DRIFT_FILL_DROP",
+                        "metric_value": 0.03,
+                        "band": "amber",
+                        "severity": "medium",
+                        "source_path": "x",
+                    },
+                    {
+                        "symbol": "USDCHF",
+                        "test_month": "2026-02",
+                        "metric_id": "E_DRIFT_FILL_DROP",
+                        "metric_value": 0.0,
+                        "band": "green",
+                        "severity": "info",
+                        "source_path": "x",
+                    },
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+    drift.to_csv(drift_path, index=False)
+    out_csv = tmp_path / "disposition.csv"
+    report = tmp_path / "report.md"
+    disposition = run(
+        drift_alerts_csv=drift_path,
+        threshold_alerts_csv=threshold_path,
+        ftmo_alerts_csv=None,
+        exceptions_yaml=exceptions_path,
+        out_disposition_csv=out_csv,
+        report_out=report,
+    )
+    row = disposition[disposition["metric_id"].astype(str) == "E_DRIFT_FILL_DROP"].iloc[0]
+    assert row["status"] == "remediated"
+    assert bool(row["recurrence_breach"]) is False
+    assert row["escalation_level"] == "warn"
+
+
 def test_remediation_handles_empty_alerts(tmp_path: Path) -> None:
     disposition = run(
         drift_alerts_csv=tmp_path / "missing_drift.csv",

@@ -217,6 +217,15 @@ def _read_symbol_row(path: Path, symbol: str) -> pd.Series:
     return df.iloc[0]
 
 
+def _read_optional_symbol_row(path: Path, symbol: str) -> pd.Series:
+    if not path.exists():
+        return pd.Series(dtype=object)
+    try:
+        return _read_symbol_row(path, symbol)
+    except Exception:
+        return pd.Series(dtype=object)
+
+
 def _read_robustness_row(path: Path, quantile: float | None) -> pd.Series:
     df = _read_csv(path)
     if df.empty:
@@ -614,6 +623,13 @@ def _symbol_snapshot(
     stop_limit = _read_symbol_row(
         _resolve_path(base_dir, str(entry["stop_limit_summary_csv"])), symbol=symbol
     )
+    api_parity = _read_optional_symbol_row(
+        _resolve_path(
+            base_dir,
+            f"data/analysis/backtest_reconcile/{symbol}_stage12_api_parity_summary.csv",
+        ),
+        symbol=symbol,
+    )
 
     exact_rate = _num(tick_exact.get("exact_match_rate"))
     pos_rate = _num(tick_exact.get("pos_label_match_rate"))
@@ -638,6 +654,9 @@ def _symbol_snapshot(
         and _is_true(tick_exact.get("overall_pass"))
     )
     gate_robust_lb95 = math.isfinite(robust_lb95_trade) and robust_lb95_trade > 0.0
+    gate_api_signal = _is_true(api_parity.get("signal_parity_pass"))
+    gate_api_execution = _is_true(api_parity.get("execution_parity_pass"))
+    gate_api_parity = _is_true(api_parity.get("stage12_api_parity_pass"))
 
     return {
         "symbol": symbol,
@@ -658,14 +677,26 @@ def _symbol_snapshot(
         "robustness_months": robust_months,
         "tick_overshoot_mean_pips": _num(stop_limit.get("tick_overshoot_mean_pips")),
         "tick_overshoot_p95_pips": _num(stop_limit.get("tick_overshoot_p95_pips")),
+        "api_signal_parity_pass": gate_api_signal,
+        "api_execution_parity_pass": gate_api_execution,
+        "api_parity_verdict": str(api_parity.get("stage12_api_parity_verdict", "red")).lower(),
+        "api_selected_missing_expected": _num(api_parity.get("selected_missing_expected")),
+        "api_selected_extra_runtime": _num(api_parity.get("selected_extra_runtime")),
+        "api_execution_failed_checks_high_critical": _num(
+            api_parity.get("execution_failed_checks_high_critical")
+        ),
         "gate_reduced_lb95_month_gt0": gate_reduced,
         "gate_tick_exact": gate_tick_exact,
         "gate_robust_lb95_trade_gt0": gate_robust_lb95,
         "gate_robust_months_majority": robust_majority,
+        "gate_api_signal_parity": gate_api_signal,
+        "gate_api_execution_parity": gate_api_execution,
+        "gate_api_parity": gate_api_parity,
         "symbol_all_gates_pass": gate_reduced
         and gate_tick_exact
         and gate_robust_lb95
-        and robust_majority,
+        and robust_majority
+        and gate_api_parity,
     }
 
 
@@ -833,9 +864,10 @@ def _write_markdown_outputs(
         ]:
             if k in entry:
                 source_lines.append(f"- `{entry[k]}`")
+        source_lines.append(f"- `docs/analysis/{s}_stage12_api_parity_report.md`")
         source_lines.append("")
     source_lines.append("## Generated Stage Snapshots")
-    for i in range(1, 11):
+    for i in range(1, 13):
         source_lines.append(f"- `docs/strategy_bible/generated/stage_{i:02d}_snapshot.md`")
     source_lines.append("")
     source_lines.append("## Stage Metrics")
@@ -1134,6 +1166,21 @@ def _symbol_contexts(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]
                 ),
                 "governance_predeploy_json": governance_predeploy,
                 "events_eval_parquet": events_eval,
+                "api_parity_summary_csv": _resolve_path(
+                    base_dir,
+                    f"data/analysis/backtest_reconcile/{symbol}_stage12_api_parity_summary.csv",
+                ),
+                "api_parity_checks_csv": _resolve_path(
+                    base_dir,
+                    f"data/analysis/backtest_reconcile/{symbol}_stage12_api_parity_checks.csv",
+                ),
+                "api_parity_mismatches_csv": _resolve_path(
+                    base_dir,
+                    f"data/analysis/backtest_reconcile/{symbol}_stage12_api_parity_mismatches.csv",
+                ),
+                "api_parity_report_md": _resolve_path(
+                    base_dir, f"docs/analysis/{symbol}_stage12_api_parity_report.md"
+                ),
             }
         )
     return contexts
@@ -3984,6 +4031,157 @@ def _write_stage_snapshots(
             )
     write_stage(11, stage11_content)
 
+    # Stage 12: API parity against reduced-core truth.
+    stage12_rows: list[dict[str, Any]] = []
+    stage12_detail_rows: list[pd.DataFrame] = []
+    for ctx in contexts:
+        sym = str(ctx.get("symbol", "")).upper().strip()
+        ap = _safe_read_csv(ctx.get("api_parity_summary_csv"))
+        if not ap.empty and "symbol" in ap.columns:
+            ap = ap[ap["symbol"].astype(str).str.upper() == sym].copy()
+        row = ap.iloc[0] if not ap.empty else pd.Series(dtype=object)
+        signal_pass = _is_true(row.get("signal_parity_pass"))
+        exec_pass = _is_true(row.get("execution_parity_pass"))
+        api_pass = _is_true(row.get("stage12_api_parity_pass"))
+        signal_missing = _num(row.get("selected_missing_expected")) if not row.empty else 1.0
+        signal_extra = _num(row.get("selected_extra_runtime")) if not row.empty else 1.0
+        exec_fail_hc = (
+            _num(row.get("execution_failed_checks_high_critical")) if not row.empty else 1.0
+        )
+        stage12_rows.append(
+            {
+                "symbol": sym,
+                "signal_parity_pass": signal_pass,
+                "execution_parity_pass": exec_pass,
+                "api_parity_pass": api_pass,
+                "selected_missing_expected": signal_missing,
+                "selected_extra_runtime": signal_extra,
+                "execution_failed_checks_high_critical": exec_fail_hc,
+                "verdict": str(row.get("stage12_api_parity_verdict", "red")).lower(),
+                "report_path": _to_repo_rel(ctx.get("api_parity_report_md")),
+            }
+        )
+        add_edge_metric(
+            12,
+            sym,
+            "AP01_signal_missing_expected_count",
+            signal_missing,
+            "Reduced-core expected selected keys missing from API runtime",
+            str(ctx.get("api_parity_summary_csv", "")),
+        )
+        add_edge_metric(
+            12,
+            sym,
+            "AP02_signal_extra_runtime_count",
+            signal_extra,
+            "API runtime selected keys absent from reduced-core truth",
+            str(ctx.get("api_parity_summary_csv", "")),
+        )
+        add_edge_metric(
+            12,
+            sym,
+            "AP03_signal_parity_pass",
+            int(signal_pass),
+            "Strict selected-key parity pass indicator",
+            str(ctx.get("api_parity_summary_csv", "")),
+        )
+        add_edge_metric(
+            12,
+            sym,
+            "AP04_execution_failed_checks_high_critical",
+            exec_fail_hc,
+            "High/critical execution parity failures",
+            str(ctx.get("api_parity_checks_csv", "")),
+        )
+        add_edge_metric(
+            12,
+            sym,
+            "AP05_execution_parity_pass",
+            int(exec_pass),
+            "Execution parity pass indicator",
+            str(ctx.get("api_parity_summary_csv", "")),
+        )
+        add_edge_metric(
+            12,
+            sym,
+            "AP06_api_parity_stage_pass",
+            int(api_pass),
+            "Stage 12 API parity pass indicator",
+            str(ctx.get("api_parity_summary_csv", "")),
+        )
+        checks12 = _safe_read_csv(ctx.get("api_parity_checks_csv"))
+        if not checks12.empty and "status" in checks12.columns:
+            fail12 = checks12[checks12["status"].astype(str).str.lower() == "fail"].copy()
+            if "symbol" not in fail12.columns:
+                fail12["symbol"] = sym
+            fail12["detail_source"] = "failed_check"
+            stage12_detail_rows.append(
+                _pick_cols(
+                    fail12,
+                    [
+                        "symbol",
+                        "check_family",
+                        "check_id",
+                        "severity",
+                        "metric_name",
+                        "metric_value",
+                        "details",
+                        "detail_source",
+                    ],
+                )
+            )
+        mism12 = _safe_read_csv(ctx.get("api_parity_mismatches_csv"))
+        if not mism12.empty:
+            if "symbol" not in mism12.columns:
+                mism12["symbol"] = sym
+            mism12["detail_source"] = "mismatch"
+            stage12_detail_rows.append(
+                _pick_cols(
+                    mism12,
+                    [
+                        "symbol",
+                        "mismatch_family",
+                        "type",
+                        "candidate_uid",
+                        "close_ts",
+                        "detail",
+                        "detail_source",
+                    ],
+                )
+            )
+    stage12_summary = pd.DataFrame(stage12_rows)
+    stage12_detail = (
+        pd.concat(stage12_detail_rows, ignore_index=True) if stage12_detail_rows else pd.DataFrame()
+    )
+    stage12_plot = _stage_plot_path(outputs, 12, "api_parity_gate_matrix")
+    if not stage12_summary.empty:
+        p12 = stage12_summary.copy()
+        for c in ["signal_parity_pass", "execution_parity_pass", "api_parity_pass"]:
+            p12[c] = p12[c].astype(bool).astype(int)
+        _plot_stage_bars(
+            df=p12,
+            x="symbol",
+            ys=["signal_parity_pass", "execution_parity_pass", "api_parity_pass"],
+            title="Stage 12: API Parity Gates",
+            ylabel="pass=1 fail=0",
+            out_path=stage12_plot,
+        )
+    stage12_content = _render_stage_snapshot(
+        stage_id=12,
+        now_utc=now_utc,
+        summary_table=stage12_summary if not stage12_summary.empty else pd.DataFrame(),
+        details_table=stage12_detail if not stage12_detail.empty else None,
+        notes=[
+            "Stage 12 is a hard gate: strict signal parity and execution parity must both match reduced-core truth.",
+            "Any non-green Stage 12 symbol is a critical deployment blocker.",
+        ],
+        figure_paths=[p for p in [stage12_plot] if p.exists()],
+        figure_prefix="../figures/oco_bible/",
+        action_summary_table=stage_action_table(12),
+        details_source_path=str(contexts[0].get("api_parity_checks_csv", "")) if contexts else "",
+    )
+    write_stage(12, stage12_content)
+
     edge_stage = pd.DataFrame(edge_stage_rows)
     edge_state = pd.DataFrame(edge_state_rows)
     edge_thr = pd.DataFrame(edge_threshold_rows)
@@ -4155,6 +4353,9 @@ def run(*, manifest_path: Path, strict: bool) -> dict[str, Any]:
         ("gate_tick_exact", False),
         ("gate_robust_lb95_trade_gt0", False),
         ("gate_robust_months_majority", False),
+        ("gate_api_signal_parity", False),
+        ("gate_api_execution_parity", False),
+        ("gate_api_parity", False),
         ("symbol_all_gates_pass", False),
     ]:
         if c not in snapshot.columns:
@@ -4167,6 +4368,9 @@ def run(*, manifest_path: Path, strict: bool) -> dict[str, Any]:
             "gate_tick_exact",
             "gate_robust_lb95_trade_gt0",
             "gate_robust_months_majority",
+            "gate_api_signal_parity",
+            "gate_api_execution_parity",
+            "gate_api_parity",
             "symbol_all_gates_pass",
         ]
     ].copy()
@@ -4258,7 +4462,7 @@ def run(*, manifest_path: Path, strict: bool) -> dict[str, Any]:
     canonical_lines.append(_table(stage_status))
     canonical_lines.append("")
     canonical_lines.append("#### Quick Links")
-    for i in range(1, 12):
+    for i in range(1, 13):
         canonical_lines.append(f"- [Stage {i:02d} snapshot](generated/stage_{i:02d}_snapshot.md)")
     _inject_named_block(
         canonical_path,

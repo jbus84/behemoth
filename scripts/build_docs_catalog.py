@@ -49,6 +49,7 @@ STAGE_INTEGRATED_MANUAL = {
     "analysis/run_delta_dashboard.md",
     "analysis/operator_action_report.md",
     "analysis/taxonomy_rules.md",
+    "analysis/EURUSD_candidate_2025-07_h6_london_k2_drift.md",
 }
 
 SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
@@ -65,6 +66,21 @@ STAGE_KEYWORDS: list[tuple[int, tuple[str, ...]]] = [
     (9, ("governance", "live_governance", "alert_remediation", "governance_explainability")),
     (10, ("risk", "checklist", "stage_integrity")),
     (11, ("execution_monte_carlo",)),
+    (
+        12,
+        (
+            "stage12",
+            "api_parity",
+            "ab_parity",
+            "ctrader_ab_parity",
+            "reconciliation",
+            "runtime_db",
+            "tick_forensics",
+            "histdata_vs_ctrader",
+            "histdata_testclient_execution_parity",
+            "histdata_ctrader_execution_parity",
+        ),
+    ),
 ]
 
 LEGACY_KEYWORDS: tuple[str, ...] = (
@@ -364,7 +380,7 @@ def _build_canonical_map(manifest: pd.DataFrame) -> pd.DataFrame:
 
     # Stage-integrated reports.
     stage_rows = (m["doc_path"].astype(str).str.startswith("analysis/")) & (
-        pd.to_numeric(m["stage_id"], errors="coerce").between(1, 10)
+        pd.to_numeric(m["stage_id"], errors="coerce").between(1, 12)
         | m["doc_path"].astype(str).isin(STAGE_INTEGRATED_MANUAL)
     )
     m.loc[stage_rows & ~m["is_canonical"].astype(bool), "class"] = "stage_integrated"

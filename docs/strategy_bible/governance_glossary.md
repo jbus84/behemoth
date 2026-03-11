@@ -123,6 +123,16 @@ This glossary centralizes the definitions of every individual governance diagnos
 | **`EM04_fill_rate_drop_vs_s0_s1`** | Execution MC | Ensures that adding variable latency (S1) doesn't cause the strategy's order fill-rate to plummet artificially compared to zero-latency (S0). |
 | **`EM05_nan_core_fields`** | Execution MC | Integrity check asserting zero corrupted executions occurred during the thousands of Monte Carlo branching simulations. |
 
+### Stage 12: API Parity Against Reduced Core
+| Code | Governance Category | Purpose / Abstract Meaning |
+| --- | --- | --- |
+| **`AP01_signal_missing_expected_count`** | API Signal Parity | Counts reduced-core selected keys missing from the API runtime output. |
+| **`AP02_signal_extra_runtime_count`** | API Signal Parity | Counts extra API-selected keys absent from reduced-core truth. |
+| **`AP03_signal_parity_pass`** | API Signal Parity | Binary hard gate indicating exact selected-key parity was achieved. |
+| **`AP04_execution_failed_checks_high_critical`** | API Execution Parity | Counts high/critical execution parity failures in the downstream trade lifecycle validator. |
+| **`AP05_execution_parity_pass`** | API Execution Parity | Binary hard gate indicating execution parity passed against reduced-core truth. |
+| **`AP06_api_parity_stage_pass`** | API Parity Stage | Final Stage 12 pass indicator. It is green only when both signal parity and execution parity are green. |
+
 ## Interpretation Guide
 - **Early Stages (D -> E):** Focuses heavily on the mechanics of data integrity, CatBoost model stability, and realistic spread/slippage parameterization.
 - **Middle Stages (R -> T):** Focuses on the composition of the selected sub-universe and mathematically proving the statistical edge is immune to multiple-comparisons and cost-friction shocks.

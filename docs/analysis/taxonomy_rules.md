@@ -1,6 +1,6 @@
 # Analysis Taxonomy Rules
 
-- generated_at_utc: `2026-03-10T10:04:35Z`
+- generated_at_utc: `2026-03-11T20:18:41Z`
 
 ## Group Assignment Order
 1. `core`: canonical governance reports for the OCO bible.
@@ -10,19 +10,20 @@
 5. `unclassified`: everything else (should be zero in healthy state).
 
 ## Stage Keyword Map
-|   stage_id | keywords                                                                  |
-|-----------:|:--------------------------------------------------------------------------|
-|          1 | data_reliability                                                          |
-|          2 | mining, opportunity_mining, ml_ready                                      |
-|          3 | monthly_wfo, _wfo_, threshold_sensitivity                                 |
-|          4 | stop_limit, execution_risk, execution_drift                               |
-|          5 | reduced_core, rule_universe_registry                                      |
-|          6 | tick_exact                                                                |
-|          7 | logical_audit                                                             |
-|          8 | robustness, remediation_metric_decomposition                              |
-|          9 | governance, live_governance, alert_remediation, governance_explainability |
-|         10 | risk, checklist, stage_integrity                                          |
-|         11 | execution_monte_carlo                                                     |
+|   stage_id | keywords                                                                                                                                                                                    |
+|-----------:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|          1 | data_reliability                                                                                                                                                                            |
+|          2 | mining, opportunity_mining, ml_ready                                                                                                                                                        |
+|          3 | monthly_wfo, _wfo_, threshold_sensitivity                                                                                                                                                   |
+|          4 | stop_limit, execution_risk, execution_drift                                                                                                                                                 |
+|          5 | reduced_core, rule_universe_registry                                                                                                                                                        |
+|          6 | tick_exact                                                                                                                                                                                  |
+|          7 | logical_audit                                                                                                                                                                               |
+|          8 | robustness, remediation_metric_decomposition                                                                                                                                                |
+|          9 | governance, live_governance, alert_remediation, governance_explainability                                                                                                                   |
+|         10 | risk, checklist, stage_integrity                                                                                                                                                            |
+|         11 | execution_monte_carlo                                                                                                                                                                       |
+|         12 | stage12, api_parity, ab_parity, ctrader_ab_parity, reconciliation, runtime_db, tick_forensics, histdata_vs_ctrader, histdata_testclient_execution_parity, histdata_ctrader_execution_parity |
 
 ## Legacy Keyword Map
 | keyword              |

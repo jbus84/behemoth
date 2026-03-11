@@ -80,7 +80,7 @@ Run once per active symbol; if `shortlist_state_csv` is a rolling schedule, the 
 <!-- GENERATED:STAGE_06:START -->
 ### Auto Snapshot - Stage 06
 
-- generated_at: `2026-03-10 10:13:11 UTC`
+- generated_at: `2026-03-11 21:50:05 UTC`
 - Verifier recomputes OCO outcomes independently from stored labels.
 - All summary rates should remain near 1.0 for contract consistency.
 

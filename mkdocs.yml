@@ -102,6 +102,8 @@ nav:
       - Stage 10 Risks Spec: strategy_bible/stage_10_known_risks_and_backlog.md
       - Stage 11 Execution MC Snapshot: strategy_bible/generated/stage_11_snapshot.md
       - Stage 11 Execution MC Spec: strategy_bible/stage_11_execution_monte_carlo.md
+      - Stage 12 API Parity Snapshot: strategy_bible/generated/stage_12_snapshot.md
+      - Stage 12 API Parity Spec: strategy_bible/stage_12_api_parity.md
       - Signal Lifecycle Reference: strategy_bible/signal_lifecycle_reference.md
       - Operator Runbook: strategy_bible/operator_runbook.md
       - Metric Dictionary: strategy_bible/metric_dictionary.md

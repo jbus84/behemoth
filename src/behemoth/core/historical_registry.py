@@ -81,6 +81,8 @@ class HistoricalCandidateRegistry:
                     "model_threshold_json_sha256": str(
                         artifacts.get("model_threshold_json_sha256", "")
                     ).strip(),
+                    "predictions_path": str(artifacts.get("predictions_path", "")).strip(),
+                    "predictions_sha256": str(artifacts.get("predictions_sha256", "")).strip(),
                     "model_month": model_month,
                 }
                 if (

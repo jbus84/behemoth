@@ -24,6 +24,7 @@ STAGE_DOCS = {
     9: "stage_09_live_governance_and_deployment.md",
     10: "stage_10_known_risks_and_backlog.md",
     11: "stage_11_execution_monte_carlo.md",
+    12: "stage_12_api_parity.md",
 }
 
 MANUAL_HEADINGS_REQUIRED = [

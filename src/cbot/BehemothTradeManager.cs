@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -48,6 +49,9 @@ namespace cAlgo.Robots
 
         [Parameter("Tick Queue Cap", DefaultValue = 20000, MinValue = 1000, MaxValue = 200000)]
         public int TickQueueCap { get; set; }
+
+        [Parameter("Sync Client Seq From API", DefaultValue = true)]
+        public bool SyncClientSeqFromApi { get; set; }
 
         private HttpClient _client;
         private Ticks _historicalTicks;
@@ -104,6 +108,7 @@ namespace cAlgo.Robots
         private bool _predictPathHealthy = true;
         private const int MaxConsecutiveTickIngestFailures = 20;
         private const int MaxConsecutivePredictFailures = 5;
+        private const string BuildTag = "2026-03-11-candidate-uid-parity-fix-v1";
         private readonly List<TickPayload> _tickQueue = new List<TickPayload>();
         private long _clientTickSeq = 0;
         private DateTime _lastTickFlushUtc = DateTime.MinValue;
@@ -117,8 +122,13 @@ namespace cAlgo.Robots
                 _lastTickFlushUtc = Server.Time.ToUniversalTime();
                 PendingOrders.Filled += OnPendingOrderFilled;
                 Positions.Closed += OnPositionClosed;
+                Print($"[BUILD] {BuildTag}");
                 
                 Print($"[INIT] Starting Tick Backfill for {_internalSymbol} (Broker: {Symbol.Name})");
+                if (SyncClientSeqFromApi)
+                {
+                    SyncClientTickSeqFromApi();
+                }
                 
                 _historicalTicks = MarketData.GetTicks();
                 
@@ -136,6 +146,11 @@ namespace cAlgo.Robots
                 }
 
                 Print($"[INIT] Loaded {_historicalTicks.Count} historical ticks. Constructing backfill payload...");
+                if (_historicalTicks.Count < WarmupTicks)
+                {
+                    Print($"[INIT WARN] WarmupTicks={WarmupTicks}, available_history={_historicalTicks.Count}. " +
+                          "State warmup will continue online during replay.");
+                }
 
                 int startIdx = Math.Max(0, _historicalTicks.Count - WarmupTicks);
                 int countToProcess = _historicalTicks.Count - startIdx;
@@ -186,6 +201,52 @@ namespace cAlgo.Robots
             catch (Exception ex)
             {
                 Print($"[FATAL] OnStart error: {ex}");
+            }
+        }
+
+        private void SyncClientTickSeqFromApi()
+        {
+            try
+            {
+                var task = _client.GetAsync($"{BaseUrl}/runtime/feed/status");
+                if (!task.Wait(TimeSpan.FromSeconds(3)))
+                {
+                    Print("[INIT] Feed status sync timeout; using client_tick_seq from zero.");
+                    return;
+                }
+
+                var resp = task.Result;
+                var body = resp.Content.ReadAsStringAsync().Result;
+                if (!resp.IsSuccessStatusCode)
+                {
+                    Print($"[INIT] Feed status sync skipped: {resp.StatusCode}");
+                    return;
+                }
+
+                var snapshot = JsonSerializer.Deserialize<FeedStatusSnapshot>(body, _jsonOpts);
+                if (snapshot?.symbols == null || snapshot.symbols.Count == 0)
+                {
+                    return;
+                }
+
+                var row = snapshot.symbols.FirstOrDefault(
+                    x => string.Equals(x.symbol, _internalSymbol, StringComparison.OrdinalIgnoreCase)
+                );
+                if (row?.last_client_tick_seq == null)
+                {
+                    return;
+                }
+
+                long lastSeq = row.last_client_tick_seq.Value;
+                if (lastSeq > _clientTickSeq)
+                {
+                    _clientTickSeq = lastSeq;
+                    Print($"[INIT] Synced client_tick_seq from API: {_clientTickSeq}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Print($"[INIT] Feed status sync error: {ex.Message}");
             }
         }
 
@@ -445,7 +506,13 @@ namespace cAlgo.Robots
 
             if (IsTradingBlockedByRuntimeGuard())
             {
-                Print($"[RUNTIME GUARD] Trading blocked: {CurrentRuntimeGuardReason()}");
+                var reason = CurrentRuntimeGuardReason();
+                Print($"[RUNTIME GUARD] Trading blocked: {reason}");
+                // Allow /predict probes while predict path is unhealthy so recovery is possible.
+                if (reason == "predict_path_unhealthy")
+                {
+                    TriggerPrediction(validTicks.Distinct().OrderBy(x => x).ToList());
+                }
                 return;
             }
             if (EnableFtmoGuards)
@@ -585,6 +652,13 @@ namespace cAlgo.Robots
                     else
                     {
                         var body = resp.Content.ReadAsStringAsync().Result;
+                        if (IsPredictWarmupPending(resp.StatusCode, body))
+                        {
+                            // Expected during early bar formation; do not poison predict health.
+                            RegisterPredictSuccess();
+                            Print($"[PREDICT WARMUP] {body}");
+                            return;
+                        }
                         RegisterPredictFailure($"http_{(int)resp.StatusCode}");
                         Print($"[PREDICT ERROR] {resp.StatusCode} body={body}");
                     }
@@ -600,6 +674,17 @@ namespace cAlgo.Robots
                 RegisterPredictFailure("exception");
                 Print($"[ERROR] TriggerPrediction failed: {ex.Message}");
             }
+        }
+
+        private static bool IsPredictWarmupPending(HttpStatusCode code, string body)
+        {
+            if (code != HttpStatusCode.UnprocessableEntity)
+            {
+                return false;
+            }
+
+            string txt = body ?? string.Empty;
+            return txt.IndexOf("Insufficient warmup bars", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private void ProcessPredictions(List<OcoPrediction> predictions)
@@ -708,7 +793,7 @@ namespace cAlgo.Robots
             double barrierPips = pred.barrier_pips; 
             double volume = Symbol.QuantityToVolumeInUnits(LotSize);
             string rid = string.IsNullOrWhiteSpace(pred.risk_reservation_id) ? "NA" : pred.risk_reservation_id;
-            string groupLabel = $"Oco_{pred.candidate_uid}_{Server.Time:yyyyMMddHHmmss}|RID{rid}|T{pred.bar_ticks}|H{pred.horizon}";
+            string groupLabel = $"Oco_{pred.candidate_uid}|RID{rid}|T{pred.bar_ticks}|H{pred.horizon}|TS{Server.Time:yyyyMMddHHmmss}";
 
             double buyPrice = Symbol.Ask + (barrierPips * Symbol.PipSize);
             double sellPrice = Symbol.Bid - (barrierPips * Symbol.PipSize);
@@ -734,7 +819,12 @@ namespace cAlgo.Robots
                 }
                 
                 // Track API Open
-                string candidateUid = pos.Label.Split('|')[0].Replace("Oco_", "");
+                string candidateUid = ExtractCandidateUid(pos.Label);
+                if (string.IsNullOrWhiteSpace(candidateUid))
+                {
+                    candidateUid = pos.Label.Split('|')[0].Replace("Oco_", "");
+                    Print("[WARN] Could not parse candidate UID from label with RID format. Using legacy fallback parser.");
+                }
                 int horizon = ExtractHorizon(pos.Label);
                 string reservationId = ExtractReservationId(pos.Label);
                 TrackOpenTradeAsync(Symbol.Name, candidateUid, pos.Id.ToString(), pos.TradeType.ToString(), pos.EntryPrice, pos.EntryTime, horizon, reservationId);
@@ -762,6 +852,35 @@ namespace cAlgo.Robots
             string token = label.Substring(ridIdx + 4, nextSep - (ridIdx + 4));
             if (string.IsNullOrWhiteSpace(token) || token == "NA") return null;
             return token;
+        }
+
+        private string ExtractCandidateUid(string label)
+        {
+            if (string.IsNullOrWhiteSpace(label) || !label.StartsWith("Oco_", StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            int ridIdx = label.IndexOf("|RID", StringComparison.Ordinal);
+            string raw = ridIdx > 4
+                ? label.Substring(4, ridIdx - 4)
+                : label.Substring(4);
+
+            // Backward compatibility with old labels:
+            // Oco_<candidate_uid>_<yyyyMMddHHmmss>|RID...
+            int usIdx = raw.LastIndexOf('_');
+            if (usIdx > 0 && usIdx < raw.Length - 1)
+            {
+                string tail = raw.Substring(usIdx + 1);
+                bool isLegacyTs = tail.Length == 14 && tail.All(char.IsDigit);
+                if (isLegacyTs)
+                {
+                    raw = raw.Substring(0, usIdx);
+                }
+            }
+
+            raw = raw.Trim();
+            return string.IsNullOrWhiteSpace(raw) ? null : raw;
         }
 
         private async void TrackOpenTradeAsync(string symbol, string candidateUid, string brokerPosId, string side, double entryPrice, DateTime entryTs, int horizon, string reservationId = null)
@@ -870,6 +989,17 @@ namespace cAlgo.Robots
         public long? last_client_tick_seq { get; set; }
         public string last_tick_ts_utc { get; set; }
         public int bar_count { get; set; }
+    }
+
+    public class FeedStatusSnapshot
+    {
+        public List<FeedStatusSymbol> symbols { get; set; } = new List<FeedStatusSymbol>();
+    }
+
+    public class FeedStatusSymbol
+    {
+        public string symbol { get; set; }
+        public long? last_client_tick_seq { get; set; }
     }
 
     public class OcoPrediction

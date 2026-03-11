@@ -74,6 +74,7 @@ _historical_registry: HistoricalCandidateRegistry | None = None
 _models: dict[str, object] = {}          # cache key -> loaded CatBoostClassifier
 _thresholds: dict[str, dict] = {}        # cache key -> threshold config
 _model_months: dict[str, str] = {}       # cache key -> "2025-12"
+_historical_prediction_universes: dict[str, dict[datetime, set[str]]] = {}
 _models_dir: Path = Path("models/oco")
 _ftmo_rules_path: Path = Path("configs/research/governance/ftmo/ftmo_rules.yaml")
 _ftmo_profile: FtmoProfile | None = None
@@ -289,6 +290,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     global _state, _aggregators, _registry, _historical_registry, _feed_state
     global _models_dir, _ftmo_rules_path, _ftmo_profile
     global _historical_entries_loaded, _historical_preflight_failed_checks, _historical_preflight_summary
+    global _historical_prediction_universes
 
     # Start background monitor
     monitor_task = asyncio.create_task(_monitor_ledger())
@@ -310,6 +312,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     _feed_state = {}
     try:
         _aggregators = {}
+        _historical_prediction_universes = {}
         if _is_historical_mode():
             hist_dir = Path(str(_config.governance_history_dir))
             _historical_registry = HistoricalCandidateRegistry.load(hist_dir)
@@ -994,6 +997,85 @@ def _ensure_model_and_threshold(contract: _ResolvedRuntimeContract) -> tuple[Any
     return model, thr_cfg if isinstance(thr_cfg, dict) else {}
 
 
+def _load_historical_prediction_universe(contract: _ResolvedRuntimeContract) -> dict[datetime, set[str]]:
+    """Load the locked historical prediction row-universe for exact replay parity."""
+    if not _is_historical_mode():
+        return {}
+    cached = _historical_prediction_universes.get(contract.cache_key)
+    if cached is not None:
+        return cached
+
+    pred_path = Path(str(contract.model_binding.get("predictions_path", "")).strip())
+    if not pred_path.exists():
+        _historical_prediction_universes[contract.cache_key] = {}
+        return {}
+
+    try:
+        import duckdb
+    except Exception:
+        _historical_prediction_universes[contract.cache_key] = {}
+        return {}
+
+    con = duckdb.connect()
+    try:
+        rows = con.execute(
+            """
+            SELECT
+                try_cast(close_ts AS TIMESTAMP WITH TIME ZONE) AS close_ts,
+                candidate_uid
+            FROM read_parquet(?)
+            WHERE test_month = ?
+              AND upper(split_part(candidate_uid, '|', 2)) = ?
+            ORDER BY close_ts
+            """,
+            [
+                str(pred_path),
+                str(contract.model_month),
+                str(contract.symbol).upper().strip(),
+            ],
+        ).fetchall()
+    finally:
+        con.close()
+
+    out: dict[datetime, set[str]] = {}
+    for close_ts, candidate_uid in rows:
+        if close_ts is None:
+            continue
+        ts_utc = _as_utc_ts(close_ts)
+        uid = str(candidate_uid or "").strip()
+        if not uid:
+            continue
+        bucket = out.setdefault(ts_utc, set())
+        bucket.add(uid)
+    _historical_prediction_universes[contract.cache_key] = out
+    return out
+
+
+def _apply_historical_prediction_universe_gate(
+    *,
+    contract: _ResolvedRuntimeContract,
+    close_ts: datetime,
+    candidates: list[Any],
+) -> list[Any]:
+    """Historical-only gate: only evaluate rows present in locked repo predictions."""
+    if not _is_historical_mode():
+        return candidates
+    universe = _load_historical_prediction_universe(contract)
+    if not universe:
+        return candidates
+    allowed = universe.get(_as_utc_ts(close_ts), set())
+    if not allowed:
+        return []
+    filtered: list[Any] = []
+    for cand in candidates:
+        canonical_uid = (
+            f"oco|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+        )
+        if canonical_uid in allowed:
+            filtered.append(cand)
+    return filtered
+
+
 def _resolve_ftmo_account_eval(
     sym: str,
     now_utc: datetime,
@@ -1414,12 +1496,22 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
         candidates = [c for c in candidates if int(getattr(c, "bar_ticks", 0)) in completed_ticks]
         if not candidates:
             return []
+    candidates = _apply_historical_prediction_universe_gate(
+        contract=contract,
+        close_ts=close_ts,
+        candidates=candidates,
+    )
+    if not candidates:
+        return []
     if not candidates:
         raise HTTPException(status_code=422, detail=f"No candidates registered for {sym}")
 
     _check_warmup(sym, candidates)
 
     model, thr_cfg = _ensure_model_and_threshold(contract)
+    historical_prediction_universe_gated = bool(
+        _is_historical_mode() and str(contract.model_binding.get("predictions_path", "")).strip()
+    )
 
     # Compute base rolling features per bar_ticks group
     base_features_by_ticks: dict[int, ModelFeatures] = {}
@@ -1462,6 +1554,7 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
         requested_volume_units=requested_volume_units,
         model_month=contract.model_month,
         cap_pips=contract.cap_pips,
+        skip_regime_gate=historical_prediction_universe_gated,
     )
 
     # Sort by pred_prob descending
@@ -1498,6 +1591,7 @@ def _build_predictions(
     requested_volume_units: float,
     model_month: str,
     cap_pips: float,
+    skip_regime_gate: bool = False,
 ) -> list[OcoPrediction]:
     """Build predictions for each candidate using model + FTMO portfolio allocator."""
     import numpy as np
@@ -1533,12 +1627,15 @@ def _build_predictions(
             }
         )
         regime_name = _candidate_regime_name(cand)
-        regime_active = _regime_is_active(
-            regime_name,
-            features=features,
-            close_ts_utc=close_ts_utc,
-            regime_q=regime_quantiles_by_ticks.get(int(cand.bar_ticks), {}),
-        )
+        if skip_regime_gate:
+            regime_active = True
+        else:
+            regime_active = _regime_is_active(
+                regime_name,
+                features=features,
+                close_ts_utc=close_ts_utc,
+                regime_q=regime_quantiles_by_ticks.get(int(cand.bar_ticks), {}),
+            )
         arr = np.array([features.to_array()], dtype=float)
 
         if model is not None:
@@ -1969,6 +2066,7 @@ async def reload_models() -> dict:
     """Hot-reload models from disk without restarting the server."""
     global _registry, _historical_registry, _historical_entries_loaded
     global _historical_preflight_failed_checks, _historical_preflight_summary
+    global _historical_prediction_universes
 
     if _is_historical_mode():
         hist_dir = Path(str(_config.governance_history_dir))
@@ -1986,6 +2084,7 @@ async def reload_models() -> dict:
         _historical_preflight_summary = ""
 
     _load_models()
+    _historical_prediction_universes = {}
     return {
         "ok": True,
         "models_loaded": dict(_model_months),

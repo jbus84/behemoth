@@ -532,8 +532,14 @@ def run(
         raw_ticks["tick_ts"] = _to_utc(raw_ticks.get("tick_ts", pd.Series(dtype=object)))
 
     trades_window = trades[_window_mask(trades["entry_ts"], start, end)] if not trades.empty else pd.DataFrame()
-    audit_event_window = audit[_window_mask(audit["event_ts"], start, end)] if not audit.empty else pd.DataFrame()
-    audit_close_window = audit[_window_mask(audit["close_ts"], start, end)] if not audit.empty else pd.DataFrame()
+    # Preserve audit column schema even when there are zero rows so downstream
+    # key-based comparisons do not fail on missing columns.
+    audit_event_window = (
+        audit[_window_mask(audit["event_ts"], start, end)] if not audit.empty else audit.copy()
+    )
+    audit_close_window = (
+        audit[_window_mask(audit["close_ts"], start, end)] if not audit.empty else audit.copy()
+    )
     raw_ticks_window = (
         raw_ticks[_window_mask(raw_ticks["tick_ts"], start, end)] if not raw_ticks.empty else pd.DataFrame()
     )

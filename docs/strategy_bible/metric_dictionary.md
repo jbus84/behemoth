@@ -55,6 +55,12 @@ Define metric semantics, formulas, units, interpretation bands, and missing-valu
 | EM03_prob_negative_month_s1 | 11 | probability monthly per-signal draw is negative under `S1_mild` | ratio | <=0.35 preferred | disallow |
 | EM04_fill_rate_drop_vs_s0_s1 | 11 | `mean_fill_rate(S0)-mean_fill_rate(S1)` | ratio | <=0.12 preferred | disallow |
 | EM05_nan_core_fields | 11 | NaN count in execution MC core fields | count | 0 required | disallow |
+| AP01_signal_missing_expected_count | 12 | count of reduced-core selected keys missing from API runtime output | count | 0 required | disallow |
+| AP02_signal_extra_runtime_count | 12 | count of extra API selected keys absent from reduced-core truth | count | 0 required | disallow |
+| AP03_signal_parity_pass | 12 | indicator(`selected_missing_expected == 0 and selected_extra_runtime == 0`) | binary | 1 required | disallow |
+| AP04_execution_failed_checks_high_critical | 12 | count of high/critical execution parity failures | count | 0 required | disallow |
+| AP05_execution_parity_pass | 12 | indicator(execution parity validator overall pass) | binary | 1 required | disallow |
+| AP06_api_parity_stage_pass | 12 | indicator(`AP03_signal_parity_pass == 1 and AP05_execution_parity_pass == 1`) | binary | 1 required | disallow |
 
 ## Causality / Leakage Controls
 - Metrics are computed from finalized stage artifacts; no forward joins beyond each stage contract.

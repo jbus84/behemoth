@@ -1,18 +1,18 @@
 ### Auto Snapshot - Stage 09
 
-- generated_at: `2026-03-10 10:13:11 UTC`
+- generated_at: `2026-03-11 21:50:05 UTC`
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
 - Missing required artifacts: 0.
 
 #### Key Results
-| symbol   | gate_reduced_lb95_month_gt0   | gate_tick_exact   | gate_robust_lb95_trade_gt0   | gate_robust_months_majority   | symbol_all_gates_pass   |
-|:---------|:------------------------------|:------------------|:-----------------------------|:------------------------------|:------------------------|
-| EURUSD   | True                          | True              | True                         | True                          | True                    |
-| GBPUSD   | True                          | True              | True                         | True                          | True                    |
-| AUDUSD   | True                          | True              | True                         | True                          | True                    |
-| USDJPY   | True                          | True              | True                         | True                          | True                    |
-| USDCHF   | True                          | True              | True                         | True                          | True                    |
-| USDCAD   | True                          | True              | True                         | True                          | True                    |
+| symbol   | gate_reduced_lb95_month_gt0   | gate_tick_exact   | gate_robust_lb95_trade_gt0   | gate_robust_months_majority   | gate_api_signal_parity   | gate_api_execution_parity   | gate_api_parity   | symbol_all_gates_pass   |
+|:---------|:------------------------------|:------------------|:-----------------------------|:------------------------------|:-------------------------|:----------------------------|:------------------|:------------------------|
+| EURUSD   | True                          | True              | True                         | True                          | True                     | True                        | True              | True                    |
+| GBPUSD   | True                          | True              | True                         | True                          | True                     | True                        | True              | True                    |
+| AUDUSD   | True                          | True              | True                         | True                          | True                     | True                        | True              | True                    |
+| USDJPY   | True                          | True              | True                         | True                          | True                     | True                        | True              | True                    |
+| USDCHF   | True                          | True              | True                         | True                          | True                     | True                        | True              | True                    |
+| USDCAD   | True                          | True              | True                         | True                          | True                     | True                        | True              | True                    |
 
 #### Interpretation Notes
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
