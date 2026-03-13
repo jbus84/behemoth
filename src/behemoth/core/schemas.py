@@ -19,6 +19,10 @@ class IncomingTick(BaseModel):
         ge=0,
         description="Optional per-symbol monotonic tick sequence from cBot for ingest diagnostics.",
     )
+    run_id: str | None = Field(
+        default=None,
+        description="Optional debug-session identifier emitted by cBot for trace correlation.",
+    )
 
 
 class IncomingTickBar(BaseModel):
@@ -259,12 +263,14 @@ class TradeOpenRequest(BaseModel):
     entry_ts: datetime
     horizon: int
     reservation_id: str | None = None
+    run_id: str | None = None
 
 
 class TradeTouchRequest(BaseModel):
     """Sent by cBot when a position's barrier is touched."""
     symbol: str
     broker_pos_id: str
+    run_id: str | None = None
 
 
 class ActiveTrade(BaseModel):
@@ -283,6 +289,7 @@ class TradeUpdateRequest(BaseModel):
     exit_price: float | None = None
     exit_ts: datetime | None = None
     pnl_pips: float | None = None
+    run_id: str | None = None
 
 
 class FtmoAccountSnapshotRequest(BaseModel):
@@ -291,3 +298,4 @@ class FtmoAccountSnapshotRequest(BaseModel):
     balance: float = Field(..., gt=0.0)
     equity: float = Field(..., gt=0.0)
     snapshot_ts: datetime | None = None
+    run_id: str | None = None

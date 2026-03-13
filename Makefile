@@ -8,8 +8,16 @@ COLOR_DESC := \033[2m
 
 # Active symbol list — single source of truth for multi-symbol targets
 REBUILD_SYMBOLS := EURUSD GBPUSD USDJPY USDCHF AUDUSD USDCAD
+CTRADER_ROBOT_DST := ~/cAlgo/Sources/Robots/BehemothTradeManager/BehemothTradeManager/BehemothTradeManager.cs
+CTRADER_PLUGIN_DST := ~/cAlgo/Sources/Plugins/CustomDataSourceHistDataPlugin/CustomDataSourceHistDataPlugin/CustomDataSourceHistDataPlugin.cs
 
-.PHONY: test docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift deploy-cbot provision retrain-all rebuild-all quality ty vulture smellcheck radon xenon audit-all freeze-oco freeze-oco-history validate-oco-history summarize-runtime-db-run reconcile-ctrader-run export-ctrader-custom-data ctrader-ab-parity-report histdata-ctrader-parity histdata-testclient-parity stage12-api-parity
+.PHONY: test docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift deploy-cbot deploy-ctrader provision retrain-all rebuild-all quality ty vulture smellcheck radon xenon audit-all freeze-oco freeze-oco-history validate-oco-history reconcile-historical-predictions summarize-runtime-db-run reconcile-ctrader-run export-ctrader-custom-data ctrader-debug-up ctrader-debug-down ctrader-debug-status ctrader-ab-parity-report histdata-ctrader-parity histdata-testclient-parity stage12-api-parity offset-robustness-study offset-frozen-screen
+
+OFFSET_ROBUSTNESS_SYMBOLS_DEFAULT := EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD
+OFFSET_ROBUSTNESS_OFFSETS_DEFAULT := 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99
+OFFSET_ROBUSTNESS_COARSE_DEFAULT := 0,10,20,30,40,50,60,70,80,90
+OFFSET_ROBUSTNESS_API_CONFIRM_DEFAULT := 0,25,50,75
+OFFSET_ROBUSTNESS_WARMUP_DEFAULT := 73,145,217,289,400
 
 provision:
 	@echo "Provisioning Alertmanager configuration..."
@@ -82,8 +90,15 @@ rebuild-all:
 
 deploy-cbot:
 	@echo "Deploying BehemothTradeManager.cs to cTrader Robots directory..."
-	cp src/cbot/BehemothTradeManager.cs ~/cAlgo/Sources/Robots/BehemothTradeManager/BehemothTradeManager/BehemothTradeManager.cs
+	cp src/cbot/BehemothTradeManager.cs $(CTRADER_ROBOT_DST)
 	@echo "Deployment complete! Please rebuild the bot in cTrader Automate."
+
+deploy-ctrader:
+	@echo "Deploying BehemothTradeManager.cs to cTrader Robots directory..."
+	cp src/cbot/BehemothTradeManager.cs $(CTRADER_ROBOT_DST)
+	@echo "Deploying CustomDataSourceHistDataPlugin.cs to cTrader Plugins directory..."
+	cp src/cbot/CustomDataSourceHistDataPlugin.cs $(CTRADER_PLUGIN_DST)
+	@echo "Deployment complete! Please rebuild the bot and plugin in cTrader Automate."
 
 docs:
 	uv run mkdocs serve -a 127.0.0.1:8001
@@ -158,6 +173,15 @@ validate-oco-history:
 		--history-dir configs/research/governance/oco_history \
 		--symbols $(shell echo $(REBUILD_SYMBOLS) | sed 's/ /,/g')
 
+reconcile-historical-predictions:
+	uv run python scripts/reconcile_historical_prediction_artifacts.py \
+		--history-dir $(or $(HISTORY_DIR),configs/research/governance/oco_history) \
+		--tick-velocity-dir $(or $(TICK_VELOCITY_DIR),data/analysis/tick_velocity) \
+		--symbols $(or $(SYMBOLS),) \
+		--months $(or $(MONTHS),) \
+		--write-lock $(or $(WRITE_LOCK),true) \
+		$(if $(SUMMARY_CSV),--summary-csv $(SUMMARY_CSV),)
+
 summarize-runtime-db-run:
 	@test -n "$(SYMBOL)" || (echo "error: SYMBOL is required, e.g. make summarize-runtime-db-run SYMBOL=EURUSD START_TS=2025-07-01T00:00:00Z END_TS=2025-08-01T00:00:00Z" && exit 1)
 	uv run python scripts/summarize_runtime_db_run.py \
@@ -198,6 +222,76 @@ export-ctrader-custom-data:
 		--out-dir $(OUT_DIR) \
 		--overwrite $(or $(OVERWRITE),false) \
 		$(if $(SUMMARY_CSV),--summary-csv $(SUMMARY_CSV),)
+
+ctrader-debug-up:
+	@test -n "$(SYMBOL)" || (echo "error: SYMBOL is required" && exit 1)
+	@test -n "$(START_TS)" || (echo "error: START_TS is required" && exit 1)
+	@test -n "$(END_TS)" || (echo "error: END_TS is required" && exit 1)
+	uv run python scripts/manage_ctrader_debug_session.py up \
+		--source $(or $(SOURCE),histdata) \
+		--symbol $(SYMBOL) \
+		--start-ts $(START_TS) \
+		--end-ts $(END_TS) \
+		$(if $(RUN_ID),--run-id $(RUN_ID),) \
+		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/tick) \
+		--host $(or $(HOST),127.0.0.1) \
+		--port $(or $(PORT),8000) \
+		--start-api $(or $(START_API),true) \
+		--replace-active $(or $(REPLACE_ACTIVE),true) \
+		--reset-db $(or $(RESET_DB),true) \
+		--overwrite-package $(or $(OVERWRITE_PACKAGE),true) \
+		--record-raw-ticks $(or $(RECORD_RAW_TICKS),true) \
+		--start-timeout-sec $(or $(START_TIMEOUT_SEC),20.0) \
+		--models-dir $(or $(MODELS_DIR),models/oco) \
+		--history-dir $(or $(HISTORY_DIR),configs/research/governance/oco_history) \
+		--missing-month-policy $(or $(MISSING_MONTH_POLICY),error) \
+		--historical-preflight-mode $(or $(HISTORICAL_PREFLIGHT_MODE),warn) \
+		--historical-prediction-universe-mode $(or $(HISTORICAL_PREDICTION_UNIVERSE_MODE),tolerant) \
+		--comparison-anchor-ts $(or $(COMPARISON_ANCHOR_TS),$(START_TS)) \
+		--ticks-before-anchor $(or $(WARMUP_TICKS),30000) \
+		--ticks-after-anchor $(or $(COMPARISON_TICKS),30000)
+
+ctrader-debug-down:
+	uv run python scripts/manage_ctrader_debug_session.py down \
+		$(if $(RUN_ID),--run-id $(RUN_ID),) \
+		--clear-active $(or $(CLEAR_ACTIVE),true)
+
+ctrader-debug-status:
+	uv run python scripts/manage_ctrader_debug_session.py status \
+		$(if $(RUN_ID),--run-id $(RUN_ID),)
+
+cbot-surrogate:
+	@test -n "$(SYMBOL)" || (echo "error: SYMBOL is required" && exit 1)
+	@test -n "$(START_TS)" || (echo "error: START_TS is required" && exit 1)
+	@test -n "$(END_TS)" || (echo "error: END_TS is required" && exit 1)
+	uv run python scripts/replay_histdata_cbot_surrogate.py \
+		--symbol $(SYMBOL) \
+		--start-ts $(START_TS) \
+		--end-ts $(END_TS) \
+		$(if $(RUN_ID),--run-id $(RUN_ID),) \
+		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/tick) \
+		--warmup-ticks $(or $(WARMUP_TICKS),30000) \
+		--lookback-days $(or $(LOOKBACK_DAYS),31) \
+		--models-dir $(or $(MODELS_DIR),models/oco) \
+		--history-dir $(or $(HISTORY_DIR),configs/research/governance/oco_history) \
+		--missing-month-policy $(or $(MISSING_MONTH_POLICY),error) \
+		--historical-preflight-mode $(or $(HISTORICAL_PREFLIGHT_MODE),warn) \
+		--historical-prediction-universe-mode $(or $(HISTORICAL_PREDICTION_UNIVERSE_MODE),tolerant) \
+		--ftmo-enabled-override $(or $(FTMO_ENABLED_OVERRIDE),false) \
+		--requested-lot-size $(or $(REQUESTED_LOT_SIZE),0.05) \
+		--enable-tick-batch $(or $(ENABLE_TICK_BATCH),true) \
+		--tick-batch-size $(or $(TICK_BATCH_SIZE),20) \
+		--selected-time-tolerance-sec $(or $(SELECTED_TIME_TOLERANCE_SEC),30.0) \
+		--selected-parity-mode $(or $(SELECTED_PARITY_MODE),event_aligned) \
+		--enable-sequence-fallback $(or $(ENABLE_SEQUENCE_FALLBACK),true) \
+		--sequence-fallback-max-gap-sec $(or $(SEQUENCE_FALLBACK_MAX_GAP_SEC),21600.0) \
+		--reset-runtime-db $(or $(RESET_RUNTIME_DB),true) \
+		--record-raw-ticks $(or $(RECORD_RAW_TICKS),true) \
+		--time-tolerance-sec $(or $(TIME_TOLERANCE_SEC),30.0) \
+		--price-tolerance-pips $(or $(PRICE_TOLERANCE_PIPS),0.1) \
+		$(if $(REPO_PREDICTIONS_PARQUET),--repo-predictions-parquet $(REPO_PREDICTIONS_PARQUET),) \
+		$(if $(REPO_STOPLIMIT_DETAIL_CSV),--repo-stoplimit-detail-csv $(REPO_STOPLIMIT_DETAIL_CSV),) \
+		$(if $(REDUCED_CORE_STATE_SCHEDULE_CSV),--reduced-core-state-schedule-csv $(REDUCED_CORE_STATE_SCHEDULE_CSV),)
 
 ctrader-ab-parity-report:
 	@test -n "$(SYMBOL)" || (echo "error: SYMBOL is required" && exit 1)
@@ -299,6 +393,40 @@ histdata-testclient-parity:
 
 stage12-api-parity: histdata-testclient-parity
 
+offset-robustness-study:
+	uv run python scripts/run_offset_tickbar_robustness.py \
+		--symbols $(if $(SYMBOLS),$(SYMBOLS),$(OFFSET_ROBUSTNESS_SYMBOLS_DEFAULT)) \
+		--offsets $(if $(OFFSETS),$(OFFSETS),$(OFFSET_ROBUSTNESS_OFFSETS_DEFAULT)) \
+		--mode $(or $(MODE),adaptive) \
+		--coarse-offsets $(if $(COARSE_OFFSETS),$(COARSE_OFFSETS),$(OFFSET_ROBUSTNESS_COARSE_DEFAULT)) \
+		--refine-radius $(or $(REFINE_RADIUS),2) \
+		--max-refine-centers-per-symbol $(or $(MAX_REFINE_CENTERS_PER_SYMBOL),2) \
+		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/tick) \
+		--offset-bar-dir $(or $(OFFSET_BAR_DIR),data/global_tickbars_offset) \
+		--out-dir $(or $(OUT_DIR),data/analysis/tick_opportunity_mining/offset_robustness) \
+		--retention-mode $(or $(RETENTION_MODE),compact) \
+		--retain-flagged-offset-runs $(or $(RETAIN_FLAGGED_OFFSET_RUNS),true) \
+		--api-confirm-offsets $(if $(API_CONFIRM_OFFSETS),$(API_CONFIRM_OFFSETS),$(OFFSET_ROBUSTNESS_API_CONFIRM_DEFAULT)) \
+		--warmup-bars-grid $(if $(WARMUP_BARS_GRID),$(WARMUP_BARS_GRID),$(OFFSET_ROBUSTNESS_WARMUP_DEFAULT)) \
+		--stage12-start-ts $(or $(START_TS),2025-07-07T00:00:00Z) \
+		--stage12-end-ts $(or $(END_TS),2025-07-09T00:00:00Z) \
+		$(if $(OVERWRITE_OFFSET_BARS),--overwrite-offset-bars,) \
+		$(if $(SKIP_API_CONFIRMATION),--skip-api-confirmation,) \
+		$(if $(SKIP_WARMUP_SENSITIVITY),--skip-warmup-sensitivity,) \
+		$(if $(FAIL_FAST),--fail-fast,)
+
+offset-frozen-screen:
+	uv run python scripts/run_offset_tickbar_frozen_screen.py \
+		--symbols $(if $(SYMBOLS),$(SYMBOLS),$(OFFSET_ROBUSTNESS_SYMBOLS_DEFAULT)) \
+		--offsets $(if $(OFFSETS),$(OFFSETS),$(OFFSET_ROBUSTNESS_COARSE_DEFAULT)) \
+		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/tick) \
+		--offset-bar-dir $(or $(OFFSET_BAR_DIR),data/global_tickbars_offset) \
+		--frozen-root $(or $(FROZEN_ROOT),data/analysis/tick_opportunity_mining/frozen_models) \
+		--out-dir $(or $(OUT_DIR),data/analysis/tick_opportunity_mining/offset_robustness_frozen) \
+		--retention-mode $(or $(RETENTION_MODE),compact) \
+		$(if $(filter 1 true TRUE yes YES,$(CLEANUP_COMPLETED_ARTIFACTS)),--cleanup-completed-artifacts,) \
+		$(if $(FAIL_FAST),--fail-fast,)
+
 docs-clean:
 	rm -rf site
 
@@ -333,14 +461,21 @@ help:
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "check-legacy-drift" "Check repo for legacy/forbidden code drift"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "precommit-install" "Install pre-commit hooks"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "precommit-run" "Run pre-commit on all files"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "deploy-cbot" "Copy the Behemoth cBot source into the cTrader robot source tree"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "deploy-ctrader" "Copy both the Behemoth cBot and HistData plugin into the cTrader source tree"
 	@printf "\n$(COLOR_SECTION)== Pipeline ==$(COLOR_RESET)\n"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "retrain-all" "Re-run ML pipeline + docs for all symbols (skip data download)"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "rebuild-all" "Full rebuild: data + ML + docs for all symbols (MONTHS=... required)"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "freeze-oco-history" "Freeze month-scoped historical governance locks for replay/backtests"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "validate-oco-history" "Validate historical lock integrity and index coverage"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "reconcile-historical-predictions" "Rebuild frozen month-local historical predictions from locked model artifacts"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "offset-robustness-study" "Run the offset tick-bar robustness study across selected symbols/offsets"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "summarize-runtime-db-run" "Summarize runtime DB rows for one symbol/window"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "reconcile-ctrader-run" "Reconcile cTrader runtime signals against research predictions"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "export-ctrader-custom-data" "Export HistData parquet ticks into cTrader custom-data package"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "ctrader-debug-up" "One-command HistData debug session: export package + isolated DuckDB + API"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "ctrader-debug-down" "Stop the active cTrader debug session and clear the active package pointer"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "ctrader-debug-status" "Show the active cTrader debug session, DB path, package path, and API state"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "ctrader-ab-parity-report" "Compare baseline-vs-custom cTrader runs and build A/B parity report"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "histdata-ctrader-parity" "Validate HistData execution parity from cTrader runtime DB + events"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "histdata-testclient-parity" "Replay HistData via TestClient (no cTrader) and run strict parity gate"

@@ -225,6 +225,42 @@ def _state_universe_for_month(path: Path, symbol: str, month: str) -> tuple[pd.D
     return x, sha
 
 
+def _canonical_candidate_uid(symbol: str, *, bar_ticks: int, horizon: int, state_id: str) -> str:
+    return f"oco|{str(symbol).upper().strip()}|{int(bar_ticks)}|h{int(horizon)}|{str(state_id).strip()}"
+
+
+def _freeze_month_predictions(
+    *,
+    source_predictions: Path,
+    symbol: str,
+    month: str,
+    states: pd.DataFrame,
+    out_path: Path,
+) -> tuple[Path, str]:
+    pred = pd.read_parquet(source_predictions)
+    pred["test_month"] = pred.get("test_month", pd.Series(dtype=object)).astype(str).str.strip()
+    pred["candidate_uid"] = pred.get("candidate_uid", pd.Series(dtype=object)).astype(str)
+    allowed = {
+        _canonical_candidate_uid(
+            symbol,
+            bar_ticks=int(row["bar_ticks"]),
+            horizon=int(row["horizon"]),
+            state_id=str(row["state_id"]),
+        )
+        for _, row in states.iterrows()
+    }
+    frozen = pred[
+        (pred["test_month"] == str(month).strip()) & (pred["candidate_uid"].isin(allowed))
+    ].copy()
+    if frozen.empty:
+        raise ValueError(
+            f"no prediction rows found for {str(symbol).upper()} {month} in {source_predictions}"
+        )
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    frozen.to_parquet(out_path, index=False)
+    return out_path, _sha256(out_path)
+
+
 def _filter_months(
     *,
     months: list[str],
@@ -330,6 +366,14 @@ def run(
             month_dir.mkdir(parents=True, exist_ok=True)
             states_out = month_dir / f"{str(sym).lower()}_oco_allowed_states.csv"
             states.to_csv(states_out, index=False)
+            frozen_pred_out = month_dir / f"{str(sym).lower()}_oco_locked_predictions.parquet"
+            frozen_pred_path, frozen_pred_sha = _freeze_month_predictions(
+                source_predictions=paths["predictions"],
+                symbol=sym,
+                month=month,
+                states=states,
+                out_path=frozen_pred_out,
+            )
 
             manifest: dict[str, Any] = {
                 "schema_version": 1,
@@ -343,8 +387,10 @@ def run(
                     "reduced_config_sha256": _sha256(paths["reduced_config"]),
                     "reduced_states_csv_path": str(states_out),
                     "reduced_states_csv_sha256": _sha256(states_out),
-                    "predictions_path": str(paths["predictions"]),
-                    "predictions_sha256": _sha256(paths["predictions"]),
+                    "source_predictions_path": str(paths["predictions"]),
+                    "source_predictions_sha256": _sha256(paths["predictions"]),
+                    "predictions_path": str(frozen_pred_path),
+                    "predictions_sha256": str(frozen_pred_sha),
                     "model_cbm_path": str(model_cbm),
                     "model_cbm_sha256": _sha256(model_cbm),
                     "model_threshold_json_path": str(model_thr),
@@ -393,7 +439,7 @@ def run(
             lock_out = month_dir / f"{str(sym).lower()}_oco_live_lock.json"
             lock_out.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
 
-            out_paths.extend([lock_out, states_out])
+            out_paths.extend([lock_out, states_out, frozen_pred_path])
             index_rows.append(
                 {
                     "symbol": str(sym).upper(),

@@ -15,6 +15,7 @@ Model loading:
 from __future__ import annotations
 
 import asyncio
+from bisect import bisect_left
 import hashlib
 import json
 import logging
@@ -75,6 +76,7 @@ _models: dict[str, object] = {}          # cache key -> loaded CatBoostClassifie
 _thresholds: dict[str, dict] = {}        # cache key -> threshold config
 _model_months: dict[str, str] = {}       # cache key -> "2025-12"
 _historical_prediction_universes: dict[str, dict[datetime, set[str]]] = {}
+_historical_prediction_candidate_index: dict[str, dict[str, list[datetime]]] = {}
 _models_dir: Path = Path("models/oco")
 _ftmo_rules_path: Path = Path("configs/research/governance/ftmo/ftmo_rules.yaml")
 _ftmo_profile: FtmoProfile | None = None
@@ -83,6 +85,7 @@ _historical_preflight_failed_checks: int = 0
 _historical_preflight_summary: str = ""
 _feed_state: dict[str, dict[str, Any]] = {}
 _MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
+_HISTORICAL_PREDICTION_TOLERANCE_SEC = 30.0
 
 
 def _sha256(path: Path) -> str:
@@ -216,12 +219,36 @@ class AppConfig(BaseModel):
         .strip()
         .lower()
     )
+    historical_preflight_mode: str = Field(
+        default_factory=lambda: str(
+            os.getenv("BEHEMOTH_HISTORICAL_PREFLIGHT_MODE", "error")
+        )
+        .strip()
+        .lower()
+    )
+    historical_prediction_universe_mode: str = Field(
+        default_factory=lambda: str(
+            os.getenv("BEHEMOTH_HISTORICAL_PREDICTION_UNIVERSE_MODE", "exact")
+        )
+        .strip()
+        .lower()
+    )
     force_model_month: str = Field(
         default_factory=lambda: str(os.getenv("BEHEMOTH_FORCE_MODEL_MONTH", "")).strip()
     )
     record_raw_ticks: bool = Field(
         default_factory=lambda: str(os.getenv("BEHEMOTH_RECORD_RAW_TICKS", "false")).strip().lower()
         in {"1", "true", "yes", "y"}
+    )
+    debug_run_id: str = Field(
+        default_factory=lambda: str(os.getenv("BEHEMOTH_DEBUG_RUN_ID", "")).strip()
+    )
+    debug_http_trace: bool = Field(
+        default_factory=lambda: str(os.getenv("BEHEMOTH_DEBUG_HTTP_TRACE", "false")).strip().lower()
+        in {"1", "true", "yes", "y"}
+    )
+    debug_http_trace_path: str = Field(
+        default_factory=lambda: str(os.getenv("BEHEMOTH_DEBUG_HTTP_TRACE_PATH", "")).strip()
     )
 
 
@@ -271,10 +298,20 @@ def _run_historical_preflight(history_dir: Path) -> None:
     _historical_preflight_failed_checks = len(bad)
     _historical_preflight_summary = summarize_failures(checks, limit=10)
     if bad:
-        raise RuntimeError(
-            "Historical governance preflight failed: "
-            f"failed_checks={len(bad)} { _historical_preflight_summary }"
+        mode = str(_config.historical_preflight_mode).strip().lower()
+        if mode not in {"warn", "warning", "ignore", "off"}:
+            raise RuntimeError(
+                "Historical governance preflight failed: "
+                f"failed_checks={len(bad)} { _historical_preflight_summary }"
+            )
+        logger.warning(
+            "Historical governance preflight failed but was downgraded by "
+            "BEHEMOTH_HISTORICAL_PREFLIGHT_MODE=%s: failed_checks=%d %s",
+            mode,
+            len(bad),
+            _historical_preflight_summary,
         )
+        return
     logger.info(
         "Historical governance preflight passed: checks=%d history_dir=%s",
         len(checks),
@@ -290,7 +327,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     global _state, _aggregators, _registry, _historical_registry, _feed_state
     global _models_dir, _ftmo_rules_path, _ftmo_profile
     global _historical_entries_loaded, _historical_preflight_failed_checks, _historical_preflight_summary
-    global _historical_prediction_universes
+    global _historical_prediction_universes, _historical_prediction_candidate_index
 
     # Start background monitor
     monitor_task = asyncio.create_task(_monitor_ledger())
@@ -313,6 +350,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     try:
         _aggregators = {}
         _historical_prediction_universes = {}
+        _historical_prediction_candidate_index = {}
         if _is_historical_mode():
             hist_dir = Path(str(_config.governance_history_dir))
             _historical_registry = HistoricalCandidateRegistry.load(hist_dir)
@@ -860,6 +898,115 @@ def _as_utc_ts(ts: datetime) -> datetime:
     return ts.astimezone(timezone.utc)
 
 
+def _effective_run_id(*values: Any) -> str | None:
+    for raw in values:
+        txt = str(raw or "").strip()
+        if txt:
+            return txt
+    txt = str(_config.debug_run_id or "").strip()
+    return txt or None
+
+
+def _json_ready(value: Any) -> Any:
+    if isinstance(value, BaseModel):
+        return value.model_dump(mode="json")
+    if isinstance(value, datetime):
+        return _as_utc_ts(value).isoformat()
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, dict):
+        return {str(k): _json_ready(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_ready(v) for v in value]
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    if hasattr(value, "isoformat"):
+        try:
+            return value.isoformat()
+        except Exception:
+            pass
+    return str(value)
+
+
+def _append_http_trace(
+    *,
+    endpoint: str,
+    phase: str,
+    run_id: str | None = None,
+    symbol: str | None = None,
+    request_payload: Any = None,
+    response_payload: Any = None,
+    status_code: int | None = None,
+    extra: dict[str, Any] | None = None,
+) -> None:
+    if (not _config.debug_http_trace) or (not str(_config.debug_http_trace_path).strip()):
+        return
+    path = Path(str(_config.debug_http_trace_path))
+    record = {
+        "ts_utc": datetime.now(tz=timezone.utc).isoformat(),
+        "endpoint": str(endpoint),
+        "phase": str(phase),
+        "run_id": _effective_run_id(run_id),
+        "symbol": str(symbol).upper().strip() if str(symbol or "").strip() else None,
+        "status_code": int(status_code) if status_code is not None else None,
+        "request": _json_ready(request_payload),
+        "response": _json_ready(response_payload),
+        "extra": _json_ready(extra or {}),
+    }
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(record, sort_keys=True) + "\n")
+    except Exception:
+        logger.debug("Failed to append debug HTTP trace: path=%s", path, exc_info=True)
+
+
+def _trace_predict_response(
+    *,
+    req: PredictRequest,
+    sym: str,
+    run_id: str | None,
+    results: list[Any],
+    reason: str,
+    close_ts: datetime | None = None,
+    completed_ticks: list[int] | None = None,
+    candidate_count_before_gate: int | None = None,
+    candidate_count_after_completed_ticks: int | None = None,
+    candidate_count_after_universe_gate: int | None = None,
+    candidate_trace_rows: list[dict[str, Any]] | None = None,
+) -> list[Any]:
+    selected_count = 0
+    risk_blocked_count = 0
+    try:
+        for row in results:
+            selected_count += int(getattr(row, "selected_exec", 0) == 1)
+            risk_blocked_count += int(bool(getattr(row, "risk_blocked", False)))
+    except Exception:
+        pass
+    _append_http_trace(
+        endpoint="/predict",
+        phase="response",
+        run_id=run_id,
+        symbol=sym,
+        request_payload=req,
+        response_payload=results,
+        status_code=200,
+        extra={
+            "reason": reason,
+            "close_ts": close_ts,
+            "completed_bar_ticks": completed_ticks or [],
+            "result_count": len(results),
+            "selected_count": int(selected_count),
+            "risk_blocked_count": int(risk_blocked_count),
+            "candidate_count_before_gate": candidate_count_before_gate,
+            "candidate_count_after_completed_ticks": candidate_count_after_completed_ticks,
+            "candidate_count_after_universe_gate": candidate_count_after_universe_gate,
+            "candidate_trace_rows": candidate_trace_rows or [],
+        },
+    )
+    return results
+
+
 def _new_feed_tracker() -> dict[str, Any]:
     return {
         "total_received": 0,
@@ -1051,6 +1198,60 @@ def _load_historical_prediction_universe(contract: _ResolvedRuntimeContract) -> 
     return out
 
 
+def _load_historical_prediction_candidate_index(
+    contract: _ResolvedRuntimeContract,
+) -> dict[str, list[datetime]]:
+    """Load per-candidate locked prediction timestamps for tolerant replay gating."""
+    if not _is_historical_mode():
+        return {}
+    cached = _historical_prediction_candidate_index.get(contract.cache_key)
+    if cached is not None:
+        return cached
+
+    pred_path = Path(str(contract.model_binding.get("predictions_path", "")).strip())
+    if not pred_path.exists():
+        _historical_prediction_candidate_index[contract.cache_key] = {}
+        return {}
+
+    try:
+        import duckdb
+    except Exception:
+        _historical_prediction_candidate_index[contract.cache_key] = {}
+        return {}
+
+    con = duckdb.connect()
+    try:
+        rows = con.execute(
+            """
+            SELECT
+                try_cast(close_ts AS TIMESTAMP WITH TIME ZONE) AS close_ts,
+                candidate_uid
+            FROM read_parquet(?)
+            WHERE test_month = ?
+              AND upper(split_part(candidate_uid, '|', 2)) = ?
+            ORDER BY candidate_uid, close_ts
+            """,
+            [
+                str(pred_path),
+                str(contract.model_month),
+                str(contract.symbol).upper().strip(),
+            ],
+        ).fetchall()
+    finally:
+        con.close()
+
+    out: dict[str, list[datetime]] = {}
+    for close_ts, candidate_uid in rows:
+        if close_ts is None:
+            continue
+        uid = str(candidate_uid or "").strip()
+        if not uid:
+            continue
+        out.setdefault(uid, []).append(_as_utc_ts(close_ts))
+    _historical_prediction_candidate_index[contract.cache_key] = out
+    return out
+
+
 def _apply_historical_prediction_universe_gate(
     *,
     contract: _ResolvedRuntimeContract,
@@ -1060,10 +1261,48 @@ def _apply_historical_prediction_universe_gate(
     """Historical-only gate: only evaluate rows present in locked repo predictions."""
     if not _is_historical_mode():
         return candidates
+    mode = str(_config.historical_prediction_universe_mode).strip().lower()
+    if mode in {"off", "disabled", "none"}:
+        return candidates
+    close_ts_utc = _as_utc_ts(close_ts)
+
+    if mode in {"tolerant", "nearest"}:
+        candidate_index = _load_historical_prediction_candidate_index(contract)
+        if not candidate_index:
+            return candidates
+        tolerance = timedelta(seconds=float(_HISTORICAL_PREDICTION_TOLERANCE_SEC))
+        filtered: list[Any] = []
+        for cand in candidates:
+            canonical_uid = (
+                f"oco|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+            )
+            ts_rows = candidate_index.get(canonical_uid, [])
+            if not ts_rows:
+                continue
+            idx = bisect_left(ts_rows, close_ts_utc)
+            choices: list[tuple[timedelta, datetime]] = []
+            if idx > 0:
+                prev_ts = ts_rows[idx - 1]
+                choices.append((abs(close_ts_utc - prev_ts), prev_ts))
+            if idx < len(ts_rows):
+                next_ts = ts_rows[idx]
+                choices.append((abs(next_ts - close_ts_utc), next_ts))
+            if not choices:
+                continue
+            choices.sort(key=lambda item: (item[0], item[1]))
+            best_delta = choices[0][0]
+            if best_delta > tolerance:
+                continue
+            best_count = sum(1 for delta, _ in choices if delta == best_delta)
+            if best_count > 1:
+                continue
+            filtered.append(cand)
+        return filtered
+
     universe = _load_historical_prediction_universe(contract)
     if not universe:
         return candidates
-    allowed = universe.get(_as_utc_ts(close_ts), set())
+    allowed = universe.get(close_ts_utc, set())
     if not allowed:
         return []
     filtered: list[Any] = []
@@ -1231,6 +1470,7 @@ class PredictRequest(BaseModel):
             "matching candidate bar_ticks only."
         ),
     )
+    run_id: str | None = None
 
 
 class HealthResponse(BaseModel):
@@ -1283,12 +1523,14 @@ class BackfillRequest(BaseModel):
     symbol: str
     bar_ticks: int = 100
     ticks: list[IncomingTick]
+    run_id: str | None = None
 
 
 class TickBatchRequest(BaseModel):
     """Batch of live ticks with optional symbol-level assertion."""
     symbol: str | None = None
     ticks: list[IncomingTick]
+    run_id: str | None = None
 
 
 class FtmoLimitsResponse(BaseModel):
@@ -1361,6 +1603,14 @@ async def ingest_ftmo_snapshot(req: FtmoAccountSnapshotRequest) -> dict[str, Any
     """Ingest account balance/equity snapshots emitted by cBot."""
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
+    run_id = _effective_run_id(req.run_id)
+    _append_http_trace(
+        endpoint="/risk/ftmo/snapshot",
+        phase="request",
+        run_id=run_id,
+        symbol=req.symbol,
+        request_payload=req,
+    )
     ts = req.snapshot_ts or datetime.now(tz=timezone.utc)
     _state.record_ftmo_account_snapshot(
         symbol=req.symbol,
@@ -1368,11 +1618,21 @@ async def ingest_ftmo_snapshot(req: FtmoAccountSnapshotRequest) -> dict[str, Any
         equity=float(req.equity),
         snapshot_ts=ts,
     )
-    return {
+    out = {
         "ok": True,
         "symbol": req.symbol.upper(),
         "snapshot_ts": ts,
     }
+    _append_http_trace(
+        endpoint="/risk/ftmo/snapshot",
+        phase="response",
+        run_id=run_id,
+        symbol=req.symbol,
+        request_payload=req,
+        response_payload=out,
+        status_code=201,
+    )
+    return out
 
 
 @app.get("/risk/ftmo/limits", response_model=FtmoLimitsResponse)
@@ -1477,8 +1737,16 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
     pred_prob descending.
     """
     sym = req.symbol.upper()
+    run_id = _effective_run_id(req.run_id)
     ftmo_enabled_effective = bool(req.ftmo_enabled_override)
     requested_volume_units = _resolve_requested_volume_units(req)
+    _append_http_trace(
+        endpoint="/predict",
+        phase="request",
+        run_id=run_id,
+        symbol=sym,
+        request_payload=req,
+    )
 
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
@@ -1491,20 +1759,44 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
 
     contract = _resolve_runtime_contract(sym, close_ts)
     candidates = contract.candidates
+    candidate_count_before_gate = len(candidates)
+    if not candidates:
+        raise HTTPException(status_code=422, detail=f"No candidates registered for {sym}")
     completed_ticks = _normalize_completed_bar_ticks(req.completed_bar_ticks)
     if completed_ticks:
         candidates = [c for c in candidates if int(getattr(c, "bar_ticks", 0)) in completed_ticks]
         if not candidates:
-            return []
+            return _trace_predict_response(
+                req=req,
+                sym=sym,
+                run_id=run_id,
+                results=[],
+                reason="completed_bar_ticks_filtered_all_candidates",
+                close_ts=close_ts,
+                completed_ticks=completed_ticks,
+                candidate_count_before_gate=candidate_count_before_gate,
+                candidate_count_after_completed_ticks=0,
+                candidate_count_after_universe_gate=0,
+            )
+    candidate_count_after_completed_ticks = len(candidates)
     candidates = _apply_historical_prediction_universe_gate(
         contract=contract,
         close_ts=close_ts,
         candidates=candidates,
     )
     if not candidates:
-        return []
-    if not candidates:
-        raise HTTPException(status_code=422, detail=f"No candidates registered for {sym}")
+        return _trace_predict_response(
+            req=req,
+            sym=sym,
+            run_id=run_id,
+            results=[],
+            reason="historical_prediction_universe_gate_filtered_all_candidates",
+            close_ts=close_ts,
+            completed_ticks=completed_ticks,
+            candidate_count_before_gate=candidate_count_before_gate,
+            candidate_count_after_completed_ticks=candidate_count_after_completed_ticks,
+            candidate_count_after_universe_gate=0,
+        )
 
     _check_warmup(sym, candidates)
 
@@ -1540,7 +1832,7 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
         max_age_seconds=max(60, int(_config.ftmo_pending_reservation_ttl_sec)),
     )
 
-    results = _build_predictions(
+    results, candidate_trace_rows = _build_predictions(
         sym=sym,
         candidates=candidates,
         model=model,
@@ -1554,11 +1846,25 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
         requested_volume_units=requested_volume_units,
         model_month=contract.model_month,
         cap_pips=contract.cap_pips,
+        run_id=run_id,
         skip_regime_gate=historical_prediction_universe_gated,
     )
 
     # Sort by pred_prob descending
     results.sort(key=lambda p: p.pred_prob, reverse=True)
+    _trace_predict_response(
+        req=req,
+        sym=sym,
+        run_id=run_id,
+        results=results,
+        reason="ok",
+        close_ts=close_ts,
+        completed_ticks=completed_ticks,
+        candidate_count_before_gate=candidate_count_before_gate,
+        candidate_count_after_completed_ticks=candidate_count_after_completed_ticks,
+        candidate_count_after_universe_gate=len(candidates),
+        candidate_trace_rows=candidate_trace_rows,
+    )
     return results
 
 
@@ -1591,8 +1897,9 @@ def _build_predictions(
     requested_volume_units: float,
     model_month: str,
     cap_pips: float,
+    run_id: str | None = None,
     skip_regime_gate: bool = False,
-) -> list[OcoPrediction]:
+) -> tuple[list[OcoPrediction], list[dict[str, Any]]]:
     """Build predictions for each candidate using model + FTMO portfolio allocator."""
     import numpy as np
 
@@ -1819,6 +2126,7 @@ def _build_predictions(
         METRIC_FTMO_RESERVED_LOSS_CCY.labels(symbol=sym).set(float(active_reserved_loss_ccy + newly_reserved_ccy))
 
     results: list[OcoPrediction] = []
+    trace_rows: list[dict[str, Any]] = []
     for d in decisions:
         if d.selected_exec == 1 and _state is not None:
             if allocator_enabled and d.risk_reserved and (d.risk_reserved_amount_ccy is not None):
@@ -1844,6 +2152,7 @@ def _build_predictions(
                 features=d.features,
                 model_month=model_month,
                 close_ts=close_ts,
+                run_id=run_id,
             )
 
         if (
@@ -1890,7 +2199,20 @@ def _build_predictions(
                 risk_reservation_id=d.risk_reservation_id,
             )
         )
-    return results
+        trace_rows.append(
+            {
+                "candidate_uid": d.candidate_uid,
+                "close_ts": close_ts,
+                "pred_prob": float(d.pred_prob),
+                "threshold_exec": float(d.curr_threshold),
+                "selected_exec": int(d.selected_exec),
+                "preselected_exec": int(d.preselected_exec),
+                "risk_blocked": bool(d.risk_blocked),
+                "risk_block_reason": d.risk_block_reason,
+                "features": d.features.model_dump(),
+            }
+        )
+    return results, trace_rows
 
 
 @app.post("/trades/open")
@@ -1898,6 +2220,14 @@ async def open_trade(req: TradeOpenRequest):
     """Record an execution entry on the broker."""
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
+    run_id = _effective_run_id(req.run_id)
+    _append_http_trace(
+        endpoint="/trades/open",
+        phase="request",
+        run_id=run_id,
+        symbol=req.symbol,
+        request_payload=req,
+    )
 
     internal_id = _state.open_trade(
         symbol=req.symbol,
@@ -1907,6 +2237,7 @@ async def open_trade(req: TradeOpenRequest):
         entry_price=req.entry_price,
         entry_ts=req.entry_ts,
         horizon=req.horizon,
+        run_id=run_id,
     )
     if _config.ftmo_enabled and (_ftmo_profile is not None):
         _state.promote_ftmo_risk_reservation(
@@ -1916,7 +2247,17 @@ async def open_trade(req: TradeOpenRequest):
             symbol=req.symbol,
         )
     METRIC_TRADES_TOTAL.labels(symbol=req.symbol, status="OPEN").inc()
-    return {"status": "ok", "internal_trade_id": internal_id}
+    out = {"status": "ok", "internal_trade_id": internal_id}
+    _append_http_trace(
+        endpoint="/trades/open",
+        phase="response",
+        run_id=run_id,
+        symbol=req.symbol,
+        request_payload=req,
+        response_payload=out,
+        status_code=200,
+    )
+    return out
 
 
 @app.get("/trades/active", response_model=list[ActiveTrade])
@@ -1932,12 +2273,30 @@ async def touch_trade(req: TradeTouchRequest):
     """Record that a position's barrier was touched."""
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
+    run_id = _effective_run_id(req.run_id)
+    _append_http_trace(
+        endpoint="/trades/touch",
+        phase="request",
+        run_id=run_id,
+        symbol=req.symbol,
+        request_payload=req,
+    )
 
     sym = req.symbol.upper()
     res = _state._con.execute("SELECT MAX(row_id) FROM tick_bars WHERE symbol = ?", [sym]).fetchone()
     touch_bar_id = res[0] if res and res[0] is not None else 0
     _state.touch_trade(req.broker_pos_id, touch_bar_id)
-    return {"status": "ok"}
+    out = {"status": "ok"}
+    _append_http_trace(
+        endpoint="/trades/touch",
+        phase="response",
+        run_id=run_id,
+        symbol=req.symbol,
+        request_payload=req,
+        response_payload=out,
+        status_code=200,
+    )
+    return out
 
 
 @app.post("/trades/update")
@@ -1945,6 +2304,14 @@ async def update_trade(req: TradeUpdateRequest):
     """Update a trade status (CLOSED/CANCELLED)."""
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
+    run_id = _effective_run_id(req.run_id)
+    _append_http_trace(
+        endpoint="/trades/update",
+        phase="request",
+        run_id=run_id,
+        symbol=req.symbol,
+        request_payload=req,
+    )
 
     _state.update_trade(
         broker_pos_id=req.broker_pos_id,
@@ -1952,6 +2319,7 @@ async def update_trade(req: TradeUpdateRequest):
         exit_price=req.exit_price,
         exit_ts=req.exit_ts,
         pnl_pips=req.pnl_pips,
+        run_id=run_id,
     )
     if _config.ftmo_enabled and (_ftmo_profile is not None) and req.status.value in {"CLOSED", "CANCELLED"}:
         _state.release_ftmo_risk_reservation(
@@ -1965,7 +2333,17 @@ async def update_trade(req: TradeUpdateRequest):
         # For now, we update a global or handle it in the background worker.
         pass
 
-    return {"status": "ok"}
+    out = {"status": "ok"}
+    _append_http_trace(
+        endpoint="/trades/update",
+        phase="response",
+        run_id=run_id,
+        symbol=req.symbol,
+        request_payload=req,
+        response_payload=out,
+        status_code=200,
+    )
+    return out
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -2066,7 +2444,7 @@ async def reload_models() -> dict:
     """Hot-reload models from disk without restarting the server."""
     global _registry, _historical_registry, _historical_entries_loaded
     global _historical_preflight_failed_checks, _historical_preflight_summary
-    global _historical_prediction_universes
+    global _historical_prediction_universes, _historical_prediction_candidate_index
 
     if _is_historical_mode():
         hist_dir = Path(str(_config.governance_history_dir))
@@ -2085,6 +2463,7 @@ async def reload_models() -> dict:
 
     _load_models()
     _historical_prediction_universes = {}
+    _historical_prediction_candidate_index = {}
     return {
         "ok": True,
         "models_loaded": dict(_model_months),
@@ -2105,6 +2484,15 @@ async def backfill(req: BackfillRequest) -> dict:
     """
     if _state is None or not _aggregators:
         raise HTTPException(status_code=503, detail="Not initialized")
+    run_id = _effective_run_id(req.run_id, *(t.run_id for t in req.ticks))
+    _append_http_trace(
+        endpoint="/backfill",
+        phase="request",
+        run_id=run_id,
+        symbol=req.symbol,
+        request_payload=req,
+        extra={"tick_count": len(req.ticks), "bar_ticks": int(req.bar_ticks)},
+    )
 
     bars = []
     for agg in _aggregators.values():
@@ -2116,7 +2504,7 @@ async def backfill(req: BackfillRequest) -> dict:
     sym = req.symbol.upper()
     count = _state.bar_count(sym, req.bar_ticks)
     warmup_needed = max(_config.vol_window, _config.cost_window) + 1
-    return {
+    out = {
         "ok": True,
         "symbol": sym,
         "ticks_received": len(req.ticks),
@@ -2124,6 +2512,16 @@ async def backfill(req: BackfillRequest) -> dict:
         "bar_count": count,
         "warm": count >= warmup_needed,
     }
+    _append_http_trace(
+        endpoint="/backfill",
+        phase="response",
+        run_id=run_id,
+        symbol=sym,
+        request_payload=req,
+        response_payload=out,
+        status_code=201,
+    )
+    return out
 
 
 def _reject_tick(
@@ -2132,10 +2530,13 @@ def _reject_tick(
     feed: dict[str, Any],
     drop_reason: str,
     last_tick_ts_utc: datetime | None,
+    run_id: str | None = None,
+    tick: IncomingTick | None = None,
+    endpoint: str = "/ticks",
 ) -> dict[str, Any]:
     feed["total_dropped"] = int(feed["total_dropped"]) + 1
     feed["last_drop_reason"] = str(drop_reason)
-    return {
+    out = {
         "ok": True,
         "symbol": sym,
         "tick_accepted": False,
@@ -2151,9 +2552,20 @@ def _reject_tick(
         "completed_bar_ticks": [],
         "bar_count": _state.bar_count(sym, 100) if _state is not None else 0,
     }
+    _append_http_trace(
+        endpoint=endpoint,
+        phase="tick_result",
+        run_id=run_id,
+        symbol=sym,
+        request_payload=tick,
+        response_payload=out,
+        status_code=201,
+        extra={"drop_reason": str(drop_reason), "last_tick_ts_utc": last_tick_ts_utc},
+    )
+    return out
 
 
-def _ingest_tick_internal(tick: IncomingTick) -> dict[str, Any]:
+def _ingest_tick_internal(tick: IncomingTick, *, endpoint: str = "/ticks") -> dict[str, Any]:
     """Ingest one tick with feed monotonicity checks and bar emission."""
     if _state is None or not _aggregators:
         raise HTTPException(status_code=503, detail="Not initialized")
@@ -2162,6 +2574,7 @@ def _ingest_tick_internal(tick: IncomingTick) -> dict[str, Any]:
     tick_ts_utc = _as_utc_ts(tick.timestamp)
     now_utc = datetime.now(tz=timezone.utc)
     feed = _get_feed_tracker(sym)
+    run_id = _effective_run_id(getattr(tick, "run_id", None))
     feed["total_received"] = int(feed["total_received"]) + 1
     feed["last_ingest_utc"] = now_utc
 
@@ -2182,6 +2595,9 @@ def _ingest_tick_internal(tick: IncomingTick) -> dict[str, Any]:
                         feed=feed,
                         drop_reason="duplicate_client_tick_seq",
                         last_tick_ts_utc=feed.get("last_tick_ts_utc"),
+                        run_id=run_id,
+                        tick=tick,
+                        endpoint=endpoint,
                     )
                 feed["client_seq_violations"] = int(feed["client_seq_violations"]) + 1
                 return _reject_tick(
@@ -2189,6 +2605,9 @@ def _ingest_tick_internal(tick: IncomingTick) -> dict[str, Any]:
                     feed=feed,
                     drop_reason="non_monotonic_client_tick_seq",
                     last_tick_ts_utc=feed.get("last_tick_ts_utc"),
+                    run_id=run_id,
+                    tick=tick,
+                    endpoint=endpoint,
                 )
 
     last_tick_ts = feed.get("last_tick_ts_utc")
@@ -2208,6 +2627,9 @@ def _ingest_tick_internal(tick: IncomingTick) -> dict[str, Any]:
                     feed=feed,
                     drop_reason="duplicate_timestamp",
                     last_tick_ts_utc=last_tick_ts,
+                    run_id=run_id,
+                    tick=tick,
+                    endpoint=endpoint,
                 )
             feed["monotonic_violations"] = int(feed["monotonic_violations"]) + 1
             return _reject_tick(
@@ -2215,6 +2637,9 @@ def _ingest_tick_internal(tick: IncomingTick) -> dict[str, Any]:
                 feed=feed,
                 drop_reason="non_monotonic_timestamp",
                 last_tick_ts_utc=last_tick_ts,
+                run_id=run_id,
+                tick=tick,
+                endpoint=endpoint,
             )
 
     if _config.record_raw_ticks and _is_historical_mode():
@@ -2240,7 +2665,7 @@ def _ingest_tick_internal(tick: IncomingTick) -> dict[str, Any]:
     if client_seq_int is not None:
         feed["last_client_tick_seq"] = int(client_seq_int)
     feed["last_drop_reason"] = None
-    return {
+    out = {
         "ok": True,
         "symbol": sym,
         "tick_accepted": True,
@@ -2256,6 +2681,17 @@ def _ingest_tick_internal(tick: IncomingTick) -> dict[str, Any]:
         "completed_bar_ticks": completed_bar_ticks,
         "bar_count": _state.bar_count(sym, 100),  # Return standard 100-tick count as baseline
     }
+    _append_http_trace(
+        endpoint=endpoint,
+        phase="tick_result",
+        run_id=run_id,
+        symbol=sym,
+        request_payload=tick,
+        response_payload=out,
+        status_code=201,
+        extra={"tick_ts_utc": tick_ts_utc},
+    )
+    return out
 
 
 @app.post("/ticks", status_code=201)
@@ -2264,7 +2700,24 @@ async def ingest_tick(tick: IncomingTick) -> dict:
 
     Called by the cBot on each ``OnTick()`` event.
     """
-    return _ingest_tick_internal(tick)
+    _append_http_trace(
+        endpoint="/ticks",
+        phase="request",
+        run_id=_effective_run_id(tick.run_id),
+        symbol=tick.symbol,
+        request_payload=tick,
+    )
+    out = _ingest_tick_internal(tick, endpoint="/ticks")
+    _append_http_trace(
+        endpoint="/ticks",
+        phase="response",
+        run_id=_effective_run_id(tick.run_id),
+        symbol=tick.symbol,
+        request_payload=tick,
+        response_payload=out,
+        status_code=201,
+    )
+    return out
 
 
 @app.post("/ticks/batch", status_code=201)
@@ -2274,6 +2727,15 @@ async def ingest_ticks_batch(req: TickBatchRequest) -> dict:
         raise HTTPException(status_code=503, detail="Not initialized")
     if not req.ticks:
         raise HTTPException(status_code=422, detail="ticks must be non-empty")
+    run_id = _effective_run_id(req.run_id, *(t.run_id for t in req.ticks))
+    _append_http_trace(
+        endpoint="/ticks/batch",
+        phase="request",
+        run_id=run_id,
+        symbol=req.symbol,
+        request_payload=req,
+        extra={"tick_count": len(req.ticks)},
+    )
 
     symbols_seen = {str(t.symbol).upper().strip() for t in req.ticks if str(t.symbol).strip() != ""}
     if not symbols_seen:
@@ -2301,7 +2763,7 @@ async def ingest_ticks_batch(req: TickBatchRequest) -> dict:
     dropped = 0
     completed_bar_ticks: list[int] = []
     for tick in req.ticks:
-        out = _ingest_tick_internal(tick)
+        out = _ingest_tick_internal(tick, endpoint="/ticks/batch")
         if bool(out.get("tick_accepted", False)):
             accepted += 1
         else:
@@ -2309,7 +2771,7 @@ async def ingest_ticks_batch(req: TickBatchRequest) -> dict:
         if bool(out.get("bar_completed", False)):
             completed_bar_ticks.extend([int(x) for x in out.get("completed_bar_ticks", [])])
 
-    return {
+    out = {
         "ok": True,
         "symbol": batch_sym,
         "ticks_received": len(req.ticks),
@@ -2326,3 +2788,13 @@ async def ingest_ticks_batch(req: TickBatchRequest) -> dict:
         ),
         "bar_count": _state.bar_count(batch_sym, 100),
     }
+    _append_http_trace(
+        endpoint="/ticks/batch",
+        phase="response",
+        run_id=run_id,
+        symbol=batch_sym,
+        request_payload=req,
+        response_payload=out,
+        status_code=201,
+    )
+    return out

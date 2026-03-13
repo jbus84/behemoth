@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -109,9 +110,12 @@ namespace cAlgo.Robots
         private const int MaxConsecutiveTickIngestFailures = 20;
         private const int MaxConsecutivePredictFailures = 5;
         private const string BuildTag = "2026-03-11-candidate-uid-parity-fix-v1";
+        private const string ActiveDebugSessionPath =
+            "/Users/danielfisher/repositories/behemoth/data/analysis/backtest_reconcile/ctrader_active_debug_session.json";
         private readonly List<TickPayload> _tickQueue = new List<TickPayload>();
         private long _clientTickSeq = 0;
         private DateTime _lastTickFlushUtc = DateTime.MinValue;
+        private string _debugRunId;
 
         protected override void OnStart()
         {
@@ -119,10 +123,15 @@ namespace cAlgo.Robots
             {
                 _client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
                 _internalSymbol = GetInternalSymbolName(Symbol.Name);
+                _debugRunId = ResolveDebugRunId();
                 _lastTickFlushUtc = Server.Time.ToUniversalTime();
                 PendingOrders.Filled += OnPendingOrderFilled;
                 Positions.Closed += OnPositionClosed;
                 Print($"[BUILD] {BuildTag}");
+                if (!string.IsNullOrWhiteSpace(_debugRunId))
+                {
+                    Print($"[DEBUG SESSION] run_id={_debugRunId}");
+                }
                 
                 Print($"[INIT] Starting Tick Backfill for {_internalSymbol} (Broker: {Symbol.Name})");
                 if (SyncClientSeqFromApi)
@@ -164,7 +173,8 @@ namespace cAlgo.Robots
                         timestamp = _historicalTicks[i].Time.ToUniversalTime().ToString("O"),
                         bid = _historicalTicks[i].Bid,
                         ask = _historicalTicks[i].Ask,
-                        tick_volume = 1.0 // cTrader API doesn't expose strict tick volume per individual tick natively
+                        tick_volume = 1.0, // cTrader API doesn't expose strict tick volume per individual tick natively
+                        run_id = _debugRunId,
                     });
                 }
 
@@ -172,7 +182,8 @@ namespace cAlgo.Robots
                 {
                     symbol = _internalSymbol,
                     bar_ticks = 100, // Sync with backend aggregator schema
-                    ticks = tickList
+                    ticks = tickList,
+                    run_id = _debugRunId,
                 };
 
                 var json = JsonSerializer.Serialize(payload, _jsonOpts);
@@ -282,6 +293,7 @@ namespace cAlgo.Robots
                     ask = Symbol.Ask,
                     tick_volume = 1.0,
                     client_tick_seq = ++_clientTickSeq,
+                    run_id = _debugRunId,
                 };
                 _tickQueue.Add(tick);
 
@@ -406,6 +418,7 @@ namespace cAlgo.Robots
                 {
                     symbol = _internalSymbol,
                     ticks = chunk,
+                    run_id = _debugRunId,
                 };
                 var json = JsonSerializer.Serialize(payload, _jsonOpts);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -623,7 +636,8 @@ namespace cAlgo.Robots
                     ftmo_enabled_override = EnableFtmoGuards,
                     requested_volume_units = volumeUnits,
                     requested_lot_size = LotSize,
-                    completed_bar_ticks = completedBarTicks ?? new List<int>()
+                    completed_bar_ticks = completedBarTicks ?? new List<int>(),
+                    run_id = _debugRunId,
                 };
                 Print($"[PREDICT] completed_bar_ticks={completedTicksTxt}");
                 var json = JsonSerializer.Serialize(payload, _jsonOpts);
@@ -641,6 +655,7 @@ namespace cAlgo.Robots
                         if (predictions != null)
                         {
                             RegisterPredictSuccess();
+                            LogPredictionSummary(predictions);
                             ProcessPredictions(predictions);
                         }
                         else
@@ -687,6 +702,27 @@ namespace cAlgo.Robots
             return txt.IndexOf("Insufficient warmup bars", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
+        private void LogPredictionSummary(List<OcoPrediction> predictions)
+        {
+            int total = predictions?.Count ?? 0;
+            int selected = predictions?.Count(p => p != null && p.selected_exec == 1) ?? 0;
+            int blocked = predictions?.Count(p => p != null && p.risk_blocked) ?? 0;
+            if (total == 0)
+            {
+                Print("[PREDICT RESULT] total=0 selected=0 blocked=0");
+                return;
+            }
+
+            var top = predictions
+                .Where(p => p != null)
+                .OrderByDescending(p => p.pred_prob)
+                .Take(3)
+                .Select(
+                    p => $"{p.candidate_uid}:{p.pred_prob:F3}/{p.threshold_exec:F3}/sel={p.selected_exec}"
+                );
+            Print($"[PREDICT RESULT] total={total} selected={selected} blocked={blocked} top={string.Join("; ", top)}");
+        }
+
         private void ProcessPredictions(List<OcoPrediction> predictions)
         {
             foreach (var pred in predictions)
@@ -698,6 +734,11 @@ namespace cAlgo.Robots
                 }
                 if (pred.selected_exec == 1)
                 {
+                    if (HasActiveCandidateLifecycle(pred.candidate_uid))
+                    {
+                        Print($"[EXEC SKIP] duplicate_candidate_active candidate_uid={pred.candidate_uid}");
+                        continue;
+                    }
                     Print($"[EXECUTE] {pred.candidate_uid} (Prob: {pred.pred_prob:F3} >= Thr: {pred.threshold_exec:F3})");
                     
                     try 
@@ -712,6 +753,42 @@ namespace cAlgo.Robots
             }
         }
 
+        private bool HasActiveCandidateLifecycle(string candidateUid)
+        {
+            if (string.IsNullOrWhiteSpace(candidateUid))
+            {
+                return false;
+            }
+
+            foreach (var order in PendingOrders)
+            {
+                if (order.SymbolName != Symbol.Name || string.IsNullOrWhiteSpace(order.Label))
+                {
+                    continue;
+                }
+                string activeUid = ExtractCandidateUid(order.Label);
+                if (string.Equals(activeUid, candidateUid, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            foreach (var pos in Positions)
+            {
+                if (pos.SymbolName != Symbol.Name || string.IsNullOrWhiteSpace(pos.Label))
+                {
+                    continue;
+                }
+                string activeUid = ExtractCandidateUid(pos.Label);
+                if (string.Equals(activeUid, candidateUid, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private bool SubmitFtmoSnapshot()
         {
             try
@@ -721,7 +798,8 @@ namespace cAlgo.Robots
                     symbol = _internalSymbol,
                     balance = Account.Balance,
                     equity = Account.Equity,
-                    snapshot_ts = Server.Time.ToUniversalTime().ToString("O")
+                    snapshot_ts = Server.Time.ToUniversalTime().ToString("O"),
+                    run_id = _debugRunId,
                 };
                 var json = JsonSerializer.Serialize(payload, _jsonOpts);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -854,6 +932,32 @@ namespace cAlgo.Robots
             return token;
         }
 
+        private string ResolveDebugRunId()
+        {
+            try
+            {
+                if (!File.Exists(ActiveDebugSessionPath))
+                {
+                    return null;
+                }
+
+                string raw = File.ReadAllText(ActiveDebugSessionPath);
+                using var doc = JsonDocument.Parse(raw);
+                if (!doc.RootElement.TryGetProperty("run_id", out var runIdEl))
+                {
+                    return null;
+                }
+
+                string runId = runIdEl.GetString();
+                return string.IsNullOrWhiteSpace(runId) ? null : runId.Trim();
+            }
+            catch (Exception ex)
+            {
+                Print($"[DEBUG SESSION] Could not resolve run_id: {ex.Message}");
+                return null;
+            }
+        }
+
         private string ExtractCandidateUid(string label)
         {
             if (string.IsNullOrWhiteSpace(label) || !label.StartsWith("Oco_", StringComparison.Ordinal))
@@ -886,7 +990,7 @@ namespace cAlgo.Robots
         private async void TrackOpenTradeAsync(string symbol, string candidateUid, string brokerPosId, string side, double entryPrice, DateTime entryTs, int horizon, string reservationId = null)
         {
             try {
-                var payload = new { symbol = symbol, candidate_uid = candidateUid, broker_pos_id = brokerPosId, side = side, entry_price = entryPrice, entry_ts = entryTs.ToUniversalTime().ToString("O"), horizon = horizon, reservation_id = reservationId };
+                var payload = new { symbol = symbol, candidate_uid = candidateUid, broker_pos_id = brokerPosId, side = side, entry_price = entryPrice, entry_ts = entryTs.ToUniversalTime().ToString("O"), horizon = horizon, reservation_id = reservationId, run_id = _debugRunId };
                 var content = new StringContent(JsonSerializer.Serialize(payload, _jsonOpts), Encoding.UTF8, "application/json");
                 await _client.PostAsync($"{BaseUrl}/trades/open", content);
             } catch (Exception ex) { Print($"[API ERR] TrackOpenTradeAsync: {ex}"); }
@@ -895,7 +999,7 @@ namespace cAlgo.Robots
         private async void TrackUpdateTradeAsync(string brokerPosId, string status, double exitPrice, DateTime exitTs, double pnlPips)
         {
             try {
-                var payload = new { symbol = _internalSymbol, broker_pos_id = brokerPosId, status = status, exit_price = exitPrice, exit_ts = exitTs.ToUniversalTime().ToString("O"), pnl_pips = pnlPips };
+                var payload = new { symbol = _internalSymbol, broker_pos_id = brokerPosId, status = status, exit_price = exitPrice, exit_ts = exitTs.ToUniversalTime().ToString("O"), pnl_pips = pnlPips, run_id = _debugRunId };
                 var content = new StringContent(JsonSerializer.Serialize(payload, _jsonOpts), Encoding.UTF8, "application/json");
                 await _client.PostAsync($"{BaseUrl}/trades/update", content);
             } catch (Exception ex) { Print($"[API ERR] TrackUpdateTradeAsync: {ex}"); }
@@ -960,6 +1064,7 @@ namespace cAlgo.Robots
         public double ask { get; set; }
         public double tick_volume { get; set; } = 1.0;
         public long client_tick_seq { get; set; }
+        public string run_id { get; set; }
     }
 
     public class TickResponse

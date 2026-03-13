@@ -7,6 +7,9 @@ without needing CatBoost models (mocked where necessary).
 
 from __future__ import annotations
 
+import json
+from datetime import datetime, timezone
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -181,6 +184,105 @@ class TestBarsEndpoint:
 
 
 class TestPredictEndpoint:
+    def test_historical_prediction_universe_tolerant_mode_accepts_nearby_row(self, tmp_path):
+        import duckdb
+        from types import SimpleNamespace
+
+        from src.behemoth.api import server
+
+        pred_path = tmp_path / "predictions.parquet"
+        con = duckdb.connect()
+        try:
+            con.execute(
+                """
+                CREATE TABLE pred AS
+                SELECT
+                    TIMESTAMPTZ '2025-07-07 00:00:15+00:00' AS close_ts,
+                    '2025-07' AS test_month,
+                    'oco|EURUSD|100|h6|state_a' AS candidate_uid
+                """
+            )
+            con.execute("COPY pred TO ? (FORMAT 'parquet')", [str(pred_path)])
+        finally:
+            con.close()
+
+        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a")
+        contract = SimpleNamespace(
+            symbol="EURUSD",
+            model_month="2025-07",
+            cache_key="EURUSD|2025-07",
+            model_binding={"predictions_path": str(pred_path)},
+        )
+
+        orig_mode = server._config.governance_mode
+        orig_gate_mode = server._config.historical_prediction_universe_mode
+        server._historical_prediction_universes = {}
+        server._historical_prediction_candidate_index = {}
+        try:
+            server._config.governance_mode = "historical"
+            server._config.historical_prediction_universe_mode = "tolerant"
+            out = server._apply_historical_prediction_universe_gate(
+                contract=contract,
+                close_ts=datetime(2025, 7, 7, 0, 0, 0, tzinfo=timezone.utc),
+                candidates=[cand],
+            )
+            assert len(out) == 1
+        finally:
+            server._config.governance_mode = orig_mode
+            server._config.historical_prediction_universe_mode = orig_gate_mode
+            server._historical_prediction_universes = {}
+            server._historical_prediction_candidate_index = {}
+
+    def test_historical_prediction_universe_tolerant_mode_suppresses_tied_match(self, tmp_path):
+        import duckdb
+        from types import SimpleNamespace
+
+        from src.behemoth.api import server
+
+        pred_path = tmp_path / "predictions.parquet"
+        con = duckdb.connect()
+        try:
+            con.execute(
+                """
+                CREATE TABLE pred AS
+                SELECT * FROM (
+                    VALUES
+                        (TIMESTAMPTZ '2025-07-07 00:00:10+00:00', '2025-07', 'oco|EURUSD|100|h6|state_a'),
+                        (TIMESTAMPTZ '2025-07-07 00:00:20+00:00', '2025-07', 'oco|EURUSD|100|h6|state_a')
+                ) AS t(close_ts, test_month, candidate_uid)
+                """
+            )
+            con.execute("COPY pred TO ? (FORMAT 'parquet')", [str(pred_path)])
+        finally:
+            con.close()
+
+        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a")
+        contract = SimpleNamespace(
+            symbol="EURUSD",
+            model_month="2025-07",
+            cache_key="EURUSD|2025-07",
+            model_binding={"predictions_path": str(pred_path)},
+        )
+
+        orig_mode = server._config.governance_mode
+        orig_gate_mode = server._config.historical_prediction_universe_mode
+        server._historical_prediction_universes = {}
+        server._historical_prediction_candidate_index = {}
+        try:
+            server._config.governance_mode = "historical"
+            server._config.historical_prediction_universe_mode = "tolerant"
+            out = server._apply_historical_prediction_universe_gate(
+                contract=contract,
+                close_ts=datetime(2025, 7, 7, 0, 0, 15, tzinfo=timezone.utc),
+                candidates=[cand],
+            )
+            assert out == []
+        finally:
+            server._config.governance_mode = orig_mode
+            server._config.historical_prediction_universe_mode = orig_gate_mode
+            server._historical_prediction_universes = {}
+            server._historical_prediction_candidate_index = {}
+
     def test_predict_requires_size(self, client):
         r = client.post(
             "/predict",
@@ -275,6 +377,71 @@ class TestPredictEndpoint:
             )
             assert r.status_code == 422
             assert "No candidates registered" in r.json()["detail"]
+
+    def test_predict_traces_empty_response_reason(self, client, tmp_path):
+        import unittest.mock as mock
+        from types import SimpleNamespace
+
+        from src.behemoth.api import server
+
+        trace_path = tmp_path / "predict_trace.ndjson"
+        dummy_cand = mock.MagicMock()
+        dummy_cand.bar_ticks = 100
+        dummy_cand.horizon = 6
+        dummy_cand.barrier_pips = 2.0
+        dummy_cand.candidate_uid = "state_a"
+
+        orig_trace = server._config.debug_http_trace
+        orig_trace_path = server._config.debug_http_trace_path
+        orig_debug_run_id = server._config.debug_run_id
+        try:
+            server._config.debug_http_trace = True
+            server._config.debug_http_trace_path = str(trace_path)
+            server._config.debug_run_id = "predict_trace_case"
+            with (
+                mock.patch.object(
+                    server,
+                    "_resolve_runtime_contract",
+                    return_value=SimpleNamespace(
+                        symbol="EURUSD",
+                        candidates=[dummy_cand],
+                        model_month="2025-07",
+                        cap_pips=1.2,
+                        model_binding={},
+                    ),
+                ),
+                mock.patch.object(
+                    server,
+                    "_apply_historical_prediction_universe_gate",
+                    return_value=[],
+                ),
+            ):
+                r = client.post(
+                    "/predict",
+                    json={
+                        "symbol": "EURUSD",
+                        "requested_volume_units": 10000,
+                        "ftmo_enabled_override": True,
+                        "completed_bar_ticks": [100],
+                        "run_id": "predict_trace_case",
+                    },
+                )
+                assert r.status_code == 200
+                assert r.json() == []
+
+            rows = [
+                json.loads(line)
+                for line in trace_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            response_rows = [row for row in rows if row["endpoint"] == "/predict" and row["phase"] == "response"]
+            assert len(response_rows) == 1
+            assert response_rows[0]["extra"]["reason"] == "historical_prediction_universe_gate_filtered_all_candidates"
+            assert response_rows[0]["extra"]["result_count"] == 0
+        finally:
+            server._config.debug_http_trace = orig_trace
+            server._config.debug_http_trace_path = orig_trace_path
+            server._config.debug_run_id = orig_debug_run_id
 
     def test_predict_no_model(self, client):
         """If CatBoost model isn't loaded, predict returns 503."""
@@ -1126,6 +1293,62 @@ class TestIngestionEndpoints:
         finally:
             server._config.governance_mode = orig_mode
             server._config.record_raw_ticks = orig_record
+
+    def test_ingest_tick_writes_debug_http_trace(self, client, tmp_path):
+        import unittest.mock as mock
+
+        from src.behemoth.api import server
+
+        trace_path = tmp_path / "http_trace.ndjson"
+        orig_mode = server._config.governance_mode
+        orig_record = server._config.record_raw_ticks
+        orig_trace = server._config.debug_http_trace
+        orig_trace_path = server._config.debug_http_trace_path
+        orig_debug_run_id = server._config.debug_run_id
+        dummy_agg = mock.MagicMock()
+        dummy_agg.add_ticks.return_value = []
+        try:
+            server._config.governance_mode = "historical"
+            server._config.record_raw_ticks = False
+            server._config.debug_http_trace = True
+            server._config.debug_http_trace_path = str(trace_path)
+            server._config.debug_run_id = "trace_fallback_run"
+            with (
+                mock.patch.dict(server._aggregators, {100: dummy_agg}, clear=True),
+                mock.patch.object(server._state, "bar_count", return_value=0),
+            ):
+                r = client.post(
+                    "/ticks",
+                    json={
+                        "symbol": "EURUSD",
+                        "timestamp": "2025-01-01T00:00:00Z",
+                        "bid": 1.1,
+                        "ask": 1.1001,
+                        "client_tick_seq": 7,
+                        "run_id": "tick_run_01",
+                    },
+                )
+                assert r.status_code == 201
+
+            rows = [
+                json.loads(line)
+                for line in trace_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            assert len(rows) >= 3
+            assert {row["phase"] for row in rows} >= {"request", "tick_result", "response"}
+            assert all(row["run_id"] == "tick_run_01" for row in rows)
+            assert any(
+                (row.get("request") or {}).get("client_tick_seq") == 7
+                for row in rows
+                if isinstance(row.get("request"), dict)
+            )
+        finally:
+            server._config.governance_mode = orig_mode
+            server._config.record_raw_ticks = orig_record
+            server._config.debug_http_trace = orig_trace
+            server._config.debug_http_trace_path = orig_trace_path
+            server._config.debug_run_id = orig_debug_run_id
 
     def test_ingest_tick_drops_duplicate_client_tick_seq(self, client):
         import unittest.mock as mock

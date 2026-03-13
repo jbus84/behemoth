@@ -3,6 +3,74 @@
 Use this runbook to reconcile cTrader backtest runs against research outputs and produce a
 baseline-vs-custom A/B parity report.
 
+## Fast path: one-command debug session
+
+For the lowest-friction HistData workflow, use the session manager instead of
+manually exporting data and booting the API:
+
+```bash
+make ctrader-debug-up \
+  SYMBOL=EURUSD \
+  START_TS=2025-07-07T00:00:00Z \
+  END_TS=2025-07-09T00:00:00Z
+```
+
+This will:
+- export the HistData custom-data package for the requested window
+- include at least `30000` ticks before `START_TS` and `30000` ticks from `START_TS`
+  onward, so cTrader has both the warmup tail and a comparison segment
+- create an isolated DuckDB runtime under `data/db/debug/`
+- start the API in historical mode on `127.0.0.1:8000`
+- enable debug HTTP tracing for the session and tag runtime rows with the session `run_id`
+- update `data/analysis/backtest_reconcile/ctrader_active_custom_data_package.txt`
+  so `CustomDataSourceHistDataPlugin.cs` loads the active package automatically
+
+Adjust the defaults if needed:
+
+```bash
+make ctrader-debug-up \
+  SYMBOL=EURUSD \
+  START_TS=2025-07-07T00:00:00Z \
+  END_TS=2025-07-09T00:00:00Z \
+  WARMUP_TICKS=30000 \
+  COMPARISON_TICKS=30000
+```
+
+Inspect the active session:
+
+```bash
+make ctrader-debug-status
+```
+
+Stop the session when the backtest is done:
+
+```bash
+make ctrader-debug-down
+```
+
+`ctrader-debug-down` now also finalizes a bundle under
+`data/analysis/backtest_reconcile/ctrader_debug_runs/<RUN_ID>/` with:
+- `session.json`
+- `runtime.db`
+- `api.log`
+- `http_trace.ndjson`
+- auto-discovered cTrader artifacts such as `events.json` and `cbot.log` when present
+- `joined_timeline.csv`
+- `joined_timeline.md`
+- `offline_compare.csv`
+- `debug_summary.csv`
+
+## Repo-first lane
+
+The preferred debugging order is now:
+1. `make cbot-surrogate ...`
+2. inspect the surrogate parity outputs under `data/analysis/backtest_reconcile/cbot_surrogate_runs/<RUN_ID>/`
+3. only then run `make ctrader-debug-up ...` for final cTrader verification
+
+The surrogate path exercises the real FastAPI/runtime stack directly from the repo,
+without deploying to cTrader, and defaults to the same `30000`-tick warmup plus a
+30-second tolerant parity window that is appropriate for cTrader-like timestamp drift.
+
 ## 0) Build cTrader custom-data package from HistData parquet
 
 ```bash

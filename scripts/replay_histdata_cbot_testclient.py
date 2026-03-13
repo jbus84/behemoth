@@ -17,6 +17,7 @@ import importlib
 import importlib.util
 import json
 import os
+import re
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -43,6 +44,11 @@ class ReplayStats:
     predict_errors: int
     selected_rows_runtime: int
     expected_rows_reduced: int
+    selected_parity_mode: str
+    strict_selected_missing_expected: int
+    strict_selected_extra_runtime: int
+    event_aligned_selected_missing_expected: int
+    event_aligned_selected_extra_runtime: int
     selected_missing_expected: int
     selected_extra_runtime: int
     fallback_match_count: int
@@ -143,6 +149,19 @@ def _candidate_uid_horizon(uid: Any) -> int | None:
     raw = str(parts[3]).strip()
     try:
         return int(raw.lstrip("hH"))
+    except Exception:
+        return None
+
+
+def _candidate_uid_barrier_pips(uid: Any) -> float | None:
+    state_id = _candidate_uid_state_id(uid)
+    if not state_id:
+        return None
+    m = re.search(r"k([0-9]+(?:\.[0-9]+)?)$", str(state_id))
+    if m is None:
+        return None
+    try:
+        return float(m.group(1))
     except Exception:
         return None
 
@@ -254,8 +273,28 @@ def _load_expected_selected_rows(
     start: pd.Timestamp,
     end: pd.Timestamp,
 ) -> pd.DataFrame:
-    if not predictions_parquet.exists():
+    detail = _load_expected_selected_detail_rows(
+        predictions_parquet=predictions_parquet,
+        symbol=symbol,
+        start=start,
+        end=end,
+    )
+    if detail.empty:
         return pd.DataFrame(columns=["candidate_uid", "close_ts"])
+    return detail[["candidate_uid", "close_ts"]].copy()
+
+
+def _load_expected_selected_detail_rows(
+    *,
+    predictions_parquet: Path,
+    symbol: str,
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+) -> pd.DataFrame:
+    if not predictions_parquet.exists():
+        return pd.DataFrame(
+            columns=["candidate_uid", "close_ts", "pred_prob", "threshold_exec", "selected_exec"]
+        )
 
     con = duckdb.connect()
     try:
@@ -265,6 +304,8 @@ def _load_expected_selected_rows(
             SELECT
                 candidate_uid,
                 {close_ts_expr} AS close_ts,
+                try_cast(pred_prob AS DOUBLE) AS pred_prob,
+                try_cast(threshold_exec AS DOUBLE) AS threshold_exec,
                 try_cast(selected_exec AS INTEGER) AS selected_exec
             FROM read_parquet(?)
             WHERE upper(split_part(candidate_uid, '|', 2)) = ?
@@ -283,17 +324,25 @@ def _load_expected_selected_rows(
         con.close()
 
     if df.empty:
-        return pd.DataFrame(columns=["candidate_uid", "close_ts"])
+        return pd.DataFrame(
+            columns=["candidate_uid", "close_ts", "pred_prob", "threshold_exec", "selected_exec"]
+        )
 
     out = pd.DataFrame()
     out["candidate_uid"] = df.get("candidate_uid", pd.Series(dtype=str)).astype(str)
     out["close_ts"] = _to_utc(df.get("close_ts", pd.Series(dtype=object)))
+    out["pred_prob"] = pd.to_numeric(
+        df.get("pred_prob", pd.Series(dtype=float)), errors="coerce"
+    )
+    out["threshold_exec"] = pd.to_numeric(
+        df.get("threshold_exec", pd.Series(dtype=float)), errors="coerce"
+    )
     out["selected_exec"] = pd.to_numeric(
         df.get("selected_exec", pd.Series(dtype=float)), errors="coerce"
     ).fillna(0).astype(int)
     out = out[out["selected_exec"] == 1].copy()
     out = out.dropna(subset=["candidate_uid", "close_ts"]).reset_index(drop=True)
-    return out[["candidate_uid", "close_ts"]]
+    return out[["candidate_uid", "close_ts", "pred_prob", "threshold_exec", "selected_exec"]]
 
 
 def _filter_expected_to_reduced_core(
@@ -338,6 +387,7 @@ def _load_hist_ticks_for_replay(
     lookback_days: int,
     warmup_source: str,
     phase_bar_ticks: int,
+    tick_offset: int = 0,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     src_mode = str(warmup_source or "history_tail").strip().lower()
     all_files = _all_symbol_tick_files(symbol, tick_root)
@@ -451,6 +501,13 @@ def _load_hist_ticks_for_replay(
     df["bid"] = pd.to_numeric(df.get("bid", pd.Series(dtype=float)), errors="coerce")
     df["ask"] = pd.to_numeric(df.get("ask", pd.Series(dtype=float)), errors="coerce")
     df = df.dropna(subset=["ts", "bid", "ask"]).reset_index(drop=True)
+    if int(tick_offset) > 0:
+        if int(tick_offset) >= len(df):
+            return (
+                pd.DataFrame(columns=["ts", "bid", "ask"]),
+                pd.DataFrame(columns=["ts", "bid", "ask"]),
+            )
+        df = df.iloc[int(tick_offset) :].reset_index(drop=True)
 
     stream = df[(df["ts"] >= start) & (df["ts"] < end)].copy().reset_index(drop=True)
     if stream.empty:
@@ -660,6 +717,482 @@ def _predict_warmup_422(resp: Any) -> bool:
     return "insufficient warmup bars" in txt.lower()
 
 
+def _load_predict_trace_rows(path: Path | None) -> pd.DataFrame:
+    if path is None or not path.exists():
+        return pd.DataFrame(
+            columns=[
+                "trace_ts",
+                "candidate_uid",
+                "close_ts",
+                "selected_exec",
+                "pred_prob",
+                "threshold_exec",
+                "risk_blocked",
+                "reason",
+            ]
+        )
+    rows: list[dict[str, Any]] = []
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        txt = line.strip()
+        if not txt:
+            continue
+        try:
+            payload = json.loads(txt)
+        except Exception:
+            continue
+        if payload.get("endpoint") != "/predict" or payload.get("phase") != "response":
+            continue
+        trace_ts = _to_utc(pd.Series([payload.get("ts_utc")])).iloc[0]
+        extra = payload.get("extra") if isinstance(payload.get("extra"), dict) else {}
+        reason = str(extra.get("reason", "")).strip() or None
+        trace_rows = None
+        if isinstance(extra, dict):
+            trace_rows = extra.get("candidate_trace_rows")
+        response_rows = trace_rows if isinstance(trace_rows, list) else payload.get("response")
+        if not isinstance(response_rows, list):
+            continue
+        for item in response_rows:
+            if not isinstance(item, dict):
+                continue
+            rows.append(
+                {
+                    "trace_ts": trace_ts,
+                    "candidate_uid": str(item.get("candidate_uid", "")).strip(),
+                    "close_ts": _to_utc(pd.Series([item.get("close_ts")])).iloc[0],
+                    "selected_exec": int(item.get("selected_exec", 0) or 0),
+                    "pred_prob": pd.to_numeric(item.get("pred_prob"), errors="coerce"),
+                    "threshold_exec": pd.to_numeric(item.get("threshold_exec"), errors="coerce"),
+                    "risk_blocked": bool(item.get("risk_blocked", False)),
+                    "reason": reason,
+                    "features_json": json.dumps(item.get("features", {}), sort_keys=True)
+                    if isinstance(item.get("features"), dict)
+                    else None,
+                }
+            )
+    if not rows:
+        return pd.DataFrame(
+            columns=[
+                "trace_ts",
+                "candidate_uid",
+                "close_ts",
+                "selected_exec",
+                "pred_prob",
+                "threshold_exec",
+                "risk_blocked",
+                "reason",
+                "features_json",
+            ]
+        )
+    out = pd.DataFrame(rows)
+    out["candidate_uid"] = out["candidate_uid"].astype(str)
+    out["close_ts"] = _to_utc(out["close_ts"])
+    out["trace_ts"] = _to_utc(out["trace_ts"])
+    return out
+
+
+def _build_signal_feature_diff(
+    *,
+    signal_gap_analysis: pd.DataFrame,
+    symbol: str,
+    tick_velocity_dir: Path,
+    focus_gap_reasons: tuple[str, ...] = ("candidate_seen_but_not_selected",),
+) -> pd.DataFrame:
+    cols = [
+        "gap_side",
+        "gap_reason",
+        "candidate_uid",
+        "reference_close_ts",
+        "feature_name",
+        "offline_value",
+        "runtime_value",
+        "runtime_minus_offline",
+        "abs_delta",
+        "offline_pred_prob",
+        "offline_threshold_exec",
+        "offline_margin",
+        "runtime_pred_prob",
+        "runtime_threshold_exec",
+        "runtime_margin",
+        "margin_delta_runtime_minus_offline",
+    ]
+    if signal_gap_analysis.empty:
+        return pd.DataFrame(columns=cols)
+
+    from src.behemoth.core.features import compute_features_from_bars
+    from src.behemoth.core.schemas import ModelFeatures
+
+    target = signal_gap_analysis.copy()
+    target["gap_reason"] = target["gap_reason"].astype(str)
+    target = target[target["gap_reason"].isin(tuple(str(x) for x in focus_gap_reasons))].copy()
+    if target.empty:
+        return pd.DataFrame(columns=cols)
+
+    target["candidate_uid"] = target["candidate_uid"].astype(str)
+    target["reference_close_ts"] = _to_utc(target["reference_close_ts"])
+
+    required_cols = [
+        "timestamp",
+        "close_ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "spread",
+        "tick_volume",
+        "hl_first",
+        "hl_pos_frac",
+    ]
+    bars_cache: dict[int, pd.DataFrame] = {}
+    rows: list[dict[str, Any]] = []
+    feature_names = list(ModelFeatures.model_fields.keys())
+
+    def _load_bars(bar_ticks: int) -> pd.DataFrame:
+        cached = bars_cache.get(int(bar_ticks))
+        if cached is not None:
+            return cached
+        path = tick_velocity_dir / f"{str(symbol).upper().strip()}_{int(bar_ticks)}tick_velocity.parquet"
+        if not path.exists():
+            out = pd.DataFrame(columns=required_cols)
+        else:
+            out = pd.read_parquet(path, columns=required_cols)
+            out["timestamp"] = _to_utc(out["timestamp"])
+            out["close_ts"] = _to_utc(out["close_ts"])
+            out = out.sort_values("close_ts").reset_index(drop=True)
+        bars_cache[int(bar_ticks)] = out
+        return out
+
+    for _, gap_row in target.iterrows():
+        candidate_uid = str(gap_row.get("candidate_uid", "")).strip()
+        ref_ts = _to_utc(pd.Series([gap_row.get("reference_close_ts")])).iloc[0]
+        bar_ticks = _candidate_uid_bar_ticks(candidate_uid)
+        horizon = _candidate_uid_horizon(candidate_uid)
+        barrier_pips = _candidate_uid_barrier_pips(candidate_uid)
+        runtime_features_raw = gap_row.get("nearest_predict_features_json")
+        if (
+            not candidate_uid
+            or pd.isna(ref_ts)
+            or bar_ticks is None
+            or horizon is None
+            or barrier_pips is None
+            or not isinstance(runtime_features_raw, str)
+            or not runtime_features_raw.strip()
+        ):
+            continue
+        try:
+            runtime_features = json.loads(runtime_features_raw)
+        except Exception:
+            continue
+        if not isinstance(runtime_features, dict):
+            continue
+
+        bars = _load_bars(int(bar_ticks))
+        if bars.empty:
+            continue
+        exact = bars.index[bars["close_ts"] == ref_ts].tolist()
+        if not exact:
+            continue
+        end_idx = int(exact[-1])
+        start_idx = max(0, end_idx - 400)
+        window = bars.iloc[start_idx : end_idx + 1].copy()
+        offline = compute_features_from_bars(
+            window,
+            symbol=str(symbol).upper().strip(),
+            bar_ticks=int(bar_ticks),
+            horizon=int(horizon),
+            barrier_pips=float(barrier_pips),
+        )
+        if offline is None:
+            continue
+        offline_features = offline.model_dump()
+        for feature_name in feature_names:
+            offline_value = pd.to_numeric(offline_features.get(feature_name), errors="coerce")
+            runtime_value = pd.to_numeric(runtime_features.get(feature_name), errors="coerce")
+            delta = (
+                float(runtime_value) - float(offline_value)
+                if pd.notna(runtime_value) and pd.notna(offline_value)
+                else None
+            )
+            rows.append(
+                {
+                    "gap_side": str(gap_row.get("gap_side", "")),
+                    "gap_reason": str(gap_row.get("gap_reason", "")),
+                    "candidate_uid": candidate_uid,
+                    "reference_close_ts": ref_ts,
+                    "feature_name": feature_name,
+                    "offline_value": float(offline_value) if pd.notna(offline_value) else None,
+                    "runtime_value": float(runtime_value) if pd.notna(runtime_value) else None,
+                    "runtime_minus_offline": delta,
+                    "abs_delta": abs(float(delta)) if delta is not None else None,
+                    "offline_pred_prob": pd.to_numeric(gap_row.get("offline_pred_prob"), errors="coerce"),
+                    "offline_threshold_exec": pd.to_numeric(
+                        gap_row.get("offline_threshold_exec"), errors="coerce"
+                    ),
+                    "offline_margin": pd.to_numeric(gap_row.get("offline_margin"), errors="coerce"),
+                    "runtime_pred_prob": pd.to_numeric(
+                        gap_row.get("nearest_predict_pred_prob"), errors="coerce"
+                    ),
+                    "runtime_threshold_exec": pd.to_numeric(
+                        gap_row.get("nearest_predict_threshold_exec"), errors="coerce"
+                    ),
+                    "runtime_margin": pd.to_numeric(
+                        gap_row.get("nearest_predict_margin"), errors="coerce"
+                    ),
+                    "margin_delta_runtime_minus_offline": pd.to_numeric(
+                        gap_row.get("margin_delta_runtime_minus_offline"), errors="coerce"
+                    ),
+                }
+            )
+
+    if not rows:
+        return pd.DataFrame(columns=cols)
+    out = pd.DataFrame(rows)
+    out["feature_name"] = out["feature_name"].astype(str)
+    return out[cols].sort_values(
+        ["candidate_uid", "reference_close_ts", "abs_delta", "feature_name"],
+        ascending=[True, True, False, True],
+    ).reset_index(drop=True)
+
+
+def _build_signal_gap_analysis(
+    *,
+    expected_selected_detail: pd.DataFrame | None = None,
+    expected_keys: pd.DataFrame,
+    runtime_keys: pd.DataFrame,
+    missing_expected: pd.DataFrame,
+    extra_runtime: pd.DataFrame,
+    predict_trace_rows: pd.DataFrame,
+    classify_window_sec: float,
+) -> pd.DataFrame:
+    cols = [
+        "gap_side",
+        "gap_reason",
+        "candidate_uid",
+        "reference_close_ts",
+        "nearest_runtime_selected_close_ts",
+        "nearest_predict_close_ts",
+        "nearest_predict_trace_ts",
+        "nearest_delta_sec",
+        "nearest_predict_selected_exec",
+        "nearest_predict_pred_prob",
+        "nearest_predict_threshold_exec",
+        "nearest_predict_margin",
+        "nearest_predict_risk_blocked",
+        "nearest_predict_reason",
+        "nearest_predict_features_json",
+        "offline_pred_prob",
+        "offline_threshold_exec",
+        "offline_margin",
+        "margin_delta_runtime_minus_offline",
+    ]
+    if missing_expected.empty and extra_runtime.empty:
+        return pd.DataFrame(columns=cols)
+
+    tol_sec = float(classify_window_sec)
+    expected_detail = (
+        expected_selected_detail.copy()
+        if expected_selected_detail is not None
+        else pd.DataFrame(columns=["candidate_uid", "close_ts", "pred_prob", "threshold_exec"])
+    )
+    if not expected_detail.empty:
+        expected_detail["candidate_uid"] = expected_detail["candidate_uid"].astype(str)
+        expected_detail["close_ts"] = _to_utc(expected_detail["close_ts"])
+
+    def _nearest_row(df: pd.DataFrame, candidate_uid: str, ts: pd.Timestamp) -> dict[str, Any] | None:
+        if df.empty:
+            return None
+        grp = df[df["candidate_uid"].astype(str) == str(candidate_uid)].copy()
+        if grp.empty:
+            return None
+        grp["delta_sec"] = (grp["close_ts"] - ts).abs().dt.total_seconds()
+        row = grp.sort_values(["delta_sec", "close_ts"]).iloc[0].to_dict()
+        return row
+
+    def _exact_offline_row(candidate_uid: str, ts: pd.Timestamp) -> dict[str, Any] | None:
+        if expected_detail.empty:
+            return None
+        grp = expected_detail[
+            (expected_detail["candidate_uid"].astype(str) == str(candidate_uid))
+            & (expected_detail["close_ts"] == ts)
+        ]
+        if grp.empty:
+            return None
+        return grp.iloc[0].to_dict()
+
+    rows: list[dict[str, Any]] = []
+    for _, row in missing_expected.iterrows():
+        candidate_uid = str(row.get("candidate_uid", "")).strip()
+        ref_ts = _to_utc(pd.Series([row.get("close_ts")])).iloc[0]
+        nearest_runtime = _nearest_row(runtime_keys, candidate_uid, ref_ts)
+        nearest_predict = _nearest_row(predict_trace_rows, candidate_uid, ref_ts)
+        offline_row = _exact_offline_row(candidate_uid, ref_ts)
+        nearest_delta = None
+        gap_reason = "no_candidate_seen_in_predict_trace"
+        if nearest_predict is not None:
+            nearest_delta = float(nearest_predict.get("delta_sec", float("nan")))
+            if nearest_delta <= tol_sec:
+                if int(nearest_predict.get("selected_exec", 0) or 0) == 1:
+                    gap_reason = "candidate_selected_but_event_shifted"
+                else:
+                    gap_reason = "candidate_seen_but_not_selected"
+            else:
+                gap_reason = "no_equivalent_runtime_bar_nearby"
+        rows.append(
+            {
+                "gap_side": "missing_expected",
+                "gap_reason": gap_reason,
+                "candidate_uid": candidate_uid,
+                "reference_close_ts": ref_ts,
+                "nearest_runtime_selected_close_ts": (
+                    nearest_runtime.get("close_ts") if nearest_runtime is not None else pd.NaT
+                ),
+                "nearest_predict_close_ts": (
+                    nearest_predict.get("close_ts") if nearest_predict is not None else pd.NaT
+                ),
+                "nearest_predict_trace_ts": (
+                    nearest_predict.get("trace_ts") if nearest_predict is not None else pd.NaT
+                ),
+                "nearest_delta_sec": nearest_delta,
+                "nearest_predict_selected_exec": (
+                    nearest_predict.get("selected_exec") if nearest_predict is not None else None
+                ),
+                "nearest_predict_pred_prob": (
+                    nearest_predict.get("pred_prob") if nearest_predict is not None else None
+                ),
+                "nearest_predict_threshold_exec": (
+                    nearest_predict.get("threshold_exec") if nearest_predict is not None else None
+                ),
+                "nearest_predict_margin": (
+                    (
+                        float(nearest_predict.get("pred_prob")) - float(nearest_predict.get("threshold_exec"))
+                    )
+                    if nearest_predict is not None
+                    and pd.notna(nearest_predict.get("pred_prob"))
+                    and pd.notna(nearest_predict.get("threshold_exec"))
+                    else None
+                ),
+                "nearest_predict_risk_blocked": (
+                    nearest_predict.get("risk_blocked") if nearest_predict is not None else None
+                ),
+                "nearest_predict_reason": (
+                    nearest_predict.get("reason") if nearest_predict is not None else None
+                ),
+                "nearest_predict_features_json": (
+                    nearest_predict.get("features_json") if nearest_predict is not None else None
+                ),
+                "offline_pred_prob": (offline_row.get("pred_prob") if offline_row is not None else None),
+                "offline_threshold_exec": (
+                    offline_row.get("threshold_exec") if offline_row is not None else None
+                ),
+                "offline_margin": (
+                    (float(offline_row.get("pred_prob")) - float(offline_row.get("threshold_exec")))
+                    if offline_row is not None
+                    and pd.notna(offline_row.get("pred_prob"))
+                    and pd.notna(offline_row.get("threshold_exec"))
+                    else None
+                ),
+                "margin_delta_runtime_minus_offline": (
+                    (
+                        (float(nearest_predict.get("pred_prob")) - float(nearest_predict.get("threshold_exec")))
+                        - (float(offline_row.get("pred_prob")) - float(offline_row.get("threshold_exec")))
+                    )
+                    if nearest_predict is not None
+                    and offline_row is not None
+                    and pd.notna(nearest_predict.get("pred_prob"))
+                    and pd.notna(nearest_predict.get("threshold_exec"))
+                    and pd.notna(offline_row.get("pred_prob"))
+                    and pd.notna(offline_row.get("threshold_exec"))
+                    else None
+                ),
+            }
+        )
+
+    for _, row in extra_runtime.iterrows():
+        candidate_uid = str(row.get("candidate_uid", "")).strip()
+        ref_ts = _to_utc(pd.Series([row.get("close_ts")])).iloc[0]
+        nearest_expected = _nearest_row(expected_keys, candidate_uid, ref_ts)
+        nearest_predict = _nearest_row(predict_trace_rows, candidate_uid, ref_ts)
+        offline_row = None
+        if nearest_expected is not None:
+            nearest_expected_ts = _to_utc(pd.Series([nearest_expected.get("close_ts")])).iloc[0]
+            offline_row = _exact_offline_row(candidate_uid, nearest_expected_ts)
+        nearest_delta = None
+        gap_reason = "runtime_selected_without_expected_candidate"
+        if nearest_expected is not None:
+            nearest_delta = float(nearest_expected.get("delta_sec", float("nan")))
+            if nearest_delta <= tol_sec:
+                gap_reason = "runtime_selected_but_event_shifted"
+        rows.append(
+            {
+                "gap_side": "extra_runtime",
+                "gap_reason": gap_reason,
+                "candidate_uid": candidate_uid,
+                "reference_close_ts": ref_ts,
+                "nearest_runtime_selected_close_ts": ref_ts,
+                "nearest_predict_close_ts": (
+                    nearest_predict.get("close_ts") if nearest_predict is not None else pd.NaT
+                ),
+                "nearest_predict_trace_ts": (
+                    nearest_predict.get("trace_ts") if nearest_predict is not None else pd.NaT
+                ),
+                "nearest_delta_sec": nearest_delta,
+                "nearest_predict_selected_exec": (
+                    nearest_predict.get("selected_exec") if nearest_predict is not None else None
+                ),
+                "nearest_predict_pred_prob": (
+                    nearest_predict.get("pred_prob") if nearest_predict is not None else None
+                ),
+                "nearest_predict_threshold_exec": (
+                    nearest_predict.get("threshold_exec") if nearest_predict is not None else None
+                ),
+                "nearest_predict_margin": (
+                    (
+                        float(nearest_predict.get("pred_prob")) - float(nearest_predict.get("threshold_exec"))
+                    )
+                    if nearest_predict is not None
+                    and pd.notna(nearest_predict.get("pred_prob"))
+                    and pd.notna(nearest_predict.get("threshold_exec"))
+                    else None
+                ),
+                "nearest_predict_risk_blocked": (
+                    nearest_predict.get("risk_blocked") if nearest_predict is not None else None
+                ),
+                "nearest_predict_reason": (
+                    nearest_predict.get("reason") if nearest_predict is not None else None
+                ),
+                "nearest_predict_features_json": (
+                    nearest_predict.get("features_json") if nearest_predict is not None else None
+                ),
+                "offline_pred_prob": (offline_row.get("pred_prob") if offline_row is not None else None),
+                "offline_threshold_exec": (
+                    offline_row.get("threshold_exec") if offline_row is not None else None
+                ),
+                "offline_margin": (
+                    (float(offline_row.get("pred_prob")) - float(offline_row.get("threshold_exec")))
+                    if offline_row is not None
+                    and pd.notna(offline_row.get("pred_prob"))
+                    and pd.notna(offline_row.get("threshold_exec"))
+                    else None
+                ),
+                "margin_delta_runtime_minus_offline": (
+                    (
+                        (float(nearest_predict.get("pred_prob")) - float(nearest_predict.get("threshold_exec")))
+                        - (float(offline_row.get("pred_prob")) - float(offline_row.get("threshold_exec")))
+                    )
+                    if nearest_predict is not None
+                    and offline_row is not None
+                    and pd.notna(nearest_predict.get("pred_prob"))
+                    and pd.notna(nearest_predict.get("threshold_exec"))
+                    and pd.notna(offline_row.get("pred_prob"))
+                    and pd.notna(offline_row.get("threshold_exec"))
+                    else None
+                ),
+            }
+        )
+
+    out = pd.DataFrame(rows)
+    return out[cols]
+
+
 def _simulate(
     *,
     symbol: str,
@@ -673,11 +1206,16 @@ def _simulate(
     models_dir: Path,
     history_dir: Path,
     missing_month_policy: str,
+    historical_preflight_mode: str,
+    historical_prediction_universe_mode: str,
+    debug_run_id: str | None,
+    debug_http_trace_path: Path | None,
     ftmo_enabled_override: bool,
     requested_lot_size: float,
     enable_tick_batch: bool,
     tick_batch_size: int,
     selected_time_tolerance_sec: float,
+    selected_parity_mode: str,
     enable_sequence_fallback: bool,
     sequence_fallback_max_gap_sec: float,
     reset_runtime_db: bool,
@@ -691,9 +1229,27 @@ def _simulate(
     os.environ["BEHEMOTH_GOVERNANCE_MODE"] = "historical_auto"
     os.environ["BEHEMOTH_GOVERNANCE_HISTORY_DIR"] = str(history_dir)
     os.environ["BEHEMOTH_GOVERNANCE_MISSING_MONTH_POLICY"] = str(missing_month_policy)
+    os.environ["BEHEMOTH_HISTORICAL_PREFLIGHT_MODE"] = str(historical_preflight_mode)
+    os.environ["BEHEMOTH_HISTORICAL_PREDICTION_UNIVERSE_MODE"] = str(
+        historical_prediction_universe_mode
+    )
     os.environ["BEHEMOTH_MODELS_DIR"] = str(models_dir)
     os.environ["BEHEMOTH_STATE_DB"] = str(runtime_db)
     os.environ["BEHEMOTH_RECORD_RAW_TICKS"] = "true" if record_raw_ticks else "false"
+    run_id_txt = str(debug_run_id or "").strip()
+    if run_id_txt:
+        os.environ["BEHEMOTH_DEBUG_RUN_ID"] = run_id_txt
+    else:
+        os.environ.pop("BEHEMOTH_DEBUG_RUN_ID", None)
+    if debug_http_trace_path is not None:
+        debug_http_trace_path.parent.mkdir(parents=True, exist_ok=True)
+        if debug_http_trace_path.exists():
+            debug_http_trace_path.unlink()
+        os.environ["BEHEMOTH_DEBUG_HTTP_TRACE"] = "true"
+        os.environ["BEHEMOTH_DEBUG_HTTP_TRACE_PATH"] = str(debug_http_trace_path)
+    else:
+        os.environ.pop("BEHEMOTH_DEBUG_HTTP_TRACE", None)
+        os.environ.pop("BEHEMOTH_DEBUG_HTTP_TRACE_PATH", None)
     if model_month:
         os.environ["BEHEMOTH_FORCE_MODEL_MONTH"] = model_month
     else:
@@ -721,6 +1277,7 @@ def _simulate(
         warmup_payload = {
             "symbol": symbol,
             "bar_ticks": 100,
+            "run_id": run_id_txt or None,
             "ticks": [
                 {
                     "symbol": symbol,
@@ -747,6 +1304,7 @@ def _simulate(
                     "balance": 100000.0,
                     "equity": 100000.0,
                     "snapshot_ts": _ts_to_iso(datetime.now(timezone.utc)),
+                    "run_id": run_id_txt or None,
                 },
             )
             if snapshot.status_code not in {200, 201}:
@@ -771,6 +1329,7 @@ def _simulate(
                 "requested_lot_size": requested_lot_size,
                 "ftmo_enabled_override": bool(ftmo_enabled_override),
                 "completed_bar_ticks": unique_ticks,
+                "run_id": run_id_txt or None,
             }
             pr = client.post("/predict", json=payload)
             if pr.status_code == 200:
@@ -804,7 +1363,7 @@ def _simulate(
                 return
             resp = client.post(
                 "/ticks/batch",
-                json={"symbol": symbol, "ticks": chunk},
+                json={"symbol": symbol, "ticks": chunk, "run_id": run_id_txt or None},
             )
             if resp.status_code != 201:
                 raise RuntimeError(
@@ -842,6 +1401,7 @@ def _simulate(
                 "ask": float(ask),
                 "tick_volume": 1.0,
                 "client_tick_seq": int(client_tick_seq),
+                "run_id": run_id_txt or None,
             }
 
             if enable_tick_batch:
@@ -898,6 +1458,14 @@ def _simulate(
                 extra_runtime=trade_extra_runtime,
                 max_gap_sec=float(sequence_fallback_max_gap_sec),
             )
+
+        selected_mode = str(selected_parity_mode).strip().lower()
+        if selected_mode == "event_aligned":
+            selected_missing_expected_df = trade_missing_expected
+            selected_extra_runtime_df = trade_extra_runtime
+        else:
+            selected_missing_expected_df = strict_missing_expected
+            selected_extra_runtime_df = strict_extra_runtime
 
         if not trade_matches.empty:
             matched_signal_keys = expected_keys.iloc[
@@ -993,8 +1561,13 @@ def _simulate(
         predict_errors=int(predict_errors),
         selected_rows_runtime=int(len(runtime_keys)),
         expected_rows_reduced=int(len(expected_keys)),
-        selected_missing_expected=int(len(strict_missing_expected)),
-        selected_extra_runtime=int(len(strict_extra_runtime)),
+        selected_parity_mode=selected_mode,
+        strict_selected_missing_expected=int(len(strict_missing_expected)),
+        strict_selected_extra_runtime=int(len(strict_extra_runtime)),
+        event_aligned_selected_missing_expected=int(len(trade_missing_expected)),
+        event_aligned_selected_extra_runtime=int(len(trade_extra_runtime)),
+        selected_missing_expected=int(len(selected_missing_expected_df)),
+        selected_extra_runtime=int(len(selected_extra_runtime_df)),
         fallback_match_count=int(
             (
                 trade_matches.get("match_mode", pd.Series(dtype=str)).astype(str)
@@ -1002,7 +1575,7 @@ def _simulate(
             ).sum()
         ),
     )
-    return stats, runtime_keys, strict_missing_expected, strict_extra_runtime
+    return stats, runtime_keys, selected_missing_expected_df, selected_extra_runtime_df
 
 
 def _build_stage12_checks_df(
@@ -1077,7 +1650,10 @@ def _build_stage12_summary_df(
     warmup_source: str,
     warmup_ticks: int,
     warmup_sent: int,
+    tick_offset: int,
+    signal_gap_reason_counts: dict[str, int] | None = None,
 ) -> pd.DataFrame:
+    gap_counts = signal_gap_reason_counts or {}
     signal_pass = stats.selected_missing_expected == 0 and stats.selected_extra_runtime == 0
     execution_pass = (
         bool(execution_summary_df.iloc[0].get("overall_pass", False))
@@ -1119,6 +1695,7 @@ def _build_stage12_summary_df(
                 "warmup_source": str(warmup_source),
                 "warmup_ticks_requested": int(warmup_ticks),
                 "warmup_ticks_sent": int(warmup_sent),
+                "tick_offset": int(tick_offset),
                 "ticks_streamed": int(stats.ticks_streamed),
                 "ticks_accepted": int(stats.ticks_accepted),
                 "ticks_dropped": int(stats.ticks_dropped),
@@ -1128,6 +1705,30 @@ def _build_stage12_summary_df(
                 "predict_errors": int(stats.predict_errors),
                 "selected_rows_runtime": int(stats.selected_rows_runtime),
                 "expected_rows_reduced": int(stats.expected_rows_reduced),
+                "selected_parity_mode": str(stats.selected_parity_mode),
+                "strict_selected_missing_expected": int(stats.strict_selected_missing_expected),
+                "strict_selected_extra_runtime": int(stats.strict_selected_extra_runtime),
+                "event_aligned_selected_missing_expected": int(
+                    stats.event_aligned_selected_missing_expected
+                ),
+                "event_aligned_selected_extra_runtime": int(
+                    stats.event_aligned_selected_extra_runtime
+                ),
+                "gap_missing_seen_but_not_selected": int(
+                    gap_counts.get("missing_expected:candidate_seen_but_not_selected", 0)
+                ),
+                "gap_missing_no_runtime_bar_nearby": int(
+                    gap_counts.get("missing_expected:no_equivalent_runtime_bar_nearby", 0)
+                ),
+                "gap_missing_no_predict_trace": int(
+                    gap_counts.get("missing_expected:no_candidate_seen_in_predict_trace", 0)
+                ),
+                "gap_extra_shifted": int(
+                    gap_counts.get("extra_runtime:runtime_selected_but_event_shifted", 0)
+                ),
+                "gap_extra_without_expected": int(
+                    gap_counts.get("extra_runtime:runtime_selected_without_expected_candidate", 0)
+                ),
                 "selected_missing_expected": int(stats.selected_missing_expected),
                 "selected_extra_runtime": int(stats.selected_extra_runtime),
                 "signal_parity_pass": bool(signal_pass),
@@ -1160,6 +1761,7 @@ def _write_stage12_report(
         "",
         f"- verdict: `{str(row.get('stage12_api_parity_verdict', 'red')).upper()}`",
         f"- stage12_api_parity_pass: `{bool(row.get('stage12_api_parity_pass', False))}`",
+        f"- selected_parity_mode: `{str(row.get('selected_parity_mode', 'strict'))}`",
         f"- signal_parity_pass: `{bool(row.get('signal_parity_pass', False))}`",
         f"- execution_parity_pass: `{bool(row.get('execution_parity_pass', False))}`",
         "",
@@ -1197,15 +1799,19 @@ def run(
     lookback_days: int,
     warmup_source: str,
     phase_bar_ticks: int,
+    tick_offset: int,
     model_month: str,
     models_dir: Path,
     history_dir: Path,
     missing_month_policy: str,
+    historical_preflight_mode: str,
+    historical_prediction_universe_mode: str,
     ftmo_enabled_override: bool,
     requested_lot_size: float,
     enable_tick_batch: bool,
     tick_batch_size: int,
     selected_time_tolerance_sec: float,
+    selected_parity_mode: str,
     enable_sequence_fallback: bool,
     sequence_fallback_max_gap_sec: float,
     reset_runtime_db: bool,
@@ -1218,10 +1824,16 @@ def run(
     report_out: Path,
     local_summary_csv: Path,
     local_selected_mismatches_csv: Path,
+    local_signal_gap_analysis_csv: Path,
+    local_signal_feature_diff_csv: Path,
+    local_runtime_selected_csv: Path | None,
     stage12_summary_csv: Path,
     stage12_checks_csv: Path,
     stage12_mismatches_csv: Path,
     stage12_report_out: Path,
+    signal_gap_classify_window_sec: float = 300.0,
+    debug_run_id: str | None = None,
+    debug_http_trace_path: Path | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     sym = str(symbol).upper().strip()
     if not sym:
@@ -1241,6 +1853,7 @@ def run(
         lookback_days=int(lookback_days),
         warmup_source=warmup_source,
         phase_bar_ticks=int(phase_bar_ticks),
+        tick_offset=int(tick_offset),
     )
     if stream.empty:
         raise ValueError(f"no HistData ticks found for {sym} in [{start}, {end})")
@@ -1251,7 +1864,7 @@ def run(
         start=start,
         end=end,
     )
-    expected_selected = _load_expected_selected_rows(
+    expected_selected_detail = _load_expected_selected_detail_rows(
         predictions_parquet=repo_predictions_parquet,
         symbol=sym,
         start=start,
@@ -1267,15 +1880,20 @@ def run(
         expected=expected_detail,
         schedule=reduced_schedule,
     )
-    expected_selected = _filter_expected_to_reduced_core(
-        expected=expected_selected.assign(
+    expected_selected_detail = _filter_expected_to_reduced_core(
+        expected=expected_selected_detail.assign(
             side="",
             entry_price=float("nan"),
-            entry_ts=expected_selected["close_ts"],
+            entry_ts=expected_selected_detail["close_ts"],
             exit_ts=pd.NaT,
-        ),
+        ).copy(),
         schedule=reduced_schedule,
-    )[["candidate_uid", "close_ts"]]
+    )
+    expected_selected = expected_selected_detail[["candidate_uid", "close_ts"]].copy()
+
+    expected_keys = expected_selected.copy()
+    expected_keys["candidate_uid"] = expected_keys["candidate_uid"].astype(str)
+    expected_keys["close_ts"] = _to_utc(expected_keys["close_ts"])
 
     stats, runtime_keys, missing_expected, extra_runtime = _simulate(
         symbol=sym,
@@ -1289,11 +1907,16 @@ def run(
         models_dir=models_dir,
         history_dir=history_dir,
         missing_month_policy=missing_month_policy,
+        historical_preflight_mode=historical_preflight_mode,
+        historical_prediction_universe_mode=historical_prediction_universe_mode,
+        debug_run_id=debug_run_id,
+        debug_http_trace_path=debug_http_trace_path,
         ftmo_enabled_override=ftmo_enabled_override,
         requested_lot_size=float(requested_lot_size),
         enable_tick_batch=bool(enable_tick_batch),
         tick_batch_size=int(tick_batch_size),
         selected_time_tolerance_sec=float(selected_time_tolerance_sec),
+        selected_parity_mode=str(selected_parity_mode),
         enable_sequence_fallback=bool(enable_sequence_fallback),
         sequence_fallback_max_gap_sec=float(sequence_fallback_max_gap_sec),
         reset_runtime_db=bool(reset_runtime_db),
@@ -1322,6 +1945,10 @@ def run(
 
     local_summary_csv.parent.mkdir(parents=True, exist_ok=True)
     local_selected_mismatches_csv.parent.mkdir(parents=True, exist_ok=True)
+    local_signal_gap_analysis_csv.parent.mkdir(parents=True, exist_ok=True)
+    local_signal_feature_diff_csv.parent.mkdir(parents=True, exist_ok=True)
+    if local_runtime_selected_csv is not None:
+        local_runtime_selected_csv.parent.mkdir(parents=True, exist_ok=True)
     stage12_summary_csv.parent.mkdir(parents=True, exist_ok=True)
     stage12_checks_csv.parent.mkdir(parents=True, exist_ok=True)
     stage12_mismatches_csv.parent.mkdir(parents=True, exist_ok=True)
@@ -1347,6 +1974,36 @@ def run(
         )
     selected_mismatches_df = pd.DataFrame(selected_mismatches)
     selected_mismatches_df.to_csv(local_selected_mismatches_csv, index=False)
+    predict_trace_rows = _load_predict_trace_rows(debug_http_trace_path)
+    signal_gap_analysis = _build_signal_gap_analysis(
+        expected_selected_detail=expected_selected_detail,
+        expected_keys=expected_keys,
+        runtime_keys=runtime_keys,
+        missing_expected=missing_expected,
+        extra_runtime=extra_runtime,
+        predict_trace_rows=predict_trace_rows,
+        classify_window_sec=float(signal_gap_classify_window_sec),
+    )
+    signal_gap_analysis.to_csv(local_signal_gap_analysis_csv, index=False)
+    signal_feature_diff = _build_signal_feature_diff(
+        signal_gap_analysis=signal_gap_analysis,
+        symbol=sym,
+        tick_velocity_dir=REPO_ROOT / "data" / "analysis" / "tick_velocity",
+    )
+    signal_feature_diff.to_csv(local_signal_feature_diff_csv, index=False)
+    gap_counts = (
+        signal_gap_analysis.assign(
+            reason_key=signal_gap_analysis["gap_side"].astype(str)
+            + ":"
+            + signal_gap_analysis["gap_reason"].astype(str)
+        )["reason_key"]
+        .value_counts()
+        .to_dict()
+        if not signal_gap_analysis.empty
+        else {}
+    )
+    if local_runtime_selected_csv is not None:
+        runtime_keys.to_csv(local_runtime_selected_csv, index=False)
 
     stage12_summary = _build_stage12_summary_df(
         symbol=sym,
@@ -1360,6 +2017,8 @@ def run(
         warmup_source=warmup_source,
         warmup_ticks=int(warmup_ticks),
         warmup_sent=int(len(warmup)),
+        tick_offset=int(tick_offset),
+        signal_gap_reason_counts=gap_counts,
     )
     stage12_checks = _build_stage12_checks_df(
         symbol=sym,
@@ -1429,15 +2088,19 @@ def main() -> None:
     p.add_argument("--lookback-days", type=int, default=31)
     p.add_argument("--warmup-source", default="history_tail")
     p.add_argument("--phase-bar-ticks", type=int, default=100)
+    p.add_argument("--tick-offset", type=int, default=0)
     p.add_argument("--model-month", default="")
     p.add_argument("--models-dir", default="models/oco")
     p.add_argument("--history-dir", default="configs/research/governance/oco_history")
     p.add_argument("--missing-month-policy", default="error")
+    p.add_argument("--historical-preflight-mode", default="error")
+    p.add_argument("--historical-prediction-universe-mode", default="exact")
     p.add_argument("--ftmo-enabled-override", default="false")
     p.add_argument("--requested-lot-size", type=float, default=0.05)
     p.add_argument("--enable-tick-batch", default="true")
     p.add_argument("--tick-batch-size", type=int, default=20)
     p.add_argument("--selected-time-tolerance-sec", type=float, default=1.0)
+    p.add_argument("--selected-parity-mode", default="strict", choices=["strict", "event_aligned"])
     p.add_argument("--enable-sequence-fallback", default="false")
     p.add_argument("--sequence-fallback-max-gap-sec", type=float, default=21600.0)
     p.add_argument("--reset-runtime-db", default="true")
@@ -1469,6 +2132,18 @@ def main() -> None:
         default="data/analysis/backtest_reconcile/histdata_testclient_selected_mismatches.csv",
     )
     p.add_argument(
+        "--local-signal-gap-analysis-csv",
+        default="data/analysis/backtest_reconcile/histdata_testclient_signal_gap_analysis.csv",
+    )
+    p.add_argument(
+        "--local-signal-feature-diff-csv",
+        default="data/analysis/backtest_reconcile/histdata_testclient_signal_feature_diff.csv",
+    )
+    p.add_argument(
+        "--local-runtime-selected-csv",
+        default="",
+    )
+    p.add_argument(
         "--stage12-summary-csv",
         default="data/analysis/backtest_reconcile/histdata_testclient_stage12_api_parity_summary.csv",
     )
@@ -1486,6 +2161,9 @@ def main() -> None:
     )
     p.add_argument("--fail-on-gate", default="true")
     p.add_argument("--require-selected-parity", default="true")
+    p.add_argument("--signal-gap-classify-window-sec", type=float, default=300.0)
+    p.add_argument("--debug-run-id", default="")
+    p.add_argument("--debug-http-trace-path", default="")
 
     args = p.parse_args()
 
@@ -1503,15 +2181,19 @@ def main() -> None:
         lookback_days=int(args.lookback_days),
         warmup_source=str(args.warmup_source).strip().lower(),
         phase_bar_ticks=int(args.phase_bar_ticks),
+        tick_offset=int(args.tick_offset),
         model_month=str(args.model_month).strip(),
         models_dir=Path(str(args.models_dir)),
         history_dir=Path(str(args.history_dir)),
         missing_month_policy=str(args.missing_month_policy).strip().lower(),
+        historical_preflight_mode=str(args.historical_preflight_mode).strip().lower(),
+        historical_prediction_universe_mode=str(args.historical_prediction_universe_mode).strip().lower(),
         ftmo_enabled_override=_str_to_bool(args.ftmo_enabled_override),
         requested_lot_size=float(args.requested_lot_size),
         enable_tick_batch=_str_to_bool(args.enable_tick_batch),
         tick_batch_size=int(args.tick_batch_size),
         selected_time_tolerance_sec=float(args.selected_time_tolerance_sec),
+        selected_parity_mode=str(args.selected_parity_mode).strip().lower(),
         enable_sequence_fallback=_str_to_bool(args.enable_sequence_fallback),
         sequence_fallback_max_gap_sec=float(args.sequence_fallback_max_gap_sec),
         reset_runtime_db=_str_to_bool(args.reset_runtime_db),
@@ -1524,10 +2206,20 @@ def main() -> None:
         report_out=Path(str(args.report_out)),
         local_summary_csv=Path(str(args.local_summary_csv)),
         local_selected_mismatches_csv=Path(str(args.local_selected_mismatches_csv)),
+        local_signal_gap_analysis_csv=Path(str(args.local_signal_gap_analysis_csv)),
+        local_signal_feature_diff_csv=Path(str(args.local_signal_feature_diff_csv)),
+        local_runtime_selected_csv=Path(str(args.local_runtime_selected_csv))
+        if str(args.local_runtime_selected_csv).strip()
+        else None,
         stage12_summary_csv=Path(str(args.stage12_summary_csv)),
         stage12_checks_csv=Path(str(args.stage12_checks_csv)),
         stage12_mismatches_csv=Path(str(args.stage12_mismatches_csv)),
         stage12_report_out=Path(str(args.stage12_report_out)),
+        signal_gap_classify_window_sec=float(args.signal_gap_classify_window_sec),
+        debug_run_id=str(args.debug_run_id).strip() or None,
+        debug_http_trace_path=Path(str(args.debug_http_trace_path))
+        if str(args.debug_http_trace_path).strip()
+        else None,
     )
 
     row = local_summary.iloc[0].to_dict() if not local_summary.empty else {}

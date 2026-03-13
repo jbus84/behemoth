@@ -51,7 +51,8 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     pred_prob DOUBLE,
     threshold DOUBLE,
     features_json VARCHAR,
-    model_month VARCHAR
+    model_month VARCHAR,
+    run_id VARCHAR
 );
 
 CREATE TABLE IF NOT EXISTS trades (
@@ -68,7 +69,8 @@ CREATE TABLE IF NOT EXISTS trades (
     exit_price DOUBLE,
     exit_ts TIMESTAMP WITH TIME ZONE,
     pnl_pips DOUBLE,
-    status VARCHAR
+    status VARCHAR,
+    run_id VARCHAR
 );
 
 CREATE TABLE IF NOT EXISTS ftmo_account_snapshots (
@@ -117,7 +119,9 @@ CREATE TABLE IF NOT EXISTS raw_ticks (
     ask DOUBLE,
     spread DOUBLE,
     tick_volume DOUBLE,
-    source VARCHAR
+    source VARCHAR,
+    client_tick_seq BIGINT,
+    run_id VARCHAR
 );
 """
 
@@ -146,10 +150,11 @@ INSERT INTO audit_logs (
     pred_prob,
     threshold,
     features_json,
-    model_month
+    model_month,
+    run_id
 ) VALUES (
     CURRENT_TIMESTAMP,
-    ?, ?, ?, ?, ?, ?, ?
+    ?, ?, ?, ?, ?, ?, ?, ?
 )
 """
 
@@ -166,7 +171,7 @@ _FTMO_ALLOC_EVENT_INSERT_SQL = (
 )
 
 _RAW_TICK_INSERT_SQL = (
-    "INSERT INTO raw_ticks VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO raw_ticks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 )
 
 
@@ -198,7 +203,7 @@ class StateManager:
             self._con = duckdb.connect()
 
         self._con.execute(_CREATE_SQL)
-        self._ensure_audit_log_schema()
+        self._ensure_runtime_schema()
         self._row_counters: dict[str, int] = {}
 
         # Hydrate counters from persistent store to survive restarts
@@ -209,24 +214,52 @@ class StateManager:
             if r[2] is not None:
                 self._row_counters[f"{r[0].upper()}_{r[1]}"] = int(r[2]) + 1
 
-    def _ensure_audit_log_schema(self) -> None:
-        """Add new audit columns for backward-compatible schema migration."""
+    def _ensure_runtime_schema(self) -> None:
+        """Add new debug columns for backward-compatible schema migration."""
         try:
-            cols = self._con.execute(
-                """
-                SELECT lower(column_name)
-                FROM information_schema.columns
-                WHERE lower(table_name) = 'audit_logs'
-                """
-            ).fetchall()
-            colset = {str(r[0]).lower() for r in cols}
-            if "close_ts" not in colset:
-                self._con.execute(
-                    "ALTER TABLE audit_logs ADD COLUMN close_ts TIMESTAMP WITH TIME ZONE"
-                )
+            self._ensure_table_column(
+                table_name="audit_logs",
+                column_name="close_ts",
+                column_sql="TIMESTAMP WITH TIME ZONE",
+            )
+            self._ensure_table_column(
+                table_name="audit_logs",
+                column_name="run_id",
+                column_sql="VARCHAR",
+            )
+            self._ensure_table_column(
+                table_name="trades",
+                column_name="run_id",
+                column_sql="VARCHAR",
+            )
+            self._ensure_table_column(
+                table_name="raw_ticks",
+                column_name="client_tick_seq",
+                column_sql="BIGINT",
+            )
+            self._ensure_table_column(
+                table_name="raw_ticks",
+                column_name="run_id",
+                column_sql="VARCHAR",
+            )
         except Exception:
             # Best-effort migration only; avoid startup hard failure.
             pass
+
+    def _ensure_table_column(self, *, table_name: str, column_name: str, column_sql: str) -> None:
+        cols = self._con.execute(
+            """
+            SELECT lower(column_name)
+            FROM information_schema.columns
+            WHERE lower(table_name) = ?
+            """,
+            [str(table_name).lower()],
+        ).fetchall()
+        colset = {str(r[0]).lower() for r in cols}
+        if str(column_name).lower() not in colset:
+            self._con.execute(
+                f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_sql}"
+            )
 
     def append_bar(self, bar: IncomingTickBar) -> None:
         """Append a validated tick bar to the state buffer."""
@@ -327,6 +360,7 @@ class StateManager:
         features: ModelFeatures,
         model_month: str,
         close_ts: datetime | None = None,
+        run_id: str | None = None,
     ) -> None:
         """Record an execution decision snapshot into the persistent audit trail."""
         self._con.execute(
@@ -339,6 +373,7 @@ class StateManager:
                 float(threshold),
                 features.model_dump_json(),
                 model_month,
+                run_id,
             ],
         )
 
@@ -351,6 +386,7 @@ class StateManager:
         entry_price: float,
         entry_ts: datetime,
         horizon: int,
+        run_id: str | None = None,
     ) -> str:
         """Record the opening of a position from the cBot."""
         import uuid
@@ -363,8 +399,8 @@ class StateManager:
         entry_bar_id = res[0] if res and res[0] is not None else 0
 
         self._con.execute(
-            "INSERT INTO trades (internal_trade_id, broker_pos_id, symbol, candidate_uid, side, entry_price, entry_ts, entry_bar_id, horizon_bars, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN')",
-            [internal_id, broker_pos_id, symbol.upper(), candidate_uid, side, float(entry_price), entry_ts, entry_bar_id, horizon],
+            "INSERT INTO trades (internal_trade_id, broker_pos_id, symbol, candidate_uid, side, entry_price, entry_ts, entry_bar_id, horizon_bars, status, run_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?)",
+            [internal_id, broker_pos_id, symbol.upper(), candidate_uid, side, float(entry_price), entry_ts, entry_bar_id, horizon, run_id],
         )
         return internal_id
 
@@ -393,8 +429,15 @@ class StateManager:
         exit_price: float | None = None,
         exit_ts: datetime | None = None,
         pnl_pips: float | None = None,
+        run_id: str | None = None,
     ) -> None:
         """Update a trade status and exit data (CLOSED/CANCELLED)."""
+        if run_id:
+            self._con.execute(
+                "UPDATE trades SET status = ?, exit_price = ?, exit_ts = ?, pnl_pips = ?, run_id = COALESCE(run_id, ?) WHERE broker_pos_id = ?",
+                [status, exit_price, exit_ts, pnl_pips, run_id, broker_pos_id],
+            )
+            return
         self._con.execute(
             "UPDATE trades SET status = ?, exit_price = ?, exit_ts = ?, pnl_pips = ? WHERE broker_pos_id = ?",
             [status, exit_price, exit_ts, pnl_pips, broker_pos_id],
@@ -819,6 +862,8 @@ class StateManager:
                 float(tick.ask - tick.bid),
                 float(tick.tick_volume),
                 str(source),
+                (int(tick.client_tick_seq) if tick.client_tick_seq is not None else None),
+                (str(tick.run_id).strip() if str(tick.run_id or "").strip() else None),
             ],
         )
 

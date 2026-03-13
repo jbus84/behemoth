@@ -13,9 +13,12 @@ namespace cAlgo.Plugins
     /// Minimal custom-data source plugin scaffold for cTrader Backtesting.
     /// Reads a HistData export package created by scripts/export_ctrader_custom_data.py.
     /// </summary>
-    [Plugin(AccessRights = AccessRights.FileSystem)]
+    [Plugin(AccessRights = AccessRights.FullAccess)]
     public class CustomDataSourceHistDataPlugin : Plugin
     {
+        private const string ActivePackagePointerPath =
+            "/Users/danielfisher/repositories/behemoth/data/analysis/backtest_reconcile/ctrader_active_custom_data_package.txt";
+
         // Update this path in cTrader or extend this plugin with a UI picker.
         private const string DefaultPackagePath =
             "/Users/danielfisher/repositories/behemoth/data/analysis/backtest_reconcile/EURUSD_histdata_custom_20250707_20250709";
@@ -28,7 +31,8 @@ namespace cAlgo.Plugins
         {
             try
             {
-                LoadPackage(DefaultPackagePath);
+                string packagePath = ResolvePackagePath();
+                LoadPackage(packagePath);
 
                 var options = new BacktestingDataSourceOptions(
                     BacktestingDataSourceDataType.Tick,
@@ -36,7 +40,7 @@ namespace cAlgo.Plugins
                     OnDataRequested
                 );
                 _dataSource = Backtesting.DataSources.Add("HistDataCSV", options);
-                Print($"HistDataCSV custom source registered. rows={_ticks.Count}");
+                Print($"HistDataCSV custom source registered. package={packagePath} rows={_ticks.Count}");
             }
             catch (Exception ex)
             {
@@ -75,6 +79,26 @@ namespace cAlgo.Plugins
             var slice = _ticks.Where(t => t.TimestampUtc >= request.StartTime && t.TimestampUtc < request.EndTime);
             var ticks = slice.Select(t => new BacktestingTick(t.TimestampUtc, t.Bid, t.Ask)).ToList();
             request.Complete(new BacktestingTickData(ticks));
+        }
+
+        private static string ResolvePackagePath()
+        {
+            try
+            {
+                if (File.Exists(ActivePackagePointerPath))
+                {
+                    string raw = File.ReadAllText(ActivePackagePointerPath).Trim();
+                    if (!string.IsNullOrWhiteSpace(raw))
+                    {
+                        return raw;
+                    }
+                }
+            }
+            catch
+            {
+                // Fall back to the default package path if the pointer file is unreadable.
+            }
+            return DefaultPackagePath;
         }
 
         private void LoadPackage(string packagePath)

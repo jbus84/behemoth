@@ -1,17 +1,22 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pandas as pd
+import polars as pl
 
 from scripts.replay_histdata_cbot_testclient import (
     ReplayStats,
     _apply_sequence_fallback_matches,
+    _build_signal_feature_diff,
+    _build_signal_gap_analysis,
     _build_stage12_summary_df,
     _filter_expected_to_reduced_core,
     _load_hist_ticks_for_replay,
     _match_expected_runtime_on_close_ts,
 )
+from src.behemoth.core.features import compute_features_from_bars
 
 
 def test_filter_expected_to_reduced_core_full_key_match() -> None:
@@ -188,6 +193,11 @@ def test_stage12_summary_requires_both_signal_and_execution_parity() -> None:
         predict_errors=0,
         selected_rows_runtime=5,
         expected_rows_reduced=4,
+        selected_parity_mode="strict",
+        strict_selected_missing_expected=1,
+        strict_selected_extra_runtime=0,
+        event_aligned_selected_missing_expected=1,
+        event_aligned_selected_extra_runtime=0,
         selected_missing_expected=1,
         selected_extra_runtime=0,
         fallback_match_count=0,
@@ -211,11 +221,160 @@ def test_stage12_summary_requires_both_signal_and_execution_parity() -> None:
         warmup_source="month_start",
         warmup_ticks=30000,
         warmup_sent=1000,
+        tick_offset=25,
     )
 
     assert bool(out.iloc[0]["execution_parity_pass"]) is True
     assert bool(out.iloc[0]["signal_parity_pass"]) is False
     assert bool(out.iloc[0]["stage12_api_parity_pass"]) is False
+
+
+def test_build_signal_gap_analysis_classifies_seen_but_not_selected_vs_no_bar() -> None:
+    expected = pd.DataFrame(
+        [
+            {"candidate_uid": "oco|EURUSD|100|h5|state_a", "close_ts": pd.Timestamp("2025-07-07T10:00:00Z")},
+            {"candidate_uid": "oco|EURUSD|100|h5|state_b", "close_ts": pd.Timestamp("2025-07-07T11:00:00Z")},
+        ]
+    )
+    runtime = pd.DataFrame(
+        [{"candidate_uid": "oco|EURUSD|100|h5|state_a", "close_ts": pd.Timestamp("2025-07-07T10:00:40Z")}]
+    )
+    missing = expected.copy()
+    extra = pd.DataFrame(columns=["candidate_uid", "close_ts"])
+    predict_trace = pd.DataFrame(
+        [
+            {
+                "trace_ts": pd.Timestamp("2025-07-07T10:00:00Z"),
+                "candidate_uid": "oco|EURUSD|100|h5|state_a",
+                "close_ts": pd.Timestamp("2025-07-07T10:00:20Z"),
+                "selected_exec": 0,
+                "pred_prob": 0.55,
+                "threshold_exec": 0.60,
+                "risk_blocked": False,
+                "reason": "ok",
+            },
+            {
+                "trace_ts": pd.Timestamp("2025-07-07T09:00:00Z"),
+                "candidate_uid": "oco|EURUSD|100|h5|state_b",
+                "close_ts": pd.Timestamp("2025-07-07T09:00:00Z"),
+                "selected_exec": 0,
+                "pred_prob": 0.40,
+                "threshold_exec": 0.60,
+                "risk_blocked": False,
+                "reason": "ok",
+            },
+        ]
+    )
+
+    out = _build_signal_gap_analysis(
+        expected_keys=expected,
+        runtime_keys=runtime,
+        missing_expected=missing,
+        extra_runtime=extra,
+        predict_trace_rows=predict_trace,
+        classify_window_sec=300.0,
+    )
+
+    a_reason = out.loc[out["candidate_uid"] == "oco|EURUSD|100|h5|state_a", "gap_reason"].iloc[0]
+    b_reason = out.loc[out["candidate_uid"] == "oco|EURUSD|100|h5|state_b", "gap_reason"].iloc[0]
+    assert a_reason == "candidate_seen_but_not_selected"
+    assert b_reason == "no_equivalent_runtime_bar_nearby"
+
+
+def test_build_signal_feature_diff_reconstructs_offline_features(tmp_path: Path) -> None:
+    n = 320
+    ts = pd.date_range("2025-07-07T00:00:00Z", periods=n, freq="90s", tz="UTC")
+    bars = pd.DataFrame(
+        {
+            "timestamp": ts - pd.to_timedelta(20, unit="s"),
+            "close_ts": ts,
+            "open": 1.1000 + pd.Series(range(n)) * 0.00001,
+            "high": 1.1004 + pd.Series(range(n)) * 0.00001,
+            "low": 1.0997 + pd.Series(range(n)) * 0.00001,
+            "close": 1.1002 + pd.Series(range(n)) * 0.00001,
+            "spread": 0.00012,
+            "tick_volume": 100.0,
+            "hl_first": 1.0,
+            "hl_pos_frac": 0.25,
+        }
+    )
+    tick_velocity_dir = tmp_path / "tick_velocity"
+    tick_velocity_dir.mkdir(parents=True, exist_ok=True)
+    bars.to_parquet(tick_velocity_dir / "EURUSD_100tick_velocity.parquet", index=False)
+
+    ref_ts = pd.Timestamp(ts[-1])
+    offline = compute_features_from_bars(
+        bars,
+        symbol="EURUSD",
+        bar_ticks=100,
+        horizon=5,
+        barrier_pips=2.0,
+    )
+    assert offline is not None
+    runtime_features = offline.model_dump()
+    runtime_features["ret1_pips"] = float(runtime_features["ret1_pips"]) + 0.25
+
+    signal_gap = pd.DataFrame(
+        [
+            {
+                "gap_side": "missing_expected",
+                "gap_reason": "candidate_seen_but_not_selected",
+                "candidate_uid": "oco|EURUSD|100|h5|state_a__k2",
+                "reference_close_ts": ref_ts,
+                "nearest_predict_features_json": json.dumps(runtime_features),
+                "offline_pred_prob": 0.61,
+                "offline_threshold_exec": 0.60,
+                "offline_margin": 0.01,
+                "nearest_predict_pred_prob": 0.59,
+                "nearest_predict_threshold_exec": 0.60,
+                "nearest_predict_margin": -0.01,
+                "margin_delta_runtime_minus_offline": -0.02,
+            }
+        ]
+    )
+
+    out = _build_signal_feature_diff(
+        signal_gap_analysis=signal_gap,
+        symbol="EURUSD",
+        tick_velocity_dir=tick_velocity_dir,
+    )
+
+    assert not out.empty
+    ret1 = out[out["feature_name"] == "ret1_pips"].iloc[0]
+    assert abs(float(ret1["runtime_minus_offline"]) - 0.25) < 1e-9
+    assert float(ret1["offline_margin"]) == 0.01
+    assert float(ret1["runtime_margin"]) == -0.01
+
+
+def test_load_hist_ticks_for_replay_applies_tick_offset(tmp_path: Path) -> None:
+    tick_dir = tmp_path / "tick" / "EURUSD"
+    tick_dir.mkdir(parents=True, exist_ok=True)
+    ts = pd.date_range("2025-07-07T00:00:00Z", periods=8, freq="1s", tz="UTC")
+    pl.DataFrame(
+        {
+            "timestamp": ts.to_pydatetime().tolist(),
+            "bid": [1.10 + 0.0001 * i for i in range(8)],
+            "ask": [1.1002 + 0.0001 * i for i in range(8)],
+        },
+        schema_overrides={"timestamp": pl.Datetime("ns", "UTC")},
+    ).write_parquet(tick_dir / "EURUSD_202507_ticks.parquet")
+
+    warmup, stream = _load_hist_ticks_for_replay(
+        symbol="EURUSD",
+        tick_root=tmp_path / "tick",
+        start=pd.Timestamp("2025-07-07T00:00:04Z"),
+        end=pd.Timestamp("2025-07-07T00:00:08Z"),
+        warmup_ticks=2,
+        lookback_days=31,
+        warmup_source="history_tail",
+        phase_bar_ticks=100,
+        tick_offset=2,
+    )
+
+    assert len(warmup) == 2
+    assert len(stream) == 4
+    assert warmup["ts"].iloc[0] == pd.Timestamp("2025-07-07T00:00:02Z")
+    assert stream["ts"].iloc[0] == pd.Timestamp("2025-07-07T00:00:04Z")
 
 
 def test_load_hist_ticks_for_replay_history_tail_preserves_full_history_phase(

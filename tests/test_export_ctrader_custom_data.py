@@ -79,3 +79,82 @@ def test_export_ctrader_custom_data_rejects_crossed_quotes(tmp_path: Path) -> No
             out_dir=tmp_path / "out",
             overwrite=True,
         )
+
+
+def test_export_ctrader_custom_data_supports_anchor_tick_counts(tmp_path: Path) -> None:
+    tick_root = tmp_path / "tick"
+    rows: list[dict[str, object]] = []
+    for i in range(10):
+        rows.append(
+            {
+                "timestamp": f"2025-07-07T00:00:{i:02d}Z",
+                "bid": 1.1000 + (i * 0.0001),
+                "ask": 1.1002 + (i * 0.0001),
+            }
+        )
+    _write_hist_parquet(tick_root / "EURUSD" / "EURUSD_202507_ticks.parquet", rows)
+
+    out_dir = tmp_path / "out"
+    manifest_path, summary_path, summary_df = run(
+        symbol="EURUSD",
+        tick_root=tick_root,
+        start_ts="2025-07-07T00:00:04Z",
+        end_ts="2025-07-07T00:00:09Z",
+        out_dir=out_dir,
+        overwrite=True,
+        anchor_ts="2025-07-07T00:00:04Z",
+        ticks_before_anchor=3,
+        ticks_after_anchor=4,
+    )
+
+    assert manifest_path.exists()
+    assert summary_path.exists()
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    csv_path = out_dir / manifest["files"][0]["path"]
+    csv_df = pd.read_csv(csv_path)
+    assert len(csv_df) == 8
+    assert csv_df.iloc[0]["timestamp_utc"] == "2025-07-07T00:00:01.000000Z"
+    assert csv_df.iloc[-1]["timestamp_utc"] == "2025-07-07T00:00:08.000000Z"
+
+    row = summary_df.iloc[0]
+    assert int(row["ticks_before_anchor_requested"]) == 3
+    assert int(row["ticks_after_anchor_requested"]) == 4
+    assert int(row["export_rows_before_anchor"]) == 3
+    assert int(row["export_rows_at_or_after_anchor"]) == 5
+
+
+def test_export_ctrader_custom_data_count_mode_still_covers_requested_end(tmp_path: Path) -> None:
+    tick_root = tmp_path / "tick"
+    rows: list[dict[str, object]] = []
+    for i in range(20):
+        rows.append(
+            {
+                "timestamp": f"2025-07-07T00:00:{i:02d}Z",
+                "bid": 1.2000 + (i * 0.0001),
+                "ask": 1.2002 + (i * 0.0001),
+            }
+        )
+    _write_hist_parquet(tick_root / "EURUSD" / "EURUSD_202507_ticks.parquet", rows)
+
+    out_dir = tmp_path / "out"
+    manifest_path, _, summary_df = run(
+        symbol="EURUSD",
+        tick_root=tick_root,
+        start_ts="2025-07-07T00:00:10Z",
+        end_ts="2025-07-07T00:00:20Z",
+        out_dir=out_dir,
+        overwrite=True,
+        anchor_ts="2025-07-07T00:00:10Z",
+        ticks_before_anchor=3,
+        ticks_after_anchor=4,
+    )
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    csv_path = out_dir / manifest["files"][0]["path"]
+    csv_df = pd.read_csv(csv_path)
+    assert csv_df.iloc[0]["timestamp_utc"] == "2025-07-07T00:00:07.000000Z"
+    assert csv_df.iloc[-1]["timestamp_utc"] == "2025-07-07T00:00:19.000000Z"
+
+    row = summary_df.iloc[0]
+    assert int(row["requested_window_rows"]) == 10
+    assert bool(row["requested_window_covered_to_end"]) is True
