@@ -11,8 +11,10 @@
 - Account-level gates:
 - daily loss hard limit + buffered limit
 - max loss hard limit + buffered limit
-- Candidate-level gate:
-- spread + commission + slippage cost viability proxy
+- Reservation / allocator gates:
+- reserved-loss budget and headroom checks
+- Candidate-level trade-cost diagnostics:
+- spread/commission/slippage viability is diagnostic-only by default (`warn` mode), not a hard block unless explicitly set to `enforce`
 
 ## API Endpoints
 - `POST /risk/ftmo/snapshot`
@@ -36,4 +38,5 @@
 
 ## Known Assumptions
 - Daily reset timezone follows profile config (`Europe/Prague` for FTMO defaults).
-- Cost viability uses runtime feature `cost_est_pips` plus configured commission/slippage floors.
+- Stage 04 / Stage 11 remain the source of execution and slippage realism.
+- FTMO evaluation uses realized replay/runtime trades plus the profile replay overlay cost, defaulting to a `0.5` pip round-trip commission.

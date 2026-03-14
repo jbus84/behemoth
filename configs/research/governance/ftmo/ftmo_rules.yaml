@@ -18,11 +18,14 @@ profiles:
       daily_loss_buffer_pct: 0.15
       max_loss_buffer_pct: 0.15
     cost_gate:
-      commission_round_turn_pips: 0.60
-      slippage_floor_pips: 0.20
-      min_edge_buffer_pips: 0.10
+      trade_cost_gate_mode: warn
+      commission_round_turn_pips: 0.50
+      slippage_floor_pips: 0.00
+      min_edge_buffer_pips: 0.00
       max_cost_to_barrier_ratio: 0.70
       require_account_snapshot: true
+      replay_round_trip_cost_pips: 0.50
+      replay_slippage_floor_pips: 0.00
     allocator:
       allocator_enabled: true
       allocator_budget_fraction_daily: 1.0
@@ -49,11 +52,14 @@ profiles:
       daily_loss_buffer_pct: 0.15
       max_loss_buffer_pct: 0.15
     cost_gate:
-      commission_round_turn_pips: 0.60
-      slippage_floor_pips: 0.20
-      min_edge_buffer_pips: 0.10
+      trade_cost_gate_mode: warn
+      commission_round_turn_pips: 0.50
+      slippage_floor_pips: 0.00
+      min_edge_buffer_pips: 0.00
       max_cost_to_barrier_ratio: 0.70
       require_account_snapshot: true
+      replay_round_trip_cost_pips: 0.50
+      replay_slippage_floor_pips: 0.00
     allocator:
       allocator_enabled: true
       allocator_budget_fraction_daily: 1.0

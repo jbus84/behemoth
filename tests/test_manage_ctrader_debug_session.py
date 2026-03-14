@@ -67,6 +67,60 @@ def test_run_up_writes_session_and_active_files(tmp_path: Path, monkeypatch) -> 
     active = json.loads(session_mgr.ACTIVE_SESSION_PATH.read_text(encoding="utf-8"))
     assert active["run_id"] == "eurusd_debug_case"
     assert active["runtime_db"].endswith("eurusd_debug_case.db")
+    assert active["ftmo_enabled"] is True
+    assert active["ftmo_profile_id"] == session_mgr.DEFAULT_FTMO_PROFILE_ID
+    assert active["ftmo_phase_mode"] == session_mgr.DEFAULT_FTMO_PHASE_MODE
+    assert active["ftmo_economics_mode"] == session_mgr.DEFAULT_FTMO_ECONOMICS_MODE
+    assert active["ftmo_trade_cost_gate_mode"] == session_mgr.DEFAULT_FTMO_TRADE_COST_GATE_MODE
+    assert active["recommended_cbot"]["enable_ftmo_guards"] is True
+
+
+def test_run_up_supports_dukascopy_source(tmp_path: Path, monkeypatch) -> None:
+    dukascopy_root = tmp_path / "dukascopy_ticks"
+    _write_hist_parquet(
+        dukascopy_root / "EURUSD" / "EURUSD_202507_ticks.parquet",
+        [
+            {"timestamp": "2025-07-07T00:00:00Z", "bid": 1.1000, "ask": 1.1002},
+            {"timestamp": "2025-07-07T00:00:01Z", "bid": 1.1001, "ask": 1.1003},
+        ],
+    )
+
+    monkeypatch.setattr(session_mgr, "ARTIFACT_ROOT", tmp_path / "artifacts")
+    monkeypatch.setattr(session_mgr, "SESSIONS_ROOT", tmp_path / "artifacts" / "sessions")
+    monkeypatch.setattr(session_mgr, "PACKAGE_ROOT", tmp_path / "artifacts" / "packages")
+    monkeypatch.setattr(session_mgr, "ACTIVE_SESSION_PATH", tmp_path / "artifacts" / "active_session.json")
+    monkeypatch.setattr(
+        session_mgr,
+        "ACTIVE_PACKAGE_POINTER_PATH",
+        tmp_path / "artifacts" / "active_package.txt",
+    )
+    monkeypatch.setattr(session_mgr, "DEBUG_DB_ROOT", tmp_path / "db")
+    monkeypatch.setattr(session_mgr, "DEBUG_LOG_ROOT", tmp_path / "logs")
+    monkeypatch.setattr(session_mgr, "DEBUG_BUNDLE_ROOT", tmp_path / "artifacts" / "debug_runs")
+    monkeypatch.setattr(session_mgr, "CTRADER_CBOT_ROOT", tmp_path / "ctrader" / "cBots")
+    monkeypatch.setattr(session_mgr, "CTRADER_JOURNAL_ROOT", tmp_path / "ctrader" / "journals")
+
+    session = session_mgr.run_up(
+        source="dukascopy",
+        symbol="EURUSD",
+        start_ts="2025-07-07T00:00:00Z",
+        end_ts="2025-07-07T00:00:02Z",
+        run_id="eurusd_duka_case",
+        tick_root=tmp_path / "tick",
+        dukascopy_root=dukascopy_root,
+        start_api=False,
+        replace_active=True,
+        reset_db=True,
+        overwrite_package=True,
+    )
+
+    assert session["source"] == "dukascopy"
+    assert session["source_root"] == str(dukascopy_root)
+    assert session["ftmo_profile_id"] == session_mgr.DEFAULT_FTMO_PROFILE_ID
+    assert session["ftmo_phase_mode"] == session_mgr.DEFAULT_FTMO_PHASE_MODE
+    assert session["ftmo_trade_cost_gate_mode"] == session_mgr.DEFAULT_FTMO_TRADE_COST_GATE_MODE
+    manifest = json.loads(Path(session["package_manifest"]).read_text(encoding="utf-8"))
+    assert manifest["source"]["kind"] == "dukascopy_parquet"
 
 
 def test_run_down_marks_session_stopped_and_clears_active(tmp_path: Path, monkeypatch) -> None:

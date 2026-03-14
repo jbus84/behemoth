@@ -216,7 +216,8 @@ export-ctrader-custom-data:
 	@test -n "$(OUT_DIR)" || (echo "error: OUT_DIR is required" && exit 1)
 	uv run python scripts/export_ctrader_custom_data.py \
 		--symbol $(SYMBOL) \
-		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/tick) \
+		--source $(or $(SOURCE),histdata) \
+		--tick-root $(if $(filter dukascopy,$(or $(SOURCE),histdata)),$(or $(DUKASCOPY_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks),$(or $(TICK_ROOT),/Users/danielfisher/Desktop/tick)) \
 		--start-ts $(START_TS) \
 		--end-ts $(END_TS) \
 		--out-dir $(OUT_DIR) \
@@ -234,6 +235,7 @@ ctrader-debug-up:
 		--end-ts $(END_TS) \
 		$(if $(RUN_ID),--run-id $(RUN_ID),) \
 		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/tick) \
+		--dukascopy-root $(or $(DUKASCOPY_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks) \
 		--host $(or $(HOST),127.0.0.1) \
 		--port $(or $(PORT),8000) \
 		--start-api $(or $(START_API),true) \
@@ -247,6 +249,11 @@ ctrader-debug-up:
 		--missing-month-policy $(or $(MISSING_MONTH_POLICY),error) \
 		--historical-preflight-mode $(or $(HISTORICAL_PREFLIGHT_MODE),warn) \
 		--historical-prediction-universe-mode $(or $(HISTORICAL_PREDICTION_UNIVERSE_MODE),tolerant) \
+		--ftmo-rules-path $(or $(FTMO_RULES_PATH),configs/research/governance/ftmo/ftmo_rules.yaml) \
+		--ftmo-profile-id $(or $(FTMO_PROFILE_ID),ftmo_10k_challenge_2step) \
+		--ftmo-phase-mode $(or $(FTMO_PHASE_MODE),full_lifecycle) \
+		--ftmo-economics-mode $(or $(FTMO_ECONOMICS_MODE),repo_overlay) \
+		--ftmo-trade-cost-gate-mode $(or $(FTMO_TRADE_COST_GATE_MODE),warn) \
 		--comparison-anchor-ts $(or $(COMPARISON_ANCHOR_TS),$(START_TS)) \
 		--ticks-before-anchor $(or $(WARMUP_TICKS),30000) \
 		--ticks-after-anchor $(or $(COMPARISON_TICKS),30000)
@@ -269,7 +276,9 @@ cbot-surrogate:
 		--start-ts $(START_TS) \
 		--end-ts $(END_TS) \
 		$(if $(RUN_ID),--run-id $(RUN_ID),) \
+		--source $(or $(SOURCE),histdata) \
 		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/tick) \
+		--dukascopy-root $(or $(DUKASCOPY_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks) \
 		--warmup-ticks $(or $(WARMUP_TICKS),30000) \
 		--lookback-days $(or $(LOOKBACK_DAYS),31) \
 		--models-dir $(or $(MODELS_DIR),models/oco) \
@@ -277,7 +286,12 @@ cbot-surrogate:
 		--missing-month-policy $(or $(MISSING_MONTH_POLICY),error) \
 		--historical-preflight-mode $(or $(HISTORICAL_PREFLIGHT_MODE),warn) \
 		--historical-prediction-universe-mode $(or $(HISTORICAL_PREDICTION_UNIVERSE_MODE),tolerant) \
-		--ftmo-enabled-override $(or $(FTMO_ENABLED_OVERRIDE),false) \
+		--ftmo-enabled-override $(or $(FTMO_ENABLED_OVERRIDE),true) \
+		--ftmo-rules-path $(or $(FTMO_RULES_PATH),configs/research/governance/ftmo/ftmo_rules.yaml) \
+		--ftmo-profile-id $(or $(FTMO_PROFILE_ID),ftmo_10k_challenge_2step) \
+		--ftmo-phase-mode $(or $(FTMO_PHASE_MODE),full_lifecycle) \
+		--ftmo-economics-mode $(or $(FTMO_ECONOMICS_MODE),repo_overlay) \
+		--ftmo-trade-cost-gate-mode $(or $(FTMO_TRADE_COST_GATE_MODE),warn) \
 		--requested-lot-size $(or $(REQUESTED_LOT_SIZE),0.05) \
 		--enable-tick-batch $(or $(ENABLE_TICK_BATCH),true) \
 		--tick-batch-size $(or $(TICK_BATCH_SIZE),20) \
@@ -292,6 +306,15 @@ cbot-surrogate:
 		$(if $(REPO_PREDICTIONS_PARQUET),--repo-predictions-parquet $(REPO_PREDICTIONS_PARQUET),) \
 		$(if $(REPO_STOPLIMIT_DETAIL_CSV),--repo-stoplimit-detail-csv $(REPO_STOPLIMIT_DETAIL_CSV),) \
 		$(if $(REDUCED_CORE_STATE_SCHEDULE_CSV),--reduced-core-state-schedule-csv $(REDUCED_CORE_STATE_SCHEDULE_CSV),)
+
+ftmo-eval:
+	@test -n "$(SESSION_JSON)" || (echo "error: SESSION_JSON is required" && exit 1)
+	uv run python scripts/evaluate_ftmo_challenge_run.py \
+		--session-json $(SESSION_JSON) \
+		$(if $(OUT_DIR),--out-dir $(OUT_DIR),) \
+		--phase-mode $(or $(FTMO_PHASE_MODE),full_lifecycle) \
+		--economics-mode $(or $(FTMO_ECONOMICS_MODE),repo_overlay) \
+		--incomplete-verdict $(or $(INCOMPLETE_VERDICT),in_progress)
 
 ctrader-ab-parity-report:
 	@test -n "$(SYMBOL)" || (echo "error: SYMBOL is required" && exit 1)
@@ -472,13 +495,14 @@ help:
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "offset-robustness-study" "Run the offset tick-bar robustness study across selected symbols/offsets"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "summarize-runtime-db-run" "Summarize runtime DB rows for one symbol/window"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "reconcile-ctrader-run" "Reconcile cTrader runtime signals against research predictions"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "export-ctrader-custom-data" "Export HistData parquet ticks into cTrader custom-data package"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "ctrader-debug-up" "One-command HistData debug session: export package + isolated DuckDB + API"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "export-ctrader-custom-data" "Export HistData or Dukascopy parquet ticks into a cTrader custom-data package"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "ctrader-debug-up" "One-command HistData/Dukascopy debug session: export package + isolated DuckDB + FTMO-enabled API"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "ctrader-debug-down" "Stop the active cTrader debug session and clear the active package pointer"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "ctrader-debug-status" "Show the active cTrader debug session, DB path, package path, and API state"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "ctrader-ab-parity-report" "Compare baseline-vs-custom cTrader runs and build A/B parity report"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "histdata-ctrader-parity" "Validate HistData execution parity from cTrader runtime DB + events"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "histdata-testclient-parity" "Replay HistData via TestClient (no cTrader) and run strict parity gate"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "cbot-surrogate" "Replay HistData or Dukascopy through the API/runtime stack with FTMO rules enabled"
 	@printf "\n$(COLOR_SECTION)== Docs ==$(COLOR_RESET)\n"
 	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "docs" "Serve docs locally"
 	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "docs-build" "Build docs"

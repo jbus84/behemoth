@@ -210,6 +210,10 @@ def test_build_bundle_writes_joined_outputs(tmp_path: Path) -> None:
     assert Path(out["signal_gap_analysis_csv"]).exists()
     assert Path(out["signal_feature_diff_csv"]).exists()
     assert Path(out["execution_gap_analysis_csv"]).exists()
+    assert Path(out["ftmo_challenge_summary_csv"]).exists()
+    assert Path(out["ftmo_challenge_timeline_csv"]).exists()
+    assert Path(out["ftmo_daily_ledger_csv"]).exists()
+    assert Path(out["ftmo_phase_report_md"]).exists()
 
     timeline = pd.read_csv(out["joined_timeline_csv"])
     assert {"http_trace", "runtime_db", "ctrader_events", "cbot_log"}.issubset(set(timeline["source"]))
@@ -217,6 +221,8 @@ def test_build_bundle_writes_joined_outputs(tmp_path: Path) -> None:
     compare = pd.read_csv(out["offline_compare_csv"])
     assert compare.loc[0, "runtime_predicted"] in (True, 1)
     assert compare.loc[0, "runtime_executed"] in (True, 1)
+    summary = pd.read_csv(out["debug_summary_csv"])
+    assert "ftmo_overall_verdict" in summary.columns
 
 
 def test_build_bundle_writes_tolerant_compare_when_runtime_timestamps_drift(tmp_path: Path) -> None:

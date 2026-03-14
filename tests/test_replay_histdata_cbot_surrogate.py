@@ -50,8 +50,10 @@ def test_default_predictions_path_uses_historical_lock(tmp_path: Path, monkeypat
 
 def test_run_surrogate_writes_session_bundle(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(surrogate, "SURROGATE_ROOT", tmp_path / "surrogate_runs")
+    captured: dict[str, object] = {}
 
     def _fake_run(**kwargs):
+        captured.update(kwargs)
         Path(kwargs["runtime_db"]).parent.mkdir(parents=True, exist_ok=True)
         Path(kwargs["runtime_db"]).write_text("", encoding="utf-8")
         Path(kwargs["events_json"]).write_text("[]", encoding="utf-8")
@@ -80,6 +82,16 @@ def test_run_surrogate_writes_session_bundle(tmp_path: Path, monkeypatch) -> Non
         )
 
     monkeypatch.setattr(surrogate, "run_testclient_replay", _fake_run)
+    monkeypatch.setattr(
+        surrogate,
+        "evaluate_ftmo_session",
+        lambda **kwargs: {
+            "ftmo_challenge_summary_csv": str(tmp_path / "surrogate_runs" / "ftmo_challenge_summary.csv"),
+            "ftmo_challenge_timeline_csv": str(tmp_path / "surrogate_runs" / "ftmo_challenge_timeline.csv"),
+            "ftmo_daily_ledger_csv": str(tmp_path / "surrogate_runs" / "ftmo_daily_ledger.csv"),
+            "ftmo_phase_report_md": str(tmp_path / "surrogate_runs" / "ftmo_phase_report.md"),
+        },
+    )
 
     out = surrogate.run_surrogate(
         symbol="EURUSD",
@@ -94,6 +106,75 @@ def test_run_surrogate_writes_session_bundle(tmp_path: Path, monkeypatch) -> Non
     assert out["historical_preflight_mode"] == "warn"
     assert out["historical_prediction_universe_mode"] == "tolerant"
     assert out["selected_parity_mode"] == "event_aligned"
+    assert out["ftmo_enabled"] is True
+    assert out["ftmo_enabled_override"] is True
+    assert out["ftmo_profile_id"] == "ftmo_10k_challenge_2step"
+    assert out["ftmo_phase_mode"] == "full_lifecycle"
+    assert out["ftmo_economics_mode"] == "repo_overlay"
+    assert out["ftmo_trade_cost_gate_mode"] == "warn"
     assert out["http_trace"].endswith("/http_trace.ndjson")
     assert out["signal_gap_analysis_csv"].endswith("/surrogate_signal_gap_analysis.csv")
     assert out["signal_feature_diff_csv"].endswith("/surrogate_signal_feature_diff.csv")
+    assert out["ftmo_challenge_summary_csv"].endswith("/ftmo_challenge_summary.csv")
+    assert captured["source"] == "histdata"
+
+
+def test_run_surrogate_supports_dukascopy_source(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(surrogate, "SURROGATE_ROOT", tmp_path / "surrogate_runs")
+    captured: dict[str, object] = {}
+
+    def _fake_run(**kwargs):
+        captured.update(kwargs)
+        Path(kwargs["runtime_db"]).parent.mkdir(parents=True, exist_ok=True)
+        Path(kwargs["runtime_db"]).write_text("", encoding="utf-8")
+        Path(kwargs["events_json"]).write_text("[]", encoding="utf-8")
+        for key in [
+            "out_summary_csv",
+            "out_checks_csv",
+            "out_mismatches_csv",
+            "report_out",
+            "local_summary_csv",
+            "local_selected_mismatches_csv",
+            "local_signal_gap_analysis_csv",
+            "local_signal_feature_diff_csv",
+            "local_runtime_selected_csv",
+            "stage12_summary_csv",
+            "stage12_checks_csv",
+            "stage12_mismatches_csv",
+            "stage12_report_out",
+        ]:
+            Path(kwargs[key]).parent.mkdir(parents=True, exist_ok=True)
+            Path(kwargs[key]).write_text("", encoding="utf-8")
+        return (
+            pd.DataFrame([{"ok": True}]),
+            pd.DataFrame([{"ok": True}]),
+            pd.DataFrame([{"check": "x"}]),
+            pd.DataFrame([{"mismatch": "y"}]),
+        )
+
+    monkeypatch.setattr(surrogate, "run_testclient_replay", _fake_run)
+    monkeypatch.setattr(
+        surrogate,
+        "evaluate_ftmo_session",
+        lambda **kwargs: {
+            "ftmo_challenge_summary_csv": str(tmp_path / "surrogate_runs" / "ftmo_challenge_summary.csv"),
+            "ftmo_challenge_timeline_csv": str(tmp_path / "surrogate_runs" / "ftmo_challenge_timeline.csv"),
+            "ftmo_daily_ledger_csv": str(tmp_path / "surrogate_runs" / "ftmo_daily_ledger.csv"),
+            "ftmo_phase_report_md": str(tmp_path / "surrogate_runs" / "ftmo_phase_report.md"),
+        },
+    )
+
+    dukascopy_root = tmp_path / "dukascopy_ticks"
+    out = surrogate.run_surrogate(
+        symbol="EURUSD",
+        source="dukascopy",
+        start_ts="2025-07-07T00:00:00Z",
+        end_ts="2025-07-09T00:00:00Z",
+        tick_root=tmp_path / "tick",
+        dukascopy_root=dukascopy_root,
+    )
+
+    assert out["source"] == "dukascopy"
+    assert out["source_root"] == str(dukascopy_root)
+    assert captured["source"] == "dukascopy"
+    assert captured["tick_root"] == dukascopy_root

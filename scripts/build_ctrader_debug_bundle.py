@@ -13,6 +13,10 @@ from typing import Any
 import duckdb
 import pandas as pd
 try:
+    from scripts.evaluate_ftmo_challenge_run import evaluate_session as evaluate_ftmo_session
+except ModuleNotFoundError:
+    from evaluate_ftmo_challenge_run import evaluate_session as evaluate_ftmo_session
+try:
     from scripts.replay_histdata_cbot_testclient import (
         _build_signal_feature_diff,
         _build_signal_gap_analysis,
@@ -45,6 +49,10 @@ class BundleOutputs:
     signal_gap_analysis_csv: Path
     signal_feature_diff_csv: Path
     execution_gap_analysis_csv: Path
+    ftmo_challenge_summary_csv: Path
+    ftmo_challenge_timeline_csv: Path
+    ftmo_daily_ledger_csv: Path
+    ftmo_phase_report_md: Path
 
 
 _COMPARE_TOLERANCE_SEC = 30.0
@@ -1018,7 +1026,12 @@ def _write_markdown_summary(
         f"# cTrader Debug Bundle: {session.get('run_id', '')}",
         "",
         f"- symbol: `{session.get('symbol', '')}`",
+        f"- feed_source: `{session.get('source', '')}`",
+        f"- source_root: `{session.get('source_root', session.get('tick_root', ''))}`",
         f"- run_id: `{session.get('run_id', '')}`",
+        f"- ftmo_enabled: `{bool(session.get('ftmo_enabled', False))}`",
+        f"- ftmo_profile_id: `{session.get('ftmo_profile_id', '')}`",
+        f"- ftmo_trade_cost_gate_mode: `{session.get('ftmo_trade_cost_gate_mode', '')}`",
         f"- timeline_rows: `{len(timeline)}`",
         f"- offline_compare_rows: `{len(offline_compare)}`",
         f"- offline_compare_exact_rows: `{len(offline_compare_exact)}`",
@@ -1126,6 +1139,13 @@ def build_bundle(*, session_path: Path, bundle_dir: Path | None = None) -> dict[
     signal_gap_analysis.to_csv(signal_gap_analysis_csv, index=False)
     signal_feature_diff.to_csv(signal_feature_diff_csv, index=False)
     execution_gap_analysis.to_csv(execution_gap_analysis_csv, index=False)
+    ftmo_outputs = evaluate_ftmo_session(
+        session_path=session_path,
+        out_dir=out_dir,
+        phase_mode=str(session.get("ftmo_phase_mode", "full_lifecycle")),
+        economics_mode=str(session.get("ftmo_economics_mode", "repo_overlay")),
+    )
+    ftmo_summary = pd.read_csv(ftmo_outputs["ftmo_challenge_summary_csv"])
 
     duplicate_trade_rows = 0
     if not trades_df.empty:
@@ -1144,6 +1164,11 @@ def build_bundle(*, session_path: Path, bundle_dir: Path | None = None) -> dict[
             {
                 "run_id": session.get("run_id", ""),
                 "symbol": symbol,
+                "feed_source": session.get("source", ""),
+                "source_root": session.get("source_root", session.get("tick_root", "")),
+                "ftmo_enabled": bool(session.get("ftmo_enabled", False)),
+                "ftmo_profile_id": session.get("ftmo_profile_id", ""),
+                "ftmo_trade_cost_gate_mode": session.get("ftmo_trade_cost_gate_mode", ""),
                 "timeline_rows": int(len(timeline)),
                 "http_trace_rows": int(len(http_df)),
                 "raw_tick_rows": int(len(raw_ticks_df)),
@@ -1186,6 +1211,18 @@ def build_bundle(*, session_path: Path, bundle_dir: Path | None = None) -> dict[
                     ).sum()
                 ),
                 "duplicate_trade_rows": int(duplicate_trade_rows),
+                "ftmo_overall_verdict": (
+                    str(ftmo_summary.loc[0, "overall_verdict"]) if not ftmo_summary.empty else ""
+                ),
+                "ftmo_current_phase_id": (
+                    str(ftmo_summary.loc[0, "current_phase_id"]) if not ftmo_summary.empty else ""
+                ),
+                "ftmo_realized_net_profit_ccy": (
+                    float(ftmo_summary.loc[0, "realized_net_profit_ccy"]) if not ftmo_summary.empty else 0.0
+                ),
+                "ftmo_active_reserved_loss_ccy": (
+                    float(ftmo_summary.loc[0, "active_reserved_loss_ccy"]) if not ftmo_summary.empty else 0.0
+                ),
                 "events_json_found": bool(ctrader_events_path.exists()),
                 "cbot_log_found": bool(cbot_log_path.exists()),
                 "runtime_db_found": bool(runtime_db_path.exists()),
@@ -1220,6 +1257,10 @@ def build_bundle(*, session_path: Path, bundle_dir: Path | None = None) -> dict[
         "signal_gap_analysis_csv": str(signal_gap_analysis_csv),
         "signal_feature_diff_csv": str(signal_feature_diff_csv),
         "execution_gap_analysis_csv": str(execution_gap_analysis_csv),
+        "ftmo_challenge_summary_csv": str(ftmo_outputs["ftmo_challenge_summary_csv"]),
+        "ftmo_challenge_timeline_csv": str(ftmo_outputs["ftmo_challenge_timeline_csv"]),
+        "ftmo_daily_ledger_csv": str(ftmo_outputs["ftmo_daily_ledger_csv"]),
+        "ftmo_phase_report_md": str(ftmo_outputs["ftmo_phase_report_md"]),
     }
 
 

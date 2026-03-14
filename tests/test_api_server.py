@@ -846,6 +846,232 @@ class TestPredictEndpoint:
             assert results[0]["risk_metrics_snapshot"]["ftmo_enabled_effective"] is False
             assert results[0]["risk_metrics_snapshot"]["ftmo_enabled_override"] is False
 
+    def test_predict_warn_trade_cost_gate_keeps_selection(self, client):
+        import unittest.mock as mock
+        from dataclasses import replace
+        from datetime import datetime, timezone
+        from pathlib import Path
+        from types import SimpleNamespace
+
+        import numpy as np
+
+        from src.behemoth.api import server
+        from src.behemoth.core.schemas import ModelFeatures
+
+        dummy_cand = mock.MagicMock()
+        dummy_cand.bar_ticks = 100
+        dummy_cand.horizon = 24
+        dummy_cand.barrier_pips = 15.0
+        dummy_cand.candidate_uid = "cand1"
+
+        dummy_features = ModelFeatures(
+            cost_est_pips=1.0,
+            range_pips=10.0,
+            ret1_pips=2.0,
+            ret_z=0.5,
+            ret_abs_z=0.5,
+            vel_cost_units_h1=2.0,
+            vel_abs_cost_units_h1=2.0,
+            spread_z=0.1,
+            tick_rate_z=0.1,
+            hour_utc=10.0,
+            hl_first=1.0,
+            hl_first_mean_24=0.5,
+            hl_pos_frac_mean_24=0.5,
+            bar_ticks=100.0,
+            horizon=24.0,
+            barrier_pips=15.0,
+        )
+
+        dummy_model = mock.MagicMock()
+        dummy_model.predict_proba.return_value = np.array([[0.1, 0.85]])
+        profile = server._ftmo_profile or server.load_ftmo_profile(
+            Path("configs/research/governance/ftmo/ftmo_rules.yaml"),
+            "ftmo_10k_challenge_2step",
+        )
+        profile = replace(
+            profile,
+            allocator=replace(profile.allocator, allocator_enabled=False),
+        )
+
+        with (
+            mock.patch.object(
+                server,
+                "_resolve_runtime_contract",
+                return_value=SimpleNamespace(
+                    candidates=[dummy_cand],
+                    model_month="2025-01",
+                    cap_pips=1.2,
+                ),
+            ),
+            mock.patch.object(
+                server,
+                "_ensure_model_and_threshold",
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+            ),
+            mock.patch.object(server, "_check_warmup", return_value=None),
+            mock.patch.object(server._state, "compute_features", return_value=dummy_features),
+            mock.patch.object(
+                server._state,
+                "get_latest_close_ts",
+                return_value=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            ),
+            mock.patch.object(server, "_ftmo_profile", profile),
+            mock.patch.object(
+                server,
+                "evaluate_trade_guard",
+                return_value={
+                    "allow_trade": True,
+                    "block_reason": None,
+                    "trade_cost_gate_block_reason": "FTMO_COST_VIABILITY_FAIL",
+                    "trade_cost_gate_mode": "warn",
+                    "would_block_under_trade_cost_gate": True,
+                    "estimated_trade_cost_pips": 1.2,
+                    "expected_edge_proxy_pips": 0.8,
+                    "net_viability_margin_pips": -0.4,
+                    "cost_to_barrier_ratio": 0.08,
+                },
+            ),
+        ):
+            snap = client.post(
+                "/risk/ftmo/snapshot",
+                json={
+                    "symbol": "EURUSD",
+                    "balance": 10000.0,
+                    "equity": 10000.0,
+                    "snapshot_ts": "2025-01-01T00:00:00Z",
+                },
+            )
+            assert snap.status_code == 201
+            r = client.post(
+                "/predict",
+                json={
+                    "symbol": "EURUSD",
+                    "requested_volume_units": 10000,
+                    "ftmo_enabled_override": True,
+                },
+            )
+            assert r.status_code == 200
+            rows = r.json()
+            assert len(rows) == 1
+            assert rows[0]["selected_exec"] == 1
+            assert rows[0]["risk_blocked"] is False
+            assert rows[0]["risk_metrics_snapshot"]["trade_cost_gate_mode"] == "warn"
+            assert rows[0]["risk_metrics_snapshot"]["trade_cost_gate_block_reason"] == "FTMO_COST_VIABILITY_FAIL"
+            assert rows[0]["risk_metrics_snapshot"]["would_block_under_trade_cost_gate"] is True
+
+    def test_predict_enforce_trade_cost_gate_blocks_selection(self, client):
+        import unittest.mock as mock
+        from dataclasses import replace
+        from datetime import datetime, timezone
+        from pathlib import Path
+        from types import SimpleNamespace
+
+        import numpy as np
+
+        from src.behemoth.api import server
+        from src.behemoth.core.schemas import ModelFeatures
+
+        dummy_cand = mock.MagicMock()
+        dummy_cand.bar_ticks = 100
+        dummy_cand.horizon = 24
+        dummy_cand.barrier_pips = 15.0
+        dummy_cand.candidate_uid = "cand1"
+
+        dummy_features = ModelFeatures(
+            cost_est_pips=1.0,
+            range_pips=10.0,
+            ret1_pips=2.0,
+            ret_z=0.5,
+            ret_abs_z=0.5,
+            vel_cost_units_h1=2.0,
+            vel_abs_cost_units_h1=2.0,
+            spread_z=0.1,
+            tick_rate_z=0.1,
+            hour_utc=10.0,
+            hl_first=1.0,
+            hl_first_mean_24=0.5,
+            hl_pos_frac_mean_24=0.5,
+            bar_ticks=100.0,
+            horizon=24.0,
+            barrier_pips=15.0,
+        )
+
+        dummy_model = mock.MagicMock()
+        dummy_model.predict_proba.return_value = np.array([[0.1, 0.85]])
+        profile = server._ftmo_profile or server.load_ftmo_profile(
+            Path("configs/research/governance/ftmo/ftmo_rules.yaml"),
+            "ftmo_10k_challenge_2step",
+        )
+        profile = replace(
+            profile,
+            allocator=replace(profile.allocator, allocator_enabled=False),
+        )
+
+        with (
+            mock.patch.object(
+                server,
+                "_resolve_runtime_contract",
+                return_value=SimpleNamespace(
+                    candidates=[dummy_cand],
+                    model_month="2025-01",
+                    cap_pips=1.2,
+                ),
+            ),
+            mock.patch.object(
+                server,
+                "_ensure_model_and_threshold",
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+            ),
+            mock.patch.object(server, "_check_warmup", return_value=None),
+            mock.patch.object(server._state, "compute_features", return_value=dummy_features),
+            mock.patch.object(
+                server._state,
+                "get_latest_close_ts",
+                return_value=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            ),
+            mock.patch.object(server, "_ftmo_profile", profile),
+            mock.patch.object(
+                server,
+                "evaluate_trade_guard",
+                return_value={
+                    "allow_trade": False,
+                    "block_reason": "FTMO_COST_VIABILITY_FAIL",
+                    "trade_cost_gate_block_reason": "FTMO_COST_VIABILITY_FAIL",
+                    "trade_cost_gate_mode": "enforce",
+                    "would_block_under_trade_cost_gate": True,
+                    "estimated_trade_cost_pips": 1.2,
+                    "expected_edge_proxy_pips": 0.8,
+                    "net_viability_margin_pips": -0.4,
+                    "cost_to_barrier_ratio": 0.08,
+                },
+            ),
+        ):
+            snap = client.post(
+                "/risk/ftmo/snapshot",
+                json={
+                    "symbol": "EURUSD",
+                    "balance": 10000.0,
+                    "equity": 10000.0,
+                    "snapshot_ts": "2025-01-01T00:00:00Z",
+                },
+            )
+            assert snap.status_code == 201
+            r = client.post(
+                "/predict",
+                json={
+                    "symbol": "EURUSD",
+                    "requested_volume_units": 10000,
+                    "ftmo_enabled_override": True,
+                },
+            )
+            assert r.status_code == 200
+            rows = r.json()
+            assert len(rows) == 1
+            assert rows[0]["selected_exec"] == 0
+            assert rows[0]["risk_blocked"] is True
+            assert rows[0]["risk_block_reason"] == "FTMO_COST_VIABILITY_FAIL"
+
     def test_predict_blocks_candidate_when_regime_inactive(self, client):
         import unittest.mock as mock
         from datetime import datetime, timezone

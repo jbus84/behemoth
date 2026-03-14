@@ -32,6 +32,27 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+try:
+    from scripts.canonical_tick_feed import (
+        all_symbol_tick_files as _canonical_all_symbol_tick_files,
+        month_scoped_tick_files as _canonical_month_scoped_tick_files,
+        normalize_source,
+        quote_sql_path as _canonical_quote_sql_path,
+        to_utc as _canonical_to_utc,
+    )
+except ModuleNotFoundError:
+    from canonical_tick_feed import (
+        all_symbol_tick_files as _canonical_all_symbol_tick_files,
+        month_scoped_tick_files as _canonical_month_scoped_tick_files,
+        normalize_source,
+        quote_sql_path as _canonical_quote_sql_path,
+        to_utc as _canonical_to_utc,
+    )
+try:
+    from src.behemoth.risk.ftmo import load_ftmo_profile
+except ModuleNotFoundError:
+    load_ftmo_profile = None  # type: ignore[assignment]
+
 
 @dataclass
 class ReplayStats:
@@ -78,10 +99,7 @@ def _table(df: pd.DataFrame) -> str:
 
 
 def _to_utc(s: pd.Series) -> pd.Series:
-    try:
-        return pd.to_datetime(s, utc=True, errors="coerce", format="mixed")
-    except TypeError:
-        return pd.to_datetime(s, utc=True, errors="coerce")
+    return _canonical_to_utc(s)
 
 
 def _parse_ts(name: str, raw: str) -> pd.Timestamp:
@@ -225,6 +243,7 @@ def _load_expected_detail_rows(
                 "entry_price",
                 "entry_ts",
                 "exit_ts",
+                "pnl_pips",
             ]
         )
 
@@ -238,6 +257,7 @@ def _load_expected_detail_rows(
                 "entry_price",
                 "entry_ts",
                 "exit_ts",
+                "pnl_pips",
             ]
         )
 
@@ -250,6 +270,9 @@ def _load_expected_detail_rows(
     )
     out["entry_ts"] = _to_utc(df.get("touch_open_ts", pd.Series(dtype=object)))
     out["exit_ts"] = _to_utc(df.get("touch_close_ts", pd.Series(dtype=object)))
+    out["pnl_pips"] = pd.to_numeric(
+        df.get("target_gross_pips", pd.Series(dtype=float)), errors="coerce"
+    )
 
     parts = out["candidate_uid"].str.split("|", expand=True)
     if parts.shape[1] >= 2:
@@ -261,7 +284,7 @@ def _load_expected_detail_rows(
     out = out[out["entry_ts"].notna()].copy()
     out = out[(out["entry_ts"] >= start) & (out["entry_ts"] < end)].copy()
     out = out.dropna(subset=["candidate_uid", "close_ts", "entry_price", "entry_ts", "side"])
-    out = out[["candidate_uid", "close_ts", "side", "entry_price", "entry_ts", "exit_ts"]]
+    out = out[["candidate_uid", "close_ts", "side", "entry_price", "entry_ts", "exit_ts", "pnl_pips"]]
     out = out.reset_index(drop=True)
     return out
 
@@ -366,21 +389,18 @@ def _filter_expected_to_reduced_core(
 
 
 def _quote_sql_path(path: Path) -> str:
-    return "'" + str(path).replace("'", "''") + "'"
+    return _canonical_quote_sql_path(path)
 
 
 def _all_symbol_tick_files(symbol: str, tick_root: Path) -> list[Path]:
-    return sorted(
-        p
-        for p in (tick_root / symbol).glob(f"{symbol}_*_ticks.parquet")
-        if p.is_file()
-    )
+    return _canonical_all_symbol_tick_files(symbol, tick_root)
 
 
 def _load_hist_ticks_for_replay(
     *,
     symbol: str,
     tick_root: Path,
+    source: str = "histdata",
     start: pd.Timestamp,
     end: pd.Timestamp,
     warmup_ticks: int,
@@ -389,6 +409,7 @@ def _load_hist_ticks_for_replay(
     phase_bar_ticks: int,
     tick_offset: int = 0,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    _ = normalize_source(source)
     src_mode = str(warmup_source or "history_tail").strip().lower()
     all_files = _all_symbol_tick_files(symbol, tick_root)
     if not all_files:
@@ -399,18 +420,10 @@ def _load_hist_ticks_for_replay(
 
     if src_mode == "month_start":
         query_start = start.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        files = [
-            tick_root / symbol / f"{symbol}_{m}_ticks.parquet"
-            for m in _month_tags_between(query_start, end)
-            if (tick_root / symbol / f"{symbol}_{m}_ticks.parquet").exists()
-        ]
+        files = _canonical_month_scoped_tick_files(symbol, tick_root, query_start, end)
     elif src_mode == "lookback_days":
         query_start = start - pd.Timedelta(days=max(1, int(lookback_days)))
-        files = [
-            tick_root / symbol / f"{symbol}_{m}_ticks.parquet"
-            for m in _month_tags_between(query_start, end)
-            if (tick_root / symbol / f"{symbol}_{m}_ticks.parquet").exists()
-        ]
+        files = _canonical_month_scoped_tick_files(symbol, tick_root, query_start, end)
     else:
         query_start = None
         files = all_files
@@ -1211,6 +1224,9 @@ def _simulate(
     debug_run_id: str | None,
     debug_http_trace_path: Path | None,
     ftmo_enabled_override: bool,
+    ftmo_rules_path: Path,
+    ftmo_profile_id: str,
+    ftmo_trade_cost_gate_mode: str,
     requested_lot_size: float,
     enable_tick_batch: bool,
     tick_batch_size: int,
@@ -1236,6 +1252,11 @@ def _simulate(
     os.environ["BEHEMOTH_MODELS_DIR"] = str(models_dir)
     os.environ["BEHEMOTH_STATE_DB"] = str(runtime_db)
     os.environ["BEHEMOTH_RECORD_RAW_TICKS"] = "true" if record_raw_ticks else "false"
+    os.environ["BEHEMOTH_FTMO_ENABLED"] = "true"
+    os.environ["BEHEMOTH_FTMO_ENFORCE_BLOCKS"] = "true"
+    os.environ["BEHEMOTH_FTMO_RULES_PATH"] = str(ftmo_rules_path)
+    os.environ["BEHEMOTH_FTMO_PROFILE_ID"] = str(ftmo_profile_id)
+    os.environ["BEHEMOTH_FTMO_TRADE_COST_GATE_MODE"] = str(ftmo_trade_cost_gate_mode)
     run_id_txt = str(debug_run_id or "").strip()
     if run_id_txt:
         os.environ["BEHEMOTH_DEBUG_RUN_ID"] = run_id_txt
@@ -1297,13 +1318,27 @@ def _simulate(
 
         if ftmo_enabled_override:
             # Prime FTMO snapshot so risk status has account context.
+            snapshot_balance = 100000.0
+            snapshot_ts = None
+            if not stream.empty:
+                snapshot_ts = stream["ts"].iloc[0]
+            elif not warmup.empty:
+                snapshot_ts = warmup["ts"].iloc[-1]
+            else:
+                snapshot_ts = datetime.now(timezone.utc)
+            if load_ftmo_profile is not None:
+                try:
+                    prof = load_ftmo_profile(Path(str(ftmo_rules_path)), str(ftmo_profile_id))
+                    snapshot_balance = float(prof.initial_balance)
+                except Exception:
+                    snapshot_balance = 100000.0
             snapshot = client.post(
                 "/risk/ftmo/snapshot",
                 json={
                     "symbol": symbol,
-                    "balance": 100000.0,
-                    "equity": 100000.0,
-                    "snapshot_ts": _ts_to_iso(datetime.now(timezone.utc)),
+                    "balance": float(snapshot_balance),
+                    "equity": float(snapshot_balance),
+                    "snapshot_ts": _ts_to_iso(_to_utc(snapshot_ts)),
                     "run_id": run_id_txt or None,
                 },
             )
@@ -1492,6 +1527,7 @@ def _simulate(
             side = _norm_side(str(row.get("side", "BUY")))
             side_for_open = "BUY" if side == "BUY" else "SELL"
             side_for_event = "Buy" if side_for_open == "BUY" else "Sell"
+            pip_size = 0.01 if str(symbol).upper().endswith("JPY") else 0.0001
 
             open_resp = client.post(
                 "/trades/open",
@@ -1524,15 +1560,17 @@ def _simulate(
 
             exit_ts = _norm_ts_key(row.get("exit_ts"))
             if pd.notna(exit_ts):
+                pnl_pips = float(row.get("pnl_pips", 0.0) or 0.0)
+                exit_px = entry_px + (pnl_pips * pip_size if side_for_open == "BUY" else -pnl_pips * pip_size)
                 close_resp = client.post(
                     "/trades/update",
                     json={
                         "symbol": symbol,
                         "broker_pos_id": pos_id,
                         "status": "CLOSED",
-                        "exit_price": entry_px,
+                        "exit_price": exit_px,
                         "exit_ts": _ts_to_iso(exit_ts),
-                        "pnl_pips": 0.0,
+                        "pnl_pips": pnl_pips,
                     },
                 )
                 if close_resp.status_code != 200:
@@ -1544,8 +1582,8 @@ def _simulate(
                         "event": "Position closed",
                         "positionId": int(pos_id),
                         "time": _ts_to_epoch_ms(exit_ts),
-                        "closePrice": entry_px,
-                        "pips": 0.0,
+                        "closePrice": exit_px,
+                        "pips": pnl_pips,
                     }
                 )
 
@@ -1788,6 +1826,7 @@ def run(
     *,
     symbol: str,
     tick_root: Path,
+    source: str = "histdata",
     runtime_db: Path,
     events_json: Path,
     repo_predictions_parquet: Path,
@@ -1807,6 +1846,9 @@ def run(
     historical_preflight_mode: str,
     historical_prediction_universe_mode: str,
     ftmo_enabled_override: bool,
+    ftmo_rules_path: Path = Path("configs/research/governance/ftmo/ftmo_rules.yaml"),
+    ftmo_profile_id: str = "ftmo_10k_challenge_2step",
+    ftmo_trade_cost_gate_mode: str = "warn",
     requested_lot_size: float,
     enable_tick_batch: bool,
     tick_batch_size: int,
@@ -1838,6 +1880,7 @@ def run(
     sym = str(symbol).upper().strip()
     if not sym:
         raise ValueError("symbol is required")
+    source_name = normalize_source(source)
 
     start = _parse_ts("start_ts", start_ts)
     end = _parse_ts("end_ts", end_ts)
@@ -1847,6 +1890,7 @@ def run(
     warmup, stream = _load_hist_ticks_for_replay(
         symbol=sym,
         tick_root=tick_root,
+        source=source_name,
         start=start,
         end=end,
         warmup_ticks=int(warmup_ticks),
@@ -1856,7 +1900,7 @@ def run(
         tick_offset=int(tick_offset),
     )
     if stream.empty:
-        raise ValueError(f"no HistData ticks found for {sym} in [{start}, {end})")
+        raise ValueError(f"no {source_name} ticks found for {sym} in [{start}, {end})")
 
     expected_detail = _load_expected_detail_rows(
         detail_csv=repo_stoplimit_detail_csv,
@@ -1912,6 +1956,9 @@ def run(
         debug_run_id=debug_run_id,
         debug_http_trace_path=debug_http_trace_path,
         ftmo_enabled_override=ftmo_enabled_override,
+        ftmo_rules_path=ftmo_rules_path,
+        ftmo_profile_id=str(ftmo_profile_id),
+        ftmo_trade_cost_gate_mode=str(ftmo_trade_cost_gate_mode),
         requested_lot_size=float(requested_lot_size),
         enable_tick_batch=bool(enable_tick_batch),
         tick_batch_size=int(tick_batch_size),
@@ -2076,6 +2123,7 @@ def main() -> None:
         description="Replay HistData through TestClient + run reduced-core parity gate"
     )
     p.add_argument("--symbol", required=True)
+    p.add_argument("--source", default="histdata")
     p.add_argument("--tick-root", default="/Users/danielfisher/Desktop/tick")
     p.add_argument("--runtime-db", required=True)
     p.add_argument("--events-json", required=True)
@@ -2096,6 +2144,9 @@ def main() -> None:
     p.add_argument("--historical-preflight-mode", default="error")
     p.add_argument("--historical-prediction-universe-mode", default="exact")
     p.add_argument("--ftmo-enabled-override", default="false")
+    p.add_argument("--ftmo-rules-path", default="configs/research/governance/ftmo/ftmo_rules.yaml")
+    p.add_argument("--ftmo-profile-id", default="ftmo_10k_challenge_2step")
+    p.add_argument("--ftmo-trade-cost-gate-mode", default="warn")
     p.add_argument("--requested-lot-size", type=float, default=0.05)
     p.add_argument("--enable-tick-batch", default="true")
     p.add_argument("--tick-batch-size", type=int, default=20)
@@ -2170,6 +2221,7 @@ def main() -> None:
     local_summary, _, _, _ = run(
         symbol=str(args.symbol),
         tick_root=Path(str(args.tick_root)),
+        source=str(args.source),
         runtime_db=Path(str(args.runtime_db)),
         events_json=Path(str(args.events_json)),
         repo_predictions_parquet=Path(str(args.repo_predictions_parquet)),
@@ -2189,6 +2241,9 @@ def main() -> None:
         historical_preflight_mode=str(args.historical_preflight_mode).strip().lower(),
         historical_prediction_universe_mode=str(args.historical_prediction_universe_mode).strip().lower(),
         ftmo_enabled_override=_str_to_bool(args.ftmo_enabled_override),
+        ftmo_rules_path=Path(str(args.ftmo_rules_path)),
+        ftmo_profile_id=str(args.ftmo_profile_id),
+        ftmo_trade_cost_gate_mode=str(args.ftmo_trade_cost_gate_mode),
         requested_lot_size=float(args.requested_lot_size),
         enable_tick_batch=_str_to_bool(args.enable_tick_batch),
         tick_batch_size=int(args.tick_batch_size),

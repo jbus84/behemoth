@@ -24,7 +24,7 @@ import os
 import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -196,6 +196,13 @@ class AppConfig(BaseModel):
             "BEHEMOTH_FTMO_PROFILE_ID",
             "ftmo_10k_challenge_2step",
         )
+    )
+    ftmo_trade_cost_gate_mode: str = Field(
+        default_factory=lambda: str(
+            os.getenv("BEHEMOTH_FTMO_TRADE_COST_GATE_MODE", "")
+        )
+        .strip()
+        .lower()
     )
     ftmo_pending_reservation_ttl_sec: int = Field(
         default_factory=lambda: int(os.getenv("BEHEMOTH_FTMO_PENDING_RESERVATION_TTL_SEC", "1800"))
@@ -399,6 +406,14 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
             _ftmo_rules_path,
             _config.ftmo_profile_id,
         )
+        if str(_config.ftmo_trade_cost_gate_mode).strip():
+            _ftmo_profile = replace(
+                _ftmo_profile,
+                cost_gate=replace(
+                    _ftmo_profile.cost_gate,
+                    trade_cost_gate_mode=str(_config.ftmo_trade_cost_gate_mode).strip().lower(),
+                ),
+            )
         logger.info(
             "Loaded FTMO profile %s from %s",
             _ftmo_profile.profile_id,
@@ -1424,11 +1439,14 @@ def _ftmo_limits_payload() -> FtmoLimitsResponse:
         profit_target_phase2=prof.profit_target_phase2,
         min_trading_days=prof.min_trading_days,
         cost_gate={
+            "trade_cost_gate_mode": prof.cost_gate.trade_cost_gate_mode,
             "commission_round_turn_pips": prof.cost_gate.commission_round_turn_pips,
             "slippage_floor_pips": prof.cost_gate.slippage_floor_pips,
             "min_edge_buffer_pips": prof.cost_gate.min_edge_buffer_pips,
             "max_cost_to_barrier_ratio": prof.cost_gate.max_cost_to_barrier_ratio,
             "require_account_snapshot": prof.cost_gate.require_account_snapshot,
+            "replay_round_trip_cost_pips": prof.cost_gate.replay_round_trip_cost_pips,
+            "replay_slippage_floor_pips": prof.cost_gate.replay_slippage_floor_pips,
         },
         allocator={
             "allocator_enabled": prof.allocator.allocator_enabled,
@@ -1971,6 +1989,9 @@ def _build_predictions(
             "ftmo_enabled_override": bool(ftmo_enabled_override),
             "ftmo_mode_source": "request_override",
             "ftmo_profile_id": ftmo_account_eval.get("profile_id"),
+            "ftmo_trade_cost_gate_mode": (
+                _ftmo_profile.cost_gate.trade_cost_gate_mode if _ftmo_profile is not None else ""
+            ),
             "ftmo_allow_trading": bool(ftmo_account_eval.get("allow_trading", True)),
             "ftmo_account_block_reason": ftmo_account_eval.get("block_reason"),
             "snapshot_available": bool(ftmo_account_eval.get("snapshot_available", False)),

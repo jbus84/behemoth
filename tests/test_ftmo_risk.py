@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -51,6 +52,32 @@ def test_account_limits_buffer_breach():
 
 def test_trade_guard_cost_viability():
     prof = load_ftmo_profile(_rules_path())
+    account_eval = evaluate_account_limits(
+        prof,
+        balance=10000.0,
+        equity=10000.0,
+        day_start_balance=10000.0,
+    )
+    out = evaluate_trade_guard(
+        prof,
+        account_eval=account_eval,
+        pred_prob=0.60,
+        threshold_exec=0.55,
+        barrier_pips=2.0,
+        cost_est_pips=1.5,
+    )
+    assert out["allow_trade"] is True
+    assert out["block_reason"] is None
+    assert out["trade_cost_gate_mode"] == "warn"
+    assert out["would_block_under_trade_cost_gate"] is True
+    assert out["trade_cost_gate_block_reason"] in {"FTMO_COST_VIABILITY_FAIL", "FTMO_COST_RATIO_BREACH"}
+
+
+def test_trade_guard_cost_viability_enforced():
+    prof = replace(
+        load_ftmo_profile(_rules_path()),
+        cost_gate=replace(load_ftmo_profile(_rules_path()).cost_gate, trade_cost_gate_mode="enforce"),
+    )
     account_eval = evaluate_account_limits(
         prof,
         balance=10000.0,

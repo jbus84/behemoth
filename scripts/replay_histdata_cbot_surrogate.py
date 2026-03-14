@@ -13,6 +13,11 @@ try:
     from scripts.replay_histdata_cbot_testclient import run as run_testclient_replay
 except ModuleNotFoundError:
     from replay_histdata_cbot_testclient import run as run_testclient_replay
+try:
+    from scripts.evaluate_ftmo_challenge_run import evaluate_session as evaluate_ftmo_session
+except ModuleNotFoundError:
+    from evaluate_ftmo_challenge_run import evaluate_session as evaluate_ftmo_session
+from scripts.canonical_tick_feed import DEFAULT_DUKASCOPY_ROOT, normalize_source
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -37,10 +42,10 @@ def _bool_arg(raw: str | bool) -> bool:
     return str(raw).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
-def _default_run_id(symbol: str, start_ts: str, end_ts: str) -> str:
+def _default_run_id(symbol: str, start_ts: str, end_ts: str, *, source: str = "histdata") -> str:
     start = _parse_ts("start_ts", start_ts).strftime("%Y%m%dT%H%M%S")
     end = _parse_ts("end_ts", end_ts).strftime("%Y%m%dT%H%M%S")
-    return f"{symbol.lower()}_{start}_{end}"
+    return f"{symbol.lower()}_{str(source).lower()}_{start}_{end}"
 
 
 def _month_from_ts(raw: str) -> str:
@@ -124,7 +129,9 @@ def run_surrogate(
     start_ts: str,
     end_ts: str,
     run_id: str | None = None,
+    source: str = "histdata",
     tick_root: Path = Path("/Users/danielfisher/Desktop/tick"),
+    dukascopy_root: Path = DEFAULT_DUKASCOPY_ROOT,
     warmup_ticks: int = 30000,
     lookback_days: int = 31,
     model_month: str = "",
@@ -133,7 +140,12 @@ def run_surrogate(
     missing_month_policy: str = "error",
     historical_preflight_mode: str = "warn",
     historical_prediction_universe_mode: str = "tolerant",
-    ftmo_enabled_override: bool = False,
+    ftmo_enabled_override: bool = True,
+    ftmo_rules_path: Path = REPO_ROOT / "configs" / "research" / "governance" / "ftmo" / "ftmo_rules.yaml",
+    ftmo_profile_id: str = "ftmo_10k_challenge_2step",
+    ftmo_phase_mode: str = "full_lifecycle",
+    ftmo_economics_mode: str = "repo_overlay",
+    ftmo_trade_cost_gate_mode: str = "warn",
     requested_lot_size: float = 0.05,
     enable_tick_batch: bool = True,
     tick_batch_size: int = 20,
@@ -152,7 +164,14 @@ def run_surrogate(
     sym = str(symbol).upper().strip()
     if not sym:
         raise ValueError("symbol is required")
-    sid = str(run_id).strip() if str(run_id or "").strip() else _default_run_id(sym, start_ts, end_ts)
+    source_name = normalize_source(source)
+    effective_tick_root = tick_root if source_name == "histdata" else dukascopy_root
+    sid = str(run_id).strip() if str(run_id or "").strip() else _default_run_id(
+        sym,
+        start_ts,
+        end_ts,
+        source=source_name,
+    )
     out_dir = SURROGATE_ROOT / sid
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -183,7 +202,8 @@ def run_surrogate(
 
     local_summary, execution_summary, execution_checks, execution_mismatches = run_testclient_replay(
         symbol=sym,
-        tick_root=tick_root,
+        tick_root=effective_tick_root,
+        source=source_name,
         runtime_db=runtime_db,
         events_json=events_json,
         repo_predictions_parquet=predictions_path,
@@ -203,6 +223,9 @@ def run_surrogate(
         historical_preflight_mode=str(historical_preflight_mode),
         historical_prediction_universe_mode=str(historical_prediction_universe_mode),
         ftmo_enabled_override=bool(ftmo_enabled_override),
+        ftmo_rules_path=ftmo_rules_path,
+        ftmo_profile_id=str(ftmo_profile_id),
+        ftmo_trade_cost_gate_mode=str(ftmo_trade_cost_gate_mode),
         requested_lot_size=float(requested_lot_size),
         enable_tick_batch=bool(enable_tick_batch),
         tick_batch_size=int(tick_batch_size),
@@ -235,9 +258,12 @@ def run_surrogate(
     session = {
         "run_id": sid,
         "symbol": sym,
+        "source": source_name,
         "start_ts": start_ts,
         "end_ts": end_ts,
         "tick_root": str(tick_root),
+        "dukascopy_root": str(dukascopy_root),
+        "source_root": str(effective_tick_root),
         "runtime_db": str(runtime_db),
         "events_json": str(events_json),
         "http_trace": str(debug_http_trace_path),
@@ -250,6 +276,13 @@ def run_surrogate(
         "missing_month_policy": str(missing_month_policy),
         "historical_preflight_mode": str(historical_preflight_mode),
         "historical_prediction_universe_mode": str(historical_prediction_universe_mode),
+        "ftmo_enabled": bool(ftmo_enabled_override),
+        "ftmo_enabled_override": bool(ftmo_enabled_override),
+        "ftmo_rules_path": str(ftmo_rules_path),
+        "ftmo_profile_id": str(ftmo_profile_id),
+        "ftmo_phase_mode": str(ftmo_phase_mode),
+        "ftmo_economics_mode": str(ftmo_economics_mode),
+        "ftmo_trade_cost_gate_mode": str(ftmo_trade_cost_gate_mode),
         "selected_time_tolerance_sec": float(selected_time_tolerance_sec),
         "selected_parity_mode": str(selected_parity_mode),
         "time_tolerance_sec": float(time_tolerance_sec),
@@ -262,8 +295,18 @@ def run_surrogate(
         "execution_mismatches_rows": int(len(execution_mismatches)),
         "signal_gap_analysis_csv": str(signal_gap_analysis_csv),
         "signal_feature_diff_csv": str(signal_feature_diff_csv),
+        "surface": "surrogate",
     }
     session_json = out_dir / "surrogate_session.json"
+    _write_json(session_json, session)
+    session.update(
+        evaluate_ftmo_session(
+            session_path=session_json,
+            out_dir=out_dir,
+            phase_mode=str(ftmo_phase_mode),
+            economics_mode=str(ftmo_economics_mode),
+        )
+    )
     _write_json(session_json, session)
     session["surrogate_session_json"] = str(session_json)
     return session
@@ -275,7 +318,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--start-ts", required=True)
     p.add_argument("--end-ts", required=True)
     p.add_argument("--run-id", default="")
+    p.add_argument("--source", default="histdata")
     p.add_argument("--tick-root", default="/Users/danielfisher/Desktop/tick")
+    p.add_argument("--dukascopy-root", default=str(DEFAULT_DUKASCOPY_ROOT))
     p.add_argument("--warmup-ticks", type=int, default=30000)
     p.add_argument("--lookback-days", type=int, default=31)
     p.add_argument("--model-month", default="")
@@ -284,7 +329,15 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--missing-month-policy", default="error")
     p.add_argument("--historical-preflight-mode", default="warn")
     p.add_argument("--historical-prediction-universe-mode", default="tolerant")
-    p.add_argument("--ftmo-enabled-override", default="false")
+    p.add_argument("--ftmo-enabled-override", default="true")
+    p.add_argument(
+        "--ftmo-rules-path",
+        default=str(REPO_ROOT / "configs" / "research" / "governance" / "ftmo" / "ftmo_rules.yaml"),
+    )
+    p.add_argument("--ftmo-profile-id", default="ftmo_10k_challenge_2step")
+    p.add_argument("--ftmo-phase-mode", default="full_lifecycle")
+    p.add_argument("--ftmo-economics-mode", default="repo_overlay")
+    p.add_argument("--ftmo-trade-cost-gate-mode", default="warn")
     p.add_argument("--requested-lot-size", type=float, default=0.05)
     p.add_argument("--enable-tick-batch", default="true")
     p.add_argument("--tick-batch-size", type=int, default=20)
@@ -309,7 +362,9 @@ def main() -> None:
         start_ts=str(args.start_ts),
         end_ts=str(args.end_ts),
         run_id=str(args.run_id).strip() or None,
+        source=str(args.source),
         tick_root=Path(str(args.tick_root)),
+        dukascopy_root=Path(str(args.dukascopy_root)),
         warmup_ticks=int(args.warmup_ticks),
         lookback_days=int(args.lookback_days),
         model_month=str(args.model_month),
@@ -319,6 +374,11 @@ def main() -> None:
         historical_preflight_mode=str(args.historical_preflight_mode),
         historical_prediction_universe_mode=str(args.historical_prediction_universe_mode),
         ftmo_enabled_override=_bool_arg(str(args.ftmo_enabled_override)),
+        ftmo_rules_path=Path(str(args.ftmo_rules_path)),
+        ftmo_profile_id=str(args.ftmo_profile_id),
+        ftmo_phase_mode=str(args.ftmo_phase_mode),
+        ftmo_economics_mode=str(args.ftmo_economics_mode),
+        ftmo_trade_cost_gate_mode=str(args.ftmo_trade_cost_gate_mode),
         requested_lot_size=float(args.requested_lot_size),
         enable_tick_batch=_bool_arg(str(args.enable_tick_batch)),
         tick_batch_size=int(args.tick_batch_size),

@@ -17,11 +17,14 @@ class FtmoBuffers:
 
 @dataclass(frozen=True)
 class FtmoCostGate:
+    trade_cost_gate_mode: str
     commission_round_turn_pips: float
     slippage_floor_pips: float
     min_edge_buffer_pips: float
     max_cost_to_barrier_ratio: float
     require_account_snapshot: bool
+    replay_round_trip_cost_pips: float
+    replay_slippage_floor_pips: float
 
 
 @dataclass(frozen=True)
@@ -59,6 +62,13 @@ def _to_utc(ts: datetime) -> datetime:
     if ts.tzinfo is None:
         return ts.replace(tzinfo=timezone.utc)
     return ts.astimezone(timezone.utc)
+
+
+def _normalize_trade_cost_gate_mode(raw: Any) -> str:
+    mode = str(raw or "warn").strip().lower()
+    if mode not in {"off", "warn", "enforce"}:
+        return "warn"
+    return mode
 
 
 def trading_day_id(
@@ -114,11 +124,23 @@ def load_ftmo_profile(path: Path, profile_id: str | None = None) -> FtmoProfile:
             max_loss_buffer_pct=float(buffers.get("max_loss_buffer_pct", 0.0)),
         ),
         cost_gate=FtmoCostGate(
+            trade_cost_gate_mode=_normalize_trade_cost_gate_mode(
+                cost_gate.get("trade_cost_gate_mode", "warn")
+            ),
             commission_round_turn_pips=float(cost_gate.get("commission_round_turn_pips", 0.0)),
             slippage_floor_pips=float(cost_gate.get("slippage_floor_pips", 0.0)),
             min_edge_buffer_pips=float(cost_gate.get("min_edge_buffer_pips", 0.0)),
             max_cost_to_barrier_ratio=float(cost_gate.get("max_cost_to_barrier_ratio", 1.0)),
             require_account_snapshot=bool(cost_gate.get("require_account_snapshot", False)),
+            replay_round_trip_cost_pips=float(
+                cost_gate.get(
+                    "replay_round_trip_cost_pips",
+                    cost_gate.get("commission_round_turn_pips", 0.5),
+                )
+            ),
+            replay_slippage_floor_pips=float(
+                cost_gate.get("replay_slippage_floor_pips", 0.0)
+            ),
         ),
         allocator=FtmoAllocator(
             allocator_enabled=bool(allocator.get("allocator_enabled", True)),
@@ -213,6 +235,10 @@ def evaluate_trade_guard(
         return {
             "allow_trade": False,
             "block_reason": str(account_eval.get("block_reason") or "FTMO_ACCOUNT_BLOCKED"),
+            "hard_block_reason": str(account_eval.get("block_reason") or "FTMO_ACCOUNT_BLOCKED"),
+            "would_block_under_trade_cost_gate": False,
+            "trade_cost_gate_block_reason": None,
+            "trade_cost_gate_mode": profile.cost_gate.trade_cost_gate_mode,
             "estimated_trade_cost_pips": None,
             "expected_edge_proxy_pips": None,
             "net_viability_margin_pips": None,
@@ -228,15 +254,21 @@ def evaluate_trade_guard(
     expected_edge_proxy = max(0.0, float(pred_prob)) * b
     net_margin = expected_edge_proxy - cost_total - profile.cost_gate.min_edge_buffer_pips
     cost_ratio = cost_total / b
-    reason: str | None = None
+    gate_reason: str | None = None
     if net_margin <= 0.0:
-        reason = "FTMO_COST_VIABILITY_FAIL"
+        gate_reason = "FTMO_COST_VIABILITY_FAIL"
     elif cost_ratio > profile.cost_gate.max_cost_to_barrier_ratio:
-        reason = "FTMO_COST_RATIO_BREACH"
+        gate_reason = "FTMO_COST_RATIO_BREACH"
+    mode = _normalize_trade_cost_gate_mode(profile.cost_gate.trade_cost_gate_mode)
+    effective_reason = gate_reason if (gate_reason is not None and mode == "enforce") else None
 
     return {
-        "allow_trade": reason is None,
-        "block_reason": reason,
+        "allow_trade": effective_reason is None,
+        "block_reason": effective_reason,
+        "hard_block_reason": None,
+        "would_block_under_trade_cost_gate": gate_reason is not None,
+        "trade_cost_gate_block_reason": gate_reason,
+        "trade_cost_gate_mode": mode,
         "estimated_trade_cost_pips": cost_total,
         "expected_edge_proxy_pips": expected_edge_proxy,
         "net_viability_margin_pips": net_margin,

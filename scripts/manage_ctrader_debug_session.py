@@ -27,10 +27,16 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts.build_ctrader_debug_bundle import build_bundle as build_debug_bundle
+from scripts.canonical_tick_feed import DEFAULT_DUKASCOPY_ROOT, normalize_source
 from scripts.export_ctrader_custom_data import run as export_custom_data_run
 
 
 DEFAULT_TICK_ROOT = Path("/Users/danielfisher/Desktop/tick")
+DEFAULT_FTMO_RULES_PATH = REPO_ROOT / "configs" / "research" / "governance" / "ftmo" / "ftmo_rules.yaml"
+DEFAULT_FTMO_PROFILE_ID = "ftmo_10k_challenge_2step"
+DEFAULT_FTMO_PHASE_MODE = "full_lifecycle"
+DEFAULT_FTMO_ECONOMICS_MODE = "repo_overlay"
+DEFAULT_FTMO_TRADE_COST_GATE_MODE = "warn"
 ARTIFACT_ROOT = REPO_ROOT / "data" / "analysis" / "backtest_reconcile"
 SESSIONS_ROOT = ARTIFACT_ROOT / "ctrader_debug_sessions"
 PACKAGE_ROOT = ARTIFACT_ROOT / "ctrader_custom_data"
@@ -315,6 +321,9 @@ def _start_api(
     historical_preflight_mode: str,
     historical_prediction_universe_mode: str,
     record_raw_ticks: bool,
+    ftmo_rules_path: Path,
+    ftmo_profile_id: str,
+    ftmo_trade_cost_gate_mode: str,
     start_timeout_sec: float,
 ) -> tuple[int, Path]:
     DEBUG_LOG_ROOT.mkdir(parents=True, exist_ok=True)
@@ -327,6 +336,11 @@ def _start_api(
     env["BEHEMOTH_HISTORICAL_PREDICTION_UNIVERSE_MODE"] = str(historical_prediction_universe_mode)
     env["BEHEMOTH_MODELS_DIR"] = str(models_dir)
     env["BEHEMOTH_RECORD_RAW_TICKS"] = "true" if record_raw_ticks else "false"
+    env["BEHEMOTH_FTMO_ENABLED"] = "true"
+    env["BEHEMOTH_FTMO_ENFORCE_BLOCKS"] = "true"
+    env["BEHEMOTH_FTMO_RULES_PATH"] = str(ftmo_rules_path)
+    env["BEHEMOTH_FTMO_PROFILE_ID"] = str(ftmo_profile_id)
+    env["BEHEMOTH_FTMO_TRADE_COST_GATE_MODE"] = str(ftmo_trade_cost_gate_mode)
     env["BEHEMOTH_STATE_DB"] = str(db_path)
     env["BEHEMOTH_DEBUG_RUN_ID"] = str(run_id)
     env["BEHEMOTH_DEBUG_HTTP_TRACE"] = "true"
@@ -365,7 +379,7 @@ def _build_package(
     *,
     source: str,
     symbol: str,
-    tick_root: Path,
+    source_root: Path,
     start_ts: str,
     end_ts: str,
     package_dir: Path,
@@ -374,11 +388,10 @@ def _build_package(
     ticks_before_anchor: int,
     ticks_after_anchor: int,
 ) -> tuple[Path, Path]:
-    if str(source).lower() != "histdata":
-        raise NotImplementedError("Only SOURCE=histdata is implemented in this session manager.")
     manifest_path, summary_path, _ = export_custom_data_run(
         symbol=str(symbol),
-        tick_root=tick_root,
+        tick_root=source_root,
+        source=str(source),
         start_ts=str(start_ts),
         end_ts=str(end_ts),
         out_dir=package_dir,
@@ -398,6 +411,7 @@ def run_up(
     end_ts: str,
     run_id: str | None = None,
     tick_root: Path = DEFAULT_TICK_ROOT,
+    dukascopy_root: Path = DEFAULT_DUKASCOPY_ROOT,
     host: str = "127.0.0.1",
     port: int = 8000,
     start_api: bool = True,
@@ -411,10 +425,16 @@ def run_up(
     missing_month_policy: str = "error",
     historical_preflight_mode: str = "warn",
     historical_prediction_universe_mode: str = "tolerant",
+    ftmo_rules_path: Path = DEFAULT_FTMO_RULES_PATH,
+    ftmo_profile_id: str = DEFAULT_FTMO_PROFILE_ID,
+    ftmo_phase_mode: str = DEFAULT_FTMO_PHASE_MODE,
+    ftmo_economics_mode: str = DEFAULT_FTMO_ECONOMICS_MODE,
+    ftmo_trade_cost_gate_mode: str = DEFAULT_FTMO_TRADE_COST_GATE_MODE,
     comparison_anchor_ts: str | None = None,
     ticks_before_anchor: int = 0,
     ticks_after_anchor: int = 0,
 ) -> dict[str, Any]:
+    source_name = normalize_source(source)
     sym = str(symbol).upper().strip()
     if not sym:
         raise ValueError("symbol is required")
@@ -425,14 +445,15 @@ def run_up(
     anchor_ts_effective = (
         str(comparison_anchor_ts).strip() if str(comparison_anchor_ts or "").strip() else str(start_ts)
     )
-    sid = str(run_id).strip() if str(run_id or "").strip() else _default_run_id(sym, source, start_ts, end_ts)
+    sid = str(run_id).strip() if str(run_id or "").strip() else _default_run_id(sym, source_name, start_ts, end_ts)
     _ensure_no_conflicting_listener(host=host, port=int(port), replace_active=bool(replace_active))
+    effective_source_root = tick_root if source_name == "histdata" else dukascopy_root
 
     package_dir = PACKAGE_ROOT / sid
     manifest_path, summary_path = _build_package(
-        source=source,
+        source=source_name,
         symbol=sym,
-        tick_root=tick_root,
+        source_root=effective_source_root,
         start_ts=start_ts,
         end_ts=end_ts,
         package_dir=package_dir,
@@ -455,11 +476,13 @@ def run_up(
 
     session: dict[str, Any] = {
         "run_id": sid,
-        "source": str(source).lower(),
+        "source": source_name,
         "symbol": sym,
         "start_ts": str(start_ts),
         "end_ts": str(end_ts),
         "tick_root": str(tick_root),
+        "dukascopy_root": str(dukascopy_root),
+        "source_root": str(effective_source_root),
         "package_dir": str(package_dir),
         "package_manifest": str(manifest_path),
         "package_summary_csv": str(summary_path),
@@ -476,9 +499,18 @@ def run_up(
         "missing_month_policy": str(missing_month_policy),
         "historical_preflight_mode": str(historical_preflight_mode),
         "historical_prediction_universe_mode": str(historical_prediction_universe_mode),
+        "ftmo_rules_path": str(ftmo_rules_path),
+        "ftmo_profile_id": str(ftmo_profile_id),
+        "ftmo_phase_mode": str(ftmo_phase_mode),
+        "ftmo_economics_mode": str(ftmo_economics_mode),
+        "ftmo_trade_cost_gate_mode": str(ftmo_trade_cost_gate_mode),
+        "ftmo_enabled": True,
+        "ftmo_enforce_blocks": True,
         "record_raw_ticks": bool(record_raw_ticks),
         "recommended_cbot": {
             "api_base_url": f"http://{host}:{port}",
+            "enable_ftmo_guards": True,
+            "ftmo_profile_id": str(ftmo_profile_id),
             "enable_tick_batch": True,
             "tick_batch_size": 20,
             "tick_flush_ms": 100,
@@ -492,6 +524,7 @@ def run_up(
             "ticks_after_anchor": int(ticks_after_anchor),
         },
         "status": "prepared",
+        "surface": "ctrader",
         "created_at_utc": _utcnow(),
         "updated_at_utc": _utcnow(),
         "session_file": str(_session_file(sid)),
@@ -510,6 +543,9 @@ def run_up(
             historical_preflight_mode=historical_preflight_mode,
             historical_prediction_universe_mode=historical_prediction_universe_mode,
             record_raw_ticks=bool(record_raw_ticks),
+            ftmo_rules_path=ftmo_rules_path,
+            ftmo_profile_id=ftmo_profile_id,
+            ftmo_trade_cost_gate_mode=ftmo_trade_cost_gate_mode,
             start_timeout_sec=float(start_timeout_sec),
         )
         session["api_pid"] = int(pid)
@@ -642,13 +678,14 @@ def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Manage cTrader debug sessions")
     sub = p.add_subparsers(dest="command", required=True)
 
-    up = sub.add_parser("up", help="Export HistData package and start isolated API runtime")
+    up = sub.add_parser("up", help="Export canonical tick package and start isolated API runtime")
     up.add_argument("--source", default="histdata")
     up.add_argument("--symbol", required=True)
     up.add_argument("--start-ts", required=True)
     up.add_argument("--end-ts", required=True)
     up.add_argument("--run-id", default="")
     up.add_argument("--tick-root", default=str(DEFAULT_TICK_ROOT))
+    up.add_argument("--dukascopy-root", default=str(DEFAULT_DUKASCOPY_ROOT))
     up.add_argument("--host", default="127.0.0.1")
     up.add_argument("--port", type=int, default=8000)
     up.add_argument("--start-api", default="true", choices=["true", "false"])
@@ -665,6 +702,11 @@ def _build_parser() -> argparse.ArgumentParser:
     up.add_argument("--missing-month-policy", default="error")
     up.add_argument("--historical-preflight-mode", default="warn")
     up.add_argument("--historical-prediction-universe-mode", default="tolerant")
+    up.add_argument("--ftmo-rules-path", default=str(DEFAULT_FTMO_RULES_PATH))
+    up.add_argument("--ftmo-profile-id", default=DEFAULT_FTMO_PROFILE_ID)
+    up.add_argument("--ftmo-phase-mode", default=DEFAULT_FTMO_PHASE_MODE)
+    up.add_argument("--ftmo-economics-mode", default=DEFAULT_FTMO_ECONOMICS_MODE)
+    up.add_argument("--ftmo-trade-cost-gate-mode", default=DEFAULT_FTMO_TRADE_COST_GATE_MODE)
     up.add_argument("--comparison-anchor-ts", default="")
     up.add_argument("--ticks-before-anchor", type=int, default=0)
     up.add_argument("--ticks-after-anchor", type=int, default=0)
@@ -689,6 +731,7 @@ def main() -> None:
             end_ts=str(args.end_ts),
             run_id=str(args.run_id).strip() or None,
             tick_root=Path(str(args.tick_root)),
+            dukascopy_root=Path(str(args.dukascopy_root)),
             host=str(args.host),
             port=int(args.port),
             start_api=_bool_arg(str(args.start_api)),
@@ -702,6 +745,11 @@ def main() -> None:
             missing_month_policy=str(args.missing_month_policy),
             historical_preflight_mode=str(args.historical_preflight_mode),
             historical_prediction_universe_mode=str(args.historical_prediction_universe_mode),
+            ftmo_rules_path=Path(str(args.ftmo_rules_path)),
+            ftmo_profile_id=str(args.ftmo_profile_id),
+            ftmo_phase_mode=str(args.ftmo_phase_mode),
+            ftmo_economics_mode=str(args.ftmo_economics_mode),
+            ftmo_trade_cost_gate_mode=str(args.ftmo_trade_cost_gate_mode),
             comparison_anchor_ts=(str(args.comparison_anchor_ts).strip() or None),
             ticks_before_anchor=int(args.ticks_before_anchor),
             ticks_after_anchor=int(args.ticks_after_anchor),
