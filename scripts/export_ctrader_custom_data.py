@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export HistData parquet ticks into a cTrader custom-data package."""
+"""Export canonical parquet ticks into a cTrader custom-data package."""
 
 from __future__ import annotations
 
@@ -13,6 +13,14 @@ import duckdb
 import numpy as np
 import pandas as pd
 
+from scripts.canonical_tick_feed import (
+    load_ticks_by_count,
+    load_ticks_window,
+    normalize_source,
+    source_kind,
+    to_utc,
+)
+
 
 def _parse_ts(name: str, raw: str | None) -> pd.Timestamp:
     txt = str(raw or "").strip()
@@ -24,151 +32,12 @@ def _parse_ts(name: str, raw: str | None) -> pd.Timestamp:
     return ts
 
 
-def _month_tags_between(start: pd.Timestamp, end: pd.Timestamp) -> list[str]:
-    if not (start < end):
-        return []
-    end_inclusive = end - pd.Timedelta(microseconds=1)
-    if end_inclusive < start:
-        return []
-    s0 = start.tz_convert("UTC").tz_localize(None) if start.tzinfo is not None else start
-    e0 = (
-        end_inclusive.tz_convert("UTC").tz_localize(None)
-        if end_inclusive.tzinfo is not None
-        else end_inclusive
-    )
-    pr = pd.period_range(start=s0.to_period("M"), end=e0.to_period("M"), freq="M")
-    return [str(p).replace("-", "") for p in pr]
-
-
-def _quote_sql_path(path: Path) -> str:
-    return "'" + str(path).replace("'", "''") + "'"
-
-
-def _to_utc(s: pd.Series) -> pd.Series:
-    try:
-        return pd.to_datetime(s, utc=True, errors="coerce", format="mixed")
-    except TypeError:
-        return pd.to_datetime(s, utc=True, errors="coerce")
-
-
-def _load_hist_ticks(
-    *,
-    symbol: str,
-    tick_root: Path,
-    start: pd.Timestamp,
-    end: pd.Timestamp,
-) -> pd.DataFrame:
-    months = _month_tags_between(start, end)
-    files = [
-        tick_root / symbol / f"{symbol}_{m}_ticks.parquet"
-        for m in months
-        if (tick_root / symbol / f"{symbol}_{m}_ticks.parquet").exists()
-    ]
-    if not files:
-        return pd.DataFrame(columns=["timestamp", "bid", "ask"])
-
-    files_sql = "[" + ",".join(_quote_sql_path(p) for p in files) + "]"
-    con = duckdb.connect()
-    try:
-        ts_expr = "try_cast(timestamp AS TIMESTAMP WITH TIME ZONE)"
-        sql = (
-            f"SELECT {ts_expr} AS timestamp, try_cast(bid AS DOUBLE) AS bid, "
-            f"try_cast(ask AS DOUBLE) AS ask FROM read_parquet({files_sql}) "
-            f"WHERE {ts_expr} >= ? AND {ts_expr} < ? ORDER BY {ts_expr}"
-        )
-        out = con.execute(sql, [start.to_pydatetime(), end.to_pydatetime()]).fetchdf()
-    finally:
-        con.close()
-    if out.empty:
-        return pd.DataFrame(columns=["timestamp", "bid", "ask"])
-    out["timestamp"] = _to_utc(out.get("timestamp", pd.Series(dtype=object)))
-    out["bid"] = pd.to_numeric(out.get("bid", pd.Series(dtype=float)), errors="coerce")
-    out["ask"] = pd.to_numeric(out.get("ask", pd.Series(dtype=float)), errors="coerce")
-    out = out.dropna(subset=["timestamp", "bid", "ask"]).reset_index(drop=True)
-    return out[["timestamp", "bid", "ask"]]
-
-
-def _all_symbol_tick_files(symbol: str, tick_root: Path) -> list[Path]:
-    return sorted(
-        p
-        for p in (tick_root / symbol).glob(f"{symbol}_*_ticks.parquet")
-        if p.is_file()
-    )
-
-
-def _load_hist_ticks_by_count(
-    *,
-    symbol: str,
-    tick_root: Path,
-    anchor: pd.Timestamp,
-    ticks_before: int,
-    ticks_after: int,
-) -> pd.DataFrame:
-    files = _all_symbol_tick_files(symbol, tick_root)
-    if not files:
-        return pd.DataFrame(columns=["timestamp", "bid", "ask"])
-
-    files_sql = "[" + ",".join(_quote_sql_path(p) for p in files) + "]"
-    con = duckdb.connect()
-    try:
-        ts_expr = "try_cast(timestamp AS TIMESTAMP WITH TIME ZONE)"
-        before = (
-            con.execute(
-                f"""
-                SELECT timestamp, bid, ask
-                FROM (
-                    SELECT
-                        {ts_expr} AS timestamp,
-                        try_cast(bid AS DOUBLE) AS bid,
-                        try_cast(ask AS DOUBLE) AS ask
-                    FROM read_parquet({files_sql})
-                    WHERE {ts_expr} < ?
-                    ORDER BY {ts_expr} DESC
-                    LIMIT {max(0, int(ticks_before))}
-                ) q
-                ORDER BY timestamp
-                """,
-                [anchor.to_pydatetime()],
-            ).fetchdf()
-            if int(ticks_before) > 0
-            else pd.DataFrame(columns=["timestamp", "bid", "ask"])
-        )
-        after = (
-            con.execute(
-                f"""
-                SELECT
-                    {ts_expr} AS timestamp,
-                    try_cast(bid AS DOUBLE) AS bid,
-                    try_cast(ask AS DOUBLE) AS ask
-                FROM read_parquet({files_sql})
-                WHERE {ts_expr} >= ?
-                ORDER BY {ts_expr}
-                LIMIT {max(0, int(ticks_after))}
-                """,
-                [anchor.to_pydatetime()],
-            ).fetchdf()
-            if int(ticks_after) > 0
-            else pd.DataFrame(columns=["timestamp", "bid", "ask"])
-        )
-    finally:
-        con.close()
-
-    out = pd.concat([before, after], ignore_index=True)
-    if out.empty:
-        return pd.DataFrame(columns=["timestamp", "bid", "ask"])
-    out["timestamp"] = _to_utc(out.get("timestamp", pd.Series(dtype=object)))
-    out["bid"] = pd.to_numeric(out.get("bid", pd.Series(dtype=float)), errors="coerce")
-    out["ask"] = pd.to_numeric(out.get("ask", pd.Series(dtype=float)), errors="coerce")
-    out = out.dropna(subset=["timestamp", "bid", "ask"]).reset_index(drop=True)
-    return out[["timestamp", "bid", "ask"]]
-
-
 def _merge_tick_frames(*frames: pd.DataFrame) -> pd.DataFrame:
     parts = [f[["timestamp", "bid", "ask"]].copy() for f in frames if f is not None and not f.empty]
     if not parts:
         return pd.DataFrame(columns=["timestamp", "bid", "ask"])
     out = pd.concat(parts, ignore_index=True)
-    out["timestamp"] = _to_utc(out.get("timestamp", pd.Series(dtype=object)))
+    out["timestamp"] = to_utc(out.get("timestamp", pd.Series(dtype=object)))
     out["bid"] = pd.to_numeric(out.get("bid", pd.Series(dtype=float)), errors="coerce")
     out["ask"] = pd.to_numeric(out.get("ask", pd.Series(dtype=float)), errors="coerce")
     out = out.dropna(subset=["timestamp", "bid", "ask"]).reset_index(drop=True)
@@ -180,7 +49,7 @@ def _bool_arg(raw: str) -> bool:
 
 
 def _median_intertick_ms(ts: pd.Series) -> float:
-    x = _to_utc(ts).dropna().sort_values()
+    x = to_utc(ts).dropna().sort_values()
     if len(x) < 2:
         return float("nan")
     dt_ms = x.diff().dt.total_seconds().dropna() * 1000.0
@@ -190,7 +59,7 @@ def _median_intertick_ms(ts: pd.Series) -> float:
 
 
 def _p90_intertick_ms(ts: pd.Series) -> float:
-    x = _to_utc(ts).dropna().sort_values()
+    x = to_utc(ts).dropna().sort_values()
     if len(x) < 2:
         return float("nan")
     dt_ms = x.diff().dt.total_seconds().dropna() * 1000.0
@@ -207,6 +76,7 @@ def run(
     *,
     symbol: str,
     tick_root: Path,
+    source: str = "histdata",
     start_ts: str,
     end_ts: str,
     out_dir: Path,
@@ -219,6 +89,7 @@ def run(
     sym = str(symbol).upper().strip()
     if not sym:
         raise ValueError("symbol is required")
+    source_name = normalize_source(source)
 
     start = _parse_ts("start_ts", start_ts)
     end = _parse_ts("end_ts", end_ts)
@@ -234,34 +105,34 @@ def run(
     )
     if count_mode:
         anchor = _parse_ts("anchor_ts", anchor_ts)
-        count_ticks = _load_hist_ticks_by_count(
+        count_ticks = load_ticks_by_count(
             symbol=sym,
-            tick_root=tick_root,
+            root=tick_root,
             anchor=anchor,
             ticks_before=int(ticks_before_anchor),
             ticks_after=int(ticks_after_anchor),
         )
-        window_ticks = _load_hist_ticks(
+        window_ticks = load_ticks_window(
             symbol=sym,
-            tick_root=tick_root,
+            root=tick_root,
             start=start,
             end=end,
         )
         ticks = _merge_tick_frames(count_ticks, window_ticks)
     else:
-        ticks = _load_hist_ticks(
+        ticks = load_ticks_window(
             symbol=sym,
-            tick_root=tick_root,
+            root=tick_root,
             start=start,
             end=end,
         )
     if ticks.empty:
         if count_mode:
             raise ValueError(
-                f"no HistData ticks found for {sym} around anchor={anchor_ts} "
+                f"no {source_name} ticks found for {sym} around anchor={anchor_ts} "
                 f"with ticks_before={int(ticks_before_anchor)} ticks_after={int(ticks_after_anchor)}"
             )
-        raise ValueError(f"no HistData ticks found for {sym} in [{_fmt_ts(start)}, {_fmt_ts(end)})")
+        raise ValueError(f"no {source_name} ticks found for {sym} in [{_fmt_ts(start)}, {_fmt_ts(end)})")
 
     ticks = ticks.sort_values(["timestamp", "bid", "ask"]).reset_index(drop=True)
     input_rows = int(len(ticks))
@@ -296,6 +167,7 @@ def run(
     spread = ticks["ask"] - ticks["bid"]
     summary_row: dict[str, Any] = {
         "symbol": sym,
+        "source": source_name,
         "tick_root": str(tick_root),
         "start_ts": _fmt_ts(start),
         "end_ts": _fmt_ts(end),
@@ -338,7 +210,7 @@ def run(
         "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "columns": ["timestamp_utc", "bid", "ask"],
         "source": {
-            "kind": "histdata_parquet",
+            "kind": source_kind(source_name),
             "tick_root": str(tick_root),
         },
         "requested_window": {
@@ -365,8 +237,9 @@ def run(
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Export HistData parquet ticks for cTrader custom data")
+    p = argparse.ArgumentParser(description="Export canonical parquet ticks for cTrader custom data")
     p.add_argument("--symbol", required=True)
+    p.add_argument("--source", default="histdata")
     p.add_argument("--tick-root", default="/Users/danielfisher/Desktop/tick")
     p.add_argument("--start-ts", required=True)
     p.add_argument("--end-ts", required=True)
@@ -381,6 +254,7 @@ def main() -> None:
     manifest_path, summary_path, summary_df = run(
         symbol=str(args.symbol),
         tick_root=Path(str(args.tick_root)),
+        source=str(args.source),
         start_ts=str(args.start_ts),
         end_ts=str(args.end_ts),
         out_dir=Path(str(args.out_dir)),

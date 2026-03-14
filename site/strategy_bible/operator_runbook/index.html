@@ -1763,6 +1763,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../offset_tickbar_robustness_method/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Offset Tick-Bar Robustness Method
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../generated/stage_09_snapshot/" class="md-nav__link">
         
   
@@ -1911,6 +1939,62 @@
     
   
     Stage 11 Execution MC Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generated/stage_12_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 12 API Parity Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stage_12_api_parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 12 API Parity Spec
   
 
     
@@ -2100,6 +2184,17 @@
     <span class="md-ellipsis">
       
         Decision Tree
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stage-12-operating-note" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 12 Operating Note
       
     </span>
   </a>
@@ -2820,10 +2915,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_49" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_52" >
         
           
-          <label class="md-nav__link" for="__nav_4_49" id="__nav_4_49_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_52" id="__nav_4_52_label" tabindex="0">
             
   
   
@@ -2841,8 +2936,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_49_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_49">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_52_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_52">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2989,10 +3084,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_50" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_53" >
         
           
-          <label class="md-nav__link" for="__nav_4_50" id="__nav_4_50_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_53" id="__nav_4_53_label" tabindex="0">
             
   
   
@@ -3010,8 +3105,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_50_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_50">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_53_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_53">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3811,6 +3906,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#stage-12-operating-note" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 12 Operating Note
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#escalation-matrix" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4020,6 +4126,15 @@
 <td>immediate</td>
 </tr>
 <tr>
+<td>Stage 12 API parity red</td>
+<td><code>gate_api_parity=false</code> for any active symbol</td>
+<td>critical</td>
+<td>research lead</td>
+<td>block deployment; rerun historical API parity and resolve signal/execution drift before promotion</td>
+<td><code>data/analysis/backtest_reconcile/&lt;SYMBOL&gt;_stage12_api_parity_summary.csv</code></td>
+<td>immediate</td>
+</tr>
+<tr>
 <td>Registry drift</td>
 <td>any <code>RU*</code> high/critical failure</td>
 <td>high</td>
@@ -4079,6 +4194,20 @@ uv<span class="w"> </span>run<span class="w"> </span>mkdocs<span class="w"> </sp
     J --&gt; K{Recovered?}
     K --&gt;|No| C
     K --&gt;|Yes| L[Keep monitor status]</code></pre>
+<h2 id="stage-12-operating-note">Stage 12 Operating Note<a class="headerlink" href="#stage-12-operating-note" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Stage 12 is the canonical historical API parity gate against reduced-core truth.</li>
+<li>Truth source for this gate is repo-side reduced-core output, not cTrader backtest output.</li>
+<li>Historical parity uses three non-negotiable mechanics:</li>
+<li><code>history_tail</code> warmup preserves exact fixed-tick bar phase across the full prior history.</li>
+<li>locked prediction-universe gating limits API evaluation to repo <code>(candidate_uid, close_ts)</code> rows for that model month.</li>
+<li>execution parity is validated only after signal parity is measured against reduced-core truth.</li>
+<li>Practical meaning:</li>
+<li>if Stage 12 is red, do not rely on Stage 3, Stage 5, Stage 6, or cTrader-side sanity checks to infer deployability.</li>
+<li>if <code>selected_extra_runtime &gt; 0</code>, treat it as over-admission by the API.</li>
+<li>if <code>selected_missing_expected &gt; 0</code>, treat it as missed reduced-core truth.</li>
+<li>if execution parity is red with signal parity green, treat it as lifecycle translation drift rather than model drift.</li>
+</ul>
 <h2 id="escalation-matrix">Escalation Matrix<a class="headerlink" href="#escalation-matrix" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -4123,6 +4252,7 @@ uv<span class="w"> </span>run<span class="w"> </span>mkdocs<span class="w"> </sp
 <li><code>docs/strategy_bible/stage_07_logical_and_statistical_audit.md</code></li>
 <li><code>docs/strategy_bible/stage_09_live_governance_and_deployment.md</code></li>
 <li><code>docs/strategy_bible/stage_10_known_risks_and_backlog.md</code></li>
+<li><code>docs/strategy_bible/stage_12_api_parity.md</code></li>
 </ul>
 
 

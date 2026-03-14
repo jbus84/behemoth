@@ -3,7 +3,10 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from scripts.run_tick_opportunity_monthly_wfo import _rolling_day_threshold_vector
+from scripts.run_tick_opportunity_monthly_wfo import (
+    _attach_stable_event_ids,
+    _rolling_day_threshold_vector,
+)
 
 
 def test_rolling_threshold_not_affected_by_future_test_days() -> None:
@@ -86,3 +89,17 @@ def test_rolling_threshold_no_train_history_returns_nan_and_no_history_source() 
     assert set(src.tolist()) == {"no_history"}
     selected = np.isfinite(thr) & (test_p >= thr)
     assert int(selected.sum()) == 0
+
+
+def test_attach_stable_event_ids_assigns_deterministic_keys() -> None:
+    df = pd.DataFrame(
+        [
+            {"candidate_uid": "c1", "close_ts": "2025-07-01T00:00:03Z"},
+            {"candidate_uid": "c1", "close_ts": "2025-07-01T00:00:01Z"},
+            {"candidate_uid": "c2", "close_ts": "2025-07-02T00:00:01Z"},
+        ]
+    )
+    out = _attach_stable_event_ids(df)
+    c1 = out[out["candidate_uid"] == "c1"].sort_values("close_ts")
+    assert c1["event_ordinal"].tolist() == [0, 1]
+    assert c1["scored_row_id"].tolist() == ["2025-07|c1|0", "2025-07|c1|1"]

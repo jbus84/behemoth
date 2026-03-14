@@ -16,6 +16,9 @@ def test_build_docs_catalog_outputs_manifest_and_index(tmp_path: Path) -> None:
 
     (analysis / "data_reliability_report.md").write_text("# dr\n", encoding="utf-8")
     (analysis / "eurusd_tick_opportunity_mining_report.md").write_text("# eur\n", encoding="utf-8")
+    (analysis / "eurusd_offset_tickbar_robustness_report.md").write_text(
+        "# eur offset\n", encoding="utf-8"
+    )
     (analysis / "oco_execution_monte_carlo_report.md").write_text("# mc\n", encoding="utf-8")
     (analysis / "index.md").write_text("# stale\n", encoding="utf-8")
     (archive / "legacy_strategy_guide.md").write_text("# old\n", encoding="utf-8")
@@ -37,4 +40,7 @@ def test_build_docs_catalog_outputs_manifest_and_index(tmp_path: Path) -> None:
     m = pd.read_csv(analysis / "catalog_manifest.csv")
     assert "analysis/data_reliability_report.md" in set(m["doc_path"].astype(str))
     assert "analysis/eurusd_tick_opportunity_mining_report.md" in set(m["doc_path"].astype(str))
+    offset_row = m[m["doc_path"].astype(str) == "analysis/eurusd_offset_tickbar_robustness_report.md"]
+    assert not offset_row.empty
+    assert int(offset_row.iloc[0]["stage_id"]) == 8
     assert "archive/legacy_strategy_guide.md" in set(m["doc_path"].astype(str))

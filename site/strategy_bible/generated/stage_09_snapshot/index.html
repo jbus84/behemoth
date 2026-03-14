@@ -13,7 +13,7 @@
       
       
       
-        <link rel="prev" href="../../stage_08_robustness_and_stress/">
+        <link rel="prev" href="../../offset_tickbar_robustness_method/">
       
       
         <link rel="next" href="../../stage_09_live_governance_and_deployment/">
@@ -1760,6 +1760,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../../offset_tickbar_robustness_method/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Offset Tick-Bar Robustness Method
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -2026,6 +2054,62 @@
     
   
     Stage 11 Execution MC Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stage_12_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 12 API Parity Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../stage_12_api_parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 12 API Parity Spec
   
 
     
@@ -2756,10 +2840,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_49" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_52" >
         
           
-          <label class="md-nav__link" for="__nav_4_49" id="__nav_4_49_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_52" id="__nav_4_52_label" tabindex="0">
             
   
   
@@ -2777,8 +2861,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_49_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_49">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_52_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_52">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2925,10 +3009,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_50" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_53" >
         
           
-          <label class="md-nav__link" for="__nav_4_50" id="__nav_4_50_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_53" id="__nav_4_53_label" tabindex="0">
             
   
   
@@ -2946,8 +3030,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_50_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_50">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_53_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_53">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3749,7 +3833,7 @@
 
 <h3 id="auto-snapshot-stage-09">Auto Snapshot - Stage 09<a class="headerlink" href="#auto-snapshot-stage-09" title="Permanent link">&para;</a></h3>
 <ul>
-<li>generated_at: <code>2026-03-10 10:13:11 UTC</code></li>
+<li>generated_at: <code>2026-03-11 21:50:05 UTC</code></li>
 <li>Governance snapshot combines symbol gate matrix with artifact inventory completeness.</li>
 <li>Missing required artifacts: 0.</li>
 </ul>
@@ -3762,12 +3846,18 @@
 <th style="text-align: left;">gate_tick_exact</th>
 <th style="text-align: left;">gate_robust_lb95_trade_gt0</th>
 <th style="text-align: left;">gate_robust_months_majority</th>
+<th style="text-align: left;">gate_api_signal_parity</th>
+<th style="text-align: left;">gate_api_execution_parity</th>
+<th style="text-align: left;">gate_api_parity</th>
 <th style="text-align: left;">symbol_all_gates_pass</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
@@ -3781,9 +3871,15 @@
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
@@ -3797,6 +3893,9 @@
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
@@ -3805,9 +3904,15 @@
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>

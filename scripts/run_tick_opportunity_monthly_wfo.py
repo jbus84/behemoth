@@ -212,6 +212,26 @@ def _build_events_for_library(
     return pd.concat(events_parts, ignore_index=True) if events_parts else pd.DataFrame()
 
 
+def _attach_stable_event_ids(events: pd.DataFrame) -> pd.DataFrame:
+    if events.empty:
+        return events.copy()
+    out = events.copy()
+    out["close_ts"] = pd.to_datetime(out["close_ts"], utc=True, errors="coerce")
+    out = out[out["close_ts"].notna()].copy()
+    if "test_month" not in out.columns:
+        out["test_month"] = out["close_ts"].dt.strftime("%Y-%m")
+    out = out.sort_values(["test_month", "candidate_uid", "close_ts"], kind="stable").reset_index(drop=True)
+    out["event_ordinal"] = out.groupby(["test_month", "candidate_uid"]).cumcount().astype(int)
+    out["scored_row_id"] = (
+        out["test_month"].astype(str)
+        + "|"
+        + out["candidate_uid"].astype(str)
+        + "|"
+        + out["event_ordinal"].astype(str)
+    )
+    return out
+
+
 def _feature_cols(d: pd.DataFrame) -> list[str]:
     """Dynamically determine the 16 model feature columns present in the frame.
 
@@ -377,8 +397,6 @@ def _wfo_monthly(
         x[c] = _safe_numeric(x[c])
     x = x.dropna(subset=feats + ["target_gross_pos", "target_gross_pips", "candidate_uid"]).copy()
 
-    import json as _json
-
     mode = str(threshold_mode).strip().lower()
     if mode not in {"rolling_days", "train_quantile"}:
         raise ValueError("threshold_mode must be rolling_days|train_quantile")
@@ -537,6 +555,9 @@ def _wfo_monthly(
                 "threshold_source": np.full(len(te), "unset", dtype=object),
             }
         )
+        for extra_col in ["event_ordinal", "scored_row_id"]:
+            if extra_col in te.columns:
+                pred_chunk[extra_col] = te[extra_col].to_numpy()
         g = te["target_gross_pips"].to_numpy(dtype=float)
         for q in threshold_quantiles:
             if mode == "rolling_days":
@@ -744,6 +765,7 @@ def main() -> None:
             oco_include_no_touch=oco_include_no_touch,
             oco_hold_mode=oco_hold_mode,
         )
+        ev = _attach_stable_event_ids(ev)
         ev_path = out_dir / f"{symbol}_{lib}_events_eval{eval_year}.parquet"
         ev.to_parquet(ev_path, index=False)
         print(f"wrote: {ev_path}")

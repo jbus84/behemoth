@@ -178,6 +178,42 @@ STAGE12_REQUIRED_COLUMNS = [
     "stage12_api_parity_verdict",
 ]
 
+OFFSET_ROBUSTNESS_BY_OFFSET_REQUIRED_COLUMNS = [
+    "symbol",
+    "offset",
+    "selected_rows_delta_pct",
+    "trade_rows_delta_pct",
+    "reduced_core_state_jaccard",
+    "candidate_uid_close_ts_overlap_rate",
+    "execution_fill_rate_delta",
+    "execution_no_touch_rate_delta",
+    "execution_overshoot_p95_delta",
+    "warmup_skip_months_count",
+    "tick_exact_pass",
+    "offset_status",
+]
+
+OFFSET_ROBUSTNESS_WARMUP_REQUIRED_COLUMNS = [
+    "symbol",
+    "offset",
+    "warmup_bars",
+    "warmup_ticks",
+    "first_feature_available_bar",
+    "signal_parity_drift_vs_289",
+    "gated_mean_gross_pips_delta_vs_289",
+]
+
+OFFSET_ROBUSTNESS_API_REQUIRED_COLUMNS = [
+    "symbol",
+    "offset",
+    "signal_parity_pass",
+    "execution_parity_pass",
+    "selected_missing_expected",
+    "selected_extra_runtime",
+    "execution_failed_checks_high_critical",
+    "api_confirmation_status",
+]
+
 CORE_REPORT_PATHS = [
     "analysis/index.md",
     "analysis/data_reliability_report.md",
@@ -2476,6 +2512,58 @@ def run(
             {
                 "missing_gate_columns": missing_api_gate_cols,
                 "failing_symbols": api_gate_fails,
+            },
+            sort_keys=True,
+        ),
+    )
+
+    # C57: Optional offset robustness family, when present, must have companion artifacts and schema.
+    offset_root = edge_metrics_csv.parent / "offset_robustness"
+    offset_family_present = False
+    offset_family_missing: list[str] = []
+    offset_family_schema_issues: list[str] = []
+    for sym in sorted(expected_syms):
+        by_offset_csv = offset_root / f"{sym}_offset_robustness_by_offset.csv"
+        warmup_csv = offset_root / f"{sym}_warmup_sensitivity.csv"
+        api_csv = offset_root / f"{sym}_api_offset_confirmation.csv"
+        report_md = docs_root.parent / "analysis" / f"{sym.lower()}_offset_tickbar_robustness_report.md"
+        present_for_sym = any(p.exists() for p in [by_offset_csv, warmup_csv, api_csv, report_md])
+        offset_family_present = offset_family_present or present_for_sym
+        if not present_for_sym:
+            continue
+        missing = [str(p) for p in [by_offset_csv, warmup_csv, api_csv, report_md] if not p.exists()]
+        if missing:
+            offset_family_missing.extend(missing)
+            continue
+        by_offset = pd.read_csv(by_offset_csv) if by_offset_csv.exists() else pd.DataFrame()
+        warmup = pd.read_csv(warmup_csv) if warmup_csv.exists() else pd.DataFrame()
+        api = pd.read_csv(api_csv) if api_csv.exists() else pd.DataFrame()
+        miss_by_offset = [c for c in OFFSET_ROBUSTNESS_BY_OFFSET_REQUIRED_COLUMNS if c not in by_offset.columns]
+        miss_warmup = [c for c in OFFSET_ROBUSTNESS_WARMUP_REQUIRED_COLUMNS if c not in warmup.columns]
+        miss_api = [c for c in OFFSET_ROBUSTNESS_API_REQUIRED_COLUMNS if c not in api.columns]
+        if miss_by_offset:
+            offset_family_schema_issues.append(f"{sym}:by_offset:{','.join(miss_by_offset)}")
+        if miss_warmup:
+            offset_family_schema_issues.append(f"{sym}:warmup:{','.join(miss_warmup)}")
+        if miss_api:
+            offset_family_schema_issues.append(f"{sym}:api:{','.join(miss_api)}")
+    _add_check(
+        checks_rows,
+        check_id="C57",
+        check_name="optional_offset_robustness_artifacts_schema",
+        passed=(not offset_family_present)
+        or (len(offset_family_missing) == 0 and len(offset_family_schema_issues) == 0),
+        severity_if_fail="medium",
+        metric_name="offset_robustness_artifact_issue_count",
+        metric_value=int(len(offset_family_missing) + len(offset_family_schema_issues)),
+        threshold=0,
+        comparator="==",
+        source_path=offset_root,
+        details=json.dumps(
+            {
+                "family_present": offset_family_present,
+                "missing_artifacts": offset_family_missing,
+                "schema_issues": offset_family_schema_issues,
             },
             sort_keys=True,
         ),

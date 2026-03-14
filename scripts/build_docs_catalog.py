@@ -81,6 +81,15 @@ STAGE_KEYWORDS: list[tuple[int, tuple[str, ...]]] = [
             "histdata_ctrader_execution_parity",
         ),
     ),
+    (
+        8,
+        (
+            "offset_tickbar_robustness",
+            "offset_robustness",
+            "warmup_sensitivity",
+            "api_offset_confirmation",
+        ),
+    ),
 ]
 
 LEGACY_KEYWORDS: tuple[str, ...] = (
@@ -136,6 +145,8 @@ def _stage_family(name_l: str) -> str:
         return "stage06_tick_exact"
     if "_oco_monthly_wfo_robustness_" in name_l:
         return "stage08_robustness"
+    if "_offset_tickbar_robustness_report" in name_l:
+        return "stage08_offset_robustness"
     return "none"
 
 

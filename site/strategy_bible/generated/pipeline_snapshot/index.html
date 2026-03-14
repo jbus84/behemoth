@@ -1843,6 +1843,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../offset_tickbar_robustness_method/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Offset Tick-Bar Robustness Method
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../stage_09_snapshot/" class="md-nav__link">
         
   
@@ -1991,6 +2019,62 @@
     
   
     Stage 11 Execution MC Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stage_12_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 12 API Parity Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../stage_12_api_parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 12 API Parity Spec
   
 
     
@@ -2721,10 +2805,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_49" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_52" >
         
           
-          <label class="md-nav__link" for="__nav_4_49" id="__nav_4_49_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_52" id="__nav_4_52_label" tabindex="0">
             
   
   
@@ -2742,8 +2826,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_49_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_49">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_52_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_52">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2890,10 +2974,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_50" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_53" >
         
           
-          <label class="md-nav__link" for="__nav_4_50" id="__nav_4_50_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_53" id="__nav_4_53_label" tabindex="0">
             
   
   
@@ -2911,8 +2995,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_50_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_50">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_53_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_53">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3675,7 +3759,7 @@
 
 <h1 id="pipeline-snapshot">Pipeline Snapshot<a class="headerlink" href="#pipeline-snapshot" title="Permanent link">&para;</a></h1>
 <ul>
-<li>generated_at: <code>2026-03-10 10:13:11 UTC</code></li>
+<li>generated_at: <code>2026-03-11 21:50:04 UTC</code></li>
 <li>title: <code>OCO Rolling Strategy Bible</code></li>
 </ul>
 <h2 id="symbol-summary">Symbol Summary<a class="headerlink" href="#symbol-summary" title="Permanent link">&para;</a></h2>
@@ -3700,10 +3784,19 @@
 <th style="text-align: right;">robustness_months</th>
 <th style="text-align: right;">tick_overshoot_mean_pips</th>
 <th style="text-align: right;">tick_overshoot_p95_pips</th>
+<th style="text-align: left;">api_signal_parity_pass</th>
+<th style="text-align: left;">api_execution_parity_pass</th>
+<th style="text-align: left;">api_parity_verdict</th>
+<th style="text-align: right;">api_selected_missing_expected</th>
+<th style="text-align: right;">api_selected_extra_runtime</th>
+<th style="text-align: right;">api_execution_failed_checks_high_critical</th>
 <th style="text-align: left;">gate_reduced_lb95_month_gt0</th>
 <th style="text-align: left;">gate_tick_exact</th>
 <th style="text-align: left;">gate_robust_lb95_trade_gt0</th>
 <th style="text-align: left;">gate_robust_months_majority</th>
+<th style="text-align: left;">gate_api_signal_parity</th>
+<th style="text-align: left;">gate_api_execution_parity</th>
+<th style="text-align: left;">gate_api_parity</th>
 <th style="text-align: left;">symbol_all_gates_pass</th>
 </tr>
 </thead>
@@ -3727,6 +3820,15 @@
 <td style="text-align: right;">10</td>
 <td style="text-align: right;">0.208765</td>
 <td style="text-align: right;">0.8</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
@@ -3754,6 +3856,15 @@
 <td style="text-align: right;">0.8</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
@@ -3777,6 +3888,15 @@
 <td style="text-align: right;">11</td>
 <td style="text-align: right;">0.208765</td>
 <td style="text-align: right;">0.8</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
@@ -3804,6 +3924,15 @@
 <td style="text-align: right;">0.8</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
@@ -3827,6 +3956,15 @@
 <td style="text-align: right;">11</td>
 <td style="text-align: right;">0.208765</td>
 <td style="text-align: right;">0.8</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
@@ -3854,6 +3992,15 @@
 <td style="text-align: right;">0.8</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
+<td style="text-align: left;">green</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
@@ -3869,12 +4016,18 @@
 <th style="text-align: left;">gate_tick_exact</th>
 <th style="text-align: left;">gate_robust_lb95_trade_gt0</th>
 <th style="text-align: left;">gate_robust_months_majority</th>
+<th style="text-align: left;">gate_api_signal_parity</th>
+<th style="text-align: left;">gate_api_execution_parity</th>
+<th style="text-align: left;">gate_api_parity</th>
 <th style="text-align: left;">symbol_all_gates_pass</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td style="text-align: left;">EURUSD</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
@@ -3888,9 +4041,15 @@
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
@@ -3904,6 +4063,9 @@
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
@@ -3912,9 +4074,15 @@
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">True</td>

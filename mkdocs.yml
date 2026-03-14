@@ -96,6 +96,7 @@ nav:
       - Stage 07 Logical + Statistical Spec: strategy_bible/stage_07_logical_and_statistical_audit.md
       - Stage 08 Robustness: strategy_bible/generated/stage_08_snapshot.md
       - Stage 08 Robustness + Stress Spec: strategy_bible/stage_08_robustness_and_stress.md
+      - Offset Tick-Bar Robustness Method: strategy_bible/offset_tickbar_robustness_method.md
       - Stage 09 Governance Snapshot: strategy_bible/generated/stage_09_snapshot.md
       - Stage 09 Governance Spec: strategy_bible/stage_09_live_governance_and_deployment.md
       - Stage 10 Risks Snapshot: strategy_bible/generated/stage_10_snapshot.md

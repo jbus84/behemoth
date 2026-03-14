@@ -1763,6 +1763,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../offset_tickbar_robustness_method/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Offset Tick-Bar Robustness Method
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../generated/stage_09_snapshot/" class="md-nav__link">
         
   
@@ -1911,6 +1939,62 @@
     
   
     Stage 11 Execution MC Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generated/stage_12_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 12 API Parity Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stage_12_api_parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 12 API Parity Spec
   
 
     
@@ -2798,10 +2882,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_49" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_52" >
         
           
-          <label class="md-nav__link" for="__nav_4_49" id="__nav_4_49_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_52" id="__nav_4_52_label" tabindex="0">
             
   
   
@@ -2819,8 +2903,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_49_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_49">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_52_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_52">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2967,10 +3051,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_50" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_53" >
         
           
-          <label class="md-nav__link" for="__nav_4_50" id="__nav_4_50_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_53" id="__nav_4_53_label" tabindex="0">
             
   
   
@@ -2988,8 +3072,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_50_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_50">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_53_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_53">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4164,6 +4248,54 @@
 <td>NaN count in execution MC core fields</td>
 <td>count</td>
 <td>0 required</td>
+<td>disallow</td>
+</tr>
+<tr>
+<td>AP01_signal_missing_expected_count</td>
+<td>12</td>
+<td>count of reduced-core selected keys missing from API runtime output</td>
+<td>count</td>
+<td>0 required</td>
+<td>disallow</td>
+</tr>
+<tr>
+<td>AP02_signal_extra_runtime_count</td>
+<td>12</td>
+<td>count of extra API selected keys absent from reduced-core truth</td>
+<td>count</td>
+<td>0 required</td>
+<td>disallow</td>
+</tr>
+<tr>
+<td>AP03_signal_parity_pass</td>
+<td>12</td>
+<td>indicator(<code>selected_missing_expected == 0 and selected_extra_runtime == 0</code>)</td>
+<td>binary</td>
+<td>1 required</td>
+<td>disallow</td>
+</tr>
+<tr>
+<td>AP04_execution_failed_checks_high_critical</td>
+<td>12</td>
+<td>count of high/critical execution parity failures</td>
+<td>count</td>
+<td>0 required</td>
+<td>disallow</td>
+</tr>
+<tr>
+<td>AP05_execution_parity_pass</td>
+<td>12</td>
+<td>indicator(execution parity validator overall pass)</td>
+<td>binary</td>
+<td>1 required</td>
+<td>disallow</td>
+</tr>
+<tr>
+<td>AP06_api_parity_stage_pass</td>
+<td>12</td>
+<td>indicator(<code>AP03_signal_parity_pass == 1 and AP05_execution_parity_pass == 1</code>)</td>
+<td>binary</td>
+<td>1 required</td>
 <td>disallow</td>
 </tr>
 </tbody>

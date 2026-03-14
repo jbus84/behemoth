@@ -57,6 +57,7 @@ def test_export_ctrader_custom_data_writes_manifest_and_deduped_csv(tmp_path: Pa
     assert list(csv_df["timestamp_utc"]) == sorted(csv_df["timestamp_utc"].tolist())
 
     row = summary_df.iloc[0]
+    assert row["source"] == "histdata"
     assert int(row["input_rows"]) == 4
     assert int(row["export_rows"]) == 3
     assert int(row["dropped_duplicate_rows"]) == 1
@@ -158,3 +159,29 @@ def test_export_ctrader_custom_data_count_mode_still_covers_requested_end(tmp_pa
     row = summary_df.iloc[0]
     assert int(row["requested_window_rows"]) == 10
     assert bool(row["requested_window_covered_to_end"]) is True
+
+
+def test_export_ctrader_custom_data_supports_dukascopy_source_metadata(tmp_path: Path) -> None:
+    tick_root = tmp_path / "dukascopy_ticks"
+    p = tick_root / "EURUSD" / "EURUSD_202507_ticks.parquet"
+    _write_hist_parquet(
+        p,
+        [
+            {"timestamp": "2025-07-07T00:00:00Z", "bid": 1.1000, "ask": 1.1002},
+            {"timestamp": "2025-07-07T00:00:01Z", "bid": 1.1001, "ask": 1.1003},
+        ],
+    )
+
+    manifest_path, _, summary_df = run(
+        symbol="EURUSD",
+        source="dukascopy",
+        tick_root=tick_root,
+        start_ts="2025-07-07T00:00:00Z",
+        end_ts="2025-07-07T00:00:02Z",
+        out_dir=tmp_path / "out",
+        overwrite=True,
+    )
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest["source"]["kind"] == "dukascopy_parquet"
+    assert summary_df.iloc[0]["source"] == "dukascopy"

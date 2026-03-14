@@ -1,6 +1,6 @@
 # Analysis Taxonomy Rules
 
-- generated_at_utc: `2026-03-11T20:18:41Z`
+- generated_at_utc: `2026-03-11T23:36:33Z`
 
 ## Group Assignment Order
 1. `core`: canonical governance reports for the OCO bible.
@@ -24,6 +24,7 @@
 |         10 | risk, checklist, stage_integrity                                                                                                                                                            |
 |         11 | execution_monte_carlo                                                                                                                                                                       |
 |         12 | stage12, api_parity, ab_parity, ctrader_ab_parity, reconciliation, runtime_db, tick_forensics, histdata_vs_ctrader, histdata_testclient_execution_parity, histdata_ctrader_execution_parity |
+|          8 | offset_tickbar_robustness, offset_robustness, warmup_sensitivity, api_offset_confirmation                                                                                                   |
 
 ## Legacy Keyword Map
 | keyword              |

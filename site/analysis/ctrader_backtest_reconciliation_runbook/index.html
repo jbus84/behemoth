@@ -1757,6 +1757,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../strategy_bible/offset_tickbar_robustness_method/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Offset Tick-Bar Robustness Method
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../strategy_bible/generated/stage_09_snapshot/" class="md-nav__link">
         
   
@@ -1905,6 +1933,62 @@
     
   
     Stage 11 Execution MC Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_12_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 12 API Parity Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_12_api_parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 12 API Parity Spec
   
 
     
@@ -2635,10 +2719,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_49" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_52" >
         
           
-          <label class="md-nav__link" for="__nav_4_49" id="__nav_4_49_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_52" id="__nav_4_52_label" tabindex="0">
             
   
   
@@ -2656,8 +2740,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_49_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_49">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_52_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_52">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2804,10 +2888,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_50" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_53" >
         
           
-          <label class="md-nav__link" for="__nav_4_50" id="__nav_4_50_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_53" id="__nav_4_53_label" tabindex="0">
             
   
   
@@ -2825,8 +2909,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_50_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_50">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_53_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_53">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3538,6 +3622,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#0-build-ctrader-custom-data-package-from-histdata-parquet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0) Build cTrader custom-data package from HistData parquet
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#1-start-api-with-isolated-per-run-db" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3560,10 +3655,43 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-reconcile-runtime-signals-vs-research" class="md-nav__link">
+  <a href="#3-reconcile-one-run-a-or-b-against-research" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3) Reconcile runtime signals vs research
+        3) Reconcile one run (A or B) against research
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-build-ab-parity-report-baseline-feed-vs-custom-histdata-feed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4) Build A/B parity report (baseline feed vs custom HistData feed)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-histdata-only-execution-parity-repo-vs-ctrader" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5) HistData-only execution parity (repo vs cTrader)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-no-ctrader-local-replay-parity-testclient-harness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6) No-cTrader local replay parity (TestClient harness)
       
     </span>
   </a>
@@ -3599,9 +3727,28 @@
 
 
 <h1 id="ctrader-backtest-reconciliation-runbook">cTrader Backtest Reconciliation Runbook<a class="headerlink" href="#ctrader-backtest-reconciliation-runbook" title="Permanent link">&para;</a></h1>
-<p>Use this runbook to reconcile one cTrader backtest run against research outputs.</p>
+<p>Use this runbook to reconcile cTrader backtest runs against research outputs and produce a
+baseline-vs-custom A/B parity report.</p>
+<h2 id="0-build-ctrader-custom-data-package-from-histdata-parquet">0) Build cTrader custom-data package from HistData parquet<a class="headerlink" href="#0-build-ctrader-custom-data-package-from-histdata-parquet" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>export-ctrader-custom-data<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">SYMBOL</span><span class="o">=</span>EURUSD<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">START_TS</span><span class="o">=</span><span class="m">2025</span>-07-07T00:00:00Z<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">END_TS</span><span class="o">=</span><span class="m">2025</span>-07-09T00:00:00Z<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">OUT_DIR</span><span class="o">=</span>data/analysis/backtest_reconcile/EURUSD_histdata_custom_20250707_20250709
+</code></pre></div>
+<p>Outputs:
+- <code>data/analysis/backtest_reconcile/EURUSD_histdata_custom_20250707_20250709/manifest.json</code>
+- <code>data/analysis/backtest_reconcile/EURUSD_histdata_custom_20250707_20250709/ticks/*.csv</code>
+- <code>data/analysis/backtest_reconcile/EURUSD_histdata_custom_20250707_20250709/export_summary.csv</code></p>
+<p>Load this package in cTrader through a custom data source plugin (see
+<code>src/cbot/CustomDataSourceHistDataPlugin.cs</code> scaffold).</p>
 <h2 id="1-start-api-with-isolated-per-run-db">1) Start API with isolated per-run DB<a class="headerlink" href="#1-start-api-with-isolated-per-run-db" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">RUN_ID</span><span class="o">=</span>eurusd_20250701_20251231
+<div class="highlight"><pre><span></span><code><span class="c1"># stop any existing API process on 8000 first</span>
+<span class="k">for</span><span class="w"> </span>pid<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">$(</span>lsof<span class="w"> </span>-ti<span class="w"> </span>tcp:8000<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">  </span><span class="nb">kill</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$pid</span><span class="s2">&quot;</span>
+<span class="k">done</span>
+
+<span class="nv">RUN_ID</span><span class="o">=</span>eurusd_20250701_20251231
 <span class="nv">DB_PATH</span><span class="o">=</span>data/db/backtests/<span class="si">${</span><span class="nv">RUN_ID</span><span class="si">}</span>.db
 
 <span class="nv">BEHEMOTH_GOVERNANCE_MODE</span><span class="o">=</span>historical_auto<span class="w"> </span><span class="se">\</span>
@@ -3612,7 +3759,16 @@
 <span class="nv">BEHEMOTH_STATE_DB</span><span class="o">=</span><span class="si">${</span><span class="nv">DB_PATH</span><span class="si">}</span><span class="w"> </span><span class="se">\</span>
 uv<span class="w"> </span>run<span class="w"> </span>uvicorn<span class="w"> </span>src.behemoth.api.server:app<span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span>
 </code></pre></div>
-<p>Run cTrader backtest with <code>API Base URL=http://127.0.0.1:8000</code>.</p>
+<p>Run cTrader backtest with <code>API Base URL=http://127.0.0.1:8000</code>.
+Recommended cBot ingest settings for parity:
+- <code>Enable Tick Batch=Yes</code>
+- <code>Tick Batch Size=20</code>
+- <code>Tick Flush Ms=100</code>
+- <code>Tick Queue Cap=20000</code></p>
+<p>Optional live feed sanity check during run:</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>http://127.0.0.1:8000/runtime/feed/status<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq
+</code></pre></div>
+<p>For the active symbol, <code>total_dropped</code> should stay near zero (or much lower than <code>total_accepted</code>).</p>
 <h2 id="2-summarize-runtime-db-slice">2) Summarize runtime DB slice<a class="headerlink" href="#2-summarize-runtime-db-slice" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>make<span class="w"> </span>summarize-runtime-db-run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span><span class="nv">SYMBOL</span><span class="o">=</span>EURUSD<span class="w"> </span><span class="se">\</span>
@@ -3623,11 +3779,12 @@ uv<span class="w"> </span>run<span class="w"> </span>uvicorn<span class="w"> </s
 <p>Outputs:
 - <code>data/analysis/backtest_reconcile/EURUSD_runtime_db_run_summary.csv</code>
 - <code>docs/analysis/EURUSD_runtime_db_run_summary.md</code></p>
-<h2 id="3-reconcile-runtime-signals-vs-research">3) Reconcile runtime signals vs research<a class="headerlink" href="#3-reconcile-runtime-signals-vs-research" title="Permanent link">&para;</a></h2>
+<h2 id="3-reconcile-one-run-a-or-b-against-research">3) Reconcile one run (A or B) against research<a class="headerlink" href="#3-reconcile-one-run-a-or-b-against-research" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>make<span class="w"> </span>reconcile-ctrader-run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span><span class="nv">SYMBOL</span><span class="o">=</span>EURUSD<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span><span class="nv">RUNTIME_DB</span><span class="o">=</span><span class="si">${</span><span class="nv">DB_PATH</span><span class="si">}</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span><span class="nv">PRED_PATH</span><span class="o">=</span>data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">HISTORY_DIR</span><span class="o">=</span>configs/research/governance/oco_history<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span><span class="nv">START_TS</span><span class="o">=</span><span class="m">2025</span>-07-01T00:00:00Z<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span><span class="nv">END_TS</span><span class="o">=</span><span class="m">2026</span>-01-01T00:00:00Z<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span><span class="nv">STRICT_WINDOW</span><span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
@@ -3637,13 +3794,92 @@ uv<span class="w"> </span>run<span class="w"> </span>uvicorn<span class="w"> </s
 - <code>data/analysis/backtest_reconcile/EURUSD_ctrader_vs_research_checks.csv</code>
 - <code>data/analysis/backtest_reconcile/EURUSD_ctrader_vs_research_mismatches.csv</code>
 - <code>docs/analysis/EURUSD_ctrader_vs_research_reconciliation.md</code></p>
+<h2 id="4-build-ab-parity-report-baseline-feed-vs-custom-histdata-feed">4) Build A/B parity report (baseline feed vs custom HistData feed)<a class="headerlink" href="#4-build-ab-parity-report-baseline-feed-vs-custom-histdata-feed" title="Permanent link">&para;</a></h2>
+<p>Run two backtests in cTrader over the same window:
+- Run A: broker historical feed, DB = <code>data/db/backtests/eurusd_20250707_20250709_baseline.db</code>
+- Run B: custom HistData feed, DB = <code>data/db/backtests/eurusd_20250707_20250709_histdata.db</code></p>
+<p>Then generate parity:</p>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>ctrader-ab-parity-report<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">SYMBOL</span><span class="o">=</span>EURUSD<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">RUNTIME_DB_A</span><span class="o">=</span>data/db/backtests/eurusd_20250707_20250709_baseline.db<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">RUNTIME_DB_B</span><span class="o">=</span>data/db/backtests/eurusd_20250707_20250709_histdata.db<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">PRED_PATH</span><span class="o">=</span>data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">START_TS</span><span class="o">=</span><span class="m">2025</span>-07-07T00:00:00Z<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">END_TS</span><span class="o">=</span><span class="m">2025</span>-07-09T00:00:00Z<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">TICK_ROOT</span><span class="o">=</span>/Users/danielfisher/Desktop/tick
+</code></pre></div>
+<p>Outputs:
+- <code>data/analysis/backtest_reconcile/EURUSD_ctrader_ab_parity_summary.csv</code>
+- <code>data/analysis/backtest_reconcile/EURUSD_ctrader_ab_parity_checks.csv</code>
+- <code>docs/analysis/EURUSD_ctrader_ab_parity_report.md</code></p>
+<p>Interpretation:
+- <code>parity_verdict_ctrader_side</code>: feed/run A-vs-B parity only (what we use for cTrader-side equivalence).
+- <code>parity_verdict_overall</code>: includes research high/critical health gate from both runs.</p>
+<h2 id="5-histdata-only-execution-parity-repo-vs-ctrader">5) HistData-only execution parity (repo vs cTrader)<a class="headerlink" href="#5-histdata-only-execution-parity-repo-vs-ctrader" title="Permanent link">&para;</a></h2>
+<p>When you only care about HistData equivalence, run this instead of A/B:
+- Repo reference: <code>stop_limit_tickfill_fullcap/&lt;SYMBOL&gt;_stop_limit_tickfill_detail.csv</code>
+- Truth filter: <code>reduced_core_rolling/&lt;SYMBOL&gt;_oco_reduced_state_schedule.csv</code> (month-scoped selected states)
+- cTrader reference: runtime DB + <code>events.json</code> from the same HistData backtest window</p>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>histdata-ctrader-parity<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">SYMBOL</span><span class="o">=</span>EURUSD<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">RUNTIME_DB</span><span class="o">=</span>data/db/backtests/eurusd_20250707_20250709_histdata.db<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">CTRADER_EVENTS_JSON</span><span class="o">=</span>/Users/danielfisher/cAlgo/Data/cBots/BehemothTradeManager/d719f157-f4ad-4fd3-bfa9-b7e4c67f8b16/Backtesting/events.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">REPO_DETAIL_CSV</span><span class="o">=</span>data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">REDUCED_STATE_SCHEDULE_CSV</span><span class="o">=</span>data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">START_TS</span><span class="o">=</span><span class="m">2025</span>-07-07T00:00:00Z<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">END_TS</span><span class="o">=</span><span class="m">2025</span>-07-09T00:00:00Z<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">TICK_ROOT</span><span class="o">=</span>/Users/danielfisher/Desktop/tick<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">TIME_TOL_SEC</span><span class="o">=</span><span class="m">1</span>.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">PRICE_TOL_PIPS</span><span class="o">=</span><span class="m">0</span>.1
+</code></pre></div>
+<p>Outputs:
+- <code>data/analysis/backtest_reconcile/EURUSD_histdata_ctrader_execution_parity_summary.csv</code>
+- <code>data/analysis/backtest_reconcile/EURUSD_histdata_ctrader_execution_parity_checks.csv</code>
+- <code>data/analysis/backtest_reconcile/EURUSD_histdata_ctrader_execution_parity_mismatches.csv</code>
+- <code>docs/analysis/EURUSD_histdata_ctrader_execution_parity_report.md</code></p>
+<h2 id="6-no-ctrader-local-replay-parity-testclient-harness">6) No-cTrader local replay parity (TestClient harness)<a class="headerlink" href="#6-no-ctrader-local-replay-parity-testclient-harness" title="Permanent link">&para;</a></h2>
+<p>Use this when you want to iterate quickly without launching cTrader.<br />
+It replays HistData ticks through the FastAPI app in-process, triggers <code>/predict</code>
+only on completed bars, synthesizes matched trade lifecycle events, and then runs
+the same HistData execution parity validator.</p>
+<p>For bar-boundary parity, the harness defaults to <code>WARMUP_SOURCE=month_start</code>
+(it backfills all pre-window ticks from the month start instead of a fixed tail).
+It also defaults to <code>ENABLE_SEQUENCE_FALLBACK=true</code> for trade synthesis when
+strict <code>(candidate_uid, close_ts)</code> key alignment drifts but state ordering matches.
+Default gate behavior is execution parity; set <code>REQUIRE_SELECTED_PARITY=true</code>
+if you want strict selected-key parity to be blocking too.</p>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>histdata-testclient-parity<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">SYMBOL</span><span class="o">=</span>EURUSD<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">RUNTIME_DB</span><span class="o">=</span>data/db/backtests/eurusd_20250707_20250709_testclient.db<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">EVENTS_JSON</span><span class="o">=</span>data/analysis/backtest_reconcile/EURUSD_testclient_events_20250707_20250709.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">REPO_DETAIL_CSV</span><span class="o">=</span>data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">REDUCED_STATE_SCHEDULE_CSV</span><span class="o">=</span>data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">START_TS</span><span class="o">=</span><span class="m">2025</span>-07-07T00:00:00Z<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">END_TS</span><span class="o">=</span><span class="m">2025</span>-07-09T00:00:00Z<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">TICK_ROOT</span><span class="o">=</span>/Users/danielfisher/Desktop/tick
+</code></pre></div>
+<p>Primary outputs:
+- <code>data/analysis/backtest_reconcile/EURUSD_histdata_testclient_replay_summary.csv</code>
+- <code>data/analysis/backtest_reconcile/EURUSD_histdata_testclient_selected_mismatches.csv</code>
+- <code>data/analysis/backtest_reconcile/EURUSD_histdata_testclient_execution_parity_summary.csv</code>
+- <code>data/analysis/backtest_reconcile/EURUSD_histdata_testclient_execution_parity_checks.csv</code>
+- <code>data/analysis/backtest_reconcile/EURUSD_histdata_testclient_execution_parity_mismatches.csv</code>
+- <code>docs/analysis/EURUSD_histdata_testclient_execution_parity_report.md</code></p>
+<p>Hard hygiene gate:
+- Runtime DB must be single-run clean for the target window (no duplicate raw tick triplets).
+- Runtime <code>candidate_uid</code> in <code>trades</code> must be canonical (<code>oco|SYMBOL|BT|hH|state_id</code>), otherwise reduced-core parity cannot be matched.</p>
 <h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>audit_logs.event_ts</code> is wall-clock time; if this differs from backtest time window, checks will flag <code>audit_event_window_ratio</code> failures.</li>
 <li>New runs should use isolated DB files to avoid mixed historical/test/live rows.</li>
+<li><code>/predict</code> is now cadence-scoped by <code>completed_bar_ticks</code>; cBot sends this automatically from <code>/ticks</code> responses.</li>
+<li>When reconciling historical-mode runs, pass <code>HISTORY_DIR=configs/research/governance/oco_history</code> so research rows are filtered to the same locked state universe.</li>
 <li>High/critical failures from reconciliation should block interpretation of cTrader-vs-research alignment.</li>
 <li><code>raw_ticks</code> capture is off by default; set <code>BEHEMOTH_RECORD_RAW_TICKS=true</code> for deep timing diagnostics.</li>
 <li>Stop the API process before running offline DB analysis commands to avoid DuckDB file lock conflicts.</li>
+<li>A/B report now emits two verdicts:</li>
+<li><code>cTrader-side parity</code> (A/B delta checks only)</li>
+<li><code>overall</code> (A/B deltas plus research high/critical gate).</li>
 </ul>
 
 

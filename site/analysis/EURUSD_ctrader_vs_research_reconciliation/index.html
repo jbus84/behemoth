@@ -1757,6 +1757,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../strategy_bible/offset_tickbar_robustness_method/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Offset Tick-Bar Robustness Method
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../strategy_bible/generated/stage_09_snapshot/" class="md-nav__link">
         
   
@@ -1905,6 +1933,62 @@
     
   
     Stage 11 Execution MC Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_12_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 12 API Parity Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_12_api_parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 12 API Parity Spec
   
 
     
@@ -2635,10 +2719,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_49" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_52" >
         
           
-          <label class="md-nav__link" for="__nav_4_49" id="__nav_4_49_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_52" id="__nav_4_52_label" tabindex="0">
             
   
   
@@ -2656,8 +2740,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_49_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_49">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_52_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_52">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2804,10 +2888,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_50" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_53" >
         
           
-          <label class="md-nav__link" for="__nav_4_50" id="__nav_4_50_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_53" id="__nav_4_53_label" tabindex="0">
             
   
   
@@ -2825,8 +2909,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_50_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_50">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_53_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_53">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3601,9 +3685,9 @@
 <h1 id="ctrader-vs-research-reconciliation">cTrader vs Research Reconciliation<a class="headerlink" href="#ctrader-vs-research-reconciliation" title="Permanent link">&para;</a></h1>
 <ul>
 <li>symbol: <code>EURUSD</code></li>
-<li>runtime_db: <code>data/db/backtests/eurusd_20251208_20251210_tzprobe.db</code></li>
+<li>runtime_db: <code>data/db/backtests/eurusd_reconcile.db</code></li>
 <li>predictions_parquet: <code>data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet</code></li>
-<li>history_dir: ``</li>
+<li>history_dir: <code>configs/research/governance/oco_history</code></li>
 <li>strict_window: <code>True</code></li>
 <li>timestamp_tolerance_sec: <code>2.0</code></li>
 </ul>
@@ -3626,6 +3710,12 @@
 <th style="text-align: right;">trades_window_rows</th>
 <th style="text-align: right;">audit_symbol_rows</th>
 <th style="text-align: right;">audit_window_rows</th>
+<th style="text-align: right;">runtime_raw_tick_rows_window</th>
+<th style="text-align: right;">hist_tick_rows_window</th>
+<th style="text-align: right;">raw_tick_coverage_ratio_runtime_vs_hist</th>
+<th style="text-align: right;">runtime_median_intertick_ms</th>
+<th style="text-align: right;">hist_median_intertick_ms</th>
+<th style="text-align: right;">median_intertick_ratio_runtime_vs_hist</th>
 <th style="text-align: right;">research_window_rows</th>
 <th style="text-align: right;">research_selected_rows_window</th>
 <th style="text-align: right;">selected_key_missing_count</th>
@@ -3649,38 +3739,44 @@
 <tbody>
 <tr>
 <td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">data/db/backtests/eurusd_20251208_20251210_tzprobe.db</td>
+<td style="text-align: left;">data/db/backtests/eurusd_reconcile.db</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet</td>
-<td style="text-align: left;"></td>
-<td style="text-align: left;">2025-12-08T00:00:00+00:00</td>
-<td style="text-align: left;">2025-12-10T00:00:00+00:00</td>
+<td style="text-align: left;">configs/research/governance/oco_history</td>
+<td style="text-align: left;">2025-07-07T00:00:00+00:00</td>
+<td style="text-align: left;">2025-07-09T00:00:00+00:00</td>
 <td style="text-align: left;">True</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1754</td>
+<td style="text-align: right;">42</td>
+<td style="text-align: right;">81</td>
+<td style="text-align: right;">81</td>
+<td style="text-align: right;">81</td>
+<td style="text-align: right;">81</td>
+<td style="text-align: right;">98518</td>
+<td style="text-align: right;">136043</td>
+<td style="text-align: right;">0.724168</td>
+<td style="text-align: right;">909</td>
+<td style="text-align: right;">307</td>
+<td style="text-align: right;">2.96091</td>
+<td style="text-align: right;">155</td>
+<td style="text-align: right;">42</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">39</td>
+<td style="text-align: right;">1.92857</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.0714286</td>
+<td style="text-align: right;">0.596467</td>
+<td style="text-align: right;">608.03</td>
+<td style="text-align: right;">14754.9</td>
+<td style="text-align: right;">0.0714286</td>
+<td style="text-align: right;">0.047619</td>
+<td style="text-align: right;">42</td>
 <td style="text-align: left;">False</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">685</td>
-<td style="text-align: right;">685</td>
-<td style="text-align: right;">59</td>
-<td style="text-align: right;">45</td>
-<td style="text-align: right;">59</td>
-<td style="text-align: right;">45</td>
-<td style="text-align: right;">8596</td>
-<td style="text-align: right;">685</td>
-<td style="text-align: right;">123</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0.00806452</td>
-<td style="text-align: right;">674</td>
-<td style="text-align: right;">34</td>
-<td style="text-align: right;">0.0656934</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1.18937</td>
-<td style="text-align: right;">249.427</td>
-<td style="text-align: right;">1195.62</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0.00145985</td>
-<td style="text-align: right;">11</td>
-<td style="text-align: left;">False</td>
-<td style="text-align: left;">2026-03-09T22:58:50Z</td>
+<td style="text-align: left;">2026-03-10T17:13:42Z</td>
 </tr>
 </tbody>
 </table>
@@ -3698,34 +3794,26 @@
 </thead>
 <tbody>
 <tr>
-<td style="text-align: left;">SELECTED_KEY_MISSING_EQ_0</td>
+<td style="text-align: left;">RAW_TICK_COVERAGE_RATIO_GE_0_95</td>
 <td style="text-align: left;">high</td>
-<td style="text-align: left;">selected_key_missing_count</td>
-<td style="text-align: right;">123</td>
-<td style="text-align: left;">0</td>
-<td style="text-align: left;">key=(candidate_uid, model_month)</td>
-</tr>
-<tr>
-<td style="text-align: left;">SELECTED_KEY_JACCARD_GE_0_95</td>
-<td style="text-align: left;">high</td>
-<td style="text-align: left;">selected_key_jaccard</td>
-<td style="text-align: right;">0.00806452</td>
+<td style="text-align: left;">raw_tick_coverage_ratio_runtime_vs_hist</td>
+<td style="text-align: right;">0.724168</td>
 <td style="text-align: left;">0.95</td>
-<td style="text-align: left;">key=(candidate_uid, model_month)</td>
+<td style="text-align: left;">tick_root=/Users/danielfisher/Desktop/tick</td>
 </tr>
 <tr>
-<td style="text-align: left;">SELECTED_COUNT_MISSING_ROWS_EQ_0</td>
+<td style="text-align: left;">RUNTIME_MEDIAN_INTERTICK_MS_LE_2X_HIST</td>
 <td style="text-align: left;">high</td>
-<td style="text-align: left;">selected_count_missing_rows</td>
-<td style="text-align: right;">674</td>
-<td style="text-align: left;">0</td>
-<td style="text-align: left;">row-count delta by key=(candidate_uid, model_month)</td>
+<td style="text-align: left;">median_intertick_ratio_runtime_vs_hist</td>
+<td style="text-align: right;">2.96091</td>
+<td style="text-align: left;">2.0</td>
+<td style="text-align: left;">runtime_median_ms=909.0; hist_median_ms=307.0</td>
 </tr>
 <tr>
 <td style="text-align: left;">SELECTED_COUNT_EXTRA_ROWS_EQ_0</td>
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">selected_count_extra_rows</td>
-<td style="text-align: right;">34</td>
+<td style="text-align: right;">39</td>
 <td style="text-align: left;">0</td>
 <td style="text-align: left;">row-count delta by key=(candidate_uid, model_month)</td>
 </tr>
@@ -3733,7 +3821,7 @@
 <td style="text-align: left;">SELECTED_COUNT_RATIO_BETWEEN_0_8_1_2</td>
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">selected_count_ratio_runtime_vs_research</td>
-<td style="text-align: right;">0.0656934</td>
+<td style="text-align: right;">1.92857</td>
 <td style="text-align: left;">[0.8,1.2]</td>
 <td style="text-align: left;">ratio=len(audit_window)/len(research_selected_window)</td>
 </tr>
@@ -3741,9 +3829,25 @@
 <td style="text-align: left;">TIMESTAMP_MATCH_RATIO_GE_0_80</td>
 <td style="text-align: left;">medium</td>
 <td style="text-align: left;">timestamp_match_ratio</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.0714286</td>
 <td style="text-align: left;">0.8</td>
 <td style="text-align: left;">tolerance_sec=2.0 audit_window_source=close_ts; low ratio often indicates event_ts clock mismatch</td>
+</tr>
+<tr>
+<td style="text-align: left;">TIMESTAMP_MEDIAN_ABS_GAP_SEC_LE_THRESHOLD</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">timestamp_median_abs_gap_sec</td>
+<td style="text-align: right;">608.03</td>
+<td style="text-align: left;">60.0</td>
+<td style="text-align: left;">sample_count=42; threshold=max(60,2*tolerance_sec)</td>
+</tr>
+<tr>
+<td style="text-align: left;">TIMESTAMP_MATCH_RATIO_BEST_LAG_GE_0_90</td>
+<td style="text-align: left;">medium</td>
+<td style="text-align: left;">timestamp_match_ratio_best_lag</td>
+<td style="text-align: right;">0.047619</td>
+<td style="text-align: left;">0.9</td>
+<td style="text-align: left;">sample_count=42; compare with lag0 metric for timezone drift</td>
 </tr>
 </tbody>
 </table>
@@ -3762,274 +3866,22 @@
 </thead>
 <tbody>
 <tr>
-<td style="text-align: left;">missing_selected_key</td>
+<td style="text-align: left;">extra_selected_count_by_key</td>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: left;">oco</td>
 <td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">1000</td>
-<td style="text-align: left;">h1</td>
-<td style="text-align: left;">oco_first_touch_clean__all__k2</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">1000</td>
-<td style="text-align: left;">h1</td>
-<td style="text-align: left;">oco_first_touch_clean__all__k3</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">1000</td>
-<td style="text-align: left;">h2</td>
-<td style="text-align: left;">oco_first_touch_clean__all__k3</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">1000</td>
-<td style="text-align: left;">h2</td>
-<td style="text-align: left;">oco_first_touch_clean__all__k5</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">1000</td>
-<td style="text-align: left;">h3</td>
-<td style="text-align: left;">oco_first_touch__all__k3</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">1000</td>
-<td style="text-align: left;">h3</td>
-<td style="text-align: left;">oco_first_touch_clean__all__k5</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">1000</td>
-<td style="text-align: left;">h4</td>
-<td style="text-align: left;">oco_first_touch_clean__all__k5</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">1000</td>
-<td style="text-align: left;">h4</td>
-<td style="text-align: left;">oco_first_touch_clean__all__k8</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">1000</td>
+<td style="text-align: left;">100</td>
 <td style="text-align: left;">h5</td>
-<td style="text-align: left;">oco_first_touch_clean__all__k5</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">1000</td>
-<td style="text-align: left;">h6</td>
-<td style="text-align: left;">oco_first_touch_clean__all__k10</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">1000</td>
-<td style="text-align: left;">h6</td>
-<td style="text-align: left;">oco_first_touch_clean__all__k5</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">1000</td>
-<td style="text-align: left;">h6</td>
-<td style="text-align: left;">oco_first_touch_clean__all__k8</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">100</td>
-<td style="text-align: left;">h1</td>
-<td style="text-align: left;">oco_first_touch__all__k2</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">100</td>
-<td style="text-align: left;">h1</td>
-<td style="text-align: left;">oco_first_touch__all__k3</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">100</td>
-<td style="text-align: left;">h1</td>
-<td style="text-align: left;">oco_first_touch__high_abs_vel_q70__k2</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">100</td>
-<td style="text-align: left;">h1</td>
-<td style="text-align: left;">oco_first_touch__high_abs_vel_q80__k2</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">100</td>
-<td style="text-align: left;">h1</td>
-<td style="text-align: left;">oco_first_touch__high_range_q70__k2</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">100</td>
-<td style="text-align: left;">h1</td>
-<td style="text-align: left;">oco_first_touch__high_range_q80__k2</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">100</td>
-<td style="text-align: left;">h1</td>
-<td style="text-align: left;">oco_first_touch_clean__all__k3</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">100</td>
-<td style="text-align: left;">h1</td>
-<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q70__k2</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">100</td>
-<td style="text-align: left;">h1</td>
-<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q80__k2</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">100</td>
-<td style="text-align: left;">h1</td>
 <td style="text-align: left;">oco_first_touch_clean__high_range_q70__k2</td>
 </tr>
 <tr>
-<td style="text-align: left;">missing_selected_key</td>
+<td style="text-align: left;">extra_selected_count_by_key</td>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: left;">oco</td>
 <td style="text-align: left;">EURUSD</td>
 <td style="text-align: left;">100</td>
-<td style="text-align: left;">h1</td>
-<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">100</td>
-<td style="text-align: left;">h1</td>
-<td style="text-align: left;">oco_first_touch_clean__london__k2</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">100</td>
-<td style="text-align: left;">h2</td>
-<td style="text-align: left;">oco_first_touch__high_abs_vel_q70__k2</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">100</td>
-<td style="text-align: left;">h2</td>
-<td style="text-align: left;">oco_first_touch__high_abs_vel_q70__k3</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">100</td>
-<td style="text-align: left;">h2</td>
-<td style="text-align: left;">oco_first_touch__high_abs_vel_q80__k2</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">100</td>
-<td style="text-align: left;">h2</td>
-<td style="text-align: left;">oco_first_touch__high_abs_vel_q80__k3</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">100</td>
-<td style="text-align: left;">h2</td>
-<td style="text-align: left;">oco_first_touch__high_range_q70__k3</td>
-</tr>
-<tr>
-<td style="text-align: left;">missing_selected_key</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">oco</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">100</td>
-<td style="text-align: left;">h2</td>
-<td style="text-align: left;">oco_first_touch__high_range_q80__k2</td>
+<td style="text-align: left;">h6</td>
+<td style="text-align: left;">oco_first_touch_clean__high_abs_vel_q80__k2</td>
 </tr>
 </tbody>
 </table>
@@ -4056,7 +3908,7 @@
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">path=data/db/backtests/eurusd_20251208_20251210_tzprobe.db</td>
+<td style="text-align: left;">path=data/db/backtests/eurusd_reconcile.db</td>
 </tr>
 <tr>
 <td style="text-align: left;">PREDICTIONS_PARQUET_EXISTS</td>
@@ -4069,11 +3921,31 @@
 <td style="text-align: left;">path=data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet</td>
 </tr>
 <tr>
+<td style="text-align: left;">HIST_LOCK_MONTH_COVERAGE_EQ_1_00</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">hist_lock_month_coverage_ratio</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">1.0</td>
+<td style="text-align: left;">==</td>
+<td style="text-align: left;">history_dir=configs/research/governance/oco_history</td>
+</tr>
+<tr>
+<td style="text-align: left;">HIST_LOCK_FILTER_SELECTED_ROWS_GT_0</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">critical</td>
+<td style="text-align: left;">hist_lock_filter_selected_rows</td>
+<td style="text-align: right;">42</td>
+<td style="text-align: left;">&gt;0</td>
+<td style="text-align: left;">&gt;</td>
+<td style="text-align: left;">before=1754</td>
+</tr>
+<tr>
 <td style="text-align: left;">TRADES_SYMBOL_ROWS_PRESENT</td>
 <td style="text-align: left;">pass</td>
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">trades_symbol_rows</td>
-<td style="text-align: right;">59</td>
+<td style="text-align: right;">81</td>
 <td style="text-align: left;">&gt;0</td>
 <td style="text-align: left;">&gt;</td>
 <td style="text-align: left;">rows for symbol in runtime trades table</td>
@@ -4083,7 +3955,7 @@
 <td style="text-align: left;">pass</td>
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">trades_window_rows</td>
-<td style="text-align: right;">45</td>
+<td style="text-align: right;">81</td>
 <td style="text-align: left;">&gt;0</td>
 <td style="text-align: left;">&gt;</td>
 <td style="text-align: left;">rows for symbol in requested window</td>
@@ -4096,14 +3968,14 @@
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">0</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">strict_window=True; before_start=0; after_end=14</td>
+<td style="text-align: left;">strict_window=True; before_start=0; after_end=0</td>
 </tr>
 <tr>
 <td style="text-align: left;">TRADES_AFTER_WINDOW_ROWS_INFO</td>
 <td style="text-align: left;">pass</td>
 <td style="text-align: left;">medium</td>
 <td style="text-align: left;">trades_rows_after_window</td>
-<td style="text-align: right;">14</td>
+<td style="text-align: right;">0</td>
 <td style="text-align: left;">informational</td>
 <td style="text-align: left;">info</td>
 <td style="text-align: left;">non-zero is expected when reconciling a partial window from an in-progress or multi-month runtime DB</td>
@@ -4113,7 +3985,7 @@
 <td style="text-align: left;">pass</td>
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">audit_symbol_rows</td>
-<td style="text-align: right;">59</td>
+<td style="text-align: right;">81</td>
 <td style="text-align: left;">&gt;0</td>
 <td style="text-align: left;">&gt;</td>
 <td style="text-align: left;">rows for symbol in runtime audit_logs table</td>
@@ -4139,11 +4011,41 @@
 <td style="text-align: left;">audit_window_source=close_ts</td>
 </tr>
 <tr>
+<td style="text-align: left;">RAW_TICK_ROWS_WINDOW_PRESENT</td>
+<td style="text-align: left;">pass</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">runtime_raw_tick_rows_window</td>
+<td style="text-align: right;">98518</td>
+<td style="text-align: left;">&gt;0</td>
+<td style="text-align: left;">&gt;</td>
+<td style="text-align: left;">runtime raw_ticks rows in requested window</td>
+</tr>
+<tr>
+<td style="text-align: left;">RAW_TICK_COVERAGE_RATIO_GE_0_95</td>
+<td style="text-align: left;">fail</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">raw_tick_coverage_ratio_runtime_vs_hist</td>
+<td style="text-align: right;">0.724168</td>
+<td style="text-align: left;">0.95</td>
+<td style="text-align: left;">&gt;=</td>
+<td style="text-align: left;">tick_root=/Users/danielfisher/Desktop/tick</td>
+</tr>
+<tr>
+<td style="text-align: left;">RUNTIME_MEDIAN_INTERTICK_MS_LE_2X_HIST</td>
+<td style="text-align: left;">fail</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">median_intertick_ratio_runtime_vs_hist</td>
+<td style="text-align: right;">2.96091</td>
+<td style="text-align: left;">2.0</td>
+<td style="text-align: left;">&lt;=</td>
+<td style="text-align: left;">runtime_median_ms=909.0; hist_median_ms=307.0</td>
+</tr>
+<tr>
 <td style="text-align: left;">RESEARCH_ROWS_WINDOW_PRESENT</td>
 <td style="text-align: left;">pass</td>
 <td style="text-align: left;">critical</td>
 <td style="text-align: left;">research_window_rows</td>
-<td style="text-align: right;">8596</td>
+<td style="text-align: right;">155</td>
 <td style="text-align: left;">&gt;0</td>
 <td style="text-align: left;">&gt;</td>
 <td style="text-align: left;">research parquet rows in requested window</td>
@@ -4153,17 +4055,17 @@
 <td style="text-align: left;">pass</td>
 <td style="text-align: left;">critical</td>
 <td style="text-align: left;">research_selected_rows_window</td>
-<td style="text-align: right;">685</td>
+<td style="text-align: right;">42</td>
 <td style="text-align: left;">&gt;0</td>
 <td style="text-align: left;">&gt;</td>
 <td style="text-align: left;">selected_exec==1 rows in requested window</td>
 </tr>
 <tr>
 <td style="text-align: left;">SELECTED_KEY_MISSING_EQ_0</td>
-<td style="text-align: left;">fail</td>
+<td style="text-align: left;">pass</td>
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">selected_key_missing_count</td>
-<td style="text-align: right;">123</td>
+<td style="text-align: right;">0</td>
 <td style="text-align: left;">0</td>
 <td style="text-align: left;">==</td>
 <td style="text-align: left;">key=(candidate_uid, model_month)</td>
@@ -4180,20 +4082,20 @@
 </tr>
 <tr>
 <td style="text-align: left;">SELECTED_KEY_JACCARD_GE_0_95</td>
-<td style="text-align: left;">fail</td>
+<td style="text-align: left;">pass</td>
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">selected_key_jaccard</td>
-<td style="text-align: right;">0.00806452</td>
+<td style="text-align: right;">1</td>
 <td style="text-align: left;">0.95</td>
 <td style="text-align: left;">&gt;=</td>
 <td style="text-align: left;">key=(candidate_uid, model_month)</td>
 </tr>
 <tr>
 <td style="text-align: left;">SELECTED_COUNT_MISSING_ROWS_EQ_0</td>
-<td style="text-align: left;">fail</td>
+<td style="text-align: left;">pass</td>
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">selected_count_missing_rows</td>
-<td style="text-align: right;">674</td>
+<td style="text-align: right;">0</td>
 <td style="text-align: left;">0</td>
 <td style="text-align: left;">==</td>
 <td style="text-align: left;">row-count delta by key=(candidate_uid, model_month)</td>
@@ -4203,7 +4105,7 @@
 <td style="text-align: left;">fail</td>
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">selected_count_extra_rows</td>
-<td style="text-align: right;">34</td>
+<td style="text-align: right;">39</td>
 <td style="text-align: left;">0</td>
 <td style="text-align: left;">==</td>
 <td style="text-align: left;">row-count delta by key=(candidate_uid, model_month)</td>
@@ -4213,7 +4115,7 @@
 <td style="text-align: left;">fail</td>
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">selected_count_ratio_runtime_vs_research</td>
-<td style="text-align: right;">0.0656934</td>
+<td style="text-align: right;">1.92857</td>
 <td style="text-align: left;">[0.8,1.2]</td>
 <td style="text-align: left;">between</td>
 <td style="text-align: left;">ratio=len(audit_window)/len(research_selected_window)</td>
@@ -4223,7 +4125,7 @@
 <td style="text-align: left;">fail</td>
 <td style="text-align: left;">medium</td>
 <td style="text-align: left;">timestamp_match_ratio</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.0714286</td>
 <td style="text-align: left;">0.8</td>
 <td style="text-align: left;">&gt;=</td>
 <td style="text-align: left;">tolerance_sec=2.0 audit_window_source=close_ts; low ratio often indicates event_ts clock mismatch</td>
@@ -4231,32 +4133,32 @@
 <tr>
 <td style="text-align: left;">TIMESTAMP_BEST_LAG_MIN_ABS_LE_1</td>
 <td style="text-align: left;">pass</td>
-<td style="text-align: left;">medium</td>
+<td style="text-align: left;">high</td>
 <td style="text-align: left;">timestamp_best_lag_minutes</td>
-<td style="text-align: right;">1.18937</td>
-<td style="text-align: left;">informational</td>
-<td style="text-align: left;">info</td>
-<td style="text-align: left;">sample_count=11; tolerance_sec=2.0; lag from nearest-key timestamp alignment</td>
+<td style="text-align: right;">0.596467</td>
+<td style="text-align: left;">1.0</td>
+<td style="text-align: left;">&lt;=</td>
+<td style="text-align: left;">sample_count=42; tolerance_sec=2.0; lag from nearest-key timestamp alignment</td>
 </tr>
 <tr>
 <td style="text-align: left;">TIMESTAMP_MEDIAN_ABS_GAP_SEC_LE_THRESHOLD</td>
-<td style="text-align: left;">pass</td>
-<td style="text-align: left;">medium</td>
+<td style="text-align: left;">fail</td>
+<td style="text-align: left;">high</td>
 <td style="text-align: left;">timestamp_median_abs_gap_sec</td>
-<td style="text-align: right;">249.427</td>
-<td style="text-align: left;">informational</td>
-<td style="text-align: left;">info</td>
-<td style="text-align: left;">sample_count=11; threshold=max(60,2*tolerance_sec)</td>
+<td style="text-align: right;">608.03</td>
+<td style="text-align: left;">60.0</td>
+<td style="text-align: left;">&lt;=</td>
+<td style="text-align: left;">sample_count=42; threshold=max(60,2*tolerance_sec)</td>
 </tr>
 <tr>
 <td style="text-align: left;">TIMESTAMP_MATCH_RATIO_BEST_LAG_GE_0_90</td>
-<td style="text-align: left;">pass</td>
+<td style="text-align: left;">fail</td>
 <td style="text-align: left;">medium</td>
 <td style="text-align: left;">timestamp_match_ratio_best_lag</td>
-<td style="text-align: right;">0.00145985</td>
-<td style="text-align: left;">informational</td>
-<td style="text-align: left;">info</td>
-<td style="text-align: left;">sample_count=11; compare with lag0 metric for timezone drift</td>
+<td style="text-align: right;">0.047619</td>
+<td style="text-align: left;">0.9</td>
+<td style="text-align: left;">&gt;=</td>
+<td style="text-align: left;">sample_count=42; compare with lag0 metric for timezone drift</td>
 </tr>
 <tr>
 <td style="text-align: left;">BROKER_POS_ID_DUPLICATES_EQ_0</td>

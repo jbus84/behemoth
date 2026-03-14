@@ -1763,6 +1763,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../offset_tickbar_robustness_method/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Offset Tick-Bar Robustness Method
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../generated/stage_09_snapshot/" class="md-nav__link">
         
   
@@ -1911,6 +1939,62 @@
     
   
     Stage 11 Execution MC Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generated/stage_12_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 12 API Parity Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stage_12_api_parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 12 API Parity Spec
   
 
     
@@ -2296,6 +2380,17 @@
     <span class="md-ellipsis">
       
         Stage 11: Execution Monte Carlo (Tick-Level Uncertainty)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stage-12-api-parity-against-reduced-core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 12: API Parity Against Reduced Core
       
     </span>
   </a>
@@ -2848,10 +2943,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_49" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_52" >
         
           
-          <label class="md-nav__link" for="__nav_4_49" id="__nav_4_49_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_52" id="__nav_4_52_label" tabindex="0">
             
   
   
@@ -2869,8 +2964,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_49_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_49">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_52_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_52">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3017,10 +3112,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_50" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_53" >
         
           
-          <label class="md-nav__link" for="__nav_4_50" id="__nav_4_50_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_53" id="__nav_4_53_label" tabindex="0">
             
   
   
@@ -3038,8 +3133,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_50_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_50">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_53_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_53">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3894,6 +3989,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#stage-12-api-parity-against-reduced-core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 12: API Parity Against Reduced Core
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4405,6 +4511,48 @@
 <td><strong><code>EM05_nan_core_fields</code></strong></td>
 <td>Execution MC</td>
 <td>Integrity check asserting zero corrupted executions occurred during the thousands of Monte Carlo branching simulations.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="stage-12-api-parity-against-reduced-core">Stage 12: API Parity Against Reduced Core<a class="headerlink" href="#stage-12-api-parity-against-reduced-core" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Governance Category</th>
+<th>Purpose / Abstract Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>AP01_signal_missing_expected_count</code></strong></td>
+<td>API Signal Parity</td>
+<td>Counts reduced-core selected keys missing from the API runtime output.</td>
+</tr>
+<tr>
+<td><strong><code>AP02_signal_extra_runtime_count</code></strong></td>
+<td>API Signal Parity</td>
+<td>Counts extra API-selected keys absent from reduced-core truth.</td>
+</tr>
+<tr>
+<td><strong><code>AP03_signal_parity_pass</code></strong></td>
+<td>API Signal Parity</td>
+<td>Binary hard gate indicating exact selected-key parity was achieved.</td>
+</tr>
+<tr>
+<td><strong><code>AP04_execution_failed_checks_high_critical</code></strong></td>
+<td>API Execution Parity</td>
+<td>Counts high/critical execution parity failures in the downstream trade lifecycle validator.</td>
+</tr>
+<tr>
+<td><strong><code>AP05_execution_parity_pass</code></strong></td>
+<td>API Execution Parity</td>
+<td>Binary hard gate indicating execution parity passed against reduced-core truth.</td>
+</tr>
+<tr>
+<td><strong><code>AP06_api_parity_stage_pass</code></strong></td>
+<td>API Parity Stage</td>
+<td>Final Stage 12 pass indicator. It is green only when both signal parity and execution parity are green.</td>
 </tr>
 </tbody>
 </table>
