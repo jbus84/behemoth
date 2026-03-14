@@ -3,6 +3,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.IO;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -109,13 +110,14 @@ namespace cAlgo.Robots
         private bool _predictPathHealthy = true;
         private const int MaxConsecutiveTickIngestFailures = 20;
         private const int MaxConsecutivePredictFailures = 5;
-        private const string BuildTag = "2026-03-11-candidate-uid-parity-fix-v1";
+        private const string BuildTag = "2026-03-13-debug-package-warmup-v1";
         private const string ActiveDebugSessionPath =
             "/Users/danielfisher/repositories/behemoth/data/analysis/backtest_reconcile/ctrader_active_debug_session.json";
         private readonly List<TickPayload> _tickQueue = new List<TickPayload>();
         private long _clientTickSeq = 0;
         private DateTime _lastTickFlushUtc = DateTime.MinValue;
         private string _debugRunId;
+        private DebugSessionContext _debugSessionContext;
 
         protected override void OnStart()
         {
@@ -123,7 +125,10 @@ namespace cAlgo.Robots
             {
                 _client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
                 _internalSymbol = GetInternalSymbolName(Symbol.Name);
-                _debugRunId = ResolveDebugRunId();
+                _debugSessionContext = ResolveDebugSessionContext();
+                _debugRunId = _debugSessionContext != null && !string.IsNullOrWhiteSpace(_debugSessionContext.run_id)
+                    ? _debugSessionContext.run_id
+                    : ResolveDebugRunId();
                 _lastTickFlushUtc = Server.Time.ToUniversalTime();
                 PendingOrders.Filled += OnPendingOrderFilled;
                 Positions.Closed += OnPositionClosed;
@@ -138,44 +143,54 @@ namespace cAlgo.Robots
                 {
                     SyncClientTickSeqFromApi();
                 }
-                
-                _historicalTicks = MarketData.GetTicks();
-                
-                int loadAttempts = 0;
-                while (_historicalTicks.Count < WarmupTicks && loadAttempts < 500)
+
+                string backfillSource = "marketdata_history";
+                var tickList = TryLoadBackfillTicksFromDebugPackage();
+                if (tickList != null && tickList.Count > 0)
                 {
-                    int before = _historicalTicks.Count;
-                    _historicalTicks.LoadMoreHistory();
-                    if (_historicalTicks.Count == before) 
+                    backfillSource = "debug_package";
+                    Print($"[INIT] Loaded {tickList.Count} warmup ticks from active debug package.");
+                }
+                else
+                {
+                    _historicalTicks = MarketData.GetTicks();
+
+                    int loadAttempts = 0;
+                    while (_historicalTicks.Count < WarmupTicks && loadAttempts < 500)
                     {
-                        Print($"[INIT] Reached max available history: {_historicalTicks.Count} ticks.");
-                        break;
+                        int before = _historicalTicks.Count;
+                        _historicalTicks.LoadMoreHistory();
+                        if (_historicalTicks.Count == before)
+                        {
+                            Print($"[INIT] Reached max available history: {_historicalTicks.Count} ticks.");
+                            break;
+                        }
+                        loadAttempts++;
                     }
-                    loadAttempts++;
-                }
 
-                Print($"[INIT] Loaded {_historicalTicks.Count} historical ticks. Constructing backfill payload...");
-                if (_historicalTicks.Count < WarmupTicks)
-                {
-                    Print($"[INIT WARN] WarmupTicks={WarmupTicks}, available_history={_historicalTicks.Count}. " +
-                          "State warmup will continue online during replay.");
-                }
-
-                int startIdx = Math.Max(0, _historicalTicks.Count - WarmupTicks);
-                int countToProcess = _historicalTicks.Count - startIdx;
-                var tickList = new List<object>(countToProcess);
-
-                for (int i = startIdx; i < _historicalTicks.Count; i++)
-                {
-                    tickList.Add(new
+                    Print($"[INIT] Loaded {_historicalTicks.Count} historical ticks from cTrader. Constructing backfill payload...");
+                    if (_historicalTicks.Count < WarmupTicks)
                     {
-                        symbol = _internalSymbol,
-                        timestamp = _historicalTicks[i].Time.ToUniversalTime().ToString("O"),
-                        bid = _historicalTicks[i].Bid,
-                        ask = _historicalTicks[i].Ask,
-                        tick_volume = 1.0, // cTrader API doesn't expose strict tick volume per individual tick natively
-                        run_id = _debugRunId,
-                    });
+                        Print($"[INIT WARN] WarmupTicks={WarmupTicks}, available_history={_historicalTicks.Count}. " +
+                              "State warmup will continue online during replay.");
+                    }
+
+                    int startIdx = Math.Max(0, _historicalTicks.Count - WarmupTicks);
+                    int countToProcess = _historicalTicks.Count - startIdx;
+                    tickList = new List<TickPayload>(countToProcess);
+
+                    for (int i = startIdx; i < _historicalTicks.Count; i++)
+                    {
+                        tickList.Add(new TickPayload
+                        {
+                            symbol = _internalSymbol,
+                            timestamp = _historicalTicks[i].Time.ToUniversalTime().ToString("O"),
+                            bid = _historicalTicks[i].Bid,
+                            ask = _historicalTicks[i].Ask,
+                            tick_volume = 1.0,
+                            run_id = _debugRunId,
+                        });
+                    }
                 }
 
                 var payload = new
@@ -189,7 +204,7 @@ namespace cAlgo.Robots
                 var json = JsonSerializer.Serialize(payload, _jsonOpts);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                Print($"[POST] Sending {tickList.Count} ticks to /backfill ({json.Length / 1024}KB)");
+                Print($"[POST] Sending {tickList.Count} ticks to /backfill from {backfillSource} ({json.Length / 1024}KB)");
                 var task = _client.PostAsync($"{BaseUrl}/backfill", content);
                 if (task.Wait(TimeSpan.FromSeconds(50)))
                 {
@@ -958,6 +973,146 @@ namespace cAlgo.Robots
             }
         }
 
+        private DebugSessionContext ResolveDebugSessionContext()
+        {
+            try
+            {
+                if (!File.Exists(ActiveDebugSessionPath))
+                {
+                    return null;
+                }
+
+                string raw = File.ReadAllText(ActiveDebugSessionPath);
+                var outCtx = JsonSerializer.Deserialize<DebugSessionContext>(raw, _jsonOpts);
+                return outCtx;
+            }
+            catch (Exception ex)
+            {
+                Print($"[DEBUG SESSION] Could not resolve active session: {ex.Message}");
+                return null;
+            }
+        }
+
+        private List<TickPayload> TryLoadBackfillTicksFromDebugPackage()
+        {
+            try
+            {
+                if (_debugSessionContext == null)
+                {
+                    return null;
+                }
+
+                string manifestPath = _debugSessionContext.package_manifest;
+                string sessionStartRaw = _debugSessionContext.start_ts;
+                if (string.IsNullOrWhiteSpace(manifestPath) || string.IsNullOrWhiteSpace(sessionStartRaw))
+                {
+                    return null;
+                }
+
+                string fullManifestPath = Path.GetFullPath(manifestPath);
+                if (!File.Exists(fullManifestPath))
+                {
+                    Print($"[INIT WARN] Debug package manifest not found: {fullManifestPath}");
+                    return null;
+                }
+
+                DateTime sessionStartUtc = DateTime.Parse(
+                    sessionStartRaw,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal
+                );
+                string manifestJson = File.ReadAllText(fullManifestPath);
+                using var doc = JsonDocument.Parse(manifestJson);
+                if (!doc.RootElement.TryGetProperty("files", out var filesEl))
+                {
+                    return null;
+                }
+
+                string manifestDir = Path.GetDirectoryName(fullManifestPath) ?? string.Empty;
+                var selected = new Queue<TickPayload>(Math.Max(1, WarmupTicks));
+                foreach (var fileEl in filesEl.EnumerateArray())
+                {
+                    if (!fileEl.TryGetProperty("path", out var pathEl))
+                    {
+                        continue;
+                    }
+                    string relPath = pathEl.GetString();
+                    if (string.IsNullOrWhiteSpace(relPath))
+                    {
+                        continue;
+                    }
+
+                    string csvPath = Path.GetFullPath(Path.Combine(manifestDir, relPath));
+                    if (!File.Exists(csvPath))
+                    {
+                        Print($"[INIT WARN] Debug package CSV not found: {csvPath}");
+                        continue;
+                    }
+
+                    bool header = true;
+                    foreach (string line in File.ReadLines(csvPath))
+                    {
+                        if (header)
+                        {
+                            header = false;
+                            continue;
+                        }
+                        if (string.IsNullOrWhiteSpace(line))
+                        {
+                            continue;
+                        }
+
+                        string[] parts = line.Split(',');
+                        if (parts.Length < 3)
+                        {
+                            continue;
+                        }
+
+                        DateTime tickTs = DateTime.Parse(
+                            parts[0],
+                            CultureInfo.InvariantCulture,
+                            DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal
+                        );
+                        tickTs = DateTime.SpecifyKind(tickTs, DateTimeKind.Utc);
+                        if (tickTs >= sessionStartUtc)
+                        {
+                            continue;
+                        }
+
+                        selected.Enqueue(new TickPayload
+                        {
+                            symbol = _internalSymbol,
+                            timestamp = tickTs.ToString("O"),
+                            bid = double.Parse(parts[1], CultureInfo.InvariantCulture),
+                            ask = double.Parse(parts[2], CultureInfo.InvariantCulture),
+                            tick_volume = 1.0,
+                            run_id = _debugRunId,
+                        });
+
+                        while (selected.Count > WarmupTicks)
+                        {
+                            selected.Dequeue();
+                        }
+                    }
+                }
+
+                if (selected.Count <= 0)
+                {
+                    Print("[INIT WARN] Debug package did not yield any pre-start warmup ticks.");
+                    return null;
+                }
+
+                var tickList = selected.ToList();
+                Print($"[INIT] Warmup package window: first={tickList.First().timestamp} last={tickList.Last().timestamp}");
+                return tickList;
+            }
+            catch (Exception ex)
+            {
+                Print($"[INIT WARN] Failed to load warmup ticks from debug package: {ex.Message}");
+                return null;
+            }
+        }
+
         private string ExtractCandidateUid(string label)
         {
             if (string.IsNullOrWhiteSpace(label) || !label.StartsWith("Oco_", StringComparison.Ordinal))
@@ -1138,6 +1293,15 @@ namespace cAlgo.Robots
     {
         public string symbol { get; set; }
         public int bar_count { get; set; }
+    }
+
+    public class DebugSessionContext
+    {
+        public string run_id { get; set; }
+        public string start_ts { get; set; }
+        public string end_ts { get; set; }
+        public string package_dir { get; set; }
+        public string package_manifest { get; set; }
     }
 
     public class FtmoStatusDTO

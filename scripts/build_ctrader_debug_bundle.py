@@ -12,11 +12,26 @@ from typing import Any
 
 import duckdb
 import pandas as pd
+try:
+    from scripts.replay_histdata_cbot_testclient import (
+        _build_signal_feature_diff,
+        _build_signal_gap_analysis,
+        _load_expected_selected_detail_rows,
+        _load_predict_trace_rows,
+    )
+except ModuleNotFoundError:
+    from replay_histdata_cbot_testclient import (
+        _build_signal_feature_diff,
+        _build_signal_gap_analysis,
+        _load_expected_selected_detail_rows,
+        _load_predict_trace_rows,
+    )
 
 
 LOG_LINE_RE = re.compile(
     r"^(?P<ts>\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}(?:\.\d{3})?) \| [^|]+ \| (?P<msg>.*)$"
 )
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 @dataclass
@@ -27,6 +42,9 @@ class BundleOutputs:
     offline_compare_csv: Path
     offline_compare_exact_csv: Path
     offline_compare_tolerant_csv: Path
+    signal_gap_analysis_csv: Path
+    signal_feature_diff_csv: Path
+    execution_gap_analysis_csv: Path
 
 
 _COMPARE_TOLERANCE_SEC = 30.0
@@ -537,6 +555,77 @@ def _prepare_expected_compare(expected: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def _month_tags_iso_between(start: pd.Timestamp, end: pd.Timestamp) -> list[str]:
+    if pd.isna(start) or pd.isna(end):
+        return []
+    start0 = start.tz_convert("UTC").tz_localize(None) if start.tzinfo is not None else start
+    end_inclusive = end - pd.Timedelta(microseconds=1)
+    if end_inclusive < start:
+        return []
+    end0 = (
+        end_inclusive.tz_convert("UTC").tz_localize(None)
+        if end_inclusive.tzinfo is not None
+        else end_inclusive
+    )
+    pr = pd.period_range(start=start0.to_period("M"), end=end0.to_period("M"), freq="M")
+    return [str(p) for p in pr]
+
+
+def _load_expected_selected_detail_for_session(session: dict[str, Any]) -> pd.DataFrame:
+    symbol = str(session.get("symbol", "")).upper().strip()
+    start_ts = pd.to_datetime(session.get("start_ts"), utc=True, errors="coerce")
+    end_ts = pd.to_datetime(session.get("end_ts"), utc=True, errors="coerce")
+    if not symbol or pd.isna(start_ts) or pd.isna(end_ts):
+        return pd.DataFrame(
+            columns=["candidate_uid", "close_ts", "pred_prob", "threshold_exec", "selected_exec"]
+        )
+    history_dir = Path(
+        str(
+            session.get(
+                "history_dir",
+                REPO_ROOT / "configs" / "research" / "governance" / "oco_history",
+            )
+        )
+    )
+    if not history_dir.exists():
+        return pd.DataFrame(
+            columns=["candidate_uid", "close_ts", "pred_prob", "threshold_exec", "selected_exec"]
+        )
+    try:
+        from src.behemoth.core.historical_registry import HistoricalCandidateRegistry
+    except Exception:
+        return pd.DataFrame(
+            columns=["candidate_uid", "close_ts", "pred_prob", "threshold_exec", "selected_exec"]
+        )
+
+    reg = HistoricalCandidateRegistry.load(history_dir)
+    parts: list[pd.DataFrame] = []
+    for month in _month_tags_iso_between(start_ts, end_ts):
+        binding = reg.get_model_binding(symbol, month)
+        if not binding:
+            continue
+        pred_path = Path(str(binding.get("predictions_path", "")).strip())
+        if not pred_path.exists():
+            continue
+        part = _load_expected_selected_detail_rows(
+            predictions_parquet=pred_path,
+            symbol=symbol,
+            start=start_ts,
+            end=end_ts,
+        )
+        if not part.empty:
+            parts.append(part)
+    if not parts:
+        return pd.DataFrame(
+            columns=["candidate_uid", "close_ts", "pred_prob", "threshold_exec", "selected_exec"]
+        )
+    out = pd.concat(parts, ignore_index=True).drop_duplicates(
+        subset=["candidate_uid", "close_ts"], keep="first"
+    )
+    out["close_ts"] = _safe_to_utc(out.get("close_ts", pd.Series(dtype=object)))
+    return out.sort_values(["close_ts", "candidate_uid"]).reset_index(drop=True)
+
+
 def _runtime_predict_keys(audit_df: pd.DataFrame) -> pd.DataFrame:
     if audit_df.empty:
         return pd.DataFrame(
@@ -748,6 +837,172 @@ def _build_offline_compare_tolerant(
     return out.drop(columns=["expected_idx"], errors="ignore")
 
 
+def _build_signal_gap_bundle(
+    *,
+    session: dict[str, Any],
+    audit_df: pd.DataFrame,
+    http_trace_path: Path,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    expected_selected_detail = _load_expected_selected_detail_for_session(session)
+    if expected_selected_detail.empty:
+        empty_gap = pd.DataFrame(
+            columns=[
+                "gap_side",
+                "gap_reason",
+                "candidate_uid",
+                "reference_close_ts",
+                "nearest_runtime_selected_close_ts",
+                "nearest_predict_close_ts",
+                "nearest_predict_trace_ts",
+                "nearest_delta_sec",
+                "nearest_predict_selected_exec",
+                "nearest_predict_pred_prob",
+                "nearest_predict_threshold_exec",
+                "nearest_predict_margin",
+                "nearest_predict_risk_blocked",
+                "nearest_predict_reason",
+                "nearest_predict_features_json",
+                "offline_pred_prob",
+                "offline_threshold_exec",
+                "offline_margin",
+                "margin_delta_runtime_minus_offline",
+            ]
+        )
+        empty_diff = pd.DataFrame(
+            columns=[
+                "gap_side",
+                "gap_reason",
+                "candidate_uid",
+                "reference_close_ts",
+                "feature_name",
+                "offline_value",
+                "runtime_value",
+                "runtime_minus_offline",
+                "abs_delta",
+                "offline_pred_prob",
+                "offline_threshold_exec",
+                "offline_margin",
+                "runtime_pred_prob",
+                "runtime_threshold_exec",
+                "runtime_margin",
+                "margin_delta_runtime_minus_offline",
+            ]
+        )
+        return empty_gap, empty_diff
+
+    expected_keys = expected_selected_detail[["candidate_uid", "close_ts"]].copy().reset_index(drop=True)
+    expected_keys["expected_idx"] = expected_keys.index.astype(int)
+    runtime_keys = _runtime_predict_keys(audit_df).reset_index(drop=True)
+    runtime_keys["runtime_idx"] = runtime_keys.index.astype(int)
+    matches = _nearest_match(
+        expected=expected_keys[["candidate_uid", "close_ts", "expected_idx"]],
+        runtime=runtime_keys[["candidate_uid", "close_ts", "runtime_idx"]],
+        expected_ts_col="close_ts",
+        runtime_ts_col="close_ts",
+        tolerance_sec=float(_COMPARE_TOLERANCE_SEC),
+    )
+    used_expected = set(matches["expected_idx"].astype(int).tolist()) if not matches.empty else set()
+    used_runtime = set(matches["runtime_idx"].astype(int).tolist()) if not matches.empty else set()
+    missing_expected = expected_keys.loc[~expected_keys["expected_idx"].isin(used_expected), ["candidate_uid", "close_ts"]].reset_index(drop=True)
+    extra_runtime = runtime_keys.loc[~runtime_keys["runtime_idx"].isin(used_runtime), ["candidate_uid", "close_ts"]].reset_index(drop=True)
+    predict_trace_rows = _load_predict_trace_rows(http_trace_path)
+    signal_gap = _build_signal_gap_analysis(
+        expected_selected_detail=expected_selected_detail,
+        expected_keys=expected_keys[["candidate_uid", "close_ts"]],
+        runtime_keys=runtime_keys[["candidate_uid", "close_ts"]],
+        missing_expected=missing_expected,
+        extra_runtime=extra_runtime,
+        predict_trace_rows=predict_trace_rows,
+        classify_window_sec=float(_COMPARE_TOLERANCE_SEC),
+    )
+    signal_feature_diff = _build_signal_feature_diff(
+        signal_gap_analysis=signal_gap,
+        symbol=str(session.get("symbol", "")).upper().strip(),
+        tick_velocity_dir=Path(
+            str(session.get("tick_velocity_dir", REPO_ROOT / "data" / "analysis" / "tick_velocity"))
+        ),
+    )
+    return signal_gap, signal_feature_diff
+
+
+def _build_execution_gap_analysis(
+    *,
+    offline_compare: pd.DataFrame,
+    trades_df: pd.DataFrame,
+) -> pd.DataFrame:
+    cols = [
+        "gap_side",
+        "gap_reason",
+        "candidate_uid",
+        "reference_close_ts",
+        "reference_touch_open_ts",
+        "runtime_predict_match_close_ts",
+        "runtime_trade_match_entry_ts",
+        "runtime_predict_delta_sec",
+        "runtime_trade_delta_sec",
+        "runtime_trade_status",
+        "runtime_trade_side",
+    ]
+    if offline_compare.empty:
+        return pd.DataFrame(columns=cols)
+    out = offline_compare.copy()
+    out["runtime_predicted"] = out.get("runtime_predicted", pd.Series(dtype=bool)).fillna(False).astype(bool)
+    out["runtime_executed"] = out.get("runtime_executed", pd.Series(dtype=bool)).fillna(False).astype(bool)
+    rows: list[dict[str, Any]] = []
+    for row in out.to_dict(orient="records"):
+        if bool(row.get("runtime_executed")):
+            gap_reason = "executed_matched"
+        elif bool(row.get("runtime_predicted")):
+            gap_reason = "predicted_not_executed"
+        else:
+            gap_reason = "no_prediction_no_execution"
+        rows.append(
+            {
+                "gap_side": "expected_execution",
+                "gap_reason": gap_reason,
+                "candidate_uid": row.get("candidate_uid"),
+                "reference_close_ts": row.get("close_ts"),
+                "reference_touch_open_ts": row.get("touch_open_ts"),
+                "runtime_predict_match_close_ts": row.get("runtime_predict_match_close_ts"),
+                "runtime_trade_match_entry_ts": row.get("runtime_trade_match_entry_ts"),
+                "runtime_predict_delta_sec": row.get("runtime_predict_delta_sec"),
+                "runtime_trade_delta_sec": row.get("runtime_trade_delta_sec"),
+                "runtime_trade_status": row.get("runtime_trade_status"),
+                "runtime_trade_side": row.get("runtime_trade_side"),
+            }
+        )
+    expected = _prepare_expected_compare(offline_compare).reset_index(drop=True)
+    expected["expected_idx"] = expected.index.astype(int)
+    trades = _runtime_trade_keys(trades_df).reset_index(drop=True)
+    trades["runtime_idx"] = trades.index.astype(int)
+    matches = _nearest_match(
+        expected=expected[["candidate_uid", "touch_open_ts", "expected_idx"]],
+        runtime=trades[["candidate_uid", "entry_ts", "runtime_idx"]],
+        expected_ts_col="touch_open_ts",
+        runtime_ts_col="entry_ts",
+        tolerance_sec=float(_COMPARE_TOLERANCE_SEC),
+    )
+    used_runtime = set(matches["runtime_idx"].astype(int).tolist()) if not matches.empty else set()
+    extras = trades.loc[~trades["runtime_idx"].isin(used_runtime)].copy()
+    for row in extras.to_dict(orient="records"):
+        rows.append(
+            {
+                "gap_side": "extra_runtime_execution",
+                "gap_reason": "runtime_trade_without_expected_entry",
+                "candidate_uid": row.get("candidate_uid"),
+                "reference_close_ts": pd.NaT,
+                "reference_touch_open_ts": pd.NaT,
+                "runtime_predict_match_close_ts": pd.NaT,
+                "runtime_trade_match_entry_ts": row.get("entry_ts"),
+                "runtime_predict_delta_sec": pd.NA,
+                "runtime_trade_delta_sec": pd.NA,
+                "runtime_trade_status": row.get("status"),
+                "runtime_trade_side": row.get("side"),
+            }
+        )
+    return pd.DataFrame(rows, columns=cols)
+
+
 def _write_markdown_summary(
     *,
     path: Path,
@@ -851,11 +1106,26 @@ def build_bundle(*, session_path: Path, bundle_dir: Path | None = None) -> dict[
     offline_compare_csv = out_dir / "offline_compare.csv"
     offline_compare_exact_csv = out_dir / "offline_compare_exact.csv"
     offline_compare_tolerant_csv = out_dir / "offline_compare_tolerant.csv"
+    signal_gap_analysis_csv = out_dir / "ctrader_signal_gap_analysis.csv"
+    signal_feature_diff_csv = out_dir / "ctrader_signal_feature_diff.csv"
+    execution_gap_analysis_csv = out_dir / "ctrader_execution_gap_analysis.csv"
 
     timeline.to_csv(joined_timeline_csv, index=False)
     offline_compare.to_csv(offline_compare_csv, index=False)
     offline_compare_exact.to_csv(offline_compare_exact_csv, index=False)
     offline_compare.to_csv(offline_compare_tolerant_csv, index=False)
+    signal_gap_analysis, signal_feature_diff = _build_signal_gap_bundle(
+        session=session,
+        audit_df=audit_df,
+        http_trace_path=http_trace_path,
+    )
+    execution_gap_analysis = _build_execution_gap_analysis(
+        offline_compare=offline_compare,
+        trades_df=trades_df,
+    )
+    signal_gap_analysis.to_csv(signal_gap_analysis_csv, index=False)
+    signal_feature_diff.to_csv(signal_feature_diff_csv, index=False)
+    execution_gap_analysis.to_csv(execution_gap_analysis_csv, index=False)
 
     duplicate_trade_rows = 0
     if not trades_df.empty:
@@ -883,6 +1153,38 @@ def build_bundle(*, session_path: Path, bundle_dir: Path | None = None) -> dict[
                 "cbot_log_rows": int(len(cbot_log_df)),
                 "offline_compare_rows": int(len(offline_compare)),
                 "offline_compare_exact_rows": int(len(offline_compare_exact)),
+                "signal_gap_rows": int(len(signal_gap_analysis)),
+                "signal_missing_expected_rows": int(
+                    (signal_gap_analysis.get("gap_side", pd.Series(dtype=str)).astype(str) == "missing_expected").sum()
+                ),
+                "signal_extra_runtime_rows": int(
+                    (signal_gap_analysis.get("gap_side", pd.Series(dtype=str)).astype(str) == "extra_runtime").sum()
+                ),
+                "execution_gap_rows": int(len(execution_gap_analysis)),
+                "execution_predicted_not_executed_rows": int(
+                    (
+                        (execution_gap_analysis.get("gap_side", pd.Series(dtype=str)).astype(str) == "expected_execution")
+                        & (
+                            execution_gap_analysis.get("gap_reason", pd.Series(dtype=str)).astype(str)
+                            == "predicted_not_executed"
+                        )
+                    ).sum()
+                ),
+                "execution_missing_both_rows": int(
+                    (
+                        (execution_gap_analysis.get("gap_side", pd.Series(dtype=str)).astype(str) == "expected_execution")
+                        & (
+                            execution_gap_analysis.get("gap_reason", pd.Series(dtype=str)).astype(str)
+                            == "no_prediction_no_execution"
+                        )
+                    ).sum()
+                ),
+                "execution_extra_runtime_rows": int(
+                    (
+                        execution_gap_analysis.get("gap_side", pd.Series(dtype=str)).astype(str)
+                        == "extra_runtime_execution"
+                    ).sum()
+                ),
                 "duplicate_trade_rows": int(duplicate_trade_rows),
                 "events_json_found": bool(ctrader_events_path.exists()),
                 "cbot_log_found": bool(cbot_log_path.exists()),
@@ -915,6 +1217,9 @@ def build_bundle(*, session_path: Path, bundle_dir: Path | None = None) -> dict[
         "offline_compare_csv": str(offline_compare_csv),
         "offline_compare_exact_csv": str(offline_compare_exact_csv),
         "offline_compare_tolerant_csv": str(offline_compare_tolerant_csv),
+        "signal_gap_analysis_csv": str(signal_gap_analysis_csv),
+        "signal_feature_diff_csv": str(signal_feature_diff_csv),
+        "execution_gap_analysis_csv": str(execution_gap_analysis_csv),
     }
 
 
