@@ -86,61 +86,38 @@ def _pick_first_existing(*paths: Path) -> Path:
     return paths[0]
 
 
-def _default_paths(symbol: str) -> dict[str, Path]:
+def _default_paths(symbol: str, *, config_dir: Path, analysis_dir: Path) -> dict[str, Path]:
     s = str(symbol).upper().strip()
     sl = s.lower()
     return {
         "wfo_config": _pick_first_existing(
-            Path(
-                f"configs/research/experiments/{sl}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml"
-            ),
-            Path(
-                f"configs/research/experiments/{sl}_tick_opportunity_monthly_wfo_oco_fullcap_rolling_2025.yaml"
-            ),
+            config_dir / f"{sl}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
+            config_dir / f"{sl}_tick_opportunity_monthly_wfo_oco_fullcap_rolling_2025.yaml",
         ),
         "reduced_config": _pick_first_existing(
-            Path(f"configs/research/experiments/{sl}_oco_reduced_core_2025.yaml"),
-            Path(f"configs/research/experiments/{sl}_oco_reduced_core_rolling_2025.yaml"),
+            config_dir / f"{sl}_oco_reduced_core_2025.yaml",
+            config_dir / f"{sl}_oco_reduced_core_rolling_2025.yaml",
         ),
         "state_schedule": _pick_first_existing(
-            Path(
-                f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_reduced_state_schedule.csv"
-            ),
-            Path(
-                f"data/analysis/tick_opportunity_mining/reduced_core_rolling_{sl}/{s}_oco_reduced_state_schedule.csv"
-            ),
+            analysis_dir / "reduced_core_rolling" / f"{s}_oco_reduced_state_schedule.csv",
+            analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_oco_reduced_state_schedule.csv",
         ),
         "tick_exact_summary": _pick_first_existing(
-            Path(
-                f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_tick_exact_summary.csv"
-            ),
-            Path(
-                f"data/analysis/tick_opportunity_mining/reduced_core_rolling_{sl}/{s}_oco_tick_exact_summary.csv"
-            ),
+            analysis_dir / "reduced_core" / f"{s}_oco_tick_exact_summary.csv",
+            analysis_dir / "reduced_core_rolling" / f"{s}_oco_tick_exact_summary.csv",
+            analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_oco_tick_exact_summary.csv",
         ),
         "reduced_summary": _pick_first_existing(
-            Path(
-                f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_reduced_summary.csv"
-            ),
-            Path(
-                f"data/analysis/tick_opportunity_mining/reduced_core_rolling_{sl}/{s}_oco_reduced_summary.csv"
-            ),
+            analysis_dir / "reduced_core_rolling" / f"{s}_oco_reduced_summary.csv",
+            analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_oco_reduced_summary.csv",
         ),
         "predictions": _pick_first_existing(
-            Path(
-                f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s}_oco_monthly_predictions.parquet"
-            ),
-            Path(
-                f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_{sl}/{s}_oco_monthly_predictions.parquet"
-            ),
+            analysis_dir / "wfo_2025_m3to1_oco_fullcap" / f"{s}_oco_monthly_predictions.parquet",
+            analysis_dir / f"wfo_2025_m3to1_oco_fullcap_{sl}" / f"{s}_oco_monthly_predictions.parquet",
         ),
         "tick_fill_caps": _pick_first_existing(
-            Path(
-                f"data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/{s}_stop_limit_tickfill_caps.csv"
-            ),
-            Path(
-                f"data/analysis/tick_opportunity_mining/stop_limit_tickfill/{s}_stop_limit_tickfill_caps.csv"
-            ),
+            analysis_dir / "stop_limit_tickfill_fullcap" / f"{s}_stop_limit_tickfill_caps.csv",
+            analysis_dir / "stop_limit_tickfill" / f"{s}_stop_limit_tickfill_caps.csv",
         ),
     }
 
@@ -313,6 +290,8 @@ def run(
     symbols: list[str],
     out_dir: Path,
     models_dir: Path,
+    config_dir: Path,
+    analysis_dir: Path,
     months: list[str],
     start_month: str | None,
     end_month: str | None,
@@ -333,7 +312,7 @@ def run(
     index_rows: list[dict[str, Any]] = []
 
     for sym in symbols:
-        paths = _default_paths(sym)
+        paths = _default_paths(sym, config_dir=config_dir, analysis_dir=analysis_dir)
         for p in paths.values():
             if not p.exists():
                 raise FileNotFoundError(p)
@@ -471,6 +450,8 @@ def main() -> None:
     p.add_argument("--registry-yaml", default="configs/research/governance/oco_rule_universe_registry.yaml")
     p.add_argument("--out-dir", default="configs/research/governance/oco_history")
     p.add_argument("--models-dir", default="models/oco")
+    p.add_argument("--config-dir", default="configs/research/experiments")
+    p.add_argument("--analysis-dir", default="data/analysis/tick_opportunity_mining")
     p.add_argument("--months", default="", help="Optional explicit YYYY-MM list (comma-separated)")
     p.add_argument("--start-month", default="", help="Optional lower bound month YYYY-MM")
     p.add_argument("--end-month", default="", help="Optional upper bound month YYYY-MM")
@@ -504,6 +485,8 @@ def main() -> None:
         symbols=symbols,
         out_dir=Path(str(args.out_dir)),
         models_dir=Path(str(args.models_dir)),
+        config_dir=Path(str(args.config_dir)),
+        analysis_dir=Path(str(args.analysis_dir)),
         months=_split_months(str(args.months)),
         start_month=str(args.start_month).strip() or None,
         end_month=str(args.end_month).strip() or None,

@@ -108,6 +108,13 @@ def _resolve_output_path(raw: str) -> Path:
     return (Path.cwd() / p).resolve()
 
 
+def _cfg_root(cfg: dict[str, Any], key: str, default: str) -> str:
+    roots = cfg.get("roots", {})
+    if isinstance(roots, dict) and key in roots:
+        return str(roots[key])
+    return str(cfg.get(key, default))
+
+
 def _require_manifest_keys(cfg: dict[str, Any]) -> None:
     required_root = {"title", "outputs", "symbols", "audit"}
     missing = sorted(k for k in required_root if k not in cfg)
@@ -623,13 +630,15 @@ def _symbol_snapshot(
     stop_limit = _read_symbol_row(
         _resolve_path(base_dir, str(entry["stop_limit_summary_csv"])), symbol=symbol
     )
-    api_parity = _read_optional_symbol_row(
-        _resolve_path(
+    api_parity_path = (
+        _resolve_path(base_dir, str(entry.get("api_parity_summary_csv")))
+        if str(entry.get("api_parity_summary_csv", "")).strip()
+        else _resolve_path(
             base_dir,
             f"data/analysis/backtest_reconcile/{symbol}_stage12_api_parity_summary.csv",
-        ),
-        symbol=symbol,
+        )
     )
+    api_parity = _read_optional_symbol_row(api_parity_path, symbol=symbol)
 
     exact_rate = _num(tick_exact.get("exact_match_rate"))
     pos_rate = _num(tick_exact.get("pos_label_match_rate"))
@@ -984,6 +993,13 @@ def _pick_cols(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
 
 def _symbol_contexts(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]]:
     contexts: list[dict[str, Any]] = []
+    analysis_root = _resolve_path(
+        base_dir, _cfg_root(cfg, "analysis_root", "data/analysis/tick_opportunity_mining")
+    )
+    docs_root = _resolve_path(base_dir, _cfg_root(cfg, "docs_root", "docs/analysis"))
+    backtest_root = _resolve_path(
+        base_dir, _cfg_root(cfg, "backtest_root", "data/analysis/backtest_reconcile")
+    )
     for entry in cfg.get("symbols", []):
         symbol = str(entry.get("symbol", "")).upper().strip()
         if not symbol:
@@ -995,148 +1011,49 @@ def _symbol_contexts(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]
         reduced_dir = reduced_summary.parent
         stop_dir = stop_summary.parent
 
-        cwd = Path.cwd()
         wfo_metrics = _glob_latest(
-            str(
-                cwd
-                / "data"
-                / "analysis"
-                / "tick_opportunity_mining"
-                / "wfo_*"
-                / f"{symbol}_monthly_metrics_all.csv"
-            )
+            str(analysis_root / "wfo_*" / f"{symbol}_monthly_metrics_all.csv")
         ) or _glob_latest(
-            str(
-                cwd
-                / "data"
-                / "analysis"
-                / "tick_opportunity_mining"
-                / "wfo_*"
-                / f"{symbol}_oco_monthly_metrics.csv"
-            )
+            str(analysis_root / "wfo_*" / f"{symbol}_oco_monthly_metrics.csv")
         )
         wfo_thresholds = _glob_latest(
-            str(
-                cwd
-                / "data"
-                / "analysis"
-                / "tick_opportunity_mining"
-                / "wfo_*"
-                / f"{symbol}_monthly_thresholds_all.csv"
-            )
+            str(analysis_root / "wfo_*" / f"{symbol}_monthly_thresholds_all.csv")
         ) or _glob_latest(
-            str(
-                cwd
-                / "data"
-                / "analysis"
-                / "tick_opportunity_mining"
-                / "wfo_*"
-                / f"{symbol}_oco_monthly_thresholds.csv"
-            )
+            str(analysis_root / "wfo_*" / f"{symbol}_oco_monthly_thresholds.csv")
         )
         wfo_predictions = _glob_latest(
-            str(
-                cwd
-                / "data"
-                / "analysis"
-                / "tick_opportunity_mining"
-                / "wfo_*"
-                / f"{symbol}_monthly_predictions_all.parquet"
-            )
+            str(analysis_root / "wfo_*" / f"{symbol}_monthly_predictions_all.parquet")
         ) or _glob_latest(
-            str(
-                cwd
-                / "data"
-                / "analysis"
-                / "tick_opportunity_mining"
-                / "wfo_*"
-                / f"{symbol}_oco_monthly_predictions.parquet"
-            )
+            str(analysis_root / "wfo_*" / f"{symbol}_oco_monthly_predictions.parquet")
         )
         governance_predeploy = _glob_latest(
-            str(
-                cwd
-                / "data"
-                / "analysis"
-                / "tick_opportunity_mining"
-                / f"{str(symbol).lower()}_governance_predeploy*.json"
-            )
+            str(analysis_root / f"{str(symbol).lower()}_governance_predeploy*.json")
         )
         if governance_predeploy is None:
-            governance_predeploy = _resolve_path(
-                base_dir,
-                f"data/analysis/tick_opportunity_mining/{str(symbol).lower()}_governance_predeploy.json",
-            )
+            governance_predeploy = analysis_root / f"{str(symbol).lower()}_governance_predeploy.json"
         events_eval = _glob_latest(
-            str(
-                cwd
-                / "data"
-                / "analysis"
-                / "tick_opportunity_mining"
-                / "wfo_*"
-                / f"{symbol}_oco_events_eval*.parquet"
-            )
+            str(analysis_root / "wfo_*" / f"{symbol}_oco_events_eval*.parquet")
         )
         contexts.append(
             {
                 "symbol": symbol,
-                "data_reliability_checks_csv": _resolve_path(
-                    base_dir, "data/analysis/tick_opportunity_mining/data_reliability_checks.csv"
-                ),
-                "data_reliability_issues_csv": _resolve_path(
-                    base_dir, "data/analysis/tick_opportunity_mining/data_reliability_issues.csv"
-                ),
-                "data_reliability_report_md": _resolve_path(
-                    base_dir, "docs/analysis/data_reliability_report.md"
-                ),
-                "leakage_checks_csv": _resolve_path(
-                    base_dir,
-                    "data/analysis/tick_opportunity_mining/oco_leakage_integrity_checks.csv",
-                ),
-                "leakage_issues_csv": _resolve_path(
-                    base_dir,
-                    "data/analysis/tick_opportunity_mining/oco_leakage_integrity_issues.csv",
-                ),
-                "leakage_report_md": _resolve_path(
-                    base_dir, "docs/analysis/oco_leakage_integrity_report.md"
-                ),
-                "execution_risk_checks_csv": _resolve_path(
-                    base_dir, "data/analysis/tick_opportunity_mining/oco_execution_risk_checks.csv"
-                ),
-                "execution_risk_issues_csv": _resolve_path(
-                    base_dir, "data/analysis/tick_opportunity_mining/oco_execution_risk_issues.csv"
-                ),
-                "execution_risk_report_md": _resolve_path(
-                    base_dir, "docs/analysis/oco_execution_risk_prelive_report.md"
-                ),
-                "execution_mc_month_session_csv": _resolve_path(
-                    base_dir,
-                    "data/analysis/tick_opportunity_mining/execution_mc_month_session_summary.csv",
-                ),
-                "execution_mc_monthly_csv": _resolve_path(
-                    base_dir,
-                    "data/analysis/tick_opportunity_mining/execution_mc_monthly_summary.csv",
-                ),
-                "execution_mc_symbol_scenarios_csv": _resolve_path(
-                    base_dir,
-                    "data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv",
-                ),
-                "execution_mc_checks_csv": _resolve_path(
-                    base_dir, "data/analysis/tick_opportunity_mining/execution_mc_checks.csv"
-                ),
-                "execution_mc_issues_csv": _resolve_path(
-                    base_dir, "data/analysis/tick_opportunity_mining/execution_mc_issues.csv"
-                ),
-                "execution_mc_report_md": _resolve_path(
-                    base_dir, "docs/analysis/oco_execution_monte_carlo_report.md"
-                ),
-                "timezone_contract_csv": _resolve_path(
-                    base_dir,
-                    f"data/analysis/tick_opportunity_mining/{symbol}_stage1_timezone_contract.csv",
-                ),
-                "candidate_csv": _resolve_path(
-                    base_dir, f"data/analysis/tick_opportunity_mining/{symbol}_oco_candidates.csv"
-                ),
+                "data_reliability_checks_csv": analysis_root / "data_reliability_checks.csv",
+                "data_reliability_issues_csv": analysis_root / "data_reliability_issues.csv",
+                "data_reliability_report_md": docs_root / "data_reliability_report.md",
+                "leakage_checks_csv": analysis_root / "oco_leakage_integrity_checks.csv",
+                "leakage_issues_csv": analysis_root / "oco_leakage_integrity_issues.csv",
+                "leakage_report_md": docs_root / "oco_leakage_integrity_report.md",
+                "execution_risk_checks_csv": analysis_root / "oco_execution_risk_checks.csv",
+                "execution_risk_issues_csv": analysis_root / "oco_execution_risk_issues.csv",
+                "execution_risk_report_md": docs_root / "oco_execution_risk_prelive_report.md",
+                "execution_mc_month_session_csv": analysis_root / "execution_mc_month_session_summary.csv",
+                "execution_mc_monthly_csv": analysis_root / "execution_mc_monthly_summary.csv",
+                "execution_mc_symbol_scenarios_csv": analysis_root / "execution_mc_symbol_scenarios.csv",
+                "execution_mc_checks_csv": analysis_root / "execution_mc_checks.csv",
+                "execution_mc_issues_csv": analysis_root / "execution_mc_issues.csv",
+                "execution_mc_report_md": docs_root / "oco_execution_monte_carlo_report.md",
+                "timezone_contract_csv": analysis_root / f"{symbol}_stage1_timezone_contract.csv",
+                "candidate_csv": analysis_root / f"{symbol}_oco_candidates.csv",
                 "reduced_summary_csv": reduced_summary,
                 "reduced_monthly_csv": reduced_dir / f"{symbol}_oco_reduced_monthly.csv",
                 "reduced_churn_csv": reduced_dir / f"{symbol}_oco_reduced_state_churn.csv",
@@ -1166,20 +1083,25 @@ def _symbol_contexts(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]
                 ),
                 "governance_predeploy_json": governance_predeploy,
                 "events_eval_parquet": events_eval,
-                "api_parity_summary_csv": _resolve_path(
-                    base_dir,
-                    f"data/analysis/backtest_reconcile/{symbol}_stage12_api_parity_summary.csv",
+                "api_parity_summary_csv": (
+                    _resolve_path(base_dir, str(entry.get("api_parity_summary_csv")))
+                    if str(entry.get("api_parity_summary_csv", "")).strip()
+                    else backtest_root / f"{symbol}_stage12_api_parity_summary.csv"
                 ),
-                "api_parity_checks_csv": _resolve_path(
-                    base_dir,
-                    f"data/analysis/backtest_reconcile/{symbol}_stage12_api_parity_checks.csv",
+                "api_parity_checks_csv": (
+                    _resolve_path(base_dir, str(entry.get("api_parity_checks_csv")))
+                    if str(entry.get("api_parity_checks_csv", "")).strip()
+                    else backtest_root / f"{symbol}_stage12_api_parity_checks.csv"
                 ),
-                "api_parity_mismatches_csv": _resolve_path(
-                    base_dir,
-                    f"data/analysis/backtest_reconcile/{symbol}_stage12_api_parity_mismatches.csv",
+                "api_parity_mismatches_csv": (
+                    _resolve_path(base_dir, str(entry.get("api_parity_mismatches_csv")))
+                    if str(entry.get("api_parity_mismatches_csv", "")).strip()
+                    else backtest_root / f"{symbol}_stage12_api_parity_mismatches.csv"
                 ),
-                "api_parity_report_md": _resolve_path(
-                    base_dir, f"docs/analysis/{symbol}_stage12_api_parity_report.md"
+                "api_parity_report_md": (
+                    _resolve_path(base_dir, str(entry.get("api_parity_report_md")))
+                    if str(entry.get("api_parity_report_md", "")).strip()
+                    else docs_root / f"{symbol}_stage12_api_parity_report.md"
                 ),
             }
         )

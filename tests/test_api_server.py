@@ -218,6 +218,7 @@ class TestPredictEndpoint:
         orig_gate_mode = server._config.historical_prediction_universe_mode
         server._historical_prediction_universes = {}
         server._historical_prediction_candidate_index = {}
+        server._historical_prediction_candidate_cursor = {}
         try:
             server._config.governance_mode = "historical"
             server._config.historical_prediction_universe_mode = "tolerant"
@@ -268,6 +269,7 @@ class TestPredictEndpoint:
         orig_gate_mode = server._config.historical_prediction_universe_mode
         server._historical_prediction_universes = {}
         server._historical_prediction_candidate_index = {}
+        server._historical_prediction_candidate_cursor = {}
         try:
             server._config.governance_mode = "historical"
             server._config.historical_prediction_universe_mode = "tolerant"
@@ -282,6 +284,64 @@ class TestPredictEndpoint:
             server._config.historical_prediction_universe_mode = orig_gate_mode
             server._historical_prediction_universes = {}
             server._historical_prediction_candidate_index = {}
+            server._historical_prediction_candidate_cursor = {}
+
+    def test_historical_prediction_universe_tolerant_mode_does_not_reuse_locked_row(self, tmp_path):
+        import duckdb
+        from types import SimpleNamespace
+
+        from src.behemoth.api import server
+
+        pred_path = tmp_path / "predictions.parquet"
+        con = duckdb.connect()
+        try:
+            con.execute(
+                """
+                CREATE TABLE pred AS
+                SELECT
+                    TIMESTAMPTZ '2025-07-07 00:00:15+00:00' AS close_ts,
+                    '2025-07' AS test_month,
+                    'oco|EURUSD|100|h6|state_a' AS candidate_uid
+                """
+            )
+            con.execute("COPY pred TO ? (FORMAT 'parquet')", [str(pred_path)])
+        finally:
+            con.close()
+
+        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a")
+        contract = SimpleNamespace(
+            symbol="EURUSD",
+            model_month="2025-07",
+            cache_key="EURUSD|2025-07",
+            model_binding={"predictions_path": str(pred_path)},
+        )
+
+        orig_mode = server._config.governance_mode
+        orig_gate_mode = server._config.historical_prediction_universe_mode
+        server._historical_prediction_universes = {}
+        server._historical_prediction_candidate_index = {}
+        server._historical_prediction_candidate_cursor = {}
+        try:
+            server._config.governance_mode = "historical"
+            server._config.historical_prediction_universe_mode = "tolerant"
+            first = server._apply_historical_prediction_universe_gate(
+                contract=contract,
+                close_ts=datetime(2025, 7, 7, 0, 0, 0, tzinfo=timezone.utc),
+                candidates=[cand],
+            )
+            second = server._apply_historical_prediction_universe_gate(
+                contract=contract,
+                close_ts=datetime(2025, 7, 7, 0, 0, 5, tzinfo=timezone.utc),
+                candidates=[cand],
+            )
+            assert len(first) == 1
+            assert second == []
+        finally:
+            server._config.governance_mode = orig_mode
+            server._config.historical_prediction_universe_mode = orig_gate_mode
+            server._historical_prediction_universes = {}
+            server._historical_prediction_candidate_index = {}
+            server._historical_prediction_candidate_cursor = {}
 
     def test_predict_requires_size(self, client):
         r = client.post(

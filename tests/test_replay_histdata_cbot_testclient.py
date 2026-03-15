@@ -427,3 +427,42 @@ def test_load_hist_ticks_for_replay_history_tail_preserves_full_history_phase(
     assert len(warmup) == 8
     assert warmup["ts"].iloc[0] == pd.Timestamp("2025-07-01T00:00:00Z")
     assert warmup["ts"].iloc[-1] == pd.Timestamp("2025-07-01T00:00:07Z")
+
+
+def test_load_hist_ticks_for_replay_history_tail_preserves_duplicate_timestamp_order(
+    tmp_path: Path,
+) -> None:
+    symbol = "EURUSD"
+    sym_dir = tmp_path / symbol
+    sym_dir.mkdir(parents=True, exist_ok=True)
+
+    df = pd.DataFrame(
+        {
+            "timestamp": [
+                pd.Timestamp("2025-07-01T00:00:00Z"),
+                pd.Timestamp("2025-07-01T00:00:01Z"),
+                pd.Timestamp("2025-07-01T00:00:01Z"),
+                pd.Timestamp("2025-07-01T00:00:01Z"),
+                pd.Timestamp("2025-07-01T00:00:02Z"),
+                pd.Timestamp("2025-07-01T00:00:03Z"),
+                pd.Timestamp("2025-07-01T00:00:04Z"),
+            ],
+            "bid": [1.1000, 1.1001, 1.1002, 1.1003, 1.1004, 1.1005, 1.1006],
+            "ask": [1.1002, 1.1003, 1.1004, 1.1005, 1.1006, 1.1007, 1.1008],
+        }
+    )
+    df.to_parquet(sym_dir / f"{symbol}_202507_ticks.parquet", index=False)
+
+    warmup, stream = _load_hist_ticks_for_replay(
+        symbol=symbol,
+        tick_root=tmp_path,
+        start=pd.Timestamp("2025-07-01T00:00:03Z"),
+        end=pd.Timestamp("2025-07-01T00:00:05Z"),
+        warmup_ticks=2,
+        lookback_days=1,
+        warmup_source="history_tail",
+        phase_bar_ticks=2,
+    )
+
+    assert warmup["bid"].tolist() == [1.1002, 1.1003, 1.1004]
+    assert stream["bid"].tolist() == [1.1005, 1.1006]

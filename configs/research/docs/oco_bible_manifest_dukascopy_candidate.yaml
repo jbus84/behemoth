@@ -1,0 +1,109 @@
+title: OCO Rolling Strategy Bible (Dukascopy Candidate)
+
+roots:
+  analysis_root: data/analysis/tick_opportunity_mining_dukascopy_candidate
+  docs_root: docs/analysis/dukascopy_candidate
+  backtest_root: data/analysis/backtest_reconcile
+
+outputs:
+  generated_dir: docs/strategy_bible/generated_dukascopy_candidate
+  figures_dir: docs/figures/oco_bible_dukascopy_candidate
+  build_report_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/oco_bible_build_report.csv
+  symbol_snapshot_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/oco_bible_symbol_snapshot.csv
+  stage_status_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/oco_bible_stage_status.csv
+  stage_metrics_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/oco_bible_stage_metrics.csv
+  edge_clarity_stage_metrics_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/edge_clarity_stage_metrics.csv
+  edge_clarity_state_contrib_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/edge_clarity_state_contrib.csv
+  edge_clarity_threshold_robustness_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/edge_clarity_threshold_robustness.csv
+  edge_clarity_report_md: docs/analysis/dukascopy_candidate/oco_edge_clarity_dukascopy_candidate_report.md
+
+gate_thresholds:
+  min_exact_match_rate: 0.999
+  min_pos_label_match_rate: 0.999
+  expected_audit_failures: 0
+  robustness_quantile: 0.9
+
+audit:
+  checks_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/oco_logical_audit_checks.csv
+  issues_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/oco_logical_audit_issues.csv
+  report_md: docs/analysis/dukascopy_candidate/oco_logical_audit_dukascopy_candidate_report.md
+
+symbols:
+  - symbol: EURUSD
+    reduced_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/EURUSD_oco_reduced_summary.csv
+    tick_exact_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/EURUSD_oco_tick_exact_summary.csv
+    robustness_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_robustness_summary.csv
+    stop_limit_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/stop_limit_tickfill_fullcap/summary.csv
+    api_parity_summary_csv: data/analysis/backtest_reconcile/dukascopy_candidate/EURUSD_stage12_api_parity_summary.csv
+    api_parity_checks_csv: data/analysis/backtest_reconcile/dukascopy_candidate/EURUSD_stage12_api_parity_checks.csv
+    api_parity_mismatches_csv: data/analysis/backtest_reconcile/dukascopy_candidate/EURUSD_stage12_api_parity_mismatches.csv
+    api_parity_report_md: docs/analysis/dukascopy_candidate/EURUSD_stage12_api_parity_report.md
+    mining_report_md: docs/analysis/dukascopy_candidate/eurusd_tick_opportunity_mining_dukascopy_candidate_report.md
+    wfo_report_md: docs/analysis/dukascopy_candidate/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_dukascopy_candidate_report.md
+    reduced_core_report_md: docs/analysis/dukascopy_candidate/eurusd_oco_reduced_core_rolling_dukascopy_candidate_report.md
+    tick_exact_report_md: docs/analysis/dukascopy_candidate/eurusd_oco_tick_exact_shortlist_dukascopy_candidate_report.md
+  - symbol: GBPUSD
+    reduced_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/GBPUSD_oco_reduced_summary.csv
+    tick_exact_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/GBPUSD_oco_tick_exact_summary.csv
+    robustness_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap/GBPUSD_oco_robustness_summary.csv
+    stop_limit_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/stop_limit_tickfill_fullcap/summary.csv
+    api_parity_summary_csv: data/analysis/backtest_reconcile/dukascopy_candidate/GBPUSD_stage12_api_parity_summary.csv
+    api_parity_checks_csv: data/analysis/backtest_reconcile/dukascopy_candidate/GBPUSD_stage12_api_parity_checks.csv
+    api_parity_mismatches_csv: data/analysis/backtest_reconcile/dukascopy_candidate/GBPUSD_stage12_api_parity_mismatches.csv
+    api_parity_report_md: docs/analysis/dukascopy_candidate/GBPUSD_stage12_api_parity_report.md
+    mining_report_md: docs/analysis/dukascopy_candidate/gbpusd_tick_opportunity_mining_dukascopy_candidate_report.md
+    wfo_report_md: docs/analysis/dukascopy_candidate/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_dukascopy_candidate_report.md
+    reduced_core_report_md: docs/analysis/dukascopy_candidate/gbpusd_oco_reduced_core_rolling_dukascopy_candidate_report.md
+    tick_exact_report_md: docs/analysis/dukascopy_candidate/gbpusd_oco_tick_exact_shortlist_dukascopy_candidate_report.md
+  - symbol: USDJPY
+    reduced_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/USDJPY_oco_reduced_summary.csv
+    tick_exact_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/USDJPY_oco_tick_exact_summary.csv
+    robustness_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap/USDJPY_oco_robustness_summary.csv
+    stop_limit_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/stop_limit_tickfill_fullcap/summary.csv
+    api_parity_summary_csv: data/analysis/backtest_reconcile/dukascopy_candidate/USDJPY_stage12_api_parity_summary.csv
+    api_parity_checks_csv: data/analysis/backtest_reconcile/dukascopy_candidate/USDJPY_stage12_api_parity_checks.csv
+    api_parity_mismatches_csv: data/analysis/backtest_reconcile/dukascopy_candidate/USDJPY_stage12_api_parity_mismatches.csv
+    api_parity_report_md: docs/analysis/dukascopy_candidate/USDJPY_stage12_api_parity_report.md
+    mining_report_md: docs/analysis/dukascopy_candidate/usdjpy_tick_opportunity_mining_dukascopy_candidate_report.md
+    wfo_report_md: docs/analysis/dukascopy_candidate/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_dukascopy_candidate_report.md
+    reduced_core_report_md: docs/analysis/dukascopy_candidate/usdjpy_oco_reduced_core_rolling_dukascopy_candidate_report.md
+    tick_exact_report_md: docs/analysis/dukascopy_candidate/usdjpy_oco_tick_exact_shortlist_dukascopy_candidate_report.md
+  - symbol: USDCHF
+    reduced_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/USDCHF_oco_reduced_summary.csv
+    tick_exact_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/USDCHF_oco_tick_exact_summary.csv
+    robustness_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap/USDCHF_oco_robustness_summary.csv
+    stop_limit_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/stop_limit_tickfill_fullcap/summary.csv
+    api_parity_summary_csv: data/analysis/backtest_reconcile/dukascopy_candidate/USDCHF_stage12_api_parity_summary.csv
+    api_parity_checks_csv: data/analysis/backtest_reconcile/dukascopy_candidate/USDCHF_stage12_api_parity_checks.csv
+    api_parity_mismatches_csv: data/analysis/backtest_reconcile/dukascopy_candidate/USDCHF_stage12_api_parity_mismatches.csv
+    api_parity_report_md: docs/analysis/dukascopy_candidate/USDCHF_stage12_api_parity_report.md
+    mining_report_md: docs/analysis/dukascopy_candidate/usdchf_tick_opportunity_mining_dukascopy_candidate_report.md
+    wfo_report_md: docs/analysis/dukascopy_candidate/usdchf_tick_opportunity_monthly_wfo_oco_fullcap_dukascopy_candidate_report.md
+    reduced_core_report_md: docs/analysis/dukascopy_candidate/usdchf_oco_reduced_core_rolling_dukascopy_candidate_report.md
+    tick_exact_report_md: docs/analysis/dukascopy_candidate/usdchf_oco_tick_exact_shortlist_dukascopy_candidate_report.md
+  - symbol: AUDUSD
+    reduced_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/AUDUSD_oco_reduced_summary.csv
+    tick_exact_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/AUDUSD_oco_tick_exact_summary.csv
+    robustness_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap/AUDUSD_oco_robustness_summary.csv
+    stop_limit_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/stop_limit_tickfill_fullcap/summary.csv
+    api_parity_summary_csv: data/analysis/backtest_reconcile/dukascopy_candidate/AUDUSD_stage12_api_parity_summary.csv
+    api_parity_checks_csv: data/analysis/backtest_reconcile/dukascopy_candidate/AUDUSD_stage12_api_parity_checks.csv
+    api_parity_mismatches_csv: data/analysis/backtest_reconcile/dukascopy_candidate/AUDUSD_stage12_api_parity_mismatches.csv
+    api_parity_report_md: docs/analysis/dukascopy_candidate/AUDUSD_stage12_api_parity_report.md
+    mining_report_md: docs/analysis/dukascopy_candidate/audusd_tick_opportunity_mining_dukascopy_candidate_report.md
+    wfo_report_md: docs/analysis/dukascopy_candidate/audusd_tick_opportunity_monthly_wfo_oco_fullcap_dukascopy_candidate_report.md
+    reduced_core_report_md: docs/analysis/dukascopy_candidate/audusd_oco_reduced_core_rolling_dukascopy_candidate_report.md
+    tick_exact_report_md: docs/analysis/dukascopy_candidate/audusd_oco_tick_exact_shortlist_dukascopy_candidate_report.md
+  - symbol: USDCAD
+    reduced_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/USDCAD_oco_reduced_summary.csv
+    tick_exact_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/USDCAD_oco_tick_exact_summary.csv
+    robustness_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap/USDCAD_oco_robustness_summary.csv
+    stop_limit_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/stop_limit_tickfill_fullcap/summary.csv
+    api_parity_summary_csv: data/analysis/backtest_reconcile/dukascopy_candidate/USDCAD_stage12_api_parity_summary.csv
+    api_parity_checks_csv: data/analysis/backtest_reconcile/dukascopy_candidate/USDCAD_stage12_api_parity_checks.csv
+    api_parity_mismatches_csv: data/analysis/backtest_reconcile/dukascopy_candidate/USDCAD_stage12_api_parity_mismatches.csv
+    api_parity_report_md: docs/analysis/dukascopy_candidate/USDCAD_stage12_api_parity_report.md
+    mining_report_md: docs/analysis/dukascopy_candidate/usdcad_tick_opportunity_mining_dukascopy_candidate_report.md
+    wfo_report_md: docs/analysis/dukascopy_candidate/usdcad_tick_opportunity_monthly_wfo_oco_fullcap_dukascopy_candidate_report.md
+    reduced_core_report_md: docs/analysis/dukascopy_candidate/usdcad_oco_reduced_core_rolling_dukascopy_candidate_report.md
+    tick_exact_report_md: docs/analysis/dukascopy_candidate/usdcad_oco_tick_exact_shortlist_dukascopy_candidate_report.md

@@ -77,6 +77,7 @@ _thresholds: dict[str, dict] = {}        # cache key -> threshold config
 _model_months: dict[str, str] = {}       # cache key -> "2025-12"
 _historical_prediction_universes: dict[str, dict[datetime, set[str]]] = {}
 _historical_prediction_candidate_index: dict[str, dict[str, list[datetime]]] = {}
+_historical_prediction_candidate_cursor: dict[str, dict[str, int]] = {}
 _models_dir: Path = Path("models/oco")
 _ftmo_rules_path: Path = Path("configs/research/governance/ftmo/ftmo_rules.yaml")
 _ftmo_profile: FtmoProfile | None = None
@@ -335,6 +336,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     global _models_dir, _ftmo_rules_path, _ftmo_profile
     global _historical_entries_loaded, _historical_preflight_failed_checks, _historical_preflight_summary
     global _historical_prediction_universes, _historical_prediction_candidate_index
+    global _historical_prediction_candidate_cursor
 
     # Start background monitor
     monitor_task = asyncio.create_task(_monitor_ledger())
@@ -358,6 +360,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         _aggregators = {}
         _historical_prediction_universes = {}
         _historical_prediction_candidate_index = {}
+        _historical_prediction_candidate_cursor = {}
         if _is_historical_mode():
             hist_dir = Path(str(_config.governance_history_dir))
             _historical_registry = HistoricalCandidateRegistry.load(hist_dir)
@@ -1167,7 +1170,12 @@ def _load_historical_prediction_universe(contract: _ResolvedRuntimeContract) -> 
     if cached is not None:
         return cached
 
-    pred_path = Path(str(contract.model_binding.get("predictions_path", "")).strip())
+    override_path = str(os.getenv("BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE", "")).strip()
+    pred_path = (
+        Path(override_path)
+        if override_path
+        else Path(str(contract.model_binding.get("predictions_path", "")).strip())
+    )
     if not pred_path.exists():
         _historical_prediction_universes[contract.cache_key] = {}
         return {}
@@ -1223,7 +1231,12 @@ def _load_historical_prediction_candidate_index(
     if cached is not None:
         return cached
 
-    pred_path = Path(str(contract.model_binding.get("predictions_path", "")).strip())
+    override_path = str(os.getenv("BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE", "")).strip()
+    pred_path = (
+        Path(override_path)
+        if override_path
+        else Path(str(contract.model_binding.get("predictions_path", "")).strip())
+    )
     if not pred_path.exists():
         _historical_prediction_candidate_index[contract.cache_key] = {}
         return {}
@@ -1285,6 +1298,7 @@ def _apply_historical_prediction_universe_gate(
         candidate_index = _load_historical_prediction_candidate_index(contract)
         if not candidate_index:
             return candidates
+        candidate_cursor = _historical_prediction_candidate_cursor.setdefault(contract.cache_key, {})
         tolerance = timedelta(seconds=float(_HISTORICAL_PREDICTION_TOLERANCE_SEC))
         filtered: list[Any] = []
         for cand in candidates:
@@ -1294,23 +1308,28 @@ def _apply_historical_prediction_universe_gate(
             ts_rows = candidate_index.get(canonical_uid, [])
             if not ts_rows:
                 continue
-            idx = bisect_left(ts_rows, close_ts_utc)
-            choices: list[tuple[timedelta, datetime]] = []
-            if idx > 0:
-                prev_ts = ts_rows[idx - 1]
-                choices.append((abs(close_ts_utc - prev_ts), prev_ts))
+            last_idx = int(candidate_cursor.get(canonical_uid, -1))
+            lo = max(0, last_idx + 1)
+            idx = bisect_left(ts_rows, close_ts_utc, lo=lo)
+            choices: list[tuple[timedelta, datetime, int]] = []
+            if idx > lo:
+                prev_idx = idx - 1
+                prev_ts = ts_rows[prev_idx]
+                choices.append((abs(close_ts_utc - prev_ts), prev_ts, prev_idx))
             if idx < len(ts_rows):
-                next_ts = ts_rows[idx]
-                choices.append((abs(next_ts - close_ts_utc), next_ts))
+                next_idx = idx
+                next_ts = ts_rows[next_idx]
+                choices.append((abs(next_ts - close_ts_utc), next_ts, next_idx))
             if not choices:
                 continue
-            choices.sort(key=lambda item: (item[0], item[1]))
+            choices.sort(key=lambda item: (item[0], item[1], item[2]))
             best_delta = choices[0][0]
             if best_delta > tolerance:
                 continue
-            best_count = sum(1 for delta, _ in choices if delta == best_delta)
+            best_count = sum(1 for delta, _, _ in choices if delta == best_delta)
             if best_count > 1:
                 continue
+            candidate_cursor[canonical_uid] = int(choices[0][2])
             filtered.append(cand)
         return filtered
 
@@ -2466,6 +2485,7 @@ async def reload_models() -> dict:
     global _registry, _historical_registry, _historical_entries_loaded
     global _historical_preflight_failed_checks, _historical_preflight_summary
     global _historical_prediction_universes, _historical_prediction_candidate_index
+    global _historical_prediction_candidate_cursor
 
     if _is_historical_mode():
         hist_dir = Path(str(_config.governance_history_dir))
@@ -2485,6 +2505,7 @@ async def reload_models() -> dict:
     _load_models()
     _historical_prediction_universes = {}
     _historical_prediction_candidate_index = {}
+    _historical_prediction_candidate_cursor = {}
     return {
         "ok": True,
         "models_loaded": dict(_model_months),

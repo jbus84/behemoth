@@ -411,6 +411,59 @@ def _load_hist_ticks_for_replay(
     phase_bar_ticks: int,
     tick_offset: int = 0,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def _month_floor(ts: pd.Timestamp) -> pd.Timestamp:
+        return ts.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    def _load_ticks_stable(selected_files: list[Path]) -> pd.DataFrame:
+        frames: list[pd.DataFrame] = []
+        for fp in selected_files:
+            part = pd.read_parquet(fp, columns=["timestamp", "bid", "ask"])
+            if part.empty:
+                continue
+            part["ts"] = _to_utc(part.get("timestamp", pd.Series(dtype=object)))
+            part["bid"] = pd.to_numeric(part.get("bid", pd.Series(dtype=float)), errors="coerce")
+            part["ask"] = pd.to_numeric(part.get("ask", pd.Series(dtype=float)), errors="coerce")
+            part = part.dropna(subset=["ts", "bid", "ask"]).reset_index(drop=True)
+            if not part.empty:
+                frames.append(part[["ts", "bid", "ask"]])
+        if not frames:
+            return pd.DataFrame(columns=["ts", "bid", "ask"])
+        out = pd.concat(frames, ignore_index=True)
+        return out.sort_values("ts", kind="mergesort").reset_index(drop=True)
+
+    def _expand_recent_files_for_keep(keep_count: int) -> list[Path]:
+        fetch_start = _month_floor(start)
+        selected = _canonical_month_scoped_tick_files(symbol, tick_root, fetch_start, end)
+        if not selected:
+            return all_files
+        selected = sorted(selected)
+        if len(selected) >= len(all_files):
+            return all_files
+        while True:
+            selected_sql = "[" + ",".join(_quote_sql_path(p) for p in selected) + "]"
+            recent_pre_count = int(
+                con.execute(
+                    f"""
+                    SELECT COUNT(*)
+                    FROM read_parquet({selected_sql})
+                    WHERE {ts_expr} < ?
+                    """,
+                    [start.to_pydatetime()],
+                ).fetchone()[0]
+                or 0
+            )
+            if recent_pre_count >= int(keep_count):
+                return selected
+            prev_month = (fetch_start - pd.Timedelta(days=1)).replace(
+                day=1, hour=0, minute=0, second=0, microsecond=0
+            )
+            expanded = _canonical_month_scoped_tick_files(symbol, tick_root, prev_month, end)
+            expanded = sorted(expanded)
+            if len(expanded) <= len(selected):
+                return all_files
+            fetch_start = prev_month
+            selected = expanded
+
     _ = normalize_source(source)
     src_mode = str(warmup_source or "history_tail").strip().lower()
     all_files = _all_symbol_tick_files(symbol, tick_root)
@@ -436,6 +489,7 @@ def _load_hist_ticks_for_replay(
             pd.DataFrame(columns=["ts", "bid", "ask"]),
         )
 
+    history_tail_keep: int | None = None
     files_sql = "[" + ",".join(_quote_sql_path(p) for p in files) + "]"
     con = duckdb.connect()
     try:
@@ -456,53 +510,11 @@ def _load_hist_ticks_for_replay(
             if int(phase_bar_ticks) > 0:
                 phase_mod = int(pre_count % int(phase_bar_ticks))
             keep = max(0, int(warmup_ticks)) + int(phase_mod)
-            warmup = (
-                con.execute(
-                    f"""
-                    SELECT ts, bid, ask
-                    FROM (
-                        SELECT
-                            {ts_expr} AS ts,
-                            try_cast(bid AS DOUBLE) AS bid,
-                            try_cast(ask AS DOUBLE) AS ask
-                        FROM read_parquet({files_sql})
-                        WHERE {ts_expr} < ?
-                        ORDER BY {ts_expr} DESC
-                        LIMIT {keep}
-                    ) q
-                    ORDER BY ts
-                    """,
-                    [start.to_pydatetime()],
-                ).fetchdf()
-                if keep > 0
-                else pd.DataFrame(columns=["ts", "bid", "ask"])
-            )
-            stream = con.execute(
-                f"""
-                SELECT
-                    {ts_expr} AS ts,
-                    try_cast(bid AS DOUBLE) AS bid,
-                    try_cast(ask AS DOUBLE) AS ask
-                FROM read_parquet({files_sql})
-                WHERE {ts_expr} >= ? AND {ts_expr} < ?
-                ORDER BY {ts_expr}
-                """,
-                [start.to_pydatetime(), end.to_pydatetime()],
-            ).fetchdf()
-            df = pd.concat([warmup, stream], ignore_index=True)
+            history_tail_keep = int(keep)
+            fetch_files = _expand_recent_files_for_keep(keep)
+            df = _load_ticks_stable(fetch_files)
         else:
-            df = con.execute(
-                f"""
-                SELECT
-                    {ts_expr} AS ts,
-                    try_cast(bid AS DOUBLE) AS bid,
-                    try_cast(ask AS DOUBLE) AS ask
-                FROM read_parquet({files_sql})
-                WHERE {ts_expr} >= ? AND {ts_expr} < ?
-                ORDER BY {ts_expr}
-                """,
-                [query_start.to_pydatetime(), end.to_pydatetime()],
-            ).fetchdf()
+            df = _load_ticks_stable(files)
     finally:
         con.close()
 
@@ -511,11 +523,6 @@ def _load_hist_ticks_for_replay(
             pd.DataFrame(columns=["ts", "bid", "ask"]),
             pd.DataFrame(columns=["ts", "bid", "ask"]),
         )
-
-    df["ts"] = _to_utc(df.get("ts", pd.Series(dtype=object)))
-    df["bid"] = pd.to_numeric(df.get("bid", pd.Series(dtype=float)), errors="coerce")
-    df["ask"] = pd.to_numeric(df.get("ask", pd.Series(dtype=float)), errors="coerce")
-    df = df.dropna(subset=["ts", "bid", "ask"]).reset_index(drop=True)
     if int(tick_offset) > 0:
         if int(tick_offset) >= len(df):
             return (
@@ -532,7 +539,10 @@ def _load_hist_ticks_for_replay(
         )
 
     pre = df[df["ts"] < start].copy()
-    if src_mode in {"month_start", "history_tail"}:
+    if src_mode == "history_tail":
+        keep = int(history_tail_keep or len(pre))
+        warmup = pre.tail(keep if keep > 0 else len(pre)).reset_index(drop=True)
+    elif src_mode == "month_start":
         warmup = pre.reset_index(drop=True)
     else:
         phase_mod = 0
@@ -1223,6 +1233,7 @@ def _simulate(
     missing_month_policy: str,
     historical_preflight_mode: str,
     historical_prediction_universe_mode: str,
+    historical_predictions_path_override: Path | None,
     debug_run_id: str | None,
     debug_http_trace_path: Path | None,
     ftmo_enabled_override: bool,
@@ -1251,6 +1262,12 @@ def _simulate(
     os.environ["BEHEMOTH_HISTORICAL_PREDICTION_UNIVERSE_MODE"] = str(
         historical_prediction_universe_mode
     )
+    if historical_predictions_path_override is not None:
+        os.environ["BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE"] = str(
+            historical_predictions_path_override
+        )
+    else:
+        os.environ.pop("BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE", None)
     os.environ["BEHEMOTH_MODELS_DIR"] = str(models_dir)
     os.environ["BEHEMOTH_STATE_DB"] = str(runtime_db)
     os.environ["BEHEMOTH_RECORD_RAW_TICKS"] = "true" if record_raw_ticks else "false"
@@ -1852,6 +1869,7 @@ def run(
     missing_month_policy: str,
     historical_preflight_mode: str,
     historical_prediction_universe_mode: str,
+    historical_predictions_path_override: Path | None,
     ftmo_enabled_override: bool,
     ftmo_rules_path: Path = Path("configs/research/governance/ftmo/ftmo_rules.yaml"),
     ftmo_profile_id: str = "ftmo_10k_challenge_2step",
@@ -1960,6 +1978,7 @@ def run(
         missing_month_policy=missing_month_policy,
         historical_preflight_mode=historical_preflight_mode,
         historical_prediction_universe_mode=historical_prediction_universe_mode,
+        historical_predictions_path_override=historical_predictions_path_override,
         debug_run_id=debug_run_id,
         debug_http_trace_path=debug_http_trace_path,
         ftmo_enabled_override=ftmo_enabled_override,
@@ -2150,6 +2169,7 @@ def main() -> None:
     p.add_argument("--missing-month-policy", default="error")
     p.add_argument("--historical-preflight-mode", default="error")
     p.add_argument("--historical-prediction-universe-mode", default="exact")
+    p.add_argument("--historical-predictions-path-override", default="")
     p.add_argument("--ftmo-enabled-override", default="false")
     p.add_argument("--ftmo-rules-path", default="configs/research/governance/ftmo/ftmo_rules.yaml")
     p.add_argument("--ftmo-profile-id", default="ftmo_10k_challenge_2step")
@@ -2247,6 +2267,11 @@ def main() -> None:
         missing_month_policy=str(args.missing_month_policy).strip().lower(),
         historical_preflight_mode=str(args.historical_preflight_mode).strip().lower(),
         historical_prediction_universe_mode=str(args.historical_prediction_universe_mode).strip().lower(),
+        historical_predictions_path_override=(
+            Path(str(args.historical_predictions_path_override))
+            if str(args.historical_predictions_path_override).strip()
+            else None
+        ),
         ftmo_enabled_override=_str_to_bool(args.ftmo_enabled_override),
         ftmo_rules_path=Path(str(args.ftmo_rules_path)),
         ftmo_profile_id=str(args.ftmo_profile_id),

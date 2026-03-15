@@ -1,0 +1,82 @@
+{
+  "artifacts": {
+    "capacity_overall_pass": true,
+    "live_deployable": true,
+    "model_cbm_path": "models/oco/AUDUSD_model_2025-07.cbm",
+    "model_cbm_sha256": "28dfaef799cdb4b9a01a8417110a835a8950c2c6a888b8a65926c4c918e41a58",
+    "model_month": "2025-07",
+    "model_threshold_json_path": "models/oco/AUDUSD_model_2025-07.json",
+    "model_threshold_json_sha256": "30173e8548a4f446ea14b041ea90067b70ba1440f81dfb851d6e9e2a89d7d2e6",
+    "predictions_path": "configs/research/governance/oco_history_dukascopy_candidate/2025-07/audusd_oco_locked_predictions.parquet",
+    "predictions_sha256": "89528f5eddd2e3755594837c033a28d2e9079eb4922a4627622e7647ca5a1402",
+    "reduced_config_path": "configs/research/experiments_dukascopy_candidate/audusd_oco_reduced_core_rolling_2025.yaml",
+    "reduced_config_sha256": "1793509088242b80a247db3ca81e9d96f1938398ff1efef8f109527d5f87e67c",
+    "reduced_states_csv_path": "configs/research/governance/oco_history_dukascopy_candidate/2025-07/audusd_oco_allowed_states.csv",
+    "reduced_states_csv_sha256": "6e92610d19978d843e0a0d2b76c60b673492490fef231ea21b765dffe6a5a422",
+    "reduced_summary_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/AUDUSD_oco_reduced_summary.csv",
+    "reduced_summary_sha256": "9d7d41a41feac15e9418de053ff70cc5bc2ed39db2e0a55de63d4d0e9c477da8",
+    "source_predictions_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap/AUDUSD_oco_monthly_predictions.parquet",
+    "source_predictions_sha256": "0d6ff78215817da0e31623645428139d98d1aada20e8d3024e00a93cb6c8442b",
+    "tick_exact_overall_pass": true,
+    "tick_exact_summary_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/AUDUSD_oco_tick_exact_summary.csv",
+    "tick_exact_summary_sha256": "b1a6dbaee1686e70384eb7ddcec4f314f0a6e1da838006af0a25b6b492ffa2f5",
+    "wfo_config_path": "configs/research/experiments_dukascopy_candidate/audusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
+    "wfo_config_sha256": "30346f9b54fb92ac2b2844965bb247e73c7589aced46d4e923fc93c737ed36e8"
+  },
+  "frozen_at_utc": "2026-03-15T13:57:38.985685+00:00",
+  "git": {
+    "branch": "main",
+    "commit": "00ce8fa73b14cbb312ca145d36e580b7de557aa4",
+    "dirty": true
+  },
+  "historical_backtest": {
+    "mode": "month_locked",
+    "target_month": "2025-07"
+  },
+  "locked_runtime": {
+    "barrier_keep": "2,3",
+    "execution_quantile": 0.9,
+    "family_keep": "oco_first_touch_clean",
+    "horizon_keep": "5,6",
+    "locked_quantile": 0.9,
+    "oco_hold_mode": "from_touch",
+    "oco_include_no_touch": true,
+    "production_cap_pips": 1.2,
+    "rolling_threshold_days": 20,
+    "rolling_threshold_min_history": 1000,
+    "selection_mode": "auto",
+    "threshold_mode": "rolling_days"
+  },
+  "retrain_policy": {
+    "anchor_day_utc": 1,
+    "cadence_days": 30,
+    "mode": "calendar_window",
+    "window_days": 3
+  },
+  "schema_version": 1,
+  "state_universe": {
+    "count": 2,
+    "rows": [
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 6,
+        "regime_desc": "high_abs_vel_q80;barrier=2.0",
+        "state_id": "oco_first_touch_clean__high_abs_vel_q80__k2",
+        "symbol": "AUDUSD"
+      },
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 3.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 6,
+        "regime_desc": "high_abs_vel_q80;barrier=3.0",
+        "state_id": "oco_first_touch_clean__high_abs_vel_q80__k3",
+        "symbol": "AUDUSD"
+      }
+    ],
+    "sha256": "804e5cc465f96c9880aea3dcfe0b88dd53bf70eb1006f4ae6844ecab1e41990f"
+  },
+  "symbol": "AUDUSD"
+}
