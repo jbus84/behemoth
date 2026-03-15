@@ -21,11 +21,11 @@
     "wfo_config_path": "configs/research/experiments_dukascopy_candidate/usdchf_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
     "wfo_config_sha256": "e78ae4e9ce7bcc1e5f37d06b4d4b27b904746546c1795a368903ae0aabc7760f"
   },
-  "frozen_at_utc": "2026-03-15T11:41:34.975681+00:00",
+  "frozen_at_utc": "2026-03-15T11:55:03.562645+00:00",
   "git": {
     "branch": "main",
-    "commit": "9cea975b62f55274db6c27b978691a9866750ee1",
-    "dirty": true
+    "commit": "8da7338f004e5c060cf5a8798ad2695b87cb6ff8",
+    "dirty": false
   },
   "locked_runtime": {
     "barrier_keep": "2,3",
