@@ -254,7 +254,7 @@ class TradeStatus(str, Enum):
 
 
 class TradeOpenRequest(BaseModel):
-    """Sent by cBot when a position is opened."""
+    """Sent by the broker adapter when a position is opened."""
     symbol: str
     candidate_uid: str
     broker_pos_id: str
@@ -267,7 +267,7 @@ class TradeOpenRequest(BaseModel):
 
 
 class TradeTouchRequest(BaseModel):
-    """Sent by cBot when a position's barrier is touched."""
+    """Sent by the broker adapter when a position's barrier is touched."""
     symbol: str
     broker_pos_id: str
     run_id: str | None = None
@@ -282,7 +282,7 @@ class ActiveTrade(BaseModel):
 
 
 class TradeUpdateRequest(BaseModel):
-    """Sent by cBot when a position is closed or cancelled."""
+    """Sent by the broker adapter when a position is closed or cancelled."""
     symbol: str
     broker_pos_id: str
     status: TradeStatus
@@ -292,10 +292,14 @@ class TradeUpdateRequest(BaseModel):
     run_id: str | None = None
 
 
-class FtmoAccountSnapshotRequest(BaseModel):
-    """Periodic account snapshot used for FTMO guardrail enforcement."""
+class AccountRiskSnapshotRequest(BaseModel):
+    """Periodic account snapshot used for broker-neutral risk enforcement."""
     symbol: str
     balance: float = Field(..., gt=0.0)
     equity: float = Field(..., gt=0.0)
     snapshot_ts: datetime | None = None
     run_id: str | None = None
+
+
+class FtmoAccountSnapshotRequest(AccountRiskSnapshotRequest):
+    """Legacy alias for FTMO-specific callers."""

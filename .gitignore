@@ -25,3 +25,5 @@ data/*
 .env
 alertmanager.yml
 .smellcheck-cache/
+.gradle/
+src/jforex/build/

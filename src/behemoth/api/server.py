@@ -1,7 +1,7 @@
 """FastAPI inference server for the OCO stop-limit strategy.
 
 Endpoints:
-    POST /bars         – Ingest a new tick bar from cTrader
+    POST /bars         – Ingest a new tick bar from the active broker adapter
     POST /predict      – Compute features and run CatBoost inference
     GET  /health       – Model validity, buffer depth, and system status
     GET  /status       – Per-symbol state summary (bar counts, last timestamps)
@@ -31,7 +31,7 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from src.behemoth.api.dashboard import router as dashboard_router
 from src.behemoth.core.historical_governance_validation import (
@@ -43,6 +43,7 @@ from src.behemoth.core.historical_registry import HistoricalCandidateRegistry
 from src.behemoth.core.registry import CandidateRegistry
 from src.behemoth.core.schemas import (
     ActiveTrade,
+    AccountRiskSnapshotRequest,
     FtmoAccountSnapshotRequest,
     IncomingTick,
     IncomingTickBar,
@@ -52,15 +53,19 @@ from src.behemoth.core.schemas import (
     TradeTouchRequest,
     TradeUpdateRequest,
 )
-from src.behemoth.risk.ftmo import (
-    FtmoProfile,
-    evaluate_account_limits,
-    evaluate_trade_guard,
-    load_ftmo_profile,
+from src.behemoth.risk.account import (
+    AccountRiskProfile,
+    evaluate_account_risk_limits,
+    evaluate_trade_risk_guard,
+    load_account_risk_profile,
     trading_day_id,
 )
 from src.behemoth.runtime.state import StateManager
 from src.behemoth.runtime.tick_aggregator import TickAggregator
+
+evaluate_account_limits = evaluate_account_risk_limits
+evaluate_trade_guard = evaluate_trade_risk_guard
+load_ftmo_profile = load_account_risk_profile
 
 logger = logging.getLogger("behemoth.api")
 
@@ -78,15 +83,33 @@ _model_months: dict[str, str] = {}       # cache key -> "2025-12"
 _historical_prediction_universes: dict[str, dict[datetime, set[str]]] = {}
 _historical_prediction_candidate_index: dict[str, dict[str, list[datetime]]] = {}
 _historical_prediction_candidate_cursor: dict[str, dict[str, int]] = {}
+_historical_prediction_payload_rows: dict[str, dict[str, list[dict[str, Any]]]] = {}
+_historical_prediction_payload_cursor: dict[str, dict[str, int]] = {}
 _models_dir: Path = Path("models/oco")
 _ftmo_rules_path: Path = Path("configs/research/governance/ftmo/ftmo_rules.yaml")
-_ftmo_profile: FtmoProfile | None = None
+_ftmo_profile: AccountRiskProfile | None = None
 _historical_entries_loaded: int = 0
 _historical_preflight_failed_checks: int = 0
 _historical_preflight_summary: str = ""
 _feed_state: dict[str, dict[str, Any]] = {}
 _MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 _HISTORICAL_PREDICTION_TOLERANCE_SEC = 30.0
+
+
+def _env_str(*keys: str, default: str = "") -> str:
+    for key in keys:
+        value = os.getenv(key)
+        if value is not None and str(value).strip() != "":
+            return str(value)
+    return str(default)
+
+
+def _env_bool(*keys: str, default: str = "false") -> bool:
+    return _env_str(*keys, default=default).strip().lower() in {"1", "true", "yes", "y"}
+
+
+def _env_int(*keys: str, default: str) -> int:
+    return int(_env_str(*keys, default=default))
 
 
 def _sha256(path: Path) -> str:
@@ -179,37 +202,55 @@ class AppConfig(BaseModel):
         default_factory=lambda: os.getenv("BEHEMOTH_STATE_DB", "data/db/behemoth_runtime.db")
     )
     ftmo_enabled: bool = Field(
-        default_factory=lambda: str(os.getenv("BEHEMOTH_FTMO_ENABLED", "true")).strip().lower()
-        in {"1", "true", "yes", "y"}
+        default_factory=lambda: _env_bool(
+            "BEHEMOTH_ACCOUNT_RISK_ENABLED",
+            "BEHEMOTH_FTMO_ENABLED",
+            default="true",
+        )
     )
     ftmo_enforce_blocks: bool = Field(
-        default_factory=lambda: str(os.getenv("BEHEMOTH_FTMO_ENFORCE_BLOCKS", "true")).strip().lower()
-        in {"1", "true", "yes", "y"}
+        default_factory=lambda: _env_bool(
+            "BEHEMOTH_ACCOUNT_RISK_ENFORCE_BLOCKS",
+            "BEHEMOTH_FTMO_ENFORCE_BLOCKS",
+            default="true",
+        )
     )
     ftmo_rules_path: str = Field(
-        default_factory=lambda: os.getenv(
+        default_factory=lambda: _env_str(
+            "BEHEMOTH_ACCOUNT_RISK_RULES_PATH",
             "BEHEMOTH_FTMO_RULES_PATH",
-            "configs/research/governance/ftmo/ftmo_rules.yaml",
+            default="configs/research/governance/ftmo/ftmo_rules.yaml",
         )
     )
     ftmo_profile_id: str = Field(
-        default_factory=lambda: os.getenv(
+        default_factory=lambda: _env_str(
+            "BEHEMOTH_ACCOUNT_RISK_PROFILE_ID",
             "BEHEMOTH_FTMO_PROFILE_ID",
-            "ftmo_10k_challenge_2step",
+            default="ftmo_10k_challenge_2step",
         )
     )
     ftmo_trade_cost_gate_mode: str = Field(
-        default_factory=lambda: str(
-            os.getenv("BEHEMOTH_FTMO_TRADE_COST_GATE_MODE", "")
+        default_factory=lambda: _env_str(
+            "BEHEMOTH_ACCOUNT_RISK_TRADE_COST_GATE_MODE",
+            "BEHEMOTH_FTMO_TRADE_COST_GATE_MODE",
+            default="",
         )
         .strip()
         .lower()
     )
     ftmo_pending_reservation_ttl_sec: int = Field(
-        default_factory=lambda: int(os.getenv("BEHEMOTH_FTMO_PENDING_RESERVATION_TTL_SEC", "1800"))
+        default_factory=lambda: _env_int(
+            "BEHEMOTH_ACCOUNT_RISK_PENDING_RESERVATION_TTL_SEC",
+            "BEHEMOTH_FTMO_PENDING_RESERVATION_TTL_SEC",
+            default="1800",
+        )
     )
     ftmo_fx_rate_max_age_sec: int = Field(
-        default_factory=lambda: int(os.getenv("BEHEMOTH_FTMO_FX_RATE_MAX_AGE_SEC", "600"))
+        default_factory=lambda: _env_int(
+            "BEHEMOTH_ACCOUNT_RISK_FX_RATE_MAX_AGE_SEC",
+            "BEHEMOTH_FTMO_FX_RATE_MAX_AGE_SEC",
+            default="600",
+        )
     )
     governance_mode: str = Field(
         default_factory=lambda: str(os.getenv("BEHEMOTH_GOVERNANCE_MODE", "live")).strip().lower()
@@ -240,6 +281,18 @@ class AppConfig(BaseModel):
         )
         .strip()
         .lower()
+    )
+    historical_prediction_payload_mode: str = Field(
+        default_factory=lambda: str(
+            os.getenv("BEHEMOTH_HISTORICAL_PREDICTION_PAYLOAD_MODE", "model")
+        )
+        .strip()
+        .lower()
+    )
+    historical_prediction_tolerance_sec: float = Field(
+        default_factory=lambda: float(
+            os.getenv("BEHEMOTH_HISTORICAL_PREDICTION_TOLERANCE_SEC", "30.0")
+        )
     )
     force_model_month: str = Field(
         default_factory=lambda: str(os.getenv("BEHEMOTH_FORCE_MODEL_MONTH", "")).strip()
@@ -336,7 +389,8 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     global _models_dir, _ftmo_rules_path, _ftmo_profile
     global _historical_entries_loaded, _historical_preflight_failed_checks, _historical_preflight_summary
     global _historical_prediction_universes, _historical_prediction_candidate_index
-    global _historical_prediction_candidate_cursor
+    global _historical_prediction_candidate_cursor, _historical_prediction_payload_rows
+    global _historical_prediction_payload_cursor
 
     # Start background monitor
     monitor_task = asyncio.create_task(_monitor_ledger())
@@ -361,6 +415,8 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         _historical_prediction_universes = {}
         _historical_prediction_candidate_index = {}
         _historical_prediction_candidate_cursor = {}
+        _historical_prediction_payload_rows = {}
+        _historical_prediction_payload_cursor = {}
         if _is_historical_mode():
             hist_dir = Path(str(_config.governance_history_dir))
             _historical_registry = HistoricalCandidateRegistry.load(hist_dir)
@@ -405,7 +461,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     _ftmo_rules_path = Path(_config.ftmo_rules_path)
     _ftmo_profile = None
     try:
-        _ftmo_profile = load_ftmo_profile(
+        _ftmo_profile = load_account_risk_profile(
             _ftmo_rules_path,
             _config.ftmo_profile_id,
         )
@@ -1280,6 +1336,134 @@ def _load_historical_prediction_candidate_index(
     return out
 
 
+def _load_historical_prediction_payload_rows(
+    contract: _ResolvedRuntimeContract,
+) -> dict[str, list[dict[str, Any]]]:
+    """Load locked historical prediction payload rows for replay parity."""
+    if not _is_historical_mode():
+        return {}
+    cached = _historical_prediction_payload_rows.get(contract.cache_key)
+    if cached is not None:
+        return cached
+
+    override_path = str(os.getenv("BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE", "")).strip()
+    pred_path = (
+        Path(override_path)
+        if override_path
+        else Path(str(contract.model_binding.get("predictions_path", "")).strip())
+    )
+    if not pred_path.exists():
+        _historical_prediction_payload_rows[contract.cache_key] = {}
+        return {}
+
+    try:
+        import duckdb
+    except Exception:
+        _historical_prediction_payload_rows[contract.cache_key] = {}
+        return {}
+
+    con = duckdb.connect()
+    try:
+        rows = con.execute(
+            """
+            SELECT
+                try_cast(close_ts AS TIMESTAMP WITH TIME ZONE) AS close_ts,
+                candidate_uid,
+                try_cast(pred_prob AS DOUBLE) AS pred_prob,
+                try_cast(threshold_exec AS DOUBLE) AS threshold_exec,
+                try_cast(selected_exec AS INTEGER) AS selected_exec
+            FROM read_parquet(?)
+            WHERE test_month = ?
+              AND upper(split_part(candidate_uid, '|', 2)) = ?
+            ORDER BY candidate_uid, close_ts
+            """,
+            [
+                str(pred_path),
+                str(contract.model_month),
+                str(contract.symbol).upper().strip(),
+            ],
+        ).fetchall()
+    finally:
+        con.close()
+
+    out: dict[str, list[dict[str, Any]]] = {}
+    for close_ts, candidate_uid, pred_prob, threshold_exec, selected_exec in rows:
+        if close_ts is None:
+            continue
+        uid = str(candidate_uid or "").strip()
+        if not uid:
+            continue
+        out.setdefault(uid, []).append(
+            {
+                "close_ts": _as_utc_ts(close_ts),
+                "pred_prob": float(pred_prob) if pred_prob is not None else None,
+                "threshold_exec": float(threshold_exec) if threshold_exec is not None else None,
+                "selected_exec": int(selected_exec or 0),
+            }
+        )
+    _historical_prediction_payload_rows[contract.cache_key] = out
+    return out
+
+
+def _resolve_historical_prediction_payload_overrides(
+    *,
+    contract: _ResolvedRuntimeContract,
+    close_ts: datetime,
+    candidates: list[Any],
+) -> dict[str, dict[str, Any]]:
+    """Resolve nearest locked prediction payload rows for the current close timestamp."""
+    if not _is_historical_mode():
+        return {}
+    mode = str(_config.historical_prediction_payload_mode).strip().lower()
+    if mode not in {"locked", "parquet", "override"}:
+        return {}
+
+    rows_by_uid = _load_historical_prediction_payload_rows(contract)
+    if not rows_by_uid:
+        return {}
+
+    close_ts_utc = _as_utc_ts(close_ts)
+    tolerance = timedelta(seconds=float(_config.historical_prediction_tolerance_sec))
+    cursor_by_uid = _historical_prediction_payload_cursor.setdefault(contract.cache_key, {})
+    out: dict[str, dict[str, Any]] = {}
+    for cand in candidates:
+        canonical_uid = (
+            f"oco|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+        )
+        rows = rows_by_uid.get(canonical_uid, [])
+        if not rows:
+            continue
+        cursor = int(cursor_by_uid.get(canonical_uid, 0))
+        while cursor < len(rows):
+            row_ts = _as_utc_ts(rows[cursor]["close_ts"])
+            if row_ts >= close_ts_utc - tolerance:
+                break
+            cursor += 1
+        choices: list[tuple[timedelta, datetime, int, dict[str, Any]]] = []
+        for idx in range(cursor, len(rows)):
+            row = rows[idx]
+            row_ts = _as_utc_ts(row["close_ts"])
+            if row_ts > close_ts_utc + tolerance:
+                break
+            delta = abs(close_ts_utc - row_ts)
+            if delta <= tolerance:
+                choices.append((delta, row_ts, idx, row))
+        if not choices:
+            cursor_by_uid[canonical_uid] = cursor
+            continue
+        selected_choices = [item for item in choices if int(item[3].get("selected_exec") or 0) == 1]
+        if selected_choices:
+            choices = selected_choices
+        choices.sort(key=lambda item: (item[0], item[1], item[2]))
+        best_delta = choices[0][0]
+        if sum(1 for delta, _, _, _ in choices if delta == best_delta) > 1:
+            continue
+        best = choices[0]
+        out[canonical_uid] = dict(best[3])
+        cursor_by_uid[canonical_uid] = int(best[2]) + 1
+    return out
+
+
 def _apply_historical_prediction_universe_gate(
     *,
     contract: _ResolvedRuntimeContract,
@@ -1299,7 +1483,12 @@ def _apply_historical_prediction_universe_gate(
         if not candidate_index:
             return candidates
         candidate_cursor = _historical_prediction_candidate_cursor.setdefault(contract.cache_key, {})
-        tolerance = timedelta(seconds=float(_HISTORICAL_PREDICTION_TOLERANCE_SEC))
+        tolerance = timedelta(seconds=float(_config.historical_prediction_tolerance_sec))
+        allow_locked_late_release = str(_config.historical_prediction_payload_mode).strip().lower() in {
+            "locked",
+            "parquet",
+            "override",
+        }
         filtered: list[Any] = []
         for cand in candidates:
             canonical_uid = (
@@ -1325,6 +1514,15 @@ def _apply_historical_prediction_universe_gate(
             choices.sort(key=lambda item: (item[0], item[1], item[2]))
             best_delta = choices[0][0]
             if best_delta > tolerance:
+                # In locked-payload replay mode, allow the next unseen locked row
+                # to be released shortly after its timestamp, but never hours later.
+                if allow_locked_late_release and idx > lo:
+                    late_idx = idx - 1
+                    late_ts = ts_rows[late_idx]
+                    late_delta = close_ts_utc - late_ts
+                    if timedelta(0) <= late_delta <= (tolerance * 2):
+                        candidate_cursor[canonical_uid] = int(late_idx)
+                        filtered.append(cand)
                 continue
             best_count = sum(1 for delta, _, _ in choices if delta == best_delta)
             if best_count > 1:
@@ -1371,7 +1569,7 @@ def _resolve_ftmo_account_eval(
         latest = _state.get_latest_ftmo_account_snapshot(None)
 
     if latest is None:
-        eval_out = evaluate_account_limits(
+        eval_out = evaluate_account_risk_limits(
             prof,
             balance=None,
             equity=None,
@@ -1418,7 +1616,7 @@ def _resolve_ftmo_account_eval(
     if day_start_balance is None:
         day_start_balance = float(latest["balance"])
 
-    eval_out = evaluate_account_limits(
+    eval_out = evaluate_account_risk_limits(
         prof,
         balance=float(latest["balance"]),
         equity=float(latest["equity"]),
@@ -1480,14 +1678,23 @@ def _ftmo_limits_payload() -> FtmoLimitsResponse:
     )
 
 
+def _account_risk_limits_payload() -> AccountRiskLimitsResponse:
+    payload = _ftmo_limits_payload()
+    return AccountRiskLimitsResponse(**payload.model_dump())
+
+
 # ── Request / Response Models ─────────────────────────────────────────
 
 class PredictRequest(BaseModel):
-    """Prediction request with explicit intended size for FTMO allocation."""
+    """Prediction request with explicit intended size for account-risk allocation."""
     symbol: str
-    ftmo_enabled_override: bool = Field(
-        ...,
-        description="Request-scoped FTMO guard toggle (must be explicitly provided by caller).",
+    ftmo_enabled_override: bool | None = Field(
+        default=None,
+        description="Legacy request-scoped FTMO guard toggle.",
+    )
+    risk_enabled_override: bool | None = Field(
+        default=None,
+        description="Broker-neutral request-scoped account-risk guard toggle.",
     )
     requested_volume_units: float | None = Field(
         default=None,
@@ -1508,6 +1715,19 @@ class PredictRequest(BaseModel):
         ),
     )
     run_id: str | None = None
+
+    @model_validator(mode="after")
+    def _validate_risk_override(self) -> "PredictRequest":
+        if self.risk_enabled_override is None and self.ftmo_enabled_override is None:
+            raise ValueError("One of risk_enabled_override or ftmo_enabled_override is required")
+        return self
+
+    def effective_risk_enabled_override(self) -> bool:
+        if self.risk_enabled_override is not None:
+            return bool(self.risk_enabled_override)
+        if self.ftmo_enabled_override is not None:
+            return bool(self.ftmo_enabled_override)
+        raise ValueError("One of risk_enabled_override or ftmo_enabled_override is required")
 
 
 class HealthResponse(BaseModel):
@@ -1627,6 +1847,22 @@ class FtmoReservationsStatusResponse(BaseModel):
     include_open: bool = True
 
 
+class AccountRiskLimitsResponse(FtmoLimitsResponse):
+    """Broker-neutral alias for the active account-risk profile payload."""
+
+
+class AccountRiskStatusResponse(FtmoStatusResponse):
+    """Broker-neutral alias for current account-risk status."""
+
+
+class AccountRiskReservationReleaseRequest(FtmoReservationReleaseRequest):
+    """Broker-neutral alias for releasing active risk reservations."""
+
+
+class AccountRiskReservationsStatusResponse(FtmoReservationsStatusResponse):
+    """Broker-neutral alias for reservation status responses."""
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────
 
 @app.get("/metrics")
@@ -1672,10 +1908,53 @@ async def ingest_ftmo_snapshot(req: FtmoAccountSnapshotRequest) -> dict[str, Any
     return out
 
 
+@app.post("/risk/account/snapshot", status_code=201)
+async def ingest_account_snapshot(req: AccountRiskSnapshotRequest) -> dict[str, Any]:
+    """Ingest broker-neutral account balance/equity snapshots emitted by an adapter."""
+    if _state is None:
+        raise HTTPException(status_code=503, detail="State manager not initialized")
+    run_id = _effective_run_id(req.run_id)
+    _append_http_trace(
+        endpoint="/risk/account/snapshot",
+        phase="request",
+        run_id=run_id,
+        symbol=req.symbol,
+        request_payload=req,
+    )
+    ts = req.snapshot_ts or datetime.now(tz=timezone.utc)
+    _state.record_account_snapshot(
+        symbol=req.symbol,
+        balance=float(req.balance),
+        equity=float(req.equity),
+        snapshot_ts=ts,
+    )
+    out = {
+        "ok": True,
+        "symbol": req.symbol.upper(),
+        "snapshot_ts": ts,
+    }
+    _append_http_trace(
+        endpoint="/risk/account/snapshot",
+        phase="response",
+        run_id=run_id,
+        symbol=req.symbol,
+        request_payload=req,
+        response_payload=out,
+        status_code=201,
+    )
+    return out
+
+
 @app.get("/risk/ftmo/limits", response_model=FtmoLimitsResponse)
 async def get_ftmo_limits() -> FtmoLimitsResponse:
     """Return active FTMO profile limits and internal buffered thresholds."""
     return _ftmo_limits_payload()
+
+
+@app.get("/risk/account/limits", response_model=AccountRiskLimitsResponse)
+async def get_account_risk_limits() -> AccountRiskLimitsResponse:
+    """Return active broker-neutral account-risk limits and internal thresholds."""
+    return _account_risk_limits_payload()
 
 
 @app.get("/risk/ftmo/status", response_model=FtmoStatusResponse)
@@ -1707,6 +1986,13 @@ async def get_ftmo_status(symbol: str | None = None) -> FtmoStatusResponse:
     )
 
 
+@app.get("/risk/account/status", response_model=AccountRiskStatusResponse)
+async def get_account_risk_status(symbol: str | None = None) -> AccountRiskStatusResponse:
+    """Return current broker-neutral account-risk status and account headroom."""
+    payload = await get_ftmo_status(symbol)
+    return AccountRiskStatusResponse(**payload.model_dump())
+
+
 @app.get("/risk/ftmo/reservations/status", response_model=FtmoReservationsStatusResponse)
 async def get_ftmo_reservations_status(symbol: str | None = None) -> FtmoReservationsStatusResponse:
     """Return active FTMO reservation totals and rows."""
@@ -1732,6 +2018,18 @@ async def get_ftmo_reservations_status(symbol: str | None = None) -> FtmoReserva
     )
 
 
+@app.get(
+    "/risk/account/reservations/status",
+    response_model=AccountRiskReservationsStatusResponse,
+)
+async def get_account_risk_reservations_status(
+    symbol: str | None = None,
+) -> AccountRiskReservationsStatusResponse:
+    """Return active broker-neutral reservation totals and rows."""
+    payload = await get_ftmo_reservations_status(symbol)
+    return AccountRiskReservationsStatusResponse(**payload.model_dump())
+
+
 @app.post("/risk/ftmo/reservations/release")
 async def release_ftmo_reservations(req: FtmoReservationReleaseRequest) -> dict[str, Any]:
     """Release active FTMO reservations by reservation id, candidate uid, or broker pos id."""
@@ -1743,6 +2041,28 @@ async def release_ftmo_reservations(req: FtmoReservationReleaseRequest) -> dict[
             detail="One of reservation_id, candidate_uid, or broker_pos_id is required",
         )
     released = _state.release_ftmo_risk_reservation(
+        reservation_id=req.reservation_id,
+        candidate_uid=req.candidate_uid,
+        broker_pos_id=req.broker_pos_id,
+        symbol=req.symbol,
+        reason=req.reason or "manual_release",
+    )
+    return {"ok": True, "released_count": int(released)}
+
+
+@app.post("/risk/account/reservations/release")
+async def release_account_risk_reservations(
+    req: AccountRiskReservationReleaseRequest,
+) -> dict[str, Any]:
+    """Release active broker-neutral reservations by reservation id or broker position id."""
+    if _state is None:
+        raise HTTPException(status_code=503, detail="State manager not initialized")
+    if not any([req.reservation_id, req.candidate_uid, req.broker_pos_id]):
+        raise HTTPException(
+            status_code=422,
+            detail="One of reservation_id, candidate_uid, or broker_pos_id is required",
+        )
+    released = _state.release_risk_reservation(
         reservation_id=req.reservation_id,
         candidate_uid=req.candidate_uid,
         broker_pos_id=req.broker_pos_id,
@@ -1775,7 +2095,7 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
     """
     sym = req.symbol.upper()
     run_id = _effective_run_id(req.run_id)
-    ftmo_enabled_effective = bool(req.ftmo_enabled_override)
+    ftmo_enabled_effective = req.effective_risk_enabled_override()
     requested_volume_units = _resolve_requested_volume_units(req)
     _append_http_trace(
         endpoint="/predict",
@@ -1879,12 +2199,17 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
         thr_cfg=thr_cfg,
         ftmo_account_eval=ftmo_account_eval,
         ftmo_enabled_effective=ftmo_enabled_effective,
-        ftmo_enabled_override=bool(req.ftmo_enabled_override),
+        ftmo_enabled_override=req.effective_risk_enabled_override(),
         requested_volume_units=requested_volume_units,
         model_month=contract.model_month,
         cap_pips=contract.cap_pips,
         run_id=run_id,
         skip_regime_gate=historical_prediction_universe_gated,
+        historical_prediction_overrides=_resolve_historical_prediction_payload_overrides(
+            contract=contract,
+            close_ts=close_ts,
+            candidates=candidates,
+        ),
     )
 
     # Sort by pred_prob descending
@@ -1936,6 +2261,7 @@ def _build_predictions(
     cap_pips: float,
     run_id: str | None = None,
     skip_regime_gate: bool = False,
+    historical_prediction_overrides: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[list[OcoPrediction], list[dict[str, Any]]]:
     """Build predictions for each candidate using model + FTMO portfolio allocator."""
     import numpy as np
@@ -1970,6 +2296,12 @@ def _build_predictions(
                 "barrier_pips": float(cand.barrier_pips),
             }
         )
+        canonical_uid = f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+        locked_payload = (
+            (historical_prediction_overrides or {}).get(canonical_uid)
+            if historical_prediction_overrides is not None
+            else None
+        )
         regime_name = _candidate_regime_name(cand)
         if skip_regime_gate:
             regime_active = True
@@ -1981,27 +2313,31 @@ def _build_predictions(
                 regime_q=regime_quantiles_by_ticks.get(int(cand.bar_ticks), {}),
             )
         arr = np.array([features.to_array()], dtype=float)
-
-        if model is not None:
-            with METRIC_INFERENCE_LATENCY.labels(symbol=sym).time():
-                pred_prob = float(model.predict_proba(arr)[:, 1][0])
+        if locked_payload is not None:
+            pred_prob = float(locked_payload.get("pred_prob") or 0.0)
+            curr_threshold = float(locked_payload.get("threshold_exec") or threshold_exec)
+            curr_source = "historical_locked_predictions"
+            preselected_exec = int(locked_payload.get("selected_exec") or 0)
         else:
-            pred_prob = 0.0
+            if model is not None:
+                with METRIC_INFERENCE_LATENCY.labels(symbol=sym).time():
+                    pred_prob = float(model.predict_proba(arr)[:, 1][0])
+            else:
+                pred_prob = 0.0
 
-        # Dynamic threshold lookup. If the model export includes a per-day
-        # schedule, use it; otherwise, fall back to the static scalar.
-        schedule = thr_cfg.get("threshold_schedule", {})
-        day_str = close_ts.strftime("%Y-%m-%d")
+            # Dynamic threshold lookup. If the model export includes a per-day
+            # schedule, use it; otherwise, fall back to the static scalar.
+            schedule = thr_cfg.get("threshold_schedule", {})
+            day_str = close_ts.strftime("%Y-%m-%d")
 
-        if schedule and day_str in schedule:
-            curr_threshold = float(schedule[day_str])
-            curr_source = f"{threshold_mode}:schedule"
-        else:
-            curr_threshold = threshold_exec
-            curr_source = f"{threshold_mode}:static_fallback"
+            if schedule and day_str in schedule:
+                curr_threshold = float(schedule[day_str])
+                curr_source = f"{threshold_mode}:schedule"
+            else:
+                curr_threshold = threshold_exec
+                curr_source = f"{threshold_mode}:static_fallback"
 
-        canonical_uid = f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
-        preselected_exec = 1 if (regime_active and pred_prob >= curr_threshold) else 0
+            preselected_exec = 1 if (regime_active and pred_prob >= curr_threshold) else 0
         risk_metrics_snapshot: dict[str, Any] = {
             "ftmo_enabled": bool(ftmo_account_eval.get("enabled", False)),
             "ftmo_enabled_effective": bool(ftmo_enabled_effective),
@@ -2028,6 +2364,7 @@ def _build_predictions(
             "allocator_fx_rate_max_age_sec": int(max(1, int(_config.ftmo_fx_rate_max_age_sec))),
             "regime_name": regime_name,
             "regime_active": bool(regime_active),
+            "historical_locked_payload": bool(locked_payload is not None),
         }
         trade_eval: dict[str, Any] = {"allow_trade": True, "block_reason": None}
         selected_exec = preselected_exec
@@ -2485,7 +2822,8 @@ async def reload_models() -> dict:
     global _registry, _historical_registry, _historical_entries_loaded
     global _historical_preflight_failed_checks, _historical_preflight_summary
     global _historical_prediction_universes, _historical_prediction_candidate_index
-    global _historical_prediction_candidate_cursor
+    global _historical_prediction_candidate_cursor, _historical_prediction_payload_rows
+    global _historical_prediction_payload_cursor
 
     if _is_historical_mode():
         hist_dir = Path(str(_config.governance_history_dir))
@@ -2506,6 +2844,8 @@ async def reload_models() -> dict:
     _historical_prediction_universes = {}
     _historical_prediction_candidate_index = {}
     _historical_prediction_candidate_cursor = {}
+    _historical_prediction_payload_rows = {}
+    _historical_prediction_payload_cursor = {}
     return {
         "ok": True,
         "models_loaded": dict(_model_months),

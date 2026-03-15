@@ -13,8 +13,14 @@ Monitoring is artifact-driven from each run:
 - governance near-fail/lock-drift diagnostics (`G01`, `G03`),
 - freshness and exception expiry.
 
-## Optional Infra Monitoring
-Prometheus/Grafana endpoints are legacy/optional and only required if the API runtime is actively used.
+## Infra Monitoring
+Prometheus/Grafana remains optional for research-only runs, but it is the active observability path for the Python API during Stage 13 Dukascopy TestClient validation and for the JForex adapter during Stage 14 tester/demo validation.
+
+Current runtime scrape targets:
+- Python API: `http://127.0.0.1:8001/metrics`
+- JForex adapter: `http://127.0.0.1:9464/metrics`
+
+Grafana dashboards are provisioned from `provisioning/dashboards/` and Prometheus scrapes both targets via `docker-compose.yml` + `prometheus.yml`.
 
 ## Rolling Historical Evidence
 

@@ -60,6 +60,41 @@ class TestMetricsEndpoint:
 
 
 class TestFtmoRiskEndpoints:
+    def test_account_risk_limits_endpoint(self, client):
+        r = client.get("/risk/account/limits")
+        assert r.status_code == 200
+        body = r.json()
+        assert "enabled" in body
+
+    def test_account_snapshot_and_status(self, client):
+        r = client.post(
+            "/risk/account/snapshot",
+            json={
+                "symbol": "EURUSD",
+                "balance": 10000.0,
+                "equity": 9950.0,
+                "snapshot_ts": "2025-01-01T10:00:00Z",
+            },
+        )
+        assert r.status_code == 201
+        status = client.get("/risk/account/status?symbol=EURUSD")
+        assert status.status_code == 200
+        body = status.json()
+        assert "allow_trading" in body
+        assert body["snapshot_available"] in (True, False)
+
+    def test_account_reservations_status_and_release(self, client):
+        status = client.get("/risk/account/reservations/status?symbol=EURUSD")
+        assert status.status_code == 200
+        body = status.json()
+        assert "active_count" in body
+        release = client.post(
+            "/risk/account/reservations/release",
+            json={"candidate_uid": "missing_candidate_uid"},
+        )
+        assert release.status_code == 200
+        assert "released_count" in release.json()
+
     def test_ftmo_limits_endpoint(self, client):
         r = client.get("/risk/ftmo/limits")
         assert r.status_code == 200
@@ -343,6 +378,279 @@ class TestPredictEndpoint:
             server._historical_prediction_candidate_index = {}
             server._historical_prediction_candidate_cursor = {}
 
+    def test_historical_prediction_payload_override_resolves_nearest_row(self, tmp_path):
+        import duckdb
+        from types import SimpleNamespace
+
+        from src.behemoth.api import server
+
+        pred_path = tmp_path / "predictions.parquet"
+        con = duckdb.connect()
+        try:
+            con.execute(
+                """
+                CREATE TABLE pred AS
+                SELECT * FROM (
+                    VALUES
+                        (TIMESTAMPTZ '2025-07-07 00:00:12+00:00', '2025-07', 'oco|EURUSD|100|h6|state_a', 0.71, 0.61, 1),
+                        (TIMESTAMPTZ '2025-07-07 00:10:12+00:00', '2025-07', 'oco|EURUSD|100|h6|state_a', 0.42, 0.61, 0)
+                ) AS t(close_ts, test_month, candidate_uid, pred_prob, threshold_exec, selected_exec)
+                """
+            )
+            con.execute("COPY pred TO ? (FORMAT 'parquet')", [str(pred_path)])
+        finally:
+            con.close()
+
+        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a")
+        contract = SimpleNamespace(
+            symbol="EURUSD",
+            model_month="2025-07",
+            cache_key="EURUSD|2025-07",
+            model_binding={"predictions_path": str(pred_path)},
+        )
+
+        orig_mode = server._config.governance_mode
+        orig_payload_mode = server._config.historical_prediction_payload_mode
+        server._historical_prediction_payload_rows = {}
+        try:
+            server._config.governance_mode = "historical"
+            server._config.historical_prediction_payload_mode = "locked"
+            out = server._resolve_historical_prediction_payload_overrides(
+                contract=contract,
+                close_ts=datetime(2025, 7, 7, 0, 0, 0, tzinfo=timezone.utc),
+                candidates=[cand],
+            )
+            row = out["oco|EURUSD|100|h6|state_a"]
+            assert row["selected_exec"] == 1
+            assert row["threshold_exec"] == pytest.approx(0.61)
+            assert row["pred_prob"] == pytest.approx(0.71)
+        finally:
+            server._config.governance_mode = orig_mode
+            server._config.historical_prediction_payload_mode = orig_payload_mode
+            server._historical_prediction_payload_rows = {}
+
+    def test_historical_prediction_payload_override_prefers_selected_row_within_tolerance(self, tmp_path):
+        import duckdb
+        from types import SimpleNamespace
+
+        from src.behemoth.api import server
+
+        pred_path = tmp_path / "predictions.parquet"
+        con = duckdb.connect()
+        try:
+            con.execute(
+                """
+                CREATE TABLE pred AS
+                SELECT * FROM (
+                    VALUES
+                        (TIMESTAMPTZ '2025-07-07 00:00:05+00:00', '2025-07', 'oco|EURUSD|100|h6|state_a', 0.52, 0.61, 0),
+                        (TIMESTAMPTZ '2025-07-07 00:00:20+00:00', '2025-07', 'oco|EURUSD|100|h6|state_a', 0.72, 0.61, 1)
+                ) AS t(close_ts, test_month, candidate_uid, pred_prob, threshold_exec, selected_exec)
+                """
+            )
+            con.execute("COPY pred TO ? (FORMAT 'parquet')", [str(pred_path)])
+        finally:
+            con.close()
+
+        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a")
+        contract = SimpleNamespace(
+            symbol="EURUSD",
+            model_month="2025-07",
+            cache_key="EURUSD|2025-07",
+            model_binding={"predictions_path": str(pred_path)},
+        )
+
+        orig_mode = server._config.governance_mode
+        orig_payload_mode = server._config.historical_prediction_payload_mode
+        orig_tol = server._config.historical_prediction_tolerance_sec
+        server._historical_prediction_payload_rows = {}
+        try:
+            server._config.governance_mode = "historical"
+            server._config.historical_prediction_payload_mode = "locked"
+            server._config.historical_prediction_tolerance_sec = 30.0
+            out = server._resolve_historical_prediction_payload_overrides(
+                contract=contract,
+                close_ts=datetime(2025, 7, 7, 0, 0, 10, tzinfo=timezone.utc),
+                candidates=[cand],
+            )
+            row = out["oco|EURUSD|100|h6|state_a"]
+            assert row["selected_exec"] == 1
+            assert row["pred_prob"] == pytest.approx(0.72)
+        finally:
+            server._config.governance_mode = orig_mode
+            server._config.historical_prediction_payload_mode = orig_payload_mode
+            server._config.historical_prediction_tolerance_sec = orig_tol
+            server._historical_prediction_payload_rows = {}
+
+    def test_historical_prediction_payload_override_does_not_reuse_locked_row(self, tmp_path):
+        import duckdb
+        from types import SimpleNamespace
+
+        from src.behemoth.api import server
+
+        pred_path = tmp_path / "predictions.parquet"
+        con = duckdb.connect()
+        try:
+            con.execute(
+                """
+                CREATE TABLE pred AS
+                SELECT * FROM (
+                    VALUES
+                        (TIMESTAMPTZ '2025-07-08 04:30:34.649+00:00', '2025-07', 'oco|AUDUSD|100|h6|state_a', 0.58, 0.56, 1)
+                ) AS t(close_ts, test_month, candidate_uid, pred_prob, threshold_exec, selected_exec)
+                """
+            )
+            con.execute("COPY pred TO ? (FORMAT 'parquet')", [str(pred_path)])
+        finally:
+            con.close()
+
+        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a")
+        contract = SimpleNamespace(
+            symbol="AUDUSD",
+            model_month="2025-07",
+            cache_key="AUDUSD|2025-07",
+            model_binding={"predictions_path": str(pred_path)},
+        )
+
+        orig_mode = server._config.governance_mode
+        orig_payload_mode = server._config.historical_prediction_payload_mode
+        orig_tol = server._config.historical_prediction_tolerance_sec
+        server._historical_prediction_payload_rows = {}
+        server._historical_prediction_payload_cursor = {}
+        try:
+            server._config.governance_mode = "historical"
+            server._config.historical_prediction_payload_mode = "locked"
+            server._config.historical_prediction_tolerance_sec = 60.0
+            first = server._resolve_historical_prediction_payload_overrides(
+                contract=contract,
+                close_ts=datetime(2025, 7, 8, 4, 29, 45, 999000, tzinfo=timezone.utc),
+                candidates=[cand],
+            )
+            second = server._resolve_historical_prediction_payload_overrides(
+                contract=contract,
+                close_ts=datetime(2025, 7, 8, 4, 30, 56, 332000, tzinfo=timezone.utc),
+                candidates=[cand],
+            )
+            assert first["oco|AUDUSD|100|h6|state_a"]["selected_exec"] == 1
+            assert second == {}
+        finally:
+            server._config.governance_mode = orig_mode
+            server._config.historical_prediction_payload_mode = orig_payload_mode
+            server._config.historical_prediction_tolerance_sec = orig_tol
+            server._historical_prediction_payload_rows = {}
+            server._historical_prediction_payload_cursor = {}
+
+    def test_historical_prediction_universe_tolerant_mode_late_release_with_locked_payload(self, tmp_path):
+        import duckdb
+        from types import SimpleNamespace
+
+        from src.behemoth.api import server
+
+        pred_path = tmp_path / "predictions.parquet"
+        con = duckdb.connect()
+        try:
+            con.execute(
+                """
+                CREATE TABLE pred AS
+                SELECT
+                    TIMESTAMPTZ '2025-07-07 00:00:15+00:00' AS close_ts,
+                    '2025-07' AS test_month,
+                    'oco|EURUSD|100|h6|state_a' AS candidate_uid
+                """
+            )
+            con.execute("COPY pred TO ? (FORMAT 'parquet')", [str(pred_path)])
+        finally:
+            con.close()
+
+        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a")
+        contract = SimpleNamespace(
+            symbol="EURUSD",
+            model_month="2025-07",
+            cache_key="EURUSD|2025-07",
+            model_binding={"predictions_path": str(pred_path)},
+        )
+
+        orig_mode = server._config.governance_mode
+        orig_gate_mode = server._config.historical_prediction_universe_mode
+        orig_payload_mode = server._config.historical_prediction_payload_mode
+        server._historical_prediction_universes = {}
+        server._historical_prediction_candidate_index = {}
+        server._historical_prediction_candidate_cursor = {}
+        try:
+            server._config.governance_mode = "historical"
+            server._config.historical_prediction_universe_mode = "tolerant"
+            server._config.historical_prediction_payload_mode = "locked"
+            out = server._apply_historical_prediction_universe_gate(
+                contract=contract,
+                close_ts=datetime(2025, 7, 7, 0, 1, 15, tzinfo=timezone.utc),
+                candidates=[cand],
+            )
+            assert len(out) == 1
+        finally:
+            server._config.governance_mode = orig_mode
+            server._config.historical_prediction_universe_mode = orig_gate_mode
+            server._config.historical_prediction_payload_mode = orig_payload_mode
+            server._historical_prediction_universes = {}
+            server._historical_prediction_candidate_index = {}
+            server._historical_prediction_candidate_cursor = {}
+
+    def test_historical_prediction_universe_tolerant_mode_does_not_release_stale_row(self, tmp_path):
+        import duckdb
+        from types import SimpleNamespace
+
+        from src.behemoth.api import server
+
+        pred_path = tmp_path / "predictions.parquet"
+        con = duckdb.connect()
+        try:
+            con.execute(
+                """
+                CREATE TABLE pred AS
+                SELECT
+                    TIMESTAMPTZ '2025-07-07 00:00:15+00:00' AS close_ts,
+                    '2025-07' AS test_month,
+                    'oco|EURUSD|100|h6|state_a' AS candidate_uid
+                """
+            )
+            con.execute("COPY pred TO ? (FORMAT 'parquet')", [str(pred_path)])
+        finally:
+            con.close()
+
+        cand = SimpleNamespace(bar_ticks=100, horizon=6, candidate_uid="state_a")
+        contract = SimpleNamespace(
+            symbol="EURUSD",
+            model_month="2025-07",
+            cache_key="EURUSD|2025-07",
+            model_binding={"predictions_path": str(pred_path)},
+        )
+
+        orig_mode = server._config.governance_mode
+        orig_gate_mode = server._config.historical_prediction_universe_mode
+        orig_payload_mode = server._config.historical_prediction_payload_mode
+        orig_tol = server._config.historical_prediction_tolerance_sec
+        server._historical_prediction_universes = {}
+        server._historical_prediction_candidate_index = {}
+        server._historical_prediction_candidate_cursor = {}
+        try:
+            server._config.governance_mode = "historical"
+            server._config.historical_prediction_universe_mode = "tolerant"
+            server._config.historical_prediction_payload_mode = "locked"
+            server._config.historical_prediction_tolerance_sec = 30.0
+            out = server._apply_historical_prediction_universe_gate(
+                contract=contract,
+                close_ts=datetime(2025, 7, 7, 0, 10, 15, tzinfo=timezone.utc),
+                candidates=[cand],
+            )
+            assert out == []
+        finally:
+            server._config.governance_mode = orig_mode
+            server._config.historical_prediction_universe_mode = orig_gate_mode
+            server._config.historical_prediction_payload_mode = orig_payload_mode
+            server._config.historical_prediction_tolerance_sec = orig_tol
+            server._historical_prediction_universes = {}
+            server._historical_prediction_candidate_index = {}
+            server._historical_prediction_candidate_cursor = {}
+
     def test_predict_requires_size(self, client):
         r = client.post(
             "/predict",
@@ -350,14 +658,28 @@ class TestPredictEndpoint:
         )
         assert r.status_code == 422
 
-    def test_predict_requires_ftmo_override(self, client):
+    def test_predict_requires_risk_override(self, client):
         r = client.post(
             "/predict",
             json={"symbol": "EURUSD", "requested_volume_units": 10000},
         )
         assert r.status_code == 422
         detail = str(r.json().get("detail", "")).lower()
-        assert "ftmo_enabled_override" in detail
+        assert "risk_enabled_override" in detail or "ftmo_enabled_override" in detail
+
+    def test_predict_request_accepts_canonical_risk_override(self):
+        from src.behemoth.api.server import PredictRequest
+
+        req = PredictRequest(
+            symbol="EURUSD",
+            risk_enabled_override=True,
+            requested_volume_units=10000,
+            completed_bar_ticks=[100],
+            run_id="jforex-gbpusd-slice",
+        )
+
+        assert req.effective_risk_enabled_override() is True
+        assert req.completed_bar_ticks == [100]
 
     def test_predict_insufficient_warmup(self, client):
         """With no bars ingested, predict should return 422."""

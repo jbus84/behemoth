@@ -103,6 +103,10 @@ The production research process is a stage-gated chain:
 9. Stage 09: governance lock + deploy eligibility.
 10. Stage 10: known risks + backlog controls.
 11. Stage 11: execution Monte Carlo degradation analysis.
+12. Stage 12: historical API parity against reduced-core truth.
+12.5. Pre-Stage local JForex surrogate parity, using canonical Dukascopy parquet replay against the shared Java strategy core before real broker-runtime certification.
+13. Stage 13: Dukascopy TestClient parity, using canonical Dukascopy parquet replay as the broker-source diagnostic gate on the Python side.
+14. Stage 14: JForex runtime certification for tester/demo execution, with `ITesterClient` as the official broker-runtime certification harness.
 
 Generated status is published in `docs/strategy_bible/generated/pipeline_snapshot.md`.
 
@@ -174,7 +178,7 @@ Expected gross pips/trade proxy below is taken from reduced-core monthly outputs
 
 Interpretation note:
 - these are cycle-level expectancy estimates under the current selection policy, not guaranteed live outcomes;
-- execution-drift and governance gates (Sections 7-13) must still pass for deploy suitability.
+- execution-drift and governance gates (Sections 7-14) must still pass for deploy suitability.
 
 ## 7. Execution Semantics (Stop-Limit)
 
@@ -215,6 +219,8 @@ See:
 - `scripts/analyze_oco_monthly_wfo_robustness.py`
 - `scripts/analyze_oco_stop_limit_tickfill.py`
 - `scripts/simulate_api_e2e_replay.py` (E2E Replay Parity Check)
+- `scripts/validate_stage13_dukascopy_testclient.py`
+- `scripts/validate_stage14_jforex_runtime_certification.py`
 
 ### 9.2 Governance and Docs
 - `scripts/build_oco_strategy_bible.py`
@@ -234,7 +240,15 @@ Run from repo root:
 
 ```bash
 make docs-contract-ci
+make stage13-dukascopy-cert
+make stage14-jforex-cert
 uv run mkdocs build
+```
+
+For runtime observability during the local JForex surrogate, Stage 13, and Stage 14 validation work:
+
+```bash
+make observability-up
 ```
 
 ## 11. Operator Workflow

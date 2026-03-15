@@ -105,6 +105,10 @@ nav:
       - Stage 11 Execution MC Spec: strategy_bible/stage_11_execution_monte_carlo.md
       - Stage 12 API Parity Snapshot: strategy_bible/generated/stage_12_snapshot.md
       - Stage 12 API Parity Spec: strategy_bible/stage_12_api_parity.md
+      - Stage 13 Dukascopy TestClient Snapshot: strategy_bible/generated/stage_13_snapshot.md
+      - Stage 13 Dukascopy TestClient Spec: strategy_bible/stage_13_dukascopy_testclient_parity.md
+      - Stage 14 JForex Certification Snapshot: strategy_bible/generated/stage_14_snapshot.md
+      - Stage 14 JForex Certification Spec: strategy_bible/stage_14_jforex_runtime_certification.md
       - Signal Lifecycle Reference: strategy_bible/signal_lifecycle_reference.md
       - Operator Runbook: strategy_bible/operator_runbook.md
       - Metric Dictionary: strategy_bible/metric_dictionary.md

@@ -11,7 +11,7 @@ REBUILD_SYMBOLS := EURUSD GBPUSD USDJPY USDCHF AUDUSD USDCAD
 CTRADER_ROBOT_DST := ~/cAlgo/Sources/Robots/BehemothTradeManager/BehemothTradeManager/BehemothTradeManager.cs
 CTRADER_PLUGIN_DST := ~/cAlgo/Sources/Plugins/CustomDataSourceHistDataPlugin/CustomDataSourceHistDataPlugin/CustomDataSourceHistDataPlugin.cs
 
-.PHONY: test docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift deploy-cbot deploy-ctrader provision retrain-all rebuild-all quality ty vulture smellcheck radon xenon audit-all freeze-oco freeze-oco-history validate-oco-history reconcile-historical-predictions summarize-runtime-db-run reconcile-ctrader-run export-ctrader-custom-data ctrader-debug-up ctrader-debug-down ctrader-debug-status ctrader-ab-parity-report ctrader-parity testclient-parity histdata-ctrader-parity histdata-testclient-parity stage12-api-parity dukascopy-source-audit offset-robustness-study offset-frozen-screen
+.PHONY: test test-java docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift deploy-cbot deploy-ctrader provision observability-up observability-down retrain-all rebuild-all quality ty vulture smellcheck radon xenon audit-all freeze-oco freeze-oco-history validate-oco-history reconcile-historical-predictions summarize-runtime-db-run reconcile-ctrader-run export-ctrader-custom-data ctrader-debug-up ctrader-debug-down ctrader-debug-status ctrader-ab-parity-report ctrader-parity testclient-parity dukascopy-testclient-parity local-jforex-parity local-jforex-parity-matrix local-jforex-cert histdata-ctrader-parity histdata-testclient-parity stage12-api-parity stage13-dukascopy-cert stage14-jforex-cert dukascopy-source-audit offset-robustness-study offset-frozen-screen account-risk-monitoring-report reconcile-account-risk-reservations
 
 OFFSET_ROBUSTNESS_SYMBOLS_DEFAULT := EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD
 OFFSET_ROBUSTNESS_OFFSETS_DEFAULT := 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99
@@ -23,8 +23,72 @@ provision:
 	@echo "Provisioning Alertmanager configuration..."
 	uv run python scripts/provision_observability.py
 
+observability-up:
+	docker compose up -d prometheus alertmanager grafana
+
+observability-down:
+	docker compose down
+
 test:
 	uv run pytest -q
+
+test-java:
+	gradle :jforex-adapter:test
+
+local-jforex-parity:
+	BEHEMOTH_LOCAL_JFOREX_INSTRUMENTS=$(or $(SYMBOL),GBPUSD) \
+	BEHEMOTH_LOCAL_JFOREX_START_UTC=$(or $(START_TS),2025-07-07T00:00:00Z) \
+	BEHEMOTH_LOCAL_JFOREX_END_UTC=$(or $(END_TS),2025-07-09T00:00:00Z) \
+	BEHEMOTH_LOCAL_JFOREX_TICK_ROOT=$(or $(TICK_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks) \
+	BEHEMOTH_LOCAL_JFOREX_REPORT_DIR=$(or $(REPORT_DIR),data/analysis/backtest_reconcile) \
+	BEHEMOTH_LOCAL_JFOREX_RUN_ID=$(or $(RUN_ID),local_jforex_surrogate) \
+	BEHEMOTH_LOCAL_JFOREX_RISK_ENABLED=$(or $(RISK_ENABLED),false) \
+	BEHEMOTH_LOCAL_JFOREX_REQUESTED_VOLUME_UNITS=$(or $(REQUESTED_VOLUME_UNITS),10000) \
+	BEHEMOTH_LOCAL_JFOREX_TICK_BATCH_SIZE=$(or $(TICK_BATCH_SIZE),16) \
+	BEHEMOTH_LOCAL_JFOREX_ORDER_TTL_SECONDS=$(or $(ORDER_TTL_SECONDS),900) \
+	BEHEMOTH_LOCAL_JFOREX_API_TIMEOUT_SECONDS=$(or $(API_TIMEOUT_SECONDS),60) \
+	BEHEMOTH_LOCAL_JFOREX_METRICS_ENABLED=$(or $(METRICS_ENABLED),true) \
+	BEHEMOTH_LOCAL_JFOREX_METRICS_HOST=$(or $(METRICS_HOST),127.0.0.1) \
+	BEHEMOTH_LOCAL_JFOREX_METRICS_PORT=$(or $(METRICS_PORT),9465) \
+	BEHEMOTH_LOCAL_JFOREX_WARMUP_TICKS=$(or $(WARMUP_TICKS),30000) \
+	BEHEMOTH_LOCAL_JFOREX_LOOKBACK_DAYS=$(or $(LOOKBACK_DAYS),31) \
+	BEHEMOTH_LOCAL_JFOREX_PHASE_BAR_TICKS=$(or $(PHASE_BAR_TICKS),100) \
+	BEHEMOTH_LOCAL_JFOREX_STARTING_BALANCE=$(or $(STARTING_BALANCE),100000) \
+	BEHEMOTH_API_BASE_URI=$(or $(API_BASE_URI),http://127.0.0.1:8000) \
+	mise exec -- gradle :jforex-adapter:runLocalJForexTester
+
+local-jforex-parity-matrix:
+	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/run_local_jforex_surrogate_matrix.py \
+		$(if $(SYMBOLS),--symbols "$(SYMBOLS)",) \
+		--start-ts $(or $(START_TS),2025-07-07T00:00:00Z) \
+		--end-ts $(or $(END_TS),2025-07-09T00:00:00Z) \
+		--model-month $(or $(MODEL_MONTH),2025-07) \
+		--models-dir $(or $(MODELS_DIR),models/oco_dukascopy_candidate) \
+		--history-dir $(or $(HISTORY_DIR),configs/research/governance/oco_history_dukascopy_candidate) \
+		--predictions-dir $(or $(PREDICTIONS_DIR),data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap) \
+		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks) \
+		--report-dir $(or $(REPORT_DIR),data/analysis/backtest_reconcile) \
+		--api-port $(or $(API_PORT),8000) \
+		--requested-volume-units $(or $(REQUESTED_VOLUME_UNITS),10000) \
+		--tick-batch-size $(or $(TICK_BATCH_SIZE),16) \
+		--order-ttl-seconds $(or $(ORDER_TTL_SECONDS),900) \
+		--api-timeout-seconds $(or $(API_TIMEOUT_SECONDS),60) \
+		--metrics-port-base $(or $(METRICS_PORT_BASE),9465) \
+		--warmup-ticks $(or $(WARMUP_TICKS),30000) \
+		--lookback-days $(or $(LOOKBACK_DAYS),31) \
+		--phase-bar-ticks $(or $(PHASE_BAR_TICKS),100) \
+		--starting-balance $(or $(STARTING_BALANCE),100000)
+
+local-jforex-cert:
+	uv run python scripts/validate_local_jforex_surrogate.py \
+		--stage12-summary-glob '$(or $(STAGE12_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_stage12_api_parity_summary.csv)' \
+		--local-signal-summary-glob '$(or $(LOCAL_SIGNAL_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_local_jforex_signal_parity_summary.csv)' \
+		--local-execution-summary-glob '$(or $(LOCAL_EXECUTION_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_local_jforex_execution_parity_summary.csv)' \
+		--local-lifecycle-summary-glob '$(or $(LOCAL_LIFECYCLE_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_local_jforex_oco_lifecycle_summary.csv)' \
+		--local-operational-summary-glob '$(or $(LOCAL_OPERATIONAL_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_local_jforex_operational_ready_summary.csv)' \
+		--out-summary-csv $(or $(OUT_SUMMARY_CSV),data/analysis/backtest_reconcile/local_jforex_surrogate_summary.csv) \
+		--out-checks-csv $(or $(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/local_jforex_surrogate_checks.csv) \
+		--report-out $(or $(REPORT_OUT),docs/analysis/local_jforex_surrogate_report.md)
 
 quality: ty lint vulture smellcheck radon xenon
 	@echo "\n✅ All quality checks complete"
@@ -110,8 +174,8 @@ docs-contract:
 	uv run python scripts/build_docs_catalog.py
 	uv run python scripts/build_oco_execution_drift_report.py
 	uv run python scripts/build_oco_threshold_sensitivity_report.py
-	uv run python scripts/build_ftmo_allocator_monitoring_report.py
-	uv run python scripts/reconcile_ftmo_reservations.py
+	uv run python scripts/build_account_risk_monitoring_report.py
+	uv run python scripts/reconcile_account_risk_reservations.py
 	uv run python scripts/validate_oco_rule_universe_registry.py
 	uv run python scripts/remediate_oco_monitoring_alerts.py
 	uv run python scripts/build_oco_governance_explainability_report.py
@@ -124,8 +188,8 @@ docs-contract:
 
 docs-contract-ci:
 	uv run python scripts/build_docs_catalog.py
-	uv run python scripts/build_ftmo_allocator_monitoring_report.py
-	uv run python scripts/reconcile_ftmo_reservations.py
+	uv run python scripts/build_account_risk_monitoring_report.py
+	uv run python scripts/reconcile_account_risk_reservations.py
 	uv run python scripts/validate_oco_rule_universe_registry.py
 	uv run python scripts/remediate_oco_monitoring_alerts.py
 	uv run python scripts/build_oco_governance_explainability_report.py
@@ -396,11 +460,15 @@ testclient-parity:
 		--missing-month-policy $(or $(MISSING_MONTH_POLICY),error) \
 		--historical-preflight-mode $(or $(HISTORICAL_PREFLIGHT_MODE),warn) \
 		--historical-prediction-universe-mode $(or $(HISTORICAL_PREDICTION_UNIVERSE_MODE),exact) \
+		--historical-prediction-payload-mode $(or $(HISTORICAL_PREDICTION_PAYLOAD_MODE),model) \
+		--historical-prediction-tolerance-sec $(or $(HISTORICAL_PREDICTION_TOL_SEC),30.0) \
+		$(if $(HISTORICAL_PREDICTIONS_PATH_OVERRIDE),--historical-predictions-path-override $(HISTORICAL_PREDICTIONS_PATH_OVERRIDE),) \
 		--ftmo-enabled-override $(or $(FTMO_ENABLED_OVERRIDE),false) \
 		--requested-lot-size $(or $(LOT_SIZE),0.05) \
 		--enable-tick-batch $(or $(ENABLE_TICK_BATCH),true) \
 		--tick-batch-size $(or $(TICK_BATCH_SIZE),20) \
 		--selected-time-tolerance-sec $(or $(SELECTED_TIME_TOL_SEC),1.0) \
+		--selected-parity-mode $(or $(SELECTED_PARITY_MODE),strict) \
 		--enable-sequence-fallback $(or $(ENABLE_SEQUENCE_FALLBACK),false) \
 		--sequence-fallback-max-gap-sec $(or $(SEQUENCE_FALLBACK_MAX_GAP_SEC),21600) \
 		--reset-runtime-db $(or $(RESET_RUNTIME_DB),true) \
@@ -420,10 +488,40 @@ testclient-parity:
 		--fail-on-gate $(or $(FAIL_ON_GATE),true) \
 		--require-selected-parity $(or $(REQUIRE_SELECTED_PARITY),true)
 
+dukascopy-testclient-parity:
+	$(MAKE) testclient-parity SOURCE=dukascopy TICK_ROOT=$(or $(TICK_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks) OUT_SUMMARY_CSV=$(or $(OUT_SUMMARY_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_dukascopy_testclient_execution_parity_summary.csv) OUT_CHECKS_CSV=$(or $(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_dukascopy_testclient_execution_parity_checks.csv) OUT_MISMATCHES_CSV=$(or $(OUT_MISMATCHES_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_dukascopy_testclient_execution_parity_mismatches.csv) REPORT_OUT=$(or $(REPORT_OUT),docs/analysis/$(SYMBOL)_dukascopy_testclient_execution_parity_report.md) LOCAL_SUMMARY_CSV=$(or $(LOCAL_SUMMARY_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_dukascopy_testclient_replay_summary.csv) LOCAL_SELECTED_MISMATCHES_CSV=$(or $(LOCAL_SELECTED_MISMATCHES_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_dukascopy_testclient_selected_mismatches.csv) MODELS_DIR=$(or $(MODELS_DIR),models/oco_dukascopy_candidate) HISTORY_DIR=$(or $(HISTORY_DIR),configs/research/governance/oco_history_dukascopy_candidate) HISTORICAL_PREDICTION_UNIVERSE_MODE=$(or $(HISTORICAL_PREDICTION_UNIVERSE_MODE),tolerant) HISTORICAL_PREDICTION_PAYLOAD_MODE=$(or $(HISTORICAL_PREDICTION_PAYLOAD_MODE),locked) HISTORICAL_PREDICTION_TOL_SEC=$(or $(HISTORICAL_PREDICTION_TOL_SEC),60.0) HISTORICAL_PREDICTIONS_PATH_OVERRIDE=$(or $(HISTORICAL_PREDICTIONS_PATH_OVERRIDE),$(REPO_PREDICTIONS_PARQUET)) SELECTED_PARITY_MODE=$(or $(SELECTED_PARITY_MODE),event_aligned) ENABLE_SEQUENCE_FALLBACK=$(or $(ENABLE_SEQUENCE_FALLBACK),true) SELECTED_TIME_TOL_SEC=$(or $(SELECTED_TIME_TOL_SEC),60.0) TIME_TOL_SEC=$(or $(TIME_TOL_SEC),60.0) SYMBOL=$(SYMBOL) RUNTIME_DB=$(RUNTIME_DB) EVENTS_JSON=$(EVENTS_JSON) REPO_PREDICTIONS_PARQUET=$(REPO_PREDICTIONS_PARQUET) REPO_DETAIL_CSV=$(REPO_DETAIL_CSV) REDUCED_STATE_SCHEDULE_CSV=$(REDUCED_STATE_SCHEDULE_CSV) START_TS=$(START_TS) END_TS=$(END_TS)
+
 histdata-testclient-parity:
 	$(MAKE) testclient-parity SOURCE=histdata TICK_ROOT=$(or $(TICK_ROOT),/Users/danielfisher/Desktop/tick) OUT_SUMMARY_CSV=$(or $(OUT_SUMMARY_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_histdata_testclient_execution_parity_summary.csv) OUT_CHECKS_CSV=$(or $(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_histdata_testclient_execution_parity_checks.csv) OUT_MISMATCHES_CSV=$(or $(OUT_MISMATCHES_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_histdata_testclient_execution_parity_mismatches.csv) REPORT_OUT=$(or $(REPORT_OUT),docs/analysis/$(SYMBOL)_histdata_testclient_execution_parity_report.md) LOCAL_SUMMARY_CSV=$(or $(LOCAL_SUMMARY_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_histdata_testclient_replay_summary.csv) LOCAL_SELECTED_MISMATCHES_CSV=$(or $(LOCAL_SELECTED_MISMATCHES_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_histdata_testclient_selected_mismatches.csv) SYMBOL=$(SYMBOL) RUNTIME_DB=$(RUNTIME_DB) EVENTS_JSON=$(EVENTS_JSON) REPO_PREDICTIONS_PARQUET=$(REPO_PREDICTIONS_PARQUET) REPO_DETAIL_CSV=$(REPO_DETAIL_CSV) REDUCED_STATE_SCHEDULE_CSV=$(REDUCED_STATE_SCHEDULE_CSV) START_TS=$(START_TS) END_TS=$(END_TS)
 
 stage12-api-parity: testclient-parity
+
+stage13-dukascopy-cert:
+	uv run python scripts/validate_stage13_dukascopy_testclient.py \
+		--stage12-summary-glob '$(or $(STAGE12_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_stage12_api_parity_summary.csv)' \
+		--dukascopy-testclient-summary-glob '$(or $(DUKASCOPY_TESTCLIENT_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_dukascopy_testclient_replay_summary.csv)' \
+		--out-summary-csv $(or $(OUT_SUMMARY_CSV),data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv) \
+		--out-checks-csv $(or $(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/stage13_dukascopy_testclient_checks.csv) \
+		--report-out $(or $(REPORT_OUT),docs/analysis/stage13_dukascopy_testclient_report.md) \
+		--snapshot-out $(or $(SNAPSHOT_OUT),docs/strategy_bible/generated/stage_13_snapshot.md)
+
+stage14-jforex-cert:
+	uv run python scripts/validate_stage14_jforex_runtime_certification.py \
+		--stage13-summary-glob '$(or $(STAGE13_SUMMARY_GLOB),data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv)' \
+		--jforex-signal-summary-glob '$(or $(JFOREX_SIGNAL_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_jforex_signal_parity_summary.csv)' \
+		--jforex-execution-summary-glob '$(or $(JFOREX_EXECUTION_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_jforex_execution_parity_summary.csv)' \
+		--jforex-lifecycle-summary-glob '$(or $(JFOREX_LIFECYCLE_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_jforex_oco_lifecycle_summary.csv)' \
+		--jforex-operational-summary-glob '$(or $(JFOREX_OPERATIONAL_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_jforex_operational_ready_summary.csv)' \
+		--out-summary-csv $(or $(OUT_SUMMARY_CSV),data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_summary.csv) \
+		--out-checks-csv $(or $(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_checks.csv) \
+		--report-out $(or $(REPORT_OUT),docs/analysis/stage14_jforex_runtime_certification_report.md) \
+		--snapshot-out $(or $(SNAPSHOT_OUT),docs/strategy_bible/generated/stage_14_snapshot.md)
+
+account-risk-monitoring-report:
+	uv run python scripts/build_account_risk_monitoring_report.py
+
+reconcile-account-risk-reservations:
+	uv run python scripts/reconcile_account_risk_reservations.py
 
 dukascopy-source-audit:
 	uv run python scripts/audit_tick_source_completeness.py \
@@ -501,6 +599,7 @@ help:
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "xenon" "Run complexity enforcement"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "lint" "Run ruff lint"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "format" "Run ruff format"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "test-java" "Run JForex adapter unit tests via Gradle"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "check-legacy-drift" "Check repo for legacy/forbidden code drift"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "precommit-install" "Install pre-commit hooks"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "precommit-run" "Run pre-commit on all files"
@@ -520,6 +619,14 @@ help:
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "ctrader-debug-up" "One-command Dukascopy-first debug session: export package + isolated DuckDB + FTMO-enabled API"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "ctrader-parity" "Validate canonical-feed execution parity from cTrader runtime DB + events"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "testclient-parity" "Replay canonical parquet via TestClient (no cTrader) and run strict parity gate"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "dukascopy-testclient-parity" "Replay Dukascopy parquet via TestClient as the Stage 13 parity harness"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "local-jforex-parity" "Run the local parquet-driven JForex surrogate against the shared Java strategy core"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "local-jforex-cert" "Summarize local JForex surrogate outputs into a pre-Stage certification report"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage13-dukascopy-cert" "Build Stage 13 Dukascopy TestClient summary, checks, report, and snapshot"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage14-jforex-cert" "Build Stage 14 JForex certification summary, checks, report, and snapshot"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "observability-up" "Start Prometheus, Alertmanager, and Grafana for API + JForex monitoring"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "account-risk-monitoring-report" "Build broker-neutral account-risk monitoring outputs"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "reconcile-account-risk-reservations" "Reconcile broker-neutral account-risk reservations"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "histdata-ctrader-parity" "Legacy alias for cTrader parity against HistData ticks"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "histdata-testclient-parity" "Legacy alias for TestClient parity against HistData ticks"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "cbot-surrogate" "Replay canonical Dukascopy/HistData through the API/runtime stack with FTMO rules enabled"

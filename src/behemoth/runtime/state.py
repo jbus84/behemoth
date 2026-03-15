@@ -485,6 +485,22 @@ class StateManager:
             [ts, symbol.upper(), float(balance), float(equity)],
         )
 
+    def record_account_snapshot(
+        self,
+        *,
+        symbol: str,
+        balance: float,
+        equity: float,
+        snapshot_ts: datetime,
+    ) -> None:
+        """Broker-neutral alias for account snapshot persistence."""
+        self.record_ftmo_account_snapshot(
+            symbol=symbol,
+            balance=balance,
+            equity=equity,
+            snapshot_ts=snapshot_ts,
+        )
+
     def get_latest_ftmo_account_snapshot(self, symbol: str | None = None) -> dict | None:
         """Return the latest account snapshot, optionally filtered by symbol."""
         if symbol:
@@ -521,6 +537,10 @@ class StateManager:
             "balance": float(row[2]),
             "equity": float(row[3]),
         }
+
+    def get_latest_account_snapshot(self, symbol: str | None = None) -> dict | None:
+        """Broker-neutral alias for latest account snapshot retrieval."""
+        return self.get_latest_ftmo_account_snapshot(symbol)
 
     def get_ftmo_snapshots_since(
         self,
@@ -569,6 +589,15 @@ class StateManager:
             )
         return out
 
+    def get_account_snapshots_since(
+        self,
+        *,
+        since_ts: datetime,
+        symbol: str | None = None,
+    ) -> list[dict]:
+        """Broker-neutral alias for historical account snapshots."""
+        return self.get_ftmo_snapshots_since(since_ts=since_ts, symbol=symbol)
+
     def create_ftmo_risk_reservation(
         self,
         *,
@@ -608,6 +637,34 @@ class StateManager:
             ],
         )
         return rid
+
+    def create_risk_reservation(
+        self,
+        *,
+        symbol: str,
+        candidate_uid: str,
+        reserved_loss_ccy: float,
+        barrier_pips: float,
+        cap_pips: float,
+        cost_est_pips: float,
+        volume_units: float,
+        side: str | None = None,
+        source: str = "predict_allocator",
+        status: str = "PENDING",
+    ) -> str:
+        """Broker-neutral alias for creating risk reservations."""
+        return self.create_ftmo_risk_reservation(
+            symbol=symbol,
+            candidate_uid=candidate_uid,
+            reserved_loss_ccy=reserved_loss_ccy,
+            barrier_pips=barrier_pips,
+            cap_pips=cap_pips,
+            cost_est_pips=cost_est_pips,
+            volume_units=volume_units,
+            side=side,
+            source=source,
+            status=status,
+        )
 
     def promote_ftmo_risk_reservation(
         self,
@@ -668,6 +725,22 @@ class StateManager:
         )
         return rid
 
+    def promote_risk_reservation(
+        self,
+        *,
+        broker_pos_id: str,
+        reservation_id: str | None = None,
+        candidate_uid: str | None = None,
+        symbol: str | None = None,
+    ) -> str | None:
+        """Broker-neutral alias for opening reservations after broker fill."""
+        return self.promote_ftmo_risk_reservation(
+            broker_pos_id=broker_pos_id,
+            reservation_id=reservation_id,
+            candidate_uid=candidate_uid,
+            symbol=symbol,
+        )
+
     def release_ftmo_risk_reservation(
         self,
         *,
@@ -714,6 +787,24 @@ class StateManager:
         )
         return before_count
 
+    def release_risk_reservation(
+        self,
+        *,
+        reservation_id: str | None = None,
+        broker_pos_id: str | None = None,
+        candidate_uid: str | None = None,
+        symbol: str | None = None,
+        reason: str = "released",
+    ) -> int:
+        """Broker-neutral alias for releasing active reservations."""
+        return self.release_ftmo_risk_reservation(
+            reservation_id=reservation_id,
+            broker_pos_id=broker_pos_id,
+            candidate_uid=candidate_uid,
+            symbol=symbol,
+            reason=reason,
+        )
+
     def expire_stale_ftmo_pending_reservations(self, *, max_age_seconds: int) -> int:
         """Expire pending reservations older than max_age_seconds."""
         now_utc = datetime.now(tz=timezone.utc)
@@ -740,6 +831,10 @@ class StateManager:
             [now_utc, cutoff_ts],
         )
         return before_count
+
+    def expire_stale_pending_reservations(self, *, max_age_seconds: int) -> int:
+        """Broker-neutral alias for expiring stale pending reservations."""
+        return self.expire_stale_ftmo_pending_reservations(max_age_seconds=max_age_seconds)
 
     def sum_active_ftmo_reserved_loss_ccy(
         self,
@@ -770,6 +865,20 @@ class StateManager:
         if not row or row[0] is None:
             return 0.0
         return float(row[0])
+
+    def sum_active_reserved_loss_ccy(
+        self,
+        *,
+        symbol: str | None = None,
+        include_pending: bool = True,
+        include_open: bool = True,
+    ) -> float:
+        """Broker-neutral alias for active reserved loss totals."""
+        return self.sum_active_ftmo_reserved_loss_ccy(
+            symbol=symbol,
+            include_pending=include_pending,
+            include_open=include_open,
+        )
 
     def list_active_ftmo_risk_reservations(self, *, symbol: str | None = None) -> list[dict]:
         """Return active PENDING/OPEN FTMO reservations."""
@@ -814,6 +923,10 @@ class StateManager:
             )
         return out
 
+    def list_active_risk_reservations(self, *, symbol: str | None = None) -> list[dict]:
+        """Broker-neutral alias for active risk reservation rows."""
+        return self.list_active_ftmo_risk_reservations(symbol=symbol)
+
     def log_ftmo_allocator_event(
         self,
         *,
@@ -845,6 +958,34 @@ class StateManager:
                 float(risk_rank_score) if risk_rank_score is not None else None,
                 reservation_id,
             ],
+        )
+
+    def log_allocator_event(
+        self,
+        *,
+        symbol: str,
+        candidate_uid: str,
+        status: str,
+        block_reason: str | None,
+        reserved_loss_ccy: float | None,
+        requested_volume_units: float,
+        pred_prob: float,
+        threshold_exec: float,
+        risk_rank_score: float | None,
+        reservation_id: str | None,
+    ) -> None:
+        """Broker-neutral alias for allocator monitoring events."""
+        self.log_ftmo_allocator_event(
+            symbol=symbol,
+            candidate_uid=candidate_uid,
+            status=status,
+            block_reason=block_reason,
+            reserved_loss_ccy=reserved_loss_ccy,
+            requested_volume_units=requested_volume_units,
+            pred_prob=pred_prob,
+            threshold_exec=threshold_exec,
+            risk_rank_score=risk_rank_score,
+            reservation_id=reservation_id,
         )
 
     def record_raw_tick(self, tick: IncomingTick, *, source: str = "live") -> None:

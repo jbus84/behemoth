@@ -12,6 +12,12 @@ The active system is the tick-based OCO stop-limit research/governance pipeline 
 
 Do not treat `README.md` as authoritative for detailed strategy behavior. Read the strategy bible and master manual instead.
 
+Execution runtime direction:
+
+- Python remains the authoritative inference/governance runtime.
+- Dukascopy JForex is the active broker-adapter target.
+- CTrader/cBot and FTMO paths are legacy compatibility surfaces pending removal after Stage 14 is green.
+
 ## 2) Active Symbol Universe
 
 - `EURUSD`
@@ -23,7 +29,8 @@ Do not treat `README.md` as authoritative for detailed strategy behavior. Read t
 
 ## 3) Core Data Paths
 
-- Raw ticks (external, local machine): `/Users/danielfisher/Desktop/tick/<SYMBOL>/<SYMBOL>_YYYYMM_ticks.parquet`
+- Raw ticks (canonical, external local machine): `/Users/danielfisher/Desktop/dukascopy_ticks/<SYMBOL>/<SYMBOL>_YYYYMM_ticks.parquet`
+- Raw ticks (legacy HistData compatibility): `/Users/danielfisher/Desktop/tick/<SYMBOL>/<SYMBOL>_YYYYMM_ticks.parquet`
 - Tick bars: `data/global_tickbars/<SYMBOL>_{100,1000,2000}tick.parquet`
 - Velocity datasets: `data/analysis/tick_velocity/<SYMBOL>_{100,1000,2000}tick_velocity.parquet`
 - Main pipeline artifacts: `data/analysis/tick_opportunity_mining/`
@@ -48,7 +55,22 @@ Canonical raw tick parquet schema:
 - Stage 5 reduced-core rolling: `scripts/select_oco_reduced_core_rolling.py`
 - Stage 6 tick-exact verifier: `scripts/verify_oco_tick_exact_shortlist.py`
 - Stage 8 robustness: `scripts/analyze_oco_monthly_wfo_robustness.py`
+- Stage 13 certification: `scripts/validate_stage13_dukascopy_testclient.py`
+- Stage 14 certification: `scripts/validate_stage14_jforex_runtime_certification.py`
+- Pre-Stage JForex surrogate: `make local-jforex-parity`
 - Docs contract: `scripts/validate_oco_docs_contract.py`
+
+Java/JForex runtime:
+
+- Gradle module: `src/jforex/`
+- Main strategy entrypoint: `com.behemoth.jforex.BehemothJForexStrategy`
+- Tester runner: `com.behemoth.jforex.JForexTesterRunner`
+- Live runner: `com.behemoth.jforex.JForexLiveRunner`
+- Local surrogate runner: `com.behemoth.jforex.LocalJForexTesterRunner`
+- Official Stage 13 harness: `scripts/replay_dukascopy_testclient.py`
+- Official Stage 14 harness: JForex `ITesterClient`
+- JForex Prometheus endpoint: `127.0.0.1:9464/metrics`
+- Local surrogate Prometheus endpoint default: `127.0.0.1:9465/metrics`
 
 ## 5) Config Entry Points
 
@@ -79,7 +101,9 @@ Run from repo root:
 
 ```bash
 git status --short
+mise install
 uv run pytest -q tests/test_oco_docs_contract.py tests/test_tick_opportunity_mining.py tests/test_tick_opportunity_ml_dataset.py tests/test_oco_leakage_label_integrity.py tests/test_monthly_wfo_threshold_causality.py
+gradle :jforex-adapter:test
 uv run python scripts/validate_oco_docs_contract.py --out-checks-csv data/analysis/tick_opportunity_mining/docs_contract_checks.csv --out-issues-csv data/analysis/tick_opportunity_mining/docs_contract_issues.csv --report-out docs/analysis/oco_docs_contract_report.md
 ```
 
@@ -95,6 +119,8 @@ Fast full docs/gov refresh:
 
 ```bash
 make docs-contract-ci
+make stage13-dukascopy-cert
+make stage14-jforex-cert
 uv run mkdocs build
 ```
 
@@ -209,7 +235,31 @@ uv run python scripts/download_histdata_ticks.py \
 This downloads monthly ZIPs from HistData and writes canonical parquet. It does not keep ZIP/CSV artifacts.
 Default policy localizes HistData raw timestamps as `America/New_York` then converts to UTC.
 
-## 10) Governance/Docs Integration Notes
+This is now a compatibility-only ingest path. Canonical execution and replay should prefer Dukascopy parquet.
+
+## 10) Tooling
+
+- Python: `uv`
+- Java/JForex: Gradle project in `src/jforex`
+- Toolchain pinning: `mise.toml`
+
+Recommended setup:
+
+```bash
+mise install
+uv sync
+gradle :jforex-adapter:test
+```
+
+Java conventions:
+
+- Keep broker adapter code under `src/jforex/src/main/java/com/behemoth/jforex/`
+- Use immutable records for wire/domain payloads where practical
+- Put JUnit 5 tests under `src/jforex/src/test/java/`
+- Keep JForex-specific code thin; Python remains the decision engine
+- Shared Java strategy logic should live below the runtime shim so real JForex and local surrogate runs exercise the same core
+
+## 11) Governance/Docs Integration Notes
 
 - Many governance reports read shared aggregate files in `data/analysis/tick_opportunity_mining/`.
 - If you rerun stop-limit with one symbol only, you may overwrite shared summary files. Prefer running all active symbols when updating shared reports.
@@ -220,7 +270,7 @@ Default policy localizes HistData raw timestamps as `America/New_York` then conv
   - `oco_governance_explainability.csv`
   - strategy bible and docs contract outputs
 
-## 11) Common Pitfalls
+## 12) Common Pitfalls
 
 - `README.md` can mislead strategy context; use strategy bible/manual instead.
 - Some scripts still encode assumptions around historical 3-symbol universe. If adding/removing symbols, check for hardcoded symbol sets.
@@ -228,7 +278,7 @@ Default policy localizes HistData raw timestamps as `America/New_York` then conv
 - `uv run` can hit sandbox cache permission issues in restricted execution; rerun with elevated permissions when needed.
 - Do not delete or rewrite user data under `/Users/danielfisher/Desktop/tick` unless explicitly asked.
 
-## 12) Docs-Driven Blindspots to Check Explicitly
+## 13) Docs-Driven Blindspots to Check Explicitly
 
 - `docs-contract pass` means docs/artifact contract integrity; it does **not** guarantee all symbols are deployable.
 - Treat `stage_09_snapshot` predeploy coverage as mandatory:
@@ -250,7 +300,7 @@ Quick go/no-go checklist:
 3. No unresolved high/critical blockers in operator/remediation reports.
 4. Docs contract and mkdocs build both pass on fresh artifacts.
 
-## 13) Definition of Done for Agent Changes
+## 14) Definition of Done for Agent Changes
 
 Before finalizing substantial changes:
 
@@ -258,4 +308,5 @@ Before finalizing substantial changes:
 2. Targeted tests pass.
 3. `mkdocs build` succeeds.
 4. `docs_contract_checks.csv` regenerated and reviewed.
+5. `make stage13-dukascopy-cert` and `make stage14-jforex-cert` executed or explicitly noted as pending when broker artifacts are unavailable.
 5. `git status` is clean after commit, and changes are pushed if requested.

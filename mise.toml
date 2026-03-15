@@ -1,0 +1,8 @@
+[tools]
+python = "3.12.7"
+java = "21"
+gradle = "8.10.2"
+uv = "0.6.6"
+
+[env]
+_.python.venv = { path = ".venv", create = true }
