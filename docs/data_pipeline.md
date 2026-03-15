@@ -23,7 +23,7 @@ flowchart LR
 ## Build Commands (Raw Ticks -> Velocity)
 ```bash
 uv run python scripts/build_global_tick_bars.py \
-  --tick-root /Users/danielfisher/Desktop/tick \
+  --tick-root /Users/danielfisher/Desktop/dukascopy_ticks \
   --output-dir data/global_tickbars \
   --symbols EURUSD,GBPUSD,USDJPY,USDCHF \
   --base-ticks 100 \
@@ -32,7 +32,7 @@ uv run python scripts/build_global_tick_bars.py \
   --timestamp-mode as_utc
 
 uv run python scripts/build_tick_velocity_dataset.py \
-  --tick-root /Users/danielfisher/Desktop/tick \
+  --tick-root /Users/danielfisher/Desktop/dukascopy_ticks \
   --tickbar-dir data/global_tickbars \
   --out-dir data/analysis/tick_velocity \
   --symbols EURUSD,GBPUSD,USDJPY,USDCHF \

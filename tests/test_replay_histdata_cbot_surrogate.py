@@ -97,6 +97,7 @@ def test_run_surrogate_writes_session_bundle(tmp_path: Path, monkeypatch) -> Non
         symbol="EURUSD",
         start_ts="2025-07-07T00:00:00Z",
         end_ts="2025-07-09T00:00:00Z",
+        source="histdata",
     )
 
     session_json = Path(out["surrogate_session_json"])

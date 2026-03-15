@@ -15,6 +15,11 @@ from pathlib import Path
 
 import polars as pl
 
+try:
+    from scripts.canonical_tick_feed import DEFAULT_CANONICAL_ROOT
+except ModuleNotFoundError:
+    from canonical_tick_feed import DEFAULT_CANONICAL_ROOT
+
 UTC_TS = pl.Datetime("ns", "UTC")
 
 
@@ -477,7 +482,7 @@ def _build_symbol(
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Build fixed-tick OHLC bars from raw tick parquet data")
-    p.add_argument("--tick-root", default="/Users/danielfisher/Desktop/tick")
+    p.add_argument("--tick-root", default=str(DEFAULT_CANONICAL_ROOT))
     p.add_argument("--output-dir", default="data/global_tickbars")
     p.add_argument(
         "--symbols",

@@ -17,8 +17,13 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+try:
+    from scripts.canonical_tick_feed import DEFAULT_CANONICAL_ROOT
+except ModuleNotFoundError:
+    from canonical_tick_feed import DEFAULT_CANONICAL_ROOT
+
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_TICK_ROOT = "/Users/danielfisher/Desktop/tick"
+DEFAULT_TICK_ROOT = str(DEFAULT_CANONICAL_ROOT)
 DEFAULT_TICKBAR_DIR = "data/global_tickbars"
 DEFAULT_OUT_DIR = "data/analysis/tick_velocity"
 

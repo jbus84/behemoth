@@ -10,6 +10,8 @@ import pandas as pd
 
 DEFAULT_HISTDATA_ROOT = Path("/Users/danielfisher/Desktop/tick")
 DEFAULT_DUKASCOPY_ROOT = Path("/Users/danielfisher/Desktop/dukascopy_ticks")
+DEFAULT_CANONICAL_SOURCE = "dukascopy"
+DEFAULT_CANONICAL_ROOT = DEFAULT_DUKASCOPY_ROOT
 
 
 def normalize_source(source: str) -> str:

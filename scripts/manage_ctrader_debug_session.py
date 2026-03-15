@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Manage one-command cTrader debug sessions backed by HistData and DuckDB.
-
-This wraps the existing HistData export flow plus API startup into a single
-session manifest so cTrader backtests can target an isolated runtime DB.
-"""
+"""Manage one-command cTrader debug sessions backed by canonical parquet ticks."""
 
 from __future__ import annotations
 
@@ -27,11 +23,14 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts.build_ctrader_debug_bundle import build_bundle as build_debug_bundle
-from scripts.canonical_tick_feed import DEFAULT_DUKASCOPY_ROOT, normalize_source
+from scripts.canonical_tick_feed import (
+    DEFAULT_DUKASCOPY_ROOT,
+    DEFAULT_HISTDATA_ROOT,
+    normalize_source,
+)
 from scripts.export_ctrader_custom_data import run as export_custom_data_run
 
-
-DEFAULT_TICK_ROOT = Path("/Users/danielfisher/Desktop/tick")
+DEFAULT_TICK_ROOT = DEFAULT_HISTDATA_ROOT
 DEFAULT_FTMO_RULES_PATH = REPO_ROOT / "configs" / "research" / "governance" / "ftmo" / "ftmo_rules.yaml"
 DEFAULT_FTMO_PROFILE_ID = "ftmo_10k_challenge_2step"
 DEFAULT_FTMO_PHASE_MODE = "full_lifecycle"
@@ -679,7 +678,7 @@ def _build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="command", required=True)
 
     up = sub.add_parser("up", help="Export canonical tick package and start isolated API runtime")
-    up.add_argument("--source", default="histdata")
+    up.add_argument("--source", default="dukascopy")
     up.add_argument("--symbol", required=True)
     up.add_argument("--start-ts", required=True)
     up.add_argument("--end-ts", required=True)

@@ -13,13 +13,24 @@ import duckdb
 import numpy as np
 import pandas as pd
 
-from scripts.canonical_tick_feed import (
-    load_ticks_by_count,
-    load_ticks_window,
-    normalize_source,
-    source_kind,
-    to_utc,
-)
+try:
+    from scripts.canonical_tick_feed import (
+        DEFAULT_CANONICAL_ROOT,
+        load_ticks_by_count,
+        load_ticks_window,
+        normalize_source,
+        source_kind,
+        to_utc,
+    )
+except ModuleNotFoundError:
+    from canonical_tick_feed import (
+        DEFAULT_CANONICAL_ROOT,
+        load_ticks_by_count,
+        load_ticks_window,
+        normalize_source,
+        source_kind,
+        to_utc,
+    )
 
 
 def _parse_ts(name: str, raw: str | None) -> pd.Timestamp:
@@ -76,7 +87,7 @@ def run(
     *,
     symbol: str,
     tick_root: Path,
-    source: str = "histdata",
+    source: str = "dukascopy",
     start_ts: str,
     end_ts: str,
     out_dir: Path,
@@ -239,8 +250,8 @@ def run(
 def main() -> None:
     p = argparse.ArgumentParser(description="Export canonical parquet ticks for cTrader custom data")
     p.add_argument("--symbol", required=True)
-    p.add_argument("--source", default="histdata")
-    p.add_argument("--tick-root", default="/Users/danielfisher/Desktop/tick")
+    p.add_argument("--source", default="dukascopy")
+    p.add_argument("--tick-root", default=str(DEFAULT_CANONICAL_ROOT))
     p.add_argument("--start-ts", required=True)
     p.add_argument("--end-ts", required=True)
     p.add_argument("--out-dir", required=True)

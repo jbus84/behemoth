@@ -13,6 +13,11 @@ from typing import Any
 import duckdb
 import pandas as pd
 
+try:
+    from scripts.canonical_tick_feed import DEFAULT_CANONICAL_ROOT
+except ModuleNotFoundError:
+    from canonical_tick_feed import DEFAULT_CANONICAL_ROOT
+
 
 @dataclass
 class Check:
@@ -1233,7 +1238,7 @@ def main() -> None:
     p.add_argument("--runtime-db", default="data/db/behemoth_runtime.db")
     p.add_argument("--predictions-parquet", required=True)
     p.add_argument("--history-dir", default="")
-    p.add_argument("--tick-root", default="/Users/danielfisher/Desktop/tick")
+    p.add_argument("--tick-root", default=str(DEFAULT_CANONICAL_ROOT))
     p.add_argument("--start-ts", default="")
     p.add_argument("--end-ts", default="")
     p.add_argument("--strict-window", default="true", choices=["true", "false"])

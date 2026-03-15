@@ -4,8 +4,8 @@
 Define and verify the minimum data-quality contract required for causal OCO research and deployment decisions.
 
 ## Inputs
-- Raw ticks root (runtime):
-- `/Users/danielfisher/Desktop/tick/<SYMBOL>/<SYMBOL>_YYYYMM_ticks.parquet`
+- Canonical raw ticks root (runtime):
+- `/Users/danielfisher/Desktop/dukascopy_ticks/<SYMBOL>/<SYMBOL>_YYYYMM_ticks.parquet`
 - Event parquet produced by WFO prep:
 - `data/analysis/tick_opportunity_mining/wfo_*/<SYMBOL>_oco_events_eval*.parquet`
 - Reliability audit artifacts:
@@ -37,7 +37,7 @@ Define and verify the minimum data-quality contract required for causal OCO rese
 ```bash
 # 1) Build fixed tick bars directly from raw ticks.
 uv run python scripts/build_global_tick_bars.py \
-  --tick-root /Users/danielfisher/Desktop/tick \
+  --tick-root /Users/danielfisher/Desktop/dukascopy_ticks \
   --output-dir data/global_tickbars \
   --symbols EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD \
   --base-ticks 100 \
@@ -47,7 +47,7 @@ uv run python scripts/build_global_tick_bars.py \
 
 # 2) Build causal velocity datasets consumed by mining/WFO.
 uv run python scripts/build_tick_velocity_dataset.py \
-  --tick-root /Users/danielfisher/Desktop/tick \
+  --tick-root /Users/danielfisher/Desktop/dukascopy_ticks \
   --tickbar-dir data/global_tickbars \
   --out-dir data/analysis/tick_velocity \
   --symbols EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD \
@@ -113,7 +113,7 @@ Hard gates come from `DR*` checks in reliability audit.
 ## Reproduction Commands
 ```bash
 uv run python scripts/build_global_tick_bars.py \
-  --tick-root /Users/danielfisher/Desktop/tick \
+  --tick-root /Users/danielfisher/Desktop/dukascopy_ticks \
   --output-dir data/global_tickbars \
   --symbols EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD \
   --base-ticks 100 \
@@ -122,7 +122,7 @@ uv run python scripts/build_global_tick_bars.py \
   --timestamp-mode as_utc
 
 uv run python scripts/build_tick_velocity_dataset.py \
-  --tick-root /Users/danielfisher/Desktop/tick \
+  --tick-root /Users/danielfisher/Desktop/dukascopy_ticks \
   --tickbar-dir data/global_tickbars \
   --out-dir data/analysis/tick_velocity \
   --symbols EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD \

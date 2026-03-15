@@ -33,6 +33,7 @@ def test_export_ctrader_custom_data_writes_manifest_and_deduped_csv(tmp_path: Pa
     manifest_path, summary_path, summary_df = run(
         symbol="EURUSD",
         tick_root=tick_root,
+        source="histdata",
         start_ts="2025-07-07T00:00:00Z",
         end_ts="2025-07-07T00:00:03Z",
         out_dir=out_dir,

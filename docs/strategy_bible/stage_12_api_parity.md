@@ -1,7 +1,7 @@
 # Stage 12 - API Parity Against Reduced Core
 
 ## Objective
-Confirm that the production API, when driven by HistData ticks, reproduces reduced-core research truth at both the signal-selection layer and the execution layer.
+Confirm that the production API, when driven by canonical parquet ticks, reproduces reduced-core research truth at both the signal-selection layer and the execution layer.
 
 ## Inputs
 - `data/analysis/backtest_reconcile/<SYMBOL>_stage12_api_parity_summary.csv`
@@ -12,7 +12,7 @@ Confirm that the production API, when driven by HistData ticks, reproduces reduc
 - `data/analysis/tick_opportunity_mining/reduced_core_rolling/<SYMBOL>_oco_reduced_state_schedule.csv`
 
 ## Process
-- Replay HistData ticks through the API using the no-cTrader TestClient harness.
+- Replay canonical parquet ticks through the API using the no-cTrader TestClient harness.
 - Trigger prediction only on completed bars, matching cBot cadence.
 - In historical replay mode, preserve exact tick-bar phase using the full-history tail:
   - warmup sent = `warmup_ticks + (all_prior_ticks mod bar_ticks)`
@@ -35,7 +35,7 @@ Confirm that the production API, when driven by HistData ticks, reproduces reduc
 - Stage 12 passes only when both signal parity and execution parity pass.
 
 ## Causality / Leakage Controls
-- HistData replay is restricted to the requested validation window plus warmup.
+- Canonical-feed replay is restricted to the requested validation window plus warmup.
 - Reduced-core filtering is applied before parity comparison.
 - API inference is evaluated on replay-time bar completion only; no direct research-side shortcut is allowed.
 - Historical parity truth is always repo-side reduced-core output:
@@ -71,7 +71,7 @@ Confirm that the production API, when driven by HistData ticks, reproduces reduc
 ## Historical Replay Contract
 - Canonical runner: `make stage12-api-parity`
 - Canonical truth window: repo reduced-core outputs for the requested `START_TS/END_TS`
-- Canonical feed: HistData parquet under `/Users/danielfisher/Desktop/tick`
+- Canonical feed: Dukascopy parquet under `/Users/danielfisher/Desktop/dukascopy_ticks`
 - Canonical warmup mode: `history_tail`
 - Canonical historical lock source: `configs/research/governance/oco_history/<YYYY-MM>/<symbol>_oco_live_lock.json`
 - Canonical expectations:
@@ -107,9 +107,10 @@ make stage12-api-parity \
 
 ## Reproduction Commands
 ```bash
-uv run python scripts/replay_histdata_cbot_testclient.py \
+uv run python scripts/replay_cbot_testclient.py \
   --symbol EURUSD \
-  --tick-root /Users/danielfisher/Desktop/tick \
+  --source dukascopy \
+  --tick-root /Users/danielfisher/Desktop/dukascopy_ticks \
   --runtime-db data/db/backtests/eurusd_stage12.db \
   --events-json data/analysis/backtest_reconcile/EURUSD_stage12_events.json \
   --repo-stoplimit-detail-csv data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv \
@@ -122,8 +123,8 @@ uv run python scripts/replay_histdata_cbot_testclient.py \
 ```
 
 ## Traceability
-- `scripts/replay_histdata_cbot_testclient.py`
-- `scripts/validate_histdata_ctrader_execution_parity.py`
+- `scripts/replay_cbot_testclient.py`
+- `scripts/validate_ctrader_execution_parity.py`
 - `scripts/build_oco_strategy_bible.py`
 - `scripts/validate_oco_docs_contract.py`
 

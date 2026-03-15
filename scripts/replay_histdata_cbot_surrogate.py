@@ -17,7 +17,11 @@ try:
     from scripts.evaluate_ftmo_challenge_run import evaluate_session as evaluate_ftmo_session
 except ModuleNotFoundError:
     from evaluate_ftmo_challenge_run import evaluate_session as evaluate_ftmo_session
-from scripts.canonical_tick_feed import DEFAULT_DUKASCOPY_ROOT, normalize_source
+from scripts.canonical_tick_feed import (
+    DEFAULT_DUKASCOPY_ROOT,
+    DEFAULT_HISTDATA_ROOT,
+    normalize_source,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -42,7 +46,7 @@ def _bool_arg(raw: str | bool) -> bool:
     return str(raw).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
-def _default_run_id(symbol: str, start_ts: str, end_ts: str, *, source: str = "histdata") -> str:
+def _default_run_id(symbol: str, start_ts: str, end_ts: str, *, source: str = "dukascopy") -> str:
     start = _parse_ts("start_ts", start_ts).strftime("%Y%m%dT%H%M%S")
     end = _parse_ts("end_ts", end_ts).strftime("%Y%m%dT%H%M%S")
     return f"{symbol.lower()}_{str(source).lower()}_{start}_{end}"
@@ -129,8 +133,8 @@ def run_surrogate(
     start_ts: str,
     end_ts: str,
     run_id: str | None = None,
-    source: str = "histdata",
-    tick_root: Path = Path("/Users/danielfisher/Desktop/tick"),
+    source: str = "dukascopy",
+    tick_root: Path = DEFAULT_HISTDATA_ROOT,
     dukascopy_root: Path = DEFAULT_DUKASCOPY_ROOT,
     warmup_ticks: int = 30000,
     lookback_days: int = 31,
@@ -318,8 +322,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--start-ts", required=True)
     p.add_argument("--end-ts", required=True)
     p.add_argument("--run-id", default="")
-    p.add_argument("--source", default="histdata")
-    p.add_argument("--tick-root", default="/Users/danielfisher/Desktop/tick")
+    p.add_argument("--source", default="dukascopy")
+    p.add_argument("--tick-root", default=str(DEFAULT_HISTDATA_ROOT))
     p.add_argument("--dukascopy-root", default=str(DEFAULT_DUKASCOPY_ROOT))
     p.add_argument("--warmup-ticks", type=int, default=30000)
     p.add_argument("--lookback-days", type=int, default=31)

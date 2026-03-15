@@ -5,7 +5,7 @@ baseline-vs-custom A/B parity report.
 
 ## Fast path: one-command debug session
 
-For the lowest-friction HistData workflow, use the session manager instead of
+For the lowest-friction canonical-feed workflow, use the session manager instead of
 manually exporting data and booting the API:
 
 ```bash
@@ -16,7 +16,7 @@ make ctrader-debug-up \
 ```
 
 This will:
-- export the HistData custom-data package for the requested window
+- export the Dukascopy custom-data package for the requested window by default
 - include at least `30000` ticks before `START_TS` and `30000` ticks from `START_TS`
   onward, so cTrader has both the warmup tail and a comparison segment
 - create an isolated DuckDB runtime under `data/db/debug/`
@@ -71,20 +71,21 @@ The surrogate path exercises the real FastAPI/runtime stack directly from the re
 without deploying to cTrader, and defaults to the same `30000`-tick warmup plus a
 30-second tolerant parity window that is appropriate for cTrader-like timestamp drift.
 
-## 0) Build cTrader custom-data package from HistData parquet
+## 0) Build cTrader custom-data package from canonical parquet
 
 ```bash
 make export-ctrader-custom-data \
+  SOURCE=dukascopy \
   SYMBOL=EURUSD \
   START_TS=2025-07-07T00:00:00Z \
   END_TS=2025-07-09T00:00:00Z \
-  OUT_DIR=data/analysis/backtest_reconcile/EURUSD_histdata_custom_20250707_20250709
+  OUT_DIR=data/analysis/backtest_reconcile/EURUSD_dukascopy_custom_20250707_20250709
 ```
 
 Outputs:
-- `data/analysis/backtest_reconcile/EURUSD_histdata_custom_20250707_20250709/manifest.json`
-- `data/analysis/backtest_reconcile/EURUSD_histdata_custom_20250707_20250709/ticks/*.csv`
-- `data/analysis/backtest_reconcile/EURUSD_histdata_custom_20250707_20250709/export_summary.csv`
+- `data/analysis/backtest_reconcile/EURUSD_dukascopy_custom_20250707_20250709/manifest.json`
+- `data/analysis/backtest_reconcile/EURUSD_dukascopy_custom_20250707_20250709/ticks/*.csv`
+- `data/analysis/backtest_reconcile/EURUSD_dukascopy_custom_20250707_20250709/export_summary.csv`
 
 Load this package in cTrader through a custom data source plugin (see
 `src/cbot/CustomDataSourceHistDataPlugin.cs` scaffold).
@@ -157,11 +158,11 @@ Outputs:
 - `data/analysis/backtest_reconcile/EURUSD_ctrader_vs_research_mismatches.csv`
 - `docs/analysis/EURUSD_ctrader_vs_research_reconciliation.md`
 
-## 4) Build A/B parity report (baseline feed vs custom HistData feed)
+## 4) Build A/B parity report (baseline feed vs custom canonical feed)
 
 Run two backtests in cTrader over the same window:
 - Run A: broker historical feed, DB = `data/db/backtests/eurusd_20250707_20250709_baseline.db`
-- Run B: custom HistData feed, DB = `data/db/backtests/eurusd_20250707_20250709_histdata.db`
+- Run B: custom Dukascopy feed, DB = `data/db/backtests/eurusd_20250707_20250709_dukascopy.db`
 
 Then generate parity:
 
@@ -169,11 +170,11 @@ Then generate parity:
 make ctrader-ab-parity-report \
   SYMBOL=EURUSD \
   RUNTIME_DB_A=data/db/backtests/eurusd_20250707_20250709_baseline.db \
-  RUNTIME_DB_B=data/db/backtests/eurusd_20250707_20250709_histdata.db \
+  RUNTIME_DB_B=data/db/backtests/eurusd_20250707_20250709_dukascopy.db \
   PRED_PATH=data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet \
   START_TS=2025-07-07T00:00:00Z \
   END_TS=2025-07-09T00:00:00Z \
-  TICK_ROOT=/Users/danielfisher/Desktop/tick
+  TICK_ROOT=/Users/danielfisher/Desktop/dukascopy_ticks
 ```
 
 Outputs:
@@ -185,39 +186,39 @@ Interpretation:
 - `parity_verdict_ctrader_side`: feed/run A-vs-B parity only (what we use for cTrader-side equivalence).
 - `parity_verdict_overall`: includes research high/critical health gate from both runs.
 
-## 5) HistData-only execution parity (repo vs cTrader)
+## 5) Canonical-feed execution parity (repo vs cTrader)
 
-When you only care about HistData equivalence, run this instead of A/B:
+When you only care about canonical-feed equivalence, run this instead of A/B:
 - Repo reference: `stop_limit_tickfill_fullcap/<SYMBOL>_stop_limit_tickfill_detail.csv`
 - Truth filter: `reduced_core_rolling/<SYMBOL>_oco_reduced_state_schedule.csv` (month-scoped selected states)
-- cTrader reference: runtime DB + `events.json` from the same HistData backtest window
+- cTrader reference: runtime DB + `events.json` from the same Dukascopy backtest window
 
 ```bash
-make histdata-ctrader-parity \
+make ctrader-parity \
   SYMBOL=EURUSD \
-  RUNTIME_DB=data/db/backtests/eurusd_20250707_20250709_histdata.db \
+  RUNTIME_DB=data/db/backtests/eurusd_20250707_20250709_dukascopy.db \
   CTRADER_EVENTS_JSON=/Users/danielfisher/cAlgo/Data/cBots/BehemothTradeManager/d719f157-f4ad-4fd3-bfa9-b7e4c67f8b16/Backtesting/events.json \
   REPO_DETAIL_CSV=data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv \
   REDUCED_STATE_SCHEDULE_CSV=data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv \
   START_TS=2025-07-07T00:00:00Z \
   END_TS=2025-07-09T00:00:00Z \
-  TICK_ROOT=/Users/danielfisher/Desktop/tick \
+  TICK_ROOT=/Users/danielfisher/Desktop/dukascopy_ticks \
   TIME_TOL_SEC=1.0 \
   PRICE_TOL_PIPS=0.1
 ```
 
 Outputs:
-- `data/analysis/backtest_reconcile/EURUSD_histdata_ctrader_execution_parity_summary.csv`
-- `data/analysis/backtest_reconcile/EURUSD_histdata_ctrader_execution_parity_checks.csv`
-- `data/analysis/backtest_reconcile/EURUSD_histdata_ctrader_execution_parity_mismatches.csv`
-- `docs/analysis/EURUSD_histdata_ctrader_execution_parity_report.md`
+- `data/analysis/backtest_reconcile/EURUSD_ctrader_execution_parity_summary.csv`
+- `data/analysis/backtest_reconcile/EURUSD_ctrader_execution_parity_checks.csv`
+- `data/analysis/backtest_reconcile/EURUSD_ctrader_execution_parity_mismatches.csv`
+- `docs/analysis/EURUSD_ctrader_execution_parity_report.md`
 
 ## 6) No-cTrader local replay parity (TestClient harness)
 
 Use this when you want to iterate quickly without launching cTrader.  
-It replays HistData ticks through the FastAPI app in-process, triggers `/predict`
+It replays canonical parquet ticks through the FastAPI app in-process, triggers `/predict`
 only on completed bars, synthesizes matched trade lifecycle events, and then runs
-the same HistData execution parity validator.
+the same execution parity validator.
 
 For bar-boundary parity, the harness defaults to `WARMUP_SOURCE=month_start`
 (it backfills all pre-window ticks from the month start instead of a fixed tail).
@@ -227,7 +228,7 @@ Default gate behavior is execution parity; set `REQUIRE_SELECTED_PARITY=true`
 if you want strict selected-key parity to be blocking too.
 
 ```bash
-make histdata-testclient-parity \
+make testclient-parity \
   SYMBOL=EURUSD \
   RUNTIME_DB=data/db/backtests/eurusd_20250707_20250709_testclient.db \
   EVENTS_JSON=data/analysis/backtest_reconcile/EURUSD_testclient_events_20250707_20250709.json \
@@ -235,16 +236,16 @@ make histdata-testclient-parity \
   REDUCED_STATE_SCHEDULE_CSV=data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv \
   START_TS=2025-07-07T00:00:00Z \
   END_TS=2025-07-09T00:00:00Z \
-  TICK_ROOT=/Users/danielfisher/Desktop/tick
+  TICK_ROOT=/Users/danielfisher/Desktop/dukascopy_ticks
 ```
 
 Primary outputs:
-- `data/analysis/backtest_reconcile/EURUSD_histdata_testclient_replay_summary.csv`
-- `data/analysis/backtest_reconcile/EURUSD_histdata_testclient_selected_mismatches.csv`
-- `data/analysis/backtest_reconcile/EURUSD_histdata_testclient_execution_parity_summary.csv`
-- `data/analysis/backtest_reconcile/EURUSD_histdata_testclient_execution_parity_checks.csv`
-- `data/analysis/backtest_reconcile/EURUSD_histdata_testclient_execution_parity_mismatches.csv`
-- `docs/analysis/EURUSD_histdata_testclient_execution_parity_report.md`
+- `data/analysis/backtest_reconcile/EURUSD_testclient_replay_summary.csv`
+- `data/analysis/backtest_reconcile/EURUSD_testclient_selected_mismatches.csv`
+- `data/analysis/backtest_reconcile/EURUSD_testclient_execution_parity_summary.csv`
+- `data/analysis/backtest_reconcile/EURUSD_testclient_execution_parity_checks.csv`
+- `data/analysis/backtest_reconcile/EURUSD_testclient_execution_parity_mismatches.csv`
+- `docs/analysis/EURUSD_testclient_execution_parity_report.md`
 
 Hard hygiene gate:
 - Runtime DB must be single-run clean for the target window (no duplicate raw tick triplets).

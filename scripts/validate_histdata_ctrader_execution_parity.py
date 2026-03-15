@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate HistData execution parity between repo and cTrader backtests.
+"""Validate canonical-feed execution parity between repo and cTrader backtests.
 
 Repo reference source:
   stop_limit_tickfill_detail.csv (candidate_uid, side, touch_open_ts, touch_close_ts, barrier_px)
@@ -23,6 +23,11 @@ from typing import Any
 
 import duckdb
 import pandas as pd
+
+try:
+    from scripts.canonical_tick_feed import DEFAULT_CANONICAL_ROOT
+except ModuleNotFoundError:
+    from canonical_tick_feed import DEFAULT_CANONICAL_ROOT
 
 
 @dataclass
@@ -628,15 +633,15 @@ def run(
     time_tolerance_sec: float = 1.0,
     price_tolerance_pips: float = 0.1,
     out_summary_csv: Path = Path(
-        "data/analysis/backtest_reconcile/histdata_ctrader_execution_parity_summary.csv"
+        "data/analysis/backtest_reconcile/ctrader_execution_parity_summary.csv"
     ),
     out_checks_csv: Path = Path(
-        "data/analysis/backtest_reconcile/histdata_ctrader_execution_parity_checks.csv"
+        "data/analysis/backtest_reconcile/ctrader_execution_parity_checks.csv"
     ),
     out_mismatches_csv: Path = Path(
-        "data/analysis/backtest_reconcile/histdata_ctrader_execution_parity_mismatches.csv"
+        "data/analysis/backtest_reconcile/ctrader_execution_parity_mismatches.csv"
     ),
-    report_out: Path = Path("docs/analysis/histdata_ctrader_execution_parity_report.md"),
+    report_out: Path = Path("docs/analysis/ctrader_execution_parity_report.md"),
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     sym = str(symbol).upper().strip()
     if not sym:
@@ -743,6 +748,7 @@ def run(
                     "time_tolerance_sec": float(time_tolerance_sec),
                     "price_tolerance_pips": float(price_tolerance_pips),
                     "overall_pass": False,
+                    "execution_parity_verdict": "red",
                     "histdata_execution_parity_verdict": "red",
                     "evaluated_at_utc": now_utc,
                 }
@@ -753,7 +759,7 @@ def run(
         checks_df.to_csv(out_checks_csv, index=False)
         mismatches_df.to_csv(out_mismatches_csv, index=False)
         report_out.write_text(
-            "# HistData cTrader Execution Parity\n\nMissing required input files.\n",
+            "# cTrader Execution Parity\n\nMissing required input files.\n",
             encoding="utf-8",
         )
         return summary_df, checks_df, mismatches_df
@@ -1306,6 +1312,7 @@ def run(
                     float(raw_coverage_ratio) if pd.notna(raw_coverage_ratio) else float("nan")
                 ),
                 "overall_pass": bool(overall_pass),
+                "execution_parity_verdict": verdict,
                 "histdata_execution_parity_verdict": verdict,
                 "evaluated_at_utc": now_utc,
             }
@@ -1318,7 +1325,7 @@ def run(
 
     failed_checks = checks_df[checks_df["status"].astype(str) == "fail"].copy()
     report_lines = [
-        "# HistData cTrader Execution Parity",
+        "# cTrader Execution Parity",
         "",
         f"- symbol: `{sym}`",
         f"- runtime_db: `{runtime_db}`",
@@ -1333,7 +1340,7 @@ def run(
         f"- price_tolerance_pips: `{float(price_tolerance_pips)}`",
         "",
         "## Verdict",
-        f"- histdata_execution_parity_verdict: `{verdict.upper()}`",
+        f"- execution_parity_verdict: `{verdict.upper()}`",
         f"- overall_pass: `{bool(overall_pass)}`",
         "",
         "## Summary",
@@ -1354,33 +1361,33 @@ def run(
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Validate HistData execution parity: repo vs cTrader")
+    p = argparse.ArgumentParser(description="Validate cTrader execution parity: repo vs cTrader")
     p.add_argument("--symbol", required=True)
     p.add_argument("--runtime-db", required=True)
     p.add_argument("--ctrader-events-json", required=True)
     p.add_argument("--repo-stoplimit-detail-csv", required=True)
     p.add_argument("--reduced-core-state-schedule-csv", default="")
     p.add_argument("--require-reduced-core-filter", default="false")
-    p.add_argument("--tick-root", default="/Users/danielfisher/Desktop/tick")
+    p.add_argument("--tick-root", default=str(DEFAULT_CANONICAL_ROOT))
     p.add_argument("--start-ts", required=True)
     p.add_argument("--end-ts", required=True)
     p.add_argument("--time-tolerance-sec", type=float, default=1.0)
     p.add_argument("--price-tolerance-pips", type=float, default=0.1)
     p.add_argument(
         "--out-summary-csv",
-        default="data/analysis/backtest_reconcile/histdata_ctrader_execution_parity_summary.csv",
+        default="data/analysis/backtest_reconcile/ctrader_execution_parity_summary.csv",
     )
     p.add_argument(
         "--out-checks-csv",
-        default="data/analysis/backtest_reconcile/histdata_ctrader_execution_parity_checks.csv",
+        default="data/analysis/backtest_reconcile/ctrader_execution_parity_checks.csv",
     )
     p.add_argument(
         "--out-mismatches-csv",
-        default="data/analysis/backtest_reconcile/histdata_ctrader_execution_parity_mismatches.csv",
+        default="data/analysis/backtest_reconcile/ctrader_execution_parity_mismatches.csv",
     )
     p.add_argument(
         "--report-out",
-        default="docs/analysis/histdata_ctrader_execution_parity_report.md",
+        default="docs/analysis/ctrader_execution_parity_report.md",
     )
     args = p.parse_args()
 
@@ -1406,12 +1413,21 @@ def main() -> None:
         out_mismatches_csv=Path(str(args.out_mismatches_csv)),
         report_out=Path(str(args.report_out)),
     )
-    verdict = str(summary.iloc[0]["histdata_execution_parity_verdict"]).upper() if len(summary) > 0 else "RED"
+    verdict = (
+        str(
+            summary.iloc[0].get(
+                "execution_parity_verdict",
+                summary.iloc[0].get("histdata_execution_parity_verdict", "red"),
+            )
+        ).upper()
+        if len(summary) > 0
+        else "RED"
+    )
     print(f"wrote summary: {args.out_summary_csv} rows={len(summary)}")
     print(f"wrote checks: {args.out_checks_csv} rows={len(checks)}")
     print(f"wrote mismatches: {args.out_mismatches_csv} rows={len(mismatches)}")
     print(f"wrote report: {args.report_out}")
-    print(f"histdata_execution_parity_verdict={verdict.lower()}")
+    print(f"execution_parity_verdict={verdict.lower()}")
 
 
 if __name__ == "__main__":

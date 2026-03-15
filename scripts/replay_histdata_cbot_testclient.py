@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Replay HistData ticks through FastAPI TestClient using cBot-like cadence.
+"""Replay canonical parquet ticks through FastAPI TestClient using cBot-like cadence.
 
 This script is the no-cTrader harness for pre-deploy iteration:
-1) Replays raw HistData ticks into API `/backfill` + `/ticks` or `/ticks/batch`.
+1) Replays canonical parquet ticks into API `/backfill` + `/ticks` or `/ticks/batch`.
 2) Triggers `/predict` only when bars complete (`completed_bar_ticks`) like cBot.
 3) Matches runtime selected rows against reduced-core repo execution truth keys
    (`candidate_uid`, `close_ts`) and writes synthetic trade lifecycle rows
    (`/trades/open`, `/trades/update`) plus an events JSON.
-4) Runs `validate_histdata_ctrader_execution_parity.py` for a strict parity gate.
+4) Runs `validate_ctrader_execution_parity.py` for a strict parity gate.
 """
 
 from __future__ import annotations
@@ -34,6 +34,7 @@ if str(REPO_ROOT) not in sys.path:
 
 try:
     from scripts.canonical_tick_feed import (
+        DEFAULT_CANONICAL_ROOT,
         all_symbol_tick_files as _canonical_all_symbol_tick_files,
         month_scoped_tick_files as _canonical_month_scoped_tick_files,
         normalize_source,
@@ -42,6 +43,7 @@ try:
     )
 except ModuleNotFoundError:
     from canonical_tick_feed import (
+        DEFAULT_CANONICAL_ROOT,
         all_symbol_tick_files as _canonical_all_symbol_tick_files,
         month_scoped_tick_files as _canonical_month_scoped_tick_files,
         normalize_source,
@@ -77,9 +79,9 @@ class ReplayStats:
 
 def _load_exec_parity_module():
     here = Path(__file__).resolve().parent
-    target = here / "validate_histdata_ctrader_execution_parity.py"
+    target = here / "validate_ctrader_execution_parity.py"
     spec = importlib.util.spec_from_file_location(
-        "validate_histdata_ctrader_execution_parity", target
+        "validate_ctrader_execution_parity", target
     )
     if spec is None or spec.loader is None:
         raise RuntimeError(f"cannot load module spec for {target}")
@@ -400,7 +402,7 @@ def _load_hist_ticks_for_replay(
     *,
     symbol: str,
     tick_root: Path,
-    source: str = "histdata",
+    source: str = "dukascopy",
     start: pd.Timestamp,
     end: pd.Timestamp,
     warmup_ticks: int,
@@ -1699,7 +1701,12 @@ def _build_stage12_summary_df(
         else False
     )
     execution_verdict = (
-        str(execution_summary_df.iloc[0].get("histdata_execution_parity_verdict", "red")).lower()
+        str(
+            execution_summary_df.iloc[0].get(
+                "execution_parity_verdict",
+                execution_summary_df.iloc[0].get("histdata_execution_parity_verdict", "red"),
+            )
+        ).lower()
         if not execution_summary_df.empty
         else "red"
     )
@@ -1826,7 +1833,7 @@ def run(
     *,
     symbol: str,
     tick_root: Path,
-    source: str = "histdata",
+    source: str = "dukascopy",
     runtime_db: Path,
     events_json: Path,
     repo_predictions_parquet: Path,
@@ -2120,11 +2127,11 @@ def _str_to_bool(raw: str | bool) -> bool:
 
 def main() -> None:
     p = argparse.ArgumentParser(
-        description="Replay HistData through TestClient + run reduced-core parity gate"
+        description="Replay canonical parquet through TestClient + run reduced-core parity gate"
     )
     p.add_argument("--symbol", required=True)
-    p.add_argument("--source", default="histdata")
-    p.add_argument("--tick-root", default="/Users/danielfisher/Desktop/tick")
+    p.add_argument("--source", default="dukascopy")
+    p.add_argument("--tick-root", default=str(DEFAULT_CANONICAL_ROOT))
     p.add_argument("--runtime-db", required=True)
     p.add_argument("--events-json", required=True)
     p.add_argument("--repo-predictions-parquet", required=True)
@@ -2160,35 +2167,35 @@ def main() -> None:
     p.add_argument("--price-tolerance-pips", type=float, default=0.1)
     p.add_argument(
         "--out-summary-csv",
-        default="data/analysis/backtest_reconcile/histdata_testclient_execution_parity_summary.csv",
+        default="data/analysis/backtest_reconcile/testclient_execution_parity_summary.csv",
     )
     p.add_argument(
         "--out-checks-csv",
-        default="data/analysis/backtest_reconcile/histdata_testclient_execution_parity_checks.csv",
+        default="data/analysis/backtest_reconcile/testclient_execution_parity_checks.csv",
     )
     p.add_argument(
         "--out-mismatches-csv",
-        default="data/analysis/backtest_reconcile/histdata_testclient_execution_parity_mismatches.csv",
+        default="data/analysis/backtest_reconcile/testclient_execution_parity_mismatches.csv",
     )
     p.add_argument(
         "--report-out",
-        default="docs/analysis/histdata_testclient_execution_parity_report.md",
+        default="docs/analysis/testclient_execution_parity_report.md",
     )
     p.add_argument(
         "--local-summary-csv",
-        default="data/analysis/backtest_reconcile/histdata_testclient_replay_summary.csv",
+        default="data/analysis/backtest_reconcile/testclient_replay_summary.csv",
     )
     p.add_argument(
         "--local-selected-mismatches-csv",
-        default="data/analysis/backtest_reconcile/histdata_testclient_selected_mismatches.csv",
+        default="data/analysis/backtest_reconcile/testclient_selected_mismatches.csv",
     )
     p.add_argument(
         "--local-signal-gap-analysis-csv",
-        default="data/analysis/backtest_reconcile/histdata_testclient_signal_gap_analysis.csv",
+        default="data/analysis/backtest_reconcile/testclient_signal_gap_analysis.csv",
     )
     p.add_argument(
         "--local-signal-feature-diff-csv",
-        default="data/analysis/backtest_reconcile/histdata_testclient_signal_feature_diff.csv",
+        default="data/analysis/backtest_reconcile/testclient_signal_feature_diff.csv",
     )
     p.add_argument(
         "--local-runtime-selected-csv",
@@ -2196,19 +2203,19 @@ def main() -> None:
     )
     p.add_argument(
         "--stage12-summary-csv",
-        default="data/analysis/backtest_reconcile/histdata_testclient_stage12_api_parity_summary.csv",
+        default="data/analysis/backtest_reconcile/testclient_stage12_api_parity_summary.csv",
     )
     p.add_argument(
         "--stage12-checks-csv",
-        default="data/analysis/backtest_reconcile/histdata_testclient_stage12_api_parity_checks.csv",
+        default="data/analysis/backtest_reconcile/testclient_stage12_api_parity_checks.csv",
     )
     p.add_argument(
         "--stage12-mismatches-csv",
-        default="data/analysis/backtest_reconcile/histdata_testclient_stage12_api_parity_mismatches.csv",
+        default="data/analysis/backtest_reconcile/testclient_stage12_api_parity_mismatches.csv",
     )
     p.add_argument(
         "--stage12-report-out",
-        default="docs/analysis/histdata_testclient_stage12_api_parity_report.md",
+        default="docs/analysis/testclient_stage12_api_parity_report.md",
     )
     p.add_argument("--fail-on-gate", default="true")
     p.add_argument("--require-selected-parity", default="true")

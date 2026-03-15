@@ -20,10 +20,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.build_tick_velocity_dataset import _build_symbol_dataset  # noqa: E402
+from scripts.canonical_tick_feed import DEFAULT_CANONICAL_ROOT  # noqa: E402
 from src.behemoth.core.features import FeatureConfig  # noqa: E402
 
 ACTIVE_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
-DEFAULT_TICK_ROOT = "/Users/danielfisher/Desktop/tick"
+DEFAULT_TICK_ROOT = str(DEFAULT_CANONICAL_ROOT)
 DEFAULT_OFFSET_BAR_DIR = "data/global_tickbars_offset"
 DEFAULT_OUT_DIR = "data/analysis/tick_opportunity_mining/offset_robustness"
 DEFAULT_API_CONFIRM_OFFSETS = (0, 25, 50, 75)

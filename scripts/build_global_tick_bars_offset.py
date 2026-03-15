@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.build_global_tick_bars import (  # noqa: E402
+    DEFAULT_CANONICAL_ROOT,
     UTC_TS,
     _bars_from_ticks,
     _parse_symbols,
@@ -193,7 +194,7 @@ def _build_one(
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Build fixed-tick bars with global tick offsets")
-    p.add_argument("--tick-root", default="/Users/danielfisher/Desktop/tick")
+    p.add_argument("--tick-root", default=str(DEFAULT_CANONICAL_ROOT))
     p.add_argument("--output-dir", default="data/global_tickbars_offset")
     p.add_argument("--symbols", default="")
     p.add_argument("--offsets", default="0")
