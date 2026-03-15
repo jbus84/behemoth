@@ -1,0 +1,19 @@
+symbol: USDCHF
+dataset_dir: data/analysis/tick_velocity_dukascopy_candidate
+
+# Tick universes and forecast horizons
+bar_ticks_grid: "100,1000,2000"
+horizons: "1,2,3,4,5,6"
+barrier_grid_pips: "2,3,5,8,10"
+
+# Strict causal split
+train_years: "2022,2023,2024"
+test_year: 2025
+
+# Gross-first opportunity mining (for downstream ML filtering)
+min_annual_fills: 5000
+gross_metric: mean
+library_type: separate
+
+out_dir: data/analysis/tick_opportunity_mining_dukascopy_candidate
+report_out: docs/analysis/dukascopy_candidate/usdchf_tick_opportunity_mining_dukascopy_candidate_report.md

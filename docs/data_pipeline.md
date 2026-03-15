@@ -29,7 +29,7 @@ uv run python scripts/build_global_tick_bars.py \
   --base-ticks 100 \
   --aggregate-multiples 1,10,20 \
   --price-source bid \
-  --timestamp-mode as_utc
+  --timestamp-mode utc_naive
 
 uv run python scripts/build_tick_velocity_dataset.py \
   --tick-root /Users/danielfisher/Desktop/dukascopy_ticks \
@@ -41,7 +41,7 @@ uv run python scripts/build_tick_velocity_dataset.py \
   --target-horizons 1,2,3 \
   --vol-window 96 \
   --cost-window 288 \
-  --timestamp-mode as_utc \
+  --timestamp-mode utc_naive \
   --overwrite
 ```
 

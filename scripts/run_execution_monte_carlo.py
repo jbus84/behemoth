@@ -397,6 +397,7 @@ def main() -> None:
         "--caps-dir", default="data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap"
     )
     p.add_argument("--out-dir", default="data/analysis/tick_opportunity_mining")
+    p.add_argument("--report-out", default="docs/analysis/oco_execution_monte_carlo_report.md")
     p.add_argument("--iterations", type=int, default=2000)
     p.add_argument("--seed", type=int, default=20260227)
     p.add_argument("--write-draws", action="store_true")
@@ -452,7 +453,7 @@ def main() -> None:
     month_session_csv = out_dir / "execution_mc_month_session_summary.csv"
     monthly_csv = out_dir / "execution_mc_monthly_summary.csv"
     symbol_csv = out_dir / "execution_mc_symbol_scenarios.csv"
-    report_md = Path("docs/analysis/oco_execution_monte_carlo_report.md")
+    report_md = Path(str(args.report_out))
 
     month_session.to_csv(month_session_csv, index=False)
     monthly.to_csv(monthly_csv, index=False)

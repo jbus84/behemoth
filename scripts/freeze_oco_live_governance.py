@@ -106,72 +106,47 @@ def _latest_model_pair(symbol: str, *, models_dir: Path = Path("models/oco")) ->
     return model_path, thr_path
 
 
-def _default_paths(symbol: str) -> dict[str, Path]:
+def _default_paths(
+    symbol: str,
+    *,
+    config_dir: Path = Path("configs/research/experiments"),
+    analysis_dir: Path = Path("data/analysis/tick_opportunity_mining"),
+) -> dict[str, Path]:
     s = str(symbol).upper().strip()
     sl = s.lower()
     return {
         "wfo_config": _pick_first_existing(
-            Path(
-                f"configs/research/experiments/{sl}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml"
-            ),
-            Path(
-                f"configs/research/experiments/{sl}_tick_opportunity_monthly_wfo_oco_fullcap_rolling_2025.yaml"
-            ),
+            config_dir / f"{sl}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
+            config_dir / f"{sl}_tick_opportunity_monthly_wfo_oco_fullcap_rolling_2025.yaml",
         ),
         "reduced_config": _pick_first_existing(
-            Path(f"configs/research/experiments/{sl}_oco_reduced_core_2025.yaml"),
-            Path(f"configs/research/experiments/{sl}_oco_reduced_core_rolling_2025.yaml"),
+            config_dir / f"{sl}_oco_reduced_core_2025.yaml",
+            config_dir / f"{sl}_oco_reduced_core_rolling_2025.yaml",
         ),
         "reduced_states": _pick_first_existing(
-            Path(
-                f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_reduced_state_schedule.csv"
-            ),
-            Path(f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_reduced_states.csv"),
-            Path(
-                f"data/analysis/tick_opportunity_mining/reduced_core_{sl}/{s}_oco_reduced_states.csv"
-            ),
+            analysis_dir / "reduced_core_rolling" / f"{s}_oco_reduced_state_schedule.csv",
+            analysis_dir / "reduced_core" / f"{s}_oco_reduced_states.csv",
+            analysis_dir / f"reduced_core_{sl}" / f"{s}_oco_reduced_states.csv",
         ),
         "tick_exact_summary": _pick_first_existing(
-            Path(
-                f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_tick_exact_summary.csv"
-            ),
-            Path(
-                f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_tick_exact_summary.csv"
-            ),
-            Path(
-                f"data/analysis/tick_opportunity_mining/reduced_core_rolling_{sl}/{s}_oco_tick_exact_summary.csv"
-            ),
-            Path(
-                f"data/analysis/tick_opportunity_mining/reduced_core_{sl}/{s}_oco_tick_exact_summary.csv"
-            ),
+            analysis_dir / "reduced_core_rolling" / f"{s}_oco_tick_exact_summary.csv",
+            analysis_dir / "reduced_core" / f"{s}_oco_tick_exact_summary.csv",
+            analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_oco_tick_exact_summary.csv",
+            analysis_dir / f"reduced_core_{sl}" / f"{s}_oco_tick_exact_summary.csv",
         ),
         "reduced_summary": _pick_first_existing(
-            Path(
-                f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_reduced_summary.csv"
-            ),
-            Path(f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_reduced_summary.csv"),
-            Path(
-                f"data/analysis/tick_opportunity_mining/reduced_core_rolling_{sl}/{s}_oco_reduced_summary.csv"
-            ),
-            Path(
-                f"data/analysis/tick_opportunity_mining/reduced_core_{sl}/{s}_oco_reduced_summary.csv"
-            ),
+            analysis_dir / "reduced_core_rolling" / f"{s}_oco_reduced_summary.csv",
+            analysis_dir / "reduced_core" / f"{s}_oco_reduced_summary.csv",
+            analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_oco_reduced_summary.csv",
+            analysis_dir / f"reduced_core_{sl}" / f"{s}_oco_reduced_summary.csv",
         ),
         "predictions": _pick_first_existing(
-            Path(
-                f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s}_oco_monthly_predictions.parquet"
-            ),
-            Path(
-                f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_{sl}/{s}_oco_monthly_predictions.parquet"
-            ),
+            analysis_dir / "wfo_2025_m3to1_oco_fullcap" / f"{s}_oco_monthly_predictions.parquet",
+            analysis_dir / f"wfo_2025_m3to1_oco_fullcap_{sl}" / f"{s}_oco_monthly_predictions.parquet",
         ),
         "tick_fill_caps": _pick_first_existing(
-            Path(
-                f"data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/{s}_stop_limit_tickfill_caps.csv"
-            ),
-            Path(
-                f"data/analysis/tick_opportunity_mining/stop_limit_tickfill/{s}_stop_limit_tickfill_caps.csv"
-            ),
+            analysis_dir / "stop_limit_tickfill_fullcap" / f"{s}_stop_limit_tickfill_caps.csv",
+            analysis_dir / "stop_limit_tickfill" / f"{s}_stop_limit_tickfill_caps.csv",
         ),
     }
 
@@ -339,6 +314,8 @@ def run(
     *,
     symbols: list[str],
     out_dir: Path,
+    config_dir: Path,
+    analysis_dir: Path,
     cadence_days: int,
     anchor_day_utc: int,
     window_days: int,
@@ -353,7 +330,7 @@ def run(
         )
     out_paths: list[Path] = []
     for s in symbols:
-        paths = _default_paths(s)
+        paths = _default_paths(s, config_dir=config_dir, analysis_dir=analysis_dir)
         manifest = _build_manifest(
             symbol=s,
             paths=paths,
@@ -386,6 +363,8 @@ def main() -> None:
         ),
     )
     p.add_argument("--out-dir", default="configs/research/governance/oco")
+    p.add_argument("--config-dir", default="configs/research/experiments")
+    p.add_argument("--analysis-dir", default="data/analysis/tick_opportunity_mining")
     p.add_argument("--policy-config", default="configs/research/governance/oco_live_policy.yaml")
     p.add_argument(
         "--registry-yaml",
@@ -436,6 +415,8 @@ def main() -> None:
     run(
         symbols=syms,
         out_dir=Path(str(args.out_dir)),
+        config_dir=Path(str(args.config_dir)),
+        analysis_dir=Path(str(args.analysis_dir)),
         cadence_days=cadence_days,
         anchor_day_utc=anchor_day_utc,
         window_days=window_days,

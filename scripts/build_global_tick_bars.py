@@ -52,6 +52,13 @@ def _validate_timestamp_schema(
                 "Use --timestamp-mode ny_local_tagged_utc if raw timestamps are local and tagged as UTC."
             )
         return
+    if mode == "utc_naive":
+        if tz is not None:
+            raise ValueError(
+                f"{symbol}: timestamp_mode=utc_naive requires naive timestamps; "
+                f"file={file_path} dtype={ts_dtype}."
+            )
+        return
     if mode == "ny_local_tagged_utc":
         if tz is not None:
             raise ValueError(
@@ -67,6 +74,8 @@ def _timestamp_expr(timestamp_mode: str) -> pl.Expr:
     ts = pl.col("timestamp")
     if mode == "as_utc":
         return ts
+    if mode == "utc_naive":
+        return ts.dt.replace_time_zone("UTC")
     if mode == "ny_local_tagged_utc":
         # Interpret naive timestamps as New York local time and convert to UTC.
         return (
@@ -500,7 +509,7 @@ def main() -> None:
     )
     p.add_argument(
         "--timestamp-mode",
-        choices=["as_utc", "ny_local_tagged_utc"],
+        choices=["as_utc", "utc_naive", "ny_local_tagged_utc"],
         default="as_utc",
         help="How to interpret raw tick timestamps before bar construction",
     )

@@ -344,7 +344,7 @@ def main() -> None:
     )
     p.add_argument(
         "--timestamp-mode",
-        choices=["as_utc", "ny_local_tagged_utc"],
+        choices=["as_utc", "utc_naive", "ny_local_tagged_utc"],
         default="as_utc",
         help="How to interpret raw tick timestamps when building bars",
     )

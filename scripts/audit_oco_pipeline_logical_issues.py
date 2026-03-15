@@ -34,34 +34,22 @@ class SymbolConfig:
     min_train_months: int = 3
 
 
-def _default_configs() -> dict[str, SymbolConfig]:
+def _default_configs(base_dir: Path | str = "data/analysis/tick_opportunity_mining") -> dict[str, SymbolConfig]:
+    base_dir = Path(base_dir)
     configs = {}
     for s in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]:
-        s_low = s.lower()
         pred_folder = "wfo_2025_m3to1_oco_fullcap"
         red_folder = "reduced_core_rolling"
         stop_folder = "stop_limit_tickfill_fullcap"
 
         configs[s] = SymbolConfig(
             symbol=s,
-            pred_path=Path(
-                f"data/analysis/tick_opportunity_mining/{pred_folder}/{s}_oco_monthly_predictions.parquet"
-            ),
-            monthly_path=Path(
-                f"data/analysis/tick_opportunity_mining/{red_folder}/{s}_oco_reduced_monthly.csv"
-            ),
-            summary_path=Path(
-                f"data/analysis/tick_opportunity_mining/{red_folder}/{s}_oco_reduced_summary.csv"
-            ),
-            schedule_path=Path(
-                f"data/analysis/tick_opportunity_mining/{red_folder}/{s}_oco_reduced_state_schedule.csv"
-            ),
-            stop_detail_path=Path(
-                f"data/analysis/tick_opportunity_mining/{stop_folder}/{s}_stop_limit_tickfill_detail.csv"
-            ),
-            stop_caps_path=Path(
-                f"data/analysis/tick_opportunity_mining/{stop_folder}/{s}_stop_limit_tickfill_caps.csv"
-            ),
+            pred_path=base_dir / pred_folder / f"{s}_oco_monthly_predictions.parquet",
+            monthly_path=base_dir / red_folder / f"{s}_oco_reduced_monthly.csv",
+            summary_path=base_dir / red_folder / f"{s}_oco_reduced_summary.csv",
+            schedule_path=base_dir / red_folder / f"{s}_oco_reduced_state_schedule.csv",
+            stop_detail_path=base_dir / stop_folder / f"{s}_stop_limit_tickfill_detail.csv",
+            stop_caps_path=base_dir / stop_folder / f"{s}_stop_limit_tickfill_caps.csv",
         )
     return configs
 
@@ -675,9 +663,9 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def run_audit(
-    symbols: list[str], *, out_checks_csv: Path, out_issues_csv: Path, report_out: Path
+    symbols: list[str], *, base_dir: Path, out_checks_csv: Path, out_issues_csv: Path, report_out: Path
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    cfg_map = _default_configs()
+    cfg_map = _default_configs(base_dir)
     use_syms = [s.upper().strip() for s in symbols if s.strip()]
     bad = [s for s in use_syms if s not in cfg_map]
     if bad:
@@ -823,6 +811,7 @@ def run_audit(
 def main() -> None:
     p = argparse.ArgumentParser(description="Audit OCO logical issues for target symbols")
     p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD")
+    p.add_argument("--base-dir", default="data/analysis/tick_opportunity_mining")
     p.add_argument(
         "--out-checks-csv",
         default="data/analysis/tick_opportunity_mining/oco_logical_audit_checks.csv",
@@ -839,6 +828,7 @@ def main() -> None:
     symbols = [x.strip().upper() for x in str(args.symbols).split(",") if x.strip()]
     run_audit(
         symbols,
+        base_dir=Path(str(args.base_dir)),
         out_checks_csv=Path(str(args.out_checks_csv)),
         out_issues_csv=Path(str(args.out_issues_csv)),
         report_out=Path(str(args.report_out)),
