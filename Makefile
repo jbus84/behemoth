@@ -394,6 +394,8 @@ testclient-parity:
 		--models-dir $(or $(MODELS_DIR),models/oco) \
 		--history-dir $(or $(HISTORY_DIR),configs/research/governance/oco_history) \
 		--missing-month-policy $(or $(MISSING_MONTH_POLICY),error) \
+		--historical-preflight-mode $(or $(HISTORICAL_PREFLIGHT_MODE),warn) \
+		--historical-prediction-universe-mode $(or $(HISTORICAL_PREDICTION_UNIVERSE_MODE),exact) \
 		--ftmo-enabled-override $(or $(FTMO_ENABLED_OVERRIDE),false) \
 		--requested-lot-size $(or $(LOT_SIZE),0.05) \
 		--enable-tick-batch $(or $(ENABLE_TICK_BATCH),true) \
