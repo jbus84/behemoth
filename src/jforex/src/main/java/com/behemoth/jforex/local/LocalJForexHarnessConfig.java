@@ -76,7 +76,7 @@ public record LocalJForexHarnessConfig(
                 System.getenv().getOrDefault("BEHEMOTH_LOCAL_JFOREX_RUN_ID", "local_jforex_surrogate"),
                 Boolean.parseBoolean(System.getenv().getOrDefault("BEHEMOTH_LOCAL_JFOREX_RISK_ENABLED", "false")),
                 Double.parseDouble(System.getenv().getOrDefault("BEHEMOTH_LOCAL_JFOREX_REQUESTED_VOLUME_UNITS", "10000")),
-                Integer.parseInt(System.getenv().getOrDefault("BEHEMOTH_LOCAL_JFOREX_TICK_BATCH_SIZE", "16")),
+                Integer.parseInt(System.getenv().getOrDefault("BEHEMOTH_LOCAL_JFOREX_TICK_BATCH_SIZE", "256")),
                 Long.parseLong(System.getenv().getOrDefault("BEHEMOTH_LOCAL_JFOREX_ORDER_TTL_SECONDS", "900")),
                 Integer.parseInt(System.getenv().getOrDefault("BEHEMOTH_LOCAL_JFOREX_API_TIMEOUT_SECONDS", "60")),
                 Boolean.parseBoolean(System.getenv().getOrDefault("BEHEMOTH_LOCAL_JFOREX_METRICS_ENABLED", "true")),

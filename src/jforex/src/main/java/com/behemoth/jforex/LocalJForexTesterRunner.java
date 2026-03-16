@@ -13,6 +13,7 @@ import com.behemoth.jforex.runtime.dto.BackfillRequestPayload;
 import com.behemoth.jforex.runtime.dto.IncomingTickPayload;
 import com.behemoth.jforex.state.ExecutionStateStore;
 import java.net.http.HttpClient;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -37,7 +38,14 @@ public final class LocalJForexTesterRunner {
                 Duration.ofSeconds(sessionConfig.apiTimeoutSeconds())
         );
         JForexMetrics metrics = JForexMetrics.start(sessionConfig);
-        Path statePath = sessionConfig.reportDir().resolve("runtime").resolve("local_active_oco_state.json");
+        Path runtimeDir = sessionConfig.reportDir().resolve("runtime");
+        Path statePath = runtimeDir.resolve(safeFileComponent(sessionConfig.runId()) + "_active_oco_state.json");
+        try {
+            Files.createDirectories(runtimeDir);
+            Files.deleteIfExists(statePath);
+        } catch (Exception exc) {
+            throw new IllegalStateException("Failed to prepare local JForex state path: " + statePath, exc);
+        }
         ExecutionStateStore stateStore = new ExecutionStateStore(statePath, predictionClient.objectMapper());
         Stage14ArtifactWriter artifactWriter = new Stage14ArtifactWriter(sessionConfig.reportDir(), "local_jforex");
         LocalExecutionPort executionPort = new LocalExecutionPort();
@@ -119,5 +127,13 @@ public final class LocalJForexTesterRunner {
 
     private static String normalizeSymbol(String raw) {
         return raw == null ? "" : raw.trim().replace("/", "").toUpperCase();
+    }
+
+    private static String safeFileComponent(String raw) {
+        String txt = String.valueOf(raw == null ? "" : raw).trim().toLowerCase();
+        if (txt.isEmpty()) {
+            return "local_jforex_surrogate";
+        }
+        return txt.replaceAll("[^a-z0-9._-]+", "_");
     }
 }

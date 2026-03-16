@@ -15,6 +15,7 @@ from scripts.replay_histdata_cbot_testclient import (
     _filter_expected_to_reduced_core,
     _load_hist_ticks_for_replay,
     _match_expected_runtime_on_close_ts,
+    _should_filter_first_partial_selected_row,
 )
 from src.behemoth.core.features import compute_features_from_bars
 
@@ -180,6 +181,15 @@ def test_apply_sequence_fallback_matches_by_order_with_gap_cap() -> None:
     assert set(all_matches["match_mode"].tolist()) == {"fallback_nearest"}
     assert len(miss_after) == 0
     assert len(extra_after) == 0
+
+
+def test_locked_payload_mode_keeps_first_partial_selected_row() -> None:
+    assert _should_filter_first_partial_selected_row(
+        historical_prediction_payload_mode="locked"
+    ) is False
+    assert _should_filter_first_partial_selected_row(
+        historical_prediction_payload_mode="model"
+    ) is True
 
 
 def test_stage12_summary_requires_both_signal_and_execution_parity() -> None:

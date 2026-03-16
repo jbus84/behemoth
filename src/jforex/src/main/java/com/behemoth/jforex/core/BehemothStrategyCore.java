@@ -14,6 +14,7 @@ import com.behemoth.jforex.runtime.dto.PredictRequestPayload;
 import com.behemoth.jforex.runtime.dto.PredictionResponseItem;
 import com.behemoth.jforex.runtime.dto.TickBatchRequestPayload;
 import com.behemoth.jforex.runtime.dto.TickBatchResponsePayload;
+import com.behemoth.jforex.runtime.dto.TickIngestResponsePayload;
 import com.behemoth.jforex.runtime.dto.TradeOpenRequestPayload;
 import com.behemoth.jforex.runtime.dto.TradeTouchRequestPayload;
 import com.behemoth.jforex.runtime.dto.TradeUpdateRequestPayload;
@@ -30,6 +31,8 @@ import java.util.Set;
 
 public final class BehemothStrategyCore {
     private static final double FX_UNITS_PER_MILLION = 1_000_000.0;
+    private static final int MAX_TICK_BATCH_TIMEOUT_RETRIES = 2;
+    private static final long TICK_BATCH_RETRY_BACKOFF_MS = 250L;
 
     private final JForexSessionConfig sessionConfig;
     private final PythonPredictionClient predictionClient;
@@ -105,25 +108,50 @@ public final class BehemothStrategyCore {
         }
         List<IncomingTickPayload> payload = List.copyOf(state.pendingTicks);
         state.pendingTicks.clear();
-        try {
-            TickBatchResponsePayload response = predictionClient.tickBatch(new TickBatchRequestPayload(
-                    state.instrument.symbol(),
-                    payload,
-                    sessionConfig.runId()
-            ));
-            metrics.recordTickBatch(state.instrument.symbol(), response.acceptedCount(), response.droppedCount());
-            artifactWriter.markOperationalStep(
-                    state.instrument.symbol(),
-                    "feed_status",
-                    true,
-                    "accepted=" + response.acceptedCount()
-            );
-            if (response.barCompleted() && response.completedBarTicks() != null && !response.completedBarTicks().isEmpty()) {
-                triggerPrediction(state, response.completedBarTicks());
+        TickBatchRequestPayload request = new TickBatchRequestPayload(
+                state.instrument.symbol(),
+                payload,
+                sessionConfig.runId()
+        );
+        int attempt = 0;
+        while (true) {
+            try {
+                TickBatchResponsePayload response = predictionClient.tickBatch(request);
+                metrics.recordTickBatch(state.instrument.symbol(), response.acceptedCount(), response.droppedCount());
+                artifactWriter.markOperationalStep(
+                        state.instrument.symbol(),
+                        "feed_status",
+                        true,
+                        "accepted=" + response.acceptedCount() + ";attempt=" + (attempt + 1)
+                );
+                if (response.barCompleted() && response.completedBarTicks() != null && !response.completedBarTicks().isEmpty()) {
+                    triggerPrediction(state, response.completedBarTicks());
+                }
+                return;
+            } catch (RuntimeException exc) {
+                if (isRetriableTickBatchFailure(exc) && attempt < MAX_TICK_BATCH_TIMEOUT_RETRIES) {
+                    attempt += 1;
+                    sleepBeforeRetry();
+                    continue;
+                }
+                if (isRetriableTickBatchFailure(exc)) {
+                    TickIngestAggregate aggregate = ingestTicksIndividually(state, payload);
+                    metrics.recordTickBatch(state.instrument.symbol(), aggregate.acceptedCount(), aggregate.droppedCount());
+                    artifactWriter.markOperationalStep(
+                            state.instrument.symbol(),
+                            "feed_status",
+                            true,
+                            "accepted=" + aggregate.acceptedCount() + ";mode=single_tick_fallback"
+                    );
+                    if (!aggregate.completedBarTicks().isEmpty()) {
+                        triggerPrediction(state, aggregate.completedBarTicks());
+                    }
+                    return;
+                }
+                state.pendingTicks.addAll(0, payload);
+                artifactWriter.markOperationalStep(state.instrument.symbol(), "feed_status", false, exc.getMessage());
+                throw exc;
             }
-        } catch (RuntimeException exc) {
-            artifactWriter.markOperationalStep(state.instrument.symbol(), "feed_status", false, exc.getMessage());
-            throw exc;
         }
     }
 
@@ -421,6 +449,51 @@ public final class BehemothStrategyCore {
         return raw == null ? "" : raw.trim().replace("/", "").toUpperCase();
     }
 
+    private static boolean isRetriableTickBatchFailure(RuntimeException exc) {
+        if (!(exc instanceof PythonApiException apiException)) {
+            return false;
+        }
+        if (apiException.statusCode() != 599) {
+            return false;
+        }
+        String detail = String.valueOf(apiException.detail()).toLowerCase();
+        return detail.contains("timed out") || detail.contains("timeout");
+    }
+
+    private static void sleepBeforeRetry() {
+        try {
+            Thread.sleep(TICK_BATCH_RETRY_BACKOFF_MS);
+        } catch (InterruptedException exc) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while retrying tick batch", exc);
+        }
+    }
+
+    private TickIngestAggregate ingestTicksIndividually(SymbolRuntimeState state, List<IncomingTickPayload> payload) {
+        int accepted = 0;
+        int dropped = 0;
+        Set<Integer> completedBarTicks = new LinkedHashSet<>();
+        for (int i = 0; i < payload.size(); i++) {
+            IncomingTickPayload tick = payload.get(i);
+            try {
+                TickIngestResponsePayload response = predictionClient.tick(tick);
+                if (response.tickAccepted()) {
+                    accepted += 1;
+                } else {
+                    dropped += 1;
+                }
+                if (response.barCompleted() && response.completedBarTicks() != null) {
+                    completedBarTicks.addAll(response.completedBarTicks());
+                }
+            } catch (RuntimeException exc) {
+                state.pendingTicks.addAll(0, payload.subList(i, payload.size()));
+                artifactWriter.markOperationalStep(state.instrument.symbol(), "feed_status", false, exc.getMessage());
+                throw exc;
+            }
+        }
+        return new TickIngestAggregate(accepted, dropped, List.copyOf(completedBarTicks));
+    }
+
     private static final class SymbolRuntimeState {
         private final RuntimeInstrument instrument;
         private final List<IncomingTickPayload> pendingTicks = new ArrayList<>();
@@ -430,5 +503,12 @@ public final class BehemothStrategyCore {
         private SymbolRuntimeState(RuntimeInstrument instrument) {
             this.instrument = instrument;
         }
+    }
+
+    private record TickIngestAggregate(
+            int acceptedCount,
+            int droppedCount,
+            List<Integer> completedBarTicks
+    ) {
     }
 }

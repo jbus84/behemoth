@@ -153,7 +153,7 @@ def _start_api(cfg: RunConfig, symbol: str) -> subprocess.Popen[str]:
             "BEHEMOTH_MODELS_DIR": cfg.models_dir,
             "BEHEMOTH_HISTORICAL_PREDICTION_UNIVERSE_MODE": "tolerant",
             "BEHEMOTH_HISTORICAL_PREDICTION_PAYLOAD_MODE": "locked",
-            "BEHEMOTH_HISTORICAL_PREDICTION_TOLERANCE_SEC": "60",
+            "BEHEMOTH_HISTORICAL_PREDICTION_TOLERANCE_SEC": "120",
             "BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE": _prediction_path(cfg, symbol),
             "BEHEMOTH_FORCE_MODEL_MONTH": cfg.model_month,
             "BEHEMOTH_STATE_DB": str(state_db_path),

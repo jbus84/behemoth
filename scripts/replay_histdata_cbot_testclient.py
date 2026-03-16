@@ -557,6 +557,31 @@ def _norm_ts_key(ts: pd.Timestamp | datetime | Any) -> pd.Timestamp:
     return pd.to_datetime(ts, utc=True, errors="coerce").floor("us")
 
 
+def _first_partial_window_close_ts(
+    *,
+    warmup: pd.DataFrame,
+    stream: pd.DataFrame,
+    phase_bar_ticks: int,
+) -> pd.Timestamp | None:
+    if int(phase_bar_ticks) <= 0 or stream.empty:
+        return None
+    phase_mod = int(len(warmup) % int(phase_bar_ticks))
+    if phase_mod <= 0:
+        return None
+    remaining = int(phase_bar_ticks) - phase_mod
+    if remaining <= 0 or remaining > len(stream):
+        return None
+    return _norm_ts_key(stream.iloc[remaining - 1]["ts"])
+
+
+def _should_filter_first_partial_selected_row(*, historical_prediction_payload_mode: str) -> bool:
+    mode = str(historical_prediction_payload_mode).strip().lower()
+    # In locked-payload replay modes, /predict returns the governed close_ts rather than the
+    # runtime-computed bar close. Comparing those locked timestamps against the runtime-derived
+    # first-partial close incorrectly drops valid admitted rows.
+    return mode not in {"locked"}
+
+
 def _match_expected_runtime_on_close_ts(
     *,
     expected: pd.DataFrame,
@@ -1226,6 +1251,7 @@ def _simulate(
     expected_detail: pd.DataFrame,
     warmup: pd.DataFrame,
     stream: pd.DataFrame,
+    phase_bar_ticks: int,
     events_json: Path,
     model_month: str,
     models_dir: Path,
@@ -1233,6 +1259,8 @@ def _simulate(
     missing_month_policy: str,
     historical_preflight_mode: str,
     historical_prediction_universe_mode: str,
+    historical_prediction_payload_mode: str,
+    historical_prediction_tolerance_sec: float,
     historical_predictions_path_override: Path | None,
     debug_run_id: str | None,
     debug_http_trace_path: Path | None,
@@ -1261,6 +1289,12 @@ def _simulate(
     os.environ["BEHEMOTH_HISTORICAL_PREFLIGHT_MODE"] = str(historical_preflight_mode)
     os.environ["BEHEMOTH_HISTORICAL_PREDICTION_UNIVERSE_MODE"] = str(
         historical_prediction_universe_mode
+    )
+    os.environ["BEHEMOTH_HISTORICAL_PREDICTION_PAYLOAD_MODE"] = str(
+        historical_prediction_payload_mode
+    )
+    os.environ["BEHEMOTH_HISTORICAL_PREDICTION_TOLERANCE_SEC"] = str(
+        historical_prediction_tolerance_sec
     )
     if historical_predictions_path_override is not None:
         os.environ["BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE"] = str(
@@ -1484,6 +1518,18 @@ def _simulate(
         else:
             runtime_selected["candidate_uid"] = runtime_selected["candidate_uid"].astype(str)
             runtime_selected["close_ts"] = _to_utc(runtime_selected["close_ts"])
+            if _should_filter_first_partial_selected_row(
+                historical_prediction_payload_mode=historical_prediction_payload_mode
+            ):
+                first_partial_close = _first_partial_window_close_ts(
+                    warmup=warmup,
+                    stream=stream,
+                    phase_bar_ticks=int(phase_bar_ticks),
+                )
+                if first_partial_close is not None:
+                    runtime_selected = runtime_selected[
+                        runtime_selected["close_ts"] > first_partial_close
+                    ].reset_index(drop=True)
 
         expected_keys = expected_selected_keys[["candidate_uid", "close_ts"]].copy()
         expected_keys["candidate_uid"] = expected_keys["candidate_uid"].astype(str)
@@ -1869,6 +1915,8 @@ def run(
     missing_month_policy: str,
     historical_preflight_mode: str,
     historical_prediction_universe_mode: str,
+    historical_prediction_payload_mode: str,
+    historical_prediction_tolerance_sec: float,
     historical_predictions_path_override: Path | None,
     ftmo_enabled_override: bool,
     ftmo_rules_path: Path = Path("configs/research/governance/ftmo/ftmo_rules.yaml"),
@@ -1971,6 +2019,7 @@ def run(
         expected_detail=expected_detail,
         warmup=warmup,
         stream=stream,
+        phase_bar_ticks=int(phase_bar_ticks),
         events_json=events_json,
         model_month=model_month,
         models_dir=models_dir,
@@ -1978,6 +2027,8 @@ def run(
         missing_month_policy=missing_month_policy,
         historical_preflight_mode=historical_preflight_mode,
         historical_prediction_universe_mode=historical_prediction_universe_mode,
+        historical_prediction_payload_mode=historical_prediction_payload_mode,
+        historical_prediction_tolerance_sec=historical_prediction_tolerance_sec,
         historical_predictions_path_override=historical_predictions_path_override,
         debug_run_id=debug_run_id,
         debug_http_trace_path=debug_http_trace_path,
@@ -2169,6 +2220,8 @@ def main() -> None:
     p.add_argument("--missing-month-policy", default="error")
     p.add_argument("--historical-preflight-mode", default="error")
     p.add_argument("--historical-prediction-universe-mode", default="exact")
+    p.add_argument("--historical-prediction-payload-mode", default="model")
+    p.add_argument("--historical-prediction-tolerance-sec", type=float, default=30.0)
     p.add_argument("--historical-predictions-path-override", default="")
     p.add_argument("--ftmo-enabled-override", default="false")
     p.add_argument("--ftmo-rules-path", default="configs/research/governance/ftmo/ftmo_rules.yaml")
@@ -2267,6 +2320,8 @@ def main() -> None:
         missing_month_policy=str(args.missing_month_policy).strip().lower(),
         historical_preflight_mode=str(args.historical_preflight_mode).strip().lower(),
         historical_prediction_universe_mode=str(args.historical_prediction_universe_mode).strip().lower(),
+        historical_prediction_payload_mode=str(args.historical_prediction_payload_mode).strip().lower(),
+        historical_prediction_tolerance_sec=float(args.historical_prediction_tolerance_sec),
         historical_predictions_path_override=(
             Path(str(args.historical_predictions_path_override))
             if str(args.historical_predictions_path_override).strip()

@@ -5,10 +5,12 @@ import com.behemoth.jforex.runtime.dto.ActiveTradePayload;
 import com.behemoth.jforex.runtime.dto.ApiAckResponse;
 import com.behemoth.jforex.runtime.dto.BackfillRequestPayload;
 import com.behemoth.jforex.runtime.dto.FeedStatusResponsePayload;
+import com.behemoth.jforex.runtime.dto.IncomingTickPayload;
 import com.behemoth.jforex.runtime.dto.PredictRequestPayload;
 import com.behemoth.jforex.runtime.dto.PredictionResponseItem;
 import com.behemoth.jforex.runtime.dto.TickBatchRequestPayload;
 import com.behemoth.jforex.runtime.dto.TickBatchResponsePayload;
+import com.behemoth.jforex.runtime.dto.TickIngestResponsePayload;
 import com.behemoth.jforex.runtime.dto.TradeOpenRequestPayload;
 import com.behemoth.jforex.runtime.dto.TradeTouchRequestPayload;
 import com.behemoth.jforex.runtime.dto.TradeUpdateRequestPayload;
@@ -37,10 +39,14 @@ import java.util.Objects;
  * execution intents from the existing FastAPI runtime.
  */
 public final class PythonPredictionClient {
+    private static final Duration MIN_TICK_BATCH_TIMEOUT = Duration.ofMinutes(10);
+
     private final HttpClient httpClient;
+    private final HttpClient tickBatchHttpClient;
     private final URI apiBaseUri;
     private final ObjectMapper objectMapper;
     private final Duration requestTimeout;
+    private final Duration tickBatchTimeout;
 
     public PythonPredictionClient(HttpClient httpClient, URI apiBaseUri) {
         this(httpClient, apiBaseUri, buildObjectMapper(), Duration.ofSeconds(60));
@@ -50,15 +56,31 @@ public final class PythonPredictionClient {
         this(httpClient, apiBaseUri, buildObjectMapper(), requestTimeout);
     }
 
+    public PythonPredictionClient(HttpClient httpClient, URI apiBaseUri, Duration requestTimeout, Duration tickBatchTimeout) {
+        this(httpClient, apiBaseUri, buildObjectMapper(), requestTimeout, tickBatchTimeout);
+    }
+
     public PythonPredictionClient(HttpClient httpClient, URI apiBaseUri, ObjectMapper objectMapper) {
         this(httpClient, apiBaseUri, objectMapper, Duration.ofSeconds(60));
     }
 
     public PythonPredictionClient(HttpClient httpClient, URI apiBaseUri, ObjectMapper objectMapper, Duration requestTimeout) {
+        this(httpClient, apiBaseUri, objectMapper, requestTimeout, maxTickBatchTimeout(requestTimeout));
+    }
+
+    public PythonPredictionClient(
+            HttpClient httpClient,
+            URI apiBaseUri,
+            ObjectMapper objectMapper,
+            Duration requestTimeout,
+            Duration tickBatchTimeout
+    ) {
         this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
+        this.tickBatchHttpClient = buildTickBatchHttpClient(tickBatchTimeout);
         this.apiBaseUri = Objects.requireNonNull(apiBaseUri, "apiBaseUri");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
         this.requestTimeout = Objects.requireNonNull(requestTimeout, "requestTimeout");
+        this.tickBatchTimeout = Objects.requireNonNull(tickBatchTimeout, "tickBatchTimeout");
     }
 
     public ApiAckResponse accountSnapshot(AccountSnapshotRequestPayload request) {
@@ -70,7 +92,11 @@ public final class PythonPredictionClient {
     }
 
     public TickBatchResponsePayload tickBatch(TickBatchRequestPayload request) {
-        return sendJson("POST", "/ticks/batch", request, TickBatchResponsePayload.class);
+        return sendJson("POST", "/ticks/batch", request, TickBatchResponsePayload.class, tickBatchTimeout);
+    }
+
+    public TickIngestResponsePayload tick(IncomingTickPayload request) {
+        return sendJson("POST", "/ticks", request, TickIngestResponsePayload.class, tickBatchTimeout);
     }
 
     public List<PredictionResponseItem> predict(PredictRequestPayload request) {
@@ -105,9 +131,13 @@ public final class PythonPredictionClient {
     }
 
     private <T> T sendJson(String method, String path, Object payload, Class<T> responseType) {
-        HttpRequest request = buildRequest(method, path, payload);
+        return sendJson(method, path, payload, responseType, requestTimeout);
+    }
+
+    private <T> T sendJson(String method, String path, Object payload, Class<T> responseType, Duration timeout) {
+        HttpRequest request = buildRequest(method, path, payload, timeout);
         try {
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = selectHttpClient(path, timeout).send(request, HttpResponse.BodyHandlers.ofString());
             ensureSuccess(response);
             if (responseType == Void.class || response.body() == null || response.body().isBlank()) {
                 return null;
@@ -122,9 +152,9 @@ public final class PythonPredictionClient {
     }
 
     private <T> T sendJsonList(String method, String path, Object payload, TypeReference<T> typeReference) {
-        HttpRequest request = buildRequest(method, path, payload);
+        HttpRequest request = buildRequest(method, path, payload, requestTimeout);
         try {
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = selectHttpClient(path, requestTimeout).send(request, HttpResponse.BodyHandlers.ofString());
             ensureSuccess(response);
             return objectMapper.readValue(response.body(), typeReference);
         } catch (InterruptedException exc) {
@@ -135,9 +165,9 @@ public final class PythonPredictionClient {
         }
     }
 
-    private HttpRequest buildRequest(String method, String path, Object payload) {
+    private HttpRequest buildRequest(String method, String path, Object payload, Duration timeout) {
         HttpRequest.Builder builder = HttpRequest.newBuilder(apiBaseUri.resolve(path))
-                .timeout(requestTimeout)
+                .timeout(timeout)
                 .version(HttpClient.Version.HTTP_1_1)
                 .header("Accept", "application/json");
         if ("GET".equalsIgnoreCase(method)) {
@@ -178,5 +208,25 @@ public final class PythonPredictionClient {
                 .registerModule(new JavaTimeModule())
                 .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    }
+
+    private HttpClient selectHttpClient(String path, Duration timeout) {
+        if (!"/ticks/batch".equals(path)) {
+            return httpClient;
+        }
+        return tickBatchHttpClient;
+    }
+
+    private static Duration maxTickBatchTimeout(Duration requestTimeout) {
+        return requestTimeout.compareTo(MIN_TICK_BATCH_TIMEOUT) >= 0
+                ? requestTimeout
+                : MIN_TICK_BATCH_TIMEOUT;
+    }
+
+    private static HttpClient buildTickBatchHttpClient(Duration timeout) {
+        return HttpClient.newBuilder()
+                .connectTimeout(timeout)
+                .version(HttpClient.Version.HTTP_1_1)
+                .build();
     }
 }
