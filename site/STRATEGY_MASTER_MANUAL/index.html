@@ -2509,6 +2509,118 @@
   
   
     <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_13_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 13 Dukascopy TestClient Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_13_dukascopy_testclient_parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 13 Dukascopy TestClient Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_14_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 14 JForex Certification Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_14_jforex_runtime_certification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 14 JForex Certification Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../strategy_bible/signal_lifecycle_reference/" class="md-nav__link">
         
   
@@ -3219,10 +3331,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_52" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_56" >
         
           
-          <label class="md-nav__link" for="__nav_4_52" id="__nav_4_52_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_56" id="__nav_4_56_label" tabindex="0">
             
   
   
@@ -3240,8 +3352,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_52_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_52">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_56_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_56">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3388,10 +3500,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_53" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_57" >
         
           
-          <label class="md-nav__link" for="__nav_4_53" id="__nav_4_53_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_57" id="__nav_4_57_label" tabindex="0">
             
   
   
@@ -3409,8 +3521,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_53_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_53">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_57_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_57">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4716,7 +4828,11 @@ If any section conflicts with generated stage artifacts, the generated stage art
 8. Stage 08: robustness and stress tests.
 9. Stage 09: governance lock + deploy eligibility.
 10. Stage 10: known risks + backlog controls.
-11. Stage 11: execution Monte Carlo degradation analysis.</p>
+11. Stage 11: execution Monte Carlo degradation analysis.
+12. Stage 12: historical API parity against reduced-core truth.
+12.5. Pre-Stage local JForex surrogate parity, using canonical Dukascopy parquet replay against the shared Java strategy core before real broker-runtime certification.
+13. Stage 13: Dukascopy TestClient parity, using canonical Dukascopy parquet replay as the broker-source diagnostic gate on the Python side.
+14. Stage 14: JForex runtime certification for tester/demo execution, with <code>ITesterClient</code> as the official broker-runtime certification harness.</p>
 <p>Generated status is published in <code>docs/strategy_bible/generated/pipeline_snapshot.md</code>.</p>
 <h2 id="5-causality-and-leakage-controls">5. Causality and Leakage Controls<a class="headerlink" href="#5-causality-and-leakage-controls" title="Permanent link">&para;</a></h2>
 <h3 id="51-time-ordering-rules">5.1 Time Ordering Rules<a class="headerlink" href="#51-time-ordering-rules" title="Permanent link">&para;</a></h3>
@@ -4828,7 +4944,7 @@ If any section conflicts with generated stage artifacts, the generated stage art
 </table>
 <p>Interpretation note:
 - these are cycle-level expectancy estimates under the current selection policy, not guaranteed live outcomes;
-- execution-drift and governance gates (Sections 7-13) must still pass for deploy suitability.</p>
+- execution-drift and governance gates (Sections 7-14) must still pass for deploy suitability.</p>
 <h2 id="7-execution-semantics-stop-limit">7. Execution Semantics (Stop-Limit)<a class="headerlink" href="#7-execution-semantics-stop-limit" title="Permanent link">&para;</a></h2>
 <h3 id="71-why-stop-limit">7.1 Why Stop-Limit<a class="headerlink" href="#71-why-stop-limit" title="Permanent link">&para;</a></h3>
 <ul>
@@ -4867,6 +4983,8 @@ If any section conflicts with generated stage artifacts, the generated stage art
 <li><code>scripts/analyze_oco_monthly_wfo_robustness.py</code></li>
 <li><code>scripts/analyze_oco_stop_limit_tickfill.py</code></li>
 <li><code>scripts/simulate_api_e2e_replay.py</code> (E2E Replay Parity Check)</li>
+<li><code>scripts/validate_stage13_dukascopy_testclient.py</code></li>
+<li><code>scripts/validate_stage14_jforex_runtime_certification.py</code></li>
 </ul>
 <h3 id="92-governance-and-docs">9.2 Governance and Docs<a class="headerlink" href="#92-governance-and-docs" title="Permanent link">&para;</a></h3>
 <ul>
@@ -4884,7 +5002,12 @@ If any section conflicts with generated stage artifacts, the generated stage art
 <h2 id="10-standard-reproduction">10. Standard Reproduction<a class="headerlink" href="#10-standard-reproduction" title="Permanent link">&para;</a></h2>
 <p>Run from repo root:</p>
 <div class="highlight"><pre><span></span><code>make<span class="w"> </span>docs-contract-ci
+make<span class="w"> </span>stage13-dukascopy-cert
+make<span class="w"> </span>stage14-jforex-cert
 uv<span class="w"> </span>run<span class="w"> </span>mkdocs<span class="w"> </span>build
+</code></pre></div>
+<p>For runtime observability during the local JForex surrogate, Stage 13, and Stage 14 validation work:</p>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>observability-up
 </code></pre></div>
 <h2 id="11-operator-workflow">11. Operator Workflow<a class="headerlink" href="#11-operator-workflow" title="Permanent link">&para;</a></h2>
 <p>Daily/weekly/monthly actions are defined in:

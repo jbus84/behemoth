@@ -17,7 +17,7 @@ This documentation set is for the active **tick-based OCO stop-limit strategy** 
 
 ## Start Here
 - Full strategy definition: `STRATEGY_MASTER_MANUAL.md`
-- Stage-by-stage specs: `docs/strategy_bible/stage_01_data_foundation.md` through `docs/strategy_bible/stage_11_execution_monte_carlo.md`
+- Stage-by-stage specs: `docs/strategy_bible/stage_01_data_foundation.md` through `docs/strategy_bible/stage_14_jforex_runtime_certification.md`
 - Daily operator flow: `docs/strategy_bible/operator_runbook.md`
 - Current generated snapshot: `docs/strategy_bible/generated/pipeline_snapshot.md`
 

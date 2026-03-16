@@ -2013,6 +2013,118 @@
   
   
     <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_13_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 13 Dukascopy TestClient Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_13_dukascopy_testclient_parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 13 Dukascopy TestClient Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/generated/stage_14_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 14 JForex Certification Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../strategy_bible/stage_14_jforex_runtime_certification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 14 JForex Certification Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../strategy_bible/signal_lifecycle_reference/" class="md-nav__link">
         
   
@@ -2723,10 +2835,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_52" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_56" >
         
           
-          <label class="md-nav__link" for="__nav_4_52" id="__nav_4_52_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_56" id="__nav_4_56_label" tabindex="0">
             
   
   
@@ -2744,8 +2856,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_52_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_52">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_56_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_56">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2892,10 +3004,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_53" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_57" >
         
           
-          <label class="md-nav__link" for="__nav_4_53" id="__nav_4_53_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_57" id="__nav_4_57_label" tabindex="0">
             
   
   
@@ -2913,8 +3025,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_53_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_53">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_57_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_57">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3418,10 +3530,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#optional-infra-monitoring" class="md-nav__link">
+  <a href="#infra-monitoring" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Optional Infra Monitoring
+        Infra Monitoring
       
     </span>
   </a>
@@ -3778,10 +3890,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#optional-infra-monitoring" class="md-nav__link">
+  <a href="#infra-monitoring" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Optional Infra Monitoring
+        Infra Monitoring
       
     </span>
   </a>
@@ -3869,8 +3981,12 @@
 <li>governance near-fail/lock-drift diagnostics (<code>G01</code>, <code>G03</code>),</li>
 <li>freshness and exception expiry.</li>
 </ul>
-<h2 id="optional-infra-monitoring">Optional Infra Monitoring<a class="headerlink" href="#optional-infra-monitoring" title="Permanent link">&para;</a></h2>
-<p>Prometheus/Grafana endpoints are legacy/optional and only required if the API runtime is actively used.</p>
+<h2 id="infra-monitoring">Infra Monitoring<a class="headerlink" href="#infra-monitoring" title="Permanent link">&para;</a></h2>
+<p>Prometheus/Grafana remains optional for research-only runs, but it is the active observability path for the Python API during Stage 13 Dukascopy TestClient validation and for the JForex adapter during Stage 14 tester/demo validation.</p>
+<p>Current runtime scrape targets:
+- Python API: <code>http://127.0.0.1:8001/metrics</code>
+- JForex adapter: <code>http://127.0.0.1:9464/metrics</code></p>
+<p>Grafana dashboards are provisioned from <code>provisioning/dashboards/</code> and Prometheus scrapes both targets via <code>docker-compose.yml</code> + <code>prometheus.yml</code>.</p>
 <h2 id="rolling-historical-evidence">Rolling Historical Evidence<a class="headerlink" href="#rolling-historical-evidence" title="Permanent link">&para;</a></h2>
 <!-- GENERATED:SYSREF:MONITORING:START -->
 <ul>

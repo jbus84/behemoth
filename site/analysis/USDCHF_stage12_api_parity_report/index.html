@@ -2009,6 +2009,118 @@
   
   
     <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_13_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 13 Dukascopy TestClient Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_13_dukascopy_testclient_parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 13 Dukascopy TestClient Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_14_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 14 JForex Certification Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_14_jforex_runtime_certification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 14 JForex Certification Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../strategy_bible/signal_lifecycle_reference/" class="md-nav__link">
         
   
@@ -2719,10 +2831,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_52" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_56" >
         
           
-          <label class="md-nav__link" for="__nav_4_52" id="__nav_4_52_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_56" id="__nav_4_56_label" tabindex="0">
             
   
   
@@ -2740,8 +2852,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_52_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_52">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_56_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_56">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2888,10 +3000,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_53" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_57" >
         
           
-          <label class="md-nav__link" for="__nav_4_53" id="__nav_4_53_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_57" id="__nav_4_57_label" tabindex="0">
             
   
   
@@ -2909,8 +3021,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_53_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_53">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_57_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_57">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3684,10 +3796,11 @@
 
 <h1 id="stage-12-api-parity-report">Stage 12 API Parity Report<a class="headerlink" href="#stage-12-api-parity-report" title="Permanent link">&para;</a></h1>
 <ul>
-<li>verdict: <code>GREEN</code></li>
-<li>stage12_api_parity_pass: <code>True</code></li>
-<li>signal_parity_pass: <code>True</code></li>
-<li>execution_parity_pass: <code>True</code></li>
+<li>verdict: <code>RED</code></li>
+<li>stage12_api_parity_pass: <code>False</code></li>
+<li>selected_parity_mode: <code>event_aligned</code></li>
+<li>signal_parity_pass: <code>False</code></li>
+<li>execution_parity_pass: <code>False</code></li>
 </ul>
 <h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
 <table>
@@ -3701,6 +3814,7 @@
 <th style="text-align: left;">warmup_source</th>
 <th style="text-align: right;">warmup_ticks_requested</th>
 <th style="text-align: right;">warmup_ticks_sent</th>
+<th style="text-align: right;">tick_offset</th>
 <th style="text-align: right;">ticks_streamed</th>
 <th style="text-align: right;">ticks_accepted</th>
 <th style="text-align: right;">ticks_dropped</th>
@@ -3710,6 +3824,16 @@
 <th style="text-align: right;">predict_errors</th>
 <th style="text-align: right;">selected_rows_runtime</th>
 <th style="text-align: right;">expected_rows_reduced</th>
+<th style="text-align: left;">selected_parity_mode</th>
+<th style="text-align: right;">strict_selected_missing_expected</th>
+<th style="text-align: right;">strict_selected_extra_runtime</th>
+<th style="text-align: right;">event_aligned_selected_missing_expected</th>
+<th style="text-align: right;">event_aligned_selected_extra_runtime</th>
+<th style="text-align: right;">gap_missing_seen_but_not_selected</th>
+<th style="text-align: right;">gap_missing_no_runtime_bar_nearby</th>
+<th style="text-align: right;">gap_missing_no_predict_trace</th>
+<th style="text-align: right;">gap_extra_shifted</th>
+<th style="text-align: right;">gap_extra_without_expected</th>
 <th style="text-align: right;">selected_missing_expected</th>
 <th style="text-align: right;">selected_extra_runtime</th>
 <th style="text-align: left;">signal_parity_pass</th>
@@ -3729,11 +3853,12 @@
 <td style="text-align: left;">USDCHF</td>
 <td style="text-align: left;">2025-07-07T00:00:00+00:00</td>
 <td style="text-align: left;">2025-07-09T00:00:00+00:00</td>
-<td style="text-align: left;">data/db/backtests/usdchf_stage12_api_parity.db</td>
-<td style="text-align: left;">data/analysis/backtest_reconcile/USDCHF_stage12_api_parity_events.json</td>
+<td style="text-align: left;">data/db/backtests/usdchf_stage13_dukascopy_candidate.db</td>
+<td style="text-align: left;">data/analysis/backtest_reconcile/USDCHF_stage13_dukascopy_candidate_events.json</td>
 <td style="text-align: left;">history_tail</td>
 <td style="text-align: right;">30000</td>
-<td style="text-align: right;">30098</td>
+<td style="text-align: right;">30070</td>
+<td style="text-align: right;">0</td>
 <td style="text-align: right;">109751</td>
 <td style="text-align: right;">109751</td>
 <td style="text-align: right;">0</td>
@@ -3741,20 +3866,30 @@
 <td style="text-align: right;">1098</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">29</td>
-<td style="text-align: right;">29</td>
+<td style="text-align: right;">13</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: left;">event_aligned</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">2</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: left;">True</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: left;">green</td>
-<td style="text-align: left;">True</td>
+<td style="text-align: right;">2</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">green</td>
-<td style="text-align: left;">info</td>
-<td style="text-align: left;">2026-03-11T19:50:16Z</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">critical</td>
+<td style="text-align: left;">2026-03-15T19:31:45Z</td>
 </tr>
 </tbody>
 </table>
@@ -3786,10 +3921,10 @@
 <td style="text-align: left;">USDCHF</td>
 <td style="text-align: left;">API_SIGNAL_MISSING_EXPECTED_EQ_0</td>
 <td style="text-align: left;">api_signal_missing_expected_eq_0</td>
-<td style="text-align: left;">pass</td>
+<td style="text-align: left;">fail</td>
 <td style="text-align: left;">critical</td>
 <td style="text-align: left;">selected_missing_expected</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">2</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
@@ -3822,10 +3957,10 @@
 <td style="text-align: left;">USDCHF</td>
 <td style="text-align: left;">API_SIGNAL_PARITY_PASS_TRUE</td>
 <td style="text-align: left;">api_signal_parity_pass_true</td>
-<td style="text-align: left;">pass</td>
+<td style="text-align: left;">fail</td>
 <td style="text-align: left;">critical</td>
 <td style="text-align: left;">signal_parity_pass</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
@@ -3851,7 +3986,7 @@
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">path=data/db/backtests/usdchf_stage12_api_parity.db</td>
+<td style="text-align: left;">path=data/db/backtests/usdchf_stage13_dukascopy_candidate.db</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -3869,7 +4004,7 @@
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">path=data/analysis/backtest_reconcile/USDCHF_stage12_api_parity_events.json</td>
+<td style="text-align: left;">path=data/analysis/backtest_reconcile/USDCHF_stage13_dukascopy_candidate_events.json</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -3887,7 +4022,7 @@
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">path=data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCHF_stop_limit_tickfill_detail.csv</td>
+<td style="text-align: left;">path=data/analysis/tick_opportunity_mining_dukascopy_candidate/stop_limit_tickfill_fullcap/USDCHF_stop_limit_tickfill_detail.csv</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -3905,7 +4040,7 @@
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">path=data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_state_schedule.csv</td>
+<td style="text-align: left;">path=data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/USDCHF_oco_reduced_state_schedule.csv</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -3923,7 +4058,7 @@
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">path=/Users/danielfisher/Desktop/tick</td>
+<td style="text-align: left;">path=/Users/danielfisher/Desktop/dukascopy_ticks</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -3956,7 +4091,7 @@
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">reduced_core_schedule_rows_window</td>
-<td style="text-align: right;">2</td>
+<td style="text-align: right;">1</td>
 <td style="text-align: left;">&gt;0</td>
 <td style="text-align: left;">&gt;</td>
 <td style="text-align: left;">rows from reduced state schedule in requested window</td>
@@ -3974,10 +4109,10 @@
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">repo_expected_rows_after_reduced_filter</td>
-<td style="text-align: right;">29</td>
+<td style="text-align: right;">15</td>
 <td style="text-align: left;">&gt;0</td>
 <td style="text-align: left;">&gt;</td>
-<td style="text-align: left;">before_filter=1830 after_filter=29</td>
+<td style="text-align: left;">before_filter=1507 after_filter=15</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -3992,7 +4127,7 @@
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">ctrader_event_positions</td>
-<td style="text-align: right;">29</td>
+<td style="text-align: right;">13</td>
 <td style="text-align: left;">&gt;0</td>
 <td style="text-align: left;">&gt;</td>
 <td style="text-align: left;">Create Position / Position closed lifecycle rows from events.json</td>
@@ -4010,7 +4145,7 @@
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">runtime_trades_window_rows</td>
-<td style="text-align: right;">29</td>
+<td style="text-align: right;">13</td>
 <td style="text-align: left;">&gt;0</td>
 <td style="text-align: left;">&gt;</td>
 <td style="text-align: left;">runtime DB trades rows in window</td>
@@ -4049,7 +4184,7 @@
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">0</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">runtime=29 events=29</td>
+<td style="text-align: left;">runtime=13 events=13</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -4067,7 +4202,7 @@
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">0</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">runtime_closed=29 events_closed=29</td>
+<td style="text-align: left;">runtime_closed=13 events_closed=13</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -4085,7 +4220,7 @@
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">0.1</td>
 <td style="text-align: left;">&lt;=</td>
-<td style="text-align: left;">runtime=0.000000 events=0.000000</td>
+<td style="text-align: left;">runtime=1.100000 events=1.100000</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -4136,10 +4271,10 @@
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">hist_tick_rows_window</td>
-<td style="text-align: right;">109751</td>
+<td style="text-align: right;">108922</td>
 <td style="text-align: left;">&gt;0</td>
 <td style="text-align: left;">&gt;</td>
-<td style="text-align: left;">tick_root=/Users/danielfisher/Desktop/tick</td>
+<td style="text-align: left;">tick_root=/Users/danielfisher/Desktop/dukascopy_ticks</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -4172,10 +4307,10 @@
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">runtime_raw_tick_distinct_coverage_ratio_vs_hist</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: right;">1.00761</td>
 <td style="text-align: left;">[0.98,1.02]</td>
 <td style="text-align: left;">between</td>
-<td style="text-align: left;">runtime_distinct=109751 hist=109751</td>
+<td style="text-align: left;">runtime_distinct=109751 hist=108922</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -4190,7 +4325,7 @@
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">repo_expected_execution_rows_window</td>
-<td style="text-align: right;">29</td>
+<td style="text-align: right;">15</td>
 <td style="text-align: left;">&gt;0</td>
 <td style="text-align: left;">&gt;</td>
 <td style="text-align: left;">rows from stop_limit_tickfill_detail in window filtered by reduced-core schedule</td>
@@ -4200,7 +4335,7 @@
 <td style="text-align: left;">USDCHF</td>
 <td style="text-align: left;">ENTRY_MATCHED_COUNT_EQ_EXPECTED</td>
 <td style="text-align: left;">nan</td>
-<td style="text-align: left;">pass</td>
+<td style="text-align: left;">fail</td>
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">nan</td>
 <td style="text-align: right;">nan</td>
@@ -4208,17 +4343,17 @@
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">entry_matched_count</td>
-<td style="text-align: right;">29</td>
-<td style="text-align: left;">29</td>
+<td style="text-align: right;">13</td>
+<td style="text-align: left;">15</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">missing=0 extra=0</td>
+<td style="text-align: left;">missing=2 extra=0</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
 <td style="text-align: left;">USDCHF</td>
 <td style="text-align: left;">ENTRY_MISSING_EXPECTED_EQ_0</td>
 <td style="text-align: left;">nan</td>
-<td style="text-align: left;">pass</td>
+<td style="text-align: left;">fail</td>
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">nan</td>
 <td style="text-align: right;">nan</td>
@@ -4226,7 +4361,7 @@
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">entry_missing_expected_count</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">2</td>
 <td style="text-align: left;">0</td>
 <td style="text-align: left;">==</td>
 <td style="text-align: left;">strict parity requires no missing expected executions</td>
@@ -4263,7 +4398,7 @@
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">entry_max_abs_time_sec</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: left;">1.0</td>
+<td style="text-align: left;">60.0</td>
 <td style="text-align: left;">&lt;=</td>
 <td style="text-align: left;">max absolute entry timestamp delta across matched entries</td>
 </tr>
@@ -4317,7 +4452,7 @@
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">exit_max_abs_time_sec</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: left;">1.0</td>
+<td style="text-align: left;">60.0</td>
 <td style="text-align: left;">&lt;=</td>
 <td style="text-align: left;">max absolute exit timestamp delta across matched exits</td>
 </tr>
@@ -4342,10 +4477,75 @@
 </tbody>
 </table>
 <h2 id="mismatches">Mismatches<a class="headerlink" href="#mismatches" title="Permanent link">&para;</a></h2>
-<p><em>empty</em></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">type</th>
+<th style="text-align: left;">candidate_uid</th>
+<th style="text-align: left;">close_ts</th>
+<th style="text-align: left;">detail</th>
+<th style="text-align: left;">mismatch_family</th>
+<th style="text-align: left;">side</th>
+<th style="text-align: left;">expected_entry_ts</th>
+<th style="text-align: left;">actual_entry_ts</th>
+<th style="text-align: right;">expected_entry_price</th>
+<th style="text-align: right;">actual_entry_price</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">missing_expected_selected_key</td>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">h6</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: left;">2025-07-07 07:11:56.681000+00:00</td>
+<td style="text-align: left;">repo reduced-core expected key not found in runtime selected set</td>
+<td style="text-align: right;">signal</td>
+<td style="text-align: right;">nan</td>
+</tr>
+<tr>
+<td style="text-align: left;">missing_expected_selected_key</td>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">h6</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: left;">2025-07-07 11:46:43.761000+00:00</td>
+<td style="text-align: left;">repo reduced-core expected key not found in runtime selected set</td>
+<td style="text-align: right;">signal</td>
+<td style="text-align: right;">nan</td>
+</tr>
+<tr>
+<td style="text-align: left;">missing_expected_execution</td>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">h6</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: left;">NaT</td>
+<td style="text-align: left;">expected trade from repo stop-limit detail not found in runtime trades</td>
+<td style="text-align: right;">execution</td>
+<td style="text-align: right;">BUY</td>
+</tr>
+<tr>
+<td style="text-align: left;">missing_expected_execution</td>
+<td style="text-align: left;">oco</td>
+<td style="text-align: left;">USDCHF</td>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">h6</td>
+<td style="text-align: left;">oco_first_touch_clean__high_range_q80__k2</td>
+<td style="text-align: left;">NaT</td>
+<td style="text-align: left;">expected trade from repo stop-limit detail not found in runtime trades</td>
+<td style="text-align: right;">execution</td>
+<td style="text-align: right;">BUY</td>
+</tr>
+</tbody>
+</table>
 <h2 id="linked-reports">Linked Reports<a class="headerlink" href="#linked-reports" title="Permanent link">&para;</a></h2>
 <ul>
-<li>execution parity detail: <code>docs/analysis/USDCHF_histdata_testclient_execution_parity_report.md</code></li>
+<li>execution parity detail: <code>docs/analysis/USDCHF_dukascopy_testclient_execution_parity_report.md</code></li>
 </ul>
 
 

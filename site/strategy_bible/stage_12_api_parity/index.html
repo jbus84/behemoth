@@ -16,7 +16,7 @@
         <link rel="prev" href="../generated/stage_12_snapshot/">
       
       
-        <link rel="next" href="../signal_lifecycle_reference/">
+        <link rel="next" href="../generated/stage_13_snapshot/">
       
       
         
@@ -2316,6 +2316,118 @@
   
   
     <li class="md-nav__item">
+      <a href="../generated/stage_13_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 13 Dukascopy TestClient Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stage_13_dukascopy_testclient_parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 13 Dukascopy TestClient Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generated/stage_14_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 14 JForex Certification Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stage_14_jforex_runtime_certification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 14 JForex Certification Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../signal_lifecycle_reference/" class="md-nav__link">
         
   
@@ -3026,10 +3138,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_52" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_56" >
         
           
-          <label class="md-nav__link" for="__nav_4_52" id="__nav_4_52_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_56" id="__nav_4_56_label" tabindex="0">
             
   
   
@@ -3047,8 +3159,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_52_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_52">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_56_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_56">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3195,10 +3307,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_53" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_57" >
         
           
-          <label class="md-nav__link" for="__nav_4_53" id="__nav_4_53_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_57" id="__nav_4_57_label" tabindex="0">
             
   
   
@@ -3216,8 +3328,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_53_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_53">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_57_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_57">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4201,7 +4313,7 @@
 
 <h1 id="stage-12-api-parity-against-reduced-core">Stage 12 - API Parity Against Reduced Core<a class="headerlink" href="#stage-12-api-parity-against-reduced-core" title="Permanent link">&para;</a></h1>
 <h2 id="objective">Objective<a class="headerlink" href="#objective" title="Permanent link">&para;</a></h2>
-<p>Confirm that the production API, when driven by HistData ticks, reproduces reduced-core research truth at both the signal-selection layer and the execution layer.</p>
+<p>Confirm that the production API, when driven by canonical parquet ticks, reproduces reduced-core research truth at both the signal-selection layer and the execution layer.</p>
 <h2 id="inputs">Inputs<a class="headerlink" href="#inputs" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>data/analysis/backtest_reconcile/&lt;SYMBOL&gt;_stage12_api_parity_summary.csv</code></li>
@@ -4213,7 +4325,7 @@
 </ul>
 <h2 id="process">Process<a class="headerlink" href="#process" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Replay HistData ticks through the API using the no-cTrader TestClient harness.</li>
+<li>Replay canonical parquet ticks through the API using the no-cTrader TestClient harness.</li>
 <li>Trigger prediction only on completed bars, matching cBot cadence.</li>
 <li>In historical replay mode, preserve exact tick-bar phase using the full-history tail:</li>
 <li>warmup sent = <code>warmup_ticks + (all_prior_ticks mod bar_ticks)</code></li>
@@ -4238,7 +4350,7 @@
 </ul>
 <h2 id="causality-leakage-controls">Causality / Leakage Controls<a class="headerlink" href="#causality-leakage-controls" title="Permanent link">&para;</a></h2>
 <ul>
-<li>HistData replay is restricted to the requested validation window plus warmup.</li>
+<li>Canonical-feed replay is restricted to the requested validation window plus warmup.</li>
 <li>Reduced-core filtering is applied before parity comparison.</li>
 <li>API inference is evaluated on replay-time bar completion only; no direct research-side shortcut is allowed.</li>
 <li>Historical parity truth is always repo-side reduced-core output:</li>
@@ -4279,7 +4391,7 @@
 <ul>
 <li>Canonical runner: <code>make stage12-api-parity</code></li>
 <li>Canonical truth window: repo reduced-core outputs for the requested <code>START_TS/END_TS</code></li>
-<li>Canonical feed: HistData parquet under <code>/Users/danielfisher/Desktop/tick</code></li>
+<li>Canonical feed: Dukascopy parquet under <code>/Users/danielfisher/Desktop/dukascopy_ticks</code></li>
 <li>Canonical warmup mode: <code>history_tail</code></li>
 <li>Canonical historical lock source: <code>configs/research/governance/oco_history/&lt;YYYY-MM&gt;/&lt;symbol&gt;_oco_live_lock.json</code></li>
 <li>Canonical expectations:</li>
@@ -4315,9 +4427,10 @@
 <li><code>docs/analysis/EURUSD_stage12_api_parity_report.md</code></li>
 </ul>
 <h2 id="reproduction-commands">Reproduction Commands<a class="headerlink" href="#reproduction-commands" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/replay_histdata_cbot_testclient.py<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/replay_cbot_testclient.py<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--symbol<span class="w"> </span>EURUSD<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--tick-root<span class="w"> </span>/Users/danielfisher/Desktop/tick<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source<span class="w"> </span>dukascopy<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--tick-root<span class="w"> </span>/Users/danielfisher/Desktop/dukascopy_ticks<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--runtime-db<span class="w"> </span>data/db/backtests/eurusd_stage12.db<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--events-json<span class="w"> </span>data/analysis/backtest_reconcile/EURUSD_stage12_events.json<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--repo-stoplimit-detail-csv<span class="w"> </span>data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv<span class="w"> </span><span class="se">\</span>
@@ -4330,8 +4443,8 @@
 </code></pre></div>
 <h2 id="traceability">Traceability<a class="headerlink" href="#traceability" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>scripts/replay_histdata_cbot_testclient.py</code></li>
-<li><code>scripts/validate_histdata_ctrader_execution_parity.py</code></li>
+<li><code>scripts/replay_cbot_testclient.py</code></li>
+<li><code>scripts/validate_ctrader_execution_parity.py</code></li>
 <li><code>scripts/build_oco_strategy_bible.py</code></li>
 <li><code>scripts/validate_oco_docs_contract.py</code></li>
 </ul>

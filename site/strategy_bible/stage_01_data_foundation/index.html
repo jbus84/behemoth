@@ -2349,6 +2349,118 @@
   
   
     <li class="md-nav__item">
+      <a href="../generated/stage_13_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 13 Dukascopy TestClient Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stage_13_dukascopy_testclient_parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 13 Dukascopy TestClient Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generated/stage_14_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 14 JForex Certification Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stage_14_jforex_runtime_certification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 14 JForex Certification Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../signal_lifecycle_reference/" class="md-nav__link">
         
   
@@ -3059,10 +3171,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_52" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_56" >
         
           
-          <label class="md-nav__link" for="__nav_4_52" id="__nav_4_52_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_56" id="__nav_4_56_label" tabindex="0">
             
   
   
@@ -3080,8 +3192,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_52_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_52">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_56_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_56">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3228,10 +3340,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_53" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_57" >
         
           
-          <label class="md-nav__link" for="__nav_4_53" id="__nav_4_53_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_57" id="__nav_4_57_label" tabindex="0">
             
   
   
@@ -3249,8 +3361,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_53_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_53">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_57_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_57">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4270,8 +4382,8 @@
 <p>Define and verify the minimum data-quality contract required for causal OCO research and deployment decisions.</p>
 <h2 id="inputs">Inputs<a class="headerlink" href="#inputs" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Raw ticks root (runtime):</li>
-<li><code>/Users/danielfisher/Desktop/tick/&lt;SYMBOL&gt;/&lt;SYMBOL&gt;_YYYYMM_ticks.parquet</code></li>
+<li>Canonical raw ticks root (runtime):</li>
+<li><code>/Users/danielfisher/Desktop/dukascopy_ticks/&lt;SYMBOL&gt;/&lt;SYMBOL&gt;_YYYYMM_ticks.parquet</code></li>
 <li>Event parquet produced by WFO prep:</li>
 <li><code>data/analysis/tick_opportunity_mining/wfo_*/&lt;SYMBOL&gt;_oco_events_eval*.parquet</code></li>
 <li>Reliability audit artifacts:</li>
@@ -4304,17 +4416,17 @@
 <h2 id="tick-to-velocity-build-commands">Tick-to-Velocity Build Commands<a class="headerlink" href="#tick-to-velocity-build-commands" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># 1) Build fixed tick bars directly from raw ticks.</span>
 uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/build_global_tick_bars.py<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--tick-root<span class="w"> </span>/Users/danielfisher/Desktop/tick<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--tick-root<span class="w"> </span>/Users/danielfisher/Desktop/dukascopy_ticks<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output-dir<span class="w"> </span>data/global_tickbars<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--symbols<span class="w"> </span>EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--base-ticks<span class="w"> </span><span class="m">100</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--aggregate-multiples<span class="w"> </span><span class="m">1</span>,10,20<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--price-source<span class="w"> </span>bid<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--timestamp-mode<span class="w"> </span>as_utc
+<span class="w">  </span>--timestamp-mode<span class="w"> </span>utc_naive
 
 <span class="c1"># 2) Build causal velocity datasets consumed by mining/WFO.</span>
 uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/build_tick_velocity_dataset.py<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--tick-root<span class="w"> </span>/Users/danielfisher/Desktop/tick<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--tick-root<span class="w"> </span>/Users/danielfisher/Desktop/dukascopy_ticks<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--tickbar-dir<span class="w"> </span>data/global_tickbars<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--out-dir<span class="w"> </span>data/analysis/tick_velocity<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--symbols<span class="w"> </span>EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD<span class="w"> </span><span class="se">\</span>
@@ -4323,7 +4435,7 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <span class="w">  </span>--target-horizons<span class="w"> </span><span class="m">1</span>,2,3<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--vol-window<span class="w"> </span><span class="m">96</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--cost-window<span class="w"> </span><span class="m">288</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--timestamp-mode<span class="w"> </span>as_utc<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--timestamp-mode<span class="w"> </span>utc_naive<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--overwrite
 </code></pre></div>
 <h2 id="exact-calculations">Exact Calculations<a class="headerlink" href="#exact-calculations" title="Permanent link">&para;</a></h2>
@@ -4386,16 +4498,16 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 </ul>
 <h2 id="reproduction-commands">Reproduction Commands<a class="headerlink" href="#reproduction-commands" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/build_global_tick_bars.py<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--tick-root<span class="w"> </span>/Users/danielfisher/Desktop/tick<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--tick-root<span class="w"> </span>/Users/danielfisher/Desktop/dukascopy_ticks<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output-dir<span class="w"> </span>data/global_tickbars<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--symbols<span class="w"> </span>EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--base-ticks<span class="w"> </span><span class="m">100</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--aggregate-multiples<span class="w"> </span><span class="m">1</span>,10,20<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--price-source<span class="w"> </span>bid<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--timestamp-mode<span class="w"> </span>as_utc
+<span class="w">  </span>--timestamp-mode<span class="w"> </span>utc_naive
 
 uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/build_tick_velocity_dataset.py<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--tick-root<span class="w"> </span>/Users/danielfisher/Desktop/tick<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--tick-root<span class="w"> </span>/Users/danielfisher/Desktop/dukascopy_ticks<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--tickbar-dir<span class="w"> </span>data/global_tickbars<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--out-dir<span class="w"> </span>data/analysis/tick_velocity<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--symbols<span class="w"> </span>EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD<span class="w"> </span><span class="se">\</span>
@@ -4404,7 +4516,7 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <span class="w">  </span>--target-horizons<span class="w"> </span><span class="m">1</span>,2,3<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--vol-window<span class="w"> </span><span class="m">96</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--cost-window<span class="w"> </span><span class="m">288</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--timestamp-mode<span class="w"> </span>as_utc<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--timestamp-mode<span class="w"> </span>utc_naive<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--overwrite
 
 uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/audit_data_reliability.py<span class="w"> </span><span class="se">\</span>

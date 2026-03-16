@@ -2009,6 +2009,118 @@
   
   
     <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_13_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 13 Dukascopy TestClient Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_13_dukascopy_testclient_parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 13 Dukascopy TestClient Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/generated/stage_14_snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 14 JForex Certification Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../strategy_bible/stage_14_jforex_runtime_certification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stage 14 JForex Certification Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../strategy_bible/signal_lifecycle_reference/" class="md-nav__link">
         
   
@@ -2719,10 +2831,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_52" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_56" >
         
           
-          <label class="md-nav__link" for="__nav_4_52" id="__nav_4_52_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_56" id="__nav_4_56_label" tabindex="0">
             
   
   
@@ -2740,8 +2852,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_52_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_52">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_56_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_56">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2888,10 +3000,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_53" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_57" >
         
           
-          <label class="md-nav__link" for="__nav_4_53" id="__nav_4_53_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_57" id="__nav_4_57_label" tabindex="0">
             
   
   
@@ -2909,8 +3021,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_53_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_53">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_57_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_57">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3686,6 +3798,7 @@
 <ul>
 <li>verdict: <code>GREEN</code></li>
 <li>stage12_api_parity_pass: <code>True</code></li>
+<li>selected_parity_mode: <code>event_aligned</code></li>
 <li>signal_parity_pass: <code>True</code></li>
 <li>execution_parity_pass: <code>True</code></li>
 </ul>
@@ -3701,6 +3814,7 @@
 <th style="text-align: left;">warmup_source</th>
 <th style="text-align: right;">warmup_ticks_requested</th>
 <th style="text-align: right;">warmup_ticks_sent</th>
+<th style="text-align: right;">tick_offset</th>
 <th style="text-align: right;">ticks_streamed</th>
 <th style="text-align: right;">ticks_accepted</th>
 <th style="text-align: right;">ticks_dropped</th>
@@ -3710,6 +3824,16 @@
 <th style="text-align: right;">predict_errors</th>
 <th style="text-align: right;">selected_rows_runtime</th>
 <th style="text-align: right;">expected_rows_reduced</th>
+<th style="text-align: left;">selected_parity_mode</th>
+<th style="text-align: right;">strict_selected_missing_expected</th>
+<th style="text-align: right;">strict_selected_extra_runtime</th>
+<th style="text-align: right;">event_aligned_selected_missing_expected</th>
+<th style="text-align: right;">event_aligned_selected_extra_runtime</th>
+<th style="text-align: right;">gap_missing_seen_but_not_selected</th>
+<th style="text-align: right;">gap_missing_no_runtime_bar_nearby</th>
+<th style="text-align: right;">gap_missing_no_predict_trace</th>
+<th style="text-align: right;">gap_extra_shifted</th>
+<th style="text-align: right;">gap_extra_without_expected</th>
 <th style="text-align: right;">selected_missing_expected</th>
 <th style="text-align: right;">selected_extra_runtime</th>
 <th style="text-align: left;">signal_parity_pass</th>
@@ -3729,11 +3853,12 @@
 <td style="text-align: left;">GBPUSD</td>
 <td style="text-align: left;">2025-07-07T00:00:00+00:00</td>
 <td style="text-align: left;">2025-07-09T00:00:00+00:00</td>
-<td style="text-align: left;">data/db/backtests/gbpusd_stage12_api_parity.db</td>
-<td style="text-align: left;">data/analysis/backtest_reconcile/GBPUSD_stage12_api_parity_events.json</td>
+<td style="text-align: left;">data/db/backtests/gbpusd_stage13_dukascopy_candidate.db</td>
+<td style="text-align: left;">data/analysis/backtest_reconcile/GBPUSD_stage13_dukascopy_candidate_events.json</td>
 <td style="text-align: left;">history_tail</td>
 <td style="text-align: right;">30000</td>
-<td style="text-align: right;">30061</td>
+<td style="text-align: right;">30090</td>
+<td style="text-align: right;">0</td>
 <td style="text-align: right;">176952</td>
 <td style="text-align: right;">176952</td>
 <td style="text-align: right;">0</td>
@@ -3741,12 +3866,22 @@
 <td style="text-align: right;">1770</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">128</td>
-<td style="text-align: right;">128</td>
+<td style="text-align: right;">116</td>
+<td style="text-align: right;">116</td>
+<td style="text-align: left;">event_aligned</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">True</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">3</td>
 <td style="text-align: left;">green</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: right;">0</td>
@@ -3754,7 +3889,7 @@
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">green</td>
 <td style="text-align: left;">info</td>
-<td style="text-align: left;">2026-03-11T19:47:01Z</td>
+<td style="text-align: left;">2026-03-15T19:06:10Z</td>
 </tr>
 </tbody>
 </table>
@@ -3851,7 +3986,7 @@
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">path=data/db/backtests/gbpusd_stage12_api_parity.db</td>
+<td style="text-align: left;">path=data/db/backtests/gbpusd_stage13_dukascopy_candidate.db</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -3869,7 +4004,7 @@
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">path=data/analysis/backtest_reconcile/GBPUSD_stage12_api_parity_events.json</td>
+<td style="text-align: left;">path=data/analysis/backtest_reconcile/GBPUSD_stage13_dukascopy_candidate_events.json</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -3887,7 +4022,7 @@
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">path=data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/GBPUSD_stop_limit_tickfill_detail.csv</td>
+<td style="text-align: left;">path=data/analysis/tick_opportunity_mining_dukascopy_candidate/stop_limit_tickfill_fullcap/GBPUSD_stop_limit_tickfill_detail.csv</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -3905,7 +4040,7 @@
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">path=data/analysis/tick_opportunity_mining/reduced_core_rolling/GBPUSD_oco_reduced_state_schedule.csv</td>
+<td style="text-align: left;">path=data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/GBPUSD_oco_reduced_state_schedule.csv</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -3923,7 +4058,7 @@
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">path=/Users/danielfisher/Desktop/tick</td>
+<td style="text-align: left;">path=/Users/danielfisher/Desktop/dukascopy_ticks</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -3974,10 +4109,10 @@
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">repo_expected_rows_after_reduced_filter</td>
-<td style="text-align: right;">128</td>
+<td style="text-align: right;">116</td>
 <td style="text-align: left;">&gt;0</td>
 <td style="text-align: left;">&gt;</td>
-<td style="text-align: left;">before_filter=2213 after_filter=128</td>
+<td style="text-align: left;">before_filter=2430 after_filter=116</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -3992,7 +4127,7 @@
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">ctrader_event_positions</td>
-<td style="text-align: right;">128</td>
+<td style="text-align: right;">116</td>
 <td style="text-align: left;">&gt;0</td>
 <td style="text-align: left;">&gt;</td>
 <td style="text-align: left;">Create Position / Position closed lifecycle rows from events.json</td>
@@ -4010,7 +4145,7 @@
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">runtime_trades_window_rows</td>
-<td style="text-align: right;">128</td>
+<td style="text-align: right;">116</td>
 <td style="text-align: left;">&gt;0</td>
 <td style="text-align: left;">&gt;</td>
 <td style="text-align: left;">runtime DB trades rows in window</td>
@@ -4049,7 +4184,7 @@
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">0</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">runtime=128 events=128</td>
+<td style="text-align: left;">runtime=116 events=116</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -4067,7 +4202,7 @@
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">0</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">runtime_closed=128 events_closed=128</td>
+<td style="text-align: left;">runtime_closed=116 events_closed=116</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -4085,7 +4220,7 @@
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">0.1</td>
 <td style="text-align: left;">&lt;=</td>
-<td style="text-align: left;">runtime=0.000000 events=0.000000</td>
+<td style="text-align: left;">runtime=360.200000 events=360.200000</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -4136,10 +4271,10 @@
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">hist_tick_rows_window</td>
-<td style="text-align: right;">176952</td>
+<td style="text-align: right;">176738</td>
 <td style="text-align: left;">&gt;0</td>
 <td style="text-align: left;">&gt;</td>
-<td style="text-align: left;">tick_root=/Users/danielfisher/Desktop/tick</td>
+<td style="text-align: left;">tick_root=/Users/danielfisher/Desktop/dukascopy_ticks</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -4172,10 +4307,10 @@
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">runtime_raw_tick_distinct_coverage_ratio_vs_hist</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: right;">1.00121</td>
 <td style="text-align: left;">[0.98,1.02]</td>
 <td style="text-align: left;">between</td>
-<td style="text-align: left;">runtime_distinct=176952 hist=176952</td>
+<td style="text-align: left;">runtime_distinct=176952 hist=176738</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution</td>
@@ -4190,7 +4325,7 @@
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">repo_expected_execution_rows_window</td>
-<td style="text-align: right;">128</td>
+<td style="text-align: right;">116</td>
 <td style="text-align: left;">&gt;0</td>
 <td style="text-align: left;">&gt;</td>
 <td style="text-align: left;">rows from stop_limit_tickfill_detail in window filtered by reduced-core schedule</td>
@@ -4208,8 +4343,8 @@
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">entry_matched_count</td>
-<td style="text-align: right;">128</td>
-<td style="text-align: left;">128</td>
+<td style="text-align: right;">116</td>
+<td style="text-align: left;">116</td>
 <td style="text-align: left;">==</td>
 <td style="text-align: left;">missing=0 extra=0</td>
 </tr>
@@ -4263,7 +4398,7 @@
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">entry_max_abs_time_sec</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: left;">1.0</td>
+<td style="text-align: left;">60.0</td>
 <td style="text-align: left;">&lt;=</td>
 <td style="text-align: left;">max absolute entry timestamp delta across matched entries</td>
 </tr>
@@ -4317,7 +4452,7 @@
 <td style="text-align: left;">nan</td>
 <td style="text-align: left;">exit_max_abs_time_sec</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: left;">1.0</td>
+<td style="text-align: left;">60.0</td>
 <td style="text-align: left;">&lt;=</td>
 <td style="text-align: left;">max absolute exit timestamp delta across matched exits</td>
 </tr>
@@ -4345,7 +4480,7 @@
 <p><em>empty</em></p>
 <h2 id="linked-reports">Linked Reports<a class="headerlink" href="#linked-reports" title="Permanent link">&para;</a></h2>
 <ul>
-<li>execution parity detail: <code>docs/analysis/GBPUSD_histdata_testclient_execution_parity_report.md</code></li>
+<li>execution parity detail: <code>docs/analysis/GBPUSD_dukascopy_testclient_execution_parity_report.md</code></li>
 </ul>
 
 
