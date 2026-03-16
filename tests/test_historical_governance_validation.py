@@ -151,3 +151,140 @@ def test_validate_historical_governance_flags_index_coverage_gap(tmp_path: Path)
     bad = failed_checks(checks)
     assert any(c.name == "index_csv_exists" for c in bad)
     assert any(c.name == "index_covers_exact_lock_set" for c in bad)
+
+
+def _write_multi_symbol_fixture(
+    root: Path,
+    *,
+    symbols: list[str],
+    month: str = "2025-07",
+    break_symbol: str | None = None,
+) -> Path:
+    """Write lock files and index for multiple symbols.
+
+    If *break_symbol* is set, corrupt its lock file hash so validation fails
+    for that symbol.
+    """
+    history_dir = root / "history"
+    month_dir = history_dir / month
+    month_dir.mkdir(parents=True, exist_ok=True)
+
+    index_rows: list[dict[str, object]] = []
+
+    for symbol in symbols:
+        wfo = _touch(root / "artifacts" / f"{symbol}_wfo.yaml", "threshold_mode: rolling_days\n")
+        reduced = _touch(root / "artifacts" / f"{symbol}_reduced.yaml", "locked_quantile: 0.9\n")
+        states = _touch(
+            month_dir / f"{symbol.lower()}_oco_allowed_states.csv",
+            "symbol,bar_ticks,horizon,state_id,family,barrier_pips,regime_desc\n"
+            f"{symbol},100,5,oco_first_touch_clean__all__k2,oco_first_touch_clean,2.0,all\n",
+        )
+        preds = _touch(root / "artifacts" / f"{symbol}_predictions.parquet", "dummy_predictions")
+        cbm = _touch(root / "artifacts" / f"{symbol}_model_{month}.cbm", "dummy_model")
+        thr = _touch(
+            root / "artifacts" / f"{symbol}_model_{month}.json",
+            json.dumps({"model_month": month}),
+        )
+        tick_exact = _touch(root / "artifacts" / f"{symbol}_tick_exact_summary.csv", "overall_pass\nTrue\n")
+        reduced_sum = _touch(
+            root / "artifacts" / f"{symbol}_reduced_summary.csv",
+            "capacity_pass_monthly_or_annual\nTrue\n",
+        )
+
+        wfo_hash = _sha(wfo)
+        if break_symbol and symbol == break_symbol:
+            wfo_hash = "0" * 64  # deliberately wrong
+
+        lock = {
+            "symbol": symbol,
+            "artifacts": {
+                "wfo_config_path": str(wfo),
+                "wfo_config_sha256": wfo_hash,
+                "reduced_config_path": str(reduced),
+                "reduced_config_sha256": _sha(reduced),
+                "reduced_states_csv_path": str(states),
+                "reduced_states_csv_sha256": _sha(states),
+                "predictions_path": str(preds),
+                "predictions_sha256": _sha(preds),
+                "model_cbm_path": str(cbm),
+                "model_cbm_sha256": _sha(cbm),
+                "model_threshold_json_path": str(thr),
+                "model_threshold_json_sha256": _sha(thr),
+                "model_month": month,
+                "tick_exact_summary_path": str(tick_exact),
+                "tick_exact_summary_sha256": _sha(tick_exact),
+                "reduced_summary_path": str(reduced_sum),
+                "reduced_summary_sha256": _sha(reduced_sum),
+            },
+            "state_universe": {
+                "rows": [
+                    {
+                        "symbol": symbol,
+                        "bar_ticks": 100,
+                        "horizon": 5,
+                        "state_id": "oco_first_touch_clean__all__k2",
+                        "family": "oco_first_touch_clean",
+                        "barrier_pips": 2.0,
+                        "regime_desc": "all",
+                    }
+                ]
+            },
+            "historical_backtest": {"target_month": month},
+        }
+        lock_path = month_dir / f"{symbol.lower()}_oco_live_lock.json"
+        lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+        index_rows.append(
+            {
+                "symbol": symbol,
+                "month": month,
+                "lock_path": str(lock_path),
+                "allowed_states_path": str(states),
+                "model_cbm_path": str(cbm),
+                "threshold_json_path": str(thr),
+                "candidates_count": 1,
+                "production_cap_pips": 1.2,
+                "live_deployable": True,
+            }
+        )
+
+    index_path = history_dir / "index.csv"
+    with index_path.open("w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(
+            f,
+            fieldnames=[
+                "symbol",
+                "month",
+                "lock_path",
+                "allowed_states_path",
+                "model_cbm_path",
+                "threshold_json_path",
+                "candidates_count",
+                "production_cap_pips",
+                "live_deployable",
+            ],
+        )
+        w.writeheader()
+        w.writerows(index_rows)
+
+    return history_dir
+
+
+def test_required_symbols_scopes_validation(tmp_path: Path) -> None:
+    """When required_symbols is set, broken locks for other symbols are ignored."""
+    history_dir = _write_multi_symbol_fixture(
+        tmp_path,
+        symbols=["EURUSD", "GBPUSD"],
+        break_symbol="EURUSD",
+    )
+    # Without scoping — EURUSD hash mismatch should surface
+    all_checks = validate_historical_governance(history_dir)
+    all_bad = failed_checks(all_checks)
+    assert any(c.symbol == "EURUSD" for c in all_bad), "Expected EURUSD failure without scoping"
+
+    # With scoping to GBPUSD only — zero failures
+    scoped_checks = validate_historical_governance(
+        history_dir, required_symbols=["GBPUSD"]
+    )
+    scoped_bad = failed_checks(scoped_checks)
+    assert scoped_bad == [], f"Expected no failures for GBPUSD-only scope, got: {scoped_bad}"

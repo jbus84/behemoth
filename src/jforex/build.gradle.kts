@@ -17,7 +17,7 @@ java {
 }
 
 dependencies {
-    compileOnly("com.dukascopy.dds2:DDS2-jClient-JForex:3.6.51")
+    implementation("com.dukascopy.dds2:DDS2-jClient-JForex:3.6.51")
 
     implementation("com.fasterxml.jackson.core:jackson-databind:2.18.2")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.2")
@@ -43,6 +43,7 @@ tasks.register<JavaExec>("runLocalJForexTester") {
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set("com.behemoth.jforex.LocalJForexTesterRunner")
     workingDir = rootProject.projectDir
+    jvmArgs = listOf("-Djava.awt.headless=true")
 }
 
 tasks.register<JavaExec>("runJForexTester") {
@@ -51,6 +52,7 @@ tasks.register<JavaExec>("runJForexTester") {
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set("com.behemoth.jforex.JForexTesterRunner")
     workingDir = rootProject.projectDir
+    jvmArgs = listOf("-Djava.awt.headless=true")
 }
 
 tasks.register<JavaExec>("runJForexLive") {
@@ -59,4 +61,14 @@ tasks.register<JavaExec>("runJForexLive") {
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set("com.behemoth.jforex.JForexLiveRunner")
     workingDir = rootProject.projectDir
+    jvmArgs = listOf("-Djava.awt.headless=true")
+}
+
+tasks.register<JavaExec>("testJForexConnection") {
+    group = "application"
+    description = "Test the Dukascopy connection credentials from the environment variables"
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("com.behemoth.jforex.JForexConnectionTest")
+    workingDir = rootProject.projectDir
+    jvmArgs = listOf("-Djava.awt.headless=true")
 }

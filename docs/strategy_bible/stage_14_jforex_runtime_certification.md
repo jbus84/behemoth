@@ -14,6 +14,9 @@ Certify that the Dukascopy JForex adapter reproduces the governed OCO execution 
 ## Process
 - Treat Stage 13 as a prerequisite, not a substitute for Stage 14.
 - Treat the local parquet-driven JForex surrogate as a prerequisite debug gate before Stage 14.
+- Do not use `*_local_jforex_*` surrogate summaries as Stage 14 evidence; Stage 14 consumes only real JForex tester/demo artifacts.
+- When running the Python API in `historical_auto`, scope the certification surface with `BEHEMOTH_SYMBOLS`.
+- Historical Stage 14 replay should use tolerant locked-prediction matching so broker-side timestamp drift does not suppress otherwise valid locked selections.
 - Run the Java JForex tester path against the same governed truth window used for certification.
 - Treat `ITesterClient` as the official broker-certification harness for Stage 14.
 - Confirm the adapter reproduces the OCO contract:

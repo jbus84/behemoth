@@ -6,6 +6,7 @@ public enum OrderEventType {
     FILL_OK,
     FILL_REJECTED,
     CHANGE_REJECTED,
+    CHANGE_OK,
     CLOSE_OK,
     CLOSE_REJECTED
 }

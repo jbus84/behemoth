@@ -163,6 +163,9 @@ public final class BehemothStrategyCore {
             case SUBMIT_OK -> handleSubmitOk(event);
             case SUBMIT_REJECTED, FILL_REJECTED, CHANGE_REJECTED -> handleReject(event);
             case FILL_OK -> handleFill(event);
+            case CHANGE_OK -> {
+                // Modification success acknowledged.
+            }
             case CLOSE_OK -> handleClose(event);
             case CLOSE_REJECTED -> {
                 metrics.recordOrderReject(event.symbol(), event.type().name());

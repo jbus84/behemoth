@@ -138,15 +138,11 @@ public final class BehemothJForexStrategy implements IStrategy {
 
     @Override
     public void onMessage(IMessage message) throws JFException {
-        if (message == null || message.getOrder() == null || core == null) {
-            return;
-        }
-        IOrder order = message.getOrder();
-        if (stateStore.findByOrderLabel(order.getLabel()) == null) {
-            return;
-        }
         try {
-            core.onOrderEvent(toOrderEvent(message, order));
+            OrderEvent event = toOrderEvent(message, message.getOrder());
+            if (event != null) {
+                core.onOrderEvent(event);
+            }
         } catch (RuntimeException exc) {
             throw new JFException(exc.getMessage());
         }
@@ -185,12 +181,13 @@ public final class BehemothJForexStrategy implements IStrategy {
             case ORDER_FILL_OK -> OrderEventType.FILL_OK;
             case ORDER_FILL_REJECTED -> OrderEventType.FILL_REJECTED;
             case ORDER_CHANGED_REJECTED -> OrderEventType.CHANGE_REJECTED;
+            case ORDER_CHANGED_OK -> OrderEventType.CHANGE_OK;
             case ORDER_CLOSE_OK -> OrderEventType.CLOSE_OK;
             case ORDER_CLOSE_REJECTED -> OrderEventType.CLOSE_REJECTED;
             default -> null;
         };
         if (type == null) {
-            throw new JFException("Unsupported message type: " + message.getType());
+            return null;
         }
         return new OrderEvent(
                 type,

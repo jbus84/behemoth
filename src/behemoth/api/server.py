@@ -196,7 +196,14 @@ class AppConfig(BaseModel):
     models_dir: str = Field(default_factory=lambda: os.getenv("BEHEMOTH_MODELS_DIR", "models/oco"))
     registry_path: str = Field(default_factory=lambda: os.getenv("BEHEMOTH_REGISTRY_PATH", "configs/research/governance/oco_rule_universe_registry.yaml"))
     symbols: list[str] = Field(
-        default=["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]
+        default_factory=lambda: [
+            str(sym).strip().upper()
+            for sym in os.getenv(
+                "BEHEMOTH_SYMBOLS",
+                "EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD",
+            ).split(",")
+            if str(sym).strip()
+        ]
     )
     persist_db_path: str | None = Field(
         default_factory=lambda: os.getenv("BEHEMOTH_STATE_DB", "data/db/behemoth_runtime.db")
@@ -277,21 +284,45 @@ class AppConfig(BaseModel):
     )
     historical_prediction_universe_mode: str = Field(
         default_factory=lambda: str(
-            os.getenv("BEHEMOTH_HISTORICAL_PREDICTION_UNIVERSE_MODE", "exact")
+            os.getenv(
+                "BEHEMOTH_HISTORICAL_PREDICTION_UNIVERSE_MODE",
+                (
+                    "tolerant"
+                    if str(os.getenv("BEHEMOTH_GOVERNANCE_MODE", "live")).strip().lower()
+                    in {"historical", "historical_auto"}
+                    else "exact"
+                ),
+            )
         )
         .strip()
         .lower()
     )
     historical_prediction_payload_mode: str = Field(
         default_factory=lambda: str(
-            os.getenv("BEHEMOTH_HISTORICAL_PREDICTION_PAYLOAD_MODE", "model")
+            os.getenv(
+                "BEHEMOTH_HISTORICAL_PREDICTION_PAYLOAD_MODE",
+                (
+                    "locked"
+                    if str(os.getenv("BEHEMOTH_GOVERNANCE_MODE", "live")).strip().lower()
+                    in {"historical", "historical_auto"}
+                    else "model"
+                ),
+            )
         )
         .strip()
         .lower()
     )
     historical_prediction_tolerance_sec: float = Field(
         default_factory=lambda: float(
-            os.getenv("BEHEMOTH_HISTORICAL_PREDICTION_TOLERANCE_SEC", "30.0")
+            os.getenv(
+                "BEHEMOTH_HISTORICAL_PREDICTION_TOLERANCE_SEC",
+                (
+                    "120.0"
+                    if str(os.getenv("BEHEMOTH_GOVERNANCE_MODE", "live")).strip().lower()
+                    in {"historical", "historical_auto"}
+                    else "30.0"
+                ),
+            )
         )
     )
     force_model_month: str = Field(

@@ -71,6 +71,34 @@ def test_resolve_runtime_contract_historical_uses_close_ts_month() -> None:
         server._registry = original_reg
 
 
+def test_app_config_honors_behemoth_symbols_env(monkeypatch) -> None:
+    monkeypatch.setenv("BEHEMOTH_SYMBOLS", "GBPUSD, USDJPY")
+    cfg = server.AppConfig()
+    assert cfg.symbols == ["GBPUSD", "USDJPY"]
+
+
+def test_app_config_historical_defaults_use_tolerant_locked(monkeypatch) -> None:
+    monkeypatch.setenv("BEHEMOTH_GOVERNANCE_MODE", "historical_auto")
+    monkeypatch.delenv("BEHEMOTH_HISTORICAL_PREDICTION_UNIVERSE_MODE", raising=False)
+    monkeypatch.delenv("BEHEMOTH_HISTORICAL_PREDICTION_PAYLOAD_MODE", raising=False)
+    monkeypatch.delenv("BEHEMOTH_HISTORICAL_PREDICTION_TOLERANCE_SEC", raising=False)
+    cfg = server.AppConfig()
+    assert cfg.historical_prediction_universe_mode == "tolerant"
+    assert cfg.historical_prediction_payload_mode == "locked"
+    assert cfg.historical_prediction_tolerance_sec == pytest.approx(120.0)
+
+
+def test_app_config_live_defaults_keep_exact_model(monkeypatch) -> None:
+    monkeypatch.setenv("BEHEMOTH_GOVERNANCE_MODE", "live")
+    monkeypatch.delenv("BEHEMOTH_HISTORICAL_PREDICTION_UNIVERSE_MODE", raising=False)
+    monkeypatch.delenv("BEHEMOTH_HISTORICAL_PREDICTION_PAYLOAD_MODE", raising=False)
+    monkeypatch.delenv("BEHEMOTH_HISTORICAL_PREDICTION_TOLERANCE_SEC", raising=False)
+    cfg = server.AppConfig()
+    assert cfg.historical_prediction_universe_mode == "exact"
+    assert cfg.historical_prediction_payload_mode == "model"
+    assert cfg.historical_prediction_tolerance_sec == pytest.approx(30.0)
+
+
 def test_resolve_runtime_contract_historical_falls_back_to_previous_month() -> None:
     original_mode = server._config.governance_mode
     original_policy = server._config.governance_missing_month_policy

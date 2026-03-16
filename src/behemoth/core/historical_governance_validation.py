@@ -105,6 +105,12 @@ def validate_historical_governance(
     checks: list[HistoricalGovernanceCheck] = []
     sha_cache: dict[str, str] = {}
 
+    _req_sym_set: set[str] | None = None
+    if required_symbols:
+        _req_sym_set = {s.upper().strip() for s in required_symbols if s.strip()}
+        if not _req_sym_set:
+            _req_sym_set = None
+
     lock_paths = sorted(p_dir.glob("*/*_oco_live_lock.json"))
     _check(
         checks,
@@ -152,6 +158,9 @@ def validate_historical_governance(
             lock_path=lock_txt,
         )
         if not symbol:
+            continue
+
+        if _req_sym_set is not None and symbol not in _req_sym_set:
             continue
 
         key = (symbol, month)
@@ -298,6 +307,8 @@ def validate_historical_governance(
             for row in rows:
                 sym = str(row.get("symbol", "")).upper().strip()
                 mon = str(row.get("month", "")).strip()
+                if _req_sym_set is not None and sym not in _req_sym_set:
+                    continue
                 k = (sym, mon)
                 if k in index_keys:
                     index_dupes.add(k)

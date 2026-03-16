@@ -19,6 +19,7 @@ class InputSource:
     summary_glob: str
     candidate_columns: tuple[str, ...]
     required: bool = True
+    excluded_path_substrings: tuple[str, ...] = ()
 
 
 def _now_utc() -> str:
@@ -72,6 +73,9 @@ def _load_summary_rows(source: InputSource) -> pd.DataFrame:
     paths = _resolve_paths(source.summary_glob)
     rows: list[dict[str, Any]] = []
     for path in paths:
+        path_txt = str(path).replace("\\", "/")
+        if any(fragment in path_txt for fragment in source.excluded_path_substrings):
+            continue
         try:
             df = pd.read_csv(path)
         except Exception:
@@ -118,21 +122,25 @@ def build_stage14_artifacts(
             check_id="jforex_signal_parity_pass",
             summary_glob=jforex_signal_summary_glob,
             candidate_columns=("jforex_signal_parity_pass", "signal_parity_pass", "overall_pass"),
+            excluded_path_substrings=("_local_jforex_",),
         ),
         InputSource(
             check_id="jforex_execution_parity_pass",
             summary_glob=jforex_execution_summary_glob,
             candidate_columns=("jforex_execution_parity_pass", "execution_parity_pass", "overall_pass"),
+            excluded_path_substrings=("_local_jforex_",),
         ),
         InputSource(
             check_id="oco_lifecycle_pass",
             summary_glob=jforex_lifecycle_summary_glob,
             candidate_columns=("oco_lifecycle_pass", "lifecycle_pass", "overall_pass"),
+            excluded_path_substrings=("_local_jforex_",),
         ),
         InputSource(
             check_id="operational_ready_pass",
             summary_glob=jforex_operational_summary_glob,
             candidate_columns=("operational_ready_pass", "demo_ready_pass", "overall_pass"),
+            excluded_path_substrings=("_local_jforex_",),
         ),
     ]
 
@@ -141,10 +149,8 @@ def build_stage14_artifacts(
     if checks.empty:
         checks = pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
 
-    symbols = sorted({str(s).strip().upper() for s in symbols if str(s).strip()}) or sorted(
-        set(checks.get("symbol", pd.Series(dtype=str)).astype(str))
-    )
-    symbols = sorted(set(symbols) | set(checks.get("symbol", pd.Series(dtype=str)).astype(str)))
+    requested_symbols = sorted({str(s).strip().upper() for s in symbols if str(s).strip()})
+    symbols = requested_symbols or sorted(set(checks.get("symbol", pd.Series(dtype=str)).astype(str)))
     summary_rows: list[dict[str, Any]] = []
     check_rows: list[dict[str, Any]] = []
     now_utc = _now_utc()
