@@ -11,7 +11,7 @@ REBUILD_SYMBOLS := EURUSD GBPUSD USDJPY USDCHF AUDUSD USDCAD
 CTRADER_ROBOT_DST := ~/cAlgo/Sources/Robots/BehemothTradeManager/BehemothTradeManager/BehemothTradeManager.cs
 CTRADER_PLUGIN_DST := ~/cAlgo/Sources/Plugins/CustomDataSourceHistDataPlugin/CustomDataSourceHistDataPlugin/CustomDataSourceHistDataPlugin.cs
 
-.PHONY: test test-java docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift deploy-cbot deploy-ctrader provision observability-up observability-down retrain-all rebuild-all quality ty vulture smellcheck radon xenon audit-all freeze-oco freeze-oco-history validate-oco-history reconcile-historical-predictions summarize-runtime-db-run reconcile-ctrader-run export-ctrader-custom-data ctrader-debug-up ctrader-debug-down ctrader-debug-status ctrader-ab-parity-report ctrader-parity testclient-parity dukascopy-testclient-parity local-jforex-parity local-jforex-parity-matrix local-jforex-cert histdata-ctrader-parity histdata-testclient-parity stage12-api-parity stage13-dukascopy-cert stage14-jforex-cert dukascopy-source-audit offset-robustness-study offset-frozen-screen account-risk-monitoring-report reconcile-account-risk-reservations
+.PHONY: test test-java docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift deploy-cbot deploy-ctrader provision observability-up observability-down retrain-all rebuild-all quality ty vulture smellcheck radon xenon audit-all freeze-oco freeze-oco-history validate-oco-history reconcile-historical-predictions summarize-runtime-db-run reconcile-ctrader-run export-ctrader-custom-data ctrader-debug-up ctrader-debug-down ctrader-debug-status ctrader-ab-parity-report ctrader-parity testclient-parity dukascopy-testclient-parity local-jforex-parity local-jforex-parity-matrix local-jforex-parity-ordinal jforex-dukascopy-matrix jforex-outcome-parity local-jforex-cert histdata-ctrader-parity histdata-testclient-parity stage12-api-parity stage13-dukascopy-cert stage14-jforex-cert dukascopy-source-audit offset-robustness-study offset-frozen-screen account-risk-monitoring-report reconcile-account-risk-reservations
 
 OFFSET_ROBUSTNESS_SYMBOLS_DEFAULT := EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD
 OFFSET_ROBUSTNESS_OFFSETS_DEFAULT := 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99
@@ -78,6 +78,55 @@ local-jforex-parity-matrix:
 		--lookback-days $(or $(LOOKBACK_DAYS),31) \
 		--phase-bar-ticks $(or $(PHASE_BAR_TICKS),100) \
 		--starting-balance $(or $(STARTING_BALANCE),100000)
+
+local-jforex-parity-ordinal:
+	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/run_local_jforex_surrogate_matrix.py \
+		$(if $(SYMBOLS),--symbols "$(SYMBOLS)",) \
+		--start-ts $(or $(START_TS),2025-07-07T00:00:00Z) \
+		--end-ts $(or $(END_TS),2025-07-09T00:00:00Z) \
+		--model-month $(or $(MODEL_MONTH),2025-07) \
+		--models-dir $(or $(MODELS_DIR),models/oco_dukascopy_candidate) \
+		--history-dir $(or $(HISTORY_DIR),configs/research/governance/oco_history_dukascopy_candidate) \
+		--predictions-dir $(or $(PREDICTIONS_DIR),data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap) \
+		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks) \
+		--report-dir $(or $(REPORT_DIR),data/analysis/backtest_reconcile) \
+		--api-port $(or $(API_PORT),8000) \
+		--requested-volume-units $(or $(REQUESTED_VOLUME_UNITS),10000) \
+		--tick-batch-size $(or $(TICK_BATCH_SIZE),256) \
+		--order-ttl-seconds $(or $(ORDER_TTL_SECONDS),900) \
+		--api-timeout-seconds $(or $(API_TIMEOUT_SECONDS),60) \
+		--metrics-port-base $(or $(METRICS_PORT_BASE),9465) \
+		--warmup-ticks $(or $(WARMUP_TICKS),30000) \
+		--lookback-days $(or $(LOOKBACK_DAYS),31) \
+		--phase-bar-ticks $(or $(PHASE_BAR_TICKS),100) \
+		--starting-balance $(or $(STARTING_BALANCE),100000) \
+		--universe-mode ordinal \
+		--ordinal-tolerance $(or $(ORDINAL_TOLERANCE),1)
+
+jforex-dukascopy-matrix:
+	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/run_jforex_dukascopy_matrix.py \
+		$(if $(SYMBOLS),--symbols "$(SYMBOLS)",) \
+		--start-ts $(or $(START_TS),2025-07-07T00:00:00Z) \
+		--end-ts $(or $(END_TS),2025-07-09T00:00:00Z) \
+		--model-month $(or $(MODEL_MONTH),2025-07) \
+		--models-dir $(or $(MODELS_DIR),models/oco_dukascopy_candidate) \
+		--history-dir $(or $(HISTORY_DIR),configs/research/governance/oco_history_dukascopy_candidate) \
+		--predictions-dir $(or $(PREDICTIONS_DIR),data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap) \
+		--report-dir $(or $(REPORT_DIR),data/analysis/backtest_reconcile) \
+		--api-port $(or $(API_PORT),8000) \
+		--requested-volume-units $(or $(REQUESTED_VOLUME_UNITS),10000) \
+		--tick-batch-size $(or $(TICK_BATCH_SIZE),16) \
+		--order-ttl-seconds $(or $(ORDER_TTL_SECONDS),900) \
+		--api-timeout-seconds $(or $(API_TIMEOUT_SECONDS),60) \
+		--metrics-port-base $(or $(METRICS_PORT_BASE),9464)
+
+jforex-outcome-parity:
+	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/reconcile_jforex_outcomes.py \
+		--symbols $(or $(SYMBOLS),EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD) \
+		--lock-dir $(or $(LOCK_DIR),configs/research/governance/oco_history_dukascopy_candidate/2025-07) \
+		--reconcile-dir $(or $(RECONCILE_DIR),data/analysis/backtest_reconcile) \
+		--signal-coverage-threshold $(or $(SIGNAL_COVERAGE_THRESHOLD),0.8) \
+		--out-csv $(or $(OUT_CSV),data/analysis/backtest_reconcile/jforex_outcome_parity_summary.csv)
 
 local-jforex-cert:
 	uv run python scripts/validate_local_jforex_surrogate.py \
