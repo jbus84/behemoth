@@ -207,13 +207,18 @@ public final class BehemothStrategyCore {
     }
 
     private void triggerPrediction(SymbolRuntimeState state, List<Integer> completedBarTicks) {
+        for (int barTick : completedBarTicks) {
+            state.barOrdinalsByBarTicks.compute(barTick, (k, v) -> v == null ? 0L : v + 1L);
+        }
+        Map<Integer, Long> barOrdinals = Map.copyOf(state.barOrdinalsByBarTicks);
         try (JForexMetrics.TimerContext ignored = metrics.startPredictTimer(state.instrument.symbol())) {
             List<PredictionResponseItem> predictions = predictionClient.predict(new PredictRequestPayload(
                     state.instrument.symbol(),
                     sessionConfig.riskEnabled(),
                     sessionConfig.requestedVolumeUnits(),
                     completedBarTicks,
-                    sessionConfig.runId()
+                    sessionConfig.runId(),
+                    barOrdinals
             ));
             int selected = (int) predictions.stream().filter(PredictionResponseItem::isSelected).count();
             int blocked = (int) predictions.stream().filter(PredictionResponseItem::riskBlocked).count();
@@ -502,6 +507,9 @@ public final class BehemothStrategyCore {
         private final List<IncomingTickPayload> pendingTicks = new ArrayList<>();
         private long nextClientTickSeq = 1L;
         private RuntimeTick lastTick;
+        // 0-indexed count of bars closed per bar_ticks granularity since session start.
+        // Incremented before each predict call so bar_ordinals[N] == N means "Nth bar just closed".
+        private final Map<Integer, Long> barOrdinalsByBarTicks = new LinkedHashMap<>();
 
         private SymbolRuntimeState(RuntimeInstrument instrument) {
             this.instrument = instrument;

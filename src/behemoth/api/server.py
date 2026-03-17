@@ -82,6 +82,7 @@ _thresholds: dict[str, dict] = {}        # cache key -> threshold config
 _model_months: dict[str, str] = {}       # cache key -> "2025-12"
 _historical_prediction_universes: dict[str, dict[datetime, set[str]]] = {}
 _historical_prediction_candidate_index: dict[str, dict[str, list[datetime]]] = {}
+_historical_prediction_candidate_ordinal_index: dict[str, dict[str, list[int]]] = {}
 _historical_prediction_candidate_cursor: dict[str, dict[str, int]] = {}
 _historical_prediction_payload_rows: dict[str, dict[str, list[dict[str, Any]]]] = {}
 _historical_prediction_payload_cursor: dict[str, dict[str, int]] = {}
@@ -325,6 +326,11 @@ class AppConfig(BaseModel):
             )
         )
     )
+    historical_prediction_ordinal_tolerance: int = Field(
+        default_factory=lambda: int(
+            os.getenv("BEHEMOTH_HISTORICAL_PREDICTION_ORDINAL_TOLERANCE", "0")
+        )
+    )
     force_model_month: str = Field(
         default_factory=lambda: str(os.getenv("BEHEMOTH_FORCE_MODEL_MONTH", "")).strip()
     )
@@ -420,6 +426,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     global _models_dir, _ftmo_rules_path, _ftmo_profile
     global _historical_entries_loaded, _historical_preflight_failed_checks, _historical_preflight_summary
     global _historical_prediction_universes, _historical_prediction_candidate_index
+    global _historical_prediction_candidate_ordinal_index
     global _historical_prediction_candidate_cursor, _historical_prediction_payload_rows
     global _historical_prediction_payload_cursor
 
@@ -445,6 +452,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         _aggregators = {}
         _historical_prediction_universes = {}
         _historical_prediction_candidate_index = {}
+        _historical_prediction_candidate_ordinal_index = {}
         _historical_prediction_candidate_cursor = {}
         _historical_prediction_payload_rows = {}
         _historical_prediction_payload_cursor = {}
@@ -1367,6 +1375,76 @@ def _load_historical_prediction_candidate_index(
     return out
 
 
+def _load_historical_prediction_candidate_ordinal_index(
+    contract: _ResolvedRuntimeContract,
+) -> dict[str, list[int]]:
+    """Load per-candidate 0-indexed bar ordinals for ordinal-mode replay gating.
+
+    Ordinals are computed with DENSE_RANK() over all distinct close_ts values
+    for each bar_ticks granularity within the test_month.  Bar ordinal 0 is the
+    first bar close that appears in the parquet for that (symbol, bar_ticks) pair.
+
+    Both the server and the JForex adapter count from 0 at session start, so
+    candidate N fires when the adapter has closed its Nth bar (±ordinal tolerance).
+    """
+    if not _is_historical_mode():
+        return {}
+    cached = _historical_prediction_candidate_ordinal_index.get(contract.cache_key)
+    if cached is not None:
+        return cached
+
+    override_path = str(os.getenv("BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE", "")).strip()
+    pred_path = (
+        Path(override_path)
+        if override_path
+        else Path(str(contract.model_binding.get("predictions_path", "")).strip())
+    )
+    if not pred_path.exists():
+        _historical_prediction_candidate_ordinal_index[contract.cache_key] = {}
+        return {}
+
+    try:
+        import duckdb
+    except Exception:
+        _historical_prediction_candidate_ordinal_index[contract.cache_key] = {}
+        return {}
+
+    con = duckdb.connect()
+    try:
+        rows = con.execute(
+            """
+            SELECT
+                (DENSE_RANK() OVER (
+                    PARTITION BY try_cast(split_part(candidate_uid, '|', 3) AS INTEGER)
+                    ORDER BY try_cast(close_ts AS TIMESTAMP WITH TIME ZONE)
+                ) - 1)::INTEGER AS bar_ordinal,
+                candidate_uid
+            FROM read_parquet(?)
+            WHERE test_month = ?
+              AND upper(split_part(candidate_uid, '|', 2)) = ?
+            ORDER BY candidate_uid, bar_ordinal
+            """,
+            [
+                str(pred_path),
+                str(contract.model_month),
+                str(contract.symbol).upper().strip(),
+            ],
+        ).fetchall()
+    finally:
+        con.close()
+
+    out: dict[str, list[int]] = {}
+    for bar_ordinal, candidate_uid in rows:
+        if bar_ordinal is None:
+            continue
+        uid = str(candidate_uid or "").strip()
+        if not uid:
+            continue
+        out.setdefault(uid, []).append(int(bar_ordinal))
+    _historical_prediction_candidate_ordinal_index[contract.cache_key] = out
+    return out
+
+
 def _load_historical_prediction_payload_rows(
     contract: _ResolvedRuntimeContract,
 ) -> dict[str, list[dict[str, Any]]]:
@@ -1500,6 +1578,7 @@ def _apply_historical_prediction_universe_gate(
     contract: _ResolvedRuntimeContract,
     close_ts: datetime,
     candidates: list[Any],
+    bar_ordinals: dict[str, int] | None = None,
 ) -> list[Any]:
     """Historical-only gate: only evaluate rows present in locked repo predictions."""
     if not _is_historical_mode():
@@ -1508,6 +1587,37 @@ def _apply_historical_prediction_universe_gate(
     if mode in {"off", "disabled", "none"}:
         return candidates
     close_ts_utc = _as_utc_ts(close_ts)
+
+    if mode == "ordinal":
+        ordinal_index = _load_historical_prediction_candidate_ordinal_index(contract)
+        if not ordinal_index:
+            return candidates
+        if not bar_ordinals:
+            return []
+        ordinal_cursor = _historical_prediction_candidate_cursor.setdefault(contract.cache_key, {})
+        tolerance = int(_config.historical_prediction_ordinal_tolerance)
+        filtered: list[Any] = []
+        for cand in candidates:
+            canonical_uid = (
+                f"oco|{contract.symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+            )
+            ordinal_list = ordinal_index.get(canonical_uid, [])
+            if not ordinal_list:
+                continue
+            current_ordinal = bar_ordinals.get(str(cand.bar_ticks))
+            if current_ordinal is None:
+                continue
+            last_idx = int(ordinal_cursor.get(canonical_uid, -1))
+            lo = max(0, last_idx + 1)
+            lo_search = current_ordinal - tolerance
+            idx = bisect_left(ordinal_list, lo_search, lo=lo)
+            if idx >= len(ordinal_list):
+                continue
+            if ordinal_list[idx] > current_ordinal + tolerance:
+                continue
+            ordinal_cursor[canonical_uid] = idx
+            filtered.append(cand)
+        return filtered
 
     if mode in {"tolerant", "nearest"}:
         candidate_index = _load_historical_prediction_candidate_index(contract)
@@ -1743,6 +1853,14 @@ class PredictRequest(BaseModel):
             "Bar-tick granularities that just completed on the caller side "
             "(e.g. [100], [100,1000]). When provided, prediction is scoped to "
             "matching candidate bar_ticks only."
+        ),
+    )
+    bar_ordinals: dict[str, int] | None = Field(
+        default=None,
+        description=(
+            "Map from bar_ticks (string key) to the 0-indexed count of bars of "
+            "that granularity closed since session start. Used by ordinal universe "
+            "gate mode to match candidates by position rather than timestamp."
         ),
     )
     run_id: str | None = None
@@ -2171,6 +2289,7 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
         contract=contract,
         close_ts=close_ts,
         candidates=candidates,
+        bar_ordinals=req.bar_ordinals,
     )
     if not candidates:
         return _trace_predict_response(
@@ -2853,6 +2972,7 @@ async def reload_models() -> dict:
     global _registry, _historical_registry, _historical_entries_loaded
     global _historical_preflight_failed_checks, _historical_preflight_summary
     global _historical_prediction_universes, _historical_prediction_candidate_index
+    global _historical_prediction_candidate_ordinal_index
     global _historical_prediction_candidate_cursor, _historical_prediction_payload_rows
     global _historical_prediction_payload_cursor
 
@@ -2874,6 +2994,7 @@ async def reload_models() -> dict:
     _load_models()
     _historical_prediction_universes = {}
     _historical_prediction_candidate_index = {}
+    _historical_prediction_candidate_ordinal_index = {}
     _historical_prediction_candidate_cursor = {}
     _historical_prediction_payload_rows = {}
     _historical_prediction_payload_cursor = {}

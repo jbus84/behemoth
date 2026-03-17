@@ -37,7 +37,7 @@ class PythonPredictionClientTest {
                     """).addHeader("Content-Type", "application/json"));
             PythonPredictionClient client = new PythonPredictionClient(HttpClient.newHttpClient(), server.url("/").uri());
 
-            var response = client.predict(new PredictRequestPayload("GBPUSD", true, 10000.0, List.of(100), "run-1"));
+            var response = client.predict(new PredictRequestPayload("GBPUSD", true, 10000.0, List.of(100), "run-1", null));
 
             assertThat(response).hasSize(1);
             assertThat(response.getFirst().candidateUid()).isEqualTo("oco|GBPUSD|100|h6|state_a");
@@ -56,7 +56,7 @@ class PythonPredictionClientTest {
                     .addHeader("Content-Type", "application/json"));
             PythonPredictionClient client = new PythonPredictionClient(HttpClient.newHttpClient(), server.url("/").uri());
 
-            assertThatThrownBy(() -> client.predict(new PredictRequestPayload("GBPUSD", true, 10000.0, List.of(100), "run-1")))
+            assertThatThrownBy(() -> client.predict(new PredictRequestPayload("GBPUSD", true, 10000.0, List.of(100), "run-1", null)))
                     .isInstanceOf(PythonApiException.class)
                     .hasMessageContaining("Insufficient warmup bars");
         }
