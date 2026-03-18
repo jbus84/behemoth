@@ -101,6 +101,36 @@ def test_compare_outcomes_pass():
     assert result["overall_pass"] is True
 
 
+def test_load_locked_predictions_eval_window_filter():
+    from scripts.reconcile_jforex_outcomes import load_locked_predictions
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as td:
+        tmp = Path(td)
+        # Write 3 events: before window, in window, after window
+        import pandas as pd
+        df = pd.DataFrame([
+            {"close_ts": pd.Timestamp("2025-07-06T23:59:00Z"), "candidate_uid": "uid_a",
+             "pred_prob": 0.6, "target_gross_pips": 3.5, "target_gross_pos": 1,
+             "selected_exec": 1, "event_ordinal": 0},
+            {"close_ts": pd.Timestamp("2025-07-07T12:00:00Z"), "candidate_uid": "uid_b",
+             "pred_prob": 0.7, "target_gross_pips": 2.5, "target_gross_pos": 1,
+             "selected_exec": 1, "event_ordinal": 0},
+            {"close_ts": pd.Timestamp("2025-07-09T00:00:01Z"), "candidate_uid": "uid_c",
+             "pred_prob": 0.5, "target_gross_pips": 1.5, "target_gross_pos": 0,
+             "selected_exec": 1, "event_ordinal": 0},
+        ])
+        df.to_parquet(str(tmp / "eurusd_oco_locked_predictions.parquet"), index=False)
+
+        result = load_locked_predictions(
+            tmp, "EURUSD",
+            eval_start="2025-07-07T00:00:00Z",
+            eval_end="2025-07-09T00:00:00Z",
+        )
+        assert len(result) == 1, f"Expected 1 event in window, got {len(result)}"
+        assert result["candidate_uid"].iloc[0] == "uid_b"
+
+
 def test_compare_outcomes_fail_low_coverage():
     from scripts.reconcile_jforex_outcomes import compare_outcomes
 

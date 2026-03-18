@@ -20,15 +20,34 @@ DEFAULT_LOCK_DIR = "configs/research/governance/oco_history_dukascopy_candidate/
 DEFAULT_RECONCILE_DIR = "data/analysis/backtest_reconcile"
 
 
-def load_locked_predictions(lock_dir: Path, symbol: str) -> pd.DataFrame:
-    """Load locked predictions for a symbol, filtered to selected_exec=1."""
+def load_locked_predictions(
+    lock_dir: Path,
+    symbol: str,
+    eval_start: str = "",
+    eval_end: str = "",
+) -> pd.DataFrame:
+    """Load locked predictions for a symbol, filtered to selected_exec=1.
+
+    Args:
+        eval_start: Only include events with close_ts >= this UTC ISO-8601 timestamp (empty = all).
+        eval_end:   Only include events with close_ts <  this UTC ISO-8601 timestamp (empty = all).
+    """
     path = lock_dir / f"{symbol.lower()}_oco_locked_predictions.parquet"
     con = duckdb.connect()
+    clauses = ""
+    params: list = [str(path)]
+    if eval_start:
+        clauses += " AND close_ts::TIMESTAMPTZ >= ?::TIMESTAMPTZ"
+        params.append(eval_start)
+    if eval_end:
+        clauses += " AND close_ts::TIMESTAMPTZ < ?::TIMESTAMPTZ"
+        params.append(eval_end)
     df = con.execute(
         "SELECT close_ts, candidate_uid, pred_prob, target_gross_pips, "
         "target_gross_pos, selected_exec, event_ordinal "
-        f"FROM read_parquet('{path}') WHERE selected_exec = 1 "
-        "ORDER BY close_ts, candidate_uid"
+        f"FROM read_parquet(?) WHERE selected_exec = 1{clauses} "
+        "ORDER BY close_ts, candidate_uid",
+        params,
     ).fetchdf()
     con.close()
     return df
@@ -143,6 +162,8 @@ def _parse_args() -> argparse.Namespace:
         "--out-csv", default="data/analysis/backtest_reconcile/jforex_outcome_parity_summary.csv",
         help="Output CSV path for per-symbol results",
     )
+    parser.add_argument("--eval-start", default="", help="Only include events with close_ts >= this UTC ISO-8601 timestamp (empty = all)")
+    parser.add_argument("--eval-end", default="", help="Only include events with close_ts < this UTC ISO-8601 timestamp (empty = all)")
     return parser.parse_args()
 
 
@@ -154,7 +175,7 @@ def main() -> None:
 
     results = []
     for symbol in symbols:
-        locked = load_locked_predictions(lock_dir, symbol)
+        locked = load_locked_predictions(lock_dir, symbol, eval_start=args.eval_start, eval_end=args.eval_end)
         events = load_runtime_events(reconcile_dir, symbol)
 
         locked_count = len(locked)
