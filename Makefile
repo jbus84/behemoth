@@ -142,6 +142,9 @@ local-jforex-parity-spotlight:
 		--eval-end $(or $(EVAL_END),2025-07-09T00:00:00Z) \
 		--signal-coverage-threshold $(or $(SIGNAL_COVERAGE_THRESHOLD),0.01) \
 		--out-csv $(or $(REPORT_DIR),data/analysis/backtest_reconcile)/jforex_outcome_parity_summary.csv
+# NOTE: threshold=0.01 above is interim — spotlight bar alignment produces ~2-7% coverage.
+# See docs/superpowers/plans/2026-03-18-stage14-full-outcome-reconciliation.md Task 7
+# for the investigation guide. Raise to 0.8 once bar alignment is fixed.
 
 jforex-dukascopy-matrix:
 	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/run_jforex_dukascopy_matrix.py \
