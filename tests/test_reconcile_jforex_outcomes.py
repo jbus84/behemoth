@@ -95,6 +95,7 @@ def test_compare_outcomes_pass():
         jforex_orders_submitted=4,
         jforex_execution_failures=0,
         jforex_lifecycle_failures=0,
+        jforex_submitted_group_count=200,  # 200/217 ≈ 92% > 80% → order_coverage_pass
     )
     assert result["signal_coverage_pass"] is True
     assert result["execution_clean_pass"] is True
@@ -214,3 +215,23 @@ def test_compare_outcomes_per_event_coverage():
     )
     assert result["order_coverage_pass"] is True
     assert result["overall_pass"] is True
+
+
+def test_compare_outcomes_zero_submitted_group_count_fails():
+    from scripts.reconcile_jforex_outcomes import compare_outcomes
+
+    result = compare_outcomes(
+        symbol="EURUSD",
+        locked_count=100,
+        locked_gross_pips_total=350.0,
+        locked_win_rate=0.7,
+        jforex_predict_cycles=100,
+        jforex_selected_total=90,   # high aggregate signal — should NOT save overall_pass
+        jforex_orders_submitted=0,
+        jforex_execution_failures=0,
+        jforex_lifecycle_failures=0,
+        jforex_submitted_group_count=0,   # zero per-event submissions
+    )
+    # order_coverage_ratio = 0/100 = 0.0 < 0.8 → order_coverage_pass = False
+    assert result["order_coverage_pass"] is False
+    assert result["overall_pass"] is False

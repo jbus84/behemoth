@@ -179,9 +179,7 @@ def compare_outcomes(
     )
     order_coverage_pass = order_coverage_ratio >= signal_coverage_threshold
 
-    # Use per-event order coverage when available; fall back to aggregate signal coverage.
-    coverage_pass = order_coverage_pass if jforex_submitted_group_count > 0 else signal_coverage_pass
-    overall_pass = coverage_pass and execution_clean_pass and has_trades
+    overall_pass = order_coverage_pass and execution_clean_pass and has_trades
 
     return {
         "symbol": symbol,
