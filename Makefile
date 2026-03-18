@@ -134,6 +134,14 @@ local-jforex-parity-spotlight:
 		--lookback-days 0 \
 		--phase-bar-ticks $(or $(PHASE_BAR_TICKS),100) \
 		--starting-balance $(or $(STARTING_BALANCE),100000)
+	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/reconcile_jforex_outcomes.py \
+		$(if $(SYMBOLS),--symbols "$(SYMBOLS)",) \
+		--lock-dir $(or $(LOCK_DIR),configs/research/governance/oco_history_dukascopy_candidate/2025-07) \
+		--reconcile-dir $(or $(REPORT_DIR),data/analysis/backtest_reconcile) \
+		--eval-start $(or $(EVAL_START),2025-07-07T00:00:00Z) \
+		--eval-end $(or $(EVAL_END),2025-07-09T00:00:00Z) \
+		--signal-coverage-threshold $(or $(SIGNAL_COVERAGE_THRESHOLD),0.8) \
+		--out-csv $(or $(REPORT_DIR),data/analysis/backtest_reconcile)/jforex_outcome_parity_summary.csv
 
 jforex-dukascopy-matrix:
 	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/run_jforex_dukascopy_matrix.py \
@@ -157,6 +165,8 @@ jforex-outcome-parity:
 		--symbols $(or $(SYMBOLS),EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD) \
 		--lock-dir $(or $(LOCK_DIR),configs/research/governance/oco_history_dukascopy_candidate/2025-07) \
 		--reconcile-dir $(or $(RECONCILE_DIR),data/analysis/backtest_reconcile) \
+		--eval-start $(or $(EVAL_START),2025-07-07T00:00:00Z) \
+		--eval-end $(or $(EVAL_END),2025-07-09T00:00:00Z) \
 		--signal-coverage-threshold $(or $(SIGNAL_COVERAGE_THRESHOLD),0.8) \
 		--out-csv $(or $(OUT_CSV),data/analysis/backtest_reconcile/jforex_outcome_parity_summary.csv)
 
@@ -167,6 +177,7 @@ local-jforex-cert:
 		--local-execution-summary-glob '$(or $(LOCAL_EXECUTION_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_local_jforex_execution_parity_summary.csv)' \
 		--local-lifecycle-summary-glob '$(or $(LOCAL_LIFECYCLE_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_local_jforex_oco_lifecycle_summary.csv)' \
 		--local-operational-summary-glob '$(or $(LOCAL_OPERATIONAL_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_local_jforex_operational_ready_summary.csv)' \
+		--local-outcome-summary-glob '$(or $(LOCAL_OUTCOME_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_local_jforex_outcome_parity_summary.csv)' \
 		--out-summary-csv $(or $(OUT_SUMMARY_CSV),data/analysis/backtest_reconcile/local_jforex_surrogate_summary.csv) \
 		--out-checks-csv $(or $(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/local_jforex_surrogate_checks.csv) \
 		--report-out $(or $(REPORT_OUT),docs/analysis/local_jforex_surrogate_report.md)

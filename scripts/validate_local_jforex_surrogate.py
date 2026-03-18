@@ -92,6 +92,7 @@ def build_artifacts(
     local_execution_summary_glob: str,
     local_lifecycle_summary_glob: str,
     local_operational_summary_glob: str,
+    local_outcome_summary_glob: str = "",
     out_summary_csv: Path,
     out_checks_csv: Path,
     report_out: Path,
@@ -102,7 +103,9 @@ def build_artifacts(
         InputSource("local_execution_parity_pass", local_execution_summary_glob, ("jforex_execution_parity_pass", "execution_parity_pass", "overall_pass")),
         InputSource("local_lifecycle_pass", local_lifecycle_summary_glob, ("oco_lifecycle_pass", "lifecycle_pass", "overall_pass")),
         InputSource("local_operational_ready_pass", local_operational_summary_glob, ("operational_ready_pass", "overall_pass")),
+        InputSource("jforex_outcome_parity_pass", local_outcome_summary_glob, ("jforex_outcome_parity_pass", "overall_pass")),
     ]
+    sources = [s for s in sources if s.summary_glob.strip()]
 
     checks = pd.concat([df for df in (_load_summary_rows(src) for src in sources) if not df.empty], ignore_index=True)
     if checks.empty:
@@ -187,6 +190,7 @@ def main() -> None:
     parser.add_argument("--local-execution-summary-glob", default="data/analysis/backtest_reconcile/*_local_jforex_execution_parity_summary.csv")
     parser.add_argument("--local-lifecycle-summary-glob", default="data/analysis/backtest_reconcile/*_local_jforex_oco_lifecycle_summary.csv")
     parser.add_argument("--local-operational-summary-glob", default="data/analysis/backtest_reconcile/*_local_jforex_operational_ready_summary.csv")
+    parser.add_argument("--local-outcome-summary-glob", default="data/analysis/backtest_reconcile/*_local_jforex_outcome_parity_summary.csv")
     parser.add_argument("--out-summary-csv", default="data/analysis/backtest_reconcile/local_jforex_surrogate_summary.csv")
     parser.add_argument("--out-checks-csv", default="data/analysis/backtest_reconcile/local_jforex_surrogate_checks.csv")
     parser.add_argument("--report-out", default="docs/analysis/local_jforex_surrogate_report.md")
@@ -198,6 +202,7 @@ def main() -> None:
         local_execution_summary_glob=str(args.local_execution_summary_glob),
         local_lifecycle_summary_glob=str(args.local_lifecycle_summary_glob),
         local_operational_summary_glob=str(args.local_operational_summary_glob),
+        local_outcome_summary_glob=str(args.local_outcome_summary_glob),
         out_summary_csv=Path(str(args.out_summary_csv)),
         out_checks_csv=Path(str(args.out_checks_csv)),
         report_out=Path(str(args.report_out)),
