@@ -8,9 +8,11 @@ import os
 import signal
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -144,7 +146,7 @@ def _state_db_path(cfg: RunConfig, symbol: str) -> Path:
     return _repo_root() / cfg.report_dir / "runtime" / f"{symbol.lower()}_local_jforex_state.db"
 
 
-def _start_api(cfg: RunConfig, symbol: str) -> subprocess.Popen[str]:
+def _start_api(cfg: RunConfig, symbol: str) -> tuple[subprocess.Popen[str], deque[str]]:
     state_db_path = _state_db_path(cfg, symbol)
     state_db_path.parent.mkdir(parents=True, exist_ok=True)
     if state_db_path.exists():
@@ -180,7 +182,7 @@ def _start_api(cfg: RunConfig, symbol: str) -> subprocess.Popen[str]:
         "--port",
         str(cfg.api_port),
     ]
-    return subprocess.Popen(
+    proc = subprocess.Popen(
         cmd,
         cwd=_repo_root(),
         env=env,
@@ -189,6 +191,15 @@ def _start_api(cfg: RunConfig, symbol: str) -> subprocess.Popen[str]:
         text=True,
         start_new_session=True,
     )
+    log_lines: deque[str] = deque(maxlen=200)
+
+    def _drain() -> None:
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            log_lines.append(line.rstrip("\n"))
+
+    threading.Thread(target=_drain, daemon=True).start()
+    return proc, log_lines
 
 
 def _stop_process(proc: subprocess.Popen[str]) -> None:
@@ -204,12 +215,8 @@ def _stop_process(proc: subprocess.Popen[str]) -> None:
     proc.wait(timeout=10)
 
 
-def _read_process_tail(proc: subprocess.Popen[str], max_lines: int = 50) -> str:
-    if proc.poll() is None:
-        return ""
-    if proc.stdout is None:
-        return ""
-    lines = proc.stdout.read().splitlines()
+def _read_process_tail(log_lines: deque[str], max_lines: int = 50) -> str:
+    lines = list(log_lines)
     return "\n".join(lines[-max_lines:])
 
 
@@ -252,7 +259,7 @@ def main() -> None:
     for index, symbol in enumerate(cfg.symbols):
         metrics_port = cfg.metrics_port_base + index
         print(f"[local-jforex] {symbol}: starting API", flush=True)
-        api_proc = _start_api(cfg, symbol)
+        api_proc, api_log = _start_api(cfg, symbol)
         try:
             _poll_health(api_proc, f"http://{cfg.api_host}:{cfg.api_port}", timeout_sec=60.0)
             print(f"[local-jforex] {symbol}: running surrogate", flush=True)
@@ -263,7 +270,7 @@ def main() -> None:
             print(f"[local-jforex] {symbol}: failed: {exc}", file=sys.stderr, flush=True)
         finally:
             _stop_process(api_proc)
-            tail = _read_process_tail(api_proc)
+            tail = _read_process_tail(api_log)
             if tail:
                 print(tail, file=sys.stderr, flush=True)
 
