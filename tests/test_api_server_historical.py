@@ -256,6 +256,254 @@ def test_resolve_runtime_contract_rejects_invalid_force_month_format() -> None:
         server._registry = original_reg
 
 
+def _mk_contract(symbol: str = "EURUSD", month: str = "2025-07") -> server._ResolvedRuntimeContract:
+    return server._ResolvedRuntimeContract(
+        symbol=symbol,
+        model_month=month,
+        cache_key=f"{symbol}|{month}",
+        candidates=[],
+        model_binding={},
+        cap_pips=1.2,
+        source="historical",
+    )
+
+
+def _mk_candidate(bar_ticks: int = 100, horizon: int = 4, uid: str = "oco_first_touch_clean__all__k2"):
+    from src.behemoth.core.registry import CandidateSpec
+
+    return CandidateSpec(
+        symbol="EURUSD",
+        bar_ticks=bar_ticks,
+        horizon=horizon,
+        barrier_pips=10.0,
+        candidate_uid=uid,
+    )
+
+
+def test_ordinal_gate_exact_match_returns_candidate() -> None:
+    contract = _mk_contract()
+    cand = _mk_candidate(bar_ticks=100, horizon=4, uid="oco_first_touch_clean__all__k2")
+    canonical = "oco|EURUSD|100|h4|oco_first_touch_clean__all__k2"
+    ordinal_index = {canonical: [5, 10, 15]}
+
+    original_mode = server._config.historical_prediction_universe_mode
+    original_tolerance = server._config.historical_prediction_ordinal_tolerance
+    original_cursor = server._historical_prediction_candidate_cursor.pop(contract.cache_key, None)
+    original_is_hist = server._is_historical_mode
+
+    try:
+        server._config.historical_prediction_universe_mode = "ordinal"
+        server._config.historical_prediction_ordinal_tolerance = 0
+        server._is_historical_mode = lambda: True
+
+        with mock.patch(
+            "src.behemoth.api.server._load_historical_prediction_candidate_ordinal_index",
+            return_value=ordinal_index,
+        ):
+            result = server._apply_historical_prediction_universe_gate(
+                contract=contract,
+                close_ts=datetime(2025, 7, 7, tzinfo=timezone.utc),
+                candidates=[cand],
+                bar_ordinals={"100": 5},
+            )
+        assert result == [cand]
+    finally:
+        server._config.historical_prediction_universe_mode = original_mode
+        server._config.historical_prediction_ordinal_tolerance = original_tolerance
+        server._is_historical_mode = original_is_hist
+        if original_cursor is not None:
+            server._historical_prediction_candidate_cursor[contract.cache_key] = original_cursor
+        else:
+            server._historical_prediction_candidate_cursor.pop(contract.cache_key, None)
+
+
+def test_ordinal_gate_exact_no_match_excludes_candidate() -> None:
+    contract = _mk_contract()
+    cand = _mk_candidate(bar_ticks=100, horizon=4, uid="oco_first_touch_clean__all__k2")
+    canonical = "oco|EURUSD|100|h4|oco_first_touch_clean__all__k2"
+    ordinal_index = {canonical: [5, 10, 15]}
+
+    original_mode = server._config.historical_prediction_universe_mode
+    original_tolerance = server._config.historical_prediction_ordinal_tolerance
+    original_cursor = server._historical_prediction_candidate_cursor.pop(contract.cache_key, None)
+    original_is_hist = server._is_historical_mode
+
+    try:
+        server._config.historical_prediction_universe_mode = "ordinal"
+        server._config.historical_prediction_ordinal_tolerance = 0
+        server._is_historical_mode = lambda: True
+
+        with mock.patch(
+            "src.behemoth.api.server._load_historical_prediction_candidate_ordinal_index",
+            return_value=ordinal_index,
+        ):
+            result = server._apply_historical_prediction_universe_gate(
+                contract=contract,
+                close_ts=datetime(2025, 7, 7, tzinfo=timezone.utc),
+                candidates=[cand],
+                bar_ordinals={"100": 7},
+            )
+        assert result == []
+    finally:
+        server._config.historical_prediction_universe_mode = original_mode
+        server._config.historical_prediction_ordinal_tolerance = original_tolerance
+        server._is_historical_mode = original_is_hist
+        if original_cursor is not None:
+            server._historical_prediction_candidate_cursor[contract.cache_key] = original_cursor
+        else:
+            server._historical_prediction_candidate_cursor.pop(contract.cache_key, None)
+
+
+def test_ordinal_gate_tolerance_1_matches_adjacent() -> None:
+    contract = _mk_contract()
+    cand = _mk_candidate(bar_ticks=100, horizon=4, uid="oco_first_touch_clean__all__k2")
+    canonical = "oco|EURUSD|100|h4|oco_first_touch_clean__all__k2"
+    ordinal_index = {canonical: [5, 10, 15]}
+
+    original_mode = server._config.historical_prediction_universe_mode
+    original_tolerance = server._config.historical_prediction_ordinal_tolerance
+    original_cursor = server._historical_prediction_candidate_cursor.pop(contract.cache_key, None)
+    original_is_hist = server._is_historical_mode
+
+    try:
+        server._config.historical_prediction_universe_mode = "ordinal"
+        server._config.historical_prediction_ordinal_tolerance = 1
+        server._is_historical_mode = lambda: True
+
+        with mock.patch(
+            "src.behemoth.api.server._load_historical_prediction_candidate_ordinal_index",
+            return_value=ordinal_index,
+        ):
+            # ordinal 6 is within ±1 of 5
+            result = server._apply_historical_prediction_universe_gate(
+                contract=contract,
+                close_ts=datetime(2025, 7, 7, tzinfo=timezone.utc),
+                candidates=[cand],
+                bar_ordinals={"100": 6},
+            )
+        assert result == [cand]
+    finally:
+        server._config.historical_prediction_universe_mode = original_mode
+        server._config.historical_prediction_ordinal_tolerance = original_tolerance
+        server._is_historical_mode = original_is_hist
+        if original_cursor is not None:
+            server._historical_prediction_candidate_cursor[contract.cache_key] = original_cursor
+        else:
+            server._historical_prediction_candidate_cursor.pop(contract.cache_key, None)
+
+
+def test_ordinal_gate_missing_bar_ordinals_returns_empty() -> None:
+    contract = _mk_contract()
+    cand = _mk_candidate(bar_ticks=100, horizon=4, uid="oco_first_touch_clean__all__k2")
+    canonical = "oco|EURUSD|100|h4|oco_first_touch_clean__all__k2"
+    ordinal_index = {canonical: [5, 10]}
+
+    original_mode = server._config.historical_prediction_universe_mode
+    original_tolerance = server._config.historical_prediction_ordinal_tolerance
+    original_cursor = server._historical_prediction_candidate_cursor.pop(contract.cache_key, None)
+    original_is_hist = server._is_historical_mode
+
+    try:
+        server._config.historical_prediction_universe_mode = "ordinal"
+        server._config.historical_prediction_ordinal_tolerance = 0
+        server._is_historical_mode = lambda: True
+
+        with mock.patch(
+            "src.behemoth.api.server._load_historical_prediction_candidate_ordinal_index",
+            return_value=ordinal_index,
+        ):
+            result = server._apply_historical_prediction_universe_gate(
+                contract=contract,
+                close_ts=datetime(2025, 7, 7, tzinfo=timezone.utc),
+                candidates=[cand],
+                bar_ordinals=None,
+            )
+        assert result == []
+    finally:
+        server._config.historical_prediction_universe_mode = original_mode
+        server._config.historical_prediction_ordinal_tolerance = original_tolerance
+        server._is_historical_mode = original_is_hist
+        if original_cursor is not None:
+            server._historical_prediction_candidate_cursor[contract.cache_key] = original_cursor
+        else:
+            server._historical_prediction_candidate_cursor.pop(contract.cache_key, None)
+
+
+def test_ordinal_gate_empty_ordinal_index_falls_through_to_candidates() -> None:
+    contract = _mk_contract()
+    cand = _mk_candidate(bar_ticks=100, horizon=4, uid="oco_first_touch_clean__all__k2")
+
+    original_mode = server._config.historical_prediction_universe_mode
+    original_tolerance = server._config.historical_prediction_ordinal_tolerance
+    original_cursor = server._historical_prediction_candidate_cursor.pop(contract.cache_key, None)
+    original_is_hist = server._is_historical_mode
+
+    try:
+        server._config.historical_prediction_universe_mode = "ordinal"
+        server._config.historical_prediction_ordinal_tolerance = 0
+        server._is_historical_mode = lambda: True
+
+        with mock.patch(
+            "src.behemoth.api.server._load_historical_prediction_candidate_ordinal_index",
+            return_value={},
+        ):
+            result = server._apply_historical_prediction_universe_gate(
+                contract=contract,
+                close_ts=datetime(2025, 7, 7, tzinfo=timezone.utc),
+                candidates=[cand],
+                bar_ordinals={"100": 5},
+            )
+        # empty ordinal index → falls through (returns candidates unchanged)
+        assert result == [cand]
+    finally:
+        server._config.historical_prediction_universe_mode = original_mode
+        server._config.historical_prediction_ordinal_tolerance = original_tolerance
+        server._is_historical_mode = original_is_hist
+        if original_cursor is not None:
+            server._historical_prediction_candidate_cursor[contract.cache_key] = original_cursor
+        else:
+            server._historical_prediction_candidate_cursor.pop(contract.cache_key, None)
+
+
+def test_ordinal_gate_string_key_lookup_from_java_json() -> None:
+    """Java sends Map<Integer,Long> → JSON keys are strings; verify str key lookup works."""
+    contract = _mk_contract()
+    cand = _mk_candidate(bar_ticks=100, horizon=4, uid="oco_first_touch_clean__all__k2")
+    canonical = "oco|EURUSD|100|h4|oco_first_touch_clean__all__k2"
+    ordinal_index = {canonical: [3]}
+
+    original_mode = server._config.historical_prediction_universe_mode
+    original_tolerance = server._config.historical_prediction_ordinal_tolerance
+    original_cursor = server._historical_prediction_candidate_cursor.pop(contract.cache_key, None)
+    original_is_hist = server._is_historical_mode
+
+    try:
+        server._config.historical_prediction_universe_mode = "ordinal"
+        server._config.historical_prediction_ordinal_tolerance = 0
+        server._is_historical_mode = lambda: True
+
+        with mock.patch(
+            "src.behemoth.api.server._load_historical_prediction_candidate_ordinal_index",
+            return_value=ordinal_index,
+        ):
+            # bar_ordinals keys are strings (as deserialized from JSON)
+            result = server._apply_historical_prediction_universe_gate(
+                contract=contract,
+                close_ts=datetime(2025, 7, 7, tzinfo=timezone.utc),
+                candidates=[cand],
+                bar_ordinals={"100": 3},
+            )
+        assert result == [cand]
+    finally:
+        server._config.historical_prediction_universe_mode = original_mode
+        server._config.historical_prediction_ordinal_tolerance = original_tolerance
+        server._is_historical_mode = original_is_hist
+        if original_cursor is not None:
+            server._historical_prediction_candidate_cursor[contract.cache_key] = original_cursor
+        else:
+            server._historical_prediction_candidate_cursor.pop(contract.cache_key, None)
+
+
 def test_run_historical_preflight_raises_on_failed_checks() -> None:
     original_failed = server._historical_preflight_failed_checks
     original_summary = server._historical_preflight_summary

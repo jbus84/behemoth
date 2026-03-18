@@ -46,8 +46,8 @@ public record LocalJForexHarnessConfig(
         if (requestedVolumeUnits <= 0.0) {
             throw new IllegalArgumentException("requestedVolumeUnits must be > 0");
         }
-        if (tickBatchSize <= 0 || warmupTicks <= 0 || lookbackDays <= 0 || phaseBarTicks <= 0) {
-            throw new IllegalArgumentException("batch/warmup/lookback/phase values must be > 0");
+        if (tickBatchSize <= 0 || warmupTicks < 0 || lookbackDays < 0 || phaseBarTicks <= 0) {
+            throw new IllegalArgumentException("tickBatchSize/phaseBarTicks must be > 0; warmupTicks/lookbackDays must be >= 0");
         }
         if (orderTtlSeconds <= 0L) {
             throw new IllegalArgumentException("orderTtlSeconds must be > 0");

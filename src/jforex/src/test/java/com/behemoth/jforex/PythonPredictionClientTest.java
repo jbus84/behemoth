@@ -11,6 +11,7 @@ import com.behemoth.jforex.runtime.dto.PredictRequestPayload;
 import java.net.http.HttpClient;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.jupiter.api.Test;
@@ -59,6 +60,19 @@ class PythonPredictionClientTest {
             assertThatThrownBy(() -> client.predict(new PredictRequestPayload("GBPUSD", true, 10000.0, List.of(100), "run-1", null)))
                     .isInstanceOf(PythonApiException.class)
                     .hasMessageContaining("Insufficient warmup bars");
+        }
+    }
+
+    @Test
+    void barOrdinalsSerializedAsStringKeyedMap() throws Exception {
+        try (MockWebServer server = new MockWebServer()) {
+            server.enqueue(new MockResponse().setBody("[]").addHeader("Content-Type", "application/json"));
+            PythonPredictionClient client = new PythonPredictionClient(HttpClient.newHttpClient(), server.url("/").uri());
+
+            client.predict(new PredictRequestPayload("GBPUSD", true, 10000.0, List.of(100), "run-1", Map.of(100, 42L)));
+
+            String requestBody = server.takeRequest().getBody().readUtf8();
+            assertThat(requestBody).contains("\"bar_ordinals\":{\"100\":42}");
         }
     }
 

@@ -27,3 +27,4 @@ alertmanager.yml
 .smellcheck-cache/
 .gradle/
 src/jforex/build/
+.worktrees/

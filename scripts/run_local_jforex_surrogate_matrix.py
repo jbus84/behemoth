@@ -50,6 +50,8 @@ class RunConfig:
     phase_bar_ticks: int
     starting_balance: int
     risk_enabled: bool
+    universe_mode: str
+    ordinal_tolerance: int
 
 
 def _parse_args() -> RunConfig:
@@ -66,7 +68,7 @@ def _parse_args() -> RunConfig:
     parser.add_argument("--api-host", default="127.0.0.1")
     parser.add_argument("--api-port", type=int, default=DEFAULT_API_PORT)
     parser.add_argument("--requested-volume-units", type=int, default=10000)
-    parser.add_argument("--tick-batch-size", type=int, default=16)
+    parser.add_argument("--tick-batch-size", type=int, default=200)
     parser.add_argument("--order-ttl-seconds", type=int, default=900)
     parser.add_argument("--api-timeout-seconds", type=int, default=60)
     parser.add_argument("--metrics-enabled", action=argparse.BooleanOptionalAction, default=True)
@@ -77,6 +79,8 @@ def _parse_args() -> RunConfig:
     parser.add_argument("--phase-bar-ticks", type=int, default=100)
     parser.add_argument("--starting-balance", type=int, default=100000)
     parser.add_argument("--risk-enabled", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--universe-mode", choices=["tolerant", "nearest", "ordinal"], default="tolerant")
+    parser.add_argument("--ordinal-tolerance", type=int, default=0)
     args = parser.parse_args()
     symbols = tuple(s.strip().upper() for s in str(args.symbols).split(",") if s.strip())
     if not symbols:
@@ -105,6 +109,8 @@ def _parse_args() -> RunConfig:
         phase_bar_ticks=args.phase_bar_ticks,
         starting_balance=args.starting_balance,
         risk_enabled=bool(args.risk_enabled),
+        universe_mode=args.universe_mode,
+        ordinal_tolerance=int(args.ordinal_tolerance),
     )
 
 
@@ -151,12 +157,17 @@ def _start_api(cfg: RunConfig, symbol: str) -> subprocess.Popen[str]:
             "BEHEMOTH_HISTORICAL_PREFLIGHT_MODE": "warn",
             "BEHEMOTH_GOVERNANCE_HISTORY_DIR": cfg.history_dir,
             "BEHEMOTH_MODELS_DIR": cfg.models_dir,
-            "BEHEMOTH_HISTORICAL_PREDICTION_UNIVERSE_MODE": "tolerant",
+            "BEHEMOTH_HISTORICAL_PREDICTION_UNIVERSE_MODE": cfg.universe_mode,
+            "BEHEMOTH_HISTORICAL_PREDICTION_ORDINAL_TOLERANCE": str(cfg.ordinal_tolerance),
             "BEHEMOTH_HISTORICAL_PREDICTION_PAYLOAD_MODE": "locked",
             "BEHEMOTH_HISTORICAL_PREDICTION_TOLERANCE_SEC": "120",
             "BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE": _prediction_path(cfg, symbol),
             "BEHEMOTH_FORCE_MODEL_MONTH": cfg.model_month,
-            "BEHEMOTH_STATE_DB": str(state_db_path),
+            # Use in-memory DuckDB (empty string) to avoid file-backed WAL
+            # checkpointing blocking the asyncio event loop mid-run.
+            # State is wiped at the start of each symbol run anyway, so
+            # persistence across restarts provides no benefit here.
+            "BEHEMOTH_STATE_DB": "",
         }
     )
     cmd = [

@@ -3,7 +3,8 @@
 
 Like run_local_jforex_surrogate_matrix.py but uses the real Dukascopy broker
 (JForexTesterRunner) instead of the local parquet surrogate. Dukascopy streams
-ticks directly — no parquet loading, no HTTP tick-batch bottleneck.
+ticks directly — no parquet loading overhead. HTTP tick-batching to the Python
+API still occurs; use a large --tick-batch-size (256+) to minimise round-trips.
 
 Requires BEHEMOTH_JFOREX_JNLP_URI, BEHEMOTH_JFOREX_USERNAME, and
 BEHEMOTH_JFOREX_PASSWORD in the environment (typically loaded from .env).
@@ -69,7 +70,7 @@ def _parse_args() -> RunConfig:
     parser.add_argument("--api-host", default="127.0.0.1")
     parser.add_argument("--api-port", type=int, default=DEFAULT_API_PORT)
     parser.add_argument("--requested-volume-units", type=int, default=10000)
-    parser.add_argument("--tick-batch-size", type=int, default=16)
+    parser.add_argument("--tick-batch-size", type=int, default=200)
     parser.add_argument("--order-ttl-seconds", type=int, default=900)
     parser.add_argument("--api-timeout-seconds", type=int, default=60)
     parser.add_argument("--metrics-enabled", action=argparse.BooleanOptionalAction, default=True)
