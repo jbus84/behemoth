@@ -26,7 +26,7 @@ DEFAULT_PREDICTIONS_DIR = (
 )
 DEFAULT_TICK_ROOT = "/Users/danielfisher/Desktop/dukascopy_ticks"
 DEFAULT_OUTPUT_DIR = "data/analysis/spotlight_ticks"
-DEFAULT_PRE_BARS = 3
+DEFAULT_PRE_BARS = 0
 DEFAULT_BAR_TICKS = 100
 # Evaluation window: only extract events whose close_ts falls within this range.
 # Leave empty to extract events for the full model month.
@@ -61,6 +61,14 @@ def _parse_args() -> argparse.Namespace:
         default=0,
         help="Cap the number of events extracted per symbol (0 = no limit). "
         "Use to keep tick counts manageable for dense symbols like USDJPY.",
+    )
+    parser.add_argument(
+        "--lock-dir",
+        default="",
+        help="Directory containing locked prediction parquets "
+        "({lock_dir}/{symbol.lower()}_oco_locked_predictions.parquet). "
+        "When set, uses locked predictions as the event source instead of "
+        "monthly predictions — eliminates wrong-candidate cursor contamination.",
     )
     return parser.parse_args()
 
@@ -225,7 +233,13 @@ def main() -> None:
 
     failures: list[str] = []
     for symbol in symbols:
-        pred_path = predictions_dir / f"{symbol}_oco_monthly_predictions.parquet"
+        # Resolve event source: locked predictions (preferred) or monthly predictions
+        lock_dir = Path(args.lock_dir) if args.lock_dir.strip() else None
+        if lock_dir is not None:
+            pred_path = lock_dir / f"{symbol.lower()}_oco_locked_predictions.parquet"
+        else:
+            pred_path = predictions_dir / f"{symbol}_oco_monthly_predictions.parquet"
+
         if not pred_path.exists():
             print(f"[spotlight] {symbol}: predictions file not found: {pred_path}", file=sys.stderr)
             failures.append(symbol)
