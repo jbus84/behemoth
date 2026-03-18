@@ -26,6 +26,8 @@ DEFAULT_PREDICTIONS_DIR = (
 )
 DEFAULT_TICK_ROOT = "/Users/danielfisher/Desktop/dukascopy_ticks"
 DEFAULT_OUTPUT_DIR = "data/analysis/spotlight_ticks"
+# 0 pre-bars: only extract the event bar itself, no warmup bars.
+# Warmup bars from non-locked candidates contaminate the server's candidate_cursor.
 DEFAULT_PRE_BARS = 0
 DEFAULT_BAR_TICKS = 100
 # Evaluation window: only extract events whose close_ts falls within this range.
@@ -231,10 +233,11 @@ def main() -> None:
     predictions_dir = Path(args.predictions_dir)
     output_dir = Path(args.output_dir)
 
+    # Resolve event source once — either locked predictions or monthly predictions.
+    # Locked parquet filenames use lowercase symbol; monthly use uppercase as-is.
+    lock_dir = Path(args.lock_dir) if args.lock_dir.strip() else None
     failures: list[str] = []
     for symbol in symbols:
-        # Resolve event source: locked predictions (preferred) or monthly predictions
-        lock_dir = Path(args.lock_dir) if args.lock_dir.strip() else None
         if lock_dir is not None:
             pred_path = lock_dir / f"{symbol.lower()}_oco_locked_predictions.parquet"
         else:
