@@ -8,6 +8,7 @@ import com.behemoth.jforex.domain.PredictionDecision;
 import com.behemoth.jforex.reporting.Stage14ArtifactWriter;
 import com.behemoth.jforex.state.OcoGroupState;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -84,5 +85,20 @@ class Stage14ArtifactWriterTest {
         assertThat(tempDir.resolve("GBPUSD_local_jforex_signal_parity_summary.csv")).exists();
         assertThat(Files.readString(tempDir.resolve("GBPUSD_local_jforex_operational_ready_summary.csv")))
                 .contains("true");
+    }
+
+    @Test
+    void recordTradeOutcome_writesEnrichedExecutionEvent() throws Exception {
+        Path tmp = Files.createTempDirectory("s14test");
+        Stage14ArtifactWriter writer = new Stage14ArtifactWriter(tmp, "local_jforex");
+        writer.recordTradeOutcome("EURUSD", "OCO_EURUSD_GROUP1", "uid_a", "BUY", 1.08500, 1.08538, 3.8);
+        writer.writeReports(List.of("EURUSD"), List.of());
+
+        Path events = tmp.resolve("EURUSD_local_jforex_runtime_events.csv");
+        String content = Files.readString(events);
+        assertThat(content).contains("trade_outcome");
+        assertThat(content).contains("candidate_uid=uid_a");
+        assertThat(content).contains("side=BUY");
+        assertThat(content).contains("pnl_pips=3.8");
     }
 }

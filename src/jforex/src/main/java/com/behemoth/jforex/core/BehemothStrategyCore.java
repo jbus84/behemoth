@@ -440,6 +440,20 @@ public final class BehemothStrategyCore {
                 artifactWriter.recordTradeSyncFailure(event.symbol(), "trade_update_sync_failure", exc.getMessage());
             }
         }
+        // emit per-trade outcome for reconciliation
+        if (action != null && action.group() != null && action.leg() != null) {
+            double fillPrice = action.leg().fillPrice != null ? action.leg().fillPrice : Double.NaN;
+            double pnlValue = event.pnlPips() != null ? event.pnlPips() : Double.NaN;
+            artifactWriter.recordTradeOutcome(
+                    event.symbol(),
+                    action.group().groupLabel,
+                    action.group().candidateUid != null ? action.group().candidateUid : "",
+                    action.leg().label,
+                    fillPrice,
+                    event.closePrice(),
+                    pnlValue
+            );
+        }
         refreshActiveOcoGauge(event.symbol());
     }
 

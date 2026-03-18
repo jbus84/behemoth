@@ -75,6 +75,27 @@ public final class Stage14ArtifactWriter {
         events.add(EventRow.pass(symbol, "execution", "order_filled", groupLabel + ":" + legLabel));
     }
 
+    public synchronized void recordTradeOutcome(
+            String symbol,
+            String groupLabel,
+            String candidateUid,
+            String sideLabel,
+            double fillPrice,
+            double closePrice,
+            double pnlPips
+    ) {
+        events.add(EventRow.pass(
+                symbol,
+                "execution",
+                "trade_outcome",
+                "candidate_uid=" + candidateUid
+                        + "|side=" + sideLabel
+                        + "|fill_price=" + fillPrice
+                        + "|close_price=" + closePrice
+                        + "|pnl_pips=" + pnlPips
+        ));
+    }
+
     public synchronized void recordSiblingCancelAttempt(String symbol, String groupLabel, String legLabel) {
         events.add(EventRow.pass(symbol, "lifecycle", "sibling_cancel_attempt", groupLabel + ":" + legLabel));
     }
