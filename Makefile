@@ -162,7 +162,7 @@ jforex-outcome-parity:
 
 local-jforex-cert:
 	uv run python scripts/validate_local_jforex_surrogate.py \
-		--stage12-summary-glob '$(or $(STAGE12_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_stage12_api_parity_summary.csv)' \
+		--stage12-summary-glob '$(or $(STAGE12_SUMMARY_GLOB),data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv)' \
 		--local-signal-summary-glob '$(or $(LOCAL_SIGNAL_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_local_jforex_signal_parity_summary.csv)' \
 		--local-execution-summary-glob '$(or $(LOCAL_EXECUTION_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_local_jforex_execution_parity_summary.csv)' \
 		--local-lifecycle-summary-glob '$(or $(LOCAL_LIFECYCLE_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_local_jforex_oco_lifecycle_summary.csv)' \

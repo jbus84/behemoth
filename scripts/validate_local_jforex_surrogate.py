@@ -182,7 +182,7 @@ def build_artifacts(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD")
-    parser.add_argument("--stage12-summary-glob", default="data/analysis/backtest_reconcile/*_stage12_api_parity_summary.csv")
+    parser.add_argument("--stage12-summary-glob", default="data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv")
     parser.add_argument("--local-signal-summary-glob", default="data/analysis/backtest_reconcile/*_local_jforex_signal_parity_summary.csv")
     parser.add_argument("--local-execution-summary-glob", default="data/analysis/backtest_reconcile/*_local_jforex_execution_parity_summary.csv")
     parser.add_argument("--local-lifecycle-summary-glob", default="data/analysis/backtest_reconcile/*_local_jforex_oco_lifecycle_summary.csv")

@@ -1,0 +1,32 @@
+from __future__ import annotations
+
+import csv
+from pathlib import Path
+
+import pandas as pd
+
+
+def test_stage12_bridge_reads_from_stage13_summary(tmp_path: Path) -> None:
+    from scripts.validate_local_jforex_surrogate import build_artifacts
+
+    # Write a minimal stage13 summary CSV (single multi-symbol file)
+    stage13 = tmp_path / "stage13_dukascopy_testclient_summary.csv"
+    with open(stage13, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["symbol", "stage12_api_parity_pass", "verdict"])
+        w.writeheader()
+        w.writerow({"symbol": "EURUSD", "stage12_api_parity_pass": "True", "verdict": "green"})
+
+    summary, checks = build_artifacts(
+        symbols=["EURUSD"],
+        stage12_summary_glob=str(stage13),
+        local_signal_summary_glob="",
+        local_execution_summary_glob="",
+        local_lifecycle_summary_glob="",
+        local_operational_summary_glob="",
+        out_summary_csv=tmp_path / "summary.csv",
+        out_checks_csv=tmp_path / "checks.csv",
+        report_out=tmp_path / "report.md",
+    )
+    stage12_row = checks[checks["check_id"] == "STAGE12_API_PARITY_PASS"]
+    assert len(stage12_row) > 0, "STAGE12_API_PARITY_PASS check not found in checks output"
+    assert stage12_row["status"].iloc[0] == "pass"
