@@ -33,6 +33,8 @@ def parse_order_label_close_ts(label: str) -> "datetime | None":
         return datetime.strptime(m.group(1), "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
     except ValueError:
         return None
+
+
 DEFAULT_LOCK_DIR = "configs/research/governance/oco_history_dukascopy_candidate/2025-07"
 DEFAULT_RECONCILE_DIR = "data/analysis/backtest_reconcile"
 
@@ -165,6 +167,8 @@ def compare_outcomes(
     signal_coverage_ratio = (
         jforex_selected_total / locked_count if locked_count > 0 else 0.0
     )
+    # signal_coverage_pass is included in the result for diagnostics but does NOT gate
+    # overall_pass — only order_coverage_pass (per-event) is used as the gate.
     signal_coverage_pass = signal_coverage_ratio >= signal_coverage_threshold
 
     execution_clean_pass = (
@@ -179,6 +183,7 @@ def compare_outcomes(
     )
     order_coverage_pass = order_coverage_ratio >= signal_coverage_threshold
 
+    # signal_coverage_pass is informational only; order_coverage_pass is the gate.
     overall_pass = order_coverage_pass and execution_clean_pass and has_trades
 
     return {
