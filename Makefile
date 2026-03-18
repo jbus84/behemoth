@@ -125,7 +125,7 @@ local-jforex-parity-spotlight:
 		--report-dir $(or $(REPORT_DIR),data/analysis/backtest_reconcile) \
 		--api-port $(or $(API_PORT),8000) \
 		--requested-volume-units $(or $(REQUESTED_VOLUME_UNITS),10000) \
-		--tick-batch-size $(or $(TICK_BATCH_SIZE),256) \
+		--tick-batch-size $(or $(TICK_BATCH_SIZE),100) \
 		--order-ttl-seconds $(or $(ORDER_TTL_SECONDS),900) \
 		--api-timeout-seconds $(or $(API_TIMEOUT_SECONDS),60) \
 		--metrics-port-base $(or $(METRICS_PORT_BASE),9465) \
