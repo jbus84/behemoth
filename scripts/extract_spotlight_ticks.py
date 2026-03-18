@@ -26,9 +26,13 @@ DEFAULT_PREDICTIONS_DIR = (
 )
 DEFAULT_TICK_ROOT = "/Users/danielfisher/Desktop/dukascopy_ticks"
 DEFAULT_OUTPUT_DIR = "data/analysis/spotlight_ticks"
-# 0 pre-bars: only extract the event bar itself, no warmup bars.
-# Warmup bars from non-locked candidates contaminate the server's candidate_cursor.
-DEFAULT_PRE_BARS = 0
+# 290 pre-bars: server requires full_warmup_bars=289 bars before compute_features
+# can return a result (cost_window=288 is the binding constraint). Providing 290
+# pre-event bars ensures the event bar itself always has sufficient history.
+# When used with --lock-dir, only the locked candidate's events are extracted, so
+# pre-event bars that match earlier (non-selected) entries in the prediction index
+# advance the cursor sequentially — no cross-candidate contamination.
+DEFAULT_PRE_BARS = 290
 DEFAULT_BAR_TICKS = 100
 # Evaluation window: only extract events whose close_ts falls within this range.
 # Leave empty to extract events for the full model month.

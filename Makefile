@@ -105,14 +105,14 @@ local-jforex-parity-ordinal:
 
 local-jforex-parity-spotlight:
 	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/extract_spotlight_ticks.py \
-		--symbols $(or $(SYMBOLS),EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD) \
+		$(if $(SYMBOLS),--symbols "$(SYMBOLS)",) \
 		--model-month $(or $(MODEL_MONTH),2025-07) \
 		--lock-dir $(or $(LOCK_DIR),configs/research/governance/oco_history_dukascopy_candidate/$(or $(MODEL_MONTH),2025-07)) \
 		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks) \
 		--output-dir $(or $(SPOTLIGHT_DIR),data/analysis/spotlight_ticks) \
 		--eval-start $(or $(EVAL_START),2025-07-07T00:00:00Z) \
 		--eval-end $(or $(EVAL_END),2025-07-09T00:00:00Z) \
-		--pre-bars $(or $(PRE_BARS),0)
+		--pre-bars $(or $(PRE_BARS),290)
 	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/run_local_jforex_surrogate_matrix.py \
 		$(if $(SYMBOLS),--symbols "$(SYMBOLS)",) \
 		--start-ts 2000-01-01T00:00:00Z \
