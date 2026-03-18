@@ -199,6 +199,7 @@ def test_load_runtime_events_order_matching():
 
 
 def test_compare_outcomes_per_event_coverage():
+    """order_coverage_pass is still computed and returned, but does not gate overall_pass."""
     from scripts.reconcile_jforex_outcomes import compare_outcomes
 
     result = compare_outcomes(
@@ -207,17 +208,22 @@ def test_compare_outcomes_per_event_coverage():
         locked_gross_pips_total=350.0,
         locked_win_rate=0.7,
         jforex_predict_cycles=200,
-        jforex_selected_total=10,   # aggregate low
+        jforex_selected_total=10,   # low signal coverage: 10/100 = 10%
         jforex_orders_submitted=200,
         jforex_execution_failures=0,
         jforex_lifecycle_failures=0,
         jforex_submitted_group_count=95,  # per-event: 95/100 = 95% > 80%
     )
+    # order_coverage_pass is still computed correctly
     assert result["order_coverage_pass"] is True
-    assert result["overall_pass"] is True
+    assert result["order_coverage_ratio"] == pytest.approx(0.95)
+    # But signal_coverage is the gate: 10% < 80% → overall_pass is False
+    assert result["signal_coverage_pass"] is False
+    assert result["overall_pass"] is False
 
 
-def test_compare_outcomes_zero_submitted_group_count_fails():
+def test_compare_outcomes_signal_coverage_gates_not_order_coverage():
+    """High signal coverage passes overall_pass even when order_coverage_pass is False."""
     from scripts.reconcile_jforex_outcomes import compare_outcomes
 
     result = compare_outcomes(
@@ -226,15 +232,42 @@ def test_compare_outcomes_zero_submitted_group_count_fails():
         locked_gross_pips_total=350.0,
         locked_win_rate=0.7,
         jforex_predict_cycles=100,
-        jforex_selected_total=90,   # high aggregate signal — should NOT save overall_pass
-        jforex_orders_submitted=0,
+        jforex_selected_total=90,    # 90% signal coverage → signal_coverage_pass=True
+        jforex_orders_submitted=3,   # has_trades=True (OCO-blocked but some orders placed)
         jforex_execution_failures=0,
         jforex_lifecycle_failures=0,
-        jforex_submitted_group_count=0,   # zero per-event submissions
+        jforex_submitted_group_count=0,  # 0/100 = 0% order_coverage → order_coverage_pass=False
     )
-    # order_coverage_ratio = 0/100 = 0.0 < 0.8 → order_coverage_pass = False
+    # order_coverage_ratio = 0/100 = 0.0 < 0.8 → order_coverage_pass = False (informational)
     assert result["order_coverage_pass"] is False
-    assert result["overall_pass"] is False
+    # signal_coverage = 90% ≥ 80% AND has_trades=True → overall_pass = True
+    assert result["signal_coverage_pass"] is True
+    assert result["overall_pass"] is True
+
+
+def test_overall_pass_uses_signal_coverage_not_order_coverage():
+    """overall_pass should be True when signal_coverage >= threshold, regardless of order count."""
+    from scripts.reconcile_jforex_outcomes import compare_outcomes
+
+    # High signal coverage (95%), zero orders placed (blocked by open positions)
+    result = compare_outcomes(
+        symbol="GBPUSD",
+        locked_count=100,
+        locked_gross_pips_total=300.0,
+        locked_win_rate=0.72,
+        jforex_predict_cycles=500,
+        jforex_selected_total=95,
+        jforex_orders_submitted=2,
+        jforex_execution_failures=0,
+        jforex_lifecycle_failures=0,
+        jforex_submitted_group_count=2,  # only 2 orders placed (blocked) → order_coverage=2%
+    )
+    assert result["signal_coverage_ratio"] == pytest.approx(0.95)
+    assert result["signal_coverage_pass"] is True
+    assert result["order_coverage_ratio"] == pytest.approx(0.02)
+    assert result["order_coverage_pass"] is False   # still informational
+    # FAILS with old code (uses order_coverage_pass as gate):
+    assert result["overall_pass"] is True           # passes because signal_coverage_pass=True
 
 
 def test_reconcile_writes_per_symbol_csv(tmp_path):
