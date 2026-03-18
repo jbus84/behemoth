@@ -54,6 +54,8 @@ class RunConfig:
     risk_enabled: bool
     universe_mode: str
     ordinal_tolerance: int
+    prediction_tolerance_sec: int
+    locked_predictions_dir: str
 
 
 def _parse_args() -> RunConfig:
@@ -81,8 +83,10 @@ def _parse_args() -> RunConfig:
     parser.add_argument("--phase-bar-ticks", type=int, default=100)
     parser.add_argument("--starting-balance", type=int, default=100000)
     parser.add_argument("--risk-enabled", action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument("--universe-mode", choices=["tolerant", "nearest", "ordinal"], default="tolerant")
+    parser.add_argument("--universe-mode", choices=["tolerant", "nearest", "ordinal", "exact"], default="tolerant")
     parser.add_argument("--ordinal-tolerance", type=int, default=0)
+    parser.add_argument("--prediction-tolerance-sec", type=int, default=120)
+    parser.add_argument("--locked-predictions-dir", default="")
     args = parser.parse_args()
     symbols = tuple(s.strip().upper() for s in str(args.symbols).split(",") if s.strip())
     if not symbols:
@@ -113,6 +117,8 @@ def _parse_args() -> RunConfig:
         risk_enabled=bool(args.risk_enabled),
         universe_mode=args.universe_mode,
         ordinal_tolerance=int(args.ordinal_tolerance),
+        prediction_tolerance_sec=int(args.prediction_tolerance_sec),
+        locked_predictions_dir=str(args.locked_predictions_dir).strip(),
     )
 
 
@@ -139,6 +145,8 @@ def _poll_health(proc: subprocess.Popen[str], base_url: str, timeout_sec: float)
 
 
 def _prediction_path(cfg: RunConfig, symbol: str) -> str:
+    if cfg.locked_predictions_dir:
+        return str(Path(cfg.locked_predictions_dir) / f"{symbol.lower()}_oco_locked_predictions.parquet")
     return str(Path(cfg.predictions_dir) / f"{symbol}_oco_monthly_predictions.parquet")
 
 
@@ -162,7 +170,7 @@ def _start_api(cfg: RunConfig, symbol: str) -> tuple[subprocess.Popen[str], dequ
             "BEHEMOTH_HISTORICAL_PREDICTION_UNIVERSE_MODE": cfg.universe_mode,
             "BEHEMOTH_HISTORICAL_PREDICTION_ORDINAL_TOLERANCE": str(cfg.ordinal_tolerance),
             "BEHEMOTH_HISTORICAL_PREDICTION_PAYLOAD_MODE": "locked",
-            "BEHEMOTH_HISTORICAL_PREDICTION_TOLERANCE_SEC": "120",
+            "BEHEMOTH_HISTORICAL_PREDICTION_TOLERANCE_SEC": str(cfg.prediction_tolerance_sec),
             "BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE": _prediction_path(cfg, symbol),
             "BEHEMOTH_FORCE_MODEL_MONTH": cfg.model_month,
             # Use in-memory DuckDB (empty string) to avoid file-backed WAL

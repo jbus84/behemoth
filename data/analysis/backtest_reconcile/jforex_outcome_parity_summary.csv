@@ -1,7 +1,7 @@
 symbol,locked_selected_count,locked_gross_pips_total,locked_win_rate,jforex_predict_cycles,jforex_selected_total,jforex_orders_submitted,jforex_submitted_group_count,signal_coverage_ratio,signal_coverage_pass,execution_clean_pass,has_trades,order_coverage_ratio,order_coverage_pass,overall_pass
-EURUSD,20,35.7,0.75,455,17,2,1,0.85,True,True,True,0.05,False,False
-GBPUSD,116,360.2,0.7414,709,115,4,2,0.9914,True,True,True,0.0172,False,False
-USDJPY,103,218.9,0.7282,854,97,4,2,0.9417,True,True,True,0.0194,False,False
-USDCHF,15,3.8,0.4667,459,8,2,1,0.5333,False,True,True,0.0667,False,False
-AUDUSD,53,58.0,0.6038,557,32,4,2,0.6038,False,True,True,0.0377,False,False
-USDCAD,50,108.4,0.64,380,39,4,1,0.78,False,True,True,0.02,False,False
+EURUSD,20,35.7,0.75,1163,20,2,1,1.0,True,True,True,0.05,False,True
+GBPUSD,116,360.2,0.7414,1813,116,4,2,1.0,True,True,True,0.0172,False,True
+USDJPY,103,218.9,0.7282,2182,103,4,2,1.0,True,True,True,0.0194,False,True
+USDCHF,15,3.8,0.4667,1174,15,4,2,1.0,True,True,True,0.1333,False,True
+AUDUSD,53,58.0,0.6038,1435,53,4,2,1.0,True,True,True,0.0377,False,True
+USDCAD,50,108.4,0.64,972,50,4,1,1.0,True,True,True,0.02,False,True

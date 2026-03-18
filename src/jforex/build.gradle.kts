@@ -43,7 +43,7 @@ tasks.register<JavaExec>("runLocalJForexTester") {
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set("com.behemoth.jforex.LocalJForexTesterRunner")
     workingDir = rootProject.projectDir
-    jvmArgs = listOf("-Djava.awt.headless=true")
+    jvmArgs = listOf("-Djava.awt.headless=true", "-Duser.timezone=UTC")
 }
 
 tasks.register<JavaExec>("runJForexTester") {

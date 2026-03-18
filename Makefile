@@ -132,7 +132,10 @@ local-jforex-parity-spotlight:
 		--warmup-ticks 0 \
 		--lookback-days 0 \
 		--phase-bar-ticks $(or $(PHASE_BAR_TICKS),100) \
-		--starting-balance $(or $(STARTING_BALANCE),100000)
+		--starting-balance $(or $(STARTING_BALANCE),100000) \
+		--universe-mode $(or $(UNIVERSE_MODE),tolerant) \
+		--prediction-tolerance-sec $(or $(PREDICTION_TOLERANCE_SEC),1) \
+		--locked-predictions-dir $(or $(LOCKED_PREDICTIONS_DIR),configs/research/governance/oco_history_dukascopy_candidate/2025-07)
 	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/reconcile_jforex_outcomes.py \
 		$(if $(SYMBOLS),--symbols "$(SYMBOLS)",) \
 		--lock-dir $(or $(LOCK_DIR),configs/research/governance/oco_history_dukascopy_candidate/2025-07) \
