@@ -107,13 +107,12 @@ local-jforex-parity-spotlight:
 	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/extract_spotlight_ticks.py \
 		--symbols $(or $(SYMBOLS),EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD) \
 		--model-month $(or $(MODEL_MONTH),2025-07) \
-		--predictions-dir $(or $(PREDICTIONS_DIR),data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap) \
+		--lock-dir $(or $(LOCK_DIR),configs/research/governance/oco_history_dukascopy_candidate/$(or $(MODEL_MONTH),2025-07)) \
 		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks) \
 		--output-dir $(or $(SPOTLIGHT_DIR),data/analysis/spotlight_ticks) \
 		--eval-start $(or $(EVAL_START),2025-07-07T00:00:00Z) \
 		--eval-end $(or $(EVAL_END),2025-07-09T00:00:00Z) \
-		--pre-bars $(or $(PRE_BARS),3) \
-		--max-events $(or $(MAX_EVENTS),600)
+		--pre-bars $(or $(PRE_BARS),0)
 	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/run_local_jforex_surrogate_matrix.py \
 		$(if $(SYMBOLS),--symbols "$(SYMBOLS)",) \
 		--start-ts 2000-01-01T00:00:00Z \
@@ -140,11 +139,8 @@ local-jforex-parity-spotlight:
 		--reconcile-dir $(or $(REPORT_DIR),data/analysis/backtest_reconcile) \
 		--eval-start $(or $(EVAL_START),2025-07-07T00:00:00Z) \
 		--eval-end $(or $(EVAL_END),2025-07-09T00:00:00Z) \
-		--signal-coverage-threshold $(or $(SIGNAL_COVERAGE_THRESHOLD),0.01) \
+		--signal-coverage-threshold $(or $(SIGNAL_COVERAGE_THRESHOLD),0.8) \
 		--out-csv $(or $(REPORT_DIR),data/analysis/backtest_reconcile)/jforex_outcome_parity_summary.csv
-# NOTE: threshold=0.01 above is interim — spotlight bar alignment produces ~2-7% coverage.
-# See docs/superpowers/plans/2026-03-18-stage14-full-outcome-reconciliation.md Task 7
-# for the investigation guide. Raise to 0.8 once bar alignment is fixed.
 
 jforex-dukascopy-matrix:
 	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/run_jforex_dukascopy_matrix.py \
