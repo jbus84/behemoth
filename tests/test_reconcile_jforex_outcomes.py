@@ -147,3 +147,70 @@ def test_compare_outcomes_fail_low_coverage():
     )
     assert result["signal_coverage_pass"] is False
     assert result["overall_pass"] is False
+
+
+from datetime import datetime, timezone
+
+
+def test_parse_order_label_close_ts():
+    from scripts.reconcile_jforex_outcomes import parse_order_label_close_ts
+
+    label = "OCO_EURUSD_T100_H6_TS20250707162921_RIDNA_CID0448B71394297DAE_BUY"
+    ts = parse_order_label_close_ts(label)
+    assert ts == datetime(2025, 7, 7, 16, 29, 21, tzinfo=timezone.utc)
+
+
+def test_parse_order_label_close_ts_missing():
+    from scripts.reconcile_jforex_outcomes import parse_order_label_close_ts
+
+    assert parse_order_label_close_ts("BAD_LABEL") is None
+
+
+def test_load_runtime_events_order_matching():
+    """order_submitted detail encodes close_ts; loader should extract group close timestamps."""
+    from scripts.reconcile_jforex_outcomes import load_runtime_events
+    import tempfile, csv
+
+    with tempfile.TemporaryDirectory() as td:
+        tmp = Path(td)
+        # Write a minimal runtime events CSV
+        events_path = tmp / "EURUSD_local_jforex_runtime_events.csv"
+        rows = [
+            {"event_ts_utc": "2025-07-07T16:29:21Z", "symbol": "EURUSD",
+             "category": "execution", "event_name": "order_submitted", "pass": "true",
+             "detail": "OCO_EURUSD_T100_H6_TS20250707162921_RIDNA_CID001:OCO_EURUSD_T100_H6_TS20250707162921_RIDNA_CID001_BUY"},
+            {"event_ts_utc": "2025-07-07T16:29:21Z", "symbol": "EURUSD",
+             "category": "execution", "event_name": "order_submitted", "pass": "true",
+             "detail": "OCO_EURUSD_T100_H6_TS20250707162921_RIDNA_CID001:OCO_EURUSD_T100_H6_TS20250707162921_RIDNA_CID001_SELL"},
+            {"event_ts_utc": "2025-07-07T16:29:22Z", "symbol": "EURUSD",
+             "category": "execution", "event_name": "trade_update_synced", "pass": "true",
+             "detail": "LOCAL-1:CLOSED"},
+        ]
+        with open(events_path, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+            writer.writeheader()
+            writer.writerows(rows)
+
+        events = load_runtime_events(tmp, "EURUSD")
+        # Two legs submitted → 1 unique group close_ts
+        assert events["submitted_group_close_ts_count"] == 1, f"Expected 1 unique group ts, got {events.get('submitted_group_close_ts_count')}"
+        assert events["completed_group_count"] == 1, f"Expected 1 completed group, got {events.get('completed_group_count')}"
+
+
+def test_compare_outcomes_per_event_coverage():
+    from scripts.reconcile_jforex_outcomes import compare_outcomes
+
+    result = compare_outcomes(
+        symbol="EURUSD",
+        locked_count=100,
+        locked_gross_pips_total=350.0,
+        locked_win_rate=0.7,
+        jforex_predict_cycles=200,
+        jforex_selected_total=10,   # aggregate low
+        jforex_orders_submitted=200,
+        jforex_execution_failures=0,
+        jforex_lifecycle_failures=0,
+        jforex_submitted_group_count=95,  # per-event: 95/100 = 95% > 80%
+    )
+    assert result["order_coverage_pass"] is True
+    assert result["overall_pass"] is True

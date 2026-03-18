@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import argparse
 import csv
+import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import duckdb
@@ -16,6 +18,21 @@ import pandas as pd
 
 
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
+
+
+def parse_order_label_close_ts(label: str) -> "datetime | None":
+    """Extract the prediction bar close_ts from a JForex order label.
+
+    Labels are formatted as: OCO_{sym}_T{ticks}_H{horizon}_TS{YYYYMMDDHHMMSS}_...
+    The TS segment encodes the prediction bar close time in UTC.
+    """
+    m = re.search(r"_TS(\d{14})_", label)
+    if not m:
+        return None
+    try:
+        return datetime.strptime(m.group(1), "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
 DEFAULT_LOCK_DIR = "configs/research/governance/oco_history_dukascopy_candidate/2025-07"
 DEFAULT_RECONCILE_DIR = "data/analysis/backtest_reconcile"
 
@@ -66,6 +83,9 @@ def load_runtime_events(reconcile_dir: Path, symbol: str) -> dict:
             "predict_cycles": 0, "orders_submitted": 0, "orders_filled": 0,
             "execution_failures": 0, "lifecycle_failures": 0, "lifecycle_violations": 0,
             "selected_count_total": 0,
+            "submitted_group_close_ts_count": 0,
+            "completed_group_count": 0,
+            "submitted_group_close_ts": [],
         }
     path = candidates[0]
     df = pd.read_csv(path)
@@ -85,6 +105,25 @@ def load_runtime_events(reconcile_dir: Path, symbol: str) -> dict:
         for part in str(detail).split(";"):
             if part.startswith("selected_count="):
                 selected_total += int(part.split("=")[1])
+
+    # Per-event: extract unique group close_ts from order_submitted detail strings.
+    # Detail format: "{groupLabel}:{legLabel}" — groupLabel encodes TS{YYYYMMDDHHMMSS}.
+    submitted_close_ts: set = set()
+    for detail in df.loc[df["event_name"] == "order_submitted", "detail"].astype(str):
+        group_label = detail.split(":")[0]
+        ts = parse_order_label_close_ts(group_label)
+        if ts is not None:
+            submitted_close_ts.add(ts)
+
+    # Count UNIQUE broker positions that reached a terminal state (CLOSED or CANCELLED).
+    # trade_update_synced detail format: "{brokerPosId}:{status}".
+    # Deduplicate on brokerPosId so two legs from the same group don't double-count.
+    completed_ids: set = set()
+    for detail in df.loc[df["event_name"] == "trade_update_synced", "detail"].astype(str):
+        if ":CLOSED" in detail or ":CANCELLED" in detail:
+            completed_ids.add(detail.split(":")[0])
+    completed_count = len(completed_ids)
+
     return {
         "predict_cycles": predict_cycles,
         "orders_submitted": orders_submitted,
@@ -93,6 +132,9 @@ def load_runtime_events(reconcile_dir: Path, symbol: str) -> dict:
         "lifecycle_failures": lifecycle_failures,
         "lifecycle_violations": lifecycle_violations,
         "selected_count_total": selected_total,
+        "submitted_group_close_ts_count": len(submitted_close_ts),
+        "completed_group_count": completed_count,
+        "submitted_group_close_ts": sorted(submitted_close_ts),
     }
 
 
@@ -107,12 +149,15 @@ def compare_outcomes(
     jforex_execution_failures: int,
     jforex_lifecycle_failures: int,
     signal_coverage_threshold: float = 0.8,
+    jforex_submitted_group_count: int = 0,
 ) -> dict:
     """Compare JForex outcomes against locked Python backtest predictions.
 
     Args:
         signal_coverage_threshold: minimum ratio of jforex_selected_total / locked_count
             to consider signal coverage acceptable. Default 0.8 (80%).
+        jforex_submitted_group_count: number of unique prediction bar close_ts values seen
+            in order_submitted events (per-event order coverage).
 
     Returns:
         dict with per-check pass/fail and overall verdict.
@@ -128,7 +173,15 @@ def compare_outcomes(
 
     has_trades = jforex_orders_submitted > 0
 
-    overall_pass = signal_coverage_pass and execution_clean_pass and has_trades
+    # Per-event order coverage: unique group submissions vs distinct locked events
+    order_coverage_ratio = (
+        jforex_submitted_group_count / locked_count if locked_count > 0 else 0.0
+    )
+    order_coverage_pass = order_coverage_ratio >= signal_coverage_threshold
+
+    # Use per-event order coverage when available; fall back to aggregate signal coverage.
+    coverage_pass = order_coverage_pass if jforex_submitted_group_count > 0 else signal_coverage_pass
+    overall_pass = coverage_pass and execution_clean_pass and has_trades
 
     return {
         "symbol": symbol,
@@ -138,10 +191,13 @@ def compare_outcomes(
         "jforex_predict_cycles": jforex_predict_cycles,
         "jforex_selected_total": jforex_selected_total,
         "jforex_orders_submitted": jforex_orders_submitted,
+        "jforex_submitted_group_count": jforex_submitted_group_count,
         "signal_coverage_ratio": round(signal_coverage_ratio, 4),
         "signal_coverage_pass": signal_coverage_pass,
         "execution_clean_pass": execution_clean_pass,
         "has_trades": has_trades,
+        "order_coverage_ratio": round(order_coverage_ratio, 4),
+        "order_coverage_pass": order_coverage_pass,
         "overall_pass": overall_pass,
     }
 
@@ -195,6 +251,7 @@ def main() -> None:
             jforex_execution_failures=events["execution_failures"],
             jforex_lifecycle_failures=events["lifecycle_failures"],
             signal_coverage_threshold=args.signal_coverage_threshold,
+            jforex_submitted_group_count=events["submitted_group_close_ts_count"],
         )
         results.append(result)
 
