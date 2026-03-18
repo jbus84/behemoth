@@ -235,3 +235,27 @@ def test_compare_outcomes_zero_submitted_group_count_fails():
     # order_coverage_ratio = 0/100 = 0.0 < 0.8 → order_coverage_pass = False
     assert result["order_coverage_pass"] is False
     assert result["overall_pass"] is False
+
+
+def test_reconcile_writes_per_symbol_csv(tmp_path):
+    from scripts.reconcile_jforex_outcomes import write_per_symbol_summaries
+    import pandas as pd
+
+    results = [
+        {"symbol": "EURUSD", "overall_pass": True, "order_coverage_ratio": 0.95,
+         "execution_clean_pass": True, "has_trades": True},
+        {"symbol": "GBPUSD", "overall_pass": False, "order_coverage_ratio": 0.5,
+         "execution_clean_pass": True, "has_trades": True},
+    ]
+    write_per_symbol_summaries(results, out_dir=tmp_path)
+
+    eurusd_csv = tmp_path / "EURUSD_local_jforex_outcome_parity_summary.csv"
+    assert eurusd_csv.exists(), f"Expected {eurusd_csv} to exist"
+    df = pd.read_csv(eurusd_csv)
+    assert "jforex_outcome_parity_pass" in df.columns, "Missing jforex_outcome_parity_pass column"
+    # overall_pass is True, so jforex_outcome_parity_pass should also be truthy
+    val = df["jforex_outcome_parity_pass"].iloc[0]
+    assert val in (True, "True", "true", 1), f"Unexpected value: {val}"
+
+    gbpusd_csv = tmp_path / "GBPUSD_local_jforex_outcome_parity_summary.csv"
+    assert gbpusd_csv.exists(), f"Expected {gbpusd_csv} to exist"

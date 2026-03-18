@@ -205,6 +205,23 @@ def compare_outcomes(
     }
 
 
+def write_per_symbol_summaries(results: list[dict], out_dir: Path) -> None:
+    """Write one CSV per symbol for consumption by validate_local_jforex_surrogate.py.
+
+    Adds an explicit 'jforex_outcome_parity_pass' column aliasing 'overall_pass'
+    so the InputSource candidate column lookup is unambiguous.
+    """
+    for r in results:
+        symbol = r["symbol"]
+        row = dict(r)
+        row["jforex_outcome_parity_pass"] = row["overall_pass"]
+        path = out_dir / f"{symbol}_local_jforex_outcome_parity_summary.csv"
+        with open(path, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+            writer.writeheader()
+            writer.writerow(row)
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -271,6 +288,8 @@ def main() -> None:
             f"{'yes' if r['execution_clean_pass'] else 'NO':>7} "
             f"{verdict:>8}"
         )
+
+    write_per_symbol_summaries(results, out_dir=reconcile_dir)
 
     # Write CSV
     out_path = Path(args.out_csv)
