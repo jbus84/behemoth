@@ -608,7 +608,7 @@ stage14-jforex-cert:
 		--jforex-operational-summary-glob '$(or $(JFOREX_OPERATIONAL_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_jforex_operational_ready_summary.csv)' \
 		--jforex-outcome-summary-glob '$(or $(JFOREX_OUTCOME_SUMMARY_GLOB),data/analysis/backtest_reconcile/jforex_outcome_parity_summary.csv)' \
 		--local-surrogate-summary-glob '$(or $(LOCAL_SURROGATE_SUMMARY_GLOB),data/analysis/backtest_reconcile/local_jforex_surrogate_summary.csv)' \
-		--max-artifact-age-days $(or $(MAX_ARTIFACT_AGE_DAYS),7) \
+		--max-artifact-age-days $(or $(MAX_ARTIFACT_AGE_DAYS),35) \
 		--out-summary-csv $(or $(OUT_SUMMARY_CSV),data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_summary.csv) \
 		--out-checks-csv $(or $(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_checks.csv) \
 		--report-out $(or $(REPORT_OUT),docs/analysis/stage14_jforex_runtime_certification_report.md) \

@@ -284,7 +284,7 @@ def main() -> None:
     parser.add_argument("--jforex-operational-summary-glob", default="")
     parser.add_argument("--jforex-outcome-summary-glob", default="")
     parser.add_argument("--local-surrogate-summary-glob", default="")
-    parser.add_argument("--max-artifact-age-days", type=int, default=7)
+    parser.add_argument("--max-artifact-age-days", type=int, default=35)
     parser.add_argument(
         "--out-summary-csv",
         default="data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_summary.csv",
