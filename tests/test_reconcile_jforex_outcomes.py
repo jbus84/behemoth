@@ -292,3 +292,89 @@ def test_reconcile_writes_per_symbol_csv(tmp_path):
 
     gbpusd_csv = tmp_path / "GBPUSD_local_jforex_outcome_parity_summary.csv"
     assert gbpusd_csv.exists(), f"Expected {gbpusd_csv} to exist"
+
+
+def test_reconcile_per_symbol_csv_includes_evaluated_at_utc(tmp_path):
+    """Per-symbol output CSV must propagate evaluated_at_utc from the result dict."""
+    from scripts.reconcile_jforex_outcomes import write_per_symbol_summaries
+    import pandas as pd
+    from datetime import datetime, timezone
+
+    results = [
+        {"symbol": "EURUSD", "overall_pass": True, "evaluated_at_utc": "2026-03-19T12:00:00Z"},
+    ]
+    write_per_symbol_summaries(results, out_dir=tmp_path)
+
+    df = pd.read_csv(tmp_path / "EURUSD_local_jforex_outcome_parity_summary.csv")
+    assert "evaluated_at_utc" in df.columns, "Per-symbol CSV missing evaluated_at_utc"
+    ts = df["evaluated_at_utc"].iloc[0]
+    from datetime import datetime
+    parsed = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+    assert parsed.tzinfo is not None
+
+
+def test_reconcile_aggregate_csv_includes_evaluated_at_utc(tmp_path, monkeypatch):
+    """Aggregate output CSV written by main() must include evaluated_at_utc for each symbol."""
+    import pandas as pd
+    import sys
+    import duckdb
+    import csv as csv_mod
+
+    # Write minimal locked predictions and runtime events
+    lock_dir = tmp_path / "lock"
+    lock_dir.mkdir()
+    reconcile_dir = tmp_path / "reconcile"
+    reconcile_dir.mkdir()
+    out_csv = tmp_path / "out.csv"
+
+    # Minimal parquet: one selected prediction for EURUSD
+    con = duckdb.connect()
+    con.execute(
+        f"COPY (SELECT '2025-07-07T12:00:00Z'::TIMESTAMPTZ AS close_ts, "
+        "'uid_a' AS candidate_uid, 0.65 AS pred_prob, 3.5 AS target_gross_pips, "
+        "1 AS target_gross_pos, 1 AS selected_exec, 0 AS event_ordinal) "
+        f"TO '{lock_dir / 'eurusd_oco_locked_predictions.parquet'}' (FORMAT PARQUET)"
+    )
+    con.close()
+
+    # Minimal runtime events — one predict_cycle with 1 selection + one order
+    events_path = reconcile_dir / "EURUSD_jforex_runtime_events.csv"
+    with open(events_path, "w", newline="") as f:
+        writer = csv_mod.DictWriter(
+            f,
+            fieldnames=["event_ts_utc", "symbol", "category", "event_name", "pass", "detail"],
+        )
+        writer.writeheader()
+        writer.writerow({
+            "event_ts_utc": "2025-07-07T12:00:00Z", "symbol": "EURUSD",
+            "category": "signal", "event_name": "predict_cycle", "pass": "true",
+            "detail": "selected_count=1",
+        })
+        writer.writerow({
+            "event_ts_utc": "2025-07-07T12:01:00Z", "symbol": "EURUSD",
+            "category": "execution", "event_name": "order_submitted", "pass": "true",
+            "detail": "OCO_EURUSD_T100_H6_TS20250707120000_RIDNA_CID001:BUY",
+        })
+
+    monkeypatch.setattr(
+        sys, "argv",
+        [
+            "reconcile_jforex_outcomes.py",
+            "--symbols", "EURUSD",
+            "--lock-dir", str(lock_dir),
+            "--reconcile-dir", str(reconcile_dir),
+            "--out-csv", str(out_csv),
+        ],
+    )
+    from scripts.reconcile_jforex_outcomes import main
+    try:
+        main()
+    except SystemExit:
+        pass  # exit code 0 or 1 is fine; we just need the CSV written
+
+    df = pd.read_csv(out_csv)
+    assert "evaluated_at_utc" in df.columns, "Aggregate CSV missing evaluated_at_utc"
+    ts = df["evaluated_at_utc"].iloc[0]
+    from datetime import datetime
+    parsed = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+    assert parsed.tzinfo is not None

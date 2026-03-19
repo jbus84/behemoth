@@ -256,6 +256,7 @@ def main() -> None:
     symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
     lock_dir = Path(args.lock_dir)
     reconcile_dir = Path(args.reconcile_dir)
+    now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     results = []
     for symbol in symbols:
@@ -281,6 +282,7 @@ def main() -> None:
             signal_coverage_threshold=args.signal_coverage_threshold,
             jforex_submitted_group_count=events["submitted_group_close_ts_count"],
         )
+        result["evaluated_at_utc"] = now_utc
         results.append(result)
 
     # Print summary table
