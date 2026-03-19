@@ -94,6 +94,7 @@ def _load_summary_rows(source: InputSource) -> pd.DataFrame:
                     "check_id": source.check_id,
                     "pass": _pick_bool(row, source.candidate_columns),
                     "source_path": str(path),
+                    "evaluated_at_utc": str(row.get("evaluated_at_utc") or ""),
                 }
             )
     return pd.DataFrame(rows)
@@ -109,6 +110,7 @@ def build_stage14_artifacts(
     jforex_operational_summary_glob: str,
     jforex_outcome_summary_glob: str = "",
     local_surrogate_summary_glob: str = "",
+    max_artifact_age_days: int = 7,
     out_summary_csv: Path,
     out_checks_csv: Path,
     report_out: Path,
@@ -182,6 +184,19 @@ def build_stage14_artifacts(
                 row[src.check_id] = bool(value)
                 status = "pass" if bool(value) else "fail"
                 details = ""
+            if value is not None and not pd.isna(value) and bool(value) and max_artifact_age_days > 0:
+                eval_ts_str = "" if match.empty else str(match.iloc[-1].get("evaluated_at_utc") or "")
+                if eval_ts_str:
+                    try:
+                        eval_ts = datetime.fromisoformat(eval_ts_str.replace("Z", "+00:00"))
+                        age_days = (datetime.now(timezone.utc) - eval_ts).days
+                        if age_days > max_artifact_age_days:
+                            value = False
+                            status = "fail"
+                            details = f"stale: artifact is {age_days}d old (max {max_artifact_age_days}d)"
+                            row[src.check_id] = False
+                    except ValueError:
+                        pass
             source_path = "" if match.empty else str(match.iloc[-1].get("source_path") or "")
             check_rows.append(
                 {
@@ -268,6 +283,7 @@ def main() -> None:
     parser.add_argument("--jforex-operational-summary-glob", default="")
     parser.add_argument("--jforex-outcome-summary-glob", default="")
     parser.add_argument("--local-surrogate-summary-glob", default="")
+    parser.add_argument("--max-artifact-age-days", type=int, default=7)
     parser.add_argument(
         "--out-summary-csv",
         default="data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_summary.csv",
@@ -294,6 +310,7 @@ def main() -> None:
         jforex_operational_summary_glob=str(args.jforex_operational_summary_glob),
         jforex_outcome_summary_glob=str(args.jforex_outcome_summary_glob),
         local_surrogate_summary_glob=str(args.local_surrogate_summary_glob),
+        max_artifact_age_days=int(args.max_artifact_age_days),
         out_summary_csv=Path(str(args.out_summary_csv)),
         out_checks_csv=Path(str(args.out_checks_csv)),
         report_out=Path(str(args.report_out)),
