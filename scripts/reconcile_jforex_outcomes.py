@@ -163,6 +163,14 @@ def compare_outcomes(
 
     Returns:
         dict with per-check pass/fail and overall verdict.
+
+    Notes:
+        order_coverage_ratio is expected to be materially below 1.0 in live/tester runs.
+        The OCO strategy allows only one open position at a time.  Once an order group is
+        submitted, subsequent predict cycles that select candidates are counted in
+        jforex_selected_total (signal_coverage) but do NOT submit new orders while the
+        position is live.  order_coverage_pass is therefore informational and is intentionally
+        excluded from overall_pass.  signal_coverage_pass is the actionable gate.
     """
     signal_coverage_ratio = (
         jforex_selected_total / locked_count if locked_count > 0 else 0.0
