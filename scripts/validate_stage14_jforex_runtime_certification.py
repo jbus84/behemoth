@@ -107,6 +107,8 @@ def build_stage14_artifacts(
     jforex_execution_summary_glob: str,
     jforex_lifecycle_summary_glob: str,
     jforex_operational_summary_glob: str,
+    jforex_outcome_summary_glob: str = "",
+    local_surrogate_summary_glob: str = "",
     out_summary_csv: Path,
     out_checks_csv: Path,
     report_out: Path,
@@ -141,6 +143,16 @@ def build_stage14_artifacts(
             summary_glob=jforex_operational_summary_glob,
             candidate_columns=("operational_ready_pass", "demo_ready_pass", "overall_pass"),
             excluded_path_substrings=("_local_jforex_",),
+        ),
+        InputSource(
+            check_id="jforex_outcome_parity_pass",
+            summary_glob=jforex_outcome_summary_glob,
+            candidate_columns=("jforex_outcome_parity_pass", "overall_pass"),
+        ),
+        InputSource(
+            check_id="local_jforex_surrogate_pass",
+            summary_glob=local_surrogate_summary_glob,
+            candidate_columns=("local_jforex_surrogate_pass", "verdict"),
         ),
     ]
 
@@ -217,6 +229,9 @@ def build_stage14_artifacts(
         "## Interpretation",
         "- Stage 14 is green only when Stage 13 remains green and all JForex-specific certification checks pass.",
         "- Missing JForex tester/demo artifacts are treated as certification failures until the adapter path is exercised.",
+        "- jforex_outcome_parity_pass: reconciles JForex runtime signal counts against locked Python predictions (signal_coverage_ratio must be 1.0, zero execution failures, trades present).",
+        "- local_jforex_surrogate_pass: the shared Java strategy core must pass all checks in the parquet-driven local surrogate harness before the real broker test is trusted.",
+        "- order_coverage_ratio is expected to be low (<0.2): OCO mechanics block new orders while an existing position is live. This metric is informational; signal_coverage_pass is the gate.",
     ]
     report_out.write_text("\n".join(report_lines).strip() + "\n", encoding="utf-8")
 
@@ -251,6 +266,8 @@ def main() -> None:
     parser.add_argument("--jforex-execution-summary-glob", default="")
     parser.add_argument("--jforex-lifecycle-summary-glob", default="")
     parser.add_argument("--jforex-operational-summary-glob", default="")
+    parser.add_argument("--jforex-outcome-summary-glob", default="")
+    parser.add_argument("--local-surrogate-summary-glob", default="")
     parser.add_argument(
         "--out-summary-csv",
         default="data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_summary.csv",
@@ -275,6 +292,8 @@ def main() -> None:
         jforex_execution_summary_glob=str(args.jforex_execution_summary_glob),
         jforex_lifecycle_summary_glob=str(args.jforex_lifecycle_summary_glob),
         jforex_operational_summary_glob=str(args.jforex_operational_summary_glob),
+        jforex_outcome_summary_glob=str(args.jforex_outcome_summary_glob),
+        local_surrogate_summary_glob=str(args.local_surrogate_summary_glob),
         out_summary_csv=Path(str(args.out_summary_csv)),
         out_checks_csv=Path(str(args.out_checks_csv)),
         report_out=Path(str(args.report_out)),
