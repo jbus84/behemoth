@@ -142,7 +142,7 @@ local-jforex-parity-spotlight:
 		--reconcile-dir $(or $(REPORT_DIR),data/analysis/backtest_reconcile) \
 		--eval-start $(or $(EVAL_START),2025-07-07T00:00:00Z) \
 		--eval-end $(or $(EVAL_END),2025-07-09T00:00:00Z) \
-		--signal-coverage-threshold $(or $(SIGNAL_COVERAGE_THRESHOLD),0.8) \
+		--signal-coverage-threshold $(or $(SIGNAL_COVERAGE_THRESHOLD),1.0) \
 		--out-csv $(or $(REPORT_DIR),data/analysis/backtest_reconcile)/jforex_outcome_parity_summary.csv
 
 jforex-dukascopy-matrix:
@@ -169,7 +169,7 @@ jforex-outcome-parity:
 		--reconcile-dir $(or $(RECONCILE_DIR),data/analysis/backtest_reconcile) \
 		--eval-start $(or $(EVAL_START),2025-07-07T00:00:00Z) \
 		--eval-end $(or $(EVAL_END),2025-07-09T00:00:00Z) \
-		--signal-coverage-threshold $(or $(SIGNAL_COVERAGE_THRESHOLD),0.8) \
+		--signal-coverage-threshold $(or $(SIGNAL_COVERAGE_THRESHOLD),1.0) \
 		--out-csv $(or $(OUT_CSV),data/analysis/backtest_reconcile/jforex_outcome_parity_summary.csv)
 
 local-jforex-cert:
