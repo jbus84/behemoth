@@ -1,7 +1,7 @@
 symbol,stage12_api_parity_pass,local_signal_parity_pass,local_execution_parity_pass,local_lifecycle_pass,local_operational_ready_pass,jforex_outcome_parity_pass,local_jforex_surrogate_pass,missing_inputs,verdict,evaluated_at_utc
-AUDUSD,True,True,True,True,True,True,True,0,green,2026-03-18T11:45:52Z
-EURUSD,True,True,True,True,True,True,True,0,green,2026-03-18T11:45:52Z
-GBPUSD,True,True,True,True,True,True,True,0,green,2026-03-18T11:45:52Z
-USDCAD,True,True,True,True,True,True,True,0,green,2026-03-18T11:45:52Z
-USDCHF,True,True,True,True,True,True,True,0,green,2026-03-18T11:45:52Z
-USDJPY,True,True,True,True,True,True,True,0,green,2026-03-18T11:45:52Z
+AUDUSD,True,True,True,True,True,True,True,0,green,2026-03-19T10:19:59Z
+EURUSD,True,True,True,True,True,True,True,0,green,2026-03-19T10:19:59Z
+GBPUSD,True,True,True,True,True,False,False,0,red,2026-03-19T10:19:59Z
+USDCAD,True,True,True,True,True,True,True,0,green,2026-03-19T10:19:59Z
+USDCHF,True,True,True,True,True,True,True,0,green,2026-03-19T10:19:59Z
+USDJPY,True,True,True,True,True,True,True,0,green,2026-03-19T10:19:59Z

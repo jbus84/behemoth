@@ -1,2 +1,2 @@
-symbol,locked_selected_count,locked_gross_pips_total,locked_win_rate,jforex_predict_cycles,jforex_selected_total,jforex_orders_submitted,jforex_submitted_group_count,signal_coverage_ratio,signal_coverage_pass,execution_clean_pass,has_trades,order_coverage_ratio,order_coverage_pass,overall_pass,jforex_outcome_parity_pass
-USDCAD,50,108.4,0.64,972,50,4,1,1.0,True,True,True,0.02,False,True,True
+symbol,locked_selected_count,locked_gross_pips_total,locked_win_rate,jforex_predict_cycles,jforex_selected_total,jforex_orders_submitted,jforex_submitted_group_count,signal_coverage_ratio,signal_coverage_pass,execution_clean_pass,has_trades,order_coverage_ratio,order_coverage_pass,overall_pass,evaluated_at_utc,jforex_outcome_parity_pass
+USDCAD,50,108.4,0.64,972,50,4,1,1.0,True,True,True,0.02,False,True,2026-03-19T10:19:29Z,True
