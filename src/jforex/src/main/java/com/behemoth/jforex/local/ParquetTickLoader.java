@@ -11,12 +11,13 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Comparator;
 import java.util.List;
+import java.util.TimeZone;
 
 public final class ParquetTickLoader {
-    private static final java.util.Calendar UTC_CAL =
-            java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"));
+    private static final TimeZone UTC_TZ = TimeZone.getTimeZone("UTC");
     public TickWindow load(LocalJForexHarnessConfig config, String symbol) {
         String sym = normalizeSymbol(symbol);
         List<Path> files = parquetFiles(config.tickRoot(), sym);
@@ -87,7 +88,7 @@ public final class ParquetTickLoader {
         while (rs.next()) {
             out.add(new RuntimeTick(
                     symbol,
-                    rs.getTimestamp("timestamp", UTC_CAL).toInstant(),
+                    rs.getTimestamp("timestamp", Calendar.getInstance(UTC_TZ)).toInstant(),
                     rs.getDouble("bid"),
                     rs.getDouble("ask")
             ));

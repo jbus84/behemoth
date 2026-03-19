@@ -63,6 +63,7 @@ class ParquetTickLoaderTimezoneTest {
         TimeZone original = TimeZone.getDefault();
         ParquetTickLoader.TickWindow window;
         try {
+            // TimeZone.setDefault is process-global; this test must run single-threaded.
             TimeZone.setDefault(TimeZone.getTimeZone("Europe/London"));
             window = new ParquetTickLoader().load(config, "EURUSD");
         } finally {
