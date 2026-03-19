@@ -15,6 +15,8 @@ import java.util.Comparator;
 import java.util.List;
 
 public final class ParquetTickLoader {
+    private static final java.util.Calendar UTC_CAL =
+            java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"));
     public TickWindow load(LocalJForexHarnessConfig config, String symbol) {
         String sym = normalizeSymbol(symbol);
         List<Path> files = parquetFiles(config.tickRoot(), sym);
@@ -85,7 +87,7 @@ public final class ParquetTickLoader {
         while (rs.next()) {
             out.add(new RuntimeTick(
                     symbol,
-                    rs.getTimestamp("timestamp").toInstant(),
+                    rs.getTimestamp("timestamp", UTC_CAL).toInstant(),
                     rs.getDouble("bid"),
                     rs.getDouble("ask")
             ));
