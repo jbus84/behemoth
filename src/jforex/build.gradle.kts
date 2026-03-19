@@ -61,7 +61,7 @@ tasks.register<JavaExec>("runJForexLive") {
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set("com.behemoth.jforex.JForexLiveRunner")
     workingDir = rootProject.projectDir
-    jvmArgs = listOf("-Djava.awt.headless=true")
+    jvmArgs = listOf("-Djava.awt.headless=true", "-Duser.timezone=UTC")
 }
 
 tasks.register<JavaExec>("testJForexConnection") {

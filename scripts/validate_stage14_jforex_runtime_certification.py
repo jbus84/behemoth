@@ -213,6 +213,7 @@ def build_stage14_artifacts(
                 }
             )
         row["stage14_jforex_cert_pass"] = all(bool(row[src.check_id]) for src in sources)
+        # missing_inputs counts absent-file failures only; stale artifacts fail the cert but do not increment this counter
         row["missing_inputs"] = missing_inputs
         row["verdict"] = "green" if row["stage14_jforex_cert_pass"] else "red"
         row["evaluated_at_utc"] = now_utc

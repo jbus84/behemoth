@@ -14,7 +14,11 @@ import java.util.List;
 import java.util.TimeZone;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
+// TimeZone.setDefault is process-global; must run single-threaded to avoid racing with other tests
+@Execution(ExecutionMode.SAME_THREAD)
 class ParquetTickLoaderTimezoneTest {
 
     @TempDir
