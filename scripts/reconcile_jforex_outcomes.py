@@ -79,7 +79,14 @@ def load_runtime_events(reconcile_dir: Path, symbol: str) -> dict:
       predict_cycles, orders_submitted, orders_filled, execution_failures,
       lifecycle_failures, lifecycle_violations, selected_count_total
     """
-    candidates = list(reconcile_dir.glob(f"{symbol}_*_runtime_events.csv"))
+    # Prefer real Dukascopy tester events ({symbol}_jforex_runtime_events.csv) over
+    # local surrogate events ({symbol}_local_jforex_runtime_events.csv). Once a symbol
+    # has been run through the real tester, jforex-outcome-parity must use those events.
+    preferred = reconcile_dir / f"{symbol}_jforex_runtime_events.csv"
+    if preferred.exists():
+        candidates = [preferred]
+    else:
+        candidates = list(reconcile_dir.glob(f"{symbol}_*_runtime_events.csv"))
     if not candidates:
         return {
             "predict_cycles": 0, "orders_submitted": 0, "orders_filled": 0,
@@ -256,6 +263,7 @@ def main() -> None:
     symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
     lock_dir = Path(args.lock_dir)
     reconcile_dir = Path(args.reconcile_dir)
+    now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     results = []
     for symbol in symbols:
@@ -281,6 +289,7 @@ def main() -> None:
             signal_coverage_threshold=args.signal_coverage_threshold,
             jforex_submitted_group_count=events["submitted_group_close_ts_count"],
         )
+        result["evaluated_at_utc"] = now_utc
         results.append(result)
 
     # Print summary table
