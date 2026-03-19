@@ -79,7 +79,14 @@ def load_runtime_events(reconcile_dir: Path, symbol: str) -> dict:
       predict_cycles, orders_submitted, orders_filled, execution_failures,
       lifecycle_failures, lifecycle_violations, selected_count_total
     """
-    candidates = list(reconcile_dir.glob(f"{symbol}_*_runtime_events.csv"))
+    # Prefer real Dukascopy tester events ({symbol}_jforex_runtime_events.csv) over
+    # local surrogate events ({symbol}_local_jforex_runtime_events.csv). Once a symbol
+    # has been run through the real tester, jforex-outcome-parity must use those events.
+    preferred = reconcile_dir / f"{symbol}_jforex_runtime_events.csv"
+    if preferred.exists():
+        candidates = [preferred]
+    else:
+        candidates = list(reconcile_dir.glob(f"{symbol}_*_runtime_events.csv"))
     if not candidates:
         return {
             "predict_cycles": 0, "orders_submitted": 0, "orders_filled": 0,

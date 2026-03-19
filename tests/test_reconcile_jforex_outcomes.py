@@ -378,3 +378,46 @@ def test_reconcile_aggregate_csv_includes_evaluated_at_utc(tmp_path, monkeypatch
     from datetime import datetime
     parsed = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
     assert parsed.tzinfo is not None
+
+
+def test_load_runtime_events_prefers_real_over_local(tmp_path):
+    """When both real-tester and local-surrogate event files exist, prefer the real one."""
+    from scripts.reconcile_jforex_outcomes import load_runtime_events
+    import csv
+
+    # Real tester file: 5 predict_cycles
+    real_path = tmp_path / "EURUSD_jforex_runtime_events.csv"
+    with open(real_path, "w", newline="") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=["event_ts_utc", "symbol", "category", "event_name", "pass", "detail"],
+        )
+        writer.writeheader()
+        for _ in range(5):
+            writer.writerow({
+                "event_ts_utc": "2025-07-07T12:00:00Z", "symbol": "EURUSD",
+                "category": "signal", "event_name": "predict_cycle", "pass": "true",
+                "detail": "selected_count=1",
+            })
+
+    # Local surrogate file: 99 predict_cycles (must NOT be selected)
+    local_path = tmp_path / "EURUSD_local_jforex_runtime_events.csv"
+    with open(local_path, "w", newline="") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=["event_ts_utc", "symbol", "category", "event_name", "pass", "detail"],
+        )
+        writer.writeheader()
+        for _ in range(99):
+            writer.writerow({
+                "event_ts_utc": "2025-07-07T12:00:00Z", "symbol": "EURUSD",
+                "category": "signal", "event_name": "predict_cycle", "pass": "true",
+                "detail": "selected_count=1",
+            })
+
+    events = load_runtime_events(tmp_path, "EURUSD")
+    assert events["predict_cycles"] == 5, (
+        f"Expected 5 cycles from real tester file, got {events['predict_cycles']}. "
+        "load_runtime_events() must prefer EURUSD_jforex_runtime_events.csv over "
+        "EURUSD_local_jforex_runtime_events.csv."
+    )
