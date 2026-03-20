@@ -14,7 +14,7 @@ This documentation set orients operators and new contributors to the active **ti
 - Operators should use this page to jump to current readiness, governing reports, and the runbook.
 - New contributors should use this page to find the manual, the walkthrough, and the stage specs in order.
 
-## Source of Truth
+## Key Sources
 1. Strategy manual and stage bible: [`STRATEGY_MASTER_MANUAL.md`](./STRATEGY_MASTER_MANUAL.md), [`docs/strategy_bible/stage_01_data_foundation.md`](./strategy_bible/stage_01_data_foundation.md)
 2. Generated snapshots and governed status: [`docs/strategy_bible/generated/pipeline_snapshot.md`](./strategy_bible/generated/pipeline_snapshot.md), [`docs/analysis/index.md`](./analysis/index.md)
 3. Contract checks and issues: [`docs/analysis/oco_docs_contract_report.md`](./analysis/oco_docs_contract_report.md)
