@@ -210,6 +210,28 @@ public final class BehemothStrategyCore {
         for (int barTick : completedBarTicks) {
             state.barOrdinalsByBarTicks.compute(barTick, (k, v) -> v == null ? 0L : v + 1L);
         }
+        // Close positions that have reached their exit horizon. Runs before the predict call
+        // so the candidateUid lifecycle is clear when hasActiveCandidateLifecycle is checked below.
+        List<String> labelsToClose = new ArrayList<>();
+        for (Map.Entry<String, PendingExit> e : state.pendingExits.entrySet()) {
+            if (!completedBarTicks.contains(e.getValue().barTicks())) {
+                continue;
+            }
+            long currentOrdinal = state.barOrdinalsByBarTicks.getOrDefault(
+                    e.getValue().barTicks(), 0L);
+            if (currentOrdinal - e.getValue().fillBarOrdinal() >= e.getValue().horizon()) {
+                labelsToClose.add(e.getKey());
+            }
+        }
+        for (String label : labelsToClose) {
+            state.pendingExits.remove(label);
+            try {
+                executionPort.closePosition(state.instrument.symbol(), label);
+            } catch (RuntimeException exc) {
+                artifactWriter.markOperationalStep(
+                        state.instrument.symbol(), "horizon_close_failure", false, exc.getMessage());
+            }
+        }
         Map<Integer, Long> barOrdinals = Map.copyOf(state.barOrdinalsByBarTicks);
         try (JForexMetrics.TimerContext ignored = metrics.startPredictTimer(state.instrument.symbol())) {
             List<PredictionResponseItem> predictions = predictionClient.predict(new PredictRequestPayload(
@@ -398,6 +420,15 @@ public final class BehemothStrategyCore {
                 throw exc;
             }
         }
+        // Register pending horizon exit so triggerPrediction closes this leg after horizon bars.
+        SymbolRuntimeState fillState = symbolStates.get(normalizeSymbol(event.symbol()));
+        if (fillState != null) {
+            long fillBarOrdinal = fillState.barOrdinalsByBarTicks.getOrDefault(
+                    action.group().barTicks, -1L);
+            fillState.pendingExits.put(
+                    event.orderLabel(),
+                    new PendingExit(fillBarOrdinal, action.group().horizon, action.group().barTicks));
+        }
         refreshActiveOcoGauge(event.symbol());
     }
 
@@ -453,6 +484,11 @@ public final class BehemothStrategyCore {
                     event.closePrice(),
                     pnlValue
             );
+        }
+        // Remove pending exit — covers both strategy-initiated and broker-initiated closes.
+        SymbolRuntimeState closeState = symbolStates.get(normalizeSymbol(event.symbol()));
+        if (closeState != null) {
+            closeState.pendingExits.remove(event.orderLabel());
         }
         refreshActiveOcoGauge(event.symbol());
     }
