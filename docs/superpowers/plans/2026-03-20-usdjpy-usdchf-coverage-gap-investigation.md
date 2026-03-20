@@ -4,7 +4,7 @@
 
 **Goal:** Identify why USDJPY (76.7%) and USDCHF (60%) show below-threshold signal coverage, confirm the warmup-gap root cause, and fix it properly by giving the JForex tester 1 day of startup data before the eval window begins.
 
-**Architecture:** The JForex tester starts at `BEHEMOTH_JFOREX_START_UTC = 2025-07-07T00:00:00Z` (same as eval_start) with no prior warmup data. For 100-tick bars in the low-activity Tokyo / early-London session, the model doesn't accumulate enough warmup history to start predicting until 8–13 hours into the eval window. The proper fix is to move `DEFAULT_START` to `2025-07-06T00:00:00Z` (1 day before eval_start) so the model is fully warmed up by midnight July 7. This requires re-running the full 6-symbol matrix (~4–6 hours). After the re-run, `jforex-outcome-parity` is run with the unchanged `eval_start = 2025-07-07T00:00:00Z` and should show 100% coverage for all symbols.
+**Architecture:** The JForex tester starts at `BEHEMOTH_JFOREX_START_UTC = 2025-07-07T00:00:00Z` (same as eval_start) with no prior warmup data. For 100-tick bars in the low-activity Tokyo / early-London session, the model doesn't accumulate enough warmup history to start predicting until 8–13 hours into the eval window. The proper fix is to move `DEFAULT_START` to `2025-07-04T00:00:00Z` (1 day before eval_start) so the model is fully warmed up by midnight July 7. This requires re-running the full 6-symbol matrix (~4–6 hours). After the re-run, `jforex-outcome-parity` is run with the unchanged `eval_start = 2025-07-07T00:00:00Z` and should show 100% coverage for all symbols.
 
 **Tech Stack:** Python 3.11+, DuckDB, pandas, pytest, Makefile, Gradle/JForex
 
@@ -26,7 +26,7 @@ Pre-plan analysis (run 2026-03-20) produced these numbers for the `2025-07-07T00
 `first_seen` = `MIN(close_ts)` in `audit_logs` (the Python API's per-selection log in `data/analysis/backtest_reconcile/runtime/{sym.lower()}_jforex_dukascopy_state.db`).
 `warmup_gap` = locked predictions with `close_ts < first_seen` (never seen by JForex during warmup).
 
-With `start_ts = 2025-07-06T00:00:00Z`, the model processes 1 full day of warmup before the eval window opens. All warmup gaps should become 0 and coverage should reach 100% for all symbols.
+With `start_ts = 2025-07-04T00:00:00Z`, the model processes 1 full day of warmup before the eval window opens. All warmup gaps should become 0 and coverage should reach 100% for all symbols.
 
 ---
 
@@ -34,7 +34,7 @@ With `start_ts = 2025-07-06T00:00:00Z`, the model processes 1 full day of warmup
 
 - **Create:** `scripts/diagnose_jforex_coverage_gaps.py` — repeatable analysis: per-symbol warmup cutoff, gap count, and post-warmup coverage; used to verify the fix
 - **Create:** `tests/test_diagnose_jforex_coverage_gaps.py` — unit tests for the diagnostic functions
-- **Modify:** `scripts/run_jforex_dukascopy_matrix.py` — change `DEFAULT_START` from `2025-07-07T00:00:00Z` → `2025-07-06T00:00:00Z`
+- **Modify:** `scripts/run_jforex_dukascopy_matrix.py` — change `DEFAULT_START` from `2025-07-07T00:00:00Z` → `2025-07-04T00:00:00Z`
 - **Modify:** `Makefile` — change `jforex-dukascopy-matrix` default `--start-ts` to match
 
 ---
@@ -372,7 +372,7 @@ DEFAULT_START = "2025-07-07T00:00:00Z"
 
 Change to:
 ```python
-DEFAULT_START = "2025-07-06T00:00:00Z"
+DEFAULT_START = "2025-07-04T00:00:00Z"
 ```
 
 - [ ] **Step 2: Update the Makefile `jforex-dukascopy-matrix` default `--start-ts`**
@@ -384,7 +384,7 @@ In the `jforex-dukascopy-matrix` target, find:
 
 Change to:
 ```makefile
---start-ts $(or $(START_TS),2025-07-06T00:00:00Z) \
+--start-ts $(or $(START_TS),2025-07-04T00:00:00Z) \
 ```
 
 - [ ] **Step 3: Run full test suite to confirm no regressions**

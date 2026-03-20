@@ -25,7 +25,7 @@ from pathlib import Path
 
 
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
-DEFAULT_START = "2025-07-06T00:00:00Z"
+DEFAULT_START = "2025-07-04T00:00:00Z"
 DEFAULT_END = "2025-07-09T00:00:00Z"
 DEFAULT_MODELS_DIR = "models/oco_dukascopy_candidate"
 DEFAULT_HISTORY_DIR = "configs/research/governance/oco_history_dukascopy_candidate"
