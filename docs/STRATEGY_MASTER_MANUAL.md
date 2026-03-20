@@ -4,8 +4,17 @@
 **Date**: February 28, 2026
 **Status**: Active
 
-This is the canonical manual for the active OCO research/governance system.
-If any section conflicts with generated stage artifacts, the generated stage artifacts and contract checks win.
+## Orientation
+
+This manual is the canonical synthesis for the active OCO research/governance system. It defines the system, the stage architecture, and the interpretation rules that apply across the active pipeline.
+
+Generated stage snapshots, governed analysis outputs, and contract checks are authoritative for current status, deployment readiness, and any conflict with this prose. When you need to decide whether the system is ready to move, start with the generated snapshots and the readiness reports listed below.
+
+For deployment-readiness review, start here:
+- `docs/strategy_bible/generated/pipeline_snapshot.md`
+- `docs/analysis/operator_action_report.md`
+- `docs/analysis/oco_alert_remediation_report.md`
+- `docs/analysis/oco_docs_contract_report.md`
 
 ## 1. Strategy Definition
 

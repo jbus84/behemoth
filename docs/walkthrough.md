@@ -1,28 +1,37 @@
-# Architecture & Walkthrough
+# OCO Onboarding Walkthrough
 
-The legacy stat-arb strategy has been fully deprecated. The active repository is now centered on the tick-based **Opportunity Cost Optimization (OCO)** research and governance pipeline.
+This is the primary onboarding route for the active tick-based **Opportunity Cost Optimization (OCO)** system. The legacy stat-arb strategy is deprecated; the active repository centers on the Python-led OCO research and governance pipeline with JForex as the broker-adapter target.
 
 ## What Is Active
 
 - Python remains the authoritative research, inference, and governance runtime.
 - JForex is the active broker-adapter target.
 - Generated artifacts and contract checks govern what is eligible for promotion.
+- The active symbol universe is `EURUSD`, `GBPUSD`, `USDJPY`, `USDCHF`, `AUDUSD`, `USDCAD`.
 
-## How The Pieces Fit Together
+## How The Stages Fit Together
 
-1. Raw ticks feed the tick-bar and velocity datasets.
-2. OCO opportunity mining and monthly WFO produce ranked candidate flow.
-3. Stop-limit realism, reduced-core selection, tick-exact verification, and robustness stages reduce that flow to governed deployable states.
-4. Stage 9+ governance artifacts determine whether a symbol is actually promotion-ready.
+1. Stage 01 builds the tick data foundation and reliability checks.
+2. Stage 02 mines OCO opportunities from the tick-velocity features.
+3. Stage 03 applies monthly walk-forward ranking and selection.
+4. Stage 04 adds stop-limit execution realism and cap policy.
+5. Stage 05 reduces the candidate core, and Stage 06 verifies tick-exact portability.
+6. Stage 07 and Stage 08 audit the logic and stress the selection under robustness checks.
+7. Stage 09 through Stage 14 govern deployment readiness, runtime parity, and broker certification.
 
-## Recommended Reading Order
+## Where To Start
 
-1. `docs/STRATEGY_MASTER_MANUAL.md`
-2. `docs/strategy_bible/generated/pipeline_snapshot.md`
-3. `docs/strategy_bible/` stage specs for the stage you are touching
-4. `docs/strategy_bible/operator_runbook.md` for operational interpretation
-5. `docs/analysis/index.md` for supporting evidence and diagnostics
+- Operators should start with `docs/strategy_bible/generated/pipeline_snapshot.md`, then `docs/analysis/operator_action_report.md`, and then `docs/analysis/oco_alert_remediation_report.md`.
+- Contributors changing behavior should start with `docs/STRATEGY_MASTER_MANUAL.md`, then the relevant stage spec under `docs/strategy_bible/`, and then the supporting analysis reports.
+- Readers checking site hygiene or publication quality should start with `docs/analysis/index.md` and `docs/analysis/oco_docs_contract_report.md`.
 
-## Practical Orientation
+## Read This Next
 
-If you are changing strategy behavior, start with the strategy manual and the relevant stage spec. If you are checking current readiness, start with the generated pipeline snapshot, operator runbook, and analysis reports. Run `make docs` if you want the locally rendered site view.
+- `docs/STRATEGY_MASTER_MANUAL.md`
+- `docs/strategy_bible/generated/pipeline_snapshot.md`
+- `docs/strategy_bible/operator_runbook.md`
+- `docs/analysis/index.md`
+- `docs/analysis/oco_docs_contract_report.md`
+- `docs/strategy_bible/stage_09_live_governance_and_deployment.md`
+- `docs/strategy_bible/stage_13_dukascopy_testclient_parity.md`
+- `docs/strategy_bible/stage_14_jforex_runtime_certification.md`
