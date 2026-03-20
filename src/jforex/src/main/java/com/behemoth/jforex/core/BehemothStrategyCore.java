@@ -524,6 +524,8 @@ public final class BehemothStrategyCore {
         // 0-indexed count of bars closed per bar_ticks granularity since session start.
         // Incremented before each predict call so bar_ordinals[N] == N means "Nth bar just closed".
         private final Map<Integer, Long> barOrdinalsByBarTicks = new LinkedHashMap<>();
+        // label → pending horizon exit registered at fill time; removed when position closes
+        private final Map<String, PendingExit> pendingExits = new LinkedHashMap<>();
 
         private SymbolRuntimeState(RuntimeInstrument instrument) {
             this.instrument = instrument;
@@ -535,5 +537,8 @@ public final class BehemothStrategyCore {
             int droppedCount,
             List<Integer> completedBarTicks
     ) {
+    }
+
+    private record PendingExit(long fillBarOrdinal, int horizon, int barTicks) {
     }
 }
