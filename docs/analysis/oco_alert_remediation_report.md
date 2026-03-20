@@ -7,6 +7,12 @@
 - exceptions_yaml: `configs/research/governance/oco_monitoring_exceptions.yaml`
 - disposition_csv: `data/analysis/tick_opportunity_mining/oco_alert_disposition.csv`
 
+## Authority Note
+- Authority label: `interpretive report`
+- Authoritative for: current alert disposition state, remediation ownership, and exception-versus-remediation tracking derived from the alert artifacts.
+- Not authoritative for: stage gate truth, deployment approval, or policy definition by itself.
+- Depends on: `data/analysis/tick_opportunity_mining/oco_alert_disposition.csv`, the alert source CSVs listed above, and `configs/research/governance/oco_monitoring_exceptions.yaml`.
+
 ## Summary
 | source_alert          | status             | band   | escalation_level   |   rows |
 |:----------------------|:-------------------|:-------|:-------------------|-------:|

@@ -286,6 +286,18 @@ def run(
     report_lines.append(f"- rules_yaml: `{rules_yaml}`")
     report_lines.append(f"- status_csv: `{out_status_csv}`")
     report_lines.append("")
+    report_lines.append("## Authority Note")
+    report_lines.append("- Authority label: `interpretive report`")
+    report_lines.append(
+        "- Authoritative for: operator triage ordering, action-code mapping, and interpreted escalation framing derived from the current status artifacts."
+    )
+    report_lines.append(
+        "- Not authoritative for: overriding generated truth snapshots, governance locks, or docs-contract failures."
+    )
+    report_lines.append(
+        "- Depends on: `data/analysis/tick_opportunity_mining/operator_action_status.csv`, `configs/research/docs/operator_action_rules.yaml`, and the current stage metrics and monitoring artifacts listed above."
+    )
+    report_lines.append("")
     report_lines.append("## Action Matrix")
     report_lines.append(_table(summary))
     report_lines.append("")

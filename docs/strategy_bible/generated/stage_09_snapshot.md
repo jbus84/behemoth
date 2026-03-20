@@ -4,6 +4,12 @@
 - Governance snapshot combines symbol gate matrix with artifact inventory completeness.
 - Missing required artifacts: 0.
 
+#### Authority Note
+- Authority label: `generated truth snapshot`
+- Authoritative for: current Stage 09 governance gate state, predeploy completeness, and symbol-level blocker visibility.
+- Not authoritative for: operator prioritization, remediation narrative, or cross-stage interpretation beyond the generated checks.
+- Depends on: the strategy bible build process, current governance predeploy artifacts, and required artifact inventory checks.
+
 #### Key Results
 | symbol   | gate_reduced_lb95_month_gt0   | gate_tick_exact   | gate_robust_lb95_trade_gt0   | gate_robust_months_majority   | gate_api_signal_parity   | gate_api_execution_parity   | gate_api_parity   | symbol_all_gates_pass   |
 |:---------|:------------------------------|:------------------|:-----------------------------|:------------------------------|:-------------------------|:----------------------------|:------------------|:------------------------|

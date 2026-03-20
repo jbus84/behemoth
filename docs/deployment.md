@@ -5,6 +5,12 @@ The current OCO system is operated as a governed research pipeline. Live executi
 
 Generated deployment summary tables below are supportive evidence, not standalone authority. If the rolling summary block is sparse, stale, or unavailable in a local docs rebuild, use the operator runbook, generated stage snapshots, and docs-contract outputs as the decision surface.
 
+## Authority Note
+- Authority label: `canonical`
+- Authoritative for: deployment posture, promotion checklist, and the boundary between active governance and optional runtime integration.
+- Not authoritative for: current symbol readiness or gate-pass truth when generated stage snapshots or docs-contract outputs disagree.
+- Depends on: [`docs/strategy_bible/operator_runbook.md`](./strategy_bible/operator_runbook.md), [`docs/strategy_bible/generated/pipeline_snapshot.md`](./strategy_bible/generated/pipeline_snapshot.md), [`docs/strategy_bible/generated/stage_09_snapshot.md`](./strategy_bible/generated/stage_09_snapshot.md), and [`docs/analysis/oco_docs_contract_report.md`](./analysis/oco_docs_contract_report.md).
+
 ## Promotion Checklist
 1. Stage 1-11 snapshots refreshed.
 2. `make docs-contract-ci` passes with zero failed checks.
@@ -19,7 +25,7 @@ If deploying through API/broker bridge:
 - persist execution evidence required by remediation and monitoring.
 
 ## Legacy Docker/API Stack
-Compose/API deployment docs remain for optional runtime services but are not required for core OCO research governance.
+Compose/API deployment docs remain a `compatibility` surface for optional runtime services and are not required for core OCO research governance.
 
 ## Rolling Historical Evidence
 

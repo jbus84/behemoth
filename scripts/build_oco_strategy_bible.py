@@ -792,6 +792,18 @@ def _write_markdown_outputs(
     pipeline_lines.append(f"- generated_at: `{now_utc}`")
     pipeline_lines.append(f"- title: `{cfg.get('title')}`")
     pipeline_lines.append("")
+    pipeline_lines.append("## Authority Note")
+    pipeline_lines.append("- Authority label: `generated truth snapshot`")
+    pipeline_lines.append(
+        "- Authoritative for: current per-symbol status, current gate outcomes, and current top-level readiness summary across the active symbol universe."
+    )
+    pipeline_lines.append(
+        "- Not authoritative for: narrative interpretation, remediation priority, or policy exceptions on its own."
+    )
+    pipeline_lines.append(
+        "- Depends on: the strategy bible build process and the current rolling artifact set consumed by `scripts/build_oco_strategy_bible.py`."
+    )
+    pipeline_lines.append("")
     pipeline_lines.append("## Symbol Summary")
     pipeline_lines.append(_table(snapshot))
     pipeline_lines.append("")
@@ -1292,6 +1304,7 @@ def _render_stage_snapshot(
     action_summary_table: pd.DataFrame | None = None,
     details_max_rows: int = DETAIL_MAX_ROWS_DEFAULT,
     details_source_path: str = "",
+    authority_note_lines: list[str] | None = None,
 ) -> str:
     lines: list[str] = []
     lines.append(f"### Auto Snapshot - Stage {stage_id:02d}")
@@ -1299,6 +1312,10 @@ def _render_stage_snapshot(
     lines.append(f"- generated_at: `{now_utc}`")
     lines.extend(f"- {n}" for n in notes)
     lines.append("")
+    if authority_note_lines:
+        lines.append("#### Authority Note")
+        lines.extend(authority_note_lines)
+        lines.append("")
     lines.append("#### Key Results")
     lines.append(_table(summary_table))
     interp = [
@@ -3467,6 +3484,12 @@ def _write_stage_snapshots(
         notes=[
             "Governance snapshot combines symbol gate matrix with artifact inventory completeness.",
             f"Missing required artifacts: {int(len(missing_inventory[missing_inventory['required']])) if not missing_inventory.empty and 'required' in missing_inventory.columns else 0}.",
+        ],
+        authority_note_lines=[
+            "- Authority label: `generated truth snapshot`",
+            "- Authoritative for: current Stage 09 governance gate state, predeploy completeness, and symbol-level blocker visibility.",
+            "- Not authoritative for: operator prioritization, remediation narrative, or cross-stage interpretation beyond the generated checks.",
+            "- Depends on: the strategy bible build process, current governance predeploy artifacts, and required artifact inventory checks.",
         ],
         figure_paths=[p for p in [stage09_plot, stage09_predeploy_plot] if p.exists()],
         figure_prefix="../figures/oco_bible/",

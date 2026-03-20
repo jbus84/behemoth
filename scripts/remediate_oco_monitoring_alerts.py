@@ -25,6 +25,17 @@ def _table(df: pd.DataFrame) -> str:
         return "```\n" + df.to_string(index=False) + "\n```"
 
 
+def _authority_note_lines() -> list[str]:
+    return [
+        "## Authority Note",
+        "- Authority label: `interpretive report`",
+        "- Authoritative for: current alert disposition state, remediation ownership, and exception-versus-remediation tracking derived from the alert artifacts.",
+        "- Not authoritative for: stage gate truth, deployment approval, or policy definition by itself.",
+        "- Depends on: `data/analysis/tick_opportunity_mining/oco_alert_disposition.csv`, the alert source CSVs listed above, and `configs/research/governance/oco_monitoring_exceptions.yaml`.",
+        "",
+    ]
+
+
 def _normalize_source_alert(value: Any, metric_id: str) -> str:
     source_alert = str(value).strip().lower()
     if source_alert in {"", "nan", "none", "null"}:
@@ -132,7 +143,11 @@ def run(
         report_out.parent.mkdir(parents=True, exist_ok=True)
         empty = pd.DataFrame(columns=expected_cols)
         empty.to_csv(out_disposition_csv, index=False)
-        report_out.write_text("# OCO Alert Remediation Report\n\n_empty_\n", encoding="utf-8")
+        lines = ["# OCO Alert Remediation Report", ""]
+        lines.extend(_authority_note_lines())
+        lines.append("_empty_")
+        lines.append("")
+        report_out.write_text("\n".join(lines), encoding="utf-8")
         return empty
 
     alerts = alerts.copy()
@@ -374,6 +389,7 @@ def run(
     lines.append(f"- exceptions_yaml: `{exceptions_yaml}`")
     lines.append(f"- disposition_csv: `{out_disposition_csv}`")
     lines.append("")
+    lines.extend(_authority_note_lines())
     lines.append("## Summary")
     lines.append(_table(summary))
     lines.append("")

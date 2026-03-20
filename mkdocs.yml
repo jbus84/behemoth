@@ -51,33 +51,50 @@ nav:
   - Overview: index.md
   - OCO Strategy Manual: STRATEGY_MASTER_MANUAL.md
   - Analysis:
-      - Catalog: analysis/index.md
-      - Catalog Gaps: analysis/catalog_gaps_report.md
-      - Stop-Limit Tickfill Fullcap: analysis/oco_stop_limit_tickfill_fullcap_report.md
-      - Live Governance Lock: analysis/oco_live_governance_lock.md
-      - Remediation Metric Decomposition: analysis/remediation_metric_decomposition.md
-      - EURUSD:
-          - Opportunity Mining: analysis/eurusd_tick_opportunity_mining_report.md
-          - Monthly WFO: analysis/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md
-          - Reduced Core Rolling: analysis/eurusd_oco_reduced_core_rolling_report.md
-          - Tick-Exact Rolling: analysis/eurusd_oco_tick_exact_rolling_report.md
-          - WFO Robustness: analysis/eurusd_oco_monthly_wfo_robustness_fullcap_report.md
-      - AUDUSD:
-          - Opportunity Mining: analysis/audusd_tick_opportunity_mining_report.md
-          - Monthly WFO: analysis/audusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md
-          - Reduced Core Rolling: analysis/audusd_oco_reduced_core_rolling_report.md
-      - GBPUSD:
-          - Opportunity Mining: analysis/gbpusd_tick_opportunity_mining_report.md
-          - Monthly WFO: analysis/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md
-          - Reduced Core Rolling: analysis/gbpusd_oco_reduced_core_rolling_report.md
-          - Tick-Exact Rolling: analysis/gbpusd_oco_tick_exact_rolling_report.md
-          - WFO Robustness: analysis/gbpusd_oco_monthly_wfo_robustness_fullcap_report.md
-      - USDJPY:
-          - Opportunity Mining: analysis/usdjpy_tick_opportunity_mining_report.md
-          - Monthly WFO: analysis/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_report.md
-          - Reduced Core Rolling: analysis/usdjpy_oco_reduced_core_rolling_report.md
-          - Tick-Exact Rolling: analysis/usdjpy_oco_tick_exact_rolling_report.md
-          - WFO Robustness: analysis/usdjpy_oco_monthly_wfo_robustness_fullcap_report.md
+      - Reader Guide:
+          - Catalog: analysis/index.md
+          - Taxonomy Rules: analysis/taxonomy_rules.md
+          - Catalog Gaps: analysis/catalog_gaps_report.md
+      - Active / Core:
+          - Stop-Limit Tickfill Fullcap: analysis/oco_stop_limit_tickfill_fullcap_report.md
+          - Live Governance Lock: analysis/oco_live_governance_lock.md
+          - Remediation Metric Decomposition: analysis/remediation_metric_decomposition.md
+          - EURUSD:
+              - Opportunity Mining: analysis/eurusd_tick_opportunity_mining_report.md
+              - Monthly WFO: analysis/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md
+              - Reduced Core Rolling: analysis/eurusd_oco_reduced_core_rolling_report.md
+              - Tick-Exact Rolling: analysis/eurusd_oco_tick_exact_rolling_report.md
+              - WFO Robustness: analysis/eurusd_oco_monthly_wfo_robustness_fullcap_report.md
+          - AUDUSD:
+              - Opportunity Mining: analysis/audusd_tick_opportunity_mining_report.md
+              - Monthly WFO: analysis/audusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md
+              - Reduced Core Rolling: analysis/audusd_oco_reduced_core_rolling_report.md
+          - GBPUSD:
+              - Opportunity Mining: analysis/gbpusd_tick_opportunity_mining_report.md
+              - Monthly WFO: analysis/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md
+              - Reduced Core Rolling: analysis/gbpusd_oco_reduced_core_rolling_report.md
+              - Tick-Exact Rolling: analysis/gbpusd_oco_tick_exact_rolling_report.md
+              - WFO Robustness: analysis/gbpusd_oco_monthly_wfo_robustness_fullcap_report.md
+          - USDJPY:
+              - Opportunity Mining: analysis/usdjpy_tick_opportunity_mining_report.md
+              - Monthly WFO: analysis/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_report.md
+              - Reduced Core Rolling: analysis/usdjpy_oco_reduced_core_rolling_report.md
+              - Tick-Exact Rolling: analysis/usdjpy_oco_tick_exact_rolling_report.md
+              - WFO Robustness: analysis/usdjpy_oco_monthly_wfo_robustness_fullcap_report.md
+      - Candidate / Experimental:
+          - EURUSD Candidate Drift: analysis/EURUSD_candidate_2025-07_h6_london_k2_drift.md
+          - Offset Robustness Clarification: analysis/offset_tickbar_robustness_clarification.md
+          - EURUSD Offset Tickbar Robustness: analysis/eurusd_offset_tickbar_robustness_report.md
+          - GBPUSD Offset Tickbar Robustness: analysis/gbpusd_offset_tickbar_robustness_report.md
+      - Compatibility / Legacy:
+          - EURUSD Stage 12 API Parity: analysis/EURUSD_stage12_api_parity_report.md
+          - EURUSD TestClient Execution Parity: analysis/EURUSD_testclient_execution_parity_report.md
+          - EURUSD Dukascopy TestClient Execution Parity: analysis/EURUSD_dukascopy_testclient_execution_parity_report.md
+          - cTrader Backtest Reconciliation Runbook: analysis/ctrader_backtest_reconciliation_runbook.md
+          - FTMO Risk Compliance: analysis/ftmo_risk_compliance_report.md
+      - Archive:
+          - EURUSD Archived ML Ready: archive/analysis/eurusd_tick_opportunity_ml_ready_report.md
+          - GBPUSD Archived ML Ready: archive/analysis/gbpusd_tick_opportunity_ml_ready_report.md
   - OCO Strategy Bible:
       - Pipeline Snapshot: strategy_bible/generated/pipeline_snapshot.md
       - Stage 01 Data Foundation: strategy_bible/generated/stage_01_snapshot.md

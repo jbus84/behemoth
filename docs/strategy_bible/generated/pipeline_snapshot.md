@@ -3,6 +3,12 @@
 - generated_at: `2026-03-11 21:50:04 UTC`
 - title: `OCO Rolling Strategy Bible`
 
+## Authority Note
+- Authority label: `generated truth snapshot`
+- Authoritative for: current per-symbol status, current gate outcomes, and current top-level readiness summary across the active symbol universe.
+- Not authoritative for: narrative interpretation, remediation priority, or policy exceptions on its own.
+- Depends on: the strategy bible build process and the current rolling artifact set consumed by `scripts/build_oco_strategy_bible.py`.
+
 ## Symbol Summary
 | symbol   |   mean_gross_pips |   lb95_month_mean_gross_pips |   positive_months |   months_total |   rows_total |   fill_rate_overall |   exact_match_rate |   pos_label_match_rate | tick_exact_overall_pass   |   robustness_quantile |   robustness_rows |   robustness_mean_gross_pips |   robustness_lb95_trade_mean_gross_pips |   robustness_positive_months |   robustness_months |   tick_overshoot_mean_pips |   tick_overshoot_p95_pips | api_signal_parity_pass   | api_execution_parity_pass   | api_parity_verdict   |   api_selected_missing_expected |   api_selected_extra_runtime |   api_execution_failed_checks_high_critical | gate_reduced_lb95_month_gt0   | gate_tick_exact   | gate_robust_lb95_trade_gt0   | gate_robust_months_majority   | gate_api_signal_parity   | gate_api_execution_parity   | gate_api_parity   | symbol_all_gates_pass   |
 |:---------|------------------:|-----------------------------:|------------------:|---------------:|-------------:|--------------------:|-------------------:|-----------------------:|:--------------------------|----------------------:|------------------:|-----------------------------:|----------------------------------------:|-----------------------------:|--------------------:|---------------------------:|--------------------------:|:-------------------------|:----------------------------|:---------------------|--------------------------------:|-----------------------------:|--------------------------------------------:|:------------------------------|:------------------|:-----------------------------|:------------------------------|:-------------------------|:----------------------------|:------------------|:------------------------|
