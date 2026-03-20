@@ -11,10 +11,10 @@ This manual is the canonical synthesis for the active OCO research/governance sy
 Generated stage snapshots, governed analysis outputs, and contract checks are authoritative for current status, deployment readiness, and any conflict with this prose. When you need to decide whether the system is ready to move, start with the generated snapshots and the readiness reports listed below.
 
 For deployment-readiness review, start here:
-- `docs/strategy_bible/generated/pipeline_snapshot.md`
-- `docs/analysis/operator_action_report.md`
-- `docs/analysis/oco_alert_remediation_report.md`
-- `docs/analysis/oco_docs_contract_report.md`
+- [`docs/strategy_bible/generated/pipeline_snapshot.md`](./strategy_bible/generated/pipeline_snapshot.md)
+- [`docs/analysis/operator_action_report.md`](./analysis/operator_action_report.md)
+- [`docs/analysis/oco_alert_remediation_report.md`](./analysis/oco_alert_remediation_report.md)
+- [`docs/analysis/oco_docs_contract_report.md`](./analysis/oco_docs_contract_report.md)
 
 ## 1. Strategy Definition
 
