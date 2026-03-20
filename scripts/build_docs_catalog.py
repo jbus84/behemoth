@@ -100,7 +100,16 @@ LEGACY_KEYWORDS: tuple[str, ...] = (
     "m5_mom_m15_momrev",
 )
 
+CANDIDATE_KEYWORDS: tuple[str, ...] = (
+    "candidate",
+    "offset_tickbar_robustness",
+    "offset_robustness",
+    "warmup_sensitivity",
+    "api_offset_confirmation",
+)
+
 COMPATIBILITY_KEYWORDS: tuple[str, ...] = (
+    "api_parity",
     "ctrader",
     "histdata",
     "reconciliation",
@@ -174,6 +183,14 @@ def _human_title(path: Path) -> str:
     return " ".join(w.capitalize() for w in s.split())
 
 
+def _doc_link(doc_path: str) -> str:
+    if doc_path.startswith("analysis/"):
+        return doc_path.removeprefix("analysis/")
+    if doc_path.startswith("archive/"):
+        return "../" + doc_path
+    return doc_path
+
+
 def _infer_symbol(name_l: str) -> str:
     for sym in SYMBOLS:
         tok = sym.lower()
@@ -200,6 +217,8 @@ def _classify_doc(path: Path, docs_root: Path) -> ClassifiedDoc:
         group = "archive"
     elif is_core:
         group = "core"
+    elif any(k in name_l for k in CANDIDATE_KEYWORDS):
+        group = "candidate"
     elif any(k in name_l for k in COMPATIBILITY_KEYWORDS):
         group = "compatibility"
     elif sym != "ALL":
@@ -235,24 +254,28 @@ def _render_index(manifest: pd.DataFrame, *, docs_root: Path) -> str:
     lines.append("- gaps_report: `analysis/catalog_gaps_report.md`")
     lines.append("")
     lines.append(
-        "Use `Core Reports` and `Core Symbol Reports` for the active OCO/JForex-directed path."
+        "Use `Active / Core Reports` and `Active Symbol Reports` for the active OCO/JForex-directed path."
+    )
+    lines.append(
+        "Use `Candidate / Experimental Reports` for exploratory or non-centerline analysis variants."
     )
     lines.append(
         "Use `Compatibility / Legacy Reports` for cTrader, HistData, FTMO, and reconciliation surfaces that remain available but are not the primary runtime centerline."
     )
+    lines.append("Use `Archive Reports` for documents already moved out of the live analysis surface.")
     lines.append("")
 
-    lines.append("## Core Reports")
+    lines.append("## Active / Core Reports")
     core = manifest[manifest["group"] == "core"].copy()
     if core.empty:
         lines.append("_empty_")
     else:
         core = core.sort_values("doc_path")
         for _, r in core.iterrows():
-            lines.append(f"- [{r['title']}]({r['doc_path'].replace('analysis/', '')})")
+            lines.append(f"- [{r['title']}]({_doc_link(str(r['doc_path']))})")
     lines.append("")
 
-    lines.append("## Core Symbol Reports")
+    lines.append("## Active Symbol Reports")
     sym = manifest[manifest["group"] == "symbol"].copy()
     if sym.empty:
         lines.append("_empty_")
@@ -264,7 +287,28 @@ def _render_index(manifest: pd.DataFrame, *, docs_root: Path) -> str:
                 lines.append("_empty_")
                 continue
             for _, r in g.iterrows():
-                lines.append(f"- [{r['title']}]({r['doc_path'].replace('analysis/', '')})")
+                lines.append(f"- [{r['title']}]({_doc_link(str(r['doc_path']))})")
+    lines.append("")
+
+    lines.append("## Candidate / Experimental Reports")
+    candidate = manifest[manifest["group"] == "candidate"].copy()
+    if candidate.empty:
+        lines.append("_empty_")
+    else:
+        candidate_symbol = candidate[candidate["symbol"] != "ALL"].copy()
+        candidate_global = candidate[candidate["symbol"] == "ALL"].copy()
+        if not candidate_symbol.empty:
+            for s in SYMBOLS:
+                g = candidate_symbol[candidate_symbol["symbol"] == s].copy().sort_values("doc_path")
+                if g.empty:
+                    continue
+                lines.append(f"### {s}")
+                for _, r in g.iterrows():
+                    lines.append(f"- [{r['title']}]({_doc_link(str(r['doc_path']))})")
+        if not candidate_global.empty:
+            lines.append("### Cross-Symbol / Global")
+            for _, r in candidate_global.sort_values("doc_path").iterrows():
+                lines.append(f"- [{r['title']}]({_doc_link(str(r['doc_path']))})")
     lines.append("")
 
     lines.append("## Compatibility / Legacy Reports")
@@ -285,11 +329,32 @@ def _render_index(manifest: pd.DataFrame, *, docs_root: Path) -> str:
                     continue
                 lines.append(f"### {s}")
                 for _, r in g.iterrows():
-                    lines.append(f"- [{r['title']}]({r['doc_path'].replace('analysis/', '')})")
+                    lines.append(f"- [{r['title']}]({_doc_link(str(r['doc_path']))})")
         if not compatibility_global.empty:
             lines.append("### Cross-Symbol / Global")
             for _, r in compatibility_global.sort_values("doc_path").iterrows():
-                lines.append(f"- [{r['title']}]({r['doc_path'].replace('analysis/', '')})")
+                lines.append(f"- [{r['title']}]({_doc_link(str(r['doc_path']))})")
+    lines.append("")
+
+    lines.append("## Archive Reports")
+    archive = manifest[manifest["group"] == "archive"].copy()
+    if archive.empty:
+        lines.append("_empty_")
+    else:
+        archive_symbol = archive[archive["symbol"] != "ALL"].copy()
+        archive_global = archive[archive["symbol"] == "ALL"].copy()
+        if not archive_symbol.empty:
+            for s in SYMBOLS:
+                g = archive_symbol[archive_symbol["symbol"] == s].copy().sort_values("doc_path")
+                if g.empty:
+                    continue
+                lines.append(f"### {s}")
+                for _, r in g.iterrows():
+                    lines.append(f"- [{r['title']}]({_doc_link(str(r['doc_path']))})")
+        if not archive_global.empty:
+            lines.append("### Cross-Symbol / Global")
+            for _, r in archive_global.sort_values("doc_path").iterrows():
+                lines.append(f"- [{r['title']}]({_doc_link(str(r['doc_path']))})")
     lines.append("")
 
     lines.append("## Stage-Tagged Reports")
@@ -359,20 +424,28 @@ def _render_taxonomy_rules() -> str:
     )
     lines.append("")
     lines.append("## Group Assignment Order")
-    lines.append("1. `core`: canonical governance reports for the OCO bible.")
+    lines.append("1. `archive`: anything already stored below `docs/archive/`.")
+    lines.append("2. `core`: canonical governance reports for the OCO bible.")
     lines.append(
-        "2. `symbol`: filename maps to specific symbol token (`EURUSD`, `GBPUSD`, `USDJPY`, `USDCHF`, `AUDUSD`, `USDCAD`)."
+        "3. `candidate`: experimental, offset-robustness, and candidate-labelled analysis artifacts that should stay visible but outside the live centerline."
     )
-    lines.append("3. `compatibility`: cTrader, HistData, FTMO, and reconciliation-oriented surfaces.")
-    lines.append("4. `stage`: filename keyword maps to stage id.")
-    lines.append("5. `legacy`: known historical/legacy analysis families.")
-    lines.append("6. `unclassified`: everything else (should be zero in healthy state).")
+    lines.append("4. `compatibility`: cTrader, HistData, FTMO, and reconciliation-oriented surfaces.")
+    lines.append(
+        "5. `symbol`: filename maps to specific symbol token (`EURUSD`, `GBPUSD`, `USDJPY`, `USDCHF`, `AUDUSD`, `USDCAD`)."
+    )
+    lines.append("6. `stage`: filename keyword maps to stage id.")
+    lines.append("7. `legacy`: known historical/legacy analysis families.")
+    lines.append("8. `unclassified`: everything else (should be zero in healthy state).")
     lines.append("")
     lines.append("## Stage Keyword Map")
     stage_rows = []
     for stage_id, keys in STAGE_KEYWORDS:
         stage_rows.append({"stage_id": int(stage_id), "keywords": ", ".join(keys)})
     lines.append(_table(pd.DataFrame(stage_rows)))
+    lines.append("")
+    lines.append("## Candidate Keyword Map")
+    candidate_rows = [{"keyword": k} for k in CANDIDATE_KEYWORDS]
+    lines.append(_table(pd.DataFrame(candidate_rows)))
     lines.append("")
     lines.append("## Compatibility Keyword Map")
     compatibility_rows = [{"keyword": k} for k in COMPATIBILITY_KEYWORDS]
@@ -594,7 +667,7 @@ def main() -> None:
     p = argparse.ArgumentParser(description="Build docs analysis catalog and manifest")
     p.add_argument("--docs-root", default="docs")
     p.add_argument("--analysis-dir", default="docs/analysis")
-    p.add_argument("--archive-dir", default="")
+    p.add_argument("--archive-dir", default="docs/archive")
     p.add_argument("--out-index-md", default="docs/analysis/index.md")
     p.add_argument("--out-manifest-csv", default="docs/analysis/catalog_manifest.csv")
     p.add_argument("--out-gaps-md", default="docs/analysis/catalog_gaps_report.md")
