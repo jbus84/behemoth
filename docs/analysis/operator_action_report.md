@@ -6,6 +6,12 @@
 - rules_yaml: `configs/research/docs/operator_action_rules.yaml`
 - status_csv: `data/analysis/tick_opportunity_mining/operator_action_status.csv`
 
+## Authority Note
+- Authority label: `interpretive report`
+- Authoritative for: operator triage ordering, action-code mapping, and interpreted escalation framing derived from the current status artifacts.
+- Not authoritative for: overriding generated truth snapshots, governance locks, or docs-contract failures.
+- Depends on: `data/analysis/tick_opportunity_mining/operator_action_status.csv`, `configs/research/docs/operator_action_rules.yaml`, and the current stage metrics and monitoring artifacts listed above.
+
 ## Action Matrix
 | symbol   | band   |   metrics |
 |:---------|:-------|----------:|

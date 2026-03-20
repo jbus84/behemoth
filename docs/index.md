@@ -20,9 +20,18 @@ This documentation set orients operators and new contributors to the active **ti
 3. Contract checks and issues: [`docs/analysis/oco_docs_contract_report.md`](./analysis/oco_docs_contract_report.md)
 
 ## Authority
-- The strategy manual is the synthesis layer for the active system definition and stage interpretation.
-- Generated snapshots and contract checks are authoritative for current status, deployment readiness, and conflicts.
-- Analysis reports provide evidence and operator interpretation, but they do not override governed snapshots.
+- `canonical`: governing synthesis or policy source.
+- `generated truth snapshot`: generated status surface tied to current artifacts.
+- `interpretive report`: analysis or operator guidance derived from governed artifacts.
+- `compatibility`: legacy or optional surface that does not define the active path.
+- `candidate`: pre-governance or proposed material that is not yet binding.
+- `archive`: historical reference only.
+
+### Authority Note
+- Authority label: `canonical`
+- Authoritative for: entrypoint guidance, authority hierarchy, and source-routing across the active docs set.
+- Not authoritative for: live symbol readiness, stage gate outcomes, or deployment decisions by itself.
+- Depends on: [`STRATEGY_MASTER_MANUAL.md`](./STRATEGY_MASTER_MANUAL.md), [`docs/strategy_bible/generated/pipeline_snapshot.md`](./strategy_bible/generated/pipeline_snapshot.md), and [`docs/analysis/oco_docs_contract_report.md`](./analysis/oco_docs_contract_report.md).
 
 ## Start Here
 - Full strategy definition: [`STRATEGY_MASTER_MANUAL.md`](./STRATEGY_MASTER_MANUAL.md)
