@@ -168,6 +168,8 @@ jforex-live:
 	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/run_jforex_live.py \
 		$(if $(SYMBOLS),--symbols "$(SYMBOLS)",) \
 		--report-dir $(or $(REPORT_DIR),data/analysis/backtest_reconcile) \
+		--models-dir $(or $(MODELS_DIR),models/oco_dukascopy_candidate) \
+		--history-dir $(or $(HISTORY_DIR),configs/research/governance/oco_history_dukascopy_candidate) \
 		--api-port $(or $(API_PORT),8000) \
 		--requested-volume-units $(or $(REQUESTED_VOLUME_UNITS),10000) \
 		--tick-batch-size $(or $(TICK_BATCH_SIZE),200) \
