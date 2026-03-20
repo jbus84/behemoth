@@ -72,6 +72,19 @@ final class JForexExecutionPort implements ExecutionPort {
         }
     }
 
+    @Override
+    public void closePosition(String symbol, String label) {
+        IEngine engine = requireEngine();
+        try {
+            IOrder order = engine.getOrder(label);
+            if (order != null) {
+                order.close();
+            }
+        } catch (JFException exc) {
+            throw new IllegalStateException(exc.getMessage(), exc);
+        }
+    }
+
     private IEngine requireEngine() {
         IEngine engine = engineSupplier.get();
         if (engine == null) {

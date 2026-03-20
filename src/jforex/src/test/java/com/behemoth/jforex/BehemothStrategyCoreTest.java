@@ -193,5 +193,9 @@ class BehemothStrategyCoreTest {
         @Override
         public void cancelOrder(String symbol, String label) {
         }
+
+        @Override
+        public void closePosition(String symbol, String label) {
+        }
     }
 }

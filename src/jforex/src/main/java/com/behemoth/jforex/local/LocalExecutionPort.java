@@ -76,6 +76,11 @@ public final class LocalExecutionPort implements ExecutionPort {
         ));
     }
 
+    @Override
+    public void closePosition(String symbol, String label) {
+        cancelOrder(symbol, label);
+    }
+
     public void onTick(RuntimeTick tick) {
         String symbol = normalizeSymbol(tick.symbol());
         lastTickBySymbol.put(symbol, tick);
