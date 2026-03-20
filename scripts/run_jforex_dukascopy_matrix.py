@@ -55,6 +55,7 @@ class RunConfig:
     risk_enabled: bool
     universe_mode: str
     ordinal_tolerance: int
+    tester_completion_timeout_seconds: int
 
 
 def _parse_args() -> RunConfig:
@@ -79,6 +80,12 @@ def _parse_args() -> RunConfig:
     parser.add_argument("--risk-enabled", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--universe-mode", choices=["tolerant", "nearest", "ordinal"], default="tolerant")
     parser.add_argument("--ordinal-tolerance", type=int, default=0)
+    parser.add_argument(
+        "--tester-completion-timeout-seconds",
+        type=int,
+        default=14400,
+        help="Max seconds to wait for JForex tester CSV output before killing (default: 14400 = 4h)",
+    )
     args = parser.parse_args()
     symbols = tuple(s.strip().upper() for s in str(args.symbols).split(",") if s.strip())
     if not symbols:
@@ -104,6 +111,7 @@ def _parse_args() -> RunConfig:
         risk_enabled=bool(args.risk_enabled),
         universe_mode=args.universe_mode,
         ordinal_tolerance=int(args.ordinal_tolerance),
+        tester_completion_timeout_seconds=args.tester_completion_timeout_seconds,
     )
 
 
@@ -169,13 +177,15 @@ def _start_api(cfg: RunConfig, symbol: str) -> subprocess.Popen[str]:
         "--port",
         str(cfg.api_port),
     ]
+    log_path = _repo_root() / "logs" / f"api_{symbol.lower()}.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_file = open(log_path, "w")  # noqa: SIM115 — kept open for subprocess lifetime
     return subprocess.Popen(
         cmd,
         cwd=_repo_root(),
         env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
+        stdout=log_file,
+        stderr=log_file,
         start_new_session=True,
     )
 
@@ -202,9 +212,79 @@ def _read_process_tail(proc: subprocess.Popen[str], max_lines: int = 50) -> str:
     return "\n".join(lines[-max_lines:])
 
 
+def _wait_for_csv_then_kill(
+    proc: subprocess.Popen,
+    csv_path: Path,
+    poll_interval_sec: float = 5.0,
+    settle_sec: float = 5.0,
+    timeout_sec: float = 14400.0,
+) -> None:
+    """Poll until the output CSV exists and is non-empty, then kill the process.
+
+    The JForex framework hangs in thread cleanup after onStop writes the CSV.
+    Once the CSV is present and non-empty we have all the data we need, so we
+    kill the process group rather than waiting for the JVM to exit cleanly.
+
+    Args:
+        proc: The running Gradle/Java subprocess.
+        csv_path: Path where the strategy writes its runtime events CSV on completion.
+        poll_interval_sec: How often to check for the CSV (seconds).
+        settle_sec: Extra wait after CSV appears before killing, to let the file flush.
+        timeout_sec: Maximum total wait time before raising TimeoutError.
+
+    Raises:
+        subprocess.CalledProcessError: If process exits non-zero before CSV appears.
+        TimeoutError: If CSV does not appear within timeout_sec.
+    """
+    deadline = time.monotonic() + timeout_sec
+    while True:
+        rc = proc.poll()
+        if rc is not None:
+            if rc == 0:
+                return  # clean exit — accept even without CSV
+            raise subprocess.CalledProcessError(rc, "JForexTesterRunner")
+
+        if csv_path.exists() and csv_path.stat().st_size > 0:
+            if settle_sec > 0:
+                time.sleep(settle_sec)
+            try:
+                # start_new_session=True makes the process a session/group leader,
+                # so its PGID == PID. os.killpg takes a PGID.
+                os.killpg(proc.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                return  # already gone
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                # JVM ignored SIGTERM — escalate to SIGKILL
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                try:
+                    proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    pass
+            return
+
+        if time.monotonic() >= deadline:
+            # Kill the process before raising so it doesn't become an orphan.
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                pass
+            raise TimeoutError(
+                f"JForex tester did not produce {csv_path} within {timeout_sec:.0f}s"
+            )
+        time.sleep(poll_interval_sec)
+
+
 def _run_jforex_tester(cfg: RunConfig, symbol: str, metrics_port: int) -> None:
     """Run the real Dukascopy JForex tester for a single symbol."""
-    # Credentials come from the environment (loaded from .env)
     for required in ("BEHEMOTH_JFOREX_JNLP_URI", "BEHEMOTH_JFOREX_USERNAME", "BEHEMOTH_JFOREX_PASSWORD"):
         if not os.environ.get(required):
             raise RuntimeError(f"Missing required env var: {required}")
@@ -228,11 +308,24 @@ def _run_jforex_tester(cfg: RunConfig, symbol: str, metrics_port: int) -> None:
             "BEHEMOTH_API_BASE_URI": f"http://{cfg.api_host}:{cfg.api_port}",
         }
     )
-    subprocess.run(
+    csv_path = _repo_root() / cfg.report_dir / f"{symbol}_jforex_runtime_events.csv"
+    # Delete any stale CSV from a previous run so the poll loop doesn't
+    # mistake old output for fresh completion.
+    if csv_path.exists():
+        csv_path.unlink()
+
+    proc = subprocess.Popen(
         ["mise", "exec", "--", "gradle", ":jforex-adapter:runJForexTester"],
         cwd=_repo_root(),
         env=env,
-        check=True,
+        start_new_session=True,
+    )
+    _wait_for_csv_then_kill(
+        proc=proc,
+        csv_path=csv_path,
+        poll_interval_sec=5.0,
+        settle_sec=5.0,
+        timeout_sec=float(cfg.tester_completion_timeout_seconds),
     )
 
 
