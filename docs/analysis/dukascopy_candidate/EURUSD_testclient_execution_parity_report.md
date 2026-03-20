@@ -1,4 +1,4 @@
-# cTrader Execution Parity
+# TestClient Execution Parity
 
 - symbol: `EURUSD`
 - runtime_db: `data/db/backtests/eurusd_stage12_dukascopy_candidate.db`

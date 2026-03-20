@@ -3,6 +3,8 @@
 ## Current State
 The current OCO system is operated as a governed research pipeline. Live execution deployment is optional and must follow Stage 9 governance locks.
 
+Generated deployment summary tables below are supportive evidence, not standalone authority. If the rolling summary block is sparse, stale, or unavailable in a local docs rebuild, use the operator runbook, generated stage snapshots, and docs-contract outputs as the decision surface.
+
 ## Promotion Checklist
 1. Stage 1-11 snapshots refreshed.
 2. `make docs-contract-ci` passes with zero failed checks.

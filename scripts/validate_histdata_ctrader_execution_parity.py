@@ -51,6 +51,19 @@ def _table(df: pd.DataFrame) -> str:
         return "```\n" + df.to_string(index=False) + "\n```"
 
 
+def _report_title(report_out: Path) -> str:
+    name_l = report_out.name.lower()
+    if "dukascopy_testclient_execution_parity" in name_l:
+        return "Dukascopy TestClient Execution Parity"
+    if "histdata_testclient_execution_parity" in name_l:
+        return "HistData TestClient Execution Parity"
+    if "testclient_execution_parity" in name_l:
+        return "TestClient Execution Parity"
+    if "histdata_ctrader_execution_parity" in name_l:
+        return "HistData cTrader Execution Parity"
+    return "cTrader Execution Parity"
+
+
 def _to_utc(s: pd.Series) -> pd.Series:
     try:
         return pd.to_datetime(s, utc=True, errors="coerce", format="mixed")
@@ -759,7 +772,7 @@ def run(
         checks_df.to_csv(out_checks_csv, index=False)
         mismatches_df.to_csv(out_mismatches_csv, index=False)
         report_out.write_text(
-            "# cTrader Execution Parity\n\nMissing required input files.\n",
+            f"# {_report_title(report_out)}\n\nMissing required input files.\n",
             encoding="utf-8",
         )
         return summary_df, checks_df, mismatches_df
@@ -1325,7 +1338,7 @@ def run(
 
     failed_checks = checks_df[checks_df["status"].astype(str) == "fail"].copy()
     report_lines = [
-        "# cTrader Execution Parity",
+        f"# {_report_title(report_out)}",
         "",
         f"- symbol: `{sym}`",
         f"- runtime_db: `{runtime_db}`",

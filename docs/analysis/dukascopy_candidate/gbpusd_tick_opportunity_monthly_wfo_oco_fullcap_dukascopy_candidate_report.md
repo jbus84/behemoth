@@ -1,4 +1,4 @@
-# EURUSD Tick Opportunity Monthly WFO (3M->1M)
+# GBPUSD Tick Opportunity Monthly WFO (3M->1M)
 
 ## Setup
 - library: `oco`

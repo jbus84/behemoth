@@ -1,4 +1,4 @@
-# HistData cTrader Execution Parity
+# HistData TestClient Execution Parity
 
 - symbol: `GBPUSD`
 - runtime_db: `data/db/backtests/gbpusd_stage12_api_parity.db`

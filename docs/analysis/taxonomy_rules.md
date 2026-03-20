@@ -1,13 +1,14 @@
 # Analysis Taxonomy Rules
 
-- generated_at_utc: `2026-03-11T23:36:33Z`
+- generated_at_utc: `2026-03-20T16:10:03Z`
 
 ## Group Assignment Order
 1. `core`: canonical governance reports for the OCO bible.
 2. `symbol`: filename maps to specific symbol token (`EURUSD`, `GBPUSD`, `USDJPY`, `USDCHF`, `AUDUSD`, `USDCAD`).
-3. `stage`: filename keyword maps to stage id.
-4. `legacy`: known historical/legacy analysis families.
-5. `unclassified`: everything else (should be zero in healthy state).
+3. `compatibility`: cTrader, HistData, FTMO, and reconciliation-oriented surfaces.
+4. `stage`: filename keyword maps to stage id.
+5. `legacy`: known historical/legacy analysis families.
+6. `unclassified`: everything else (should be zero in healthy state).
 
 ## Stage Keyword Map
 |   stage_id | keywords                                                                                                                                                                                    |
@@ -25,6 +26,17 @@
 |         11 | execution_monte_carlo                                                                                                                                                                       |
 |         12 | stage12, api_parity, ab_parity, ctrader_ab_parity, reconciliation, runtime_db, tick_forensics, histdata_vs_ctrader, histdata_testclient_execution_parity, histdata_ctrader_execution_parity |
 |          8 | offset_tickbar_robustness, offset_robustness, warmup_sensitivity, api_offset_confirmation                                                                                                   |
+
+## Compatibility Keyword Map
+| keyword                     |
+|:----------------------------|
+| ctrader                     |
+| histdata                    |
+| reconciliation              |
+| runtime_db                  |
+| tick_forensics              |
+| testclient_execution_parity |
+| ftmo_                       |
 
 ## Legacy Keyword Map
 | keyword              |

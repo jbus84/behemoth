@@ -1,4 +1,4 @@
-# cTrader Execution Parity
+# Dukascopy TestClient Execution Parity
 
 - symbol: `GBPUSD`
 - runtime_db: `data/db/backtests/gbpusd_stage13_dukascopy_candidate.db`

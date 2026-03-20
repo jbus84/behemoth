@@ -612,8 +612,9 @@ def _write_report(
     importance: pd.DataFrame,
     cfg: dict[str, Any]
 ) -> None:
+    symbol = str(cfg.get("symbol", "UNKNOWN")).upper().strip() or "UNKNOWN"
     lines: list[str] = []
-    lines.append("# EURUSD Tick Opportunity Monthly WFO (3M->1M)")
+    lines.append(f"# {symbol} Tick Opportunity Monthly WFO (3M->1M)")
     lines.append("")
     lines.append("## Setup")
     lines.append(f"- library: `{cfg['library']}`")

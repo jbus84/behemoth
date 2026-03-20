@@ -1,4 +1,4 @@
-# HistData cTrader Execution Parity
+# HistData TestClient Execution Parity
 
 - symbol: `USDCAD`
 - runtime_db: `data/db/backtests/usdcad_stage12_api_parity.db`

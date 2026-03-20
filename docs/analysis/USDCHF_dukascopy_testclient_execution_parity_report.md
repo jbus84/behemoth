@@ -1,4 +1,4 @@
-# cTrader Execution Parity
+# Dukascopy TestClient Execution Parity
 
 - symbol: `USDCHF`
 - runtime_db: `data/db/backtests/usdchf_stage13_dukascopy_candidate.db`
