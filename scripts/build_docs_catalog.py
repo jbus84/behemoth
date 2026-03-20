@@ -491,6 +491,7 @@ def _build_canonical_map(manifest: pd.DataFrame) -> pd.DataFrame:
         (m["doc_path"].astype(str).str.startswith("analysis/"))
         & (m["symbol"].astype(str).isin(SYMBOLS))
         & (m["stage_family"].astype(str) != "none")
+        & (m["group"].astype(str) != "candidate")
     ].copy()
     if not sym_primary.empty:
         sym_primary = sym_primary.sort_values(
@@ -507,8 +508,17 @@ def _build_canonical_map(manifest: pd.DataFrame) -> pd.DataFrame:
         pd.to_numeric(m["stage_id"], errors="coerce").between(1, 12)
         | m["doc_path"].astype(str).isin(STAGE_INTEGRATED_MANUAL)
     )
+    stage_rows &= m["group"].astype(str) != "candidate"
     m.loc[stage_rows & ~m["is_canonical"].astype(bool), "class"] = "stage_integrated"
     m.loc[stage_rows & ~m["is_canonical"].astype(bool), "reason"] = "mapped_to_stage_01_10"
+
+    # Candidate analysis stays outside the live centerline even if stage-tagged.
+    candidate_rows = (m["doc_path"].astype(str).str.startswith("analysis/")) & (
+        m["group"].astype(str) == "candidate"
+    )
+    m.loc[candidate_rows, "class"] = "candidate"
+    m.loc[candidate_rows, "reason"] = "candidate_outside_live_centerline"
+    m.loc[candidate_rows, "is_canonical"] = False
 
     # Governance core retained outside strict stage mapping.
     gov_rows = m["doc_path"].astype(str).isin(GOVERNANCE_CORE_REPORTS)
@@ -527,6 +537,7 @@ def _build_canonical_map(manifest: pd.DataFrame) -> pd.DataFrame:
         & (m["symbol"].astype(str).isin(SYMBOLS))
         & (~m["is_canonical"].astype(bool))
         & (m["stage_family"].astype(str) != "none")
+        & (m["group"].astype(str) != "candidate")
     )
     m.loc[noncanonical_symbol, "class"] = "archive"
     m.loc[noncanonical_symbol, "reason"] = "noncanonical_symbol_variant"

@@ -43,6 +43,7 @@ def test_build_docs_catalog_outputs_manifest_and_index(tmp_path: Path) -> None:
         out_manifest_csv=analysis / "catalog_manifest.csv",
         out_gaps_md=analysis / "catalog_gaps_report.md",
         out_taxonomy_md=analysis / "taxonomy_rules.md",
+        out_canonical_map_csv=analysis / "canonical_stage_map.csv",
     )
 
     assert not manifest.empty
@@ -123,3 +124,18 @@ def test_build_docs_catalog_outputs_manifest_and_index(tmp_path: Path) -> None:
     assert "3. `candidate`" in taxonomy_text
     assert "4. `compatibility`" in taxonomy_text
     assert "## Candidate Keyword Map" in taxonomy_text
+
+    canonical_map = pd.read_csv(analysis / "canonical_stage_map.csv")
+    candidate_canonical_row = canonical_map[
+        canonical_map["doc_path"].astype(str) == "analysis/EURUSD_candidate_2025-07_h6_london_k2_drift.md"
+    ]
+    assert not candidate_canonical_row.empty
+    assert candidate_canonical_row.iloc[0]["class"] == "candidate"
+    assert bool(candidate_canonical_row.iloc[0]["is_canonical"]) is False
+
+    offset_canonical_row = canonical_map[
+        canonical_map["doc_path"].astype(str) == "analysis/eurusd_offset_tickbar_robustness_report.md"
+    ]
+    assert not offset_canonical_row.empty
+    assert offset_canonical_row.iloc[0]["class"] == "candidate"
+    assert bool(offset_canonical_row.iloc[0]["is_canonical"]) is False
