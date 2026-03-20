@@ -1,4 +1,4 @@
-# HistData cTrader Execution Parity
+# HistData TestClient Execution Parity
 
 - symbol: `AUDUSD`
 - runtime_db: `data/db/backtests/audusd_stage12_api_parity.db`

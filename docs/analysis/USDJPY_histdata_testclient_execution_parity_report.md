@@ -1,4 +1,4 @@
-# HistData cTrader Execution Parity
+# HistData TestClient Execution Parity
 
 - symbol: `USDJPY`
 - runtime_db: `data/db/backtests/usdjpy_stage12_api_parity.db`

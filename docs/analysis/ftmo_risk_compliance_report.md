@@ -1,9 +1,11 @@
 # FTMO Compliance Report
 
-## Objective
-- Confirm runtime trade decisions respect the active FTMO profile limits.
+Compatibility note: this page documents FTMO and cBot-facing risk controls that remain available for compatibility and historical support. They are not the primary runtime centerline for the active OCO JForex-directed system.
 
-## Active Runtime Profile
+## Objective
+- Confirm compatibility runtime trade decisions respect the configured FTMO profile limits when that surface is enabled.
+
+## Compatibility Runtime Profile
 - Config path: `configs/research/governance/ftmo/ftmo_rules.yaml`
 - Default profile id: `ftmo_10k_challenge_2step`
 
@@ -21,7 +23,7 @@
 - `GET /risk/ftmo/limits`
 - `GET /risk/ftmo/status`
 
-## cBot Integration
+## Legacy cBot Integration
 - Parameters:
 - `Enable FTMO Guards`
 - `FTMO Profile ID`

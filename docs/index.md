@@ -6,7 +6,7 @@ This documentation set is for the active **tick-based OCO stop-limit strategy** 
 - Strategy type: directional OCO candidate selection with stop-limit entry realism and fixed-horizon post-touch outcome labeling.
 - Core model engine: CatBoost-based monthly WFO probability ranking (`pred_prob`) for execution-threshold selection.
 - Model lifecycle policy: one-month validity and monthly retrain (predictions expire at new test-month boundary).
-- Primary symbols: `EURUSD`, `GBPUSD`, `USDJPY`, `USDCHF`.
+- Active symbol universe: `EURUSD`, `GBPUSD`, `USDJPY`, `USDCHF`, `AUDUSD`, `USDCAD`.
 - Core objective: find high-count, positive gross microstructure opportunities and govern them with strict causal validation.
 - Validation posture: stage-gated, artifact-driven, and contract-checked.
 
@@ -21,14 +21,13 @@ This documentation set is for the active **tick-based OCO stop-limit strategy** 
 - Daily operator flow: `docs/strategy_bible/operator_runbook.md`
 - Current generated snapshot: `docs/strategy_bible/generated/pipeline_snapshot.md`
 
-## Latest Expected Gross (Training Window)
-Using the latest available reduced-core month in current governed artifacts (`2025-12`):
-- EURUSD: `1.061547` pips/trade (`status=ok`)
-- GBPUSD: `n/a` (`status != ok`, rows `0`)
-- USDJPY: `n/a` (`status != ok`, rows `0`)
-- USDCHF: `0.723562` pips/trade (`status=ok`)
+## Current Symbol Status
+Use `docs/strategy_bible/generated/pipeline_snapshot.md` as the current per-symbol status view for all active symbols. It is the highest-signal top-level source for:
+- current symbol coverage across the six-symbol active universe
+- per-symbol mean gross and LB95 summary metrics
+- gate outcomes and all-gates-pass status
 
-Full table and sources are in `STRATEGY_MASTER_MANUAL.md` Section `6.5`.
+The strategy manual remains the synthesis layer. When the manual and generated symbol status differ, the generated snapshot and docs-contract outputs win.
 
 ## Standard Refresh Cycle
 ```bash

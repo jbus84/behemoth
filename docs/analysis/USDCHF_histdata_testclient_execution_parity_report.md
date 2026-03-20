@@ -1,4 +1,4 @@
-# HistData cTrader Execution Parity
+# HistData TestClient Execution Parity
 
 - symbol: `USDCHF`
 - runtime_db: `data/db/backtests/usdchf_stage12_api_parity.db`

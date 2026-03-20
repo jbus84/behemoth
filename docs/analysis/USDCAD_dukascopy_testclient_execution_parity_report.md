@@ -1,4 +1,4 @@
-# cTrader Execution Parity
+# Dukascopy TestClient Execution Parity
 
 - symbol: `USDCAD`
 - runtime_db: `data/db/backtests/usdcad_stage13_dukascopy_candidate.db`

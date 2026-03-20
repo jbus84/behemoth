@@ -1,4 +1,4 @@
-# cTrader Execution Parity
+# Dukascopy TestClient Execution Parity
 
 - symbol: `USDJPY`
 - runtime_db: `data/db/backtests/usdjpy_stage13_dukascopy_candidate.db`

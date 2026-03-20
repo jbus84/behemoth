@@ -100,6 +100,16 @@ LEGACY_KEYWORDS: tuple[str, ...] = (
     "m5_mom_m15_momrev",
 )
 
+COMPATIBILITY_KEYWORDS: tuple[str, ...] = (
+    "ctrader",
+    "histdata",
+    "reconciliation",
+    "runtime_db",
+    "tick_forensics",
+    "testclient_execution_parity",
+    "ftmo_",
+)
+
 
 @dataclass(frozen=True)
 class ClassifiedDoc:
@@ -190,6 +200,8 @@ def _classify_doc(path: Path, docs_root: Path) -> ClassifiedDoc:
         group = "archive"
     elif is_core:
         group = "core"
+    elif any(k in name_l for k in COMPATIBILITY_KEYWORDS):
+        group = "compatibility"
     elif sym != "ALL":
         group = "symbol"
     elif stage_id is not None:
@@ -222,6 +234,13 @@ def _render_index(manifest: pd.DataFrame, *, docs_root: Path) -> str:
     lines.append("- manifest_csv: `analysis/catalog_manifest.csv`")
     lines.append("- gaps_report: `analysis/catalog_gaps_report.md`")
     lines.append("")
+    lines.append(
+        "Use `Core Reports` and `Core Symbol Reports` for the active OCO/JForex-directed path."
+    )
+    lines.append(
+        "Use `Compatibility / Legacy Reports` for cTrader, HistData, FTMO, and reconciliation surfaces that remain available but are not the primary runtime centerline."
+    )
+    lines.append("")
 
     lines.append("## Core Reports")
     core = manifest[manifest["group"] == "core"].copy()
@@ -233,7 +252,7 @@ def _render_index(manifest: pd.DataFrame, *, docs_root: Path) -> str:
             lines.append(f"- [{r['title']}]({r['doc_path'].replace('analysis/', '')})")
     lines.append("")
 
-    lines.append("## Symbol Reports")
+    lines.append("## Core Symbol Reports")
     sym = manifest[manifest["group"] == "symbol"].copy()
     if sym.empty:
         lines.append("_empty_")
@@ -245,6 +264,31 @@ def _render_index(manifest: pd.DataFrame, *, docs_root: Path) -> str:
                 lines.append("_empty_")
                 continue
             for _, r in g.iterrows():
+                lines.append(f"- [{r['title']}]({r['doc_path'].replace('analysis/', '')})")
+    lines.append("")
+
+    lines.append("## Compatibility / Legacy Reports")
+    compatibility = manifest[
+        manifest["group"].isin(["compatibility", "legacy"])
+    ].copy()
+    if compatibility.empty:
+        lines.append("_empty_")
+    else:
+        compatibility_symbol = compatibility[compatibility["symbol"] != "ALL"].copy()
+        compatibility_global = compatibility[compatibility["symbol"] == "ALL"].copy()
+        if not compatibility_symbol.empty:
+            for s in SYMBOLS:
+                g = compatibility_symbol[
+                    compatibility_symbol["symbol"] == s
+                ].copy().sort_values("doc_path")
+                if g.empty:
+                    continue
+                lines.append(f"### {s}")
+                for _, r in g.iterrows():
+                    lines.append(f"- [{r['title']}]({r['doc_path'].replace('analysis/', '')})")
+        if not compatibility_global.empty:
+            lines.append("### Cross-Symbol / Global")
+            for _, r in compatibility_global.sort_values("doc_path").iterrows():
                 lines.append(f"- [{r['title']}]({r['doc_path'].replace('analysis/', '')})")
     lines.append("")
 
@@ -260,15 +304,6 @@ def _render_index(manifest: pd.DataFrame, *, docs_root: Path) -> str:
             .sort_values("stage_id")
         )
         lines.append(_table(agg))
-    lines.append("")
-
-    lines.append("## Legacy Reports")
-    legacy = manifest[manifest["group"] == "legacy"].copy().sort_values("doc_path")
-    if legacy.empty:
-        lines.append("_empty_")
-    else:
-        for _, r in legacy.iterrows():
-            lines.append(f"- [{r['title']}]({r['doc_path'].replace('analysis/', '')})")
     lines.append("")
 
     lines.append("## Unclassified Reports")
@@ -328,15 +363,20 @@ def _render_taxonomy_rules() -> str:
     lines.append(
         "2. `symbol`: filename maps to specific symbol token (`EURUSD`, `GBPUSD`, `USDJPY`, `USDCHF`, `AUDUSD`, `USDCAD`)."
     )
-    lines.append("3. `stage`: filename keyword maps to stage id.")
-    lines.append("4. `legacy`: known historical/legacy analysis families.")
-    lines.append("5. `unclassified`: everything else (should be zero in healthy state).")
+    lines.append("3. `compatibility`: cTrader, HistData, FTMO, and reconciliation-oriented surfaces.")
+    lines.append("4. `stage`: filename keyword maps to stage id.")
+    lines.append("5. `legacy`: known historical/legacy analysis families.")
+    lines.append("6. `unclassified`: everything else (should be zero in healthy state).")
     lines.append("")
     lines.append("## Stage Keyword Map")
     stage_rows = []
     for stage_id, keys in STAGE_KEYWORDS:
         stage_rows.append({"stage_id": int(stage_id), "keywords": ", ".join(keys)})
     lines.append(_table(pd.DataFrame(stage_rows)))
+    lines.append("")
+    lines.append("## Compatibility Keyword Map")
+    compatibility_rows = [{"keyword": k} for k in COMPATIBILITY_KEYWORDS]
+    lines.append(_table(pd.DataFrame(compatibility_rows)))
     lines.append("")
     lines.append("## Legacy Keyword Map")
     legacy_rows = [{"keyword": k} for k in LEGACY_KEYWORDS]

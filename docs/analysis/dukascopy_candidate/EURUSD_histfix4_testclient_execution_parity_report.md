@@ -1,4 +1,4 @@
-# cTrader Execution Parity
+# TestClient Execution Parity
 
 - symbol: `EURUSD`
 - runtime_db: `data/analysis/backtest_reconcile/dukascopy_candidate/EURUSD_histfix4_runtime.db`

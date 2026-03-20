@@ -1,4 +1,4 @@
-# cTrader Execution Parity
+# Dukascopy TestClient Execution Parity
 
 - symbol: `AUDUSD`
 - runtime_db: `data/db/backtests/audusd_stage13_dukascopy_candidate.db`

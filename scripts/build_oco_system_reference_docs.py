@@ -481,6 +481,32 @@ def _generated_block(
     artifact_sources: list[str],
     generated_at_utc: str,
 ) -> str:
+    snapshot_unavailable = False
+    trend_unavailable = False
+    if key == "DEPLOYMENT":
+        if by_symbol.empty:
+            snapshot_unavailable = True
+        else:
+            key_cols = [
+                c
+                for c in [
+                    "latest_month",
+                    "drift_fill_rate",
+                    "drift_overshoot_p95",
+                    "w13_fragility",
+                    "policy_quantile",
+                    "mc_s1_lb95",
+                    "reduced_mean_gross",
+                ]
+                if c in by_symbol.columns
+            ]
+            if key_cols:
+                snapshot_unavailable = by_symbol[key_cols].replace("", pd.NA).isna().all().all()
+        if trend.empty:
+            trend_unavailable = True
+        elif "months_used" in trend.columns:
+            months = pd.to_numeric(trend["months_used"], errors="coerce").fillna(0)
+            trend_unavailable = bool((months <= 0).all())
     lines: list[str] = []
     lines.append(f"- generated_at_utc: `{generated_at_utc}`")
     lines.append(f"- symbols_covered: `{','.join(SYMBOLS)}`")
@@ -491,6 +517,11 @@ def _generated_block(
             lines.append(f"  - `{p}`")
     else:
         lines.append("  - `unavailable`")
+    if key == "DEPLOYMENT" and (snapshot_unavailable or trend_unavailable):
+        lines.append("- deployment_summary_status: `partial_unavailable`")
+        lines.append(
+            "- deployment_summary_note: `Treat the checklist, operator runbook, and governed stage snapshots as primary authority until the rolling summary tables are repopulated.`"
+        )
     lines.append("")
     lines.append("#### Rolling Snapshot By Symbol")
     lines.append(_table(by_symbol))
@@ -546,7 +577,7 @@ def run(*, docs_root: Path, analysis_root: Path, out_status_csv: Path) -> pd.Dat
     repo_root = docs_dir.parent
     generated_at_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     by_symbol, trend, gov, artifact_sources = _build_snapshot_tables(
-        repo_root=repo_root, data_root=analysis_root.parent
+        repo_root=repo_root, data_root=analysis_root
     )
     rows: list[dict[str, Any]] = []
 
