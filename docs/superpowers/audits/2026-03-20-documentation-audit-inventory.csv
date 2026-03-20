@@ -1,0 +1,276 @@
+path,doc_type,authority_level,published_via_mkdocs,audience,status,issues_found,last_reviewed,notes
+docs/DATA_SOURCES.md,top_level_doc,supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/REPO_STRUCTURE.md,top_level_doc,supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/STRATEGY_MASTER_MANUAL.md,manual,canonical,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/AUDUSD_dukascopy_testclient_execution_parity_report.md,analysis_report,derived,no,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/AUDUSD_histdata_testclient_execution_parity_report.md,analysis_report,derived,no,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/AUDUSD_stage12_api_parity_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/EURUSD_candidate_2025-07_h6_london_k2_drift.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/EURUSD_ctrader_vs_research_reconciliation.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/EURUSD_ctrader_vs_research_reconciliation_20250707_20250709.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/EURUSD_ctrader_vs_research_reconciliation_20251208_20251210.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/EURUSD_dukascopy_testclient_execution_parity_report.md,analysis_report,derived,no,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/EURUSD_histdata_ctrader_execution_parity_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/EURUSD_histdata_testclient_execution_parity_report.md,analysis_report,derived,no,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/EURUSD_histdata_vs_ctrader_tick_forensics.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/EURUSD_runtime_db_run_summary.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/EURUSD_stage12_api_parity_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/EURUSD_stage12_api_parity_tolerant_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/EURUSD_testclient_execution_parity_report.md,analysis_report,derived,no,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/EURUSD_testclient_execution_parity_tolerant_report.md,analysis_report,derived,no,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/GBPUSD_dukascopy_testclient_execution_parity_report.md,analysis_report,derived,no,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/GBPUSD_histdata_testclient_execution_parity_report.md,analysis_report,derived,no,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/GBPUSD_stage12_api_parity_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/USDCAD_dukascopy_testclient_execution_parity_report.md,analysis_report,derived,no,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/USDCAD_histdata_testclient_execution_parity_report.md,analysis_report,derived,no,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/USDCAD_stage12_api_parity_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/USDCHF_dukascopy_testclient_execution_parity_report.md,analysis_report,derived,no,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/USDCHF_histdata_testclient_execution_parity_report.md,analysis_report,derived,no,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/USDCHF_stage12_api_parity_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/USDJPY_dukascopy_testclient_execution_parity_report.md,analysis_report,derived,no,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/USDJPY_histdata_testclient_execution_parity_report.md,analysis_report,derived,no,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/USDJPY_stage12_api_parity_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/audusd_oco_monthly_wfo_robustness_fullcap_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/audusd_oco_reduced_core_rolling_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/audusd_oco_stop_limit_tickfill_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/audusd_oco_tick_exact_rolling_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/audusd_offset_tickbar_robustness_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/audusd_tick_opportunity_mining_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/audusd_tick_opportunity_ml_ready_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/audusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md,analysis_report,derived,yes,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/audusd_tick_opportunity_monthly_wfo_report.md,analysis_report,derived,no,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/catalog_gaps_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/ctrader_backtest_reconciliation_runbook.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/data_reliability_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/AUDUSD_stage12_api_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/AUDUSD_testclient_execution_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/dukascopy_candidate/EURUSD_histfix2_stage12_api_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/EURUSD_histfix2_testclient_execution_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/dukascopy_candidate/EURUSD_histfix3_stage12_api_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/EURUSD_histfix3_testclient_execution_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/dukascopy_candidate/EURUSD_histfix4_stage12_api_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/EURUSD_histfix4_testclient_execution_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/dukascopy_candidate/EURUSD_histfix_stage12_api_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/EURUSD_histfix_testclient_execution_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/dukascopy_candidate/EURUSD_histfix_tolerant_stage12_api_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/EURUSD_histfix_tolerant_testclient_execution_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/dukascopy_candidate/EURUSD_histfix_tolerant_trace_stage12_api_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/EURUSD_histfix_tolerant_trace_testclient_execution_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/dukascopy_candidate/EURUSD_stage12_api_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/EURUSD_testclient_execution_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/dukascopy_candidate/GBPUSD_stage12_api_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/GBPUSD_testclient_execution_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/dukascopy_candidate/USDCAD_stage12_api_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/USDCAD_testclient_execution_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/dukascopy_candidate/USDCHF_stage12_api_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/USDCHF_testclient_execution_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/dukascopy_candidate/USDJPY_stage12_api_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/USDJPY_testclient_execution_parity_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/dukascopy_candidate/audusd_oco_monthly_wfo_robustness_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/audusd_oco_reduced_core_rolling_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/audusd_oco_tick_exact_shortlist_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/audusd_tick_opportunity_mining_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/audusd_tick_opportunity_monthly_wfo_oco_fullcap_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/dukascopy_candidate/eurusd_oco_monthly_wfo_robustness_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/eurusd_oco_reduced_core_rolling_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/eurusd_oco_tick_exact_shortlist_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/eurusd_tick_opportunity_mining_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/gbpusd_oco_monthly_wfo_robustness_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/gbpusd_oco_reduced_core_rolling_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/gbpusd_oco_tick_exact_shortlist_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/gbpusd_tick_opportunity_mining_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/dukascopy_candidate/oco_edge_clarity_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/oco_execution_monte_carlo_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/oco_execution_monte_carlo_validation_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/oco_logical_audit_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/usdcad_oco_monthly_wfo_robustness_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/usdcad_oco_reduced_core_rolling_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/usdcad_oco_tick_exact_shortlist_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/usdcad_tick_opportunity_mining_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/usdcad_tick_opportunity_monthly_wfo_oco_fullcap_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/dukascopy_candidate/usdchf_oco_monthly_wfo_robustness_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/usdchf_oco_reduced_core_rolling_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/usdchf_oco_tick_exact_shortlist_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/usdchf_tick_opportunity_mining_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/usdchf_tick_opportunity_monthly_wfo_oco_fullcap_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/dukascopy_candidate/usdjpy_oco_monthly_wfo_robustness_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/usdjpy_oco_reduced_core_rolling_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/usdjpy_oco_tick_exact_shortlist_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/usdjpy_tick_opportunity_mining_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/dukascopy_candidate/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_dukascopy_candidate_report.md,analysis_candidate_report,generated_candidate,no,operator+governance,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/dukascopy_source_completeness_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/eurusd_dukascopy_vs_histdata_tick_similarity_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/eurusd_oco_monthly_wfo_robustness_fullcap_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/eurusd_oco_reduced_core_rolling_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/eurusd_oco_tick_exact_rolling_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/eurusd_offset_tickbar_robustness_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/eurusd_tick_opportunity_mining_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/eurusd_tick_opportunity_ml_ready_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/eurusd_tick_opportunity_monthly_wfo_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/ftmo_risk_compliance_report.md,analysis_report,derived,no,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/gbpusd_oco_monthly_wfo_robustness_fullcap_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/gbpusd_oco_reduced_core_rolling_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/gbpusd_oco_tick_exact_rolling_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/gbpusd_offset_tickbar_robustness_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/gbpusd_tick_opportunity_mining_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/gbpusd_tick_opportunity_ml_ready_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md,analysis_report,derived,yes,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/gbpusd_tick_opportunity_monthly_wfo_report.md,analysis_report,derived,no,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/index.md,analysis_report,derived,yes,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/local_jforex_surrogate_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/oco_alert_remediation_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/oco_docs_contract_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/oco_edge_clarity_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/oco_execution_drift_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/oco_execution_monte_carlo_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/oco_execution_monte_carlo_validation_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/oco_execution_risk_prelive_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/oco_ftmo_allocator_risk_monitoring_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/oco_ftmo_risk_reconciliation_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/oco_governance_explainability_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/oco_leakage_integrity_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/oco_live_governance_lock.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/oco_logical_audit_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/oco_rule_universe_registry_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/oco_stage_integrity_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/oco_stop_limit_tickfill_eurusd_fixed_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/oco_stop_limit_tickfill_fullcap_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/oco_stop_limit_tickfill_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/oco_stop_limit_tickfill_validation_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/oco_threshold_sensitivity_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/offset_tickbar_robustness_clarification.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/operator_action_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/remediation_metric_decomposition.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/run_delta_dashboard.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/runtime_db_summary_eurusd_2025_07.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/stage13_dukascopy_testclient_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/stage14_gbpusd_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/stage14_jforex_runtime_certification_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/taxonomy_rules.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/usdcad_oco_monthly_wfo_robustness_fullcap_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/usdcad_oco_reduced_core_rolling_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/usdcad_oco_tick_exact_rolling_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/usdcad_offset_tickbar_robustness_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/usdcad_tick_opportunity_mining_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/usdcad_tick_opportunity_ml_ready_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/usdcad_tick_opportunity_monthly_wfo_oco_fullcap_report.md,analysis_report,derived,yes,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/usdcad_tick_opportunity_monthly_wfo_report.md,analysis_report,derived,no,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/usdchf_oco_monthly_wfo_robustness_fullcap_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/usdchf_oco_reduced_core_rolling_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/usdchf_oco_stop_limit_tickfill_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/usdchf_oco_tick_exact_rolling_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/usdchf_offset_tickbar_robustness_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/usdchf_tick_opportunity_mining_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/usdchf_tick_opportunity_ml_ready_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/usdchf_tick_opportunity_monthly_wfo_oco_fullcap_report.md,analysis_report,derived,yes,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/usdchf_tick_opportunity_monthly_wfo_report.md,analysis_report,derived,no,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/usdjpy_oco_monthly_wfo_robustness_fullcap_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/usdjpy_oco_reduced_core_rolling_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/usdjpy_oco_tick_exact_rolling_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/usdjpy_offset_tickbar_robustness_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/usdjpy_tick_opportunity_mining_report.md,analysis_report,derived,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/usdjpy_tick_opportunity_ml_ready_report.md,analysis_report,derived,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/analysis/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_report.md,analysis_report,derived,yes,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/analysis/usdjpy_tick_opportunity_monthly_wfo_report.md,analysis_report,derived,no,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/api.md,top_level_doc,supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/api_reference.md,top_level_doc,supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/architecture.md,top_level_doc,supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/archive/analysis/audusd_tick_opportunity_ml_ready_report.md,archive_report,archive,no,historical,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/archive/analysis/eurusd_tick_opportunity_ml_ready_report.md,archive_report,archive,no,historical,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/archive/analysis/gbpusd_tick_opportunity_ml_ready_report.md,archive_report,archive,no,historical,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/archive/analysis/usdcad_tick_opportunity_ml_ready_report.md,archive_report,archive,no,historical,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/archive/analysis/usdchf_oco_monthly_wfo_robustness_report.md,archive_report,archive,no,historical,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/archive/analysis/usdchf_tick_opportunity_ml_ready_report.md,archive_report,archive,no,historical,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/archive/analysis/usdjpy_tick_opportunity_ml_ready_report.md,archive_report,archive,no,historical,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/code_reference.md,top_level_doc,supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/config_reference.md,top_level_doc,supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/core_reference.md,top_level_doc,supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/data_pipeline.md,top_level_doc,supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/db_schema.md,top_level_doc,supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/db_schema_diagram.md,top_level_doc,supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/deployment.md,top_level_doc,supporting,yes,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/development.md,top_level_doc,supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/index.md,top_level_doc,supporting,yes,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+docs/makefile.md,top_level_doc,supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/monitoring.md,top_level_doc,supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/openapi.md,top_level_doc,supporting,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/risk_controls.md,top_level_doc,supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/assumptions_and_threats.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated/artifact_inventory.md,strategy_generated,generated,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated/audit_snapshot.md,strategy_generated,generated,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated/pipeline_snapshot.md,strategy_generated,generated,yes,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated/source_index.md,strategy_generated,generated,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated/stage_01_snapshot.md,strategy_generated,generated,yes,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated/stage_02_snapshot.md,strategy_generated,generated,yes,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated/stage_03_snapshot.md,strategy_generated,generated,yes,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated/stage_04_snapshot.md,strategy_generated,generated,yes,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated/stage_05_snapshot.md,strategy_generated,generated,yes,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated/stage_06_snapshot.md,strategy_generated,generated,yes,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated/stage_07_snapshot.md,strategy_generated,generated,yes,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated/stage_08_snapshot.md,strategy_generated,generated,yes,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated/stage_09_snapshot.md,strategy_generated,generated,yes,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated/stage_10_snapshot.md,strategy_generated,generated,yes,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated/stage_11_snapshot.md,strategy_generated,generated,yes,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated/stage_12_snapshot.md,strategy_generated,generated,yes,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated/stage_13_snapshot.md,strategy_generated,generated,yes,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated/stage_14_snapshot.md,strategy_generated,generated,yes,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated_dukascopy_candidate/artifact_inventory.md,strategy_generated_candidate,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated_dukascopy_candidate/audit_snapshot.md,strategy_generated_candidate,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated_dukascopy_candidate/pipeline_snapshot.md,strategy_generated_candidate,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated_dukascopy_candidate/source_index.md,strategy_generated_candidate,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated_dukascopy_candidate/stage_01_snapshot.md,strategy_generated_candidate,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated_dukascopy_candidate/stage_02_snapshot.md,strategy_generated_candidate,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated_dukascopy_candidate/stage_03_snapshot.md,strategy_generated_candidate,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated_dukascopy_candidate/stage_04_snapshot.md,strategy_generated_candidate,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated_dukascopy_candidate/stage_05_snapshot.md,strategy_generated_candidate,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated_dukascopy_candidate/stage_06_snapshot.md,strategy_generated_candidate,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated_dukascopy_candidate/stage_07_snapshot.md,strategy_generated_candidate,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated_dukascopy_candidate/stage_08_snapshot.md,strategy_generated_candidate,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated_dukascopy_candidate/stage_09_snapshot.md,strategy_generated_candidate,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated_dukascopy_candidate/stage_10_snapshot.md,strategy_generated_candidate,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated_dukascopy_candidate/stage_11_snapshot.md,strategy_generated_candidate,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/generated_dukascopy_candidate/stage_12_snapshot.md,strategy_generated_candidate,generated_candidate,no,operator+governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/governance_glossary.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/governance_mapping.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/metric_dictionary.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/model_handoff.md,strategy_spec,canonical_supporting,no,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/offset_tickbar_robustness_method.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/operator_playbook.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/operator_runbook.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/signal_lifecycle_reference.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/stage_01_data_foundation.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/stage_02_opportunity_mining.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/stage_03_monthly_wfo.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/stage_04_execution_realism.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/stage_05_reduced_core.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/stage_06_tick_exact_and_portability.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/stage_07_logical_and_statistical_audit.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/stage_08_robustness_and_stress.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/stage_09_live_governance_and_deployment.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/stage_10_known_risks_and_backlog.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/stage_11_execution_monte_carlo.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/stage_12_api_parity.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/stage_13_dukascopy_testclient_parity.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/stage_14_jforex_runtime_certification.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/strategy_bible/symbol_onboarding_playbook.md,strategy_spec,canonical_supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/validation.md,top_level_doc,supporting,yes,operator+contributor,reviewed,no,2026-03-20,structural sweep + targeted content check
+docs/walkthrough.md,top_level_doc,supporting,yes,operator+contributor,reviewed,yes,2026-03-20,see audit findings for concrete issue details
+configs/research/governance/ftmo/ftmo_rules.yaml,governance_legacy_policy,legacy_support,no,governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+configs/research/governance/oco_live_policy.yaml,governance_policy,active_config,no,governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+configs/research/governance/oco_monitoring_exceptions.yaml,governance_policy,active_config,no,governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+configs/research/governance/oco_rule_universe_registry.yaml,governance_registry,active_config,no,governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+configs/research/governance/oco/audusd_oco_live_lock.json,governance_live_lock,active_config,no,governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+configs/research/governance/oco/eurusd_oco_live_lock.json,governance_live_lock,active_config,no,governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+configs/research/governance/oco/gbpusd_oco_live_lock.json,governance_live_lock,active_config,no,governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+configs/research/governance/oco/usdcad_oco_live_lock.json,governance_live_lock,active_config,no,governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+configs/research/governance/oco/usdchf_oco_live_lock.json,governance_live_lock,active_config,no,governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+configs/research/governance/oco/usdjpy_oco_live_lock.json,governance_live_lock,active_config,no,governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+configs/research/governance/oco_dukascopy_candidate/audusd_oco_live_lock.json,governance_candidate_lock,generated_candidate,no,governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+configs/research/governance/oco_dukascopy_candidate/eurusd_oco_live_lock.json,governance_candidate_lock,generated_candidate,no,governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+configs/research/governance/oco_dukascopy_candidate/gbpusd_oco_live_lock.json,governance_candidate_lock,generated_candidate,no,governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+configs/research/governance/oco_dukascopy_candidate/usdcad_oco_live_lock.json,governance_candidate_lock,generated_candidate,no,governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+configs/research/governance/oco_dukascopy_candidate/usdchf_oco_live_lock.json,governance_candidate_lock,generated_candidate,no,governance,reviewed,no,2026-03-20,structural sweep + targeted content check
+configs/research/governance/oco_dukascopy_candidate/usdjpy_oco_live_lock.json,governance_candidate_lock,generated_candidate,no,governance,reviewed,no,2026-03-20,structural sweep + targeted content check
