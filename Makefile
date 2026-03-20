@@ -150,7 +150,7 @@ local-jforex-parity-spotlight:
 jforex-dukascopy-matrix:
 	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/run_jforex_dukascopy_matrix.py \
 		$(if $(SYMBOLS),--symbols "$(SYMBOLS)",) \
-		--start-ts $(or $(START_TS),2025-07-05T00:00:00Z) \
+		--start-ts $(or $(START_TS),2025-07-06T00:00:00Z) \
 		--end-ts $(or $(END_TS),2025-07-09T00:00:00Z) \
 		--model-month $(or $(MODEL_MONTH),2025-07) \
 		--models-dir $(or $(MODELS_DIR),models/oco_dukascopy_candidate) \
