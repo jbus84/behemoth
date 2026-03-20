@@ -313,6 +313,13 @@ def _run_jforex_tester(cfg: RunConfig, symbol: str, metrics_port: int) -> None:
     # mistake old output for fresh completion.
     if csv_path.exists():
         csv_path.unlink()
+    # Delete the shared OCO state file so the strategy starts with a clean lifecycle
+    # registry. The real JForex tester uses a fixed non-symbol-scoped path; without
+    # this deletion, groups from a previous symbol's run block new order submissions
+    # (LocalJForexTesterRunner explicitly deletes its own state file — match that).
+    state_json = _repo_root() / cfg.report_dir / "runtime" / "active_oco_state.json"
+    if state_json.exists():
+        state_json.unlink()
 
     proc = subprocess.Popen(
         ["mise", "exec", "--", "gradle", ":jforex-adapter:runJForexTester"],

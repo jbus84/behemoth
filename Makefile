@@ -8,6 +8,8 @@ COLOR_DESC := \033[2m
 
 # Active symbol list — single source of truth for multi-symbol targets
 REBUILD_SYMBOLS := EURUSD GBPUSD USDJPY USDCHF AUDUSD USDCAD
+# Default comma-separated symbol list for targets that accept --symbols (e.g. jforex-outcome-parity)
+SYMBOLS ?= EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD
 CTRADER_ROBOT_DST := ~/cAlgo/Sources/Robots/BehemothTradeManager/BehemothTradeManager/BehemothTradeManager.cs
 CTRADER_PLUGIN_DST := ~/cAlgo/Sources/Plugins/CustomDataSourceHistDataPlugin/CustomDataSourceHistDataPlugin/CustomDataSourceHistDataPlugin.cs
 
@@ -164,7 +166,7 @@ jforex-dukascopy-matrix:
 
 jforex-outcome-parity:
 	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/reconcile_jforex_outcomes.py \
-		--symbols $(or $(SYMBOLS),EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD) \
+		--symbols $(SYMBOLS) \
 		--lock-dir $(or $(LOCK_DIR),configs/research/governance/oco_history_dukascopy_candidate/2025-07) \
 		--reconcile-dir $(or $(RECONCILE_DIR),data/analysis/backtest_reconcile) \
 		--eval-start $(or $(EVAL_START),2025-07-07T00:00:00Z) \
