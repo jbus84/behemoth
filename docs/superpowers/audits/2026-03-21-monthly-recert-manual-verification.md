@@ -21,10 +21,12 @@
   - critical_failure_count: `0`
 
 ## Negative Promote-Live Guardrail
-- Command: not run yet
-- Exit code: not run yet
-- Key output: not run yet
-- Result: pending
+- Command: `TMP_EMPTY_REPORT_DIR=/tmp/promote-live-empty.SZ8rRI; make promote-live REPORT_DIR="$TMP_EMPTY_REPORT_DIR" >/tmp/promote-live-negative.log 2>&1; rc=$?; cat /tmp/promote-live-negative.log; exit $rc`
+- Exit code: `2`
+- Key output:
+  - `[promote-live] no cert results found at /tmp/promote-live-empty.SZ8rRI/stage14_jforex_runtime_certification_checks.csv; run make monthly-recert first`
+  - `make: *** [promote-live] Error 1`
+- Result: guardrail proved negative path blocks promotion when the report directory is empty
 
 ## Freeze OCO Dukascopy Candidate
 - Command: not run yet
