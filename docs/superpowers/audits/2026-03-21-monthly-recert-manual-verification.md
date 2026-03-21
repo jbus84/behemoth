@@ -3,7 +3,7 @@
 ## Environment
 - Worktree: `/Users/danielfisher/repositories/behemoth/.worktrees/monthly-recert-manual-verification`
 - Branch: `monthly-recert-manual-verification`
-- Commit: `b80ef95`
+- Commit: branch HEAD at preflight-capture time for this verification run
 - Verification date (UTC): `2026-03-21T13:40:12Z`
 
 ## Preflight
@@ -14,7 +14,7 @@
 - Models dir present: missing (`test -d models/oco` exited non-zero)
 - Candidate experiment dir present: `EXPERIMENTS_OK`
 - Candidate analysis dir present: missing (`test -d data/analysis/tick_opportunity_mining_dukascopy_candidate` exited non-zero)
-- Stage 14 cert CSV snapshot:
+- Stage 14 cert CSV snapshot (source: `data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_checks.csv`):
   - exists: `True`
   - row_count: `42`
   - evaluated_days: `['2026-03-20']`
