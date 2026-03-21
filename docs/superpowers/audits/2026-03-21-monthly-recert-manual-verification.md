@@ -3,16 +3,16 @@
 ## Environment
 - Worktree: `/Users/danielfisher/repositories/behemoth/.worktrees/monthly-recert-manual-verification`
 - Branch: `monthly-recert-manual-verification`
-- Commit: branch HEAD at preflight-capture time for this verification run
+- Commit: branch HEAD at preflight-capture time (`81918a6`)
 - Verification date (UTC): `2026-03-21T13:40:12Z`
 
 ## Preflight
 - Repo status: clean (`git status --short` returned no output)
-- Dukascopy tick root present: `DUKASCOPY_TICKS_OK`
-- Candidate governance dir present: `LIVE_GOV_OK`
-- Candidate history dir present: `HISTORY_GOV_OK`
+- Dukascopy tick root present: `/Users/danielfisher/Desktop/dukascopy_ticks` exists
+- Candidate governance dir present: `configs/research/governance/oco_dukascopy_candidate` exists
+- Candidate history dir present: `configs/research/governance/oco_history_dukascopy_candidate` exists
 - Models dir present: missing (`test -d models/oco` exited non-zero)
-- Candidate experiment dir present: `EXPERIMENTS_OK`
+- Candidate experiment dir present: `configs/research/experiments_dukascopy_candidate` exists
 - Candidate analysis dir present: missing (`test -d data/analysis/tick_opportunity_mining_dukascopy_candidate` exited non-zero)
 - Stage 14 cert CSV snapshot (source: `data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_checks.csv`):
   - exists: `True`
