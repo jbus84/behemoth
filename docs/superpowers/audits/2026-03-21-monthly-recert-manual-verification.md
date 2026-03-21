@@ -29,6 +29,7 @@
 - Key output:
   - `[promote-live] no cert results found at /tmp/promote-live-empty.sl4DN8/stage14_jforex_runtime_certification_checks.csv; run make monthly-recert first`
   - `make: *** [promote-live] Error 1`
+- Clarification: the `make` wrapper reported `Error 1`, while the full shell command exited `2` after the log capture pipeline propagated the wrapper's failure status.
 - Result: `promote-live` fails against a freshly created empty report directory because the cert CSV is missing
 
 ## Freeze OCO Dukascopy Candidate
@@ -67,7 +68,7 @@
 
 ## Git Diff Review
 - Changed files: `docs/superpowers/audits/2026-03-21-monthly-recert-manual-verification.md`
-- Notes: task 1 only; later verification steps remain pending
+- Notes: Task 1 evidence is documented and Task 2 evidence is now present; later verification steps remain pending
 
 ## Final Outcome
 - Overall status: in progress
