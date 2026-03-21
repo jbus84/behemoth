@@ -39,14 +39,19 @@ make freeze-oco-dukascopy-candidate
 ```
 run_monthly_recert.py
   → derive MODEL_MONTH = last complete calendar month (YYYY-MM)
-  → derive START_TS = MODEL_MONTH-04T00:00:00Z
-  → derive END_TS   = MODEL_MONTH-09T00:00:00Z
+  → derive START_TS  = MODEL_MONTH-04T00:00:00Z  (matrix window start, includes warmup)
+  → derive END_TS    = MODEL_MONTH-09T00:00:00Z  (matrix window end)
+  → derive EVAL_START = MODEL_MONTH-07T00:00:00Z  (outcome parity eval start, post-warmup)
+  → derive EVAL_END   = MODEL_MONTH-09T00:00:00Z  (outcome parity eval end)
+  → derive LOCK_DIR  = configs/research/governance/oco_history_dukascopy_candidate/MODEL_MONTH
   → print "[monthly-recert] running for MODEL_MONTH=YYYY-MM window=..."
   → subprocess: make jforex-dukascopy-matrix
       MODEL_MONTH=... START_TS=... END_TS=...
       (all other defaults unchanged)
   → on non-zero exit: print error, exit 1
   → subprocess: make full-stage14-cert
+      LOCK_DIR=... EVAL_START=... EVAL_END=...
+      (passes derived vars through to jforex-outcome-parity sub-target)
   → on non-zero exit: print error, exit 1
   → read data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_checks.csv
   → aggregate pass/fail per symbol (status column; critical checks only)
@@ -55,14 +60,19 @@ run_monthly_recert.py
   → if any fail: print "go/no-go: NO-GO — N symbol(s) failed", exit 1
 ```
 
+Note: `full-stage14-cert` chains three sub-targets: `jforex-outcome-parity` (uses `LOCK_DIR`, `EVAL_START`, `EVAL_END`), `local-jforex-cert` (uses glob patterns against report dir, no date variables), and `stage14-jforex-cert`. Only `jforex-outcome-parity` requires the derived date variables to be passed through.
+
 ### `make promote-live` sequence
 
 ```
 run_promote_live.py
   → derive MODEL_MONTH (same logic, overridable via --model-month)
   → read stage14_jforex_runtime_certification_checks.csv
-  → if any symbol failed or CSV missing: exit 1 with clear error
+  → if CSV missing: exit 1 — "no cert results found; run make monthly-recert first"
+  → if evaluated_at_utc date != today's date: exit 1 — "cert results are stale (DATE); rerun make monthly-recert"
+  → if any critical check failed: exit 1 — "cert failed for N symbol(s); cannot promote"
   → subprocess: freeze_oco_historical_governance.py
+      --symbols EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD
       --out-dir configs/research/governance/oco_history_dukascopy_candidate
       --months MODEL_MONTH
       --config-dir configs/research/experiments_dukascopy_candidate
@@ -72,6 +82,8 @@ run_promote_live.py
   → print reminder: "Next step: restart the live runner with: make jforex-live"
   → exit 0
 ```
+
+**Note on `--models-dir models/oco`:** Governance locks store SHA256 fingerprints of model artifacts in `models/oco/` (both the `oco/` and `oco_dukascopy_candidate/` locks reference this path — the dukascopy-candidate lock does not use a separate model directory). `BEHEMOTH_MODELS_DIR=models/oco_dukascopy_candidate` used by the live harness is a runtime lookup path independent of the SHA256-locked paths in the governance manifest.
 
 ### `make freeze-oco-dukascopy-candidate` recipe
 
@@ -92,14 +104,14 @@ freeze-oco-dukascopy-candidate:
 [monthly-recert] 2026-02 results
   EURUSD  PASS
   GBPUSD  PASS
-  USDJPY  FAIL  signal_coverage_ratio below threshold
+  USDJPY  FAIL  JFOREX_SIGNAL_PARITY_PASS: signal coverage below threshold
   USDCHF  PASS
   AUDUSD  PASS
   USDCAD  PASS
 go/no-go: NO-GO — 1 symbol(s) failed
 ```
 
-Only `critical` severity checks determine go/no-go. The `check_id` and `details` columns from the CSV are shown for any failing row.
+Only `critical` severity checks determine go/no-go. For failing rows the `check_id` column and `details` column from the CSV are shown (e.g. `JFOREX_SIGNAL_PARITY_PASS: <details>`). If `details` is empty, only `check_id` is shown.
 
 ## Date Derivation
 
@@ -119,7 +131,7 @@ def _last_complete_month() -> tuple[str, str, str]:
     return model_month, start_ts, end_ts
 ```
 
-All three values overridable via `--model-month`, `--start-ts`, `--end-ts` CLI flags.
+All derived values overridable: `--model-month`, `--start-ts`, `--end-ts`, `--eval-start`, `--eval-end`. `LOCK_DIR` is derived from `MODEL_MONTH` and cannot be set independently.
 
 ## File Map
 
