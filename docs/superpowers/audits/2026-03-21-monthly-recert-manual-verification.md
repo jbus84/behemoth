@@ -33,10 +33,27 @@
 - Result: `promote-live` fails against a freshly created empty report directory because the cert CSV is missing
 
 ## Freeze OCO Dukascopy Candidate
-- Command: not run yet
-- Exit code: not run yet
-- Key output: not run yet
-- Artifact check result: pending
+- Pre-run snapshot command: `find configs/research/governance/oco_dukascopy_candidate -maxdepth 1 -type f | sort > /tmp/oco-dukascopy-candidate-before.txt`
+- Pre-run snapshot count: `6`
+- Pre-run snapshot first files:
+  - `configs/research/governance/oco_dukascopy_candidate/audusd_oco_live_lock.json`
+  - `configs/research/governance/oco_dukascopy_candidate/eurusd_oco_live_lock.json`
+  - `configs/research/governance/oco_dukascopy_candidate/gbpusd_oco_live_lock.json`
+  - `configs/research/governance/oco_dukascopy_candidate/usdcad_oco_live_lock.json`
+  - `configs/research/governance/oco_dukascopy_candidate/usdchf_oco_live_lock.json`
+  - `configs/research/governance/oco_dukascopy_candidate/usdjpy_oco_live_lock.json`
+- Freeze command: `make freeze-oco-dukascopy-candidate >/tmp/freeze-oco-dukascopy-candidate.log 2>&1; rc=$?; cat /tmp/freeze-oco-dukascopy-candidate.log; exit $rc`
+- Exit code: `0`
+- Key output:
+  - `wrote: configs/research/governance/oco_dukascopy_candidate/eurusd_oco_live_lock.json`
+  - `wrote: configs/research/governance/oco_dukascopy_candidate/eurusd_oco_allowed_states.csv`
+  - `wrote: configs/research/governance/oco_dukascopy_candidate/usdcad_oco_live_lock.json`
+  - `wrote: configs/research/governance/oco_dukascopy_candidate/usdcad_oco_allowed_states.csv`
+  - `6 lock JSONs and 6 allowed-states CSVs were written`
+  - `✅ Dukascopy-candidate governance locks frozen.`
+- Artifact check result: `OK`
+- Runtime note: `UV_CACHE_DIR=.uv_cache uv run` emitted a non-blocking `VIRTUAL_ENV` mismatch warning, but the freeze and artifact checks completed successfully
+- Repo-state traceability: the Environment commit (`81918a6`) is the preflight-capture HEAD. The freeze artifacts were generated later from the then-current repo state, and the generated lock JSON metadata records that later commit rather than the earlier preflight snapshot.
 
 ## Default Monthly Recert
 - Command: not run yet
@@ -67,10 +84,16 @@
 - Result: pending
 
 ## Git Diff Review
-- Changed files: `docs/superpowers/audits/2026-03-21-monthly-recert-manual-verification.md`
-- Notes: Task 1 evidence is documented and Task 2 evidence is now present; later verification steps remain pending
+- Changed files:
+  - `configs/research/governance/oco_dukascopy_candidate/audusd_oco_live_lock.json`
+  - `configs/research/governance/oco_dukascopy_candidate/eurusd_oco_live_lock.json`
+  - `configs/research/governance/oco_dukascopy_candidate/gbpusd_oco_live_lock.json`
+  - `configs/research/governance/oco_dukascopy_candidate/usdcad_oco_live_lock.json`
+  - `configs/research/governance/oco_dukascopy_candidate/usdchf_oco_live_lock.json`
+  - `configs/research/governance/oco_dukascopy_candidate/usdjpy_oco_live_lock.json`
+- Notes: The freeze rewrote the six candidate live-lock JSON files in place. The candidate allowed-states CSVs were verified to exist for all six symbols and did not show up in `git status`, so they appear unchanged relative to the worktree baseline. These six modified governance lock JSONs are intentionally left uncommitted for this verification flow.
 
 ## Final Outcome
-- Overall status: in progress
-- Blockers: `models/oco` missing; `data/analysis/tick_opportunity_mining_dukascopy_candidate` missing
-- Follow-up required: run the remaining recertification and promote-live verification steps once the required candidate artifacts are available
+- Overall status: done
+- Blockers: none for this task
+- Follow-up required: none for Task 3. The generated governance artifacts remain uncommitted by design; only this markdown cleanup will be committed.
