@@ -23,7 +23,8 @@
 ## Negative Promote-Live Guardrail
 - Temp-dir creation command: `TMP_EMPTY_REPORT_DIR=$(mktemp -d /tmp/promote-live-empty.XXXXXX); printf '%s\n' "$TMP_EMPTY_REPORT_DIR"`
 - Temp-dir path: `/tmp/promote-live-empty.sl4DN8`
-- Command run: `make promote-live REPORT_DIR=/tmp/promote-live-empty.sl4DN8 >/tmp/promote-live-negative.log 2>&1; rc=$?; cat /tmp/promote-live-negative.log; exit $rc`
+- Exact command form from plan: `make promote-live REPORT_DIR="$TMP_EMPTY_REPORT_DIR"`
+- Executed command: `make promote-live REPORT_DIR=/tmp/promote-live-empty.sl4DN8 >/tmp/promote-live-negative.log 2>&1; rc=$?; cat /tmp/promote-live-negative.log; exit $rc`
 - Exit code: `2`
 - Key output:
   - `[promote-live] no cert results found at /tmp/promote-live-empty.sl4DN8/stage14_jforex_runtime_certification_checks.csv; run make monthly-recert first`
