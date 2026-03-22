@@ -212,6 +212,7 @@ Top-level schema:
       "entries_allowed": true,
       "parquet_tail_ts_utc": "2026-03-21T23:59:59Z",
       "bridge_start_ts_utc": "2026-03-22T00:00:00Z",
+      "bridge_end_ts_utc": "2026-03-22T12:34:24Z",
       "bridge_last_requested_to_utc": "2026-03-22T12:00:00Z",
       "last_ingested_tick_ts_utc": "2026-03-22T12:34:40Z",
       "staleness_seconds": 16,
@@ -227,6 +228,7 @@ Top-level schema:
 Contract rules:
 
 - `schema_version` is required and increments on breaking schema changes.
+- `bridge_end_ts_utc` means the timestamp of the last broker-history tick successfully ingested during the startup bridge; it remains unchanged after the symbol leaves `BRIDGING`
 - the file is rewritten on every state transition and at least every 5 seconds while the session is running
 - writes are atomic: write to a temp file in the same directory, then rename into place
 - consumers must treat the file as the latest complete snapshot, not a log stream
