@@ -102,7 +102,7 @@ public final class BrokerBridgeLoader {
             }
         } catch (Exception exc) {
             registry.markErrorPaused(symbol, clock.instant(), "Broker bridge failed: " + exc.getMessage());
-            throw new IllegalStateException("Broker bridge failed for " + symbol, exc);
+            return new BridgeResult(false, latestBarCount, lastBridgedTickTs, lastClientTickSeq);
         }
     }
 
