@@ -51,23 +51,23 @@ class LiveReadinessStatusWriterTest {
                   "schema_version": 1,
                   "as_of_utc": "2026-03-22T12:34:56Z",
                   "run_id": "jforex_live",
-                  "session_tradable_symbol_count": 1,
+                  "session_tradable_symbol_count": 0,
                   "session_total_symbol_count": 2,
                   "symbols": [
                     {
                       "symbol": "EURUSD",
-                      "state": "READY",
-                      "entries_allowed": true,
+                      "state": "STALE_PAUSED",
+                      "entries_allowed": false,
                       "parquet_tail_ts_utc": "2026-03-21T23:59:59Z",
                       "bridge_start_ts_utc": "2026-03-22T12:00:00Z",
                       "bridge_end_ts_utc": "2026-03-22T12:34:24Z",
                       "bridge_last_requested_to_utc": "2026-03-22T12:34:20Z",
                       "last_ingested_tick_ts_utc": "2026-03-22T12:34:24Z",
-                      "staleness_seconds": 16,
+                      "staleness_seconds": 32,
                       "warmup_bar_count_100": 312,
                       "startup_timeout_reached": false,
                       "last_failure_reason": "",
-                      "last_state_transition_utc": "2026-03-22T12:34:40Z"
+                      "last_state_transition_utc": "2026-03-22T12:34:56Z"
                     },
                     {
                       "symbol": "GBPUSD",

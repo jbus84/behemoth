@@ -60,7 +60,7 @@ class SymbolReadinessRegistryTest {
         assertThat(eurusd.bridgeLastRequestedToUtc()).isEqualTo(bridgeRequestedTo);
         assertThat(eurusd.bridgeEndTsUtc()).isEqualTo(bridgeEnd);
         assertThat(eurusd.lastIngestedTickTsUtc()).isEqualTo(bridgeEnd);
-        assertThat(eurusd.stalenessSeconds()).isEqualTo(15L);
+        assertThat(eurusd.stalenessSeconds()).isEqualTo(25L);
         assertThat(eurusd.warmupBarCount100()).isEqualTo(312);
         assertThat(eurusd.startupTimeoutReached()).isFalse();
         assertThat(eurusd.lastFailureReason()).isEmpty();
@@ -92,5 +92,29 @@ class SymbolReadinessRegistryTest {
         assertThat(snapshot.state()).isEqualTo(SymbolReadinessState.STALE_PAUSED);
         assertThat(snapshot.entriesAllowed()).isFalse();
         assertThat(snapshot.stalenessSeconds()).isEqualTo(31);
+    }
+
+    @Test
+    void liveSnapshotMarksReadySymbolStaleWhenAsOfCrossesFreshnessThreshold() {
+        SymbolReadinessRegistry registry = SymbolReadinessRegistry.forSymbols(List.of("EURUSD", "GBPUSD"), 30);
+        Instant readyAt = Instant.parse("2026-03-22T12:00:00Z");
+        Instant asOf = Instant.parse("2026-03-22T12:00:25Z");
+
+        registry.markReady("EURUSD", readyAt, 312, readyAt.minusSeconds(10));
+        registry.markReady("GBPUSD", readyAt, 280, readyAt.minusSeconds(5));
+
+        LiveReadinessSnapshot live = registry.liveSnapshot(asOf, "jforex_live");
+
+        assertThat(live.sessionTradableSymbolCount()).isEqualTo(1);
+
+        SymbolReadinessSnapshot eurusd = live.symbols().get(0);
+        assertThat(eurusd.state()).isEqualTo(SymbolReadinessState.STALE_PAUSED);
+        assertThat(eurusd.entriesAllowed()).isFalse();
+        assertThat(eurusd.stalenessSeconds()).isEqualTo(35L);
+
+        SymbolReadinessSnapshot gbpusd = live.symbols().get(1);
+        assertThat(gbpusd.state()).isEqualTo(SymbolReadinessState.READY);
+        assertThat(gbpusd.entriesAllowed()).isTrue();
+        assertThat(gbpusd.stalenessSeconds()).isEqualTo(30L);
     }
 }

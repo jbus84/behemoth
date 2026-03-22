@@ -157,9 +157,12 @@ public final class SymbolReadinessRegistry {
     }
 
     public synchronized LiveReadinessSnapshot liveSnapshot(Instant asOfUtc, String runId) {
-        List<SymbolReadinessSnapshot> snapshots = snapshots();
+        Instant snapshotAsOfUtc = Objects.requireNonNull(asOfUtc, "asOfUtc");
+        List<SymbolReadinessSnapshot> snapshots = symbols.values().stream()
+                .map(symbol -> symbol.snapshotAt(snapshotAsOfUtc, freshnessThresholdSeconds))
+                .toList();
         int tradable = (int) snapshots.stream().filter(SymbolReadinessSnapshot::entriesAllowed).count();
-        return new LiveReadinessSnapshot(asOfUtc, runId, tradable, snapshots.size(), snapshots);
+        return new LiveReadinessSnapshot(snapshotAsOfUtc, runId, tradable, snapshots.size(), snapshots);
     }
 
     private MutableSymbolReadiness requireSymbol(String rawSymbol) {
@@ -235,6 +238,36 @@ public final class SymbolReadinessRegistry {
                     startupTimeoutReached,
                     lastFailureReason,
                     lastStateTransitionUtc
+            );
+        }
+
+        private SymbolReadinessSnapshot snapshotAt(Instant asOfUtc, long freshnessThresholdSeconds) {
+            long derivedStalenessSeconds = lastIngestedTickTsUtc == null
+                    ? 0L
+                    : stalenessSeconds(asOfUtc, lastIngestedTickTsUtc);
+            SymbolReadinessState derivedState = state;
+            Instant derivedLastStateTransitionUtc = lastStateTransitionUtc;
+            if (state == SymbolReadinessState.READY && derivedStalenessSeconds > freshnessThresholdSeconds) {
+                derivedState = SymbolReadinessState.STALE_PAUSED;
+                derivedLastStateTransitionUtc = asOfUtc;
+            } else if (state == SymbolReadinessState.STALE_PAUSED && derivedStalenessSeconds <= freshnessThresholdSeconds) {
+                derivedState = SymbolReadinessState.READY;
+                derivedLastStateTransitionUtc = asOfUtc;
+            }
+            return new SymbolReadinessSnapshot(
+                    symbol,
+                    derivedState,
+                    derivedState == SymbolReadinessState.READY,
+                    parquetTailTsUtc,
+                    bridgeStartTsUtc,
+                    bridgeEndTsUtc,
+                    bridgeLastRequestedToUtc,
+                    lastIngestedTickTsUtc,
+                    derivedStalenessSeconds,
+                    warmupBarCount100,
+                    startupTimeoutReached,
+                    lastFailureReason,
+                    derivedLastStateTransitionUtc
             );
         }
     }
