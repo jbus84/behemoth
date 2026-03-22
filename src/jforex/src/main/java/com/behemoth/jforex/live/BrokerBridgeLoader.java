@@ -16,9 +16,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.locks.LockSupport;
 
 public final class BrokerBridgeLoader {
     static final Duration BRIDGE_WINDOW = Duration.ofMinutes(60);
+    private static final Duration IDLE_POLL_INTERVAL = Duration.ofMillis(250);
 
     private final BrokerHistoryPort historyPort;
     private final PythonPredictionClient predictionClient;
@@ -64,6 +66,7 @@ public final class BrokerBridgeLoader {
                 Instant minAcceptedTickTs = nextFromInclusive;
                 Instant requestFromInclusive = now.isBefore(nextFromInclusive) ? now : nextFromInclusive;
                 Instant requestedToInclusive = nextWindowEnd(requestFromInclusive, window, now);
+                boolean caughtUpToNow = requestedToInclusive.isBefore(nextFromInclusive);
                 List<RuntimeTick> ticks = historyPort.getTicks(symbol, requestFromInclusive, requestedToInclusive).stream()
                         .filter(tick -> !tick.timestamp().isBefore(minAcceptedTickTs))
                         .sorted(Comparator.comparing(RuntimeTick::timestamp))
@@ -101,7 +104,9 @@ public final class BrokerBridgeLoader {
                     );
                     return new BridgeResult(false, latestBarCount, lastBridgedTickTs, lastClientTickSeq);
                 }
-                if (ticks.isEmpty() && !requestedToInclusive.isBefore(nextFromInclusive)) {
+                if (ticks.isEmpty() && caughtUpToNow) {
+                    idlePoll();
+                } else if (ticks.isEmpty()) {
                     nextFromInclusive = requestedToInclusive.plusMillis(1L);
                 }
             }
@@ -116,10 +121,11 @@ public final class BrokerBridgeLoader {
         if (requestedToInclusive.isAfter(now)) {
             requestedToInclusive = now;
         }
-        if (requestedToInclusive.isBefore(nextFromInclusive)) {
-            return nextFromInclusive;
-        }
         return requestedToInclusive;
+    }
+
+    private static void idlePoll() {
+        LockSupport.parkNanos(IDLE_POLL_INTERVAL.toNanos());
     }
 
     private List<IncomingTickPayload> toPayloads(String symbol, String runId, List<RuntimeTick> ticks) {

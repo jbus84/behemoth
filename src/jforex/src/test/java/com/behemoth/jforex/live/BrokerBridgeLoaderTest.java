@@ -214,6 +214,34 @@ class BrokerBridgeLoaderTest {
         }
     }
 
+    @Test
+    void bridgeFailureIsContainedToErrorPausedResult() throws Exception {
+        MutableClock clock = new MutableClock(Instant.parse("2026-03-22T12:00:00Z"), ZoneId.of("UTC"));
+        SymbolReadinessRegistry registry = SymbolReadinessRegistry.forSymbols(List.of("EURUSD"));
+
+        try (MockWebServer server = new MockWebServer()) {
+            PythonPredictionClient predictionClient = new PythonPredictionClient(HttpClient.newHttpClient(), server.url("/").uri());
+            BrokerBridgeLoader loader = new BrokerBridgeLoader((symbol, fromInclusive, toInclusive) -> {
+                throw new IllegalStateException("history unavailable");
+            }, predictionClient, registry, clock);
+
+            BrokerBridgeLoader.BridgeResult result = loader.bridge(new BrokerBridgeLoader.BridgeConfig(
+                    "EURUSD",
+                    Instant.parse("2026-03-22T11:59:00Z"),
+                    "run-1",
+                    Duration.ofMinutes(60),
+                    Duration.ofSeconds(30),
+                    Duration.ofMinutes(20),
+                    289,
+                    0
+            ));
+
+            assertThat(result.ready()).isFalse();
+            assertThat(registry.snapshot("EURUSD").state()).isEqualTo(SymbolReadinessState.ERROR_PAUSED);
+            assertThat(registry.snapshot("EURUSD").lastFailureReason()).contains("history unavailable");
+        }
+    }
+
     private static MockResponse feedStatusResponse(String symbol, String lastTickTsUtc) {
         return new MockResponse()
                 .setHeader("Content-Type", "application/json")
