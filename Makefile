@@ -6,6 +6,14 @@ COLOR_TARGET := \033[0;32m
 COLOR_DOC := \033[0;34m
 COLOR_DESC := \033[2m
 
+REPO_ROOT_FROM_GIT := $(abspath $(shell git rev-parse --git-common-dir 2>/dev/null)/..)
+
+ifneq ("$(wildcard .env)","")
+include .env
+else ifneq ("$(wildcard $(REPO_ROOT_FROM_GIT)/.env)","")
+include $(REPO_ROOT_FROM_GIT)/.env
+endif
+
 # Active symbol list — single source of truth for multi-symbol targets
 REBUILD_SYMBOLS := EURUSD GBPUSD USDJPY USDCHF AUDUSD USDCAD
 # Default comma-separated symbol list for targets that accept --symbols (e.g. jforex-outcome-parity)
