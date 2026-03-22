@@ -1,6 +1,7 @@
 package com.behemoth.jforex.live;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.behemoth.jforex.config.JForexSessionConfig;
 import com.behemoth.jforex.core.RuntimeTick;
@@ -64,6 +65,21 @@ class HistoricalWarmupLoaderTest {
         } finally {
             TimeZone.setDefault(original);
         }
+    }
+
+    @Test
+    void loaderFailsWhenNoTicksFallWithinLookbackWindow() throws Exception {
+        Path eurUsdDir = tempDir.resolve("EURUSD");
+        Files.createDirectories(eurUsdDir);
+        Path parquetFile = eurUsdDir.resolve("ticks.parquet");
+        Instant bridgeAnchorTs = Instant.parse("2025-07-07T08:21:15Z");
+        writeParquetTicks(parquetFile, bridgeAnchorTs.minusSeconds(40L * 24L * 60L * 60L), 10, false);
+
+        HistoricalWarmupLoader loader = new HistoricalWarmupLoader();
+
+        assertThatThrownBy(() -> loader.load(config(), tempDir, "EURUSD", bridgeAnchorTs))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("No parquet ticks found for symbol EURUSD in lookback window");
     }
 
     private static void writeParquetTicks(Path parquetFile, Instant bridgeAnchorTs, int tickCount, boolean includeAnchor)

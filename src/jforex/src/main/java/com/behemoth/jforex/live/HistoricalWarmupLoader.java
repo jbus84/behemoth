@@ -39,8 +39,13 @@ public final class HistoricalWarmupLoader {
             int keep = config.liveWarmupTicks() + (preCount % PHASE_BAR_TICKS);
             List<RuntimeTick> ticks = loadRowsDescending(connection, parquetExpr, lookbackStart, bridgeAnchorTs, keep, sym);
             ticks.sort(Comparator.comparing(RuntimeTick::timestamp));
-            Instant effectiveBridgeAnchorTs = ticks.isEmpty() ? bridgeAnchorTs : ticks.getLast().timestamp();
-            return new WarmupSlice(effectiveBridgeAnchorTs, ticks);
+            if (ticks.isEmpty()) {
+                throw new IllegalStateException("No parquet ticks found for symbol " + sym + " in lookback window ending at "
+                        + bridgeAnchorTs);
+            }
+            return new WarmupSlice(ticks.getLast().timestamp(), ticks);
+        } catch (IllegalStateException exc) {
+            throw exc;
         } catch (Exception exc) {
             throw new IllegalStateException("Failed to load historical warmup parquet ticks for " + sym, exc);
         }
