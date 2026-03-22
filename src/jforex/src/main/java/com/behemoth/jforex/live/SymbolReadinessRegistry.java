@@ -8,13 +8,21 @@ import java.util.Map;
 import java.util.Objects;
 
 public final class SymbolReadinessRegistry {
-    private final Map<String, MutableSymbolReadiness> symbols;
+    private static final long UNBOUNDED_FRESHNESS_THRESHOLD_SECONDS = Long.MAX_VALUE;
 
-    private SymbolReadinessRegistry(Map<String, MutableSymbolReadiness> symbols) {
+    private final Map<String, MutableSymbolReadiness> symbols;
+    private long freshnessThresholdSeconds;
+
+    private SymbolReadinessRegistry(Map<String, MutableSymbolReadiness> symbols, long freshnessThresholdSeconds) {
         this.symbols = symbols;
+        this.freshnessThresholdSeconds = freshnessThresholdSeconds;
     }
 
     public static SymbolReadinessRegistry forSymbols(List<String> rawSymbols) {
+        return forSymbols(rawSymbols, UNBOUNDED_FRESHNESS_THRESHOLD_SECONDS);
+    }
+
+    public static SymbolReadinessRegistry forSymbols(List<String> rawSymbols, long freshnessThresholdSeconds) {
         Objects.requireNonNull(rawSymbols, "rawSymbols");
         Map<String, MutableSymbolReadiness> symbols = new LinkedHashMap<>();
         for (String rawSymbol : rawSymbols) {
@@ -27,7 +35,63 @@ public final class SymbolReadinessRegistry {
         if (symbols.isEmpty()) {
             throw new IllegalArgumentException("At least one symbol is required");
         }
-        return new SymbolReadinessRegistry(symbols);
+        return new SymbolReadinessRegistry(
+                symbols,
+                requireNonNegative(freshnessThresholdSeconds, "freshnessThresholdSeconds")
+        );
+    }
+
+    public synchronized void markParquetWarming(String rawSymbol, Instant transitionTsUtc, Instant parquetTailTsUtc) {
+        MutableSymbolReadiness symbol = requireSymbol(rawSymbol);
+        symbol.parquetTailTsUtc = Objects.requireNonNull(parquetTailTsUtc, "parquetTailTsUtc");
+        symbol.startupTimeoutReached = false;
+        symbol.lastFailureReason = "";
+        symbol.transitionTo(SymbolReadinessState.PARQUET_WARMING, transitionTsUtc);
+    }
+
+    public synchronized void markBridging(String rawSymbol, Instant transitionTsUtc) {
+        MutableSymbolReadiness symbol = requireSymbol(rawSymbol);
+        Instant startedAt = Objects.requireNonNull(transitionTsUtc, "transitionTsUtc");
+        symbol.bridgeStartTsUtc = startedAt;
+        symbol.bridgeEndTsUtc = null;
+        symbol.bridgeLastRequestedToUtc = null;
+        symbol.startupTimeoutReached = false;
+        symbol.lastFailureReason = "";
+        symbol.transitionTo(SymbolReadinessState.BRIDGING, startedAt);
+    }
+
+    public synchronized void recordBridgeProgress(
+            String rawSymbol,
+            Instant bridgeLastRequestedToUtc,
+            Instant latestBridgedTickTsUtc
+    ) {
+        MutableSymbolReadiness symbol = requireSymbol(rawSymbol);
+        symbol.bridgeLastRequestedToUtc = Objects.requireNonNull(
+                bridgeLastRequestedToUtc,
+                "bridgeLastRequestedToUtc"
+        );
+        symbol.lastIngestedTickTsUtc = Objects.requireNonNull(latestBridgedTickTsUtc, "latestBridgedTickTsUtc");
+        symbol.stalenessSeconds = 0L;
+    }
+
+    public synchronized void markBridgeComplete(String rawSymbol, Instant bridgeEndTsUtc) {
+        MutableSymbolReadiness symbol = requireSymbol(rawSymbol);
+        Instant completedAt = Objects.requireNonNull(bridgeEndTsUtc, "bridgeEndTsUtc");
+        if (symbol.bridgeStartTsUtc == null) {
+            symbol.bridgeStartTsUtc = completedAt;
+        }
+        symbol.bridgeEndTsUtc = completedAt;
+        symbol.transitionTo(SymbolReadinessState.BRIDGING, completedAt);
+    }
+
+    public synchronized void markStartupTimeoutReached(String rawSymbol) {
+        requireSymbol(rawSymbol).startupTimeoutReached = true;
+    }
+
+    public synchronized void markErrorPaused(String rawSymbol, Instant transitionTsUtc, String lastFailureReason) {
+        MutableSymbolReadiness symbol = requireSymbol(rawSymbol);
+        symbol.lastFailureReason = Objects.requireNonNullElse(lastFailureReason, "").trim();
+        symbol.transitionTo(SymbolReadinessState.ERROR_PAUSED, transitionTsUtc);
     }
 
     public synchronized void markReady(
@@ -37,29 +101,46 @@ public final class SymbolReadinessRegistry {
             Instant lastIngestedTickTsUtc
     ) {
         MutableSymbolReadiness symbol = requireSymbol(rawSymbol);
+        Instant transitionAt = Objects.requireNonNull(transitionTsUtc, "transitionTsUtc");
         symbol.warmupBarCount100 = requireNonNegative(warmupBarCount100, "warmupBarCount100");
         symbol.lastIngestedTickTsUtc = Objects.requireNonNull(lastIngestedTickTsUtc, "lastIngestedTickTsUtc");
-        symbol.stalenessSeconds = stalenessSeconds(transitionTsUtc, lastIngestedTickTsUtc);
-        symbol.transitionTo(SymbolReadinessState.READY, transitionTsUtc);
+        symbol.stalenessSeconds = stalenessSeconds(transitionAt, lastIngestedTickTsUtc);
+        symbol.lastFailureReason = "";
+        SymbolReadinessState nextState = symbol.stalenessSeconds > freshnessThresholdSeconds
+                ? SymbolReadinessState.STALE_PAUSED
+                : SymbolReadinessState.READY;
+        symbol.transitionTo(nextState, transitionAt);
     }
 
     public synchronized void recordFreshTick(String rawSymbol, Instant tickTsUtc) {
         MutableSymbolReadiness symbol = requireSymbol(rawSymbol);
         symbol.lastIngestedTickTsUtc = Objects.requireNonNull(tickTsUtc, "tickTsUtc");
+        symbol.stalenessSeconds = 0L;
+    }
+
+    public synchronized void refreshFreshness(Instant asOfUtc) {
+        refreshFreshnessInternal(asOfUtc, freshnessThresholdSeconds);
     }
 
     public synchronized void refreshFreshness(Instant asOfUtc, long freshnessThresholdSeconds) {
-        Instant now = Objects.requireNonNull(asOfUtc, "asOfUtc");
         long threshold = requireNonNegative(freshnessThresholdSeconds, "freshnessThresholdSeconds");
+        this.freshnessThresholdSeconds = threshold;
+        refreshFreshnessInternal(asOfUtc, threshold);
+    }
+
+    private void refreshFreshnessInternal(Instant asOfUtc, long freshnessThresholdSeconds) {
+        Instant now = Objects.requireNonNull(asOfUtc, "asOfUtc");
         for (MutableSymbolReadiness symbol : symbols.values()) {
             if (symbol.lastIngestedTickTsUtc == null) {
                 symbol.stalenessSeconds = 0L;
                 continue;
             }
             symbol.stalenessSeconds = stalenessSeconds(now, symbol.lastIngestedTickTsUtc);
-            if (symbol.state == SymbolReadinessState.READY && symbol.stalenessSeconds > threshold) {
+            if (symbol.state == SymbolReadinessState.READY
+                    && symbol.stalenessSeconds > freshnessThresholdSeconds) {
                 symbol.transitionTo(SymbolReadinessState.STALE_PAUSED, now);
-            } else if (symbol.state == SymbolReadinessState.STALE_PAUSED && symbol.stalenessSeconds <= threshold) {
+            } else if (symbol.state == SymbolReadinessState.STALE_PAUSED
+                    && symbol.stalenessSeconds <= freshnessThresholdSeconds) {
                 symbol.transitionTo(SymbolReadinessState.READY, now);
             }
         }
