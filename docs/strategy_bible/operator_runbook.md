@@ -10,6 +10,14 @@ Provide deterministic daily, weekly, and monthly operating actions for OCO pipel
 | Weekly | research + risk | assess threshold drift, lock drift, and near-fail pressure |
 | Monthly | research lead | approve WFO roll-forward, reduced-core stability, and release readiness |
 
+## JForex Live Session
+
+- Start live paper trading with `make jforex-live`.
+- The runner warms each symbol from local Dukascopy parquet, then bridges to near-real-time broker history before enabling new entries.
+- `READY` means the symbol may open new entries, `STALE_PAUSED` means the feed is stale and new entries are paused, and `ERROR_PAUSED` means startup warmup or bridge failed.
+- The freshness SLA is `30s`; a symbol is only tradable when its last ingested tick is no more than 30 seconds old.
+- Runtime readiness status is written to `data/analysis/backtest_reconcile/runtime/live_symbol_readiness.json`.
+
 ## Daily Checks
 | trigger | threshold / signal | severity | owner | action | evidence artifact | SLA |
 | --- | --- | --- | --- | --- | --- | --- |
