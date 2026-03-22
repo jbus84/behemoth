@@ -19,7 +19,6 @@ import java.util.Objects;
 
 public final class BrokerBridgeLoader {
     static final Duration BRIDGE_WINDOW = Duration.ofMinutes(60);
-    private static final Duration MIN_WINDOW = Duration.ofMinutes(1);
 
     private final BrokerHistoryPort historyPort;
     private final PythonPredictionClient predictionClient;
@@ -55,14 +54,18 @@ public final class BrokerBridgeLoader {
         Duration window = BRIDGE_WINDOW;
         Instant nextFromInclusive = cfg.parquetAnchorTsUtc().plusMillis(1L);
         Instant lastBridgedTickTs = null;
-        int latestBarCount = 0;
+        int latestBarCount = cfg.initialWarmupBarCount100();
         Long lastClientTickSeq = null;
 
         registry.markBridging(symbol, startedAt);
         try {
             while (true) {
-                Instant requestedToInclusive = nextWindowEnd(nextFromInclusive, window, clock.instant());
-                List<RuntimeTick> ticks = historyPort.getTicks(symbol, nextFromInclusive, requestedToInclusive).stream()
+                Instant now = clock.instant();
+                Instant minAcceptedTickTs = nextFromInclusive;
+                Instant requestFromInclusive = now.isBefore(nextFromInclusive) ? now : nextFromInclusive;
+                Instant requestedToInclusive = nextWindowEnd(requestFromInclusive, window, now);
+                List<RuntimeTick> ticks = historyPort.getTicks(symbol, requestFromInclusive, requestedToInclusive).stream()
+                        .filter(tick -> !tick.timestamp().isBefore(minAcceptedTickTs))
                         .sorted(Comparator.comparing(RuntimeTick::timestamp))
                         .toList();
                 if (!ticks.isEmpty()) {
@@ -75,6 +78,7 @@ public final class BrokerBridgeLoader {
                     lastClientTickSeq = batchResponse.lastClientTickSeq();
                     lastBridgedTickTs = ticks.getLast().timestamp();
                     registry.recordBridgeProgress(symbol, requestedToInclusive, lastBridgedTickTs);
+                    nextFromInclusive = lastBridgedTickTs.plusMillis(1L);
                 }
 
                 FeedBridgeStatus feedStatus = feedStatus(symbol, clock.instant(), cfg.freshnessThreshold());
@@ -97,8 +101,9 @@ public final class BrokerBridgeLoader {
                     );
                     return new BridgeResult(false, latestBarCount, lastBridgedTickTs, lastClientTickSeq);
                 }
-
-                nextFromInclusive = requestedToInclusive.plusMillis(1L);
+                if (ticks.isEmpty() && !requestedToInclusive.isBefore(nextFromInclusive)) {
+                    nextFromInclusive = requestedToInclusive.plusMillis(1L);
+                }
             }
         } catch (Exception exc) {
             registry.markErrorPaused(symbol, clock.instant(), "Broker bridge failed: " + exc.getMessage());
@@ -168,7 +173,8 @@ public final class BrokerBridgeLoader {
             Duration bridgeWindow,
             Duration freshnessThreshold,
             Duration startupTimeout,
-            int warmupBarCountThreshold
+            int warmupBarCountThreshold,
+            int initialWarmupBarCount100
     ) {
         public BridgeConfig {
             symbol = normalizeSymbol(symbol);
@@ -177,8 +183,8 @@ public final class BrokerBridgeLoader {
             bridgeWindow = Objects.requireNonNull(bridgeWindow, "bridgeWindow");
             freshnessThreshold = Objects.requireNonNull(freshnessThreshold, "freshnessThreshold");
             startupTimeout = Objects.requireNonNull(startupTimeout, "startupTimeout");
-            if (!BRIDGE_WINDOW.equals(bridgeWindow)) {
-                throw new IllegalArgumentException("bridgeWindow must be exactly PT60M");
+            if (bridgeWindow.isZero() || bridgeWindow.isNegative()) {
+                throw new IllegalArgumentException("bridgeWindow must be > 0");
             }
             if (freshnessThreshold.isNegative()) {
                 throw new IllegalArgumentException("freshnessThreshold must be >= 0");
@@ -188,6 +194,9 @@ public final class BrokerBridgeLoader {
             }
             if (warmupBarCountThreshold <= 0) {
                 throw new IllegalArgumentException("warmupBarCountThreshold must be > 0");
+            }
+            if (initialWarmupBarCount100 < 0) {
+                throw new IllegalArgumentException("initialWarmupBarCount100 must be >= 0");
             }
         }
     }

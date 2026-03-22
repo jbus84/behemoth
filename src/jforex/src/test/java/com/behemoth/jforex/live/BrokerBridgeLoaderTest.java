@@ -39,7 +39,8 @@ class BrokerBridgeLoaderTest {
                     Duration.ofMinutes(60),
                     Duration.ofSeconds(30),
                     Duration.ofMinutes(20),
-                    289
+                    289,
+                    0
             ));
 
             assertThat(registry.snapshot("EURUSD").state()).isEqualTo(SymbolReadinessState.ERROR_PAUSED);
@@ -96,7 +97,8 @@ class BrokerBridgeLoaderTest {
                     Duration.ofMinutes(60),
                     Duration.ofSeconds(30),
                     Duration.ofMinutes(20),
-                    289
+                    289,
+                    0
             ));
 
             assertThat(registry.snapshot("EURUSD").state()).isEqualTo(SymbolReadinessState.READY);
@@ -122,6 +124,93 @@ class BrokerBridgeLoaderTest {
                     .containsExactly("run-1", "run-1", "run-1");
 
             assertThat(server.takeRequest().getPath()).isEqualTo("/runtime/feed/status");
+        }
+    }
+
+    @Test
+    void bridgeUsesExistingWarmupWhenNoBrokerTicksAreNeeded() throws Exception {
+        MutableClock clock = new MutableClock(Instant.parse("2026-03-22T12:00:10Z"), ZoneId.of("UTC"));
+        FakeBrokerHistoryPort historyPort = new FakeBrokerHistoryPort(List.of(List.of()), () -> {
+        });
+        SymbolReadinessRegistry registry = SymbolReadinessRegistry.forSymbols(List.of("EURUSD"));
+
+        try (MockWebServer server = new MockWebServer()) {
+            server.enqueue(feedStatusResponse("EURUSD", "2026-03-22T12:00:05Z"));
+            PythonPredictionClient predictionClient = new PythonPredictionClient(HttpClient.newHttpClient(), server.url("/").uri());
+            BrokerBridgeLoader loader = new BrokerBridgeLoader(historyPort, predictionClient, registry, clock);
+
+            BrokerBridgeLoader.BridgeResult result = loader.bridge(new BrokerBridgeLoader.BridgeConfig(
+                    "EURUSD",
+                    Instant.parse("2026-03-22T12:00:00Z"),
+                    "run-1",
+                    Duration.ofMinutes(15),
+                    Duration.ofSeconds(30),
+                    Duration.ofMinutes(20),
+                    289,
+                    289
+            ));
+
+            assertThat(result.ready()).isTrue();
+            assertThat(historyPort.requests()).singleElement().satisfies(request -> {
+                assertThat(request.fromInclusive()).isEqualTo(Instant.parse("2026-03-22T12:00:00.001Z"));
+                assertThat(request.toInclusive()).isEqualTo(Instant.parse("2026-03-22T12:00:10Z"));
+            });
+            assertThat(registry.snapshot("EURUSD").state()).isEqualTo(SymbolReadinessState.READY);
+            assertThat(server.getRequestCount()).isEqualTo(1);
+            assertThat(server.takeRequest().getPath()).isEqualTo("/runtime/feed/status");
+        }
+    }
+
+    @Test
+    void bridgeDoesNotSkipTicksWhenCursorCatchesUpToNow() throws Exception {
+        MutableClock clock = new MutableClock(Instant.parse("2026-03-22T12:00:00Z"), ZoneId.of("UTC"));
+        FakeBrokerHistoryPort historyPort = new FakeBrokerHistoryPort(List.of(
+                List.of(),
+                List.of(new RuntimeTick("EURUSD", Instant.parse("2026-03-22T12:00:00.005Z"), 1.0850, 1.0852))
+        ), () -> clock.advance(Duration.ofMillis(10)));
+        SymbolReadinessRegistry registry = SymbolReadinessRegistry.forSymbols(List.of("EURUSD"));
+
+        try (MockWebServer server = new MockWebServer()) {
+            server.enqueue(feedStatusResponse("EURUSD", "2026-03-22T11:59:00Z"));
+            server.enqueue(new MockResponse()
+                    .setHeader("Content-Type", "application/json")
+                    .setBody("""
+                            {
+                              "ok": true,
+                              "symbol": "EURUSD",
+                              "ticks_received": 1,
+                              "accepted_count": 1,
+                              "dropped_count": 0,
+                              "bar_completed": false,
+                              "completed_bar_ticks": [],
+                              "symbol_tick_seq": 1,
+                              "last_tick_ts_utc": "2026-03-22T12:00:00.005Z",
+                              "last_client_tick_seq": 1,
+                              "bar_count": 289
+                            }
+                            """));
+            server.enqueue(feedStatusResponse("EURUSD", "2026-03-22T12:00:00.005Z"));
+            PythonPredictionClient predictionClient = new PythonPredictionClient(HttpClient.newHttpClient(), server.url("/").uri());
+            BrokerBridgeLoader loader = new BrokerBridgeLoader(historyPort, predictionClient, registry, clock);
+
+            BrokerBridgeLoader.BridgeResult result = loader.bridge(new BrokerBridgeLoader.BridgeConfig(
+                    "EURUSD",
+                    Instant.parse("2026-03-22T12:00:00Z"),
+                    "run-1",
+                    Duration.ofMinutes(5),
+                    Duration.ofSeconds(30),
+                    Duration.ofMinutes(20),
+                    289,
+                    0
+            ));
+
+            assertThat(result.ready()).isTrue();
+            assertThat(historyPort.requests()).hasSize(2);
+            assertThat(historyPort.requests().get(0).fromInclusive()).isEqualTo(Instant.parse("2026-03-22T12:00:00Z"));
+            assertThat(historyPort.requests().get(0).toInclusive()).isEqualTo(Instant.parse("2026-03-22T12:00:00Z"));
+            assertThat(historyPort.requests().get(1).fromInclusive()).isEqualTo(Instant.parse("2026-03-22T12:00:00.001Z"));
+            assertThat(historyPort.requests().get(1).toInclusive()).isEqualTo(Instant.parse("2026-03-22T12:00:00.010Z"));
+            assertThat(registry.snapshot("EURUSD").bridgeEndTsUtc()).isEqualTo(Instant.parse("2026-03-22T12:00:00.005Z"));
         }
     }
 
