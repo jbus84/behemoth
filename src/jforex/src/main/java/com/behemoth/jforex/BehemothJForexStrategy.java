@@ -6,6 +6,7 @@ import com.behemoth.jforex.core.OrderEvent;
 import com.behemoth.jforex.core.OrderEventType;
 import com.behemoth.jforex.core.RuntimeInstrument;
 import com.behemoth.jforex.core.RuntimeTick;
+import com.behemoth.jforex.live.LiveReadinessCoordinator;
 import com.behemoth.jforex.observability.JForexMetrics;
 import com.behemoth.jforex.reporting.Stage14ArtifactWriter;
 import com.behemoth.jforex.runtime.PythonPredictionClient;
@@ -42,6 +43,7 @@ public final class BehemothJForexStrategy implements IStrategy {
     private final Stage14ArtifactWriter artifactWriter;
     private final Map<String, Instrument> instrumentsBySymbol = new LinkedHashMap<>();
     private BehemothStrategyCore core;
+    private LiveReadinessCoordinator liveReadinessCoordinator;
     private IContext context;
 
     public BehemothJForexStrategy(JForexSessionConfig sessionConfig) {
@@ -102,6 +104,8 @@ public final class BehemothJForexStrategy implements IStrategy {
                     new JForexExecutionPort(() -> this.context == null ? null : this.context.getEngine(), instrumentsBySymbol)
             );
             core.start(runtimeInstruments);
+            this.liveReadinessCoordinator = new LiveReadinessCoordinator(sessionConfig, predictionClient, metrics);
+            liveReadinessCoordinator.initialize(context, core, runtimeInstruments.stream().map(RuntimeInstrument::symbol).toList());
         } catch (RuntimeException exc) {
             throw new JFException(exc.getMessage());
         }
@@ -113,9 +117,15 @@ public final class BehemothJForexStrategy implements IStrategy {
             return;
         }
         try {
+            Instant tickTs = Instant.ofEpochMilli(tick.getTime());
+            String symbol = normalizeSymbol(instrument.name());
+            if (liveReadinessCoordinator != null) {
+                liveReadinessCoordinator.recordLiveTick(symbol, tickTs);
+                liveReadinessCoordinator.onHeartbeat(tickTs);
+            }
             core.onTick(new RuntimeTick(
-                    normalizeSymbol(instrument.name()),
-                    Instant.ofEpochMilli(tick.getTime()),
+                    symbol,
+                    tickTs,
                     tick.getBid(),
                     tick.getAsk()
             ));
@@ -131,6 +141,14 @@ public final class BehemothJForexStrategy implements IStrategy {
         }
         try {
             core.flushSymbol(normalizeSymbol(instrument.name()));
+            if (liveReadinessCoordinator != null) {
+                Instant heartbeatTs = bidBar != null
+                        ? Instant.ofEpochMilli(bidBar.getTime())
+                        : askBar != null
+                        ? Instant.ofEpochMilli(askBar.getTime())
+                        : Instant.now();
+                liveReadinessCoordinator.onHeartbeat(heartbeatTs);
+            }
         } catch (RuntimeException exc) {
             throw new JFException(exc.getMessage());
         }
@@ -163,6 +181,10 @@ public final class BehemothJForexStrategy implements IStrategy {
     @Override
     public void onStop() throws JFException {
         try {
+            if (liveReadinessCoordinator != null) {
+                liveReadinessCoordinator.close();
+                liveReadinessCoordinator = null;
+            }
             if (core != null) {
                 core.stop();
             }

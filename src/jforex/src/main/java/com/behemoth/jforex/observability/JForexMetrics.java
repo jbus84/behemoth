@@ -1,6 +1,7 @@
 package com.behemoth.jforex.observability;
 
 import com.behemoth.jforex.config.JForexSessionConfig;
+import com.behemoth.jforex.live.SymbolReadinessState;
 import io.prometheus.client.CollectorRegistry;
 import io.prometheus.client.Counter;
 import io.prometheus.client.Gauge;
@@ -13,7 +14,8 @@ import java.util.Objects;
 /**
  * Prometheus metrics exporter for the Java-side JForex adapter.
  */
-public final class JForexMetrics implements AutoCloseable {
+public final class JForexMetrics implements AutoCloseable, LiveReadinessMetrics {
+
     private static final JForexMetrics DISABLED = new JForexMetrics();
 
     private final boolean enabled;
@@ -41,6 +43,11 @@ public final class JForexMetrics implements AutoCloseable {
     private final Counter accountSnapshots;
     private final Counter accountSnapshotFailures;
     private final Counter pythonSyncFailures;
+    private final Gauge liveReadinessState;
+    private final Gauge liveEntriesAllowed;
+    private final Gauge liveTickStalenessSeconds;
+    private final Counter liveReadinessTransitions;
+    private final Counter liveReadinessTimeouts;
 
     private JForexMetrics() {
         this.enabled = false;
@@ -68,6 +75,11 @@ public final class JForexMetrics implements AutoCloseable {
         this.accountSnapshots = null;
         this.accountSnapshotFailures = null;
         this.pythonSyncFailures = null;
+        this.liveReadinessState = null;
+        this.liveEntriesAllowed = null;
+        this.liveTickStalenessSeconds = null;
+        this.liveReadinessTransitions = null;
+        this.liveReadinessTimeouts = null;
     }
 
     private JForexMetrics(JForexSessionConfig config) throws IOException {
@@ -105,6 +117,33 @@ public final class JForexMetrics implements AutoCloseable {
         this.accountSnapshots = counter("behemoth_jforex_account_snapshots_total", "Account snapshots published from JForex to Python", "symbol");
         this.accountSnapshotFailures = counter("behemoth_jforex_account_snapshot_failures_total", "Account snapshot publish failures", "symbol");
         this.pythonSyncFailures = counter("behemoth_jforex_python_sync_failures_total", "Lifecycle sync failures against the Python runtime", "symbol", "operation");
+        this.liveReadinessState = Gauge.build()
+                .name("behemoth_jforex_live_readiness_state")
+                .help("Current live readiness state ordinal for the symbol")
+                .labelNames("symbol")
+                .register(registry);
+        this.liveEntriesAllowed = Gauge.build()
+                .name("behemoth_jforex_live_entries_allowed")
+                .help("Whether new entries are currently allowed for the symbol")
+                .labelNames("symbol")
+                .register(registry);
+        this.liveTickStalenessSeconds = Gauge.build()
+                .name("behemoth_jforex_live_tick_staleness_seconds")
+                .help("Current live tick staleness tracked by the readiness coordinator")
+                .labelNames("symbol")
+                .register(registry);
+        this.liveReadinessTransitions = counter(
+                "behemoth_jforex_live_readiness_transitions_total",
+                "Readiness state transitions tracked by the coordinator",
+                "symbol",
+                "from_state",
+                "to_state"
+        );
+        this.liveReadinessTimeouts = counter(
+                "behemoth_jforex_live_readiness_timeouts_total",
+                "Startup readiness timeouts tracked by the coordinator",
+                "symbol"
+        );
     }
 
     public static JForexMetrics start(JForexSessionConfig config) {
@@ -238,6 +277,45 @@ public final class JForexMetrics implements AutoCloseable {
     public void setActiveOcoGroups(String symbol, int activeCount) {
         if (enabled) {
             activeOcoGroups.labels(symbol).set(activeCount);
+        }
+    }
+
+    @Override
+    public void setReadinessState(String symbol, SymbolReadinessState state) {
+        if (enabled) {
+            liveReadinessState.labels(symbol).set(Objects.requireNonNull(state, "state").ordinal());
+        }
+    }
+
+    @Override
+    public void setEntriesAllowed(String symbol, boolean allowed) {
+        if (enabled) {
+            liveEntriesAllowed.labels(symbol).set(allowed ? 1.0 : 0.0);
+        }
+    }
+
+    @Override
+    public void setTickStalenessSeconds(String symbol, long stalenessSeconds) {
+        if (enabled) {
+            liveTickStalenessSeconds.labels(symbol).set(Math.max(0L, stalenessSeconds));
+        }
+    }
+
+    @Override
+    public void recordReadinessTransition(String symbol, SymbolReadinessState fromState, SymbolReadinessState toState) {
+        if (enabled) {
+            liveReadinessTransitions.labels(
+                    symbol,
+                    Objects.requireNonNull(fromState, "fromState").name(),
+                    Objects.requireNonNull(toState, "toState").name()
+            ).inc();
+        }
+    }
+
+    @Override
+    public void recordReadinessTimeout(String symbol) {
+        if (enabled) {
+            liveReadinessTimeouts.labels(symbol).inc();
         }
     }
 
