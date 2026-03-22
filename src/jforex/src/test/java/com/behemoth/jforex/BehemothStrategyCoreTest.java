@@ -265,7 +265,7 @@ class BehemothStrategyCoreTest {
                             [{
                               "symbol":"EURUSD",
                               "close_ts":"2025-07-07T00:00:00Z",
-                              "candidate_uid":"oco|EURUSD|100|h6|cand_entries_ready",
+                              "candidate_uid":"oco|EURUSD|100|h6|cand_entries_paused_cycle",
                               "pred_prob":0.78,
                               "threshold_exec":0.61,
                               "selected_exec":1,
@@ -275,6 +275,29 @@ class BehemothStrategyCoreTest {
                               "cap_pips":1.2,
                               "risk_blocked":false,
                               "risk_reservation_id":"rid-1"
+                            }]
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"ok":true,"symbol":"EURUSD","ticks_received":1,"accepted_count":1,"dropped_count":0,"bar_completed":true,"completed_bar_ticks":[100],"symbol_tick_seq":2,"last_tick_ts_utc":"2025-07-07T00:01:00Z","last_client_tick_seq":2,"bar_count":290}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            [{
+                              "symbol":"EURUSD",
+                              "close_ts":"2025-07-07T00:01:00Z",
+                              "candidate_uid":"oco|EURUSD|100|h6|cand_entries_resumed_cycle",
+                              "pred_prob":0.79,
+                              "threshold_exec":0.61,
+                              "selected_exec":1,
+                              "bar_ticks":100,
+                              "horizon":6,
+                              "barrier_pips":2.0,
+                              "cap_pips":1.2,
+                              "risk_blocked":false,
+                              "risk_reservation_id":"rid-2"
                             }]
                             """)
                     .addHeader("Content-Type", "application/json"));
@@ -300,10 +323,11 @@ class BehemothStrategyCoreTest {
 
             core.start(List.of(new RuntimeInstrument("EURUSD", 0.0001)));
             core.setEntriesAllowed("EURUSD", false);
-            core.setEntriesAllowed("EURUSD", true);
             core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:00:00Z"), 1.1000, 1.1002));
-            core.flushSymbol("EURUSD");
+            assertThat(port.submittedOrders).isEmpty();
 
+            core.setEntriesAllowed("EURUSD", true);
+            core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:01:00Z"), 1.1001, 1.1003));
             assertThat(port.submittedOrders).hasSize(2);
         }
     }
