@@ -82,6 +82,43 @@ Add a small, focused readiness layer in Java:
 
 `BehemothStrategyCore` keeps ownership of trading logic, but gains a per-symbol gate for "entries allowed". Symbols may still ingest ticks and maintain lifecycle state while paused for new entries.
 
+### Concrete warmup and bridge policy
+
+Use the same phase-preserving tail rule already used by `ParquetTickLoader` in the local JForex harness.
+
+Per symbol:
+
+- `phase_bar_ticks = 100`
+- `warmup_ticks = 30000`
+- `lookback_days = 31`
+- `bridge_window = 60 minutes`
+- `startup_bridge_timeout = 20 minutes`
+
+Tail-selection algorithm:
+
+1. Set `bridge_start_ts` to the timestamp of the first broker-side tick needed after local parquet history.
+2. Count local parquet ticks in `[bridge_start_ts - 31 days, bridge_start_ts)`.
+3. Compute `keep = 30000 + (pre_count % 100)`.
+4. Load the latest `keep` parquet ticks before `bridge_start_ts`.
+5. Send those ticks to API `/backfill` in timestamp order.
+
+This preserves the fixed 100-tick bar phase at the handoff point while keeping the live startup rule aligned with the existing local harness.
+
+Bridge algorithm:
+
+1. Obtain `IHistory` from the JForex strategy context.
+2. Request ticks with `IHistory.getTicks(Instrument, long from, long to)` in contiguous 60-minute windows.
+3. After each window:
+   - convert ticks to existing runtime payloads
+   - post them immediately to the Python API
+   - update readiness status from `/runtime/feed/status`
+4. Stop bridging for that symbol as soon as:
+   - latest ingested tick is `<= 30s` old, and
+   - API warmup is satisfied
+5. If the symbol has not satisfied those conditions within 20 minutes of starting bridge, transition it to `ERROR_PAUSED`.
+
+The bridge must stream windows incrementally and must not materialize an entire 24-hour gap in memory at once.
+
 ## Symbol Lifecycle
 
 Each symbol moves through an explicit state machine:
@@ -153,6 +190,50 @@ This distinction matters because stale-feed pause may recover automatically, whi
 
 Expose runtime symbol status in machine-readable form under `data/analysis/backtest_reconcile/runtime/` and through metrics.
 
+### Runtime status artifact contract
+
+Write a versioned JSON file at:
+
+- `data/analysis/backtest_reconcile/runtime/live_symbol_readiness.json`
+
+Top-level schema:
+
+```json
+{
+  "schema_version": 1,
+  "as_of_utc": "2026-03-22T12:34:56Z",
+  "run_id": "jforex_live",
+  "session_tradable_symbol_count": 4,
+  "session_total_symbol_count": 6,
+  "symbols": [
+    {
+      "symbol": "EURUSD",
+      "state": "READY",
+      "entries_allowed": true,
+      "parquet_tail_ts_utc": "2026-03-21T23:59:59Z",
+      "bridge_start_ts_utc": "2026-03-22T00:00:00Z",
+      "bridge_last_requested_to_utc": "2026-03-22T12:00:00Z",
+      "last_ingested_tick_ts_utc": "2026-03-22T12:34:40Z",
+      "staleness_seconds": 16,
+      "warmup_bar_count_100": 312,
+      "startup_timeout_reached": false,
+      "last_failure_reason": "",
+      "last_state_transition_utc": "2026-03-22T12:34:41Z"
+    }
+  ]
+}
+```
+
+Contract rules:
+
+- `schema_version` is required and increments on breaking schema changes.
+- the file is rewritten on every state transition and at least every 5 seconds while the session is running
+- writes are atomic: write to a temp file in the same directory, then rename into place
+- consumers must treat the file as the latest complete snapshot, not a log stream
+- missing file means runtime status is unavailable, not that all symbols are unready
+
+The readiness file complements, not replaces, `/runtime/feed/status`. The Python API feed status remains the source of truth for last ingested tick timestamps and ingest counters; the readiness file adds live-session state that only Java knows.
+
 Per-symbol status should include:
 
 - readiness state
@@ -202,12 +283,3 @@ The implementation plan should include:
 4. unit coverage that stale symbols pause new entries only
 5. manual verification path against Dukascopy demo credentials
 6. operator-visible verification that runtime status clearly shows mixed symbol states in one session
-
-## Open Planning Notes
-
-The implementation plan will need to settle:
-
-- the exact parquet-tail selection algorithm for preserving tick-bar phase in live startup
-- the concrete Dukascopy/JForex API call used for broker-side bridge ticks
-- the startup timeout value for bridge completion
-- whether readiness status is written as JSON, CSV, or both
