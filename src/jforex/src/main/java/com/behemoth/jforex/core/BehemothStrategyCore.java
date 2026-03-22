@@ -155,6 +155,14 @@ public final class BehemothStrategyCore {
         }
     }
 
+    public void setEntriesAllowed(String symbol, boolean allowed) {
+        SymbolRuntimeState state = symbolStates.get(normalizeSymbol(symbol));
+        if (state == null) {
+            throw new IllegalArgumentException("Unknown symbol: " + normalizeSymbol(symbol));
+        }
+        state.entriesAllowed = allowed;
+    }
+
     public void onOrderEvent(OrderEvent event) {
         if (event == null || stateStore.findByOrderLabel(event.orderLabel()) == null) {
             return;
@@ -260,6 +268,9 @@ public final class BehemothStrategyCore {
                     continue;
                 }
                 if (state.lastTick == null) {
+                    continue;
+                }
+                if (!state.entriesAllowed) {
                     continue;
                 }
                 submitOcoPlan(state, prediction.toDecision(sessionConfig.requestedVolumeUnits()));
@@ -556,6 +567,7 @@ public final class BehemothStrategyCore {
         private final RuntimeInstrument instrument;
         private final List<IncomingTickPayload> pendingTicks = new ArrayList<>();
         private long nextClientTickSeq = 1L;
+        private boolean entriesAllowed = true;
         private RuntimeTick lastTick;
         // 0-indexed count of bars closed per bar_ticks granularity since session start.
         // Incremented before each predict call so bar_ordinals[N] == N means "Nth bar just closed".
