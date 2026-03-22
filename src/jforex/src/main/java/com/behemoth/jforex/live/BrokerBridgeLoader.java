@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Objects;
 
 public final class BrokerBridgeLoader {
+    static final Duration BRIDGE_WINDOW = Duration.ofMinutes(60);
     private static final Duration MIN_WINDOW = Duration.ofMinutes(1);
 
     private final BrokerHistoryPort historyPort;
@@ -51,7 +52,7 @@ public final class BrokerBridgeLoader {
         String symbol = cfg.symbol();
         Instant startedAt = clock.instant();
         Instant deadline = startedAt.plus(cfg.startupTimeout());
-        Duration window = cfg.bridgeWindow().compareTo(MIN_WINDOW) < 0 ? MIN_WINDOW : cfg.bridgeWindow();
+        Duration window = BRIDGE_WINDOW;
         Instant nextFromInclusive = cfg.parquetAnchorTsUtc().plusMillis(1L);
         Instant lastBridgedTickTs = null;
         int latestBarCount = 0;
@@ -176,8 +177,8 @@ public final class BrokerBridgeLoader {
             bridgeWindow = Objects.requireNonNull(bridgeWindow, "bridgeWindow");
             freshnessThreshold = Objects.requireNonNull(freshnessThreshold, "freshnessThreshold");
             startupTimeout = Objects.requireNonNull(startupTimeout, "startupTimeout");
-            if (bridgeWindow.isZero() || bridgeWindow.isNegative()) {
-                throw new IllegalArgumentException("bridgeWindow must be > 0");
+            if (!BRIDGE_WINDOW.equals(bridgeWindow)) {
+                throw new IllegalArgumentException("bridgeWindow must be exactly PT60M");
             }
             if (freshnessThreshold.isNegative()) {
                 throw new IllegalArgumentException("freshnessThreshold must be >= 0");

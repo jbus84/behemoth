@@ -45,6 +45,10 @@ class BrokerBridgeLoaderTest {
             assertThat(registry.snapshot("EURUSD").state()).isEqualTo(SymbolReadinessState.ERROR_PAUSED);
             assertThat(registry.snapshot("EURUSD").startupTimeoutReached()).isTrue();
             assertThat(historyPort.requests()).hasSize(2);
+            assertThat(historyPort.requests().get(0).fromInclusive()).isEqualTo(Instant.parse("2026-03-22T11:00:00.001Z"));
+            assertThat(historyPort.requests().get(0).toInclusive()).isEqualTo(Instant.parse("2026-03-22T12:00:00Z"));
+            assertThat(historyPort.requests().get(1).fromInclusive()).isEqualTo(Instant.parse("2026-03-22T12:00:00.001Z"));
+            assertThat(historyPort.requests().get(1).toInclusive()).isEqualTo(Instant.parse("2026-03-22T12:10:00Z"));
             assertThat(server.getRequestCount()).isEqualTo(2);
             assertThat(server.takeRequest().getPath()).isEqualTo("/runtime/feed/status");
             assertThat(server.takeRequest().getPath()).isEqualTo("/runtime/feed/status");
@@ -98,6 +102,10 @@ class BrokerBridgeLoaderTest {
             assertThat(registry.snapshot("EURUSD").state()).isEqualTo(SymbolReadinessState.READY);
             assertThat(registry.snapshot("EURUSD").warmupBarCount100()).isEqualTo(289);
             assertThat(registry.snapshot("EURUSD").bridgeEndTsUtc()).isEqualTo(Instant.parse("2026-03-22T12:00:00Z"));
+            assertThat(historyPort.requests()).singleElement().satisfies(request -> {
+                assertThat(request.fromInclusive()).isEqualTo(Instant.parse("2026-03-22T11:59:57.001Z"));
+                assertThat(request.toInclusive()).isEqualTo(Instant.parse("2026-03-22T12:00:20Z"));
+            });
 
             RecordedRequest batchRequest = server.takeRequest();
             assertThat(batchRequest.getPath()).isEqualTo("/ticks/batch");
