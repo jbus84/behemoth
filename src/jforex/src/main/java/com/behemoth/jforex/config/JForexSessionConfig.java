@@ -4,6 +4,7 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -142,67 +143,78 @@ public record JForexSessionConfig(
     }
 
     public static JForexSessionConfig fromEnvironment(boolean testerMode) {
+        return fromEnvironment(testerMode, System.getenv());
+    }
+
+    public static JForexSessionConfig fromEnvironment(boolean testerMode, Map<String, String> environment) {
         Instant start = testerMode
-                ? Instant.parse(requiredSetting("BEHEMOTH_JFOREX_START_UTC"))
+                ? Instant.parse(requiredSetting(environment, "BEHEMOTH_JFOREX_START_UTC"))
                 : Instant.now();
         Instant end = testerMode
-                ? Instant.parse(requiredSetting("BEHEMOTH_JFOREX_END_UTC"))
+                ? Instant.parse(requiredSetting(environment, "BEHEMOTH_JFOREX_END_UTC"))
                 : start.plusSeconds(60);
         return new JForexSessionConfig(
-                URI.create(setting("BEHEMOTH_API_BASE_URI", "http://127.0.0.1:8000")),
-                URI.create(requiredSetting("BEHEMOTH_JFOREX_JNLP_URI")),
-                requiredSetting("BEHEMOTH_JFOREX_USERNAME"),
-                requiredSetting("BEHEMOTH_JFOREX_PASSWORD"),
-                setting("BEHEMOTH_JFOREX_ACCOUNT_ID", ""),
-                List.of(setting("BEHEMOTH_JFOREX_INSTRUMENTS", "GBPUSD").split(",")),
+                URI.create(setting(environment, "BEHEMOTH_API_BASE_URI", "http://127.0.0.1:8000")),
+                URI.create(requiredSetting(environment, "BEHEMOTH_JFOREX_JNLP_URI")),
+                requiredSetting(environment, "BEHEMOTH_JFOREX_USERNAME"),
+                requiredSetting(environment, "BEHEMOTH_JFOREX_PASSWORD"),
+                setting(environment, "BEHEMOTH_JFOREX_ACCOUNT_ID", ""),
+                List.of(setting(environment, "BEHEMOTH_JFOREX_INSTRUMENTS", "GBPUSD").split(",")),
                 start,
                 end,
                 Path.of(setting(
+                        environment,
                         "BEHEMOTH_JFOREX_REPORT_DIR",
                         "data/analysis/backtest_reconcile"
                 )),
-                setting("BEHEMOTH_JFOREX_RUN_ID", "jforex_adapter"),
-                Boolean.parseBoolean(setting("BEHEMOTH_JFOREX_RISK_ENABLED", "true")),
-                Double.parseDouble(setting("BEHEMOTH_JFOREX_REQUESTED_VOLUME_UNITS", "10000")),
-                Integer.parseInt(setting("BEHEMOTH_JFOREX_TICK_BATCH_SIZE", "16")),
-                Long.parseLong(setting("BEHEMOTH_JFOREX_ORDER_TTL_SECONDS", "900")),
-                Boolean.parseBoolean(setting("BEHEMOTH_JFOREX_NATIVE_OCO_ENABLED", "false")),
-                Integer.parseInt(setting("BEHEMOTH_JFOREX_API_TIMEOUT_SECONDS", "60")),
-                Boolean.parseBoolean(setting("BEHEMOTH_JFOREX_METRICS_ENABLED", "true")),
-                setting("BEHEMOTH_JFOREX_METRICS_HOST", "127.0.0.1"),
-                Integer.parseInt(setting("BEHEMOTH_JFOREX_METRICS_PORT", "9464")),
+                setting(environment, "BEHEMOTH_JFOREX_RUN_ID", "jforex_adapter"),
+                Boolean.parseBoolean(setting(environment, "BEHEMOTH_JFOREX_RISK_ENABLED", "true")),
+                Double.parseDouble(setting(environment, "BEHEMOTH_JFOREX_REQUESTED_VOLUME_UNITS", "10000")),
+                Integer.parseInt(setting(environment, "BEHEMOTH_JFOREX_TICK_BATCH_SIZE", "16")),
+                Long.parseLong(setting(environment, "BEHEMOTH_JFOREX_ORDER_TTL_SECONDS", "900")),
+                Boolean.parseBoolean(setting(environment, "BEHEMOTH_JFOREX_NATIVE_OCO_ENABLED", "false")),
+                Integer.parseInt(setting(environment, "BEHEMOTH_JFOREX_API_TIMEOUT_SECONDS", "60")),
+                Boolean.parseBoolean(setting(environment, "BEHEMOTH_JFOREX_METRICS_ENABLED", "true")),
+                setting(environment, "BEHEMOTH_JFOREX_METRICS_HOST", "127.0.0.1"),
+                Integer.parseInt(setting(environment, "BEHEMOTH_JFOREX_METRICS_PORT", "9464")),
                 Boolean.parseBoolean(setting(
+                        environment,
                         "BEHEMOTH_JFOREX_LIVE_READINESS_ENABLED",
                         Boolean.toString(DEFAULT_LIVE_READINESS_ENABLED)
                 )),
                 Integer.parseInt(setting(
+                        environment,
                         "BEHEMOTH_JFOREX_LIVE_WARMUP_TICKS",
                         Integer.toString(DEFAULT_LIVE_WARMUP_TICKS)
                 )),
                 Integer.parseInt(setting(
+                        environment,
                         "BEHEMOTH_JFOREX_LIVE_LOOKBACK_DAYS",
                         Integer.toString(DEFAULT_LIVE_LOOKBACK_DAYS)
                 )),
                 Integer.parseInt(setting(
+                        environment,
                         "BEHEMOTH_JFOREX_LIVE_BRIDGE_WINDOW_MINUTES",
                         Integer.toString(DEFAULT_LIVE_BRIDGE_WINDOW_MINUTES)
                 )),
                 Integer.parseInt(setting(
+                        environment,
                         "BEHEMOTH_JFOREX_LIVE_FRESHNESS_SECONDS",
                         Integer.toString(DEFAULT_LIVE_FRESHNESS_SECONDS)
                 )),
                 Integer.parseInt(setting(
+                        environment,
                         "BEHEMOTH_JFOREX_LIVE_STARTUP_BRIDGE_TIMEOUT_MINUTES",
                         Integer.toString(DEFAULT_LIVE_STARTUP_BRIDGE_TIMEOUT_MINUTES)
                 ))
         );
     }
 
-    private static String requiredSetting(String key) {
-        return Objects.requireNonNull(setting(key, null), key + " must be set");
+    private static String requiredSetting(Map<String, String> environment, String key) {
+        return Objects.requireNonNull(setting(environment, key, null), key + " must be set");
     }
 
-    private static String setting(String key, String defaultValue) {
-        return System.getProperty(key, System.getenv().getOrDefault(key, defaultValue));
+    private static String setting(Map<String, String> environment, String key, String defaultValue) {
+        return environment.getOrDefault(key, defaultValue);
     }
 }
