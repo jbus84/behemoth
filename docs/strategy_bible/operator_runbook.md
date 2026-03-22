@@ -18,6 +18,17 @@ Provide deterministic daily, weekly, and monthly operating actions for OCO pipel
 - The freshness SLA is `30s`; a symbol is only tradable when its last ingested tick is no more than 30 seconds old.
 - Runtime readiness status is written to `data/analysis/backtest_reconcile/runtime/live_symbol_readiness.json`.
 
+## Dukascopy Demo Certification Checklist
+1. Run `make observability-up`.
+2. Open Grafana and the provisioned JForex dashboard.
+3. Run `make demo-cert-monitor`.
+4. Run `make jforex-live`.
+5. Wait for all 6 symbols to reach `READY`.
+6. Confirm tick staleness stays within the `30s` SLA.
+7. Confirm predict activity appears for all 6 symbols once bars advance.
+8. Inspect `data/analysis/backtest_reconcile/runtime/live_symbol_readiness.json`.
+9. Classify the run as `pass`, `conditional fail`, or `fail`.
+
 ## Daily Checks
 | trigger | threshold / signal | severity | owner | action | evidence artifact | SLA |
 | --- | --- | --- | --- | --- | --- | --- |
