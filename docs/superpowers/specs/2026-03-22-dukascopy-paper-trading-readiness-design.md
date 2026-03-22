@@ -96,10 +96,10 @@ Per symbol:
 
 Tail-selection algorithm:
 
-1. Set `bridge_start_ts` to the timestamp of the first broker-side tick needed after local parquet history.
-2. Count local parquet ticks in `[bridge_start_ts - 31 days, bridge_start_ts)`.
+1. Set `bridge_anchor_ts` to the timestamp of the last retained local parquet tick for that symbol.
+2. Count local parquet ticks in `[bridge_anchor_ts - 31 days, bridge_anchor_ts)`.
 3. Compute `keep = 30000 + (pre_count % 100)`.
-4. Load the latest `keep` parquet ticks before `bridge_start_ts`.
+4. Load the latest `keep` parquet ticks ending at `bridge_anchor_ts`.
 5. Send those ticks to API `/backfill` in timestamp order.
 
 This preserves the fixed 100-tick bar phase at the handoff point while keeping the live startup rule aligned with the existing local harness.
@@ -107,15 +107,20 @@ This preserves the fixed 100-tick bar phase at the handoff point while keeping t
 Bridge algorithm:
 
 1. Obtain `IHistory` from the JForex strategy context.
-2. Request ticks with `IHistory.getTicks(Instrument, long from, long to)` in contiguous 60-minute windows.
-3. After each window:
+2. Start broker bridge strictly after `bridge_anchor_ts`.
+3. Request ticks with `IHistory.getTicks(Instrument, long from, long to)` in contiguous 60-minute windows.
+4. For every symbol, own a single monotonic `clientTickSeq` counter for the entire live session.
+   - parquet warmup ticks use the first sequence values
+   - broker bridge ticks continue the same sequence without resetting
+   - after bridge completes, live `onTick()` ingestion resumes from the next sequence value
+5. After each window:
    - convert ticks to existing runtime payloads
    - post them immediately to the Python API
    - update readiness status from `/runtime/feed/status`
-4. Stop bridging for that symbol as soon as:
+6. Stop bridging for that symbol as soon as:
    - latest ingested tick is `<= 30s` old, and
    - API warmup is satisfied
-5. If the symbol has not satisfied those conditions within 20 minutes of starting bridge, transition it to `ERROR_PAUSED`.
+7. If the symbol has not satisfied those conditions within 20 minutes of starting bridge, transition it to `ERROR_PAUSED`.
 
 The bridge must stream windows incrementally and must not materialize an entire 24-hour gap in memory at once.
 
