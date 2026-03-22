@@ -19,15 +19,19 @@ Provide deterministic daily, weekly, and monthly operating actions for OCO pipel
 - Runtime readiness status is written to `data/analysis/backtest_reconcile/runtime/live_symbol_readiness.json`.
 
 ## Dukascopy Demo Certification Checklist
-1. Run `make observability-up`.
+1. Run `make demo-cert-monitor`.
 2. Open Grafana and the provisioned JForex dashboard.
-3. Run `make demo-cert-monitor`.
-4. Run `make jforex-live`.
-5. Wait for all 6 symbols to reach `READY`.
-6. Confirm tick staleness stays within the `30s` SLA.
-7. Confirm predict activity appears for all 6 symbols once bars advance.
-8. Inspect `data/analysis/backtest_reconcile/runtime/live_symbol_readiness.json`.
-9. Classify the run as `pass`, `conditional fail`, or `fail`.
+3. Run `make jforex-live`.
+4. Wait for all 6 symbols to reach `READY`.
+5. Confirm tick staleness stays within the `30s` SLA.
+6. Confirm predict activity appears for all 6 symbols once bars advance.
+7. Inspect `data/analysis/backtest_reconcile/runtime/live_symbol_readiness.json`.
+8. Classify the run using the definitions below.
+
+### Certification Outcome Definitions
+- `pass`: all 6 symbols reach `READY`, all 6 ingest live ticks, all 6 demonstrate live predict activity once bars advance, and no symbol remains `STALE_PAUSED` or `ERROR_PAUSED` during the observation window.
+- `conditional fail`: all 6 symbols reach `READY`, but one or more symbols later become stale or show missing or suspect predict-path activity.
+- `fail`: any symbol never reaches `READY`, lands in `ERROR_PAUSED`, remains `STALE_PAUSED`, or fails to demonstrate live predict activity during the certification window.
 
 ## Daily Checks
 | trigger | threshold / signal | severity | owner | action | evidence artifact | SLA |

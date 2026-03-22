@@ -23,7 +23,7 @@ Current runtime scrape targets:
 Grafana dashboards are provisioned from `provisioning/dashboards/` and Prometheus scrapes both targets via `docker-compose.yml` + `prometheus.yml`.
 
 ## Dukascopy Demo Certification
-For the demo certification run, bring up the monitoring stack with `make observability-up`, then print the operator links with `make demo-cert-monitor`.
+For the demo certification run, start the monitoring stack and print the operator links with `make demo-cert-monitor`.
 
 The provisioned JForex dashboard is `behemoth-jforex-runtime` in Grafana at `http://127.0.0.1:3000/d/behemoth-jforex-runtime/behemoth-jforex-runtime?orgId=1`.
 
@@ -34,6 +34,14 @@ The key certification signals are:
 - entries-allowed status by symbol
 - tick staleness in seconds
 - predict calls and predict failures by symbol
+
+The readiness panel uses the Java enum ordinals with explicit mapping:
+- `0=COLD`
+- `1=PARQUET_WARMING`
+- `2=BRIDGING`
+- `3=READY`
+- `4=STALE_PAUSED`
+- `5=ERROR_PAUSED`
 
 ## Rolling Historical Evidence
 

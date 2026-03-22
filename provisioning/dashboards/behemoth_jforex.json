@@ -288,6 +288,41 @@
           "refId": "A"
         }
       ],
+      "description": "Readiness state mapping: 0=COLD, 1=PARQUET_WARMING, 2=BRIDGING, 3=READY, 4=STALE_PAUSED, 5=ERROR_PAUSED.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "text": "COLD"
+                },
+                "1": {
+                  "text": "PARQUET_WARMING"
+                },
+                "2": {
+                  "text": "BRIDGING"
+                },
+                "3": {
+                  "text": "READY"
+                },
+                "4": {
+                  "text": "STALE_PAUSED"
+                },
+                "5": {
+                  "text": "ERROR_PAUSED"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "unit": "short"
+        },
+        "overrides": []
+      },
       "title": "JForex Symbol Readiness",
       "type": "timeseries"
     },
@@ -348,6 +383,19 @@
         "defaults": {
           "color": {
             "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 30
+              }
+            ]
           },
           "unit": "s"
         },

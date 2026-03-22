@@ -185,12 +185,12 @@ jforex-live:
 		--api-timeout-seconds $(or $(API_TIMEOUT_SECONDS),60) \
 		--metrics-port $(or $(METRICS_PORT),9464)
 
-demo-cert-monitor:
+demo-cert-monitor: observability-up
 	@printf "[demo-cert] Grafana: http://127.0.0.1:3000/d/behemoth-jforex-runtime/behemoth-jforex-runtime?orgId=1\n"
 	@printf "[demo-cert] Prometheus: http://127.0.0.1:9090\n"
-	@printf "[demo-cert] JForex metrics: http://127.0.0.1:9464/metrics\n"
-	@printf "[demo-cert] Runtime readiness: data/analysis/backtest_reconcile/runtime/live_symbol_readiness.json\n"
-	@printf "[demo-cert] Start monitoring with: make observability-up\n"
+	@printf "[demo-cert] JForex metrics: http://127.0.0.1:%s/metrics\n" "$(or $(METRICS_PORT),9464)"
+	@printf "[demo-cert] Runtime readiness: %s/runtime/live_symbol_readiness.json\n" "$(or $(REPORT_DIR),data/analysis/backtest_reconcile)"
+	@printf "[demo-cert] Monitoring stack: started via make observability-up\n"
 	@printf "[demo-cert] Start demo runner with: make jforex-live\n"
 
 jforex-outcome-parity:
@@ -780,7 +780,7 @@ help:
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage14-jforex-cert" "Build Stage 14 JForex certification summary, checks, report, and snapshot"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "full-stage14-cert" "Run outcome-parity → local-jforex-cert → stage14-jforex-cert in order (monthly recert command)"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "jforex-live" "Start the JForex live/demo session for all symbols (IClient-based, live governance mode)"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "demo-cert-monitor" "Print the Dukascopy demo certification monitoring URLs, metrics, and readiness file"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "demo-cert-monitor" "Start observability and print the Dukascopy demo certification monitoring URLs, metrics, and readiness file"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "freeze-oco-dukascopy-candidate" "Freeze governance locks to oco_dukascopy_candidate/ (prerequisite for monthly-recert)"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "monthly-recert" "Run monthly dukascopy-candidate recertification pipeline and print go/no-go summary"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "promote-live" "Archive certified governance locks to oco_history_dukascopy_candidate/ and print restart reminder"
