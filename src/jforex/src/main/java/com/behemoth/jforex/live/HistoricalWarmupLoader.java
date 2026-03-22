@@ -8,7 +8,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -40,7 +39,8 @@ public final class HistoricalWarmupLoader {
             int keep = config.liveWarmupTicks() + (preCount % PHASE_BAR_TICKS);
             List<RuntimeTick> ticks = loadRowsDescending(connection, parquetExpr, lookbackStart, bridgeAnchorTs, keep, sym);
             ticks.sort(Comparator.comparing(RuntimeTick::timestamp));
-            return new WarmupSlice(bridgeAnchorTs, ticks);
+            Instant effectiveBridgeAnchorTs = ticks.isEmpty() ? bridgeAnchorTs : ticks.getLast().timestamp();
+            return new WarmupSlice(effectiveBridgeAnchorTs, ticks);
         } catch (Exception exc) {
             throw new IllegalStateException("Failed to load historical warmup parquet ticks for " + sym, exc);
         }
@@ -48,10 +48,11 @@ public final class HistoricalWarmupLoader {
 
     private static int countBeforeAnchor(Connection connection, String parquetExpr, Instant lookbackStart, Instant bridgeAnchorTs)
             throws Exception {
-        String sql = "SELECT COUNT(*) FROM read_parquet(" + parquetExpr + ") WHERE timestamp >= ? AND timestamp < ?";
+        String sql = "SELECT COUNT(*) FROM read_parquet(" + parquetExpr + ") "
+                + "WHERE timestamp >= CAST(? AS TIMESTAMP) AND timestamp < CAST(? AS TIMESTAMP)";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setTimestamp(1, Timestamp.from(lookbackStart));
-            ps.setTimestamp(2, Timestamp.from(bridgeAnchorTs));
+            ps.setString(1, duckDbTimestampLiteral(lookbackStart));
+            ps.setString(2, duckDbTimestampLiteral(bridgeAnchorTs));
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getInt(1) : 0;
             }
@@ -70,10 +71,11 @@ public final class HistoricalWarmupLoader {
             return List.of();
         }
         String sql = "SELECT timestamp, bid, ask FROM read_parquet(" + parquetExpr + ") "
-                + "WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp DESC LIMIT ?";
+                + "WHERE timestamp >= CAST(? AS TIMESTAMP) AND timestamp < CAST(? AS TIMESTAMP) "
+                + "ORDER BY timestamp DESC LIMIT ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setTimestamp(1, Timestamp.from(lookbackStart));
-            ps.setTimestamp(2, Timestamp.from(bridgeAnchorTs));
+            ps.setString(1, duckDbTimestampLiteral(lookbackStart));
+            ps.setString(2, duckDbTimestampLiteral(bridgeAnchorTs));
             ps.setInt(3, limit);
             return collectTicks(ps.executeQuery(), symbol);
         }
@@ -119,6 +121,10 @@ public final class HistoricalWarmupLoader {
 
     private static String normalizeSymbol(String raw) {
         return raw == null ? "" : raw.trim().replace("/", "").toUpperCase();
+    }
+
+    private static String duckDbTimestampLiteral(Instant instant) {
+        return instant.toString().replace("T", " ").replace("Z", "");
     }
 }
 

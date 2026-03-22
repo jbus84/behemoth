@@ -3,6 +3,7 @@ package com.behemoth.jforex.live;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.behemoth.jforex.config.JForexSessionConfig;
+import com.behemoth.jforex.core.RuntimeTick;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,9 +12,13 @@ import java.sql.DriverManager;
 import java.sql.Statement;
 import java.time.Instant;
 import java.util.List;
+import java.util.TimeZone;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
+@Execution(ExecutionMode.SAME_THREAD)
 class HistoricalWarmupLoaderTest {
     @TempDir
     Path tempDir;
@@ -24,19 +29,47 @@ class HistoricalWarmupLoaderTest {
         Files.createDirectories(eurUsdDir);
         Path parquetFile = eurUsdDir.resolve("ticks.parquet");
         Instant bridgeAnchorTs = Instant.parse("2025-07-07T08:21:15Z");
-        writeParquetTicks(parquetFile, bridgeAnchorTs);
+        writeParquetTicks(parquetFile, bridgeAnchorTs, 30_075, false);
 
         HistoricalWarmupLoader loader = new HistoricalWarmupLoader();
 
         WarmupSlice slice = loader.load(config(), tempDir, "EURUSD", bridgeAnchorTs);
 
         assertThat(slice.ticks()).hasSize(30_075);
-        assertThat(slice.bridgeAnchorTs()).isEqualTo(bridgeAnchorTs);
+        assertThat(slice.bridgeAnchorTs()).isEqualTo(bridgeAnchorTs.minusSeconds(1));
+        assertThat(slice.ticks()).extracting(RuntimeTick::timestamp).last().isEqualTo(slice.bridgeAnchorTs());
     }
 
-    private static void writeParquetTicks(Path parquetFile, Instant bridgeAnchorTs) throws Exception {
+    @Test
+    void loaderExcludesTickAtBridgeAnchor() throws Exception {
+        Path eurUsdDir = tempDir.resolve("EURUSD");
+        Files.createDirectories(eurUsdDir);
+        Path parquetFile = eurUsdDir.resolve("ticks.parquet");
+        Instant bridgeAnchorTs = Instant.parse("2025-07-07T08:21:15Z");
+        writeParquetTicks(parquetFile, bridgeAnchorTs, 30_076, true);
+
+        HistoricalWarmupLoader loader = new HistoricalWarmupLoader();
+
+        TimeZone original = TimeZone.getDefault();
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("Europe/London"));
+            WarmupSlice slice = loader.load(config(), tempDir, "EURUSD", bridgeAnchorTs);
+
+            assertThat(slice.ticks()).hasSize(30_075);
+            assertThat(slice.bridgeAnchorTs()).isEqualTo(bridgeAnchorTs.minusSeconds(1));
+            assertThat(slice.ticks()).extracting(RuntimeTick::timestamp)
+                    .doesNotContain(bridgeAnchorTs)
+                    .last()
+                    .isEqualTo(slice.bridgeAnchorTs());
+        } finally {
+            TimeZone.setDefault(original);
+        }
+    }
+
+    private static void writeParquetTicks(Path parquetFile, Instant bridgeAnchorTs, int tickCount, boolean includeAnchor)
+            throws Exception {
         String parquetPath = parquetFile.toAbsolutePath().toString().replace("\\", "\\\\").replace("'", "''");
-        Instant firstTickTs = bridgeAnchorTs.minusSeconds(30_075L);
+        Instant firstTickTs = bridgeAnchorTs.minusSeconds(includeAnchor ? tickCount - 1L : tickCount);
         try (Connection conn = DriverManager.getConnection("jdbc:duckdb:")) {
             try (Statement st = conn.createStatement()) {
                 st.execute(
@@ -45,7 +78,7 @@ class HistoricalWarmupLoaderTest {
                                 + " + (i * INTERVAL 1 SECOND) AS timestamp,"
                                 + " 1.08500 + (i * 0.000001) AS bid,"
                                 + " 1.08510 + (i * 0.000001) AS ask"
-                                + " FROM range(30075) AS t(i)"
+                                + " FROM range(" + tickCount + ") AS t(i)"
                                 + ") TO '" + parquetPath + "' (FORMAT PARQUET)"
                 );
             }
