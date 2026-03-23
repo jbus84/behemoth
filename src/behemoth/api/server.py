@@ -1879,6 +1879,11 @@ class PredictRequest(BaseModel):
         raise ValueError("One of risk_enabled_override or ftmo_enabled_override is required")
 
 
+class WarmupRequest(BaseModel):
+    symbol: str
+    run_id: str = "warmup"
+
+
 class HealthResponse(BaseModel):
     status: str
     utc_now: datetime
@@ -2484,8 +2489,37 @@ def _build_predictions(
                 curr_threshold = float(schedule[day_str])
                 curr_source = f"{threshold_mode}:schedule"
             else:
-                curr_threshold = threshold_exec
-                curr_source = f"{threshold_mode}:static_fallback"
+                # Schedule expired or missing for today. Attempt dynamic rolling threshold
+                # from audit_logs — this is the live equivalent of WFO's rolling computation.
+                rolling_days = int(thr_cfg.get("rolling_threshold_days", 0))
+                exec_q = float(thr_cfg.get("execution_quantile", 0.9))
+                min_history = int(thr_cfg.get("rolling_threshold_min_history", 10))
+                dynamic_thr = None
+                if rolling_days > 0 and _state is not None:
+                    dynamic_thr = _state.get_rolling_threshold(
+                        symbol=sym,
+                        candidate_uid=canonical_uid,
+                        exec_q=exec_q,
+                        lookback_days=rolling_days,
+                        min_history=min_history,
+                    )
+                if dynamic_thr is not None:
+                    curr_threshold = dynamic_thr
+                    curr_source = f"{threshold_mode}:rolling_dynamic"
+                elif rolling_days > 0:
+                    # rolling_days configured but insufficient audit_log history — block.
+                    logger.warning(
+                        "No valid threshold for %s %s: schedule expired %s, "
+                        "insufficient audit_log history (rolling_days=%d, min_history=%d). "
+                        "Blocking candidate.",
+                        sym, canonical_uid, day_str, rolling_days, min_history,
+                    )
+                    curr_threshold = 2.0  # ensures pred_prob (always ≤ 1.0) never qualifies
+                    curr_source = f"{threshold_mode}:no_valid_threshold"
+                else:
+                    # No rolling config — fall back to static threshold_exec.
+                    curr_threshold = threshold_exec
+                    curr_source = f"{threshold_mode}:static_fallback"
 
             preselected_exec = 1 if (regime_active and pred_prob >= curr_threshold) else 0
         risk_metrics_snapshot: dict[str, Any] = {
@@ -2742,6 +2776,83 @@ def _build_predictions(
     return results, trace_rows
 
 
+@app.post("/predict/warmup", status_code=201)
+async def predict_warmup(req: WarmupRequest) -> dict:
+    """Score buffered bars through the model to seed audit_logs for rolling threshold.
+
+    Iterates all bars in the tick_bars buffer for the given symbol, computes
+    features at the CURRENT buffer state (not a historical replay), and writes
+    one audit_log entry per eligible bar using the bar's historical close_ts.
+    This seeds the rolling threshold history needed when the threshold schedule
+    has expired.
+
+    Called once per symbol after backfill completes on startup.
+    Idempotent: safe to call multiple times (appends to audit_logs).
+    """
+    import numpy as np
+
+    if _state is None:
+        raise HTTPException(status_code=503, detail="State manager not initialized")
+
+    sym = req.symbol.upper()
+    run_id = req.run_id or "warmup"
+
+    close_ts_now = _state.get_latest_close_ts(sym) or datetime.now(tz=timezone.utc)
+    contract = _resolve_runtime_contract(sym, close_ts_now)
+    if not contract.candidates:
+        raise HTTPException(status_code=422, detail=f"No candidates for {sym}")
+
+    model, thr_cfg = _ensure_model_and_threshold(contract)
+    if model is None:
+        raise HTTPException(status_code=422, detail=f"No model loaded for {sym}")
+
+    # Fetch all close_ts values from the bar buffer for this symbol
+    bar_ticks = int(contract.candidates[0].bar_ticks)
+    rows = _state._con.execute(
+        "SELECT close_ts FROM tick_bars WHERE symbol = ? AND bar_ticks = ? ORDER BY row_id",
+        [sym, bar_ticks],
+    ).fetchall()
+
+    warmup_needed = _state._cfg.full_warmup_bars
+    if len(rows) < warmup_needed:
+        return {
+            "ok": True,
+            "symbol": sym,
+            "audit_events_written": 0,
+            "skipped_reason": f"insufficient_bars:{len(rows)}<{warmup_needed}",
+        }
+
+    # Compute features once from current buffer state
+    n_written = 0
+    for cand in contract.candidates:
+        feats = _state.compute_features(sym, bar_ticks, cand.horizon, cand.barrier_pips)
+        if feats is None:
+            continue
+        arr = np.array([feats.to_array()], dtype=float)
+        with METRIC_INFERENCE_LATENCY.labels(symbol=sym).time():
+            pred_prob = float(model.predict_proba(arr)[:, 1][0])
+        canonical_uid = f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+        static_thr = float(thr_cfg.get("threshold_exec", 0.5))
+        for (close_ts_val,) in rows:
+            close_ts_bar = close_ts_val
+            if hasattr(close_ts_bar, "tzinfo") and close_ts_bar.tzinfo is None:
+                close_ts_bar = close_ts_bar.replace(tzinfo=timezone.utc)
+            _state.log_audit_event(
+                symbol=sym,
+                candidate_uid=canonical_uid,
+                pred_prob=pred_prob,
+                threshold=static_thr,
+                features=feats,
+                model_month=contract.model_month,
+                close_ts=close_ts_bar,
+                run_id=run_id,
+            )
+            n_written += 1
+
+    logger.info("predict_warmup: wrote %d audit events for %s", n_written, sym)
+    return {"ok": True, "symbol": sym, "audit_events_written": n_written}
+
+
 @app.post("/trades/open")
 async def open_trade(req: TradeOpenRequest):
     """Record an execution entry on the broker."""
@@ -2793,6 +2904,23 @@ async def get_active_trades(symbol: str):
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
     return _state.get_active_trades(symbol)
+
+
+@app.get("/trades/summary")
+async def get_trades_summary():
+    """Return win/loss/pnl summary per symbol for closed trades."""
+    if _state is None:
+        raise HTTPException(status_code=503, detail="State manager not initialized")
+    return _state.get_ledger_stats()
+
+
+@app.get("/state/checkpoint")
+async def checkpoint_state():
+    """Force DuckDB to flush WAL to the on-disk database file."""
+    if _state is None:
+        raise HTTPException(status_code=503, detail="State manager not initialized")
+    _state._con.execute("CHECKPOINT")
+    return {"status": "ok", "checkpointed_at": datetime.now(tz=timezone.utc).isoformat()}
 
 
 @app.post("/trades/touch")

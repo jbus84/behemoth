@@ -2093,3 +2093,42 @@ class TestIngestionEndpoints:
                 },
             )
             assert r.status_code == 422
+
+
+class TestCheckpointEndpoint:
+    def test_checkpoint_returns_ok(self, client):
+        r = client.get("/state/checkpoint")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["status"] == "ok"
+        assert "checkpointed_at" in body
+
+    def test_checkpoint_503_when_state_uninitialized(self, client):
+        from src.behemoth.api import server
+        original = server._state
+        server._state = None
+        try:
+            r = client.get("/state/checkpoint")
+            assert r.status_code == 503
+        finally:
+            server._state = original
+
+
+class TestPredictWarmup:
+    def test_warmup_returns_201_with_count(self, client):
+        r = client.post("/predict/warmup", json={"symbol": "GBPUSD", "run_id": "warmup"})
+        assert r.status_code == 201
+        body = r.json()
+        assert body["ok"] is True
+        assert "audit_events_written" in body
+        assert isinstance(body["audit_events_written"], int)
+
+    def test_warmup_503_when_state_uninitialized(self, client):
+        from src.behemoth.api import server
+        original = server._state
+        server._state = None
+        try:
+            r = client.post("/predict/warmup", json={"symbol": "GBPUSD", "run_id": "warmup"})
+            assert r.status_code == 503
+        finally:
+            server._state = original

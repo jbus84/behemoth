@@ -464,6 +464,36 @@ class StateManager:
             for r in res
         ]
 
+    def get_rolling_threshold(
+        self,
+        symbol: str,
+        candidate_uid: str,
+        exec_q: float,
+        lookback_days: int,
+        min_history: int,
+    ) -> float | None:
+        """Compute rolling execution threshold from recent audit_logs pred_probs.
+
+        Returns the exec_q quantile of pred_probs over the last lookback_days
+        calendar days. Returns None if fewer than min_history events exist in
+        that window (insufficient history to compute a reliable threshold).
+        """
+        from datetime import timedelta
+        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=lookback_days)
+        row = self._con.execute(
+            """
+            SELECT COUNT(*), quantile(pred_prob, ?)
+            FROM audit_logs
+            WHERE symbol = ?
+              AND candidate_uid = ?
+              AND close_ts >= ?
+            """,
+            [float(exec_q), symbol.upper(), candidate_uid, cutoff],
+        ).fetchone()
+        if row is None or row[0] is None or int(row[0]) < min_history:
+            return None
+        return float(row[1])
+
     def get_all_symbols(self) -> list[str]:
         """Return all unique symbols in the tick_bars table."""
         res = self._con.execute("SELECT DISTINCT symbol FROM tick_bars").fetchall()

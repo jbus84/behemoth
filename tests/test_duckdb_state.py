@@ -487,3 +487,61 @@ class TestFtmoReservationLedger:
         assert rows[0][0] == "EURUSD"
         assert rows[0][1] == "ADMITTED"
         assert rows[0][2] == "r1"
+
+
+class TestRollingThreshold:
+    def test_returns_none_when_no_audit_history(self):
+        from src.behemoth.runtime.state import StateManager
+        sm = StateManager()
+        result = sm.get_rolling_threshold(
+            symbol="GBPUSD",
+            candidate_uid="oco|GBPUSD|100|h6|oco_first_touch_clean__ny_overlap__k2",
+            exec_q=0.9,
+            lookback_days=20,
+            min_history=10,
+        )
+        assert result is None
+
+    def test_returns_quantile_when_sufficient_history(self):
+        from datetime import datetime, timedelta, timezone
+        from src.behemoth.runtime.state import StateManager
+        sm = StateManager()
+        now = datetime.now(tz=timezone.utc)
+        uid = "oco|GBPUSD|100|h6|oco_first_touch_clean__ny_overlap__k2"
+        # Insert 20 pred_probs ranging from 0.50 to 0.69
+        for i in range(20):
+            sm._con.execute(
+                "INSERT INTO audit_logs(event_ts, close_ts, symbol, candidate_uid, "
+                "pred_prob, threshold, features_json, model_month, run_id) "
+                "VALUES (?, ?, 'GBPUSD', ?, ?, 0.5, '{}', '2026-02', 'warmup')",
+                [now - timedelta(days=i), now - timedelta(days=i), uid, 0.50 + i * 0.01],
+            )
+        result = sm.get_rolling_threshold(
+            symbol="GBPUSD",
+            candidate_uid=uid,
+            exec_q=0.9,
+            lookback_days=20,
+            min_history=10,
+        )
+        assert result is not None
+        assert 0.50 <= result <= 0.69
+
+    def test_returns_none_when_below_min_history(self):
+        from datetime import datetime, timedelta, timezone
+        from src.behemoth.runtime.state import StateManager
+        sm = StateManager()
+        now = datetime.now(tz=timezone.utc)
+        uid = "oco|GBPUSD|100|h6|oco_first_touch_clean__ny_overlap__k2"
+        # Only 5 events, min_history=10
+        for i in range(5):
+            sm._con.execute(
+                "INSERT INTO audit_logs(event_ts, close_ts, symbol, candidate_uid, "
+                "pred_prob, threshold, features_json, model_month, run_id) "
+                "VALUES (?, ?, 'GBPUSD', ?, 0.60, 0.5, '{}', '2026-02', 'warmup')",
+                [now - timedelta(days=i), now - timedelta(days=i), uid],
+            )
+        result = sm.get_rolling_threshold(
+            symbol="GBPUSD", candidate_uid=uid,
+            exec_q=0.9, lookback_days=20, min_history=10,
+        )
+        assert result is None

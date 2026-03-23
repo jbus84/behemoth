@@ -105,6 +105,42 @@ def _poll_health(proc: subprocess.Popen[str], base_url: str, timeout_sec: float)
     raise RuntimeError(f"API did not become healthy within {timeout_sec:.0f}s: {last_error}")
 
 
+def _warmup_symbols(symbols: list[str], base_url: str, timeout_sec: float = 60.0) -> None:
+    """Call /predict/warmup for each symbol to seed audit_logs.
+
+    Retries until all symbols return audit_events_written > 0, or timeout.
+    This must be called AFTER backfill has populated tick_bars.
+    """
+    import requests
+
+    deadline = time.monotonic() + timeout_sec
+    pending = list(symbols)
+    while pending and time.monotonic() < deadline:
+        still_pending = []
+        for sym in pending:
+            try:
+                r = requests.post(
+                    f"{base_url}/predict/warmup",
+                    json={"symbol": sym, "run_id": "warmup"},
+                    timeout=10,
+                )
+                body = r.json()
+                written = body.get("audit_events_written", 0)
+                if written > 0:
+                    print(f"[warmup] {sym}: {written} audit events seeded", flush=True)
+                else:
+                    still_pending.append(sym)
+                    print(f"[warmup] {sym}: 0 events (bars not ready yet), retrying...", flush=True)
+            except Exception as exc:
+                still_pending.append(sym)
+                print(f"[warmup] {sym}: error {exc}, retrying...", flush=True)
+        pending = still_pending
+        if pending:
+            time.sleep(5)
+    if pending:
+        print(f"[warmup] WARNING: warmup incomplete for {pending} after {timeout_sec}s", flush=True)
+
+
 def _start_api(cfg: RunConfig) -> subprocess.Popen[str]:
     state_db_path = _repo_root() / cfg.report_dir / "runtime" / "live_state.db"
     state_db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -210,7 +246,12 @@ def main() -> None:
 
     try:
         _poll_health(api_proc, f"http://{cfg.api_host}:{cfg.api_port}", timeout_sec=60.0)
-        print("[jforex-live] API healthy — starting live runner", flush=True)
+        print("[jforex-live] API healthy", flush=True)
+        print("[jforex-live] waiting for backfill + warming up threshold history", flush=True)
+        # Give JForex time to complete initial backfill before warmup scoring
+        time.sleep(30)
+        _warmup_symbols(list(cfg.symbols), base_url=f"http://{cfg.api_host}:{cfg.api_port}")
+        print("[jforex-live] warmup complete, starting JForex runner", flush=True)
         java_proc = _start_live_runner(cfg)
         print(f"[jforex-live] running (symbols={','.join(cfg.symbols)})", flush=True)
 
