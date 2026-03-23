@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -40,8 +41,8 @@ public final class LiveReadinessCoordinator implements AutoCloseable {
     private final Map<String, Boolean> lastPublishedTimeouts = new LinkedHashMap<>();
 
     private ScheduledExecutorService scheduler;
+    private ExecutorService startupExecutor;
     private SymbolReadinessRegistry registry;
-    private BridgeRuntime bridgeRuntime;
     private BehemothStrategyCore core;
     private List<String> symbols = List.of();
     private Instant lastStatusWriteAt;
@@ -143,12 +144,12 @@ public final class LiveReadinessCoordinator implements AutoCloseable {
             return;
         }
 
-        this.bridgeRuntime = bridgeRuntimeFactory.create(context, registry);
         Instant now = clock.instant();
         publishSnapshot(now, true);
 
+        startStartupExecutor();
         for (String symbol : this.symbols) {
-            initializeSymbol(symbol);
+            submitSymbolInitialization(symbol, context);
         }
 
         if (autoStartHeartbeatScheduler) {
@@ -196,10 +197,19 @@ public final class LiveReadinessCoordinator implements AutoCloseable {
                 scheduler.shutdownNow();
                 scheduler = null;
             }
+            if (startupExecutor != null) {
+                startupExecutor.shutdownNow();
+                startupExecutor = null;
+            }
         }
     }
 
-    private void initializeSymbol(String symbol) {
+    private void submitSymbolInitialization(String symbol, IContext context) {
+        Objects.requireNonNull(startupExecutor, "startupExecutor");
+        startupExecutor.submit(() -> initializeSymbol(symbol, context));
+    }
+
+    private void initializeSymbol(String symbol, IContext context) {
         Instant startedAt = clock.instant();
         try {
             WarmupSlice warmup = warmupLoader.load(symbol, startedAt);
@@ -207,6 +217,7 @@ public final class LiveReadinessCoordinator implements AutoCloseable {
             publishSnapshot(clock.instant(), true);
 
             warmupPublisher.publish(symbol, toPayloads(symbol, warmup.ticks(), sessionConfig.runId()), sessionConfig.runId());
+            BridgeRuntime bridgeRuntime = bridgeRuntimeFactory.create(context, registry);
             bridgeRuntime.seedClientTickSeq(symbol, warmup.ticks().size());
 
             registry.markBridging(symbol, clock.instant());
@@ -231,7 +242,7 @@ public final class LiveReadinessCoordinator implements AutoCloseable {
         }
     }
 
-    private void publishSnapshot(Instant asOfUtc, boolean forceWrite) {
+    private synchronized void publishSnapshot(Instant asOfUtc, boolean forceWrite) {
         LiveReadinessSnapshot snapshot = registry.liveSnapshot(asOfUtc, sessionConfig.runId());
         boolean stateChanged = syncMetricsAndCore(snapshot);
         boolean dueForWrite = lastStatusWriteAt == null
@@ -268,6 +279,17 @@ public final class LiveReadinessCoordinator implements AutoCloseable {
             }
         }
         return changed;
+    }
+
+    private void startStartupExecutor() {
+        if (startupExecutor != null) {
+            return;
+        }
+        startupExecutor = Executors.newFixedThreadPool(Math.max(1, symbols.size()), runnable -> {
+            Thread thread = new Thread(runnable, "jforex-live-readiness-startup");
+            thread.setDaemon(true);
+            return thread;
+        });
     }
 
     private void startHeartbeatScheduler() {

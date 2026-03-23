@@ -25,6 +25,12 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.jupiter.api.Test;
@@ -85,6 +91,8 @@ class LiveReadinessCoordinatorTest {
             );
 
             coordinator.initialize(null, core, config.instruments());
+            waitUntil(() -> coordinator.snapshot("EURUSD").state() == SymbolReadinessState.READY);
+            waitUntil(() -> coordinator.snapshot("GBPUSD").state() == SymbolReadinessState.ERROR_PAUSED);
 
             assertThat(coordinator.snapshot("EURUSD").state()).isEqualTo(SymbolReadinessState.READY);
             assertThat(coordinator.snapshot("GBPUSD").state()).isEqualTo(SymbolReadinessState.ERROR_PAUSED);
@@ -123,6 +131,7 @@ class LiveReadinessCoordinatorTest {
             );
 
             coordinator.initialize(null, core, config.instruments());
+            waitUntil(() -> coordinator.snapshot("EURUSD").state() == SymbolReadinessState.READY);
             coordinator.recordLiveTick("EURUSD", Instant.parse("2026-03-22T12:00:00Z"));
             coordinator.onHeartbeat(Instant.parse("2026-03-22T12:00:31Z"));
 
@@ -160,11 +169,95 @@ class LiveReadinessCoordinatorTest {
             );
 
             coordinator.initialize(null, core, config.instruments());
+            waitUntil(() -> coordinator.snapshot("EURUSD").state() == SymbolReadinessState.READY);
+            waitUntil(() -> statusWriter.writeCount() >= 3);
             int initialWrites = statusWriter.writeCount();
             coordinator.onHeartbeat(Instant.parse("2026-03-22T12:00:05Z"));
             coordinator.onHeartbeat(Instant.parse("2026-03-22T12:00:10Z"));
 
             assertThat(statusWriter.writeCount()).isEqualTo(initialWrites + 2);
+        }
+    }
+
+    @Test
+    void initializeDoesNotBlockOtherSymbolsBehindFirstBridge() throws Exception {
+        JForexSessionConfig config = config(List.of("EURUSD", "GBPUSD"), true);
+        RecordingStatusWriter statusWriter = new RecordingStatusWriter();
+        RecordingLiveReadinessMetrics metrics = new RecordingLiveReadinessMetrics();
+        Map<String, WarmupSlice> warmups = Map.of(
+                "EURUSD",
+                warmupSlice("EURUSD", Instant.parse("2026-03-22T11:59:59Z"), 30_075),
+                "GBPUSD",
+                warmupSlice("GBPUSD", Instant.parse("2026-03-22T11:59:59Z"), 30_075)
+        );
+        CountDownLatch eurusdBridgeStarted = new CountDownLatch(1);
+        CountDownLatch releaseEurusdBridge = new CountDownLatch(1);
+
+        try (MockWebServer server = new MockWebServer();
+             ExecutorService executor = Executors.newSingleThreadExecutor()) {
+            enqueueFeedStatusOk(server);
+            BehemothStrategyCore core = buildCore(config, server);
+            LiveReadinessCoordinator coordinator = new LiveReadinessCoordinator(
+                    config,
+                    metrics,
+                    Clock.fixed(Instant.parse("2026-03-22T12:00:00Z"), ZoneId.of("UTC")),
+                    tempDir.resolve("dukascopy_ticks"),
+                    statusWriter,
+                    (symbol, bridgeAnchorTs) -> warmups.get(symbol),
+                    (symbol, ticks, runId) -> {
+                    },
+                    (context, registry) -> new LiveReadinessCoordinator.BridgeRuntime() {
+                        @Override
+                        public void seedClientTickSeq(String symbol, long lastClientTickSeq) {
+                        }
+
+                        @Override
+                        public BrokerBridgeLoader.BridgeResult bridge(BrokerBridgeLoader.BridgeConfig bridgeConfig) {
+                            if ("EURUSD".equals(bridgeConfig.symbol())) {
+                                eurusdBridgeStarted.countDown();
+                                try {
+                                    if (!releaseEurusdBridge.await(1, TimeUnit.SECONDS)) {
+                                        throw new IllegalStateException("timed out waiting to release EURUSD bridge");
+                                    }
+                                } catch (InterruptedException exc) {
+                                    throw new RuntimeException(exc);
+                                }
+                            }
+                            registry.markBridgeComplete(bridgeConfig.symbol(), bridgeConfig.parquetAnchorTsUtc());
+                            registry.markReady(
+                                    bridgeConfig.symbol(),
+                                    bridgeConfig.parquetAnchorTsUtc(),
+                                    bridgeConfig.initialWarmupBarCount100(),
+                                    bridgeConfig.parquetAnchorTsUtc()
+                            );
+                            return new BrokerBridgeLoader.BridgeResult(
+                                    true,
+                                    bridgeConfig.initialWarmupBarCount100(),
+                                    bridgeConfig.parquetAnchorTsUtc(),
+                                    30_075L
+                            );
+                        }
+                    },
+                    false
+            );
+
+            Future<?> initializeFuture = executor.submit(() -> coordinator.initialize(null, core, config.instruments()));
+
+            assertThat(eurusdBridgeStarted.await(1, TimeUnit.SECONDS)).isTrue();
+
+            for (int i = 0; i < 50 && !initializeFuture.isDone(); i++) {
+                Thread.sleep(10L);
+            }
+            assertThat(initializeFuture.isDone()).isTrue();
+
+            for (int i = 0; i < 50 && coordinator.snapshot("GBPUSD").state() == SymbolReadinessState.COLD; i++) {
+                Thread.sleep(10L);
+            }
+            assertThat(coordinator.snapshot("EURUSD").state()).isEqualTo(SymbolReadinessState.BRIDGING);
+            assertThat(coordinator.snapshot("GBPUSD").state()).isEqualTo(SymbolReadinessState.READY);
+
+            releaseEurusdBridge.countDown();
+            initializeFuture.get(1, TimeUnit.SECONDS);
         }
     }
 
@@ -329,6 +422,16 @@ class LiveReadinessCoordinatorTest {
         environment.put("BEHEMOTH_JFOREX_LIVE_FRESHNESS_SECONDS", "45");
         environment.put("BEHEMOTH_JFOREX_LIVE_STARTUP_BRIDGE_TIMEOUT_MINUTES", "9");
         return Map.copyOf(environment);
+    }
+
+    private static void waitUntil(BooleanSupplier condition) throws InterruptedException {
+        for (int i = 0; i < 100; i++) {
+            if (condition.getAsBoolean()) {
+                return;
+            }
+            Thread.sleep(10L);
+        }
+        assertThat(condition.getAsBoolean()).isTrue();
     }
 
     private static final class RecordingStatusWriter implements java.util.function.Consumer<LiveReadinessSnapshot> {

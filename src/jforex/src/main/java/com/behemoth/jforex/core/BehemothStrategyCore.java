@@ -282,7 +282,9 @@ public final class BehemothStrategyCore {
             }
             metrics.recordPredictFailure(state.instrument.symbol());
             artifactWriter.recordPredictFailure(state.instrument.symbol(), exc.detail());
-            throw exc;
+            // Keep the live session running when the Python side is temporarily unavailable
+            // or governance/model state is not ready. The failure is recorded above.
+            return;
         }
     }
 
