@@ -59,18 +59,19 @@
   - Note: src/jforex/src/main/java/com/behemoth/jforex/config/JForexSessionConfig.java was NOT modified (not in git status output)
   - Note: src/jforex/src/test/ untracked files were NOT present
 
-## freeze-oco Result
+## freeze-oco Result (second run — post retrain-all)
 - Command: `make freeze-oco`
+- Parity: all 6 symbols PASS (100% match)
+- Locks written: all 6 symbols
+- frozen_at_utc: 2026-03-23T14:13:03 (all 6)
+- model_month: 2026-02
+- audit-all post-step: FAILED (`audit_oco_pipeline_logical_issues.py` — EmptyDataError on empty schedule CSVs for symbols with no qualifying reduced core states; pre-existing issue, not related to parity fix)
+- Full log saved: /tmp/freeze-oco-2.log
+
+### Previous freeze-oco attempt (pre retrain-all)
 - Exit code: 1 (FAILED)
-- API parity: per symbol
-  - EURUSD: FAIL — 370 mismatches (rate: 0.0017) at parity step; make aborted here, remaining symbols not checked
-  - GBPUSD: NOT RUN
-  - USDJPY: NOT RUN
-  - USDCHF: NOT RUN
-  - AUDUSD: NOT RUN
-  - USDCAD: NOT RUN
-- Audit result: NOT RUN (aborted before freeze step)
-- Failure detail: `validate_api_parity.py` for EURUSD reported `pred_prob` values below the daily `api_threshold` that were marked `selected_exec=1` locally but `api_selected=0`. Sample rows show thresholds 0.614852–0.615874 on 2026-02-01/02 with pred_probs 0.6137–0.6145. 370 rows affected across the full month.
+- EURUSD: FAIL — 370 mismatches (rate: 0.0017); remaining symbols not checked
+- Failure detail: `validate_api_parity.py` for EURUSD reported `pred_prob` below daily `api_threshold` on 370 rows
 - Full log saved: /tmp/freeze-oco.log
 
 ## Post-retrain-all Parity Check
@@ -82,8 +83,9 @@
 - USDCAD: PASS (407519 rows, 100% match)
 
 ## Post-freeze: Lock Validation
-- Symbols validated:
-- All pass?:
+- Symbols validated: AUDUSD, EURUSD, GBPUSD, USDCAD, USDCHF, USDJPY
+- SHA-256 hash check (model CBM + threshold JSON): ALL PASS
+- All pass?: YES
 
 ## /predict Smoke Test
 - API start command:
