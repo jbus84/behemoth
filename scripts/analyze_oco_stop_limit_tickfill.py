@@ -471,7 +471,7 @@ def main() -> None:
     p.add_argument("--symbols", default="EURUSD,GBPUSD")
     p.add_argument("--pred-paths", default="")
     p.add_argument("--velocity-dir", default="data/analysis/tick_velocity")
-    p.add_argument("--tick-root", default="/Users/danielfisher/Desktop/tick")
+    p.add_argument("--tick-root", default="/Users/danielfisher/Desktop/dukascopy_ticks")
     p.add_argument("--caps", default="0.5,0.8,1.0,1.2,1.5,2.0")
     p.add_argument("--use-exec-selected", default="true")
     p.add_argument("--quantile", type=float, default=0.9)

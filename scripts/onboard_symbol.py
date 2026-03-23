@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG_DIR = ROOT / "configs" / "research" / "experiments"
 BIBLE_MANIFEST = ROOT / "configs" / "research" / "docs" / "oco_bible_manifest.yaml"
 MKDOCS_YML = ROOT / "mkdocs.yml"
-TICK_ROOT = Path.home() / "Desktop" / "tick"
+TICK_ROOT = Path.home() / "Desktop" / "dukascopy_ticks"
 TICKBAR_DIR = ROOT / "data" / "global_tickbars"
 TOM_DIR = ROOT / "data" / "analysis" / "tick_opportunity_mining"
 
