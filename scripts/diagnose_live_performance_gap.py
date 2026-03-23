@@ -145,16 +145,23 @@ def _threshold_analysis_section(con: duckdb.DuckDBPyConnection, run_id: str) -> 
 
 
 def _magnitude_analysis_section(con: duckdb.DuckDBPyConnection, run_id: str) -> list[dict[str, Any]]:
-    """Check whether winner/loser pip magnitudes match the OCO barrier configuration.
+    """Report live pnl_pips distribution per symbol.
 
-    Expected: winners ≈ +barrier_pips (2.0), losers ≈ -(barrier_pips + cap_pips + cost).
-    Deviations suggest wrong fill prices, wrong OCO construction, or barrier misconfiguration.
+    OCO uses from_touch hold mode: pnl = side*(close[touch+horizon] - ref)/pip - barrier_pips.
+    This means winners and losers are NOT bounded by barrier_pips — they reflect how far price
+    moves during the holding period after the barrier is touched. The only valid sanity checks
+    are structural: avg_pips should be negative (barrier cost dominates random walks), and the
+    sign distribution must match the win rate. Compare avg_winner_pips / avg_loser_pips against
+    the backtest mean_gross_pips_train for the same candidate to detect magnitude drift.
     """
     rows = con.execute("""
         SELECT
             symbol,
+            candidate_uid,
+            COUNT(*) AS n_closed,
             COUNT(CASE WHEN pnl_pips > 0 THEN 1 END) AS n_winners,
             COUNT(CASE WHEN pnl_pips <= 0 THEN 1 END) AS n_losers,
+            ROUND(AVG(pnl_pips), 3) AS avg_pips,
             ROUND(AVG(CASE WHEN pnl_pips > 0 THEN pnl_pips END), 3) AS avg_winner_pips,
             ROUND(AVG(CASE WHEN pnl_pips <= 0 THEN pnl_pips END), 3) AS avg_loser_pips,
             ROUND(MAX(pnl_pips), 3) AS max_winner_pips,
@@ -162,29 +169,26 @@ def _magnitude_analysis_section(con: duckdb.DuckDBPyConnection, run_id: str) -> 
             ROUND(STDDEV(pnl_pips), 3) AS stddev_pips
         FROM trades
         WHERE status = 'CLOSED' AND run_id = ?
-        GROUP BY symbol
+        GROUP BY symbol, candidate_uid
         ORDER BY symbol
     """, [run_id]).fetchall()
 
     results = []
-    for (symbol, n_win, n_lose, avg_win, avg_lose,
-         max_win, min_lose, stddev) in rows:
-        # Barrier is 2.0 pips for all locked states; cap is 1.2 pips
-        # Expected winner: ~+2.0, expected loser: ~-(2.0+1.2+cost) ≈ -3.5 worst case
-        winner_ok = avg_win is not None and 1.5 <= avg_win <= 2.5
-        loser_ok = avg_lose is not None and -4.0 <= avg_lose <= -0.5
+    for (symbol, candidate_uid, n_closed, n_win, n_lose, avg_pips,
+         avg_win, avg_lose, max_win, min_lose, stddev) in rows:
         results.append({
             "symbol": symbol,
+            "candidate_uid": candidate_uid,
+            "n_closed": n_closed,
             "n_winners": n_win,
             "n_losers": n_lose,
+            "avg_pips": avg_pips,
             "avg_winner_pips": avg_win,
             "avg_loser_pips": avg_lose,
             "max_winner_pips": max_win,
             "min_loser_pips": min_lose,
             "stddev_pips": stddev,
-            "winner_magnitude_ok": winner_ok,
-            "loser_magnitude_ok": loser_ok,
-            "flag": not winner_ok or not loser_ok,
+            "flag": False,  # no automated flag — compare manually vs backtest mean_gross_pips_train
         })
     return results
 
@@ -265,17 +269,16 @@ def _format_report(report: dict[str, Any]) -> str:
         )
     lines += [
         "",
-        "## 3. PnL Magnitude Analysis",
+        "## 3. PnL Magnitude (compare vs backtest mean_gross_pips_train)",
         "",
-        "| Symbol | N Winners | N Losers | Avg Winner Pips | Avg Loser Pips | Winner OK | Loser OK | Flag |",
-        "|--------|-----------|----------|----------------|----------------|-----------|----------|------|",
+        "| Symbol | Candidate UID | N | Avg Pips | Avg Winner | Avg Loser | StdDev |",
+        "|--------|--------------|---|----------|-----------|-----------|--------|",
     ]
     for r in report["magnitude_analysis"]:
-        flag = "🚨" if r["flag"] else ""
         lines.append(
-            f"| {r['symbol']} | {r['n_winners']} | {r['n_losers']} "
-            f"| {r['avg_winner_pips']} | {r['avg_loser_pips']} "
-            f"| {r['winner_magnitude_ok']} | {r['loser_magnitude_ok']} | {flag} |"
+            f"| {r['symbol']} | {r['candidate_uid']} | {r['n_closed']} "
+            f"| {r['avg_pips']} | {r['avg_winner_pips']} "
+            f"| {r['avg_loser_pips']} | {r['stddev_pips']} |"
         )
     lines += [
         "",
@@ -342,11 +345,10 @@ def main() -> None:
         print(f"  {r['symbol']}: {r['unique_thresholds']} unique threshold(s), "
               f"avg_prob={r['avg_pred_prob']}, schedule_today={r['schedule_has_today']}{flag}")
 
-    print("\n=== MAGNITUDE ===")
+    print("\n=== MAGNITUDE (compare vs backtest mean_gross_pips_train) ===")
     for r in report["magnitude_analysis"]:
-        flag = " *** CHECK EXECUTION" if r["flag"] else ""
-        print(f"  {r['symbol']}: winners={r['avg_winner_pips']} pips, "
-              f"losers={r['avg_loser_pips']} pips{flag}")
+        print(f"  {r['symbol']} [{r['candidate_uid']}]: n={r['n_closed']}, "
+              f"avg={r['avg_pips']}, winners={r['avg_winner_pips']}, losers={r['avg_loser_pips']}")
 
     print("\n=== CANDIDATE AUDIT ===")
     for r in report["candidate_audit"]:
