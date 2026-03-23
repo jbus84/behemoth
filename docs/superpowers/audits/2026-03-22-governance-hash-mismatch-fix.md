@@ -49,6 +49,15 @@
   ?? docs/superpowers/specs/2026-03-20-full-documentation-audit-design.md
   ```
 - Pending files committed in prep-commit:
+  - Commit 1b0adac: "chore: record demo rerun artefacts and JForex session config from 403c9e6 validation"
+    - 7 backtest_reconcile CSVs (AUDUSD, EURUSD, GBPUSD, USDCAD, USDCHF, USDJPY, jforex_outcome_parity_summary)
+    - tick_vault_data/logs.log
+  - Commit f118ff9: "chore: add plan, spec and audit documents"
+    - 15 plan files under docs/superpowers/plans/
+    - 3 spec files under docs/superpowers/specs/
+    - 1 audit file docs/superpowers/audits/2026-03-22-governance-hash-mismatch-fix.md
+  - Note: src/jforex/src/main/java/com/behemoth/jforex/config/JForexSessionConfig.java was NOT modified (not in git status output)
+  - Note: src/jforex/src/test/ untracked files were NOT present
 
 ## freeze-oco Result
 - Command:
