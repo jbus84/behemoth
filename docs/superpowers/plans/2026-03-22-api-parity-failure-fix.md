@@ -65,6 +65,47 @@ Expected: empty output. All pending changes (backtest CSVs, JForex config, plan/
 
 ## Task 2: Run `make retrain-all`
 
+# API Parity & Capacity Fix — Walkthrough
+
+## What was done
+
+Completed both Phase 1 (API Parity) and Phase 2 (Capacity Gate Fix).
+
+### Phase 1: API Parity (Completed)
+- **Import fix ✅**: `build_account_risk_monitoring_report.py` and `reconcile_account_risk_reservations.py` patched to fix `ModuleNotFoundError`.
+- **Task 3: Parity ✅**: All 6 symbols: 100% match.
+- **Task 4: Freeze ✅**: `make freeze-oco` passed and wrote all 6 lock files.
+
+### Phase 2: Capacity Gate Fix (Completed)
+- **Root Cause Identified ✅**: `analyze_oco_stop_limit_tickfill.py` and `onboard_symbol.py` had hardcoded legacy paths to `/Users/danielfisher/Desktop/tick` (empty). This caused 0% fill rate and 0 capacity rows.
+- **Path Patch ✅**: Updated default tick roots to canonical `/Users/danielfisher/Desktop/dukascopy_ticks`.
+- **Pipeline Rerun ✅**: 
+  - Stop-limit tickfill: RESTORED (EURUSD ~6k annualized rows).
+  - Reduced core selection: RESTORED (All symbols now meet >5000 row annual floor).
+- **Governance Refreeze ✅**: `make freeze-oco` now produces `capacity_overall_pass=True`.
+- **API Smoke Test ✅**: `/predict` now returns `live_deployable=True` for all symbols.
+
+## Validation Evidence
+
+| Symbol | Annualized Rows | Capacity Pass | Live Deployable |
+|--------|-----------------|---------------|-----------------|
+| EURUSD | 6480.0          | True          | True            |
+| GBPUSD | 9728.7          | True          | True            |
+| USDJPY | 9393.8          | True          | True            |
+| USDCHF | 5317.1          | True          | True            |
+| AUDUSD | 6296.0          | True          | True            |
+| USDCAD | 7726.9          | True          | True            |
+
+## Commits
+- `17c5a0d` — retrain-all docs artifacts + import fix + parity evidence
+- `c311326` — initial parity lock files
+- `7eeacfb` — fix: default tick-root to canonical dukascopy_ticks + refreshed capacity reports
+- `7ca7f23` — fix: resolve ModuleNotFoundError in reconcile_account_risk_reservations.py
+- `5119ad7` — chore: commit valid governance artifacts and import fix for final freeze
+
+## Outstanding issues
+- **EURUSD BRIDGING**: Stale local parquet tail; needs broker-history catch-up before the symbol is declared READY.
+
 **Files:**
 - Modify (generated): `models/oco/*_model_2026-02.cbm` and `*_model_2026-02.json` for all six symbols
 - Modify (generated): `data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/*_oco_monthly_predictions.parquet` for all six symbols
