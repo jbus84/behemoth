@@ -186,6 +186,152 @@ class BehemothStrategyCoreTest {
         }
     }
 
+    @Test
+    void pausedSymbolStillIngestsTicksButDoesNotSubmitOrders() throws Exception {
+        try (MockWebServer server = new MockWebServer()) {
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"as_of_utc":"2025-07-07T00:00:00Z","governance_mode":"historical_auto","record_raw_ticks":false,"symbols":[]}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"ok":true,"symbol":"EURUSD","ticks_received":1,"accepted_count":1,"dropped_count":0,"bar_completed":true,"completed_bar_ticks":[100],"symbol_tick_seq":1,"last_tick_ts_utc":"2025-07-07T00:00:00Z","last_client_tick_seq":1,"bar_count":289}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            [{
+                              "symbol":"EURUSD",
+                              "close_ts":"2025-07-07T00:00:00Z",
+                              "candidate_uid":"oco|EURUSD|100|h6|cand_entries_paused",
+                              "pred_prob":0.78,
+                              "threshold_exec":0.61,
+                              "selected_exec":1,
+                              "bar_ticks":100,
+                              "horizon":6,
+                              "barrier_pips":2.0,
+                              "cap_pips":1.2,
+                              "risk_blocked":false,
+                              "risk_reservation_id":"rid-1"
+                            }]
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+
+            Path tempDir = Files.createTempDirectory("behemoth-entries-paused-test");
+            JForexSessionConfig sessionConfig = new JForexSessionConfig(
+                    server.url("/").uri(), URI.create("http://example.test/jnlp"),
+                    "user", "pass", "", List.of("EURUSD"),
+                    Instant.parse("2025-07-07T00:00:00Z"), Instant.parse("2025-07-09T00:00:00Z"),
+                    tempDir, "run-1",
+                    false, 10_000.0, 1, 900L, false, 60, false, "", 0
+            );
+            PythonPredictionClient client = new PythonPredictionClient(
+                    HttpClient.newHttpClient(), server.url("/").uri(),
+                    Duration.ofSeconds(5), Duration.ofSeconds(5));
+            ExecutionStateStore stateStore = new ExecutionStateStore(
+                    tempDir.resolve("state.json"), client.objectMapper());
+            RecordingExecutionPort port = new RecordingExecutionPort();
+            BehemothStrategyCore core = new BehemothStrategyCore(
+                    sessionConfig, client, stateStore,
+                    new Stage14ArtifactWriter(tempDir, "test"),
+                    JForexMetrics.start(sessionConfig), port);
+
+            core.start(List.of(new RuntimeInstrument("EURUSD", 0.0001)));
+            core.setEntriesAllowed("EURUSD", false);
+            core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:00:00Z"), 1.1000, 1.1002));
+            core.flushSymbol("EURUSD");
+
+            assertThat(port.submittedOrders).isEmpty();
+            assertThat(server.getRequestCount()).isEqualTo(3);
+        }
+    }
+
+    @Test
+    void symbolCanResumeSubmittingAfterReadinessRecovers() throws Exception {
+        try (MockWebServer server = new MockWebServer()) {
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"as_of_utc":"2025-07-07T00:00:00Z","governance_mode":"historical_auto","record_raw_ticks":false,"symbols":[]}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"ok":true,"symbol":"EURUSD","ticks_received":1,"accepted_count":1,"dropped_count":0,"bar_completed":true,"completed_bar_ticks":[100],"symbol_tick_seq":1,"last_tick_ts_utc":"2025-07-07T00:00:00Z","last_client_tick_seq":1,"bar_count":289}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            [{
+                              "symbol":"EURUSD",
+                              "close_ts":"2025-07-07T00:00:00Z",
+                              "candidate_uid":"oco|EURUSD|100|h6|cand_entries_paused_cycle",
+                              "pred_prob":0.78,
+                              "threshold_exec":0.61,
+                              "selected_exec":1,
+                              "bar_ticks":100,
+                              "horizon":6,
+                              "barrier_pips":2.0,
+                              "cap_pips":1.2,
+                              "risk_blocked":false,
+                              "risk_reservation_id":"rid-1"
+                            }]
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"ok":true,"symbol":"EURUSD","ticks_received":1,"accepted_count":1,"dropped_count":0,"bar_completed":true,"completed_bar_ticks":[100],"symbol_tick_seq":2,"last_tick_ts_utc":"2025-07-07T00:01:00Z","last_client_tick_seq":2,"bar_count":290}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            [{
+                              "symbol":"EURUSD",
+                              "close_ts":"2025-07-07T00:01:00Z",
+                              "candidate_uid":"oco|EURUSD|100|h6|cand_entries_resumed_cycle",
+                              "pred_prob":0.79,
+                              "threshold_exec":0.61,
+                              "selected_exec":1,
+                              "bar_ticks":100,
+                              "horizon":6,
+                              "barrier_pips":2.0,
+                              "cap_pips":1.2,
+                              "risk_blocked":false,
+                              "risk_reservation_id":"rid-2"
+                            }]
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+
+            Path tempDir = Files.createTempDirectory("behemoth-entries-recover-test");
+            JForexSessionConfig sessionConfig = new JForexSessionConfig(
+                    server.url("/").uri(), URI.create("http://example.test/jnlp"),
+                    "user", "pass", "", List.of("EURUSD"),
+                    Instant.parse("2025-07-07T00:00:00Z"), Instant.parse("2025-07-09T00:00:00Z"),
+                    tempDir, "run-1",
+                    false, 10_000.0, 1, 900L, false, 60, false, "", 0
+            );
+            PythonPredictionClient client = new PythonPredictionClient(
+                    HttpClient.newHttpClient(), server.url("/").uri(),
+                    Duration.ofSeconds(5), Duration.ofSeconds(5));
+            ExecutionStateStore stateStore = new ExecutionStateStore(
+                    tempDir.resolve("state.json"), client.objectMapper());
+            RecordingExecutionPort port = new RecordingExecutionPort();
+            BehemothStrategyCore core = new BehemothStrategyCore(
+                    sessionConfig, client, stateStore,
+                    new Stage14ArtifactWriter(tempDir, "test"),
+                    JForexMetrics.start(sessionConfig), port);
+
+            core.start(List.of(new RuntimeInstrument("EURUSD", 0.0001)));
+            core.setEntriesAllowed("EURUSD", false);
+            core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:00:00Z"), 1.1000, 1.1002));
+            assertThat(port.submittedOrders).isEmpty();
+
+            core.setEntriesAllowed("EURUSD", true);
+            core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:01:00Z"), 1.1001, 1.1003));
+            assertThat(port.submittedOrders).hasSize(2);
+        }
+    }
+
     private static final class NoopExecutionPort implements ExecutionPort {
         @Override
         public OrderHandle submitStopOrder(OrderRequest request) {
@@ -206,10 +352,12 @@ class BehemothStrategyCoreTest {
     }
 
     private static final class RecordingExecutionPort implements ExecutionPort {
+        final List<OrderRequest> submittedOrders = new ArrayList<>();
         final List<String> closePositionCalls = new ArrayList<>();
 
         @Override
         public OrderHandle submitStopOrder(OrderRequest request) {
+            submittedOrders.add(request);
             return new OrderHandle(request.label(), request.label());
         }
 

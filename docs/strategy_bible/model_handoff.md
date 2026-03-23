@@ -68,6 +68,17 @@ POST /predict {"symbol": "EURUSD"}
 3. `OnTick()` → POST each tick to `/ticks`
 4. When a new bar completes → POST to `/predict` → act on any `selected_exec=1`
 
+## JForex Live Readiness
+
+`make jforex-live` starts each symbol with local Dukascopy parquet warmup, then bridges from the broker feed to near-real-time before new entries are enabled.
+
+Per-symbol readiness states are:
+- `READY` - tradable for new entries
+- `STALE_PAUSED` - feed is stale, so new entries are paused for that symbol only
+- `ERROR_PAUSED` - startup warmup or bridge failed for that symbol
+
+The freshness SLA is `30s`: a symbol is only unlocked when its latest ingested tick is within 30 seconds of now. The live status artifact is written at `data/analysis/backtest_reconcile/runtime/live_symbol_readiness.json`.
+
 ## Governance Lock
 
 The `oco_rule_universe_registry.yaml` is SHA256-hashed and change-controlled. Any modification requires `OCO-GOV-001` ticket approval. The API loads this registry on startup and uses it to enumerate valid candidates — no silent expansion.
