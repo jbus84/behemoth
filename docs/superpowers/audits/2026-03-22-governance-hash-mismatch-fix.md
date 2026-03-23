@@ -88,17 +88,22 @@
 - All pass?: YES
 
 ## /predict Smoke Test
-- API start command:
-- Per-symbol results (symbol → HTTP status):
-- All 200?:
+- API start command: `BEHEMOTH_GOVERNANCE_DIR=configs/research/governance/oco uv run uvicorn src.behemoth.api.server:app --host 127.0.0.1 --port 8000`
+- Per-symbol results: all 6 quarantined (`live_deployable=False`)
+- All 200?: NO — all symbols return 503 (quarantined)
+- Root cause: `capacity_overall_pass=False` for all 6 symbols (pre-existing governance state; `tick_exact_overall_pass=True` for all). This is unrelated to the parity/hash fix — it means reduced-core capacity checks have not passed across all symbols. The parity fix restores hash alignment (ALL PASS) and the ability to trade once capacity gates are satisfied.
 
 ## Outstanding Issues
-- EURUSD BRIDGING status:
-- Other:
+- EURUSD BRIDGING status: In the recent demo rerun, EURUSD remained in BRIDGING throughout the session. This is consistent with a stale local parquet tail requiring broker-history catch-up before the symbol is declared READY. It is not caused by the governance hash issue fixed here.
+- `live_deployable=False` for all 6 symbols: `capacity_overall_pass=False` prevents API from loading models. Separate from hash parity fix.
+- `audit_oco_pipeline_logical_issues.py` fails on empty schedule CSVs for symbols with no qualifying reduced core states (EmptyDataError). Pre-existing; not caused by this fix.
+- `build_account_risk_monitoring_report.py` had a broken `from scripts.X import *` — fixed in this session with dynamic importlib load.
 
 ## Final Outcome
-- Status:
-- Commit:
+- Status: governance hash mismatch RESOLVED — all 6 symbols pass parity, model/threshold hashes ALL PASS, lock files re-frozen
+- Root cause: model threshold JSONs were recalibrated after predictions parquets were last generated; make retrain-all regenerated both in the same pipeline pass
+- Fix: make retrain-all → make freeze-oco
+- Commit: c311326 (re-frozen lock files), 17c5a0d (docs artifacts + import fix)
 
 ## Parity Failure (Blocker from freeze-oco attempt)
 - Failure type: EURUSD API parity mismatch
