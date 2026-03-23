@@ -1,1 +1,3 @@
-
+symbol,bar_ticks,horizon,state_id,family,barrier_pips,regime_desc
+EURUSD,100,5,oco_first_touch_clean__high_range_q80__k2,oco_first_touch_clean,2.0,high_range_q80;barrier=2.0
+EURUSD,100,6,oco_first_touch_clean__high_range_q80__k2,oco_first_touch_clean,2.0,high_range_q80;barrier=2.0
