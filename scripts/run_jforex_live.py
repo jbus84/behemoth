@@ -105,6 +105,34 @@ def _poll_health(proc: subprocess.Popen[str], base_url: str, timeout_sec: float)
     raise RuntimeError(f"API did not become healthy within {timeout_sec:.0f}s: {last_error}")
 
 
+def _seed_audit_history(symbols: list[str], base_url: str, days_back: int = 20) -> None:
+    """Call /state/seed_audit_history to populate audit_logs from Dukascopy parquets.
+
+    This seeds the rolling threshold distribution so that get_rolling_threshold()
+    returns a calibrated value on the first live predict call.
+    Must be called after _poll_health() but before time.sleep(30) / _warmup_symbols().
+    """
+    import requests
+
+    print(f"[seed] seeding audit_logs from last {days_back} days of parquet data...", flush=True)
+    try:
+        r = requests.post(
+            f"{base_url}/state/seed_audit_history",
+            json={"symbols": symbols, "days_back": days_back, "run_id": "audit_seed"},
+            timeout=600,  # replay can take several minutes for 20 days × 6 symbols
+        )
+        body = r.json()
+        if body.get("ok"):
+            print(f"[seed] done — total events: {body['total_events']}", flush=True)
+            for sym, count in body.get("events_by_symbol", {}).items():
+                print(f"[seed]   {sym}: {count} events", flush=True)
+        else:
+            print(f"[seed] WARNING: unexpected response: {body}", flush=True)
+    except Exception as exc:
+        print(f"[seed] WARNING: seed_audit_history failed: {exc}", flush=True)
+        print("[seed] continuing without historical seed — first predict calls may block", flush=True)
+
+
 def _warmup_symbols(symbols: list[str], base_url: str, timeout_sec: float = 60.0) -> None:
     """Call /predict/warmup for each symbol to seed audit_logs.
 
@@ -247,6 +275,7 @@ def main() -> None:
     try:
         _poll_health(api_proc, f"http://{cfg.api_host}:{cfg.api_port}", timeout_sec=60.0)
         print("[jforex-live] API healthy", flush=True)
+        _seed_audit_history(list(cfg.symbols), base_url=f"http://{cfg.api_host}:{cfg.api_port}")
         print("[jforex-live] waiting for backfill + warming up threshold history", flush=True)
         # Give JForex time to complete initial backfill before warmup scoring
         time.sleep(30)
