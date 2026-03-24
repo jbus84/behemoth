@@ -36,7 +36,7 @@ Returns 201:
 ```json
 {
   "ok": true,
-  "events_by_symbol": {"GBPUSD": 12400, "USDJPY": 11800, ...},
+  "events_by_symbol": {"GBPUSD": 12400, "USDJPY": 11800},
   "total_events": 24200
 }
 ```
@@ -45,26 +45,29 @@ Returns 201:
 
 1. Locate parquet files in `dukascopy_ticks_dir/{SYMBOL}/` with timestamps overlapping `[now - days_back, now]`
 2. Read and concatenate, sort by `timestamp`
-3. Create a **fresh in-memory `StateManager`** + **fresh `TickAggregator`** — completely isolated from the live bar buffer
-4. Convert each parquet row to `IncomingTick(symbol, timestamp, bid, ask)`
-5. Feed ticks through `TickAggregator.add_ticks()` → `IncomingTickBar`
-6. For each emitted bar: `replay_state.append_bar(bar)`
-7. Once bar count ≥ `full_warmup_bars` (289): call `compute_features()` → model inference → `replay_state.log_audit_event()` with the bar's real historical `close_ts` and `run_id="audit_seed"`
-8. Bulk-copy all `audit_logs` rows from the in-memory replay DB into the live `StateManager`'s DB via `INSERT INTO ... SELECT ...` (DuckDB ATTACH)
-9. Close and discard the replay `StateManager`
+3. Resolve the live contract via **`_resolve_runtime_contract(sym, ...)`** to get the list of candidates. This ensures the `canonical_uid` written to `audit_logs` uses the identical format as the live predict path: `f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"`. `get_rolling_threshold()` filters by both `symbol` and `candidate_uid`, so any format mismatch silently produces zero rows.
+4. Create a **fresh in-memory `StateManager`** + **fresh `TickAggregator`** — completely isolated from the live bar buffer
+5. Convert each parquet row to `IncomingTick(symbol, timestamp, bid, ask)` — `tick_volume` defaults to 1.0 since Dukascopy parquets do not supply it
+6. Feed ticks through `TickAggregator.add_ticks()` → `IncomingTickBar`
+7. For each emitted bar: `replay_state.append_bar(bar)`
+8. Once bar count ≥ `full_warmup_bars` (289): call `replay_state.compute_features()` → model inference → collect `(candidate_uid, pred_prob, threshold, features, model_month, close_ts, run_id)` into a plain Python list
+9. **Write to live DB directly:** call `_state.log_audit_event(...)` once per collected row — the live `StateManager`'s connection is the single writer. The replay `StateManager` is used only to accumulate bars and compute features; it never writes to the live DB.
+10. Close and discard the replay `StateManager` in a `finally` block
+
+> **Why not DuckDB ATTACH?** The live `StateManager` holds an exclusive file handle on `live_state.db`. Any attempt to ATTACH that file from another connection — including a read-only attach from the in-memory replay DB — raises a `Binder Error: Unique file handle conflict` at runtime. Direct calls to `_state.log_audit_event()` are the correct single-writer pattern.
 
 ### Why historical `close_ts` matters
 
-`get_rolling_threshold()` filters by `close_ts >= now() - rolling_threshold_days`. Because seeded rows carry real parquet timestamps (e.g. 2026-03-04 through 2026-03-23), the rolling window query finds them correctly and returns a calibrated 90th-percentile threshold on the first live predict call.
+`get_rolling_threshold()` filters by `close_ts >= now() - rolling_threshold_days`. Because seeded rows carry real parquet timestamps (e.g. 2026-03-04 through 2026-03-13), the rolling window query finds them and returns a calibrated threshold.
 
 ### Threshold chain after seeding
 
 ```
-seed_audit_history  →  audit_logs: 20 days of real pred_probs
+seed_audit_history  →  audit_logs: N days of real pred_probs with historical close_ts
                                     ↓
 first predict call  →  schedule expired
                     →  get_rolling_threshold() finds seeded rows
-                    →  returns p90 of last 20 days
+                    →  returns p90 of available window
                     →  threshold_source: "rolling_days:rolling_dynamic"
 ```
 
@@ -90,7 +93,7 @@ No other config changes. `days_back` and `run_id` are request-time parameters.
 | `src/behemoth/api/server.py` | Add `dukascopy_ticks_dir` to server config with env var |
 | `src/behemoth/api/server.py` | Add `POST /state/seed_audit_history` endpoint |
 | `scripts/run_jforex_live.py` | Add `_seed_audit_history()` helper |
-| `scripts/run_jforex_live.py` | Call `_seed_audit_history()` after `_poll_health`, before `_warmup_symbols` |
+| `scripts/run_jforex_live.py` | Call `_seed_audit_history()` after `_poll_health`, before `_warmup_symbols` (see ordering note below) |
 | `tests/test_api_server.py` | Add `TestSeedAuditHistory` test class |
 
 ---
@@ -98,13 +101,16 @@ No other config changes. `days_back` and `run_id` are request-time parameters.
 ## Startup Sequence (updated)
 
 ```
-1. uvicorn starts  →  models load, DB opens
-2. _poll_health()  →  server ready
-3. _seed_audit_history()  →  20 days of pred_probs in audit_logs
-4. _warmup_symbols()  →  gap-fill for hours between parquet end and now
-5. _start_live_runner()  →  JForex connects, /backfill sends last ~1 day
-6. live predict calls  →  rolling_dynamic threshold from step 3+4 data
+1. uvicorn starts           →  models load, DB opens
+2. _poll_health()           →  server ready
+3. _seed_audit_history()    →  N days of pred_probs in audit_logs (from parquets)
+4. time.sleep(30)           →  wait for JForex initial backfill to populate tick_bars
+5. _warmup_symbols()        →  gap-fill: scores live tick_bars buffer, fills parquet→now gap
+6. _start_live_runner()     →  JForex connects, /backfill sends ticks
+7. live predict calls       →  rolling_dynamic threshold from steps 3+5 data
 ```
+
+> **Ordering note:** The `time.sleep(30)` between `_seed_audit_history()` and `_warmup_symbols()` must be preserved. `_warmup_symbols()` relies on `/backfill` having already populated `tick_bars` in the **live** `StateManager` (JForex sends this). The seed endpoint writes only to `audit_logs` — it does not populate `tick_bars`. Without ticks in the live buffer, `compute_features()` returns `None` and `_warmup_symbols()` writes 0 events (it will retry and warn, but not error). Step 3 must complete before step 6 begins so that seeded rows are in place before the first live predict call.
 
 ---
 
@@ -114,8 +120,8 @@ No other config changes. `days_back` and `run_id` are request-time parameters.
 |-----------|-----------|
 | `_state` is None | 503 |
 | `dukascopy_ticks_dir` missing | 422 |
-| No parquets found for a symbol | Warning in response body, symbol skipped, others continue |
-| Parquet read error for a symbol | Warning in response body, symbol skipped |
+| No parquets found for a symbol | 0 in `events_by_symbol`, warning logged, other symbols continue |
+| Parquet read error for a symbol | 0 in `events_by_symbol`, warning logged, other symbols continue |
 | Replay SM always cleaned up | `finally` block closes in-memory SM |
 
 ---
@@ -124,15 +130,20 @@ No other config changes. `days_back` and `run_id` are request-time parameters.
 
 `TestSeedAuditHistory` in `tests/test_api_server.py`:
 
-1. **`test_seed_returns_201`** — synthetic parquet with 500 ticks; asserts 201, `ok=True`, `audit_events_written` is int ≥ 0 (may be 0 — fewer than 289 warmup bars is valid)
-2. **`test_seed_writes_events_when_sufficient_ticks`** — synthetic parquet with 30,000 ticks (> 289 bars); asserts `audit_events_written > 0` and rows appear in `audit_logs`
+1. **`test_seed_returns_201`** — synthetic parquet with 500 ticks; asserts 201, `ok=True`, `total_events` is int ≥ 0 (may be 0 — fewer than 289 warmup bars is valid)
+2. **`test_seed_writes_events_when_sufficient_ticks`** — synthetic parquet with 30,000 ticks (> 289 bars); asserts `total_events > 0` and `events_by_symbol["GBPUSD"] > 0`, and rows appear in live `audit_logs`
 3. **`test_seed_503_when_state_uninitialized`** — patches `server._state = None`; asserts 503
 4. **`test_seed_skips_missing_symbol_gracefully`** — requests a symbol with no parquet directory; asserts 201 with `events_by_symbol` entry = 0
 
 ---
 
+## Known Constraints
+
+- **Parquet coverage may be less than `days_back`:** Parquets currently extend to 2026-03-13 (last download: 2026-03-14). With `days_back=20` on 2026-03-24, the actual coverage is ~10 calendar days. This still exceeds `min_history=1000` (10 days × ~600 bars/day = ~6,000 events), so the rolling threshold computes correctly. If the full 20-day distribution is required, run `download_tick_vault_data.py` before starting the server. The `events_by_symbol` count in the response makes coverage observable.
+
+---
+
 ## Out of Scope
 
-- Downloading missing parquets (handled separately by `download_tick_vault_data.py` as a pre-step or nightly cron)
-- Deduplication of `audit_logs` rows if endpoint is called multiple times (idempotency: safe to call, just appends; rolling quantile is robust to duplicates)
-- Per-bar feature replay fidelity: each bar uses features computed from the in-memory replay buffer, which is the same approach as the backtest pipeline
+- Downloading missing parquets (handled separately by `download_tick_vault_data.py`)
+- Deduplication if endpoint is called multiple times (safe to call repeatedly; rolling quantile is robust to duplicates)
