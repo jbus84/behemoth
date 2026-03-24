@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 10
 
-- generated_at: `2026-03-11 21:50:05 UTC`
+- generated_at: `2026-03-23 20:05:07 UTC`
 - Risk backlog is derived from current logical-audit failures.
 - When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.
 
@@ -22,12 +22,12 @@
 | AUDUSD   | FTMO_ALLOC_OPEN_WITHOUT_BROKER_POS_COUNT         | green  | info       | A0_MONITOR            | within policy band     | execution |
 | AUDUSD   | FTMO_ALLOC_PIP_VALUE_UNAVAILABLE_RATE            | green  | info       | A0_MONITOR            | within policy band     | data      |
 | AUDUSD   | FTMO_ALLOC_STALE_PENDING_COUNT                   | green  | info       | A0_MONITOR            | within policy band     | execution |
-| EURUSD   | FTMO_ALLOC_ADMITTED_MISSING_RESERVATION_ID_COUNT | green  | info       | A0_MONITOR            | within policy band     | risk      |
-| EURUSD   | FTMO_ALLOC_BLOCK_RATE                            | green  | info       | A0_MONITOR            | within policy band     | risk      |
-| EURUSD   | FTMO_ALLOC_BUDGET_EXCEEDED_RATE                  | red    | high       | A2_RECALIBRATE        | escalate and remediate | risk      |
+| EURUSD   | FTMO_ALLOC_ADMITTED_MISSING_RESERVATION_ID_COUNT | red    | high       | A3_HALT_AND_REMEDIATE | escalate and remediate | risk      |
+| EURUSD   | FTMO_ALLOC_BLOCK_RATE                            | amber  | medium     | A1_REVIEW             | review and monitor     | risk      |
+| EURUSD   | FTMO_ALLOC_BUDGET_EXCEEDED_RATE                  | amber  | medium     | A1_REVIEW             | review and monitor     | risk      |
 | EURUSD   | FTMO_ALLOC_OPEN_WITHOUT_BROKER_POS_COUNT         | green  | info       | A0_MONITOR            | within policy band     | execution |
 | EURUSD   | FTMO_ALLOC_PIP_VALUE_UNAVAILABLE_RATE            | green  | info       | A0_MONITOR            | within policy band     | data      |
-| EURUSD   | FTMO_ALLOC_STALE_PENDING_COUNT                   | red    | high       | A3_HALT_AND_REMEDIATE | escalate and remediate | execution |
+| EURUSD   | FTMO_ALLOC_STALE_PENDING_COUNT                   | green  | info       | A0_MONITOR            | within policy band     | execution |
 
 #### Details
 | symbol   | severity_if_fail   |   total_checks |   failed_checks |

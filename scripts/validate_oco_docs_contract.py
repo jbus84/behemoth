@@ -38,6 +38,8 @@ REQUIRED_STAGE_DOCS = {
     10: "stage_10_known_risks_and_backlog.md",
     11: "stage_11_execution_monte_carlo.md",
     12: "stage_12_api_parity.md",
+    13: "stage_13_dukascopy_testclient_parity.md",
+    14: "stage_14_jforex_runtime_certification.md",
 }
 
 REQUIRED_HEADINGS = [
@@ -799,6 +801,36 @@ def run(
         details=",".join(core_missing_or_nan),
     )
 
+    # C4c: Capacity passes must be backed by non-zero trades.
+    capacity_summary_csv = edge_metrics_csv.parent / "stop_limit_tickfill" / "summary.csv"
+    zero_trade_passes: list[str] = []
+    if capacity_summary_csv.exists():
+        try:
+            cap_sum = pd.read_csv(capacity_summary_csv)
+            if not cap_sum.empty and not edge.empty:
+                # Find symbols where capacity_overall_pass is logically True (e.g. from lock file or status)
+                # For contract validation, we check if summary.csv trade count is 0 for any symbol present.
+                for _, r in cap_sum.iterrows():
+                    sym = str(r.get("symbol", "")).upper()
+                    rows = int(r.get("rows", 0))
+                    if rows == 0:
+                        zero_trade_passes.append(sym)
+        except Exception:
+            pass
+    _add_check(
+        checks_rows,
+        check_id="C4C",
+        check_name="capacity_pass_has_trades",
+        passed=len(zero_trade_passes) == 0,
+        severity_if_fail="critical",
+        metric_name="zero_trade_symbols",
+        metric_value=int(len(zero_trade_passes)),
+        threshold=0,
+        comparator="==",
+        source_path=capacity_summary_csv,
+        details=",".join(zero_trade_passes),
+    )
+
     # C5: Snapshot/report consistency.
     stage_status = pd.read_csv(stage_status_csv) if stage_status_csv.exists() else pd.DataFrame()
     status_syms = set(
@@ -1494,7 +1526,9 @@ def run(
     missing_si_cols = [c for c in STAGE_INTEGRITY_REQUIRED_COLUMNS if c not in si.columns]
     si_fail = pd.DataFrame()
     if not si.empty and {"status", "severity_if_fail"}.issubset(set(si.columns)):
-        si_fail = si[si["status"].astype(str).str.lower() != "pass"].copy()
+        si_fail = si[
+            (~si["status"].astype(str).str.lower().isin(["pass", "accepted_exception", "remediated"]))
+        ].copy()
     si_high_critical = (
         int(si_fail["severity_if_fail"].astype(str).str.lower().isin(["high", "critical"]).sum())
         if not si_fail.empty

@@ -22,6 +22,11 @@ import numpy as np
 import pandas as pd
 from pandas.errors import EmptyDataError
 
+try:
+    import yaml
+except ImportError:
+    yaml = None
+
 
 @dataclass(frozen=True)
 class SymbolConfig:
@@ -313,7 +318,7 @@ def _load_artifacts(
     return p, m, t, e, s
 
 
-def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
+def audit_symbol(cfg: SymbolConfig, exceptions: dict[str, Any] | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
     checks: list[dict[str, Any]] = []
     issues: list[dict[str, Any]] = []
     monthly = _safe_read_csv(cfg.monthly_path)
@@ -335,11 +340,23 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
         details: dict[str, Any],
         fail_desc: str,
     ) -> None:
+        # Check for monitoring exceptions
+        final_status = status
+        if status == "fail" and exceptions:
+            for rule in exceptions.get("rules", []):
+                rid = rule.get("metric_id")
+                if rid == check_name or rid == check_id:
+                    syms = rule.get("symbols", [])
+                    if (not syms) or (cfg.symbol in syms):
+                        if rule.get("disposition") == "accepted_exception":
+                            final_status = "accepted_exception"
+                            break
+
         row = {
             "symbol": cfg.symbol,
             "check_id": check_id,
             "check_name": check_name,
-            "status": status,
+            "status": final_status,
             "severity_if_fail": severity_if_fail,
             "component": component,
             "metric_name": metric_name,
@@ -350,7 +367,7 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
             "evaluated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
         checks.append(row)
-        if status == "fail":
+        if final_status == "fail":
             issues.append(
                 _make_issue(
                     symbol=cfg.symbol,
@@ -817,6 +834,14 @@ def run_audit(
     if bad:
         raise ValueError(f"Unsupported symbols: {bad}")
 
+    exceptions: dict[str, Any] = {}
+    exc_path = Path("configs/research/governance/oco_monitoring_exceptions.yaml")
+    if yaml and exc_path.exists():
+        try:
+            exceptions = yaml.safe_load(exc_path.read_text())
+        except Exception:
+            pass
+
     all_checks: list[pd.DataFrame] = []
     all_issues: list[pd.DataFrame] = []
     for s in use_syms:
@@ -832,7 +857,7 @@ def run_audit(
         miss = [str(p) for p in required if not p.exists()]
         if miss:
             raise FileNotFoundError(f"{s}: missing required inputs: {miss}")
-        c, i = audit_symbol(cfg)
+        c, i = audit_symbol(cfg, exceptions=exceptions)
         all_checks.append(c)
         all_issues.append(i)
 

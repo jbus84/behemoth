@@ -687,6 +687,8 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         raise ValueError("gross_metric must be mean|median")
     if library_type not in {"separate", "directional", "oco"}:
         raise ValueError("library_type must be separate|directional|oco")
+    if not dataset_dir.exists():
+        raise FileNotFoundError(f"Dataset directory does not exist: {dataset_dir}")
 
     directional_parts: list[pd.DataFrame] = []
     oco_parts: list[pd.DataFrame] = []

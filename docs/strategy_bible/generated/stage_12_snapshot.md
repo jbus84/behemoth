@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 12
 
-- generated_at: `2026-03-11 21:50:05 UTC`
+- generated_at: `2026-03-23 20:05:07 UTC`
 - Stage 12 is a hard gate: strict signal parity and execution parity must both match reduced-core truth.
 - Any non-green Stage 12 symbol is a critical deployment blocker.
 

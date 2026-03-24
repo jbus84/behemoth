@@ -88,7 +88,7 @@ uv run python scripts/audit_oco_pipeline_logical_issues.py
 <!-- GENERATED:STAGE_07:START -->
 ### Auto Snapshot - Stage 07
 
-- generated_at: `2026-03-11 21:50:05 UTC`
+- generated_at: `2026-03-23 20:05:07 UTC`
 - C01..C10 checks are the logical contract gate before robustness sign-off.
 - Open issue rows: 0.
 
@@ -109,7 +109,7 @@ uv run python scripts/audit_oco_pipeline_logical_issues.py
 #### Action Trigger Summary
 | symbol   | metric_id               | band   | severity   | action_code    | action_summary         | owner    |
 |:---------|:------------------------|:-------|:-----------|:---------------|:-----------------------|:---------|
-| AUDUSD   | S01_lb95_dependence_gap | red    | high       | A2_RECALIBRATE | escalate and remediate | research |
+| AUDUSD   | S01_lb95_dependence_gap | amber  | medium     | A1_REVIEW      | review and monitor     | research |
 | AUDUSD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR     | within policy band     | research |
 | EURUSD   | S01_lb95_dependence_gap | red    | high       | A2_RECALIBRATE | escalate and remediate | research |
 | EURUSD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR     | within policy band     | research |

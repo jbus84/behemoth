@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 03
 
-- generated_at: `2026-03-11 21:50:05 UTC`
+- generated_at: `2026-03-23 20:05:07 UTC`
 - Execution threshold summary is aligned to quantile=0.9.
 - Metrics are strictly month-forward (3M train -> 1M test).
 - W13-W15 are informational diagnostics for threshold fragility, calibration drift, and selection turnover.
@@ -8,12 +8,12 @@
 #### Key Results
 | symbol   |   months |   auc_mean |   brier_mean |   test_rows_total |   w13_threshold_fragility |   w14_brier_drift_std |   w15_selection_turnover |
 |:---------|---------:|-----------:|-------------:|------------------:|--------------------------:|----------------------:|-------------------------:|
-| EURUSD   |       14 |   0.521779 |     0.249732 |       3.79276e+06 |                  4.30025  |           0.00132205  |                0.130227  |
-| GBPUSD   |       14 |   0.523117 |     0.249639 |       4.59833e+06 |                  1.43409  |           0.000769545 |                0.0738935 |
-| AUDUSD   |       14 |   0.522254 |     0.251136 |       4.18266e+06 |                  0.572776 |           0.000946094 |                0.162401  |
-| USDJPY   |       14 |   0.526009 |     0.247588 |       4.81562e+06 |                  1.94653  |           0.000700228 |                0.0452724 |
-| USDCHF   |       14 |   0.530064 |     0.250296 |       3.95814e+06 |                  1.48074  |           0.00159589  |                0.199366  |
-| USDCAD   |       14 |   0.537569 |     0.249334 |       4.44682e+06 |                  1.97218  |           0.0037627   |                0.174985  |
+| EURUSD   |       14 |   0.522117 |     0.249726 |       3.79276e+06 |                  4.48712  |           0.00120268  |                0.12881   |
+| GBPUSD   |       14 |   0.522755 |     0.249691 |       4.59833e+06 |                  1.37426  |           0.000756223 |                0.0702232 |
+| AUDUSD   |       14 |   0.521318 |     0.251285 |       4.18266e+06 |                  0.246836 |           0.00114929  |                0.161069  |
+| USDJPY   |       14 |   0.525993 |     0.247629 |       4.81562e+06 |                  1.90751  |           0.000670593 |                0.0498448 |
+| USDCHF   |       14 |   0.530781 |     0.250383 |       3.95814e+06 |                  1.20235  |           0.00158533  |                0.200269  |
+| USDCAD   |       14 |   0.537559 |     0.249512 |       4.44682e+06 |                  1.8053   |           0.00434124  |                0.170166  |
 
 #### Interpretation Notes
 - Execution threshold summary is aligned to quantile=0.9.
@@ -32,19 +32,19 @@
 | GBPUSD   | W13_threshold_fragility | green  | info       | A0_MONITOR            | within policy band     | research |
 | GBPUSD   | W14_brier_drift_std     | green  | info       | A0_MONITOR            | within policy band     | research |
 | GBPUSD   | W15_selection_turnover  | green  | info       | A0_MONITOR            | within policy band     | research |
-| USDCAD   | W13_threshold_fragility | amber  | medium     | A2_RECALIBRATE        | review and monitor     | research |
+| USDCAD   | W13_threshold_fragility | green  | info       | A0_MONITOR            | within policy band     | research |
 | USDCAD   | W14_brier_drift_std     | green  | info       | A0_MONITOR            | within policy band     | research |
 | USDCAD   | W15_selection_turnover  | green  | info       | A0_MONITOR            | within policy band     | research |
 
 #### Details
 | symbol   |   months |   mean_coverage |   mean_gross_pips |   rows_selected |
 |:---------|---------:|----------------:|------------------:|----------------:|
-| AUDUSD   |       14 |       0.0897709 |          0.449535 |          415660 |
-| EURUSD   |       14 |       0.0962194 |          1.46115  |          431387 |
-| GBPUSD   |       14 |       0.0897346 |          0.96337  |          425220 |
-| USDCAD   |       14 |       0.0893935 |          0.824392 |          490796 |
-| USDCHF   |       14 |       0.0843316 |          0.599204 |          348850 |
-| USDJPY   |       14 |       0.0977184 |          1.37202  |          463768 |
+| AUDUSD   |       14 |       0.0867933 |          0.444395 |          385590 |
+| EURUSD   |       14 |       0.0979343 |          1.48716  |          441961 |
+| GBPUSD   |       14 |       0.0908547 |          0.976386 |          431157 |
+| USDCAD   |       14 |       0.0908904 |          0.795266 |          501026 |
+| USDCHF   |       14 |       0.085702  |          0.605654 |          348977 |
+| USDJPY   |       14 |       0.0990242 |          1.37201  |          471371 |
 
 #### Plots
 ![stage_03_wfo_monthly_gross](../../figures/oco_bible/stage_03_wfo_monthly_gross.png)
@@ -52,24 +52,24 @@
 #### Threshold Robustness Around Execution Quantile
 | symbol   | test_month   |   quantile |   mean_gross_pips |   coverage |   selected_rows |
 |:---------|:-------------|-----------:|------------------:|-----------:|----------------:|
-| EURUSD   | aggregate    |       0.8  |          1.15137  |  0.191809  |         57851.1 |
-| EURUSD   | aggregate    |       0.9  |          1.46115  |  0.0962194 |         30813.4 |
-| EURUSD   | aggregate    |       0.95 |          1.79641  |  0.0474474 |         15976.1 |
-| GBPUSD   | aggregate    |       0.8  |          0.848037 |  0.185145  |         61979.6 |
-| GBPUSD   | aggregate    |       0.9  |          0.96337  |  0.0897346 |         30372.9 |
-| GBPUSD   | aggregate    |       0.95 |          1.06315  |  0.0418456 |         14327.1 |
-| AUDUSD   | aggregate    |       0.8  |          0.41137  |  0.192869  |         60849.6 |
-| AUDUSD   | aggregate    |       0.9  |          0.449535 |  0.0897709 |         29690   |
-| AUDUSD   | aggregate    |       0.95 |          0.497286 |  0.0394586 |         14047.1 |
-| USDJPY   | aggregate    |       0.8  |          1.20166  |  0.196789  |         66914.2 |
-| USDJPY   | aggregate    |       0.9  |          1.37202  |  0.0977184 |         33126.3 |
-| USDJPY   | aggregate    |       0.95 |          1.49364  |  0.0485493 |         16319.5 |
-| USDCHF   | aggregate    |       0.8  |          0.522041 |  0.177115  |         51441.7 |
-| USDCHF   | aggregate    |       0.9  |          0.599204 |  0.0843316 |         24917.9 |
-| USDCHF   | aggregate    |       0.95 |          0.744152 |  0.0387301 |         11500.4 |
-| USDCAD   | aggregate    |       0.8  |          0.680782 |  0.187831  |         67802.1 |
-| USDCAD   | aggregate    |       0.9  |          0.824392 |  0.0893935 |         35056.9 |
-| USDCAD   | aggregate    |       0.95 |          0.976609 |  0.0412976 |         17635.4 |
+| EURUSD   | aggregate    |       0.8  |          1.16522  |  0.194405  |         58793.1 |
+| EURUSD   | aggregate    |       0.9  |          1.48716  |  0.0979343 |         31568.6 |
+| EURUSD   | aggregate    |       0.95 |          1.83829  |  0.0482059 |         16520.4 |
+| GBPUSD   | aggregate    |       0.8  |          0.849294 |  0.187787  |         62926.1 |
+| GBPUSD   | aggregate    |       0.9  |          0.976386 |  0.0908547 |         30796.9 |
+| GBPUSD   | aggregate    |       0.95 |          1.05543  |  0.0424836 |         14606.9 |
+| AUDUSD   | aggregate    |       0.8  |          0.407369 |  0.188395  |         58060.1 |
+| AUDUSD   | aggregate    |       0.9  |          0.444395 |  0.0867933 |         27542.1 |
+| AUDUSD   | aggregate    |       0.95 |          0.436704 |  0.0374703 |         12511.7 |
+| USDJPY   | aggregate    |       0.8  |          1.19693  |  0.198657  |         67582.6 |
+| USDJPY   | aggregate    |       0.9  |          1.37201  |  0.0990242 |         33669.4 |
+| USDJPY   | aggregate    |       0.95 |          1.48306  |  0.0500855 |         16949.6 |
+| USDCHF   | aggregate    |       0.8  |          0.520265 |  0.178122  |         51187.2 |
+| USDCHF   | aggregate    |       0.9  |          0.605654 |  0.085702  |         24926.9 |
+| USDCHF   | aggregate    |       0.95 |          0.700617 |  0.0393531 |         11469.7 |
+| USDCAD   | aggregate    |       0.8  |          0.679304 |  0.18913   |         68609.8 |
+| USDCAD   | aggregate    |       0.9  |          0.795266 |  0.0908904 |         35787.6 |
+| USDCAD   | aggregate    |       0.95 |          0.950099 |  0.0422888 |         18126   |
 
 #### Overfitting Diagnostics (Exec Quantile)
 | symbol   |   quantile |   rows |   months |   positive_months |   lb95_trade_mean_gross_pips |   lb95_trade_mean_gross_pips_iid |   lb95_trade_mean_gross_pips_month_block |   pvalue_month_mean_gt0 |   pvalue_bonferroni |   pvalue_fdr_bh |   uplift_vs_null_pips |   pvalue_perm_uplift |   pvalue_perm_fdr_bh | majority_positive_months   | bonferroni_pass_10pct   | fdr_pass_10pct   | perm_fdr_pass_10pct   |

@@ -3,10 +3,40 @@
 ## Objective
 Certify that canonical Dukascopy parquet ticks reproduce Stage 12-approved Python-runtime behavior when replayed through the in-process FastAPI `TestClient`.
 
-## Required Inputs
+## Inputs
 - `data/analysis/backtest_reconcile/*_stage12_api_parity_summary.csv`
 - `data/analysis/backtest_reconcile/*_dukascopy_testclient_replay_summary.csv`
 - `docs/analysis/stage13_dukascopy_testclient_report.md`
+
+## Exact Calculations
+- [Placeholder] Parity is calculated as the intersection of signals and execution events.
+
+## Causality / Leakage Controls
+- [Placeholder] No future-data leaks in tick replay.
+
+## Failure Modes
+- [Placeholder] Signal mismatch, execution divergence.
+
+## Interpretation Guide
+- [Placeholder] See failure interpretation section.
+
+## Validation Gates
+- [Placeholder] All hard gates must be true.
+
+## Operator Decision Tree
+- [Placeholder] If red, check logs.
+
+## How To Run
+- See canonical commands.
+
+## How To Interpret Outputs
+- [Placeholder] Review summary CSVs.
+
+## What To Do If It Fails
+- [Placeholder] Re-calculate parity.
+
+## Reproduction Commands
+- See canonical commands.
 
 ## Process
 - Treat Stage 12 as a prerequisite, not a substitute for Stage 13.

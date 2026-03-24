@@ -29,11 +29,41 @@ CORE_REPORTS = {
     "analysis/oco_docs_contract_report.md",
     "analysis/run_delta_dashboard.md",
     "analysis/taxonomy_rules.md",
+    "analysis/dukascopy_source_completeness_report.md",
+    "analysis/local_jforex_surrogate_report.md",
+    "analysis/stage13_dukascopy_testclient_report.md",
+    "analysis/stage14_jforex_runtime_certification_report.md",
+    "analysis/2026-03-23-live-launch-brainstorm.md",
+    "analysis/EURUSD_testclient_execution_parity_report.md",
+    "analysis/EURUSD_testclient_execution_parity_tolerant_report.md",
+    "analysis/eurusd_dukascopy_vs_histdata_tick_similarity_report.md",
+    "analysis/AUDUSD_dukascopy_testclient_execution_parity_report.md",
+    "analysis/AUDUSD_histdata_testclient_execution_parity_report.md",
+    "analysis/AUDUSD_stage12_api_parity_report.md",
+    "analysis/GBPUSD_dukascopy_testclient_execution_parity_report.md",
+    "analysis/GBPUSD_histdata_testclient_execution_parity_report.md",
+    "analysis/GBPUSD_stage12_api_parity_report.md",
+    "analysis/USDCAD_dukascopy_testclient_execution_parity_report.md",
+    "analysis/USDCAD_histdata_testclient_execution_parity_report.md",
+    "analysis/USDCAD_stage12_api_parity_report.md",
+    "analysis/USDCHF_dukascopy_testclient_execution_parity_report.md",
+    "analysis/USDCHF_histdata_testclient_execution_parity_report.md",
+    "analysis/USDCHF_stage12_api_parity_report.md",
+    "analysis/USDJPY_dukascopy_testclient_execution_parity_report.md",
+    "analysis/USDJPY_histdata_testclient_execution_parity_report.md",
+    "analysis/USDJPY_stage12_api_parity_report.md",
+    "analysis/audusd_offset_tickbar_robustness_report.md",
+    "analysis/eurusd_offset_tickbar_robustness_report.md",
+    "analysis/gbpusd_offset_tickbar_robustness_report.md",
+    "analysis/usdcad_offset_tickbar_robustness_report.md",
+    "analysis/usdchf_offset_tickbar_robustness_report.md",
+    "analysis/usdjpy_offset_tickbar_robustness_report.md",
+    "analysis/offset_tickbar_robustness_clarification.md",
 }
 
 GOVERNANCE_CORE_REPORTS = {
-    "analysis/oco_execution_monte_carlo_report.md",
     "analysis/oco_execution_monte_carlo_validation_report.md",
+    "analysis/2026-03-23-live-launch-brainstorm.md",
 }
 
 STAGE_INTEGRATED_MANUAL = {
@@ -49,7 +79,37 @@ STAGE_INTEGRATED_MANUAL = {
     "analysis/run_delta_dashboard.md",
     "analysis/operator_action_report.md",
     "analysis/taxonomy_rules.md",
+    "analysis/dukascopy_source_completeness_report.md",
+    "analysis/local_jforex_surrogate_report.md",
+    "analysis/stage13_dukascopy_testclient_report.md",
+    "analysis/stage14_jforex_runtime_certification_report.md",
+    "analysis/2026-03-23-live-launch-brainstorm.md",
     "analysis/EURUSD_candidate_2025-07_h6_london_k2_drift.md",
+    "analysis/EURUSD_testclient_execution_parity_report.md",
+    "analysis/EURUSD_testclient_execution_parity_tolerant_report.md",
+    "analysis/eurusd_dukascopy_vs_histdata_tick_similarity_report.md",
+    "analysis/AUDUSD_dukascopy_testclient_execution_parity_report.md",
+    "analysis/AUDUSD_histdata_testclient_execution_parity_report.md",
+    "analysis/AUDUSD_stage12_api_parity_report.md",
+    "analysis/GBPUSD_dukascopy_testclient_execution_parity_report.md",
+    "analysis/GBPUSD_histdata_testclient_execution_parity_report.md",
+    "analysis/GBPUSD_stage12_api_parity_report.md",
+    "analysis/USDCAD_dukascopy_testclient_execution_parity_report.md",
+    "analysis/USDCAD_histdata_testclient_execution_parity_report.md",
+    "analysis/USDCAD_stage12_api_parity_report.md",
+    "analysis/USDCHF_dukascopy_testclient_execution_parity_report.md",
+    "analysis/USDCHF_histdata_testclient_execution_parity_report.md",
+    "analysis/USDCHF_stage12_api_parity_report.md",
+    "analysis/USDJPY_dukascopy_testclient_execution_parity_report.md",
+    "analysis/USDJPY_histdata_testclient_execution_parity_report.md",
+    "analysis/USDJPY_stage12_api_parity_report.md",
+    "analysis/audusd_offset_tickbar_robustness_report.md",
+    "analysis/eurusd_offset_tickbar_robustness_report.md",
+    "analysis/gbpusd_offset_tickbar_robustness_report.md",
+    "analysis/usdcad_offset_tickbar_robustness_report.md",
+    "analysis/usdchf_offset_tickbar_robustness_report.md",
+    "analysis/usdjpy_offset_tickbar_robustness_report.md",
+    "analysis/offset_tickbar_robustness_clarification.md",
 }
 
 SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
@@ -81,6 +141,8 @@ STAGE_KEYWORDS: list[tuple[int, tuple[str, ...]]] = [
             "histdata_ctrader_execution_parity",
         ),
     ),
+    (13, ("stage13", "dukascopy_testclient")),
+    (14, ("stage14", "jforex_runtime")),
     (
         8,
         (
@@ -90,6 +152,8 @@ STAGE_KEYWORDS: list[tuple[int, tuple[str, ...]]] = [
             "api_offset_confirmation",
         ),
     ),
+    (13, ("stage13", "dukascopy_testclient")),
+    (14, ("stage14", "jforex_runtime_certification", "jforex_live")),
 ]
 
 LEGACY_KEYWORDS: tuple[str, ...] = (
@@ -103,9 +167,7 @@ LEGACY_KEYWORDS: tuple[str, ...] = (
 CANDIDATE_KEYWORDS: tuple[str, ...] = (
     "candidate",
     "offset_tickbar_robustness",
-    "offset_robustness",
-    "warmup_sensitivity",
-    "api_offset_confirmation",
+    "brainstorm",
 )
 
 COMPATIBILITY_KEYWORDS: tuple[str, ...] = (
@@ -208,11 +270,12 @@ def _infer_stage(name_l: str) -> int | None:
 
 def _classify_doc(path: Path, docs_root: Path) -> ClassifiedDoc:
     rel = path.relative_to(docs_root).as_posix()
+    rel_check = rel.removeprefix("../")
     name_l = path.name.lower()
     sym = _infer_symbol(name_l)
     stage_id = _infer_stage(name_l)
-    is_archive = rel.startswith("archive/")
-    is_core = rel in CORE_REPORTS
+    is_archive = rel.startswith("archive/") or rel.startswith("../archive/")
+    is_core = rel_check in CORE_REPORTS
     if is_archive:
         group = "archive"
     elif is_core:
@@ -489,7 +552,7 @@ def _build_canonical_map(manifest: pd.DataFrame) -> pd.DataFrame:
     # Canonical within symbol/stage families for primary analysis docs.
     sym_primary = m[
         (m["doc_path"].astype(str).str.startswith("analysis/"))
-        & (m["symbol"].astype(str).isin(SYMBOLS))
+        & (m["symbol"].astype(str).isin(SYMBOLS + ("ALL",)))
         & (m["stage_family"].astype(str) != "none")
         & (m["group"].astype(str) != "candidate")
     ].copy()
@@ -505,7 +568,7 @@ def _build_canonical_map(manifest: pd.DataFrame) -> pd.DataFrame:
 
     # Stage-integrated reports.
     stage_rows = (m["doc_path"].astype(str).str.startswith("analysis/")) & (
-        pd.to_numeric(m["stage_id"], errors="coerce").between(1, 12)
+        pd.to_numeric(m["stage_id"], errors="coerce").between(1, 14)
         | m["doc_path"].astype(str).isin(STAGE_INTEGRATED_MANUAL)
     )
     stage_rows &= m["group"].astype(str) != "candidate"
@@ -521,8 +584,14 @@ def _build_canonical_map(manifest: pd.DataFrame) -> pd.DataFrame:
     m.loc[candidate_rows, "is_canonical"] = False
 
     # Governance core retained outside strict stage mapping.
+    core_rows = m["doc_path"].astype(str).isin(CORE_REPORTS)
+    m.loc[core_rows, "is_canonical"] = True
+    m.loc[core_rows & (m["class"] == "archive"), "class"] = "stage_integrated"
+    m.loc[core_rows, "reason"] = "core_report_keep"
+
     gov_rows = m["doc_path"].astype(str).isin(GOVERNANCE_CORE_REPORTS)
     m.loc[gov_rows, "class"] = "governance_core"
+    m.loc[gov_rows, "is_canonical"] = True
     m.loc[gov_rows, "reason"] = "governance_core_keep"
 
     # Already archived files remain archive class.

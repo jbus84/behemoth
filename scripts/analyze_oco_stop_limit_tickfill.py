@@ -508,6 +508,13 @@ def main() -> None:
                 raise ValueError(f"Provide --pred-paths for symbol {s_up}")
             pred_map[s_up] = defaults[s_up]
 
+    if not tick_root.exists():
+        raise FileNotFoundError(f"Tick root directory does not exist: {tick_root}")
+    for s in symbols:
+        s_tick_dir = tick_root / s.upper()
+        if not s_tick_dir.exists():
+            raise FileNotFoundError(f"Tick data directory for {s} missing under {tick_root}")
+
     summary_rows: list[dict[str, Any]] = []
     cap_rows: list[pd.DataFrame] = []
     for s in symbols:

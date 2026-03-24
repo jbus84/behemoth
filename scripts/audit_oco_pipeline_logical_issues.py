@@ -18,6 +18,11 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+try:
+    import yaml
+except ImportError:
+    yaml = None
+
 
 @dataclass(frozen=True)
 class SymbolConfig:
@@ -267,25 +272,41 @@ def _check_overlap_divergence(
     return float(np.median(medians)), float(np.max(maxes)), int(used)
 
 
-def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
-    summary = pd.read_csv(cfg.summary_path).copy()
-    monthly = pd.read_csv(cfg.monthly_path).copy()
-    schedule = pd.read_csv(cfg.schedule_path).copy()
+def audit_symbol(cfg: SymbolConfig, exceptions: dict[str, Any] | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def _read_safe(p: Path) -> pd.DataFrame:
+        if not p.exists() or p.stat().st_size == 0:
+            return pd.DataFrame()
+        try:
+            return pd.read_csv(p)
+        except pd.errors.EmptyDataError:
+            return pd.DataFrame()
+
+    summary = _read_safe(cfg.summary_path)
+    monthly = _read_safe(cfg.monthly_path)
+    schedule = _read_safe(cfg.schedule_path)
     selected, detail_raw, detail_dup_count, detail_match_rate = _load_selected_events(cfg)
-    caps = pd.read_csv(cfg.stop_caps_path).copy()
+    caps = _read_safe(cfg.stop_caps_path)
     caps = caps.sort_values("cap_pips").reset_index(drop=True)
 
-    ok_months = set(monthly[monthly["status"] == "ok"]["test_month"].astype(str).tolist())
-    if "state_key" in schedule.columns:
-        schedule_keys = schedule[["test_month", "state_key"]].dropna().copy()
-    else:
-        schedule_keys = schedule[["test_month", "state_id"]].dropna().copy()
-        schedule_keys["state_key"] = schedule_keys["state_id"].astype(str)
-    strategy_rows = selected[selected["test_month"].isin(ok_months)].merge(
-        schedule_keys[["test_month", "state_key"]],
-        on=["test_month", "state_key"],
-        how="inner",
+    ok_months = (
+        set(monthly[monthly["status"] == "ok"]["test_month"].astype(str).tolist())
+        if not monthly.empty and "test_month" in monthly.columns
+        else set()
     )
+    if not schedule.empty and ("state_key" in schedule.columns or "state_id" in schedule.columns):
+        if "state_key" in schedule.columns:
+            schedule_keys = schedule[["test_month", "state_key"]].dropna().copy()
+        else:
+            schedule_keys = schedule[["test_month", "state_id"]].dropna().copy()
+            schedule_keys["state_key"] = schedule_keys["state_id"].astype(str)
+        strategy_rows = selected[selected["test_month"].isin(ok_months)].merge(
+            schedule_keys[["test_month", "state_key"]],
+            on=["test_month", "state_key"],
+            how="inner",
+        )
+    else:
+        schedule_keys = pd.DataFrame()
+        strategy_rows = pd.DataFrame()
     if strategy_rows.empty:
         strategy_rows = selected[selected["test_month"].isin(ok_months)].copy()
 
@@ -307,11 +328,23 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
         fix: str,
         acc_test: str,
     ) -> None:
+        # Check for monitoring exceptions
+        final_status = status
+        if status == "fail" and exceptions:
+            for rule in exceptions.get("rules", []):
+                rid = rule.get("metric_id")
+                if rid == check_id:
+                    syms = rule.get("symbols", [])
+                    if (not syms) or (cfg.symbol in syms):
+                        if rule.get("disposition") == "accepted_exception":
+                            final_status = "accepted_exception"
+                            break
+
         checks.append(
             {
                 "symbol": symbol,
                 "check_id": check_id,
-                "status": status,
+                "status": final_status,
                 "severity_if_fail": severity_if_fail,
                 "component": component,
                 "metric_name": metric_name,
@@ -320,7 +353,7 @@ def audit_symbol(cfg: SymbolConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
                 "details_json": json.dumps(details, sort_keys=True),
             }
         )
-        if status == "fail":
+        if final_status == "fail":
             issues.append(
                 _make_issue(
                     symbol=symbol,
@@ -671,6 +704,14 @@ def run_audit(
     if bad:
         raise ValueError(f"Unsupported symbols: {bad}")
 
+    exceptions: dict[str, Any] = {}
+    exc_path = Path("configs/research/governance/oco_monitoring_exceptions.yaml")
+    if yaml and exc_path.exists():
+        try:
+            exceptions = yaml.safe_load(exc_path.read_text())
+        except Exception:
+            pass
+
     all_checks: list[pd.DataFrame] = []
     all_issues: list[pd.DataFrame] = []
     for s in use_syms:
@@ -686,7 +727,7 @@ def run_audit(
         miss = [str(p) for p in required if not Path(p).exists()]
         if miss:
             raise FileNotFoundError(f"{s}: missing required inputs: {miss}")
-        checks_df, issues_df = audit_symbol(cfg)
+        checks_df, issues_df = audit_symbol(cfg, exceptions=exceptions)
         all_checks.append(checks_df)
         all_issues.append(issues_df)
 

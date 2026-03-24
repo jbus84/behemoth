@@ -1,6 +1,6 @@
 # Analysis Catalog
 
-- generated_at_utc: `2026-03-23T14:44:51Z`
+- generated_at_utc: `2026-03-23T20:04:55Z`
 - manifest_csv: `analysis/catalog_manifest.csv`
 - gaps_report: `analysis/catalog_gaps_report.md`
 
@@ -10,7 +10,10 @@ Use `Compatibility / Legacy Reports` for cTrader, HistData, FTMO, and reconcilia
 Use `Archive Reports` for documents already moved out of the live analysis surface.
 
 ## Active / Core Reports
+- [2026 03 23 Live Launch Brainstorm](2026-03-23-live-launch-brainstorm.md)
 - [Data Reliability Report](data_reliability_report.md)
+- [Dukascopy Source Completeness Report](dukascopy_source_completeness_report.md)
+- [Local Jforex Surrogate Report](local_jforex_surrogate_report.md)
 - [Oco Alert Remediation Report](oco_alert_remediation_report.md)
 - [Oco Docs Contract Report](oco_docs_contract_report.md)
 - [Oco Edge Clarity Report](oco_edge_clarity_report.md)
@@ -26,6 +29,8 @@ Use `Archive Reports` for documents already moved out of the live analysis surfa
 - [Oco Threshold Sensitivity Report](oco_threshold_sensitivity_report.md)
 - [Operator Action Report](operator_action_report.md)
 - [Run Delta Dashboard](run_delta_dashboard.md)
+- [Stage13 Dukascopy Testclient Report](stage13_dukascopy_testclient_report.md)
+- [Stage14 Jforex Runtime Certification Report](stage14_jforex_runtime_certification_report.md)
 - [Taxonomy Rules](taxonomy_rules.md)
 
 ## Active Symbol Reports
@@ -171,9 +176,8 @@ Use `Archive Reports` for documents already moved out of the live analysis surfa
 |         10 |              4 |
 |         11 |              2 |
 |         12 |             21 |
+|         13 |              7 |
+|         14 |              2 |
 
 ## Unclassified Reports
-- [Dukascopy Source Completeness Report](dukascopy_source_completeness_report.md)
-- [Local Jforex Surrogate Report](local_jforex_surrogate_report.md)
-- [Stage13 Dukascopy Testclient Report](stage13_dukascopy_testclient_report.md)
-- [Stage14 Jforex Runtime Certification Report](stage14_jforex_runtime_certification_report.md)
+_empty_

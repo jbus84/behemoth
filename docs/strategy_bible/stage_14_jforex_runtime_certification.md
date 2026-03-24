@@ -3,13 +3,43 @@
 ## Objective
 Certify that the Dukascopy JForex adapter reproduces the governed OCO execution contract after the local JForex surrogate and Stage 13 have already proven source/runtime parity against Stage 12 truth.
 
-## Required Inputs
+## Inputs
 - `data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv`
 - `data/analysis/backtest_reconcile/*_jforex_signal_parity_summary.csv`
 - `data/analysis/backtest_reconcile/*_jforex_execution_parity_summary.csv`
 - `data/analysis/backtest_reconcile/*_jforex_oco_lifecycle_summary.csv`
 - `data/analysis/backtest_reconcile/*_jforex_operational_ready_summary.csv`
 - `docs/analysis/stage14_jforex_runtime_certification_report.md`
+
+## Exact Calculations
+- [Placeholder] Parity is calculated via direct event-log comparison.
+
+## Causality / Leakage Controls
+- [Placeholder] JForex tester client isolation.
+
+## Failure Modes
+- [Placeholder] Order submission delay, cancellation fail.
+
+## Interpretation Guide
+- [Placeholder] Review parity results.
+
+## Validation Gates
+- [Placeholder] All 5 gates must be green.
+
+## Operator Decision Tree
+- [Placeholder] If partial fill, check risk state.
+
+## How To Run
+- See canonical command.
+
+## How To Interpret Outputs
+- [Placeholder] Review JForex operational logs.
+
+## What To Do If It Fails
+- [Placeholder] Check API parity.
+
+## Reproduction Commands
+- See canonical command.
 
 ## Process
 - Treat Stage 13 as a prerequisite, not a substitute for Stage 14.

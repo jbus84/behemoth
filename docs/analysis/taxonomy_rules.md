@@ -1,6 +1,6 @@
 # Analysis Taxonomy Rules
 
-- generated_at_utc: `2026-03-23T14:44:51Z`
+- generated_at_utc: `2026-03-23T20:04:55Z`
 
 ## Group Assignment Order
 1. `archive`: anything already stored below `docs/archive/`.
@@ -27,16 +27,18 @@
 |         10 | risk, checklist, stage_integrity                                                                                                                                                            |
 |         11 | execution_monte_carlo                                                                                                                                                                       |
 |         12 | stage12, api_parity, ab_parity, ctrader_ab_parity, reconciliation, runtime_db, tick_forensics, histdata_vs_ctrader, histdata_testclient_execution_parity, histdata_ctrader_execution_parity |
+|         13 | stage13, dukascopy_testclient                                                                                                                                                               |
+|         14 | stage14, jforex_runtime                                                                                                                                                                     |
 |          8 | offset_tickbar_robustness, offset_robustness, warmup_sensitivity, api_offset_confirmation                                                                                                   |
+|         13 | stage13, dukascopy_testclient                                                                                                                                                               |
+|         14 | stage14, jforex_runtime_certification, jforex_live                                                                                                                                          |
 
 ## Candidate Keyword Map
 | keyword                   |
 |:--------------------------|
 | candidate                 |
 | offset_tickbar_robustness |
-| offset_robustness         |
-| warmup_sensitivity        |
-| api_offset_confirmation   |
+| brainstorm                |
 
 ## Compatibility Keyword Map
 | keyword                     |
@@ -62,7 +64,10 @@
 ## Core Report Set
 | doc_path                                                |
 |:--------------------------------------------------------|
+| analysis/2026-03-23-live-launch-brainstorm.md           |
 | analysis/data_reliability_report.md                     |
+| analysis/dukascopy_source_completeness_report.md        |
+| analysis/local_jforex_surrogate_report.md               |
 | analysis/oco_alert_remediation_report.md                |
 | analysis/oco_docs_contract_report.md                    |
 | analysis/oco_edge_clarity_report.md                     |
@@ -78,4 +83,6 @@
 | analysis/oco_threshold_sensitivity_report.md            |
 | analysis/operator_action_report.md                      |
 | analysis/run_delta_dashboard.md                         |
+| analysis/stage13_dukascopy_testclient_report.md         |
+| analysis/stage14_jforex_runtime_certification_report.md |
 | analysis/taxonomy_rules.md                              |
