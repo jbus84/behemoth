@@ -2154,7 +2154,6 @@ class TestSeedAuditHistory:
         """500 ticks = 5 bars < 289 warmup → valid 201 with total_events=0."""
         import numpy as np
         import pandas as pd
-        from datetime import timedelta
 
         sym = "GBPUSD"
         sym_dir = tmp_path / sym
@@ -2190,7 +2189,6 @@ class TestSeedAuditHistory:
         """30,000 ticks = 300 bars > 289 warmup → events written to audit_logs."""
         import numpy as np
         import pandas as pd
-        from datetime import timedelta
 
         sym = "GBPUSD"
         sym_dir = tmp_path / sym

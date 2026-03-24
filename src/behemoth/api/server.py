@@ -2943,6 +2943,7 @@ async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
     returns a calibrated value on the first live predict call after startup.
     Uses an isolated in-memory StateManager for replay; writes to the live
     DB via _state.log_audit_event() (single-writer pattern).
+    Idempotent: NOT idempotent — repeated calls with the same run_id append duplicate rows to audit_logs; the rolling quantile is robust to duplicates but the run_jforex_live.py caller should call this only once per startup.
     """
     import numpy as np
     import pandas as pd
@@ -3008,17 +3009,34 @@ async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
             continue
 
         # Resolve live model contract — uses identical canonical_uid format as /predict
-        contract = _resolve_runtime_contract(sym, now_ts)
+        try:
+            contract = _resolve_runtime_contract(sym, now_ts)
+        except HTTPException as exc:
+            logger.warning(
+                "seed_audit_history: cannot resolve contract for %s: %s", sym, exc.detail
+            )
+            events_by_symbol[sym] = 0
+            continue
         if not contract.candidates:
             events_by_symbol[sym] = 0
             continue
-        model, thr_cfg = _ensure_model_and_threshold(contract)
+        try:
+            model, thr_cfg = _ensure_model_and_threshold(contract)
+        except HTTPException as exc:
+            logger.warning(
+                "seed_audit_history: cannot load model for %s: %s", sym, exc.detail
+            )
+            events_by_symbol[sym] = 0
+            continue
         if model is None:
             events_by_symbol[sym] = 0
             continue
 
         static_thr = float(thr_cfg.get("threshold_exec", 0.5))
         bar_ticks = int(contract.candidates[0].bar_ticks)
+        assert len({c.bar_ticks for c in contract.candidates}) == 1, (
+            f"seed_audit_history: mixed bar_ticks for {sym} — only uniform bar_ticks supported"
+        )
 
         # Isolated replay — never writes to live tick_bars
         replay_state = StateManager(
