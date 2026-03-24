@@ -1890,6 +1890,12 @@ class WarmupRequest(BaseModel):
     run_id: str = "warmup"
 
 
+class SeedAuditHistoryRequest(BaseModel):
+    symbols: list[str] | None = None
+    days_back: int = 20
+    run_id: str = "audit_seed"
+
+
 class HealthResponse(BaseModel):
     status: str
     utc_now: datetime
@@ -2927,6 +2933,150 @@ async def checkpoint_state():
         raise HTTPException(status_code=503, detail="State manager not initialized")
     _state._con.execute("CHECKPOINT")
     return {"status": "ok", "checkpointed_at": datetime.now(tz=timezone.utc).isoformat()}
+
+
+@app.post("/state/seed_audit_history", status_code=201)
+async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
+    """Replay Dukascopy parquets through the model to seed audit_logs.
+
+    Creates a rolling pred_prob distribution so get_rolling_threshold()
+    returns a calibrated value on the first live predict call after startup.
+    Uses an isolated in-memory StateManager for replay; writes to the live
+    DB via _state.log_audit_event() (single-writer pattern).
+    """
+    import numpy as np
+    import pandas as pd
+
+    if _state is None:
+        raise HTTPException(status_code=503, detail="State manager not initialized")
+
+    ticks_dir = Path(_config.dukascopy_ticks_dir)
+    if not ticks_dir.exists():
+        raise HTTPException(
+            status_code=422,
+            detail=f"dukascopy_ticks_dir not found: {ticks_dir}",
+        )
+
+    symbols = [s.upper() for s in (req.symbols or _config.symbols)]
+    now_ts = datetime.now(tz=timezone.utc)
+    start_dt = now_ts - timedelta(days=req.days_back)
+    events_by_symbol: dict[str, int] = {}
+
+    for sym in symbols:
+        sym_dir = ticks_dir / sym
+        if not sym_dir.exists():
+            logger.warning("seed_audit_history: no parquet dir for %s at %s", sym, sym_dir)
+            events_by_symbol[sym] = 0
+            continue
+
+        # Find monthly parquet files that overlap [start_dt, now_ts]
+        start_ym = start_dt.strftime("%Y%m")
+        end_ym = now_ts.strftime("%Y%m")
+        relevant = sorted(
+            f for f in sym_dir.glob(f"{sym}_*_ticks.parquet")
+            if (ym := f.stem.removeprefix(f"{sym}_").removesuffix("_ticks"))
+            and start_ym <= ym <= end_ym
+        )
+
+        if not relevant:
+            logger.warning(
+                "seed_audit_history: no parquets for %s in %s–%s", sym, start_ym, end_ym
+            )
+            events_by_symbol[sym] = 0
+            continue
+
+        try:
+            frames = [pd.read_parquet(f, columns=["timestamp", "bid", "ask"]) for f in relevant]
+            df = pd.concat(frames, ignore_index=True)
+            # Normalise to UTC-aware
+            if df["timestamp"].dt.tz is None:
+                df["timestamp"] = df["timestamp"].dt.tz_localize("UTC")
+            else:
+                df["timestamp"] = df["timestamp"].dt.tz_convert("UTC")
+            df = (
+                df[(df["timestamp"] >= start_dt) & (df["timestamp"] <= now_ts)]
+                .sort_values("timestamp")
+                .reset_index(drop=True)
+            )
+        except Exception as exc:
+            logger.warning("seed_audit_history: failed to read parquets for %s: %s", sym, exc)
+            events_by_symbol[sym] = 0
+            continue
+
+        if df.empty:
+            events_by_symbol[sym] = 0
+            continue
+
+        # Resolve live model contract — uses identical canonical_uid format as /predict
+        contract = _resolve_runtime_contract(sym, now_ts)
+        if not contract.candidates:
+            events_by_symbol[sym] = 0
+            continue
+        model, thr_cfg = _ensure_model_and_threshold(contract)
+        if model is None:
+            events_by_symbol[sym] = 0
+            continue
+
+        static_thr = float(thr_cfg.get("threshold_exec", 0.5))
+        bar_ticks = int(contract.candidates[0].bar_ticks)
+
+        # Isolated replay — never writes to live tick_bars
+        replay_state = StateManager(
+            vol_window=_config.vol_window,
+            cost_window=_config.cost_window,
+        )
+        replay_agg = TickAggregator(bar_ticks=bar_ticks)
+        n_written = 0
+
+        try:
+            # Batch-convert to IncomingTick and aggregate in one pass
+            ticks = [
+                IncomingTick(
+                    symbol=sym,
+                    timestamp=row.timestamp.to_pydatetime(),
+                    bid=float(row.bid),
+                    ask=float(row.ask),
+                )
+                for row in df.itertuples(index=False)
+            ]
+            bars = replay_agg.add_ticks(ticks)
+
+            for bar in bars:
+                replay_state.append_bar(bar)
+                for cand in contract.candidates:
+                    feats = replay_state.compute_features(
+                        sym,
+                        bar_ticks,
+                        cand.horizon,
+                        cand.barrier_pips,
+                    )
+                    if feats is None:
+                        continue
+                    arr = np.array([feats.to_array()], dtype=float)
+                    with METRIC_INFERENCE_LATENCY.labels(symbol=sym).time():
+                        pred_prob = float(model.predict_proba(arr)[:, 1][0])
+                    canonical_uid = (
+                        f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+                    )
+                    _state.log_audit_event(
+                        symbol=sym,
+                        candidate_uid=canonical_uid,
+                        pred_prob=pred_prob,
+                        threshold=static_thr,
+                        features=feats,
+                        model_month=contract.model_month,
+                        close_ts=bar.close_ts,
+                        run_id=req.run_id,
+                    )
+                    n_written += 1
+        finally:
+            replay_state.close()
+
+        events_by_symbol[sym] = n_written
+        logger.info("seed_audit_history: wrote %d events for %s", n_written, sym)
+
+    total = sum(events_by_symbol.values())
+    return {"ok": True, "events_by_symbol": events_by_symbol, "total_events": total}
 
 
 @app.post("/trades/touch")

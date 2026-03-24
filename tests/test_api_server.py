@@ -8,7 +8,7 @@ without needing CatBoost models (mocked where necessary).
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -913,7 +913,7 @@ class TestPredictEndpoint:
     def test_predict_success(self, client):
         """Mock the pipeline to simulate a successful prediction return."""
         import unittest.mock as mock
-        from datetime import datetime, timezone
+        from datetime import datetime, timedelta, timezone
         from types import SimpleNamespace
 
         from src.behemoth.api import server
@@ -982,7 +982,7 @@ class TestPredictEndpoint:
 
     def test_predict_scopes_candidates_to_completed_bar_ticks(self, client):
         import unittest.mock as mock
-        from datetime import datetime, timezone
+        from datetime import datetime, timedelta, timezone
         from types import SimpleNamespace
 
         import numpy as np
@@ -1078,7 +1078,7 @@ class TestPredictEndpoint:
 
     def test_predict_returns_empty_when_completed_ticks_exclude_all_candidates(self, client):
         import unittest.mock as mock
-        from datetime import datetime, timezone
+        from datetime import datetime, timedelta, timezone
         from types import SimpleNamespace
 
         import numpy as np
@@ -1153,7 +1153,7 @@ class TestPredictEndpoint:
 
     def test_predict_override_false_disables_ftmo_guard_eval(self, client):
         import unittest.mock as mock
-        from datetime import datetime, timezone
+        from datetime import datetime, timedelta, timezone
         from types import SimpleNamespace
 
         import numpy as np
@@ -1231,7 +1231,7 @@ class TestPredictEndpoint:
     def test_predict_warn_trade_cost_gate_keeps_selection(self, client):
         import unittest.mock as mock
         from dataclasses import replace
-        from datetime import datetime, timezone
+        from datetime import datetime, timedelta, timezone
         from pathlib import Path
         from types import SimpleNamespace
 
@@ -1345,7 +1345,7 @@ class TestPredictEndpoint:
     def test_predict_enforce_trade_cost_gate_blocks_selection(self, client):
         import unittest.mock as mock
         from dataclasses import replace
-        from datetime import datetime, timezone
+        from datetime import datetime, timedelta, timezone
         from pathlib import Path
         from types import SimpleNamespace
 
@@ -1456,7 +1456,7 @@ class TestPredictEndpoint:
 
     def test_predict_blocks_candidate_when_regime_inactive(self, client):
         import unittest.mock as mock
-        from datetime import datetime, timezone
+        from datetime import datetime, timedelta, timezone
         from types import SimpleNamespace
 
         import numpy as np
@@ -1543,7 +1543,7 @@ class TestPredictEndpoint:
 
     def test_predict_allocator_blocks_when_budget_exceeded(self, client):
         import unittest.mock as mock
-        from datetime import datetime, timezone
+        from datetime import datetime, timedelta, timezone
         from types import SimpleNamespace
 
         import numpy as np
@@ -2139,3 +2139,118 @@ class TestSeedAuditHistory:
         from src.behemoth.api import server
         assert hasattr(server._config, "dukascopy_ticks_dir")
         assert server._config.dukascopy_ticks_dir  # non-empty string
+
+    def test_seed_503_when_state_uninitialized(self, client):
+        from src.behemoth.api import server
+        original = server._state
+        server._state = None
+        try:
+            r = client.post("/state/seed_audit_history", json={})
+            assert r.status_code == 503
+        finally:
+            server._state = original
+
+    def test_seed_returns_201_with_few_ticks(self, client, tmp_path):
+        """500 ticks = 5 bars < 289 warmup → valid 201 with total_events=0."""
+        import numpy as np
+        import pandas as pd
+        from datetime import timedelta
+
+        sym = "GBPUSD"
+        sym_dir = tmp_path / sym
+        sym_dir.mkdir()
+        now = datetime.now(tz=timezone.utc)
+        ts = pd.date_range(start=now - timedelta(days=25), periods=500, freq="1s", tz="UTC")
+        df = pd.DataFrame({
+            "timestamp": ts,
+            "bid": np.full(500, 1.3000),
+            "ask": np.full(500, 1.3001),
+            "mid": np.full(500, 1.30005),
+            "spread": np.full(500, 0.0001),
+            "log_return": np.zeros(500),
+        })
+        month_str = (now - timedelta(days=25)).strftime("%Y%m")
+        df.to_parquet(sym_dir / f"{sym}_{month_str}_ticks.parquet", index=False)
+
+        from src.behemoth.api import server
+        original_dir = server._config.dukascopy_ticks_dir
+        server._config.dukascopy_ticks_dir = str(tmp_path)
+        try:
+            r = client.post("/state/seed_audit_history",
+                            json={"symbols": [sym], "days_back": 30})
+            assert r.status_code == 201
+            body = r.json()
+            assert body["ok"] is True
+            assert isinstance(body["total_events"], int)
+            assert body["total_events"] >= 0
+        finally:
+            server._config.dukascopy_ticks_dir = original_dir
+
+    def test_seed_writes_events_when_sufficient_ticks(self, client, tmp_path):
+        """30,000 ticks = 300 bars > 289 warmup → events written to audit_logs."""
+        import numpy as np
+        import pandas as pd
+        from datetime import timedelta
+
+        sym = "GBPUSD"
+        sym_dir = tmp_path / sym
+        sym_dir.mkdir()
+        n = 30_000
+        now = datetime.now(tz=timezone.utc)
+        ts = pd.date_range(start=now - timedelta(days=25), periods=n, freq="1s", tz="UTC")
+        df = pd.DataFrame({
+            "timestamp": ts,
+            "bid": np.full(n, 1.3000),
+            "ask": np.full(n, 1.3001),
+            "mid": np.full(n, 1.30005),
+            "spread": np.full(n, 0.0001),
+            "log_return": np.zeros(n),
+        })
+        month_str = (now - timedelta(days=25)).strftime("%Y%m")
+        df.to_parquet(sym_dir / f"{sym}_{month_str}_ticks.parquet", index=False)
+
+        from src.behemoth.api import server
+        original_dir = server._config.dukascopy_ticks_dir
+        server._config.dukascopy_ticks_dir = str(tmp_path)
+        try:
+            r = client.post("/state/seed_audit_history",
+                            json={"symbols": [sym], "days_back": 30})
+            assert r.status_code == 201
+            body = r.json()
+            assert body["ok"] is True
+            assert body["total_events"] > 0
+            assert body["events_by_symbol"][sym] > 0
+            # Verify rows were actually persisted to audit_logs (single-writer path)
+            rows = server._state._con.execute(
+                "SELECT COUNT(*) FROM audit_logs WHERE symbol=? AND run_id=?",
+                [sym, "audit_seed"],
+            ).fetchone()
+            assert rows[0] > 0
+        finally:
+            server._config.dukascopy_ticks_dir = original_dir
+
+    def test_seed_skips_missing_symbol_gracefully(self, client, tmp_path):
+        """Symbol with no parquet dir → 201 with 0 events for that symbol."""
+        from src.behemoth.api import server
+        original_dir = server._config.dukascopy_ticks_dir
+        server._config.dukascopy_ticks_dir = str(tmp_path)
+        try:
+            r = client.post("/state/seed_audit_history",
+                            json={"symbols": ["GBPUSD"], "days_back": 20})
+            assert r.status_code == 201
+            body = r.json()
+            assert body["ok"] is True
+            assert body["events_by_symbol"].get("GBPUSD", 0) == 0
+        finally:
+            server._config.dukascopy_ticks_dir = original_dir
+
+    def test_seed_422_when_ticks_dir_missing(self, client):
+        """If dukascopy_ticks_dir does not exist on disk, return 422."""
+        from src.behemoth.api import server
+        original_dir = server._config.dukascopy_ticks_dir
+        server._config.dukascopy_ticks_dir = "/nonexistent/path/that/does/not/exist"
+        try:
+            r = client.post("/state/seed_audit_history", json={})
+            assert r.status_code == 422
+        finally:
+            server._config.dukascopy_ticks_dir = original_dir
