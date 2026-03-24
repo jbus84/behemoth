@@ -64,7 +64,6 @@ from src.behemoth.runtime.tick_aggregator import TickAggregator
 
 evaluate_account_limits = evaluate_account_risk_limits
 evaluate_trade_guard = evaluate_trade_risk_guard
-load_ftmo_profile = load_account_risk_profile
 
 logger = logging.getLogger("behemoth.api")
 
@@ -86,8 +85,8 @@ _historical_prediction_candidate_cursor: dict[str, dict[str, int]] = {}
 _historical_prediction_payload_rows: dict[str, dict[str, list[dict[str, Any]]]] = {}
 _historical_prediction_payload_cursor: dict[str, dict[str, int]] = {}
 _models_dir: Path = Path("models/oco")
-_ftmo_rules_path: Path = Path("configs/research/governance/ftmo/ftmo_rules.yaml")
-_ftmo_profile: AccountRiskProfile | None = None
+_account_risk_rules_path: Path = Path("configs/research/governance/account_risk/account_risk_rules.yaml")
+_account_risk_profile: AccountRiskProfile | None = None
 _historical_entries_loaded: int = 0
 _historical_preflight_failed_checks: int = 0
 _historical_preflight_summary: str = ""
@@ -154,37 +153,37 @@ METRIC_BAR_COUNT = Gauge(
 
 METRIC_RISK_BLOCKS_TOTAL = Counter(
     "behemoth_risk_blocks_total",
-    "Total FTMO/risk blocked execution intents",
+    "Total account-risk blocked execution intents",
     ["symbol", "reason"],
 )
 
-METRIC_FTMO_DAILY_HEADROOM = Gauge(
-    "behemoth_ftmo_daily_loss_headroom",
+METRIC_ACCOUNT_RISK_DAILY_HEADROOM = Gauge(
+    "behemoth_account_risk_daily_loss_headroom",
     "Remaining buffered daily loss headroom in account currency units",
     ["symbol"],
 )
 
-METRIC_FTMO_MAX_HEADROOM = Gauge(
-    "behemoth_ftmo_max_loss_headroom",
+METRIC_ACCOUNT_RISK_MAX_HEADROOM = Gauge(
+    "behemoth_account_risk_max_loss_headroom",
     "Remaining buffered max loss headroom in account currency units",
     ["symbol"],
 )
 
-METRIC_FTMO_RESERVED_LOSS_CCY = Gauge(
-    "behemoth_ftmo_reserved_loss_ccy",
-    "Active reserved FTMO worst-case loss budget in account currency",
+METRIC_ACCOUNT_RISK_RESERVED_LOSS_CCY = Gauge(
+    "behemoth_account_risk_reserved_loss_ccy",
+    "Active reserved account risk worst-case loss budget in account currency",
     ["symbol"],
 )
 
-METRIC_FTMO_ALLOCATOR_BLOCKS_TOTAL = Counter(
-    "behemoth_ftmo_allocator_blocks_total",
-    "Total FTMO allocator budget blocks",
+METRIC_ACCOUNT_RISK_ALLOCATOR_BLOCKS_TOTAL = Counter(
+    "behemoth_account_risk_allocator_blocks_total",
+    "Total account risk allocator budget blocks",
     ["symbol", "reason"],
 )
 
-METRIC_FTMO_ALLOCATOR_ADMITTED_TOTAL = Counter(
-    "behemoth_ftmo_allocator_admitted_total",
-    "Total FTMO allocator-admitted candidates",
+METRIC_ACCOUNT_RISK_ALLOCATOR_ADMITTED_TOTAL = Counter(
+    "behemoth_account_risk_allocator_admitted_total",
+    "Total account risk allocator-admitted candidates",
     ["symbol"],
 )
 
@@ -208,54 +207,47 @@ class AppConfig(BaseModel):
     persist_db_path: str | None = Field(
         default_factory=lambda: os.getenv("BEHEMOTH_STATE_DB", "data/db/behemoth_runtime.db")
     )
-    ftmo_enabled: bool = Field(
+    account_risk_enabled: bool = Field(
         default_factory=lambda: _env_bool(
             "BEHEMOTH_ACCOUNT_RISK_ENABLED",
-            "BEHEMOTH_FTMO_ENABLED",
             default="true",
         )
     )
-    ftmo_enforce_blocks: bool = Field(
+    account_risk_enforce_blocks: bool = Field(
         default_factory=lambda: _env_bool(
             "BEHEMOTH_ACCOUNT_RISK_ENFORCE_BLOCKS",
-            "BEHEMOTH_FTMO_ENFORCE_BLOCKS",
             default="true",
         )
     )
-    ftmo_rules_path: str = Field(
+    account_risk_rules_path: str = Field(
         default_factory=lambda: _env_str(
             "BEHEMOTH_ACCOUNT_RISK_RULES_PATH",
-            "BEHEMOTH_FTMO_RULES_PATH",
-            default="configs/research/governance/ftmo/ftmo_rules.yaml",
+            default="configs/research/governance/account_risk/account_risk_rules.yaml",
         )
     )
-    ftmo_profile_id: str = Field(
+    account_risk_profile_id: str = Field(
         default_factory=lambda: _env_str(
             "BEHEMOTH_ACCOUNT_RISK_PROFILE_ID",
-            "BEHEMOTH_FTMO_PROFILE_ID",
             default="ftmo_10k_challenge_2step",
         )
     )
-    ftmo_trade_cost_gate_mode: str = Field(
+    account_risk_trade_cost_gate_mode: str = Field(
         default_factory=lambda: _env_str(
             "BEHEMOTH_ACCOUNT_RISK_TRADE_COST_GATE_MODE",
-            "BEHEMOTH_FTMO_TRADE_COST_GATE_MODE",
             default="",
         )
         .strip()
         .lower()
     )
-    ftmo_pending_reservation_ttl_sec: int = Field(
+    account_risk_pending_reservation_ttl_sec: int = Field(
         default_factory=lambda: _env_int(
             "BEHEMOTH_ACCOUNT_RISK_PENDING_RESERVATION_TTL_SEC",
-            "BEHEMOTH_FTMO_PENDING_RESERVATION_TTL_SEC",
             default="1800",
         )
     )
-    ftmo_fx_rate_max_age_sec: int = Field(
+    account_risk_fx_rate_max_age_sec: int = Field(
         default_factory=lambda: _env_int(
             "BEHEMOTH_ACCOUNT_RISK_FX_RATE_MAX_AGE_SEC",
-            "BEHEMOTH_FTMO_FX_RATE_MAX_AGE_SEC",
             default="600",
         )
     )
@@ -428,7 +420,7 @@ def _run_historical_preflight(history_dir: Path) -> None:
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Modern lifespan handler replacing deprecated on_event."""
     global _state, _aggregators, _registry, _historical_registry, _feed_state
-    global _models_dir, _ftmo_rules_path, _ftmo_profile
+    global _models_dir, _account_risk_rules_path, _account_risk_profile
     global _historical_entries_loaded, _historical_preflight_failed_checks, _historical_preflight_summary
     global _historical_prediction_universes, _historical_prediction_candidate_index
     global _historical_prediction_candidate_ordinal_index
@@ -502,28 +494,28 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         )
     _models_dir = Path(_config.models_dir)
     _load_models()
-    _ftmo_rules_path = Path(_config.ftmo_rules_path)
-    _ftmo_profile = None
+    _account_risk_rules_path = Path(_config.account_risk_rules_path)
+    _account_risk_profile = None
     try:
-        _ftmo_profile = load_account_risk_profile(
-            _ftmo_rules_path,
-            _config.ftmo_profile_id,
+        _account_risk_profile = load_account_risk_profile(
+            _account_risk_rules_path,
+            _config.account_risk_profile_id,
         )
-        if str(_config.ftmo_trade_cost_gate_mode).strip():
-            _ftmo_profile = replace(
-                _ftmo_profile,
+        if str(_config.account_risk_trade_cost_gate_mode).strip():
+            _account_risk_profile = replace(
+                _account_risk_profile,
                 cost_gate=replace(
-                    _ftmo_profile.cost_gate,
-                    trade_cost_gate_mode=str(_config.ftmo_trade_cost_gate_mode).strip().lower(),
+                    _account_risk_profile.cost_gate,
+                    trade_cost_gate_mode=str(_config.account_risk_trade_cost_gate_mode).strip().lower(),
                 ),
             )
         logger.info(
-            "Loaded FTMO profile %s from %s",
-            _ftmo_profile.profile_id,
-            _ftmo_rules_path,
+            "Loaded account risk profile %s from %s",
+            _account_risk_profile.profile_id,
+            _account_risk_rules_path,
         )
     except Exception as exc:
-        logger.error("Failed to load FTMO rules: %s", exc)
+        logger.error("Failed to load account risk rules: %s", exc)
     logger.info("Behemoth API started. Models dir: %s", _models_dir)
     yield
     monitor_task.cancel()
@@ -549,16 +541,16 @@ async def _monitor_ledger() -> None:
                 for s in stats:
                     METRIC_EQUITY_PIPS.labels(symbol=s["symbol"]).set(s["total_pnl"])
                     # We could add a win_rate gauge here if needed
-                if _config.ftmo_enabled and (_ftmo_profile is not None):
-                    include_pending = bool(_ftmo_profile.allocator.allocator_reserve_pending)
-                    include_open = bool(_ftmo_profile.allocator.allocator_reserve_open)
+                if _config.account_risk_enabled and (_account_risk_profile is not None):
+                    include_pending = bool(_account_risk_profile.allocator.allocator_reserve_pending)
+                    include_open = bool(_account_risk_profile.allocator.allocator_reserve_open)
                     for sym in _config.symbols:
-                        reserved = _state.sum_active_ftmo_reserved_loss_ccy(
+                        reserved = _state.sum_active_account_risk_reserved_loss_ccy(
                             symbol=sym,
                             include_pending=include_pending,
                             include_open=include_open,
                         )
-                        METRIC_FTMO_RESERVED_LOSS_CCY.labels(symbol=sym).set(float(reserved))
+                        METRIC_ACCOUNT_RISK_RESERVED_LOSS_CCY.labels(symbol=sym).set(float(reserved))
         except Exception as e:
             logger.error("Ledger monitor error: %s", e)
         await asyncio.sleep(60)
@@ -1693,13 +1685,13 @@ def _apply_historical_prediction_universe_gate(
     return filtered
 
 
-def _resolve_ftmo_account_eval(
+def _resolve_account_risk_eval(
     sym: str,
     now_utc: datetime,
     *,
-    ftmo_enabled_effective: bool,
+    account_risk_enabled_effective: bool,
 ) -> dict[str, Any]:
-    if (not ftmo_enabled_effective) or (_ftmo_profile is None) or (_state is None):
+    if (not account_risk_enabled_effective) or (_account_risk_profile is None) or (_state is None):
         return {
             "enabled": False,
             "profile_id": None,
@@ -1709,10 +1701,10 @@ def _resolve_ftmo_account_eval(
             "trading_day_id": None,
         }
 
-    prof = _ftmo_profile
-    latest = _state.get_latest_ftmo_account_snapshot(sym)
+    prof = _account_risk_profile
+    latest = _state.get_latest_account_risk_snapshot(sym)
     if latest is None:
-        latest = _state.get_latest_ftmo_account_snapshot(None)
+        latest = _state.get_latest_account_risk_snapshot(None)
 
     if latest is None:
         eval_out = evaluate_account_risk_limits(
@@ -1738,9 +1730,9 @@ def _resolve_ftmo_account_eval(
         since = since.astimezone(timezone.utc)
     since = since - timedelta(days=3)
 
-    snaps = _state.get_ftmo_snapshots_since(since_ts=since, symbol=sym)
+    snaps = _state.get_account_risk_snapshots_since(since_ts=since, symbol=sym)
     if not snaps:
-        snaps = _state.get_ftmo_snapshots_since(since_ts=since, symbol=None)
+        snaps = _state.get_account_risk_snapshots_since(since_ts=since, symbol=None)
 
     day_id = trading_day_id(
         now_utc,
@@ -1775,17 +1767,17 @@ def _resolve_ftmo_account_eval(
     daily_headroom = eval_out.get("daily_loss_headroom")
     max_headroom = eval_out.get("max_loss_headroom")
     if daily_headroom is not None:
-        METRIC_FTMO_DAILY_HEADROOM.labels(symbol=sym).set(float(daily_headroom))
+        METRIC_ACCOUNT_RISK_DAILY_HEADROOM.labels(symbol=sym).set(float(daily_headroom))
     if max_headroom is not None:
-        METRIC_FTMO_MAX_HEADROOM.labels(symbol=sym).set(float(max_headroom))
+        METRIC_ACCOUNT_RISK_MAX_HEADROOM.labels(symbol=sym).set(float(max_headroom))
     return eval_out
 
 
-def _ftmo_limits_payload() -> FtmoLimitsResponse:
-    if (not _config.ftmo_enabled) or (_ftmo_profile is None):
-        return FtmoLimitsResponse(enabled=False)
-    prof = _ftmo_profile
-    return FtmoLimitsResponse(
+def _account_risk_limits_payload() -> AccountRiskLimitsResponse:
+    if (not _config.account_risk_enabled) or (_account_risk_profile is None):
+        return AccountRiskLimitsResponse(enabled=False)
+    prof = _account_risk_profile
+    return AccountRiskLimitsResponse(
         enabled=True,
         profile_id=prof.profile_id,
         mode=prof.mode,
@@ -1824,19 +1816,14 @@ def _ftmo_limits_payload() -> FtmoLimitsResponse:
     )
 
 
-def _account_risk_limits_payload() -> AccountRiskLimitsResponse:
-    payload = _ftmo_limits_payload()
-    return AccountRiskLimitsResponse(**payload.model_dump())
-
-
 # ── Request / Response Models ─────────────────────────────────────────
 
 class PredictRequest(BaseModel):
     """Prediction request with explicit intended size for account-risk allocation."""
     symbol: str
-    ftmo_enabled_override: bool | None = Field(
+    account_risk_enabled_override: bool | None = Field(
         default=None,
-        description="Legacy request-scoped FTMO guard toggle.",
+        description="Request-scoped account-risk guard toggle.",
     )
     risk_enabled_override: bool | None = Field(
         default=None,
@@ -1872,16 +1859,16 @@ class PredictRequest(BaseModel):
 
     @model_validator(mode="after")
     def _validate_risk_override(self) -> "PredictRequest":
-        if self.risk_enabled_override is None and self.ftmo_enabled_override is None:
-            raise ValueError("One of risk_enabled_override or ftmo_enabled_override is required")
+        if self.risk_enabled_override is None and self.account_risk_enabled_override is None:
+            raise ValueError("One of risk_enabled_override or account_risk_enabled_override is required")
         return self
 
     def effective_risk_enabled_override(self) -> bool:
         if self.risk_enabled_override is not None:
             return bool(self.risk_enabled_override)
-        if self.ftmo_enabled_override is not None:
-            return bool(self.ftmo_enabled_override)
-        raise ValueError("One of risk_enabled_override or ftmo_enabled_override is required")
+        if self.account_risk_enabled_override is not None:
+            return bool(self.account_risk_enabled_override)
+        raise ValueError("One of risk_enabled_override or account_risk_enabled_override is required")
 
 
 class WarmupRequest(BaseModel):
@@ -1955,7 +1942,7 @@ class TickBatchRequest(BaseModel):
     run_id: str | None = None
 
 
-class FtmoLimitsResponse(BaseModel):
+class AccountRiskLimitsResponse(BaseModel):
     enabled: bool
     profile_id: str | None = None
     mode: str | None = None
@@ -1976,7 +1963,7 @@ class FtmoLimitsResponse(BaseModel):
     official_source_url: str | None = None
 
 
-class FtmoStatusResponse(BaseModel):
+class AccountRiskStatusResponse(BaseModel):
     enabled: bool
     symbol: str | None = None
     profile_id: str | None = None
@@ -1994,7 +1981,7 @@ class FtmoStatusResponse(BaseModel):
     max_loss_headroom: float | None = None
 
 
-class FtmoReservationReleaseRequest(BaseModel):
+class AccountRiskReservationReleaseRequest(BaseModel):
     symbol: str | None = None
     candidate_uid: str | None = None
     broker_pos_id: str | None = None
@@ -2002,7 +1989,7 @@ class FtmoReservationReleaseRequest(BaseModel):
     reason: str | None = None
 
 
-class FtmoReservationsStatusResponse(BaseModel):
+class AccountRiskReservationsStatusResponse(BaseModel):
     enabled: bool
     symbol: str | None = None
     active_count: int = 0
@@ -2010,22 +1997,6 @@ class FtmoReservationsStatusResponse(BaseModel):
     rows: list[dict[str, Any]] = Field(default_factory=list)
     include_pending: bool = True
     include_open: bool = True
-
-
-class AccountRiskLimitsResponse(FtmoLimitsResponse):
-    """Broker-neutral alias for the active account-risk profile payload."""
-
-
-class AccountRiskStatusResponse(FtmoStatusResponse):
-    """Broker-neutral alias for current account-risk status."""
-
-
-class AccountRiskReservationReleaseRequest(FtmoReservationReleaseRequest):
-    """Broker-neutral alias for releasing active risk reservations."""
-
-
-class AccountRiskReservationsStatusResponse(FtmoReservationsStatusResponse):
-    """Broker-neutral alias for reservation status responses."""
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────
@@ -2036,21 +2007,21 @@ async def metrics():
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
-@app.post("/risk/ftmo/snapshot", status_code=201)
-async def ingest_ftmo_snapshot(req: AccountRiskSnapshotRequest) -> dict[str, Any]:
+@app.post("/risk/account_risk/snapshot", status_code=201)
+async def ingest_account_risk_snapshot(req: AccountRiskSnapshotRequest) -> dict[str, Any]:
     """Ingest account balance/equity snapshots emitted by cBot."""
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
     run_id = _effective_run_id(req.run_id)
     _append_http_trace(
-        endpoint="/risk/ftmo/snapshot",
+        endpoint="/risk/account_risk/snapshot",
         phase="request",
         run_id=run_id,
         symbol=req.symbol,
         request_payload=req,
     )
     ts = req.snapshot_ts or datetime.now(tz=timezone.utc)
-    _state.record_ftmo_account_snapshot(
+    _state.record_account_risk_snapshot(
         symbol=req.symbol,
         balance=float(req.balance),
         equity=float(req.equity),
@@ -2062,7 +2033,7 @@ async def ingest_ftmo_snapshot(req: AccountRiskSnapshotRequest) -> dict[str, Any
         "snapshot_ts": ts,
     }
     _append_http_trace(
-        endpoint="/risk/ftmo/snapshot",
+        endpoint="/risk/account_risk/snapshot",
         phase="response",
         run_id=run_id,
         symbol=req.symbol,
@@ -2110,29 +2081,29 @@ async def ingest_account_snapshot(req: AccountRiskSnapshotRequest) -> dict[str, 
     return out
 
 
-@app.get("/risk/ftmo/limits", response_model=FtmoLimitsResponse)
-async def get_ftmo_limits() -> FtmoLimitsResponse:
-    """Return active FTMO profile limits and internal buffered thresholds."""
-    return _ftmo_limits_payload()
+@app.get("/risk/account_risk/limits", response_model=AccountRiskLimitsResponse)
+async def get_account_risk_limits() -> AccountRiskLimitsResponse:
+    """Return active account-risk profile limits and internal buffered thresholds."""
+    return _account_risk_limits_payload()
 
 
 @app.get("/risk/account/limits", response_model=AccountRiskLimitsResponse)
-async def get_account_risk_limits() -> AccountRiskLimitsResponse:
+async def get_account_limits() -> AccountRiskLimitsResponse:
     """Return active broker-neutral account-risk limits and internal thresholds."""
     return _account_risk_limits_payload()
 
 
-@app.get("/risk/ftmo/status", response_model=FtmoStatusResponse)
-async def get_ftmo_status(symbol: str | None = None) -> FtmoStatusResponse:
-    """Return current FTMO guardrail status and account headroom."""
+@app.get("/risk/account_risk/status", response_model=AccountRiskStatusResponse)
+async def get_account_risk_status(symbol: str | None = None) -> AccountRiskStatusResponse:
+    """Return current account-risk guardrail status and account headroom."""
     sym = str(symbol or "").strip().upper() or None
     now_utc = datetime.now(tz=timezone.utc)
-    eval_out = _resolve_ftmo_account_eval(
+    eval_out = _resolve_account_risk_eval(
         sym or "ALL",
         now_utc,
-        ftmo_enabled_effective=bool(_config.ftmo_enabled),
+        account_risk_enabled_effective=bool(_config.account_risk_enabled),
     )
-    return FtmoStatusResponse(
+    return AccountRiskStatusResponse(
         enabled=bool(eval_out.get("enabled", False)),
         symbol=sym,
         profile_id=eval_out.get("profile_id"),
@@ -2152,27 +2123,26 @@ async def get_ftmo_status(symbol: str | None = None) -> FtmoStatusResponse:
 
 
 @app.get("/risk/account/status", response_model=AccountRiskStatusResponse)
-async def get_account_risk_status(symbol: str | None = None) -> AccountRiskStatusResponse:
+async def get_account_status(symbol: str | None = None) -> AccountRiskStatusResponse:
     """Return current broker-neutral account-risk status and account headroom."""
-    payload = await get_ftmo_status(symbol)
-    return AccountRiskStatusResponse(**payload.model_dump())
+    return await get_account_risk_status(symbol)
 
 
-@app.get("/risk/ftmo/reservations/status", response_model=FtmoReservationsStatusResponse)
-async def get_ftmo_reservations_status(symbol: str | None = None) -> FtmoReservationsStatusResponse:
-    """Return active FTMO reservation totals and rows."""
+@app.get("/risk/account_risk/reservations/status", response_model=AccountRiskReservationsStatusResponse)
+async def get_account_risk_reservations_status(symbol: str | None = None) -> AccountRiskReservationsStatusResponse:
+    """Return active account-risk reservation totals and rows."""
     sym = str(symbol or "").strip().upper() or None
-    if (not _config.ftmo_enabled) or (_ftmo_profile is None) or (_state is None):
-        return FtmoReservationsStatusResponse(enabled=False, symbol=sym)
-    include_pending = bool(_ftmo_profile.allocator.allocator_reserve_pending)
-    include_open = bool(_ftmo_profile.allocator.allocator_reserve_open)
-    total_reserved = _state.sum_active_ftmo_reserved_loss_ccy(
+    if (not _config.account_risk_enabled) or (_account_risk_profile is None) or (_state is None):
+        return AccountRiskReservationsStatusResponse(enabled=False, symbol=sym)
+    include_pending = bool(_account_risk_profile.allocator.allocator_reserve_pending)
+    include_open = bool(_account_risk_profile.allocator.allocator_reserve_open)
+    total_reserved = _state.sum_active_account_risk_reserved_loss_ccy(
         symbol=sym,
         include_pending=include_pending,
         include_open=include_open,
     )
-    rows = _state.list_active_ftmo_risk_reservations(symbol=sym)
-    return FtmoReservationsStatusResponse(
+    rows = _state.list_active_account_risk_reservations(symbol=sym)
+    return AccountRiskReservationsStatusResponse(
         enabled=True,
         symbol=sym,
         active_count=len(rows),
@@ -2187,17 +2157,16 @@ async def get_ftmo_reservations_status(symbol: str | None = None) -> FtmoReserva
     "/risk/account/reservations/status",
     response_model=AccountRiskReservationsStatusResponse,
 )
-async def get_account_risk_reservations_status(
+async def get_account_reservations_status(
     symbol: str | None = None,
 ) -> AccountRiskReservationsStatusResponse:
     """Return active broker-neutral reservation totals and rows."""
-    payload = await get_ftmo_reservations_status(symbol)
-    return AccountRiskReservationsStatusResponse(**payload.model_dump())
+    return await get_account_risk_reservations_status(symbol)
 
 
-@app.post("/risk/ftmo/reservations/release")
-async def release_ftmo_reservations(req: FtmoReservationReleaseRequest) -> dict[str, Any]:
-    """Release active FTMO reservations by reservation id, candidate uid, or broker pos id."""
+@app.post("/risk/account_risk/reservations/release")
+async def release_account_risk_reservations_v2(req: AccountRiskReservationReleaseRequest) -> dict[str, Any]:
+    """Release active account-risk reservations by reservation id, candidate uid, or broker pos id."""
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
     if not any([req.reservation_id, req.candidate_uid, req.broker_pos_id]):
@@ -2205,7 +2174,7 @@ async def release_ftmo_reservations(req: FtmoReservationReleaseRequest) -> dict[
             status_code=422,
             detail="One of reservation_id, candidate_uid, or broker_pos_id is required",
         )
-    released = _state.release_ftmo_risk_reservation(
+    released = _state.release_account_risk_reservation(
         reservation_id=req.reservation_id,
         candidate_uid=req.candidate_uid,
         broker_pos_id=req.broker_pos_id,
@@ -2260,7 +2229,7 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
     """
     sym = req.symbol.upper()
     run_id = _effective_run_id(req.run_id)
-    ftmo_enabled_effective = req.effective_risk_enabled_override()
+    account_risk_enabled_effective = req.effective_risk_enabled_override()
     requested_volume_units = _resolve_requested_volume_units(req)
     _append_http_trace(
         endpoint="/predict",
@@ -2346,13 +2315,13 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
             base_features_by_ticks[bt] = feats
             regime_quantiles_by_ticks[bt] = _state.compute_regime_quantiles(sym, bt)
 
-    ftmo_account_eval = _resolve_ftmo_account_eval(
+    account_risk_eval = _resolve_account_risk_eval(
         sym,
         close_ts,
-        ftmo_enabled_effective=ftmo_enabled_effective,
+        account_risk_enabled_effective=account_risk_enabled_effective,
     )
-    _state.expire_stale_ftmo_pending_reservations(
-        max_age_seconds=max(60, int(_config.ftmo_pending_reservation_ttl_sec)),
+    _state.expire_stale_account_risk_pending_reservations(
+        max_age_seconds=max(60, int(_config.account_risk_pending_reservation_ttl_sec)),
     )
 
     results, candidate_trace_rows = _build_predictions(
@@ -2363,9 +2332,9 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
         regime_quantiles_by_ticks=regime_quantiles_by_ticks,
         close_ts=close_ts,
         thr_cfg=thr_cfg,
-        ftmo_account_eval=ftmo_account_eval,
-        ftmo_enabled_effective=ftmo_enabled_effective,
-        ftmo_enabled_override=req.effective_risk_enabled_override(),
+        account_risk_eval=account_risk_eval,
+        account_risk_enabled_effective=account_risk_enabled_effective,
+        account_risk_enabled_override=req.effective_risk_enabled_override(),
         requested_volume_units=requested_volume_units,
         model_month=contract.model_month,
         cap_pips=contract.cap_pips,
@@ -2419,9 +2388,9 @@ def _build_predictions(
     regime_quantiles_by_ticks: dict[int, dict[str, float]],
     close_ts: datetime,
     thr_cfg: dict[str, Any],
-    ftmo_account_eval: dict[str, Any],
-    ftmo_enabled_effective: bool,
-    ftmo_enabled_override: bool,
+    account_risk_eval: dict[str, Any],
+    account_risk_enabled_effective: bool,
+    account_risk_enabled_override: bool,
     requested_volume_units: float,
     model_month: str,
     cap_pips: float,
@@ -2429,7 +2398,7 @@ def _build_predictions(
     skip_regime_gate: bool = False,
     historical_prediction_overrides: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[list[OcoPrediction], list[dict[str, Any]]]:
-    """Build predictions for each candidate using model + FTMO portfolio allocator."""
+    """Build predictions for each candidate using model + account risk portfolio allocator."""
     import numpy as np
 
     threshold_exec = float(thr_cfg.get("threshold_exec", 0.5))
@@ -2444,7 +2413,7 @@ def _build_predictions(
     fx_conv = _pip_value_per_unit_usd(
         sym,
         now_utc=close_ts_utc,
-        max_age_sec=max(1, int(_config.ftmo_fx_rate_max_age_sec)),
+        max_age_sec=max(1, int(_config.account_risk_fx_rate_max_age_sec)),
     )
     pip_value_per_unit = fx_conv.get("pip_value_per_unit_usd")
     pip_value_per_unit = float(pip_value_per_unit) if pip_value_per_unit is not None else None
@@ -2534,29 +2503,29 @@ def _build_predictions(
 
             preselected_exec = 1 if (regime_active and pred_prob >= curr_threshold) else 0
         risk_metrics_snapshot: dict[str, Any] = {
-            "ftmo_enabled": bool(ftmo_account_eval.get("enabled", False)),
-            "ftmo_enabled_effective": bool(ftmo_enabled_effective),
-            "ftmo_enabled_override": bool(ftmo_enabled_override),
-            "ftmo_mode_source": "request_override",
-            "ftmo_profile_id": ftmo_account_eval.get("profile_id"),
-            "ftmo_trade_cost_gate_mode": (
-                _ftmo_profile.cost_gate.trade_cost_gate_mode if _ftmo_profile is not None else ""
+            "account_risk_enabled": bool(account_risk_eval.get("enabled", False)),
+            "account_risk_enabled_effective": bool(account_risk_enabled_effective),
+            "account_risk_enabled_override": bool(account_risk_enabled_override),
+            "account_risk_mode_source": "request_override",
+            "account_risk_profile_id": account_risk_eval.get("profile_id"),
+            "account_risk_trade_cost_gate_mode": (
+                _account_risk_profile.cost_gate.trade_cost_gate_mode if _account_risk_profile is not None else ""
             ),
-            "ftmo_allow_trading": bool(ftmo_account_eval.get("allow_trading", True)),
-            "ftmo_account_block_reason": ftmo_account_eval.get("block_reason"),
-            "snapshot_available": bool(ftmo_account_eval.get("snapshot_available", False)),
-            "daily_loss_headroom": ftmo_account_eval.get("daily_loss_headroom"),
-            "max_loss_headroom": ftmo_account_eval.get("max_loss_headroom"),
-            "daily_loss_used": ftmo_account_eval.get("daily_loss_used"),
-            "max_loss_used": ftmo_account_eval.get("max_loss_used"),
-            "trading_day_id": ftmo_account_eval.get("trading_day_id"),
+            "account_risk_allow_trading": bool(account_risk_eval.get("allow_trading", True)),
+            "account_risk_account_block_reason": account_risk_eval.get("block_reason"),
+            "snapshot_available": bool(account_risk_eval.get("snapshot_available", False)),
+            "daily_loss_headroom": account_risk_eval.get("daily_loss_headroom"),
+            "max_loss_headroom": account_risk_eval.get("max_loss_headroom"),
+            "daily_loss_used": account_risk_eval.get("daily_loss_used"),
+            "max_loss_used": account_risk_eval.get("max_loss_used"),
+            "trading_day_id": account_risk_eval.get("trading_day_id"),
             "requested_volume_units": float(requested_volume_units),
             "allocator_pip_value_per_unit_usd": pip_value_per_unit,
             "allocator_fx_conversion_status": fx_status,
             "allocator_fx_conversion_pair": fx_pair,
             "allocator_fx_conversion_rate": fx_rate,
             "allocator_fx_conversion_age_sec": fx_age,
-            "allocator_fx_rate_max_age_sec": int(max(1, int(_config.ftmo_fx_rate_max_age_sec))),
+            "allocator_fx_rate_max_age_sec": int(max(1, int(_config.account_risk_fx_rate_max_age_sec))),
             "regime_name": regime_name,
             "regime_active": bool(regime_active),
             "historical_locked_payload": bool(locked_payload is not None),
@@ -2566,20 +2535,20 @@ def _build_predictions(
         risk_blocked = False
         risk_block_reason: str | None = None
 
-        if preselected_exec == 1 and ftmo_enabled_effective and (_ftmo_profile is not None):
+        if preselected_exec == 1 and account_risk_enabled_effective and (_account_risk_profile is not None):
             trade_eval = evaluate_trade_guard(
-                _ftmo_profile,
-                account_eval=ftmo_account_eval,
+                _account_risk_profile,
+                account_eval=account_risk_eval,
                 pred_prob=pred_prob,
                 threshold_exec=curr_threshold,
                 barrier_pips=float(cand.barrier_pips),
                 cost_est_pips=float(features.cost_est_pips),
             )
             risk_metrics_snapshot.update(trade_eval)
-            if _config.ftmo_enforce_blocks and (not bool(trade_eval.get("allow_trade", True))):
+            if _config.account_risk_enforce_blocks and (not bool(trade_eval.get("allow_trade", True))):
                 selected_exec = 0
                 risk_blocked = True
-                risk_block_reason = str(trade_eval.get("block_reason") or "FTMO_BLOCKED")
+                risk_block_reason = str(trade_eval.get("block_reason") or "ACCOUNT_RISK_BLOCKED")
                 METRIC_RISK_BLOCKS_TOTAL.labels(symbol=sym, reason=risk_block_reason).inc()
 
         rank_score = None
@@ -2610,24 +2579,24 @@ def _build_predictions(
         )
 
     allocator_enabled = bool(
-        ftmo_enabled_effective
-        and _ftmo_profile is not None
-        and _ftmo_profile.allocator.allocator_enabled
+        account_risk_enabled_effective
+        and _account_risk_profile is not None
+        and _account_risk_profile.allocator.allocator_enabled
         and _state is not None
-        and _config.ftmo_enforce_blocks
+        and _config.account_risk_enforce_blocks
     )
 
     if allocator_enabled:
-        include_pending = bool(_ftmo_profile.allocator.allocator_reserve_pending)
-        include_open = bool(_ftmo_profile.allocator.allocator_reserve_open)
-        active_reserved_loss_ccy = _state.sum_active_ftmo_reserved_loss_ccy(
+        include_pending = bool(_account_risk_profile.allocator.allocator_reserve_pending)
+        include_open = bool(_account_risk_profile.allocator.allocator_reserve_open)
+        active_reserved_loss_ccy = _state.sum_active_account_risk_reserved_loss_ccy(
             include_pending=include_pending,
             include_open=include_open,
         )
-        daily_headroom = ftmo_account_eval.get("daily_loss_headroom")
-        max_headroom = ftmo_account_eval.get("max_loss_headroom")
-        daily_budget = None if daily_headroom is None else float(daily_headroom) * float(_ftmo_profile.allocator.allocator_budget_fraction_daily)
-        max_budget = None if max_headroom is None else float(max_headroom) * float(_ftmo_profile.allocator.allocator_budget_fraction_max)
+        daily_headroom = account_risk_eval.get("daily_loss_headroom")
+        max_headroom = account_risk_eval.get("max_loss_headroom")
+        daily_budget = None if daily_headroom is None else float(daily_headroom) * float(_account_risk_profile.allocator.allocator_budget_fraction_daily)
+        max_budget = None if max_headroom is None else float(max_headroom) * float(_account_risk_profile.allocator.allocator_budget_fraction_max)
         if daily_budget is None and max_budget is None:
             allocator_remaining = 0.0
         elif daily_budget is None:
@@ -2638,11 +2607,11 @@ def _build_predictions(
             allocator_remaining = min(float(daily_budget), float(max_budget))
         allocator_remaining = (
             allocator_remaining
-            - float(_ftmo_profile.allocator.allocator_min_headroom_buffer_ccy)
+            - float(_account_risk_profile.allocator.allocator_min_headroom_buffer_ccy)
             - float(active_reserved_loss_ccy)
         )
         allocator_remaining = max(0.0, allocator_remaining)
-        METRIC_FTMO_RESERVED_LOSS_CCY.labels(symbol=sym).set(float(active_reserved_loss_ccy))
+        METRIC_ACCOUNT_RISK_RESERVED_LOSS_CCY.labels(symbol=sym).set(float(active_reserved_loss_ccy))
 
         to_allocate = [
             d
@@ -2664,10 +2633,10 @@ def _build_predictions(
             if pip_value_per_unit is None or pip_value_per_unit <= 0:
                 d.selected_exec = 0
                 d.risk_blocked = True
-                d.risk_block_reason = "FTMO_PIP_VALUE_UNAVAILABLE"
+                d.risk_block_reason = "ACCOUNT_RISK_PIP_VALUE_UNAVAILABLE"
                 d.risk_metrics_snapshot["allocator_remaining_before_ccy"] = float(allocator_remaining)
                 METRIC_RISK_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
-                METRIC_FTMO_ALLOCATOR_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
+                METRIC_ACCOUNT_RISK_ALLOCATOR_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
                 continue
 
             gross_loss_pips = max(
@@ -2685,24 +2654,24 @@ def _build_predictions(
                 d.risk_reserved_amount_ccy = float(reserve_ccy)
                 d.risk_headroom_after_ccy = float(allocator_remaining)
                 d.risk_metrics_snapshot["allocator_admitted"] = True
-                METRIC_FTMO_ALLOCATOR_ADMITTED_TOTAL.labels(symbol=sym).inc()
+                METRIC_ACCOUNT_RISK_ALLOCATOR_ADMITTED_TOTAL.labels(symbol=sym).inc()
             else:
                 d.selected_exec = 0
                 d.risk_blocked = True
-                d.risk_block_reason = "FTMO_RESERVED_BUDGET_EXCEEDED"
+                d.risk_block_reason = "ACCOUNT_RISK_RESERVED_BUDGET_EXCEEDED"
                 d.risk_metrics_snapshot["allocator_admitted"] = False
                 d.risk_headroom_after_ccy = float(allocator_remaining)
                 METRIC_RISK_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
-                METRIC_FTMO_ALLOCATOR_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
+                METRIC_ACCOUNT_RISK_ALLOCATOR_BLOCKS_TOTAL.labels(symbol=sym, reason=d.risk_block_reason).inc()
 
-        METRIC_FTMO_RESERVED_LOSS_CCY.labels(symbol=sym).set(float(active_reserved_loss_ccy + newly_reserved_ccy))
+        METRIC_ACCOUNT_RISK_RESERVED_LOSS_CCY.labels(symbol=sym).set(float(active_reserved_loss_ccy + newly_reserved_ccy))
 
     results: list[OcoPrediction] = []
     trace_rows: list[dict[str, Any]] = []
     for d in decisions:
         if d.selected_exec == 1 and _state is not None:
             if allocator_enabled and d.risk_reserved and (d.risk_reserved_amount_ccy is not None):
-                reservation_id = _state.create_ftmo_risk_reservation(
+                reservation_id = _state.create_account_risk_reservation(
                     symbol=sym,
                     candidate_uid=d.candidate_uid,
                     reserved_loss_ccy=float(d.risk_reserved_amount_ccy),
@@ -2729,12 +2698,12 @@ def _build_predictions(
 
         if (
             _state is not None
-            and ftmo_enabled_effective
-            and (_ftmo_profile is not None)
+            and account_risk_enabled_effective
+            and (_account_risk_profile is not None)
             and d.preselected_exec == 1
         ):
             event_status = "ADMITTED" if d.selected_exec == 1 else "BLOCKED"
-            _state.log_ftmo_allocator_event(
+            _state.log_account_risk_allocator_event(
                 symbol=sym,
                 candidate_uid=d.candidate_uid,
                 status=event_status,
@@ -2888,8 +2857,8 @@ async def open_trade(req: TradeOpenRequest):
         horizon=req.horizon,
         run_id=run_id,
     )
-    if _config.ftmo_enabled and (_ftmo_profile is not None):
-        _state.promote_ftmo_risk_reservation(
+    if _config.account_risk_enabled and (_account_risk_profile is not None):
+        _state.promote_account_risk_reservation(
             broker_pos_id=req.broker_pos_id,
             reservation_id=req.reservation_id,
             candidate_uid=req.candidate_uid,
@@ -3153,8 +3122,8 @@ async def update_trade(req: TradeUpdateRequest):
         pnl_pips=req.pnl_pips,
         run_id=run_id,
     )
-    if _config.ftmo_enabled and (_ftmo_profile is not None) and req.status.value in {"CLOSED", "CANCELLED"}:
-        _state.release_ftmo_risk_reservation(
+    if _config.account_risk_enabled and (_account_risk_profile is not None) and req.status.value in {"CLOSED", "CANCELLED"}:
+        _state.release_account_risk_reservation(
             broker_pos_id=req.broker_pos_id,
             reason=f"trade_{req.status.value.lower()}",
         )
