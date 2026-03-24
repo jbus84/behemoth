@@ -301,5 +301,3 @@ class AccountRiskSnapshotRequest(BaseModel):
     run_id: str | None = None
 
 
-class FtmoAccountSnapshotRequest(AccountRiskSnapshotRequest):
-    """Legacy alias for FTMO-specific callers."""

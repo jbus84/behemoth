@@ -44,7 +44,6 @@ from src.behemoth.core.registry import CandidateRegistry
 from src.behemoth.core.schemas import (
     ActiveTrade,
     AccountRiskSnapshotRequest,
-    FtmoAccountSnapshotRequest,
     IncomingTick,
     IncomingTickBar,
     ModelFeatures,
@@ -2038,7 +2037,7 @@ async def metrics():
 
 
 @app.post("/risk/ftmo/snapshot", status_code=201)
-async def ingest_ftmo_snapshot(req: FtmoAccountSnapshotRequest) -> dict[str, Any]:
+async def ingest_ftmo_snapshot(req: AccountRiskSnapshotRequest) -> dict[str, Any]:
     """Ingest account balance/equity snapshots emitted by cBot."""
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
