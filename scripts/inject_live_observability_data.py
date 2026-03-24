@@ -36,7 +36,7 @@ def inject_data():
             json={
                 "symbol": SYMBOL,
                 "requested_volume_units": 10000,
-                "ftmo_enabled_override": True,
+                "account_risk_enabled_override": True,
             },
         )
         time.sleep(0.5)

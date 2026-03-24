@@ -186,7 +186,7 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
                     json={
                         "symbol": symbol,
                         "requested_volume_units": 10000,
-                        "ftmo_enabled_override": True,
+                        "account_risk_enabled_override": True,
                     },
                 )
                 t1_p = time.perf_counter()
