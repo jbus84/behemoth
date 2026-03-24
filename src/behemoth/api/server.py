@@ -3034,9 +3034,13 @@ async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
 
         static_thr = float(thr_cfg.get("threshold_exec", 0.5))
         bar_ticks = int(contract.candidates[0].bar_ticks)
-        assert len({c.bar_ticks for c in contract.candidates}) == 1, (
-            f"seed_audit_history: mixed bar_ticks for {sym} — only uniform bar_ticks supported"
-        )
+        if len({c.bar_ticks for c in contract.candidates}) != 1:
+            logger.warning(
+                "seed_audit_history: mixed bar_ticks for %s — skipping (only uniform bar_ticks supported)",
+                sym,
+            )
+            events_by_symbol[sym] = 0
+            continue
 
         # Isolated replay — never writes to live tick_bars
         replay_state = StateManager(
