@@ -18,10 +18,7 @@ endif
 REBUILD_SYMBOLS := EURUSD GBPUSD USDJPY USDCHF AUDUSD USDCAD
 # Default comma-separated symbol list for targets that accept --symbols (e.g. jforex-outcome-parity)
 SYMBOLS ?= EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD
-CTRADER_ROBOT_DST := ~/cAlgo/Sources/Robots/BehemothTradeManager/BehemothTradeManager/BehemothTradeManager.cs
-CTRADER_PLUGIN_DST := ~/cAlgo/Sources/Plugins/CustomDataSourceHistDataPlugin/CustomDataSourceHistDataPlugin/CustomDataSourceHistDataPlugin.cs
-
-.PHONY: test test-java docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift deploy-cbot deploy-ctrader provision observability-up observability-down retrain-all rebuild-all quality ty vulture smellcheck radon xenon audit-all freeze-oco freeze-oco-history validate-oco-history reconcile-historical-predictions summarize-runtime-db-run reconcile-ctrader-run export-ctrader-custom-data ctrader-debug-up ctrader-debug-down ctrader-debug-status ctrader-ab-parity-report ctrader-parity testclient-parity dukascopy-testclient-parity local-jforex-parity local-jforex-parity-matrix local-jforex-parity-ordinal local-jforex-parity-spotlight jforex-dukascopy-matrix jforex-outcome-parity local-jforex-cert histdata-ctrader-parity histdata-testclient-parity stage12-api-parity stage13-dukascopy-cert stage14-jforex-cert full-stage14-cert dukascopy-source-audit offset-robustness-study offset-frozen-screen account-risk-monitoring-report reconcile-account-risk-reservations jforex-live demo-cert-monitor freeze-oco-dukascopy-candidate monthly-recert promote-live
+.PHONY: test test-java docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift provision observability-up observability-down retrain-all rebuild-all quality ty vulture smellcheck radon xenon audit-all freeze-oco freeze-oco-history validate-oco-history reconcile-historical-predictions summarize-runtime-db-run local-jforex-parity local-jforex-parity-matrix local-jforex-parity-ordinal local-jforex-parity-spotlight jforex-dukascopy-matrix jforex-outcome-parity local-jforex-cert stage12-api-parity stage13-dukascopy-cert stage14-jforex-cert full-stage14-cert dukascopy-source-audit offset-robustness-study offset-frozen-screen account-risk-monitoring-report reconcile-account-risk-reservations jforex-live demo-cert-monitor freeze-oco-dukascopy-candidate monthly-recert promote-live
 
 OFFSET_ROBUSTNESS_SYMBOLS_DEFAULT := EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD
 OFFSET_ROBUSTNESS_OFFSETS_DEFAULT := 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99
@@ -277,18 +274,6 @@ rebuild-all:
 	uv run mkdocs build --strict
 	@echo "\n✅ Full rebuild complete"
 
-deploy-cbot:
-	@echo "Deploying BehemothTradeManager.cs to cTrader Robots directory..."
-	cp src/cbot/BehemothTradeManager.cs $(CTRADER_ROBOT_DST)
-	@echo "Deployment complete! Please rebuild the bot in cTrader Automate."
-
-deploy-ctrader:
-	@echo "Deploying BehemothTradeManager.cs to cTrader Robots directory..."
-	cp src/cbot/BehemothTradeManager.cs $(CTRADER_ROBOT_DST)
-	@echo "Deploying CustomDataSourceHistDataPlugin.cs to cTrader Plugins directory..."
-	cp src/cbot/CustomDataSourceHistDataPlugin.cs $(CTRADER_PLUGIN_DST)
-	@echo "Deployment complete! Please rebuild the bot and plugin in cTrader Automate."
-
 docs:
 	uv run mkdocs serve -a 127.0.0.1:8001
 
@@ -391,245 +376,7 @@ summarize-runtime-db-run:
 		--out-csv $(or $(OUT_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_runtime_db_run_summary.csv) \
 		--report-out $(or $(REPORT_OUT),docs/analysis/$(SYMBOL)_runtime_db_run_summary.md)
 
-reconcile-ctrader-run:
-	@test -n "$(SYMBOL)" || (echo "error: SYMBOL is required" && exit 1)
-	@test -n "$(PRED_PATH)" || (echo "error: PRED_PATH is required, e.g. data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet" && exit 1)
-	uv run python scripts/reconcile_ctrader_vs_research.py \
-		--symbol $(SYMBOL) \
-		--runtime-db $(or $(RUNTIME_DB),data/db/behemoth_runtime.db) \
-		--predictions-parquet $(PRED_PATH) \
-		$(if $(HISTORY_DIR),--history-dir $(HISTORY_DIR),) \
-		$(if $(TICK_ROOT),--tick-root $(TICK_ROOT),) \
-		--start-ts $(START_TS) \
-		--end-ts $(END_TS) \
-		--strict-window $(or $(STRICT_WINDOW),true) \
-		--timestamp-tolerance-sec $(or $(TOL_SEC),2.0) \
-		--out-checks-csv $(or $(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_ctrader_vs_research_checks.csv) \
-		--out-mismatches-csv $(or $(OUT_MISMATCHES_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_ctrader_vs_research_mismatches.csv) \
-		--report-out $(or $(REPORT_OUT),docs/analysis/$(SYMBOL)_ctrader_vs_research_reconciliation.md)
-
-export-ctrader-custom-data:
-	@test -n "$(SYMBOL)" || (echo "error: SYMBOL is required, e.g. make export-ctrader-custom-data SOURCE=dukascopy SYMBOL=EURUSD START_TS=2025-07-07T00:00:00Z END_TS=2025-07-09T00:00:00Z OUT_DIR=data/analysis/backtest_reconcile/EURUSD_dukascopy_custom_20250707_20250709" && exit 1)
-	@test -n "$(START_TS)" || (echo "error: START_TS is required" && exit 1)
-	@test -n "$(END_TS)" || (echo "error: END_TS is required" && exit 1)
-	@test -n "$(OUT_DIR)" || (echo "error: OUT_DIR is required" && exit 1)
-	uv run python scripts/export_ctrader_custom_data.py \
-		--symbol $(SYMBOL) \
-		--source $(or $(SOURCE),dukascopy) \
-		--tick-root $(if $(filter dukascopy,$(or $(SOURCE),dukascopy)),$(or $(DUKASCOPY_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks),$(or $(TICK_ROOT),/Users/danielfisher/Desktop/tick)) \
-		--start-ts $(START_TS) \
-		--end-ts $(END_TS) \
-		--out-dir $(OUT_DIR) \
-		--overwrite $(or $(OVERWRITE),false) \
-		$(if $(SUMMARY_CSV),--summary-csv $(SUMMARY_CSV),)
-
-ctrader-debug-up:
-	@test -n "$(SYMBOL)" || (echo "error: SYMBOL is required" && exit 1)
-	@test -n "$(START_TS)" || (echo "error: START_TS is required" && exit 1)
-	@test -n "$(END_TS)" || (echo "error: END_TS is required" && exit 1)
-	uv run python scripts/manage_ctrader_debug_session.py up \
-		--source $(or $(SOURCE),dukascopy) \
-		--symbol $(SYMBOL) \
-		--start-ts $(START_TS) \
-		--end-ts $(END_TS) \
-		$(if $(RUN_ID),--run-id $(RUN_ID),) \
-		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/tick) \
-		--dukascopy-root $(or $(DUKASCOPY_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks) \
-		--host $(or $(HOST),127.0.0.1) \
-		--port $(or $(PORT),8000) \
-		--start-api $(or $(START_API),true) \
-		--replace-active $(or $(REPLACE_ACTIVE),true) \
-		--reset-db $(or $(RESET_DB),true) \
-		--overwrite-package $(or $(OVERWRITE_PACKAGE),true) \
-		--record-raw-ticks $(or $(RECORD_RAW_TICKS),true) \
-		--start-timeout-sec $(or $(START_TIMEOUT_SEC),20.0) \
-		--models-dir $(or $(MODELS_DIR),models/oco) \
-		--history-dir $(or $(HISTORY_DIR),configs/research/governance/oco_history) \
-		--missing-month-policy $(or $(MISSING_MONTH_POLICY),error) \
-		--historical-preflight-mode $(or $(HISTORICAL_PREFLIGHT_MODE),warn) \
-		--historical-prediction-universe-mode $(or $(HISTORICAL_PREDICTION_UNIVERSE_MODE),tolerant) \
-		--ftmo-rules-path $(or $(FTMO_RULES_PATH),configs/research/governance/ftmo/ftmo_rules.yaml) \
-		--ftmo-profile-id $(or $(FTMO_PROFILE_ID),ftmo_10k_challenge_2step) \
-		--ftmo-phase-mode $(or $(FTMO_PHASE_MODE),full_lifecycle) \
-		--ftmo-economics-mode $(or $(FTMO_ECONOMICS_MODE),repo_overlay) \
-		--ftmo-trade-cost-gate-mode $(or $(FTMO_TRADE_COST_GATE_MODE),warn) \
-		--comparison-anchor-ts $(or $(COMPARISON_ANCHOR_TS),$(START_TS)) \
-		--ticks-before-anchor $(or $(WARMUP_TICKS),30000) \
-		--ticks-after-anchor $(or $(COMPARISON_TICKS),30000)
-
-ctrader-debug-down:
-	uv run python scripts/manage_ctrader_debug_session.py down \
-		$(if $(RUN_ID),--run-id $(RUN_ID),) \
-		--clear-active $(or $(CLEAR_ACTIVE),true)
-
-ctrader-debug-status:
-	uv run python scripts/manage_ctrader_debug_session.py status \
-		$(if $(RUN_ID),--run-id $(RUN_ID),)
-
-cbot-surrogate:
-	@test -n "$(SYMBOL)" || (echo "error: SYMBOL is required" && exit 1)
-	@test -n "$(START_TS)" || (echo "error: START_TS is required" && exit 1)
-	@test -n "$(END_TS)" || (echo "error: END_TS is required" && exit 1)
-	uv run python scripts/replay_histdata_cbot_surrogate.py \
-		--symbol $(SYMBOL) \
-		--start-ts $(START_TS) \
-		--end-ts $(END_TS) \
-		$(if $(RUN_ID),--run-id $(RUN_ID),) \
-		--source $(or $(SOURCE),dukascopy) \
-		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/tick) \
-		--dukascopy-root $(or $(DUKASCOPY_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks) \
-		--warmup-ticks $(or $(WARMUP_TICKS),30000) \
-		--lookback-days $(or $(LOOKBACK_DAYS),31) \
-		--models-dir $(or $(MODELS_DIR),models/oco) \
-		--history-dir $(or $(HISTORY_DIR),configs/research/governance/oco_history) \
-		--missing-month-policy $(or $(MISSING_MONTH_POLICY),error) \
-		--historical-preflight-mode $(or $(HISTORICAL_PREFLIGHT_MODE),warn) \
-		--historical-prediction-universe-mode $(or $(HISTORICAL_PREDICTION_UNIVERSE_MODE),tolerant) \
-		--ftmo-enabled-override $(or $(FTMO_ENABLED_OVERRIDE),true) \
-		--ftmo-rules-path $(or $(FTMO_RULES_PATH),configs/research/governance/ftmo/ftmo_rules.yaml) \
-		--ftmo-profile-id $(or $(FTMO_PROFILE_ID),ftmo_10k_challenge_2step) \
-		--ftmo-phase-mode $(or $(FTMO_PHASE_MODE),full_lifecycle) \
-		--ftmo-economics-mode $(or $(FTMO_ECONOMICS_MODE),repo_overlay) \
-		--ftmo-trade-cost-gate-mode $(or $(FTMO_TRADE_COST_GATE_MODE),warn) \
-		--requested-lot-size $(or $(REQUESTED_LOT_SIZE),0.05) \
-		--enable-tick-batch $(or $(ENABLE_TICK_BATCH),true) \
-		--tick-batch-size $(or $(TICK_BATCH_SIZE),20) \
-		--selected-time-tolerance-sec $(or $(SELECTED_TIME_TOLERANCE_SEC),30.0) \
-		--selected-parity-mode $(or $(SELECTED_PARITY_MODE),event_aligned) \
-		--enable-sequence-fallback $(or $(ENABLE_SEQUENCE_FALLBACK),true) \
-		--sequence-fallback-max-gap-sec $(or $(SEQUENCE_FALLBACK_MAX_GAP_SEC),21600.0) \
-		--reset-runtime-db $(or $(RESET_RUNTIME_DB),true) \
-		--record-raw-ticks $(or $(RECORD_RAW_TICKS),true) \
-		--time-tolerance-sec $(or $(TIME_TOLERANCE_SEC),30.0) \
-		--price-tolerance-pips $(or $(PRICE_TOLERANCE_PIPS),0.1) \
-		$(if $(REPO_PREDICTIONS_PARQUET),--repo-predictions-parquet $(REPO_PREDICTIONS_PARQUET),) \
-		$(if $(REPO_STOPLIMIT_DETAIL_CSV),--repo-stoplimit-detail-csv $(REPO_STOPLIMIT_DETAIL_CSV),) \
-		$(if $(REDUCED_CORE_STATE_SCHEDULE_CSV),--reduced-core-state-schedule-csv $(REDUCED_CORE_STATE_SCHEDULE_CSV),)
-
-ftmo-eval:
-	@test -n "$(SESSION_JSON)" || (echo "error: SESSION_JSON is required" && exit 1)
-	uv run python scripts/evaluate_ftmo_challenge_run.py \
-		--session-json $(SESSION_JSON) \
-		$(if $(OUT_DIR),--out-dir $(OUT_DIR),) \
-		--phase-mode $(or $(FTMO_PHASE_MODE),full_lifecycle) \
-		--economics-mode $(or $(FTMO_ECONOMICS_MODE),repo_overlay) \
-		--incomplete-verdict $(or $(INCOMPLETE_VERDICT),in_progress)
-
-ctrader-ab-parity-report:
-	@test -n "$(SYMBOL)" || (echo "error: SYMBOL is required" && exit 1)
-	@test -n "$(RUNTIME_DB_A)" || (echo "error: RUNTIME_DB_A is required" && exit 1)
-	@test -n "$(RUNTIME_DB_B)" || (echo "error: RUNTIME_DB_B is required" && exit 1)
-	@test -n "$(PRED_PATH)" || (echo "error: PRED_PATH is required" && exit 1)
-	@test -n "$(START_TS)" || (echo "error: START_TS is required" && exit 1)
-	@test -n "$(END_TS)" || (echo "error: END_TS is required" && exit 1)
-	uv run python scripts/build_ctrader_ab_parity_report.py \
-		--symbol $(SYMBOL) \
-		--runtime-db-a $(RUNTIME_DB_A) \
-		--runtime-db-b $(RUNTIME_DB_B) \
-		--predictions-parquet $(PRED_PATH) \
-		$(if $(TICK_ROOT),--tick-root $(TICK_ROOT),) \
-		$(if $(HISTORY_DIR),--history-dir $(HISTORY_DIR),) \
-		--start-ts $(START_TS) \
-		--end-ts $(END_TS) \
-		--strict-window $(or $(STRICT_WINDOW),true) \
-		--timestamp-tolerance-sec $(or $(TOL_SEC),2.0) \
-		--out-summary-csv $(or $(OUT_SUMMARY_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_ctrader_ab_parity_summary.csv) \
-		--out-checks-csv $(or $(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_ctrader_ab_parity_checks.csv) \
-		--report-out $(or $(REPORT_OUT),docs/analysis/$(SYMBOL)_ctrader_ab_parity_report.md)
-
-ctrader-parity:
-	@test -n "$(SYMBOL)" || (echo "error: SYMBOL is required" && exit 1)
-	@test -n "$(RUNTIME_DB)" || (echo "error: RUNTIME_DB is required" && exit 1)
-	@test -n "$(CTRADER_EVENTS_JSON)" || (echo "error: CTRADER_EVENTS_JSON is required" && exit 1)
-	@test -n "$(REPO_DETAIL_CSV)" || (echo "error: REPO_DETAIL_CSV is required" && exit 1)
-	@test -n "$(REDUCED_STATE_SCHEDULE_CSV)" || (echo "error: REDUCED_STATE_SCHEDULE_CSV is required" && exit 1)
-	@test -n "$(START_TS)" || (echo "error: START_TS is required" && exit 1)
-	@test -n "$(END_TS)" || (echo "error: END_TS is required" && exit 1)
-	uv run python scripts/validate_ctrader_execution_parity.py \
-		--symbol $(SYMBOL) \
-		--runtime-db $(RUNTIME_DB) \
-		--ctrader-events-json $(CTRADER_EVENTS_JSON) \
-		--repo-stoplimit-detail-csv $(REPO_DETAIL_CSV) \
-		--reduced-core-state-schedule-csv $(REDUCED_STATE_SCHEDULE_CSV) \
-		--require-reduced-core-filter true \
-		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks) \
-		--start-ts $(START_TS) \
-		--end-ts $(END_TS) \
-		--time-tolerance-sec $(or $(TIME_TOL_SEC),1.0) \
-		--price-tolerance-pips $(or $(PRICE_TOL_PIPS),0.1) \
-		--out-summary-csv $(or $(OUT_SUMMARY_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_ctrader_execution_parity_summary.csv) \
-		--out-checks-csv $(or $(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_ctrader_execution_parity_checks.csv) \
-		--out-mismatches-csv $(or $(OUT_MISMATCHES_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_ctrader_execution_parity_mismatches.csv) \
-		--report-out $(or $(REPORT_OUT),docs/analysis/$(SYMBOL)_ctrader_execution_parity_report.md)
-
-histdata-ctrader-parity:
-	$(MAKE) ctrader-parity TICK_ROOT=$(or $(TICK_ROOT),/Users/danielfisher/Desktop/tick) OUT_SUMMARY_CSV=$(or $(OUT_SUMMARY_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_histdata_ctrader_execution_parity_summary.csv) OUT_CHECKS_CSV=$(or $(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_histdata_ctrader_execution_parity_checks.csv) OUT_MISMATCHES_CSV=$(or $(OUT_MISMATCHES_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_histdata_ctrader_execution_parity_mismatches.csv) REPORT_OUT=$(or $(REPORT_OUT),docs/analysis/$(SYMBOL)_histdata_ctrader_execution_parity_report.md) SYMBOL=$(SYMBOL) RUNTIME_DB=$(RUNTIME_DB) CTRADER_EVENTS_JSON=$(CTRADER_EVENTS_JSON) REPO_DETAIL_CSV=$(REPO_DETAIL_CSV) REDUCED_STATE_SCHEDULE_CSV=$(REDUCED_STATE_SCHEDULE_CSV) START_TS=$(START_TS) END_TS=$(END_TS) TIME_TOL_SEC=$(or $(TIME_TOL_SEC),1.0) PRICE_TOL_PIPS=$(or $(PRICE_TOL_PIPS),0.1)
-
-testclient-parity:
-	@test -n "$(SYMBOL)" || (echo "error: SYMBOL is required" && exit 1)
-	@test -n "$(RUNTIME_DB)" || (echo "error: RUNTIME_DB is required" && exit 1)
-	@test -n "$(EVENTS_JSON)" || (echo "error: EVENTS_JSON is required" && exit 1)
-	@test -n "$(REPO_PREDICTIONS_PARQUET)" || (echo "error: REPO_PREDICTIONS_PARQUET is required" && exit 1)
-	@test -n "$(REPO_DETAIL_CSV)" || (echo "error: REPO_DETAIL_CSV is required" && exit 1)
-	@test -n "$(REDUCED_STATE_SCHEDULE_CSV)" || (echo "error: REDUCED_STATE_SCHEDULE_CSV is required" && exit 1)
-	@test -n "$(START_TS)" || (echo "error: START_TS is required" && exit 1)
-	@test -n "$(END_TS)" || (echo "error: END_TS is required" && exit 1)
-	uv run python scripts/replay_cbot_testclient.py \
-		--symbol $(SYMBOL) \
-		--source $(or $(SOURCE),dukascopy) \
-		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks) \
-		--runtime-db $(RUNTIME_DB) \
-		--events-json $(EVENTS_JSON) \
-		--repo-predictions-parquet $(REPO_PREDICTIONS_PARQUET) \
-		--repo-stoplimit-detail-csv $(REPO_DETAIL_CSV) \
-		--reduced-core-state-schedule-csv $(REDUCED_STATE_SCHEDULE_CSV) \
-		--start-ts $(START_TS) \
-		--end-ts $(END_TS) \
-		--warmup-ticks $(or $(WARMUP_TICKS),30000) \
-		--lookback-days $(or $(LOOKBACK_DAYS),31) \
-		--warmup-source $(or $(WARMUP_SOURCE),history_tail) \
-		--phase-bar-ticks $(or $(PHASE_BAR_TICKS),100) \
-		$(if $(MODEL_MONTH),--model-month $(MODEL_MONTH),) \
-		--models-dir $(or $(MODELS_DIR),models/oco) \
-		--history-dir $(or $(HISTORY_DIR),configs/research/governance/oco_history) \
-		--missing-month-policy $(or $(MISSING_MONTH_POLICY),error) \
-		--historical-preflight-mode $(or $(HISTORICAL_PREFLIGHT_MODE),warn) \
-		--historical-prediction-universe-mode $(or $(HISTORICAL_PREDICTION_UNIVERSE_MODE),exact) \
-		--historical-prediction-payload-mode $(or $(HISTORICAL_PREDICTION_PAYLOAD_MODE),model) \
-		--historical-prediction-tolerance-sec $(or $(HISTORICAL_PREDICTION_TOL_SEC),30.0) \
-		$(if $(HISTORICAL_PREDICTIONS_PATH_OVERRIDE),--historical-predictions-path-override $(HISTORICAL_PREDICTIONS_PATH_OVERRIDE),) \
-		--ftmo-enabled-override $(or $(FTMO_ENABLED_OVERRIDE),false) \
-		--requested-lot-size $(or $(LOT_SIZE),0.05) \
-		--enable-tick-batch $(or $(ENABLE_TICK_BATCH),true) \
-		--tick-batch-size $(or $(TICK_BATCH_SIZE),20) \
-		--selected-time-tolerance-sec $(or $(SELECTED_TIME_TOL_SEC),1.0) \
-		--selected-parity-mode $(or $(SELECTED_PARITY_MODE),strict) \
-		--enable-sequence-fallback $(or $(ENABLE_SEQUENCE_FALLBACK),false) \
-		--sequence-fallback-max-gap-sec $(or $(SEQUENCE_FALLBACK_MAX_GAP_SEC),21600) \
-		--reset-runtime-db $(or $(RESET_RUNTIME_DB),true) \
-		--record-raw-ticks $(or $(RECORD_RAW_TICKS),true) \
-		--time-tolerance-sec $(or $(TIME_TOL_SEC),1.0) \
-		--price-tolerance-pips $(or $(PRICE_TOL_PIPS),0.1) \
-		--out-summary-csv $(or $(OUT_SUMMARY_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_testclient_execution_parity_summary.csv) \
-		--out-checks-csv $(or $(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_testclient_execution_parity_checks.csv) \
-		--out-mismatches-csv $(or $(OUT_MISMATCHES_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_testclient_execution_parity_mismatches.csv) \
-		--report-out $(or $(REPORT_OUT),docs/analysis/$(SYMBOL)_testclient_execution_parity_report.md) \
-		--local-summary-csv $(or $(LOCAL_SUMMARY_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_testclient_replay_summary.csv) \
-		--local-selected-mismatches-csv $(or $(LOCAL_SELECTED_MISMATCHES_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_testclient_selected_mismatches.csv) \
-		--stage12-summary-csv $(or $(STAGE12_SUMMARY_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_stage12_api_parity_summary.csv) \
-		--stage12-checks-csv $(or $(STAGE12_CHECKS_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_stage12_api_parity_checks.csv) \
-		--stage12-mismatches-csv $(or $(STAGE12_MISMATCHES_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_stage12_api_parity_mismatches.csv) \
-		--stage12-report-out $(or $(STAGE12_REPORT_OUT),docs/analysis/$(SYMBOL)_stage12_api_parity_report.md) \
-		--fail-on-gate $(or $(FAIL_ON_GATE),true) \
-		--require-selected-parity $(or $(REQUIRE_SELECTED_PARITY),true)
-
-dukascopy-testclient-parity:
-	$(MAKE) testclient-parity SOURCE=dukascopy TICK_ROOT=$(or $(TICK_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks) OUT_SUMMARY_CSV=$(or $(OUT_SUMMARY_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_dukascopy_testclient_execution_parity_summary.csv) OUT_CHECKS_CSV=$(or $(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_dukascopy_testclient_execution_parity_checks.csv) OUT_MISMATCHES_CSV=$(or $(OUT_MISMATCHES_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_dukascopy_testclient_execution_parity_mismatches.csv) REPORT_OUT=$(or $(REPORT_OUT),docs/analysis/$(SYMBOL)_dukascopy_testclient_execution_parity_report.md) LOCAL_SUMMARY_CSV=$(or $(LOCAL_SUMMARY_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_dukascopy_testclient_replay_summary.csv) LOCAL_SELECTED_MISMATCHES_CSV=$(or $(LOCAL_SELECTED_MISMATCHES_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_dukascopy_testclient_selected_mismatches.csv) MODELS_DIR=$(or $(MODELS_DIR),models/oco_dukascopy_candidate) HISTORY_DIR=$(or $(HISTORY_DIR),configs/research/governance/oco_history_dukascopy_candidate) HISTORICAL_PREDICTION_UNIVERSE_MODE=$(or $(HISTORICAL_PREDICTION_UNIVERSE_MODE),tolerant) HISTORICAL_PREDICTION_PAYLOAD_MODE=$(or $(HISTORICAL_PREDICTION_PAYLOAD_MODE),locked) HISTORICAL_PREDICTION_TOL_SEC=$(or $(HISTORICAL_PREDICTION_TOL_SEC),120.0) HISTORICAL_PREDICTIONS_PATH_OVERRIDE=$(or $(HISTORICAL_PREDICTIONS_PATH_OVERRIDE),$(REPO_PREDICTIONS_PARQUET)) SELECTED_PARITY_MODE=$(or $(SELECTED_PARITY_MODE),event_aligned) ENABLE_SEQUENCE_FALLBACK=$(or $(ENABLE_SEQUENCE_FALLBACK),true) SELECTED_TIME_TOL_SEC=$(or $(SELECTED_TIME_TOL_SEC),120.0) TIME_TOL_SEC=$(or $(TIME_TOL_SEC),120.0) SYMBOL=$(SYMBOL) RUNTIME_DB=$(RUNTIME_DB) EVENTS_JSON=$(EVENTS_JSON) REPO_PREDICTIONS_PARQUET=$(REPO_PREDICTIONS_PARQUET) REPO_DETAIL_CSV=$(REPO_DETAIL_CSV) REDUCED_STATE_SCHEDULE_CSV=$(REDUCED_STATE_SCHEDULE_CSV) START_TS=$(START_TS) END_TS=$(END_TS)
-
-histdata-testclient-parity:
-	$(MAKE) testclient-parity SOURCE=histdata TICK_ROOT=$(or $(TICK_ROOT),/Users/danielfisher/Desktop/tick) OUT_SUMMARY_CSV=$(or $(OUT_SUMMARY_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_histdata_testclient_execution_parity_summary.csv) OUT_CHECKS_CSV=$(or $(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_histdata_testclient_execution_parity_checks.csv) OUT_MISMATCHES_CSV=$(or $(OUT_MISMATCHES_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_histdata_testclient_execution_parity_mismatches.csv) REPORT_OUT=$(or $(REPORT_OUT),docs/analysis/$(SYMBOL)_histdata_testclient_execution_parity_report.md) LOCAL_SUMMARY_CSV=$(or $(LOCAL_SUMMARY_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_histdata_testclient_replay_summary.csv) LOCAL_SELECTED_MISMATCHES_CSV=$(or $(LOCAL_SELECTED_MISMATCHES_CSV),data/analysis/backtest_reconcile/$(SYMBOL)_histdata_testclient_selected_mismatches.csv) SYMBOL=$(SYMBOL) RUNTIME_DB=$(RUNTIME_DB) EVENTS_JSON=$(EVENTS_JSON) REPO_PREDICTIONS_PARQUET=$(REPO_PREDICTIONS_PARQUET) REPO_DETAIL_CSV=$(REPO_DETAIL_CSV) REDUCED_STATE_SCHEDULE_CSV=$(REDUCED_STATE_SCHEDULE_CSV) START_TS=$(START_TS) END_TS=$(END_TS)
-
-stage12-api-parity: testclient-parity
+stage12-api-parity:
 
 stage13-dukascopy-cert:
 	uv run python scripts/validate_stage13_dukascopy_testclient.py \
@@ -757,8 +504,6 @@ help:
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "check-legacy-drift" "Check repo for legacy/forbidden code drift"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "precommit-install" "Install pre-commit hooks"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "precommit-run" "Run pre-commit on all files"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "deploy-cbot" "Copy the Behemoth cBot source into the cTrader robot source tree"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "deploy-ctrader" "Copy both the Behemoth cBot and custom-data plugin into the cTrader source tree"
 	@printf "\n$(COLOR_SECTION)== Pipeline ==$(COLOR_RESET)\n"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "retrain-all" "Re-run ML pipeline + docs for all symbols (skip data download)"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "rebuild-all" "Full rebuild: data + ML + docs for all symbols (MONTHS=... required)"
@@ -768,12 +513,6 @@ help:
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "offset-robustness-study" "Run the offset tick-bar robustness study across selected symbols/offsets"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "dukascopy-source-audit" "Audit Dukascopy symbol/month completeness against the active universe and history locks"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "summarize-runtime-db-run" "Summarize runtime DB rows for one symbol/window"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "reconcile-ctrader-run" "Reconcile cTrader runtime signals against research predictions"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "export-ctrader-custom-data" "Export canonical Dukascopy/HistData parquet ticks into a cTrader custom-data package"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "ctrader-debug-up" "One-command Dukascopy-first debug session: export package + isolated DuckDB + FTMO-enabled API"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "ctrader-parity" "Validate canonical-feed execution parity from cTrader runtime DB + events"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "testclient-parity" "Replay canonical parquet via TestClient (no cTrader) and run strict parity gate"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "dukascopy-testclient-parity" "Replay Dukascopy parquet via TestClient as the Stage 13 parity harness"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "local-jforex-parity" "Run the local parquet-driven JForex surrogate against the shared Java strategy core"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "local-jforex-parity-ordinal" "Run local JForex surrogate in ordinal mode (all 6 symbols) for Stage 14 alignment verification"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "local-jforex-parity-spotlight" "Extract event-bar tick windows and run fast surrogate alignment check (seconds vs minutes)"
@@ -789,12 +528,6 @@ help:
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "observability-up" "Start Prometheus, Alertmanager, and Grafana for API + JForex monitoring"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "account-risk-monitoring-report" "Build broker-neutral account-risk monitoring outputs"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "reconcile-account-risk-reservations" "Reconcile broker-neutral account-risk reservations"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "histdata-ctrader-parity" "Legacy alias for cTrader parity against HistData ticks"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "histdata-testclient-parity" "Legacy alias for TestClient parity against HistData ticks"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "cbot-surrogate" "Replay canonical Dukascopy/HistData through the API/runtime stack with FTMO rules enabled"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "ctrader-debug-down" "Stop the active cTrader debug session and clear the active package pointer"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "ctrader-debug-status" "Show the active cTrader debug session, DB path, package path, and API state"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "ctrader-ab-parity-report" "Compare baseline-vs-custom cTrader runs and build A/B parity report"
 	@printf "\n$(COLOR_SECTION)== Docs ==$(COLOR_RESET)\n"
 	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "docs" "Serve docs locally"
 	@printf "  $(COLOR_DOC)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "docs-build" "Build docs"
