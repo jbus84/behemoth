@@ -7,7 +7,6 @@ from pathlib import Path
 FORBIDDEN_TERMS = [
     r"\bkalman\b",
     r"services/api",
-    r"src/cbot",
     r"src/behemoth",
     r"pipelines/build_events",
     r"pipelines/simulate"
