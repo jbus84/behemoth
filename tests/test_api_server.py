@@ -1268,7 +1268,7 @@ class TestPredictEndpoint:
         dummy_model = mock.MagicMock()
         dummy_model.predict_proba.return_value = np.array([[0.1, 0.85]])
         profile = server._ftmo_profile or server.load_ftmo_profile(
-            Path("configs/research/governance/ftmo/ftmo_rules.yaml"),
+            Path("configs/research/governance/account_risk/account_risk_rules.yaml"),
             "ftmo_10k_challenge_2step",
         )
         profile = replace(
@@ -1382,7 +1382,7 @@ class TestPredictEndpoint:
         dummy_model = mock.MagicMock()
         dummy_model.predict_proba.return_value = np.array([[0.1, 0.85]])
         profile = server._ftmo_profile or server.load_ftmo_profile(
-            Path("configs/research/governance/ftmo/ftmo_rules.yaml"),
+            Path("configs/research/governance/account_risk/account_risk_rules.yaml"),
             "ftmo_10k_challenge_2step",
         )
         profile = replace(

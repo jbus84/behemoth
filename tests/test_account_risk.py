@@ -12,7 +12,7 @@ from src.behemoth.risk.account import (
 
 
 def _rules_path() -> Path:
-    return Path("configs/research/governance/ftmo/ftmo_rules.yaml")
+    return Path("configs/research/governance/account_risk/account_risk_rules.yaml")
 
 
 def test_load_account_risk_profile_uses_legacy_ftmo_contract() -> None:
