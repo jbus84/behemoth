@@ -348,6 +348,12 @@ class AppConfig(BaseModel):
     debug_http_trace_path: str = Field(
         default_factory=lambda: str(os.getenv("BEHEMOTH_DEBUG_HTTP_TRACE_PATH", "")).strip()
     )
+    dukascopy_ticks_dir: str = Field(
+        default_factory=lambda: os.getenv(
+            "BEHEMOTH_DUKASCOPY_TICKS_DIR",
+            "/Users/danielfisher/Desktop/dukascopy_ticks",
+        )
+    )
 
 
 _config = AppConfig()

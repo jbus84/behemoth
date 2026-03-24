@@ -2132,3 +2132,10 @@ class TestPredictWarmup:
             assert r.status_code == 503
         finally:
             server._state = original
+
+
+class TestSeedAuditHistory:
+    def test_config_has_dukascopy_ticks_dir(self):
+        from src.behemoth.api import server
+        assert hasattr(server._config, "dukascopy_ticks_dir")
+        assert server._config.dukascopy_ticks_dir  # non-empty string
