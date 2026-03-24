@@ -73,14 +73,14 @@ CREATE TABLE IF NOT EXISTS trades (
     run_id VARCHAR
 );
 
-CREATE TABLE IF NOT EXISTS ftmo_account_snapshots (
+CREATE TABLE IF NOT EXISTS account_risk_snapshots (
     snapshot_ts TIMESTAMP WITH TIME ZONE,
     symbol VARCHAR,
     balance DOUBLE,
     equity DOUBLE
 );
 
-CREATE TABLE IF NOT EXISTS ftmo_risk_reservations (
+CREATE TABLE IF NOT EXISTS account_risk_reservations (
     reservation_id VARCHAR PRIMARY KEY,
     created_ts TIMESTAMP WITH TIME ZONE,
     updated_ts TIMESTAMP WITH TIME ZONE,
@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS ftmo_risk_reservations (
     source VARCHAR
 );
 
-CREATE TABLE IF NOT EXISTS ftmo_allocator_events (
+CREATE TABLE IF NOT EXISTS account_risk_allocator_events (
     event_ts TIMESTAMP WITH TIME ZONE,
     symbol VARCHAR,
     candidate_uid VARCHAR,
@@ -159,15 +159,15 @@ INSERT INTO audit_logs (
 """
 
 _FTMO_SNAPSHOT_INSERT_SQL = (
-    "INSERT INTO ftmo_account_snapshots VALUES (?, ?, ?, ?)"
+    "INSERT INTO account_risk_snapshots VALUES (?, ?, ?, ?)"
 )
 
 _FTMO_RISK_RES_INSERT_SQL = (
-    "INSERT INTO ftmo_risk_reservations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO account_risk_reservations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 )
 
 _FTMO_ALLOC_EVENT_INSERT_SQL = (
-    "INSERT INTO ftmo_allocator_events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO account_risk_allocator_events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 )
 
 _RAW_TICK_INSERT_SQL = (
@@ -499,7 +499,7 @@ class StateManager:
         res = self._con.execute("SELECT DISTINCT symbol FROM tick_bars").fetchall()
         return [r[0] for r in res]
 
-    def record_ftmo_account_snapshot(
+    def record_account_risk_snapshot(
         self,
         *,
         symbol: str,
@@ -507,7 +507,7 @@ class StateManager:
         equity: float,
         snapshot_ts: datetime,
     ) -> None:
-        """Persist an account-level FTMO snapshot emitted by cBot."""
+        """Persist an account-level account risk snapshot emitted by cBot."""
         ts = snapshot_ts
         ts = ts.replace(tzinfo=timezone.utc) if ts.tzinfo is None else ts.astimezone(timezone.utc)
         self._con.execute(
@@ -524,20 +524,20 @@ class StateManager:
         snapshot_ts: datetime,
     ) -> None:
         """Broker-neutral alias for account snapshot persistence."""
-        self.record_ftmo_account_snapshot(
+        self.record_account_risk_snapshot(
             symbol=symbol,
             balance=balance,
             equity=equity,
             snapshot_ts=snapshot_ts,
         )
 
-    def get_latest_ftmo_account_snapshot(self, symbol: str | None = None) -> dict | None:
+    def get_latest_account_risk_snapshot(self, symbol: str | None = None) -> dict | None:
         """Return the latest account snapshot, optionally filtered by symbol."""
         if symbol:
             row = self._con.execute(
                 """
                 SELECT snapshot_ts, symbol, balance, equity
-                FROM ftmo_account_snapshots
+                FROM account_risk_snapshots
                 WHERE symbol = ?
                 ORDER BY snapshot_ts DESC
                 LIMIT 1
@@ -548,7 +548,7 @@ class StateManager:
             row = self._con.execute(
                 """
                 SELECT snapshot_ts, symbol, balance, equity
-                FROM ftmo_account_snapshots
+                FROM account_risk_snapshots
                 ORDER BY snapshot_ts DESC
                 LIMIT 1
                 """
@@ -570,22 +570,22 @@ class StateManager:
 
     def get_latest_account_snapshot(self, symbol: str | None = None) -> dict | None:
         """Broker-neutral alias for latest account snapshot retrieval."""
-        return self.get_latest_ftmo_account_snapshot(symbol)
+        return self.get_latest_account_risk_snapshot(symbol)
 
-    def get_ftmo_snapshots_since(
+    def get_account_risk_snapshots_since(
         self,
         *,
         since_ts: datetime,
         symbol: str | None = None,
     ) -> list[dict]:
-        """Return ordered FTMO snapshots since a UTC timestamp."""
+        """Return ordered account risk snapshots since a UTC timestamp."""
         s = since_ts
         s = s.replace(tzinfo=timezone.utc) if s.tzinfo is None else s.astimezone(timezone.utc)
         if symbol:
             rows = self._con.execute(
                 """
                 SELECT snapshot_ts, symbol, balance, equity
-                FROM ftmo_account_snapshots
+                FROM account_risk_snapshots
                 WHERE snapshot_ts >= ? AND symbol = ?
                 ORDER BY snapshot_ts ASC
                 """,
@@ -595,7 +595,7 @@ class StateManager:
             rows = self._con.execute(
                 """
                 SELECT snapshot_ts, symbol, balance, equity
-                FROM ftmo_account_snapshots
+                FROM account_risk_snapshots
                 WHERE snapshot_ts >= ?
                 ORDER BY snapshot_ts ASC
                 """,
@@ -626,9 +626,9 @@ class StateManager:
         symbol: str | None = None,
     ) -> list[dict]:
         """Broker-neutral alias for historical account snapshots."""
-        return self.get_ftmo_snapshots_since(since_ts=since_ts, symbol=symbol)
+        return self.get_account_risk_snapshots_since(since_ts=since_ts, symbol=symbol)
 
-    def create_ftmo_risk_reservation(
+    def create_account_risk_reservation(
         self,
         *,
         symbol: str,
@@ -642,7 +642,7 @@ class StateManager:
         source: str = "predict_allocator",
         status: str = "PENDING",
     ) -> str:
-        """Create a FTMO risk reservation row and return reservation id."""
+        """Create an account risk reservation row and return reservation id."""
         import uuid
 
         rid = str(uuid.uuid4())
@@ -683,7 +683,7 @@ class StateManager:
         status: str = "PENDING",
     ) -> str:
         """Broker-neutral alias for creating risk reservations."""
-        return self.create_ftmo_risk_reservation(
+        return self.create_account_risk_reservation(
             symbol=symbol,
             candidate_uid=candidate_uid,
             reserved_loss_ccy=reserved_loss_ccy,
@@ -696,7 +696,7 @@ class StateManager:
             status=status,
         )
 
-    def promote_ftmo_risk_reservation(
+    def promote_account_risk_reservation(
         self,
         *,
         broker_pos_id: str,
@@ -710,7 +710,7 @@ class StateManager:
             row = self._con.execute(
                 """
                 SELECT reservation_id
-                FROM ftmo_risk_reservations
+                FROM account_risk_reservations
                 WHERE reservation_id = ? AND status = 'PENDING'
                 LIMIT 1
                 """,
@@ -720,7 +720,7 @@ class StateManager:
                 return None
             self._con.execute(
                 """
-                UPDATE ftmo_risk_reservations
+                UPDATE account_risk_reservations
                 SET status = 'OPEN', broker_pos_id = ?, updated_ts = ?
                 WHERE reservation_id = ?
                 """,
@@ -734,7 +734,7 @@ class StateManager:
         params: list = [candidate_uid]
         query = """
             SELECT reservation_id
-            FROM ftmo_risk_reservations
+            FROM account_risk_reservations
             WHERE candidate_uid = ? AND status = 'PENDING'
         """
         if symbol:
@@ -747,7 +747,7 @@ class StateManager:
         rid = str(row[0])
         self._con.execute(
             """
-            UPDATE ftmo_risk_reservations
+            UPDATE account_risk_reservations
             SET status = 'OPEN', broker_pos_id = ?, updated_ts = ?
             WHERE reservation_id = ?
             """,
@@ -764,14 +764,14 @@ class StateManager:
         symbol: str | None = None,
     ) -> str | None:
         """Broker-neutral alias for opening reservations after broker fill."""
-        return self.promote_ftmo_risk_reservation(
+        return self.promote_account_risk_reservation(
             broker_pos_id=broker_pos_id,
             reservation_id=reservation_id,
             candidate_uid=candidate_uid,
             symbol=symbol,
         )
 
-    def release_ftmo_risk_reservation(
+    def release_account_risk_reservation(
         self,
         *,
         reservation_id: str | None = None,
@@ -801,7 +801,7 @@ class StateManager:
             return 0
         where_sql = " AND ".join(where)
         before = self._con.execute(
-            f"SELECT COUNT(*) FROM ftmo_risk_reservations WHERE {where_sql}",
+            f"SELECT COUNT(*) FROM account_risk_reservations WHERE {where_sql}",
             params[1:],
         ).fetchone()
         before_count = int(before[0]) if before and before[0] is not None else 0
@@ -809,7 +809,7 @@ class StateManager:
             return 0
         self._con.execute(
             f"""
-            UPDATE ftmo_risk_reservations
+            UPDATE account_risk_reservations
             SET status = 'RELEASED', updated_ts = ?, source = source || '|{safe_reason}'
             WHERE {where_sql}
             """,
@@ -827,7 +827,7 @@ class StateManager:
         reason: str = "released",
     ) -> int:
         """Broker-neutral alias for releasing active reservations."""
-        return self.release_ftmo_risk_reservation(
+        return self.release_account_risk_reservation(
             reservation_id=reservation_id,
             broker_pos_id=broker_pos_id,
             candidate_uid=candidate_uid,
@@ -835,7 +835,7 @@ class StateManager:
             reason=reason,
         )
 
-    def expire_stale_ftmo_pending_reservations(self, *, max_age_seconds: int) -> int:
+    def expire_stale_account_risk_pending_reservations(self, *, max_age_seconds: int) -> int:
         """Expire pending reservations older than max_age_seconds."""
         now_utc = datetime.now(tz=timezone.utc)
         cutoff = now_utc.timestamp() - float(max_age_seconds)
@@ -843,7 +843,7 @@ class StateManager:
         before = self._con.execute(
             """
             SELECT COUNT(*)
-            FROM ftmo_risk_reservations
+            FROM account_risk_reservations
             WHERE status = 'PENDING' AND created_ts < ?
             """,
             [cutoff_ts],
@@ -853,7 +853,7 @@ class StateManager:
             return 0
         self._con.execute(
             """
-            UPDATE ftmo_risk_reservations
+            UPDATE account_risk_reservations
             SET status = 'EXPIRED', updated_ts = ?
             WHERE status = 'PENDING'
               AND created_ts < ?
@@ -864,16 +864,16 @@ class StateManager:
 
     def expire_stale_pending_reservations(self, *, max_age_seconds: int) -> int:
         """Broker-neutral alias for expiring stale pending reservations."""
-        return self.expire_stale_ftmo_pending_reservations(max_age_seconds=max_age_seconds)
+        return self.expire_stale_account_risk_pending_reservations(max_age_seconds=max_age_seconds)
 
-    def sum_active_ftmo_reserved_loss_ccy(
+    def sum_active_account_risk_reserved_loss_ccy(
         self,
         *,
         symbol: str | None = None,
         include_pending: bool = True,
         include_open: bool = True,
     ) -> float:
-        """Return total active reserved FTMO loss in account currency."""
+        """Return total active reserved account risk loss in account currency."""
         statuses: list[str] = []
         if include_pending:
             statuses.append("PENDING")
@@ -885,7 +885,7 @@ class StateManager:
         params: list[Any] = list(statuses)
         query = f"""
             SELECT COALESCE(SUM(reserved_loss_ccy), 0.0)
-            FROM ftmo_risk_reservations
+            FROM account_risk_reservations
             WHERE status IN ({placeholders})
         """
         if symbol:
@@ -904,20 +904,20 @@ class StateManager:
         include_open: bool = True,
     ) -> float:
         """Broker-neutral alias for active reserved loss totals."""
-        return self.sum_active_ftmo_reserved_loss_ccy(
+        return self.sum_active_account_risk_reserved_loss_ccy(
             symbol=symbol,
             include_pending=include_pending,
             include_open=include_open,
         )
 
-    def list_active_ftmo_risk_reservations(self, *, symbol: str | None = None) -> list[dict]:
-        """Return active PENDING/OPEN FTMO reservations."""
+    def list_active_account_risk_reservations(self, *, symbol: str | None = None) -> list[dict]:
+        """Return active PENDING/OPEN account risk reservations."""
         params: list[Any] = []
         query = """
             SELECT reservation_id, created_ts, updated_ts, symbol, candidate_uid, broker_pos_id,
                    status, reserved_loss_ccy, barrier_pips, cap_pips, cost_est_pips, volume_units,
                    side, source
-            FROM ftmo_risk_reservations
+            FROM account_risk_reservations
             WHERE status IN ('PENDING', 'OPEN')
         """
         if symbol:
@@ -955,9 +955,9 @@ class StateManager:
 
     def list_active_risk_reservations(self, *, symbol: str | None = None) -> list[dict]:
         """Broker-neutral alias for active risk reservation rows."""
-        return self.list_active_ftmo_risk_reservations(symbol=symbol)
+        return self.list_active_account_risk_reservations(symbol=symbol)
 
-    def log_ftmo_allocator_event(
+    def log_account_risk_allocator_event(
         self,
         *,
         symbol: str,
@@ -1005,7 +1005,7 @@ class StateManager:
         reservation_id: str | None,
     ) -> None:
         """Broker-neutral alias for allocator monitoring events."""
-        self.log_ftmo_allocator_event(
+        self.log_account_risk_allocator_event(
             symbol=symbol,
             candidate_uid=candidate_uid,
             status=status,
