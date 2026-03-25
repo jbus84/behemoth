@@ -413,7 +413,7 @@ class StateManager:
 
         audit_res = self._con.execute(
             "SELECT pred_prob, threshold, model_month FROM audit_logs "
-            "WHERE candidate_uid = ? AND symbol = ? ORDER BY close_ts DESC LIMIT 1",
+            "WHERE candidate_uid = ? AND symbol = ? ORDER BY event_ts DESC LIMIT 1",
             [candidate_uid, symbol.upper()],
         ).fetchone()
         if audit_res:
