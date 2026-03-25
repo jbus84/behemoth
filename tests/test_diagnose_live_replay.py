@@ -183,25 +183,27 @@ def test_score_bars_applies_threshold_schedule_per_row_date_and_blocks_expired(m
 
     bars = pl.DataFrame(
         {
-            "timestamp": pd.date_range("2026-03-01T00:00:00Z", periods=2, freq="100s", tz="UTC").to_list(),
-            "close_ts": pd.to_datetime(["2026-03-01T00:01:39Z", "2026-03-02T00:01:39Z"], utc=True).to_list(),
-            "open": [1.0, 1.1],
-            "high": [1.2, 1.3],
-            "low": [0.9, 1.0],
-            "close": [1.15, 1.25],
-            "spread": [0.0002, 0.0002],
-            "tick_volume": [100, 100],
-            "hl_first": [1, -1],
-            "hl_pos_frac": [0.4, 0.6],
+            "timestamp": pd.date_range("2026-03-01T00:00:00Z", periods=3, freq="100s", tz="UTC").to_list(),
+            "close_ts": pd.to_datetime(
+                ["2026-03-01T00:01:39Z", "2026-03-02T00:01:39Z", "2026-03-03T00:01:39Z"], utc=True
+            ).to_list(),
+            "open": [1.0, 1.1, 1.2],
+            "high": [1.2, 1.3, 1.4],
+            "low": [0.9, 1.0, 1.1],
+            "close": [1.15, 1.25, 1.35],
+            "spread": [0.0002, 0.0002, 0.0002],
+            "tick_volume": [100, 100, 100],
+            "hl_first": [1, -1, 1],
+            "hl_pos_frac": [0.4, 0.6, 0.5],
         }
     )
 
     def fake_features(*args, **kwargs):
-        return pd.DataFrame({"feat_1": [1.0, 2.0], "feat_2": [3.0, 4.0]})
+        return pd.DataFrame({"feat_1": [1.0, 2.0, 3.0], "feat_2": [3.0, 4.0, 5.0]})
 
     class DummyModel:
         def predict_proba(self, matrix):
-            return [[0.2, 0.58], [0.2, 0.57]]
+            return [[0.2, 0.58], [0.2, 0.57], [0.2, 0.70]]
 
     monkeypatch.setattr(module, "compute_feature_matrix_from_bars", fake_features)
 
@@ -214,14 +216,67 @@ def test_score_bars_applies_threshold_schedule_per_row_date_and_blocks_expired(m
             "threshold_exec": 0.55,
             "threshold_schedule": {"2026-03-01": 0.60},
             "rolling_threshold_days": 20,
+            "rolling_threshold_min_history": 2,
+            "execution_quantile": 0.5,
         },
         threshold_exec=0.55,
     )
 
-    assert results.height == 2
+    assert results.height == 3
     assert float(results[0, "threshold"]) == pytest.approx(0.60)
     assert float(results[1, "threshold"]) == pytest.approx(2.0)
+    assert float(results[2, "threshold"]) == pytest.approx(0.575)
     assert int(results[0, "selected"]) == 0
+    assert int(results[1, "selected"]) == 0
+    assert int(results[2, "selected"]) == 1
+
+
+def test_score_bars_uses_rolling_threshold_success_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    from scripts import diagnose_live_replay as module
+
+    bars = pl.DataFrame(
+        {
+            "timestamp": pd.date_range("2026-03-01T00:00:00Z", periods=3, freq="100s", tz="UTC").to_list(),
+            "close_ts": pd.to_datetime(
+                ["2026-03-01T00:01:39Z", "2026-03-02T00:01:39Z", "2026-03-03T00:01:39Z"], utc=True
+            ).to_list(),
+            "open": [1.0, 1.1, 1.2],
+            "high": [1.2, 1.3, 1.4],
+            "low": [0.9, 1.0, 1.1],
+            "close": [1.15, 1.25, 1.35],
+            "spread": [0.0002, 0.0002, 0.0002],
+            "tick_volume": [100, 100, 100],
+            "hl_first": [1, -1, 1],
+            "hl_pos_frac": [0.4, 0.6, 0.5],
+        }
+    )
+
+    def fake_features(*args, **kwargs):
+        return pd.DataFrame({"feat_1": [1.0, 2.0, 3.0], "feat_2": [3.0, 4.0, 5.0]})
+
+    class DummyModel:
+        def predict_proba(self, matrix):
+            return [[0.2, 0.58], [0.2, 0.57], [0.2, 0.70]]
+
+    monkeypatch.setattr(module, "compute_feature_matrix_from_bars", fake_features)
+
+    results = module._score_bars(
+        bars=bars,
+        symbol="EURUSD",
+        state={"state_id": "s1"},
+        model=DummyModel(),
+        thresholds={
+            "threshold_exec": 0.55,
+            "rolling_threshold_days": 20,
+            "rolling_threshold_min_history": 2,
+            "execution_quantile": 0.5,
+        },
+        threshold_exec=0.55,
+    )
+
+    assert results.height == 3
+    assert float(results[2, "threshold"]) == pytest.approx(0.575)
+    assert int(results[2, "selected"]) == 1
     assert int(results[1, "selected"]) == 0
 
 
@@ -271,6 +326,47 @@ def test_score_bars_applies_regime_gating(monkeypatch: pytest.MonkeyPatch) -> No
     assert bool(results[1, "regime_active"]) is True
     assert int(results[0, "selected"]) == 0
     assert int(results[1, "selected"]) == 1
+
+
+def test_score_bars_skips_non_100_tick_states(monkeypatch: pytest.MonkeyPatch) -> None:
+    from scripts import diagnose_live_replay as module
+
+    bars = pl.DataFrame(
+        {
+            "timestamp": pd.date_range("2026-03-01T00:00:00Z", periods=3, freq="100s", tz="UTC").to_list(),
+            "close_ts": pd.to_datetime(
+                ["2026-03-01T00:01:39Z", "2026-03-02T00:01:39Z", "2026-03-03T00:01:39Z"], utc=True
+            ).to_list(),
+            "open": [1.0, 1.1, 1.2],
+            "high": [1.2, 1.3, 1.4],
+            "low": [0.9, 1.0, 1.1],
+            "close": [1.15, 1.25, 1.35],
+            "spread": [0.0002, 0.0002, 0.0002],
+            "tick_volume": [100, 100, 100],
+            "hl_first": [1, -1, 1],
+            "hl_pos_frac": [0.4, 0.6, 0.5],
+        }
+    )
+
+    def fake_features(*args, **kwargs):
+        return pd.DataFrame({"feat_1": [1.0, 2.0, 3.0], "feat_2": [3.0, 4.0, 5.0]})
+
+    class DummyModel:
+        def predict_proba(self, matrix):
+            pytest.fail("non-100 bar_ticks states should not score")
+
+    monkeypatch.setattr(module, "compute_feature_matrix_from_bars", fake_features)
+
+    results = module._score_bars(
+        bars=bars,
+        symbol="EURUSD",
+        state={"state_id": "s1", "bar_ticks": 200},
+        model=DummyModel(),
+        thresholds={"threshold_exec": 0.55},
+        threshold_exec=0.55,
+    )
+
+    assert results.is_empty()
 
 
 def test_section_near_miss_orders_by_gap_ascending() -> None:

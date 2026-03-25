@@ -301,6 +301,31 @@ def _score_bars(
             schema={
                 "close_ts": pl.Datetime(time_zone="UTC"),
                 "state_id": pl.Utf8,
+                "candidate_uid": pl.Utf8,
+                "bar_ticks": pl.Int64,
+                "horizon": pl.Int64,
+                "barrier_pips": pl.Float64,
+                "regime_name": pl.Utf8,
+                "regime_active": pl.Boolean,
+                "pred_prob": pl.Float64,
+                "threshold": pl.Float64,
+                "selected": pl.Int64,
+                "gap": pl.Float64,
+            }
+        )
+
+    bar_ticks = int(state.get("bar_ticks", 100))
+    if bar_ticks != 100:
+        return pl.DataFrame(
+            schema={
+                "close_ts": pl.Datetime(time_zone="UTC"),
+                "state_id": pl.Utf8,
+                "candidate_uid": pl.Utf8,
+                "bar_ticks": pl.Int64,
+                "horizon": pl.Int64,
+                "barrier_pips": pl.Float64,
+                "regime_name": pl.Utf8,
+                "regime_active": pl.Boolean,
                 "pred_prob": pl.Float64,
                 "threshold": pl.Float64,
                 "selected": pl.Int64,
@@ -323,6 +348,12 @@ def _score_bars(
             schema={
                 "close_ts": pl.Datetime(time_zone="UTC"),
                 "state_id": pl.Utf8,
+                "candidate_uid": pl.Utf8,
+                "bar_ticks": pl.Int64,
+                "horizon": pl.Int64,
+                "barrier_pips": pl.Float64,
+                "regime_name": pl.Utf8,
+                "regime_active": pl.Boolean,
                 "pred_prob": pl.Float64,
                 "threshold": pl.Float64,
                 "selected": pl.Int64,
@@ -338,6 +369,12 @@ def _score_bars(
             schema={
                 "close_ts": pl.Datetime(time_zone="UTC"),
                 "state_id": pl.Utf8,
+                "candidate_uid": pl.Utf8,
+                "bar_ticks": pl.Int64,
+                "horizon": pl.Int64,
+                "barrier_pips": pl.Float64,
+                "regime_name": pl.Utf8,
+                "regime_active": pl.Boolean,
                 "pred_prob": pl.Float64,
                 "threshold": pl.Float64,
                 "selected": pl.Int64,
@@ -352,6 +389,8 @@ def _score_bars(
 
     threshold_schedule = thresholds.get("threshold_schedule", {}) or {}
     rolling_days = int(thresholds.get("rolling_threshold_days", 0) or 0)
+    rolling_min_history = max(1, int(thresholds.get("rolling_threshold_min_history", 0) or 0))
+    execution_quantile = float(thresholds.get("execution_quantile", 0.9))
     state_id = str(state.get("state_id", ""))
     cand_uid = _candidate_uid(symbol, state)
     regime_name = _candidate_regime_name({**state, "candidate_uid": cand_uid})
@@ -359,11 +398,23 @@ def _score_bars(
     valid_rows = valid_features.reset_index(drop=True)
     threshold_values: list[float] = []
     regime_active_values: list[bool] = []
+    history: list[tuple[pd.Timestamp, float]] = []
     for idx, ts in enumerate(close_ts):
         day = ts.strftime("%Y-%m-%d") if pd.notna(ts) else ""
         if day in threshold_schedule:
             threshold = float(threshold_schedule[day])
-        elif threshold_schedule or rolling_days > 0:
+        elif rolling_days > 0:
+            cutoff = ts - pd.Timedelta(days=max(1, rolling_days or 1)) if pd.notna(ts) else None
+            prior_probs = [
+                prob
+                for prev_ts, prob in history
+                if cutoff is not None and pd.notna(prev_ts) and prev_ts >= cutoff
+            ]
+            if len(prior_probs) >= rolling_min_history:
+                threshold = float(np.quantile(prior_probs, execution_quantile))
+            else:
+                threshold = 2.0
+        elif threshold_schedule:
             threshold = 2.0
         else:
             threshold = float(threshold_exec if threshold_exec is not None else thresholds.get("threshold_exec", 0.5))
@@ -381,6 +432,7 @@ def _score_bars(
                 )
             )
         )
+        history.append((ts, float(probs[idx])))
 
     threshold_arr = np.asarray(threshold_values, dtype=float)
     regime_arr = np.asarray(regime_active_values, dtype=bool)
@@ -535,7 +587,15 @@ def _load_ticks(paths: list[Path]) -> pl.DataFrame:
 
 
 def _build_report(results: pl.DataFrame) -> str:
+    return _build_report_with_skips(results, skipped_states=[])
+
+
+def _build_report_with_skips(results: pl.DataFrame, *, skipped_states: list[dict[str, Any]]) -> str:
     lines = ["# Live Replay Diagnostic Report", ""]
+    if skipped_states:
+        lines.append("## Skipped States")
+        lines.append(_markdown_table(pd.DataFrame(skipped_states)))
+        lines.append("")
     lines.extend(_section_score_distribution(results))
     lines.extend([""])
     lines.extend(_section_near_miss(results))
@@ -562,6 +622,7 @@ def main() -> int:
     out_path = Path(args.out)
 
     scored_parts: list[pl.DataFrame] = []
+    skipped_states: list[dict[str, Any]] = []
     for symbol in ACTIVE_SYMBOLS:
         tick_paths = _latest_tick_files(ticks_dir, symbol, int(args.lookback_months))
         if not tick_paths:
@@ -574,6 +635,16 @@ def main() -> int:
         thresholds, threshold_exec = _load_thresholds(symbol, str(models_dir), str(args.model_month))
         model = _load_model(symbol, str(models_dir), str(args.model_month))
         for state in states:
+            if int(state.get("bar_ticks", 100)) != 100:
+                skipped_states.append(
+                    {
+                        "symbol": symbol,
+                        "state_id": str(state.get("state_id", "")),
+                        "bar_ticks": int(state.get("bar_ticks", 0)),
+                        "reason": "replay script rebuilds 100-tick bars only",
+                    }
+                )
+                continue
             scored = _score_bars(
                 bars=bars,
                 symbol=symbol,
@@ -601,7 +672,7 @@ def main() -> int:
         )
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(_build_report(results), encoding="utf-8")
+    out_path.write_text(_build_report_with_skips(results, skipped_states=skipped_states), encoding="utf-8")
     return 0
 
 
