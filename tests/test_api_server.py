@@ -60,7 +60,7 @@ class TestMetricsEndpoint:
 
 
 class TestAccountRiskEndpoints:
-    def test_account_risk_limits_endpoint(self, client):
+    def test_account_limits_endpoint(self, client):
         r = client.get("/risk/account/limits")
         assert r.status_code == 200
         body = r.json()
