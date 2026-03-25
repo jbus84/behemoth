@@ -55,6 +55,23 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     run_id VARCHAR
 );
 
+CREATE TABLE IF NOT EXISTS predict_evaluations (
+    event_ts TIMESTAMP WITH TIME ZONE,
+    close_ts TIMESTAMP WITH TIME ZONE,
+    symbol VARCHAR,
+    candidate_uid VARCHAR,
+    pred_prob DOUBLE,
+    threshold DOUBLE,
+    preselected_exec INTEGER,
+    selected_exec INTEGER,
+    threshold_blocked BOOLEAN,
+    threshold_block_reason VARCHAR,
+    risk_blocked BOOLEAN,
+    risk_block_reason VARCHAR,
+    model_month VARCHAR,
+    run_id VARCHAR
+);
+
 CREATE TABLE IF NOT EXISTS trades (
     internal_trade_id VARCHAR PRIMARY KEY,
     broker_pos_id VARCHAR,
@@ -162,6 +179,27 @@ INSERT INTO audit_logs (
 ) VALUES (
     CURRENT_TIMESTAMP,
     ?, ?, ?, ?, ?, ?, ?, ?
+)
+"""
+
+_PREDICT_EVAL_INSERT_SQL = """
+INSERT INTO predict_evaluations (
+    event_ts,
+    close_ts,
+    symbol,
+    candidate_uid,
+    pred_prob,
+    threshold,
+    preselected_exec,
+    selected_exec,
+    threshold_blocked,
+    threshold_block_reason,
+    risk_blocked,
+    risk_block_reason,
+    model_month,
+    run_id
+) VALUES (
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 )
 """
 
@@ -389,6 +427,45 @@ class StateManager:
         if not events:
             return
         self._con.executemany(_AUDIT_INSERT_SQL, events)
+
+    def log_predict_evaluation(
+        self,
+        *,
+        event_ts: datetime,
+        close_ts: datetime | None,
+        symbol: str,
+        candidate_uid: str,
+        pred_prob: float,
+        threshold: float,
+        preselected_exec: int,
+        selected_exec: int,
+        threshold_blocked: bool,
+        threshold_block_reason: str | None,
+        risk_blocked: bool,
+        risk_block_reason: str | None,
+        model_month: str,
+        run_id: str | None,
+    ) -> None:
+        """Record a prediction evaluation snapshot regardless of gate outcome."""
+        self._con.execute(
+            _PREDICT_EVAL_INSERT_SQL,
+            [
+                event_ts,
+                close_ts,
+                symbol.upper(),
+                candidate_uid,
+                float(pred_prob),
+                float(threshold),
+                int(preselected_exec),
+                int(selected_exec),
+                bool(threshold_blocked),
+                threshold_block_reason,
+                bool(risk_blocked),
+                risk_block_reason,
+                model_month,
+                run_id,
+            ],
+        )
 
     def open_trade(
         self,
