@@ -204,13 +204,14 @@ def test_run_audit_writes_outputs(tmp_path: Path, monkeypatch):
     cfg = _build_fixture(tmp_path)
     monkeypatch.setattr(
         "scripts.audit_oco_pipeline_logical_issues._default_configs",
-        lambda: {"EURUSD": cfg},
+        lambda base_dir=None: {"EURUSD": cfg},
     )
     out_checks = tmp_path / "checks.csv"
     out_issues = tmp_path / "issues.csv"
     out_report = tmp_path / "report.md"
     checks, issues = run_audit(
         ["EURUSD"],
+        base_dir=tmp_path,
         out_checks_csv=out_checks,
         out_issues_csv=out_issues,
         report_out=out_report,

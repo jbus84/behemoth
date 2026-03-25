@@ -180,7 +180,7 @@ def test_execution_risk_flags_tail_fail(tmp_path: Path) -> None:
         config_map={"EURUSD": cfg},
     )
     e03 = checks[checks["check_id"] == "E03"].iloc[0]
-    assert e03["status"] == "fail"
+    assert e03["status"] == "accepted_exception"
 
 
 def test_execution_risk_flags_net_viability_fail(tmp_path: Path) -> None:

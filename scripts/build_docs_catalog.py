@@ -52,13 +52,6 @@ CORE_REPORTS = {
     "analysis/USDJPY_dukascopy_testclient_execution_parity_report.md",
     "analysis/USDJPY_histdata_testclient_execution_parity_report.md",
     "analysis/USDJPY_stage12_api_parity_report.md",
-    "analysis/audusd_offset_tickbar_robustness_report.md",
-    "analysis/eurusd_offset_tickbar_robustness_report.md",
-    "analysis/gbpusd_offset_tickbar_robustness_report.md",
-    "analysis/usdcad_offset_tickbar_robustness_report.md",
-    "analysis/usdchf_offset_tickbar_robustness_report.md",
-    "analysis/usdjpy_offset_tickbar_robustness_report.md",
-    "analysis/offset_tickbar_robustness_clarification.md",
 }
 
 GOVERNANCE_CORE_REPORTS = {
@@ -103,13 +96,6 @@ STAGE_INTEGRATED_MANUAL = {
     "analysis/USDJPY_dukascopy_testclient_execution_parity_report.md",
     "analysis/USDJPY_histdata_testclient_execution_parity_report.md",
     "analysis/USDJPY_stage12_api_parity_report.md",
-    "analysis/audusd_offset_tickbar_robustness_report.md",
-    "analysis/eurusd_offset_tickbar_robustness_report.md",
-    "analysis/gbpusd_offset_tickbar_robustness_report.md",
-    "analysis/usdcad_offset_tickbar_robustness_report.md",
-    "analysis/usdchf_offset_tickbar_robustness_report.md",
-    "analysis/usdjpy_offset_tickbar_robustness_report.md",
-    "analysis/offset_tickbar_robustness_clarification.md",
 }
 
 SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")

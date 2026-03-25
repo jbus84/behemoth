@@ -44,6 +44,8 @@ def _write_stage_docs(root: Path) -> None:
         10: "stage_10_known_risks_and_backlog.md",
         11: "stage_11_execution_monte_carlo.md",
         12: "stage_12_api_parity.md",
+        13: "stage_13_dukascopy_testclient_parity.md",
+        14: "stage_14_jforex_runtime_certification.md",
     }
     for i, n in names.items():
         txt = _stage_doc_text()
