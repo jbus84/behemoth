@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import time
 
 import pytest
 
@@ -15,11 +16,9 @@ def sm():
 
 
 def test_log_predict_evaluation_writes_expected_row(sm):
-    event_ts = datetime(2026, 3, 25, 12, 0, tzinfo=timezone.utc)
     close_ts = datetime(2026, 3, 25, 12, 5, tzinfo=timezone.utc)
 
     sm.log_predict_evaluation(
-        event_ts=event_ts,
         close_ts=close_ts,
         symbol="eurusd",
         candidate_uid="cand-001",
@@ -44,7 +43,7 @@ def test_log_predict_evaluation_writes_expected_row(sm):
         """
     ).fetchone()
 
-    assert row[0] == event_ts
+    assert row[0] is not None
     assert row[1] == close_ts
     assert row[2] == "EURUSD"
     assert row[3] == "cand-001"
@@ -62,7 +61,6 @@ def test_log_predict_evaluation_writes_expected_row(sm):
 
 def test_log_predict_evaluation_does_not_touch_audit_logs(sm):
     sm.log_predict_evaluation(
-        event_ts=datetime(2026, 3, 25, 12, 0, tzinfo=timezone.utc),
         close_ts=None,
         symbol="GBPUSD",
         candidate_uid="cand-002",
@@ -87,26 +85,13 @@ def test_log_predict_evaluation_does_not_touch_audit_logs(sm):
 
 def test_log_predict_evaluation_orders_all_gate_outcomes_by_event_ts(sm):
     rows = [
-        (
-            datetime(2026, 3, 25, 12, 20, tzinfo=timezone.utc),
-            1,
-            1,
-        ),
-        (
-            datetime(2026, 3, 25, 12, 10, tzinfo=timezone.utc),
-            1,
-            0,
-        ),
-        (
-            datetime(2026, 3, 25, 12, 0, tzinfo=timezone.utc),
-            0,
-            0,
-        ),
+        (0, 0),
+        (1, 0),
+        (1, 1),
     ]
 
-    for event_ts, preselected_exec, selected_exec in rows:
+    for preselected_exec, selected_exec in rows:
         sm.log_predict_evaluation(
-            event_ts=event_ts,
             close_ts=None,
             symbol="USDJPY",
             candidate_uid=f"cand-{preselected_exec}{selected_exec}",
@@ -121,6 +106,7 @@ def test_log_predict_evaluation_orders_all_gate_outcomes_by_event_ts(sm):
             model_month="2026-03",
             run_id="run-456",
         )
+        time.sleep(0.001)
 
     got = sm._con.execute(
         """

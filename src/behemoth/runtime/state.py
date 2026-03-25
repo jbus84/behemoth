@@ -199,7 +199,8 @@ INSERT INTO predict_evaluations (
     model_month,
     run_id
 ) VALUES (
-    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+    CURRENT_TIMESTAMP,
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 )
 """
 
@@ -431,7 +432,6 @@ class StateManager:
     def log_predict_evaluation(
         self,
         *,
-        event_ts: datetime,
         close_ts: datetime | None,
         symbol: str,
         candidate_uid: str,
@@ -450,7 +450,6 @@ class StateManager:
         self._con.execute(
             _PREDICT_EVAL_INSERT_SQL,
             [
-                event_ts,
                 close_ts,
                 symbol.upper(),
                 candidate_uid,

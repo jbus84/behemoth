@@ -1056,7 +1056,7 @@ class TestPredictEndpoint:
             assert rows[0]["selected_exec"] == 0
             log_predict_evaluation.assert_called_once()
             kwargs = log_predict_evaluation.call_args.kwargs
-            assert kwargs["event_ts"] == datetime(2025, 1, 1, tzinfo=timezone.utc)
+            assert "event_ts" not in kwargs
             assert kwargs["close_ts"] == datetime(2025, 1, 1, tzinfo=timezone.utc)
             assert kwargs["symbol"] == "EURUSD"
             assert kwargs["candidate_uid"] == "oco|EURUSD|100|h24|cand-blocked"
