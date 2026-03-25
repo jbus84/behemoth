@@ -49,7 +49,7 @@ def _make_synthetic_db(path: Path) -> None:
         )
     """)
     con.execute("""
-        CREATE TABLE ftmo_allocator_events (
+        CREATE TABLE account_risk_allocator_events (
             event_ts TIMESTAMP WITH TIME ZONE,
             symbol VARCHAR,
             candidate_uid VARCHAR,

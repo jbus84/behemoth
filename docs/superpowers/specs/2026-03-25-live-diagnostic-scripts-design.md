@@ -232,6 +232,6 @@ tests/test_state_predict_evaluations.py
 ## Files Modified
 
 ```
-src/behemoth/runtime/state.py   — add predict_evaluations DDL, migration, log_predict_evaluation()
+src/behemoth/runtime/state.py   — add predict_evaluations DDL to _SCHEMA_SQL, add log_predict_evaluation()
 src/behemoth/api/server.py      — call log_predict_evaluation() for every candidate after all gates
 ```

@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import gc
 import logging
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -24,183 +25,319 @@ logging.basicConfig(
 logger = logging.getLogger("tick_vault_downloader")
 
 DEFAULT_SYMBOLS = ["EURUSD", "GBPUSD", "AUDUSD", "USDCAD", "USDJPY", "USDCHF"]
-START_DATE = datetime(2018, 1, 1, tzinfo=UTC)
+GLOBAL_START_DATE = datetime(2018, 1, 1, tzinfo=UTC)
 
 OUT_DIR = Path("/Users/danielfisher/Desktop/dukascopy_ticks")
-TICKVAULT_CACHE = "/Users/danielfisher/Desktop/tickvault_ticks"
+TICKVAULT_CACHE = Path("/Users/danielfisher/Desktop/tickvault_ticks")
+LOCK_FILE = TICKVAULT_CACHE / "download_tick_vault.lock"
 
 
-async def process_symbol(symbol: str, end_date: datetime):
-    logger.info(f"========== Processing {symbol} ==========")
+def is_fx_market_open(dt: datetime) -> bool:
+    """True if FX markets are open (simplified: Sunday 22:00 GMT to Friday 22:00 GMT)."""
+    # 0=Monday, 4=Friday, 5=Saturday, 6=Sunday
+    weekday = dt.weekday()
+    hour = dt.hour
     
-    # 1. Download missing chunks using tick_vault
-    logger.info(f"[{symbol}] Downloading raw data from {START_DATE.date()} to {end_date.date()}...")
-    await download_range(
-        symbol=symbol,
-        start=START_DATE,
-        end=end_date,
-        proxies=None,
-    )
+    if weekday == 4: # Friday
+        return hour < 22
+    if weekday == 5: # Saturday
+        return False
+    if weekday == 6: # Sunday
+        return hour >= 22
+    return True # Mon-Thu
 
-    # 2. Extract into Parquet format, month by month
-    logger.info(f"[{symbol}] Converting to canonical Parquet schemas...")
-    
-    # Set internal tick_vault logger to WARNING to avoid massive log aggregation in memory
-    logging.getLogger("tick_vault").setLevel(logging.WARNING)
-    
-    current = START_DATE.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    sym_dir = OUT_DIR / symbol
-    sym_dir.mkdir(parents=True, exist_ok=True)
-    
-    while current < end_date:
-        next_month = current + relativedelta(months=1)
-        month_end = min(next_month, end_date)
+
+def find_first_market_gap(path: Path) -> datetime:
+    """Scan a parquet file for gaps > 2 hours during market hours."""
+    import pandas as pd
+    try:
+        # Load timestamps
+        df = pd.read_parquet(path, columns=["timestamp"])
+        if df.empty:
+            return None
+            
+        # Compute diffs
+        df["diff"] = df["timestamp"].diff().dt.total_seconds()
         
+        # Threshold: 2 hours (7200 seconds)
+        gap_threshold = 7200
+        gaps = df[df["diff"] > gap_threshold].copy()
+        
+        if gaps.empty:
+            return None
+            
+        # Check if the gap started during market hours
+        # Note: df["diff"] at index i is the gap BETWEEN i-1 and i
+        # So the gap started at timestamp[i-1]
+        for idx in gaps.index:
+            gap_start = df.loc[idx - 1, "timestamp"].to_pydatetime()
+            if gap_start.tzinfo is None:
+                gap_start = gap_start.replace(tzinfo=UTC)
+            
+            if is_fx_market_open(gap_start):
+                return gap_start
+                
+        return None
+    except Exception:
+        return None
+
+
+def get_parquet_info(path: Path) -> tuple[datetime, float]:
+    """Read the last timestamp and mid price from a parquet file."""
+    import pandas as pd
+    try:
+        # We read the last row to get continuity
+        df = pd.read_parquet(path, columns=["timestamp", "bid", "ask"])
+        if df.empty:
+            return None, None
+        last_row = df.iloc[-1]
+        last_ts_pd = last_row["timestamp"]
+        # Ensure it's aware
+        if hasattr(last_ts_pd, "tzinfo") and last_ts_pd.tzinfo is None:
+            last_ts = last_ts_pd.tz_localize("UTC").to_pydatetime()
+        else:
+            last_ts = last_ts_pd.to_pydatetime()
+            
+        mid = (last_row["bid"] + last_row["ask"]) / 2.0
+        return last_ts, mid
+    except Exception:
+        return None, None
+
+
+def get_missing_months(symbol: str, out_dir: Path, end_date: datetime) -> list[tuple[datetime, datetime]]:
+    """Scan history and return a list of (start, end) ranges that need filling."""
+    ranges_to_fill = []
+    current = GLOBAL_START_DATE.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    sym_dir = out_dir / symbol
+    
+    now = datetime.now(tz=UTC)
+    current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    while current <= end_date:
         yyyymm = current.strftime("%Y%m")
         out_path = sym_dir / f"{symbol}_{yyyymm}_ticks.parquet"
+        month_end = min(current + relativedelta(months=1), end_date)
         
-        if out_path.exists():
-            logger.info(f"[{symbol}] {yyyymm} Parquet already exists, skipping.")
-            current = next_month
-            continue
+        if not out_path.exists():
+            ranges_to_fill.append((current, month_end))
+        else:
+            # 1. Check for historical gaps if it's not the current month
+            # (Current month always checked via the upsert logic below)
+            first_gap = find_first_market_gap(out_path)
+            if first_gap:
+                logger.info(f"[{symbol}] [{yyyymm}] Detected missing data hole starting at {first_gap}. Refilling...")
+                ranges_to_fill.append((first_gap, month_end))
+            elif current >= current_month_start:
+                # 2. Always check for new data in the current month
+                last_ts, _ = get_parquet_info(out_path)
+                if last_ts:
+                    fill_start = last_ts + relativedelta(microseconds=1000)
+                    if fill_start < end_date:
+                         ranges_to_fill.append((fill_start, month_end))
+            else:
+                # 3. Final Boundary Check: Does it end at the expected time?
+                last_ts, _ = get_parquet_info(out_path)
+                if last_ts:
+                    # If it's a weekday and ends before 23:50, it's suspicious
+                    if is_fx_market_open(last_ts) and last_ts.hour < 21:
+                         # Check if the next month exists. If so, and this one is short, it's a gap at the end.
+                         # We'll just refill from the end of the file.
+                         logger.info(f"[{symbol}] [{yyyymm}] File ends early ({last_ts.time()}) on a market day. Refilling...")
+                         ranges_to_fill.append((last_ts + relativedelta(microseconds=1000), month_end))
 
+        current += relativedelta(months=1)
+    
+    return ranges_to_fill
+
+
+async def process_symbol(symbol: str, end_date: datetime, out_dir: Path):
+    logger.info(f"========== Processing {symbol} ==========")
+    
+    fill_ranges = get_missing_months(symbol, out_dir, end_date)
+    
+    if not fill_ranges:
+        logger.info(f"[{symbol}] Data up to date. Skipping.")
+        return
+
+    logger.info(f"[{symbol}] Identified {len(fill_ranges)} ranges needing attention.")
+    
+    # Process each range: Download then Upsert
+    logger.info(f"[{symbol}] Starting incremental fill...")
+    
+    # Set internal tick_vault logger to WARNING
+    logging.getLogger("tick_vault").setLevel(logging.WARNING)
+    
+    sym_dir = out_dir / symbol
+    sym_dir.mkdir(parents=True, exist_ok=True)
+    
+    for fill_start, fill_end in fill_ranges:
+        month_start = fill_start.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        yyyymm = month_start.strftime("%Y%m")
+        out_path = sym_dir / f"{symbol}_{yyyymm}_ticks.parquet"
+        
+        # 1. Download specifically for this gap
+        logger.info(f"[{symbol}] [{yyyymm}] Downloading range [{fill_start} -> {fill_end}]...")
+        await download_range(
+            symbol=symbol,
+            start=fill_start,
+            end=fill_end,
+            proxies=None,
+        )
+
+        # 2. Read new ticks
         try:
-            logger.info(f"[{symbol}] Extracting data for {yyyymm}...")
-            df = read_tick_data(
+            new_df = read_tick_data(
                 symbol=symbol,
-                start=current,
-                end=month_end,
+                start=fill_start,
+                end=fill_end,
                 strict=False,
                 show_progress=False
             )
-        except ValueError as ve:
-            # Handle specific known exceptions (e.g. no data in db) cleanly
-            logger.warning(f"[{symbol}] Missing data or read failed for {yyyymm}: {ve}")
-            current = next_month
-            continue
         except Exception as e:
-            logger.warning(f"[{symbol}] Failed to read data for {yyyymm}: {e}")
-            current = next_month
+            logger.warning(f"[{symbol}] [{yyyymm}] Read failed: {e}")
             continue
             
-        if df is None or df.empty:
-            logger.info(f"[{symbol}] No data found for {yyyymm}.")
-            current = next_month
+        if new_df is None or new_df.empty:
+            logger.info(f"[{symbol}] [{yyyymm}] No new data found for this range.")
             continue
             
-        # Parse into canonical schema (Memory Optimized)
-        df.rename(columns={"time": "timestamp"}, inplace=True)
+        # 3. Merge with existing data if present
+        new_df.rename(columns={"time": "timestamp"}, inplace=True)
+        import pandas as pd
+        
+        if out_path.exists():
+            try:
+                existing_df = pd.read_parquet(out_path)
+                df = pd.concat([existing_df, new_df], ignore_index=True)
+                df.sort_values("timestamp", inplace=True)
+                df.drop_duplicates(subset=["timestamp"], inplace=True)
+            except Exception as e:
+                logger.warning(f"[{symbol}] [{yyyymm}] Failed to merge with existing data: {e}")
+                df = new_df
+        else:
+            df = new_df
+            
+        # 4. Recalculate features
         df["mid"] = (df["bid"] + df["ask"]) / 2.0
         df["spread"] = df["ask"] - df["bid"]
-        
         df["log_return"] = (
             np.log(df["mid"] / df["mid"].shift(1))
             .replace([np.inf, -np.inf], np.nan)
             .fillna(0.0)
         )
         
-        # Enforce canonical schema ordering and drop extra columns
-        # We use a selection list to avoid a full copy if possible
+        # Enforce canonical schema ordering
         canonical_cols = ["timestamp", "bid", "ask", "mid", "spread", "log_return"]
-        
         df[canonical_cols].to_parquet(out_path, index=False)
-        logger.info(f"[{symbol}] Saved {len(df)} ticks to {out_path.name}")
+        logger.info(f"[{symbol}] [{yyyymm}] Range filled. Final count: {len(df)}")
         
-        # Explicitly release memory
+        # Release memory
         del df
         gc.collect()
-        
-        current = next_month
 
 
 async def main():
     p = argparse.ArgumentParser(description="Quickly pull down tick data and save as canonical parquets.")
     p.add_argument("--symbols", type=str, default=",".join(DEFAULT_SYMBOLS), help="Comma-separated symbols")
     p.add_argument("--out-dir", type=str, default=str(OUT_DIR), help="Output directory for parquets")
-    p.add_argument("--cache-dir", type=str, default=TICKVAULT_CACHE, help="Base directory for tick_vault cache")
+    p.add_argument("--cache-dir", type=str, default=str(TICKVAULT_CACHE), help="Base directory for tick_vault cache")
+    p.add_argument("--force", action="store_true", help="Ignore lockfile and force run")
     args = p.parse_args()
 
     symbols = [s.strip().upper() for s in args.symbols.split(",")]
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Reload config and propagate to all modules
-    target_config_values = {
-        'base_directory': Path(args.cache_dir),
-        'worker_per_proxy': 5,
-        'fetch_max_retry_attempts': 10,
-        'fetch_base_retry_delay': 2.0,
-        'worker_queue_timeout': 7200.0,
-    }
-    
-    # 1. Update the official CONFIG object
-    tick_vault.config.reload_config(**target_config_values)
-    new_config_obj = tick_vault.config.CONFIG
-    
-    # 2. Force propagation to all modules that might have done `from .config import CONFIG`
-    for module_name, module in sys.modules.items():
-        if module_name.startswith("tick_vault") and hasattr(module, "CONFIG"):
-            logger.info(f"Propagating new CONFIG to {module_name}")
-            setattr(module, "CONFIG", new_config_obj)
+    cache_dir = Path(args.cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
 
-    # 3. Robust Monkey-patch for _fetch to treat Protocol Errors as retryable
-    original_fetch = tick_vault.fetcher._fetch
+    lock_file = cache_dir / "download_tick_vault.lock"
+    if lock_file.exists() and not args.force:
+        logger.error(f"Lockfile {lock_file} exists. Another instance might be running. Use --force to override.")
+        sys.exit(1)
+    
+    # Create lockfile
+    lock_file.touch()
+    try:
+        # Reload config and propagate to all modules
+        target_config_values = {
+            'base_directory': cache_dir,
+            'worker_per_proxy': 5,
+            'fetch_max_retry_attempts': 10,
+            'fetch_base_retry_delay': 2.0,
+            'worker_queue_timeout': 7200.0,
+        }
+        
+        tick_vault.config.reload_config(**target_config_values)
+        new_config_obj = tick_vault.config.CONFIG
+        
+        for module_name, module in sys.modules.items():
+            if module_name.startswith("tick_vault") and hasattr(module, "CONFIG"):
+                # logger.info(f"Propagating new CONFIG to {module_name}")
+                setattr(module, "CONFIG", new_config_obj)
 
-    async def patched_fetch(client, url):
-        from tick_vault.fetcher import FetchError
-        try:
-            return await original_fetch(client, url)
-        except RuntimeError as e:
-            if "Protocol error" in str(e):
-                msg = f"!!! INTERCEPTED PROTOCOL ERROR for {url} !!! Mapping to RetryableError for internal retry loop."
-                print(msg) 
-                logger.warning(msg)
-                raise RetryableError(str(e)) from e
-            
-            # tick_vault bug: _fetch has a bare 'except Exception as e:' that catches its own 
-            # FetchError subclasses (like RetryableError from 503s) and wraps them in RuntimeError.
-            if e.__cause__ and isinstance(e.__cause__, FetchError):
-                msg = f"!!! UNWRAPPED {type(e.__cause__).__name__} BUG for {url} !!! Restoring original error for retry loop."
-                print(msg)
-                logger.warning(msg)
-                raise e.__cause__
-                
-            raise
+        # Monkey-patch for _fetch to treat Protocol Errors as retryable
+        original_fetch = tick_vault.fetcher._fetch
 
-    tick_vault.fetcher._fetch = patched_fetch
-    
-    # Ensure any module that might have imported _fetch specifically also gets the patch
-    for module_name, module in sys.modules.items():
-        if module_name.startswith("tick_vault") and hasattr(module, "_fetch"):
-            if getattr(module, "_fetch") == original_fetch:
-                logger.info(f"Patching _fetch reference in {module_name}")
-                setattr(module, "_fetch", patched_fetch)
-    
-    # 4. Patch AsyncClient for timeout and resilience
-    class PatchedAsyncClient(httpx.AsyncClient):
-        def __init__(self, *args, **kwargs):
-            kwargs.setdefault('timeout', httpx.Timeout(30.0, connect=10.0, read=30.0))
-            kwargs.setdefault('follow_redirects', True)
-            super().__init__(*args, **kwargs)
-
-    tick_vault.download_worker.AsyncClient = PatchedAsyncClient
-    
-    end_date = datetime.now(tz=UTC)
-    
-    for symbol in symbols:
-        while True:
+        async def patched_fetch(client, url):
+            from tick_vault.fetcher import FetchError
             try:
-                await process_symbol(symbol, end_date)
-                break
-            except KeyboardInterrupt:
-                logger.info("Download stopped by user.")
-                return
-            except Exception as e:
-                wait_time = 120
-                logger.error(f"[{symbol}] Top-level process failed: {e}. Retrying in {wait_time}s...")
-                await asyncio.sleep(wait_time)
+                return await original_fetch(client, url)
+            except RuntimeError as e:
+                if "Protocol error" in str(e):
+                    logger.warning(f"!!! INTERCEPTED PROTOCOL ERROR for {url} !!! Mapping to RetryableError.")
+                    raise RetryableError(str(e)) from e
+                
+                if e.__cause__ and isinstance(e.__cause__, FetchError):
+                    raise e.__cause__
+                raise
 
-    logger.info("All symbols processed successfully!")
+        tick_vault.fetcher._fetch = patched_fetch
+        for module_name, module in sys.modules.items():
+            if module_name.startswith("tick_vault") and hasattr(module, "_fetch"):
+                if getattr(module, "_fetch") == original_fetch:
+                    setattr(module, "_fetch", patched_fetch)
+        
+        # Patch AsyncClient
+        class PatchedAsyncClient(httpx.AsyncClient):
+            def __init__(self, *args, **kwargs):
+                kwargs.setdefault('timeout', httpx.Timeout(30.0, connect=10.0, read=30.0))
+                kwargs.setdefault('follow_redirects', True)
+                super().__init__(*args, **kwargs)
+
+        tick_vault.download_worker.AsyncClient = PatchedAsyncClient
+        
+        end_date = datetime.now(tz=UTC)
+        
+        for symbol in symbols:
+            retries = 3
+            while retries > 0:
+                try:
+                    await process_symbol(symbol, end_date, out_dir)
+                    break
+                except KeyboardInterrupt:
+                    logger.info("Download stopped by user.")
+                    return
+                except Exception as e:
+                    retries -= 1
+                    wait_time = 300
+                    logger.error(f"[{symbol}] Top-level process failed: {e}. Retries left: {retries}. Waiting {wait_time}s...")
+                    if retries > 0:
+                        await asyncio.sleep(wait_time)
+                    else:
+                        logger.error(f"[{symbol}] Max retries reached. Skipping symbol.")
+
+        logger.info("All symbols processed successfully!")
+    finally:
+        # Remove lockfile
+        if lock_file.exists():
+            lock_file.unlink()
+
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Program interrupted.")
 
 
 if __name__ == "__main__":

@@ -30,7 +30,7 @@ def test_account_risk_limits_expose_block_reason() -> None:
         day_start_balance=10000.0,
     )
     assert out["allow_trading"] is False
-    assert out["block_reason"] == "FTMO_DAILY_LOSS_BUFFER_BREACH"
+    assert out["block_reason"] == "ACCOUNT_RISK_DAILY_LOSS_BUFFER_BREACH"
 
 
 def test_trade_risk_guard_preserves_cost_gate_behavior() -> None:

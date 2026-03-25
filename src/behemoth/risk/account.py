@@ -168,7 +168,7 @@ def evaluate_account_risk_limits(
     )
     if not snapshot_available:
         reason = (
-            "FTMO_ACCOUNT_SNAPSHOT_MISSING"
+            "ACCOUNT_RISK_SNAPSHOT_MISSING"
             if profile.cost_gate.require_account_snapshot
             else None
         )
@@ -198,13 +198,13 @@ def evaluate_account_risk_limits(
 
     reason: str | None = None
     if max_loss_used >= profile.max_loss_limit:
-        reason = "FTMO_MAX_LOSS_LIMIT_BREACH"
+        reason = "ACCOUNT_RISK_MAX_LOSS_LIMIT_BREACH"
     elif daily_loss_used >= profile.daily_loss_limit:
-        reason = "FTMO_DAILY_LOSS_LIMIT_BREACH"
+        reason = "ACCOUNT_RISK_DAILY_LOSS_LIMIT_BREACH"
     elif max_loss_used >= max_loss_limit_internal:
-        reason = "FTMO_MAX_LOSS_BUFFER_BREACH"
+        reason = "ACCOUNT_RISK_MAX_LOSS_BUFFER_BREACH"
     elif daily_loss_used >= daily_loss_limit_internal:
-        reason = "FTMO_DAILY_LOSS_BUFFER_BREACH"
+        reason = "ACCOUNT_RISK_DAILY_LOSS_BUFFER_BREACH"
 
     return {
         "snapshot_available": True,
@@ -236,8 +236,8 @@ def evaluate_trade_guard(
     if not bool(account_eval.get("allow_trading", True)):
         return {
             "allow_trade": False,
-            "block_reason": str(account_eval.get("block_reason") or "FTMO_ACCOUNT_BLOCKED"),
-            "hard_block_reason": str(account_eval.get("block_reason") or "FTMO_ACCOUNT_BLOCKED"),
+            "block_reason": str(account_eval.get("block_reason") or "ACCOUNT_RISK_BLOCKED"),
+            "hard_block_reason": str(account_eval.get("block_reason") or "ACCOUNT_RISK_BLOCKED"),
             "would_block_under_trade_cost_gate": False,
             "trade_cost_gate_block_reason": None,
             "trade_cost_gate_mode": profile.cost_gate.trade_cost_gate_mode,
@@ -258,9 +258,9 @@ def evaluate_trade_guard(
     cost_ratio = cost_total / b
     gate_reason: str | None = None
     if net_margin <= 0.0:
-        gate_reason = "FTMO_COST_VIABILITY_FAIL"
+        gate_reason = "ACCOUNT_RISK_COST_VIABILITY_FAIL"
     elif cost_ratio > profile.cost_gate.max_cost_to_barrier_ratio:
-        gate_reason = "FTMO_COST_RATIO_BREACH"
+        gate_reason = "ACCOUNT_RISK_COST_RATIO_BREACH"
     mode = _normalize_trade_cost_gate_mode(profile.cost_gate.trade_cost_gate_mode)
     effective_reason = gate_reason if (gate_reason is not None and mode == "enforce") else None
 

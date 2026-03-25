@@ -116,30 +116,40 @@ def compute_features_from_bars(
 ) -> ModelFeatures | None:
     """Compute the 16-feature vector from a DataFrame of tick bars.
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Must contain columns: ``close_ts``, ``timestamp`` (or ``ts``),
-        ``open``, ``high``, ``low``, ``close``, ``spread``, ``tick_volume``,
-        ``hl_first``, ``hl_pos_frac``.  Rows must be sorted by time ascending.
-    symbol : str
-        FX pair name (used for pip size calculation).
-    bar_ticks : int
-        Number of ticks per bar (structural feature passed through).
-    horizon : int
-        OCO horizon parameter (structural feature passed through).
-    barrier_pips : float
-        OCO barrier in pips (structural feature passed through).
-    cfg : FeatureConfig
-        Rolling window configuration.
+    Returns the features for the LAST bar in the DataFrame.
+    """
+    matrix = compute_feature_matrix_from_bars(
+        df,
+        symbol=symbol,
+        bar_ticks=bar_ticks,
+        horizon=horizon,
+        barrier_pips=barrier_pips,
+        cfg=cfg,
+    )
+    if matrix is None or matrix.empty:
+        return None
 
-    Returns
-    -------
-    ModelFeatures | None
-        The 16-feature Pydantic model, or None if insufficient warmup.
+    # Extract last row into ModelFeatures
+    row = matrix.iloc[-1]
+    return ModelFeatures(**row.to_dict())
+
+
+def compute_feature_matrix_from_bars(
+    df: pd.DataFrame,
+    *,
+    symbol: str,
+    bar_ticks: int,
+    horizon: int,
+    barrier_pips: float,
+    cfg: FeatureConfig = FeatureConfig(),
+) -> pd.DataFrame | None:
+    """Compute the 16-feature matrix for all bars in the DataFrame.
+
+    Returns a DataFrame with one row per input bar. Rows with insufficient
+    warmup history will contain NaN values.
     """
     n = len(df)
-    if n < cfg.full_warmup_bars:
+    if n < 1:
         return None
 
     pip = pip_size(symbol)
@@ -149,10 +159,9 @@ def compute_features_from_bars(
     bar_gap_sec = (timestamp - timestamp.shift(1)).dt.total_seconds()
     is_weekend_gap = bar_gap_sec > FeatureConstants.WEEKEND_GAP_SEC
 
-    hour_utc = float(close_ts.iloc[-1].hour)
     durations = (close_ts - timestamp).dt.total_seconds().clip(lower=FeatureConstants.DURATION_MIN_SEC)
 
-    # ── Sub-components ──
+    # ── Sub-components (all vectorized pd.Series) ──
     tick_rate_z, spread_z, spread_pips = _compute_micro_features(df, pip, durations, cfg)
     vel_h1, ret_z, ret_abs_z = _compute_velocity_features(close, pip, is_weekend_gap, cfg)
     range_pips = (high - low) / pip
@@ -161,12 +170,35 @@ def compute_features_from_bars(
     )
     hl_first_m24, hl_pos_frac_m24 = _compute_structural_features(df)
 
-    # ── Final Build ──
-    return _build_model_features(
-        df=df,
-        feats=(cost_est, range_pips, vel_h1, ret_z, ret_abs_z, vel_cu, vel_abs_cu, spread_z, tick_rate_z, hl_first_m24, hl_pos_frac_m24),
-        context=(hour_utc, bar_ticks, horizon, barrier_pips)
-    )
+    # ── Assemble Feature Matrix ──
+    out = pd.DataFrame({
+        "cost_est_pips": cost_est,
+        "range_pips": range_pips,
+        "ret1_pips": vel_h1,
+        "ret_z": ret_z,
+        "ret_abs_z": ret_abs_z,
+        "vel_cost_units_h1": vel_cu,
+        "vel_abs_cost_units_h1": vel_abs_cu,
+        "spread_z": spread_z,
+        "tick_rate_z": tick_rate_z,
+        "hour_utc": close_ts.dt.hour.astype(float),
+        "hl_first": df["hl_first"].astype(float) if "hl_first" in df.columns else np.nan,
+        "hl_first_mean_24": hl_first_m24,
+        "hl_pos_frac_mean_24": hl_pos_frac_m24,
+        "bar_ticks": float(bar_ticks),
+        "horizon": float(horizon),
+        "barrier_pips": float(barrier_pips),
+    })
+
+    # Mask rows with insufficient warmup (n < cfg.full_warmup_bars)
+    # We keep the rows but they will have NaNs from the rolling operations anyway.
+    # However, to maintain strict parity with compute_features_from_bars,
+    # we return None if the *total* length is too small.
+    if n < cfg.full_warmup_bars:
+        return out.iloc[0:0] # Return empty df with correct columns
+
+    # Match legacy _safe() behavior: coerce NaNs/Infs to 0.0
+    return out.replace([np.inf, -np.inf], np.nan).fillna(0.0)
 
 
 def compute_regime_quantiles_from_bars(
