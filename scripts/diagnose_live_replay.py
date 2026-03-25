@@ -53,12 +53,14 @@ def _parse_month_token(path: Path, symbol: str) -> str | None:
 
 def _tick_price_frame(ticks: pl.DataFrame) -> pl.DataFrame:
     cols = set(ticks.columns)
-    if "mid" in cols:
+    if "bid" in cols:
+        price = pl.col("bid").cast(pl.Float64)
+    elif "mid" in cols:
         price = pl.col("mid").cast(pl.Float64)
     elif "close" in cols:
         price = pl.col("close").cast(pl.Float64)
     else:
-        price = pl.col("bid").cast(pl.Float64)
+        raise ValueError("ticks frame must include bid, mid, or close price columns")
 
     if "spread" in cols:
         spread = pl.col("spread").cast(pl.Float64)
@@ -242,19 +244,45 @@ def _score_bars(
             }
         )
 
-    feature_cols = [c for c in feats.columns if c not in {"close_ts"}]
-    matrix = feats[feature_cols].to_numpy(dtype=float)
+    features_df = feats.copy()
+    valid_mask = features_df.notna().all(axis=1)
+    valid_features = features_df.loc[valid_mask].copy()
+    if valid_features.empty:
+        return pl.DataFrame(
+            schema={
+                "close_ts": pl.Datetime(time_zone="UTC"),
+                "state_id": pl.Utf8,
+                "pred_prob": pl.Float64,
+                "threshold": pl.Float64,
+                "selected": pl.Int64,
+                "gap": pl.Float64,
+            }
+        )
+
+    feature_cols = [c for c in valid_features.columns if c not in {"close_ts"}]
+    matrix = valid_features[feature_cols].to_numpy(dtype=float)
     probs = np.asarray(model.predict_proba(matrix))[:, 1].astype(float)
-    threshold = float(threshold_exec if threshold_exec is not None else thresholds.get("threshold_exec", 0.5))
-    selected = (probs >= threshold).astype(int)
+
+    threshold_schedule = thresholds.get("threshold_schedule", {}) or {}
+    state_id = str(state.get("state_id", ""))
+    close_ts = pd.to_datetime(bars.to_pandas().loc[valid_mask, "close_ts"], utc=True, errors="coerce")
+    threshold_values: list[float] = []
+    for ts in close_ts:
+        day = ts.strftime("%Y-%m-%d") if pd.notna(ts) else ""
+        if day in threshold_schedule:
+            threshold_values.append(float(threshold_schedule[day]))
+        else:
+            threshold_values.append(float(threshold_exec if threshold_exec is not None else thresholds.get("threshold_exec", 0.5)))
+    threshold_arr = np.asarray(threshold_values, dtype=float)
+    selected = (probs >= threshold_arr).astype(int)
     out = pd.DataFrame(
         {
-            "close_ts": pd.to_datetime(bars.to_pandas()["close_ts"], utc=True, errors="coerce"),
-            "state_id": str(state.get("state_id", "")),
+            "close_ts": close_ts,
+            "state_id": state_id,
             "pred_prob": probs,
-            "threshold": threshold,
+            "threshold": threshold_arr,
             "selected": selected,
-            "gap": probs - threshold,
+            "gap": probs - threshold_arr,
         }
     )
     return pl.from_pandas(out)
