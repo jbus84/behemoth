@@ -59,7 +59,7 @@ class TestMetricsEndpoint:
         assert "behemoth_" in r.text
 
 
-class TestFtmoRiskEndpoints:
+class TestAccountRiskEndpoints:
     def test_account_risk_limits_endpoint(self, client):
         r = client.get("/risk/account/limits")
         assert r.status_code == 200
@@ -95,8 +95,8 @@ class TestFtmoRiskEndpoints:
         assert release.status_code == 200
         assert "released_count" in release.json()
 
-    def test_ftmo_limits_endpoint(self, client):
-        r = client.get("/risk/ftmo/limits")
+    def test_account_risk_limits_endpoint(self, client):
+        r = client.get("/risk/account_risk/limits")
         assert r.status_code == 200
         body = r.json()
         assert "enabled" in body
@@ -105,9 +105,9 @@ class TestFtmoRiskEndpoints:
             assert body["daily_loss_limit_hard"] is not None
             assert body["max_loss_limit_hard"] is not None
 
-    def test_ftmo_snapshot_and_status(self, client):
+    def test_account_risk_snapshot_and_status(self, client):
         r = client.post(
-            "/risk/ftmo/snapshot",
+            "/risk/account_risk/snapshot",
             json={
                 "symbol": "EURUSD",
                 "balance": 10000.0,
@@ -116,19 +116,19 @@ class TestFtmoRiskEndpoints:
             },
         )
         assert r.status_code == 201
-        status = client.get("/risk/ftmo/status?symbol=EURUSD")
+        status = client.get("/risk/account_risk/status?symbol=EURUSD")
         assert status.status_code == 200
         body = status.json()
         assert "allow_trading" in body
         assert body["snapshot_available"] in (True, False)
 
-    def test_ftmo_reservations_status_and_release(self, client):
-        status = client.get("/risk/ftmo/reservations/status?symbol=EURUSD")
+    def test_account_risk_reservations_status_and_release(self, client):
+        status = client.get("/risk/account_risk/reservations/status?symbol=EURUSD")
         assert status.status_code == 200
         body = status.json()
         assert "active_count" in body
         release = client.post(
-            "/risk/ftmo/reservations/release",
+            "/risk/account_risk/reservations/release",
             json={"candidate_uid": "missing_candidate_uid"},
         )
         assert release.status_code == 200
@@ -654,7 +654,7 @@ class TestPredictEndpoint:
     def test_predict_requires_size(self, client):
         r = client.post(
             "/predict",
-            json={"symbol": "EURUSD", "ftmo_enabled_override": True},
+            json={"symbol": "EURUSD", "account_risk_enabled_override": True},
         )
         assert r.status_code == 422
 
@@ -665,7 +665,7 @@ class TestPredictEndpoint:
         )
         assert r.status_code == 422
         detail = str(r.json().get("detail", "")).lower()
-        assert "risk_enabled_override" in detail or "ftmo_enabled_override" in detail
+        assert "risk_enabled_override" in detail or "account_risk_enabled_override" in detail
 
     def test_predict_request_accepts_canonical_risk_override(self):
         from src.behemoth.api.server import PredictRequest
@@ -686,7 +686,7 @@ class TestPredictEndpoint:
         r = client.post("/predict", json={
             "symbol": "EURUSD",
             "requested_volume_units": 10000,
-            "ftmo_enabled_override": True,
+            "account_risk_enabled_override": True,
         })
         assert r.status_code in (200, 422, 503)
         if r.status_code == 200:
@@ -706,7 +706,7 @@ class TestPredictEndpoint:
                 json={
                     "symbol": "EURUSD",
                     "requested_volume_units": 10000,
-                    "ftmo_enabled_override": True,
+                    "account_risk_enabled_override": True,
                 },
             )
             assert r.status_code == 503
@@ -725,7 +725,7 @@ class TestPredictEndpoint:
                 json={
                     "symbol": "EURUSD",
                     "requested_volume_units": 10000,
-                    "ftmo_enabled_override": True,
+                    "account_risk_enabled_override": True,
                 },
             )
             assert r.status_code == 503
@@ -754,7 +754,7 @@ class TestPredictEndpoint:
                 json={
                     "symbol": "EURUSD",
                     "requested_volume_units": 10000,
-                    "ftmo_enabled_override": True,
+                    "account_risk_enabled_override": True,
                 },
             )
             assert r.status_code == 422
@@ -803,7 +803,7 @@ class TestPredictEndpoint:
                     json={
                         "symbol": "EURUSD",
                         "requested_volume_units": 10000,
-                        "ftmo_enabled_override": True,
+                        "account_risk_enabled_override": True,
                         "completed_bar_ticks": [100],
                         "run_id": "predict_trace_case",
                     },
@@ -863,7 +863,7 @@ class TestPredictEndpoint:
                 json={
                     "symbol": "EURUSD",
                     "requested_volume_units": 10000,
-                    "ftmo_enabled_override": True,
+                    "account_risk_enabled_override": True,
                 },
             )
             assert r.status_code == 503
@@ -904,7 +904,7 @@ class TestPredictEndpoint:
                 json={
                     "symbol": "EURUSD",
                     "requested_volume_units": 10000,
-                    "ftmo_enabled_override": True,
+                    "account_risk_enabled_override": True,
                 },
             )
             assert r.status_code == 422
@@ -952,7 +952,7 @@ class TestPredictEndpoint:
             mock.patch.object(server._state, "get_latest_close_ts", return_value=datetime(2025, 1, 1, tzinfo=timezone.utc)),
         ):
             snap = client.post(
-                "/risk/ftmo/snapshot",
+                "/risk/account_risk/snapshot",
                 json={
                     "symbol": "EURUSD",
                     "balance": 10000.0,
@@ -966,7 +966,7 @@ class TestPredictEndpoint:
                 json={
                     "symbol": "EURUSD",
                     "requested_volume_units": 10000,
-                    "ftmo_enabled_override": True,
+                    "account_risk_enabled_override": True,
                 },
             )
             assert r.status_code == 200
@@ -976,9 +976,9 @@ class TestPredictEndpoint:
             assert results[0]["pred_prob"] == 0.85
             assert results[0]["selected_exec"] == 1
             assert "risk_blocked" in results[0]
-            assert results[0]["risk_metrics_snapshot"]["ftmo_enabled_effective"] is True
-            assert results[0]["risk_metrics_snapshot"]["ftmo_enabled_override"] is True
-            assert results[0]["risk_metrics_snapshot"]["ftmo_mode_source"] == "request_override"
+            assert results[0]["risk_metrics_snapshot"]["account_risk_enabled_effective"] is True
+            assert results[0]["risk_metrics_snapshot"]["account_risk_enabled_override"] is True
+            assert results[0]["risk_metrics_snapshot"]["account_risk_mode_source"] == "request_override"
 
     def test_predict_scopes_candidates_to_completed_bar_ticks(self, client):
         import unittest.mock as mock
@@ -1066,7 +1066,7 @@ class TestPredictEndpoint:
                 json={
                     "symbol": "EURUSD",
                     "requested_volume_units": 10000,
-                    "ftmo_enabled_override": False,
+                    "account_risk_enabled_override": False,
                     "completed_bar_ticks": [100],
                 },
             )
@@ -1144,14 +1144,14 @@ class TestPredictEndpoint:
                 json={
                     "symbol": "EURUSD",
                     "requested_volume_units": 10000,
-                    "ftmo_enabled_override": False,
+                    "account_risk_enabled_override": False,
                     "completed_bar_ticks": [100],
                 },
             )
             assert r.status_code == 200
             assert r.json() == []
 
-    def test_predict_override_false_disables_ftmo_guard_eval(self, client):
+    def test_predict_override_false_disables_account_risk_guard_eval(self, client):
         import unittest.mock as mock
         from datetime import datetime, timedelta, timezone
         from types import SimpleNamespace
@@ -1218,15 +1218,15 @@ class TestPredictEndpoint:
                 json={
                     "symbol": "EURUSD",
                     "requested_volume_units": 10000,
-                    "ftmo_enabled_override": False,
+                    "account_risk_enabled_override": False,
                 },
             )
             assert r.status_code == 200
             results = r.json()
             assert len(results) == 1
             assert results[0]["selected_exec"] == 1
-            assert results[0]["risk_metrics_snapshot"]["ftmo_enabled_effective"] is False
-            assert results[0]["risk_metrics_snapshot"]["ftmo_enabled_override"] is False
+            assert results[0]["risk_metrics_snapshot"]["account_risk_enabled_effective"] is False
+            assert results[0]["risk_metrics_snapshot"]["account_risk_enabled_override"] is False
 
     def test_predict_warn_trade_cost_gate_keeps_selection(self, client):
         import unittest.mock as mock
@@ -1267,7 +1267,7 @@ class TestPredictEndpoint:
 
         dummy_model = mock.MagicMock()
         dummy_model.predict_proba.return_value = np.array([[0.1, 0.85]])
-        profile = server._ftmo_profile or server.load_ftmo_profile(
+        profile = server._account_risk_profile or server.load_account_risk_profile(
             Path("configs/research/governance/account_risk/account_risk_rules.yaml"),
             "ftmo_10k_challenge_2step",
         )
@@ -1298,14 +1298,14 @@ class TestPredictEndpoint:
                 "get_latest_close_ts",
                 return_value=datetime(2025, 1, 1, tzinfo=timezone.utc),
             ),
-            mock.patch.object(server, "_ftmo_profile", profile),
+            mock.patch.object(server, "_account_risk_profile", profile),
             mock.patch.object(
                 server,
                 "evaluate_trade_guard",
                 return_value={
                     "allow_trade": True,
                     "block_reason": None,
-                    "trade_cost_gate_block_reason": "FTMO_COST_VIABILITY_FAIL",
+                    "trade_cost_gate_block_reason": "ACCOUNT_RISK_COST_VIABILITY_FAIL",
                     "trade_cost_gate_mode": "warn",
                     "would_block_under_trade_cost_gate": True,
                     "estimated_trade_cost_pips": 1.2,
@@ -1316,7 +1316,7 @@ class TestPredictEndpoint:
             ),
         ):
             snap = client.post(
-                "/risk/ftmo/snapshot",
+                "/risk/account_risk/snapshot",
                 json={
                     "symbol": "EURUSD",
                     "balance": 10000.0,
@@ -1330,7 +1330,7 @@ class TestPredictEndpoint:
                 json={
                     "symbol": "EURUSD",
                     "requested_volume_units": 10000,
-                    "ftmo_enabled_override": True,
+                    "account_risk_enabled_override": True,
                 },
             )
             assert r.status_code == 200
@@ -1339,7 +1339,7 @@ class TestPredictEndpoint:
             assert rows[0]["selected_exec"] == 1
             assert rows[0]["risk_blocked"] is False
             assert rows[0]["risk_metrics_snapshot"]["trade_cost_gate_mode"] == "warn"
-            assert rows[0]["risk_metrics_snapshot"]["trade_cost_gate_block_reason"] == "FTMO_COST_VIABILITY_FAIL"
+            assert rows[0]["risk_metrics_snapshot"]["trade_cost_gate_block_reason"] == "ACCOUNT_RISK_COST_VIABILITY_FAIL"
             assert rows[0]["risk_metrics_snapshot"]["would_block_under_trade_cost_gate"] is True
 
     def test_predict_enforce_trade_cost_gate_blocks_selection(self, client):
@@ -1381,7 +1381,7 @@ class TestPredictEndpoint:
 
         dummy_model = mock.MagicMock()
         dummy_model.predict_proba.return_value = np.array([[0.1, 0.85]])
-        profile = server._ftmo_profile or server.load_ftmo_profile(
+        profile = server._account_risk_profile or server.load_account_risk_profile(
             Path("configs/research/governance/account_risk/account_risk_rules.yaml"),
             "ftmo_10k_challenge_2step",
         )
@@ -1412,14 +1412,14 @@ class TestPredictEndpoint:
                 "get_latest_close_ts",
                 return_value=datetime(2025, 1, 1, tzinfo=timezone.utc),
             ),
-            mock.patch.object(server, "_ftmo_profile", profile),
+            mock.patch.object(server, "_account_risk_profile", profile),
             mock.patch.object(
                 server,
                 "evaluate_trade_guard",
                 return_value={
                     "allow_trade": False,
-                    "block_reason": "FTMO_COST_VIABILITY_FAIL",
-                    "trade_cost_gate_block_reason": "FTMO_COST_VIABILITY_FAIL",
+                    "block_reason": "ACCOUNT_RISK_COST_VIABILITY_FAIL",
+                    "trade_cost_gate_block_reason": "ACCOUNT_RISK_COST_VIABILITY_FAIL",
                     "trade_cost_gate_mode": "enforce",
                     "would_block_under_trade_cost_gate": True,
                     "estimated_trade_cost_pips": 1.2,
@@ -1430,7 +1430,7 @@ class TestPredictEndpoint:
             ),
         ):
             snap = client.post(
-                "/risk/ftmo/snapshot",
+                "/risk/account_risk/snapshot",
                 json={
                     "symbol": "EURUSD",
                     "balance": 10000.0,
@@ -1444,7 +1444,7 @@ class TestPredictEndpoint:
                 json={
                     "symbol": "EURUSD",
                     "requested_volume_units": 10000,
-                    "ftmo_enabled_override": True,
+                    "account_risk_enabled_override": True,
                 },
             )
             assert r.status_code == 200
@@ -1452,7 +1452,7 @@ class TestPredictEndpoint:
             assert len(rows) == 1
             assert rows[0]["selected_exec"] == 0
             assert rows[0]["risk_blocked"] is True
-            assert rows[0]["risk_block_reason"] == "FTMO_COST_VIABILITY_FAIL"
+            assert rows[0]["risk_block_reason"] == "ACCOUNT_RISK_COST_VIABILITY_FAIL"
 
     def test_predict_blocks_candidate_when_regime_inactive(self, client):
         import unittest.mock as mock
@@ -1517,7 +1517,7 @@ class TestPredictEndpoint:
             ),
         ):
             snap = client.post(
-                "/risk/ftmo/snapshot",
+                "/risk/account_risk/snapshot",
                 json={
                     "symbol": "EURUSD",
                     "balance": 10000.0,
@@ -1531,7 +1531,7 @@ class TestPredictEndpoint:
                 json={
                     "symbol": "EURUSD",
                     "requested_volume_units": 10000,
-                    "ftmo_enabled_override": True,
+                    "account_risk_enabled_override": True,
                 },
             )
             assert r.status_code == 200
@@ -1595,7 +1595,7 @@ class TestPredictEndpoint:
             mock.patch.object(server._state, "get_latest_close_ts", return_value=datetime(2025, 1, 1, tzinfo=timezone.utc)),
             mock.patch.object(
                 server,
-                "_resolve_ftmo_account_eval",
+                "_resolve_account_risk_eval",
                 return_value={
                     "enabled": True,
                     "profile_id": "ftmo_10k_challenge_2step",
@@ -1611,7 +1611,7 @@ class TestPredictEndpoint:
             ),
         ):
             snap = client.post(
-                "/risk/ftmo/snapshot",
+                "/risk/account_risk/snapshot",
                 json={
                     "symbol": "EURUSD",
                     "balance": 10000.0,
@@ -1625,13 +1625,13 @@ class TestPredictEndpoint:
                 json={
                     "symbol": "EURUSD",
                     "requested_volume_units": 10000,
-                    "ftmo_enabled_override": True,
+                    "account_risk_enabled_override": True,
                 },
             )
             assert r.status_code == 200
             rows = r.json()
             assert len(rows) == 2
-            blocked = [x for x in rows if x["risk_block_reason"] == "FTMO_RESERVED_BUDGET_EXCEEDED"]
+            blocked = [x for x in rows if x["risk_block_reason"] == "ACCOUNT_RISK_RESERVED_BUDGET_EXCEEDED"]
             admitted = [x for x in rows if x["selected_exec"] == 1]
             assert len(blocked) == 1
             assert len(admitted) == 1
@@ -1723,6 +1723,46 @@ class TestTradeEndpoints:
             assert client.get("/trades/active?symbol=E").status_code == 503
         finally:
             server._state = original_state
+
+    def test_open_trade_passes_reservation_id(self, client):
+        import unittest.mock as mock
+        from src.behemoth.api import server
+
+        with mock.patch.object(server._state, 'open_trade', return_value="trade-abc") as mock_open:
+            r = client.post("/trades/open", json={
+                "symbol": "EURUSD",
+                "candidate_uid": "test_cand",
+                "broker_pos_id": "456",
+                "side": "BUY",
+                "entry_price": 1.1000,
+                "entry_ts": "2025-01-01T00:00:00Z",
+                "horizon": 12,
+                "reservation_id": "res-xyz-999",
+            })
+            assert r.status_code == 200
+            call_kwargs = mock_open.call_args.kwargs
+            assert call_kwargs["reservation_id"] == "res-xyz-999"
+
+    def test_update_trade_passes_close_reason_and_commission(self, client):
+        import unittest.mock as mock
+        from src.behemoth.api import server
+
+        with mock.patch.object(server._state, 'update_trade') as mock_update:
+            r = client.post("/trades/update", json={
+                "symbol": "EURUSD",
+                "broker_pos_id": "456",
+                "status": "CLOSED",
+                "exit_price": 1.1050,
+                "exit_ts": "2025-01-01T02:00:00Z",
+                "pnl_pips": 50.0,
+                "close_reason": "HORIZON_COMPLETED",
+                "commission_ccy": -0.46,
+            })
+            assert r.status_code == 200
+            call_kwargs = mock_update.call_args.kwargs
+            assert call_kwargs["close_reason"] == "HORIZON_COMPLETED"
+            assert abs(call_kwargs["commission_ccy"] - (-0.46)) < 1e-9
+            assert call_kwargs["symbol"] == "EURUSD"
 
 
 class TestIngestionEndpoints:

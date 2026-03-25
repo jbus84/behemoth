@@ -213,13 +213,21 @@ class OcoPrediction(BaseModel):
         description="Threshold provenance for this row, e.g. 'rolling_days:schedule'",
     )
     model_month: str = Field(..., description="The YYYY-MM identifier of the model doing the inference")
+    threshold_blocked: bool = Field(
+        default=False,
+        description="True when a strict threshold policy (e.g. rolling gap) blocked an otherwise-selected execution row.",
+    )
+    threshold_block_reason: str | None = Field(
+        default=None,
+        description="Machine-readable threshold block reason code if threshold_blocked is true.",
+    )
     risk_blocked: bool = Field(
         default=False,
-        description="True when a FTMO guardrail blocked an otherwise-selected execution row.",
+        description="True when an account risk guardrail blocked an otherwise-selected execution row.",
     )
     risk_block_reason: str | None = Field(
         default=None,
-        description="Machine-readable FTMO block reason code if risk_blocked is true.",
+        description="Machine-readable account risk block reason code if risk_blocked is true.",
     )
     risk_metrics_snapshot: dict[str, Any] = Field(
         default_factory=dict,
@@ -227,7 +235,7 @@ class OcoPrediction(BaseModel):
     )
     risk_reserved: bool = Field(
         default=False,
-        description="True when the FTMO portfolio allocator reserved budget for this row.",
+        description="True when the account risk portfolio allocator reserved budget for this row.",
     )
     risk_reserved_amount_ccy: float | None = Field(
         default=None,
@@ -290,6 +298,8 @@ class TradeUpdateRequest(BaseModel):
     exit_ts: datetime | None = None
     pnl_pips: float | None = None
     run_id: str | None = None
+    close_reason: str | None = None
+    commission_ccy: float | None = None
 
 
 class AccountRiskSnapshotRequest(BaseModel):

@@ -27,13 +27,19 @@ from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, List, Optional
 
 from fastapi import FastAPI, HTTPException, Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 from pydantic import BaseModel, Field, model_validator
 
 from src.behemoth.api.dashboard import router as dashboard_router
+from src.behemoth.core.features import (
+    FeatureConfig,
+    compute_feature_matrix_from_bars,
+    compute_features_from_bars,
+    pip_size,
+)
 from src.behemoth.core.historical_governance_validation import (
     failed_checks,
     summarize_failures,
@@ -967,6 +973,8 @@ class _CandidateDecision:
     risk_block_reason: str | None
     risk_metrics_snapshot: dict[str, Any]
     trade_eval: dict[str, Any]
+    threshold_blocked: bool = False
+    threshold_block_reason: str | None = None
     risk_rank_score: float | None = None
     risk_reserved: bool = False
     risk_reserved_amount_ccy: float | None = None
@@ -2483,11 +2491,18 @@ def _build_predictions(
                         lookback_days=rolling_days,
                         min_history=min_history,
                     )
+                
+                # Strict Threshold Enforcement Policy:
+                # In live mode, we NEVER fall back to static thresholds if a schedule 
+                # or rolling history was intended but is unavailable.
+                is_live = _config.governance_mode == "live"
+                
                 if dynamic_thr is not None:
                     curr_threshold = dynamic_thr
                     curr_source = f"{threshold_mode}:rolling_dynamic"
                 elif rolling_days > 0:
-                    # rolling_days configured but insufficient audit_log history — block.
+                    # rolling_days configured but insufficient audit_log history.
+                    # ALWAYS block if history is missing and rolling is intended.
                     logger.warning(
                         "No valid threshold for %s %s: schedule expired %s, "
                         "insufficient audit_log history (rolling_days=%d, min_history=%d). "
@@ -2496,8 +2511,22 @@ def _build_predictions(
                     )
                     curr_threshold = 2.0  # ensures pred_prob (always ≤ 1.0) never qualifies
                     curr_source = f"{threshold_mode}:no_valid_threshold"
+                    threshold_blocked = True
+                    threshold_block_reason = "ROLLING_HISTORY_GAP"
+                elif is_live and schedule:
+                    # Schedule existed but expired for today, and no rolling fallback configured.
+                    # Block in live mode to avoid static fallback.
+                    logger.warning(
+                        "No valid threshold for %s %s: schedule expired %s and no rolling fallback. Blocking.",
+                        sym, canonical_uid, day_str
+                    )
+                    curr_threshold = 2.0
+                    curr_source = f"{threshold_mode}:schedule_expired"
+                    threshold_blocked = True
+                    threshold_block_reason = "SCHEDULE_EXPIRED"
                 else:
-                    # No rolling config — fall back to static threshold_exec.
+                    # No rolling config and no (expired) schedule — fall back to static threshold_exec.
+                    # In research/backtest this is common; in live it uses the scalar threshold_exec.
                     curr_threshold = threshold_exec
                     curr_source = f"{threshold_mode}:static_fallback"
 
@@ -2534,6 +2563,14 @@ def _build_predictions(
         selected_exec = preselected_exec
         risk_blocked = False
         risk_block_reason: str | None = None
+        threshold_blocked = False
+        threshold_block_reason: str | None = None
+
+        if curr_source in {f"{threshold_mode}:no_valid_threshold", f"{threshold_mode}:schedule_expired"}:
+            threshold_blocked = True
+            threshold_block_reason = (
+                "ROLLING_HISTORY_GAP" if curr_source == f"{threshold_mode}:no_valid_threshold" else "SCHEDULE_EXPIRED"
+            )
 
         if preselected_exec == 1 and account_risk_enabled_effective and (_account_risk_profile is not None):
             trade_eval = evaluate_trade_guard(
@@ -2572,6 +2609,8 @@ def _build_predictions(
                 selected_exec=selected_exec,
                 risk_blocked=risk_blocked,
                 risk_block_reason=risk_block_reason,
+                threshold_blocked=threshold_blocked,
+                threshold_block_reason=threshold_block_reason,
                 risk_metrics_snapshot=risk_metrics_snapshot,
                 trade_eval=trade_eval,
                 risk_rank_score=rank_score,
@@ -2730,6 +2769,8 @@ def _build_predictions(
                 cap_pips=float(cap_pips),
                 threshold_source=d.curr_source,
                 model_month=model_month,
+                threshold_blocked=d.threshold_blocked,
+                threshold_block_reason=d.threshold_block_reason,
                 risk_blocked=d.risk_blocked,
                 risk_block_reason=d.risk_block_reason,
                 risk_metrics_snapshot=d.risk_metrics_snapshot,
@@ -2855,6 +2896,7 @@ async def open_trade(req: TradeOpenRequest):
         entry_price=req.entry_price,
         entry_ts=req.entry_ts,
         horizon=req.horizon,
+        reservation_id=req.reservation_id,
         run_id=run_id,
     )
     if _config.account_risk_enabled and (_account_risk_profile is not None):
@@ -3030,35 +3072,74 @@ async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
                 for row in df.itertuples(index=False)
             ]
             bars = replay_agg.add_ticks(ticks)
+            if not bars:
+                events_by_symbol[sym] = 0
+                continue
 
-            for bar in bars:
-                replay_state.append_bar(bar)
-                for cand in contract.candidates:
-                    feats = replay_state.compute_features(
+            # Convert bars to DataFrame for vectorized processing
+            bars_df = pd.DataFrame([b.model_dump() for b in bars])
+
+            for cand in contract.candidates:
+                # ── Vectorized Feature Computation ──
+                # Process the entire history of bars in one pass of rolling windows
+                features_df = compute_feature_matrix_from_bars(
+                    bars_df,
+                    symbol=sym,
+                    bar_ticks=bar_ticks,
+                    horizon=cand.horizon,
+                    barrier_pips=cand.barrier_pips,
+                    cfg=FeatureConfig(
+                        vol_window=_config.vol_window,
+                        cost_window=_config.cost_window,
+                    ),
+                )
+                if features_df is None or features_df.empty:
+                    continue
+
+                # Identify rows with sufficient history (no NaNs in features)
+                valid_mask = features_df.notna().all(axis=1)
+                valid_features = features_df[valid_mask]
+                if valid_features.empty:
+                    continue
+
+                # ── Batch Inference ──
+                # Match ModelFeatures schema order for CatBoost input
+                X = valid_features[[
+                    "cost_est_pips", "range_pips", "ret1_pips", "ret_z", "ret_abs_z",
+                    "vel_cost_units_h1", "vel_abs_cost_units_h1", "spread_z", "tick_rate_z",
+                    "hour_utc", "hl_first", "hl_first_mean_24", "hl_pos_frac_mean_24",
+                    "bar_ticks", "horizon", "barrier_pips"
+                ]].values
+                
+                # Metadata-level inference: release GIL during bulk CatBoost scoring if possible
+                with METRIC_INFERENCE_LATENCY.labels(symbol=sym).time():
+                    pred_probs = model.predict_proba(X)[:, 1]
+
+                # ── Batch Logging to DuckDB ──
+                canonical_uid = (
+                    f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+                )
+                valid_bars = bars_df.loc[valid_features.index]
+                events_batch = []
+                
+                for i in range(len(valid_features)):
+                    row_feat = valid_features.iloc[i]
+                    # Serialize the features into the JSON format expected by audit_logs
+                    feat_obj = ModelFeatures(**row_feat.to_dict())
+                    
+                    events_batch.append((
+                        valid_bars.iloc[i]["close_ts"],
                         sym,
-                        bar_ticks,
-                        cand.horizon,
-                        cand.barrier_pips,
-                    )
-                    if feats is None:
-                        continue
-                    arr = np.array([feats.to_array()], dtype=float)
-                    with METRIC_INFERENCE_LATENCY.labels(symbol=sym).time():
-                        pred_prob = float(model.predict_proba(arr)[:, 1][0])
-                    canonical_uid = (
-                        f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
-                    )
-                    _state.log_audit_event(
-                        symbol=sym,
-                        candidate_uid=canonical_uid,
-                        pred_prob=pred_prob,
-                        threshold=static_thr,
-                        features=feats,
-                        model_month=contract.model_month,
-                        close_ts=bar.close_ts,
-                        run_id=req.run_id,
-                    )
-                    n_written += 1
+                        canonical_uid,
+                        float(pred_probs[i]),
+                        static_thr,
+                        feat_obj.model_dump_json(),
+                        contract.model_month,
+                        req.run_id,
+                    ))
+
+                _state.log_audit_event_batch(events_batch)
+                n_written += len(events_batch)
         finally:
             replay_state.close()
 
@@ -3121,6 +3202,9 @@ async def update_trade(req: TradeUpdateRequest):
         exit_ts=req.exit_ts,
         pnl_pips=req.pnl_pips,
         run_id=run_id,
+        symbol=req.symbol,
+        close_reason=req.close_reason,
+        commission_ccy=req.commission_ccy,
     )
     if _config.account_risk_enabled and (_account_risk_profile is not None) and req.status.value in {"CLOSED", "CANCELLED"}:
         _state.release_account_risk_reservation(
