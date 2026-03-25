@@ -394,12 +394,13 @@ def _score_bars(
     cand_uid = _candidate_uid(symbol, state)
     regime_name = _candidate_regime_name({**state, "candidate_uid": cand_uid})
     close_ts = pd.to_datetime(bars.to_pandas().loc[valid_mask, "close_ts"], utc=True, errors="coerce")
-    valid_rows = valid_features.reset_index(drop=True)
+    source_indices = list(valid_features.index)
+    valid_rows = valid_features.copy()
     threshold_values: list[float] = []
     regime_active_values: list[bool] = []
     history: list[tuple[pd.Timestamp, float]] = []
     for idx, ts in enumerate(close_ts):
-        source_idx = int(valid_rows.index[idx])
+        source_idx = int(source_indices[idx])
         prefix_bars = bars.slice(0, source_idx + 1)
         regime_q = compute_regime_quantiles_from_bars(prefix_bars.to_pandas(), symbol=symbol)
         day = ts.strftime("%Y-%m-%d") if pd.notna(ts) else ""

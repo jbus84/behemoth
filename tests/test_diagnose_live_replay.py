@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import polars as pl
 import pytest
@@ -384,6 +385,75 @@ def test_score_bars_uses_causal_quantile_regime_thresholds(monkeypatch: pytest.M
     assert int(results[0, "selected"]) == 1
     assert int(results[1, "selected"]) == 1
     assert int(results[2, "selected"]) == 1
+
+
+def test_score_bars_preserves_source_indices_for_causal_quantiles(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from scripts import diagnose_live_replay as module
+
+    bars = pl.DataFrame(
+        {
+            "timestamp": pd.date_range("2026-03-01T00:00:00Z", periods=4, freq="100s", tz="UTC").to_list(),
+            "close_ts": pd.to_datetime(
+                [
+                    "2026-03-01T00:01:39Z",
+                    "2026-03-01T00:03:19Z",
+                    "2026-03-01T00:04:59Z",
+                    "2026-03-01T00:06:39Z",
+                ],
+                utc=True,
+            ).to_list(),
+            "open": [1.0, 1.1, 1.2, 1.3],
+            "high": [1.2, 1.3, 1.4, 1.5],
+            "low": [0.9, 1.0, 1.1, 1.2],
+            "close": [1.15, 1.25, 1.35, 1.45],
+            "spread": [0.0002, 0.0002, 0.0002, 0.0002],
+            "tick_volume": [100, 100, 100, 100],
+            "hl_first": [1, -1, 1, -1],
+            "hl_pos_frac": [0.4, 0.6, 0.5, 0.7],
+        }
+    )
+
+    def fake_features(*args, **kwargs):
+        return pd.DataFrame(
+            {
+                "range_pips": [10.0, np.nan, 30.0, 40.0],
+                "cost_est_pips": [1.0, np.nan, 1.0, 1.0],
+                "vel_abs_cost_units_h1": [1.0, np.nan, 1.0, 1.0],
+            }
+        )
+
+    calls: list[int] = []
+
+    def fake_quantiles(frame, *, symbol):
+        calls.append(len(frame))
+        return {"rng_q80": 9.0}
+
+    class DummyModel:
+        def predict_proba(self, matrix):
+            return [[0.05, 0.95], [0.05, 0.95], [0.05, 0.95]]
+
+    monkeypatch.setattr(module, "compute_feature_matrix_from_bars", fake_features)
+    monkeypatch.setattr(module, "compute_regime_quantiles_from_bars", fake_quantiles)
+
+    results = module._score_bars(
+        bars=bars,
+        symbol="EURUSD",
+        state={
+            "state_id": "s1",
+            "regime_desc": "high_range_q80",
+            "bar_ticks": 100,
+            "horizon": 6,
+            "barrier_pips": 2.0,
+        },
+        model=DummyModel(),
+        thresholds={"threshold_exec": 0.55},
+        threshold_exec=0.55,
+    )
+
+    assert calls == [1, 3, 4]
+    assert results.height == 3
 
 
 def test_score_bars_skips_non_100_tick_states(monkeypatch: pytest.MonkeyPatch) -> None:
