@@ -233,9 +233,11 @@ public final class BehemothStrategyCore {
         }
         for (String label : labelsToClose) {
             state.pendingExits.remove(label);
+            state.horizonInitiatedLabels.add(label);
             try {
                 executionPort.closePosition(state.instrument.symbol(), label);
             } catch (RuntimeException exc) {
+                state.horizonInitiatedLabels.remove(label);
                 artifactWriter.markOperationalStep(
                         state.instrument.symbol(), "horizon_close_failure", false, exc.getMessage());
             }
@@ -447,6 +449,10 @@ public final class BehemothStrategyCore {
 
     private void handleClose(OrderEvent event) {
         Instant closeTs = Objects.requireNonNullElse(event.closeTimeUtc(), Instant.now());
+        SymbolRuntimeState closeState = symbolStates.get(normalizeSymbol(event.symbol()));
+        String closeReason = (closeState != null && closeState.horizonInitiatedLabels.remove(event.orderLabel()))
+                ? "HORIZON_COMPLETED"
+                : "UNEXPECTED";
         ExecutionStateStore.CloseAction action = stateStore.markClosed(
                 event.orderLabel(),
                 event.closePrice(),
@@ -474,7 +480,9 @@ public final class BehemothStrategyCore {
                         event.closePrice(),
                         closeTs,
                         event.pnlPips(),
-                        sessionConfig.runId()
+                        sessionConfig.runId(),
+                        closeReason,
+                        event.commission()
                 ));
                 if (stateStore.markTradeUpdateSynced(event.orderLabel())) {
                     artifactWriter.recordTradeUpdateSync(event.symbol(), event.brokerOrderId(), action.tradeStatus());
@@ -484,7 +492,6 @@ public final class BehemothStrategyCore {
                 artifactWriter.recordTradeSyncFailure(event.symbol(), "trade_update_sync_failure", exc.getMessage());
             }
         }
-        // emit per-trade outcome for reconciliation
         if (action != null && action.group() != null && action.leg() != null) {
             double fillPrice = action.leg().fillPrice != null ? action.leg().fillPrice : Double.NaN;
             double pnlValue = event.pnlPips() != null ? event.pnlPips() : Double.NaN;
@@ -498,8 +505,6 @@ public final class BehemothStrategyCore {
                     pnlValue
             );
         }
-        // Remove pending exit — covers both strategy-initiated and broker-initiated closes.
-        SymbolRuntimeState closeState = symbolStates.get(normalizeSymbol(event.symbol()));
         if (closeState != null) {
             closeState.pendingExits.remove(event.orderLabel());
         }
@@ -576,6 +581,9 @@ public final class BehemothStrategyCore {
         private final Map<Integer, Long> barOrdinalsByBarTicks = new LinkedHashMap<>();
         // label → pending horizon exit registered at fill time; removed when position closes
         private final Map<String, PendingExit> pendingExits = new LinkedHashMap<>();
+        // Labels for which the strategy initiated a horizon close. Checked in handleClose()
+        // to distinguish HORIZON_COMPLETED from UNEXPECTED (broker-initiated).
+        private final Set<String> horizonInitiatedLabels = new LinkedHashSet<>();
 
         private SymbolRuntimeState(RuntimeInstrument instrument) {
             this.instrument = instrument;

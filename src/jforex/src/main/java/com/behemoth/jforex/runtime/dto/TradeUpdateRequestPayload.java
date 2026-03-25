@@ -9,6 +9,8 @@ public record TradeUpdateRequestPayload(
         Double exitPrice,
         Instant exitTs,
         Double pnlPips,
-        String runId
+        String runId,
+        String closeReason,
+        Double commissionCcy
 ) {
 }
