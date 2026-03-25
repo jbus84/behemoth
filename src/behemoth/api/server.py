@@ -2710,6 +2710,7 @@ def _build_predictions(
     for d in decisions:
         if _state is not None:
             _state.log_predict_evaluation(
+                event_ts=close_ts,
                 symbol=sym,
                 candidate_uid=d.candidate_uid,
                 pred_prob=d.pred_prob,
