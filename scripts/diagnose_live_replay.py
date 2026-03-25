@@ -382,7 +382,6 @@ def _score_bars(
             }
         )
 
-    regime_q = compute_regime_quantiles_from_bars(bars.to_pandas(), symbol=symbol)
     feature_cols = [c for c in valid_features.columns if c not in {"close_ts"}]
     matrix = valid_features[feature_cols].to_numpy(dtype=float)
     probs = np.asarray(model.predict_proba(matrix))[:, 1].astype(float)
@@ -400,6 +399,9 @@ def _score_bars(
     regime_active_values: list[bool] = []
     history: list[tuple[pd.Timestamp, float]] = []
     for idx, ts in enumerate(close_ts):
+        source_idx = int(valid_rows.index[idx])
+        prefix_bars = bars.slice(0, source_idx + 1)
+        regime_q = compute_regime_quantiles_from_bars(prefix_bars.to_pandas(), symbol=symbol)
         day = ts.strftime("%Y-%m-%d") if pd.notna(ts) else ""
         if day in threshold_schedule:
             threshold = float(threshold_schedule[day])

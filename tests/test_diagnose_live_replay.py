@@ -328,6 +328,64 @@ def test_score_bars_applies_regime_gating(monkeypatch: pytest.MonkeyPatch) -> No
     assert int(results[1, "selected"]) == 1
 
 
+def test_score_bars_uses_causal_quantile_regime_thresholds(monkeypatch: pytest.MonkeyPatch) -> None:
+    from scripts import diagnose_live_replay as module
+
+    bars = pl.DataFrame(
+        {
+            "timestamp": pd.date_range("2026-03-01T00:00:00Z", periods=3, freq="100s", tz="UTC").to_list(),
+            "close_ts": pd.to_datetime(
+                ["2026-03-01T00:01:39Z", "2026-03-01T00:03:19Z", "2026-03-01T00:04:59Z"], utc=True
+            ).to_list(),
+            "open": [1.0, 1.1, 1.2],
+            "high": [1.2, 1.3, 1.4],
+            "low": [0.9, 1.0, 1.1],
+            "close": [1.15, 1.25, 1.35],
+            "spread": [0.0002, 0.0002, 0.0002],
+            "tick_volume": [100, 100, 100],
+            "hl_first": [1, -1, 1],
+            "hl_pos_frac": [0.4, 0.6, 0.5],
+        }
+    )
+
+    def fake_features(*args, **kwargs):
+        return pd.DataFrame({"range_pips": [10.0, 20.0, 30.0], "cost_est_pips": [1.0, 1.0, 1.0], "vel_abs_cost_units_h1": [1.0, 1.0, 1.0]})
+
+    calls: list[int] = []
+
+    def fake_quantiles(frame, *, symbol):
+        calls.append(len(frame))
+        n = len(frame)
+        return {"rng_q80": {1: 9.0, 2: 19.0, 3: 29.0}.get(n, 29.0)}
+
+    class DummyModel:
+        def predict_proba(self, matrix):
+            return [[0.05, 0.95], [0.05, 0.95], [0.05, 0.95]]
+
+    monkeypatch.setattr(module, "compute_feature_matrix_from_bars", fake_features)
+    monkeypatch.setattr(module, "compute_regime_quantiles_from_bars", fake_quantiles)
+
+    results = module._score_bars(
+        bars=bars,
+        symbol="EURUSD",
+        state={
+            "state_id": "s1",
+            "regime_desc": "high_range_q80",
+            "bar_ticks": 100,
+            "horizon": 6,
+            "barrier_pips": 2.0,
+        },
+        model=DummyModel(),
+        thresholds={"threshold_exec": 0.55},
+        threshold_exec=0.55,
+    )
+
+    assert calls == [1, 2, 3]
+    assert int(results[0, "selected"]) == 1
+    assert int(results[1, "selected"]) == 1
+    assert int(results[2, "selected"]) == 1
+
+
 def test_score_bars_skips_non_100_tick_states(monkeypatch: pytest.MonkeyPatch) -> None:
     from scripts import diagnose_live_replay as module
 
