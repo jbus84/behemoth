@@ -1036,7 +1036,11 @@ class TestPredictEndpoint:
             mock.patch.object(server, "_check_warmup", return_value=None),
             mock.patch.object(server._state, "compute_features", return_value=dummy_features),
             mock.patch.object(server._state, "get_latest_close_ts", return_value=datetime(2025, 1, 1, tzinfo=timezone.utc)),
-            mock.patch.object(server._state, "log_predict_evaluation") as log_predict_evaluation,
+            mock.patch.object(
+                server._state,
+                "log_predict_evaluation",
+                wraps=server._state.log_predict_evaluation,
+            ) as log_predict_evaluation,
         ):
             r = client.post(
                 "/predict",
@@ -1051,6 +1055,21 @@ class TestPredictEndpoint:
             assert len(rows) == 1
             assert rows[0]["selected_exec"] == 0
             log_predict_evaluation.assert_called_once()
+            kwargs = log_predict_evaluation.call_args.kwargs
+            assert kwargs["event_ts"] == datetime(2025, 1, 1, tzinfo=timezone.utc)
+            assert kwargs["close_ts"] == datetime(2025, 1, 1, tzinfo=timezone.utc)
+            assert kwargs["symbol"] == "EURUSD"
+            assert kwargs["candidate_uid"] == "oco|EURUSD|100|h24|cand-blocked"
+            assert kwargs["pred_prob"] == 0.3
+            assert kwargs["threshold"] == 0.5
+            assert kwargs["preselected_exec"] == 0
+            assert kwargs["selected_exec"] == 0
+            assert kwargs["threshold_blocked"] is False
+            assert kwargs["threshold_block_reason"] is None
+            assert kwargs["risk_blocked"] is False
+            assert kwargs["risk_block_reason"] is None
+            assert kwargs["model_month"] == "2025-01"
+            assert kwargs["run_id"] is None
 
     def test_predict_scopes_candidates_to_completed_bar_ticks(self, client):
         import unittest.mock as mock
