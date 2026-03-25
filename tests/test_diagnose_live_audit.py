@@ -219,7 +219,7 @@ def test_section_funnel_uses_predict_evaluations(tmp_path: Path) -> None:
         text = "\n".join(lines)
         assert "Prediction Funnel" in text
         assert "predict_evaluations" in text
-        assert "| GBPUSD   |                   3 |                    2 |                 1 |        3 |" in text
+        assert "| GBPUSD   |                   3 |                    2 |                 1 |        3 |              0.333333 |" in text
     finally:
         con.close()
 
