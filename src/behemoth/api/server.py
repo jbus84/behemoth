@@ -2708,6 +2708,23 @@ def _build_predictions(
     results: list[OcoPrediction] = []
     trace_rows: list[dict[str, Any]] = []
     for d in decisions:
+        if _state is not None:
+            _state.log_predict_evaluation(
+                symbol=sym,
+                candidate_uid=d.candidate_uid,
+                pred_prob=d.pred_prob,
+                threshold=d.curr_threshold,
+                preselected_exec=d.preselected_exec,
+                selected_exec=d.selected_exec,
+                threshold_blocked=bool(getattr(d, "threshold_blocked", False)),
+                threshold_block_reason=getattr(d, "threshold_block_reason", None),
+                risk_blocked=d.risk_blocked,
+                risk_block_reason=d.risk_block_reason,
+                model_month=model_month,
+                close_ts=close_ts,
+                run_id=run_id,
+            )
+
         if d.selected_exec == 1 and _state is not None:
             if allocator_enabled and d.risk_reserved and (d.risk_reserved_amount_ccy is not None):
                 reservation_id = _state.create_account_risk_reservation(
