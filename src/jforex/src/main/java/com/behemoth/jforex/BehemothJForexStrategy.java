@@ -221,7 +221,8 @@ public final class BehemothJForexStrategy implements IStrategy {
                 order.getClosePrice(),
                 order.getCloseTime() > 0L ? Instant.ofEpochMilli(order.getCloseTime()) : null,
                 order.getProfitLossInPips(),
-                message.getContent()
+                message.getContent(),
+                order.getCommission()
         );
     }
 

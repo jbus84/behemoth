@@ -13,7 +13,8 @@ public record OrderEvent(
         double closePrice,
         Instant closeTimeUtc,
         Double pnlPips,
-        String detail
+        String detail,
+        Double commission
 ) {
     public OrderEvent {
         type = Objects.requireNonNull(type, "type");

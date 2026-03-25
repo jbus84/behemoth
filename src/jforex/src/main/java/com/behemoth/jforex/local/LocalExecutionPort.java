@@ -43,7 +43,8 @@ public final class LocalExecutionPort implements ExecutionPort {
                 0.0,
                 null,
                 null,
-                "local_submit_ok"
+                "local_submit_ok",
+                null
         ));
         return new OrderHandle(request.label(), orderId);
     }
@@ -72,7 +73,8 @@ public final class LocalExecutionPort implements ExecutionPort {
                 0.0,
                 closeTs,
                 order.filled ? pnlPips(order, tick) : 0.0,
-                order.filled ? "local_cancel_filled" : "local_cancel_pending"
+                order.filled ? "local_cancel_filled" : "local_cancel_pending",
+                null
         ));
     }
 
@@ -108,7 +110,8 @@ public final class LocalExecutionPort implements ExecutionPort {
                     0.0,
                     null,
                     null,
-                    "local_fill_ok"
+                    "local_fill_ok",
+                    null
             ));
         }
     }
@@ -134,7 +137,8 @@ public final class LocalExecutionPort implements ExecutionPort {
                     closePrice,
                     tick.timestamp(),
                     pnlPips(order, tick),
-                    "local_close_at_end"
+                    "local_close_at_end",
+                    null
             ));
         }
     }

@@ -491,7 +491,7 @@ class BehemothStrategyCoreTest {
                     OrderEventType.FILL_OK, "EURUSD",
                     plan.buyLeg().label(), "broker-buy-1",
                     1.0857, Instant.parse("2025-07-07T00:00:01Z"),
-                    0.0, null, null, "fill"));
+                    0.0, null, null, "fill", null));
 
             // Bars 1–4: closePosition must NOT be called yet (fillBarOrdinal=0, need ordinal >= 5)
             for (int i = 0; i < 4; i++) {
@@ -572,7 +572,7 @@ class BehemothStrategyCoreTest {
                     OrderEventType.FILL_OK, "EURUSD",
                     plan.buyLeg().label(), "broker-buy-1",
                     1.0857, Instant.parse("2025-07-07T00:00:01Z"),
-                    0.0, null, null, "fill"));
+                    0.0, null, null, "fill", null));
 
             // Drive 2 bars
             for (int i = 0; i < 2; i++) {
@@ -585,7 +585,7 @@ class BehemothStrategyCoreTest {
                     plan.buyLeg().label(), "broker-buy-1",
                     1.0857, Instant.parse("2025-07-07T00:02:00Z"),
                     1.0861, Instant.parse("2025-07-07T00:02:30Z"),
-                    0.4, "broker_close"));
+                    0.4, "broker_close", null));
 
             // Drive bars 3–5: closePosition must NOT be called (pending exit was removed)
             for (int i = 2; i < 5; i++) {
@@ -666,12 +666,12 @@ class BehemothStrategyCoreTest {
                     OrderEventType.FILL_OK, "EURUSD",
                     planA.buyLeg().label(), "broker-a-buy",
                     1.0857, Instant.parse("2025-07-07T00:00:01Z"),
-                    0.0, null, null, "fill_a"));
+                    0.0, null, null, "fill_a", null));
             core.onOrderEvent(new OrderEvent(
                     OrderEventType.FILL_OK, "EURUSD",
                     planB.buyLeg().label(), "broker-b-buy",
                     1.0863, Instant.parse("2025-07-07T00:00:02Z"),
-                    0.0, null, null, "fill_b"));
+                    0.0, null, null, "fill_b", null));
 
             // After 5 bars: A closes, B does not yet
             for (int i = 0; i < 5; i++) {
@@ -748,7 +748,7 @@ class BehemothStrategyCoreTest {
                     OrderEventType.FILL_OK, "EURUSD",
                     plan.buyLeg().label(), "broker-warmup-buy",
                     1.0857, Instant.parse("2025-07-07T00:00:01Z"),
-                    0.0, null, null, "warmup_fill"));
+                    0.0, null, null, "warmup_fill", null));
 
             // Warmup bar 1 — no close yet (1 < horizon=2)
             core.onTick(new RuntimeTick("EURUSD",
