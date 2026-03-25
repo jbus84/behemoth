@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
@@ -17,7 +19,10 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.behemoth.core.features import compute_feature_matrix_from_bars  # noqa: E402
+from src.behemoth.core.features import (  # noqa: E402
+    compute_feature_matrix_from_bars,
+    compute_regime_quantiles_from_bars,
+)
 
 try:  # pragma: no cover - import availability depends on env
     from catboost import CatBoostClassifier
@@ -192,6 +197,88 @@ def _load_thresholds(symbol: str, models_dir: str, model_month: str) -> tuple[di
     return thresholds, threshold_exec
 
 
+def _candidate_uid(symbol: str, state: dict) -> str:
+    return "oco|{symbol}|{bar_ticks}|h{horizon}|{state_id}".format(
+        symbol=str(symbol).upper(),
+        bar_ticks=int(state.get("bar_ticks", 100)),
+        horizon=int(state.get("horizon", 0)),
+        state_id=str(state.get("state_id", "")).strip(),
+    )
+
+
+def _candidate_regime_name(state: dict) -> str:
+    txt = str(state.get("regime_desc", "") or "").strip()
+    if txt and txt.lower() not in {"nan", "none"}:
+        return txt.split(";")[0].strip().lower()
+    sid = str(state.get("candidate_uid", "") or "").strip()
+    parts = sid.split("__")
+    if len(parts) >= 3:
+        return "__".join(parts[1:-1]).strip().lower()
+    return "all"
+
+
+def _regime_cmp(value: float, threshold: float, *, op: str) -> bool:
+    if not (math.isfinite(float(value)) and math.isfinite(float(threshold))):
+        return True
+    if op == "<=":
+        return float(value) <= float(threshold)
+    if op == ">=":
+        return float(value) >= float(threshold)
+    return True
+
+
+def _regime_is_active(
+    regime_name: str,
+    *,
+    features: Any,
+    close_ts_utc: pd.Timestamp,
+    regime_q: dict[str, float] | None,
+) -> bool:
+    r = str(regime_name or "").strip().lower()
+    q = regime_q or {}
+    if r in {"", "all"}:
+        return True
+    if "_and_" in r:
+        return all(
+            _regime_is_active(
+                sub,
+                features=features,
+                close_ts_utc=close_ts_utc,
+                regime_q=q,
+            )
+            for sub in r.split("_and_")
+        )
+
+    h = int(close_ts_utc.hour)
+    if r == "london":
+        return h in {7, 8, 9, 10, 11}
+    if r == "ny_overlap":
+        return h in {13, 14, 15, 16}
+    if r == "asia":
+        return h in {0, 1, 2, 3, 4, 5}
+    if r == "low_cost_q30":
+        return _regime_cmp(float(features.cost_est_pips), float(q.get("cost_q30", float("nan"))), op="<=")
+    if r == "low_cost_q50":
+        return _regime_cmp(float(features.cost_est_pips), float(q.get("cost_q50", float("nan"))), op="<=")
+    if r == "high_range_q70":
+        return _regime_cmp(float(features.range_pips), float(q.get("rng_q70", float("nan"))), op=">=")
+    if r == "high_range_q80":
+        return _regime_cmp(float(features.range_pips), float(q.get("rng_q80", float("nan"))), op=">=")
+    if r == "high_abs_vel_q70":
+        return _regime_cmp(
+            float(features.vel_abs_cost_units_h1),
+            float(q.get("vel_q70", float("nan"))),
+            op=">=",
+        )
+    if r == "high_abs_vel_q80":
+        return _regime_cmp(
+            float(features.vel_abs_cost_units_h1),
+            float(q.get("vel_q80", float("nan"))),
+            op=">=",
+        )
+    return True
+
+
 def _load_model(symbol: str, models_dir: str, model_month: str) -> Any:
     if CatBoostClassifier is None:
         raise RuntimeError("catboost is required to load replay models")
@@ -221,14 +308,13 @@ def _score_bars(
             }
         )
 
-    bar_ticks = int(state.get("bar_ticks", 100))
     horizon = int(state.get("horizon", 0))
     barrier_pips = float(state.get("barrier_pips", 0.0))
 
     feats = compute_feature_matrix_from_bars(
         bars.to_pandas(),
         symbol=symbol,
-        bar_ticks=bar_ticks,
+        bar_ticks=100,
         horizon=horizon,
         barrier_pips=barrier_pips,
     )
@@ -259,30 +345,60 @@ def _score_bars(
             }
         )
 
+    regime_q = compute_regime_quantiles_from_bars(bars.to_pandas(), symbol=symbol)
     feature_cols = [c for c in valid_features.columns if c not in {"close_ts"}]
     matrix = valid_features[feature_cols].to_numpy(dtype=float)
     probs = np.asarray(model.predict_proba(matrix))[:, 1].astype(float)
 
     threshold_schedule = thresholds.get("threshold_schedule", {}) or {}
+    rolling_days = int(thresholds.get("rolling_threshold_days", 0) or 0)
     state_id = str(state.get("state_id", ""))
+    cand_uid = _candidate_uid(symbol, state)
+    regime_name = _candidate_regime_name({**state, "candidate_uid": cand_uid})
     close_ts = pd.to_datetime(bars.to_pandas().loc[valid_mask, "close_ts"], utc=True, errors="coerce")
+    valid_rows = valid_features.reset_index(drop=True)
     threshold_values: list[float] = []
-    for ts in close_ts:
+    regime_active_values: list[bool] = []
+    for idx, ts in enumerate(close_ts):
         day = ts.strftime("%Y-%m-%d") if pd.notna(ts) else ""
         if day in threshold_schedule:
-            threshold_values.append(float(threshold_schedule[day]))
+            threshold = float(threshold_schedule[day])
+        elif threshold_schedule or rolling_days > 0:
+            threshold = 2.0
         else:
-            threshold_values.append(float(threshold_exec if threshold_exec is not None else thresholds.get("threshold_exec", 0.5)))
+            threshold = float(threshold_exec if threshold_exec is not None else thresholds.get("threshold_exec", 0.5))
+        threshold_values.append(threshold)
+
+        feature_row = valid_rows.iloc[idx]
+        model_features = SimpleNamespace(**feature_row.to_dict())
+        regime_active_values.append(
+            bool(
+                _regime_is_active(
+                    regime_name,
+                    features=model_features,
+                    close_ts_utc=ts,
+                    regime_q=regime_q,
+                )
+            )
+        )
+
     threshold_arr = np.asarray(threshold_values, dtype=float)
-    selected = (probs >= threshold_arr).astype(int)
+    regime_arr = np.asarray(regime_active_values, dtype=bool)
+    selected = np.logical_and(regime_arr, probs >= threshold_arr).astype(int)
     out = pd.DataFrame(
         {
             "close_ts": close_ts,
             "state_id": state_id,
+            "candidate_uid": cand_uid,
+            "bar_ticks": int(state.get("bar_ticks", 100)),
+            "horizon": horizon,
+            "barrier_pips": barrier_pips,
+            "regime_name": regime_name,
+            "regime_active": regime_arr,
             "pred_prob": probs,
             "threshold": threshold_arr,
             "selected": selected,
-            "gap": probs - threshold_arr,
+            "gap": threshold_arr - probs,
         }
     )
     return pl.from_pandas(out)
@@ -294,21 +410,22 @@ def _section_score_distribution(results: pl.DataFrame) -> list[str]:
         lines.append("_No scored rows available._")
         return lines
     df = results.to_pandas()
-    group_cols = ["state_id"]
-    if "symbol" in df.columns:
-        group_cols = ["symbol", "state_id"]
+    group_cols = ["symbol", "candidate_uid", "state_id"]
+    group_cols = [c for c in group_cols if c in df.columns]
     summary = (
         df.groupby(group_cols, dropna=False)
         .agg(
             n=("pred_prob", "count"),
-            mean_pred_prob=("pred_prob", "mean"),
-            median_pred_prob=("pred_prob", "median"),
+            p25=("pred_prob", lambda s: float(s.quantile(0.25))),
+            p50=("pred_prob", lambda s: float(s.quantile(0.50))),
+            p75=("pred_prob", lambda s: float(s.quantile(0.75))),
+            p90=("pred_prob", lambda s: float(s.quantile(0.90))),
+            p95=("pred_prob", lambda s: float(s.quantile(0.95))),
+            p99=("pred_prob", lambda s: float(s.quantile(0.99))),
             threshold=("threshold", "median"),
-            selected_rate=("selected", "mean"),
-            mean_gap=("gap", "mean"),
         )
         .reset_index()
-        .sort_values(["mean_pred_prob"] + group_cols, ascending=[False] + [True] * len(group_cols))
+        .sort_values(group_cols)
     )
     lines.append(_markdown_table(summary))
     return lines
@@ -320,15 +437,23 @@ def _section_near_miss(results: pl.DataFrame) -> list[str]:
         lines.append("_No scored rows available._")
         return lines
     df = results.to_pandas()
-    near = df[df["selected"] == 0].copy()
+    group_cols = ["symbol", "candidate_uid", "state_id"]
+    group_cols = [c for c in group_cols if c in df.columns]
+    near = df[(df["selected"] == 0) & (df["gap"] > 0)].copy()
     if near.empty:
         lines.append("_No near-miss rows available._")
         return lines
-    cols = ["close_ts", "state_id", "pred_prob", "threshold", "gap"]
-    if "symbol" in near.columns:
-        cols = ["symbol"] + cols
-    near = near.sort_values(["gap", "close_ts", "state_id"], ascending=[True, True, True]).head(20)
-    lines.append(_markdown_table(near[cols]))
+    cols = group_cols + ["close_ts", "pred_prob", "threshold", "gap"]
+    cols = [c for c in cols if c in near.columns]
+    blocks: list[str] = []
+    for group_values, group in near.groupby(group_cols, dropna=False):
+        if not isinstance(group_values, tuple):
+            group_values = (group_values,)
+        label = ", ".join(f"{col}={val}" for col, val in zip(group_cols, group_values, strict=False))
+        top = group.sort_values(["gap", "close_ts"], ascending=[True, True]).head(10)
+        blocks.append(f"### {label}")
+        blocks.append(_markdown_table(top[cols]))
+    lines.extend(blocks)
     return lines
 
 
@@ -338,20 +463,30 @@ def _section_sensitivity_sweep(results: pl.DataFrame) -> list[str]:
         lines.append("_No scored rows available._")
         return lines
     df = results.to_pandas()
-    thresholds = [round(x, 2) for x in np.arange(0.50, 0.66, 0.05)]
+    thresholds = [0.50, 0.55, 0.60, 0.65, 0.70]
     lines.append("Threshold grid: " + ", ".join(f"{thr:.2f}" for thr in thresholds))
+    group_cols = ["symbol", "candidate_uid", "state_id"]
+    group_cols = [c for c in group_cols if c in df.columns]
     rows: list[dict[str, Any]] = []
-    for thr in thresholds:
-        selected = df["pred_prob"] >= thr
-        rows.append(
-            {
-                "threshold": f"{thr:.2f}",
-                "selected_rows": int(selected.sum()),
-                "selected_rate": float(selected.mean()),
-                "mean_gap": float((df["pred_prob"] - thr).mean()),
-            }
-        )
-    lines.append(_markdown_table(pd.DataFrame(rows)))
+    for group_values, group in df.groupby(group_cols, dropna=False):
+        if not isinstance(group_values, tuple):
+            group_values = (group_values,)
+        base = dict(zip(group_cols, group_values, strict=False))
+        total = int(len(group))
+        for thr in thresholds:
+            active = group["regime_active"].astype(bool) if "regime_active" in group.columns else pd.Series(True, index=group.index)
+            trade_count = int(((group["pred_prob"] >= thr) & active).sum())
+            rows.append(
+                {
+                    **base,
+                    "threshold": f"{thr:.2f}",
+                    "trade_count": trade_count,
+                    "freq_per_100_bars": float((trade_count / total) * 100.0) if total > 0 else float("nan"),
+                    "total_bars": total,
+                }
+            )
+    rows_df = pd.DataFrame(rows).sort_values(group_cols + ["threshold"]) if rows else pd.DataFrame(rows)
+    lines.append(_markdown_table(rows_df))
     return lines
 
 
@@ -360,32 +495,19 @@ def _section_score_drift(results: pl.DataFrame) -> list[str]:
     if results.is_empty():
         lines.append("_No scored rows available._")
         return lines
-    df = results.to_pandas().sort_values("close_ts")
+    df = results.to_pandas().sort_values(["symbol", "close_ts"] if "symbol" in results.columns else ["close_ts"])
     if len(df) < 2:
         lines.append("_Insufficient rows for drift analysis._")
         return lines
-    split = max(1, len(df) // 2)
-    first = df.iloc[:split]
-    second = df.iloc[split:]
-    rows = pd.DataFrame(
-        [
-            {
-                "window": "first_half",
-                "n": int(len(first)),
-                "mean_pred_prob": float(first["pred_prob"].mean()),
-                "mean_threshold": float(first["threshold"].mean()),
-                "mean_gap": float(first["gap"].mean()),
-            },
-            {
-                "window": "second_half",
-                "n": int(len(second)),
-                "mean_pred_prob": float(second["pred_prob"].mean()),
-                "mean_threshold": float(second["threshold"].mean()),
-                "mean_gap": float(second["gap"].mean()),
-            },
+    rows: list[dict[str, Any]] = []
+    for _symbol, group in df.groupby("symbol", dropna=False):
+        group = group.sort_values("close_ts")
+        rolling = group["pred_prob"].rolling(window=50, min_periods=1).mean()
+        tail = group.assign(rolling_50_pred_prob=rolling)[
+            ["symbol", "close_ts", "rolling_50_pred_prob"]
         ]
-    )
-    lines.append(_markdown_table(rows))
+        rows.extend(tail.to_dict(orient="records"))
+    lines.append(_markdown_table(pd.DataFrame(rows)))
     return lines
 
 
