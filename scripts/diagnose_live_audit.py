@@ -44,6 +44,23 @@ def _table_exists(con: duckdb.DuckDBPyConnection, table_name: str) -> bool:
         return False
 
 
+def _column_exists(con: duckdb.DuckDBPyConnection, table_name: str, column_name: str) -> bool:
+    try:
+        row = con.execute(
+            """
+            SELECT 1
+            FROM information_schema.columns
+            WHERE lower(table_name) = lower(?)
+              AND lower(column_name) = lower(?)
+            LIMIT 1
+            """,
+            [table_name, column_name],
+        ).fetchone()
+        return row is not None
+    except Exception:
+        return False
+
+
 def _percentile_or_nan(series: pd.Series, q: float) -> float:
     if series.empty:
         return float("nan")
@@ -278,14 +295,19 @@ def _section_block_reasons(con: duckdb.DuckDBPyConnection, run_id: str, use_eval
 
 def _section_trade_outcomes(con: duckdb.DuckDBPyConnection, run_id: str) -> list[str]:
     lines = ["## Trade Outcomes"]
+    close_reason_expr = (
+        "coalesce(close_reason, '')"
+        if _column_exists(con, "trades", "close_reason")
+        else "''"
+    )
     df = _safe_query(
         con,
-        """
+        f"""
         SELECT
             upper(symbol) AS symbol,
             status,
             pnl_pips,
-            coalesce(close_reason, '') AS close_reason
+            {close_reason_expr} AS close_reason_value
         FROM trades
         WHERE lower(coalesce(run_id, '')) = lower(?)
         """,
@@ -302,7 +324,10 @@ def _section_trade_outcomes(con: duckdb.DuckDBPyConnection, run_id: str) -> list
         wins = closed[closed["pnl_pips"] > 0]
         losses = closed[closed["pnl_pips"] < 0]
         reason_counts = (
-            closed.loc[closed["close_reason"].astype(str).str.strip() != "", "close_reason"]
+            closed.loc[
+                closed["close_reason_value"].astype(str).str.strip() != "",
+                "close_reason_value",
+            ]
             .astype(str)
             .value_counts()
         )

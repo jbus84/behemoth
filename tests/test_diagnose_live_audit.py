@@ -279,7 +279,7 @@ def test_section_trade_outcomes_reports_closed_trades(tmp_path: Path) -> None:
         con.close()
 
 
-def test_section_trade_outcomes_raises_on_schema_drift(tmp_path: Path) -> None:
+def test_section_trade_outcomes_handles_missing_close_reason_column(tmp_path: Path) -> None:
     db_path = tmp_path / "legacy_state.db"
     con = duckdb.connect(str(db_path))
     try:
@@ -311,7 +311,8 @@ def test_section_trade_outcomes_raises_on_schema_drift(tmp_path: Path) -> None:
     try:
         from scripts.diagnose_live_audit import _section_trade_outcomes
 
-        with pytest.raises(RuntimeError, match="diagnostic query failed"):
-            _section_trade_outcomes(con, "jforex_live")
+        lines = _section_trade_outcomes(con, "jforex_live")
+        text = "\n".join(lines)
+        assert "Trade Outcomes" in text
     finally:
         con.close()
