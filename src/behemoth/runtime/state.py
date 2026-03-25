@@ -70,7 +70,14 @@ CREATE TABLE IF NOT EXISTS trades (
     exit_ts TIMESTAMP WITH TIME ZONE,
     pnl_pips DOUBLE,
     status VARCHAR,
-    run_id VARCHAR
+    run_id VARCHAR,
+    reservation_id VARCHAR,
+    entry_pred_prob DOUBLE,
+    entry_threshold DOUBLE,
+    entry_model_month VARCHAR,
+    exit_bar_id INTEGER,
+    close_reason VARCHAR,
+    commission_ccy DOUBLE
 );
 
 CREATE TABLE IF NOT EXISTS account_risk_snapshots (
@@ -158,15 +165,15 @@ INSERT INTO audit_logs (
 )
 """
 
-_FTMO_SNAPSHOT_INSERT_SQL = (
+_ACCOUNT_RISK_SNAPSHOT_INSERT_SQL = (
     "INSERT INTO account_risk_snapshots VALUES (?, ?, ?, ?)"
 )
 
-_FTMO_RISK_RES_INSERT_SQL = (
+_ACCOUNT_RISK_RES_INSERT_SQL = (
     "INSERT INTO account_risk_reservations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 )
 
-_FTMO_ALLOC_EVENT_INSERT_SQL = (
+_ACCOUNT_RISK_ALLOC_EVENT_INSERT_SQL = (
     "INSERT INTO account_risk_allocator_events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 )
 
@@ -377,6 +384,12 @@ class StateManager:
             ],
         )
 
+    def log_audit_event_batch(self, events: list[tuple]) -> None:
+        """Record a batch of execution decisions into the persistent audit trail."""
+        if not events:
+            return
+        self._con.executemany(_AUDIT_INSERT_SQL, events)
+
     def open_trade(
         self,
         symbol: str,
@@ -386,21 +399,42 @@ class StateManager:
         entry_price: float,
         entry_ts: datetime,
         horizon: int,
+        reservation_id: str | None = None,
         run_id: str | None = None,
     ) -> str:
-        """Record the opening of a position from the cBot."""
+        """Record the opening of a position."""
         import uuid
         internal_id = str(uuid.uuid4())
 
-        # Fetch current bar count for the symbol to anchor the horizon
         res = self._con.execute(
             "SELECT MAX(row_id) FROM tick_bars WHERE symbol = ?", [symbol.upper()]
         ).fetchone()
         entry_bar_id = res[0] if res and res[0] is not None else 0
 
+        audit_res = self._con.execute(
+            "SELECT pred_prob, threshold, model_month FROM audit_logs "
+            "WHERE candidate_uid = ? AND symbol = ? ORDER BY close_ts DESC LIMIT 1",
+            [candidate_uid, symbol.upper()],
+        ).fetchone()
+        if audit_res:
+            entry_pred_prob, entry_threshold, entry_model_month = audit_res
+        else:
+            import logging
+            logging.getLogger(__name__).warning(
+                "open_trade: no audit_logs row for candidate_uid=%s symbol=%s; model context NULL",
+                candidate_uid, symbol,
+            )
+            entry_pred_prob, entry_threshold, entry_model_month = None, None, None
+
         self._con.execute(
-            "INSERT INTO trades (internal_trade_id, broker_pos_id, symbol, candidate_uid, side, entry_price, entry_ts, entry_bar_id, horizon_bars, status, run_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?)",
-            [internal_id, broker_pos_id, symbol.upper(), candidate_uid, side, float(entry_price), entry_ts, entry_bar_id, horizon, run_id],
+            """INSERT INTO trades (
+                internal_trade_id, broker_pos_id, symbol, candidate_uid, side,
+                entry_price, entry_ts, entry_bar_id, horizon_bars, status, run_id,
+                reservation_id, entry_pred_prob, entry_threshold, entry_model_month
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, ?, ?)""",
+            [internal_id, broker_pos_id, symbol.upper(), candidate_uid, side,
+             float(entry_price), entry_ts, entry_bar_id, horizon, run_id,
+             reservation_id, entry_pred_prob, entry_threshold, entry_model_month],
         )
         return internal_id
 
@@ -430,17 +464,33 @@ class StateManager:
         exit_ts: datetime | None = None,
         pnl_pips: float | None = None,
         run_id: str | None = None,
+        symbol: str | None = None,
+        close_reason: str | None = None,
+        commission_ccy: float | None = None,
     ) -> None:
         """Update a trade status and exit data (CLOSED/CANCELLED)."""
+        exit_bar_id = None
+        if symbol:
+            res = self._con.execute(
+                "SELECT MAX(row_id) FROM tick_bars WHERE symbol = ?", [symbol.upper()]
+            ).fetchone()
+            exit_bar_id = res[0] if res and res[0] is not None else None
+
         if run_id:
             self._con.execute(
-                "UPDATE trades SET status = ?, exit_price = ?, exit_ts = ?, pnl_pips = ?, run_id = COALESCE(run_id, ?) WHERE broker_pos_id = ?",
-                [status, exit_price, exit_ts, pnl_pips, run_id, broker_pos_id],
+                "UPDATE trades SET status = ?, exit_price = ?, exit_ts = ?, pnl_pips = ?, "
+                "run_id = COALESCE(run_id, ?), exit_bar_id = ?, close_reason = ?, commission_ccy = ? "
+                "WHERE broker_pos_id = ?",
+                [status, exit_price, exit_ts, pnl_pips, run_id,
+                 exit_bar_id, close_reason, commission_ccy, broker_pos_id],
             )
             return
         self._con.execute(
-            "UPDATE trades SET status = ?, exit_price = ?, exit_ts = ?, pnl_pips = ? WHERE broker_pos_id = ?",
-            [status, exit_price, exit_ts, pnl_pips, broker_pos_id],
+            "UPDATE trades SET status = ?, exit_price = ?, exit_ts = ?, pnl_pips = ?, "
+            "exit_bar_id = ?, close_reason = ?, commission_ccy = ? "
+            "WHERE broker_pos_id = ?",
+            [status, exit_price, exit_ts, pnl_pips,
+             exit_bar_id, close_reason, commission_ccy, broker_pos_id],
         )
 
     def get_ledger_stats(self) -> list[dict]:
@@ -511,7 +561,7 @@ class StateManager:
         ts = snapshot_ts
         ts = ts.replace(tzinfo=timezone.utc) if ts.tzinfo is None else ts.astimezone(timezone.utc)
         self._con.execute(
-            _FTMO_SNAPSHOT_INSERT_SQL,
+            _ACCOUNT_RISK_SNAPSHOT_INSERT_SQL,
             [ts, symbol.upper(), float(balance), float(equity)],
         )
 
@@ -648,7 +698,7 @@ class StateManager:
         rid = str(uuid.uuid4())
         now_utc = datetime.now(tz=timezone.utc)
         self._con.execute(
-            _FTMO_RISK_RES_INSERT_SQL,
+            _ACCOUNT_RISK_RES_INSERT_SQL,
             [
                 rid,
                 now_utc,
@@ -974,7 +1024,7 @@ class StateManager:
         """Persist allocator decision events for monitoring and reconciliation."""
         now_utc = datetime.now(tz=timezone.utc)
         self._con.execute(
-            _FTMO_ALLOC_EVENT_INSERT_SQL,
+            _ACCOUNT_RISK_ALLOC_EVENT_INSERT_SQL,
             [
                 now_utc,
                 symbol.upper(),

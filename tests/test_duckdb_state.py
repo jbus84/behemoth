@@ -392,7 +392,7 @@ class TestDuckDBTradeTracking:
         sm.close()
 
 
-class TestFtmoReservationLedger:
+class TestAccountRiskReservationLedger:
     @pytest.fixture
     def sm(self):
         from src.behemoth.runtime.state import StateManager
@@ -545,3 +545,103 @@ class TestRollingThreshold:
             exec_q=0.9, lookback_days=20, min_history=10,
         )
         assert result is None
+
+
+class TestTradeRicherRecording:
+    @pytest.fixture
+    def sm(self):
+        from src.behemoth.runtime.state import StateManager
+        sm = StateManager()
+        bars = _make_synthetic_bars(n=3)
+        for b in bars:
+            sm.append_bar(b)
+        yield sm
+        sm.close()
+
+    def test_open_trade_stores_reservation_id(self, sm):
+        sm.open_trade(
+            symbol="EURUSD", candidate_uid="cand_1", broker_pos_id="bp_1",
+            side="BUY", entry_price=1.1, entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            horizon=6, reservation_id="res-abc-123",
+        )
+        row = sm._con.execute(
+            "SELECT reservation_id FROM trades WHERE broker_pos_id = 'bp_1'"
+        ).fetchone()
+        assert row[0] == "res-abc-123"
+
+    def test_open_trade_populates_model_context_from_audit_logs(self, sm):
+        sm._con.execute(
+            "INSERT INTO audit_logs (event_ts, close_ts, symbol, candidate_uid, pred_prob, "
+            "threshold, features_json, model_month, run_id) "
+            "VALUES (CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, '{}', ?, ?)",
+            [datetime(2025, 1, 1, tzinfo=timezone.utc), "EURUSD", "cand_1", 0.85, 0.72, "2025-01", "r1"],
+        )
+        sm.open_trade(
+            symbol="EURUSD", candidate_uid="cand_1", broker_pos_id="bp_2",
+            side="BUY", entry_price=1.1, entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            horizon=6,
+        )
+        row = sm._con.execute(
+            "SELECT entry_pred_prob, entry_threshold, entry_model_month FROM trades WHERE broker_pos_id = 'bp_2'"
+        ).fetchone()
+        assert abs(row[0] - 0.85) < 1e-9
+        assert abs(row[1] - 0.72) < 1e-9
+        assert row[2] == "2025-01"
+
+    def test_open_trade_nulls_model_context_when_no_audit_row(self, sm):
+        sm.open_trade(
+            symbol="EURUSD", candidate_uid="no_match", broker_pos_id="bp_3",
+            side="BUY", entry_price=1.1, entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            horizon=6,
+        )
+        row = sm._con.execute(
+            "SELECT entry_pred_prob, entry_threshold, entry_model_month FROM trades WHERE broker_pos_id = 'bp_3'"
+        ).fetchone()
+        assert row[0] is None
+        assert row[1] is None
+        assert row[2] is None
+
+    def test_update_trade_stores_exit_fields(self, sm):
+        sm.open_trade(
+            symbol="EURUSD", candidate_uid="cand_1", broker_pos_id="bp_4",
+            side="BUY", entry_price=1.1, entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            horizon=6,
+        )
+        sm.update_trade(
+            broker_pos_id="bp_4",
+            status="CLOSED",
+            exit_price=1.105,
+            exit_ts=datetime(2025, 1, 1, 1, tzinfo=timezone.utc),
+            pnl_pips=50.0,
+            symbol="EURUSD",
+            close_reason="HORIZON_COMPLETED",
+            commission_ccy=-0.46,
+        )
+        row = sm._con.execute(
+            "SELECT exit_bar_id, close_reason, commission_ccy FROM trades WHERE broker_pos_id = 'bp_4'"
+        ).fetchone()
+        assert row[0] is not None
+        assert row[1] == "HORIZON_COMPLETED"
+        assert abs(row[2] - (-0.46)) < 1e-9
+
+    def test_bars_held_is_positive(self, sm):
+        sm.open_trade(
+            symbol="EURUSD", candidate_uid="cand_1", broker_pos_id="bp_5",
+            side="BUY", entry_price=1.1, entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            horizon=6,
+        )
+        for b in _make_synthetic_bars(n=3):
+            sm.append_bar(b)
+        sm.update_trade(
+            broker_pos_id="bp_5",
+            status="CLOSED",
+            exit_price=1.105,
+            exit_ts=datetime(2025, 1, 1, 1, tzinfo=timezone.utc),
+            pnl_pips=50.0,
+            symbol="EURUSD",
+            close_reason="HORIZON_COMPLETED",
+        )
+        row = sm._con.execute(
+            "SELECT entry_bar_id, exit_bar_id FROM trades WHERE broker_pos_id = 'bp_5'"
+        ).fetchone()
+        assert row[1] > row[0]
