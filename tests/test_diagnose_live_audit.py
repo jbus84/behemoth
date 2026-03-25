@@ -219,10 +219,7 @@ def test_section_funnel_uses_predict_evaluations(tmp_path: Path) -> None:
         text = "\n".join(lines)
         assert "Prediction Funnel" in text
         assert "predict_evaluations" in text
-        assert "GBPUSD" in text
-        assert "3" in text
-        assert "2" in text
-        assert "1" in text
+        assert "| GBPUSD   |                   3 |                    2 |                 1 |        3 |" in text
     finally:
         con.close()
 
@@ -250,10 +247,7 @@ def test_section_score_distribution_uses_predict_evaluations(tmp_path: Path) -> 
         lines = _section_score_distribution(con, "jforex_live", True)
         text = "\n".join(lines)
         assert "Score Distribution" in text
-        assert "p25" in text
-        assert "0.525" in text
-        assert "0.640" in text or "0.64" in text
-        assert "0.807" in text
+        assert "| GBPUSD   |   3 |         0.5 | 0.525 |  0.64 | 0.725 | 0.776 | 0.793 | 0.807 |" in text
     finally:
         con.close()
 
@@ -280,10 +274,44 @@ def test_section_trade_outcomes_reports_closed_trades(tmp_path: Path) -> None:
         lines = _section_trade_outcomes(con, "jforex_live")
         text = "\n".join(lines)
         assert "Trade Outcomes" in text
-        assert "GBPUSD" in text
-        assert "closed_trades" in text.lower()
-        assert "win_rate" in text.lower()
-        assert "TP" in text
-        assert "SL" in text
+        assert "| GBPUSD   |               2 |      1 | 50.0%      |                 2 |             -1.5 |              0.5 | TP=1, SL=1      |" in text
+    finally:
+        con.close()
+
+
+def test_section_trade_outcomes_raises_on_schema_drift(tmp_path: Path) -> None:
+    db_path = tmp_path / "legacy_state.db"
+    con = duckdb.connect(str(db_path))
+    try:
+        con.execute(
+            """
+            CREATE TABLE trades (
+                internal_trade_id VARCHAR,
+                broker_pos_id VARCHAR,
+                symbol VARCHAR,
+                candidate_uid VARCHAR,
+                side VARCHAR,
+                entry_price DOUBLE,
+                entry_ts TIMESTAMP WITH TIME ZONE,
+                entry_bar_id INTEGER,
+                horizon_bars INTEGER,
+                touch_bar_id INTEGER,
+                exit_price DOUBLE,
+                exit_ts TIMESTAMP WITH TIME ZONE,
+                pnl_pips DOUBLE,
+                status VARCHAR,
+                run_id VARCHAR
+            )
+            """
+        )
+    finally:
+        con.close()
+
+    con = duckdb.connect(str(db_path))
+    try:
+        from scripts.diagnose_live_audit import _section_trade_outcomes
+
+        with pytest.raises(RuntimeError, match="diagnostic query failed"):
+            _section_trade_outcomes(con, "jforex_live")
     finally:
         con.close()

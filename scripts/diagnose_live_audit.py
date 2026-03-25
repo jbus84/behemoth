@@ -24,8 +24,8 @@ def _table(df: pd.DataFrame) -> str:
 def _safe_query(con: duckdb.DuckDBPyConnection, sql: str, params: list[Any]) -> pd.DataFrame:
     try:
         return con.execute(sql, params).fetchdf()
-    except Exception:
-        return pd.DataFrame()
+    except Exception as exc:
+        raise RuntimeError(f"diagnostic query failed: {exc}") from exc
 
 
 def _table_exists(con: duckdb.DuckDBPyConnection, table_name: str) -> bool:
