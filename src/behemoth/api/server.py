@@ -473,7 +473,8 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
             unique_bar_ticks = {int(c.bar_ticks) for c in _historical_registry.all_candidates()}
         else:
             _registry = CandidateRegistry.load(
-                os.getenv("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco")
+                os.getenv("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco"),
+                models_dir=Path(_config.models_dir),
             )
             _historical_registry = None
             _historical_entries_loaded = 0

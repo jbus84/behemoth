@@ -111,6 +111,10 @@ def _default_paths(symbol: str, *, config_dir: Path, analysis_dir: Path) -> dict
             analysis_dir / "reduced_core_rolling" / f"{s}_oco_reduced_summary.csv",
             analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_oco_reduced_summary.csv",
         ),
+        "reduced_monthly": _pick_first_existing(
+            analysis_dir / "reduced_core_rolling" / f"{s}_oco_reduced_monthly.csv",
+            analysis_dir / f"reduced_core_rolling_{sl}" / f"{s}_oco_reduced_monthly.csv",
+        ),
         "predictions": _pick_first_existing(
             analysis_dir / "wfo_2025_m3to1_oco_fullcap" / f"{s}_oco_monthly_predictions.parquet",
             analysis_dir / f"wfo_2025_m3to1_oco_fullcap_{sl}" / f"{s}_oco_monthly_predictions.parquet",
@@ -182,7 +186,7 @@ def _state_universe_for_month(path: Path, symbol: str, month: str) -> tuple[pd.D
         raise ValueError(f"empty state schedule: {path}")
     if "test_month" not in d.columns:
         raise ValueError(f"state schedule missing test_month: {path}")
-    cols = ["symbol", "bar_ticks", "horizon", "state_id", "family", "barrier_pips", "regime_desc"]
+    cols = _state_universe_columns()
     miss = [c for c in cols if c not in d.columns]
     if miss:
         raise ValueError(f"state schedule missing columns {miss}: {path}")
@@ -200,6 +204,37 @@ def _state_universe_for_month(path: Path, symbol: str, month: str) -> tuple[pd.D
     raw = x.to_json(orient="records", date_format="iso", force_ascii=True)
     sha = hashlib.sha256(raw.encode("utf-8")).hexdigest()
     return x, sha
+
+
+def _state_universe_columns() -> list[str]:
+    return ["symbol", "bar_ticks", "horizon", "state_id", "family", "barrier_pips", "regime_desc"]
+
+
+def _empty_state_universe() -> tuple[pd.DataFrame, str]:
+    x = pd.DataFrame(columns=_state_universe_columns())
+    raw = x.to_json(orient="records", date_format="iso", force_ascii=True)
+    sha = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+    return x, sha
+
+
+def _read_reduced_monthly_status(path: Path, symbol: str) -> dict[str, str]:
+    if not path.exists():
+        return {}
+    try:
+        d = pd.read_csv(path)
+    except Exception:
+        return {}
+    if d.empty or "test_month" not in d.columns or "status" not in d.columns:
+        return {}
+    if "symbol" in d.columns:
+        d = d[d["symbol"].astype(str).str.upper() == str(symbol).upper()].copy()
+    out: dict[str, str] = {}
+    for _, row in d.iterrows():
+        month = str(row.get("test_month", "")).strip()
+        if not _MONTH_RE.match(month):
+            continue
+        out[month] = str(row.get("status", "")).strip().lower()
+    return out
 
 
 def _canonical_candidate_uid(symbol: str, *, bar_ticks: int, horizon: int, state_id: str) -> str:
@@ -277,6 +312,7 @@ def _prune_stale_symbol_month_files(
         for fp in (
             month_dir / f"{sym_l}_oco_live_lock.json",
             month_dir / f"{sym_l}_oco_allowed_states.csv",
+            month_dir / f"{sym_l}_oco_locked_predictions.parquet",
         ):
             if fp.exists():
                 fp.unlink()
@@ -313,13 +349,18 @@ def run(
 
     for sym in symbols:
         paths = _default_paths(sym, config_dir=config_dir, analysis_dir=analysis_dir)
-        for p in paths.values():
+        for key, p in paths.items():
+            if key == "reduced_monthly":
+                continue
             if not p.exists():
                 raise FileNotFoundError(p)
         model_pairs = _model_month_pairs(sym, models_dir=models_dir)
         state_schedule = pd.read_csv(paths["state_schedule"])
         sched_months = sorted(state_schedule["test_month"].dropna().astype(str).unique().tolist())
-        available = sorted(list(set(model_pairs.keys()) & set(sched_months)))
+        reduced_month_status = _read_reduced_monthly_status(paths["reduced_monthly"], sym)
+        available = sorted(
+            list(set(model_pairs.keys()) & (set(sched_months) | set(reduced_month_status.keys())))
+        )
         _prune_stale_symbol_month_files(out_dir=out_dir, symbol=sym, available_months=available)
         month_list = _filter_months(
             months=available,
@@ -340,19 +381,29 @@ def run(
 
         for month in month_list:
             model_cbm, model_thr = model_pairs[month]
-            states, states_sha = _state_universe_for_month(paths["state_schedule"], sym, month)
+            month_status = str(reduced_month_status.get(month, "ok" if month in sched_months else "")).strip().lower()
+            historical_deployable = month_status in {"", "ok"}
+            non_deployable_reason = "" if historical_deployable else month_status
             month_dir = out_dir / month
             month_dir.mkdir(parents=True, exist_ok=True)
             states_out = month_dir / f"{str(sym).lower()}_oco_allowed_states.csv"
-            states.to_csv(states_out, index=False)
-            frozen_pred_out = month_dir / f"{str(sym).lower()}_oco_locked_predictions.parquet"
-            frozen_pred_path, frozen_pred_sha = _freeze_month_predictions(
-                source_predictions=paths["predictions"],
-                symbol=sym,
-                month=month,
-                states=states,
-                out_path=frozen_pred_out,
-            )
+            if historical_deployable:
+                states, states_sha = _state_universe_for_month(paths["state_schedule"], sym, month)
+                states.to_csv(states_out, index=False)
+                frozen_pred_out = month_dir / f"{str(sym).lower()}_oco_locked_predictions.parquet"
+                frozen_pred_path, frozen_pred_sha = _freeze_month_predictions(
+                    source_predictions=paths["predictions"],
+                    symbol=sym,
+                    month=month,
+                    states=states,
+                    out_path=frozen_pred_out,
+                )
+                frozen_pred_path_txt = str(frozen_pred_path)
+            else:
+                states, states_sha = _empty_state_universe()
+                states.to_csv(states_out, index=False)
+                frozen_pred_path_txt = ""
+                frozen_pred_sha = ""
 
             manifest: dict[str, Any] = {
                 "schema_version": 1,
@@ -368,7 +419,7 @@ def run(
                     "reduced_states_csv_sha256": _sha256(states_out),
                     "source_predictions_path": str(paths["predictions"]),
                     "source_predictions_sha256": _sha256(paths["predictions"]),
-                    "predictions_path": str(frozen_pred_path),
+                    "predictions_path": frozen_pred_path_txt,
                     "predictions_sha256": str(frozen_pred_sha),
                     "model_cbm_path": str(model_cbm),
                     "model_cbm_sha256": _sha256(model_cbm),
@@ -381,7 +432,7 @@ def run(
                     "reduced_summary_path": str(paths["reduced_summary"]),
                     "reduced_summary_sha256": _sha256(paths["reduced_summary"]),
                     "capacity_overall_pass": cap_ok,
-                    "live_deployable": (tick_ok is True) and (cap_ok is True),
+                    "live_deployable": historical_deployable and (tick_ok is True) and (cap_ok is True),
                 },
                 "locked_runtime": {
                     "locked_quantile": float(red_cfg.get("locked_quantile", 0.9)),
@@ -413,12 +464,16 @@ def run(
                 "historical_backtest": {
                     "mode": "month_locked",
                     "target_month": str(month),
+                    "deployable": bool(historical_deployable),
+                    "non_deployable_reason": non_deployable_reason,
                 },
             }
             lock_out = month_dir / f"{str(sym).lower()}_oco_live_lock.json"
             lock_out.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
 
-            out_paths.extend([lock_out, states_out, frozen_pred_path])
+            out_paths.extend([lock_out, states_out])
+            if frozen_pred_path_txt:
+                out_paths.append(Path(frozen_pred_path_txt))
             index_rows.append(
                 {
                     "symbol": str(sym).upper(),
@@ -429,13 +484,30 @@ def run(
                     "threshold_json_path": str(model_thr),
                     "candidates_count": int(len(states)),
                     "production_cap_pips": float(cap_pips),
-                    "live_deployable": bool((tick_ok is True) and (cap_ok is True)),
+                    "live_deployable": bool(
+                        historical_deployable and (tick_ok is True) and (cap_ok is True)
+                    ),
                 }
             )
             print(f"wrote: {lock_out}")
             print(f"wrote: {states_out}")
 
-    index_df = pd.DataFrame(index_rows).sort_values(["symbol", "month"]).reset_index(drop=True)
+    if index_rows:
+        index_df = pd.DataFrame(index_rows).sort_values(["symbol", "month"]).reset_index(drop=True)
+    else:
+        index_df = pd.DataFrame(
+            columns=[
+                "symbol",
+                "month",
+                "lock_path",
+                "allowed_states_path",
+                "model_cbm_path",
+                "threshold_json_path",
+                "candidates_count",
+                "production_cap_pips",
+                "live_deployable",
+            ]
+        )
     index_out = out_dir / "index.csv"
     index_df.to_csv(index_out, index=False)
     out_paths.append(index_out)

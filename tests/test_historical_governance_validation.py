@@ -288,3 +288,102 @@ def test_required_symbols_scopes_validation(tmp_path: Path) -> None:
     )
     scoped_bad = failed_checks(scoped_checks)
     assert scoped_bad == [], f"Expected no failures for GBPUSD-only scope, got: {scoped_bad}"
+
+
+def test_validate_historical_governance_allows_non_deployable_month_without_predictions(
+    tmp_path: Path,
+) -> None:
+    history_dir = tmp_path / "history"
+    month = "2026-02"
+    symbol = "USDCAD"
+    month_dir = history_dir / month
+    month_dir.mkdir(parents=True, exist_ok=True)
+
+    wfo = _touch(tmp_path / "artifacts" / "wfo.yaml", "threshold_mode: rolling_days\n")
+    reduced = _touch(tmp_path / "artifacts" / "reduced.yaml", "locked_quantile: 0.9\n")
+    states = _touch(
+        month_dir / f"{symbol.lower()}_oco_allowed_states.csv",
+        "symbol,bar_ticks,horizon,state_id,family,barrier_pips,regime_desc\n",
+    )
+    cbm = _touch(tmp_path / "artifacts" / f"{symbol}_model_{month}.cbm", "dummy_model")
+    thr = _touch(
+        tmp_path / "artifacts" / f"{symbol}_model_{month}.json",
+        json.dumps({"model_month": month}),
+    )
+    tick_exact = _touch(
+        tmp_path / "artifacts" / "tick_exact_summary.csv",
+        "overall_pass\nTrue\n",
+    )
+    reduced_sum = _touch(
+        tmp_path / "artifacts" / "reduced_summary.csv",
+        "capacity_pass_monthly_or_annual\nFalse\n",
+    )
+
+    lock = {
+        "symbol": symbol,
+        "artifacts": {
+            "wfo_config_path": str(wfo),
+            "wfo_config_sha256": _sha(wfo),
+            "reduced_config_path": str(reduced),
+            "reduced_config_sha256": _sha(reduced),
+            "reduced_states_csv_path": str(states),
+            "reduced_states_csv_sha256": _sha(states),
+            "predictions_path": "",
+            "predictions_sha256": "",
+            "model_cbm_path": str(cbm),
+            "model_cbm_sha256": _sha(cbm),
+            "model_threshold_json_path": str(thr),
+            "model_threshold_json_sha256": _sha(thr),
+            "model_month": month,
+            "tick_exact_summary_path": str(tick_exact),
+            "tick_exact_summary_sha256": _sha(tick_exact),
+            "reduced_summary_path": str(reduced_sum),
+            "reduced_summary_sha256": _sha(reduced_sum),
+            "live_deployable": False,
+        },
+        "state_universe": {"count": 0, "rows": []},
+        "historical_backtest": {
+            "target_month": month,
+            "deployable": False,
+            "non_deployable_reason": "no_gate_states",
+        },
+    }
+    lock_path = month_dir / f"{symbol.lower()}_oco_live_lock.json"
+    lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+    with (history_dir / "index.csv").open("w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(
+            f,
+            fieldnames=[
+                "symbol",
+                "month",
+                "lock_path",
+                "allowed_states_path",
+                "model_cbm_path",
+                "threshold_json_path",
+                "candidates_count",
+                "production_cap_pips",
+                "live_deployable",
+            ],
+        )
+        w.writeheader()
+        w.writerow(
+            {
+                "symbol": symbol,
+                "month": month,
+                "lock_path": str(lock_path),
+                "allowed_states_path": str(states),
+                "model_cbm_path": str(cbm),
+                "threshold_json_path": str(thr),
+                "candidates_count": 0,
+                "production_cap_pips": 1.2,
+                "live_deployable": False,
+            }
+        )
+
+    checks = validate_historical_governance(
+        history_dir,
+        required_symbols=[symbol],
+        required_months=[month],
+    )
+    assert failed_checks(checks) == []

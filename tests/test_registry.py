@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 
 import pytest
@@ -21,6 +23,55 @@ class TestRegistryLoading:
     def test_invalid_dir_raises(self):
         with pytest.raises(FileNotFoundError):
             CandidateRegistry.load(Path("configs/not_a_real_dir"))
+
+    def test_load_resolves_model_paths_against_models_dir(self, tmp_path: Path):
+        lock_dir = tmp_path / "locks"
+        models_dir = tmp_path / "models_alt"
+        lock_dir.mkdir()
+        models_dir.mkdir()
+
+        model_cbm = models_dir / "EURUSD_model_2026-02.cbm"
+        model_thr = models_dir / "EURUSD_model_2026-02.json"
+        model_cbm.write_bytes(b"cbm-bytes")
+        model_thr.write_text('{"threshold": 0.5}')
+
+        def sha256(path: Path) -> str:
+            return hashlib.sha256(path.read_bytes()).hexdigest()
+
+        lock = {
+            "symbol": "EURUSD",
+            "frozen_at_utc": "2026-03-25T00:00:00Z",
+            "artifacts": {
+                "live_deployable": True,
+                "model_cbm_path": "models/oco/EURUSD_model_2026-02.cbm",
+                "model_cbm_sha256": sha256(model_cbm),
+                "model_threshold_json_path": "models/oco/EURUSD_model_2026-02.json",
+                "model_threshold_json_sha256": sha256(model_thr),
+                "model_month": "2026-02",
+            },
+            "locked_runtime": {"production_cap_pips": 1.2},
+            "state_universe": {
+                "rows": [
+                    {
+                        "symbol": "EURUSD",
+                        "bar_ticks": 100,
+                        "horizon": 5,
+                        "barrier_pips": 2.0,
+                        "state_id": "oco_first_touch_clean__high_range_q70__k2",
+                        "regime_desc": "high_range_q70",
+                    }
+                ]
+            },
+        }
+        (lock_dir / "EURUSD_oco_live_lock.json").write_text(json.dumps(lock))
+
+        reg = CandidateRegistry.load(lock_dir, models_dir=models_dir)
+
+        assert reg.symbols == ["EURUSD"]
+        binding = reg.get_model_binding("EURUSD")
+        assert binding is not None
+        assert Path(binding["model_cbm_path"]) == model_cbm
+        assert Path(binding["model_threshold_json_path"]) == model_thr
 
 
 class TestCandidateGeneration:

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import re
 import sys
 from datetime import datetime, timezone
@@ -37,6 +38,23 @@ def parse_order_label_close_ts(label: str) -> "datetime | None":
 
 DEFAULT_LOCK_DIR = "configs/research/governance/oco_history_dukascopy_candidate/2025-07"
 DEFAULT_RECONCILE_DIR = "data/analysis/backtest_reconcile"
+
+
+def load_historical_lock_status(lock_dir: Path, symbol: str) -> dict[str, str | bool]:
+    path = lock_dir / f"{symbol.lower()}_oco_live_lock.json"
+    if not path.exists():
+        return {"historical_deployable": True, "non_deployable_reason": ""}
+    try:
+        lock = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {"historical_deployable": True, "non_deployable_reason": ""}
+    backtest = lock.get("historical_backtest", {})
+    if not isinstance(backtest, dict):
+        backtest = {}
+    return {
+        "historical_deployable": bool(backtest.get("deployable", True)),
+        "non_deployable_reason": str(backtest.get("non_deployable_reason", "")).strip(),
+    }
 
 
 def load_locked_predictions(
@@ -217,6 +235,32 @@ def compare_outcomes(
         "order_coverage_ratio": round(order_coverage_ratio, 4),
         "order_coverage_pass": order_coverage_pass,
         "overall_pass": overall_pass,
+        "historical_deployable": True,
+        "non_deployable_reason": "",
+    }
+
+
+def non_deployable_result(symbol: str, events: dict, reason: str) -> dict:
+    return {
+        "symbol": symbol,
+        "locked_selected_count": 0,
+        "locked_gross_pips_total": 0.0,
+        "locked_win_rate": 0.0,
+        "jforex_predict_cycles": int(events["predict_cycles"]),
+        "jforex_selected_total": int(events["selected_count_total"]),
+        "jforex_orders_submitted": int(events["orders_submitted"]),
+        "jforex_submitted_group_count": int(events["submitted_group_close_ts_count"]),
+        "signal_coverage_ratio": 0.0,
+        "signal_coverage_pass": False,
+        "execution_clean_pass": bool(
+            int(events["execution_failures"]) == 0 and int(events["lifecycle_failures"]) == 0
+        ),
+        "has_trades": bool(int(events["orders_submitted"]) > 0),
+        "order_coverage_ratio": 0.0,
+        "order_coverage_pass": False,
+        "overall_pass": False,
+        "historical_deployable": False,
+        "non_deployable_reason": str(reason).strip(),
     }
 
 
@@ -267,8 +311,19 @@ def main() -> None:
 
     results = []
     for symbol in symbols:
-        locked = load_locked_predictions(lock_dir, symbol, eval_start=args.eval_start, eval_end=args.eval_end)
         events = load_runtime_events(reconcile_dir, symbol)
+        lock_status = load_historical_lock_status(lock_dir, symbol)
+        if not bool(lock_status["historical_deployable"]):
+            result = non_deployable_result(
+                symbol=symbol,
+                events=events,
+                reason=str(lock_status["non_deployable_reason"]),
+            )
+            result["evaluated_at_utc"] = now_utc
+            results.append(result)
+            continue
+
+        locked = load_locked_predictions(lock_dir, symbol, eval_start=args.eval_start, eval_end=args.eval_end)
 
         locked_count = len(locked)
         locked_gross_total = float(locked["target_gross_pips"].sum())
@@ -297,14 +352,23 @@ def main() -> None:
           f"{'Orders':>7} {'ExecOK':>7} {'Verdict':>8}")
     print("-" * 62)
     for r in results:
-        verdict = "PASS" if r["overall_pass"] else "FAIL"
+        verdict = (
+            "NO_GO"
+            if not bool(r.get("historical_deployable", True))
+            else ("PASS" if r["overall_pass"] else "FAIL")
+        )
+        coverage_txt = "n/a" if not bool(r.get("historical_deployable", True)) else f"{r['signal_coverage_ratio']:>8.1%}"
         print(
             f"{r['symbol']:<8} {r['locked_selected_count']:>7} "
-            f"{r['jforex_selected_total']:>8} {r['signal_coverage_ratio']:>8.1%} "
+            f"{r['jforex_selected_total']:>8} {coverage_txt:>9} "
             f"{r['jforex_orders_submitted']:>7} "
             f"{'yes' if r['execution_clean_pass'] else 'NO':>7} "
             f"{verdict:>8}"
         )
+        if not bool(r.get("historical_deployable", True)):
+            reason = str(r.get("non_deployable_reason", "")).strip()
+            if reason:
+                print(f"{'':<44} reason={reason}")
 
     write_per_symbol_summaries(results, out_dir=reconcile_dir)
 
@@ -319,13 +383,16 @@ def main() -> None:
     print(f"\nResults written to {out_path}")
 
     # Exit code
-    all_pass = all(r["overall_pass"] for r in results)
+    deployable_results = [r for r in results if bool(r.get("historical_deployable", True))]
+    all_pass = all(r["overall_pass"] for r in deployable_results)
     if not all_pass:
-        failing = [r["symbol"] for r in results if not r["overall_pass"]]
+        failing = [r["symbol"] for r in deployable_results if not r["overall_pass"]]
         print(f"\nFAILED symbols: {', '.join(failing)}")
         sys.exit(1)
-    else:
+    elif deployable_results:
         print("\nAll symbols PASSED outcome parity.")
+    else:
+        print("\nNo deployable symbols required outcome parity.")
 
 
 if __name__ == "__main__":

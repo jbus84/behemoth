@@ -62,13 +62,18 @@ class CandidateRegistry:
     _model_bindings_by_symbol: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     @classmethod
-    def load(cls, lock_dir: Path | str | None = None) -> CandidateRegistry:
+    def load(
+        cls,
+        lock_dir: Path | str | None = None,
+        models_dir: Path | str | None = None,
+    ) -> CandidateRegistry:
         """Load exactly from per-symbol *_oco_live_lock.json files."""
         if lock_dir is None:
             lock_dir = Path(os.getenv("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco"))
 
         import json
         p_dir = Path(lock_dir)
+        resolved_models_dir = Path(models_dir) if models_dir is not None else None
         if not p_dir.exists() or not p_dir.is_dir():
             raise FileNotFoundError(f"Governance live lock directory not found: {p_dir}")
 
@@ -101,6 +106,9 @@ class CandidateRegistry:
                     continue
                 cbm_path = Path(cbm_path_txt)
                 thr_path = Path(thr_path_txt)
+                if resolved_models_dir is not None:
+                    cbm_path = resolved_models_dir / cbm_path.name
+                    thr_path = resolved_models_dir / thr_path.name
                 if (not cbm_path.exists()) or (not thr_path.exists()):
                     import logging
                     logging.getLogger("behemoth.api").error(
@@ -129,9 +137,9 @@ class CandidateRegistry:
                 locked = data.get("locked_runtime", {})
                 reg._caps_by_symbol[sym] = float(locked.get("production_cap_pips", 1.2))
                 reg._model_bindings_by_symbol[sym] = {
-                    "model_cbm_path": cbm_path_txt,
+                    "model_cbm_path": str(cbm_path),
                     "model_cbm_sha256": cbm_sha,
-                    "model_threshold_json_path": thr_path_txt,
+                    "model_threshold_json_path": str(thr_path),
                     "model_threshold_json_sha256": thr_sha,
                     "model_month": model_month,
                 }

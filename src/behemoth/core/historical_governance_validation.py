@@ -15,7 +15,6 @@ _REQUIRED_ARTIFACT_KEYS: list[tuple[str, str, str]] = [
     ("wfo_config", "wfo_config_path", "wfo_config_sha256"),
     ("reduced_config", "reduced_config_path", "reduced_config_sha256"),
     ("reduced_states", "reduced_states_csv_path", "reduced_states_csv_sha256"),
-    ("predictions", "predictions_path", "predictions_sha256"),
     ("model_cbm", "model_cbm_path", "model_cbm_sha256"),
     ("model_threshold_json", "model_threshold_json_path", "model_threshold_json_sha256"),
     ("tick_exact_summary", "tick_exact_summary_path", "tick_exact_summary_sha256"),
@@ -172,6 +171,11 @@ def validate_historical_governance(
         artifacts = lock.get("artifacts", {})
         if not isinstance(artifacts, dict):
             artifacts = {}
+        backtest = lock.get("historical_backtest", {})
+        if not isinstance(backtest, dict):
+            backtest = {}
+        historical_deployable = bool(backtest.get("deployable", True))
+        non_deployable_reason = str(backtest.get("non_deployable_reason", "")).strip()
         model_month = str(artifacts.get("model_month", "")).strip()
         _check(
             checks,
@@ -191,6 +195,16 @@ def validate_historical_governance(
             month=month,
             lock_path=lock_txt,
         )
+        if not historical_deployable:
+            _check(
+                checks,
+                name="historical_non_deployable_reason_present",
+                ok=bool(non_deployable_reason),
+                detail=f"non_deployable_reason={non_deployable_reason!r}",
+                symbol=symbol,
+                month=month,
+                lock_path=lock_txt,
+            )
 
         for label, path_key, hash_key in _REQUIRED_ARTIFACT_KEYS:
             path_txt = str(artifacts.get(path_key, "")).strip()
@@ -238,16 +252,81 @@ def validate_historical_governance(
                 lock_path=lock_txt,
             )
 
+        pred_path_txt = str(artifacts.get("predictions_path", "")).strip()
+        pred_hash_txt = str(artifacts.get("predictions_sha256", "")).strip()
+        if historical_deployable:
+            _check(
+                checks,
+                name="predictions_artifact_path_present",
+                ok=bool(pred_path_txt),
+                detail=f"predictions_path={pred_path_txt!r}",
+                symbol=symbol,
+                month=month,
+                lock_path=lock_txt,
+            )
+            _check(
+                checks,
+                name="predictions_artifact_hash_present",
+                ok=bool(pred_hash_txt),
+                detail=f"predictions_sha256={pred_hash_txt!r}",
+                symbol=symbol,
+                month=month,
+                lock_path=lock_txt,
+            )
+            if pred_path_txt and pred_hash_txt:
+                pred_path = Path(pred_path_txt)
+                _check(
+                    checks,
+                    name="predictions_artifact_exists",
+                    ok=(pred_path.exists() and pred_path.is_file()),
+                    detail=f"path={pred_path}",
+                    symbol=symbol,
+                    month=month,
+                    lock_path=lock_txt,
+                )
+                if pred_path.exists() and pred_path.is_file():
+                    got = _sha256_cached(pred_path, sha_cache)
+                    _check(
+                        checks,
+                        name="predictions_artifact_hash_match",
+                        ok=(got == pred_hash_txt),
+                        detail=f"expected={pred_hash_txt} got={got}",
+                        symbol=symbol,
+                        month=month,
+                        lock_path=lock_txt,
+                    )
+        else:
+            _check(
+                checks,
+                name="predictions_artifact_omitted_when_non_deployable",
+                ok=(pred_path_txt == "" and pred_hash_txt == ""),
+                detail=f"predictions_path={pred_path_txt!r} predictions_sha256={pred_hash_txt!r}",
+                symbol=symbol,
+                month=month,
+                lock_path=lock_txt,
+            )
+
         rows = lock.get("state_universe", {}).get("rows", [])
-        _check(
-            checks,
-            name="state_universe_rows_nonempty",
-            ok=isinstance(rows, list) and len(rows) > 0,
-            detail=f"rows={len(rows) if isinstance(rows, list) else 'invalid'}",
-            symbol=symbol,
-            month=month,
-            lock_path=lock_txt,
-        )
+        if historical_deployable:
+            _check(
+                checks,
+                name="state_universe_rows_nonempty",
+                ok=isinstance(rows, list) and len(rows) > 0,
+                detail=f"rows={len(rows) if isinstance(rows, list) else 'invalid'}",
+                symbol=symbol,
+                month=month,
+                lock_path=lock_txt,
+            )
+        else:
+            _check(
+                checks,
+                name="state_universe_rows_empty_when_non_deployable",
+                ok=isinstance(rows, list) and len(rows) == 0,
+                detail=f"rows={len(rows) if isinstance(rows, list) else 'invalid'}",
+                symbol=symbol,
+                month=month,
+                lock_path=lock_txt,
+            )
         if isinstance(rows, list) and rows:
             symbol_mismatch = 0
             for row in rows:
@@ -264,10 +343,8 @@ def validate_historical_governance(
                 lock_path=lock_txt,
             )
 
-        backtest = lock.get("historical_backtest", {})
         target_month = ""
-        if isinstance(backtest, dict):
-            target_month = str(backtest.get("target_month", "")).strip()
+        target_month = str(backtest.get("target_month", "")).strip()
         _check(
             checks,
             name="historical_target_month_matches_parent",

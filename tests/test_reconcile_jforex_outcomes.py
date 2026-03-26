@@ -421,3 +421,59 @@ def test_load_runtime_events_prefers_real_over_local(tmp_path):
         "load_runtime_events() must prefer EURUSD_jforex_runtime_events.csv over "
         "EURUSD_local_jforex_runtime_events.csv."
     )
+
+
+def test_main_reports_non_deployable_month_without_locked_predictions(tmp_path, monkeypatch):
+    import json
+    import pandas as pd
+    import sys
+
+    lock_dir = tmp_path / "lock"
+    lock_dir.mkdir()
+    reconcile_dir = tmp_path / "reconcile"
+    reconcile_dir.mkdir()
+    out_csv = tmp_path / "out.csv"
+
+    lock = {
+        "symbol": "USDCAD",
+        "artifacts": {
+            "model_month": "2026-02",
+            "predictions_path": "",
+            "predictions_sha256": "",
+            "live_deployable": False,
+        },
+        "state_universe": {"count": 0, "rows": []},
+        "historical_backtest": {
+            "target_month": "2026-02",
+            "deployable": False,
+            "non_deployable_reason": "no_gate_states",
+        },
+    }
+    (lock_dir / "usdcad_oco_live_lock.json").write_text(json.dumps(lock), encoding="utf-8")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "reconcile_jforex_outcomes.py",
+            "--symbols",
+            "USDCAD",
+            "--lock-dir",
+            str(lock_dir),
+            "--reconcile-dir",
+            str(reconcile_dir),
+            "--out-csv",
+            str(out_csv),
+        ],
+    )
+
+    from scripts.reconcile_jforex_outcomes import main
+
+    main()
+
+    df = pd.read_csv(out_csv)
+    row = df.iloc[0].to_dict()
+    assert row["symbol"] == "USDCAD"
+    assert str(row["historical_deployable"]).lower() == "false"
+    assert row["non_deployable_reason"] == "no_gate_states"
+    assert str(row["overall_pass"]).lower() == "false"
