@@ -87,6 +87,12 @@ def run(
                 )
             )
             continue
+        if not isinstance(payload, dict):
+            _remove_symbol_targets(target_models_dir, symbol_hint)
+            results.append(
+                SyncResult(symbol_hint or "UNKNOWN", "-", "FAIL", "malformed lock metadata")
+            )
+            continue
 
         symbol = str(payload.get("symbol", "")).upper().strip() or symbol_hint
         if symbol:
