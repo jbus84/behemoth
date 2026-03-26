@@ -2,17 +2,14 @@
 """Run the definitive monthly Dukascopy-candidate recertification gate.
 
 Auto-derives the model month (last complete calendar month) and test window,
-runs the candidate artifact sync, then the definitive matrix and parity
-checks, followed by `make full-stage14-cert`, then reads the stage14
-certification checks CSV and prints a per-symbol go/no-go summary.
+runs the definitive matrix and parity checks, followed by
+`make full-stage14-cert`, then reads the stage14 certification checks CSV and
+prints a per-symbol go/no-go summary.
 
 Prerequisites:
   1. make retrain-all                    — retrain models to models/oco/
-  2. make freeze-oco-dukascopy-candidate — freeze governance lock to
-       configs/research/governance/oco_dukascopy_candidate/
-
-This script now runs the candidate model sync directly before certification,
-so the dukascopy candidate directory no longer needs to be prepared manually.
+  2. make monthly-build                  — build
+       configs/research/governance/oco_candidate_builds/<YYYY-MM>
 
 Exits 0 if all critical checks pass, exits 1 if any fail.
 """
@@ -27,9 +24,7 @@ from datetime import date
 from pathlib import Path
 
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
-SYNC_LOCK_DIR = "configs/research/governance/oco"
-SYNC_SOURCE_MODELS_DIR = "models/oco"
-SYNC_TARGET_MODELS_DIR = "models/oco_dukascopy_candidate"
+MONTHLY_BUILD_ROOT = "configs/research/governance/oco_candidate_builds"
 CERT_TICK_BATCH_SIZE = "1"
 CERT_CHECKS_FILENAME = "stage14_jforex_runtime_certification_checks.csv"
 
@@ -73,26 +68,6 @@ def _run_step(cmd: list[str], label: str) -> None:
         raise SystemExit(1)
 
 
-def _sync_candidate_models() -> None:
-    _run_step(
-        [
-            "uv",
-            "run",
-            "python",
-            "scripts/sync_candidate_model_artifacts.py",
-            "--lock-dir",
-            SYNC_LOCK_DIR,
-            "--source-models-dir",
-            SYNC_SOURCE_MODELS_DIR,
-            "--target-models-dir",
-            SYNC_TARGET_MODELS_DIR,
-            "--symbols",
-            ",".join(DEFAULT_SYMBOLS),
-        ],
-        "step 1/4: sync_candidate_model_artifacts",
-    )
-
-
 def _read_failures(report_dir: str) -> dict[str, list[dict[str, str]]]:
     """Return {symbol: [failing critical check rows]}."""
     csv_path = _repo_root() / report_dir / CERT_CHECKS_FILENAME
@@ -104,6 +79,16 @@ def _read_failures(report_dir: str) -> dict[str, list[dict[str, str]]]:
             if row["severity"] == "critical" and row["status"] != "pass":
                 failures.setdefault(row["symbol"], []).append(row)
     return failures
+
+
+def _require_month_bundle(model_month: str) -> Path:
+    bundle_dir = Path(MONTHLY_BUILD_ROOT) / model_month
+    if not (_repo_root() / bundle_dir).is_dir():
+        raise SystemExit(
+            f"[monthly-recert] missing month build bundle: {_repo_root() / bundle_dir}. "
+            "run make monthly-build first."
+        )
+    return bundle_dir
 
 
 def _print_summary(model_month: str, failures: dict[str, list[dict[str, str]]]) -> bool:
@@ -143,7 +128,7 @@ def main() -> None:
         eval_start_override=args.eval_start,
         eval_end_override=args.eval_end,
     )
-    lock_dir = f"configs/research/governance/oco_history_dukascopy_candidate/{model_month}"
+    bundle_dir = _require_month_bundle(model_month)
 
     print(
         f"[monthly-recert] running for MODEL_MONTH={model_month} "
@@ -151,7 +136,6 @@ def main() -> None:
         flush=True,
     )
 
-    _sync_candidate_models()
     _run_step(
         [
             "make",
@@ -161,7 +145,7 @@ def main() -> None:
             f"END_TS={end_ts}",
             f"TICK_BATCH_SIZE={CERT_TICK_BATCH_SIZE}",
         ],
-        "step 2/4: jforex-dukascopy-matrix",
+        "step 1/3: jforex-dukascopy-matrix",
     )
     _run_step(
         [
@@ -172,11 +156,17 @@ def main() -> None:
             f"END_TS={eval_end}",
             f"TICK_BATCH_SIZE={CERT_TICK_BATCH_SIZE}",
         ],
-        "step 3/4: local-jforex-parity-matrix",
+        "step 2/3: local-jforex-parity-matrix",
     )
     _run_step(
-        ["make", "full-stage14-cert", f"LOCK_DIR={lock_dir}", f"EVAL_START={eval_start}", f"EVAL_END={eval_end}"],
-        "step 4/4: full-stage14-cert",
+        [
+            "make",
+            "full-stage14-cert",
+            f"LOCK_DIR={bundle_dir}",
+            f"EVAL_START={eval_start}",
+            f"EVAL_END={eval_end}",
+        ],
+        "step 3/3: full-stage14-cert",
     )
 
     failures = _read_failures(args.report_dir)
