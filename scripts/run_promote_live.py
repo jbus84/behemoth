@@ -89,6 +89,7 @@ def _archive_build_bundle(model_month: str) -> None:
             target_dir.unlink()
     shutil.copytree(source_dir, target_dir)
     _rewrite_promoted_lock_paths(source_dir, target_dir)
+    _rebuild_promoted_index(target_root)
 
 
 def _rewrite_path_prefix(path_value: str, source_dir: Path, target_dir: Path) -> str:
@@ -121,6 +122,47 @@ def _rewrite_promoted_lock_paths(source_dir: Path, target_dir: Path) -> None:
         with lock_path.open("w") as f:
             json.dump(rewritten, f, indent=2)
             f.write("\n")
+
+
+def _rebuild_promoted_index(target_root: Path) -> None:
+    rows: list[dict[str, object]] = []
+    for lock_path in sorted(target_root.glob("*/*_oco_live_lock.json")):
+        with lock_path.open() as f:
+            manifest = json.load(f)
+        artifacts = manifest.get("artifacts", {})
+        state_universe = manifest.get("state_universe", {})
+        locked_runtime = manifest.get("locked_runtime", {})
+        rows.append(
+            {
+                "symbol": str(manifest.get("symbol", "")).upper(),
+                "month": lock_path.parent.name,
+                "lock_path": str(lock_path),
+                "allowed_states_path": str(artifacts.get("reduced_states_csv_path", "")),
+                "model_cbm_path": str(artifacts.get("model_cbm_path", "")),
+                "threshold_json_path": str(artifacts.get("threshold_json_path", "")),
+                "candidates_count": int(state_universe.get("count", 0) or 0),
+                "production_cap_pips": float(locked_runtime.get("production_cap_pips", 0.0) or 0.0),
+                "live_deployable": bool(artifacts.get("live_deployable", False)),
+            }
+        )
+
+    index_path = target_root / "index.csv"
+    columns = [
+        "symbol",
+        "month",
+        "lock_path",
+        "allowed_states_path",
+        "model_cbm_path",
+        "threshold_json_path",
+        "candidates_count",
+        "production_cap_pips",
+        "live_deployable",
+    ]
+    with index_path.open("w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=columns)
+        writer.writeheader()
+        for row in sorted(rows, key=lambda item: (str(item["symbol"]), str(item["month"]))):
+            writer.writerow(row)
 
 
 def main() -> None:
