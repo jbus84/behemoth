@@ -66,6 +66,22 @@ def _in_eval_window(ts: "datetime | None", eval_start: "datetime | None", eval_e
 
 DEFAULT_LOCK_DIR = "configs/research/governance/oco_history_dukascopy_candidate/2025-07"
 DEFAULT_RECONCILE_DIR = "data/analysis/backtest_reconcile"
+REQUIRED_RUNTIME_EVENT_COLUMNS = ("event_name", "category", "pass", "detail")
+
+
+def canonical_runtime_events_path(reconcile_dir: Path, symbol: str) -> Path:
+    return reconcile_dir / f"{symbol}_jforex_runtime_events.csv"
+
+
+def load_runtime_events_frame(path: Path) -> pd.DataFrame:
+    if not path.exists():
+        raise SystemExit(f"missing runtime events file: {path}")
+    df = pd.read_csv(path)
+    missing = [col for col in REQUIRED_RUNTIME_EVENT_COLUMNS if col not in df.columns]
+    if missing:
+        cols = ",".join(missing)
+        raise SystemExit(f"runtime events file missing columns [{cols}]: {path}")
+    return df
 
 
 def load_historical_lock_status(lock_dir: Path, symbol: str) -> dict[str, str | bool]:
@@ -130,25 +146,8 @@ def load_runtime_events(
       predict_cycles, orders_submitted, orders_filled, execution_failures,
       lifecycle_failures, lifecycle_violations, selected_count_total
     """
-    # Prefer real Dukascopy tester events ({symbol}_jforex_runtime_events.csv) over
-    # local surrogate events ({symbol}_local_jforex_runtime_events.csv). Once a symbol
-    # has been run through the real tester, jforex-outcome-parity must use those events.
-    preferred = reconcile_dir / f"{symbol}_jforex_runtime_events.csv"
-    if preferred.exists():
-        candidates = [preferred]
-    else:
-        candidates = list(reconcile_dir.glob(f"{symbol}_*_runtime_events.csv"))
-    if not candidates:
-        return {
-            "predict_cycles": 0, "orders_submitted": 0, "orders_filled": 0,
-            "execution_failures": 0, "lifecycle_failures": 0, "lifecycle_violations": 0,
-            "selected_count_total": 0,
-            "submitted_group_close_ts_count": 0,
-            "completed_group_count": 0,
-            "submitted_group_close_ts": [],
-        }
-    path = candidates[0]
-    df = pd.read_csv(path)
+    path = canonical_runtime_events_path(Path(reconcile_dir), symbol)
+    df = load_runtime_events_frame(path)
     eval_start_dt = _parse_eval_ts(eval_start)
     eval_end_dt = _parse_eval_ts(eval_end)
 

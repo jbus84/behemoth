@@ -298,27 +298,47 @@ def test_load_runtime_events_accepts_specific_block_reasons(tmp_path):
     assert events["predict_cycles"] == 1
 
 
-def test_load_runtime_events_fails_when_canonical_file_is_missing_detail_column(tmp_path):
+@pytest.mark.parametrize(
+    "missing_column",
+    [
+        "event_name",
+        "category",
+        "pass",
+        "detail",
+    ],
+)
+def test_load_runtime_events_fails_when_canonical_file_is_missing_required_columns(
+    tmp_path,
+    missing_column,
+):
     from scripts.reconcile_jforex_outcomes import load_runtime_events
 
     path = tmp_path / "USDJPY_jforex_runtime_events.csv"
+    fieldnames = [
+        "event_ts_utc",
+        "symbol",
+        "category",
+        "event_name",
+        "pass",
+        "detail",
+    ]
+    present_fieldnames = [name for name in fieldnames if name != missing_column]
+    row = {
+        "event_ts_utc": "2026-02-07T00:00:00Z",
+        "symbol": "USDJPY",
+        "category": "predict",
+        "event_name": "predict_cycle",
+        "pass": "true",
+        "detail": "selected_count=1;blocked_count=0",
+    }
     with open(path, "w", newline="") as f:
-        writer = csv.DictWriter(
-            f,
-            fieldnames=["event_ts_utc", "symbol", "category", "event_name", "pass"],
-        )
+        writer = csv.DictWriter(f, fieldnames=present_fieldnames)
         writer.writeheader()
-        writer.writerow(
-            {
-                "event_ts_utc": "2026-02-07T00:00:00Z",
-                "symbol": "USDJPY",
-                "category": "predict",
-                "event_name": "predict_cycle",
-                "pass": "true",
-            }
-        )
+        writer.writerow({key: value for key, value in row.items() if key in present_fieldnames})
 
-    with pytest.raises(SystemExit, match="missing columns \\[detail\\]"):
+    import re
+
+    with pytest.raises(SystemExit, match=rf"runtime events file missing columns \[{re.escape(missing_column)}\]:"):
         load_runtime_events(tmp_path, "USDJPY")
 
 
@@ -704,6 +724,21 @@ def test_main_reports_non_deployable_month_without_locked_predictions(tmp_path, 
         },
     }
     (lock_dir / "usdcad_oco_live_lock.json").write_text(json.dumps(lock), encoding="utf-8")
+
+    with open(reconcile_dir / "USDCAD_jforex_runtime_events.csv", "w", newline="") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=["event_ts_utc", "symbol", "category", "event_name", "pass", "detail"],
+        )
+        writer.writeheader()
+        writer.writerow({
+            "event_ts_utc": "2026-02-07T00:00:00Z",
+            "symbol": "USDCAD",
+            "category": "signal",
+            "event_name": "predict_cycle",
+            "pass": "true",
+            "detail": "selected_count=0",
+        })
 
     monkeypatch.setattr(
         sys,
