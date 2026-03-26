@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Run the monthly JForex dukascopy-candidate sync-and-recertification pipeline.
+"""Run the definitive monthly Dukascopy-candidate recertification gate.
 
 Auto-derives the model month (last complete calendar month) and test window,
-runs the candidate artifact sync, then `make jforex-dukascopy-matrix`
-followed by `make full-stage14-cert`, then reads the stage14 certification
-checks CSV and prints a per-symbol go/no-go summary.
+runs the candidate artifact sync, then the definitive matrix and parity
+checks, followed by `make full-stage14-cert`, then reads the stage14
+certification checks CSV and prints a per-symbol go/no-go summary.
 
 Prerequisites:
   1. make retrain-all                    — retrain models to models/oco/
@@ -30,6 +30,7 @@ DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 SYNC_LOCK_DIR = "configs/research/governance/oco"
 SYNC_SOURCE_MODELS_DIR = "models/oco"
 SYNC_TARGET_MODELS_DIR = "models/oco_dukascopy_candidate"
+CERT_TICK_BATCH_SIZE = "1"
 CERT_CHECKS_FILENAME = "stage14_jforex_runtime_certification_checks.csv"
 
 
@@ -88,7 +89,7 @@ def _sync_candidate_models() -> None:
             "--symbols",
             ",".join(DEFAULT_SYMBOLS),
         ],
-        "step 1/3: sync_candidate_model_artifacts",
+        "step 1/4: sync_candidate_model_artifacts",
     )
 
 
@@ -152,12 +153,30 @@ def main() -> None:
 
     _sync_candidate_models()
     _run_step(
-        ["make", "jforex-dukascopy-matrix", f"MODEL_MONTH={model_month}", f"START_TS={start_ts}", f"END_TS={end_ts}"],
-        "step 2/3: jforex-dukascopy-matrix",
+        [
+            "make",
+            "jforex-dukascopy-matrix",
+            f"MODEL_MONTH={model_month}",
+            f"START_TS={start_ts}",
+            f"END_TS={end_ts}",
+            f"TICK_BATCH_SIZE={CERT_TICK_BATCH_SIZE}",
+        ],
+        "step 2/4: jforex-dukascopy-matrix",
+    )
+    _run_step(
+        [
+            "make",
+            "local-jforex-parity-matrix",
+            f"MODEL_MONTH={model_month}",
+            f"START_TS={start_ts}",
+            f"END_TS={end_ts}",
+            f"TICK_BATCH_SIZE={CERT_TICK_BATCH_SIZE}",
+        ],
+        "step 3/4: local-jforex-parity-matrix",
     )
     _run_step(
         ["make", "full-stage14-cert", f"LOCK_DIR={lock_dir}", f"EVAL_START={eval_start}", f"EVAL_END={eval_end}"],
-        "step 3/3: full-stage14-cert",
+        "step 4/4: full-stage14-cert",
     )
 
     failures = _read_failures(args.report_dir)
