@@ -92,6 +92,10 @@ def run(
         if symbol:
             seen_symbols.add(symbol)
         artifacts = payload.get("artifacts", {})
+        if not isinstance(artifacts, dict):
+            _remove_symbol_targets(target_models_dir, symbol)
+            results.append(SyncResult(symbol or "UNKNOWN", "-", "FAIL", "malformed lock metadata"))
+            continue
         month = str(artifacts.get("model_month", "")).strip()
         cbm_name = _resolve_artifact_name(artifacts.get("model_cbm_path", ""))
         thr_name = _resolve_artifact_name(artifacts.get("model_threshold_json_path", ""))
@@ -101,10 +105,12 @@ def run(
         target_thr = target_models_dir / thr_name if thr_name else None
 
         if not symbol or not month or not cbm_name or not thr_name:
+            _remove_symbol_targets(target_models_dir, symbol)
             _remove_target_artifacts(*(path for path in (target_cbm, target_thr) if path is not None))
             results.append(SyncResult(symbol or "UNKNOWN", month, "FAIL", "malformed lock metadata"))
             continue
         if not expected_cbm_sha or not expected_thr_sha:
+            _remove_symbol_targets(target_models_dir, symbol)
             _remove_target_artifacts(*(path for path in (target_cbm, target_thr) if path is not None))
             results.append(SyncResult(symbol, month, "FAIL", "missing expected hash in lock"))
             continue
