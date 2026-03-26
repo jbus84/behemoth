@@ -492,26 +492,26 @@ def test_load_runtime_events_keeps_schema_when_eval_window_filters_all_rows(tmp_
 
     _write_runtime_events(tmp_path, "EURUSD", "jforex", [
         {
-            "event_ts_utc": "2026-03-22T10:01:00Z",
+            "event_ts_utc": "2026-03-22T10:00:00Z",
             "symbol": "EURUSD",
-            "category": "execution",
-            "event_name": "order_submitted",
+            "category": "signal",
+            "event_name": "predict_cycle",
             "pass": "true",
-            "detail": "OCO_EURUSD_T100_H6_TS20260207120000_RIDNA_CID001:BUY",
+            "detail": "prediction_count=4;selected_count=3;blocked_count=1;close_ts=2026-02-07T12:00:00Z;completed_bar_ticks=[100]",
         },
     ])
 
     events = load_runtime_events(
         tmp_path,
         "EURUSD",
-        eval_start="2026-02-07T00:00:00Z",
-        eval_end="2026-02-08T00:00:00Z",
+        eval_start="2026-02-08T00:00:00Z",
+        eval_end="2026-02-09T00:00:00Z",
     )
 
     assert events["predict_cycles"] == 0
-    assert events["orders_submitted"] == 1
     assert events["selected_count_total"] == 0
-    assert events["submitted_group_close_ts_count"] == 1
+    assert events["orders_submitted"] == 0
+    assert events["submitted_group_close_ts_count"] == 0
 
 
 def test_compare_outcomes_per_event_coverage():
