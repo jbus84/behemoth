@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""Run the monthly JForex dukascopy-candidate recertification pipeline.
+"""Run the monthly JForex dukascopy-candidate sync-and-recertification pipeline.
 
 Auto-derives the model month (last complete calendar month) and test window,
-runs `make jforex-dukascopy-matrix` followed by `make full-stage14-cert`, then
-reads the stage14 certification checks CSV and prints a per-symbol go/no-go
-summary.
+runs the candidate artifact sync, then `make jforex-dukascopy-matrix`
+followed by `make full-stage14-cert`, then reads the stage14 certification
+checks CSV and prints a per-symbol go/no-go summary.
 
-Prerequisites (run manually before this script):
+Prerequisites:
   1. make retrain-all                    — retrain models to models/oco/
   2. make freeze-oco-dukascopy-candidate — freeze governance lock to
        configs/research/governance/oco_dukascopy_candidate/
+
+This script now runs the candidate model sync directly before certification,
+so the dukascopy candidate directory no longer needs to be prepared manually.
 
 Exits 0 if all critical checks pass, exits 1 if any fail.
 """
@@ -24,6 +27,9 @@ from datetime import date
 from pathlib import Path
 
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
+SYNC_LOCK_DIR = "configs/research/governance/oco"
+SYNC_SOURCE_MODELS_DIR = "models/oco"
+SYNC_TARGET_MODELS_DIR = "models/oco_dukascopy_candidate"
 CERT_CHECKS_FILENAME = "stage14_jforex_runtime_certification_checks.csv"
 
 
@@ -64,6 +70,26 @@ def _run_step(cmd: list[str], label: str) -> None:
             flush=True,
         )
         raise SystemExit(1)
+
+
+def _sync_candidate_models() -> None:
+    _run_step(
+        [
+            "uv",
+            "run",
+            "python",
+            "scripts/sync_candidate_model_artifacts.py",
+            "--lock-dir",
+            SYNC_LOCK_DIR,
+            "--source-models-dir",
+            SYNC_SOURCE_MODELS_DIR,
+            "--target-models-dir",
+            SYNC_TARGET_MODELS_DIR,
+            "--symbols",
+            ",".join(DEFAULT_SYMBOLS),
+        ],
+        "step 1/3: sync_candidate_model_artifacts",
+    )
 
 
 def _read_failures(report_dir: str) -> dict[str, list[dict[str, str]]]:
@@ -124,13 +150,14 @@ def main() -> None:
         flush=True,
     )
 
+    _sync_candidate_models()
     _run_step(
         ["make", "jforex-dukascopy-matrix", f"MODEL_MONTH={model_month}", f"START_TS={start_ts}", f"END_TS={end_ts}"],
-        "step 1/2: jforex-dukascopy-matrix",
+        "step 2/3: jforex-dukascopy-matrix",
     )
     _run_step(
         ["make", "full-stage14-cert", f"LOCK_DIR={lock_dir}", f"EVAL_START={eval_start}", f"EVAL_END={eval_end}"],
-        "step 2/2: full-stage14-cert",
+        "step 3/3: full-stage14-cert",
     )
 
     failures = _read_failures(args.report_dir)
