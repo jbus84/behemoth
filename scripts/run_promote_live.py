@@ -139,7 +139,7 @@ def _rebuild_promoted_index(target_root: Path) -> None:
                 "lock_path": str(lock_path),
                 "allowed_states_path": str(artifacts.get("reduced_states_csv_path", "")),
                 "model_cbm_path": str(artifacts.get("model_cbm_path", "")),
-                "threshold_json_path": str(artifacts.get("threshold_json_path", "")),
+                "threshold_json_path": str(artifacts.get("model_threshold_json_path", "")),
                 "candidates_count": int(state_universe.get("count", 0) or 0),
                 "production_cap_pips": float(locked_runtime.get("production_cap_pips", 0.0) or 0.0),
                 "live_deployable": bool(artifacts.get("live_deployable", False)),

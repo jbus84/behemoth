@@ -36,7 +36,7 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
             {
                 "artifacts": {
                     "model_cbm_path": str(source_model_cbm),
-                    "threshold_json_path": str(source_threshold_json),
+                    "model_threshold_json_path": str(source_threshold_json),
                     "predictions_path": str(source_predictions),
                     "reduced_states_csv_path": str(source_states),
                     "reduced_summary_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/EURUSD_oco_reduced_summary.csv",
