@@ -156,7 +156,7 @@ def load_runtime_events(
 
     predict_cycle_rows = df[df["event_name"] == "predict_cycle"].copy()
     if eval_start_dt is not None or eval_end_dt is not None:
-        predict_cycle_rows = predict_cycle_rows[
+        predict_cycle_rows = predict_cycle_rows.loc[
             predict_cycle_rows["detail"].apply(
                 lambda detail: _in_eval_window(
                     parse_predict_cycle_close_ts(str(detail)),
@@ -169,7 +169,7 @@ def load_runtime_events(
 
     order_submitted_rows = df[df["event_name"] == "order_submitted"].copy()
     if eval_start_dt is not None or eval_end_dt is not None:
-        order_submitted_rows = order_submitted_rows[
+        order_submitted_rows = order_submitted_rows.loc[
             order_submitted_rows["detail"].astype(str).apply(
                 lambda detail: _in_eval_window(
                     parse_order_label_close_ts(detail.split(":")[0]),

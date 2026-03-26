@@ -487,6 +487,33 @@ def test_load_runtime_events_filters_eval_window_using_replay_close_ts(tmp_path)
     assert events["submitted_group_close_ts_count"] == 1
 
 
+def test_load_runtime_events_keeps_schema_when_eval_window_filters_all_rows(tmp_path):
+    from scripts.reconcile_jforex_outcomes import load_runtime_events
+
+    _write_runtime_events(tmp_path, "EURUSD", "jforex", [
+        {
+            "event_ts_utc": "2026-03-22T10:01:00Z",
+            "symbol": "EURUSD",
+            "category": "execution",
+            "event_name": "order_submitted",
+            "pass": "true",
+            "detail": "OCO_EURUSD_T100_H6_TS20260207120000_RIDNA_CID001:BUY",
+        },
+    ])
+
+    events = load_runtime_events(
+        tmp_path,
+        "EURUSD",
+        eval_start="2026-02-07T00:00:00Z",
+        eval_end="2026-02-08T00:00:00Z",
+    )
+
+    assert events["predict_cycles"] == 0
+    assert events["orders_submitted"] == 1
+    assert events["selected_count_total"] == 0
+    assert events["submitted_group_close_ts_count"] == 1
+
+
 def test_compare_outcomes_per_event_coverage():
     """order_coverage_pass is still computed and returned, but does not gate overall_pass."""
     from scripts.reconcile_jforex_outcomes import compare_outcomes
