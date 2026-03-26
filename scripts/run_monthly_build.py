@@ -16,13 +16,21 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
+def _validate_model_month(value: str) -> str:
+    try:
+        date.fromisoformat(f"{value}-01")
+    except ValueError as exc:
+        raise SystemExit(f"[monthly-build] invalid --model-month: {value}") from exc
+    return value
+
+
 def _derive_model_month(override: str | None = None) -> str:
     if override:
-        return override
+        return _validate_model_month(override)
     today = date.today()
     if today.month == 1:
-        return f"{today.year - 1:04d}-12"
-    return f"{today.year:04d}-{today.month - 1:02d}"
+        return _validate_model_month(f"{today.year - 1:04d}-12")
+    return _validate_model_month(f"{today.year:04d}-{today.month - 1:02d}")
 
 
 def _run_step(cmd: list[str], label: str) -> None:

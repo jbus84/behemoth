@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 import scripts.run_monthly_build as run_monthly_build
 
 
@@ -60,3 +62,29 @@ def test_main_builds_candidate_month_bundle(monkeypatch) -> None:
             "models/oco_dukascopy_candidate",
         ],
     ]
+
+
+def test_main_rejects_invalid_model_month(monkeypatch) -> None:
+    def fake_run(cmd, cwd=None):
+        raise AssertionError("subprocess.run should not be called")
+
+    monkeypatch.setattr(run_monthly_build.subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        run_monthly_build.sys,
+        "argv",
+        ["run_monthly_build.py", "--model-month", "2026-2"],
+    )
+
+    with pytest.raises(SystemExit, match=r"\[monthly-build\] invalid --model-month: 2026-2"):
+        run_monthly_build.main()
+
+
+def test_run_step_raises_on_nonzero_returncode(monkeypatch) -> None:
+    monkeypatch.setattr(
+        run_monthly_build.subprocess,
+        "run",
+        lambda cmd, cwd=None: SimpleNamespace(returncode=2),
+    )
+
+    with pytest.raises(SystemExit, match=r"\[monthly-build\] step 1/2: sync_candidate_model_artifacts failed \(rc=2\)"):
+        run_monthly_build._run_step(["cmd"], "step 1/2: sync_candidate_model_artifacts")
