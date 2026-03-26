@@ -181,7 +181,8 @@ def load_runtime_events(
     orders_submitted = len(order_submitted_rows)
     orders_filled = len(df[df["event_name"] == "order_filled"])
     execution_failures = len(df[
-        (df["category"] == "execution") & (df["pass"].astype(str) == "false")
+        (df["category"] == "execution")
+        & (df["pass"].astype(str).str.strip().str.lower() == "false")
     ])
     lifecycle_failures = len(df[df["event_name"] == "sibling_cancel_failure"])
     lifecycle_violations = len(df[df["event_name"] == "lifecycle_violation"])

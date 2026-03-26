@@ -80,6 +80,40 @@ def test_load_runtime_events_counts_categories():
         assert events["predict_cycles"] == 1
         assert events["orders_submitted"] == 2
         assert events["orders_filled"] == 1
+        assert events["execution_failures"] == 0
+
+
+def test_load_runtime_events_counts_execution_failures_when_pass_is_inferred_as_bool():
+    from scripts.reconcile_jforex_outcomes import load_runtime_events
+
+    with tempfile.TemporaryDirectory() as td:
+        tmp = Path(td)
+        path = tmp / "EURUSD_jforex_runtime_events.csv"
+        with open(path, "w", newline="") as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=["event_ts_utc", "symbol", "category", "event_name", "pass", "detail"],
+            )
+            writer.writeheader()
+            writer.writerow({
+                "event_ts_utc": "2025-07-01T00:00:00Z",
+                "symbol": "EURUSD",
+                "category": "execution",
+                "event_name": "order_submitted",
+                "pass": "false",
+                "detail": "OCO_EURUSD_T100_H6:BUY",
+            })
+            writer.writerow({
+                "event_ts_utc": "2025-07-01T00:00:01Z",
+                "symbol": "EURUSD",
+                "category": "execution",
+                "event_name": "order_submitted",
+                "pass": "False",
+                "detail": "OCO_EURUSD_T100_H6:SELL",
+            })
+
+        events = load_runtime_events(tmp, "EURUSD")
+        assert events["execution_failures"] == 2
 
 
 def test_load_runtime_events_fails_when_no_runtime_events_files_exist():
