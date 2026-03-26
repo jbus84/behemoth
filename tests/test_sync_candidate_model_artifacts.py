@@ -1,0 +1,138 @@
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+
+from scripts.sync_candidate_model_artifacts import run
+
+
+def _sha(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _write_lock(lock_dir: Path, symbol: str, month: str, cbm: Path, thr: Path) -> None:
+    payload = {
+        "symbol": symbol,
+        "artifacts": {
+            "model_month": month,
+            "model_cbm_path": f"models/oco/{symbol}_model_{month}.cbm",
+            "model_cbm_sha256": _sha(cbm),
+            "model_threshold_json_path": f"models/oco/{symbol}_model_{month}.json",
+            "model_threshold_json_sha256": _sha(thr),
+        },
+    }
+    (lock_dir / f"{symbol.lower()}_oco_live_lock.json").write_text(
+        json.dumps(payload),
+        encoding="utf-8",
+    )
+
+
+def test_run_copies_candidate_artifacts_and_verifies_hashes(tmp_path: Path) -> None:
+    lock_dir = tmp_path / "locks"
+    source_dir = tmp_path / "models_src"
+    target_dir = tmp_path / "models_dst"
+    lock_dir.mkdir()
+    source_dir.mkdir()
+    target_dir.mkdir()
+
+    cbm = source_dir / "EURUSD_model_2026-02.cbm"
+    thr = source_dir / "EURUSD_model_2026-02.json"
+    cbm.write_bytes(b"cbm")
+    thr.write_text('{"threshold": 0.5}', encoding="utf-8")
+    _write_lock(lock_dir, "EURUSD", "2026-02", cbm, thr)
+
+    exit_code = run(
+        lock_dir=lock_dir,
+        source_models_dir=source_dir,
+        target_models_dir=target_dir,
+        symbols=["EURUSD"],
+    )
+
+    assert exit_code == 0
+    assert (target_dir / cbm.name).read_bytes() == b"cbm"
+    assert (target_dir / thr.name).read_text(encoding="utf-8") == '{"threshold": 0.5}'
+
+
+def test_run_fails_when_source_artifact_missing(tmp_path: Path) -> None:
+    lock_dir = tmp_path / "locks"
+    source_dir = tmp_path / "models_src"
+    target_dir = tmp_path / "models_dst"
+    lock_dir.mkdir()
+    source_dir.mkdir()
+    target_dir.mkdir()
+
+    cbm = source_dir / "EURUSD_model_2026-02.cbm"
+    thr = source_dir / "EURUSD_model_2026-02.json"
+    cbm.write_bytes(b"cbm")
+    thr.write_text('{"threshold": 0.5}', encoding="utf-8")
+    _write_lock(lock_dir, "EURUSD", "2026-02", cbm, thr)
+    cbm.unlink()
+
+    exit_code = run(
+        lock_dir=lock_dir,
+        source_models_dir=source_dir,
+        target_models_dir=target_dir,
+        symbols=["EURUSD"],
+    )
+
+    assert exit_code == 1
+    assert not (target_dir / "EURUSD_model_2026-02.cbm").exists()
+
+
+def test_run_fails_when_source_hash_does_not_match_lock(tmp_path: Path) -> None:
+    lock_dir = tmp_path / "locks"
+    source_dir = tmp_path / "models_src"
+    target_dir = tmp_path / "models_dst"
+    lock_dir.mkdir()
+    source_dir.mkdir()
+    target_dir.mkdir()
+
+    cbm = source_dir / "EURUSD_model_2026-02.cbm"
+    thr = source_dir / "EURUSD_model_2026-02.json"
+    cbm.write_bytes(b"expected")
+    thr.write_text('{"threshold": 0.5}', encoding="utf-8")
+    _write_lock(lock_dir, "EURUSD", "2026-02", cbm, thr)
+    cbm.write_bytes(b"actual")
+
+    exit_code = run(
+        lock_dir=lock_dir,
+        source_models_dir=source_dir,
+        target_models_dir=target_dir,
+        symbols=["EURUSD"],
+    )
+
+    assert exit_code == 1
+
+
+def test_run_reports_mixed_symbol_outcomes_and_exits_nonzero(tmp_path: Path) -> None:
+    lock_dir = tmp_path / "locks"
+    source_dir = tmp_path / "models_src"
+    target_dir = tmp_path / "models_dst"
+    lock_dir.mkdir()
+    source_dir.mkdir()
+    target_dir.mkdir()
+
+    eur_cbm = source_dir / "EURUSD_model_2026-02.cbm"
+    eur_thr = source_dir / "EURUSD_model_2026-02.json"
+    eur_cbm.write_bytes(b"eur")
+    eur_thr.write_text('{"threshold": 0.5}', encoding="utf-8")
+    _write_lock(lock_dir, "EURUSD", "2026-02", eur_cbm, eur_thr)
+
+    gbp_cbm = source_dir / "GBPUSD_model_2026-02.cbm"
+    gbp_thr = source_dir / "GBPUSD_model_2026-02.json"
+    gbp_cbm.write_bytes(b"gbp")
+    gbp_thr.write_text('{"threshold": 0.6}', encoding="utf-8")
+    _write_lock(lock_dir, "GBPUSD", "2026-02", gbp_cbm, gbp_thr)
+    gbp_thr.unlink()
+
+    exit_code = run(
+        lock_dir=lock_dir,
+        source_models_dir=source_dir,
+        target_models_dir=target_dir,
+        symbols=["EURUSD", "GBPUSD"],
+    )
+
+    assert exit_code == 1
+    assert (target_dir / "EURUSD_model_2026-02.cbm").exists()
+    assert not (target_dir / "GBPUSD_model_2026-02.json").exists()
