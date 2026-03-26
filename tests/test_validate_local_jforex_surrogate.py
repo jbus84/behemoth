@@ -54,6 +54,8 @@ def test_build_artifacts_allows_zero_lock_zero_order_window(tmp_path: Path) -> N
         encoding="utf-8",
     )
     execution_csv = tmp_path / "EURUSD_local_jforex_execution_parity_summary.csv"
+    # This keeps the legacy execution summary red on its own; the zero-lock / zero-order
+    # policy is what should override that into a surrogate pass.
     pd.DataFrame(
         [
             {
