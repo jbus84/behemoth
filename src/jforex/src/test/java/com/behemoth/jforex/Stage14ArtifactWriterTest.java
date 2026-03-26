@@ -98,6 +98,28 @@ class Stage14ArtifactWriterTest {
     }
 
     @Test
+    void recordPredictCycle_writesExecutableAndBlockedDiagnostics() throws Exception {
+        Stage14ArtifactWriter writer = new Stage14ArtifactWriter(tempDir, "local_jforex");
+        writer.recordPredictCycle(
+                "EURUSD",
+                Instant.parse("2026-02-07T12:00:00Z"),
+                3,
+                1,
+                2,
+                List.of("entries_paused", "active_candidate_lifecycle"),
+                List.of(100)
+        );
+        writer.writeReports(List.of("EURUSD"), List.of());
+
+        String content = Files.readString(tempDir.resolve("EURUSD_local_jforex_runtime_events.csv"));
+        assertThat(content).contains("prediction_count=3");
+        assertThat(content).contains("selected_count=1");
+        assertThat(content).contains("blocked_count=2");
+        assertThat(content).contains("blocked_reasons=entries_paused,active_candidate_lifecycle");
+        assertThat(content).contains("close_ts=2026-02-07T12:00:00Z");
+    }
+
+    @Test
     void recordTradeOutcome_writesEnrichedExecutionEvent() throws Exception {
         Path tmp = Files.createTempDirectory("s14test");
         Stage14ArtifactWriter writer = new Stage14ArtifactWriter(tmp, "local_jforex");
