@@ -43,6 +43,7 @@ def test_main_runs_definitive_recert_chain(monkeypatch, tmp_path) -> None:
         [
             "make",
             "jforex-dukascopy-matrix",
+            "HISTORY_DIR=configs/research/governance/oco_candidate_builds",
             "MODEL_MONTH=2026-02",
             "START_TS=2026-02-04T00:00:00Z",
             "END_TS=2026-02-09T00:00:00Z",
@@ -51,6 +52,7 @@ def test_main_runs_definitive_recert_chain(monkeypatch, tmp_path) -> None:
         [
             "make",
             "local-jforex-parity-matrix",
+            "HISTORY_DIR=configs/research/governance/oco_candidate_builds",
             "MODEL_MONTH=2026-02",
             "START_TS=2026-02-07T00:00:00Z",
             "END_TS=2026-02-09T00:00:00Z",

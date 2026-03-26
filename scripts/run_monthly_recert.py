@@ -140,6 +140,7 @@ def main() -> None:
         [
             "make",
             "jforex-dukascopy-matrix",
+            f"HISTORY_DIR={MONTHLY_BUILD_ROOT}",
             f"MODEL_MONTH={model_month}",
             f"START_TS={start_ts}",
             f"END_TS={end_ts}",
@@ -151,6 +152,7 @@ def main() -> None:
         [
             "make",
             "local-jforex-parity-matrix",
+            f"HISTORY_DIR={MONTHLY_BUILD_ROOT}",
             f"MODEL_MONTH={model_month}",
             f"START_TS={eval_start}",
             f"END_TS={eval_end}",
