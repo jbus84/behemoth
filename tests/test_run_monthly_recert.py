@@ -61,7 +61,7 @@ def test_main_runs_definitive_recert_chain(monkeypatch) -> None:
             "make",
             "local-jforex-parity-matrix",
             "MODEL_MONTH=2026-02",
-            "START_TS=2026-02-04T00:00:00Z",
+            "START_TS=2026-02-07T00:00:00Z",
             "END_TS=2026-02-09T00:00:00Z",
             "TICK_BATCH_SIZE=1",
         ],
