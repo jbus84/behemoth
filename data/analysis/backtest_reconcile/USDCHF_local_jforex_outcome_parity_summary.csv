@@ -1,2 +1,2 @@
-symbol,locked_selected_count,locked_gross_pips_total,locked_win_rate,jforex_predict_cycles,jforex_selected_total,jforex_orders_submitted,jforex_submitted_group_count,signal_coverage_ratio,signal_coverage_pass,execution_clean_pass,has_trades,order_coverage_ratio,order_coverage_pass,overall_pass,evaluated_at_utc,jforex_outcome_parity_pass
-USDCHF,15,3.8,0.4667,1973,16,30,15,1.0667,True,True,True,1.0,True,True,2026-03-20T20:23:15Z,True
+symbol,locked_selected_count,locked_gross_pips_total,locked_win_rate,jforex_predict_cycles,jforex_selected_total,jforex_orders_submitted,jforex_submitted_group_count,signal_coverage_ratio,signal_coverage_pass,execution_clean_pass,has_trades,order_coverage_ratio,order_coverage_pass,overall_pass,historical_deployable,non_deployable_reason,evaluated_at_utc,jforex_outcome_parity_pass
+USDCHF,0,0.0,0.0,25,0,0,0,0.0,True,True,False,0.0,True,True,True,,2026-03-26T22:34:54Z,True

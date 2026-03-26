@@ -12,13 +12,15 @@ from scripts.run_jforex_dukascopy_matrix import (
     RunConfig,
     _load_phase_aligned_warmup_ticks,
     _prediction_path,
-    _wait_for_csv_then_kill,
+    _run_jforex_tester,
+    _stage14_artifact_paths,
+    _wait_for_artifacts_then_kill,
 )
 
 
 def _make_proc(returncode: int | None = None) -> MagicMock:
     """Create a mock Popen-like process."""
-    proc = MagicMock(spec=subprocess.Popen)
+    proc = MagicMock()
     proc.pid = 99999
     proc.returncode = returncode
     proc.poll.return_value = returncode
@@ -72,18 +74,18 @@ def test_prediction_path_falls_back_to_monthly_predictions(tmp_path: Path) -> No
     )
 
 
-def test_csv_appears_kills_process_and_returns(tmp_path: Path) -> None:
-    """When CSV appears and is non-empty, process is killed and function returns."""
-    csv_path = tmp_path / "EURUSD_jforex_runtime_events.csv"
+def test_artifacts_appear_kills_process_and_returns(tmp_path: Path) -> None:
+    """When the full Stage 14 artifact set appears, process is killed and function returns."""
+    paths = _stage14_artifact_paths(tmp_path, "EURUSD")
     proc = _make_proc(returncode=None)  # still running
 
-    # Write CSV before calling — simulates it appearing during poll
-    csv_path.write_text("event_name,detail\npredict_cycle,foo\n")
+    for path in paths:
+        path.write_text("symbol,value\nEURUSD,1\n")
 
     with patch("os.killpg") as mock_kill:
-        _wait_for_csv_then_kill(
+        _wait_for_artifacts_then_kill(
             proc=proc,
-            csv_path=csv_path,
+            artifact_paths=paths,
             poll_interval_sec=0.05,
             settle_sec=0.0,
             timeout_sec=5.0,
@@ -93,13 +95,13 @@ def test_csv_appears_kills_process_and_returns(tmp_path: Path) -> None:
 
 def test_process_exits_nonzero_before_csv_raises(tmp_path: Path) -> None:
     """If process exits with non-zero before CSV appears, CalledProcessError is raised."""
-    csv_path = tmp_path / "EURUSD_jforex_runtime_events.csv"
+    paths = _stage14_artifact_paths(tmp_path, "EURUSD")
     proc = _make_proc(returncode=1)  # already exited with error
 
     with pytest.raises(subprocess.CalledProcessError):
-        _wait_for_csv_then_kill(
+        _wait_for_artifacts_then_kill(
             proc=proc,
-            csv_path=csv_path,
+            artifact_paths=paths,
             poll_interval_sec=0.05,
             settle_sec=0.0,
             timeout_sec=5.0,
@@ -108,13 +110,13 @@ def test_process_exits_nonzero_before_csv_raises(tmp_path: Path) -> None:
 
 def test_process_exits_zero_before_csv_returns_cleanly(tmp_path: Path) -> None:
     """If process exits 0 before CSV appears, function returns without error (graceful exit)."""
-    csv_path = tmp_path / "EURUSD_jforex_runtime_events.csv"
+    paths = _stage14_artifact_paths(tmp_path, "EURUSD")
     proc = _make_proc(returncode=0)  # exited cleanly
 
     # Should not raise — clean exit is acceptable even without CSV
-    _wait_for_csv_then_kill(
+    _wait_for_artifacts_then_kill(
         proc=proc,
-        csv_path=csv_path,
+        artifact_paths=paths,
         poll_interval_sec=0.05,
         settle_sec=0.0,
         timeout_sec=5.0,
@@ -123,33 +125,69 @@ def test_process_exits_zero_before_csv_returns_cleanly(tmp_path: Path) -> None:
 
 def test_timeout_raises_if_csv_never_appears(tmp_path: Path) -> None:
     """If CSV never appears within timeout, TimeoutError is raised."""
-    csv_path = tmp_path / "EURUSD_jforex_runtime_events.csv"
+    paths = _stage14_artifact_paths(tmp_path, "EURUSD")
     proc = _make_proc(returncode=None)  # still running, never writes CSV
 
     with pytest.raises(TimeoutError):
-        _wait_for_csv_then_kill(
+        _wait_for_artifacts_then_kill(
             proc=proc,
-            csv_path=csv_path,
+            artifact_paths=paths,
             poll_interval_sec=0.05,
             settle_sec=0.0,
             timeout_sec=0.3,  # short timeout for test speed
         )
 
 
-def test_empty_csv_is_not_treated_as_complete(tmp_path: Path) -> None:
-    """An empty CSV file (truncated write) is not treated as completion."""
-    csv_path = tmp_path / "EURUSD_jforex_runtime_events.csv"
-    csv_path.write_text("")  # empty file
+def test_missing_summary_file_is_not_treated_as_complete(tmp_path: Path) -> None:
+    """A lone runtime events CSV is not enough; all Stage 14 artifacts must be fresh."""
+    paths = _stage14_artifact_paths(tmp_path, "EURUSD")
+    paths[0].write_text("event_ts_utc,symbol,category,event_name,pass,detail\n")
     proc = _make_proc(returncode=None)
 
     with pytest.raises(TimeoutError):
-        _wait_for_csv_then_kill(
+        _wait_for_artifacts_then_kill(
             proc=proc,
-            csv_path=csv_path,
+            artifact_paths=paths,
             poll_interval_sec=0.05,
             settle_sec=0.0,
             timeout_sec=0.3,
         )
+
+
+def test_run_jforex_tester_clears_stale_stage14_artifacts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    cfg = _cfg(tmp_path)
+    cfg = RunConfig(**{**cfg.__dict__, "report_dir": "reports"})
+    report_dir = tmp_path / "reports"
+    report_dir.mkdir(parents=True)
+    runtime_dir = report_dir / "runtime"
+    runtime_dir.mkdir(parents=True)
+
+    stale_paths = _stage14_artifact_paths(report_dir, "EURUSD")
+    for path in stale_paths:
+        path.write_text("stale\n")
+    (runtime_dir / "active_oco_state.json").write_text("{}\n")
+
+    monkeypatch.setenv("BEHEMOTH_JFOREX_JNLP_URI", "demo")
+    monkeypatch.setenv("BEHEMOTH_JFOREX_USERNAME", "user")
+    monkeypatch.setenv("BEHEMOTH_JFOREX_PASSWORD", "pass")
+    monkeypatch.setattr("scripts.run_jforex_dukascopy_matrix._repo_root", lambda: tmp_path)
+    monkeypatch.setattr(
+        "scripts.run_jforex_dukascopy_matrix.subprocess.Popen",
+        lambda *args, **kwargs: _make_proc(returncode=None),
+    )
+    waited: dict[str, object] = {}
+
+    def fake_wait(proc, artifact_paths, **kwargs):
+        waited["paths"] = artifact_paths
+
+    monkeypatch.setattr("scripts.run_jforex_dukascopy_matrix._wait_for_artifacts_then_kill", fake_wait)
+
+    _run_jforex_tester(cfg, "EURUSD", metrics_port=9464)
+
+    assert waited["paths"] == stale_paths
+    for path in stale_paths:
+        assert not path.exists()
+    assert not (runtime_dir / "active_oco_state.json").exists()
 
 
 def test_load_phase_aligned_warmup_ticks_uses_full_history_modulo(tmp_path: Path) -> None:

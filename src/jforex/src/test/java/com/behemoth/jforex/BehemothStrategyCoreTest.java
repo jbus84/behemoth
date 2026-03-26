@@ -378,7 +378,8 @@ class BehemothStrategyCoreTest {
             String runtimeEvents = Files.readString(tempDir.resolve("EURUSD_test_runtime_events.csv"));
             assertThat(port.submittedOrders).isEmpty();
             assertThat(runtimeEvents).contains("prediction_count=1");
-            assertThat(runtimeEvents).contains("selected_count=0");
+            assertThat(runtimeEvents).contains("selected_count=1");
+            assertThat(runtimeEvents).contains("executable_selected_count=0");
             assertThat(runtimeEvents).contains("blocked_count=1");
             assertThat(runtimeEvents).contains("blocked_reasons=active_candidate_lifecycle");
             assertThat(server.getRequestCount()).isEqualTo(3);
@@ -443,7 +444,8 @@ class BehemothStrategyCoreTest {
 
             String runtimeEvents = Files.readString(tempDir.resolve("EURUSD_test_runtime_events.csv"));
             assertThat(port.submittedOrders).isEmpty();
-            assertThat(runtimeEvents).contains("selected_count=0");
+            assertThat(runtimeEvents).contains("selected_count=1");
+            assertThat(runtimeEvents).contains("executable_selected_count=0");
             assertThat(runtimeEvents).contains("blocked_count=1");
             assertThat(runtimeEvents).contains("blocked_reasons=risk_budget_exhausted");
         }

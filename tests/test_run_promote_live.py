@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import csv
 import sys
+from datetime import date
 
 import pytest
 
@@ -54,14 +55,18 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
     archive_dir.mkdir(parents=True)
     (archive_dir / "stale.txt").write_text("stale\n")
 
-    monkeypatch.setattr(run_promote_live, "_verify_cert", lambda report_dir: verify_calls.append(report_dir))
+    monkeypatch.setattr(
+        run_promote_live,
+        "_verify_cert",
+        lambda report_dir, model_month: verify_calls.append(f"{report_dir}:{model_month}"),
+    )
     monkeypatch.setattr(run_promote_live, "_last_complete_month", lambda override=None: "2026-02")
     monkeypatch.setattr(run_promote_live, "_repo_root", lambda: tmp_path)
     monkeypatch.setattr(sys, "argv", ["run_promote_live.py", "--report-dir", "data/analysis/backtest_reconcile"])
 
     run_promote_live.main()
 
-    assert verify_calls == ["data/analysis/backtest_reconcile"]
+    assert verify_calls == ["data/analysis/backtest_reconcile:2026-02"]
     promoted_lock = archive_dir / "2026-02" / "eurusd_oco_live_lock.json"
     promoted_data = json.loads(promoted_lock.read_text())
     assert promoted_data["artifacts"]["predictions_path"] == str(
@@ -103,7 +108,7 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
 
 
 def test_main_requires_existing_build_bundle(monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr(run_promote_live, "_verify_cert", lambda report_dir: None)
+    monkeypatch.setattr(run_promote_live, "_verify_cert", lambda report_dir, model_month: None)
     monkeypatch.setattr(run_promote_live, "_last_complete_month", lambda override=None: "2026-02")
     monkeypatch.setattr(run_promote_live, "_repo_root", lambda: tmp_path)
     monkeypatch.setattr(sys, "argv", ["run_promote_live.py", "--report-dir", "data/analysis/backtest_reconcile"])
@@ -113,3 +118,26 @@ def test_main_requires_existing_build_bundle(monkeypatch, tmp_path) -> None:
         match=r"run make monthly-build and make monthly-recert first",
     ):
         run_promote_live.main()
+
+
+def test_verify_cert_requires_matching_month_status(tmp_path) -> None:
+    report_dir = tmp_path / "data/analysis/backtest_reconcile"
+    report_dir.mkdir(parents=True)
+    (report_dir / run_promote_live.CERT_CHECKS_FILENAME).write_text(
+        "symbol,check_id,status,severity,evaluated_at_utc\n"
+        f"EURUSD,C1,pass,critical,{date.today().isoformat()}T12:00:00Z\n"
+    )
+    status_path = report_dir / run_promote_live.MONTHLY_RECERT_STATUS_FILENAME
+    status_path.write_text(
+        json.dumps(
+            {
+                "model_month": "2026-03",
+                "evaluated_at_utc": f"{date.today().isoformat()}T12:00:00Z",
+                "overall_pass": True,
+            }
+        )
+        + "\n"
+    )
+
+    with pytest.raises(SystemExit, match=r"cert status month mismatch"):
+        run_promote_live._verify_cert("data/analysis/backtest_reconcile", "2026-02", repo_root=tmp_path)

@@ -55,6 +55,12 @@ class LiveReadinessCoordinatorTest {
     }
 
     @Test
+    void sessionConfigDisablesLiveReadinessByDefaultInTesterMode() {
+        JForexSessionConfig cfg = JForexSessionConfig.fromEnvironment(true, testEnvironmentForTesterMode());
+        assertThat(cfg.liveReadinessEnabled()).isFalse();
+    }
+
+    @Test
     void sessionConfigParsesExplicitLiveReadinessOverrides() {
         JForexSessionConfig cfg = JForexSessionConfig.fromEnvironment(false, testEnvironmentWithLiveOverrides());
         assertThat(cfg.liveReadinessEnabled()).isFalse();
@@ -420,6 +426,13 @@ class LiveReadinessCoordinatorTest {
         environment.put("BEHEMOTH_JFOREX_LIVE_BRIDGE_WINDOW_MINUTES", "15");
         environment.put("BEHEMOTH_JFOREX_LIVE_FRESHNESS_SECONDS", "45");
         environment.put("BEHEMOTH_JFOREX_LIVE_STARTUP_BRIDGE_TIMEOUT_MINUTES", "9");
+        return Map.copyOf(environment);
+    }
+
+    private static Map<String, String> testEnvironmentForTesterMode() {
+        Map<String, String> environment = new HashMap<>(testEnvironment());
+        environment.put("BEHEMOTH_JFOREX_START_UTC", "2026-02-08T22:00:00Z");
+        environment.put("BEHEMOTH_JFOREX_END_UTC", "2026-02-09T00:10:00Z");
         return Map.copyOf(environment);
     }
 

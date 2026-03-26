@@ -260,13 +260,14 @@ public final class BehemothStrategyCore {
                     .orElseGet(() -> state.lastTick != null ? state.lastTick.timestamp() : Instant.now());
             metrics.recordSelectedPredictions(
                     state.instrument.symbol(),
-                    selectionSummary.executableSelected(),
+                    selectionSummary.pythonSelected(),
                     selectionSummary.blockedCount()
             );
             artifactWriter.recordPredictCycle(
                     state.instrument.symbol(),
                     predictCloseTs,
                     predictions.size(),
+                    selectionSummary.pythonSelected(),
                     selectionSummary.executableSelected(),
                     selectionSummary.blockedCount(),
                     selectionSummary.blockedReasons(),
@@ -574,11 +575,13 @@ public final class BehemothStrategyCore {
     ) {
         List<PredictionResponseItem> executablePredictions = new ArrayList<>();
         LinkedHashSet<String> blockedReasons = new LinkedHashSet<>();
+        int pythonSelected = 0;
         int blockedCount = 0;
         for (PredictionResponseItem prediction : predictions) {
             if (!prediction.isSelected()) {
                 continue;
             }
+            pythonSelected += 1;
             if (!prediction.isExecutable(sessionConfig.riskEnabled())) {
                 blockedCount += 1;
                 blockedReasons.add(blockedReasonToken(prediction.riskBlockReason(), "risk_blocked"));
@@ -603,6 +606,7 @@ public final class BehemothStrategyCore {
         }
         return new ExecutableSelectionSummary(
                 List.copyOf(executablePredictions),
+                pythonSelected,
                 executablePredictions.size(),
                 blockedCount,
                 List.copyOf(blockedReasons)
@@ -646,6 +650,7 @@ public final class BehemothStrategyCore {
 
     private record ExecutableSelectionSummary(
             List<PredictionResponseItem> executablePredictions,
+            int pythonSelected,
             int executableSelected,
             int blockedCount,
             List<String> blockedReasons

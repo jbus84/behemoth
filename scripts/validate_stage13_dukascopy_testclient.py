@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Build Stage 13 Dukascopy TestClient parity artifacts from replay summaries."""
+"""Build Stage 13 Dukascopy certification artifacts from active matrix outputs."""
 
 from __future__ import annotations
 
 import argparse
 import glob
+import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -68,9 +69,8 @@ def _pick_bool(row: pd.Series, candidates: tuple[str, ...]) -> bool | None:
 
 
 def _load_summary_rows(source: InputSource) -> pd.DataFrame:
-    paths = _resolve_paths(source.summary_glob)
     rows: list[dict[str, Any]] = []
-    for path in paths:
+    for path in _resolve_paths(source.summary_glob):
         try:
             df = pd.read_csv(path)
         except Exception:
@@ -92,11 +92,39 @@ def _load_summary_rows(source: InputSource) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _load_historical_lock_status(lock_dir: Path, symbol: str) -> dict[str, str | bool]:
+    path = lock_dir / f"{symbol.lower()}_oco_live_lock.json"
+    if not path.exists():
+        return {"historical_deployable": True, "non_deployable_reason": ""}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {"historical_deployable": True, "non_deployable_reason": ""}
+    hist = payload.get("historical_backtest", {})
+    if not isinstance(hist, dict):
+        hist = {}
+    return {
+        "historical_deployable": bool(hist.get("deployable", True)),
+        "non_deployable_reason": str(hist.get("non_deployable_reason", "")).strip(),
+    }
+
+
+def _runtime_events_ok(reconcile_dir: Path, symbol: str) -> tuple[bool, str]:
+    path = reconcile_dir / f"{symbol}_jforex_runtime_events.csv"
+    if not path.exists():
+        return False, f"missing runtime events file: {path}"
+    if path.stat().st_size <= 0:
+        return False, f"empty runtime events file: {path}"
+    return True, ""
+
+
 def build_stage13_artifacts(
     *,
     symbols: list[str],
-    stage12_summary_glob: str,
-    dukascopy_testclient_summary_glob: str,
+    lock_dir: Path,
+    jforex_signal_summary_glob: str,
+    jforex_operational_summary_glob: str,
+    reconcile_dir: Path,
     out_summary_csv: Path,
     out_checks_csv: Path,
     report_out: Path,
@@ -104,19 +132,14 @@ def build_stage13_artifacts(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     sources = [
         InputSource(
-            check_id="stage12_api_parity_pass",
-            summary_glob=stage12_summary_glob,
-            candidate_columns=("stage12_api_parity_pass", "api_parity_pass", "overall_pass"),
+            check_id="dukascopy_signal_path_exercised_pass",
+            summary_glob=jforex_signal_summary_glob,
+            candidate_columns=("jforex_signal_parity_pass", "signal_parity_pass", "overall_pass"),
         ),
         InputSource(
-            check_id="dukascopy_testclient_signal_parity_pass",
-            summary_glob=dukascopy_testclient_summary_glob,
-            candidate_columns=("selected_parity_pass", "signal_parity_pass", "overall_pass"),
-        ),
-        InputSource(
-            check_id="dukascopy_testclient_execution_parity_pass",
-            summary_glob=dukascopy_testclient_summary_glob,
-            candidate_columns=("overall_pass", "execution_parity_pass"),
+            check_id="dukascopy_operational_ready_pass",
+            summary_glob=jforex_operational_summary_glob,
+            candidate_columns=("operational_ready_pass", "demo_ready_pass", "overall_pass"),
         ),
     ]
 
@@ -125,36 +148,67 @@ def build_stage13_artifacts(
     if checks.empty:
         checks = pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
 
-    symbols = sorted({str(s).strip().upper() for s in symbols if str(s).strip()}) or sorted(
+    symbol_list = sorted({str(s).strip().upper() for s in symbols if str(s).strip()}) or sorted(
         set(checks.get("symbol", pd.Series(dtype=str)).astype(str))
     )
-    symbols = sorted(set(symbols) | set(checks.get("symbol", pd.Series(dtype=str)).astype(str)))
+    symbol_list = sorted(set(symbol_list) | set(checks.get("symbol", pd.Series(dtype=str)).astype(str)))
 
     summary_rows: list[dict[str, Any]] = []
     check_rows: list[dict[str, Any]] = []
     now_utc = _now_utc()
-    for symbol in symbols:
+    for symbol in symbol_list:
         by_symbol = checks[checks["symbol"] == symbol].copy()
-        row: dict[str, Any] = {"symbol": symbol}
+        status = _load_historical_lock_status(lock_dir, symbol)
+        historical_deployable = bool(status["historical_deployable"])
+        non_deployable_reason = str(status["non_deployable_reason"])
+        row: dict[str, Any] = {
+            "symbol": symbol,
+            "historical_deployable": historical_deployable,
+            "non_deployable_reason": non_deployable_reason,
+        }
         missing_inputs = 0
+
+        runtime_ok, runtime_details = _runtime_events_ok(reconcile_dir, symbol)
+        row["dukascopy_runtime_artifacts_complete_pass"] = runtime_ok
+        if not runtime_ok:
+            missing_inputs += 1
+        check_rows.append(
+            {
+                "symbol": symbol,
+                "check_id": "DUKASCOPY_RUNTIME_ARTIFACTS_COMPLETE_PASS",
+                "status": "pass" if runtime_ok else "fail",
+                "severity": "critical",
+                "metric_name": "dukascopy_runtime_artifacts_complete_pass",
+                "metric_value": int(runtime_ok),
+                "expected": 1,
+                "details": runtime_details,
+                "source_path": str(reconcile_dir / f"{symbol}_jforex_runtime_events.csv"),
+                "evaluated_at_utc": now_utc,
+            }
+        )
+
         for src in sources:
             match = by_symbol[by_symbol["check_id"] == src.check_id].copy()
             value = None if match.empty else match.iloc[-1].get("pass")
-            if value is None or pd.isna(value):
-                missing_inputs += 1
+            details = ""
+            if src.check_id == "dukascopy_signal_path_exercised_pass" and not historical_deployable:
+                row[src.check_id] = True
+                details = f"non-deployable historical month: {non_deployable_reason or 'no reason provided'}"
+                status_txt = "pass"
+            elif value is None or pd.isna(value):
                 row[src.check_id] = False
-                status = "fail"
+                missing_inputs += 1
+                status_txt = "fail"
                 details = "missing input artifact"
             else:
                 row[src.check_id] = bool(value)
-                status = "pass" if bool(value) else "fail"
-                details = ""
+                status_txt = "pass" if bool(value) else "fail"
             source_path = "" if match.empty else str(match.iloc[-1].get("source_path") or "")
             check_rows.append(
                 {
                     "symbol": symbol,
                     "check_id": src.check_id.upper(),
-                    "status": status,
+                    "status": status_txt,
                     "severity": "critical",
                     "metric_name": src.check_id,
                     "metric_value": int(bool(row[src.check_id])),
@@ -164,7 +218,15 @@ def build_stage13_artifacts(
                     "evaluated_at_utc": now_utc,
                 }
             )
-        row["stage13_dukascopy_testclient_pass"] = all(bool(row[src.check_id]) for src in sources)
+
+        row["stage13_dukascopy_testclient_pass"] = all(
+            bool(row[name])
+            for name in (
+                "dukascopy_runtime_artifacts_complete_pass",
+                "dukascopy_signal_path_exercised_pass",
+                "dukascopy_operational_ready_pass",
+            )
+        )
         row["missing_inputs"] = missing_inputs
         row["verdict"] = "green" if row["stage13_dukascopy_testclient_pass"] else "red"
         row["evaluated_at_utc"] = now_utc
@@ -181,7 +243,7 @@ def build_stage13_artifacts(
     checks_out.to_csv(out_checks_csv, index=False)
 
     report_lines = [
-        "# Stage 13 Dukascopy TestClient Parity",
+        "# Stage 13 Dukascopy Source Certification",
         "",
         f"- generated_at: `{now_utc}`",
         f"- summary_csv: `{out_summary_csv.as_posix()}`",
@@ -194,8 +256,9 @@ def build_stage13_artifacts(
         _table(checks_out),
         "",
         "## Interpretation",
-        "- Stage 13 is green only when Stage 12 parity remains green and Dukascopy TestClient signal and execution parity are both green.",
-        "- Missing Dukascopy TestClient replay artifacts are treated as certification failures until the replay path is exercised.",
+        "- Stage 13 is green only when the Dukascopy tester produced complete runtime artifacts and the operational path is healthy.",
+        "- Deployable symbols must also exercise the signal path via the tester artifacts before Stage 14 is trusted.",
+        "- Historical non-deployable symbols may pass Stage 13 without signal-path exercise when their lock explicitly marks them non-deployable.",
     ]
     report_out.write_text("\n".join(report_lines).strip() + "\n", encoding="utf-8")
 
@@ -203,8 +266,8 @@ def build_stage13_artifacts(
         "### Auto Snapshot - Stage 13",
         "",
         f"- generated_at: `{now_utc}`",
-        "- Stage 13 is a hard gate for Dukascopy source parity via the FastAPI TestClient harness.",
-        "- Stage 12 parity, Dukascopy TestClient signal parity, and Dukascopy TestClient execution parity must all be green.",
+        "- Stage 13 is the Dukascopy-source prerequisite gate for Stage 14.",
+        "- It verifies runtime artifact completeness, operational readiness, and deployable-symbol signal-path exercise.",
         "",
         "#### Key Results",
         _table(summary),
@@ -218,17 +281,22 @@ def build_stage13_artifacts(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD")
     parser.add_argument(
-        "--symbols",
-        default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD",
+        "--lock-dir",
+        default="configs/research/governance/oco_history_dukascopy_candidate/2025-07",
     )
     parser.add_argument(
-        "--stage12-summary-glob",
-        default="data/analysis/backtest_reconcile/*_stage12_api_parity_summary.csv",
+        "--jforex-signal-summary-glob",
+        default="data/analysis/backtest_reconcile/*_jforex_signal_parity_summary.csv",
     )
     parser.add_argument(
-        "--dukascopy-testclient-summary-glob",
-        default="data/analysis/backtest_reconcile/*_dukascopy_testclient_replay_summary.csv",
+        "--jforex-operational-summary-glob",
+        default="data/analysis/backtest_reconcile/*_jforex_operational_ready_summary.csv",
+    )
+    parser.add_argument(
+        "--reconcile-dir",
+        default="data/analysis/backtest_reconcile",
     )
     parser.add_argument(
         "--out-summary-csv",
@@ -249,8 +317,10 @@ def main() -> None:
     args = parser.parse_args()
     build_stage13_artifacts(
         symbols=[s.strip().upper() for s in str(args.symbols).split(",") if s.strip()],
-        stage12_summary_glob=str(args.stage12_summary_glob),
-        dukascopy_testclient_summary_glob=str(args.dukascopy_testclient_summary_glob),
+        lock_dir=Path(str(args.lock_dir)),
+        jforex_signal_summary_glob=str(args.jforex_signal_summary_glob),
+        jforex_operational_summary_glob=str(args.jforex_operational_summary_glob),
+        reconcile_dir=Path(str(args.reconcile_dir)),
         out_summary_csv=Path(str(args.out_summary_csv)),
         out_checks_csv=Path(str(args.out_checks_csv)),
         report_out=Path(str(args.report_out)),

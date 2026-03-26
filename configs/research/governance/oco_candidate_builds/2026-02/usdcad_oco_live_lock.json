@@ -1,0 +1,65 @@
+{
+  "artifacts": {
+    "capacity_overall_pass": true,
+    "live_deployable": false,
+    "model_cbm_path": "/Users/danielfisher/repositories/behemoth/.worktrees/monthly-build-recert-split-2026-03-26/configs/research/governance/oco_candidate_builds/2026-02/models/oco_dukascopy_candidate/USDCAD_model_2026-02.cbm",
+    "model_cbm_sha256": "d288a9311dcd18ea8473db608bc0176c53243b66fc18d54d3865283ec412184c",
+    "model_month": "2026-02",
+    "model_threshold_json_path": "/Users/danielfisher/repositories/behemoth/.worktrees/monthly-build-recert-split-2026-03-26/configs/research/governance/oco_candidate_builds/2026-02/models/oco_dukascopy_candidate/USDCAD_model_2026-02.json",
+    "model_threshold_json_sha256": "7db6d1c52fe5413c6c051444c7b1c6b58cbc6264609bd169840e34c5ceaeab3c",
+    "predictions_path": "",
+    "predictions_sha256": "",
+    "reduced_config_path": "configs/research/experiments_dukascopy_candidate/usdcad_oco_reduced_core_rolling_2025.yaml",
+    "reduced_config_sha256": "e04ce94bfa54da6743df68d93bc728dc4b62e1de2f927f5252bafba40967e583",
+    "reduced_states_csv_path": "configs/research/governance/oco_candidate_builds/2026-02/usdcad_oco_allowed_states.csv",
+    "reduced_states_csv_sha256": "2350f03a63ce7e7bf9643322d1a68da98b4e9419921417875720a4beb5d29f34",
+    "reduced_summary_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/USDCAD_oco_reduced_summary.csv",
+    "reduced_summary_sha256": "3fe06a3b453545a92cabbc7acfe46bbc10c928a0aa168f692774117e214b10dd",
+    "source_predictions_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap/USDCAD_oco_monthly_predictions.parquet",
+    "source_predictions_sha256": "5622c0fbf9ddedc47b31161e2aada348d6a5772a2983b10fce3dd6dde20c5e61",
+    "tick_exact_overall_pass": true,
+    "tick_exact_summary_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/USDCAD_oco_tick_exact_summary.csv",
+    "tick_exact_summary_sha256": "efe41666a5b9b79e83fb4da0cfe4a6b2aa743d51789129d79743dd4a5b5d9ed6",
+    "wfo_config_path": "configs/research/experiments_dukascopy_candidate/usdcad_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
+    "wfo_config_sha256": "83b37d5f4b91f1011f27aa04ab22babb53fe6ba2c4d3da91c43477c707faef88"
+  },
+  "frozen_at_utc": "2026-03-26T19:01:28.131313+00:00",
+  "git": {
+    "branch": "feat-monthly-build-recert-split-2026-03-26",
+    "commit": "56b29ee363811a47ee1e78ff2380f7ee90143eb7",
+    "dirty": true
+  },
+  "historical_backtest": {
+    "deployable": false,
+    "mode": "month_locked",
+    "non_deployable_reason": "no_gate_states",
+    "target_month": "2026-02"
+  },
+  "locked_runtime": {
+    "barrier_keep": "2,3",
+    "execution_quantile": 0.9,
+    "family_keep": "oco_first_touch_clean",
+    "horizon_keep": "5,6",
+    "locked_quantile": 0.9,
+    "oco_hold_mode": "from_touch",
+    "oco_include_no_touch": true,
+    "production_cap_pips": 1.2,
+    "rolling_threshold_days": 20,
+    "rolling_threshold_min_history": 1000,
+    "selection_mode": "auto",
+    "threshold_mode": "rolling_days"
+  },
+  "retrain_policy": {
+    "anchor_day_utc": 1,
+    "cadence_days": 30,
+    "mode": "calendar_window",
+    "window_days": 3
+  },
+  "schema_version": 1,
+  "state_universe": {
+    "count": 0,
+    "rows": [],
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "symbol": "USDCAD"
+}

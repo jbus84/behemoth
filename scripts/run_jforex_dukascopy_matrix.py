@@ -320,29 +320,39 @@ def _read_process_tail(proc: subprocess.Popen[str], max_lines: int = 50) -> str:
     return "\n".join(lines[-max_lines:])
 
 
-def _wait_for_csv_then_kill(
+def _stage14_artifact_paths(report_dir: Path, symbol: str) -> list[Path]:
+    return [
+        report_dir / f"{symbol}_jforex_runtime_events.csv",
+        report_dir / f"{symbol}_jforex_signal_parity_summary.csv",
+        report_dir / f"{symbol}_jforex_execution_parity_summary.csv",
+        report_dir / f"{symbol}_jforex_oco_lifecycle_summary.csv",
+        report_dir / f"{symbol}_jforex_operational_ready_summary.csv",
+    ]
+
+
+def _wait_for_artifacts_then_kill(
     proc: subprocess.Popen,
-    csv_path: Path,
+    artifact_paths: list[Path],
     poll_interval_sec: float = 5.0,
     settle_sec: float = 5.0,
     timeout_sec: float = 14400.0,
 ) -> None:
-    """Poll until the output CSV exists and is non-empty, then kill the process.
+    """Poll until the Stage 14 artifact set exists and is non-empty, then kill the process.
 
     The JForex framework hangs in thread cleanup after onStop writes the CSV.
-    Once the CSV is present and non-empty we have all the data we need, so we
+    Once all expected artifacts are present and non-empty we have all the data we need, so we
     kill the process group rather than waiting for the JVM to exit cleanly.
 
     Args:
         proc: The running Gradle/Java subprocess.
-        csv_path: Path where the strategy writes its runtime events CSV on completion.
+        artifact_paths: Paths written by the strategy on completion.
         poll_interval_sec: How often to check for the CSV (seconds).
         settle_sec: Extra wait after CSV appears before killing, to let the file flush.
         timeout_sec: Maximum total wait time before raising TimeoutError.
 
     Raises:
         subprocess.CalledProcessError: If process exits non-zero before CSV appears.
-        TimeoutError: If CSV does not appear within timeout_sec.
+        TimeoutError: If the artifact set does not appear within timeout_sec.
     """
     deadline = time.monotonic() + timeout_sec
     while True:
@@ -352,7 +362,8 @@ def _wait_for_csv_then_kill(
                 return  # clean exit — accept even without CSV
             raise subprocess.CalledProcessError(rc, "JForexTesterRunner")
 
-        if csv_path.exists() and csv_path.stat().st_size > 0:
+        artifacts_ready = all(path.exists() and path.stat().st_size > 0 for path in artifact_paths)
+        if artifacts_ready:
             if settle_sec > 0:
                 time.sleep(settle_sec)
             try:
@@ -386,7 +397,8 @@ def _wait_for_csv_then_kill(
             except subprocess.TimeoutExpired:
                 pass
             raise TimeoutError(
-                f"JForex tester did not produce {csv_path} within {timeout_sec:.0f}s"
+                "JForex tester did not produce complete Stage 14 artifacts within "
+                f"{timeout_sec:.0f}s: {', '.join(str(path) for path in artifact_paths)}"
             )
         time.sleep(poll_interval_sec)
 
@@ -416,11 +428,13 @@ def _run_jforex_tester(cfg: RunConfig, symbol: str, metrics_port: int) -> None:
             "BEHEMOTH_API_BASE_URI": f"http://{cfg.api_host}:{cfg.api_port}",
         }
     )
-    csv_path = _repo_root() / cfg.report_dir / f"{symbol}_jforex_runtime_events.csv"
-    # Delete any stale CSV from a previous run so the poll loop doesn't
-    # mistake old output for fresh completion.
-    if csv_path.exists():
-        csv_path.unlink()
+    report_dir = _repo_root() / cfg.report_dir
+    artifact_paths = _stage14_artifact_paths(report_dir, symbol)
+    # Delete stale per-symbol Stage 14 artifacts so the poll loop doesn't
+    # mistake previous-run output for fresh completion.
+    for artifact_path in artifact_paths:
+        if artifact_path.exists():
+            artifact_path.unlink()
     # Delete the shared OCO state file so the strategy starts with a clean lifecycle
     # registry. The real JForex tester uses a fixed non-symbol-scoped path; without
     # this deletion, groups from a previous symbol's run block new order submissions
@@ -435,9 +449,9 @@ def _run_jforex_tester(cfg: RunConfig, symbol: str, metrics_port: int) -> None:
         env=env,
         start_new_session=True,
     )
-    _wait_for_csv_then_kill(
+    _wait_for_artifacts_then_kill(
         proc=proc,
-        csv_path=csv_path,
+        artifact_paths=artifact_paths,
         poll_interval_sec=5.0,
         settle_sec=5.0,
         timeout_sec=float(cfg.tester_completion_timeout_seconds),

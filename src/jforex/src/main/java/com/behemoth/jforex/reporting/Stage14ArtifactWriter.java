@@ -46,6 +46,7 @@ public final class Stage14ArtifactWriter {
             Instant closeTs,
             int predictionCount,
             int selectedCount,
+            int executableSelectedCount,
             int blockedCount,
             List<String> blockedReasons,
             List<Integer> completedBarTicks
@@ -60,6 +61,7 @@ public final class Stage14ArtifactWriter {
                 "predict_cycle",
                 "prediction_count=" + predictionCount
                         + ";selected_count=" + selectedCount
+                        + ";executable_selected_count=" + executableSelectedCount
                         + ";blocked_count=" + blockedCount
                         + blockedReasonsDetail
                         + ";close_ts=" + replayCloseTs

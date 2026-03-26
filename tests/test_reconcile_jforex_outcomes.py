@@ -270,7 +270,7 @@ def test_load_runtime_events_ignores_extra_predict_cycle_diagnostics(tmp_path):
             "event_name": "predict_cycle",
             "pass": "true",
             "detail": (
-                "prediction_count=4;selected_count=1;blocked_count=3;"
+                "prediction_count=4;selected_count=3;executable_selected_count=1;blocked_count=2;"
                 "blocked_reasons=entries_paused,active_candidate_lifecycle,risk_blocked;"
                 "close_ts=2026-02-07T12:00:00Z;completed_bar_ticks=[100]"
             ),
@@ -279,7 +279,7 @@ def test_load_runtime_events_ignores_extra_predict_cycle_diagnostics(tmp_path):
 
     events = load_runtime_events(tmp_path, "EURUSD")
     assert events["predict_cycles"] == 1
-    assert events["selected_count_total"] == 1
+    assert events["selected_count_total"] == 3
 
 
 def test_load_runtime_events_ignores_malformed_local_surrogate_file(tmp_path):

@@ -22,6 +22,7 @@ from pathlib import Path
 CERT_CHECKS_FILENAME = "stage14_jforex_runtime_certification_checks.csv"
 MONTHLY_BUILD_ROOT = "configs/research/governance/oco_candidate_builds"
 HISTORY_ROOT = "configs/research/governance/oco_history_dukascopy_candidate"
+MONTHLY_RECERT_STATUS_FILENAME = "monthly_recert_status.json"
 
 
 def _repo_root() -> Path:
@@ -37,18 +38,42 @@ def _last_complete_month(override: str | None = None) -> str:
     return f"{today.year:04d}-{today.month - 1:02d}"
 
 
-def _verify_cert(report_dir: str) -> None:
+def _verify_cert(report_dir: str, model_month: str, repo_root: Path | None = None) -> None:
     """Raise SystemExit if cert CSV is missing, stale, or has critical failures."""
-    csv_path = _repo_root() / report_dir / CERT_CHECKS_FILENAME
+    repo_root = repo_root or _repo_root()
+    csv_path = repo_root / report_dir / CERT_CHECKS_FILENAME
     if not csv_path.exists():
         raise SystemExit(
             f"[promote-live] no cert results found at {csv_path}; "
+            "run make monthly-recert first"
+        )
+    status_path = repo_root / report_dir / MONTHLY_RECERT_STATUS_FILENAME
+    if not status_path.exists():
+        raise SystemExit(
+            f"[promote-live] monthly recert status not found at {status_path}; "
             "run make monthly-recert first"
         )
 
     today_str = date.today().isoformat()
     failures: list[str] = []
     stale = False
+    status = json.loads(status_path.read_text(encoding="utf-8"))
+    status_month = str(status.get("model_month", "")).strip()
+    status_pass = bool(status.get("overall_pass", False))
+    status_day = str(status.get("evaluated_at_utc", ""))[:10]
+
+    if status_month != model_month:
+        raise SystemExit(
+            f"[promote-live] cert status month mismatch: requested {model_month}, got {status_month or 'unknown'}"
+        )
+    if not status_pass:
+        raise SystemExit(
+            f"[promote-live] monthly recert status for {model_month} is not passing; rerun make monthly-recert"
+        )
+    if status_day != today_str:
+        raise SystemExit(
+            f"[promote-live] cert status is stale (not from today {today_str}); rerun make monthly-recert"
+        )
 
     with csv_path.open() as f:
         for row in csv.DictReader(f):
@@ -177,7 +202,7 @@ def main() -> None:
     model_month = _last_complete_month(args.model_month)
 
     print(f"[promote-live] verifying cert for {model_month}", flush=True)
-    _verify_cert(args.report_dir)
+    _verify_cert(args.report_dir, model_month)
 
     print(f"[promote-live] archiving build bundle for {model_month}", flush=True)
     _archive_build_bundle(model_month)
