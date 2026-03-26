@@ -1,58 +1,85 @@
 from __future__ import annotations
 
 import csv
+import json
 from pathlib import Path
 
 import pandas as pd
 
 
-def test_stage12_bridge_reads_from_stage13_summary(tmp_path: Path) -> None:
+def test_build_artifacts_marks_historical_nogo_from_lock(tmp_path: Path) -> None:
     from scripts.validate_local_jforex_surrogate import build_artifacts
 
-    # Write a minimal stage13 summary CSV (single multi-symbol file)
-    stage13 = tmp_path / "stage13_dukascopy_testclient_summary.csv"
-    with open(stage13, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["symbol", "stage12_api_parity_pass", "verdict"])
-        w.writeheader()
-        w.writerow({"symbol": "EURUSD", "stage12_api_parity_pass": "True", "verdict": "green"})
+    lock_dir = tmp_path / "locks"
+    lock_dir.mkdir()
+    (lock_dir / "usdcad_oco_live_lock.json").write_text(
+        json.dumps(
+            {
+                "symbol": "USDCAD",
+                "historical_deployable": False,
+                "non_deployable_reason": "no_gate_states",
+            }
+        ),
+        encoding="utf-8",
+    )
 
     summary, checks = build_artifacts(
-        symbols=["EURUSD"],
-        stage12_summary_glob=str(stage13),
+        symbols=["USDCAD"],
+        lock_dir=lock_dir,
         local_signal_summary_glob="",
         local_execution_summary_glob="",
         local_lifecycle_summary_glob="",
         local_operational_summary_glob="",
+        local_outcome_summary_glob="",
         out_summary_csv=tmp_path / "summary.csv",
         out_checks_csv=tmp_path / "checks.csv",
         report_out=tmp_path / "report.md",
     )
-    stage12_row = checks[checks["check_id"] == "STAGE12_API_PARITY_PASS"]
-    assert len(stage12_row) > 0, "STAGE12_API_PARITY_PASS check not found in checks output"
-    assert stage12_row["status"].iloc[0] == "pass"
+
+    assert summary.loc[0, "symbol"] == "USDCAD"
+    assert summary.loc[0, "verdict"] == "nogo"
+    assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is False
+    assert bool(summary.loc[0, "historical_deployable"]) is False
+    assert summary.loc[0, "non_deployable_reason"] == "no_gate_states"
+    assert "STAGE12_API_PARITY_PASS" not in set(checks["check_id"])
 
 
-def test_build_artifacts_includes_outcome_parity(tmp_path):
+def test_build_artifacts_allows_zero_lock_zero_order_window(tmp_path: Path) -> None:
     from scripts.validate_local_jforex_surrogate import build_artifacts
 
-    outcome_csv = tmp_path / "EURUSD_local_jforex_outcome_parity_summary.csv"
-    with open(outcome_csv, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["symbol", "overall_pass", "jforex_outcome_parity_pass"])
-        w.writeheader()
-        w.writerow({"symbol": "EURUSD", "overall_pass": "True", "jforex_outcome_parity_pass": "True"})
+    lock_dir = tmp_path / "locks"
+    lock_dir.mkdir()
+    (lock_dir / "eurusd_oco_live_lock.json").write_text(
+        json.dumps({"symbol": "EURUSD", "historical_deployable": True}),
+        encoding="utf-8",
+    )
+    execution_csv = tmp_path / "EURUSD_local_jforex_execution_parity_summary.csv"
+    pd.DataFrame(
+        [
+            {
+                "symbol": "EURUSD",
+                "jforex_execution_parity_pass": False,
+                "locked_selected_total": 0,
+                "submitted_orders": 0,
+            }
+        ]
+    ).to_csv(execution_csv, index=False)
 
     summary, checks = build_artifacts(
         symbols=["EURUSD"],
-        stage12_summary_glob="",
+        lock_dir=lock_dir,
         local_signal_summary_glob="",
-        local_execution_summary_glob="",
+        local_execution_summary_glob=str(execution_csv),
         local_lifecycle_summary_glob="",
         local_operational_summary_glob="",
-        local_outcome_summary_glob=str(tmp_path / "*_local_jforex_outcome_parity_summary.csv"),
+        local_outcome_summary_glob="",
         out_summary_csv=tmp_path / "summary.csv",
         out_checks_csv=tmp_path / "checks.csv",
         report_out=tmp_path / "report.md",
     )
-    outcome_row = checks[checks["check_id"] == "JFOREX_OUTCOME_PARITY_PASS"]
-    assert len(outcome_row) == 1, "JFOREX_OUTCOME_PARITY_PASS check not found"
-    assert outcome_row["status"].iloc[0] == "pass"
+
+    execution_row = checks[checks["metric_name"] == "local_execution_parity_pass"]
+    assert len(execution_row) == 1, "local_execution_parity_pass check not found"
+    assert execution_row["status"].iloc[0] == "pass"
+    assert summary.loc[0, "symbol"] == "EURUSD"
+    assert summary.loc[0, "verdict"] == "green"
