@@ -252,35 +252,27 @@ public final class BehemothStrategyCore {
                     sessionConfig.runId(),
                     barOrdinals
             ));
-            int selected = (int) predictions.stream().filter(PredictionResponseItem::isSelected).count();
-            int blocked = (int) predictions.stream().filter(PredictionResponseItem::riskBlocked).count();
+            ExecutableSelectionSummary selectionSummary = classifyExecutablePredictions(state, predictions);
             Instant predictCloseTs = predictions.stream()
                     .map(PredictionResponseItem::closeTs)
                     .filter(Objects::nonNull)
                     .findFirst()
                     .orElseGet(() -> state.lastTick != null ? state.lastTick.timestamp() : Instant.now());
-            metrics.recordSelectedPredictions(state.instrument.symbol(), selected, blocked);
+            metrics.recordSelectedPredictions(
+                    state.instrument.symbol(),
+                    selectionSummary.executableSelected(),
+                    selectionSummary.blockedCount()
+            );
             artifactWriter.recordPredictCycle(
                     state.instrument.symbol(),
                     predictCloseTs,
                     predictions.size(),
-                    selected,
-                    blocked,
+                    selectionSummary.executableSelected(),
+                    selectionSummary.blockedCount(),
+                    selectionSummary.blockedReasons(),
                     completedBarTicks
             );
-            for (PredictionResponseItem prediction : predictions) {
-                if (!prediction.isExecutable(sessionConfig.riskEnabled())) {
-                    continue;
-                }
-                if (stateStore.hasActiveCandidateLifecycle(state.instrument.symbol(), prediction.candidateUid())) {
-                    continue;
-                }
-                if (state.lastTick == null) {
-                    continue;
-                }
-                if (!state.entriesAllowed) {
-                    continue;
-                }
+            for (PredictionResponseItem prediction : selectionSummary.executablePredictions()) {
                 submitOcoPlan(state, prediction.toDecision(sessionConfig.requestedVolumeUnits()));
             }
         } catch (PythonApiException exc) {
@@ -576,6 +568,55 @@ public final class BehemothStrategyCore {
         return new TickIngestAggregate(accepted, dropped, List.copyOf(completedBarTicks));
     }
 
+    private ExecutableSelectionSummary classifyExecutablePredictions(
+            SymbolRuntimeState state,
+            List<PredictionResponseItem> predictions
+    ) {
+        List<PredictionResponseItem> executablePredictions = new ArrayList<>();
+        LinkedHashSet<String> blockedReasons = new LinkedHashSet<>();
+        int blockedCount = 0;
+        for (PredictionResponseItem prediction : predictions) {
+            if (!prediction.isSelected()) {
+                continue;
+            }
+            if (!prediction.isExecutable(sessionConfig.riskEnabled())) {
+                blockedCount += 1;
+                blockedReasons.add(blockedReasonToken(prediction.riskBlockReason(), "risk_blocked"));
+                continue;
+            }
+            if (stateStore.hasActiveCandidateLifecycle(state.instrument.symbol(), prediction.candidateUid())) {
+                blockedCount += 1;
+                blockedReasons.add("active_candidate_lifecycle");
+                continue;
+            }
+            if (state.lastTick == null) {
+                blockedCount += 1;
+                blockedReasons.add("missing_last_tick");
+                continue;
+            }
+            if (!state.entriesAllowed) {
+                blockedCount += 1;
+                blockedReasons.add("entries_paused");
+                continue;
+            }
+            executablePredictions.add(prediction);
+        }
+        return new ExecutableSelectionSummary(
+                List.copyOf(executablePredictions),
+                executablePredictions.size(),
+                blockedCount,
+                List.copyOf(blockedReasons)
+        );
+    }
+
+    private static String blockedReasonToken(String reason, String fallback) {
+        if (reason == null) {
+            return fallback;
+        }
+        String normalized = reason.trim();
+        return normalized.isEmpty() ? fallback : normalized;
+    }
+
     private static final class SymbolRuntimeState {
         private final RuntimeInstrument instrument;
         private final List<IncomingTickPayload> pendingTicks = new ArrayList<>();
@@ -600,6 +641,14 @@ public final class BehemothStrategyCore {
             int acceptedCount,
             int droppedCount,
             List<Integer> completedBarTicks
+    ) {
+    }
+
+    private record ExecutableSelectionSummary(
+            List<PredictionResponseItem> executablePredictions,
+            int executableSelected,
+            int blockedCount,
+            List<String> blockedReasons
     ) {
     }
 
