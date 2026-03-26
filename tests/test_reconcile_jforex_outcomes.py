@@ -150,6 +150,45 @@ def test_compare_outcomes_fail_low_coverage():
     assert result["overall_pass"] is False
 
 
+def test_compare_outcomes_zero_lock_passes_when_runtime_is_clean_noop():
+    from scripts.reconcile_jforex_outcomes import compare_outcomes
+
+    result = compare_outcomes(
+        symbol="EURUSD",
+        locked_count=0,
+        locked_gross_pips_total=0.0,
+        locked_win_rate=0.0,
+        jforex_predict_cycles=34,
+        jforex_selected_total=0,
+        jforex_orders_submitted=0,
+        jforex_execution_failures=0,
+        jforex_lifecycle_failures=0,
+        jforex_submitted_group_count=0,
+    )
+    assert result["signal_coverage_pass"] is True
+    assert result["has_trades"] is False
+    assert result["overall_pass"] is True
+
+
+def test_compare_outcomes_zero_lock_fails_on_unexpected_runtime_activity():
+    from scripts.reconcile_jforex_outcomes import compare_outcomes
+
+    result = compare_outcomes(
+        symbol="EURUSD",
+        locked_count=0,
+        locked_gross_pips_total=0.0,
+        locked_win_rate=0.0,
+        jforex_predict_cycles=34,
+        jforex_selected_total=1,
+        jforex_orders_submitted=0,
+        jforex_execution_failures=0,
+        jforex_lifecycle_failures=0,
+        jforex_submitted_group_count=0,
+    )
+    assert result["signal_coverage_pass"] is False
+    assert result["overall_pass"] is False
+
+
 from datetime import datetime, timezone
 
 
@@ -165,6 +204,16 @@ def test_parse_order_label_close_ts_missing():
     from scripts.reconcile_jforex_outcomes import parse_order_label_close_ts
 
     assert parse_order_label_close_ts("BAD_LABEL") is None
+
+
+def test_parse_predict_cycle_close_ts():
+    from scripts.reconcile_jforex_outcomes import parse_predict_cycle_close_ts
+
+    ts = parse_predict_cycle_close_ts(
+        "prediction_count=5;selected_count=2;blocked_count=0;"
+        "close_ts=2025-07-07T12:00:00Z;completed_bar_ticks=[100]"
+    )
+    assert ts == datetime(2025, 7, 7, 12, 0, 0, tzinfo=timezone.utc)
 
 
 def test_load_runtime_events_order_matching():
@@ -196,6 +245,68 @@ def test_load_runtime_events_order_matching():
         # Two legs submitted → 1 unique group close_ts
         assert events["submitted_group_close_ts_count"] == 1, f"Expected 1 unique group ts, got {events.get('submitted_group_close_ts_count')}"
         assert events["completed_group_count"] == 1, f"Expected 1 completed group, got {events.get('completed_group_count')}"
+
+
+def test_load_runtime_events_filters_eval_window_using_replay_close_ts(tmp_path):
+    from scripts.reconcile_jforex_outcomes import load_runtime_events
+
+    _write_runtime_events(tmp_path, "EURUSD", "jforex", [
+        {
+            "event_ts_utc": "2026-03-22T10:00:00Z",
+            "symbol": "EURUSD",
+            "category": "signal",
+            "event_name": "predict_cycle",
+            "pass": "true",
+            "detail": (
+                "prediction_count=4;selected_count=2;blocked_count=0;"
+                "close_ts=2026-02-07T12:00:00Z;completed_bar_ticks=[100]"
+            ),
+        },
+        {
+            "event_ts_utc": "2026-03-22T10:05:00Z",
+            "symbol": "EURUSD",
+            "category": "signal",
+            "event_name": "predict_cycle",
+            "pass": "true",
+            "detail": (
+                "prediction_count=3;selected_count=1;blocked_count=0;"
+                "close_ts=2026-02-10T12:00:00Z;completed_bar_ticks=[100]"
+            ),
+        },
+        {
+            "event_ts_utc": "2026-03-22T10:00:05Z",
+            "symbol": "EURUSD",
+            "category": "execution",
+            "event_name": "order_submitted",
+            "pass": "true",
+            "detail": (
+                "OCO_EURUSD_T100_H6_TS20260207120000_RIDNA_CID001:"
+                "OCO_EURUSD_T100_H6_TS20260207120000_RIDNA_CID001_BUY"
+            ),
+        },
+        {
+            "event_ts_utc": "2026-03-22T10:05:05Z",
+            "symbol": "EURUSD",
+            "category": "execution",
+            "event_name": "order_submitted",
+            "pass": "true",
+            "detail": (
+                "OCO_EURUSD_T100_H6_TS20260210120000_RIDNA_CID002:"
+                "OCO_EURUSD_T100_H6_TS20260210120000_RIDNA_CID002_BUY"
+            ),
+        },
+    ])
+
+    events = load_runtime_events(
+        tmp_path,
+        "EURUSD",
+        eval_start="2026-02-07T00:00:00Z",
+        eval_end="2026-02-09T00:00:00Z",
+    )
+    assert events["predict_cycles"] == 1
+    assert events["selected_count_total"] == 2
+    assert events["orders_submitted"] == 1
+    assert events["submitted_group_close_ts_count"] == 1
 
 
 def test_compare_outcomes_per_event_coverage():

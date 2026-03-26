@@ -147,6 +147,9 @@ def _poll_health(proc: subprocess.Popen[str], base_url: str, timeout_sec: float)
 def _prediction_path(cfg: RunConfig, symbol: str) -> str:
     if cfg.locked_predictions_dir:
         return str(Path(cfg.locked_predictions_dir) / f"{symbol.lower()}_oco_locked_predictions.parquet")
+    locked = Path(cfg.history_dir) / cfg.model_month / f"{symbol.lower()}_oco_locked_predictions.parquet"
+    if locked.exists():
+        return str(locked)
     return str(Path(cfg.predictions_dir) / f"{symbol}_oco_monthly_predictions.parquet")
 
 

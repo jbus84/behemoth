@@ -27,8 +27,8 @@ public final class ParquetTickLoader {
         String parquetExpr = parquetExpression(files);
         Instant lookbackStart = config.startUtc().minus(config.lookbackDays(), ChronoUnit.DAYS);
         try (Connection connection = DriverManager.getConnection("jdbc:duckdb:")) {
-            int preCount = countBeforeStart(connection, parquetExpr, lookbackStart, config.startUtc());
-            int keep = config.warmupTicks() + (preCount % config.phaseBarTicks());
+            int fullPreCount = countBeforeStart(connection, parquetExpr, null, config.startUtc());
+            int keep = config.warmupTicks() + (fullPreCount % config.phaseBarTicks());
             List<RuntimeTick> warmup = loadRowsDescending(connection, parquetExpr, lookbackStart, config.startUtc(), keep, sym);
             warmup.sort(Comparator.comparing(RuntimeTick::timestamp));
             List<RuntimeTick> stream = loadRowsAscending(connection, parquetExpr, config.startUtc(), config.endUtc(), sym);
@@ -39,10 +39,16 @@ public final class ParquetTickLoader {
     }
 
     private static int countBeforeStart(Connection connection, String parquetExpr, Instant lookbackStart, Instant startUtc) throws Exception {
-        String sql = "SELECT COUNT(*) FROM read_parquet(" + parquetExpr + ") WHERE timestamp >= ? AND timestamp < ?";
+        String sql = lookbackStart == null
+                ? "SELECT COUNT(*) FROM read_parquet(" + parquetExpr + ") WHERE timestamp < ?"
+                : "SELECT COUNT(*) FROM read_parquet(" + parquetExpr + ") WHERE timestamp >= ? AND timestamp < ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setTimestamp(1, Timestamp.from(lookbackStart));
-            ps.setTimestamp(2, Timestamp.from(startUtc));
+            if (lookbackStart == null) {
+                ps.setTimestamp(1, Timestamp.from(startUtc));
+            } else {
+                ps.setTimestamp(1, Timestamp.from(lookbackStart));
+                ps.setTimestamp(2, Timestamp.from(startUtc));
+            }
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getInt(1) : 0;
             }

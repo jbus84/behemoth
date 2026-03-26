@@ -13,6 +13,7 @@ BEHEMOTH_JFOREX_PASSWORD in the environment (typically loaded from .env).
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import signal
 import subprocess
@@ -21,6 +22,7 @@ import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -30,6 +32,7 @@ DEFAULT_END = "2025-07-09T00:00:00Z"
 DEFAULT_MODELS_DIR = "models/oco_dukascopy_candidate"
 DEFAULT_HISTORY_DIR = "configs/research/governance/oco_history_dukascopy_candidate"
 DEFAULT_PREDICTIONS_DIR = "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap"
+DEFAULT_TICK_ROOT = "/Users/danielfisher/Desktop/dukascopy_ticks"
 DEFAULT_API_PORT = 8000
 
 
@@ -42,6 +45,7 @@ class RunConfig:
     models_dir: str
     history_dir: str
     predictions_dir: str
+    tick_root: str
     report_dir: str
     api_host: str
     api_port: int
@@ -55,6 +59,9 @@ class RunConfig:
     risk_enabled: bool
     universe_mode: str
     ordinal_tolerance: int
+    warmup_ticks: int
+    lookback_days: int
+    phase_bar_ticks: int
     tester_completion_timeout_seconds: int
 
 
@@ -67,6 +74,7 @@ def _parse_args() -> RunConfig:
     parser.add_argument("--models-dir", default=DEFAULT_MODELS_DIR)
     parser.add_argument("--history-dir", default=DEFAULT_HISTORY_DIR)
     parser.add_argument("--predictions-dir", default=DEFAULT_PREDICTIONS_DIR)
+    parser.add_argument("--tick-root", default=DEFAULT_TICK_ROOT)
     parser.add_argument("--report-dir", default="data/analysis/backtest_reconcile")
     parser.add_argument("--api-host", default="127.0.0.1")
     parser.add_argument("--api-port", type=int, default=DEFAULT_API_PORT)
@@ -80,6 +88,9 @@ def _parse_args() -> RunConfig:
     parser.add_argument("--risk-enabled", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--universe-mode", choices=["tolerant", "nearest", "ordinal"], default="tolerant")
     parser.add_argument("--ordinal-tolerance", type=int, default=0)
+    parser.add_argument("--warmup-ticks", type=int, default=30000)
+    parser.add_argument("--lookback-days", type=int, default=31)
+    parser.add_argument("--phase-bar-ticks", type=int, default=100)
     parser.add_argument(
         "--tester-completion-timeout-seconds",
         type=int,
@@ -98,6 +109,7 @@ def _parse_args() -> RunConfig:
         models_dir=args.models_dir,
         history_dir=args.history_dir,
         predictions_dir=args.predictions_dir,
+        tick_root=args.tick_root,
         report_dir=args.report_dir,
         api_host=args.api_host,
         api_port=args.api_port,
@@ -111,6 +123,9 @@ def _parse_args() -> RunConfig:
         risk_enabled=bool(args.risk_enabled),
         universe_mode=args.universe_mode,
         ordinal_tolerance=int(args.ordinal_tolerance),
+        warmup_ticks=int(args.warmup_ticks),
+        lookback_days=int(args.lookback_days),
+        phase_bar_ticks=int(args.phase_bar_ticks),
         tester_completion_timeout_seconds=args.tester_completion_timeout_seconds,
     )
 
@@ -138,11 +153,104 @@ def _poll_health(proc: subprocess.Popen[str], base_url: str, timeout_sec: float)
 
 
 def _prediction_path(cfg: RunConfig, symbol: str) -> str:
+    locked = Path(cfg.history_dir) / cfg.model_month / f"{symbol.lower()}_oco_locked_predictions.parquet"
+    if locked.exists():
+        return str(locked)
     return str(Path(cfg.predictions_dir) / f"{symbol}_oco_monthly_predictions.parquet")
 
 
 def _state_db_path(cfg: RunConfig, symbol: str) -> Path:
     return _repo_root() / cfg.report_dir / "runtime" / f"{symbol.lower()}_jforex_dukascopy_state.db"
+
+
+def _parse_utc(ts: str) -> datetime:
+    return datetime.fromisoformat(str(ts).replace("Z", "+00:00")).astimezone(timezone.utc)
+
+
+def _parquet_expression(files: list[Path]) -> str:
+    quoted = [repr(str(path.resolve())) for path in files]
+    if len(quoted) == 1:
+        return quoted[0]
+    return "[" + ", ".join(quoted) + "]"
+
+
+def _tick_files(cfg: RunConfig, symbol: str) -> list[Path]:
+    symbol_dir = Path(cfg.tick_root) / symbol.upper().strip()
+    if not symbol_dir.is_dir():
+        return []
+    return sorted(path for path in symbol_dir.iterdir() if path.suffix == ".parquet")
+
+
+def _load_phase_aligned_warmup_ticks(cfg: RunConfig, symbol: str) -> list[dict[str, object]]:
+    files = _tick_files(cfg, symbol)
+    if not files or cfg.phase_bar_ticks <= 0:
+        return []
+    try:
+        import duckdb
+    except Exception as exc:  # pragma: no cover - exercised in real runtime
+        raise RuntimeError("duckdb is required to prime JForex historical warmup state") from exc
+
+    start_ts = _parse_utc(cfg.start_ts)
+    lookback_start = start_ts - timedelta(days=cfg.lookback_days)
+    expr = _parquet_expression(files)
+    con = duckdb.connect()
+    try:
+        full_pre_count = int(
+            con.execute(
+                f"SELECT COUNT(*) FROM read_parquet({expr}) WHERE timestamp < ?",
+                [start_ts],
+            ).fetchone()[0]
+        )
+        keep = int(cfg.warmup_ticks) + (full_pre_count % int(cfg.phase_bar_ticks))
+        if keep <= 0:
+            return []
+        rows = con.execute(
+            f"""
+            SELECT timestamp, bid, ask
+            FROM read_parquet({expr})
+            WHERE timestamp >= ? AND timestamp < ?
+            ORDER BY timestamp DESC
+            LIMIT ?
+            """,
+            [lookback_start, start_ts, keep],
+        ).fetchall()
+    finally:
+        con.close()
+
+    rows.reverse()
+    return [
+        {
+            "symbol": symbol.upper().strip(),
+            "timestamp": row[0].astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "bid": float(row[1]),
+            "ask": float(row[2]),
+            "volume": 1.0,
+            "client_tick_seq": idx,
+            "run_id": f"jforex_dukascopy_{symbol.lower()}_warmup",
+        }
+        for idx, row in enumerate(rows, start=1)
+    ]
+
+
+def _prime_api_with_warmup(cfg: RunConfig, symbol: str) -> None:
+    ticks = _load_phase_aligned_warmup_ticks(cfg, symbol)
+    if not ticks:
+        return
+    payload = {
+        "symbol": symbol.upper().strip(),
+        "bar_ticks": int(cfg.phase_bar_ticks),
+        "ticks": ticks,
+        "run_id": f"jforex_dukascopy_{symbol.lower()}_warmup",
+    }
+    req = urllib.request.Request(
+        f"http://{cfg.api_host}:{cfg.api_port}/backfill",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=60.0) as response:
+        if response.status != 201:
+            raise RuntimeError(f"Warmup backfill failed for {symbol}: status={response.status}")
 
 
 def _start_api(cfg: RunConfig, symbol: str) -> subprocess.Popen[str]:
@@ -345,6 +453,7 @@ def main() -> None:
         api_proc = _start_api(cfg, symbol)
         try:
             _poll_health(api_proc, f"http://{cfg.api_host}:{cfg.api_port}", timeout_sec=60.0)
+            _prime_api_with_warmup(cfg, symbol)
             print(f"[jforex-dukascopy] {symbol}: running JForex tester", flush=True)
             _run_jforex_tester(cfg, symbol, metrics_port)
             print(f"[jforex-dukascopy] {symbol}: complete", flush=True)

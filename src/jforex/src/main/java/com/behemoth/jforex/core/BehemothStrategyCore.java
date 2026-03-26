@@ -254,9 +254,15 @@ public final class BehemothStrategyCore {
             ));
             int selected = (int) predictions.stream().filter(PredictionResponseItem::isSelected).count();
             int blocked = (int) predictions.stream().filter(PredictionResponseItem::riskBlocked).count();
+            Instant predictCloseTs = predictions.stream()
+                    .map(PredictionResponseItem::closeTs)
+                    .filter(Objects::nonNull)
+                    .findFirst()
+                    .orElseGet(() -> state.lastTick != null ? state.lastTick.timestamp() : Instant.now());
             metrics.recordSelectedPredictions(state.instrument.symbol(), selected, blocked);
             artifactWriter.recordPredictCycle(
                     state.instrument.symbol(),
+                    predictCloseTs,
                     predictions.size(),
                     selected,
                     blocked,

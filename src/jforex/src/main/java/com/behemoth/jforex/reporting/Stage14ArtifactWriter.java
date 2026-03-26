@@ -43,11 +43,13 @@ public final class Stage14ArtifactWriter {
 
     public synchronized void recordPredictCycle(
             String symbol,
+            Instant closeTs,
             int predictionCount,
             int selectedCount,
             int blockedCount,
             List<Integer> completedBarTicks
     ) {
+        Instant replayCloseTs = Objects.requireNonNull(closeTs, "closeTs");
         events.add(EventRow.pass(
                 symbol,
                 "signal",
@@ -55,6 +57,7 @@ public final class Stage14ArtifactWriter {
                 "prediction_count=" + predictionCount
                         + ";selected_count=" + selectedCount
                         + ";blocked_count=" + blockedCount
+                        + ";close_ts=" + replayCloseTs
                         + ";completed_bar_ticks=" + completedBarTicks
         ));
     }

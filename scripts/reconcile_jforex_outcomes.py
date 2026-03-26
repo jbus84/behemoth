@@ -36,6 +36,34 @@ def parse_order_label_close_ts(label: str) -> "datetime | None":
         return None
 
 
+def parse_predict_cycle_close_ts(detail: str) -> "datetime | None":
+    """Extract the replay close_ts from a predict_cycle detail string."""
+    m = re.search(r"(?:^|;)close_ts=([^;]+)", str(detail))
+    if not m:
+        return None
+    try:
+        return datetime.fromisoformat(m.group(1).replace("Z", "+00:00")).astimezone(timezone.utc)
+    except ValueError:
+        return None
+
+
+def _parse_eval_ts(value: str) -> "datetime | None":
+    if not value:
+        return None
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+
+
+def _in_eval_window(ts: "datetime | None", eval_start: "datetime | None", eval_end: "datetime | None") -> bool:
+    """Treat rows without replay close_ts as unfilterable and keep them for compatibility."""
+    if ts is None:
+        return True
+    if eval_start is not None and ts < eval_start:
+        return False
+    if eval_end is not None and ts >= eval_end:
+        return False
+    return True
+
+
 DEFAULT_LOCK_DIR = "configs/research/governance/oco_history_dukascopy_candidate/2025-07"
 DEFAULT_RECONCILE_DIR = "data/analysis/backtest_reconcile"
 
@@ -90,7 +118,12 @@ def load_locked_predictions(
     return df
 
 
-def load_runtime_events(reconcile_dir: Path, symbol: str) -> dict:
+def load_runtime_events(
+    reconcile_dir: Path,
+    symbol: str,
+    eval_start: str = "",
+    eval_end: str = "",
+) -> dict:
     """Load and summarise JForex runtime events for a symbol.
 
     Returns a dict with aggregate counts:
@@ -116,9 +149,34 @@ def load_runtime_events(reconcile_dir: Path, symbol: str) -> dict:
         }
     path = candidates[0]
     df = pd.read_csv(path)
+    eval_start_dt = _parse_eval_ts(eval_start)
+    eval_end_dt = _parse_eval_ts(eval_end)
 
-    predict_cycles = len(df[df["event_name"] == "predict_cycle"])
-    orders_submitted = len(df[df["event_name"] == "order_submitted"])
+    predict_cycle_rows = df[df["event_name"] == "predict_cycle"].copy()
+    if eval_start_dt is not None or eval_end_dt is not None:
+        predict_cycle_rows = predict_cycle_rows[
+            predict_cycle_rows["detail"].apply(
+                lambda detail: _in_eval_window(
+                    parse_predict_cycle_close_ts(str(detail)),
+                    eval_start_dt,
+                    eval_end_dt,
+                )
+            )
+        ]
+    predict_cycles = len(predict_cycle_rows)
+
+    order_submitted_rows = df[df["event_name"] == "order_submitted"].copy()
+    if eval_start_dt is not None or eval_end_dt is not None:
+        order_submitted_rows = order_submitted_rows[
+            order_submitted_rows["detail"].astype(str).apply(
+                lambda detail: _in_eval_window(
+                    parse_order_label_close_ts(detail.split(":")[0]),
+                    eval_start_dt,
+                    eval_end_dt,
+                )
+            )
+        ]
+    orders_submitted = len(order_submitted_rows)
     orders_filled = len(df[df["event_name"] == "order_filled"])
     execution_failures = len(df[
         (df["category"] == "execution") & (df["pass"].astype(str) == "false")
@@ -128,7 +186,7 @@ def load_runtime_events(reconcile_dir: Path, symbol: str) -> dict:
 
     # Parse selected_count from predict_cycle detail strings
     selected_total = 0
-    for detail in df.loc[df["event_name"] == "predict_cycle", "detail"]:
+    for detail in predict_cycle_rows["detail"]:
         for part in str(detail).split(";"):
             if part.startswith("selected_count="):
                 selected_total += int(part.split("=")[1])
@@ -136,7 +194,7 @@ def load_runtime_events(reconcile_dir: Path, symbol: str) -> dict:
     # Per-event: extract unique group close_ts from order_submitted detail strings.
     # Detail format: "{groupLabel}:{legLabel}" — groupLabel encodes TS{YYYYMMDDHHMMSS}.
     submitted_close_ts: set = set()
-    for detail in df.loc[df["event_name"] == "order_submitted", "detail"].astype(str):
+    for detail in order_submitted_rows["detail"].astype(str):
         group_label = detail.split(":")[0]
         ts = parse_order_label_close_ts(group_label)
         if ts is not None:
@@ -197,11 +255,20 @@ def compare_outcomes(
         position is live.  order_coverage_pass is therefore informational and is intentionally
         excluded from overall_pass.  signal_coverage_pass is the actionable gate.
     """
+    zero_lock_clean_noop = (
+        locked_count == 0
+        and jforex_selected_total == 0
+        and jforex_orders_submitted == 0
+    )
     signal_coverage_ratio = (
         jforex_selected_total / locked_count if locked_count > 0 else 0.0
     )
-    # signal_coverage_pass is the gate for overall_pass: did the model see the right events?
-    signal_coverage_pass = signal_coverage_ratio >= signal_coverage_threshold
+    # Zero-lock windows are valid no-op windows if runtime also stayed idle.
+    signal_coverage_pass = (
+        zero_lock_clean_noop
+        if locked_count == 0
+        else signal_coverage_ratio >= signal_coverage_threshold
+    )
 
     execution_clean_pass = (
         jforex_execution_failures == 0 and jforex_lifecycle_failures == 0
@@ -213,11 +280,18 @@ def compare_outcomes(
     order_coverage_ratio = (
         jforex_submitted_group_count / locked_count if locked_count > 0 else 0.0
     )
-    order_coverage_pass = order_coverage_ratio >= signal_coverage_threshold
+    order_coverage_pass = (
+        zero_lock_clean_noop
+        if locked_count == 0
+        else order_coverage_ratio >= signal_coverage_threshold
+    )
 
     # signal_coverage_pass is the gate: did the model see the right events?
     # order_coverage_pass is informational: how many events resulted in orders (depressed by OCO blocking).
-    overall_pass = signal_coverage_pass and execution_clean_pass and has_trades
+    overall_pass = execution_clean_pass and (
+        zero_lock_clean_noop
+        or (signal_coverage_pass and has_trades)
+    )
 
     return {
         "symbol": symbol,
@@ -311,7 +385,12 @@ def main() -> None:
 
     results = []
     for symbol in symbols:
-        events = load_runtime_events(reconcile_dir, symbol)
+        events = load_runtime_events(
+            reconcile_dir,
+            symbol,
+            eval_start=args.eval_start,
+            eval_end=args.eval_end,
+        )
         lock_status = load_historical_lock_status(lock_dir, symbol)
         if not bool(lock_status["historical_deployable"]):
             result = non_deployable_result(
