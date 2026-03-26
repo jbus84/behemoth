@@ -82,6 +82,15 @@ def test_load_runtime_events_counts_categories():
         assert events["orders_filled"] == 1
 
 
+def test_load_runtime_events_fails_when_no_runtime_events_files_exist():
+    from scripts.reconcile_jforex_outcomes import load_runtime_events
+
+    with tempfile.TemporaryDirectory() as td:
+        tmp = Path(td)
+        with pytest.raises(SystemExit, match="missing runtime events file"):
+            load_runtime_events(tmp, "EURUSD")
+
+
 def test_compare_outcomes_pass():
     from scripts.reconcile_jforex_outcomes import compare_outcomes
 
@@ -239,6 +248,34 @@ def test_load_runtime_events_ignores_extra_predict_cycle_diagnostics(tmp_path):
     assert events["selected_count_total"] == 1
 
 
+def test_load_runtime_events_ignores_malformed_local_surrogate_file(tmp_path):
+    from scripts.reconcile_jforex_outcomes import load_runtime_events
+
+    _write_runtime_events(tmp_path, "EURUSD", "jforex", [
+        {
+            "event_ts_utc": "2026-03-22T10:00:00Z",
+            "symbol": "EURUSD",
+            "category": "signal",
+            "event_name": "predict_cycle",
+            "pass": "true",
+            "detail": (
+                "prediction_count=4;selected_count=1;blocked_count=3;"
+                "blocked_reasons=entries_paused,active_candidate_lifecycle,risk_blocked;"
+                "close_ts=2026-02-07T12:00:00Z;completed_bar_ticks=[100]"
+            ),
+        }
+    ])
+
+    malformed_path = tmp_path / "EURUSD_local_jforex_runtime_events.csv"
+    with open(malformed_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["broken"])
+        writer.writeheader()
+        writer.writerow({"broken": 1})
+
+    events = load_runtime_events(tmp_path, "EURUSD")
+    assert events["selected_count_total"] == 1
+
+
 def test_load_runtime_events_accepts_specific_block_reasons(tmp_path):
     from scripts.reconcile_jforex_outcomes import load_runtime_events
 
@@ -259,17 +296,39 @@ def test_load_runtime_events_accepts_specific_block_reasons(tmp_path):
 
     events = load_runtime_events(tmp_path, "EURUSD")
     assert events["predict_cycles"] == 1
-    assert events["selected_count_total"] == 0
 
 
-def test_load_runtime_events_order_matching():
-    """order_submitted detail encodes close_ts; loader should extract group close timestamps."""
+def test_load_runtime_events_fails_when_canonical_file_is_missing_detail_column(tmp_path):
+    from scripts.reconcile_jforex_outcomes import load_runtime_events
+
+    path = tmp_path / "USDJPY_jforex_runtime_events.csv"
+    with open(path, "w", newline="") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=["event_ts_utc", "symbol", "category", "event_name", "pass"],
+        )
+        writer.writeheader()
+        writer.writerow(
+            {
+                "event_ts_utc": "2026-02-07T00:00:00Z",
+                "symbol": "USDJPY",
+                "category": "predict",
+                "event_name": "predict_cycle",
+                "pass": "true",
+            }
+        )
+
+    with pytest.raises(SystemExit, match="missing columns \\[detail\\]"):
+        load_runtime_events(tmp_path, "USDJPY")
+
+
+def test_load_runtime_events_fails_when_only_local_surrogate_file_exists():
+    """Local surrogate runtime-events files alone are not a valid Stage 14 input."""
     from scripts.reconcile_jforex_outcomes import load_runtime_events
     import tempfile, csv
 
     with tempfile.TemporaryDirectory() as td:
         tmp = Path(td)
-        # Write a minimal runtime events CSV
         events_path = tmp / "EURUSD_local_jforex_runtime_events.csv"
         rows = [
             {"event_ts_utc": "2025-07-07T16:29:21Z", "symbol": "EURUSD",
@@ -287,10 +346,8 @@ def test_load_runtime_events_order_matching():
             writer.writeheader()
             writer.writerows(rows)
 
-        events = load_runtime_events(tmp, "EURUSD")
-        # Two legs submitted → 1 unique group close_ts
-        assert events["submitted_group_close_ts_count"] == 1, f"Expected 1 unique group ts, got {events.get('submitted_group_close_ts_count')}"
-        assert events["completed_group_count"] == 1, f"Expected 1 completed group, got {events.get('completed_group_count')}"
+        with pytest.raises(SystemExit, match="missing runtime events file"):
+            load_runtime_events(tmp, "EURUSD")
 
 
 def test_load_runtime_events_filters_eval_window_using_replay_close_ts(tmp_path):
@@ -578,6 +635,46 @@ def test_load_runtime_events_prefers_real_over_local(tmp_path):
         "load_runtime_events() must prefer EURUSD_jforex_runtime_events.csv over "
         "EURUSD_local_jforex_runtime_events.csv."
     )
+
+
+def test_load_runtime_events_prefers_canonical_jforex_file_when_both_exist_and_are_valid(tmp_path):
+    from scripts.reconcile_jforex_outcomes import load_runtime_events
+    import csv
+
+    canonical_path = tmp_path / "EURUSD_jforex_runtime_events.csv"
+    with open(canonical_path, "w", newline="") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=["event_ts_utc", "symbol", "category", "event_name", "pass", "detail"],
+        )
+        writer.writeheader()
+        writer.writerow({
+            "event_ts_utc": "2026-02-07T00:00:00Z",
+            "symbol": "EURUSD",
+            "category": "signal",
+            "event_name": "predict_cycle",
+            "pass": "true",
+            "detail": "prediction_count=3;selected_count=2;blocked_count=1;completed_bar_ticks=[100]",
+        })
+
+    local_path = tmp_path / "EURUSD_local_jforex_runtime_events.csv"
+    with open(local_path, "w", newline="") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=["event_ts_utc", "symbol", "category", "event_name", "pass", "detail"],
+        )
+        writer.writeheader()
+        writer.writerow({
+            "event_ts_utc": "2026-02-07T00:00:00Z",
+            "symbol": "EURUSD",
+            "category": "signal",
+            "event_name": "predict_cycle",
+            "pass": "true",
+            "detail": "prediction_count=3;selected_count=99;blocked_count=0;completed_bar_ticks=[100]",
+        })
+
+    events = load_runtime_events(tmp_path, "EURUSD")
+    assert events["selected_count_total"] == 2
 
 
 def test_main_reports_non_deployable_month_without_locked_predictions(tmp_path, monkeypatch):
