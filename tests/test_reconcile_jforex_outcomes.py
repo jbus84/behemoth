@@ -499,6 +499,17 @@ def test_load_runtime_events_keeps_schema_when_eval_window_filters_all_rows(tmp_
             "pass": "true",
             "detail": "prediction_count=4;selected_count=3;blocked_count=1;close_ts=2026-02-07T12:00:00Z;completed_bar_ticks=[100]",
         },
+        {
+            "event_ts_utc": "2026-03-22T10:01:00Z",
+            "symbol": "EURUSD",
+            "category": "execution",
+            "event_name": "order_submitted",
+            "pass": "true",
+            "detail": (
+                "OCO_EURUSD_T100_H6_TS20260208120000_RIDNA_CID001:"
+                "OCO_EURUSD_T100_H6_TS20260208120000_RIDNA_CID001_BUY"
+            ),
+        },
     ])
 
     events = load_runtime_events(
@@ -510,8 +521,8 @@ def test_load_runtime_events_keeps_schema_when_eval_window_filters_all_rows(tmp_
 
     assert events["predict_cycles"] == 0
     assert events["selected_count_total"] == 0
-    assert events["orders_submitted"] == 0
-    assert events["submitted_group_close_ts_count"] == 0
+    assert events["orders_submitted"] == 1
+    assert events["submitted_group_close_ts_count"] == 1
 
 
 def test_compare_outcomes_per_event_coverage():
