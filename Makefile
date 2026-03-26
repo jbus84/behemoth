@@ -21,7 +21,7 @@ SYMBOLS ?= EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD
 CTRADER_ROBOT_DST := ~/cAlgo/Sources/Robots/BehemothTradeManager/BehemothTradeManager/BehemothTradeManager.cs
 CTRADER_PLUGIN_DST := ~/cAlgo/Sources/Plugins/CustomDataSourceHistDataPlugin/CustomDataSourceHistDataPlugin/CustomDataSourceHistDataPlugin.cs
 
-.PHONY: test test-java docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift deploy-cbot deploy-ctrader provision observability-up observability-down retrain-all rebuild-all quality ty vulture smellcheck radon xenon audit-all freeze-oco freeze-oco-history validate-oco-history reconcile-historical-predictions summarize-runtime-db-run reconcile-ctrader-run export-ctrader-custom-data ctrader-debug-up ctrader-debug-down ctrader-debug-status ctrader-ab-parity-report ctrader-parity testclient-parity dukascopy-testclient-parity local-jforex-parity local-jforex-parity-matrix local-jforex-parity-ordinal local-jforex-parity-spotlight jforex-dukascopy-matrix jforex-outcome-parity local-jforex-cert histdata-ctrader-parity histdata-testclient-parity stage12-api-parity stage13-dukascopy-cert stage14-jforex-cert full-stage14-cert dukascopy-source-audit offset-robustness-study offset-frozen-screen account-risk-monitoring-report reconcile-account-risk-reservations jforex-live demo-cert-monitor freeze-oco-dukascopy-candidate monthly-recert promote-live
+.PHONY: test test-java docs docs-build docs-contract docs-contract-ci docs-clean precommit-install precommit-run lint format help onboard-symbol check-legacy-drift deploy-cbot deploy-ctrader provision observability-up observability-down retrain-all rebuild-all quality ty vulture smellcheck radon xenon audit-all freeze-oco freeze-oco-history validate-oco-history reconcile-historical-predictions summarize-runtime-db-run reconcile-ctrader-run export-ctrader-custom-data ctrader-debug-up ctrader-debug-down ctrader-debug-status ctrader-ab-parity-report ctrader-parity testclient-parity dukascopy-testclient-parity local-jforex-parity local-jforex-parity-matrix local-jforex-parity-ordinal local-jforex-parity-spotlight jforex-dukascopy-matrix jforex-outcome-parity local-jforex-cert histdata-ctrader-parity histdata-testclient-parity stage12-api-parity stage13-dukascopy-cert stage14-jforex-cert full-stage14-cert dukascopy-source-audit offset-robustness-study offset-frozen-screen account-risk-monitoring-report reconcile-account-risk-reservations jforex-live demo-cert-monitor freeze-oco-dukascopy-candidate monthly-build monthly-recert promote-live
 
 OFFSET_ROBUSTNESS_SYMBOLS_DEFAULT := EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD
 OFFSET_ROBUSTNESS_OFFSETS_DEFAULT := 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99
@@ -416,6 +416,10 @@ monthly-recert:
 		$(if $(EVAL_END),--eval-end "$(EVAL_END)",) \
 		--report-dir $(or $(REPORT_DIR),data/analysis/backtest_reconcile)
 
+monthly-build:
+	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/run_monthly_build.py \
+		$(if $(MODEL_MONTH),--model-month "$(MODEL_MONTH)",)
+
 promote-live:
 	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/run_promote_live.py \
 		$(if $(MODEL_MONTH),--model-month "$(MODEL_MONTH)",) \
@@ -526,8 +530,9 @@ help:
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "jforex-live" "Start the JForex live/demo session for all symbols (IClient-based, live governance mode)"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "demo-cert-monitor" "Start observability and print the Dukascopy demo certification monitoring URLs, metrics, and readiness file"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "freeze-oco-dukascopy-candidate" "Freeze governance locks to oco_dukascopy_candidate/ (prerequisite for monthly-recert)"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "monthly-recert" "Sync candidate artifacts from models/oco/, run dukascopy-candidate recertification, and print go/no-go summary"
-	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "promote-live" "Archive certified candidate locks/models lineage to oco_history_dukascopy_candidate/ and print restart reminder"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "monthly-build" "Freeze a month-scoped candidate certification bundle for later recert"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "monthly-recert" "Run definitive certification against an existing month-scoped candidate build bundle"
+	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "promote-live" "Archive a certified candidate build bundle to oco_history_dukascopy_candidate/ and print restart reminder"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "observability-up" "Start Prometheus, Alertmanager, and Grafana for API + JForex monitoring"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "account-risk-monitoring-report" "Build broker-neutral account-risk monitoring outputs"
 	@printf "  $(COLOR_TARGET)%-18s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "reconcile-account-risk-reservations" "Reconcile broker-neutral account-risk reservations"
