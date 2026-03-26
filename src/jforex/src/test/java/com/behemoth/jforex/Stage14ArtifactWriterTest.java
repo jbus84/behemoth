@@ -25,7 +25,7 @@ class Stage14ArtifactWriterTest {
         writer.markOperationalStep("GBPUSD", "subscribed", true, "ok");
         writer.markOperationalStep("GBPUSD", "feed_status", true, "ok");
         writer.markOperationalStep("GBPUSD", "account_snapshot", true, "ok");
-        writer.recordPredictCycle("GBPUSD", Instant.parse("2025-07-07T00:00:00Z"), 3, 1, 0, List.of(100));
+        writer.recordPredictCycle("GBPUSD", Instant.parse("2025-07-07T00:00:00Z"), 3, 1, 0, List.of(), List.of(100));
         writer.recordOrderSubmitted("GBPUSD", "GROUP1", "GROUP1_BUY");
         writer.recordFill("GBPUSD", "GROUP1", "GROUP1_BUY");
         writer.recordTradeOpenSync("GBPUSD", "BUY-1");
@@ -79,7 +79,7 @@ class Stage14ArtifactWriterTest {
         writer.markOperationalStep("GBPUSD", "subscribed", true, "ok");
         writer.markOperationalStep("GBPUSD", "feed_status", true, "ok");
         writer.markOperationalStep("GBPUSD", "account_snapshot", true, "ok");
-        writer.recordPredictCycle("GBPUSD", Instant.parse("2025-07-07T00:00:00Z"), 1, 1, 0, List.of(100));
+        writer.recordPredictCycle("GBPUSD", Instant.parse("2025-07-07T00:00:00Z"), 1, 1, 0, List.of(), List.of(100));
         writer.writeReports(List.of("GBPUSD"), List.of());
 
         assertThat(tempDir.resolve("GBPUSD_local_jforex_signal_parity_summary.csv")).exists();
@@ -90,7 +90,7 @@ class Stage14ArtifactWriterTest {
     @Test
     void recordPredictCycle_writesReplayCloseTimestamp() throws Exception {
         Stage14ArtifactWriter writer = new Stage14ArtifactWriter(tempDir, "local_jforex");
-        writer.recordPredictCycle("EURUSD", Instant.parse("2026-02-07T12:00:00Z"), 2, 1, 0, List.of(100));
+        writer.recordPredictCycle("EURUSD", Instant.parse("2026-02-07T12:00:00Z"), 2, 1, 0, List.of(), List.of(100));
         writer.writeReports(List.of("EURUSD"), List.of());
 
         String content = Files.readString(tempDir.resolve("EURUSD_local_jforex_runtime_events.csv"));

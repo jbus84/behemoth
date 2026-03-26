@@ -47,9 +47,13 @@ public final class Stage14ArtifactWriter {
             int predictionCount,
             int selectedCount,
             int blockedCount,
+            List<String> blockedReasons,
             List<Integer> completedBarTicks
     ) {
         Instant replayCloseTs = Objects.requireNonNull(closeTs, "closeTs");
+        String blockedReasonsDetail = blockedReasons == null || blockedReasons.isEmpty()
+                ? ""
+                : ";blocked_reasons=" + String.join(",", blockedReasons);
         events.add(EventRow.pass(
                 symbol,
                 "signal",
@@ -57,6 +61,7 @@ public final class Stage14ArtifactWriter {
                 "prediction_count=" + predictionCount
                         + ";selected_count=" + selectedCount
                         + ";blocked_count=" + blockedCount
+                        + blockedReasonsDetail
                         + ";close_ts=" + replayCloseTs
                         + ";completed_bar_ticks=" + completedBarTicks
         ));
