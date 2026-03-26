@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import shutil
 from datetime import date
 from pathlib import Path
@@ -87,6 +88,39 @@ def _archive_build_bundle(model_month: str) -> None:
         else:
             target_dir.unlink()
     shutil.copytree(source_dir, target_dir)
+    _rewrite_promoted_lock_paths(source_dir, target_dir)
+
+
+def _rewrite_path_prefix(path_value: str, source_dir: Path, target_dir: Path) -> str:
+    source_prefix = source_dir.as_posix().rstrip("/") + "/"
+    if path_value == source_dir.as_posix():
+        return target_dir.as_posix()
+    if path_value.startswith(source_prefix):
+        return target_dir.as_posix() + path_value[len(source_dir.as_posix()):]
+    return path_value
+
+
+def _rewrite_manifest_paths(value, source_dir: Path, target_dir: Path):
+    if isinstance(value, dict):
+        return {
+            key: _rewrite_manifest_paths(item, source_dir, target_dir)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_rewrite_manifest_paths(item, source_dir, target_dir) for item in value]
+    if isinstance(value, str):
+        return _rewrite_path_prefix(value, source_dir, target_dir)
+    return value
+
+
+def _rewrite_promoted_lock_paths(source_dir: Path, target_dir: Path) -> None:
+    for lock_path in target_dir.rglob("*_oco_live_lock.json"):
+        with lock_path.open() as f:
+            manifest = json.load(f)
+        rewritten = _rewrite_manifest_paths(manifest, source_dir, target_dir)
+        with lock_path.open("w") as f:
+            json.dump(rewritten, f, indent=2)
+            f.write("\n")
 
 
 def main() -> None:
