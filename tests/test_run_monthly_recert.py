@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import scripts.run_monthly_recert as run_monthly_recert
 
 
-def test_main_runs_candidate_sync_before_certification(monkeypatch) -> None:
+def test_main_runs_definitive_recert_chain(monkeypatch) -> None:
     calls: list[list[str]] = []
 
     def fake_run(cmd, cwd=None):
@@ -18,7 +18,13 @@ def test_main_runs_candidate_sync_before_certification(monkeypatch) -> None:
     monkeypatch.setattr(
         run_monthly_recert,
         "_derive_params",
-        lambda **kwargs: ("2026-02", "2026-02-04T00:00:00Z", "2026-02-09T00:00:00Z", "2026-02-07T00:00:00Z", "2026-02-09T00:00:00Z"),
+        lambda **kwargs: (
+            "2026-02",
+            "2026-02-04T00:00:00Z",
+            "2026-02-09T00:00:00Z",
+            "2026-02-07T00:00:00Z",
+            "2026-02-09T00:00:00Z",
+        ),
     )
     monkeypatch.setattr(
         run_monthly_recert.sys,
@@ -49,6 +55,15 @@ def test_main_runs_candidate_sync_before_certification(monkeypatch) -> None:
             "MODEL_MONTH=2026-02",
             "START_TS=2026-02-04T00:00:00Z",
             "END_TS=2026-02-09T00:00:00Z",
+            "TICK_BATCH_SIZE=1",
+        ],
+        [
+            "make",
+            "local-jforex-parity-matrix",
+            "MODEL_MONTH=2026-02",
+            "START_TS=2026-02-04T00:00:00Z",
+            "END_TS=2026-02-09T00:00:00Z",
+            "TICK_BATCH_SIZE=1",
         ],
         [
             "make",
