@@ -71,6 +71,7 @@ def main() -> None:
             "run",
             "python",
             "scripts/freeze_oco_historical_governance.py",
+            "--allow-dirty",
             "--symbols",
             DEFAULT_SYMBOLS,
             "--out-dir",
