@@ -307,7 +307,7 @@ def test_load_runtime_events_accepts_specific_block_reasons(tmp_path):
         "detail",
     ],
 )
-def test_load_runtime_events_fails_when_canonical_file_is_missing_required_columns(
+def test_load_runtime_events_fails_when_canonical_file_is_missing_minimal_required_columns(
     tmp_path,
     missing_column,
 ):
@@ -338,7 +338,28 @@ def test_load_runtime_events_fails_when_canonical_file_is_missing_required_colum
 
     import re
 
-    with pytest.raises(SystemExit, match=rf"runtime events file missing columns \[{re.escape(missing_column)}\]:"):
+    with pytest.raises(SystemExit, match=rf"runtime events file missing minimal required columns \[{re.escape(missing_column)}\]:"):
+        load_runtime_events(tmp_path, "USDJPY")
+
+
+@pytest.mark.parametrize(
+    ("contents", "expected_message"),
+    [
+        ("", "runtime events file unreadable"),
+        ("event_ts_utc,symbol,category,event_name,pass,detail\n\"unterminated\n", "runtime events file unreadable"),
+    ],
+)
+def test_load_runtime_events_fails_when_canonical_file_is_corrupt_or_empty(
+    tmp_path,
+    contents,
+    expected_message,
+):
+    from scripts.reconcile_jforex_outcomes import load_runtime_events
+
+    path = tmp_path / "USDJPY_jforex_runtime_events.csv"
+    path.write_text(contents, encoding="utf-8")
+
+    with pytest.raises(SystemExit, match=expected_message):
         load_runtime_events(tmp_path, "USDJPY")
 
 

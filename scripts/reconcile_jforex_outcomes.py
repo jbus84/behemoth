@@ -66,7 +66,7 @@ def _in_eval_window(ts: "datetime | None", eval_start: "datetime | None", eval_e
 
 DEFAULT_LOCK_DIR = "configs/research/governance/oco_history_dukascopy_candidate/2025-07"
 DEFAULT_RECONCILE_DIR = "data/analysis/backtest_reconcile"
-REQUIRED_RUNTIME_EVENT_COLUMNS = ("event_name", "category", "pass", "detail")
+MINIMAL_RUNTIME_EVENT_COLUMNS = ("event_name", "category", "pass", "detail")
 
 
 def canonical_runtime_events_path(reconcile_dir: Path, symbol: str) -> Path:
@@ -76,11 +76,14 @@ def canonical_runtime_events_path(reconcile_dir: Path, symbol: str) -> Path:
 def load_runtime_events_frame(path: Path) -> pd.DataFrame:
     if not path.exists():
         raise SystemExit(f"missing runtime events file: {path}")
-    df = pd.read_csv(path)
-    missing = [col for col in REQUIRED_RUNTIME_EVENT_COLUMNS if col not in df.columns]
+    try:
+        df = pd.read_csv(path)
+    except (pd.errors.EmptyDataError, pd.errors.ParserError) as exc:
+        raise SystemExit(f"runtime events file unreadable: {path}") from exc
+    missing = [col for col in MINIMAL_RUNTIME_EVENT_COLUMNS if col not in df.columns]
     if missing:
         cols = ",".join(missing)
-        raise SystemExit(f"runtime events file missing columns [{cols}]: {path}")
+        raise SystemExit(f"runtime events file missing minimal required columns [{cols}]: {path}")
     return df
 
 
