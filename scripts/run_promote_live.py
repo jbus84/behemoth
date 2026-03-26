@@ -21,6 +21,7 @@ from pathlib import Path
 
 DEFAULT_SYMBOLS = "EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD"
 CERT_CHECKS_FILENAME = "stage14_jforex_runtime_certification_checks.csv"
+MODELS_DIR = "models/oco_dukascopy_candidate"
 
 
 def _repo_root() -> Path:
@@ -99,7 +100,7 @@ def main() -> None:
             "--analysis-dir",
             "data/analysis/tick_opportunity_mining_dukascopy_candidate",
             "--models-dir",
-            "models/oco",
+            MODELS_DIR,
         ],
         cwd=_repo_root(),
     )
