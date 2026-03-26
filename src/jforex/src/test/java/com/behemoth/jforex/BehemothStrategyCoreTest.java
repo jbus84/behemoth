@@ -384,7 +384,6 @@ class BehemothStrategyCoreTest {
             assertThat(server.getRequestCount()).isEqualTo(3);
         }
     }
-
     private static final class NoopExecutionPort implements ExecutionPort {
         @Override
         public OrderHandle submitStopOrder(OrderRequest request) {

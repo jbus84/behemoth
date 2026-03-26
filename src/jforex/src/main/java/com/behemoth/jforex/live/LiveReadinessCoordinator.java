@@ -43,6 +43,7 @@ public final class LiveReadinessCoordinator implements AutoCloseable {
     private ScheduledExecutorService scheduler;
     private ExecutorService startupExecutor;
     private SymbolReadinessRegistry registry;
+    private BridgeRuntime bridgeRuntime;
     private BehemothStrategyCore core;
     private List<String> symbols = List.of();
     private Instant lastStatusWriteAt;
@@ -144,12 +145,13 @@ public final class LiveReadinessCoordinator implements AutoCloseable {
             return;
         }
 
+        this.bridgeRuntime = bridgeRuntimeFactory.create(context, registry);
         Instant now = clock.instant();
         publishSnapshot(now, true);
 
         startStartupExecutor();
         for (String symbol : this.symbols) {
-            submitSymbolInitialization(symbol, context);
+            submitSymbolInitialization(symbol);
         }
 
         if (autoStartHeartbeatScheduler) {
@@ -204,12 +206,12 @@ public final class LiveReadinessCoordinator implements AutoCloseable {
         }
     }
 
-    private void submitSymbolInitialization(String symbol, IContext context) {
+    private void submitSymbolInitialization(String symbol) {
         Objects.requireNonNull(startupExecutor, "startupExecutor");
-        startupExecutor.submit(() -> initializeSymbol(symbol, context));
+        startupExecutor.submit(() -> initializeSymbol(symbol));
     }
 
-    private void initializeSymbol(String symbol, IContext context) {
+    private void initializeSymbol(String symbol) {
         Instant startedAt = clock.instant();
         try {
             WarmupSlice warmup = warmupLoader.load(symbol, startedAt);
@@ -217,7 +219,6 @@ public final class LiveReadinessCoordinator implements AutoCloseable {
             publishSnapshot(clock.instant(), true);
 
             warmupPublisher.publish(symbol, toPayloads(symbol, warmup.ticks(), sessionConfig.runId()), sessionConfig.runId());
-            BridgeRuntime bridgeRuntime = bridgeRuntimeFactory.create(context, registry);
             bridgeRuntime.seedClientTickSeq(symbol, warmup.ticks().size());
 
             registry.markBridging(symbol, clock.instant());
@@ -291,7 +292,6 @@ public final class LiveReadinessCoordinator implements AutoCloseable {
             return thread;
         });
     }
-
     private void startHeartbeatScheduler() {
         if (scheduler != null) {
             return;

@@ -260,7 +260,6 @@ class LiveReadinessCoordinatorTest {
             initializeFuture.get(1, TimeUnit.SECONDS);
         }
     }
-
     private LiveReadinessCoordinator.BridgeRuntimeFactory fakeBridgeRuntimeFactory(Map<String, WarmupSlice> warmups) {
         return (context, registry) -> new LiveReadinessCoordinator.BridgeRuntime() {
             @Override
@@ -433,7 +432,6 @@ class LiveReadinessCoordinatorTest {
         }
         assertThat(condition.getAsBoolean()).isTrue();
     }
-
     private static final class RecordingStatusWriter implements java.util.function.Consumer<LiveReadinessSnapshot> {
         private final List<LiveReadinessSnapshot> snapshots = new ArrayList<>();
 
