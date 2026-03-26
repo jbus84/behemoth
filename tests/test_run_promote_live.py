@@ -1,45 +1,51 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
+import sys
+
+import pytest
 
 import scripts.run_promote_live as run_promote_live
 
 
-def test_main_archives_candidate_models_dir(monkeypatch) -> None:
-    calls: list[list[str]] = []
+def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
     verify_calls: list[str] = []
+    copy_calls: list[tuple[str, str]] = []
+    build_bundle_dir = tmp_path / "configs/research/governance/oco_candidate_builds/2026-02"
+    build_bundle_dir.mkdir(parents=True)
+    (build_bundle_dir / "lock.json").write_text("{\"month\": \"2026-02\"}\n")
+    archive_dir = tmp_path / "configs/research/governance/oco_history_dukascopy_candidate"
+    archive_dir.mkdir(parents=True)
+    (archive_dir / "stale.txt").write_text("stale\n")
 
-    def fake_run(cmd, cwd=None):
-        calls.append(cmd)
-        return SimpleNamespace(returncode=0)
+    def fake_copytree(src, dst):
+        copy_calls.append((str(src), str(dst)))
+        return dst
 
-    monkeypatch.setattr(run_promote_live.subprocess, "run", fake_run)
+    monkeypatch.setattr(run_promote_live.shutil, "copytree", fake_copytree)
     monkeypatch.setattr(run_promote_live, "_verify_cert", lambda report_dir: verify_calls.append(report_dir))
     monkeypatch.setattr(run_promote_live, "_last_complete_month", lambda override=None: "2026-02")
-    monkeypatch.setattr(
-        run_promote_live.sys,
-        "argv",
-        ["run_promote_live.py", "--report-dir", "data/analysis/backtest_reconcile"],
-    )
+    monkeypatch.setattr(run_promote_live, "_repo_root", lambda: tmp_path)
+    monkeypatch.setattr(sys, "argv", ["run_promote_live.py", "--report-dir", "data/analysis/backtest_reconcile"])
 
     run_promote_live.main()
 
     assert verify_calls == ["data/analysis/backtest_reconcile"]
-    assert calls == [
-        [
-            run_promote_live.sys.executable,
-            "scripts/freeze_oco_historical_governance.py",
-            "--symbols",
-            "EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD",
-            "--out-dir",
-            "configs/research/governance/oco_history_dukascopy_candidate",
-            "--months",
-            "2026-02",
-            "--config-dir",
-            "configs/research/experiments_dukascopy_candidate",
-            "--analysis-dir",
-            "data/analysis/tick_opportunity_mining_dukascopy_candidate",
-            "--models-dir",
-            "models/oco_dukascopy_candidate",
-        ]
+    assert copy_calls == [
+        (
+            str(build_bundle_dir),
+            str(archive_dir / "2026-02"),
+        )
     ]
+
+
+def test_main_requires_existing_build_bundle(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(run_promote_live, "_verify_cert", lambda report_dir: None)
+    monkeypatch.setattr(run_promote_live, "_last_complete_month", lambda override=None: "2026-02")
+    monkeypatch.setattr(run_promote_live, "_repo_root", lambda: tmp_path)
+    monkeypatch.setattr(sys, "argv", ["run_promote_live.py", "--report-dir", "data/analysis/backtest_reconcile"])
+
+    with pytest.raises(
+        SystemExit,
+        match=r"run make monthly-build and make monthly-recert first",
+    ):
+        run_promote_live.main()

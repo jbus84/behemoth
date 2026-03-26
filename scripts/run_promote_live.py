@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Promote the monthly recertification to live by archiving governance locks.
 
-Verifies the stage14 cert passed today for the derived model month, then runs
-freeze_oco_historical_governance.py to archive the current
-configs/research/governance/oco_dukascopy_candidate/ locks under the new month
-in configs/research/governance/oco_history_dukascopy_candidate/.
+Verifies the stage14 cert passed today for the derived model month, then copies
+the built monthly certification bundle from
+configs/research/governance/oco_candidate_builds/<YYYY-MM> into
+configs/research/governance/oco_history_dukascopy_candidate/<YYYY-MM>.
 
 After this script completes successfully, restart the live runner with:
   make jforex-live
@@ -14,14 +14,13 @@ from __future__ import annotations
 
 import argparse
 import csv
-import subprocess
-import sys
+import shutil
 from datetime import date
 from pathlib import Path
 
-DEFAULT_SYMBOLS = "EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD"
 CERT_CHECKS_FILENAME = "stage14_jforex_runtime_certification_checks.csv"
-MODELS_DIR = "models/oco_dukascopy_candidate"
+MONTHLY_BUILD_ROOT = "configs/research/governance/oco_candidate_builds"
+HISTORY_ROOT = "configs/research/governance/oco_history_dukascopy_candidate"
 
 
 def _repo_root() -> Path:
@@ -70,6 +69,26 @@ def _verify_cert(report_dir: str) -> None:
         )
 
 
+def _archive_build_bundle(model_month: str) -> None:
+    source_dir = _repo_root() / MONTHLY_BUILD_ROOT / model_month
+    target_root = _repo_root() / HISTORY_ROOT
+    target_dir = target_root / model_month
+
+    if not source_dir.is_dir():
+        raise SystemExit(
+            f"[promote-live] missing monthly build bundle: {source_dir}. "
+            "run make monthly-build and make monthly-recert first"
+        )
+
+    target_root.mkdir(parents=True, exist_ok=True)
+    if target_dir.exists():
+        if target_dir.is_dir():
+            shutil.rmtree(target_dir)
+        else:
+            target_dir.unlink()
+    shutil.copytree(source_dir, target_dir)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -84,30 +103,8 @@ def main() -> None:
     print(f"[promote-live] verifying cert for {model_month}", flush=True)
     _verify_cert(args.report_dir)
 
-    print(f"[promote-live] archiving locks for {model_month}", flush=True)
-    result = subprocess.run(
-        [
-            sys.executable,
-            "scripts/freeze_oco_historical_governance.py",
-            "--symbols",
-            DEFAULT_SYMBOLS,
-            "--out-dir",
-            "configs/research/governance/oco_history_dukascopy_candidate",
-            "--months",
-            model_month,
-            "--config-dir",
-            "configs/research/experiments_dukascopy_candidate",
-            "--analysis-dir",
-            "data/analysis/tick_opportunity_mining_dukascopy_candidate",
-            "--models-dir",
-            MODELS_DIR,
-        ],
-        cwd=_repo_root(),
-    )
-    if result.returncode != 0:
-        raise SystemExit(
-            f"[promote-live] freeze_oco_historical_governance failed (rc={result.returncode})"
-        )
+    print(f"[promote-live] archiving build bundle for {model_month}", flush=True)
+    _archive_build_bundle(model_month)
 
     print(f"[promote-live] locks archived for {model_month}")
     print("Next step: restart the live runner with:")
