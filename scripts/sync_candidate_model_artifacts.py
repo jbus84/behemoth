@@ -48,11 +48,14 @@ def run(
     symbols: list[str],
 ) -> int:
     results: list[SyncResult] = []
+    requested_symbols = [symbol.upper() for symbol in symbols]
+    seen_symbols: set[str] = set()
     target_models_dir.mkdir(parents=True, exist_ok=True)
 
-    for lock_path in _iter_locks(lock_dir, symbols):
+    for lock_path in _iter_locks(lock_dir, requested_symbols):
         payload = json.loads(lock_path.read_text(encoding="utf-8"))
         symbol = str(payload.get("symbol", "")).upper().strip()
+        seen_symbols.add(symbol)
         artifacts = payload.get("artifacts", {})
         month = str(artifacts.get("model_month", "")).strip()
         cbm_name = _resolve_artifact_name(artifacts.get("model_cbm_path", ""))
@@ -109,6 +112,17 @@ def run(
             continue
 
         results.append(SyncResult(symbol, month, "PASS", f"{source_cbm} -> {target_models_dir}"))
+
+    for symbol in requested_symbols:
+        if symbol not in seen_symbols:
+            results.append(
+                SyncResult(
+                    symbol,
+                    "-",
+                    "FAIL",
+                    f"missing live lock {lock_dir / f'{symbol.lower()}_oco_live_lock.json'}",
+                )
+            )
 
     for row in results:
         print(f"[candidate-sync] {row.symbol} {row.model_month} {row.status} {row.detail}", flush=True)

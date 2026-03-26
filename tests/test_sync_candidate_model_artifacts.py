@@ -136,3 +136,36 @@ def test_run_reports_mixed_symbol_outcomes_and_exits_nonzero(tmp_path: Path) -> 
     assert exit_code == 1
     assert (target_dir / "EURUSD_model_2026-02.cbm").exists()
     assert not (target_dir / "GBPUSD_model_2026-02.json").exists()
+
+
+def test_run_fails_when_requested_symbol_has_no_live_lock(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    lock_dir = tmp_path / "locks"
+    source_dir = tmp_path / "models_src"
+    target_dir = tmp_path / "models_dst"
+    lock_dir.mkdir()
+    source_dir.mkdir()
+    target_dir.mkdir()
+
+    cbm = source_dir / "EURUSD_model_2026-02.cbm"
+    thr = source_dir / "EURUSD_model_2026-02.json"
+    cbm.write_bytes(b"eur")
+    thr.write_text('{"threshold": 0.5}', encoding="utf-8")
+    _write_lock(lock_dir, "EURUSD", "2026-02", cbm, thr)
+
+    exit_code = run(
+        lock_dir=lock_dir,
+        source_models_dir=source_dir,
+        target_models_dir=target_dir,
+        symbols=["EURUSD", "GBPUSD"],
+    )
+
+    out = capsys.readouterr().out
+    assert exit_code == 1
+    assert "[candidate-sync] EURUSD 2026-02 PASS" in out
+    assert "[candidate-sync] GBPUSD" in out
+    assert "FAIL" in out
+    assert "missing live lock" in out
+    assert (target_dir / "EURUSD_model_2026-02.cbm").exists()
