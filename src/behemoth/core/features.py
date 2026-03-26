@@ -195,10 +195,14 @@ def compute_feature_matrix_from_bars(
     # However, to maintain strict parity with compute_features_from_bars,
     # we return None if the *total* length is too small.
     if n < cfg.full_warmup_bars:
-        return out.iloc[0:0] # Return empty df with correct columns
+        return out.iloc[0:0]  # Return empty df with correct columns
 
-    # Match legacy _safe() behavior: coerce NaNs/Infs to 0.0
-    return out.replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    out = out.replace([np.inf, -np.inf], np.nan)
+
+    # Preserve NaNs on pre-warmup rows so callers can filter them out.
+    warmup_start = cfg.full_warmup_bars - 1
+    out.iloc[warmup_start:] = out.iloc[warmup_start:].fillna(0.0)
+    return out
 
 
 def compute_regime_quantiles_from_bars(
