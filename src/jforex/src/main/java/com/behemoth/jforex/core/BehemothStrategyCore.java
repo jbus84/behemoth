@@ -581,7 +581,7 @@ public final class BehemothStrategyCore {
             }
             if (!prediction.isExecutable(sessionConfig.riskEnabled())) {
                 blockedCount += 1;
-                blockedReasons.add("risk_blocked");
+                blockedReasons.add(blockedReasonToken(prediction.riskBlockReason(), "risk_blocked"));
                 continue;
             }
             if (stateStore.hasActiveCandidateLifecycle(state.instrument.symbol(), prediction.candidateUid())) {
@@ -607,6 +607,14 @@ public final class BehemothStrategyCore {
                 blockedCount,
                 List.copyOf(blockedReasons)
         );
+    }
+
+    private static String blockedReasonToken(String reason, String fallback) {
+        if (reason == null) {
+            return fallback;
+        }
+        String normalized = reason.trim();
+        return normalized.isEmpty() ? fallback : normalized;
     }
 
     private static final class SymbolRuntimeState {

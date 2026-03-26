@@ -239,6 +239,29 @@ def test_load_runtime_events_ignores_extra_predict_cycle_diagnostics(tmp_path):
     assert events["selected_count_total"] == 1
 
 
+def test_load_runtime_events_accepts_specific_block_reasons(tmp_path):
+    from scripts.reconcile_jforex_outcomes import load_runtime_events
+
+    _write_runtime_events(tmp_path, "EURUSD", "jforex", [
+        {
+            "event_ts_utc": "2026-03-22T10:00:00Z",
+            "symbol": "EURUSD",
+            "category": "signal",
+            "event_name": "predict_cycle",
+            "pass": "true",
+            "detail": (
+                "prediction_count=2;selected_count=0;blocked_count=2;"
+                "blocked_reasons=risk_budget_exhausted,active_candidate_lifecycle;"
+                "close_ts=2026-02-07T12:00:00Z;completed_bar_ticks=[100]"
+            ),
+        }
+    ])
+
+    events = load_runtime_events(tmp_path, "EURUSD")
+    assert events["predict_cycles"] == 1
+    assert events["selected_count_total"] == 0
+
+
 def test_load_runtime_events_order_matching():
     """order_submitted detail encodes close_ts; loader should extract group close timestamps."""
     from scripts.reconcile_jforex_outcomes import load_runtime_events

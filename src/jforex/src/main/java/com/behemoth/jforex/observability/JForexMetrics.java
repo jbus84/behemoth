@@ -99,7 +99,7 @@ public final class JForexMetrics implements AutoCloseable, LiveReadinessMetrics 
         this.predictWarmup422 = counter("behemoth_jforex_predict_warmup_422_total", "Predict calls rejected due to warmup", "symbol");
         this.predictFailures = counter("behemoth_jforex_predict_failures_total", "Predict calls that failed on the JForex side", "symbol");
         this.selectedPredictions = counter("behemoth_jforex_selected_predictions_total", "Selected predictions returned to the JForex adapter", "symbol");
-        this.blockedPredictions = counter("behemoth_jforex_blocked_predictions_total", "Risk-blocked predictions returned to the JForex adapter", "symbol");
+        this.blockedPredictions = counter("behemoth_jforex_blocked_predictions_total", "Selected predictions blocked from execution by adapter-side gating", "symbol");
         this.predictLatencySeconds = Histogram.build()
                 .name("behemoth_jforex_predict_latency_seconds")
                 .help("Predict request latency from the JForex adapter")
