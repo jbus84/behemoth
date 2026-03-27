@@ -2561,14 +2561,17 @@ def _build_predictions(
         selected_exec = preselected_exec
         risk_blocked = False
         risk_block_reason: str | None = None
-        threshold_blocked = False
-        threshold_block_reason: str | None = None
-
-        if curr_source in {f"{threshold_mode}:no_valid_threshold", f"{threshold_mode}:schedule_expired"}:
+        _blocking_sources = {
+            f"{threshold_mode}:no_valid_threshold": "ROLLING_HISTORY_GAP",
+            f"{threshold_mode}:model_expired": "MODEL_EXPIRED",
+            f"{threshold_mode}:no_rolling_config": "NO_ROLLING_CONFIG",
+        }
+        if curr_source in _blocking_sources:
             threshold_blocked = True
-            threshold_block_reason = (
-                "ROLLING_HISTORY_GAP" if curr_source == f"{threshold_mode}:no_valid_threshold" else "SCHEDULE_EXPIRED"
-            )
+            threshold_block_reason = _blocking_sources[curr_source]
+        else:
+            threshold_blocked = False
+            threshold_block_reason = None
 
         if preselected_exec == 1 and account_risk_enabled_effective and (_account_risk_profile is not None):
             trade_eval = evaluate_trade_guard(
