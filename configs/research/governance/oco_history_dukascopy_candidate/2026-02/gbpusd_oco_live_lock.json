@@ -1,0 +1,84 @@
+{
+  "artifacts": {
+    "capacity_overall_pass": true,
+    "live_deployable": true,
+    "model_cbm_path": "/Users/danielfisher/repositories/behemoth/.worktrees/monthly-build-recert-split-2026-03-26/configs/research/governance/oco_candidate_builds/2026-02/models/oco_dukascopy_candidate/GBPUSD_model_2026-02.cbm",
+    "model_cbm_sha256": "28586a6b8b1c5f109c6d93e0d78181187026e2f30bfdff8025542563cffd0c91",
+    "model_month": "2026-02",
+    "model_threshold_json_path": "/Users/danielfisher/repositories/behemoth/.worktrees/monthly-build-recert-split-2026-03-26/configs/research/governance/oco_candidate_builds/2026-02/models/oco_dukascopy_candidate/GBPUSD_model_2026-02.json",
+    "model_threshold_json_sha256": "2f9f9ab8eed09fd951f550d39d5988b3ba65391526dffbd901fcd591d1d7b14b",
+    "predictions_path": "configs/research/governance/oco_candidate_builds/2026-02/gbpusd_oco_locked_predictions.parquet",
+    "predictions_sha256": "c65baa873704261ac6061dee9837bd886378457bc025bbdc9cc352f7171a3afd",
+    "reduced_config_path": "configs/research/experiments_dukascopy_candidate/gbpusd_oco_reduced_core_rolling_2025.yaml",
+    "reduced_config_sha256": "8fc6de652c74c52f660dfdf159a9a9bf50d0ef60ce5accd49fb10840c5282cf9",
+    "reduced_states_csv_path": "configs/research/governance/oco_candidate_builds/2026-02/gbpusd_oco_allowed_states.csv",
+    "reduced_states_csv_sha256": "06b8d796267a82e4bc228d7207162014c701f0d5b991dde4a9f08d48f4ac7aed",
+    "reduced_summary_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/GBPUSD_oco_reduced_summary.csv",
+    "reduced_summary_sha256": "12ab4ab9442de08512090ec325d84a47a760d1b8da478135c4b2b3b9fc3c2ff6",
+    "source_predictions_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap/GBPUSD_oco_monthly_predictions.parquet",
+    "source_predictions_sha256": "b62b1773ad63d65d1e9915d4c5ba4c63aed78e1daa819a0d9a319429d3bb8bbc",
+    "tick_exact_overall_pass": true,
+    "tick_exact_summary_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/GBPUSD_oco_tick_exact_summary.csv",
+    "tick_exact_summary_sha256": "8d37c1866ba48f77b8d3fd9f082bfbd331f3bf4fe4fae03e7a6ce742c5875f4a",
+    "wfo_config_path": "configs/research/experiments_dukascopy_candidate/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
+    "wfo_config_sha256": "3461626355f064cc7daa83f5ae5737d1c7f06876edc0d29e4a20cf5c854ca370"
+  },
+  "frozen_at_utc": "2026-03-26T19:01:26.046312+00:00",
+  "git": {
+    "branch": "feat-monthly-build-recert-split-2026-03-26",
+    "commit": "56b29ee363811a47ee1e78ff2380f7ee90143eb7",
+    "dirty": true
+  },
+  "historical_backtest": {
+    "deployable": true,
+    "mode": "month_locked",
+    "non_deployable_reason": "",
+    "target_month": "2026-02"
+  },
+  "locked_runtime": {
+    "barrier_keep": "2,3",
+    "execution_quantile": 0.9,
+    "family_keep": "oco_first_touch_clean",
+    "horizon_keep": "5,6",
+    "locked_quantile": 0.9,
+    "oco_hold_mode": "from_touch",
+    "oco_include_no_touch": true,
+    "production_cap_pips": 1.2,
+    "rolling_threshold_days": 20,
+    "rolling_threshold_min_history": 1000,
+    "selection_mode": "auto",
+    "threshold_mode": "rolling_days"
+  },
+  "retrain_policy": {
+    "anchor_day_utc": 1,
+    "cadence_days": 30,
+    "mode": "calendar_window",
+    "window_days": 3
+  },
+  "schema_version": 1,
+  "state_universe": {
+    "count": 2,
+    "rows": [
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 6,
+        "regime_desc": "high_range_q70;barrier=2.0",
+        "state_id": "oco_first_touch_clean__high_range_q70__k2",
+        "symbol": "GBPUSD"
+      },
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 6,
+        "regime_desc": "low_cost_q30;barrier=2.0",
+        "state_id": "oco_first_touch_clean__low_cost_q30__k2",
+        "symbol": "GBPUSD"
+      }
+    ],
+    "sha256": "1b2f411c24607bdf5e693c353baa6393ab424b7a476ef899f3ebe9d6f8bc4a15"
+  },
+  "symbol": "GBPUSD"
+}
