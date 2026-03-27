@@ -12,11 +12,22 @@ import numpy as np
 from dateutil.relativedelta import relativedelta
 from zoneinfo import ZoneInfo
 
-import tick_vault.config
-import tick_vault.download_worker
-import tick_vault.fetcher
-from tick_vault import download_range, read_tick_data
-from tick_vault.fetcher import RetryableError
+try:
+    import tick_vault.config
+    import tick_vault.download_worker
+    import tick_vault.fetcher
+    from tick_vault import download_range, read_tick_data
+    from tick_vault.fetcher import RetryableError
+except ModuleNotFoundError as exc:
+    if not exc.name or not exc.name.startswith("tick_vault"):
+        raise
+
+    tick_vault = None
+    download_range = None
+    read_tick_data = None
+
+    class RetryableError(RuntimeError):
+        pass
 
 # Configure logging
 logging.basicConfig(
@@ -61,6 +72,7 @@ def _friday_close_for_week(dt: datetime) -> datetime:
 
 
 def get_session_bounds_utc(dt: datetime) -> tuple[datetime, datetime]:
+    """Return the UTC close and reopen bounds for the trading week containing dt."""
     close_utc = _friday_close_for_week(dt)
     reopen_utc = (close_utc.astimezone(NEW_YORK_TZ) + relativedelta(days=2)).astimezone(UTC)
     return close_utc, reopen_utc
@@ -70,7 +82,9 @@ def is_expected_weekend_gap(prev_ts: datetime, next_ts: datetime) -> bool:
     prev_utc = _normalize_utc(prev_ts)
     next_utc = _normalize_utc(next_ts)
     close_utc, reopen_utc = get_session_bounds_utc(prev_utc)
-    return prev_utc < close_utc <= reopen_utc <= next_utc
+    close_window_start = close_utc - relativedelta(minutes=5)
+    reopen_window_end = reopen_utc + relativedelta(minutes=5)
+    return close_window_start <= prev_utc <= close_utc and reopen_utc <= next_utc <= reopen_window_end
 
 
 def find_first_market_gap(path: Path) -> datetime:
