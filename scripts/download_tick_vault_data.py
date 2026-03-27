@@ -3,6 +3,7 @@ import asyncio
 import gc
 import logging
 import os
+import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -10,6 +11,7 @@ from pathlib import Path
 import httpx
 import numpy as np
 from dateutil.relativedelta import relativedelta
+from zoneinfo import ZoneInfo
 
 import tick_vault.config
 import tick_vault.download_worker
@@ -30,21 +32,60 @@ GLOBAL_START_DATE = datetime(2018, 1, 1, tzinfo=UTC)
 OUT_DIR = Path("/Users/danielfisher/Desktop/dukascopy_ticks")
 TICKVAULT_CACHE = Path("/Users/danielfisher/Desktop/tickvault_ticks")
 LOCK_FILE = TICKVAULT_CACHE / "download_tick_vault.lock"
+NEW_YORK_TZ = ZoneInfo("America/New_York")
 
 
 def is_fx_market_open(dt: datetime) -> bool:
-    """True if FX markets are open (simplified: Sunday 22:00 GMT to Friday 22:00 GMT)."""
-    # 0=Monday, 4=Friday, 5=Saturday, 6=Sunday
-    weekday = dt.weekday()
-    hour = dt.hour
-    
-    if weekday == 4: # Friday
-        return hour < 22
-    if weekday == 5: # Saturday
-        return False
-    if weekday == 6: # Sunday
-        return hour >= 22
-    return True # Mon-Thu
+    """True if FX markets are open with DST-aware New York session boundaries."""
+    dt_utc = _normalize_utc(dt)
+    close_utc, reopen_utc = get_session_bounds_utc(dt_utc)
+    return not (close_utc <= dt_utc < reopen_utc)
+
+
+def _normalize_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
+
+
+def _friday_close_for_week(dt: datetime) -> datetime:
+    dt_utc = _normalize_utc(dt)
+    dt_ny = dt_utc.astimezone(NEW_YORK_TZ)
+    days_to_friday = 4 - dt_ny.weekday()
+    target = (dt_ny + relativedelta(days=days_to_friday)).replace(
+        hour=17,
+        minute=0,
+        second=0,
+        microsecond=0,
+    )
+    return target.astimezone(UTC)
+
+
+def get_session_bounds_utc(dt: datetime) -> tuple[datetime, datetime]:
+    """Return the UTC close and reopen bounds for the trading week containing dt."""
+    close_utc = _friday_close_for_week(dt)
+    reopen_utc = (close_utc.astimezone(NEW_YORK_TZ) + relativedelta(days=2)).astimezone(UTC)
+    return close_utc, reopen_utc
+
+
+def get_fetchable_end(now: datetime) -> datetime:
+    """Return the latest timestamp that should be considered fetchable right now."""
+    now_utc = _normalize_utc(now)
+    if is_fx_market_open(now_utc):
+        return now_utc
+    close_utc, reopen_utc = get_session_bounds_utc(now_utc)
+    if now_utc < reopen_utc:
+        return close_utc
+    return now_utc
+
+
+def is_expected_weekend_gap(prev_ts: datetime, next_ts: datetime) -> bool:
+    prev_utc = _normalize_utc(prev_ts)
+    next_utc = _normalize_utc(next_ts)
+    close_utc, reopen_utc = get_session_bounds_utc(prev_utc)
+    close_window_start = close_utc - relativedelta(minutes=5)
+    reopen_window_end = reopen_utc + relativedelta(minutes=5)
+    return close_window_start <= prev_utc <= close_utc and reopen_utc <= next_utc <= reopen_window_end
 
 
 def find_first_market_gap(path: Path) -> datetime:
@@ -70,12 +111,18 @@ def find_first_market_gap(path: Path) -> datetime:
         # Note: df["diff"] at index i is the gap BETWEEN i-1 and i
         # So the gap started at timestamp[i-1]
         for idx in gaps.index:
-            gap_start = df.loc[idx - 1, "timestamp"].to_pydatetime()
-            if gap_start.tzinfo is None:
-                gap_start = gap_start.replace(tzinfo=UTC)
-            
-            if is_fx_market_open(gap_start):
-                return gap_start
+            prev_ts = df.loc[idx - 1, "timestamp"].to_pydatetime()
+            next_ts = df.loc[idx, "timestamp"].to_pydatetime()
+            if prev_ts.tzinfo is None:
+                prev_ts = prev_ts.replace(tzinfo=UTC)
+            if next_ts.tzinfo is None:
+                next_ts = next_ts.replace(tzinfo=UTC)
+
+            if is_expected_weekend_gap(prev_ts, next_ts):
+                continue
+
+            if is_fx_market_open(prev_ts) and is_fx_market_open(next_ts):
+                return prev_ts
                 
         return None
     except Exception:
@@ -106,48 +153,81 @@ def get_parquet_info(path: Path) -> tuple[datetime, float]:
 
 def get_missing_months(symbol: str, out_dir: Path, end_date: datetime) -> list[tuple[datetime, datetime]]:
     """Scan history and return a list of (start, end) ranges that need filling."""
-    ranges_to_fill = []
+    ranges_to_fill: list[tuple[datetime, datetime]] = []
     current = GLOBAL_START_DATE.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     sym_dir = out_dir / symbol
-    
+
     now = datetime.now(tz=UTC)
     current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    fetchable_end = get_fetchable_end(now)
 
     while current <= end_date:
         yyyymm = current.strftime("%Y%m")
         out_path = sym_dir / f"{symbol}_{yyyymm}_ticks.parquet"
         month_end = min(current + relativedelta(months=1), end_date)
-        
+
         if not out_path.exists():
             ranges_to_fill.append((current, month_end))
+        elif current >= current_month_start:
+            # Current month: check for gaps, then append up to fetchable_end
+            first_gap = find_first_market_gap(out_path)
+            if first_gap:
+                logger.info(f"[{symbol}] [{yyyymm}] Detected missing data hole starting at {first_gap}. Refilling...")
+                ranges_to_fill.append((first_gap, min(month_end, fetchable_end)))
+            else:
+                last_ts, _ = get_parquet_info(out_path)
+                if last_ts:
+                    fill_start = last_ts + relativedelta(microseconds=1000)
+                    if fill_start < fetchable_end:
+                        ranges_to_fill.append((fill_start, min(month_end, fetchable_end)))
         else:
-            # 1. Check for historical gaps if it's not the current month
-            # (Current month always checked via the upsert logic below)
+            # Historical month: check for unexpected gaps, then suspicious early endings
             first_gap = find_first_market_gap(out_path)
             if first_gap:
                 logger.info(f"[{symbol}] [{yyyymm}] Detected missing data hole starting at {first_gap}. Refilling...")
                 ranges_to_fill.append((first_gap, month_end))
-            elif current >= current_month_start:
-                # 2. Always check for new data in the current month
-                last_ts, _ = get_parquet_info(out_path)
-                if last_ts:
-                    fill_start = last_ts + relativedelta(microseconds=1000)
-                    if fill_start < end_date:
-                         ranges_to_fill.append((fill_start, month_end))
             else:
-                # 3. Final Boundary Check: Does it end at the expected time?
                 last_ts, _ = get_parquet_info(out_path)
-                if last_ts:
-                    # If it's a weekday and ends before 23:50, it's suspicious
-                    if is_fx_market_open(last_ts) and last_ts.hour < 21:
-                         # Check if the next month exists. If so, and this one is short, it's a gap at the end.
-                         # We'll just refill from the end of the file.
-                         logger.info(f"[{symbol}] [{yyyymm}] File ends early ({last_ts.time()}) on a market day. Refilling...")
-                         ranges_to_fill.append((last_ts + relativedelta(microseconds=1000), month_end))
+                if last_ts and is_fx_market_open(last_ts):
+                    close_utc, _ = get_session_bounds_utc(last_ts)
+                    if last_ts < close_utc:
+                        logger.info(f"[{symbol}] [{yyyymm}] File ends early ({last_ts.time()}) on a market day. Refilling...")
+                        ranges_to_fill.append((last_ts + relativedelta(microseconds=1000), month_end))
 
         current += relativedelta(months=1)
-    
-    return ranges_to_fill
+
+    return [(start, end) for start, end in ranges_to_fill if start < end]
+
+
+def _list_process_commands() -> list[str]:
+    result = subprocess.run(
+        ["ps", "-ax", "-o", "command="],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+
+def should_clear_stale_lock(lock_path: Path) -> bool:
+    if not lock_path.exists():
+        return False
+    commands = _list_process_commands()
+    return not any("scripts/download_tick_vault_data.py" in cmd for cmd in commands)
+
+
+def _handle_existing_lock(lock_path: Path, force: bool) -> None:
+    if not lock_path.exists() or force:
+        return
+    try:
+        if should_clear_stale_lock(lock_path):
+            logger.warning("Removing stale lockfile %s", lock_path)
+            lock_path.unlink()
+            return
+    except Exception as exc:
+        logger.warning("Could not verify stale lockfile %s: %s", lock_path, exc)
+    logger.error("Lockfile %s exists. Another instance might be running. Use --force to override.", lock_path)
+    sys.exit(1)
 
 
 async def process_symbol(symbol: str, end_date: datetime, out_dir: Path):
@@ -251,10 +331,8 @@ async def main():
     cache_dir.mkdir(parents=True, exist_ok=True)
 
     lock_file = cache_dir / "download_tick_vault.lock"
-    if lock_file.exists() and not args.force:
-        logger.error(f"Lockfile {lock_file} exists. Another instance might be running. Use --force to override.")
-        sys.exit(1)
-    
+    _handle_existing_lock(lock_file, args.force)
+
     # Create lockfile
     lock_file.touch()
     try:
@@ -331,13 +409,6 @@ async def main():
         # Remove lockfile
         if lock_file.exists():
             lock_file.unlink()
-
-
-if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        logger.info("Program interrupted.")
 
 
 if __name__ == "__main__":
