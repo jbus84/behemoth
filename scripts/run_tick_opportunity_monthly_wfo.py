@@ -341,11 +341,12 @@ def _rolling_day_threshold_vector(
     )
 
     lookback = pd.Timedelta(days=int(max(1, lookback_days)))
-    train_items = list(train_by_day.items())
+    pool: dict[pd.Timestamp, np.ndarray] = dict(train_by_day)
+    pool_items = list(pool.items())
     for day in sorted(test_by_day_idx.keys()):
         start = day - lookback
         parts: list[np.ndarray] = []
-        for d, arr in train_items:
+        for d, arr in pool_items:
             if start <= d < day:
                 parts.append(arr)
         hist = np.concatenate(parts) if parts else np.array([], dtype=float)
@@ -362,6 +363,10 @@ def _rolling_day_threshold_vector(
             src_label = "no_history"
         out[test_by_day_idx[day]] = thr
         src[test_by_day_idx[day]] = src_label
+        # Accumulate test-day predictions into pool for subsequent days (causal)
+        if day in test_by_day_vals:
+            pool[day] = test_by_day_vals[day]
+            pool_items.append((day, test_by_day_vals[day]))
     return out, src
 
 
