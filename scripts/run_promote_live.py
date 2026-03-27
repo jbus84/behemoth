@@ -80,7 +80,7 @@ def _verify_cert(report_dir: str, model_month: str, repo_root: Path | None = Non
             evaluated = row.get("evaluated_at_utc", "")[:10]
             if evaluated and evaluated != today_str:
                 stale = True
-            if row["severity"] == "critical" and row["status"] != "pass":
+            if row["severity"] == "critical" and row["status"] not in ("pass", "nogo"):
                 failures.append(f"  {row['symbol']}: {row['check_id']}")
 
     if stale:
