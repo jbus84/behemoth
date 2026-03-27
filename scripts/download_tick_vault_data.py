@@ -3,6 +3,7 @@ import asyncio
 import gc
 import logging
 import os
+import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -198,6 +199,37 @@ def get_missing_months(symbol: str, out_dir: Path, end_date: datetime) -> list[t
     return [(start, end) for start, end in ranges_to_fill if start < end]
 
 
+def _list_process_commands() -> list[str]:
+    result = subprocess.run(
+        ["ps", "-ax", "-o", "command="],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+
+def should_clear_stale_lock(lock_path: Path) -> bool:
+    if not lock_path.exists():
+        return False
+    commands = _list_process_commands()
+    return not any("scripts/download_tick_vault_data.py" in cmd for cmd in commands)
+
+
+def _handle_existing_lock(lock_path: Path, force: bool) -> None:
+    if not lock_path.exists() or force:
+        return
+    try:
+        if should_clear_stale_lock(lock_path):
+            logger.warning("Removing stale lockfile %s", lock_path)
+            lock_path.unlink()
+            return
+    except Exception as exc:
+        logger.warning("Could not verify stale lockfile %s: %s", lock_path, exc)
+    logger.error("Lockfile %s exists. Another instance might be running. Use --force to override.", lock_path)
+    sys.exit(1)
+
+
 async def process_symbol(symbol: str, end_date: datetime, out_dir: Path):
     logger.info(f"========== Processing {symbol} ==========")
     
@@ -299,10 +331,8 @@ async def main():
     cache_dir.mkdir(parents=True, exist_ok=True)
 
     lock_file = cache_dir / "download_tick_vault.lock"
-    if lock_file.exists() and not args.force:
-        logger.error(f"Lockfile {lock_file} exists. Another instance might be running. Use --force to override.")
-        sys.exit(1)
-    
+    _handle_existing_lock(lock_file, args.force)
+
     # Create lockfile
     lock_file.touch()
     try:

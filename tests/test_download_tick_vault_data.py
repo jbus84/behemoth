@@ -54,6 +54,7 @@ from scripts.download_tick_vault_data import (  # noqa: E402
     get_session_bounds_utc,
     is_expected_weekend_gap,
     is_fx_market_open,
+    should_clear_stale_lock,
 )
 
 
@@ -205,3 +206,31 @@ def test_get_missing_months_appends_before_friday_close(monkeypatch, tmp_path: P
     assert len(ranges) == 1
     assert ranges[0][0] == expected_start
     assert ranges[0][1] == fake_now
+
+
+# --- Task 4: stale-lock cleanup ---
+
+
+def test_should_clear_stale_lock_when_no_downloader_process(monkeypatch, tmp_path: Path) -> None:
+    lock_path = tmp_path / "download_tick_vault.lock"
+    lock_path.touch()
+    monkeypatch.setattr(
+        "scripts.download_tick_vault_data._list_process_commands",
+        lambda: ["python app.py"],
+    )
+    assert should_clear_stale_lock(lock_path) is True
+
+
+def test_should_not_clear_lock_when_downloader_running(monkeypatch, tmp_path: Path) -> None:
+    lock_path = tmp_path / "download_tick_vault.lock"
+    lock_path.touch()
+    monkeypatch.setattr(
+        "scripts.download_tick_vault_data._list_process_commands",
+        lambda: ["python scripts/download_tick_vault_data.py --symbols EURUSD"],
+    )
+    assert should_clear_stale_lock(lock_path) is False
+
+
+def test_should_clear_stale_lock_returns_false_when_no_lock(tmp_path: Path) -> None:
+    lock_path = tmp_path / "download_tick_vault.lock"
+    assert should_clear_stale_lock(lock_path) is False
