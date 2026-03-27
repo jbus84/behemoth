@@ -381,6 +381,8 @@ def run(
 
         for month in month_list:
             model_cbm, model_thr = model_pairs[month]
+            model_export_dir = model_cbm.parent
+            train_pred = model_export_dir / f"{str(sym).upper()}_train_predictions_{month}.parquet"
             month_status = str(reduced_month_status.get(month, "ok" if month in sched_months else "")).strip().lower()
             historical_deployable = month_status in {"", "ok"}
             non_deployable_reason = "" if historical_deployable else month_status
@@ -405,6 +407,14 @@ def run(
                 frozen_pred_path_txt = ""
                 frozen_pred_sha = ""
 
+            thr_data = json.loads(model_thr.read_text(encoding="utf-8")) if model_thr.exists() else {}
+            schedule = thr_data.get("threshold_schedule", {})
+            if schedule:
+                last_schedule_day = max(schedule.keys())
+                model_valid_through = last_schedule_day
+            else:
+                model_valid_through = ""
+
             manifest: dict[str, Any] = {
                 "schema_version": 1,
                 "frozen_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -425,6 +435,9 @@ def run(
                     "model_cbm_sha256": _sha256(model_cbm),
                     "model_threshold_json_path": str(model_thr),
                     "model_threshold_json_sha256": _sha256(model_thr),
+                    "train_predictions_path": str(train_pred),
+                    "train_predictions_sha256": _sha256(train_pred) if train_pred.exists() else "",
+                    "model_valid_through": model_valid_through,
                     "model_month": str(month),
                     "tick_exact_summary_path": str(paths["tick_exact_summary"]),
                     "tick_exact_summary_sha256": _sha256(paths["tick_exact_summary"]),
