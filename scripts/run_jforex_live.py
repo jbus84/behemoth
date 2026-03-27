@@ -105,27 +105,60 @@ def _poll_health(proc: subprocess.Popen[str], base_url: str, timeout_sec: float)
     raise RuntimeError(f"API did not become healthy within {timeout_sec:.0f}s: {last_error}")
 
 
-def _seed_audit_history(symbols: list[str], base_url: str, days_back: int = 20) -> None:
-    """Call /state/seed_audit_history to populate audit_logs from Dukascopy parquets.
+def _resolve_model_month(cfg) -> str | None:
+    """Resolve the model month from the promoted history directory."""
+    history_dir = Path(cfg.history_dir)
+    if not history_dir.exists():
+        return None
+    months = sorted(d.name for d in history_dir.iterdir() if d.is_dir() and d.name != "__pycache__")
+    return months[-1] if months else None
 
-    This seeds the rolling threshold distribution so that get_rolling_threshold()
-    returns a calibrated value on the first live predict call.
-    Must be called after _poll_health() but before time.sleep(30) / _warmup_symbols().
+
+def _seed_audit_history(
+    symbols: list[str],
+    base_url: str,
+    days_back: int = 20,
+    train_predictions_dir: str | None = None,
+    model_month: str | None = None,
+) -> None:
+    """Call /state/seed_audit_history to populate audit_logs.
+
+    Phase 1: Load exported training predictions (WFO-equivalent pool).
+    Phase 2: Replay test-month parquet to bridge any gap since month start.
     """
     import requests
 
-    print(f"[seed] seeding audit_logs from last {days_back} days of parquet data...", flush=True)
+    # Determine test month start from model_month (test month = month after model_month)
+    test_month_start = None
+    if model_month:
+        from datetime import datetime as dt
+        from dateutil.relativedelta import relativedelta
+        mm = dt.strptime(model_month, "%Y-%m")
+        test_month_start = (mm + relativedelta(months=1)).strftime("%Y-%m-%dT00:00:00")
+
+    print(f"[seed] seeding audit_logs (train_pred_dir={train_predictions_dir}, "
+          f"test_month_start={test_month_start})...", flush=True)
     try:
         r = requests.post(
             f"{base_url}/state/seed_audit_history",
-            json={"symbols": symbols, "days_back": days_back, "run_id": "audit_seed"},
-            timeout=600,  # replay can take several minutes for 20 days × 6 symbols
+            json={
+                "symbols": symbols,
+                "days_back": days_back,
+                "run_id": "audit_seed",
+                "train_predictions_dir": train_predictions_dir,
+                "test_month_start": test_month_start,
+            },
+            timeout=600,
         )
         body = r.json()
         if body.get("ok"):
-            print(f"[seed] done — total events: {body['total_events']}", flush=True)
-            for sym, count in body.get("events_by_symbol", {}).items():
-                print(f"[seed]   {sym}: {count} events", flush=True)
+            p1 = sum(body.get("phase1_events", {}).values())
+            p2 = sum(body.get("phase2_events", {}).values())
+            print(f"[seed] done — phase1: {p1}, phase2: {p2}, total: {body['total_events']}", flush=True)
+            for sym, count in body.get("phase1_events", {}).items():
+                print(f"[seed]   {sym} phase1: {count} events", flush=True)
+            for sym, count in body.get("phase2_events", {}).items():
+                print(f"[seed]   {sym} phase2: {count} events", flush=True)
         else:
             print(f"[seed] WARNING: unexpected response: {body}", flush=True)
     except Exception as exc:
@@ -275,7 +308,12 @@ def main() -> None:
     try:
         _poll_health(api_proc, f"http://{cfg.api_host}:{cfg.api_port}", timeout_sec=60.0)
         print("[jforex-live] API healthy", flush=True)
-        _seed_audit_history(list(cfg.symbols), base_url=f"http://{cfg.api_host}:{cfg.api_port}")
+        _seed_audit_history(
+            list(cfg.symbols),
+            base_url=f"http://{cfg.api_host}:{cfg.api_port}",
+            train_predictions_dir=cfg.models_dir,
+            model_month=_resolve_model_month(cfg),
+        )
         print("[jforex-live] waiting for backfill + warming up threshold history", flush=True)
         # Give JForex time to complete initial backfill before warmup scoring
         time.sleep(30)
