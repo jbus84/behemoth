@@ -2471,17 +2471,21 @@ def _build_predictions(
             else:
                 pred_prob = 0.0
 
-            # Dynamic threshold lookup. If the model export includes a per-day
-            # schedule, use it; otherwise, fall back to the static scalar.
             schedule = thr_cfg.get("threshold_schedule", {})
             day_str = close_ts.strftime("%Y-%m-%d")
 
-            if schedule and day_str in schedule:
-                curr_threshold = float(schedule[day_str])
-                curr_source = f"{threshold_mode}:schedule"
+            # Model expiry check: block immediately if past valid-through date.
+            model_valid_through = thr_cfg.get("model_valid_through", "")
+            if model_valid_through and day_str > model_valid_through:
+                logger.warning(
+                    "Model expired for %s %s: valid through %s, current day %s. Blocking.",
+                    sym, canonical_uid, model_valid_through, day_str,
+                )
+                curr_threshold = 2.0
+                curr_source = f"{threshold_mode}:model_expired"
+                threshold_blocked = True
+                threshold_block_reason = "MODEL_EXPIRED"
             else:
-                # Schedule expired or missing for today. Attempt dynamic rolling threshold
-                # from audit_logs — this is the live equivalent of WFO's rolling computation.
                 rolling_days = int(thr_cfg.get("rolling_threshold_days", 0))
                 exec_q = float(thr_cfg.get("execution_quantile", 0.9))
                 min_history = int(thr_cfg.get("rolling_threshold_min_history", 10))
@@ -2494,42 +2498,33 @@ def _build_predictions(
                         lookback_days=rolling_days,
                         min_history=min_history,
                     )
-                
-                # Strict Threshold Enforcement Policy:
-                # In live mode, we NEVER fall back to static thresholds if a schedule 
-                # or rolling history was intended but is unavailable.
+
                 is_live = _config.governance_mode == "live"
-                
+
                 if dynamic_thr is not None:
                     curr_threshold = dynamic_thr
                     curr_source = f"{threshold_mode}:rolling_dynamic"
                 elif rolling_days > 0:
-                    # rolling_days configured but insufficient audit_log history.
-                    # ALWAYS block if history is missing and rolling is intended.
                     logger.warning(
-                        "No valid threshold for %s %s: schedule expired %s, "
+                        "No valid threshold for %s %s: "
                         "insufficient audit_log history (rolling_days=%d, min_history=%d). "
                         "Blocking candidate.",
-                        sym, canonical_uid, day_str, rolling_days, min_history,
+                        sym, canonical_uid, rolling_days, min_history,
                     )
-                    curr_threshold = 2.0  # ensures pred_prob (always ≤ 1.0) never qualifies
+                    curr_threshold = 2.0
                     curr_source = f"{threshold_mode}:no_valid_threshold"
                     threshold_blocked = True
                     threshold_block_reason = "ROLLING_HISTORY_GAP"
-                elif is_live and schedule:
-                    # Schedule existed but expired for today, and no rolling fallback configured.
-                    # Block in live mode to avoid static fallback.
+                elif is_live:
                     logger.warning(
-                        "No valid threshold for %s %s: schedule expired %s and no rolling fallback. Blocking.",
-                        sym, canonical_uid, day_str
+                        "No valid threshold for %s %s: no rolling config in live mode. Blocking.",
+                        sym, canonical_uid,
                     )
                     curr_threshold = 2.0
-                    curr_source = f"{threshold_mode}:schedule_expired"
+                    curr_source = f"{threshold_mode}:no_rolling_config"
                     threshold_blocked = True
-                    threshold_block_reason = "SCHEDULE_EXPIRED"
+                    threshold_block_reason = "NO_ROLLING_CONFIG"
                 else:
-                    # No rolling config and no (expired) schedule — fall back to static threshold_exec.
-                    # In research/backtest this is common; in live it uses the scalar threshold_exec.
                     curr_threshold = threshold_exec
                     curr_source = f"{threshold_mode}:static_fallback"
 
