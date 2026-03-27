@@ -79,9 +79,36 @@ def _read_failures(report_dir: str) -> dict[str, list[dict[str, str]]]:
     failures: dict[str, list[dict[str, str]]] = {}
     with csv_path.open() as f:
         for row in csv.DictReader(f):
-            if row["severity"] == "critical" and row["status"] != "pass":
+            if row["severity"] == "critical" and row["status"] != "pass" and not _is_expected_critical_nogo(row):
                 failures.setdefault(row["symbol"], []).append(row)
     return failures
+
+
+def _is_expected_critical_nogo(row: dict[str, str]) -> bool:
+    metric_name = str(row.get("metric_name") or row.get("check_id") or "").strip().lower()
+    if metric_name != "local_jforex_surrogate_pass":
+        return False
+    status = str(row.get("status") or "").strip().lower()
+    details = str(row.get("details") or "").strip().lower()
+    return (
+        "accepted non-deployable" in details
+        or (
+            status in {"nogo", "no_go", "no-go"}
+            and ("deployable=false" in details or "non-deployable" in details)
+        )
+    )
+
+
+def _read_acceptable_nogos(report_dir: str) -> dict[str, list[dict[str, str]]]:
+    csv_path = _repo_root() / report_dir / CERT_CHECKS_FILENAME
+    if not csv_path.exists():
+        raise SystemExit(f"[monthly-recert] cert checks CSV not found: {csv_path}")
+    acceptable: dict[str, list[dict[str, str]]] = {}
+    with csv_path.open() as f:
+        for row in csv.DictReader(f):
+            if row["severity"] == "critical" and row["status"] != "pass" and _is_expected_critical_nogo(row):
+                acceptable.setdefault(row["symbol"], []).append(row)
+    return acceptable
 
 
 def _bundle_models_dir(bundle_dir: Path) -> Path:
@@ -160,9 +187,14 @@ def _write_recert_status(model_month: str, report_dir: str, bundle_dir: Path, ov
     )
 
 
-def _print_summary(model_month: str, failures: dict[str, list[dict[str, str]]]) -> bool:
+def _print_summary(
+    model_month: str,
+    failures: dict[str, list[dict[str, str]]],
+    acceptable_nogos: dict[str, list[dict[str, str]]] | None = None,
+) -> bool:
     """Print per-symbol summary. Returns True if all critical checks pass."""
     print(f"\n[monthly-recert] {model_month} results")
+    acceptable_nogos = acceptable_nogos or {}
     all_pass = True
     for symbol in DEFAULT_SYMBOLS:
         if symbol in failures:
@@ -171,6 +203,11 @@ def _print_summary(model_month: str, failures: dict[str, list[dict[str, str]]]) 
                 detail = row.get("details", "").strip()
                 suffix = f": {detail}" if detail else ""
                 print(f"  {symbol:<8}FAIL  {row['check_id']}{suffix}")
+        elif symbol in acceptable_nogos:
+            for row in acceptable_nogos[symbol]:
+                detail = row.get("details", "").strip()
+                suffix = f": {detail}" if detail else ""
+                print(f"  {symbol:<8}NOGO  expected {row['check_id']}{suffix}")
         else:
             print(f"  {symbol:<8}PASS")
     if all_pass:
@@ -253,7 +290,8 @@ def main() -> None:
     )
 
     failures = _read_failures(args.report_dir)
-    all_pass = _print_summary(model_month, failures)
+    acceptable_nogos = _read_acceptable_nogos(args.report_dir)
+    all_pass = _print_summary(model_month, failures, acceptable_nogos)
     _write_recert_status(model_month, args.report_dir, bundle_dir, all_pass)
     if not all_pass:
         raise SystemExit(1)

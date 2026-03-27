@@ -505,3 +505,87 @@ def test_build_stage14_artifacts_passes_when_all_fresh(tmp_path: Path) -> None:
     stage13_check = checks[checks["metric_name"] == "stage13_dukascopy_testclient_pass"]
     assert stage13_check.iloc[0]["status"] == "pass"
     assert stage13_check.iloc[0]["details"] == ""
+
+
+def test_build_stage14_artifacts_accepts_non_deployable_local_surrogate_nogo(tmp_path: Path) -> None:
+    for name, col in [
+        ("stage13", "stage13_dukascopy_testclient_pass"),
+        ("jforex_signal", "jforex_signal_parity_pass"),
+        ("jforex_execution", "jforex_execution_parity_pass"),
+        ("jforex_lifecycle", "oco_lifecycle_pass"),
+        ("jforex_ops", "operational_ready_pass"),
+        ("outcome", "jforex_outcome_parity_pass"),
+    ]:
+        _write_csv(tmp_path / f"USDCAD_{name}.csv", [{"symbol": "USDCAD", col: True}])
+    _write_csv(
+        tmp_path / "local_surrogate.csv",
+        [
+            {
+                "symbol": "USDCAD",
+                "verdict": "NO_GO",
+                "deployable": False,
+                "non_deployable_reason": "no_gate_states",
+            }
+        ],
+    )
+
+    summary, checks = build_stage14_artifacts(
+        symbols=["USDCAD"],
+        stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
+        jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
+        jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_lifecycle.csv"),
+        jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
+        jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
+        local_surrogate_summary_glob=str(tmp_path / "local_surrogate.csv"),
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+    )
+
+    assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is True
+    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is True
+    surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"].iloc[0]
+    assert surrogate_check["status"] == "pass"
+    assert "non-deployable" in surrogate_check["details"].lower()
+    assert "no_gate_states" in surrogate_check["details"]
+
+
+def test_build_stage14_artifacts_rejects_deployable_local_surrogate_nogo(tmp_path: Path) -> None:
+    for name, col in [
+        ("stage13", "stage13_dukascopy_testclient_pass"),
+        ("jforex_signal", "jforex_signal_parity_pass"),
+        ("jforex_execution", "jforex_execution_parity_pass"),
+        ("jforex_lifecycle", "oco_lifecycle_pass"),
+        ("jforex_ops", "operational_ready_pass"),
+        ("outcome", "jforex_outcome_parity_pass"),
+    ]:
+        _write_csv(tmp_path / f"EURUSD_{name}.csv", [{"symbol": "EURUSD", col: True}])
+    _write_csv(
+        tmp_path / "local_surrogate.csv",
+        [{"symbol": "EURUSD", "verdict": "NO_GO", "deployable": True}],
+    )
+
+    summary, checks = build_stage14_artifacts(
+        symbols=["EURUSD"],
+        stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
+        jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
+        jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_lifecycle.csv"),
+        jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
+        jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
+        local_surrogate_summary_glob=str(tmp_path / "local_surrogate.csv"),
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+    )
+
+    assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is False
+    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
+    surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"].iloc[0]
+    assert surrogate_check["status"] == "fail"
+    assert "deployable" in surrogate_check["details"].lower()

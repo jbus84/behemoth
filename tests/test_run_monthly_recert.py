@@ -21,7 +21,8 @@ def test_main_runs_definitive_recert_chain(monkeypatch, tmp_path) -> None:
 
     monkeypatch.setattr(run_monthly_recert.subprocess, "run", fake_run)
     monkeypatch.setattr(run_monthly_recert, "_read_failures", lambda report_dir: {})
-    monkeypatch.setattr(run_monthly_recert, "_print_summary", lambda model_month, failures: True)
+    monkeypatch.setattr(run_monthly_recert, "_read_acceptable_nogos", lambda report_dir: {})
+    monkeypatch.setattr(run_monthly_recert, "_print_summary", lambda model_month, failures, acceptable_nogos=None: True)
     monkeypatch.setattr(run_monthly_recert, "_repo_root", lambda: tmp_path)
     monkeypatch.setattr(
         run_monthly_recert,
@@ -127,6 +128,54 @@ def test_main_rejects_incomplete_month_bundle(monkeypatch, tmp_path) -> None:
 
     with pytest.raises(SystemExit, match=r"incomplete month build bundle"):
         run_monthly_recert.main()
+
+
+def test_read_failures_ignores_expected_non_deployable_nogo(tmp_path, monkeypatch) -> None:
+    report_dir = tmp_path / "reports"
+    report_dir.mkdir()
+    with (report_dir / run_monthly_recert.CERT_CHECKS_FILENAME).open("w", newline="") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=["symbol", "check_id", "status", "severity", "metric_name", "details"],
+        )
+        writer.writeheader()
+        writer.writerow(
+            {
+                "symbol": "USDCAD",
+                "check_id": "LOCAL_JFOREX_SURROGATE_PASS",
+                "status": "NO_GO",
+                "severity": "critical",
+                "metric_name": "local_jforex_surrogate_pass",
+                "details": "accepted non-deployable local surrogate NO_GO (deployable=false, reason=no_gate_states)",
+            }
+        )
+    monkeypatch.setattr(run_monthly_recert, "_repo_root", lambda: tmp_path)
+
+    failures = run_monthly_recert._read_failures("reports")
+    acceptable_nogos = run_monthly_recert._read_acceptable_nogos("reports")
+
+    assert failures == {}
+    assert list(acceptable_nogos) == ["USDCAD"]
+
+
+def test_print_summary_keeps_go_when_only_expected_nogo_remains(capsys) -> None:
+    overall_pass = run_monthly_recert._print_summary(
+        "2026-02",
+        {},
+        {
+            "USDCAD": [
+                {
+                    "check_id": "LOCAL_JFOREX_SURROGATE_PASS",
+                    "details": "accepted non-deployable local surrogate NO_GO (deployable=false, reason=no_gate_states)",
+                }
+            ]
+        },
+    )
+
+    out = capsys.readouterr().out
+    assert overall_pass is True
+    assert "USDCAD  NOGO" in out
+    assert "go/no-go: GO" in out
 
 
 def _write_bundle_fixture(build_bundle_dir) -> None:

@@ -62,11 +62,24 @@ def _pick_bool(row: pd.Series, candidates: tuple[str, ...]) -> bool | None:
         if isinstance(value, bool):
             return value
         txt = str(value).strip().lower()
-        if txt in {"1", "true", "yes", "y", "pass", "green"}:
+        if txt in {"1", "true", "yes", "y", "pass", "green", "go"}:
             return True
-        if txt in {"0", "false", "no", "n", "fail", "red"}:
+        if txt in {"0", "false", "no", "n", "fail", "red", "no_go", "no-go", "nogo"}:
             return False
     return None
+
+
+def _pick_text(row: pd.Series, candidates: tuple[str, ...]) -> str:
+    for col in candidates:
+        if col not in row.index:
+            continue
+        value = row.get(col)
+        if pd.isna(value):
+            continue
+        txt = str(value).strip()
+        if txt:
+            return txt
+    return ""
 
 
 def _load_summary_rows(source: InputSource) -> pd.DataFrame:
@@ -93,11 +106,37 @@ def _load_summary_rows(source: InputSource) -> pd.DataFrame:
                     "symbol": symbol,
                     "check_id": source.check_id,
                     "pass": _pick_bool(row, source.candidate_columns),
+                    "deployable": _pick_bool(row, ("deployable",)),
+                    "non_deployable_reason": _pick_text(row, ("non_deployable_reason",)),
+                    "raw_verdict": _pick_text(row, ("verdict",)),
                     "source_path": str(path),
                     "evaluated_at_utc": str(row.get("evaluated_at_utc") or ""),
                 }
             )
     return pd.DataFrame(rows)
+
+
+def _evaluate_local_surrogate(match: pd.DataFrame) -> tuple[bool | None, str]:
+    if match.empty:
+        return None, "missing input artifact"
+    row = match.iloc[-1]
+    verdict = str(row.get("raw_verdict") or "").strip().upper()
+    deployable = row.get("deployable")
+    reason = str(row.get("non_deployable_reason") or "").strip()
+    if verdict in {"NO_GO", "NO-GO", "NOGO"}:
+        if deployable is False:
+            reason_suffix = f", reason={reason}" if reason else ""
+            return True, (
+                "accepted non-deployable local surrogate NO_GO "
+                f"(deployable=false{reason_suffix})"
+            )
+        deployable_txt = "true" if deployable is True else "unknown"
+        reason_suffix = f", reason={reason}" if reason else ""
+        return False, f"deployable={deployable_txt} local surrogate verdict=NO_GO{reason_suffix}"
+    value = row.get("pass")
+    if value is None or pd.isna(value):
+        return None, "missing input artifact"
+    return bool(value), ""
 
 
 def build_stage14_artifacts(
@@ -174,16 +213,19 @@ def build_stage14_artifacts(
         missing_inputs = 0
         for src in sources:
             match = by_symbol[by_symbol["check_id"] == src.check_id].copy()
-            value = None if match.empty else match.iloc[-1].get("pass")
+            if src.check_id == "local_jforex_surrogate_pass":
+                value, details = _evaluate_local_surrogate(match)
+            else:
+                value = None if match.empty else match.iloc[-1].get("pass")
+                details = ""
             if value is None or pd.isna(value):
                 missing_inputs += 1
                 row[src.check_id] = False
                 status = "fail"
-                details = "missing input artifact"
+                details = details or "missing input artifact"
             else:
                 row[src.check_id] = bool(value)
                 status = "pass" if bool(value) else "fail"
-                details = ""
             if value is not None and not pd.isna(value) and bool(value) and max_artifact_age_days > 0:
                 eval_ts_str = "" if match.empty else str(match.iloc[-1].get("evaluated_at_utc") or "")
                 if eval_ts_str:
@@ -246,7 +288,7 @@ def build_stage14_artifacts(
         "- Stage 14 is green only when Stage 13 remains green and all JForex-specific certification checks pass.",
         "- Missing JForex tester/demo artifacts are treated as certification failures until the adapter path is exercised.",
         "- jforex_outcome_parity_pass: reconciles JForex runtime signal counts against locked Python predictions (signal_coverage_ratio must be 1.0, zero execution failures, trades present).",
-        "- local_jforex_surrogate_pass: the shared Java strategy core must pass all checks in the parquet-driven local surrogate harness before the real broker test is trusted.",
+        "- local_jforex_surrogate_pass: the shared Java strategy core must pass the parquet-driven local surrogate harness; an explicit NO_GO is accepted only for historically non-deployable symbols.",
         "- order_coverage_ratio is expected to be low (<0.2): OCO mechanics block new orders while an existing position is live. This metric is informational; signal_coverage_pass is the gate.",
     ]
     report_out.write_text("\n".join(report_lines).strip() + "\n", encoding="utf-8")
