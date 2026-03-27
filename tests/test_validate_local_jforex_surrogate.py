@@ -132,6 +132,67 @@ def test_build_artifacts_treats_zero_lock_idle_windows_as_execution_pass(tmp_pat
     assert execution_check["status"] == "pass"
 
 
+def test_build_artifacts_falls_back_to_outcome_locked_count_for_zero_lock_windows(tmp_path: Path) -> None:
+    from scripts.validate_local_jforex_surrogate import build_artifacts
+
+    lock_dir = tmp_path / "locks"
+    lock_dir.mkdir()
+    _write_lock(lock_dir, "USDCHF", deployable=True)
+
+    _write_csv(
+        tmp_path / "USDCHF_local_jforex_signal_parity_summary.csv",
+        ["symbol", "jforex_signal_parity_pass"],
+        [{"symbol": "USDCHF", "jforex_signal_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "USDCHF_local_jforex_execution_parity_summary.csv",
+        ["symbol", "jforex_execution_parity_pass", "submitted_orders", "execution_failures"],
+        [
+            {
+                "symbol": "USDCHF",
+                "jforex_execution_parity_pass": False,
+                "submitted_orders": 0,
+                "execution_failures": 0,
+            }
+        ],
+    )
+    _write_csv(
+        tmp_path / "USDCHF_local_jforex_oco_lifecycle_summary.csv",
+        ["symbol", "oco_lifecycle_pass"],
+        [{"symbol": "USDCHF", "oco_lifecycle_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "USDCHF_local_jforex_operational_ready_summary.csv",
+        ["symbol", "operational_ready_pass"],
+        [{"symbol": "USDCHF", "operational_ready_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "USDCHF_local_jforex_outcome_parity_summary.csv",
+        ["symbol", "jforex_outcome_parity_pass", "locked_selected_count"],
+        [{"symbol": "USDCHF", "jforex_outcome_parity_pass": True, "locked_selected_count": 0}],
+    )
+
+    summary, checks = build_artifacts(
+        symbols=["USDCHF"],
+        lock_dir=lock_dir,
+        local_signal_summary_glob=str(tmp_path / "*_local_jforex_signal_parity_summary.csv"),
+        local_execution_summary_glob=str(tmp_path / "*_local_jforex_execution_parity_summary.csv"),
+        local_lifecycle_summary_glob=str(tmp_path / "*_local_jforex_oco_lifecycle_summary.csv"),
+        local_operational_summary_glob=str(tmp_path / "*_local_jforex_operational_ready_summary.csv"),
+        local_outcome_summary_glob=str(tmp_path / "*_local_jforex_outcome_parity_summary.csv"),
+        out_summary_csv=tmp_path / "summary.csv",
+        out_checks_csv=tmp_path / "checks.csv",
+        report_out=tmp_path / "report.md",
+    )
+
+    row = summary.iloc[0]
+    assert bool(row["local_execution_parity_pass"]) is True
+    assert bool(row["local_jforex_surrogate_pass"]) is True
+    execution_check = checks[checks["metric_name"] == "local_execution_parity_pass"].iloc[0]
+    assert execution_check["status"] == "pass"
+    assert execution_check["details"] == "zero-lock idle window accepted"
+
+
 def test_build_artifacts_ignores_stage12_summary_input(tmp_path: Path) -> None:
     from scripts.validate_local_jforex_surrogate import build_artifacts
 

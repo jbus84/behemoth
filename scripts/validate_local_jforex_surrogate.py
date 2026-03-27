@@ -120,15 +120,33 @@ def _load_summary_rows(source: InputSource) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def _execution_noop_override(match: pd.DataFrame) -> bool:
+def _row_data_series(match: pd.DataFrame) -> pd.Series | None:
     if match.empty:
-        return False
+        return None
     row_data = match.iloc[-1].get("row_data")
     if not isinstance(row_data, dict):
+        return None
+    return pd.Series(row_data)
+
+
+def _execution_noop_override(execution_match: pd.DataFrame, outcome_match: pd.DataFrame) -> bool:
+    execution_row = _row_data_series(execution_match)
+    if execution_row is None:
         return False
-    row = pd.Series(row_data)
-    locked_selected_total = _pick_int(row, ("locked_selected_total", "locked_selected_count"))
-    submitted_orders = _pick_int(row, ("submitted_orders", "jforex_orders_submitted", "orders_submitted"))
+    outcome_row = _row_data_series(outcome_match)
+    locked_selected_total = _pick_int(
+        execution_row,
+        ("locked_selected_total", "locked_selected_count"),
+    )
+    if locked_selected_total is None and outcome_row is not None:
+        locked_selected_total = _pick_int(
+            outcome_row,
+            ("locked_selected_total", "locked_selected_count"),
+        )
+    submitted_orders = _pick_int(
+        execution_row,
+        ("submitted_orders", "jforex_orders_submitted", "orders_submitted"),
+    )
     return locked_selected_total == 0 and submitted_orders == 0
 
 
@@ -177,10 +195,11 @@ def build_artifacts(
         for src in sources:
             match = by_symbol[by_symbol["check_id"] == src.check_id]
             value = None if match.empty else match.iloc[-1].get("pass")
+            outcome_match = by_symbol[by_symbol["check_id"] == "jforex_outcome_parity_pass"]
             overridden_to_pass = (
                 historical_deployable
                 and src.check_id == "local_execution_parity_pass"
-                and _execution_noop_override(match)
+                and _execution_noop_override(match, outcome_match)
             )
             if overridden_to_pass:
                 row[src.check_id] = True
