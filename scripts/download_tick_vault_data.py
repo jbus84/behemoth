@@ -99,12 +99,18 @@ def find_first_market_gap(path: Path) -> datetime:
         # Note: df["diff"] at index i is the gap BETWEEN i-1 and i
         # So the gap started at timestamp[i-1]
         for idx in gaps.index:
-            gap_start = df.loc[idx - 1, "timestamp"].to_pydatetime()
-            if gap_start.tzinfo is None:
-                gap_start = gap_start.replace(tzinfo=UTC)
-            
-            if is_fx_market_open(gap_start):
-                return gap_start
+            prev_ts = df.loc[idx - 1, "timestamp"].to_pydatetime()
+            next_ts = df.loc[idx, "timestamp"].to_pydatetime()
+            if prev_ts.tzinfo is None:
+                prev_ts = prev_ts.replace(tzinfo=UTC)
+            if next_ts.tzinfo is None:
+                next_ts = next_ts.replace(tzinfo=UTC)
+
+            if is_expected_weekend_gap(prev_ts, next_ts):
+                continue
+
+            if is_fx_market_open(prev_ts) and is_fx_market_open(next_ts):
+                return prev_ts
                 
         return None
     except Exception:

@@ -3,6 +3,9 @@ from __future__ import annotations
 import sys
 import types
 from datetime import UTC, datetime
+from pathlib import Path
+
+import pandas as pd
 
 
 def _install_tick_vault_stubs() -> None:
@@ -45,6 +48,7 @@ def _install_tick_vault_stubs() -> None:
 _install_tick_vault_stubs()
 
 from scripts.download_tick_vault_data import (  # noqa: E402
+    find_first_market_gap,
     get_session_bounds_utc,
     is_expected_weekend_gap,
     is_fx_market_open,
@@ -88,3 +92,39 @@ def test_is_expected_weekend_gap_matches_observed_gap() -> None:
     prev_ts = datetime(2025, 10, 3, 20, 59, 59, 574000, tzinfo=UTC)
     next_ts = datetime(2025, 10, 5, 21, 0, 42, 115000, tzinfo=UTC)
     assert is_expected_weekend_gap(prev_ts, next_ts) is True
+
+
+def test_is_expected_weekend_gap_rejects_gap_starting_before_friday_close() -> None:
+    prev_ts = datetime(2025, 10, 1, 12, 0, tzinfo=UTC)
+    next_ts = datetime(2025, 10, 5, 21, 0, 42, 115000, tzinfo=UTC)
+    assert is_expected_weekend_gap(prev_ts, next_ts) is False
+
+
+def _write_gap_parquet(path: Path, timestamps: list[datetime]) -> Path:
+    pd.DataFrame({"timestamp": timestamps}).to_parquet(path, index=False)
+    return path
+
+
+def test_find_first_market_gap_ignores_expected_weekend_gap(tmp_path: Path) -> None:
+    path = _write_gap_parquet(
+        tmp_path / "weekend_gap.parquet",
+        [
+            datetime(2025, 10, 3, 20, 59, 59, 574000, tzinfo=UTC),
+            datetime(2025, 10, 5, 21, 0, 42, 115000, tzinfo=UTC),
+        ],
+    )
+
+    assert find_first_market_gap(path) is None
+
+
+def test_find_first_market_gap_returns_weekday_intra_session_gap_start(tmp_path: Path) -> None:
+    gap_start = datetime(2025, 10, 1, 12, 0, tzinfo=UTC)
+    path = _write_gap_parquet(
+        tmp_path / "weekday_gap.parquet",
+        [
+            gap_start,
+            datetime(2025, 10, 1, 15, 30, tzinfo=UTC),
+        ],
+    )
+
+    assert find_first_market_gap(path) == gap_start
