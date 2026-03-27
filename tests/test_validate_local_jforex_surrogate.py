@@ -3,8 +3,10 @@ from __future__ import annotations
 import csv
 import json
 from pathlib import Path
+import sys
 
 import pandas as pd
+import pytest
 
 
 def _write_csv(path: Path, fieldnames: list[str], rows: list[dict[str, object]]) -> None:
@@ -44,7 +46,6 @@ def test_build_artifacts_marks_non_deployable_symbols_as_nogo(tmp_path: Path) ->
 
     summary, checks = build_artifacts(
         symbols=["USDCAD"],
-        stage12_summary_glob=str(tmp_path / "ignored_stage12.csv"),
         lock_dir=lock_dir,
         local_signal_summary_glob="",
         local_execution_summary_glob="",
@@ -108,7 +109,6 @@ def test_build_artifacts_treats_zero_lock_idle_windows_as_execution_pass(tmp_pat
 
     summary, checks = build_artifacts(
         symbols=["EURUSD"],
-        stage12_summary_glob=str(tmp_path / "ignored_stage12.csv"),
         lock_dir=lock_dir,
         local_signal_summary_glob=str(tmp_path / "*_local_jforex_signal_parity_summary.csv"),
         local_execution_summary_glob=str(tmp_path / "*_local_jforex_execution_parity_summary.csv"),
@@ -152,7 +152,6 @@ def test_build_artifacts_ignores_stage12_summary_input(tmp_path: Path) -> None:
 
     summary, checks = build_artifacts(
         symbols=["EURUSD"],
-        stage12_summary_glob=str(tmp_path / "ignored_stage12.csv"),
         lock_dir=lock_dir,
         local_signal_summary_glob="",
         local_execution_summary_glob="",
@@ -175,3 +174,22 @@ def test_build_artifacts_ignores_stage12_summary_input(tmp_path: Path) -> None:
     assert "local_jforex_surrogate_pass" in written_summary.columns
     assert "local_jforex_surrogate_nogo" in written_summary.columns
     assert "verdict" in written_summary.columns
+
+
+def test_main_rejects_legacy_stage12_cli_flag(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from scripts.validate_local_jforex_surrogate import main
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "validate_local_jforex_surrogate.py",
+            "--stage12-summary-glob",
+            str(tmp_path / "stage13_dukascopy_testclient_summary.csv"),
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 2

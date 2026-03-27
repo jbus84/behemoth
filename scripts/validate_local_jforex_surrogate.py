@@ -135,7 +135,6 @@ def _execution_noop_override(match: pd.DataFrame) -> bool:
 def build_artifacts(
     *,
     symbols: list[str],
-    stage12_summary_glob: str,
     lock_dir: Path,
     local_signal_summary_glob: str,
     local_execution_summary_glob: str,
@@ -268,7 +267,6 @@ def build_artifacts(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD")
-    parser.add_argument("--stage12-summary-glob", default="data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv")
     parser.add_argument("--lock-dir", default="configs/research/governance/oco")
     parser.add_argument("--local-signal-summary-glob", default="data/analysis/backtest_reconcile/*_local_jforex_signal_parity_summary.csv")
     parser.add_argument("--local-execution-summary-glob", default="data/analysis/backtest_reconcile/*_local_jforex_execution_parity_summary.csv")
@@ -281,7 +279,6 @@ def main() -> None:
     args = parser.parse_args()
     build_artifacts(
         symbols=[s.strip().upper() for s in str(args.symbols).split(",") if s.strip()],
-        stage12_summary_glob=str(args.stage12_summary_glob),
         lock_dir=Path(str(args.lock_dir)),
         local_signal_summary_glob=str(args.local_signal_summary_glob),
         local_execution_summary_glob=str(args.local_execution_summary_glob),
