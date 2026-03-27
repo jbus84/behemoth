@@ -10,6 +10,7 @@ from pathlib import Path
 import httpx
 import numpy as np
 from dateutil.relativedelta import relativedelta
+from zoneinfo import ZoneInfo
 
 import tick_vault.config
 import tick_vault.download_worker
@@ -30,21 +31,46 @@ GLOBAL_START_DATE = datetime(2018, 1, 1, tzinfo=UTC)
 OUT_DIR = Path("/Users/danielfisher/Desktop/dukascopy_ticks")
 TICKVAULT_CACHE = Path("/Users/danielfisher/Desktop/tickvault_ticks")
 LOCK_FILE = TICKVAULT_CACHE / "download_tick_vault.lock"
+NEW_YORK_TZ = ZoneInfo("America/New_York")
 
 
 def is_fx_market_open(dt: datetime) -> bool:
-    """True if FX markets are open (simplified: Sunday 22:00 GMT to Friday 22:00 GMT)."""
-    # 0=Monday, 4=Friday, 5=Saturday, 6=Sunday
-    weekday = dt.weekday()
-    hour = dt.hour
-    
-    if weekday == 4: # Friday
-        return hour < 22
-    if weekday == 5: # Saturday
-        return False
-    if weekday == 6: # Sunday
-        return hour >= 22
-    return True # Mon-Thu
+    """True if FX markets are open with DST-aware New York session boundaries."""
+    dt_utc = _normalize_utc(dt)
+    close_utc, reopen_utc = get_session_bounds_utc(dt_utc)
+    return not (close_utc <= dt_utc < reopen_utc)
+
+
+def _normalize_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
+
+
+def _friday_close_for_week(dt: datetime) -> datetime:
+    dt_utc = _normalize_utc(dt)
+    dt_ny = dt_utc.astimezone(NEW_YORK_TZ)
+    days_to_friday = 4 - dt_ny.weekday()
+    target = (dt_ny + relativedelta(days=days_to_friday)).replace(
+        hour=17,
+        minute=0,
+        second=0,
+        microsecond=0,
+    )
+    return target.astimezone(UTC)
+
+
+def get_session_bounds_utc(dt: datetime) -> tuple[datetime, datetime]:
+    close_utc = _friday_close_for_week(dt)
+    reopen_utc = (close_utc.astimezone(NEW_YORK_TZ) + relativedelta(days=2)).astimezone(UTC)
+    return close_utc, reopen_utc
+
+
+def is_expected_weekend_gap(prev_ts: datetime, next_ts: datetime) -> bool:
+    prev_utc = _normalize_utc(prev_ts)
+    next_utc = _normalize_utc(next_ts)
+    close_utc, reopen_utc = get_session_bounds_utc(prev_utc)
+    return prev_utc < close_utc <= reopen_utc <= next_utc
 
 
 def find_first_market_gap(path: Path) -> datetime:
