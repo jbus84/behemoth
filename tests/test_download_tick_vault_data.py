@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 import types
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -49,6 +49,8 @@ _install_tick_vault_stubs()
 
 from scripts.download_tick_vault_data import (  # noqa: E402
     find_first_market_gap,
+    get_fetchable_end,
+    get_missing_months,
     get_session_bounds_utc,
     is_expected_weekend_gap,
     is_fx_market_open,
@@ -128,3 +130,78 @@ def test_find_first_market_gap_returns_weekday_intra_session_gap_start(tmp_path:
     )
 
     assert find_first_market_gap(path) == gap_start
+
+
+# --- Task 3: get_fetchable_end and current-month scheduling ---
+
+
+def test_get_fetchable_end_returns_now_when_market_open() -> None:
+    # Wednesday mid-session (DST)
+    now = datetime(2025, 10, 1, 14, 0, tzinfo=UTC)
+    assert get_fetchable_end(now) == now
+
+
+def test_get_fetchable_end_returns_friday_close_when_market_closed() -> None:
+    # Friday after DST close (21:00 UTC), still before Sunday reopen
+    now = datetime(2025, 10, 3, 21, 30, tzinfo=UTC)
+    result = get_fetchable_end(now)
+    assert result == datetime(2025, 10, 3, 21, 0, tzinfo=UTC)
+
+
+def test_get_fetchable_end_returns_friday_close_on_saturday() -> None:
+    now = datetime(2025, 10, 4, 12, 0, tzinfo=UTC)
+    result = get_fetchable_end(now)
+    assert result == datetime(2025, 10, 3, 21, 0, tzinfo=UTC)
+
+
+def _write_tick_parquet(path: Path, timestamps: list[datetime]) -> None:
+    pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(timestamps, utc=True),
+            "bid": [1.1] * len(timestamps),
+            "ask": [1.1001] * len(timestamps),
+        }
+    ).to_parquet(path, index=False)
+
+
+def test_get_missing_months_does_not_refill_after_friday_close(monkeypatch, tmp_path: Path) -> None:
+    """After Friday close, current-month should not schedule a refill."""
+    out_dir = tmp_path / "ticks"
+    symbol_dir = out_dir / "EURUSD"
+    symbol_dir.mkdir(parents=True)
+    month_path = symbol_dir / "EURUSD_202510_ticks.parquet"
+    _write_tick_parquet(
+        month_path,
+        [datetime(2025, 10, 3, 20, 59, 59, 999000, tzinfo=UTC)],
+    )
+    # Pretend now is Friday after DST close
+    fake_now = datetime(2025, 10, 3, 21, 30, tzinfo=UTC)
+    monkeypatch.setattr(
+        "scripts.download_tick_vault_data.datetime",
+        type("FakeDT", (), {"now": staticmethod(lambda tz=None: fake_now)}),
+    )
+    # GLOBAL_START_DATE would scan too many months; scope end_date to Oct 2025 only
+    monkeypatch.setattr("scripts.download_tick_vault_data.GLOBAL_START_DATE", datetime(2025, 10, 1, tzinfo=UTC))
+    ranges = get_missing_months("EURUSD", out_dir, fake_now)
+    assert ranges == []
+
+
+def test_get_missing_months_appends_before_friday_close(monkeypatch, tmp_path: Path) -> None:
+    """Before Friday close, current-month should schedule a refill up to now."""
+    out_dir = tmp_path / "ticks"
+    symbol_dir = out_dir / "EURUSD"
+    symbol_dir.mkdir(parents=True)
+    month_path = symbol_dir / "EURUSD_202510_ticks.parquet"
+    last_ts = datetime(2025, 10, 3, 19, 59, 59, tzinfo=UTC)
+    _write_tick_parquet(month_path, [last_ts])
+    fake_now = datetime(2025, 10, 3, 20, 30, tzinfo=UTC)
+    monkeypatch.setattr(
+        "scripts.download_tick_vault_data.datetime",
+        type("FakeDT", (), {"now": staticmethod(lambda tz=None: fake_now)}),
+    )
+    monkeypatch.setattr("scripts.download_tick_vault_data.GLOBAL_START_DATE", datetime(2025, 10, 1, tzinfo=UTC))
+    ranges = get_missing_months("EURUSD", out_dir, fake_now)
+    expected_start = last_ts + timedelta(microseconds=1000)
+    assert len(ranges) == 1
+    assert ranges[0][0] == expected_start
+    assert ranges[0][1] == fake_now
