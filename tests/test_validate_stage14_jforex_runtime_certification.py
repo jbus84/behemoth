@@ -19,6 +19,18 @@ def _utc_str(offset_days: int = 0) -> str:
     )
 
 
+def _write_stage14_green_inputs(tmp_path: Path, symbol: str) -> None:
+    for name, col in [
+        ("stage13", "stage13_dukascopy_testclient_pass"),
+        ("jforex_signal", "jforex_signal_parity_pass"),
+        ("jforex_execution", "jforex_execution_parity_pass"),
+        ("jforex_lifecycle", "oco_lifecycle_pass"),
+        ("jforex_ops", "operational_ready_pass"),
+        ("outcome", "jforex_outcome_parity_pass"),
+    ]:
+        _write_csv(tmp_path / f"{symbol}_{name}.csv", [{"symbol": symbol, col: True}])
+
+
 def test_build_stage14_artifacts_marks_green_when_all_checks_pass(tmp_path: Path) -> None:
     _write_csv(
         tmp_path / "EURUSD_stage13.csv",
@@ -260,18 +272,7 @@ def test_build_stage14_artifacts_includes_outcome_parity_check(tmp_path: Path) -
 
 def test_build_stage14_artifacts_includes_local_surrogate_check(tmp_path: Path) -> None:
     """Stage 14 must include local_jforex_surrogate_pass as a prerequisite check."""
-    _write_csv(tmp_path / "EURUSD_stage13.csv",
-               [{"symbol": "EURUSD", "stage13_dukascopy_testclient_pass": True}])
-    _write_csv(tmp_path / "EURUSD_jforex_signal.csv",
-               [{"symbol": "EURUSD", "jforex_signal_parity_pass": True}])
-    _write_csv(tmp_path / "EURUSD_jforex_execution.csv",
-               [{"symbol": "EURUSD", "jforex_execution_parity_pass": True}])
-    _write_csv(tmp_path / "EURUSD_jforex_lifecycle.csv",
-               [{"symbol": "EURUSD", "oco_lifecycle_pass": True}])
-    _write_csv(tmp_path / "EURUSD_jforex_ops.csv",
-               [{"symbol": "EURUSD", "operational_ready_pass": True}])
-    _write_csv(tmp_path / "EURUSD_outcome.csv",
-               [{"symbol": "EURUSD", "jforex_outcome_parity_pass": True}])
+    _write_stage14_green_inputs(tmp_path, "EURUSD")
     # local surrogate missing — stage14 must fail
     summary, checks = build_stage14_artifacts(
         symbols=["EURUSD"],
@@ -294,17 +295,74 @@ def test_build_stage14_artifacts_includes_local_surrogate_check(tmp_path: Path) 
     assert surrogate_check.iloc[0]["status"] == "fail"
 
 
+def test_build_stage14_artifacts_accepts_local_surrogate_nogo_for_non_deployable_symbol(
+    tmp_path: Path,
+) -> None:
+    _write_stage14_green_inputs(tmp_path, "USDCAD")
+    _write_csv(
+        tmp_path / "USDCAD_local_jforex_surrogate.csv",
+        [{"symbol": "USDCAD", "verdict": "NO_GO"}],
+    )
+
+    summary, checks = build_stage14_artifacts(
+        symbols=["USDCAD"],
+        stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
+        jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
+        jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_lifecycle.csv"),
+        jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
+        jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
+        local_surrogate_summary_glob=str(tmp_path / "USDCAD_local_jforex_surrogate.csv"),
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+    )
+
+    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is True
+    assert summary.loc[0, "verdict"] == "green"
+    surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"]
+    assert len(surrogate_check) == 1
+    assert surrogate_check.iloc[0]["status"] == "pass"
+    assert "no_go" in surrogate_check.iloc[0]["details"].lower()
+
+
+def test_build_stage14_artifacts_rejects_red_local_surrogate_for_deployable_symbol(
+    tmp_path: Path,
+) -> None:
+    _write_stage14_green_inputs(tmp_path, "EURUSD")
+    _write_csv(
+        tmp_path / "EURUSD_local_jforex_surrogate.csv",
+        [{"symbol": "EURUSD", "local_jforex_surrogate_pass": False}],
+    )
+
+    summary, checks = build_stage14_artifacts(
+        symbols=["EURUSD"],
+        stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
+        jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
+        jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_lifecycle.csv"),
+        jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
+        jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
+        local_surrogate_summary_glob=str(tmp_path / "EURUSD_local_jforex_surrogate.csv"),
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+    )
+
+    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
+    surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"]
+    assert len(surrogate_check) == 1
+    assert surrogate_check.iloc[0]["status"] == "fail"
+    assert "deployable" in surrogate_check.iloc[0]["details"].lower()
+
+
 def test_build_stage14_artifacts_green_with_all_seven_checks(tmp_path: Path) -> None:
     """Stage 14 is green only when all 7 checks pass."""
-    for name, col in [
-        ("stage13", "stage13_dukascopy_testclient_pass"),
-        ("jforex_signal", "jforex_signal_parity_pass"),
-        ("jforex_execution", "jforex_execution_parity_pass"),
-        ("jforex_lifecycle", "oco_lifecycle_pass"),
-        ("jforex_ops", "operational_ready_pass"),
-        ("outcome", "jforex_outcome_parity_pass"),
-    ]:
-        _write_csv(tmp_path / f"EURUSD_{name}.csv", [{"symbol": "EURUSD", col: True}])
+    _write_stage14_green_inputs(tmp_path, "EURUSD")
     _write_csv(tmp_path / "local_surrogate.csv",
                [{"symbol": "EURUSD", "local_jforex_surrogate_pass": True}])
 
