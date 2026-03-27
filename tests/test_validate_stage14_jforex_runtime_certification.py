@@ -23,14 +23,14 @@ def _write_local_surrogate_row(
     tmp_path: Path,
     symbol: str,
     *,
-    deployable: bool,
+    historical_deployable: bool,
     non_deployable_reason: str = "",
     verdict: str | None = None,
     local_jforex_surrogate_pass: bool | None = None,
 ) -> Path:
     row: dict[str, object] = {
         "symbol": symbol,
-        "deployable": deployable,
+        "historical_deployable": historical_deployable,
         "non_deployable_reason": non_deployable_reason,
     }
     if verdict is not None:
@@ -336,7 +336,7 @@ def test_build_stage14_artifacts_accepts_local_surrogate_nogo_for_non_deployable
     local_surrogate_path = _write_local_surrogate_row(
         tmp_path,
         "USDCAD",
-        deployable=False,
+        historical_deployable=False,
         non_deployable_reason="no_gate_states",
         verdict="NO_GO",
     )
@@ -373,7 +373,7 @@ def test_build_stage14_artifacts_rejects_deployable_symbol_with_local_surrogate_
     local_surrogate_path = _write_local_surrogate_row(
         tmp_path,
         "EURUSD",
-        deployable=True,
+        historical_deployable=True,
         verdict="NO_GO",
     )
 
@@ -397,7 +397,7 @@ def test_build_stage14_artifacts_rejects_deployable_symbol_with_local_surrogate_
     surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"]
     assert len(surrogate_check) == 1
     assert surrogate_check.iloc[0]["status"] == "fail"
-    assert "deployable" in surrogate_check.iloc[0]["details"].lower()
+    assert "historical_deployable" in surrogate_check.iloc[0]["details"].lower()
 
 
 def test_build_stage14_artifacts_green_with_all_seven_checks(tmp_path: Path) -> None:
@@ -523,7 +523,7 @@ def test_build_stage14_artifacts_accepts_non_deployable_local_surrogate_nogo(tmp
             {
                 "symbol": "USDCAD",
                 "verdict": "NO_GO",
-                "deployable": False,
+                "historical_deployable": False,
                 "non_deployable_reason": "no_gate_states",
             }
         ],
@@ -550,6 +550,7 @@ def test_build_stage14_artifacts_accepts_non_deployable_local_surrogate_nogo(tmp
     surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"].iloc[0]
     assert surrogate_check["status"] == "pass"
     assert "non-deployable" in surrogate_check["details"].lower()
+    assert "historical_deployable=false" in surrogate_check["details"].lower()
     assert "no_gate_states" in surrogate_check["details"]
 
 
@@ -565,7 +566,7 @@ def test_build_stage14_artifacts_rejects_deployable_local_surrogate_nogo(tmp_pat
         _write_csv(tmp_path / f"EURUSD_{name}.csv", [{"symbol": "EURUSD", col: True}])
     _write_csv(
         tmp_path / "local_surrogate.csv",
-        [{"symbol": "EURUSD", "verdict": "NO_GO", "deployable": True}],
+        [{"symbol": "EURUSD", "verdict": "NO_GO", "historical_deployable": True}],
     )
 
     summary, checks = build_stage14_artifacts(
@@ -588,4 +589,4 @@ def test_build_stage14_artifacts_rejects_deployable_local_surrogate_nogo(tmp_pat
     assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
     surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"].iloc[0]
     assert surrogate_check["status"] == "fail"
-    assert "deployable" in surrogate_check["details"].lower()
+    assert "historical_deployable" in surrogate_check["details"].lower()

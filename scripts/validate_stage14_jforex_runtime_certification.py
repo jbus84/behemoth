@@ -106,7 +106,7 @@ def _load_summary_rows(source: InputSource) -> pd.DataFrame:
                     "symbol": symbol,
                     "check_id": source.check_id,
                     "pass": _pick_bool(row, source.candidate_columns),
-                    "deployable": _pick_bool(row, ("deployable",)),
+                    "historical_deployable": _pick_bool(row, ("historical_deployable",)),
                     "non_deployable_reason": _pick_text(row, ("non_deployable_reason",)),
                     "raw_verdict": _pick_text(row, ("verdict",)),
                     "source_path": str(path),
@@ -121,18 +121,21 @@ def _evaluate_local_surrogate(match: pd.DataFrame) -> tuple[bool | None, str]:
         return None, "missing input artifact"
     row = match.iloc[-1]
     verdict = str(row.get("raw_verdict") or "").strip().upper()
-    deployable = row.get("deployable")
+    historical_deployable = row.get("historical_deployable")
     reason = str(row.get("non_deployable_reason") or "").strip()
     if verdict in {"NO_GO", "NO-GO", "NOGO"}:
-        if deployable is False:
+        if historical_deployable is False:
             reason_suffix = f", reason={reason}" if reason else ""
             return True, (
                 "accepted non-deployable local surrogate NO_GO "
-                f"(deployable=false{reason_suffix})"
+                f"(historical_deployable=false{reason_suffix})"
             )
-        deployable_txt = "true" if deployable is True else "unknown"
+        deployable_txt = "true" if historical_deployable is True else "unknown"
         reason_suffix = f", reason={reason}" if reason else ""
-        return False, f"deployable={deployable_txt} local surrogate verdict=NO_GO{reason_suffix}"
+        return (
+            False,
+            f"historical_deployable={deployable_txt} local surrogate verdict=NO_GO{reason_suffix}",
+        )
     value = row.get("pass")
     if value is None or pd.isna(value):
         return None, "missing input artifact"

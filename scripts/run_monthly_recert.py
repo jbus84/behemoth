@@ -94,7 +94,11 @@ def _is_expected_critical_nogo(row: dict[str, str]) -> bool:
         "accepted non-deployable" in details
         or (
             status in {"nogo", "no_go", "no-go"}
-            and ("deployable=false" in details or "non-deployable" in details)
+            and (
+                "historical_deployable=false" in details
+                or "deployable=false" in details
+                or "non-deployable" in details
+            )
         )
     )
 

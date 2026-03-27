@@ -146,7 +146,7 @@ def test_read_failures_ignores_expected_non_deployable_nogo(tmp_path, monkeypatc
                 "status": "NO_GO",
                 "severity": "critical",
                 "metric_name": "local_jforex_surrogate_pass",
-                "details": "accepted non-deployable local surrogate NO_GO (deployable=false, reason=no_gate_states)",
+                "details": "accepted non-deployable local surrogate NO_GO (historical_deployable=false, reason=no_gate_states)",
             }
         )
     monkeypatch.setattr(run_monthly_recert, "_repo_root", lambda: tmp_path)
@@ -166,7 +166,7 @@ def test_print_summary_keeps_go_when_only_expected_nogo_remains(capsys) -> None:
             "USDCAD": [
                 {
                     "check_id": "LOCAL_JFOREX_SURROGATE_PASS",
-                    "details": "accepted non-deployable local surrogate NO_GO (deployable=false, reason=no_gate_states)",
+                    "details": "accepted non-deployable local surrogate NO_GO (historical_deployable=false, reason=no_gate_states)",
                 }
             ]
         },
