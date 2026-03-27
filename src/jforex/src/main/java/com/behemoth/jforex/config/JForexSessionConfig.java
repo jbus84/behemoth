@@ -153,6 +153,9 @@ public record JForexSessionConfig(
         Instant end = testerMode
                 ? Instant.parse(requiredSetting(environment, "BEHEMOTH_JFOREX_END_UTC"))
                 : start.plusSeconds(60);
+        String defaultLiveReadinessEnabled = testerMode
+                ? Boolean.toString(false)
+                : Boolean.toString(DEFAULT_LIVE_READINESS_ENABLED);
         return new JForexSessionConfig(
                 URI.create(setting(environment, "BEHEMOTH_API_BASE_URI", "http://127.0.0.1:8000")),
                 URI.create(requiredSetting(environment, "BEHEMOTH_JFOREX_JNLP_URI")),
@@ -180,7 +183,7 @@ public record JForexSessionConfig(
                 Boolean.parseBoolean(setting(
                         environment,
                         "BEHEMOTH_JFOREX_LIVE_READINESS_ENABLED",
-                        Boolean.toString(DEFAULT_LIVE_READINESS_ENABLED)
+                        defaultLiveReadinessEnabled
                 )),
                 Integer.parseInt(setting(
                         environment,

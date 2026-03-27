@@ -1,0 +1,84 @@
+{
+  "artifacts": {
+    "capacity_overall_pass": true,
+    "live_deployable": true,
+    "model_cbm_path": "/Users/danielfisher/repositories/behemoth/.worktrees/monthly-build-recert-split-2026-03-26/configs/research/governance/oco_candidate_builds/2026-02/models/oco_dukascopy_candidate/AUDUSD_model_2026-02.cbm",
+    "model_cbm_sha256": "1e7cfce88402aa1013da3614be1ee051e8eba983542fab456f1a35225626a6b1",
+    "model_month": "2026-02",
+    "model_threshold_json_path": "/Users/danielfisher/repositories/behemoth/.worktrees/monthly-build-recert-split-2026-03-26/configs/research/governance/oco_candidate_builds/2026-02/models/oco_dukascopy_candidate/AUDUSD_model_2026-02.json",
+    "model_threshold_json_sha256": "9e76e609760c78047be68e5d08a26273756b20d1a213ef63131af8f9fe78e873",
+    "predictions_path": "configs/research/governance/oco_candidate_builds/2026-02/audusd_oco_locked_predictions.parquet",
+    "predictions_sha256": "bae36b9ecde832e4907aab7c4f9b8658196b5eeabbed8cee8323ee2b10da8a1e",
+    "reduced_config_path": "configs/research/experiments_dukascopy_candidate/audusd_oco_reduced_core_rolling_2025.yaml",
+    "reduced_config_sha256": "1793509088242b80a247db3ca81e9d96f1938398ff1efef8f109527d5f87e67c",
+    "reduced_states_csv_path": "configs/research/governance/oco_candidate_builds/2026-02/audusd_oco_allowed_states.csv",
+    "reduced_states_csv_sha256": "df97bb6e43c7c664cf29583a3dfacb44575650a45d0dd19bec10d65d7180953e",
+    "reduced_summary_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/AUDUSD_oco_reduced_summary.csv",
+    "reduced_summary_sha256": "9d7d41a41feac15e9418de053ff70cc5bc2ed39db2e0a55de63d4d0e9c477da8",
+    "source_predictions_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap/AUDUSD_oco_monthly_predictions.parquet",
+    "source_predictions_sha256": "0d6ff78215817da0e31623645428139d98d1aada20e8d3024e00a93cb6c8442b",
+    "tick_exact_overall_pass": true,
+    "tick_exact_summary_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/AUDUSD_oco_tick_exact_summary.csv",
+    "tick_exact_summary_sha256": "b1a6dbaee1686e70384eb7ddcec4f314f0a6e1da838006af0a25b6b492ffa2f5",
+    "wfo_config_path": "configs/research/experiments_dukascopy_candidate/audusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
+    "wfo_config_sha256": "30346f9b54fb92ac2b2844965bb247e73c7589aced46d4e923fc93c737ed36e8"
+  },
+  "frozen_at_utc": "2026-03-26T19:01:28.076247+00:00",
+  "git": {
+    "branch": "feat-monthly-build-recert-split-2026-03-26",
+    "commit": "56b29ee363811a47ee1e78ff2380f7ee90143eb7",
+    "dirty": true
+  },
+  "historical_backtest": {
+    "deployable": true,
+    "mode": "month_locked",
+    "non_deployable_reason": "",
+    "target_month": "2026-02"
+  },
+  "locked_runtime": {
+    "barrier_keep": "2,3",
+    "execution_quantile": 0.9,
+    "family_keep": "oco_first_touch_clean",
+    "horizon_keep": "5,6",
+    "locked_quantile": 0.9,
+    "oco_hold_mode": "from_touch",
+    "oco_include_no_touch": true,
+    "production_cap_pips": 1.2,
+    "rolling_threshold_days": 20,
+    "rolling_threshold_min_history": 1000,
+    "selection_mode": "auto",
+    "threshold_mode": "rolling_days"
+  },
+  "retrain_policy": {
+    "anchor_day_utc": 1,
+    "cadence_days": 30,
+    "mode": "calendar_window",
+    "window_days": 3
+  },
+  "schema_version": 1,
+  "state_universe": {
+    "count": 2,
+    "rows": [
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 6,
+        "regime_desc": "high_range_q80;barrier=2.0",
+        "state_id": "oco_first_touch_clean__high_range_q80__k2",
+        "symbol": "AUDUSD"
+      },
+      {
+        "bar_ticks": 100,
+        "barrier_pips": 2.0,
+        "family": "oco_first_touch_clean",
+        "horizon": 6,
+        "regime_desc": "ny_overlap;barrier=2.0",
+        "state_id": "oco_first_touch_clean__ny_overlap__k2",
+        "symbol": "AUDUSD"
+      }
+    ],
+    "sha256": "3137bbe5d11e42341978e7407a5eab62c4e645ac0af1e30950c8695514112a58"
+  },
+  "symbol": "AUDUSD"
+}

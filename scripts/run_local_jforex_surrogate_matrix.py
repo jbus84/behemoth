@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import os
 import signal
+import socket
 import subprocess
 import sys
 import threading
@@ -126,6 +127,19 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
+def _pick_free_port(host: str, preferred_port: int) -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            probe.bind((host, preferred_port))
+            return preferred_port
+        except OSError:
+            pass
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind((host, 0))
+        return int(probe.getsockname()[1])
+
+
 def _poll_health(proc: subprocess.Popen[str], base_url: str, timeout_sec: float) -> None:
     deadline = time.time() + timeout_sec
     last_error: str | None = None
@@ -157,7 +171,7 @@ def _state_db_path(cfg: RunConfig, symbol: str) -> Path:
     return _repo_root() / cfg.report_dir / "runtime" / f"{symbol.lower()}_local_jforex_state.db"
 
 
-def _start_api(cfg: RunConfig, symbol: str) -> tuple[subprocess.Popen[str], deque[str]]:
+def _start_api(cfg: RunConfig, symbol: str, api_port: int) -> tuple[subprocess.Popen[str], deque[str]]:
     state_db_path = _state_db_path(cfg, symbol)
     state_db_path.parent.mkdir(parents=True, exist_ok=True)
     if state_db_path.exists():
@@ -191,7 +205,7 @@ def _start_api(cfg: RunConfig, symbol: str) -> tuple[subprocess.Popen[str], dequ
         "--host",
         cfg.api_host,
         "--port",
-        str(cfg.api_port),
+        str(api_port),
     ]
     proc = subprocess.Popen(
         cmd,
@@ -231,7 +245,7 @@ def _read_process_tail(log_lines: deque[str], max_lines: int = 50) -> str:
     return "\n".join(lines[-max_lines:])
 
 
-def _run_surrogate(cfg: RunConfig, symbol: str, metrics_port: int) -> None:
+def _run_surrogate(cfg: RunConfig, symbol: str, metrics_port: int, api_port: int) -> None:
     env = os.environ.copy()
     env.update(
         {
@@ -253,7 +267,7 @@ def _run_surrogate(cfg: RunConfig, symbol: str, metrics_port: int) -> None:
             "BEHEMOTH_LOCAL_JFOREX_LOOKBACK_DAYS": str(cfg.lookback_days),
             "BEHEMOTH_LOCAL_JFOREX_PHASE_BAR_TICKS": str(cfg.phase_bar_ticks),
             "BEHEMOTH_LOCAL_JFOREX_STARTING_BALANCE": str(cfg.starting_balance),
-            "BEHEMOTH_API_BASE_URI": f"http://{cfg.api_host}:{cfg.api_port}",
+            "BEHEMOTH_API_BASE_URI": f"http://{cfg.api_host}:{api_port}",
         }
     )
     subprocess.run(
@@ -268,13 +282,18 @@ def main() -> None:
     cfg = _parse_args()
     failures: list[str] = []
     for index, symbol in enumerate(cfg.symbols):
-        metrics_port = cfg.metrics_port_base + index
-        print(f"[local-jforex] {symbol}: starting API", flush=True)
-        api_proc, api_log = _start_api(cfg, symbol)
+        api_port = _pick_free_port(cfg.api_host, cfg.api_port + index)
+        metrics_port = _pick_free_port(cfg.metrics_host, cfg.metrics_port_base + index)
+        print(
+            f"[local-jforex] {symbol}: starting API "
+            f"(api_port={api_port} metrics_port={metrics_port})",
+            flush=True,
+        )
+        api_proc, api_log = _start_api(cfg, symbol, api_port)
         try:
-            _poll_health(api_proc, f"http://{cfg.api_host}:{cfg.api_port}", timeout_sec=60.0)
+            _poll_health(api_proc, f"http://{cfg.api_host}:{api_port}", timeout_sec=60.0)
             print(f"[local-jforex] {symbol}: running surrogate", flush=True)
-            _run_surrogate(cfg, symbol, metrics_port)
+            _run_surrogate(cfg, symbol, metrics_port, api_port)
             print(f"[local-jforex] {symbol}: complete", flush=True)
         except Exception as exc:  # pragma: no cover - orchestration path
             failures.append(f"{symbol}: {exc}")

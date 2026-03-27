@@ -1,49 +1,219 @@
 from __future__ import annotations
 
 import csv
+import json
 from pathlib import Path
+import sys
 
 import pandas as pd
+import pytest
 
 
-def test_stage12_bridge_reads_from_stage13_summary(tmp_path: Path) -> None:
+def _write_csv(path: Path, fieldnames: list[str], rows: list[dict[str, object]]) -> None:
+    with open(path, "w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+
+
+def _write_lock(
+    lock_dir: Path,
+    symbol: str,
+    *,
+    deployable: bool,
+    reason: str = "",
+) -> None:
+    payload = {
+        "symbol": symbol,
+        "historical_backtest": {
+            "deployable": deployable,
+            "non_deployable_reason": reason,
+        },
+    }
+    (lock_dir / f"{symbol.lower()}_oco_live_lock.json").write_text(
+        json.dumps(payload),
+        encoding="utf-8",
+    )
+
+
+def test_build_artifacts_marks_non_deployable_symbols_as_nogo(tmp_path: Path) -> None:
     from scripts.validate_local_jforex_surrogate import build_artifacts
 
-    # Write a minimal stage13 summary CSV (single multi-symbol file)
-    stage13 = tmp_path / "stage13_dukascopy_testclient_summary.csv"
-    with open(stage13, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["symbol", "stage12_api_parity_pass", "verdict"])
-        w.writeheader()
-        w.writerow({"symbol": "EURUSD", "stage12_api_parity_pass": "True", "verdict": "green"})
+    lock_dir = tmp_path / "locks"
+    lock_dir.mkdir()
+    _write_lock(lock_dir, "USDCAD", deployable=False, reason="no_gate_states")
 
     summary, checks = build_artifacts(
-        symbols=["EURUSD"],
-        stage12_summary_glob=str(stage13),
+        symbols=["USDCAD"],
+        lock_dir=lock_dir,
         local_signal_summary_glob="",
         local_execution_summary_glob="",
         local_lifecycle_summary_glob="",
         local_operational_summary_glob="",
+        local_outcome_summary_glob="",
         out_summary_csv=tmp_path / "summary.csv",
         out_checks_csv=tmp_path / "checks.csv",
         report_out=tmp_path / "report.md",
     )
-    stage12_row = checks[checks["check_id"] == "STAGE12_API_PARITY_PASS"]
-    assert len(stage12_row) > 0, "STAGE12_API_PARITY_PASS check not found in checks output"
-    assert stage12_row["status"].iloc[0] == "pass"
+
+    row = summary.iloc[0]
+    assert row["symbol"] == "USDCAD"
+    assert bool(row["historical_deployable"]) is False
+    assert row["non_deployable_reason"] == "no_gate_states"
+    assert bool(row["local_jforex_surrogate_pass"]) is False
+    assert bool(row["local_jforex_surrogate_nogo"]) is True
+    assert row["verdict"] == "nogo"
+    assert "STAGE12_API_PARITY_PASS" not in set(checks["check_id"])
 
 
-def test_build_artifacts_includes_outcome_parity(tmp_path):
+def test_build_artifacts_treats_zero_lock_idle_windows_as_execution_pass(tmp_path: Path) -> None:
     from scripts.validate_local_jforex_surrogate import build_artifacts
 
-    outcome_csv = tmp_path / "EURUSD_local_jforex_outcome_parity_summary.csv"
-    with open(outcome_csv, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["symbol", "overall_pass", "jforex_outcome_parity_pass"])
-        w.writeheader()
-        w.writerow({"symbol": "EURUSD", "overall_pass": "True", "jforex_outcome_parity_pass": "True"})
+    lock_dir = tmp_path / "locks"
+    lock_dir.mkdir()
+    _write_lock(lock_dir, "EURUSD", deployable=True)
+
+    _write_csv(
+        tmp_path / "EURUSD_local_jforex_signal_parity_summary.csv",
+        ["symbol", "jforex_signal_parity_pass"],
+        [{"symbol": "EURUSD", "jforex_signal_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_local_jforex_execution_parity_summary.csv",
+        ["symbol", "jforex_execution_parity_pass", "locked_selected_total", "submitted_orders"],
+        [
+            {
+                "symbol": "EURUSD",
+                "jforex_execution_parity_pass": False,
+                "locked_selected_total": 0,
+                "submitted_orders": 0,
+            }
+        ],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_local_jforex_oco_lifecycle_summary.csv",
+        ["symbol", "oco_lifecycle_pass"],
+        [{"symbol": "EURUSD", "oco_lifecycle_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_local_jforex_operational_ready_summary.csv",
+        ["symbol", "operational_ready_pass"],
+        [{"symbol": "EURUSD", "operational_ready_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_local_jforex_outcome_parity_summary.csv",
+        ["symbol", "jforex_outcome_parity_pass"],
+        [{"symbol": "EURUSD", "jforex_outcome_parity_pass": True}],
+    )
 
     summary, checks = build_artifacts(
         symbols=["EURUSD"],
-        stage12_summary_glob="",
+        lock_dir=lock_dir,
+        local_signal_summary_glob=str(tmp_path / "*_local_jforex_signal_parity_summary.csv"),
+        local_execution_summary_glob=str(tmp_path / "*_local_jforex_execution_parity_summary.csv"),
+        local_lifecycle_summary_glob=str(tmp_path / "*_local_jforex_oco_lifecycle_summary.csv"),
+        local_operational_summary_glob=str(tmp_path / "*_local_jforex_operational_ready_summary.csv"),
+        local_outcome_summary_glob=str(tmp_path / "*_local_jforex_outcome_parity_summary.csv"),
+        out_summary_csv=tmp_path / "summary.csv",
+        out_checks_csv=tmp_path / "checks.csv",
+        report_out=tmp_path / "report.md",
+    )
+
+    row = summary.iloc[0]
+    assert bool(row["historical_deployable"]) is True
+    assert row["non_deployable_reason"] == ""
+    assert bool(row["local_execution_parity_pass"]) is True
+    assert bool(row["local_jforex_surrogate_pass"]) is True
+    assert bool(row["local_jforex_surrogate_nogo"]) is False
+    assert row["verdict"] == "green"
+
+    execution_check = checks[checks["metric_name"] == "local_execution_parity_pass"].iloc[0]
+    assert execution_check["status"] == "pass"
+
+
+def test_build_artifacts_falls_back_to_outcome_locked_count_for_zero_lock_windows(tmp_path: Path) -> None:
+    from scripts.validate_local_jforex_surrogate import build_artifacts
+
+    lock_dir = tmp_path / "locks"
+    lock_dir.mkdir()
+    _write_lock(lock_dir, "USDCHF", deployable=True)
+
+    _write_csv(
+        tmp_path / "USDCHF_local_jforex_signal_parity_summary.csv",
+        ["symbol", "jforex_signal_parity_pass"],
+        [{"symbol": "USDCHF", "jforex_signal_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "USDCHF_local_jforex_execution_parity_summary.csv",
+        ["symbol", "jforex_execution_parity_pass", "submitted_orders", "execution_failures"],
+        [
+            {
+                "symbol": "USDCHF",
+                "jforex_execution_parity_pass": False,
+                "submitted_orders": 0,
+                "execution_failures": 0,
+            }
+        ],
+    )
+    _write_csv(
+        tmp_path / "USDCHF_local_jforex_oco_lifecycle_summary.csv",
+        ["symbol", "oco_lifecycle_pass"],
+        [{"symbol": "USDCHF", "oco_lifecycle_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "USDCHF_local_jforex_operational_ready_summary.csv",
+        ["symbol", "operational_ready_pass"],
+        [{"symbol": "USDCHF", "operational_ready_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "USDCHF_local_jforex_outcome_parity_summary.csv",
+        ["symbol", "jforex_outcome_parity_pass", "locked_selected_count"],
+        [{"symbol": "USDCHF", "jforex_outcome_parity_pass": True, "locked_selected_count": 0}],
+    )
+
+    summary, checks = build_artifacts(
+        symbols=["USDCHF"],
+        lock_dir=lock_dir,
+        local_signal_summary_glob=str(tmp_path / "*_local_jforex_signal_parity_summary.csv"),
+        local_execution_summary_glob=str(tmp_path / "*_local_jforex_execution_parity_summary.csv"),
+        local_lifecycle_summary_glob=str(tmp_path / "*_local_jforex_oco_lifecycle_summary.csv"),
+        local_operational_summary_glob=str(tmp_path / "*_local_jforex_operational_ready_summary.csv"),
+        local_outcome_summary_glob=str(tmp_path / "*_local_jforex_outcome_parity_summary.csv"),
+        out_summary_csv=tmp_path / "summary.csv",
+        out_checks_csv=tmp_path / "checks.csv",
+        report_out=tmp_path / "report.md",
+    )
+
+    row = summary.iloc[0]
+    assert bool(row["local_execution_parity_pass"]) is True
+    assert bool(row["local_jforex_surrogate_pass"]) is True
+    execution_check = checks[checks["metric_name"] == "local_execution_parity_pass"].iloc[0]
+    assert execution_check["status"] == "pass"
+    assert execution_check["details"] == "zero-lock idle window accepted"
+
+
+def test_build_artifacts_ignores_stage12_summary_input(tmp_path: Path) -> None:
+    from scripts.validate_local_jforex_surrogate import build_artifacts
+
+    lock_dir = tmp_path / "locks"
+    lock_dir.mkdir()
+    _write_lock(lock_dir, "EURUSD", deployable=True)
+
+    _write_csv(
+        tmp_path / "ignored_stage12.csv",
+        ["symbol", "stage12_api_parity_pass"],
+        [{"symbol": "EURUSD", "stage12_api_parity_pass": False}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_local_jforex_outcome_parity_summary.csv",
+        ["symbol", "jforex_outcome_parity_pass"],
+        [{"symbol": "EURUSD", "jforex_outcome_parity_pass": True}],
+    )
+
+    summary, checks = build_artifacts(
+        symbols=["EURUSD"],
+        lock_dir=lock_dir,
         local_signal_summary_glob="",
         local_execution_summary_glob="",
         local_lifecycle_summary_glob="",
@@ -53,6 +223,34 @@ def test_build_artifacts_includes_outcome_parity(tmp_path):
         out_checks_csv=tmp_path / "checks.csv",
         report_out=tmp_path / "report.md",
     )
-    outcome_row = checks[checks["check_id"] == "JFOREX_OUTCOME_PARITY_PASS"]
-    assert len(outcome_row) == 1, "JFOREX_OUTCOME_PARITY_PASS check not found"
-    assert outcome_row["status"].iloc[0] == "pass"
+
+    assert "STAGE12_API_PARITY_PASS" not in set(checks["check_id"])
+    row = summary.iloc[0]
+    assert bool(row["jforex_outcome_parity_pass"]) is True
+    assert bool(row["local_jforex_surrogate_pass"]) is True
+
+    written_summary = pd.read_csv(tmp_path / "summary.csv")
+    assert "historical_deployable" in written_summary.columns
+    assert "non_deployable_reason" in written_summary.columns
+    assert "local_jforex_surrogate_pass" in written_summary.columns
+    assert "local_jforex_surrogate_nogo" in written_summary.columns
+    assert "verdict" in written_summary.columns
+
+
+def test_main_rejects_legacy_stage12_cli_flag(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from scripts.validate_local_jforex_surrogate import main
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "validate_local_jforex_surrogate.py",
+            "--stage12-summary-glob",
+            str(tmp_path / "stage13_dukascopy_testclient_summary.csv"),
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 2

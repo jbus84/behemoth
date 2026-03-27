@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+import socket
 
-from scripts.run_local_jforex_surrogate_matrix import RunConfig, _prediction_path
+from scripts.run_local_jforex_surrogate_matrix import RunConfig, _pick_free_port, _prediction_path
 
 
 def _cfg(tmp_path: Path) -> RunConfig:
@@ -61,3 +62,23 @@ def test_prediction_path_falls_back_to_monthly_predictions(tmp_path: Path) -> No
     assert _prediction_path(cfg, "EURUSD") == str(
         Path(cfg.predictions_dir) / "EURUSD_oco_monthly_predictions.parquet"
     )
+
+
+def test_pick_free_port_prefers_requested_port_when_available() -> None:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind(("127.0.0.1", 0))
+    preferred = int(sock.getsockname()[1])
+    sock.close()
+
+    assert _pick_free_port("127.0.0.1", preferred) == preferred
+
+
+def test_pick_free_port_falls_back_when_requested_port_is_in_use() -> None:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as occupied:
+        occupied.bind(("127.0.0.1", 0))
+        preferred = int(occupied.getsockname()[1])
+        chosen = _pick_free_port("127.0.0.1", preferred)
+
+    assert chosen != preferred
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", chosen))
