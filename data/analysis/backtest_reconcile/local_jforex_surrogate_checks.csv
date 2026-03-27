@@ -1,37 +1,31 @@
 symbol,check_id,status,severity,metric_name,metric_value,expected,details,source_path,evaluated_at_utc
-AUDUSD,STAGE12_API_PARITY_PASS,fail,critical,stage12_api_parity_pass,0,1,missing input artifact,data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv,2026-03-26T22:34:56Z
-AUDUSD,LOCAL_SIGNAL_PARITY_PASS,pass,critical,local_signal_parity_pass,1,1,,data/analysis/backtest_reconcile/AUDUSD_local_jforex_signal_parity_summary.csv,2026-03-26T22:34:56Z
-AUDUSD,LOCAL_EXECUTION_PARITY_PASS,pass,critical,local_execution_parity_pass,1,1,,data/analysis/backtest_reconcile/AUDUSD_local_jforex_execution_parity_summary.csv,2026-03-26T22:34:56Z
-AUDUSD,LOCAL_LIFECYCLE_PASS,pass,critical,local_lifecycle_pass,1,1,,data/analysis/backtest_reconcile/AUDUSD_local_jforex_oco_lifecycle_summary.csv,2026-03-26T22:34:56Z
-AUDUSD,LOCAL_OPERATIONAL_READY_PASS,pass,critical,local_operational_ready_pass,1,1,,data/analysis/backtest_reconcile/AUDUSD_local_jforex_operational_ready_summary.csv,2026-03-26T22:34:56Z
-AUDUSD,JFOREX_OUTCOME_PARITY_PASS,pass,critical,jforex_outcome_parity_pass,1,1,,data/analysis/backtest_reconcile/AUDUSD_local_jforex_outcome_parity_summary.csv,2026-03-26T22:34:56Z
-EURUSD,STAGE12_API_PARITY_PASS,fail,critical,stage12_api_parity_pass,0,1,missing input artifact,data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv,2026-03-26T22:34:56Z
-EURUSD,LOCAL_SIGNAL_PARITY_PASS,pass,critical,local_signal_parity_pass,1,1,,data/analysis/backtest_reconcile/EURUSD_local_jforex_signal_parity_summary.csv,2026-03-26T22:34:56Z
-EURUSD,LOCAL_EXECUTION_PARITY_PASS,fail,critical,local_execution_parity_pass,0,1,,data/analysis/backtest_reconcile/EURUSD_local_jforex_execution_parity_summary.csv,2026-03-26T22:34:56Z
-EURUSD,LOCAL_LIFECYCLE_PASS,pass,critical,local_lifecycle_pass,1,1,,data/analysis/backtest_reconcile/EURUSD_local_jforex_oco_lifecycle_summary.csv,2026-03-26T22:34:56Z
-EURUSD,LOCAL_OPERATIONAL_READY_PASS,pass,critical,local_operational_ready_pass,1,1,,data/analysis/backtest_reconcile/EURUSD_local_jforex_operational_ready_summary.csv,2026-03-26T22:34:56Z
-EURUSD,JFOREX_OUTCOME_PARITY_PASS,pass,critical,jforex_outcome_parity_pass,1,1,,data/analysis/backtest_reconcile/EURUSD_local_jforex_outcome_parity_summary.csv,2026-03-26T22:34:56Z
-GBPUSD,STAGE12_API_PARITY_PASS,fail,critical,stage12_api_parity_pass,0,1,missing input artifact,data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv,2026-03-26T22:34:56Z
-GBPUSD,LOCAL_SIGNAL_PARITY_PASS,pass,critical,local_signal_parity_pass,1,1,,data/analysis/backtest_reconcile/GBPUSD_local_jforex_signal_parity_summary.csv,2026-03-26T22:34:56Z
-GBPUSD,LOCAL_EXECUTION_PARITY_PASS,pass,critical,local_execution_parity_pass,1,1,,data/analysis/backtest_reconcile/GBPUSD_local_jforex_execution_parity_summary.csv,2026-03-26T22:34:56Z
-GBPUSD,LOCAL_LIFECYCLE_PASS,pass,critical,local_lifecycle_pass,1,1,,data/analysis/backtest_reconcile/GBPUSD_local_jforex_oco_lifecycle_summary.csv,2026-03-26T22:34:56Z
-GBPUSD,LOCAL_OPERATIONAL_READY_PASS,pass,critical,local_operational_ready_pass,1,1,,data/analysis/backtest_reconcile/GBPUSD_local_jforex_operational_ready_summary.csv,2026-03-26T22:34:56Z
-GBPUSD,JFOREX_OUTCOME_PARITY_PASS,pass,critical,jforex_outcome_parity_pass,1,1,,data/analysis/backtest_reconcile/GBPUSD_local_jforex_outcome_parity_summary.csv,2026-03-26T22:34:56Z
-USDCAD,STAGE12_API_PARITY_PASS,fail,critical,stage12_api_parity_pass,0,1,missing input artifact,data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv,2026-03-26T22:34:56Z
-USDCAD,LOCAL_SIGNAL_PARITY_PASS,fail,critical,local_signal_parity_pass,0,1,,data/analysis/backtest_reconcile/USDCAD_local_jforex_signal_parity_summary.csv,2026-03-26T22:34:56Z
-USDCAD,LOCAL_EXECUTION_PARITY_PASS,fail,critical,local_execution_parity_pass,0,1,,data/analysis/backtest_reconcile/USDCAD_local_jforex_execution_parity_summary.csv,2026-03-26T22:34:56Z
-USDCAD,LOCAL_LIFECYCLE_PASS,pass,critical,local_lifecycle_pass,1,1,,data/analysis/backtest_reconcile/USDCAD_local_jforex_oco_lifecycle_summary.csv,2026-03-26T22:34:56Z
-USDCAD,LOCAL_OPERATIONAL_READY_PASS,pass,critical,local_operational_ready_pass,1,1,,data/analysis/backtest_reconcile/USDCAD_local_jforex_operational_ready_summary.csv,2026-03-26T22:34:56Z
-USDCAD,JFOREX_OUTCOME_PARITY_PASS,fail,critical,jforex_outcome_parity_pass,0,1,,data/analysis/backtest_reconcile/USDCAD_local_jforex_outcome_parity_summary.csv,2026-03-26T22:34:56Z
-USDCHF,STAGE12_API_PARITY_PASS,fail,critical,stage12_api_parity_pass,0,1,missing input artifact,data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv,2026-03-26T22:34:56Z
-USDCHF,LOCAL_SIGNAL_PARITY_PASS,pass,critical,local_signal_parity_pass,1,1,,data/analysis/backtest_reconcile/USDCHF_local_jforex_signal_parity_summary.csv,2026-03-26T22:34:56Z
-USDCHF,LOCAL_EXECUTION_PARITY_PASS,fail,critical,local_execution_parity_pass,0,1,,data/analysis/backtest_reconcile/USDCHF_local_jforex_execution_parity_summary.csv,2026-03-26T22:34:56Z
-USDCHF,LOCAL_LIFECYCLE_PASS,pass,critical,local_lifecycle_pass,1,1,,data/analysis/backtest_reconcile/USDCHF_local_jforex_oco_lifecycle_summary.csv,2026-03-26T22:34:56Z
-USDCHF,LOCAL_OPERATIONAL_READY_PASS,pass,critical,local_operational_ready_pass,1,1,,data/analysis/backtest_reconcile/USDCHF_local_jforex_operational_ready_summary.csv,2026-03-26T22:34:56Z
-USDCHF,JFOREX_OUTCOME_PARITY_PASS,pass,critical,jforex_outcome_parity_pass,1,1,,data/analysis/backtest_reconcile/USDCHF_local_jforex_outcome_parity_summary.csv,2026-03-26T22:34:56Z
-USDJPY,STAGE12_API_PARITY_PASS,fail,critical,stage12_api_parity_pass,0,1,missing input artifact,data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv,2026-03-26T22:34:56Z
-USDJPY,LOCAL_SIGNAL_PARITY_PASS,pass,critical,local_signal_parity_pass,1,1,,data/analysis/backtest_reconcile/USDJPY_local_jforex_signal_parity_summary.csv,2026-03-26T22:34:56Z
-USDJPY,LOCAL_EXECUTION_PARITY_PASS,pass,critical,local_execution_parity_pass,1,1,,data/analysis/backtest_reconcile/USDJPY_local_jforex_execution_parity_summary.csv,2026-03-26T22:34:56Z
-USDJPY,LOCAL_LIFECYCLE_PASS,pass,critical,local_lifecycle_pass,1,1,,data/analysis/backtest_reconcile/USDJPY_local_jforex_oco_lifecycle_summary.csv,2026-03-26T22:34:56Z
-USDJPY,LOCAL_OPERATIONAL_READY_PASS,pass,critical,local_operational_ready_pass,1,1,,data/analysis/backtest_reconcile/USDJPY_local_jforex_operational_ready_summary.csv,2026-03-26T22:34:56Z
-USDJPY,JFOREX_OUTCOME_PARITY_PASS,pass,critical,jforex_outcome_parity_pass,1,1,,data/analysis/backtest_reconcile/USDJPY_local_jforex_outcome_parity_summary.csv,2026-03-26T22:34:56Z
+AUDUSD,LOCAL_SIGNAL_PARITY_PASS,pass,critical,local_signal_parity_pass,1,1,,data/analysis/backtest_reconcile/AUDUSD_local_jforex_signal_parity_summary.csv,2026-03-27T15:11:52Z
+AUDUSD,LOCAL_EXECUTION_PARITY_PASS,pass,critical,local_execution_parity_pass,1,1,,data/analysis/backtest_reconcile/AUDUSD_local_jforex_execution_parity_summary.csv,2026-03-27T15:11:52Z
+AUDUSD,LOCAL_LIFECYCLE_PASS,pass,critical,local_lifecycle_pass,1,1,,data/analysis/backtest_reconcile/AUDUSD_local_jforex_oco_lifecycle_summary.csv,2026-03-27T15:11:52Z
+AUDUSD,LOCAL_OPERATIONAL_READY_PASS,pass,critical,local_operational_ready_pass,1,1,,data/analysis/backtest_reconcile/AUDUSD_local_jforex_operational_ready_summary.csv,2026-03-27T15:11:52Z
+AUDUSD,JFOREX_OUTCOME_PARITY_PASS,pass,critical,jforex_outcome_parity_pass,1,1,,data/analysis/backtest_reconcile/AUDUSD_local_jforex_outcome_parity_summary.csv,2026-03-27T15:11:52Z
+EURUSD,LOCAL_SIGNAL_PARITY_PASS,pass,critical,local_signal_parity_pass,1,1,,data/analysis/backtest_reconcile/EURUSD_local_jforex_signal_parity_summary.csv,2026-03-27T15:11:52Z
+EURUSD,LOCAL_EXECUTION_PARITY_PASS,pass,critical,local_execution_parity_pass,1,1,zero-lock idle window accepted,data/analysis/backtest_reconcile/EURUSD_local_jforex_execution_parity_summary.csv,2026-03-27T15:11:52Z
+EURUSD,LOCAL_LIFECYCLE_PASS,pass,critical,local_lifecycle_pass,1,1,,data/analysis/backtest_reconcile/EURUSD_local_jforex_oco_lifecycle_summary.csv,2026-03-27T15:11:52Z
+EURUSD,LOCAL_OPERATIONAL_READY_PASS,pass,critical,local_operational_ready_pass,1,1,,data/analysis/backtest_reconcile/EURUSD_local_jforex_operational_ready_summary.csv,2026-03-27T15:11:52Z
+EURUSD,JFOREX_OUTCOME_PARITY_PASS,pass,critical,jforex_outcome_parity_pass,1,1,,data/analysis/backtest_reconcile/EURUSD_local_jforex_outcome_parity_summary.csv,2026-03-27T15:11:52Z
+GBPUSD,LOCAL_SIGNAL_PARITY_PASS,pass,critical,local_signal_parity_pass,1,1,,data/analysis/backtest_reconcile/GBPUSD_local_jforex_signal_parity_summary.csv,2026-03-27T15:11:52Z
+GBPUSD,LOCAL_EXECUTION_PARITY_PASS,pass,critical,local_execution_parity_pass,1,1,,data/analysis/backtest_reconcile/GBPUSD_local_jforex_execution_parity_summary.csv,2026-03-27T15:11:52Z
+GBPUSD,LOCAL_LIFECYCLE_PASS,pass,critical,local_lifecycle_pass,1,1,,data/analysis/backtest_reconcile/GBPUSD_local_jforex_oco_lifecycle_summary.csv,2026-03-27T15:11:52Z
+GBPUSD,LOCAL_OPERATIONAL_READY_PASS,pass,critical,local_operational_ready_pass,1,1,,data/analysis/backtest_reconcile/GBPUSD_local_jforex_operational_ready_summary.csv,2026-03-27T15:11:52Z
+GBPUSD,JFOREX_OUTCOME_PARITY_PASS,pass,critical,jforex_outcome_parity_pass,1,1,,data/analysis/backtest_reconcile/GBPUSD_local_jforex_outcome_parity_summary.csv,2026-03-27T15:11:52Z
+USDCAD,LOCAL_SIGNAL_PARITY_PASS,nogo,critical,local_signal_parity_pass,0,1,historically non-deployable: no_gate_states,data/analysis/backtest_reconcile/USDCAD_local_jforex_signal_parity_summary.csv,2026-03-27T15:11:52Z
+USDCAD,LOCAL_EXECUTION_PARITY_PASS,nogo,critical,local_execution_parity_pass,0,1,historically non-deployable: no_gate_states,data/analysis/backtest_reconcile/USDCAD_local_jforex_execution_parity_summary.csv,2026-03-27T15:11:52Z
+USDCAD,LOCAL_LIFECYCLE_PASS,nogo,critical,local_lifecycle_pass,0,1,historically non-deployable: no_gate_states,data/analysis/backtest_reconcile/USDCAD_local_jforex_oco_lifecycle_summary.csv,2026-03-27T15:11:52Z
+USDCAD,LOCAL_OPERATIONAL_READY_PASS,nogo,critical,local_operational_ready_pass,0,1,historically non-deployable: no_gate_states,data/analysis/backtest_reconcile/USDCAD_local_jforex_operational_ready_summary.csv,2026-03-27T15:11:52Z
+USDCAD,JFOREX_OUTCOME_PARITY_PASS,nogo,critical,jforex_outcome_parity_pass,0,1,historically non-deployable: no_gate_states,data/analysis/backtest_reconcile/USDCAD_local_jforex_outcome_parity_summary.csv,2026-03-27T15:11:52Z
+USDCHF,LOCAL_SIGNAL_PARITY_PASS,pass,critical,local_signal_parity_pass,1,1,,data/analysis/backtest_reconcile/USDCHF_local_jforex_signal_parity_summary.csv,2026-03-27T15:11:52Z
+USDCHF,LOCAL_EXECUTION_PARITY_PASS,pass,critical,local_execution_parity_pass,1,1,zero-lock idle window accepted,data/analysis/backtest_reconcile/USDCHF_local_jforex_execution_parity_summary.csv,2026-03-27T15:11:52Z
+USDCHF,LOCAL_LIFECYCLE_PASS,pass,critical,local_lifecycle_pass,1,1,,data/analysis/backtest_reconcile/USDCHF_local_jforex_oco_lifecycle_summary.csv,2026-03-27T15:11:52Z
+USDCHF,LOCAL_OPERATIONAL_READY_PASS,pass,critical,local_operational_ready_pass,1,1,,data/analysis/backtest_reconcile/USDCHF_local_jforex_operational_ready_summary.csv,2026-03-27T15:11:52Z
+USDCHF,JFOREX_OUTCOME_PARITY_PASS,pass,critical,jforex_outcome_parity_pass,1,1,,data/analysis/backtest_reconcile/USDCHF_local_jforex_outcome_parity_summary.csv,2026-03-27T15:11:52Z
+USDJPY,LOCAL_SIGNAL_PARITY_PASS,pass,critical,local_signal_parity_pass,1,1,,data/analysis/backtest_reconcile/USDJPY_local_jforex_signal_parity_summary.csv,2026-03-27T15:11:52Z
+USDJPY,LOCAL_EXECUTION_PARITY_PASS,pass,critical,local_execution_parity_pass,1,1,,data/analysis/backtest_reconcile/USDJPY_local_jforex_execution_parity_summary.csv,2026-03-27T15:11:52Z
+USDJPY,LOCAL_LIFECYCLE_PASS,pass,critical,local_lifecycle_pass,1,1,,data/analysis/backtest_reconcile/USDJPY_local_jforex_oco_lifecycle_summary.csv,2026-03-27T15:11:52Z
+USDJPY,LOCAL_OPERATIONAL_READY_PASS,pass,critical,local_operational_ready_pass,1,1,,data/analysis/backtest_reconcile/USDJPY_local_jforex_operational_ready_summary.csv,2026-03-27T15:11:52Z
+USDJPY,JFOREX_OUTCOME_PARITY_PASS,pass,critical,jforex_outcome_parity_pass,1,1,,data/analysis/backtest_reconcile/USDJPY_local_jforex_outcome_parity_summary.csv,2026-03-27T15:11:52Z

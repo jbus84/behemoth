@@ -149,6 +149,16 @@ def test_read_failures_ignores_expected_non_deployable_nogo(tmp_path, monkeypatc
                 "details": "accepted non-deployable local surrogate NO_GO (historical_deployable=false, reason=no_gate_states)",
             }
         )
+        writer.writerow(
+            {
+                "symbol": "USDCAD",
+                "check_id": "JFOREX_OUTCOME_PARITY_PASS",
+                "status": "NO_GO",
+                "severity": "critical",
+                "metric_name": "jforex_outcome_parity_pass",
+                "details": "accepted historical non-deployable NO_GO (historical_deployable=false, reason=no_gate_states)",
+            }
+        )
     monkeypatch.setattr(run_monthly_recert, "_repo_root", lambda: tmp_path)
 
     failures = run_monthly_recert._read_failures("reports")
@@ -156,6 +166,10 @@ def test_read_failures_ignores_expected_non_deployable_nogo(tmp_path, monkeypatc
 
     assert failures == {}
     assert list(acceptable_nogos) == ["USDCAD"]
+    assert {row["check_id"] for row in acceptable_nogos["USDCAD"]} == {
+        "LOCAL_JFOREX_SURROGATE_PASS",
+        "JFOREX_OUTCOME_PARITY_PASS",
+    }
 
 
 def test_print_summary_keeps_go_when_only_expected_nogo_remains(capsys) -> None:

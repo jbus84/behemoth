@@ -142,6 +142,12 @@ def _evaluate_local_surrogate(match: pd.DataFrame) -> tuple[bool | None, str]:
     return bool(value), ""
 
 
+def _non_deployable_nogo_details(row: dict[str, Any]) -> str:
+    reason = str(row.get("non_deployable_reason") or "").strip()
+    reason_suffix = f", reason={reason}" if reason else ""
+    return f"accepted historical non-deployable NO_GO (historical_deployable=false{reason_suffix})"
+
+
 def build_stage14_artifacts(
     *,
     symbols: list[str],
@@ -214,6 +220,17 @@ def build_stage14_artifacts(
         by_symbol = checks[checks["symbol"] == symbol].copy()
         row: dict[str, Any] = {"symbol": symbol}
         missing_inputs = 0
+        historical_deployable: bool | None = None
+        non_deployable_reason = ""
+        if not by_symbol.empty:
+            deployable_rows = by_symbol[by_symbol["historical_deployable"].notna()]
+            if not deployable_rows.empty:
+                historical_deployable = deployable_rows.iloc[-1].get("historical_deployable")
+            reason_rows = by_symbol[
+                by_symbol["non_deployable_reason"].astype(str).str.strip() != ""
+            ]
+            if not reason_rows.empty:
+                non_deployable_reason = str(reason_rows.iloc[-1].get("non_deployable_reason") or "").strip()
         for src in sources:
             match = by_symbol[by_symbol["check_id"] == src.check_id].copy()
             if src.check_id == "local_jforex_surrogate_pass":
@@ -242,6 +259,21 @@ def build_stage14_artifacts(
                             row[src.check_id] = False
                     except ValueError:
                         pass
+            if (
+                historical_deployable is False
+                and src.check_id
+                in {
+                    "jforex_signal_parity_pass",
+                    "jforex_execution_parity_pass",
+                    "jforex_outcome_parity_pass",
+                    "local_jforex_surrogate_pass",
+                }
+                and status != "pass"
+            ):
+                status = "nogo"
+                details = _non_deployable_nogo_details(
+                    {"non_deployable_reason": non_deployable_reason}
+                )
             source_path = "" if match.empty else str(match.iloc[-1].get("source_path") or "")
             check_rows.append(
                 {
@@ -260,7 +292,10 @@ def build_stage14_artifacts(
         row["stage14_jforex_cert_pass"] = all(bool(row[src.check_id]) for src in sources)
         # missing_inputs counts absent-file failures only; stale artifacts fail the cert but do not increment this counter
         row["missing_inputs"] = missing_inputs
-        row["verdict"] = "green" if row["stage14_jforex_cert_pass"] else "red"
+        if historical_deployable is False:
+            row["verdict"] = "nogo"
+        else:
+            row["verdict"] = "green" if row["stage14_jforex_cert_pass"] else "red"
         row["evaluated_at_utc"] = now_utc
         summary_rows.append(row)
 

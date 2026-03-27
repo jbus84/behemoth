@@ -1,7 +1,7 @@
 symbol,historical_deployable,non_deployable_reason,dukascopy_runtime_artifacts_complete_pass,dukascopy_signal_path_exercised_pass,dukascopy_operational_ready_pass,stage13_dukascopy_testclient_pass,missing_inputs,verdict,evaluated_at_utc
-AUDUSD,True,,True,True,True,True,0,green,2026-03-26T22:33:59Z
-EURUSD,True,,True,True,True,True,0,green,2026-03-26T22:33:59Z
-GBPUSD,True,,True,True,True,True,0,green,2026-03-26T22:33:59Z
-USDCAD,False,no_gate_states,True,True,True,True,0,green,2026-03-26T22:33:59Z
-USDCHF,True,,True,True,True,True,0,green,2026-03-26T22:33:59Z
-USDJPY,True,,True,True,True,True,0,green,2026-03-26T22:33:59Z
+AUDUSD,True,,True,True,True,True,0,green,2026-03-27T15:10:53Z
+EURUSD,True,,True,True,True,True,0,green,2026-03-27T15:10:53Z
+GBPUSD,True,,True,True,True,True,0,green,2026-03-27T15:10:53Z
+USDCAD,False,no_gate_states,True,True,True,True,0,green,2026-03-27T15:10:53Z
+USDCHF,True,,True,True,True,True,0,green,2026-03-27T15:10:53Z
+USDJPY,True,,True,True,True,True,0,green,2026-03-27T15:10:53Z

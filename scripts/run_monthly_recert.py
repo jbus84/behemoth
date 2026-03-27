@@ -85,13 +85,11 @@ def _read_failures(report_dir: str) -> dict[str, list[dict[str, str]]]:
 
 
 def _is_expected_critical_nogo(row: dict[str, str]) -> bool:
-    metric_name = str(row.get("metric_name") or row.get("check_id") or "").strip().lower()
-    if metric_name != "local_jforex_surrogate_pass":
-        return False
     status = str(row.get("status") or "").strip().lower()
     details = str(row.get("details") or "").strip().lower()
     return (
-        "accepted non-deployable" in details
+        "accepted historical non-deployable" in details
+        or "accepted non-deployable" in details
         or (
             status in {"nogo", "no_go", "no-go"}
             and (

@@ -358,12 +358,77 @@ def test_build_stage14_artifacts_accepts_local_surrogate_nogo_for_non_deployable
     )
 
     assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is True
-    assert summary.loc[0, "verdict"] == "green"
+    assert summary.loc[0, "verdict"] == "nogo"
     surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"]
     assert len(surrogate_check) == 1
     assert surrogate_check.iloc[0]["status"] == "pass"
     assert "no_go" in surrogate_check.iloc[0]["details"].lower()
     assert bool(surrogate_check.iloc[0]["metric_value"]) is True
+
+
+def test_build_stage14_artifacts_marks_non_deployable_symbol_as_nogo(tmp_path: Path) -> None:
+    _write_csv(
+        tmp_path / "USDCAD_stage13.csv",
+        [{"symbol": "USDCAD", "stage13_dukascopy_testclient_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "USDCAD_jforex_signal.csv",
+        [{"symbol": "USDCAD", "jforex_signal_parity_pass": False}],
+    )
+    _write_csv(
+        tmp_path / "USDCAD_jforex_execution.csv",
+        [{"symbol": "USDCAD", "jforex_execution_parity_pass": False}],
+    )
+    _write_csv(
+        tmp_path / "USDCAD_jforex_lifecycle.csv",
+        [{"symbol": "USDCAD", "oco_lifecycle_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "USDCAD_jforex_ops.csv",
+        [{"symbol": "USDCAD", "operational_ready_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "USDCAD_outcome.csv",
+        [{"symbol": "USDCAD", "jforex_outcome_parity_pass": False}],
+    )
+    local_surrogate_path = _write_local_surrogate_row(
+        tmp_path,
+        "USDCAD",
+        historical_deployable=False,
+        non_deployable_reason="no_gate_states",
+        verdict="NO_GO",
+    )
+
+    summary, checks = build_stage14_artifacts(
+        symbols=["USDCAD"],
+        stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
+        jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
+        jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_lifecycle.csv"),
+        jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
+        jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
+        local_surrogate_summary_glob=str(local_surrogate_path),
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+    )
+
+    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
+    assert summary.loc[0, "verdict"] == "nogo"
+    for metric_name in (
+        "jforex_signal_parity_pass",
+        "jforex_execution_parity_pass",
+        "jforex_outcome_parity_pass",
+    ):
+        check = checks[checks["metric_name"] == metric_name]
+        assert len(check) == 1
+        assert check.iloc[0]["status"] == "nogo"
+        assert "historical non-deployable" in str(check.iloc[0]["details"]).lower()
+    surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"]
+    assert len(surrogate_check) == 1
+    assert surrogate_check.iloc[0]["status"] == "pass"
 
 
 def test_build_stage14_artifacts_rejects_deployable_symbol_with_local_surrogate_nogo(
