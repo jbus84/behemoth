@@ -370,6 +370,24 @@ def _rolling_day_threshold_vector(
     return out, src
 
 
+def _export_train_predictions(
+    *,
+    train_ts: pd.Series,
+    train_p: np.ndarray,
+    out_path: Path,
+) -> None:
+    """Export training predictions as a parquet artifact for live seeding."""
+    tr_t = pd.to_datetime(train_ts, utc=True, errors="coerce")
+    tr_v = np.asarray(train_p, dtype=float)
+    ok = np.isfinite(tr_v) & tr_t.notna().to_numpy()
+    df = pd.DataFrame({
+        "day": tr_t[ok].dt.floor("D").dt.date,
+        "pred_prob": tr_v[ok],
+    })
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(out_path, index=False)
+
+
 def _wfo_monthly(
     d: pd.DataFrame,
     *,
@@ -522,6 +540,15 @@ def _wfo_monthly(
             thr_path = cbm_path.with_suffix(".json")
             thr_path.write_text(json.dumps(thr_meta, indent=2))
             print(f"exported: {cbm_path} + {thr_path} + {imp_path}")
+
+            # Export training predictions for live seeding
+            train_pred_path = model_export_dir / f"{symbol}_train_predictions_{month_tag}.parquet"
+            _export_train_predictions(
+                train_ts=tr["close_ts"],
+                train_p=p_tr,
+                out_path=train_pred_path,
+            )
+            print(f"exported: {train_pred_path}")
 
         from sklearn.metrics import brier_score_loss, roc_auc_score  # local import
 

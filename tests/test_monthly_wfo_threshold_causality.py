@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -171,3 +173,33 @@ def test_attach_stable_event_ids_assigns_deterministic_keys() -> None:
     c1 = out[out["candidate_uid"] == "c1"].sort_values("close_ts")
     assert c1["event_ordinal"].tolist() == [0, 1]
     assert c1["scored_row_id"].tolist() == ["2025-07|c1|0", "2025-07|c1|1"]
+
+
+def test_export_train_predictions_parquet(tmp_path: Path) -> None:
+    """Training predictions export should contain (day, pred_prob) rows
+    matching the training data used by the rolling threshold."""
+    from scripts.run_tick_opportunity_monthly_wfo import _export_train_predictions
+
+    train_ts = pd.Series(
+        pd.to_datetime(
+            ["2025-01-01T10:00:00Z", "2025-01-01T11:00:00Z", "2025-01-02T10:00:00Z"],
+            utc=True,
+        )
+    )
+    train_p = np.array([0.3, 0.4, 0.7], dtype=float)
+    out_path = tmp_path / "EURUSD_train_predictions_2025-02.parquet"
+
+    _export_train_predictions(
+        train_ts=train_ts,
+        train_p=train_p,
+        out_path=out_path,
+    )
+
+    assert out_path.exists()
+    df = pd.read_parquet(out_path)
+    assert list(df.columns) == ["day", "pred_prob"]
+    assert len(df) == 3
+    assert df["pred_prob"].tolist() == [0.3, 0.4, 0.7]
+    # Days should be date objects, floored from timestamps
+    assert str(df["day"].iloc[0]) == "2025-01-01"
+    assert str(df["day"].iloc[2]) == "2025-01-02"
