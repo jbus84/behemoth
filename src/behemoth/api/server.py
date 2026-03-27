@@ -1889,6 +1889,8 @@ class SeedAuditHistoryRequest(BaseModel):
     symbols: list[str] | None = None
     days_back: int = 20
     run_id: str = "audit_seed"
+    train_predictions_dir: str | None = None
+    test_month_start: str | None = None
 
 
 class HealthResponse(BaseModel):
@@ -2988,8 +2990,49 @@ async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
 
     symbols = [s.upper() for s in (req.symbols or _config.symbols)]
     now_ts = datetime.now(tz=timezone.utc)
-    start_dt = now_ts - timedelta(days=req.days_back)
+    if req.test_month_start:
+        start_dt = datetime.fromisoformat(req.test_month_start).replace(tzinfo=timezone.utc)
+    else:
+        start_dt = now_ts - timedelta(days=req.days_back)
     events_by_symbol: dict[str, int] = {}
+
+    # ── Phase 1: Seed training predictions from exported artifact ──
+    train_pred_dir = Path(req.train_predictions_dir) if req.train_predictions_dir else None
+    phase1_events: dict[str, int] = {}
+
+    if train_pred_dir is not None:
+        for sym in symbols:
+            try:
+                contract = _resolve_runtime_contract(sym, now_ts)
+                if not contract.candidates:
+                    phase1_events[sym] = 0
+                    continue
+                month_tag = contract.model_month
+                pred_path = train_pred_dir / f"{sym}_train_predictions_{month_tag}.parquet"
+                if not pred_path.exists():
+                    logger.warning(
+                        "seed_audit_history phase1: no training predictions at %s", pred_path
+                    )
+                    phase1_events[sym] = 0
+                    continue
+                total_for_sym = 0
+                for cand in contract.candidates:
+                    canonical_uid = (
+                        f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+                    )
+                    n = _state.seed_training_predictions(
+                        parquet_path=pred_path,
+                        symbol=sym,
+                        candidate_uid=canonical_uid,
+                        model_month=month_tag,
+                        run_id=f"{req.run_id}_phase1",
+                    )
+                    total_for_sym += n
+                phase1_events[sym] = total_for_sym
+                logger.info("seed_audit_history phase1: %d events for %s", total_for_sym, sym)
+            except Exception as exc:
+                logger.warning("seed_audit_history phase1 failed for %s: %s", sym, exc)
+                phase1_events[sym] = 0
 
     for sym in symbols:
         sym_dir = ticks_dir / sym
@@ -3164,8 +3207,13 @@ async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
         events_by_symbol[sym] = n_written
         logger.info("seed_audit_history: wrote %d events for %s", n_written, sym)
 
-    total = sum(events_by_symbol.values())
-    return {"ok": True, "events_by_symbol": events_by_symbol, "total_events": total}
+    total = sum(events_by_symbol.values()) + sum(phase1_events.values())
+    return {
+        "ok": True,
+        "phase1_events": phase1_events,
+        "phase2_events": events_by_symbol,
+        "total_events": total,
+    }
 
 
 @app.post("/trades/touch")
