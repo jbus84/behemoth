@@ -12,22 +12,11 @@ import numpy as np
 from dateutil.relativedelta import relativedelta
 from zoneinfo import ZoneInfo
 
-try:
-    import tick_vault.config
-    import tick_vault.download_worker
-    import tick_vault.fetcher
-    from tick_vault import download_range, read_tick_data
-    from tick_vault.fetcher import RetryableError
-except ModuleNotFoundError as exc:
-    if not exc.name or not exc.name.startswith("tick_vault"):
-        raise
-
-    tick_vault = None
-    download_range = None
-    read_tick_data = None
-
-    class RetryableError(RuntimeError):
-        pass
+import tick_vault.config
+import tick_vault.download_worker
+import tick_vault.fetcher
+from tick_vault import download_range, read_tick_data
+from tick_vault.fetcher import RetryableError
 
 # Configure logging
 logging.basicConfig(

@@ -1,8 +1,50 @@
 from __future__ import annotations
 
+import sys
+import types
 from datetime import UTC, datetime
 
-from scripts.download_tick_vault_data import (
+
+def _install_tick_vault_stubs() -> None:
+    if "tick_vault" in sys.modules:
+        return
+
+    package = types.ModuleType("tick_vault")
+    package.__path__ = []  # type: ignore[attr-defined]
+
+    config = types.ModuleType("tick_vault.config")
+    config.reload_config = lambda **_: None
+    config.CONFIG = object()
+
+    download_worker = types.ModuleType("tick_vault.download_worker")
+    download_worker.AsyncClient = object
+
+    fetcher = types.ModuleType("tick_vault.fetcher")
+    fetcher._fetch = lambda *args, **kwargs: None
+    fetcher.RetryableError = RuntimeError
+    fetcher.FetchError = RuntimeError
+
+    def _download_range(*args, **kwargs):
+        raise RuntimeError("download_range stub should not be used in helper tests")
+
+    def _read_tick_data(*args, **kwargs):
+        raise RuntimeError("read_tick_data stub should not be used in helper tests")
+
+    package.config = config
+    package.download_worker = download_worker
+    package.fetcher = fetcher
+    package.download_range = _download_range
+    package.read_tick_data = _read_tick_data
+
+    sys.modules["tick_vault"] = package
+    sys.modules["tick_vault.config"] = config
+    sys.modules["tick_vault.download_worker"] = download_worker
+    sys.modules["tick_vault.fetcher"] = fetcher
+
+
+_install_tick_vault_stubs()
+
+from scripts.download_tick_vault_data import (  # noqa: E402
     get_session_bounds_utc,
     is_expected_weekend_gap,
     is_fx_market_open,
