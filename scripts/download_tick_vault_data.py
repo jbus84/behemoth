@@ -190,7 +190,10 @@ def get_missing_months(symbol: str, out_dir: Path, end_date: datetime) -> list[t
                 last_ts, _ = get_parquet_info(out_path)
                 if last_ts and is_fx_market_open(last_ts):
                     close_utc, _ = get_session_bounds_utc(last_ts)
-                    if last_ts < close_utc:
+                    boundary_tolerance = relativedelta(minutes=5)
+                    near_month_end = last_ts + boundary_tolerance >= month_end
+                    near_session_close = last_ts + boundary_tolerance >= close_utc
+                    if last_ts < close_utc and not near_month_end and not near_session_close:
                         logger.info(f"[{symbol}] [{yyyymm}] File ends early ({last_ts.time()}) on a market day. Refilling...")
                         ranges_to_fill.append((last_ts + relativedelta(microseconds=1000), month_end))
 

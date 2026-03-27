@@ -208,6 +208,65 @@ def test_get_missing_months_appends_before_friday_close(monkeypatch, tmp_path: P
     assert ranges[0][1] == fake_now
 
 
+# --- boundary tolerance for historical months ---
+
+
+def test_get_missing_months_ignores_file_ending_near_month_boundary(monkeypatch, tmp_path: Path) -> None:
+    """A file ending seconds before month-end should not trigger a refill."""
+    out_dir = tmp_path / "ticks"
+    symbol_dir = out_dir / "EURUSD"
+    symbol_dir.mkdir(parents=True)
+    # Jan 2018 file ends at 23:59:47 on Jan 31 (13s before month end)
+    month_path = symbol_dir / "EURUSD_201801_ticks.parquet"
+    _write_tick_parquet(month_path, [datetime(2018, 1, 31, 23, 59, 47, 19000, tzinfo=UTC)])
+    monkeypatch.setattr("scripts.download_tick_vault_data.GLOBAL_START_DATE", datetime(2018, 1, 1, tzinfo=UTC))
+    fake_now = datetime(2026, 3, 27, 17, 0, tzinfo=UTC)
+    monkeypatch.setattr(
+        "scripts.download_tick_vault_data.datetime",
+        type("FakeDT", (), {"now": staticmethod(lambda tz=None: fake_now)}),
+    )
+    ranges = get_missing_months("EURUSD", out_dir, datetime(2018, 2, 1, tzinfo=UTC))
+    assert ranges == []
+
+
+def test_get_missing_months_ignores_file_ending_near_friday_close(monkeypatch, tmp_path: Path) -> None:
+    """A file ending seconds before Friday close should not trigger a refill."""
+    out_dir = tmp_path / "ticks"
+    symbol_dir = out_dir / "EURUSD"
+    symbol_dir.mkdir(parents=True)
+    # Jun 2018 file ends at 20:59:56 on Jun 29 (DST close at 21:00)
+    month_path = symbol_dir / "EURUSD_201806_ticks.parquet"
+    _write_tick_parquet(month_path, [datetime(2018, 6, 29, 20, 59, 56, 236000, tzinfo=UTC)])
+    monkeypatch.setattr("scripts.download_tick_vault_data.GLOBAL_START_DATE", datetime(2018, 6, 1, tzinfo=UTC))
+    fake_now = datetime(2026, 3, 27, 17, 0, tzinfo=UTC)
+    monkeypatch.setattr(
+        "scripts.download_tick_vault_data.datetime",
+        type("FakeDT", (), {"now": staticmethod(lambda tz=None: fake_now)}),
+    )
+    ranges = get_missing_months("EURUSD", out_dir, datetime(2018, 7, 1, tzinfo=UTC))
+    assert ranges == []
+
+
+def test_get_missing_months_still_flags_genuinely_early_ending(monkeypatch, tmp_path: Path) -> None:
+    """A file ending hours before Friday close should still trigger a refill."""
+    out_dir = tmp_path / "ticks"
+    symbol_dir = out_dir / "EURUSD"
+    symbol_dir.mkdir(parents=True)
+    # File ends at 15:00 on a Wednesday — genuinely truncated
+    month_path = symbol_dir / "EURUSD_201806_ticks.parquet"
+    last_ts = datetime(2018, 6, 20, 15, 0, tzinfo=UTC)
+    _write_tick_parquet(month_path, [last_ts])
+    monkeypatch.setattr("scripts.download_tick_vault_data.GLOBAL_START_DATE", datetime(2018, 6, 1, tzinfo=UTC))
+    fake_now = datetime(2026, 3, 27, 17, 0, tzinfo=UTC)
+    monkeypatch.setattr(
+        "scripts.download_tick_vault_data.datetime",
+        type("FakeDT", (), {"now": staticmethod(lambda tz=None: fake_now)}),
+    )
+    ranges = get_missing_months("EURUSD", out_dir, datetime(2018, 7, 1, tzinfo=UTC))
+    assert len(ranges) == 1
+    assert ranges[0][0] == last_ts + timedelta(microseconds=1000)
+
+
 # --- Task 4: stale-lock cleanup ---
 
 
