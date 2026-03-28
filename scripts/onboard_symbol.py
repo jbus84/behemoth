@@ -4,7 +4,7 @@
 Usage:
     make onboard-symbol SYMBOL=USDCAD MONTHS=201801,201802,...,202602
 
-Runs every step from HistData tick download through to validated MkDocs build.
+Runs every step from Dukascopy tick download through to validated MkDocs build.
 """
 
 from __future__ import annotations
@@ -73,27 +73,17 @@ def _months_range(start: str, end: str) -> list[str]:
 
 
 def stage_0_data(symbol: str, months: str, *, dry_run: bool, force: bool) -> None:
-    """Download ticks from HistData and build tick bars + velocity features."""
-    sym_tick_dir = TICK_ROOT / symbol
-    # Check if the latest requested month already has a parquet file
-    months_list = [m.strip() for m in months.split(",") if m.strip()]
-    last_month = months_list[-1] if months_list else ""
-    latest_parquet = sym_tick_dir / f"{symbol}_{last_month}_ticks.parquet" if last_month else None
-    has_latest = latest_parquet is not None and latest_parquet.exists()
-    if has_latest and not force:
-        print(f"\n  skip download: {latest_parquet} already exists (use --force to re-download)")
-    else:
-        _uv_run(
-            "download_histdata_ticks.py",
-            "--symbols",
-            symbol,
-            "--months",
-            months,
-            "--tick-root",
-            str(TICK_ROOT),
-            dry_run=dry_run,
-            label="Stage 0a: Download HistData ticks",
-        )
+    """Download ticks from Dukascopy and build tick bars + velocity features."""
+    _uv_run(
+        "download_tick_vault_data.py",
+        "--symbols",
+        symbol,
+        "--out-dir",
+        str(TICK_ROOT),
+        *(["--force"] if force else []),
+        dry_run=dry_run,
+        label="Stage 0a: Download Dukascopy ticks",
+    )
 
     # Build tick bars (50, 100, 200)
     bar_path = TICKBAR_DIR / f"{symbol}_100tick.parquet"
@@ -108,6 +98,8 @@ def stage_0_data(symbol: str, months: str, *, dry_run: bool, force: bool) -> Non
             str(TICK_ROOT),
             "--output-dir",
             str(TICKBAR_DIR),
+            "--timestamp-mode",
+            "utc_naive",
             *(["--overwrite"] if force else []),
             dry_run=dry_run,
             label="Stage 0b: Build global tick bars",
@@ -123,6 +115,8 @@ def stage_0_data(symbol: str, months: str, *, dry_run: bool, force: bool) -> Non
         str(TICKBAR_DIR),
         "--tick-root",
         str(TICK_ROOT),
+        "--timestamp-mode",
+        "utc_naive",
         *(["--overwrite"] if force else []),
         dry_run=dry_run,
         label="Stage 0c: Build velocity dataset",
