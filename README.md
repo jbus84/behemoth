@@ -104,11 +104,98 @@ uv run python scripts/freeze_oco_live_governance.py
 Registry source:
 - `configs/research/governance/oco_rule_universe_registry.yaml`
 
-## Practical Release Check (Short)
-1. Run `make docs-contract-ci`.
-2. Run `make monthly-build MODEL_MONTH=YYYY-MM`.
-3. Run `make monthly-recert MODEL_MONTH=YYYY-MM`.
-4. Confirm the result is `overall_pass: true` in `data/analysis/backtest_reconcile/monthly_recert_status.json`.
-5. Confirm any non-green symbol is an expected `nogo`, not a `red` certification failure.
-6. Run `make promote-live MODEL_MONTH=YYYY-MM`.
-7. Rebuild docs with `uv run mkdocs build --strict`.
+## Pipeline Stages
+
+| Stage | Name | Command | Notes |
+|-------|------|---------|-------|
+| 0 | Data Acquisition | `make rebuild-all MONTHS=...` | Downloads ticks, builds tick bars + velocity |
+| 1 | Data Reliability | `make rebuild-all MONTHS=...` | Audit runs automatically within rebuild |
+| 2 | Opportunity Mining | `make retrain-all` | Mine OCO candidate families |
+| 3 | Monthly WFO | `make retrain-all` | CatBoost walk-forward + threshold schedules |
+| 4 | Execution Realism | `make retrain-all` | Stop-limit tick-fill analysis |
+| 5 | Reduced Core | `make retrain-all` | State-level governance selection |
+| 6 | Tick-Exact Verification | `make retrain-all` | Runs within onboard when reduced core has states |
+| 7 | Logical & Statistical Audit | `make retrain-all` | Also available standalone: `make stage7` |
+| 8 | Robustness & Stress | `make retrain-all` | Runs within onboard when reduced core has states |
+| 9 | Live Governance | `make stage9` | Alias for `make freeze-oco` |
+| 10 | Known Risks & Backlog | -- | Documentation only; see `docs/strategy_bible/` |
+| 11 | Execution Monte Carlo | `make retrain-all` | Runs within onboard pipeline |
+| 12 | API Parity | `make monthly-recert` | Runs as step 1 (jforex-dukascopy-matrix) |
+| 12.5 | Local JForex Surrogate | `make monthly-recert` | Runs as step 3 (local-jforex-parity-matrix) |
+| 13 | Dukascopy TestClient | `make monthly-recert` | Runs as step 2 (stage13-dukascopy-cert) |
+| 14 | JForex Runtime Cert | `make monthly-recert` | Runs as step 4 (full-stage14-cert) |
+
+Individual stages can also be run standalone via `make stageN` (e.g., `make stage12`, `make stage14`).
+
+## Full Operator Workflow
+
+### Initial Setup (one-time)
+```bash
+make provision              # Configure Alertmanager
+make precommit-install      # Install git hooks
+```
+
+### Monthly Release Cycle
+
+**Step 1: Retrain models**
+```bash
+make retrain-all
+```
+Runs the following stages for all symbols:
+- Stage 2: Opportunity mining
+- Stage 3: Monthly WFO (CatBoost + threshold schedules)
+- Stage 4: Execution realism (stop-limit tick-fill)
+- Stage 5: Reduced core selection
+- Stage 6: Tick-exact verification (when reduced core has states)
+- Stage 7: Logical & statistical audit
+- Stage 8: Robustness & stress (when reduced core has states)
+- Stage 11: Execution Monte Carlo
+
+For a full rebuild including data download (adds stages 0-1):
+```bash
+make rebuild-all MONTHS=201801-202602
+```
+
+**Step 2: Freeze governance (stage 9)**
+```bash
+make freeze-oco
+```
+
+**Step 3: Build candidate bundle**
+```bash
+make monthly-build MODEL_MONTH=2026-02
+```
+Freezes model artifacts and threshold schedules into
+`configs/research/governance/oco_candidate_builds/2026-02/`.
+
+**Step 4: Certify (stages 12-14)**
+```bash
+make monthly-recert MODEL_MONTH=2026-02
+```
+Runs the certification chain:
+- Stage 12: API parity (jforex-dukascopy-matrix)
+- Stage 12.5: Local JForex surrogate parity
+- Stage 13: Dukascopy TestClient certification
+- Stage 14: JForex runtime certification
+
+Prints per-symbol go/no-go summary.
+
+**Step 5: Promote**
+```bash
+make promote-live MODEL_MONTH=2026-02
+```
+Only run after `monthly-recert` is green.
+
+**Step 6: Restart live system**
+```bash
+make jforex-live
+```
+
+### Ad-hoc Commands
+```bash
+make quality                # Run all code quality checks
+make test                   # Run pytest
+make docs                   # Serve docs locally
+make docs-contract-ci       # Refresh governance docs
+make observability-up       # Start Prometheus + Grafana
+```
