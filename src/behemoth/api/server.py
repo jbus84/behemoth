@@ -1889,6 +1889,8 @@ class SeedAuditHistoryRequest(BaseModel):
     symbols: list[str] | None = None
     days_back: int = 20
     run_id: str = "audit_seed"
+    train_predictions_dir: str | None = None
+    test_month_start: str | None = None
 
 
 class HealthResponse(BaseModel):
@@ -2469,17 +2471,21 @@ def _build_predictions(
             else:
                 pred_prob = 0.0
 
-            # Dynamic threshold lookup. If the model export includes a per-day
-            # schedule, use it; otherwise, fall back to the static scalar.
             schedule = thr_cfg.get("threshold_schedule", {})
             day_str = close_ts.strftime("%Y-%m-%d")
 
-            if schedule and day_str in schedule:
-                curr_threshold = float(schedule[day_str])
-                curr_source = f"{threshold_mode}:schedule"
+            # Model expiry check: block immediately if past valid-through date.
+            model_valid_through = thr_cfg.get("model_valid_through", "")
+            if model_valid_through and day_str > model_valid_through:
+                logger.warning(
+                    "Model expired for %s %s: valid through %s, current day %s. Blocking.",
+                    sym, canonical_uid, model_valid_through, day_str,
+                )
+                curr_threshold = 2.0
+                curr_source = f"{threshold_mode}:model_expired"
+                threshold_blocked = True
+                threshold_block_reason = "MODEL_EXPIRED"
             else:
-                # Schedule expired or missing for today. Attempt dynamic rolling threshold
-                # from audit_logs — this is the live equivalent of WFO's rolling computation.
                 rolling_days = int(thr_cfg.get("rolling_threshold_days", 0))
                 exec_q = float(thr_cfg.get("execution_quantile", 0.9))
                 min_history = int(thr_cfg.get("rolling_threshold_min_history", 10))
@@ -2492,42 +2498,33 @@ def _build_predictions(
                         lookback_days=rolling_days,
                         min_history=min_history,
                     )
-                
-                # Strict Threshold Enforcement Policy:
-                # In live mode, we NEVER fall back to static thresholds if a schedule 
-                # or rolling history was intended but is unavailable.
+
                 is_live = _config.governance_mode == "live"
-                
+
                 if dynamic_thr is not None:
                     curr_threshold = dynamic_thr
                     curr_source = f"{threshold_mode}:rolling_dynamic"
                 elif rolling_days > 0:
-                    # rolling_days configured but insufficient audit_log history.
-                    # ALWAYS block if history is missing and rolling is intended.
                     logger.warning(
-                        "No valid threshold for %s %s: schedule expired %s, "
+                        "No valid threshold for %s %s: "
                         "insufficient audit_log history (rolling_days=%d, min_history=%d). "
                         "Blocking candidate.",
-                        sym, canonical_uid, day_str, rolling_days, min_history,
+                        sym, canonical_uid, rolling_days, min_history,
                     )
-                    curr_threshold = 2.0  # ensures pred_prob (always ≤ 1.0) never qualifies
+                    curr_threshold = 2.0
                     curr_source = f"{threshold_mode}:no_valid_threshold"
                     threshold_blocked = True
                     threshold_block_reason = "ROLLING_HISTORY_GAP"
-                elif is_live and schedule:
-                    # Schedule existed but expired for today, and no rolling fallback configured.
-                    # Block in live mode to avoid static fallback.
+                elif is_live:
                     logger.warning(
-                        "No valid threshold for %s %s: schedule expired %s and no rolling fallback. Blocking.",
-                        sym, canonical_uid, day_str
+                        "No valid threshold for %s %s: no rolling config in live mode. Blocking.",
+                        sym, canonical_uid,
                     )
                     curr_threshold = 2.0
-                    curr_source = f"{threshold_mode}:schedule_expired"
+                    curr_source = f"{threshold_mode}:no_rolling_config"
                     threshold_blocked = True
-                    threshold_block_reason = "SCHEDULE_EXPIRED"
+                    threshold_block_reason = "NO_ROLLING_CONFIG"
                 else:
-                    # No rolling config and no (expired) schedule — fall back to static threshold_exec.
-                    # In research/backtest this is common; in live it uses the scalar threshold_exec.
                     curr_threshold = threshold_exec
                     curr_source = f"{threshold_mode}:static_fallback"
 
@@ -2564,14 +2561,17 @@ def _build_predictions(
         selected_exec = preselected_exec
         risk_blocked = False
         risk_block_reason: str | None = None
-        threshold_blocked = False
-        threshold_block_reason: str | None = None
-
-        if curr_source in {f"{threshold_mode}:no_valid_threshold", f"{threshold_mode}:schedule_expired"}:
+        _blocking_sources = {
+            f"{threshold_mode}:no_valid_threshold": "ROLLING_HISTORY_GAP",
+            f"{threshold_mode}:model_expired": "MODEL_EXPIRED",
+            f"{threshold_mode}:no_rolling_config": "NO_ROLLING_CONFIG",
+        }
+        if curr_source in _blocking_sources:
             threshold_blocked = True
-            threshold_block_reason = (
-                "ROLLING_HISTORY_GAP" if curr_source == f"{threshold_mode}:no_valid_threshold" else "SCHEDULE_EXPIRED"
-            )
+            threshold_block_reason = _blocking_sources[curr_source]
+        else:
+            threshold_blocked = False
+            threshold_block_reason = None
 
         if preselected_exec == 1 and account_risk_enabled_effective and (_account_risk_profile is not None):
             trade_eval = evaluate_trade_guard(
@@ -2988,8 +2988,49 @@ async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
 
     symbols = [s.upper() for s in (req.symbols or _config.symbols)]
     now_ts = datetime.now(tz=timezone.utc)
-    start_dt = now_ts - timedelta(days=req.days_back)
+    if req.test_month_start:
+        start_dt = datetime.fromisoformat(req.test_month_start).replace(tzinfo=timezone.utc)
+    else:
+        start_dt = now_ts - timedelta(days=req.days_back)
     events_by_symbol: dict[str, int] = {}
+
+    # ── Phase 1: Seed training predictions from exported artifact ──
+    train_pred_dir = Path(req.train_predictions_dir) if req.train_predictions_dir else None
+    phase1_events: dict[str, int] = {}
+
+    if train_pred_dir is not None:
+        for sym in symbols:
+            try:
+                contract = _resolve_runtime_contract(sym, now_ts)
+                if not contract.candidates:
+                    phase1_events[sym] = 0
+                    continue
+                month_tag = contract.model_month
+                pred_path = train_pred_dir / f"{sym}_train_predictions_{month_tag}.parquet"
+                if not pred_path.exists():
+                    logger.warning(
+                        "seed_audit_history phase1: no training predictions at %s", pred_path
+                    )
+                    phase1_events[sym] = 0
+                    continue
+                total_for_sym = 0
+                for cand in contract.candidates:
+                    canonical_uid = (
+                        f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+                    )
+                    n = _state.seed_training_predictions(
+                        parquet_path=pred_path,
+                        symbol=sym,
+                        candidate_uid=canonical_uid,
+                        model_month=month_tag,
+                        run_id=f"{req.run_id}_phase1",
+                    )
+                    total_for_sym += n
+                phase1_events[sym] = total_for_sym
+                logger.info("seed_audit_history phase1: %d events for %s", total_for_sym, sym)
+            except Exception as exc:
+                logger.warning("seed_audit_history phase1 failed for %s: %s", sym, exc)
+                phase1_events[sym] = 0
 
     for sym in symbols:
         sym_dir = ticks_dir / sym
@@ -3164,8 +3205,13 @@ async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
         events_by_symbol[sym] = n_written
         logger.info("seed_audit_history: wrote %d events for %s", n_written, sym)
 
-    total = sum(events_by_symbol.values())
-    return {"ok": True, "events_by_symbol": events_by_symbol, "total_events": total}
+    total = sum(events_by_symbol.values()) + sum(phase1_events.values())
+    return {
+        "ok": True,
+        "phase1_events": phase1_events,
+        "phase2_events": events_by_symbol,
+        "total_events": total,
+    }
 
 
 @app.post("/trades/touch")

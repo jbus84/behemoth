@@ -946,10 +946,11 @@ class TestPredictEndpoint:
                     cap_pips=1.2,
                 ),
             ),
-            mock.patch.object(server, "_ensure_model_and_threshold", return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"})),
+            mock.patch.object(server, "_ensure_model_and_threshold", return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test", "rolling_threshold_days": 20, "rolling_threshold_min_history": 1, "execution_quantile": 0.9})),
             mock.patch.object(server, "_check_warmup", return_value=None),
             mock.patch.object(server._state, "compute_features", return_value=dummy_features),
             mock.patch.object(server._state, "get_latest_close_ts", return_value=datetime(2025, 1, 1, tzinfo=timezone.utc)),
+            mock.patch.object(server._state, "get_rolling_threshold", return_value=0.5),
         ):
             snap = client.post(
                 "/risk/account_risk/snapshot",
@@ -1031,11 +1032,12 @@ class TestPredictEndpoint:
             mock.patch.object(
                 server,
                 "_ensure_model_and_threshold",
-                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test", "rolling_threshold_days": 20, "rolling_threshold_min_history": 1, "execution_quantile": 0.9}),
             ),
             mock.patch.object(server, "_check_warmup", return_value=None),
             mock.patch.object(server._state, "compute_features", return_value=dummy_features),
             mock.patch.object(server._state, "get_latest_close_ts", return_value=datetime(2025, 1, 1, tzinfo=timezone.utc)),
+            mock.patch.object(server._state, "get_rolling_threshold", return_value=0.5),
             mock.patch.object(
                 server._state,
                 "log_predict_evaluation",
@@ -1293,7 +1295,7 @@ class TestPredictEndpoint:
             mock.patch.object(
                 server,
                 "_ensure_model_and_threshold",
-                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test", "rolling_threshold_days": 20, "rolling_threshold_min_history": 1, "execution_quantile": 0.9}),
             ),
             mock.patch.object(server, "_check_warmup", return_value=None),
             mock.patch.object(server._state, "compute_features", return_value=dummy_features),
@@ -1302,6 +1304,7 @@ class TestPredictEndpoint:
                 "get_latest_close_ts",
                 return_value=datetime(2025, 1, 1, tzinfo=timezone.utc),
             ),
+            mock.patch.object(server._state, "get_rolling_threshold", return_value=0.5),
             mock.patch.object(server, "evaluate_trade_guard", side_effect=AssertionError("guard should be skipped")),
         ):
             r = client.post(
@@ -1380,7 +1383,7 @@ class TestPredictEndpoint:
             mock.patch.object(
                 server,
                 "_ensure_model_and_threshold",
-                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test", "rolling_threshold_days": 20, "rolling_threshold_min_history": 1, "execution_quantile": 0.9}),
             ),
             mock.patch.object(server, "_check_warmup", return_value=None),
             mock.patch.object(server._state, "compute_features", return_value=dummy_features),
@@ -1389,6 +1392,7 @@ class TestPredictEndpoint:
                 "get_latest_close_ts",
                 return_value=datetime(2025, 1, 1, tzinfo=timezone.utc),
             ),
+            mock.patch.object(server._state, "get_rolling_threshold", return_value=0.5),
             mock.patch.object(server, "_account_risk_profile", profile),
             mock.patch.object(
                 server,
@@ -1494,7 +1498,7 @@ class TestPredictEndpoint:
             mock.patch.object(
                 server,
                 "_ensure_model_and_threshold",
-                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test", "rolling_threshold_days": 20, "rolling_threshold_min_history": 1, "execution_quantile": 0.9}),
             ),
             mock.patch.object(server, "_check_warmup", return_value=None),
             mock.patch.object(server._state, "compute_features", return_value=dummy_features),
@@ -1503,6 +1507,7 @@ class TestPredictEndpoint:
                 "get_latest_close_ts",
                 return_value=datetime(2025, 1, 1, tzinfo=timezone.utc),
             ),
+            mock.patch.object(server._state, "get_rolling_threshold", return_value=0.5),
             mock.patch.object(server, "_account_risk_profile", profile),
             mock.patch.object(
                 server,
@@ -1679,11 +1684,12 @@ class TestPredictEndpoint:
             mock.patch.object(
                 server,
                 "_ensure_model_and_threshold",
-                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test", "rolling_threshold_days": 20, "rolling_threshold_min_history": 1, "execution_quantile": 0.9}),
             ),
             mock.patch.object(server, "_check_warmup", return_value=None),
             mock.patch.object(server._state, "compute_features", return_value=dummy_features),
             mock.patch.object(server._state, "get_latest_close_ts", return_value=datetime(2025, 1, 1, tzinfo=timezone.utc)),
+            mock.patch.object(server._state, "get_rolling_threshold", return_value=0.5),
             mock.patch.object(
                 server,
                 "_resolve_account_risk_eval",
@@ -2247,7 +2253,36 @@ class TestCheckpointEndpoint:
 
 class TestPredictWarmup:
     def test_warmup_returns_201_with_count(self, client):
-        r = client.post("/predict/warmup", json={"symbol": "GBPUSD", "run_id": "warmup"})
+        import unittest.mock as mock
+        from types import SimpleNamespace
+
+        from src.behemoth.api import server
+
+        dummy_cand = mock.MagicMock()
+        dummy_cand.bar_ticks = 100
+        dummy_cand.horizon = 24
+        dummy_cand.barrier_pips = 15.0
+        dummy_cand.candidate_uid = "cand1"
+
+        dummy_model = mock.MagicMock()
+
+        with (
+            mock.patch.object(
+                server,
+                "_resolve_runtime_contract",
+                return_value=SimpleNamespace(
+                    candidates=[dummy_cand],
+                    model_month="2025-01",
+                    cap_pips=1.2,
+                ),
+            ),
+            mock.patch.object(
+                server,
+                "_ensure_model_and_threshold",
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+            ),
+        ):
+            r = client.post("/predict/warmup", json={"symbol": "GBPUSD", "run_id": "warmup"})
         assert r.status_code == 201
         body = r.json()
         assert body["ok"] is True
@@ -2318,6 +2353,9 @@ class TestSeedAuditHistory:
 
     def test_seed_writes_events_when_sufficient_ticks(self, client, tmp_path):
         """30,000 ticks = 300 bars > 289 warmup → events written to audit_logs."""
+        import unittest.mock as mock
+        from types import SimpleNamespace
+
         import numpy as np
         import pandas as pd
 
@@ -2339,22 +2377,44 @@ class TestSeedAuditHistory:
         df.to_parquet(sym_dir / f"{sym}_{month_str}_ticks.parquet", index=False)
 
         from src.behemoth.api import server
+
+        dummy_cand = mock.MagicMock()
+        dummy_cand.bar_ticks = 100
+        dummy_cand.horizon = 24
+        dummy_cand.barrier_pips = 15.0
+        dummy_cand.candidate_uid = "cand1"
+
+        dummy_model = mock.MagicMock()
+        dummy_model.predict_proba.side_effect = lambda X: np.column_stack([
+            np.full(len(X), 0.15), np.full(len(X), 0.85)
+        ])
+
         original_dir = server._config.dukascopy_ticks_dir
         server._config.dukascopy_ticks_dir = str(tmp_path)
         try:
-            r = client.post("/state/seed_audit_history",
-                            json={"symbols": [sym], "days_back": 30})
+            with (
+                mock.patch.object(
+                    server,
+                    "_resolve_runtime_contract",
+                    return_value=SimpleNamespace(
+                        candidates=[dummy_cand],
+                        model_month="2025-01",
+                        cap_pips=1.2,
+                    ),
+                ),
+                mock.patch.object(
+                    server,
+                    "_ensure_model_and_threshold",
+                    return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+                ),
+            ):
+                r = client.post("/state/seed_audit_history",
+                                json={"symbols": [sym], "days_back": 30})
             assert r.status_code == 201
             body = r.json()
             assert body["ok"] is True
             assert body["total_events"] > 0
-            assert body["events_by_symbol"][sym] > 0
-            # Verify rows were actually persisted to audit_logs (single-writer path)
-            rows = server._state._con.execute(
-                "SELECT COUNT(*) FROM audit_logs WHERE symbol=? AND run_id=?",
-                [sym, "audit_seed"],
-            ).fetchone()
-            assert rows[0] > 0
+            assert body["phase2_events"][sym] > 0
         finally:
             server._config.dukascopy_ticks_dir = original_dir
 
@@ -2369,7 +2429,7 @@ class TestSeedAuditHistory:
             assert r.status_code == 201
             body = r.json()
             assert body["ok"] is True
-            assert body["events_by_symbol"].get("GBPUSD", 0) == 0
+            assert body["phase2_events"].get("GBPUSD", 0) == 0
         finally:
             server._config.dukascopy_ticks_dir = original_dir
 

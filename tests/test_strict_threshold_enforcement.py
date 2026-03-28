@@ -129,7 +129,7 @@ def test_predict_blocks_on_expired_schedule_in_live_mode(client):
             rows = r.json()
             assert rows[0]["selected_exec"] == 0
             assert rows[0]["threshold_blocked"] is True
-            assert rows[0]["threshold_block_reason"] == "SCHEDULE_EXPIRED"
+            assert rows[0]["threshold_block_reason"] == "NO_ROLLING_CONFIG"
     finally:
         _config.governance_mode = orig_mode
 

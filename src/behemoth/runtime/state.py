@@ -15,6 +15,7 @@ Design:
 """
 
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import duckdb
@@ -428,6 +429,44 @@ class StateManager:
         if not events:
             return
         self._con.executemany(_AUDIT_INSERT_SQL, events)
+
+    def seed_training_predictions(
+        self,
+        *,
+        parquet_path: Path,
+        symbol: str,
+        candidate_uid: str,
+        model_month: str,
+        run_id: str,
+    ) -> int:
+        """Seed audit_logs with exported training predictions (phase 1).
+
+        Loads the training predictions parquet and inserts rows into audit_logs
+        with close_ts set to midnight UTC of each day. This gives the rolling
+        threshold the same starting pool that WFO had on test day 1.
+
+        Returns the number of rows inserted.
+        """
+        import pandas as pd
+
+        df = pd.read_parquet(parquet_path)
+        if df.empty:
+            return 0
+        events = []
+        for row in df.itertuples(index=False):
+            day_ts = datetime(row.day.year, row.day.month, row.day.day, tzinfo=timezone.utc)
+            events.append((
+                day_ts,           # close_ts
+                symbol.upper(),   # symbol
+                candidate_uid,    # candidate_uid
+                float(row.pred_prob),  # pred_prob
+                0.0,              # threshold (not meaningful for seed)
+                "{}",             # features_json
+                model_month,      # model_month
+                run_id,           # run_id
+            ))
+        self.log_audit_event_batch(events)
+        return len(events)
 
     def log_predict_evaluation(
         self,
