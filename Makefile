@@ -41,7 +41,6 @@ define JFOREX_MATRIX_ARGS
 	--report-dir $(or $(REPORT_DIR),data/analysis/backtest_reconcile) \
 	--api-port $(or $(API_PORT),8000) \
 	--requested-volume-units $(or $(REQUESTED_VOLUME_UNITS),10000) \
-	--tick-batch-size $(or $(TICK_BATCH_SIZE),200) \
 	--order-ttl-seconds $(or $(ORDER_TTL_SECONDS),900) \
 	--api-timeout-seconds $(or $(API_TIMEOUT_SECONDS),60) \
 	--metrics-port-base $(or $(METRICS_PORT_BASE),9465)
@@ -61,7 +60,12 @@ endef
         stage12-api-parity local-jforex-parity local-jforex-parity-matrix \
         local-jforex-parity-ordinal local-jforex-parity-spotlight local-jforex-cert \
         jforex-dukascopy-matrix stage13-dukascopy-cert stage14-jforex-cert \
-        full-stage14-cert jforex-outcome-parity
+        full-stage14-cert jforex-outcome-parity \
+        deploy-cbot deploy-ctrader reconcile-ctrader-run \
+        export-ctrader-custom-data ctrader-debug-up ctrader-debug-down \
+        ctrader-debug-status ctrader-ab-parity-report ctrader-parity \
+        testclient-parity dukascopy-testclient-parity \
+        histdata-ctrader-parity histdata-testclient-parity
 
 .PHONY: monthly-build monthly-recert promote-live
 
@@ -288,6 +292,7 @@ local-jforex-parity-matrix:
 		--end-ts $(or $(END_TS),2025-07-09T00:00:00Z) \
 		$(JFOREX_MATRIX_ARGS) \
 		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks) \
+		--tick-batch-size $(or $(TICK_BATCH_SIZE),200) \
 		--warmup-ticks $(or $(WARMUP_TICKS),30000) \
 		--lookback-days $(or $(LOOKBACK_DAYS),31) \
 		--phase-bar-ticks $(or $(PHASE_BAR_TICKS),100) \
@@ -299,6 +304,7 @@ local-jforex-parity-ordinal:
 		--end-ts $(or $(END_TS),2025-07-09T00:00:00Z) \
 		$(JFOREX_MATRIX_ARGS) \
 		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks) \
+		--tick-batch-size $(or $(TICK_BATCH_SIZE),200) \
 		--warmup-ticks $(or $(WARMUP_TICKS),30000) \
 		--lookback-days $(or $(LOOKBACK_DAYS),31) \
 		--phase-bar-ticks $(or $(PHASE_BAR_TICKS),100) \
@@ -404,6 +410,14 @@ jforex-outcome-parity:
 		--eval-end $(or $(EVAL_END),2025-07-09T00:00:00Z) \
 		--signal-coverage-threshold $(or $(SIGNAL_COVERAGE_THRESHOLD),1.0) \
 		--out-csv $(or $(OUT_CSV),data/analysis/backtest_reconcile/jforex_outcome_parity_summary.csv)
+
+# -- Legacy stubs (no-op, retained for compatibility) -----------------------
+
+deploy-cbot deploy-ctrader reconcile-ctrader-run \
+export-ctrader-custom-data ctrader-debug-up ctrader-debug-down \
+ctrader-debug-status ctrader-ab-parity-report ctrader-parity \
+testclient-parity dukascopy-testclient-parity \
+histdata-ctrader-parity histdata-testclient-parity:
 
 # ==============================================================================
 # Release Lifecycle
