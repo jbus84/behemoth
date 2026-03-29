@@ -1,3 +1,9 @@
+## v0.2.7 (2026-03-29)
+
+### Fix
+
+- **ci**: checkout PR head ref for commit validation (#10)
+
 ## v0.2.6 (2026-03-29)
 
 ### Refactor
