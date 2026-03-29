@@ -77,15 +77,15 @@ Java/JForex runtime:
 Experiment configs:
 
 - `configs/research/experiments/eurusd_tick_opportunity_mining.yaml`
-- `configs/research/experiments/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml`
-- `configs/research/experiments/eurusd_oco_reduced_core_rolling_2025.yaml`
-- `configs/research/experiments/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml`
-- `configs/research/experiments/gbpusd_oco_reduced_core_rolling_2025.yaml`
-- `configs/research/experiments/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml`
-- `configs/research/experiments/usdjpy_oco_reduced_core_rolling_2025.yaml`
+- `configs/research/experiments/eurusd_tick_opportunity_monthly_wfo_oco_fullcap.yaml`
+- `configs/research/experiments/eurusd_oco_reduced_core_rolling.yaml`
+- `configs/research/experiments/gbpusd_tick_opportunity_monthly_wfo_oco_fullcap.yaml`
+- `configs/research/experiments/gbpusd_oco_reduced_core_rolling.yaml`
+- `configs/research/experiments/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap.yaml`
+- `configs/research/experiments/usdjpy_oco_reduced_core_rolling.yaml`
 - `configs/research/experiments/usdchf_tick_opportunity_mining.yaml`
-- `configs/research/experiments/usdchf_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml`
-- `configs/research/experiments/usdchf_oco_reduced_core_rolling_2025.yaml`
+- `configs/research/experiments/usdchf_tick_opportunity_monthly_wfo_oco_fullcap.yaml`
+- `configs/research/experiments/usdchf_oco_reduced_core_rolling.yaml`
 
 Docs/build manifest:
 
@@ -171,7 +171,7 @@ uv run python scripts/run_tick_opportunity_mining.py --config configs/research/e
 4. Monthly WFO:
 
 ```bash
-uv run python scripts/run_tick_opportunity_monthly_wfo.py --config configs/research/experiments/<sym>_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml
+uv run python scripts/run_tick_opportunity_monthly_wfo.py --config configs/research/experiments/<sym>_tick_opportunity_monthly_wfo_oco_fullcap.yaml
 ```
 
 5. Stop-limit realism:
@@ -179,7 +179,7 @@ uv run python scripts/run_tick_opportunity_monthly_wfo.py --config configs/resea
 ```bash
 uv run python scripts/analyze_oco_stop_limit_tickfill.py \
   --symbols <SYM> \
-  --pred-paths data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_<sym>/<SYM>_oco_monthly_predictions.parquet \
+  --pred-paths data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap_<sym>/<SYM>_oco_monthly_predictions.parquet \
   --velocity-dir data/analysis/tick_velocity \
   --tick-root /Users/danielfisher/Desktop/tick \
   --caps 0.5,0.8,1.0,1.2,1.5,2.0 \
@@ -191,7 +191,7 @@ uv run python scripts/analyze_oco_stop_limit_tickfill.py \
 6. Reduced-core rolling:
 
 ```bash
-uv run python scripts/select_oco_reduced_core_rolling.py --config configs/research/experiments/<sym>_oco_reduced_core_rolling_2025.yaml
+uv run python scripts/select_oco_reduced_core_rolling.py --config configs/research/experiments/<sym>_oco_reduced_core_rolling.yaml
 ```
 
 7. Tick-exact:
@@ -200,7 +200,7 @@ uv run python scripts/select_oco_reduced_core_rolling.py --config configs/resear
 uv run python scripts/verify_oco_tick_exact_shortlist.py \
   --symbol <SYM> \
   --dataset-dir data/analysis/tick_velocity \
-  --pred-path data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_<sym>/<SYM>_oco_monthly_predictions.parquet \
+  --pred-path data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap_<sym>/<SYM>_oco_monthly_predictions.parquet \
   --shortlist-state-csv data/analysis/tick_opportunity_mining/reduced_core_rolling/<SYM>_oco_reduced_state_schedule.csv \
   --locked-quantile 0.9 \
   --selection-mode auto \
@@ -213,7 +213,7 @@ uv run python scripts/verify_oco_tick_exact_shortlist.py \
 
 ```bash
 uv run python scripts/analyze_oco_monthly_wfo_robustness.py \
-  --pred-path data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_<sym>/<SYM>_oco_monthly_predictions.parquet \
+  --pred-path data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap_<sym>/<SYM>_oco_monthly_predictions.parquet \
   --quantiles 0.5,0.6,0.7,0.8,0.9,0.95 \
   --bootstrap-paths 600 \
   --stress-extra-cost-grid 0.1,0.2,0.3,0.5

@@ -65,7 +65,7 @@ Verify label/path correctness at tick level and assess whether family-level edge
 uv run python scripts/verify_oco_tick_exact_shortlist.py \
   --symbol EURUSD \
   --dataset-dir data/analysis/tick_velocity \
-  --pred-path data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet \
+  --pred-path data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet \
   --shortlist-state-csv data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv
 ```
 

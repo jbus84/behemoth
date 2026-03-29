@@ -23,8 +23,8 @@ python scripts/freeze_oco_live_governance.py \
 python scripts/validate_oco_live_governance.py \
   --lock-path configs/research/governance/oco/eurusd_oco_live_lock.json \
   --mode deploy \
-  --wfo-config configs/research/experiments/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml \
-  --reduced-config configs/research/experiments/eurusd_oco_reduced_core_2025.yaml \
+  --wfo-config configs/research/experiments/eurusd_tick_opportunity_monthly_wfo_oco_fullcap.yaml \
+  --reduced-config configs/research/experiments/eurusd_oco_reduced_core.yaml \
   --data-reliability-checks-csv data/analysis/tick_opportunity_mining/data_reliability_checks.csv \
   --leakage-checks-csv data/analysis/tick_opportunity_mining/oco_leakage_integrity_checks.csv \
   --execution-risk-checks-csv data/analysis/tick_opportunity_mining/oco_execution_risk_checks.csv

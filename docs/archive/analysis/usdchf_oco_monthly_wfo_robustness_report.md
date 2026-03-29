@@ -1,6 +1,6 @@
 # OCO Monthly WFO Robustness
 
-- predictions: `data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_usdchf/USDCHF_oco_monthly_predictions.parquet`
+- predictions: `data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap_usdchf/USDCHF_oco_monthly_predictions.parquet`
 - quantiles: `0.5,0.6,0.7,0.8,0.9,0.95`
 - bootstrap_paths: `2000`
 - stress_extra_cost_grid: `0.1,0.2,0.3,0.5,0.75,1.0,1.25,1.5,1.75,2.0`

@@ -32,7 +32,7 @@ symbols:
   - symbol: EURUSD
     reduced_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/EURUSD_oco_reduced_summary.csv
     tick_exact_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/EURUSD_oco_tick_exact_summary.csv
-    robustness_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_robustness_summary.csv
+    robustness_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap/EURUSD_oco_robustness_summary.csv
     stop_limit_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/stop_limit_tickfill_fullcap/summary.csv
     api_parity_summary_csv: data/analysis/backtest_reconcile/dukascopy_candidate/EURUSD_stage12_api_parity_summary.csv
     api_parity_checks_csv: data/analysis/backtest_reconcile/dukascopy_candidate/EURUSD_stage12_api_parity_checks.csv
@@ -45,7 +45,7 @@ symbols:
   - symbol: GBPUSD
     reduced_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/GBPUSD_oco_reduced_summary.csv
     tick_exact_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/GBPUSD_oco_tick_exact_summary.csv
-    robustness_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap/GBPUSD_oco_robustness_summary.csv
+    robustness_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap/GBPUSD_oco_robustness_summary.csv
     stop_limit_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/stop_limit_tickfill_fullcap/summary.csv
     api_parity_summary_csv: data/analysis/backtest_reconcile/dukascopy_candidate/GBPUSD_stage12_api_parity_summary.csv
     api_parity_checks_csv: data/analysis/backtest_reconcile/dukascopy_candidate/GBPUSD_stage12_api_parity_checks.csv
@@ -58,7 +58,7 @@ symbols:
   - symbol: USDJPY
     reduced_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/USDJPY_oco_reduced_summary.csv
     tick_exact_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/USDJPY_oco_tick_exact_summary.csv
-    robustness_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap/USDJPY_oco_robustness_summary.csv
+    robustness_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap/USDJPY_oco_robustness_summary.csv
     stop_limit_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/stop_limit_tickfill_fullcap/summary.csv
     api_parity_summary_csv: data/analysis/backtest_reconcile/dukascopy_candidate/USDJPY_stage12_api_parity_summary.csv
     api_parity_checks_csv: data/analysis/backtest_reconcile/dukascopy_candidate/USDJPY_stage12_api_parity_checks.csv
@@ -71,7 +71,7 @@ symbols:
   - symbol: USDCHF
     reduced_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/USDCHF_oco_reduced_summary.csv
     tick_exact_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/USDCHF_oco_tick_exact_summary.csv
-    robustness_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap/USDCHF_oco_robustness_summary.csv
+    robustness_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap/USDCHF_oco_robustness_summary.csv
     stop_limit_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/stop_limit_tickfill_fullcap/summary.csv
     api_parity_summary_csv: data/analysis/backtest_reconcile/dukascopy_candidate/USDCHF_stage12_api_parity_summary.csv
     api_parity_checks_csv: data/analysis/backtest_reconcile/dukascopy_candidate/USDCHF_stage12_api_parity_checks.csv
@@ -84,7 +84,7 @@ symbols:
   - symbol: AUDUSD
     reduced_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/AUDUSD_oco_reduced_summary.csv
     tick_exact_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/AUDUSD_oco_tick_exact_summary.csv
-    robustness_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap/AUDUSD_oco_robustness_summary.csv
+    robustness_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap/AUDUSD_oco_robustness_summary.csv
     stop_limit_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/stop_limit_tickfill_fullcap/summary.csv
     api_parity_summary_csv: data/analysis/backtest_reconcile/dukascopy_candidate/AUDUSD_stage12_api_parity_summary.csv
     api_parity_checks_csv: data/analysis/backtest_reconcile/dukascopy_candidate/AUDUSD_stage12_api_parity_checks.csv
@@ -97,7 +97,7 @@ symbols:
   - symbol: USDCAD
     reduced_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/USDCAD_oco_reduced_summary.csv
     tick_exact_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/USDCAD_oco_tick_exact_summary.csv
-    robustness_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap/USDCAD_oco_robustness_summary.csv
+    robustness_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap/USDCAD_oco_robustness_summary.csv
     stop_limit_summary_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/stop_limit_tickfill_fullcap/summary.csv
     api_parity_summary_csv: data/analysis/backtest_reconcile/dukascopy_candidate/USDCAD_stage12_api_parity_summary.csv
     api_parity_checks_csv: data/analysis/backtest_reconcile/dukascopy_candidate/USDCAD_stage12_api_parity_checks.csv

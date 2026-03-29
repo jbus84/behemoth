@@ -116,12 +116,12 @@ def _default_paths(
     sl = s.lower()
     return {
         "wfo_config": _pick_first_existing(
-            config_dir / f"{sl}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
-            config_dir / f"{sl}_tick_opportunity_monthly_wfo_oco_fullcap_rolling_2025.yaml",
+            config_dir / f"{sl}_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
+            config_dir / f"{sl}_tick_opportunity_monthly_wfo_oco_fullcap_rolling.yaml",
         ),
         "reduced_config": _pick_first_existing(
-            config_dir / f"{sl}_oco_reduced_core_2025.yaml",
-            config_dir / f"{sl}_oco_reduced_core_rolling_2025.yaml",
+            config_dir / f"{sl}_oco_reduced_core.yaml",
+            config_dir / f"{sl}_oco_reduced_core_rolling.yaml",
         ),
         "reduced_states": _pick_first_existing(
             analysis_dir / "reduced_core_rolling" / f"{s}_oco_reduced_state_schedule.csv",
@@ -141,9 +141,9 @@ def _default_paths(
             analysis_dir / f"reduced_core_{sl}" / f"{s}_oco_reduced_summary.csv",
         ),
         "predictions": _pick_first_existing(
-            analysis_dir / "wfo_2025_m3to1_oco_fullcap" / f"{s}_oco_monthly_predictions.parquet",
+            analysis_dir / "wfo_m3to1_oco_fullcap" / f"{s}_oco_monthly_predictions.parquet",
             analysis_dir
-            / f"wfo_2025_m3to1_oco_fullcap_{sl}"
+            / f"wfo_m3to1_oco_fullcap_{sl}"
             / f"{s}_oco_monthly_predictions.parquet",
         ),
         "tick_fill_caps": _pick_first_existing(

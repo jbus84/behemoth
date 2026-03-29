@@ -217,7 +217,7 @@ Band notes:
 ## Reproduction Commands
 ```bash
 uv run python scripts/run_tick_opportunity_monthly_wfo.py \
-  --config configs/research/experiments/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml
+  --config configs/research/experiments/eurusd_tick_opportunity_monthly_wfo_oco_fullcap.yaml
 uv run python scripts/build_oco_threshold_sensitivity_report.py
 ```
 

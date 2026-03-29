@@ -145,7 +145,7 @@ Outputs:
 make reconcile-ctrader-run \
   SYMBOL=EURUSD \
   RUNTIME_DB=${DB_PATH} \
-  PRED_PATH=data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet \
+  PRED_PATH=data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet \
   HISTORY_DIR=configs/research/governance/oco_history \
   START_TS=2025-07-01T00:00:00Z \
   END_TS=2026-01-01T00:00:00Z \
@@ -171,7 +171,7 @@ make ctrader-ab-parity-report \
   SYMBOL=EURUSD \
   RUNTIME_DB_A=data/db/backtests/eurusd_20250707_20250709_baseline.db \
   RUNTIME_DB_B=data/db/backtests/eurusd_20250707_20250709_dukascopy.db \
-  PRED_PATH=data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet \
+  PRED_PATH=data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet \
   START_TS=2025-07-07T00:00:00Z \
   END_TS=2025-07-09T00:00:00Z \
   TICK_ROOT=/Users/danielfisher/Desktop/dukascopy_ticks

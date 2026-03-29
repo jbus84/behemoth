@@ -73,7 +73,7 @@ DEFAULTS: dict[str, Any] = {
     "execution_quantile": 0.9,
     "oco_hold_mode": "from_touch",  # from_touch|from_start
     "seed": 42,
-    "out_dir": "data/analysis/tick_opportunity_mining/wfo_2025_m3to1",
+    "out_dir": "data/analysis/tick_opportunity_mining/wfo_m3to1",
     "report_out": "docs/analysis/eurusd_tick_opportunity_monthly_wfo_report.md",
 }
 

@@ -403,7 +403,7 @@ def main() -> None:
     p = argparse.ArgumentParser(description="Robustness checks for OCO monthly WFO predictions")
     p.add_argument(
         "--pred-path",
-        default="data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fast/EURUSD_oco_monthly_predictions.parquet",
+        default="data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fast/EURUSD_oco_monthly_predictions.parquet",
     )
     p.add_argument("--quantiles", default="0.5,0.6,0.7,0.8,0.9,0.95")
     p.add_argument("--bootstrap-paths", type=int, default=2000)
@@ -414,11 +414,11 @@ def main() -> None:
     p.add_argument("--seed", type=int, default=42)
     p.add_argument(
         "--out-summary-csv",
-        default="data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fast/EURUSD_oco_robustness_summary.csv",
+        default="data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fast/EURUSD_oco_robustness_summary.csv",
     )
     p.add_argument(
         "--out-monthly-csv",
-        default="data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fast/EURUSD_oco_robustness_monthly.csv",
+        default="data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fast/EURUSD_oco_robustness_monthly.csv",
     )
     p.add_argument(
         "--report-out", default="docs/analysis/eurusd_oco_monthly_wfo_robustness_report.md"

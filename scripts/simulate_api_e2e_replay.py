@@ -40,7 +40,7 @@ def load_expected_predictions(symbol: str, target_month: str) -> dict[tuple[str,
         dict: (candidate_uid, close_ts_iso) -> pred_prob
     """
     parquet_path = Path(
-        f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{symbol}_oco_monthly_predictions.parquet"
+        f"data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/{symbol}_oco_monthly_predictions.parquet"
     )
     if not parquet_path.exists():
         # Fallback to checking lock file for path

@@ -22,7 +22,7 @@ from pathlib import Path
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 DEFAULT_MODEL_MONTH = "2025-07"
 DEFAULT_PREDICTIONS_DIR = (
-    "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap"
+    "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap"
 )
 DEFAULT_TICK_ROOT = "/Users/danielfisher/Desktop/dukascopy_ticks"
 DEFAULT_OUTPUT_DIR = "data/analysis/spotlight_ticks"

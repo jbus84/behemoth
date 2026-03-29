@@ -25,7 +25,7 @@ except Exception:
 DEFAULTS: dict[str, Any] = {
     "symbol": "EURUSD",
     "candidate_csv": "data/analysis/tick_opportunity_mining/EURUSD_oco_candidates.csv",
-    "pred_path": "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet",
+    "pred_path": "data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet",
     "family_keep": "oco_first_touch_clean",
     "barrier_keep": "2,3",
     "horizon_keep": "5,6",
