@@ -1,3 +1,9 @@
+## v0.2.4 (2026-03-29)
+
+### Fix
+
+- **ci**: fix vulture dead code errors and relax xenon thresholds (#7)
+
 ## v0.2.3 (2026-03-29)
 
 ### Fix
