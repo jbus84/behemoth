@@ -233,8 +233,12 @@ freeze-oco:
 		JSON=$$(ls models/oco/$${sym}_model_*.json | sort | tail -n 1); \
 		if [ -z "$$JSON" ]; then echo "Error: No model JSON found for $$sym"; exit 1; fi; \
 		SYM_LOWER=$$(echo $$sym | tr '[:upper:]' '[:lower:]'); \
+		PRED_DIR=data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_$${SYM_LOWER}; \
+		if [ ! -f "$${PRED_DIR}/$${sym}_oco_monthly_predictions.parquet" ]; then \
+			PRED_DIR=data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap; \
+		fi; \
 		uv run python scripts/validate_api_parity.py --symbol $$sym \
-			--predictions data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_$${SYM_LOWER}/$${sym}_oco_monthly_predictions.parquet \
+			--predictions $${PRED_DIR}/$${sym}_oco_monthly_predictions.parquet \
 			--threshold-json $$JSON \
 			--out-summary data/analysis/backtest_reconcile/$${sym}_stage12_api_parity_summary.csv || exit 1; \
 		done
