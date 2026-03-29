@@ -121,9 +121,9 @@ def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_pa
             },
         ]
     ).to_csv(reduced_core_rolling / f"{symbol}_oco_reduced_monthly.csv", index=False)
-    pd.DataFrame(
-        [{"capacity_pass_monthly_or_annual": True}]
-    ).to_csv(reduced_core_rolling / f"{symbol}_oco_reduced_summary.csv", index=False)
+    pd.DataFrame([{"capacity_pass_monthly_or_annual": True}]).to_csv(
+        reduced_core_rolling / f"{symbol}_oco_reduced_summary.csv", index=False
+    )
 
     reduced_core = analysis_dir / "reduced_core"
     reduced_core.mkdir(parents=True)
@@ -133,9 +133,9 @@ def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_pa
 
     stop_limit_dir = analysis_dir / "stop_limit_tickfill_fullcap"
     stop_limit_dir.mkdir(parents=True)
-    pd.DataFrame(
-        [{"cap_pips": 1.2, "mean_per_signal_full_overshoot": 0.5}]
-    ).to_csv(stop_limit_dir / f"{symbol}_stop_limit_tickfill_caps.csv", index=False)
+    pd.DataFrame([{"cap_pips": 1.2, "mean_per_signal_full_overshoot": 0.5}]).to_csv(
+        stop_limit_dir / f"{symbol}_stop_limit_tickfill_caps.csv", index=False
+    )
 
     pred_dir = analysis_dir / "wfo_2025_m3to1_oco_fullcap"
     pred_dir.mkdir(parents=True)

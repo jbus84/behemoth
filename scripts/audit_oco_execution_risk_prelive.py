@@ -10,6 +10,7 @@ Checks E01..E10 across EURUSD/GBPUSD/USDJPY/USDCHF/AUDUSD/USDCAD and emits:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -51,7 +52,7 @@ class SymbolConfig:
 def _default_configs() -> dict[str, SymbolConfig]:
     configs = {}
     for s in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]:
-        s_low = s.lower()
+        s.lower()
         pred_folder = "wfo_2025_m3to1_oco_fullcap"
         red_folder = "reduced_core_rolling"
         stop_folder = "stop_limit_tickfill_fullcap"
@@ -196,7 +197,9 @@ def _load_detail(path: Path) -> tuple[pd.DataFrame, int]:
     return d, dup
 
 
-def audit_symbol(cfg: SymbolConfig, exceptions: dict[str, Any] | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+def audit_symbol(
+    cfg: SymbolConfig, exceptions: dict[str, Any] | None = None
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     checks: list[dict[str, Any]] = []
     issues: list[dict[str, Any]] = []
 
@@ -254,12 +257,13 @@ def audit_symbol(cfg: SymbolConfig, exceptions: dict[str, Any] | None = None) ->
         if status == "fail" and exceptions:
             for rule in exceptions.get("rules", []):
                 rid = rule.get("metric_id")
-                if rid == check_name or rid == check_id:
+                if rid in (check_name, check_id):
                     syms = rule.get("symbols", [])
-                    if (not syms) or (cfg.symbol in syms):
-                        if rule.get("disposition") == "accepted_exception":
-                            final_status = "accepted_exception"
-                            break
+                    if ((not syms) or (cfg.symbol in syms)) and rule.get(
+                        "disposition"
+                    ) == "accepted_exception":
+                        final_status = "accepted_exception"
+                        break
 
         row = {
             "symbol": cfg.symbol,
@@ -642,10 +646,8 @@ def run_audit(
     exceptions: dict[str, Any] = {}
     exc_path = Path("configs/research/governance/oco_monitoring_exceptions.yaml")
     if yaml and exc_path.exists():
-        try:
+        with contextlib.suppress(Exception):
             exceptions = yaml.safe_load(exc_path.read_text())
-        except Exception:
-            pass
 
     all_checks: list[pd.DataFrame] = []
     all_issues: list[pd.DataFrame] = []

@@ -102,7 +102,8 @@ def _symbol_configs(symbol: str) -> SymbolConfigs:
     s = str(symbol).lower().strip()
     return SymbolConfigs(
         mining=ROOT / f"configs/research/experiments/{s}_tick_opportunity_mining.yaml",
-        wfo=ROOT / f"configs/research/experiments/{s}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
+        wfo=ROOT
+        / f"configs/research/experiments/{s}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
         reduced=ROOT / f"configs/research/experiments/{s}_oco_reduced_core_rolling_2025.yaml",
     )
 
@@ -249,10 +250,14 @@ def _load_parquet(path: Path, *, columns: list[str] | None = None) -> pd.DataFra
 
 
 def _load_selected_signal_keys(pred_path: Path, schedule_path: Path) -> pd.DataFrame:
-    pred = _load_parquet(pred_path, columns=["candidate_uid", "close_ts", "selected_exec", "test_month"])
+    pred = _load_parquet(
+        pred_path, columns=["candidate_uid", "close_ts", "selected_exec", "test_month"]
+    )
     if pred.empty:
         return pd.DataFrame(columns=["candidate_uid", "close_ts", "test_month"])
-    pred["selected_exec"] = pd.to_numeric(pred.get("selected_exec"), errors="coerce").fillna(0).astype(int)
+    pred["selected_exec"] = (
+        pd.to_numeric(pred.get("selected_exec"), errors="coerce").fillna(0).astype(int)
+    )
     pred = pred[pred["selected_exec"] == 1].copy()
     if pred.empty:
         return pd.DataFrame(columns=["candidate_uid", "close_ts", "test_month"])
@@ -263,7 +268,9 @@ def _load_selected_signal_keys(pred_path: Path, schedule_path: Path) -> pd.DataF
         return pd.DataFrame(columns=["candidate_uid", "close_ts", "test_month"])
     pred["state_id"] = parts[4].astype(str)
     pred["bar_ticks"] = pd.to_numeric(parts[2], errors="coerce").astype("Int64")
-    pred["horizon"] = pd.to_numeric(parts[3].astype(str).str.lstrip("hH"), errors="coerce").astype("Int64")
+    pred["horizon"] = pd.to_numeric(parts[3].astype(str).str.lstrip("hH"), errors="coerce").astype(
+        "Int64"
+    )
 
     sched = _load_csv(schedule_path)
     if sched.empty:
@@ -329,7 +336,9 @@ def _load_robustness_exec_row(stage_root: Path, symbol: str) -> dict[str, Any]:
         if not rc.empty:
             candidates = rc
     if "is_exec_row" in candidates.columns:
-        ex = candidates[pd.to_numeric(candidates["is_exec_row"], errors="coerce").fillna(0).astype(int) == 1].copy()
+        ex = candidates[
+            pd.to_numeric(candidates["is_exec_row"], errors="coerce").fillna(0).astype(int) == 1
+        ].copy()
         if not ex.empty:
             candidates = ex
     return candidates.iloc[0].to_dict() if not candidates.empty else {}
@@ -342,13 +351,24 @@ def _state_overlap_rows(
     baseline_states: pd.DataFrame,
     current_states: pd.DataFrame,
 ) -> tuple[list[dict[str, Any]], float]:
-    months = sorted(set(baseline_states.get("test_month", pd.Series(dtype=str)).astype(str)) | set(current_states.get("test_month", pd.Series(dtype=str)).astype(str)))
+    months = sorted(
+        set(baseline_states.get("test_month", pd.Series(dtype=str)).astype(str))
+        | set(current_states.get("test_month", pd.Series(dtype=str)).astype(str))
+    )
     rows: list[dict[str, Any]] = []
     overall_base = set(baseline_states.get("state_key", pd.Series(dtype=str)).astype(str))
     overall_cur = set(current_states.get("state_key", pd.Series(dtype=str)).astype(str))
     for month in months:
-        b = set(baseline_states[baseline_states["test_month"].astype(str) == str(month)]["state_key"].astype(str))
-        c = set(current_states[current_states["test_month"].astype(str) == str(month)]["state_key"].astype(str))
+        b = set(
+            baseline_states[baseline_states["test_month"].astype(str) == str(month)][
+                "state_key"
+            ].astype(str)
+        )
+        c = set(
+            current_states[current_states["test_month"].astype(str) == str(month)][
+                "state_key"
+            ].astype(str)
+        )
         inter = len(b & c)
         union = len(b | c)
         rows.append(
@@ -374,7 +394,9 @@ def _state_overlap_rows(
             "offset_state_count": len(overall_cur),
             "intersection_count": overall_inter,
             "union_count": overall_union,
-            "state_jaccard": float(overall_inter / overall_union) if overall_union > 0 else float("nan"),
+            "state_jaccard": float(overall_inter / overall_union)
+            if overall_union > 0
+            else float("nan"),
         }
     )
     overall = float(overall_inter / overall_union) if overall_union > 0 else float("nan")
@@ -382,8 +404,22 @@ def _state_overlap_rows(
 
 
 def _selected_overlap_rate(baseline: pd.DataFrame, current: pd.DataFrame) -> float:
-    base_keys = set(zip(baseline.get("candidate_uid", pd.Series(dtype=str)).astype(str), pd.to_datetime(baseline.get("close_ts", pd.Series(dtype=object)), utc=True, errors="coerce")))
-    cur_keys = set(zip(current.get("candidate_uid", pd.Series(dtype=str)).astype(str), pd.to_datetime(current.get("close_ts", pd.Series(dtype=object)), utc=True, errors="coerce")))
+    base_keys = set(
+        zip(
+            baseline.get("candidate_uid", pd.Series(dtype=str)).astype(str),
+            pd.to_datetime(
+                baseline.get("close_ts", pd.Series(dtype=object)), utc=True, errors="coerce"
+            ),
+        )
+    )
+    cur_keys = set(
+        zip(
+            current.get("candidate_uid", pd.Series(dtype=str)).astype(str),
+            pd.to_datetime(
+                current.get("close_ts", pd.Series(dtype=object)), utc=True, errors="coerce"
+            ),
+        )
+    )
     base_keys = {(uid, ts) for uid, ts in base_keys if pd.notna(ts)}
     cur_keys = {(uid, ts) for uid, ts in cur_keys if pd.notna(ts)}
     if not base_keys and not cur_keys:
@@ -397,13 +433,17 @@ def _selected_key_diff_count(baseline: pd.DataFrame, current: pd.DataFrame) -> i
     base_keys = set(
         zip(
             baseline.get("candidate_uid", pd.Series(dtype=str)).astype(str),
-            pd.to_datetime(baseline.get("close_ts", pd.Series(dtype=object)), utc=True, errors="coerce"),
+            pd.to_datetime(
+                baseline.get("close_ts", pd.Series(dtype=object)), utc=True, errors="coerce"
+            ),
         )
     )
     cur_keys = set(
         zip(
             current.get("candidate_uid", pd.Series(dtype=str)).astype(str),
-            pd.to_datetime(current.get("close_ts", pd.Series(dtype=object)), utc=True, errors="coerce"),
+            pd.to_datetime(
+                current.get("close_ts", pd.Series(dtype=object)), utc=True, errors="coerce"
+            ),
         )
     )
     base_keys = {(uid, ts) for uid, ts in base_keys if pd.notna(ts)}
@@ -411,7 +451,9 @@ def _selected_key_diff_count(baseline: pd.DataFrame, current: pd.DataFrame) -> i
     return int(len(base_keys ^ cur_keys))
 
 
-def _prediction_perf_for_keys(pred_path: Path, detail_path: Path, keys: pd.DataFrame) -> dict[str, Any]:
+def _prediction_perf_for_keys(
+    pred_path: Path, detail_path: Path, keys: pd.DataFrame
+) -> dict[str, Any]:
     if keys.empty:
         return {
             "selected_rows": 0,
@@ -438,7 +480,13 @@ def _prediction_perf_for_keys(pred_path: Path, detail_path: Path, keys: pd.DataF
         for col in ["target_gross_pips", "overshoot_tick_pips", "touch_found_tick"]:
             if col in detail.columns:
                 detail[col] = pd.to_numeric(detail[col], errors="coerce")
-        detail = detail[[c for c in ["candidate_uid", "close_ts", "overshoot_tick_pips", "touch_found_tick"] if c in detail.columns]].drop_duplicates(subset=["candidate_uid", "close_ts"], keep="last")
+        detail = detail[
+            [
+                c
+                for c in ["candidate_uid", "close_ts", "overshoot_tick_pips", "touch_found_tick"]
+                if c in detail.columns
+            ]
+        ].drop_duplicates(subset=["candidate_uid", "close_ts"], keep="last")
         merged = merged.merge(detail, on=["candidate_uid", "close_ts"], how="left")
     gross = pd.to_numeric(merged.get("target_gross_pips"), errors="coerce")
     overs = pd.to_numeric(merged.get("overshoot_tick_pips"), errors="coerce")
@@ -467,7 +515,9 @@ def _build_by_offset_row(
     robustness_row = _load_robustness_exec_row(stage_root, symbol)
     stop_limit_summary = _load_stop_limit_summary(stage_root, symbol)
     schedule = _load_schedule_states(_reduced_schedule_path(stage_root, symbol))
-    selected = _load_selected_signal_keys(_prediction_path(stage_root, symbol), _reduced_schedule_path(stage_root, symbol))
+    selected = _load_selected_signal_keys(
+        _prediction_path(stage_root, symbol), _reduced_schedule_path(stage_root, symbol)
+    )
 
     if not reduced_summary:
         row = {
@@ -485,12 +535,24 @@ def _build_by_offset_row(
     positive_months = _safe_float(reduced_summary.get("positive_months"))
     fill_rate = _safe_float(reduced_summary.get("fill_rate_overall"))
     capacity_pass = _as_bool(reduced_summary.get("capacity_pass_monthly_or_annual"))
-    tick_exact_pass = _as_bool(tick_exact_summary.get("overall_pass")) if tick_exact_summary else False
-    no_touch_rate = float(1.0 - _safe_float(stop_limit_summary.get("touch_found_rate"))) if stop_limit_summary else float("nan")
-    overshoot_p95 = _safe_float(stop_limit_summary.get("tick_overshoot_p95_pips")) if stop_limit_summary else float("nan")
-    warmup_skip_months = int(
-        reduced_monthly.get("status", pd.Series(dtype=str)).astype(str).eq("warmup_skip").sum()
-    ) if not reduced_monthly.empty else 0
+    tick_exact_pass = (
+        _as_bool(tick_exact_summary.get("overall_pass")) if tick_exact_summary else False
+    )
+    no_touch_rate = (
+        float(1.0 - _safe_float(stop_limit_summary.get("touch_found_rate")))
+        if stop_limit_summary
+        else float("nan")
+    )
+    overshoot_p95 = (
+        _safe_float(stop_limit_summary.get("tick_overshoot_p95_pips"))
+        if stop_limit_summary
+        else float("nan")
+    )
+    warmup_skip_months = (
+        int(reduced_monthly.get("status", pd.Series(dtype=str)).astype(str).eq("warmup_skip").sum())
+        if not reduced_monthly.empty
+        else 0
+    )
     lb95_trade_gross = _safe_float(robustness_row.get("lb95_trade_mean_gross_pips"))
     mean_net = _safe_float(robustness_row.get("mean_net_pips_costplus_0.10"))
     lb95_trade_net = _safe_float(robustness_row.get("lb95_trade_mean_net_pips_costplus_0.10"))
@@ -518,16 +580,22 @@ def _build_by_offset_row(
             current_states=schedule,
         )
         overlap_rate = _selected_overlap_rate(baseline_selected, selected)
-        selected_rows_delta_pct = _pct_delta(signal_rows_total, baseline_row.get("selected_rows_total"))
+        selected_rows_delta_pct = _pct_delta(
+            signal_rows_total, baseline_row.get("selected_rows_total")
+        )
         trade_rows_delta_pct = _pct_delta(rows_total, baseline_row.get("trade_rows_total"))
         mean_gross_delta = mean_gross - _safe_float(baseline_row.get("mean_gross_pips"))
         mean_net_delta = mean_net - _safe_float(baseline_row.get("mean_net_pips"))
-        lb95_gross_delta = lb95_trade_gross - _safe_float(baseline_row.get("lb95_trade_mean_gross_pips"))
+        lb95_gross_delta = lb95_trade_gross - _safe_float(
+            baseline_row.get("lb95_trade_mean_gross_pips")
+        )
         lb95_net_delta = lb95_trade_net - _safe_float(baseline_row.get("lb95_trade_mean_net_pips"))
         positive_months_delta = positive_months - _safe_float(baseline_row.get("positive_months"))
         fill_rate_delta = fill_rate - _safe_float(baseline_row.get("execution_fill_rate"))
         no_touch_delta = no_touch_rate - _safe_float(baseline_row.get("execution_no_touch_rate"))
-        overshoot_delta = overshoot_p95 - _safe_float(baseline_row.get("execution_overshoot_p95_pips"))
+        overshoot_delta = overshoot_p95 - _safe_float(
+            baseline_row.get("execution_overshoot_p95_pips")
+        )
 
         if np.isfinite(selected_rows_delta_pct) and abs(selected_rows_delta_pct) > 20.0:
             degrade_reasons.append("selected_rows_delta_gt_20pct")
@@ -621,7 +689,15 @@ def _run_symbol_offset_pipeline(
     reduced_dir = stage_root / "reduced_core"
     tick_exact_dir = stage_root / "tick_exact"
     robustness_dir = stage_root / "robustness"
-    for d in [mining_out, wfo_out, stop_limit_out, reduced_rolling_dir, reduced_dir, tick_exact_dir, robustness_dir]:
+    for d in [
+        mining_out,
+        wfo_out,
+        stop_limit_out,
+        reduced_rolling_dir,
+        reduced_dir,
+        tick_exact_dir,
+        robustness_dir,
+    ]:
         d.mkdir(parents=True, exist_ok=True)
 
     pipeline_steps: list[tuple[str, list[str]]] = [
@@ -805,11 +881,20 @@ def _rebuild_rows_against_baseline(
     out_dir: Path,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     rows_sorted = sorted(rows, key=lambda x: int(x.get("offset", 0)))
-    baseline = next((r for r in rows_sorted if int(r.get("offset", -1)) == 0 and r.get("offset_status") != "failed_pipeline"), None)
+    baseline = next(
+        (
+            r
+            for r in rows_sorted
+            if int(r.get("offset", -1)) == 0 and r.get("offset_status") != "failed_pipeline"
+        ),
+        None,
+    )
     if baseline is None:
         return rows_sorted, []
     base_root = _offset_stage_root(out_dir, symbol, 0)
-    base_selected = _load_selected_signal_keys(_prediction_path(base_root, symbol), _reduced_schedule_path(base_root, symbol))
+    base_selected = _load_selected_signal_keys(
+        _prediction_path(base_root, symbol), _reduced_schedule_path(base_root, symbol)
+    )
     base_states = _load_schedule_states(_reduced_schedule_path(base_root, symbol))
 
     final_rows: list[dict[str, Any]] = []
@@ -836,7 +921,12 @@ def _rebuild_rows_against_baseline(
 def _api_stage_root(stage_root: Path, offset: int, warmup_bars: int | None = None) -> Path:
     if warmup_bars is None:
         return stage_root / "api_confirmation" / f"offset_{int(offset):03d}"
-    return stage_root / "warmup_sensitivity" / f"offset_{int(offset):03d}" / f"warmup_{int(warmup_bars):03d}"
+    return (
+        stage_root
+        / "warmup_sensitivity"
+        / f"offset_{int(offset):03d}"
+        / f"warmup_{int(warmup_bars):03d}"
+    )
 
 
 def _coarse_offsets(all_offsets: list[int], coarse_offsets: list[int]) -> list[int]:
@@ -854,7 +944,11 @@ def _severity_score(row: dict[str, Any]) -> tuple[int, float, float]:
         return (2, float("inf"), float("inf"))
     lb95 = abs(_safe_float(row.get("lb95_trade_mean_gross_pips_delta")))
     selected = abs(_safe_float(row.get("selected_rows_delta_pct")))
-    return (1 if status == "degraded" else 0, lb95 if np.isfinite(lb95) else 0.0, selected if np.isfinite(selected) else 0.0)
+    return (
+        1 if status == "degraded" else 0,
+        lb95 if np.isfinite(lb95) else 0.0,
+        selected if np.isfinite(selected) else 0.0,
+    )
 
 
 def _choose_refine_centers(
@@ -865,9 +959,9 @@ def _choose_refine_centers(
     if by_offset_df.empty or max_centers <= 0:
         return []
     flagged = by_offset_df[
-        by_offset_df.get("offset_status", pd.Series(dtype=str)).astype(str).isin(
-            ["degraded", "failed_pipeline", "no_qualifying_states"]
-        )
+        by_offset_df.get("offset_status", pd.Series(dtype=str))
+        .astype(str)
+        .isin(["degraded", "failed_pipeline", "no_qualifying_states"])
     ].copy()
     if flagged.empty:
         return []
@@ -960,10 +1054,20 @@ def _write_incremental_outputs(
     api_frames: list[pd.DataFrame],
     warmup_frames: list[pd.DataFrame],
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    summary_df = pd.DataFrame(summary_rows).sort_values("symbol").reset_index(drop=True) if summary_rows else pd.DataFrame()
-    by_offset_df = pd.DataFrame(by_offset_rows).sort_values(["symbol", "offset"]).reset_index(drop=True) if by_offset_rows else pd.DataFrame()
+    summary_df = (
+        pd.DataFrame(summary_rows).sort_values("symbol").reset_index(drop=True)
+        if summary_rows
+        else pd.DataFrame()
+    )
+    by_offset_df = (
+        pd.DataFrame(by_offset_rows).sort_values(["symbol", "offset"]).reset_index(drop=True)
+        if by_offset_rows
+        else pd.DataFrame()
+    )
     overlap_df = (
-        pd.DataFrame(overlap_rows_all).sort_values(["symbol", "offset", "test_month"]).reset_index(drop=True)
+        pd.DataFrame(overlap_rows_all)
+        .sort_values(["symbol", "offset", "test_month"])
+        .reset_index(drop=True)
         if overlap_rows_all
         else pd.DataFrame()
     )
@@ -971,10 +1075,22 @@ def _write_incremental_outputs(
     warmup_df = pd.concat(warmup_frames, ignore_index=True) if warmup_frames else pd.DataFrame()
 
     for symbol in symbols:
-        sym_by_offset = by_offset_df[by_offset_df["symbol"] == symbol].copy() if not by_offset_df.empty else pd.DataFrame()
-        sym_overlap = overlap_df[overlap_df["symbol"] == symbol].copy() if not overlap_df.empty else pd.DataFrame()
+        sym_by_offset = (
+            by_offset_df[by_offset_df["symbol"] == symbol].copy()
+            if not by_offset_df.empty
+            else pd.DataFrame()
+        )
+        sym_overlap = (
+            overlap_df[overlap_df["symbol"] == symbol].copy()
+            if not overlap_df.empty
+            else pd.DataFrame()
+        )
         sym_api = api_df[api_df["symbol"] == symbol].copy() if not api_df.empty else pd.DataFrame()
-        sym_warmup = warmup_df[warmup_df["symbol"] == symbol].copy() if not warmup_df.empty else pd.DataFrame()
+        sym_warmup = (
+            warmup_df[warmup_df["symbol"] == symbol].copy()
+            if not warmup_df.empty
+            else pd.DataFrame()
+        )
         sym_by_offset.to_csv(out_dir / f"{symbol}_offset_robustness_by_offset.csv", index=False)
         sym_overlap.to_csv(out_dir / f"{symbol}_offset_state_overlap.csv", index=False)
         sym_warmup.to_csv(out_dir / f"{symbol}_warmup_sensitivity.csv", index=False)
@@ -984,7 +1100,9 @@ def _write_incremental_outputs(
     return summary_df, by_offset_df, overlap_df, api_df, warmup_df
 
 
-def _replace_symbol_frame(frames: list[pd.DataFrame], symbol: str, frame: pd.DataFrame) -> list[pd.DataFrame]:
+def _replace_symbol_frame(
+    frames: list[pd.DataFrame], symbol: str, frame: pd.DataFrame
+) -> list[pd.DataFrame]:
     kept: list[pd.DataFrame] = []
     for df in frames:
         if df.empty:
@@ -1009,10 +1127,12 @@ def _run_api_replay(
     warmup_ticks: int,
     fail_fast: bool,
 ) -> tuple[dict[str, Any], pd.DataFrame]:
-    api_root = _api_stage_root(stage_root, offset, None if warmup_ticks == 30000 else int(round(warmup_ticks / 100)))
+    api_root = _api_stage_root(
+        stage_root, offset, None if warmup_ticks == 30000 else int(round(warmup_ticks / 100))
+    )
     api_root.mkdir(parents=True, exist_ok=True)
     runtime_selected_csv = api_root / "runtime_selected.csv"
-    local_summary_csv = api_root / "local_summary.csv"
+    api_root / "local_summary.csv"
     stage12_summary_csv = api_root / "stage12_summary.csv"
     raise NotImplementedError(
         "cBot testclient replay was removed. JForex equivalent is a future task."
@@ -1021,7 +1141,11 @@ def _run_api_replay(
     summary = _load_csv(stage12_summary_csv)
     row = summary.iloc[0].to_dict() if not summary.empty else {}
     runtime_keys = _load_csv(runtime_selected_csv)
-    perf = _prediction_perf_for_keys(_prediction_path(stage_root, symbol), _stop_limit_detail_path(stage_root, symbol), runtime_keys)
+    perf = _prediction_perf_for_keys(
+        _prediction_path(stage_root, symbol),
+        _stop_limit_detail_path(stage_root, symbol),
+        runtime_keys,
+    )
     merged = {
         "symbol": symbol,
         "offset": int(offset),
@@ -1030,7 +1154,9 @@ def _run_api_replay(
         "execution_parity_pass": _as_bool(row.get("execution_parity_pass")),
         "selected_missing_expected": _safe_int(row.get("selected_missing_expected")),
         "selected_extra_runtime": _safe_int(row.get("selected_extra_runtime")),
-        "execution_failed_checks_high_critical": _safe_int(row.get("execution_failed_checks_high_critical")),
+        "execution_failed_checks_high_critical": _safe_int(
+            row.get("execution_failed_checks_high_critical")
+        ),
         "ticks_streamed": _safe_int(row.get("ticks_streamed")),
         "predict_warmup_422": _safe_int(row.get("predict_warmup_422")),
         "runtime_selected_rows": int(perf.get("selected_rows", 0)),
@@ -1059,7 +1185,10 @@ def _run_api_confirmation_and_warmup(
 
     for offset in offsets:
         stage_root = _offset_stage_root(stage_out_dir, symbol, int(offset))
-        if not _prediction_path(stage_root, symbol).exists() or not _reduced_schedule_path(stage_root, symbol).exists():
+        if (
+            not _prediction_path(stage_root, symbol).exists()
+            or not _reduced_schedule_path(stage_root, symbol).exists()
+        ):
             api_rows.append(
                 {
                     "symbol": symbol,
@@ -1093,10 +1222,16 @@ def _run_api_confirmation_and_warmup(
         repo_perf = _prediction_perf_for_keys(
             _prediction_path(stage_root, symbol),
             _stop_limit_detail_path(stage_root, symbol),
-            _load_selected_signal_keys(_prediction_path(stage_root, symbol), _reduced_schedule_path(stage_root, symbol)),
+            _load_selected_signal_keys(
+                _prediction_path(stage_root, symbol), _reduced_schedule_path(stage_root, symbol)
+            ),
         )
-        base_row["mean_gross_pips_delta_vs_repo_offset_baseline"] = _safe_float(base_row.get("runtime_mean_gross_pips")) - _safe_float(repo_perf.get("mean_gross_pips"))
-        base_row["mean_net_pips_delta_vs_repo_offset_baseline"] = _safe_float(base_row.get("runtime_mean_net_pips")) - _safe_float(repo_perf.get("mean_net_pips"))
+        base_row["mean_gross_pips_delta_vs_repo_offset_baseline"] = _safe_float(
+            base_row.get("runtime_mean_gross_pips")
+        ) - _safe_float(repo_perf.get("mean_gross_pips"))
+        base_row["mean_net_pips_delta_vs_repo_offset_baseline"] = _safe_float(
+            base_row.get("runtime_mean_net_pips")
+        ) - _safe_float(repo_perf.get("mean_net_pips"))
         api_rows.append(base_row)
 
         baseline_warmup: dict[str, Any] | None = None
@@ -1115,7 +1250,9 @@ def _run_api_confirmation_and_warmup(
                 fail_fast=fail_fast,
             )
             row["warmup_bars"] = int(warmup_bars)
-            row["first_feature_available_bar"] = max(1, int(MIN_FEATURE_BARS) - int(warmup_bars) + 1)
+            row["first_feature_available_bar"] = max(
+                1, int(MIN_FEATURE_BARS) - int(warmup_bars) + 1
+            )
             row["first_full_precision_bar"] = max(1, int(FULL_FEATURE_BARS) - int(warmup_bars) + 1)
             if int(warmup_bars) == FULL_FEATURE_BARS:
                 baseline_warmup = dict(row)
@@ -1126,9 +1263,15 @@ def _run_api_confirmation_and_warmup(
             warmup_rows.extend([row for row, _ in warmup_records])
             continue
         for row, runtime_keys in warmup_records:
-            row["signal_parity_drift_vs_289"] = _selected_key_diff_count(baseline_keys, runtime_keys)
-            row["gated_mean_gross_pips_delta_vs_289"] = _safe_float(row.get("runtime_mean_gross_pips")) - _safe_float(baseline_warmup.get("runtime_mean_gross_pips"))
-            row["gated_mean_net_pips_delta_vs_289"] = _safe_float(row.get("runtime_mean_net_pips")) - _safe_float(baseline_warmup.get("runtime_mean_net_pips"))
+            row["signal_parity_drift_vs_289"] = _selected_key_diff_count(
+                baseline_keys, runtime_keys
+            )
+            row["gated_mean_gross_pips_delta_vs_289"] = _safe_float(
+                row.get("runtime_mean_gross_pips")
+            ) - _safe_float(baseline_warmup.get("runtime_mean_gross_pips"))
+            row["gated_mean_net_pips_delta_vs_289"] = _safe_float(
+                row.get("runtime_mean_net_pips")
+            ) - _safe_float(baseline_warmup.get("runtime_mean_net_pips"))
             warmup_rows.append(row)
 
     api_df = pd.DataFrame(api_rows)
@@ -1138,22 +1281,65 @@ def _run_api_confirmation_and_warmup(
         for (sym, offset), g in warmup_df.groupby(["symbol", "offset"], sort=True):
             g2 = g.sort_values("warmup_bars").copy()
             elig = g2[
-                (pd.to_numeric(g2["signal_parity_drift_vs_289"], errors="coerce").fillna(999999) == 0)
-                & (pd.to_numeric(g2["gated_mean_gross_pips_delta_vs_289"], errors="coerce").abs() <= 0.05)
+                (
+                    pd.to_numeric(g2["signal_parity_drift_vs_289"], errors="coerce").fillna(999999)
+                    == 0
+                )
+                & (
+                    pd.to_numeric(g2["gated_mean_gross_pips_delta_vs_289"], errors="coerce").abs()
+                    <= 0.05
+                )
             ].copy()
             plateau = int(elig["warmup_bars"].iloc[0]) if not elig.empty else np.nan
-            plateau_rows.append({"symbol": sym, "offset": int(offset), "plateau_warmup_bars": plateau})
+            plateau_rows.append(
+                {"symbol": sym, "offset": int(offset), "plateau_warmup_bars": plateau}
+            )
         plateau_df = pd.DataFrame(plateau_rows)
         warmup_df = warmup_df.merge(plateau_df, on=["symbol", "offset"], how="left")
     return api_df, warmup_df
 
 
 def _classification(by_offset: pd.DataFrame, api_df: pd.DataFrame, warmup_df: pd.DataFrame) -> str:
-    failed = int(by_offset.get("offset_status", pd.Series(dtype=str)).astype(str).eq("failed_pipeline").sum()) if not by_offset.empty else 0
-    noq = int(by_offset.get("offset_status", pd.Series(dtype=str)).astype(str).eq("no_qualifying_states").sum()) if not by_offset.empty else 0
-    degraded = int(by_offset.get("offset_status", pd.Series(dtype=str)).astype(str).eq("degraded").sum()) if not by_offset.empty else 0
-    api_fail = int(api_df.get("api_confirmation_status", pd.Series(dtype=str)).astype(str).isin(["fail", "failed_pipeline"]).sum()) if not api_df.empty else 0
-    plateau_missing = int(warmup_df.get("plateau_warmup_bars", pd.Series(dtype=float)).isna().sum()) if not warmup_df.empty else 0
+    failed = (
+        int(
+            by_offset.get("offset_status", pd.Series(dtype=str))
+            .astype(str)
+            .eq("failed_pipeline")
+            .sum()
+        )
+        if not by_offset.empty
+        else 0
+    )
+    noq = (
+        int(
+            by_offset.get("offset_status", pd.Series(dtype=str))
+            .astype(str)
+            .eq("no_qualifying_states")
+            .sum()
+        )
+        if not by_offset.empty
+        else 0
+    )
+    degraded = (
+        int(by_offset.get("offset_status", pd.Series(dtype=str)).astype(str).eq("degraded").sum())
+        if not by_offset.empty
+        else 0
+    )
+    api_fail = (
+        int(
+            api_df.get("api_confirmation_status", pd.Series(dtype=str))
+            .astype(str)
+            .isin(["fail", "failed_pipeline"])
+            .sum()
+        )
+        if not api_df.empty
+        else 0
+    )
+    plateau_missing = (
+        int(warmup_df.get("plateau_warmup_bars", pd.Series(dtype=float)).isna().sum())
+        if not warmup_df.empty
+        else 0
+    )
     if failed > 0 or api_fail > 0 or plateau_missing > 0 or noq > 0:
         return "materially_phase_sensitive"
     if degraded > 0:
@@ -1249,7 +1435,9 @@ def run(
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     out_dir.mkdir(parents=True, exist_ok=True)
     requested_offsets = sorted(set(int(x) for x in offsets))
-    coarse_requested = _coarse_offsets(requested_offsets, coarse_offsets if str(mode) == "adaptive" else requested_offsets)
+    coarse_requested = _coarse_offsets(
+        requested_offsets, coarse_offsets if str(mode) == "adaptive" else requested_offsets
+    )
     build_offsets = requested_offsets if str(mode) == "exhaustive" else coarse_requested
 
     _ensure_offset_bars(
@@ -1284,14 +1472,18 @@ def run(
             completed_offsets.append(int(offset))
             overlap_rows_all.extend(overlap_rows)
 
-        symbol_rows, rebuilt_overlap = _rebuild_rows_against_baseline(symbol=symbol, rows=raw_rows, out_dir=out_dir)
+        symbol_rows, rebuilt_overlap = _rebuild_rows_against_baseline(
+            symbol=symbol, rows=raw_rows, out_dir=out_dir
+        )
         overlap_rows_all.extend(rebuilt_overlap)
 
         refine_centers: list[int] = []
         refined_offsets: list[int] = []
         if str(mode) == "adaptive":
             coarse_df = pd.DataFrame(symbol_rows).sort_values("offset").reset_index(drop=True)
-            refine_centers = _choose_refine_centers(by_offset_df=coarse_df, max_centers=max_refine_centers_per_symbol)
+            refine_centers = _choose_refine_centers(
+                by_offset_df=coarse_df, max_centers=max_refine_centers_per_symbol
+            )
             refined_offsets = _refined_offsets(
                 all_offsets=requested_offsets,
                 coarse_offsets=coarse_done,
@@ -1321,7 +1513,9 @@ def run(
                     raw_rows.append(row)
                     completed_offsets.append(int(offset))
                     overlap_rows_all.extend(overlap_rows)
-                symbol_rows, rebuilt_overlap = _rebuild_rows_against_baseline(symbol=symbol, rows=raw_rows, out_dir=out_dir)
+                symbol_rows, rebuilt_overlap = _rebuild_rows_against_baseline(
+                    symbol=symbol, rows=raw_rows, out_dir=out_dir
+                )
                 overlap_rows_all.extend(rebuilt_overlap)
 
         by_offset_df = pd.DataFrame(symbol_rows).sort_values("offset").reset_index(drop=True)
@@ -1361,17 +1555,61 @@ def run(
             "offsets_refined": int(len(refined_offsets)),
             "study_mode": str(mode),
             "retention_mode": str(retention_mode),
-            "ok_count": int(by_offset_df.get("offset_status", pd.Series(dtype=str)).astype(str).eq("ok").sum()) if not by_offset_df.empty else 0,
-            "degraded_count": int(by_offset_df.get("offset_status", pd.Series(dtype=str)).astype(str).eq("degraded").sum()) if not by_offset_df.empty else 0,
-            "failed_pipeline_count": int(by_offset_df.get("offset_status", pd.Series(dtype=str)).astype(str).eq("failed_pipeline").sum()) if not by_offset_df.empty else 0,
-            "no_qualifying_states_count": int(by_offset_df.get("offset_status", pd.Series(dtype=str)).astype(str).eq("no_qualifying_states").sum()) if not by_offset_df.empty else 0,
+            "ok_count": int(
+                by_offset_df.get("offset_status", pd.Series(dtype=str)).astype(str).eq("ok").sum()
+            )
+            if not by_offset_df.empty
+            else 0,
+            "degraded_count": int(
+                by_offset_df.get("offset_status", pd.Series(dtype=str))
+                .astype(str)
+                .eq("degraded")
+                .sum()
+            )
+            if not by_offset_df.empty
+            else 0,
+            "failed_pipeline_count": int(
+                by_offset_df.get("offset_status", pd.Series(dtype=str))
+                .astype(str)
+                .eq("failed_pipeline")
+                .sum()
+            )
+            if not by_offset_df.empty
+            else 0,
+            "no_qualifying_states_count": int(
+                by_offset_df.get("offset_status", pd.Series(dtype=str))
+                .astype(str)
+                .eq("no_qualifying_states")
+                .sum()
+            )
+            if not by_offset_df.empty
+            else 0,
             "phase_classification": classification,
-            "api_confirmation_fail_count": int(api_df.get("api_confirmation_status", pd.Series(dtype=str)).astype(str).isin(["fail", "failed_pipeline"]).sum()) if not api_df.empty else 0,
-            "warmup_plateau_max_bars": float(pd.to_numeric(warmup_df.get("plateau_warmup_bars", pd.Series(dtype=float)), errors="coerce").max()) if not warmup_df.empty else float("nan"),
+            "api_confirmation_fail_count": int(
+                api_df.get("api_confirmation_status", pd.Series(dtype=str))
+                .astype(str)
+                .isin(["fail", "failed_pipeline"])
+                .sum()
+            )
+            if not api_df.empty
+            else 0,
+            "warmup_plateau_max_bars": float(
+                pd.to_numeric(
+                    warmup_df.get("plateau_warmup_bars", pd.Series(dtype=float)), errors="coerce"
+                ).max()
+            )
+            if not warmup_df.empty
+            else float("nan"),
             "report_path": _display_path(_offset_report_path(symbol, out_dir=out_dir)),
         }
         summary_rows.append(summary_row)
-        state_overlap_df = pd.DataFrame([r for r in overlap_rows_all if r.get("symbol") == symbol]).sort_values(["offset", "test_month"]) if overlap_rows_all else pd.DataFrame()
+        state_overlap_df = (
+            pd.DataFrame([r for r in overlap_rows_all if r.get("symbol") == symbol]).sort_values(
+                ["offset", "test_month"]
+            )
+            if overlap_rows_all
+            else pd.DataFrame()
+        )
         _write_symbol_report(
             symbol=symbol,
             summary_row=summary_row,
@@ -1381,14 +1619,16 @@ def run(
             warmup_df=warmup_df,
             out_path=_offset_report_path(symbol, out_dir=out_dir),
         )
-        summary_df, by_offset_df_all, overlap_df, api_df_all, warmup_df_all = _write_incremental_outputs(
-            out_dir=out_dir,
-            symbols=symbols,
-            summary_rows=summary_rows,
-            by_offset_rows=by_offset_rows,
-            overlap_rows_all=overlap_rows_all,
-            api_frames=api_all,
-            warmup_frames=warmup_all,
+        summary_df, by_offset_df_all, overlap_df, api_df_all, warmup_df_all = (
+            _write_incremental_outputs(
+                out_dir=out_dir,
+                symbols=symbols,
+                summary_rows=summary_rows,
+                by_offset_rows=by_offset_rows,
+                overlap_rows_all=overlap_rows_all,
+                api_frames=api_all,
+                warmup_frames=warmup_all,
+            )
         )
         if str(retention_mode) == "compact":
             keep_offsets = _offsets_to_retain(
@@ -1412,7 +1652,9 @@ def run(
         api_frames=api_all,
         warmup_frames=warmup_all,
     )
-    print(f"wrote study summary: {out_dir / 'offset_robustness_summary.csv'} rows={len(summary_df)}")
+    print(
+        f"wrote study summary: {out_dir / 'offset_robustness_summary.csv'} rows={len(summary_df)}"
+    )
     return summary_df, by_offset_df, overlap_df, api_df, warmup_df
 
 
@@ -1429,7 +1671,9 @@ def main() -> None:
     p.add_argument("--out-dir", default=DEFAULT_OUT_DIR)
     p.add_argument("--retention-mode", choices=["compact", "full"], default="compact")
     p.add_argument("--retain-flagged-offset-runs", default="true")
-    p.add_argument("--api-confirm-offsets", default=",".join(str(x) for x in DEFAULT_API_CONFIRM_OFFSETS))
+    p.add_argument(
+        "--api-confirm-offsets", default=",".join(str(x) for x in DEFAULT_API_CONFIRM_OFFSETS)
+    )
     p.add_argument("--warmup-bars-grid", default=",".join(str(x) for x in DEFAULT_WARMUP_BARS_GRID))
     p.add_argument("--stage12-start-ts", default="2025-07-07T00:00:00Z")
     p.add_argument("--stage12-end-ts", default="2025-07-09T00:00:00Z")

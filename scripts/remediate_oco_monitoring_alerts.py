@@ -291,9 +291,7 @@ def run(
         latest_scope_month = latest_test_month_by_scope.get((source_alert, symbol), "")
         row_test_month = str(r.get("test_month", "")).strip()
         is_current_scope_row = (
-            row_test_month == ""
-            or latest_scope_month == ""
-            or row_test_month == latest_scope_month
+            row_test_month == "" or latest_scope_month == "" or row_test_month == latest_scope_month
         )
         recurrence_applies = status != "accepted_exception" and is_current_scope_row
         recurrence_breach = recurrence_applies and (

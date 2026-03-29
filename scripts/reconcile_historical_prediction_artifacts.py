@@ -63,11 +63,15 @@ def _feature_frame_from_bars(
     out["ret1_pips"] = pd.to_numeric(out.get("vel_pips_h1"), errors="coerce")
     out["ret_z"] = pd.to_numeric(out.get("vel_z_h1"), errors="coerce")
     out["ret_abs_z"] = pd.to_numeric(out.get("vel_z_h1"), errors="coerce").abs()
-    out["vel_abs_cost_units_h1"] = pd.to_numeric(out.get("vel_cost_units_h1"), errors="coerce").abs()
+    out["vel_abs_cost_units_h1"] = pd.to_numeric(
+        out.get("vel_cost_units_h1"), errors="coerce"
+    ).abs()
     return out
 
 
-def _thresholds_for_close_ts(close_ts: pd.Series, thr_cfg: dict[str, Any]) -> tuple[pd.Series, pd.Series]:
+def _thresholds_for_close_ts(
+    close_ts: pd.Series, thr_cfg: dict[str, Any]
+) -> tuple[pd.Series, pd.Series]:
     schedule = thr_cfg.get("threshold_schedule", {}) or {}
     static_thr = float(thr_cfg.get("threshold_exec", 0.5))
     mode = str(thr_cfg.get("threshold_source", "default"))
@@ -81,7 +85,9 @@ def _thresholds_for_close_ts(close_ts: pd.Series, thr_cfg: dict[str, Any]) -> tu
         else:
             thr_vals.append(static_thr)
             src_vals.append(f"{mode}:static_fallback")
-    return pd.Series(thr_vals, index=close_ts.index, dtype=float), pd.Series(src_vals, index=close_ts.index, dtype=object)
+    return pd.Series(thr_vals, index=close_ts.index, dtype=float), pd.Series(
+        src_vals, index=close_ts.index, dtype=object
+    )
 
 
 def _load_lock(path: Path) -> dict[str, Any]:
@@ -158,7 +164,9 @@ def reconcile_lock(
     pred = pd.read_parquet(source_pred)
     pred["test_month"] = pred.get("test_month", pd.Series(dtype=object)).map(_normalize_month)
     pred["candidate_uid"] = pred.get("candidate_uid", pd.Series(dtype=object)).astype(str)
-    pred["close_ts"] = pd.to_datetime(pred.get("close_ts", pd.Series(dtype=object)), utc=True, errors="coerce")
+    pred["close_ts"] = pd.to_datetime(
+        pred.get("close_ts", pd.Series(dtype=object)), utc=True, errors="coerce"
+    )
     pred = pred[
         (pred["test_month"] == month)
         & (pred["candidate_uid"].isin(allowed))
@@ -167,7 +175,9 @@ def reconcile_lock(
     if pred.empty:
         raise ValueError(f"no prediction rows found for {symbol} {month} in {source_pred}")
 
-    bar_ticks_needed = sorted({int(x) for x in state_meta["bar_ticks"].dropna().astype(int).unique().tolist()})
+    bar_ticks_needed = sorted(
+        {int(x) for x in state_meta["bar_ticks"].dropna().astype(int).unique().tolist()}
+    )
     bar_parts: list[pd.DataFrame] = []
     bar_cols = [
         "close_ts",
@@ -197,9 +207,15 @@ def reconcile_lock(
     bars_all = pd.concat(bar_parts, ignore_index=True)
 
     feat_rows = _feature_frame_from_bars(rows=pred, bars=bars_all, state_meta=state_meta)
-    missing_bars = int(feat_rows["hour_utc"].isna().sum()) if "hour_utc" in feat_rows.columns else len(feat_rows)
+    missing_bars = (
+        int(feat_rows["hour_utc"].isna().sum())
+        if "hour_utc" in feat_rows.columns
+        else len(feat_rows)
+    )
     if missing_bars:
-        raise ValueError(f"{symbol} {month}: {missing_bars} rows missing matching tick_velocity bars")
+        raise ValueError(
+            f"{symbol} {month}: {missing_bars} rows missing matching tick_velocity bars"
+        )
 
     thr_cfg = json.loads(threshold_path.read_text(encoding="utf-8"))
     features = [str(x) for x in thr_cfg.get("features", [])]
@@ -217,11 +233,14 @@ def reconcile_lock(
         feat_rows["close_ts"], thr_cfg
     )
     feat_rows["selected_exec"] = (
-        feat_rows["pred_prob"].to_numpy(dtype=float) >= feat_rows["threshold_exec"].to_numpy(dtype=float)
+        feat_rows["pred_prob"].to_numpy(dtype=float)
+        >= feat_rows["threshold_exec"].to_numpy(dtype=float)
     ).astype(int)
     feat_rows["threshold_mode"] = str(thr_cfg.get("threshold_source", "default"))
     feat_rows["threshold_days"] = int(thr_cfg.get("rolling_threshold_days", 0) or 0)
-    feat_rows["library"] = feat_rows.get("library", pd.Series(["oco"] * len(feat_rows))).fillna("oco").astype(str)
+    feat_rows["library"] = (
+        feat_rows.get("library", pd.Series(["oco"] * len(feat_rows))).fillna("oco").astype(str)
+    )
 
     keep_cols = [
         "library",
@@ -240,7 +259,12 @@ def reconcile_lock(
     for extra in ["event_ordinal", "scored_row_id"]:
         if extra in feat_rows.columns:
             keep_cols.append(extra)
-    frozen = feat_rows[keep_cols].copy().sort_values(["close_ts", "candidate_uid"]).reset_index(drop=True)
+    frozen = (
+        feat_rows[keep_cols]
+        .copy()
+        .sort_values(["close_ts", "candidate_uid"])
+        .reset_index(drop=True)
+    )
 
     out_path = lock_path.parent / f"{symbol.lower()}_oco_locked_predictions.parquet"
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -252,7 +276,9 @@ def reconcile_lock(
     artifacts["source_predictions_sha256"] = _sha256(source_pred)
     artifacts["predictions_path"] = str(out_path)
     artifacts["predictions_sha256"] = frozen_sha
-    artifacts["predictions_reconciled_at_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    artifacts["predictions_reconciled_at_utc"] = datetime.now(timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     lock["artifacts"] = artifacts
     if write_lock:
         lock_path.write_text(json.dumps(lock, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -267,13 +293,17 @@ def reconcile_lock(
         "frozen_predictions_path": str(out_path),
         "frozen_predictions_sha256": frozen_sha,
         "rows_reconciled": int(len(frozen)),
-        "selected_exec_rows": int(pd.to_numeric(frozen["selected_exec"], errors="coerce").fillna(0).astype(int).sum()),
+        "selected_exec_rows": int(
+            pd.to_numeric(frozen["selected_exec"], errors="coerce").fillna(0).astype(int).sum()
+        ),
         "lock_updated": bool(write_lock),
     }
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Reconcile historical prediction artifacts into frozen month-local files")
+    p = argparse.ArgumentParser(
+        description="Reconcile historical prediction artifacts into frozen month-local files"
+    )
     p.add_argument("--history-dir", default="configs/research/governance/oco_history")
     p.add_argument("--tick-velocity-dir", default="data/analysis/tick_velocity")
     p.add_argument("--symbols", default="")
@@ -297,7 +327,11 @@ def main() -> None:
                 write_lock=write_lock,
             )
         )
-    summary = pd.DataFrame(rows).sort_values(["symbol", "month"]).reset_index(drop=True) if rows else pd.DataFrame()
+    summary = (
+        pd.DataFrame(rows).sort_values(["symbol", "month"]).reset_index(drop=True)
+        if rows
+        else pd.DataFrame()
+    )
     if str(args.summary_csv).strip():
         out = Path(str(args.summary_csv))
         out.parent.mkdir(parents=True, exist_ok=True)

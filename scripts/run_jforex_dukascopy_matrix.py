@@ -13,6 +13,7 @@ BEHEMOTH_JFOREX_PASSWORD in the environment (typically loaded from .env).
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import signal
@@ -25,13 +26,14 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 DEFAULT_START = "2025-07-04T00:00:00Z"
 DEFAULT_END = "2025-07-09T00:00:00Z"
 DEFAULT_MODELS_DIR = "models/oco_dukascopy_candidate"
 DEFAULT_HISTORY_DIR = "configs/research/governance/oco_history_dukascopy_candidate"
-DEFAULT_PREDICTIONS_DIR = "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap"
+DEFAULT_PREDICTIONS_DIR = (
+    "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap"
+)
 DEFAULT_TICK_ROOT = "/Users/danielfisher/Desktop/dukascopy_ticks"
 DEFAULT_API_PORT = 8000
 
@@ -86,7 +88,9 @@ def _parse_args() -> RunConfig:
     parser.add_argument("--metrics-host", default="127.0.0.1")
     parser.add_argument("--metrics-port-base", type=int, default=9464)
     parser.add_argument("--risk-enabled", action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument("--universe-mode", choices=["tolerant", "nearest", "ordinal"], default="tolerant")
+    parser.add_argument(
+        "--universe-mode", choices=["tolerant", "nearest", "ordinal"], default="tolerant"
+    )
     parser.add_argument("--ordinal-tolerance", type=int, default=0)
     parser.add_argument("--warmup-ticks", type=int, default=30000)
     parser.add_argument("--lookback-days", type=int, default=31)
@@ -140,7 +144,9 @@ def _poll_health(proc: subprocess.Popen[str], base_url: str, timeout_sec: float)
     while time.time() < deadline:
         if proc.poll() is not None:
             tail = _read_process_tail(proc)
-            raise RuntimeError(f"API process exited before becoming healthy: {tail or proc.returncode}")
+            raise RuntimeError(
+                f"API process exited before becoming healthy: {tail or proc.returncode}"
+            )
         try:
             with urllib.request.urlopen(f"{base_url}/health", timeout=2.0) as response:
                 if response.status == 200:
@@ -153,7 +159,9 @@ def _poll_health(proc: subprocess.Popen[str], base_url: str, timeout_sec: float)
 
 
 def _prediction_path(cfg: RunConfig, symbol: str) -> str:
-    locked = Path(cfg.history_dir) / cfg.model_month / f"{symbol.lower()}_oco_locked_predictions.parquet"
+    locked = (
+        Path(cfg.history_dir) / cfg.model_month / f"{symbol.lower()}_oco_locked_predictions.parquet"
+    )
     if locked.exists():
         return str(locked)
     return str(Path(cfg.predictions_dir) / f"{symbol}_oco_monthly_predictions.parquet")
@@ -376,26 +384,18 @@ def _wait_for_artifacts_then_kill(
                 proc.wait(timeout=10)
             except subprocess.TimeoutExpired:
                 # JVM ignored SIGTERM — escalate to SIGKILL
-                try:
+                with contextlib.suppress(ProcessLookupError):
                     os.killpg(proc.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-                try:
+                with contextlib.suppress(subprocess.TimeoutExpired):
                     proc.wait(timeout=10)
-                except subprocess.TimeoutExpired:
-                    pass
             return
 
         if time.monotonic() >= deadline:
             # Kill the process before raising so it doesn't become an orphan.
-            try:
+            with contextlib.suppress(ProcessLookupError):
                 os.killpg(proc.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            try:
+            with contextlib.suppress(subprocess.TimeoutExpired):
                 proc.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                pass
             raise TimeoutError(
                 "JForex tester did not produce complete Stage 14 artifacts within "
                 f"{timeout_sec:.0f}s: {', '.join(str(path) for path in artifact_paths)}"
@@ -405,7 +405,11 @@ def _wait_for_artifacts_then_kill(
 
 def _run_jforex_tester(cfg: RunConfig, symbol: str, metrics_port: int) -> None:
     """Run the real Dukascopy JForex tester for a single symbol."""
-    for required in ("BEHEMOTH_JFOREX_JNLP_URI", "BEHEMOTH_JFOREX_USERNAME", "BEHEMOTH_JFOREX_PASSWORD"):
+    for required in (
+        "BEHEMOTH_JFOREX_JNLP_URI",
+        "BEHEMOTH_JFOREX_USERNAME",
+        "BEHEMOTH_JFOREX_PASSWORD",
+    ):
         if not os.environ.get(required):
             raise RuntimeError(f"Missing required env var: {required}")
 

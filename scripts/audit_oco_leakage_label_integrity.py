@@ -10,6 +10,7 @@ Checks L01..L12 across EURUSD/GBPUSD/USDJPY and emits:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import re
@@ -318,7 +319,9 @@ def _load_artifacts(
     return p, m, t, e, s
 
 
-def audit_symbol(cfg: SymbolConfig, exceptions: dict[str, Any] | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+def audit_symbol(
+    cfg: SymbolConfig, exceptions: dict[str, Any] | None = None
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     checks: list[dict[str, Any]] = []
     issues: list[dict[str, Any]] = []
     monthly = _safe_read_csv(cfg.monthly_path)
@@ -345,12 +348,13 @@ def audit_symbol(cfg: SymbolConfig, exceptions: dict[str, Any] | None = None) ->
         if status == "fail" and exceptions:
             for rule in exceptions.get("rules", []):
                 rid = rule.get("metric_id")
-                if rid == check_name or rid == check_id:
+                if rid in (check_name, check_id):
                     syms = rule.get("symbols", [])
-                    if (not syms) or (cfg.symbol in syms):
-                        if rule.get("disposition") == "accepted_exception":
-                            final_status = "accepted_exception"
-                            break
+                    if ((not syms) or (cfg.symbol in syms)) and rule.get(
+                        "disposition"
+                    ) == "accepted_exception":
+                        final_status = "accepted_exception"
+                        break
 
         row = {
             "symbol": cfg.symbol,
@@ -837,10 +841,8 @@ def run_audit(
     exceptions: dict[str, Any] = {}
     exc_path = Path("configs/research/governance/oco_monitoring_exceptions.yaml")
     if yaml and exc_path.exists():
-        try:
+        with contextlib.suppress(Exception):
             exceptions = yaml.safe_load(exc_path.read_text())
-        except Exception:
-            pass
 
     all_checks: list[pd.DataFrame] = []
     all_issues: list[pd.DataFrame] = []

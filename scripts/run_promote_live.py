@@ -44,8 +44,7 @@ def _verify_cert(report_dir: str, model_month: str, repo_root: Path | None = Non
     csv_path = repo_root / report_dir / CERT_CHECKS_FILENAME
     if not csv_path.exists():
         raise SystemExit(
-            f"[promote-live] no cert results found at {csv_path}; "
-            "run make monthly-recert first"
+            f"[promote-live] no cert results found at {csv_path}; run make monthly-recert first"
         )
     status_path = repo_root / report_dir / MONTHLY_RECERT_STATUS_FILENAME
     if not status_path.exists():
@@ -122,7 +121,7 @@ def _rewrite_path_prefix(path_value: str, source_dir: Path, target_dir: Path) ->
     if path_value == source_dir.as_posix():
         return target_dir.as_posix()
     if path_value.startswith(source_prefix):
-        return target_dir.as_posix() + path_value[len(source_dir.as_posix()):]
+        return target_dir.as_posix() + path_value[len(source_dir.as_posix()) :]
     return path_value
 
 

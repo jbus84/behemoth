@@ -43,8 +43,7 @@ def _require_utc_timestamp(s: pd.Series, *, column: str, source: Path) -> pd.Ser
         tz = None
     if not _is_utc_tz(tz):
         raise ValueError(
-            f"{source.name}: column '{column}' must be timezone-aware UTC; "
-            f"received tz={tz!r}"
+            f"{source.name}: column '{column}' must be timezone-aware UTC; received tz={tz!r}"
         )
     return parsed.dt.tz_convert("UTC")
 
@@ -165,9 +164,7 @@ def _build_symbol_dataset(
             "timestamp": _require_utc_timestamp(
                 d["timestamp"], column="timestamp", source=bar_path
             ),
-            "close_ts": _require_utc_timestamp(
-                d["close_ts"], column="close_ts", source=bar_path
-            ),
+            "close_ts": _require_utc_timestamp(d["close_ts"], column="close_ts", source=bar_path),
             "open": pd.to_numeric(d["open"], errors="coerce").astype(float),
             "high": pd.to_numeric(d["high"], errors="coerce").astype(float),
             "low": pd.to_numeric(d["low"], errors="coerce").astype(float),

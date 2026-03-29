@@ -23,6 +23,7 @@ from fastapi.testclient import TestClient
 
 # server imported lazily to allow env variable injection
 
+
 class VirtualTrade:
     def __init__(self, broker_pos_id: str, candidate_uid: str, entry_bar_id: int, horizon: int):
         self.broker_pos_id = broker_pos_id
@@ -38,12 +39,15 @@ def load_expected_predictions(symbol: str, target_month: str) -> dict[tuple[str,
     Returns:
         dict: (candidate_uid, close_ts_iso) -> pred_prob
     """
-    parquet_path = Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{symbol}_oco_monthly_predictions.parquet")
+    parquet_path = Path(
+        f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{symbol}_oco_monthly_predictions.parquet"
+    )
     if not parquet_path.exists():
         # Fallback to checking lock file for path
         lock_path = Path(f"configs/research/governance/oco/{symbol.lower()}_oco_live_lock.json")
         if lock_path.exists():
             import json
+
             lock = json.loads(lock_path.read_text())
             parquet_path = Path(lock["artifacts"]["predictions_path"])
 
@@ -74,8 +78,12 @@ def load_expected_predictions(symbol: str, target_month: str) -> dict[tuple[str,
     return expected
 
 
-def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None, args_offset: int = 0) -> None:
-    tick_path = Path(f"/Users/danielfisher/Desktop/tick/{symbol}/{symbol}_{target_month}_ticks.parquet")
+def run_simulation(
+    symbol: str, target_month: str, max_ticks: int | None = None, args_offset: int = 0
+) -> None:
+    tick_path = Path(
+        f"/Users/danielfisher/Desktop/tick/{symbol}/{symbol}_{target_month}_ticks.parquet"
+    )
     if not tick_path.exists():
         print(f"Error: Raw tick parquet not found at {tick_path}")
         sys.exit(1)
@@ -84,9 +92,12 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
     api_results: dict[tuple[str, str], float] = {}
 
     print(f"Loading raw ticks from {tick_path}...")
-    ticks_lazy = pl.scan_parquet(str(tick_path)).select([
-        "timestamp", "bid", "ask"
-    ]).drop_nulls().sort("timestamp")
+    ticks_lazy = (
+        pl.scan_parquet(str(tick_path))
+        .select(["timestamp", "bid", "ask"])
+        .drop_nulls()
+        .sort("timestamp")
+    )
 
     if max_ticks:
         ticks_df = ticks_lazy.collect().slice(args_offset, max_ticks)
@@ -108,6 +119,7 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
         formatted_month = f"{formatted_month[:4]}-{formatted_month[4:]}"
 
     import os
+
     os.environ["BEHEMOTH_FORCE_MODEL_MONTH"] = formatted_month
     os.environ["BEHEMOTH_MODELS_DIR"] = "data/models"
     os.environ["BEHEMOTH_GOVERNANCE_MODE"] = "historical_auto"
@@ -133,10 +145,12 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
                     "symbol": symbol,
                     "timestamp": ts.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
                     "bid": bid,
-                    "ask": ask
+                    "ask": ask,
                 }
-                for ts, bid, ask in zip(warmup_df["timestamp"], warmup_df["bid"], warmup_df["ask"], strict=False)
-            ]
+                for ts, bid, ask in zip(
+                    warmup_df["timestamp"], warmup_df["bid"], warmup_df["ask"], strict=False
+                )
+            ],
         }
         res = client.post("/backfill", json=warmup_payload)
         if res.status_code != 201:
@@ -165,13 +179,13 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
                 "symbol": symbol,
                 "timestamp": times[i].strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
                 "bid": bids[i],
-                "ask": asks[i]
+                "ask": asks[i],
             }
 
             t0 = time.perf_counter()
             res = client.post("/ticks", json=tick_payload)
             t1 = time.perf_counter()
-            tick_latencies.append((t1 - t0) * 1000) # ms
+            tick_latencies.append((t1 - t0) * 1000)  # ms
 
             if res.status_code != 201:
                 print(f"Tick ingest failed: {res.text}")
@@ -190,7 +204,7 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
                     },
                 )
                 t1_p = time.perf_counter()
-                predict_latencies.append((t1_p - t0_p) * 1000) # ms
+                predict_latencies.append((t1_p - t0_p) * 1000)  # ms
 
                 predictions_fired += 1
 
@@ -223,9 +237,9 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
                     update_payload = {
                         "broker_pos_id": vt.broker_pos_id,
                         "status": "CLOSED",
-                        "exit_price": bids[i], # Simulating market close
+                        "exit_price": bids[i],  # Simulating market close
                         "exit_ts": t_close,
-                        "pnl_pips": 0.0 # PnL not the focus of this alignment check
+                        "pnl_pips": 0.0,  # PnL not the focus of this alignment check
                     }
                     client.post("/trades/update", json=update_payload)
                     # print(f" [SIM] Horizon Exit: {vt.candidate_uid} at bar {current_bar_count} (Age: {age})")
@@ -234,7 +248,7 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
             active_trades = still_active
 
             # ── Process New Predictions ──
-            if data.get("bar_completed") and 'preds' in locals():
+            if data.get("bar_completed") and "preds" in locals():
                 for p in preds:
                     if p.get("selected_exec") == 1:
                         cand = p["candidate_uid"]
@@ -248,20 +262,22 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
                             "symbol": symbol,
                             "candidate_uid": cand,
                             "broker_pos_id": pos_id,
-                            "side": "Buy", # Simplified
+                            "side": "Buy",  # Simplified
                             "entry_price": asks[i],
                             "entry_ts": times[i].strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-                            "horizon": horizon
+                            "horizon": horizon,
                         }
                         client.post("/trades/open", json=open_payload)
 
                         # 2. Add to Virtual Tracker
-                        active_trades.append(VirtualTrade(
-                            broker_pos_id=pos_id,
-                            candidate_uid=cand,
-                            entry_bar_id=current_bar_count,
-                            horizon=horizon
-                        ))
+                        active_trades.append(
+                            VirtualTrade(
+                                broker_pos_id=pos_id,
+                                candidate_uid=cand,
+                                entry_bar_id=current_bar_count,
+                                horizon=horizon,
+                            )
+                        )
 
                         # 3. Normalize for drift check
                         dt = pd.to_datetime(p["close_ts"])
@@ -284,9 +300,12 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
     # 3. Validation Logic
     # Filter API results against Candidate Registry
     from src.behemoth.core.registry import CandidateRegistry
+
     registry = CandidateRegistry.load("configs/research/governance/oco")
     active_candidates = registry.get_candidates(symbol)
-    active_uids = {f"oco|{symbol}|{c.bar_ticks}|h{c.horizon}|{c.candidate_uid}" for c in active_candidates}
+    active_uids = {
+        f"oco|{symbol}|{c.bar_ticks}|h{c.horizon}|{c.candidate_uid}" for c in active_candidates
+    }
 
     print(f"Verifying {len(api_results):,} API predictions against research ground truth...")
 
@@ -295,6 +314,7 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
     total_checked = 0
 
     import math
+
     for (cand, ts), api_prob in api_results.items():
         if cand not in active_uids:
             continue
@@ -312,7 +332,9 @@ def run_simulation(symbol: str, target_month: str, max_ticks: int | None = None,
         if not math.isclose(api_prob, expected_prob, abs_tol=1e-5):
             mismatches += 1
             if mismatches <= 5:
-                print(f" [MISMATCH] {cand} at {ts}: API={api_prob:.6f}, Research={expected_prob:.6f}")
+                print(
+                    f" [MISMATCH] {cand} at {ts}: API={api_prob:.6f}, Research={expected_prob:.6f}"
+                )
         else:
             if total_checked <= 3:
                 print(f" [MATCH] {cand} at {ts}: {api_prob:.6f}")
@@ -335,7 +357,9 @@ def main():
     parser.add_argument("--symbol", type=str, required=True, help="e.g. EURUSD")
     parser.add_argument("--month", type=str, required=True, help="e.g. 202601")
     parser.add_argument("--max-ticks", type=int, default=None, help="Limit ticks for fast testing")
-    parser.add_argument("--tick-offset", type=int, default=0, help="Skip N ticks to align bar boundaries")
+    parser.add_argument(
+        "--tick-offset", type=int, default=0, help="Skip N ticks to align bar boundaries"
+    )
     args = parser.parse_args()
 
     run_simulation(args.symbol, args.month, args.max_ticks, args.tick_offset)

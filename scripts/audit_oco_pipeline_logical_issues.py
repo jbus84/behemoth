@@ -10,6 +10,7 @@ Checks C01..C10 across active symbols and emits:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -39,7 +40,9 @@ class SymbolConfig:
     min_train_months: int = 3
 
 
-def _default_configs(base_dir: Path | str = "data/analysis/tick_opportunity_mining") -> dict[str, SymbolConfig]:
+def _default_configs(
+    base_dir: Path | str = "data/analysis/tick_opportunity_mining",
+) -> dict[str, SymbolConfig]:
     base_dir = Path(base_dir)
     configs = {}
     for s in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]:
@@ -272,7 +275,9 @@ def _check_overlap_divergence(
     return float(np.median(medians)), float(np.max(maxes)), int(used)
 
 
-def audit_symbol(cfg: SymbolConfig, exceptions: dict[str, Any] | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+def audit_symbol(
+    cfg: SymbolConfig, exceptions: dict[str, Any] | None = None
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     def _read_safe(p: Path) -> pd.DataFrame:
         if not p.exists() or p.stat().st_size == 0:
             return pd.DataFrame()
@@ -335,10 +340,11 @@ def audit_symbol(cfg: SymbolConfig, exceptions: dict[str, Any] | None = None) ->
                 rid = rule.get("metric_id")
                 if rid == check_id:
                     syms = rule.get("symbols", [])
-                    if (not syms) or (cfg.symbol in syms):
-                        if rule.get("disposition") == "accepted_exception":
-                            final_status = "accepted_exception"
-                            break
+                    if ((not syms) or (cfg.symbol in syms)) and rule.get(
+                        "disposition"
+                    ) == "accepted_exception":
+                        final_status = "accepted_exception"
+                        break
 
         checks.append(
             {
@@ -696,7 +702,12 @@ def audit_symbol(cfg: SymbolConfig, exceptions: dict[str, Any] | None = None) ->
 
 
 def run_audit(
-    symbols: list[str], *, base_dir: Path, out_checks_csv: Path, out_issues_csv: Path, report_out: Path
+    symbols: list[str],
+    *,
+    base_dir: Path,
+    out_checks_csv: Path,
+    out_issues_csv: Path,
+    report_out: Path,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     cfg_map = _default_configs(base_dir)
     use_syms = [s.upper().strip() for s in symbols if s.strip()]
@@ -707,10 +718,8 @@ def run_audit(
     exceptions: dict[str, Any] = {}
     exc_path = Path("configs/research/governance/oco_monitoring_exceptions.yaml")
     if yaml and exc_path.exists():
-        try:
+        with contextlib.suppress(Exception):
             exceptions = yaml.safe_load(exc_path.read_text())
-        except Exception:
-            pass
 
     all_checks: list[pd.DataFrame] = []
     all_issues: list[pd.DataFrame] = []

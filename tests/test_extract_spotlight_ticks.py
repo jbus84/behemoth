@@ -1,14 +1,17 @@
 """Tests for extract_spotlight_ticks --lock-dir path resolution."""
+
 from __future__ import annotations
 
 import sys
-import pytest
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 
 def _import_main():
     import importlib.util
+
     spec = importlib.util.spec_from_file_location(
         "extract_spotlight_ticks",
         Path(__file__).parents[1] / "scripts" / "extract_spotlight_ticks.py",
@@ -36,22 +39,31 @@ def test_lock_dir_resolves_locked_parquet(tmp_path):
     (tick_root / "EURUSD").mkdir(parents=True)
     (tick_root / "EURUSD" / "ticks.parquet").touch()
 
-    with patch.object(mod, "_extract_symbol", side_effect=fake_extract_symbol):
-        with patch.object(
+    with (
+        patch.object(mod, "_extract_symbol", side_effect=fake_extract_symbol),
+        patch.object(
             sys,
             "argv",
             [
                 "extract_spotlight_ticks.py",
-                "--symbols", "EURUSD",
-                "--lock-dir", str(lock_dir),
-                "--tick-root", str(tick_root),
-                "--output-dir", str(tmp_path / "out"),
-                "--model-month", "2025-07",
-                "--eval-start", "",
-                "--eval-end", "",
+                "--symbols",
+                "EURUSD",
+                "--lock-dir",
+                str(lock_dir),
+                "--tick-root",
+                str(tick_root),
+                "--output-dir",
+                str(tmp_path / "out"),
+                "--model-month",
+                "2025-07",
+                "--eval-start",
+                "",
+                "--eval-end",
+                "",
             ],
-        ):
-            mod.main()
+        ),
+    ):
+        mod.main()
 
     assert len(calls) == 1
     symbol, pred_path = calls[0]
@@ -77,22 +89,31 @@ def test_no_lock_dir_falls_back_to_monthly(tmp_path):
     (tick_root / "EURUSD").mkdir(parents=True)
     (tick_root / "EURUSD" / "ticks.parquet").touch()
 
-    with patch.object(mod, "_extract_symbol", side_effect=fake_extract_symbol):
-        with patch.object(
+    with (
+        patch.object(mod, "_extract_symbol", side_effect=fake_extract_symbol),
+        patch.object(
             sys,
             "argv",
             [
                 "extract_spotlight_ticks.py",
-                "--symbols", "EURUSD",
-                "--predictions-dir", str(predictions_dir),
-                "--tick-root", str(tick_root),
-                "--output-dir", str(tmp_path / "out"),
-                "--model-month", "2025-07",
-                "--eval-start", "",
-                "--eval-end", "",
+                "--symbols",
+                "EURUSD",
+                "--predictions-dir",
+                str(predictions_dir),
+                "--tick-root",
+                str(tick_root),
+                "--output-dir",
+                str(tmp_path / "out"),
+                "--model-month",
+                "2025-07",
+                "--eval-start",
+                "",
+                "--eval-end",
+                "",
             ],
-        ):
-            mod.main()
+        ),
+    ):
+        mod.main()
 
     assert len(calls) == 1
     symbol, pred_path = calls[0]
@@ -112,18 +133,31 @@ def test_lock_dir_missing_parquet_is_skipped(tmp_path, capsys):
     (tick_root / "EURUSD").mkdir(parents=True)
     (tick_root / "EURUSD" / "ticks.parquet").touch()
 
-    with patch.object(sys, "argv", [
-        "extract_spotlight_ticks.py",
-        "--symbols", "EURUSD",
-        "--lock-dir", str(lock_dir),
-        "--tick-root", str(tick_root),
-        "--output-dir", str(tmp_path / "out"),
-        "--model-month", "2025-07",
-        "--eval-start", "",
-        "--eval-end", "",
-    ]):
-        with pytest.raises(SystemExit):
-            mod.main()
+    with (
+        patch.object(
+            sys,
+            "argv",
+            [
+                "extract_spotlight_ticks.py",
+                "--symbols",
+                "EURUSD",
+                "--lock-dir",
+                str(lock_dir),
+                "--tick-root",
+                str(tick_root),
+                "--output-dir",
+                str(tmp_path / "out"),
+                "--model-month",
+                "2025-07",
+                "--eval-start",
+                "",
+                "--eval-end",
+                "",
+            ],
+        ),
+        pytest.raises(SystemExit),
+    ):
+        mod.main()
 
     captured = capsys.readouterr()
     assert "not found" in captured.err.lower() or "eurusd" in captured.err.lower()

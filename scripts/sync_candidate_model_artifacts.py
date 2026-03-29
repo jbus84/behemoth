@@ -30,7 +30,9 @@ def _iter_locks(lock_dir: Path, symbols: list[str]) -> list[Path]:
     if not symbols:
         return sorted(lock_dir.glob("*_oco_live_lock.json"))
     wanted_names = {f"{symbol.lower()}_oco_live_lock.json" for symbol in symbols}
-    return sorted(path for path in lock_dir.glob("*_oco_live_lock.json") if path.name in wanted_names)
+    return sorted(
+        path for path in lock_dir.glob("*_oco_live_lock.json") if path.name in wanted_names
+    )
 
 
 def _symbol_from_lock_path(lock_path: Path) -> str:
@@ -112,12 +114,18 @@ def run(
 
         if not symbol or not month or not cbm_name or not thr_name:
             _remove_symbol_targets(target_models_dir, symbol)
-            _remove_target_artifacts(*(path for path in (target_cbm, target_thr) if path is not None))
-            results.append(SyncResult(symbol or "UNKNOWN", month, "FAIL", "malformed lock metadata"))
+            _remove_target_artifacts(
+                *(path for path in (target_cbm, target_thr) if path is not None)
+            )
+            results.append(
+                SyncResult(symbol or "UNKNOWN", month, "FAIL", "malformed lock metadata")
+            )
             continue
         if not expected_cbm_sha or not expected_thr_sha:
             _remove_symbol_targets(target_models_dir, symbol)
-            _remove_target_artifacts(*(path for path in (target_cbm, target_thr) if path is not None))
+            _remove_target_artifacts(
+                *(path for path in (target_cbm, target_thr) if path is not None)
+            )
             results.append(SyncResult(symbol, month, "FAIL", "missing expected hash in lock"))
             continue
 
@@ -162,7 +170,9 @@ def run(
         shutil.copy2(source_thr, target_thr)
         if _sha(target_cbm) != expected_cbm_sha or _sha(target_thr) != expected_thr_sha:
             _remove_target_artifacts(target_cbm, target_thr)
-            results.append(SyncResult(symbol, month, "FAIL", "copied artifact hash verification failed"))
+            results.append(
+                SyncResult(symbol, month, "FAIL", "copied artifact hash verification failed")
+            )
             continue
 
         results.append(SyncResult(symbol, month, "PASS", f"{source_cbm} -> {target_models_dir}"))
@@ -180,7 +190,9 @@ def run(
             )
 
     for row in results:
-        print(f"[candidate-sync] {row.symbol} {row.model_month} {row.status} {row.detail}", flush=True)
+        print(
+            f"[candidate-sync] {row.symbol} {row.model_month} {row.status} {row.detail}", flush=True
+        )
 
     return 0 if results and all(row.status == "PASS" for row in results) else 1
 

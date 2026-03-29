@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import json
 import csv
+import json
 import sys
 from datetime import date
 
@@ -30,7 +30,7 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
     source_threshold_json = build_bundle_dir / "models/oco/EURUSD_model_2026-02.json"
     source_model_cbm.parent.mkdir(parents=True, exist_ok=True)
     source_model_cbm.write_text("cbm\n")
-    source_threshold_json.write_text("{\"threshold\": 1.23}\n")
+    source_threshold_json.write_text('{"threshold": 1.23}\n')
     lock_path = build_bundle_dir / "eurusd_oco_live_lock.json"
     lock_path.write_text(
         json.dumps(
@@ -62,7 +62,9 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
     )
     monkeypatch.setattr(run_promote_live, "_last_complete_month", lambda override=None: "2026-02")
     monkeypatch.setattr(run_promote_live, "_repo_root", lambda: tmp_path)
-    monkeypatch.setattr(sys, "argv", ["run_promote_live.py", "--report-dir", "data/analysis/backtest_reconcile"])
+    monkeypatch.setattr(
+        sys, "argv", ["run_promote_live.py", "--report-dir", "data/analysis/backtest_reconcile"]
+    )
 
     run_promote_live.main()
 
@@ -79,7 +81,10 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
         / "2026-02"
         / "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv"
     )
-    assert promoted_data["artifacts"]["reduced_summary_path"] == "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/EURUSD_oco_reduced_summary.csv"
+    assert (
+        promoted_data["artifacts"]["reduced_summary_path"]
+        == "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/EURUSD_oco_reduced_summary.csv"
+    )
 
     index_path = archive_dir / "index.csv"
     assert index_path.exists()
@@ -94,9 +99,7 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
                 / "2026-02"
                 / "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv"
             ),
-            "model_cbm_path": str(
-                archive_dir / "2026-02" / "models/oco/EURUSD_model_2026-02.cbm"
-            ),
+            "model_cbm_path": str(archive_dir / "2026-02" / "models/oco/EURUSD_model_2026-02.cbm"),
             "threshold_json_path": str(
                 archive_dir / "2026-02" / "models/oco/EURUSD_model_2026-02.json"
             ),
@@ -111,7 +114,9 @@ def test_main_requires_existing_build_bundle(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(run_promote_live, "_verify_cert", lambda report_dir, model_month: None)
     monkeypatch.setattr(run_promote_live, "_last_complete_month", lambda override=None: "2026-02")
     monkeypatch.setattr(run_promote_live, "_repo_root", lambda: tmp_path)
-    monkeypatch.setattr(sys, "argv", ["run_promote_live.py", "--report-dir", "data/analysis/backtest_reconcile"])
+    monkeypatch.setattr(
+        sys, "argv", ["run_promote_live.py", "--report-dir", "data/analysis/backtest_reconcile"]
+    )
 
     with pytest.raises(
         SystemExit,
@@ -140,4 +145,6 @@ def test_verify_cert_requires_matching_month_status(tmp_path) -> None:
     )
 
     with pytest.raises(SystemExit, match=r"cert status month mismatch"):
-        run_promote_live._verify_cert("data/analysis/backtest_reconcile", "2026-02", repo_root=tmp_path)
+        run_promote_live._verify_cert(
+            "data/analysis/backtest_reconcile", "2026-02", repo_root=tmp_path
+        )

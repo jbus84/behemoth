@@ -96,9 +96,7 @@ def test_rolling_threshold_no_train_history_returns_nan_and_no_history_source() 
 def test_rolling_threshold_accumulates_test_day_predictions() -> None:
     """After day D's threshold is computed, day D's test predictions
     should influence day D+1's threshold."""
-    train_ts = pd.Series(
-        pd.to_datetime(["2025-01-01T00:00:00Z", "2025-01-02T00:00:00Z"], utc=True)
-    )
+    train_ts = pd.Series(pd.to_datetime(["2025-01-01T00:00:00Z", "2025-01-02T00:00:00Z"], utc=True))
     train_p = np.array([0.3, 0.4], dtype=float)
     test_ts = pd.Series(
         pd.to_datetime(
@@ -135,27 +133,31 @@ def test_rolling_threshold_accumulates_test_day_predictions() -> None:
 
 def test_rolling_threshold_accumulation_preserves_causal_boundary() -> None:
     """Day D's own test predictions must NOT influence day D's threshold."""
-    train_ts = pd.Series(
-        pd.to_datetime(["2025-01-01T00:00:00Z"], utc=True)
-    )
+    train_ts = pd.Series(pd.to_datetime(["2025-01-01T00:00:00Z"], utc=True))
     train_p = np.array([0.5], dtype=float)
-    test_ts = pd.Series(
-        pd.to_datetime(["2025-01-03T00:00:00Z"], utc=True)
-    )
+    test_ts = pd.Series(pd.to_datetime(["2025-01-03T00:00:00Z"], utc=True))
     # Even with a wildly different test prediction, day 1's threshold
     # should only depend on training data
     test_p_low = np.array([0.01], dtype=float)
     test_p_high = np.array([0.99], dtype=float)
 
     thr_low, _ = _rolling_day_threshold_vector(
-        train_ts=train_ts, train_p=train_p,
-        test_ts=test_ts, test_p=test_p_low,
-        q=0.9, lookback_days=5, min_history=1,
+        train_ts=train_ts,
+        train_p=train_p,
+        test_ts=test_ts,
+        test_p=test_p_low,
+        q=0.9,
+        lookback_days=5,
+        min_history=1,
     )
     thr_high, _ = _rolling_day_threshold_vector(
-        train_ts=train_ts, train_p=train_p,
-        test_ts=test_ts, test_p=test_p_high,
-        q=0.9, lookback_days=5, min_history=1,
+        train_ts=train_ts,
+        train_p=train_p,
+        test_ts=test_ts,
+        test_p=test_p_high,
+        q=0.9,
+        lookback_days=5,
+        min_history=1,
     )
 
     assert np.isclose(thr_low[0], thr_high[0], equal_nan=True)

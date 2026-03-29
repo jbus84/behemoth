@@ -12,13 +12,13 @@ Usage:
 
 Output: console table — no files written.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
 
 import duckdb
-
 
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 DEFAULT_LOCK_DIR = Path("configs/research/governance/oco_history_dukascopy_candidate/2025-07")
@@ -67,7 +67,9 @@ def post_warmup_coverage(jforex_selected_total: int, locked_after_cutoff: int) -
     return jforex_selected_total / locked_after_cutoff
 
 
-def _load_locked_close_ts(lock_dir: Path, symbol: str, eval_start: str, eval_end: str) -> list[datetime]:
+def _load_locked_close_ts(
+    lock_dir: Path, symbol: str, eval_start: str, eval_end: str
+) -> list[datetime]:
     path = lock_dir / f"{symbol.lower()}_oco_locked_predictions.parquet"
     con = duckdb.connect()
     rows = con.execute(
@@ -101,7 +103,9 @@ def main() -> None:
         # against the runtime CSV counts for all 6 symbols in the 2026-03-20 run.
         jforex_selected = len(audit_ts)
 
-        locked_full = _load_locked_close_ts(DEFAULT_LOCK_DIR, symbol, DEFAULT_EVAL_START, DEFAULT_EVAL_END)
+        locked_full = _load_locked_close_ts(
+            DEFAULT_LOCK_DIR, symbol, DEFAULT_EVAL_START, DEFAULT_EVAL_END
+        )
         gap = warmup_gap_count(locked_full, first_seen) if first_seen else len(locked_full)
 
         first_seen_str = first_seen.strftime("%Y-%m-%d %H:%M") if first_seen else "N/A"
@@ -113,7 +117,9 @@ def main() -> None:
             print(f"  {ratio:>9.1%}", end="")
         print()
 
-    print(f"\nNote: cov@HH:MM = jforex_selected / locked_count with eval_start=HH:MM UTC on 2025-07-07")
+    print(
+        "\nNote: cov@HH:MM = jforex_selected / locked_count with eval_start=HH:MM UTC on 2025-07-07"
+    )
     print("      ratio > 1.0 is expected when jforex_selected includes warmup-period selections")
     print("      After the start_ts fix: gap=0 and cov@00:00=100% for all symbols")
 

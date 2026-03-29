@@ -142,9 +142,7 @@ def _simulate_symbol_scenario(
     q = np.where(cap_fill_np, fill_decay_keep, 0.0).astype(float)
 
     # Additional slip above cap plus spread/latency add-ons.
-    extra_slip = float(scenario.spread_add_pips) + np.where(
-        cap_fill_np, overs, 0.0
-    )
+    extra_slip = float(scenario.spread_add_pips) + np.where(cap_fill_np, overs, 0.0)
     pnl_pre = np.where(cap_fill_np, gross - extra_slip, 0.0).astype(float)
 
     d["q_keep"] = q

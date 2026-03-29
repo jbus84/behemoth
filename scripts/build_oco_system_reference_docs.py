@@ -381,16 +381,20 @@ def _build_snapshot_tables(
             _fmt(fr.iloc[0].get("FTMO_ALLOC_BUDGET_EXCEEDED_RATE"), 4) if not fr.empty else ""
         )
         row["ftmo_stale_pending_count"] = (
-            int(pd.to_numeric(pd.Series([fr.iloc[0].get("FTMO_ALLOC_STALE_PENDING_COUNT")]), errors="coerce").fillna(0).iloc[0])
+            int(
+                pd.to_numeric(
+                    pd.Series([fr.iloc[0].get("FTMO_ALLOC_STALE_PENDING_COUNT")]), errors="coerce"
+                )
+                .fillna(0)
+                .iloc[0]
+            )
             if not fr.empty
             else 0
         )
 
         rr = _symbol_row(recon_by_symbol, sym)
         row["ftmo_reconciliation_pass"] = (
-            str(rr.iloc[0].get("reconciliation_pass", "")).strip().lower()
-            if not rr.empty
-            else ""
+            str(rr.iloc[0].get("reconciliation_pass", "")).strip().lower() if not rr.empty else ""
         )
 
         rows.append(row)

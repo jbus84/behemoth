@@ -321,9 +321,7 @@ def _write_run_delta_artifacts(*, docs_root: Path, edge_metrics_csv: Path) -> No
                 "gate_api_parity": 1,
             }
         ]
-    ).to_csv(
-        snap / "oco_bible_stage_status.csv", index=False
-    )
+    ).to_csv(snap / "oco_bible_stage_status.csv", index=False)
     reg = pd.DataFrame(
         [
             {
@@ -795,11 +793,16 @@ def _build_smoke_fixture(tmp_path: Path, *, with_system_reference: bool = True) 
     ]
     pd.DataFrame(sym_rows).to_csv(stage_status_csv, index=False)
 
-    mock_s09_md = "".join(f"| {s} | pass |\n" for s in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"])
+    mock_s09_md = "".join(
+        f"| {s} | pass |\n" for s in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]
+    )
     (generated_root / "stage_09_snapshot.md").write_text(mock_s09_md, encoding="utf-8")
 
     edge_report = tmp_path / "edge_report.md"
-    mock_edge_md = "".join(f"| 1 | {s} | D16_spread_regime_shift_z | 1.0 |\n" for s in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"])
+    mock_edge_md = "".join(
+        f"| 1 | {s} | D16_spread_regime_shift_z | 1.0 |\n"
+        for s in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]
+    )
     edge_report.write_text(mock_edge_md, encoding="utf-8")
     metric_dictionary = docs_root / "metric_dictionary.md"
     metric_dictionary.write_text(

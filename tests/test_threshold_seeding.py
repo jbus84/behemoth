@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 import numpy as np
 import pandas as pd
-import pytest
 
 from src.behemoth.runtime.state import StateManager
 
@@ -14,10 +11,12 @@ def test_seed_training_predictions_populates_audit_logs(tmp_path) -> None:
     sm = StateManager(vol_window=20, cost_window=20)
     try:
         # Create a training predictions parquet
-        train_df = pd.DataFrame({
-            "day": pd.to_datetime(["2025-01-01", "2025-01-01", "2025-01-02"], utc=True).date,
-            "pred_prob": [0.3, 0.4, 0.7],
-        })
+        train_df = pd.DataFrame(
+            {
+                "day": pd.to_datetime(["2025-01-01", "2025-01-01", "2025-01-02"], utc=True).date,
+                "pred_prob": [0.3, 0.4, 0.7],
+            }
+        )
         pq_path = tmp_path / "EURUSD_train_predictions_2025-02.parquet"
         train_df.to_parquet(pq_path, index=False)
 
@@ -44,10 +43,12 @@ def test_seed_training_predictions_sets_close_ts_from_day(tmp_path) -> None:
     the rolling window lookback works correctly."""
     sm = StateManager(vol_window=20, cost_window=20)
     try:
-        train_df = pd.DataFrame({
-            "day": pd.to_datetime(["2025-01-15", "2025-01-16"], utc=True).date,
-            "pred_prob": [0.5, 0.6],
-        })
+        train_df = pd.DataFrame(
+            {
+                "day": pd.to_datetime(["2025-01-15", "2025-01-16"], utc=True).date,
+                "pred_prob": [0.5, 0.6],
+            }
+        )
         pq_path = tmp_path / "train.parquet"
         train_df.to_parquet(pq_path, index=False)
 
@@ -59,9 +60,7 @@ def test_seed_training_predictions_sets_close_ts_from_day(tmp_path) -> None:
             run_id="seed_test",
         )
 
-        rows = sm._con.execute(
-            "SELECT close_ts FROM audit_logs ORDER BY close_ts"
-        ).fetchall()
+        rows = sm._con.execute("SELECT close_ts FROM audit_logs ORDER BY close_ts").fetchall()
         assert len(rows) == 2
         # close_ts should be midnight UTC of the day
         assert rows[0][0].date().isoformat() == "2025-01-15"

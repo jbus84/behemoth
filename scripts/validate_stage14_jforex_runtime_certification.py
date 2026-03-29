@@ -164,8 +164,7 @@ def _check_threshold_parity(
     if not history_dir.exists():
         return "skip", "no history dir found"
     month_dirs = sorted(
-        d.name for d in history_dir.iterdir()
-        if d.is_dir() and d.name != "__pycache__"
+        d.name for d in history_dir.iterdir() if d.is_dir() and d.name != "__pycache__"
     )
     if not month_dirs:
         return "skip", "no promoted month found"
@@ -228,7 +227,11 @@ def build_stage14_artifacts(
         InputSource(
             check_id="jforex_execution_parity_pass",
             summary_glob=jforex_execution_summary_glob,
-            candidate_columns=("jforex_execution_parity_pass", "execution_parity_pass", "overall_pass"),
+            candidate_columns=(
+                "jforex_execution_parity_pass",
+                "execution_parity_pass",
+                "overall_pass",
+            ),
             excluded_path_substrings=("_local_jforex_",),
         ),
         InputSource(
@@ -261,7 +264,9 @@ def build_stage14_artifacts(
         checks = pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
 
     requested_symbols = sorted({str(s).strip().upper() for s in symbols if str(s).strip()})
-    symbols = requested_symbols or sorted(set(checks.get("symbol", pd.Series(dtype=str)).astype(str)))
+    symbols = requested_symbols or sorted(
+        set(checks.get("symbol", pd.Series(dtype=str)).astype(str))
+    )
     summary_rows: list[dict[str, Any]] = []
     check_rows: list[dict[str, Any]] = []
     now_utc = _now_utc()
@@ -279,7 +284,9 @@ def build_stage14_artifacts(
                 by_symbol["non_deployable_reason"].astype(str).str.strip() != ""
             ]
             if not reason_rows.empty:
-                non_deployable_reason = str(reason_rows.iloc[-1].get("non_deployable_reason") or "").strip()
+                non_deployable_reason = str(
+                    reason_rows.iloc[-1].get("non_deployable_reason") or ""
+                ).strip()
         for src in sources:
             match = by_symbol[by_symbol["check_id"] == src.check_id].copy()
             if src.check_id == "local_jforex_surrogate_pass":
@@ -295,8 +302,15 @@ def build_stage14_artifacts(
             else:
                 row[src.check_id] = bool(value)
                 status = "pass" if bool(value) else "fail"
-            if value is not None and not pd.isna(value) and bool(value) and max_artifact_age_days > 0:
-                eval_ts_str = "" if match.empty else str(match.iloc[-1].get("evaluated_at_utc") or "")
+            if (
+                value is not None
+                and not pd.isna(value)
+                and bool(value)
+                and max_artifact_age_days > 0
+            ):
+                eval_ts_str = (
+                    "" if match.empty else str(match.iloc[-1].get("evaluated_at_utc") or "")
+                )
                 if eval_ts_str:
                     try:
                         eval_ts = datetime.fromisoformat(eval_ts_str.replace("Z", "+00:00"))
@@ -304,7 +318,9 @@ def build_stage14_artifacts(
                         if age_days > max_artifact_age_days:
                             value = False
                             status = "fail"
-                            details = f"stale: artifact is {age_days}d old (max {max_artifact_age_days}d)"
+                            details = (
+                                f"stale: artifact is {age_days}d old (max {max_artifact_age_days}d)"
+                            )
                             row[src.check_id] = False
                     except ValueError:
                         pass
@@ -435,7 +451,9 @@ def main() -> None:
     parser.add_argument("--jforex-outcome-summary-glob", default="")
     parser.add_argument("--local-surrogate-summary-glob", default="")
     parser.add_argument("--models-dir", default="models/oco_dukascopy_candidate")
-    parser.add_argument("--history-dir", default="configs/research/governance/oco_history_dukascopy_candidate")
+    parser.add_argument(
+        "--history-dir", default="configs/research/governance/oco_history_dukascopy_candidate"
+    )
     parser.add_argument("--max-artifact-age-days", type=int, default=35)
     parser.add_argument(
         "--out-summary-csv",

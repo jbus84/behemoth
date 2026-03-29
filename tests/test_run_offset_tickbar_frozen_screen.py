@@ -76,18 +76,44 @@ def test_map_offset_events_to_canonical_universe_matches_by_occurrence_order() -
     canonical = _add_event_ordinal(
         pd.DataFrame(
             [
-                {"candidate_uid": "c1", "close_ts": "2025-07-01T00:00:01Z", "library": "oco", "target_gross_pips": 1.0, "target_gross_pos": 1},
-                {"candidate_uid": "c1", "close_ts": "2025-07-01T00:00:05Z", "library": "oco", "target_gross_pips": 2.0, "target_gross_pos": 1},
+                {
+                    "candidate_uid": "c1",
+                    "close_ts": "2025-07-01T00:00:01Z",
+                    "library": "oco",
+                    "target_gross_pips": 1.0,
+                    "target_gross_pos": 1,
+                },
+                {
+                    "candidate_uid": "c1",
+                    "close_ts": "2025-07-01T00:00:05Z",
+                    "library": "oco",
+                    "target_gross_pips": 2.0,
+                    "target_gross_pos": 1,
+                },
             ]
         )
     ).rename(columns={"close_ts": "canonical_close_ts"})
     offset = pd.DataFrame(
         [
-            {"candidate_uid": "c1", "close_ts": "2025-07-01T00:00:02Z", "library": "oco", "target_gross_pips": 1.5, "target_gross_pos": 1},
-            {"candidate_uid": "c1", "close_ts": "2025-07-01T00:00:06Z", "library": "oco", "target_gross_pips": 2.5, "target_gross_pos": 1},
+            {
+                "candidate_uid": "c1",
+                "close_ts": "2025-07-01T00:00:02Z",
+                "library": "oco",
+                "target_gross_pips": 1.5,
+                "target_gross_pos": 1,
+            },
+            {
+                "candidate_uid": "c1",
+                "close_ts": "2025-07-01T00:00:06Z",
+                "library": "oco",
+                "target_gross_pips": 2.5,
+                "target_gross_pos": 1,
+            },
         ]
     )
-    mapped, details = _map_offset_events_to_canonical_universe(offset_events=offset, canonical_events=canonical)
+    mapped, details = _map_offset_events_to_canonical_universe(
+        offset_events=offset, canonical_events=canonical
+    )
     assert len(mapped) == 2
     assert mapped["close_ts"].dt.strftime("%Y-%m-%dT%H:%M:%SZ").tolist() == [
         "2025-07-01T00:00:02Z",
@@ -113,19 +139,42 @@ def test_selected_overlap_uses_event_identity_not_close_ts() -> None:
 def test_build_baseline_parity_flags_unmapped_events() -> None:
     canonical_events = pd.DataFrame(
         [
-            {"frozen_event_id": "2025-07|c1|0", "candidate_uid": "c1", "test_month": "2025-07", "canonical_close_ts": pd.Timestamp("2025-07-01T00:00:01Z")},
-            {"frozen_event_id": "2025-07|c1|1", "candidate_uid": "c1", "test_month": "2025-07", "canonical_close_ts": pd.Timestamp("2025-07-01T00:00:05Z")},
+            {
+                "frozen_event_id": "2025-07|c1|0",
+                "candidate_uid": "c1",
+                "test_month": "2025-07",
+                "canonical_close_ts": pd.Timestamp("2025-07-01T00:00:01Z"),
+            },
+            {
+                "frozen_event_id": "2025-07|c1|1",
+                "candidate_uid": "c1",
+                "test_month": "2025-07",
+                "canonical_close_ts": pd.Timestamp("2025-07-01T00:00:05Z"),
+            },
         ]
     )
     mapped = pd.DataFrame(
         [
-            {"frozen_event_id": "2025-07|c1|0", "offset_close_ts": pd.Timestamp("2025-07-01T00:00:01Z")},
+            {
+                "frozen_event_id": "2025-07|c1|0",
+                "offset_close_ts": pd.Timestamp("2025-07-01T00:00:01Z"),
+            },
         ]
     )
     canonical_selected = pd.DataFrame(
         [
-            {"test_month": "2025-07", "candidate_uid": "c1", "event_ordinal": 0, "frozen_event_id": "2025-07|c1|0"},
-            {"test_month": "2025-07", "candidate_uid": "c1", "event_ordinal": 1, "frozen_event_id": "2025-07|c1|1"},
+            {
+                "test_month": "2025-07",
+                "candidate_uid": "c1",
+                "event_ordinal": 0,
+                "frozen_event_id": "2025-07|c1|0",
+            },
+            {
+                "test_month": "2025-07",
+                "candidate_uid": "c1",
+                "event_ordinal": 1,
+                "frozen_event_id": "2025-07|c1|1",
+            },
         ]
     )
     current_selected = canonical_selected.iloc[[0]].copy()
@@ -197,12 +246,19 @@ def test_classify_offset_row_keeps_material_performance_drops_as_degraded() -> N
     assert diagnostic_reasons == ""
 
 
-def test_load_canonical_selected_falls_back_when_optional_event_id_columns_missing(tmp_path) -> None:
+def test_load_canonical_selected_falls_back_when_optional_event_id_columns_missing(
+    tmp_path,
+) -> None:
     pred_path = tmp_path / "pred.parquet"
     schedule_path = tmp_path / "schedule.csv"
     pd.DataFrame(
         [
-            {"candidate_uid": "oco|EURUSD|100|h5|s1", "close_ts": "2025-07-01T00:00:01Z", "selected_exec": 1, "test_month": "2025-07"},
+            {
+                "candidate_uid": "oco|EURUSD|100|h5|s1",
+                "close_ts": "2025-07-01T00:00:01Z",
+                "selected_exec": 1,
+                "test_month": "2025-07",
+            },
         ]
     ).to_parquet(pred_path, index=False)
     pd.DataFrame(
@@ -325,4 +381,6 @@ def test_cleanup_completed_symbol_artifacts_removes_stage_roots_and_offset_bars(
     for offset in offsets:
         assert not (out_dir / "runs" / symbol / f"offset_{offset:03d}").exists()
         for bar_ticks in [100, 1000, 2000]:
-            assert not (offset_bar_dir / f"{symbol}_{bar_ticks}tick_offset_{offset:03d}.parquet").exists()
+            assert not (
+                offset_bar_dir / f"{symbol}_{bar_ticks}tick_offset_{offset:03d}.parquet"
+            ).exists()

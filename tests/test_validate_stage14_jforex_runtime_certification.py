@@ -14,9 +14,7 @@ def _write_csv(path: Path, rows: list[dict[str, object]]) -> None:
 
 
 def _utc_str(offset_days: int = 0) -> str:
-    return (datetime.now(timezone.utc) + timedelta(days=offset_days)).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
+    return (datetime.now(timezone.utc) + timedelta(days=offset_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _write_local_surrogate_row(
@@ -260,16 +258,24 @@ def test_build_stage14_artifacts_keeps_requested_symbol_scope(tmp_path: Path) ->
 
 def test_build_stage14_artifacts_includes_outcome_parity_check(tmp_path: Path) -> None:
     """Stage 14 must include jforex_outcome_parity_pass as a check."""
-    _write_csv(tmp_path / "EURUSD_stage13.csv",
-               [{"symbol": "EURUSD", "stage13_dukascopy_testclient_pass": True}])
-    _write_csv(tmp_path / "EURUSD_jforex_signal.csv",
-               [{"symbol": "EURUSD", "jforex_signal_parity_pass": True}])
-    _write_csv(tmp_path / "EURUSD_jforex_execution.csv",
-               [{"symbol": "EURUSD", "jforex_execution_parity_pass": True}])
-    _write_csv(tmp_path / "EURUSD_jforex_lifecycle.csv",
-               [{"symbol": "EURUSD", "oco_lifecycle_pass": True}])
-    _write_csv(tmp_path / "EURUSD_jforex_ops.csv",
-               [{"symbol": "EURUSD", "operational_ready_pass": True}])
+    _write_csv(
+        tmp_path / "EURUSD_stage13.csv",
+        [{"symbol": "EURUSD", "stage13_dukascopy_testclient_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_signal.csv",
+        [{"symbol": "EURUSD", "jforex_signal_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_execution.csv",
+        [{"symbol": "EURUSD", "jforex_execution_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_lifecycle.csv", [{"symbol": "EURUSD", "oco_lifecycle_pass": True}]
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_ops.csv", [{"symbol": "EURUSD", "operational_ready_pass": True}]
+    )
     # outcome parity missing — stage14 must fail and show outcome_parity check as missing
     summary, checks = build_stage14_artifacts(
         symbols=["EURUSD"],
@@ -295,18 +301,27 @@ def test_build_stage14_artifacts_includes_outcome_parity_check(tmp_path: Path) -
 
 def test_build_stage14_artifacts_includes_local_surrogate_check(tmp_path: Path) -> None:
     """Stage 14 must include local_jforex_surrogate_pass as a prerequisite check."""
-    _write_csv(tmp_path / "EURUSD_stage13.csv",
-               [{"symbol": "EURUSD", "stage13_dukascopy_testclient_pass": True}])
-    _write_csv(tmp_path / "EURUSD_jforex_signal.csv",
-               [{"symbol": "EURUSD", "jforex_signal_parity_pass": True}])
-    _write_csv(tmp_path / "EURUSD_jforex_execution.csv",
-               [{"symbol": "EURUSD", "jforex_execution_parity_pass": True}])
-    _write_csv(tmp_path / "EURUSD_jforex_lifecycle.csv",
-               [{"symbol": "EURUSD", "oco_lifecycle_pass": True}])
-    _write_csv(tmp_path / "EURUSD_jforex_ops.csv",
-               [{"symbol": "EURUSD", "operational_ready_pass": True}])
-    _write_csv(tmp_path / "EURUSD_outcome.csv",
-               [{"symbol": "EURUSD", "jforex_outcome_parity_pass": True}])
+    _write_csv(
+        tmp_path / "EURUSD_stage13.csv",
+        [{"symbol": "EURUSD", "stage13_dukascopy_testclient_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_signal.csv",
+        [{"symbol": "EURUSD", "jforex_signal_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_execution.csv",
+        [{"symbol": "EURUSD", "jforex_execution_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_lifecycle.csv", [{"symbol": "EURUSD", "oco_lifecycle_pass": True}]
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_ops.csv", [{"symbol": "EURUSD", "operational_ready_pass": True}]
+    )
+    _write_csv(
+        tmp_path / "EURUSD_outcome.csv", [{"symbol": "EURUSD", "jforex_outcome_parity_pass": True}]
+    )
     # local surrogate missing — stage14 must fail
     summary, checks = build_stage14_artifacts(
         symbols=["EURUSD"],
@@ -476,8 +491,10 @@ def test_build_stage14_artifacts_green_with_all_seven_checks(tmp_path: Path) -> 
         ("outcome", "jforex_outcome_parity_pass"),
     ]:
         _write_csv(tmp_path / f"EURUSD_{name}.csv", [{"symbol": "EURUSD", col: True}])
-    _write_csv(tmp_path / "local_surrogate.csv",
-               [{"symbol": "EURUSD", "local_jforex_surrogate_pass": True}])
+    _write_csv(
+        tmp_path / "local_surrogate.csv",
+        [{"symbol": "EURUSD", "local_jforex_surrogate_pass": True}],
+    )
 
     summary, checks = build_stage14_artifacts(
         symbols=["EURUSD"],
@@ -506,7 +523,13 @@ def test_build_stage14_artifacts_fails_when_input_artifact_is_stale(tmp_path: Pa
     fresh_ts = _utc_str()
     _write_csv(
         tmp_path / "EURUSD_stage13.csv",
-        [{"symbol": "EURUSD", "stage13_dukascopy_testclient_pass": True, "evaluated_at_utc": stale_ts}],
+        [
+            {
+                "symbol": "EURUSD",
+                "stage13_dukascopy_testclient_pass": True,
+                "evaluated_at_utc": stale_ts,
+            }
+        ],
     )
     for name, col in [
         ("jforex_signal", "jforex_signal_parity_pass"),
@@ -514,8 +537,10 @@ def test_build_stage14_artifacts_fails_when_input_artifact_is_stale(tmp_path: Pa
         ("jforex_lifecycle", "oco_lifecycle_pass"),
         ("jforex_ops", "operational_ready_pass"),
     ]:
-        _write_csv(tmp_path / f"EURUSD_{name}.csv",
-                   [{"symbol": "EURUSD", col: True, "evaluated_at_utc": fresh_ts}])
+        _write_csv(
+            tmp_path / f"EURUSD_{name}.csv",
+            [{"symbol": "EURUSD", col: True, "evaluated_at_utc": fresh_ts}],
+        )
 
     summary, checks = build_stage14_artifacts(
         symbols=["EURUSD"],
@@ -548,8 +573,10 @@ def test_build_stage14_artifacts_passes_when_all_fresh(tmp_path: Path) -> None:
         ("jforex_lifecycle", "oco_lifecycle_pass"),
         ("jforex_ops", "operational_ready_pass"),
     ]:
-        _write_csv(tmp_path / f"EURUSD_{name}.csv",
-                   [{"symbol": "EURUSD", col: True, "evaluated_at_utc": fresh_ts}])
+        _write_csv(
+            tmp_path / f"EURUSD_{name}.csv",
+            [{"symbol": "EURUSD", col: True, "evaluated_at_utc": fresh_ts}],
+        )
 
     summary, checks = build_stage14_artifacts(
         symbols=["EURUSD"],
@@ -572,7 +599,9 @@ def test_build_stage14_artifacts_passes_when_all_fresh(tmp_path: Path) -> None:
     assert stage13_check.iloc[0]["details"] == ""
 
 
-def test_build_stage14_artifacts_accepts_non_deployable_local_surrogate_nogo(tmp_path: Path) -> None:
+def test_build_stage14_artifacts_accepts_non_deployable_local_surrogate_nogo(
+    tmp_path: Path,
+) -> None:
     for name, col in [
         ("stage13", "stage13_dukascopy_testclient_pass"),
         ("jforex_signal", "jforex_signal_parity_pass"),

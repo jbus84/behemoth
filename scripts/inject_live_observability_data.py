@@ -12,6 +12,7 @@ import requests
 BASE_URL = "http://localhost:8001"
 SYMBOL = "EURUSD"
 
+
 def inject_data():
     print(f"🚀 Starting Live Injection for {SYMBOL}...")
 
@@ -51,7 +52,7 @@ def inject_data():
         "side": "BUY",
         "entry_price": 1.0850,
         "entry_ts": datetime.now(tz=timezone.utc).isoformat(),
-        "horizon": 12
+        "horizon": 12,
     }
     requests.post(f"{BASE_URL}/trades/open", json=trade_req)
 
@@ -64,11 +65,12 @@ def inject_data():
         "status": "CLOSED",
         "exit_price": 1.0875,
         "exit_ts": datetime.now(tz=timezone.utc).isoformat(),
-        "pnl_pips": 25.0
+        "pnl_pips": 25.0,
     }
     requests.post(f"{BASE_URL}/trades/update", json=update_req)
 
     print("✅ Injection Complete. Metrics should update in Prometheus shortly.")
+
 
 if __name__ == "__main__":
     try:

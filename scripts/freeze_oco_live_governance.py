@@ -142,7 +142,9 @@ def _default_paths(
         ),
         "predictions": _pick_first_existing(
             analysis_dir / "wfo_2025_m3to1_oco_fullcap" / f"{s}_oco_monthly_predictions.parquet",
-            analysis_dir / f"wfo_2025_m3to1_oco_fullcap_{sl}" / f"{s}_oco_monthly_predictions.parquet",
+            analysis_dir
+            / f"wfo_2025_m3to1_oco_fullcap_{sl}"
+            / f"{s}_oco_monthly_predictions.parquet",
         ),
         "tick_fill_caps": _pick_first_existing(
             analysis_dir / "stop_limit_tickfill_fullcap" / f"{s}_stop_limit_tickfill_caps.csv",
@@ -183,6 +185,7 @@ def _state_universe(states_csv: Path) -> tuple[pd.DataFrame, str]:
     raw = x.to_json(orient="records", date_format="iso", force_ascii=True)
     sh = hashlib.sha256(raw.encode("utf-8")).hexdigest()
     return x, sh
+
 
 def _read_tick_exact_ok(path: Path) -> bool | None:
     if not path.exists():
@@ -290,7 +293,7 @@ def _build_manifest(
             "production_cap_pips": _pick_optimal_cap(
                 paths["tick_fill_caps"],
                 default=float(wfo_cfg.get("production_cap_pips", 1.2)),
-                hard_limit=1.2 # Safety bound enforced by Governance
+                hard_limit=1.2,  # Safety bound enforced by Governance
             ),
             "oco_hold_mode": str(wfo_cfg.get("oco_hold_mode", "")),
             "oco_include_no_touch": bool(wfo_cfg.get("oco_include_no_touch", True)),
@@ -393,8 +396,7 @@ def main() -> None:
         omitted = _subset_omissions(syms, registry_symbols)
         if omitted:
             print(
-                "warning: --symbols is a subset of registry symbols; omitted="
-                + ",".join(omitted)
+                "warning: --symbols is a subset of registry symbols; omitted=" + ",".join(omitted)
             )
     elif registry_symbols:
         syms = registry_symbols

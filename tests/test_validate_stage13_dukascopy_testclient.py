@@ -61,7 +61,9 @@ def test_build_stage13_artifacts_marks_green_when_deployable_inputs_pass(tmp_pat
     assert len(checks) == 3
 
 
-def test_build_stage13_artifacts_allows_non_deployable_symbol_without_signal_cycles(tmp_path: Path) -> None:
+def test_build_stage13_artifacts_allows_non_deployable_symbol_without_signal_cycles(
+    tmp_path: Path,
+) -> None:
     _write_lock(
         tmp_path / "locks" / "usdcad_oco_live_lock.json",
         symbol="USDCAD",
@@ -95,7 +97,9 @@ def test_build_stage13_artifacts_allows_non_deployable_symbol_without_signal_cyc
     assert "non-deployable" in signal_check.iloc[0]["details"]
 
 
-def test_build_stage13_artifacts_fails_when_deployable_symbol_has_no_signal_path(tmp_path: Path) -> None:
+def test_build_stage13_artifacts_fails_when_deployable_symbol_has_no_signal_path(
+    tmp_path: Path,
+) -> None:
     _write_lock(tmp_path / "locks" / "gbpusd_oco_live_lock.json", symbol="GBPUSD", deployable=True)
     runtime = tmp_path / "GBPUSD_jforex_runtime_events.csv"
     runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n")

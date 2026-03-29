@@ -15,6 +15,7 @@ from src.behemoth.core.schemas import IncomingTick
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
+
 def _make_ticks(
     n: int,
     symbol: str = "EURUSD",
@@ -31,23 +32,27 @@ def _make_ticks(
         price += rng.normal(0, 0.00005)
         bid = round(price, 5)
         ask = round(bid + spread, 5)
-        ticks.append(IncomingTick(
-            symbol=symbol,
-            timestamp=t,
-            bid=bid,
-            ask=ask,
-        ))
+        ticks.append(
+            IncomingTick(
+                symbol=symbol,
+                timestamp=t,
+                bid=bid,
+                ask=ask,
+            )
+        )
         t += timedelta(milliseconds=int(rng.integers(50, 500)))
     return ticks
 
 
 # ── Tests ─────────────────────────────────────────────────────────────
 
+
 class TestTickAggregatorBarCount:
     """Verify correct number of bars emitted."""
 
     def test_exact_100_ticks_produces_1_bar(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
+
         agg = TickAggregator(bar_ticks=100)
         ticks = _make_ticks(100)
         bars = agg.add_ticks(ticks)
@@ -55,6 +60,7 @@ class TestTickAggregatorBarCount:
 
     def test_250_ticks_produces_2_bars(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
+
         agg = TickAggregator(bar_ticks=100)
         ticks = _make_ticks(250)
         bars = agg.add_ticks(ticks)
@@ -62,6 +68,7 @@ class TestTickAggregatorBarCount:
 
     def test_50_ticks_produces_0_bars(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
+
         agg = TickAggregator(bar_ticks=100)
         ticks = _make_ticks(50)
         bars = agg.add_ticks(ticks)
@@ -69,6 +76,7 @@ class TestTickAggregatorBarCount:
 
     def test_remainder_carries_forward(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
+
         agg = TickAggregator(bar_ticks=100)
         # Feed 80, then 40 → should get 1 bar (100 ticks) + 20 remainder
         bars1 = agg.add_ticks(_make_ticks(80, seed=1))
@@ -83,6 +91,7 @@ class TestTickAggregatorOHLC:
 
     def test_open_is_first_tick_mid(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
+
         agg = TickAggregator(bar_ticks=5)
         ticks = _make_ticks(5)
         bars = agg.add_ticks(ticks)
@@ -92,6 +101,7 @@ class TestTickAggregatorOHLC:
 
     def test_close_is_last_tick_mid(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
+
         agg = TickAggregator(bar_ticks=5)
         ticks = _make_ticks(5)
         bars = agg.add_ticks(ticks)
@@ -101,6 +111,7 @@ class TestTickAggregatorOHLC:
 
     def test_high_is_max_mid(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
+
         agg = TickAggregator(bar_ticks=5)
         ticks = _make_ticks(5)
         bars = agg.add_ticks(ticks)
@@ -110,6 +121,7 @@ class TestTickAggregatorOHLC:
 
     def test_low_is_min_mid(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
+
         agg = TickAggregator(bar_ticks=5)
         ticks = _make_ticks(5)
         bars = agg.add_ticks(ticks)
@@ -123,6 +135,7 @@ class TestTickAggregatorMicrostructure:
 
     def test_hl_first_correct(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
+
         agg = TickAggregator(bar_ticks=10)
         ticks = _make_ticks(10)
         bars = agg.add_ticks(ticks)
@@ -141,6 +154,7 @@ class TestTickAggregatorMicrostructure:
 
     def test_hl_pos_frac_correct(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
+
         agg = TickAggregator(bar_ticks=10)
         ticks = _make_ticks(10)
         bars = agg.add_ticks(ticks)
@@ -153,6 +167,7 @@ class TestTickAggregatorMicrostructure:
 
     def test_spread_is_mean(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
+
         agg = TickAggregator(bar_ticks=5)
         ticks = _make_ticks(5)
         bars = agg.add_ticks(ticks)
@@ -162,6 +177,7 @@ class TestTickAggregatorMicrostructure:
 
     def test_tick_volume_equals_bar_ticks(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
+
         agg = TickAggregator(bar_ticks=100)
         ticks = _make_ticks(100)
         bars = agg.add_ticks(ticks)
@@ -169,6 +185,7 @@ class TestTickAggregatorMicrostructure:
 
     def test_timestamps_correct(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
+
         agg = TickAggregator(bar_ticks=5)
         ticks = _make_ticks(5)
         bars = agg.add_ticks(ticks)
@@ -182,6 +199,7 @@ class TestTickAggregatorMultiSymbol:
 
     def test_two_symbols_independent(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
+
         agg = TickAggregator(bar_ticks=5)
         eu_ticks = _make_ticks(5, symbol="EURUSD", seed=1)
         gb_ticks = _make_ticks(3, symbol="GBPUSD", seed=2)

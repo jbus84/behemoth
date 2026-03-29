@@ -8,7 +8,6 @@ import csv
 import json
 import shutil
 import subprocess
-import sys
 from datetime import date
 from pathlib import Path
 
@@ -94,7 +93,9 @@ def _materialize_bundle_models(bundle_dir: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model-month", help="Override model month YYYY-MM (default: last complete month)")
+    parser.add_argument(
+        "--model-month", help="Override model month YYYY-MM (default: last complete month)"
+    )
     args = parser.parse_args()
 
     model_month = _derive_model_month(args.model_month)

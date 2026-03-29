@@ -220,7 +220,9 @@ def _attach_stable_event_ids(events: pd.DataFrame) -> pd.DataFrame:
     out = out[out["close_ts"].notna()].copy()
     if "test_month" not in out.columns:
         out["test_month"] = out["close_ts"].dt.strftime("%Y-%m")
-    out = out.sort_values(["test_month", "candidate_uid", "close_ts"], kind="stable").reset_index(drop=True)
+    out = out.sort_values(["test_month", "candidate_uid", "close_ts"], kind="stable").reset_index(
+        drop=True
+    )
     out["event_ordinal"] = out.groupby(["test_month", "candidate_uid"]).cumcount().astype(int)
     out["scored_row_id"] = (
         out["test_month"].astype(str)
@@ -380,10 +382,12 @@ def _export_train_predictions(
     tr_t = pd.to_datetime(train_ts, utc=True, errors="coerce")
     tr_v = np.asarray(train_p, dtype=float)
     ok = np.isfinite(tr_v) & tr_t.notna().to_numpy()
-    df = pd.DataFrame({
-        "day": tr_t[ok].dt.floor("D").dt.date,
-        "pred_prob": tr_v[ok],
-    })
+    df = pd.DataFrame(
+        {
+            "day": tr_t[ok].dt.floor("D").dt.date,
+            "pred_prob": tr_v[ok],
+        }
+    )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(out_path, index=False)
 
@@ -488,7 +492,9 @@ def _wfo_monthly(
             model.save_model(str(cbm_path))
 
             # Export Importances CSV
-            imp_df = pd.DataFrame({"feature": feats, "importance": fi}).sort_values("importance", ascending=False)
+            imp_df = pd.DataFrame({"feature": feats, "importance": fi}).sort_values(
+                "importance", ascending=False
+            )
             imp_path = model_export_dir / f"{symbol}_feature_importance_{month_tag}.csv"
             imp_df.to_csv(imp_path, index=False)
 
@@ -518,7 +524,8 @@ def _wfo_monthly(
 
                 finite_thr = exec_thr_vec[np.isfinite(exec_thr_vec)]
                 exec_thr = (
-                    float(np.median(finite_thr)) if len(finite_thr) > 0
+                    float(np.median(finite_thr))
+                    if len(finite_thr) > 0
                     else float(np.quantile(p_tr, exec_q))
                 )
             else:
@@ -529,11 +536,15 @@ def _wfo_monthly(
                 "symbol": symbol,
                 "model_month": month_tag,
                 "threshold_exec": exec_thr,  # Median/Baseline
-                "threshold_schedule": schedule, # Daily precision
+                "threshold_schedule": schedule,  # Daily precision
                 "execution_quantile": float(exec_q),
                 "threshold_source": mode,
-                "rolling_threshold_days": int(rolling_threshold_days) if mode == "rolling_days" else 0,
-                "rolling_threshold_min_history": int(rolling_threshold_min_history) if mode == "rolling_days" else 0,
+                "rolling_threshold_days": int(rolling_threshold_days)
+                if mode == "rolling_days"
+                else 0,
+                "rolling_threshold_min_history": int(rolling_threshold_min_history)
+                if mode == "rolling_days"
+                else 0,
                 "train_rows": int(len(tr)),
                 "features": feats,
             }
@@ -636,13 +647,12 @@ def _wfo_monthly(
     return pd.DataFrame(metric_rows), pd.DataFrame(thr_rows), preds, importance
 
 
-
 def _write_report(
     report_out: Path,
     metrics: pd.DataFrame,
     thresholds: pd.DataFrame,
     importance: pd.DataFrame,
-    cfg: dict[str, Any]
+    cfg: dict[str, Any],
 ) -> None:
     symbol = str(cfg.get("symbol", "UNKNOWN")).upper().strip() or "UNKNOWN"
     lines: list[str] = []
@@ -679,7 +689,9 @@ def _write_report(
     if not importance.empty:
         # Calculate mean importance across all months (ignoring 'test_month' col)
         numeric_cols = [c for c in importance.columns if c != "test_month"]
-        mean_imp = importance[numeric_cols].mean().sort_values(ascending=False).to_frame("mean_importance")
+        mean_imp = (
+            importance[numeric_cols].mean().sort_values(ascending=False).to_frame("mean_importance")
+        )
         mean_imp.index.name = "feature"
         lines.append(mean_imp.reset_index().to_markdown(index=False))
     else:
@@ -725,7 +737,11 @@ def main() -> None:
     p.add_argument("--seed", type=int, default=None)
     p.add_argument("--out-dir", default=None)
     p.add_argument("--report-out", default=None)
-    p.add_argument("--model-export-dir", default=None, help="Directory to export .cbm models + .json thresholds")
+    p.add_argument(
+        "--model-export-dir",
+        default=None,
+        help="Directory to export .cbm models + .json thresholds",
+    )
     args = p.parse_args()
 
     cfg = _merge_config(args)
@@ -822,7 +838,9 @@ def main() -> None:
             ),
             execution_quantile=float(cfg.get("execution_quantile", DEFAULTS["execution_quantile"])),
             seed=int(cfg["seed"]),
-            model_export_dir=Path(str(cfg.get("model_export_dir", ""))) if cfg.get("model_export_dir") else None,
+            model_export_dir=Path(str(cfg.get("model_export_dir", "")))
+            if cfg.get("model_export_dir")
+            else None,
         )
         if not m.empty:
             m_out = out_dir / f"{symbol}_{lib}_monthly_metrics.csv"

@@ -4,7 +4,6 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SOURCE_DIR = REPO_ROOT / "configs" / "research" / "experiments"
 TARGET_DIR = REPO_ROOT / "configs" / "research" / "experiments_dukascopy_candidate"
@@ -33,18 +32,42 @@ ACTIVE_CONFIGS = (
 
 def _rewrite_content(content: str) -> str:
     staged_replacements = (
-        ("data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap", "__DUKASCOPY_CANDIDATE_STOP_LIMIT__"),
-        ("data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap", "__DUKASCOPY_CANDIDATE_WFO__"),
-        ("data/analysis/tick_opportunity_mining/reduced_core_rolling", "__DUKASCOPY_CANDIDATE_REDUCED_ROLLING__"),
+        (
+            "data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap",
+            "__DUKASCOPY_CANDIDATE_STOP_LIMIT__",
+        ),
+        (
+            "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap",
+            "__DUKASCOPY_CANDIDATE_WFO__",
+        ),
+        (
+            "data/analysis/tick_opportunity_mining/reduced_core_rolling",
+            "__DUKASCOPY_CANDIDATE_REDUCED_ROLLING__",
+        ),
         ("data/analysis/tick_opportunity_mining/reduced_core", "__DUKASCOPY_CANDIDATE_REDUCED__"),
         ("data/analysis/tick_opportunity_mining", "__DUKASCOPY_CANDIDATE_MINING__"),
     )
     final_replacements = (
-        ("__DUKASCOPY_CANDIDATE_STOP_LIMIT__", "data/analysis/tick_opportunity_mining_dukascopy_candidate/stop_limit_tickfill_fullcap"),
-        ("__DUKASCOPY_CANDIDATE_WFO__", "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap"),
-        ("__DUKASCOPY_CANDIDATE_REDUCED_ROLLING__", "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling"),
-        ("__DUKASCOPY_CANDIDATE_REDUCED__", "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core"),
-        ("__DUKASCOPY_CANDIDATE_MINING__", "data/analysis/tick_opportunity_mining_dukascopy_candidate"),
+        (
+            "__DUKASCOPY_CANDIDATE_STOP_LIMIT__",
+            "data/analysis/tick_opportunity_mining_dukascopy_candidate/stop_limit_tickfill_fullcap",
+        ),
+        (
+            "__DUKASCOPY_CANDIDATE_WFO__",
+            "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap",
+        ),
+        (
+            "__DUKASCOPY_CANDIDATE_REDUCED_ROLLING__",
+            "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling",
+        ),
+        (
+            "__DUKASCOPY_CANDIDATE_REDUCED__",
+            "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core",
+        ),
+        (
+            "__DUKASCOPY_CANDIDATE_MINING__",
+            "data/analysis/tick_opportunity_mining_dukascopy_candidate",
+        ),
         ("data/analysis/tick_velocity", "data/analysis/tick_velocity_dukascopy_candidate"),
         ("docs/analysis/", "docs/analysis/dukascopy_candidate/"),
         ("_report.md", "_dukascopy_candidate_report.md"),
@@ -72,7 +95,9 @@ def generate_configs(overwrite: bool) -> list[Path]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate Dukascopy candidate experiment configs.")
-    parser.add_argument("--overwrite", action="store_true", help="Overwrite existing candidate configs.")
+    parser.add_argument(
+        "--overwrite", action="store_true", help="Overwrite existing candidate configs."
+    )
     args = parser.parse_args()
 
     written = generate_configs(overwrite=args.overwrite)

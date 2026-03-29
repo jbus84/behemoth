@@ -79,7 +79,11 @@ def _read_failures(report_dir: str) -> dict[str, list[dict[str, str]]]:
     failures: dict[str, list[dict[str, str]]] = {}
     with csv_path.open() as f:
         for row in csv.DictReader(f):
-            if row["severity"] == "critical" and row["status"] != "pass" and not _is_expected_critical_nogo(row):
+            if (
+                row["severity"] == "critical"
+                and row["status"] != "pass"
+                and not _is_expected_critical_nogo(row)
+            ):
                 failures.setdefault(row["symbol"], []).append(row)
     return failures
 
@@ -108,7 +112,11 @@ def _read_acceptable_nogos(report_dir: str) -> dict[str, list[dict[str, str]]]:
     acceptable: dict[str, list[dict[str, str]]] = {}
     with csv_path.open() as f:
         for row in csv.DictReader(f):
-            if row["severity"] == "critical" and row["status"] != "pass" and _is_expected_critical_nogo(row):
+            if (
+                row["severity"] == "critical"
+                and row["status"] != "pass"
+                and _is_expected_critical_nogo(row)
+            ):
                 acceptable.setdefault(row["symbol"], []).append(row)
     return acceptable
 
@@ -130,8 +138,12 @@ def _validate_month_bundle(bundle_dir: Path) -> None:
     seen_rows: set[tuple[str, str]] = set()
     with index_path.open() as f:
         for row in csv.DictReader(f):
-            seen_rows.add((str(row.get("symbol", "")).upper().strip(), str(row.get("month", "")).strip()))
-    missing_rows = sorted(symbol for symbol, month in expected_rows if (symbol, month) not in seen_rows)
+            seen_rows.add(
+                (str(row.get("symbol", "")).upper().strip(), str(row.get("month", "")).strip())
+            )
+    missing_rows = sorted(
+        symbol for symbol, month in expected_rows if (symbol, month) not in seen_rows
+    )
     if missing_rows:
         raise SystemExit(
             "[monthly-recert] incomplete month build bundle: missing index rows for "
@@ -170,7 +182,9 @@ def _require_month_bundle(model_month: str) -> Path:
     return bundle_dir
 
 
-def _write_recert_status(model_month: str, report_dir: str, bundle_dir: Path, overall_pass: bool) -> None:
+def _write_recert_status(
+    model_month: str, report_dir: str, bundle_dir: Path, overall_pass: bool
+) -> None:
     status_path = _repo_root() / report_dir / MONTHLY_RECERT_STATUS_FILENAME
     status_path.parent.mkdir(parents=True, exist_ok=True)
     status_path.write_text(
@@ -221,7 +235,9 @@ def _print_summary(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model-month", help="Override model month YYYY-MM (default: last complete month)")
+    parser.add_argument(
+        "--model-month", help="Override model month YYYY-MM (default: last complete month)"
+    )
     parser.add_argument("--start-ts", help="Override matrix start timestamp")
     parser.add_argument("--end-ts", help="Override matrix end timestamp")
     parser.add_argument("--eval-start", help="Override outcome parity eval start timestamp")

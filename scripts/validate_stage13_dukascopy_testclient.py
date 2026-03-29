@@ -151,7 +151,9 @@ def build_stage13_artifacts(
     symbol_list = sorted({str(s).strip().upper() for s in symbols if str(s).strip()}) or sorted(
         set(checks.get("symbol", pd.Series(dtype=str)).astype(str))
     )
-    symbol_list = sorted(set(symbol_list) | set(checks.get("symbol", pd.Series(dtype=str)).astype(str)))
+    symbol_list = sorted(
+        set(symbol_list) | set(checks.get("symbol", pd.Series(dtype=str)).astype(str))
+    )
 
     summary_rows: list[dict[str, Any]] = []
     check_rows: list[dict[str, Any]] = []

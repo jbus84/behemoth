@@ -364,7 +364,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     months = sorted(selected_all["test_month"].unique().tolist())
     if months:
         last_m = months[-1]
-        y, m = map(int, last_m.split('-'))
+        y, m = map(int, last_m.split("-"))
         m += 1
         if m > 12:
             m = 1

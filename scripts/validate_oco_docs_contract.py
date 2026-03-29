@@ -606,7 +606,9 @@ def _extract_symbols_from_edge_report(path: Path) -> set[str]:
     if not path.exists():
         return set()
     txt = path.read_text(encoding="utf-8", errors="ignore")
-    return set(re.findall(r"\|\s*[0-9]+\s*\|\s*(EURUSD|GBPUSD|USDJPY|USDCHF|AUDUSD|USDCAD)\s*\|", txt))
+    return set(
+        re.findall(r"\|\s*[0-9]+\s*\|\s*(EURUSD|GBPUSD|USDJPY|USDCHF|AUDUSD|USDCAD)\s*\|", txt)
+    )
 
 
 def _analysis_docs_without_generated(docs_root: Path) -> set[str]:
@@ -760,7 +762,11 @@ def run(
     )
 
     # C4a: No NaNs in emitted edge metrics.
-    nan_count = int(pd.to_numeric(edge["metric_value"], errors="coerce").isna().sum()) if not edge.empty else 0
+    nan_count = (
+        int(pd.to_numeric(edge["metric_value"], errors="coerce").isna().sum())
+        if not edge.empty
+        else 0
+    )
     _add_check(
         checks_rows,
         check_id="C4A",
@@ -1472,7 +1478,11 @@ def run(
     ):
         x = cmap[
             (cmap["class"].astype(str) == "stage_integrated")
-            & (cmap["symbol"].astype(str).isin(["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]))
+            & (
+                cmap["symbol"]
+                .astype(str)
+                .isin(["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"])
+            )
             & (cmap["stage_family"].astype(str) != "none")
         ].copy()
         if not x.empty:
@@ -1527,7 +1537,12 @@ def run(
     si_fail = pd.DataFrame()
     if not si.empty and {"status", "severity_if_fail"}.issubset(set(si.columns)):
         si_fail = si[
-            (~si["status"].astype(str).str.lower().isin(["pass", "accepted_exception", "remediated"]))
+            (
+                ~si["status"]
+                .astype(str)
+                .str.lower()
+                .isin(["pass", "accepted_exception", "remediated"])
+            )
         ].copy()
     si_high_critical = (
         int(si_fail["severity_if_fail"].astype(str).str.lower().isin(["high", "critical"]).sum())
@@ -2398,7 +2413,9 @@ def run(
         if stage09_snapshot.exists()
         else ""
     )
-    predeploy_df = _parse_markdown_table_after_heading(stage09_txt, "#### Predeploy Validator Status")
+    predeploy_df = _parse_markdown_table_after_heading(
+        stage09_txt, "#### Predeploy Validator Status"
+    )
     predeploy_has_table = not predeploy_df.empty
     missing_predeploy_files: list[str] = []
     missing_predeploy_rows: list[str] = []
@@ -2413,8 +2430,12 @@ def run(
             missing_predeploy_rows = sorted(
                 x[
                     x["symbol"].isin(expected_syms)
-                    & x["failed_checks"].str.contains("missing_predeploy_json", case=False, regex=False)
-                ]["symbol"].unique().tolist()
+                    & x["failed_checks"].str.contains(
+                        "missing_predeploy_json", case=False, regex=False
+                    )
+                ]["symbol"]
+                .unique()
+                .tolist()
             )
         if {"symbol", "status"}.issubset(set(predeploy_df.columns)):
             x = predeploy_df.copy()
@@ -2468,7 +2489,9 @@ def run(
         g01 = x["g01_near_fail_count"].astype(str).str.strip().str.lower()
         g03 = x["g03_lock_drift_flags"].astype(str).str.strip().str.lower()
         nan_mask = g01.isin(["nan", "", "none"]) | g03.isin(["nan", "", "none"])
-        g_nan_rows = sorted(x[x["symbol"].isin(expected_syms) & nan_mask]["symbol"].unique().tolist())
+        g_nan_rows = sorted(
+            x[x["symbol"].isin(expected_syms) & nan_mask]["symbol"].unique().tolist()
+        )
     _add_check(
         checks_rows,
         check_id="C53",
@@ -2492,7 +2515,9 @@ def run(
 
     # C55: Stage 12 API parity artifacts must exist with required schema.
     stage12_summary_csv = (
-        edge_metrics_csv.parent.parent / "backtest_reconcile" / "EURUSD_stage12_api_parity_summary.csv"
+        edge_metrics_csv.parent.parent
+        / "backtest_reconcile"
+        / "EURUSD_stage12_api_parity_summary.csv"
     )
     stage12_summary = (
         pd.read_csv(stage12_summary_csv) if stage12_summary_csv.exists() else pd.DataFrame()
@@ -2560,20 +2585,28 @@ def run(
         by_offset_csv = offset_root / f"{sym}_offset_robustness_by_offset.csv"
         warmup_csv = offset_root / f"{sym}_warmup_sensitivity.csv"
         api_csv = offset_root / f"{sym}_api_offset_confirmation.csv"
-        report_md = docs_root.parent / "analysis" / f"{sym.lower()}_offset_tickbar_robustness_report.md"
+        report_md = (
+            docs_root.parent / "analysis" / f"{sym.lower()}_offset_tickbar_robustness_report.md"
+        )
         present_for_sym = any(p.exists() for p in [by_offset_csv, warmup_csv, api_csv, report_md])
         offset_family_present = offset_family_present or present_for_sym
         if not present_for_sym:
             continue
-        missing = [str(p) for p in [by_offset_csv, warmup_csv, api_csv, report_md] if not p.exists()]
+        missing = [
+            str(p) for p in [by_offset_csv, warmup_csv, api_csv, report_md] if not p.exists()
+        ]
         if missing:
             offset_family_missing.extend(missing)
             continue
         by_offset = pd.read_csv(by_offset_csv) if by_offset_csv.exists() else pd.DataFrame()
         warmup = pd.read_csv(warmup_csv) if warmup_csv.exists() else pd.DataFrame()
         api = pd.read_csv(api_csv) if api_csv.exists() else pd.DataFrame()
-        miss_by_offset = [c for c in OFFSET_ROBUSTNESS_BY_OFFSET_REQUIRED_COLUMNS if c not in by_offset.columns]
-        miss_warmup = [c for c in OFFSET_ROBUSTNESS_WARMUP_REQUIRED_COLUMNS if c not in warmup.columns]
+        miss_by_offset = [
+            c for c in OFFSET_ROBUSTNESS_BY_OFFSET_REQUIRED_COLUMNS if c not in by_offset.columns
+        ]
+        miss_warmup = [
+            c for c in OFFSET_ROBUSTNESS_WARMUP_REQUIRED_COLUMNS if c not in warmup.columns
+        ]
         miss_api = [c for c in OFFSET_ROBUSTNESS_API_REQUIRED_COLUMNS if c not in api.columns]
         if miss_by_offset:
             offset_family_schema_issues.append(f"{sym}:by_offset:{','.join(miss_by_offset)}")
@@ -2606,16 +2639,18 @@ def run(
     # C54: Optional strict mode to fail docs contract when any expected symbol fails stage gates.
     strict_mode = bool(thresholds.fail_if_any_symbol_gate_fails)
     strict_gate_fails: list[str] = []
-    if strict_mode and not stage_status.empty and {"symbol", "symbol_all_gates_pass"}.issubset(
-        set(stage_status.columns)
+    if (
+        strict_mode
+        and not stage_status.empty
+        and {"symbol", "symbol_all_gates_pass"}.issubset(set(stage_status.columns))
     ):
         st = stage_status.copy()
         st["symbol"] = st["symbol"].astype(str).str.upper().str.strip()
         st["symbol_all_gates_pass"] = _as_bool(st["symbol_all_gates_pass"])
         strict_gate_fails = sorted(
-            st[
-                st["symbol"].isin(expected_syms) & (~st["symbol_all_gates_pass"])
-            ]["symbol"].unique().tolist()
+            st[st["symbol"].isin(expected_syms) & (~st["symbol_all_gates_pass"])]["symbol"]
+            .unique()
+            .tolist()
         )
     _add_check(
         checks_rows,

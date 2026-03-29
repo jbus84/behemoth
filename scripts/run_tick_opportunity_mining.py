@@ -392,12 +392,16 @@ def _directional_candidates(
                 stats = _metric_from_gross(gross)
                 mean_train = float(np.mean(train_vals)) if len(train_vals) > 0 else float("nan")
                 median_train = float(np.median(train_vals)) if len(train_vals) > 0 else float("nan")
-                train_annual = _annualized_count(
-                    int(np.sum(tmask)),
-                    pd.to_datetime(train["close_ts"], utc=True, errors="coerce").iloc[
-                        np.flatnonzero(tmask)
-                    ],
-                ) if int(np.sum(tmask)) > 0 else 0.0
+                train_annual = (
+                    _annualized_count(
+                        int(np.sum(tmask)),
+                        pd.to_datetime(train["close_ts"], utc=True, errors="coerce").iloc[
+                            np.flatnonzero(tmask)
+                        ],
+                    )
+                    if int(np.sum(tmask)) > 0
+                    else 0.0
+                )
                 rows.append(
                     {
                         "symbol": symbol,
@@ -571,7 +575,9 @@ def _oco_candidates(
                                 int(np.sum(fam_mask)),
                                 float(np.mean(vals)) if len(vals) > 0 else float("nan"),
                                 float(np.median(vals)) if len(vals) > 0 else float("nan"),
-                                float(np.mean(both[reg_mask])) if np.any(reg_mask) else float("nan"),
+                                float(np.mean(both[reg_mask]))
+                                if np.any(reg_mask)
+                                else float("nan"),
                             )
 
     out = pd.DataFrame(rows)

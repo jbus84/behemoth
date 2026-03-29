@@ -55,7 +55,9 @@ def test_infer_daily_lag_schedule_detects_constant_shift() -> None:
     candidate = reference.copy()
     candidate["timestamp"] = candidate["timestamp"] - pd.Timedelta(hours=5)
 
-    schedule = infer_daily_lag_schedule(reference, candidate, max_lag_hours=8, min_overlap_minutes=60)
+    schedule = infer_daily_lag_schedule(
+        reference, candidate, max_lag_hours=8, min_overlap_minutes=60
+    )
 
     assert not schedule.empty
     inferred = set(schedule["inferred_lag_hours"].dropna().astype(int).tolist())
@@ -69,10 +71,16 @@ def test_infer_daily_lag_schedule_handles_dst_like_shift_change() -> None:
     reference = pd.concat([day1, day2], ignore_index=True)
     candidate = reference.copy()
     first_mask = candidate["timestamp"] < pd.Timestamp("2018-03-11T00:00:00Z")
-    candidate.loc[first_mask, "timestamp"] = candidate.loc[first_mask, "timestamp"] - pd.Timedelta(hours=5)
-    candidate.loc[~first_mask, "timestamp"] = candidate.loc[~first_mask, "timestamp"] - pd.Timedelta(hours=4)
+    candidate.loc[first_mask, "timestamp"] = candidate.loc[first_mask, "timestamp"] - pd.Timedelta(
+        hours=5
+    )
+    candidate.loc[~first_mask, "timestamp"] = candidate.loc[
+        ~first_mask, "timestamp"
+    ] - pd.Timedelta(hours=4)
 
-    schedule = infer_daily_lag_schedule(reference, candidate, max_lag_hours=8, min_overlap_minutes=60)
+    schedule = infer_daily_lag_schedule(
+        reference, candidate, max_lag_hours=8, min_overlap_minutes=60
+    )
 
     lag_map = {
         str(row["date_utc"])[:10]: int(row["inferred_lag_hours"])

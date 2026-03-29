@@ -22,6 +22,7 @@ from src.behemoth.core.schemas import IncomingTick, IncomingTickBar, ModelFeatur
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
+
 def _make_synthetic_bars(
     symbol: str = "EURUSD",
     bar_ticks: int = 100,
@@ -46,20 +47,22 @@ def _make_synthetic_bars(
         hl_first_val = rng.choice([-1.0, 0.0, 1.0])
         hl_pos_frac_val = rng.uniform(0.3, 0.7)
 
-        bars.append(IncomingTickBar(
-            symbol=symbol,
-            bar_ticks=bar_ticks,
-            timestamp=t,
-            close_ts=close_ts,
-            open=round(o, 5),
-            high=round(h, 5),
-            low=round(l, 5),
-            close=round(c, 5),
-            spread=round(spread, 6),
-            tick_volume=tv,
-            hl_first=hl_first_val,
-            hl_pos_frac=hl_pos_frac_val,
-        ))
+        bars.append(
+            IncomingTickBar(
+                symbol=symbol,
+                bar_ticks=bar_ticks,
+                timestamp=t,
+                close_ts=close_ts,
+                open=round(o, 5),
+                high=round(h, 5),
+                low=round(l, 5),
+                close=round(c, 5),
+                spread=round(spread, 6),
+                tick_volume=tv,
+                hl_first=hl_first_val,
+                hl_pos_frac=hl_pos_frac_val,
+            )
+        )
         t = close_ts + timedelta(seconds=rng.uniform(0.5, 5.0))
         base_price = round(c, 5)
     return bars
@@ -77,19 +80,21 @@ def _pandas_velocity_features(
     pip = 0.0001  # EURUSD
     records = []
     for b in bars:
-        records.append({
-            "timestamp": b.timestamp,
-            "close_ts": b.close_ts,
-            "open": b.open,
-            "high": b.high,
-            "low": b.low,
-            "close": b.close,
-            "spread": b.spread,
-            "tick_volume": b.tick_volume,
-            "bar_ticks": b.bar_ticks,
-            "hl_first": b.hl_first if b.hl_first is not None else np.nan,
-            "hl_pos_frac": b.hl_pos_frac if b.hl_pos_frac is not None else np.nan,
-        })
+        records.append(
+            {
+                "timestamp": b.timestamp,
+                "close_ts": b.close_ts,
+                "open": b.open,
+                "high": b.high,
+                "low": b.low,
+                "close": b.close,
+                "spread": b.spread,
+                "tick_volume": b.tick_volume,
+                "bar_ticks": b.bar_ticks,
+                "hl_first": b.hl_first if b.hl_first is not None else np.nan,
+                "hl_pos_frac": b.hl_pos_frac if b.hl_pos_frac is not None else np.nan,
+            }
+        )
     df = pd.DataFrame(records)
     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
     df["close_ts"] = pd.to_datetime(df["close_ts"], utc=True)
@@ -104,28 +109,60 @@ def _pandas_velocity_features(
     df["duration_sec"] = (df["close_ts"] - df["timestamp"]).dt.total_seconds().clip(lower=1e-6)
     df["tick_rate_hz"] = df["tick_volume"] / df["duration_sec"]
 
-    tr_mu = df["tick_rate_hz"].rolling(vol_window, min_periods=max(8, vol_window // 3)).mean().shift(1)
-    tr_sd = df["tick_rate_hz"].rolling(vol_window, min_periods=max(8, vol_window // 3)).std(ddof=0).shift(1)
+    tr_mu = (
+        df["tick_rate_hz"].rolling(vol_window, min_periods=max(8, vol_window // 3)).mean().shift(1)
+    )
+    tr_sd = (
+        df["tick_rate_hz"]
+        .rolling(vol_window, min_periods=max(8, vol_window // 3))
+        .std(ddof=0)
+        .shift(1)
+    )
     df["tick_rate_z"] = (df["tick_rate_hz"] - tr_mu) / tr_sd.replace(0.0, np.nan)
 
     df["spread_pips"] = df["spread"] / pip
     df["range_pips"] = (high - low) / pip
 
-    sp_mu = df["spread_pips"].rolling(vol_window, min_periods=max(8, vol_window // 3)).mean().shift(1)
-    sp_sd = df["spread_pips"].rolling(vol_window, min_periods=max(8, vol_window // 3)).std(ddof=0).shift(1)
+    sp_mu = (
+        df["spread_pips"].rolling(vol_window, min_periods=max(8, vol_window // 3)).mean().shift(1)
+    )
+    sp_sd = (
+        df["spread_pips"]
+        .rolling(vol_window, min_periods=max(8, vol_window // 3))
+        .std(ddof=0)
+        .shift(1)
+    )
     df["spread_z"] = (df["spread_pips"] - sp_mu) / sp_sd.replace(0.0, np.nan)
 
     df["vel_pips_h1"] = (close - close.shift(1)) / pip
     df["ret1_pips"] = df["vel_pips_h1"]
 
-    vol_ref = df["vel_pips_h1"].rolling(vol_window, min_periods=max(8, vol_window // 3)).std(ddof=0).shift(1)
+    vol_ref = (
+        df["vel_pips_h1"]
+        .rolling(vol_window, min_periods=max(8, vol_window // 3))
+        .std(ddof=0)
+        .shift(1)
+    )
     df["ret_z"] = df["vel_pips_h1"] / (vol_ref * np.sqrt(1.0))
     df["ret_abs_z"] = df["vel_pips_h1"].abs() / (vol_ref * np.sqrt(1.0))
 
-    spread_recent = df["spread_pips"].rolling(cost_window, min_periods=max(8, cost_window // 4)).median().shift(1)
+    spread_recent = (
+        df["spread_pips"]
+        .rolling(cost_window, min_periods=max(8, cost_window // 4))
+        .median()
+        .shift(1)
+    )
     gap_abs = (open_ - close.shift(1)).abs() / pip
-    slip_proxy = gap_abs.rolling(cost_window, min_periods=max(8, cost_window // 6)).quantile(0.75).shift(1)
-    slip_fallback = df["range_pips"].rolling(cost_window, min_periods=max(8, cost_window // 6)).quantile(0.75).shift(1) * 0.2
+    slip_proxy = (
+        gap_abs.rolling(cost_window, min_periods=max(8, cost_window // 6)).quantile(0.75).shift(1)
+    )
+    slip_fallback = (
+        df["range_pips"]
+        .rolling(cost_window, min_periods=max(8, cost_window // 6))
+        .quantile(0.75)
+        .shift(1)
+        * 0.2
+    )
     df["slip_proxy_pips"] = slip_proxy.fillna(slip_fallback).fillna(0.1).clip(lower=0.01)
     df["cost_est_pips"] = (
         spread_recent.fillna(df["spread_pips"].shift(1)).fillna(df["spread_pips"].median())
@@ -143,6 +180,7 @@ def _pandas_velocity_features(
 
 
 # ── Tests ─────────────────────────────────────────────────────────────
+
 
 class TestDuckDBStateFeatures:
     """Verify DuckDB state manager produces float-identical features to pandas."""
@@ -194,9 +232,18 @@ class TestDuckDBStateFeatures:
 
         # Compare rolling features within tight tolerance
         FEATURE_COLS = [
-            "cost_est_pips", "range_pips", "ret1_pips", "ret_z", "ret_abs_z",
-            "vel_cost_units_h1", "vel_abs_cost_units_h1", "spread_z",
-            "tick_rate_z", "hour_utc", "hl_first", "hl_first_mean_24",
+            "cost_est_pips",
+            "range_pips",
+            "ret1_pips",
+            "ret_z",
+            "ret_abs_z",
+            "vel_cost_units_h1",
+            "vel_abs_cost_units_h1",
+            "spread_z",
+            "tick_rate_z",
+            "hour_utc",
+            "hl_first",
+            "hl_first_mean_24",
             "hl_pos_frac_mean_24",
         ]
         for col in FEATURE_COLS:
@@ -219,11 +266,13 @@ class TestDuckDBStateLifecycle:
 
     def test_import_creates_without_error(self):
         from src.behemoth.runtime.state import StateManager
+
         sm = StateManager()
         assert sm is not None
 
     def test_append_single_bar(self):
         from src.behemoth.runtime.state import StateManager
+
         bars = _make_synthetic_bars(n=1)
         sm = StateManager()
         sm.append_bar(bars[0])
@@ -231,6 +280,7 @@ class TestDuckDBStateLifecycle:
 
     def test_bar_count_increments(self):
         from src.behemoth.runtime.state import StateManager
+
         bars = _make_synthetic_bars(n=10)
         sm = StateManager()
         for b in bars:
@@ -240,6 +290,7 @@ class TestDuckDBStateLifecycle:
     def test_insufficient_warmup_returns_none(self):
         """With fewer bars than vol_window, compute_features should return None."""
         from src.behemoth.runtime.state import StateManager
+
         bars = _make_synthetic_bars(n=50)
         sm = StateManager(vol_window=96)
         for b in bars:
@@ -254,6 +305,7 @@ class TestDuckDBTradeTracking:
     @pytest.fixture
     def sm(self):
         from src.behemoth.runtime.state import StateManager
+
         sm = StateManager()
         # Create a dummy bar to anchor entry_bar_id to row 1
         bars = _make_synthetic_bars(n=1)
@@ -299,9 +351,13 @@ class TestDuckDBTradeTracking:
 
     def test_update_trade_closed(self, sm):
         sm.open_trade(
-            symbol="EURUSD", candidate_uid="cand_1", broker_pos_id="bp_100",
-            side="BUY", entry_price=1.1000, entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
-            horizon=12
+            symbol="EURUSD",
+            candidate_uid="cand_1",
+            broker_pos_id="bp_100",
+            side="BUY",
+            entry_price=1.1000,
+            entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            horizon=12,
         )
         # Close the trade
         sm.update_trade(
@@ -333,11 +389,24 @@ class TestDuckDBTradeTracking:
 
     def test_log_audit_event(self, sm):
         from src.behemoth.core.schemas import ModelFeatures
+
         dummy_features = ModelFeatures(
-            cost_est_pips=1.0, range_pips=10.0, ret1_pips=2.0, ret_z=0.5, ret_abs_z=0.5,
-            vel_cost_units_h1=2.0, vel_abs_cost_units_h1=2.0, spread_z=0.1, tick_rate_z=0.1,
-            hour_utc=10.0, hl_first=1.0, hl_first_mean_24=0.5, hl_pos_frac_mean_24=0.5,
-            bar_ticks=100.0, horizon=24.0, barrier_pips=15.0
+            cost_est_pips=1.0,
+            range_pips=10.0,
+            ret1_pips=2.0,
+            ret_z=0.5,
+            ret_abs_z=0.5,
+            vel_cost_units_h1=2.0,
+            vel_abs_cost_units_h1=2.0,
+            spread_z=0.1,
+            tick_rate_z=0.1,
+            hour_utc=10.0,
+            hl_first=1.0,
+            hl_first_mean_24=0.5,
+            hl_pos_frac_mean_24=0.5,
+            bar_ticks=100.0,
+            horizon=24.0,
+            barrier_pips=15.0,
         )
         sm.log_audit_event("EURUSD", "cand1", 0.9, 0.5, dummy_features, "2025-01")
         res = sm._con.execute("SELECT COUNT(*) FROM audit_logs").fetchone()
@@ -356,6 +425,7 @@ class TestDuckDBTradeTracking:
     def test_db_path_file_hydration(self, tmp_path, monkeypatch):
         """Test StateManager creation with a file path and verify counter hydration."""
         from src.behemoth.runtime.state import StateManager
+
         db_file = tmp_path / "test_hydrate.db"
 
         sm1 = StateManager(persist_path=str(db_file))
@@ -381,9 +451,7 @@ class TestDuckDBTradeTracking:
         )
         sm.record_raw_tick(tick, source="historical_backtest")
         assert sm.raw_tick_count("EURUSD") == 1
-        row = sm._con.execute(
-            "SELECT symbol, bid, ask, spread, source FROM raw_ticks"
-        ).fetchone()
+        row = sm._con.execute("SELECT symbol, bid, ask, spread, source FROM raw_ticks").fetchone()
         assert row[0] == "EURUSD"
         assert row[1] == pytest.approx(1.1)
         assert row[2] == pytest.approx(1.1002)
@@ -396,6 +464,7 @@ class TestAccountRiskReservationLedger:
     @pytest.fixture
     def sm(self):
         from src.behemoth.runtime.state import StateManager
+
         sm = StateManager()
         yield sm
         sm.close()
@@ -420,7 +489,9 @@ class TestAccountRiskReservationLedger:
             volume_units=10000.0,
             status="OPEN",
         )
-        total = sm.sum_active_account_risk_reserved_loss_ccy(include_pending=True, include_open=True)
+        total = sm.sum_active_account_risk_reserved_loss_ccy(
+            include_pending=True, include_open=True
+        )
         assert total == 200.0
         eur_only = sm.sum_active_account_risk_reserved_loss_ccy(
             symbol="EURUSD",
@@ -446,7 +517,10 @@ class TestAccountRiskReservationLedger:
         assert promoted == rid
         released = sm.release_account_risk_reservation(broker_pos_id="bp_1")
         assert released == 1
-        assert sm.sum_active_account_risk_reserved_loss_ccy(include_pending=True, include_open=True) == 0.0
+        assert (
+            sm.sum_active_account_risk_reserved_loss_ccy(include_pending=True, include_open=True)
+            == 0.0
+        )
 
     def test_expire_stale_pending_reservations(self, sm):
         rid = sm.create_account_risk_reservation(
@@ -492,6 +566,7 @@ class TestAccountRiskReservationLedger:
 class TestRollingThreshold:
     def test_returns_none_when_no_audit_history(self):
         from src.behemoth.runtime.state import StateManager
+
         sm = StateManager()
         result = sm.get_rolling_threshold(
             symbol="GBPUSD",
@@ -504,7 +579,9 @@ class TestRollingThreshold:
 
     def test_returns_quantile_when_sufficient_history(self):
         from datetime import datetime, timedelta, timezone
+
         from src.behemoth.runtime.state import StateManager
+
         sm = StateManager()
         now = datetime.now(tz=timezone.utc)
         uid = "oco|GBPUSD|100|h6|oco_first_touch_clean__ny_overlap__k2"
@@ -528,7 +605,9 @@ class TestRollingThreshold:
 
     def test_returns_none_when_below_min_history(self):
         from datetime import datetime, timedelta, timezone
+
         from src.behemoth.runtime.state import StateManager
+
         sm = StateManager()
         now = datetime.now(tz=timezone.utc)
         uid = "oco|GBPUSD|100|h6|oco_first_touch_clean__ny_overlap__k2"
@@ -541,8 +620,11 @@ class TestRollingThreshold:
                 [now - timedelta(days=i), now - timedelta(days=i), uid],
             )
         result = sm.get_rolling_threshold(
-            symbol="GBPUSD", candidate_uid=uid,
-            exec_q=0.9, lookback_days=20, min_history=10,
+            symbol="GBPUSD",
+            candidate_uid=uid,
+            exec_q=0.9,
+            lookback_days=20,
+            min_history=10,
         )
         assert result is None
 
@@ -551,6 +633,7 @@ class TestTradeRicherRecording:
     @pytest.fixture
     def sm(self):
         from src.behemoth.runtime.state import StateManager
+
         sm = StateManager()
         bars = _make_synthetic_bars(n=3)
         for b in bars:
@@ -560,9 +643,14 @@ class TestTradeRicherRecording:
 
     def test_open_trade_stores_reservation_id(self, sm):
         sm.open_trade(
-            symbol="EURUSD", candidate_uid="cand_1", broker_pos_id="bp_1",
-            side="BUY", entry_price=1.1, entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
-            horizon=6, reservation_id="res-abc-123",
+            symbol="EURUSD",
+            candidate_uid="cand_1",
+            broker_pos_id="bp_1",
+            side="BUY",
+            entry_price=1.1,
+            entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            horizon=6,
+            reservation_id="res-abc-123",
         )
         row = sm._con.execute(
             "SELECT reservation_id FROM trades WHERE broker_pos_id = 'bp_1'"
@@ -574,11 +662,23 @@ class TestTradeRicherRecording:
             "INSERT INTO audit_logs (event_ts, close_ts, symbol, candidate_uid, pred_prob, "
             "threshold, features_json, model_month, run_id) "
             "VALUES (CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, '{}', ?, ?)",
-            [datetime(2025, 1, 1, tzinfo=timezone.utc), "EURUSD", "cand_1", 0.85, 0.72, "2025-01", "r1"],
+            [
+                datetime(2025, 1, 1, tzinfo=timezone.utc),
+                "EURUSD",
+                "cand_1",
+                0.85,
+                0.72,
+                "2025-01",
+                "r1",
+            ],
         )
         sm.open_trade(
-            symbol="EURUSD", candidate_uid="cand_1", broker_pos_id="bp_2",
-            side="BUY", entry_price=1.1, entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            symbol="EURUSD",
+            candidate_uid="cand_1",
+            broker_pos_id="bp_2",
+            side="BUY",
+            entry_price=1.1,
+            entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
             horizon=6,
         )
         row = sm._con.execute(
@@ -590,8 +690,12 @@ class TestTradeRicherRecording:
 
     def test_open_trade_nulls_model_context_when_no_audit_row(self, sm):
         sm.open_trade(
-            symbol="EURUSD", candidate_uid="no_match", broker_pos_id="bp_3",
-            side="BUY", entry_price=1.1, entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            symbol="EURUSD",
+            candidate_uid="no_match",
+            broker_pos_id="bp_3",
+            side="BUY",
+            entry_price=1.1,
+            entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
             horizon=6,
         )
         row = sm._con.execute(
@@ -603,8 +707,12 @@ class TestTradeRicherRecording:
 
     def test_update_trade_stores_exit_fields(self, sm):
         sm.open_trade(
-            symbol="EURUSD", candidate_uid="cand_1", broker_pos_id="bp_4",
-            side="BUY", entry_price=1.1, entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            symbol="EURUSD",
+            candidate_uid="cand_1",
+            broker_pos_id="bp_4",
+            side="BUY",
+            entry_price=1.1,
+            entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
             horizon=6,
         )
         sm.update_trade(
@@ -626,8 +734,12 @@ class TestTradeRicherRecording:
 
     def test_bars_held_is_positive(self, sm):
         sm.open_trade(
-            symbol="EURUSD", candidate_uid="cand_1", broker_pos_id="bp_5",
-            side="BUY", entry_price=1.1, entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            symbol="EURUSD",
+            candidate_uid="cand_1",
+            broker_pos_id="bp_5",
+            side="BUY",
+            entry_price=1.1,
+            entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
             horizon=6,
         )
         for b in _make_synthetic_bars(n=3):

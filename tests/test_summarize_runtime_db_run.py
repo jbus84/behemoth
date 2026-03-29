@@ -110,9 +110,7 @@ def test_summarize_prefers_close_ts_for_windowing(tmp_path: Path) -> None:
     _create_db(db)
     con = duckdb.connect(str(db))
     try:
-        con.execute(
-            "UPDATE audit_logs SET event_ts = TIMESTAMPTZ '2026-03-09T12:00:00+00:00'"
-        )
+        con.execute("UPDATE audit_logs SET event_ts = TIMESTAMPTZ '2026-03-09T12:00:00+00:00'")
     finally:
         con.close()
 

@@ -268,7 +268,9 @@ def _mk_contract(symbol: str = "EURUSD", month: str = "2025-07") -> server._Reso
     )
 
 
-def _mk_candidate(bar_ticks: int = 100, horizon: int = 4, uid: str = "oco_first_touch_clean__all__k2"):
+def _mk_candidate(
+    bar_ticks: int = 100, horizon: int = 4, uid: str = "oco_first_touch_clean__all__k2"
+):
     from src.behemoth.core.registry import CandidateSpec
 
     return CandidateSpec(

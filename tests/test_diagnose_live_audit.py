@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from pathlib import Path
 
 import duckdb
@@ -84,7 +83,10 @@ def _make_synthetic_db(tmp_path: Path, *, with_predict_evaluations: bool = True)
                 "jforex_live",
             ),
         ]
-        con.executemany("INSERT INTO predict_evaluations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", rows)
+        con.executemany(
+            "INSERT INTO predict_evaluations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            rows,
+        )
 
     con.execute(
         """
@@ -101,7 +103,13 @@ def _make_synthetic_db(tmp_path: Path, *, with_predict_evaluations: bool = True)
         "INSERT INTO account_risk_allocator_events VALUES (?, ?, ?, ?, ?)",
         [
             ("2026-03-23T10:00:00Z", "GBPUSD", "ADMITTED", None, "res-1"),
-            ("2026-03-23T10:01:00Z", "GBPUSD", "BLOCKED", "ACCOUNT_RISK_RESERVED_BUDGET_EXCEEDED", "res-2"),
+            (
+                "2026-03-23T10:01:00Z",
+                "GBPUSD",
+                "BLOCKED",
+                "ACCOUNT_RISK_RESERVED_BUDGET_EXCEEDED",
+                "res-2",
+            ),
         ],
     )
 
@@ -123,9 +131,39 @@ def _make_synthetic_db(tmp_path: Path, *, with_predict_evaluations: bool = True)
     con.executemany(
         "INSERT INTO audit_logs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
-            ("2026-03-23T10:00:00Z", "2026-03-23T10:05:00Z", "GBPUSD", "cand-1", 0.41, 0.50, "{}", "2026-02", "jforex_live"),
-            ("2026-03-23T10:01:00Z", "2026-03-23T10:06:00Z", "GBPUSD", "cand-2", 0.64, 0.50, "{}", "2026-02", "jforex_live"),
-            ("2026-03-23T10:02:00Z", "2026-03-23T10:07:00Z", "GBPUSD", "cand-3", 0.81, 0.50, "{}", "2026-02", "jforex_live"),
+            (
+                "2026-03-23T10:00:00Z",
+                "2026-03-23T10:05:00Z",
+                "GBPUSD",
+                "cand-1",
+                0.41,
+                0.50,
+                "{}",
+                "2026-02",
+                "jforex_live",
+            ),
+            (
+                "2026-03-23T10:01:00Z",
+                "2026-03-23T10:06:00Z",
+                "GBPUSD",
+                "cand-2",
+                0.64,
+                0.50,
+                "{}",
+                "2026-02",
+                "jforex_live",
+            ),
+            (
+                "2026-03-23T10:02:00Z",
+                "2026-03-23T10:07:00Z",
+                "GBPUSD",
+                "cand-3",
+                0.81,
+                0.50,
+                "{}",
+                "2026-02",
+                "jforex_live",
+            ),
         ],
     )
 
@@ -154,9 +192,60 @@ def _make_synthetic_db(tmp_path: Path, *, with_predict_evaluations: bool = True)
     con.executemany(
         "INSERT INTO trades VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
-            ("t-1", "bp-1", "GBPUSD", "cand-3", "BUY", 1.3, "2026-03-23T10:02:00Z", 1, 6, 2, 1.31, "2026-03-23T10:08:00Z", 2.0, "CLOSED", "TP", "jforex_live"),
-            ("t-2", "bp-2", "GBPUSD", "cand-2", "BUY", 1.3, "2026-03-23T10:03:00Z", 2, 6, 3, 1.29, "2026-03-23T10:09:00Z", -1.5, "CLOSED", "SL", "jforex_live"),
-            ("t-3", "bp-3", "GBPUSD", "cand-1", "BUY", 1.3, "2026-03-23T10:04:00Z", 3, 6, None, None, None, None, "OPEN", None, "jforex_live"),
+            (
+                "t-1",
+                "bp-1",
+                "GBPUSD",
+                "cand-3",
+                "BUY",
+                1.3,
+                "2026-03-23T10:02:00Z",
+                1,
+                6,
+                2,
+                1.31,
+                "2026-03-23T10:08:00Z",
+                2.0,
+                "CLOSED",
+                "TP",
+                "jforex_live",
+            ),
+            (
+                "t-2",
+                "bp-2",
+                "GBPUSD",
+                "cand-2",
+                "BUY",
+                1.3,
+                "2026-03-23T10:03:00Z",
+                2,
+                6,
+                3,
+                1.29,
+                "2026-03-23T10:09:00Z",
+                -1.5,
+                "CLOSED",
+                "SL",
+                "jforex_live",
+            ),
+            (
+                "t-3",
+                "bp-3",
+                "GBPUSD",
+                "cand-1",
+                "BUY",
+                1.3,
+                "2026-03-23T10:04:00Z",
+                3,
+                6,
+                None,
+                None,
+                None,
+                None,
+                "OPEN",
+                None,
+                "jforex_live",
+            ),
         ],
     )
 
@@ -164,9 +253,12 @@ def _make_synthetic_db(tmp_path: Path, *, with_predict_evaluations: bool = True)
     return db_path
 
 
-def test_checkpoint_helper_connects_even_when_checkpoint_fails(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_checkpoint_helper_connects_even_when_checkpoint_fails(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     db_path = _make_synthetic_db(tmp_path)
     import requests
+
     from scripts.diagnose_live_audit import checkpoint_and_connect
 
     calls: list[tuple[str, bool]] = []
@@ -201,7 +293,9 @@ def test_has_predict_evaluations_true_and_false(tmp_path: Path) -> None:
     from scripts.diagnose_live_audit import _has_predict_evaluations
 
     con_true = duckdb.connect(str(_make_synthetic_db(tmp_path / "with_eval")))
-    con_false = duckdb.connect(str(_make_synthetic_db(tmp_path / "without_eval", with_predict_evaluations=False)))
+    con_false = duckdb.connect(
+        str(_make_synthetic_db(tmp_path / "without_eval", with_predict_evaluations=False))
+    )
     try:
         assert _has_predict_evaluations(con_true, "jforex_live") is True
         assert _has_predict_evaluations(con_false, "jforex_live") is False
@@ -219,7 +313,10 @@ def test_section_funnel_uses_predict_evaluations(tmp_path: Path) -> None:
         text = "\n".join(lines)
         assert "Prediction Funnel" in text
         assert "predict_evaluations" in text
-        assert "| GBPUSD   |                   3 |                    2 |                 1 |        3 |              0.333333 |" in text
+        assert (
+            "| GBPUSD   |                   3 |                    2 |                 1 |        3 |              0.333333 |"
+            in text
+        )
     finally:
         con.close()
 
@@ -247,7 +344,10 @@ def test_section_score_distribution_uses_predict_evaluations(tmp_path: Path) -> 
         lines = _section_score_distribution(con, "jforex_live", True)
         text = "\n".join(lines)
         assert "Score Distribution" in text
-        assert "| GBPUSD   |   3 |         0.5 | 0.525 |  0.64 | 0.725 | 0.776 | 0.793 | 0.807 |" in text
+        assert (
+            "| GBPUSD   |   3 |         0.5 | 0.525 |  0.64 | 0.725 | 0.776 | 0.793 | 0.807 |"
+            in text
+        )
     finally:
         con.close()
 
@@ -274,7 +374,10 @@ def test_section_trade_outcomes_reports_closed_trades(tmp_path: Path) -> None:
         lines = _section_trade_outcomes(con, "jforex_live")
         text = "\n".join(lines)
         assert "Trade Outcomes" in text
-        assert "| GBPUSD   |               2 |      1 | 50.0%      |                 2 |             -1.5 |              0.5 | TP=1, SL=1      |" in text
+        assert (
+            "| GBPUSD   |               2 |      1 | 50.0%      |                 2 |             -1.5 |              0.5 | TP=1, SL=1      |"
+            in text
+        )
     finally:
         con.close()
 

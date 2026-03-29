@@ -185,7 +185,8 @@ def stage_2_ml_pipeline(symbol: str, *, model_export_dir: str | None = None, dry
     )
 
     wfo_args_base = [
-        "--config", f"configs/research/experiments/{sym}_tick_opportunity_monthly_wfo_2025.yaml"
+        "--config",
+        f"configs/research/experiments/{sym}_tick_opportunity_monthly_wfo_2025.yaml",
     ]
 
     _uv_run(
@@ -196,7 +197,8 @@ def stage_2_ml_pipeline(symbol: str, *, model_export_dir: str | None = None, dry
     )
 
     wfo_args_oco = [
-        "--config", f"configs/research/experiments/{sym}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml"
+        "--config",
+        f"configs/research/experiments/{sym}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
     ]
     if model_export_dir:
         # Export deployable API models only from the fullcap OCO run so
@@ -517,7 +519,11 @@ Examples:
     p.add_argument("--skip-docs", action="store_true", help="Skip Stage 5 (docs rebuild)")
     p.add_argument("--dry-run", action="store_true", help="Print commands without executing")
     p.add_argument("--force", action="store_true", help="Force re-download/rebuild all stages")
-    p.add_argument("--model-export-dir", default=None, help="Directory to export .cbm models + .json thresholds")
+    p.add_argument(
+        "--model-export-dir",
+        default=None,
+        help="Directory to export .cbm models + .json thresholds",
+    )
     args = p.parse_args()
 
     symbol = str(args.symbol).strip().upper()

@@ -22,7 +22,11 @@ def test_main_runs_definitive_recert_chain(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(run_monthly_recert.subprocess, "run", fake_run)
     monkeypatch.setattr(run_monthly_recert, "_read_failures", lambda report_dir: {})
     monkeypatch.setattr(run_monthly_recert, "_read_acceptable_nogos", lambda report_dir: {})
-    monkeypatch.setattr(run_monthly_recert, "_print_summary", lambda model_month, failures, acceptable_nogos=None: True)
+    monkeypatch.setattr(
+        run_monthly_recert,
+        "_print_summary",
+        lambda model_month, failures, acceptable_nogos=None: True,
+    )
     monkeypatch.setattr(run_monthly_recert, "_repo_root", lambda: tmp_path)
     monkeypatch.setattr(
         run_monthly_recert,
