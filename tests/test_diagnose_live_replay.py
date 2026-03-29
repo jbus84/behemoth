@@ -30,9 +30,18 @@ def test_build_bars_from_ticks_aggregates_1000_ticks_into_10_bars() -> None:
     bars = _build_bars_from_ticks(_tick_frame(1000))
 
     assert bars.height == 10
-    assert {"timestamp", "close_ts", "open", "high", "low", "close", "spread", "tick_volume", "hl_first", "hl_pos_frac"}.issubset(
-        set(bars.columns)
-    )
+    assert {
+        "timestamp",
+        "close_ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "spread",
+        "tick_volume",
+        "hl_first",
+        "hl_pos_frac",
+    }.issubset(set(bars.columns))
     assert float(bars[0, "open"]) == pytest.approx(1.1000)
     assert float(bars[0, "close"]) == pytest.approx(1.1099)
     assert float(bars[0, "open"]) != pytest.approx(9.9001)
@@ -93,8 +102,12 @@ def test_score_bars_returns_required_columns(monkeypatch: pytest.MonkeyPatch) ->
 
     bars = pl.DataFrame(
         {
-            "timestamp": pd.date_range("2026-03-01T00:00:00Z", periods=2, freq="100s", tz="UTC").to_list(),
-            "close_ts": pd.date_range("2026-03-01T00:01:39Z", periods=2, freq="100s", tz="UTC").to_list(),
+            "timestamp": pd.date_range(
+                "2026-03-01T00:00:00Z", periods=2, freq="100s", tz="UTC"
+            ).to_list(),
+            "close_ts": pd.date_range(
+                "2026-03-01T00:01:39Z", periods=2, freq="100s", tz="UTC"
+            ).to_list(),
             "open": [1.0, 1.1],
             "high": [1.2, 1.3],
             "low": [0.9, 1.0],
@@ -132,13 +145,19 @@ def test_score_bars_returns_required_columns(monkeypatch: pytest.MonkeyPatch) ->
     assert int(results[0, "selected"]) == 0
 
 
-def test_score_bars_filters_invalid_feature_rows_before_inference(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_score_bars_filters_invalid_feature_rows_before_inference(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from scripts import diagnose_live_replay as module
 
     bars = pl.DataFrame(
         {
-            "timestamp": pd.date_range("2026-03-01T00:00:00Z", periods=289, freq="100s", tz="UTC").to_list(),
-            "close_ts": pd.date_range("2026-03-01T00:01:39Z", periods=289, freq="100s", tz="UTC").to_list(),
+            "timestamp": pd.date_range(
+                "2026-03-01T00:00:00Z", periods=289, freq="100s", tz="UTC"
+            ).to_list(),
+            "close_ts": pd.date_range(
+                "2026-03-01T00:01:39Z", periods=289, freq="100s", tz="UTC"
+            ).to_list(),
             "open": [1.0 + i * 0.001 for i in range(289)],
             "high": [1.1 + i * 0.001 for i in range(289)],
             "low": [0.9 + i * 0.001 for i in range(289)],
@@ -179,12 +198,16 @@ def test_score_bars_filters_invalid_feature_rows_before_inference(monkeypatch: p
     assert results[0, "close_ts"] == pd.Timestamp("2026-03-01T08:01:39Z")
 
 
-def test_score_bars_applies_threshold_schedule_per_row_date_and_blocks_expired(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_score_bars_applies_threshold_schedule_per_row_date_and_blocks_expired(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from scripts import diagnose_live_replay as module
 
     bars = pl.DataFrame(
         {
-            "timestamp": pd.date_range("2026-03-01T00:00:00Z", periods=3, freq="100s", tz="UTC").to_list(),
+            "timestamp": pd.date_range(
+                "2026-03-01T00:00:00Z", periods=3, freq="100s", tz="UTC"
+            ).to_list(),
             "close_ts": pd.to_datetime(
                 ["2026-03-01T00:01:39Z", "2026-03-02T00:01:39Z", "2026-03-03T00:01:39Z"], utc=True
             ).to_list(),
@@ -237,7 +260,9 @@ def test_score_bars_uses_rolling_threshold_success_path(monkeypatch: pytest.Monk
 
     bars = pl.DataFrame(
         {
-            "timestamp": pd.date_range("2026-03-01T00:00:00Z", periods=3, freq="100s", tz="UTC").to_list(),
+            "timestamp": pd.date_range(
+                "2026-03-01T00:00:00Z", periods=3, freq="100s", tz="UTC"
+            ).to_list(),
             "close_ts": pd.to_datetime(
                 ["2026-03-01T00:01:39Z", "2026-03-02T00:01:39Z", "2026-03-03T00:01:39Z"], utc=True
             ).to_list(),
@@ -286,8 +311,12 @@ def test_score_bars_applies_regime_gating(monkeypatch: pytest.MonkeyPatch) -> No
 
     bars = pl.DataFrame(
         {
-            "timestamp": pd.date_range("2026-03-01T00:00:00Z", periods=2, freq="100s", tz="UTC").to_list(),
-            "close_ts": pd.to_datetime(["2026-03-01T00:01:39Z", "2026-03-01T14:01:39Z"], utc=True).to_list(),
+            "timestamp": pd.date_range(
+                "2026-03-01T00:00:00Z", periods=2, freq="100s", tz="UTC"
+            ).to_list(),
+            "close_ts": pd.to_datetime(
+                ["2026-03-01T00:01:39Z", "2026-03-01T14:01:39Z"], utc=True
+            ).to_list(),
             "open": [1.0, 1.1],
             "high": [1.2, 1.3],
             "low": [0.9, 1.0],
@@ -334,7 +363,9 @@ def test_score_bars_uses_causal_quantile_regime_thresholds(monkeypatch: pytest.M
 
     bars = pl.DataFrame(
         {
-            "timestamp": pd.date_range("2026-03-01T00:00:00Z", periods=3, freq="100s", tz="UTC").to_list(),
+            "timestamp": pd.date_range(
+                "2026-03-01T00:00:00Z", periods=3, freq="100s", tz="UTC"
+            ).to_list(),
             "close_ts": pd.to_datetime(
                 ["2026-03-01T00:01:39Z", "2026-03-01T00:03:19Z", "2026-03-01T00:04:59Z"], utc=True
             ).to_list(),
@@ -350,7 +381,13 @@ def test_score_bars_uses_causal_quantile_regime_thresholds(monkeypatch: pytest.M
     )
 
     def fake_features(*args, **kwargs):
-        return pd.DataFrame({"range_pips": [10.0, 20.0, 30.0], "cost_est_pips": [1.0, 1.0, 1.0], "vel_abs_cost_units_h1": [1.0, 1.0, 1.0]})
+        return pd.DataFrame(
+            {
+                "range_pips": [10.0, 20.0, 30.0],
+                "cost_est_pips": [1.0, 1.0, 1.0],
+                "vel_abs_cost_units_h1": [1.0, 1.0, 1.0],
+            }
+        )
 
     calls: list[int] = []
 
@@ -394,7 +431,9 @@ def test_score_bars_preserves_source_indices_for_causal_quantiles(
 
     bars = pl.DataFrame(
         {
-            "timestamp": pd.date_range("2026-03-01T00:00:00Z", periods=4, freq="100s", tz="UTC").to_list(),
+            "timestamp": pd.date_range(
+                "2026-03-01T00:00:00Z", periods=4, freq="100s", tz="UTC"
+            ).to_list(),
             "close_ts": pd.to_datetime(
                 [
                     "2026-03-01T00:01:39Z",
@@ -461,7 +500,9 @@ def test_score_bars_skips_non_100_tick_states(monkeypatch: pytest.MonkeyPatch) -
 
     bars = pl.DataFrame(
         {
-            "timestamp": pd.date_range("2026-03-01T00:00:00Z", periods=3, freq="100s", tz="UTC").to_list(),
+            "timestamp": pd.date_range(
+                "2026-03-01T00:00:00Z", periods=3, freq="100s", tz="UTC"
+            ).to_list(),
             "close_ts": pd.to_datetime(
                 ["2026-03-01T00:01:39Z", "2026-03-02T00:01:39Z", "2026-03-03T00:01:39Z"], utc=True
             ).to_list(),
@@ -505,7 +546,9 @@ def test_section_near_miss_orders_by_gap_ascending() -> None:
             "symbol": ["EURUSD", "EURUSD"],
             "candidate_uid": ["oco|EURUSD|100|h6|s1", "oco|EURUSD|100|h6|s1"],
             "state_id": ["s1", "s1"],
-            "close_ts": pd.to_datetime(["2026-03-01T00:00:00Z", "2026-03-01T00:01:00Z"], utc=True).to_list(),
+            "close_ts": pd.to_datetime(
+                ["2026-03-01T00:00:00Z", "2026-03-01T00:01:00Z"], utc=True
+            ).to_list(),
             "pred_prob": [0.53, 0.51],
             "threshold": [0.55, 0.55],
             "selected": [0, 0],
@@ -527,7 +570,9 @@ def test_section_score_distribution_outputs_percentiles() -> None:
             "symbol": ["EURUSD"] * 4,
             "candidate_uid": ["oco|EURUSD|100|h6|s1"] * 4,
             "state_id": ["s1"] * 4,
-            "close_ts": pd.date_range("2026-03-01T00:00:00Z", periods=4, freq="100s", tz="UTC").to_list(),
+            "close_ts": pd.date_range(
+                "2026-03-01T00:00:00Z", periods=4, freq="100s", tz="UTC"
+            ).to_list(),
             "pred_prob": [0.1, 0.2, 0.3, 0.4],
             "threshold": [0.5, 0.5, 0.5, 0.5],
             "selected": [0, 0, 0, 0],
@@ -549,7 +594,9 @@ def test_section_sensitivity_sweep_includes_expected_thresholds() -> None:
             "symbol": ["EURUSD", "EURUSD"],
             "candidate_uid": ["oco|EURUSD|100|h6|s1", "oco|EURUSD|100|h6|s2"],
             "state_id": ["s1", "s2"],
-            "close_ts": pd.to_datetime(["2026-03-01T00:00:00Z", "2026-03-01T00:01:00Z"], utc=True).to_list(),
+            "close_ts": pd.to_datetime(
+                ["2026-03-01T00:00:00Z", "2026-03-01T00:01:00Z"], utc=True
+            ).to_list(),
             "pred_prob": [0.51, 0.68],
             "threshold": [0.55, 0.55],
             "selected": [0, 1],

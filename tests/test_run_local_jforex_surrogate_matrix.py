@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 import socket
+from pathlib import Path
 
 from scripts.run_local_jforex_surrogate_matrix import RunConfig, _pick_free_port, _prediction_path
 

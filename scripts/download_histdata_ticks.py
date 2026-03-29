@@ -194,9 +194,7 @@ def _to_parquet(
         out.to_parquet(out_path, index=False)
         return 0
 
-    ts = _convert_histdata_timestamps(
-        df["datetime_raw"], source_tz_policy=source_tz_policy
-    )
+    ts = _convert_histdata_timestamps(df["datetime_raw"], source_tz_policy=source_tz_policy)
     out = pd.DataFrame(
         {
             "timestamp": ts,

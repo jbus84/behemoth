@@ -39,5 +39,6 @@ def provision_alertmanager():
 
     print(f"✅ Alertmanager configuration provisioned to {output_path}")
 
+
 if __name__ == "__main__":
     provision_alertmanager()

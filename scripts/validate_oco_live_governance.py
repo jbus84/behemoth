@@ -64,12 +64,7 @@ def _normalize_live_state_frame(df: pd.DataFrame, *, lock_symbol: str) -> pd.Dat
     if "symbol" in x.columns and lock_symbol:
         x = x[x["symbol"].astype(str).str.upper() == lock_symbol].copy()
     if "test_month" in x.columns:
-        months = (
-            x["test_month"]
-            .dropna()
-            .astype(str)
-            .str.strip()
-        )
+        months = x["test_month"].dropna().astype(str).str.strip()
         months = months[(months != "") & (months.str.lower() != "nan")]
         if not months.empty:
             latest_month = sorted(months.unique().tolist())[-1]
@@ -142,12 +137,16 @@ def run(
         checks.append(Check(label, got == exp, f"expected={exp} got={got}"))
 
     model_month = str(artifacts.get("model_month", "")).strip()
-    model_cbm_path = Path(str(artifacts.get("model_cbm_path", "")).strip()) if str(
-        artifacts.get("model_cbm_path", "")
-    ).strip() else None
-    model_thr_path = Path(str(artifacts.get("model_threshold_json_path", "")).strip()) if str(
-        artifacts.get("model_threshold_json_path", "")
-    ).strip() else None
+    model_cbm_path = (
+        Path(str(artifacts.get("model_cbm_path", "")).strip())
+        if str(artifacts.get("model_cbm_path", "")).strip()
+        else None
+    )
+    model_thr_path = (
+        Path(str(artifacts.get("model_threshold_json_path", "")).strip())
+        if str(artifacts.get("model_threshold_json_path", "")).strip()
+        else None
+    )
     if model_month:
         cbm_month = ""
         if model_cbm_path is not None:
@@ -201,10 +200,7 @@ def run(
                     "live_deployable_consistent",
                     isinstance(live_deployable, bool)
                     and (live_deployable == expected_live_deployable),
-                    (
-                        f"live_deployable={live_deployable!r} "
-                        f"expected={expected_live_deployable!r}"
-                    ),
+                    (f"live_deployable={live_deployable!r} expected={expected_live_deployable!r}"),
                 )
             )
 

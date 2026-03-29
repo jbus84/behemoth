@@ -129,12 +129,24 @@ def run(
             con.close()
 
     if not reservations.empty:
-        reservations["symbol"] = reservations.get("symbol", pd.Series(dtype=str)).astype(str).str.upper()
-        reservations["reservation_id"] = reservations.get("reservation_id", pd.Series(dtype=str)).astype(str)
-        reservations["status"] = reservations.get("status", pd.Series(dtype=str)).astype(str).str.upper()
-        reservations["broker_pos_id"] = reservations.get("broker_pos_id", pd.Series(dtype=str)).astype(str)
-        reservations["created_ts"] = _dt_utc(reservations.get("created_ts", pd.Series(dtype=object)))
-        reservations["updated_ts"] = _dt_utc(reservations.get("updated_ts", pd.Series(dtype=object)))
+        reservations["symbol"] = (
+            reservations.get("symbol", pd.Series(dtype=str)).astype(str).str.upper()
+        )
+        reservations["reservation_id"] = reservations.get(
+            "reservation_id", pd.Series(dtype=str)
+        ).astype(str)
+        reservations["status"] = (
+            reservations.get("status", pd.Series(dtype=str)).astype(str).str.upper()
+        )
+        reservations["broker_pos_id"] = reservations.get(
+            "broker_pos_id", pd.Series(dtype=str)
+        ).astype(str)
+        reservations["created_ts"] = _dt_utc(
+            reservations.get("created_ts", pd.Series(dtype=object))
+        )
+        reservations["updated_ts"] = _dt_utc(
+            reservations.get("updated_ts", pd.Series(dtype=object))
+        )
         reservations["reserved_loss_ccy"] = _to_num(
             reservations.get("reserved_loss_ccy", pd.Series(dtype=float))
         ).fillna(0.0)
@@ -170,80 +182,144 @@ def run(
         )
 
         reservations_total = int(len(rr))
-        pending_count = int((rr.get("status", pd.Series(dtype=str)).astype(str) == "PENDING").sum()) if not rr.empty else 0
-        open_count = int((rr.get("status", pd.Series(dtype=str)).astype(str) == "OPEN").sum()) if not rr.empty else 0
-        released_count = int((rr.get("status", pd.Series(dtype=str)).astype(str) == "RELEASED").sum()) if not rr.empty else 0
-        expired_count = int((rr.get("status", pd.Series(dtype=str)).astype(str) == "EXPIRED").sum()) if not rr.empty else 0
-        active_reserved = float(
-            rr[rr.get("status", pd.Series(dtype=str)).astype(str).isin(["PENDING", "OPEN"])]
-            .get("reserved_loss_ccy", pd.Series(dtype=float))
-            .sum()
-        ) if not rr.empty else 0.0
+        pending_count = (
+            int((rr.get("status", pd.Series(dtype=str)).astype(str) == "PENDING").sum())
+            if not rr.empty
+            else 0
+        )
+        open_count = (
+            int((rr.get("status", pd.Series(dtype=str)).astype(str) == "OPEN").sum())
+            if not rr.empty
+            else 0
+        )
+        released_count = (
+            int((rr.get("status", pd.Series(dtype=str)).astype(str) == "RELEASED").sum())
+            if not rr.empty
+            else 0
+        )
+        expired_count = (
+            int((rr.get("status", pd.Series(dtype=str)).astype(str) == "EXPIRED").sum())
+            if not rr.empty
+            else 0
+        )
+        active_reserved = (
+            float(
+                rr[rr.get("status", pd.Series(dtype=str)).astype(str).isin(["PENDING", "OPEN"])]
+                .get("reserved_loss_ccy", pd.Series(dtype=float))
+                .sum()
+            )
+            if not rr.empty
+            else 0.0
+        )
 
-        admitted_events = int((ev.get("status", pd.Series(dtype=str)).astype(str) == "ADMITTED").sum()) if not ev.empty else 0
-        blocked_events = int((ev.get("status", pd.Series(dtype=str)).astype(str) == "BLOCKED").sum()) if not ev.empty else 0
+        admitted_events = (
+            int((ev.get("status", pd.Series(dtype=str)).astype(str) == "ADMITTED").sum())
+            if not ev.empty
+            else 0
+        )
+        blocked_events = (
+            int((ev.get("status", pd.Series(dtype=str)).astype(str) == "BLOCKED").sum())
+            if not ev.empty
+            else 0
+        )
 
-        admitted_missing_reservation_id_count = int(
-            (
-                (ev.get("status", pd.Series(dtype=str)).astype(str) == "ADMITTED")
-                & ev.get("reservation_id", pd.Series(dtype=str)).astype(str).str.strip().isin(
-                    {"", "None", "nan"}
-                )
-            ).sum()
-        ) if not ev.empty else 0
+        admitted_missing_reservation_id_count = (
+            int(
+                (
+                    (ev.get("status", pd.Series(dtype=str)).astype(str) == "ADMITTED")
+                    & ev.get("reservation_id", pd.Series(dtype=str))
+                    .astype(str)
+                    .str.strip()
+                    .isin({"", "None", "nan"})
+                ).sum()
+            )
+            if not ev.empty
+            else 0
+        )
 
         known_reservation_ids = (
             set(rr.get("reservation_id", pd.Series(dtype=str)).astype(str).tolist())
             if not rr.empty
             else set()
         )
-        admitted_unknown_reservation_id_count = int(
-            (
-                (ev.get("status", pd.Series(dtype=str)).astype(str) == "ADMITTED")
-                & (~ev.get("reservation_id", pd.Series(dtype=str)).astype(str).str.strip().isin({"", "None", "nan"}))
-                & (~ev.get("reservation_id", pd.Series(dtype=str)).astype(str).isin(known_reservation_ids))
-            ).sum()
-        ) if not ev.empty else 0
+        admitted_unknown_reservation_id_count = (
+            int(
+                (
+                    (ev.get("status", pd.Series(dtype=str)).astype(str) == "ADMITTED")
+                    & (
+                        ~ev.get("reservation_id", pd.Series(dtype=str))
+                        .astype(str)
+                        .str.strip()
+                        .isin({"", "None", "nan"})
+                    )
+                    & (
+                        ~ev.get("reservation_id", pd.Series(dtype=str))
+                        .astype(str)
+                        .isin(known_reservation_ids)
+                    )
+                ).sum()
+            )
+            if not ev.empty
+            else 0
+        )
 
         stale_pending_count = 0
         if not rr.empty:
             pend = rr[rr.get("status", pd.Series(dtype=str)).astype(str) == "PENDING"].copy()
             if not pend.empty:
                 age_h = (
-                    (now_utc - _dt_utc(pend.get("created_ts", pd.Series(dtype=object))))
-                    .dt.total_seconds()
-                    / 3600.0
+                    now_utc - _dt_utc(pend.get("created_ts", pd.Series(dtype=object)))
+                ).dt.total_seconds() / 3600.0
+                stale_pending_count = int(
+                    (age_h.isna() | (age_h > float(stale_pending_hours))).sum()
                 )
-                stale_pending_count = int((age_h.isna() | (age_h > float(stale_pending_hours))).sum())
 
         stale_open_count = 0
         if not rr.empty:
             opn = rr[rr.get("status", pd.Series(dtype=str)).astype(str) == "OPEN"].copy()
             if not opn.empty:
                 age_h_open = (
-                    (now_utc - _dt_utc(opn.get("updated_ts", pd.Series(dtype=object))))
-                    .dt.total_seconds()
-                    / 3600.0
+                    now_utc - _dt_utc(opn.get("updated_ts", pd.Series(dtype=object)))
+                ).dt.total_seconds() / 3600.0
+                stale_open_count = int(
+                    (age_h_open.isna() | (age_h_open > float(stale_open_hours))).sum()
                 )
-                stale_open_count = int((age_h_open.isna() | (age_h_open > float(stale_open_hours))).sum())
 
-        open_without_broker_pos_count = int(
-            (
+        open_without_broker_pos_count = (
+            int(
+                (
+                    (rr.get("status", pd.Series(dtype=str)).astype(str) == "OPEN")
+                    & (rr.get("broker_pos_id", pd.Series(dtype=str)).astype(str).str.strip() == "")
+                ).sum()
+            )
+            if not rr.empty
+            else 0
+        )
+
+        trade_ids = (
+            set(tr.get("broker_pos_id", pd.Series(dtype=str)).astype(str).str.strip().tolist())
+            if not tr.empty
+            else set()
+        )
+        open_with_broker = (
+            rr[
                 (rr.get("status", pd.Series(dtype=str)).astype(str) == "OPEN")
-                & (rr.get("broker_pos_id", pd.Series(dtype=str)).astype(str).str.strip() == "")
-            ).sum()
-        ) if not rr.empty else 0
-
-        trade_ids = set(
-            tr.get("broker_pos_id", pd.Series(dtype=str)).astype(str).str.strip().tolist()
-        ) if not tr.empty else set()
-        open_with_broker = rr[
-            (rr.get("status", pd.Series(dtype=str)).astype(str) == "OPEN")
-            & (rr.get("broker_pos_id", pd.Series(dtype=str)).astype(str).str.strip() != "")
-        ].copy() if not rr.empty else pd.DataFrame()
-        open_missing_trade_count = int(
-            (~open_with_broker.get("broker_pos_id", pd.Series(dtype=str)).astype(str).isin(trade_ids)).sum()
-        ) if not open_with_broker.empty else 0
+                & (rr.get("broker_pos_id", pd.Series(dtype=str)).astype(str).str.strip() != "")
+            ].copy()
+            if not rr.empty
+            else pd.DataFrame()
+        )
+        open_missing_trade_count = (
+            int(
+                (
+                    ~open_with_broker.get("broker_pos_id", pd.Series(dtype=str))
+                    .astype(str)
+                    .isin(trade_ids)
+                ).sum()
+            )
+            if not open_with_broker.empty
+            else 0
+        )
 
         reconciliation_pass = bool(
             admitted_missing_reservation_id_count == 0
@@ -320,7 +396,9 @@ def run(
             ),
             "stale_pending_count": int(_to_num(out["stale_pending_count"]).sum()),
             "stale_open_count": int(_to_num(out["stale_open_count"]).sum()),
-            "open_without_broker_pos_count": int(_to_num(out["open_without_broker_pos_count"]).sum()),
+            "open_without_broker_pos_count": int(
+                _to_num(out["open_without_broker_pos_count"]).sum()
+            ),
             "open_missing_trade_count": int(_to_num(out["open_missing_trade_count"]).sum()),
             "reconciliation_pass": bool(out["reconciliation_pass"].astype(bool).all()),
             "source_db_path": str(runtime_db_path),
@@ -369,7 +447,9 @@ def run(
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Reconcile account risk reservations against runtime state")
+    p = argparse.ArgumentParser(
+        description="Reconcile account risk reservations against runtime state"
+    )
     p.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD")
     p.add_argument("--runtime-db-path", default="data/db/behemoth_runtime.db")
     p.add_argument("--event-lookback-days", type=int, default=30)

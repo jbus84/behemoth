@@ -164,11 +164,31 @@ def build_artifacts(
     report_out: Path,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     sources = [
-        InputSource("local_signal_parity_pass", local_signal_summary_glob, ("jforex_signal_parity_pass", "signal_parity_pass", "overall_pass")),
-        InputSource("local_execution_parity_pass", local_execution_summary_glob, ("jforex_execution_parity_pass", "execution_parity_pass", "overall_pass")),
-        InputSource("local_lifecycle_pass", local_lifecycle_summary_glob, ("oco_lifecycle_pass", "lifecycle_pass", "overall_pass")),
-        InputSource("local_operational_ready_pass", local_operational_summary_glob, ("operational_ready_pass", "overall_pass")),
-        InputSource("jforex_outcome_parity_pass", local_outcome_summary_glob, ("jforex_outcome_parity_pass", "overall_pass")),
+        InputSource(
+            "local_signal_parity_pass",
+            local_signal_summary_glob,
+            ("jforex_signal_parity_pass", "signal_parity_pass", "overall_pass"),
+        ),
+        InputSource(
+            "local_execution_parity_pass",
+            local_execution_summary_glob,
+            ("jforex_execution_parity_pass", "execution_parity_pass", "overall_pass"),
+        ),
+        InputSource(
+            "local_lifecycle_pass",
+            local_lifecycle_summary_glob,
+            ("oco_lifecycle_pass", "lifecycle_pass", "overall_pass"),
+        ),
+        InputSource(
+            "local_operational_ready_pass",
+            local_operational_summary_glob,
+            ("operational_ready_pass", "overall_pass"),
+        ),
+        InputSource(
+            "jforex_outcome_parity_pass",
+            local_outcome_summary_glob,
+            ("jforex_outcome_parity_pass", "overall_pass"),
+        ),
     ]
     sources = [s for s in sources if s.summary_glob.strip()]
 
@@ -208,7 +228,11 @@ def build_artifacts(
             elif not historical_deployable:
                 row[src.check_id] = False
                 status = "nogo"
-                details = f"historically non-deployable: {non_deployable_reason}" if non_deployable_reason else "historically non-deployable"
+                details = (
+                    f"historically non-deployable: {non_deployable_reason}"
+                    if non_deployable_reason
+                    else "historically non-deployable"
+                )
             elif value is None or pd.isna(value):
                 missing_inputs += 1
                 row[src.check_id] = False
@@ -228,14 +252,22 @@ def build_artifacts(
                     "metric_value": int(bool(row[src.check_id])),
                     "expected": 1,
                     "details": details,
-                    "source_path": "" if match.empty else str(match.iloc[-1].get("source_path") or ""),
+                    "source_path": ""
+                    if match.empty
+                    else str(match.iloc[-1].get("source_path") or ""),
                     "evaluated_at_utc": now_utc,
                 }
             )
-        row["local_jforex_surrogate_pass"] = historical_deployable and all(bool(row[src.check_id]) for src in sources)
+        row["local_jforex_surrogate_pass"] = historical_deployable and all(
+            bool(row[src.check_id]) for src in sources
+        )
         row["local_jforex_surrogate_nogo"] = not historical_deployable
         row["missing_inputs"] = missing_inputs
-        row["verdict"] = "nogo" if row["local_jforex_surrogate_nogo"] else ("green" if row["local_jforex_surrogate_pass"] else "red")
+        row["verdict"] = (
+            "nogo"
+            if row["local_jforex_surrogate_nogo"]
+            else ("green" if row["local_jforex_surrogate_pass"] else "red")
+        )
         row["evaluated_at_utc"] = now_utc
         summary_rows.append(row)
 
@@ -287,13 +319,34 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--symbols", default="EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD")
     parser.add_argument("--lock-dir", default="configs/research/governance/oco")
-    parser.add_argument("--local-signal-summary-glob", default="data/analysis/backtest_reconcile/*_local_jforex_signal_parity_summary.csv")
-    parser.add_argument("--local-execution-summary-glob", default="data/analysis/backtest_reconcile/*_local_jforex_execution_parity_summary.csv")
-    parser.add_argument("--local-lifecycle-summary-glob", default="data/analysis/backtest_reconcile/*_local_jforex_oco_lifecycle_summary.csv")
-    parser.add_argument("--local-operational-summary-glob", default="data/analysis/backtest_reconcile/*_local_jforex_operational_ready_summary.csv")
-    parser.add_argument("--local-outcome-summary-glob", default="data/analysis/backtest_reconcile/*_local_jforex_outcome_parity_summary.csv")
-    parser.add_argument("--out-summary-csv", default="data/analysis/backtest_reconcile/local_jforex_surrogate_summary.csv")
-    parser.add_argument("--out-checks-csv", default="data/analysis/backtest_reconcile/local_jforex_surrogate_checks.csv")
+    parser.add_argument(
+        "--local-signal-summary-glob",
+        default="data/analysis/backtest_reconcile/*_local_jforex_signal_parity_summary.csv",
+    )
+    parser.add_argument(
+        "--local-execution-summary-glob",
+        default="data/analysis/backtest_reconcile/*_local_jforex_execution_parity_summary.csv",
+    )
+    parser.add_argument(
+        "--local-lifecycle-summary-glob",
+        default="data/analysis/backtest_reconcile/*_local_jforex_oco_lifecycle_summary.csv",
+    )
+    parser.add_argument(
+        "--local-operational-summary-glob",
+        default="data/analysis/backtest_reconcile/*_local_jforex_operational_ready_summary.csv",
+    )
+    parser.add_argument(
+        "--local-outcome-summary-glob",
+        default="data/analysis/backtest_reconcile/*_local_jforex_outcome_parity_summary.csv",
+    )
+    parser.add_argument(
+        "--out-summary-csv",
+        default="data/analysis/backtest_reconcile/local_jforex_surrogate_summary.csv",
+    )
+    parser.add_argument(
+        "--out-checks-csv",
+        default="data/analysis/backtest_reconcile/local_jforex_surrogate_checks.csv",
+    )
     parser.add_argument("--report-out", default="docs/analysis/local_jforex_surrogate_report.md")
     args = parser.parse_args()
     build_artifacts(

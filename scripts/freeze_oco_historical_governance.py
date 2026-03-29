@@ -117,7 +117,9 @@ def _default_paths(symbol: str, *, config_dir: Path, analysis_dir: Path) -> dict
         ),
         "predictions": _pick_first_existing(
             analysis_dir / "wfo_2025_m3to1_oco_fullcap" / f"{s}_oco_monthly_predictions.parquet",
-            analysis_dir / f"wfo_2025_m3to1_oco_fullcap_{sl}" / f"{s}_oco_monthly_predictions.parquet",
+            analysis_dir
+            / f"wfo_2025_m3to1_oco_fullcap_{sl}"
+            / f"{s}_oco_monthly_predictions.parquet",
         ),
         "tick_fill_caps": _pick_first_existing(
             analysis_dir / "stop_limit_tickfill_fullcap" / f"{s}_stop_limit_tickfill_caps.csv",
@@ -383,7 +385,11 @@ def run(
             model_cbm, model_thr = model_pairs[month]
             model_export_dir = model_cbm.parent
             train_pred = model_export_dir / f"{str(sym).upper()}_train_predictions_{month}.parquet"
-            month_status = str(reduced_month_status.get(month, "ok" if month in sched_months else "")).strip().lower()
+            month_status = (
+                str(reduced_month_status.get(month, "ok" if month in sched_months else ""))
+                .strip()
+                .lower()
+            )
             historical_deployable = month_status in {"", "ok"}
             non_deployable_reason = "" if historical_deployable else month_status
             month_dir = out_dir / month
@@ -407,7 +413,9 @@ def run(
                 frozen_pred_path_txt = ""
                 frozen_pred_sha = ""
 
-            thr_data = json.loads(model_thr.read_text(encoding="utf-8")) if model_thr.exists() else {}
+            thr_data = (
+                json.loads(model_thr.read_text(encoding="utf-8")) if model_thr.exists() else {}
+            )
             schedule = thr_data.get("threshold_schedule", {})
             if schedule:
                 last_schedule_day = max(schedule.keys())
@@ -445,7 +453,9 @@ def run(
                     "reduced_summary_path": str(paths["reduced_summary"]),
                     "reduced_summary_sha256": _sha256(paths["reduced_summary"]),
                     "capacity_overall_pass": cap_ok,
-                    "live_deployable": historical_deployable and (tick_ok is True) and (cap_ok is True),
+                    "live_deployable": historical_deployable
+                    and (tick_ok is True)
+                    and (cap_ok is True),
                 },
                 "locked_runtime": {
                     "locked_quantile": float(red_cfg.get("locked_quantile", 0.9)),
@@ -532,7 +542,9 @@ def main() -> None:
     default_symbols = "EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD"
     p = argparse.ArgumentParser(description="Freeze historical month-scoped OCO governance locks")
     p.add_argument("--symbols", default="")
-    p.add_argument("--registry-yaml", default="configs/research/governance/oco_rule_universe_registry.yaml")
+    p.add_argument(
+        "--registry-yaml", default="configs/research/governance/oco_rule_universe_registry.yaml"
+    )
     p.add_argument("--out-dir", default="configs/research/governance/oco_history")
     p.add_argument("--models-dir", default="models/oco")
     p.add_argument("--config-dir", default="configs/research/experiments")

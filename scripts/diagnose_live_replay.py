@@ -121,9 +121,13 @@ def _build_bars_from_ticks(ticks: pl.DataFrame) -> pl.DataFrame:
             }
         )
 
-    complete = df.slice(0, n_complete).with_row_index("row_idx").with_columns(
-        (pl.col("row_idx") // 100).cast(pl.Int64).alias("bar_id"),
-        (pl.col("row_idx") % 100).cast(pl.Int32).alias("bar_pos_tick"),
+    complete = (
+        df.slice(0, n_complete)
+        .with_row_index("row_idx")
+        .with_columns(
+            (pl.col("row_idx") // 100).cast(pl.Int64).alias("bar_id"),
+            (pl.col("row_idx") % 100).cast(pl.Int32).alias("bar_pos_tick"),
+        )
     )
     complete = complete.with_columns(
         pl.col("price").max().over("bar_id").alias("_bar_high"),
@@ -160,9 +164,9 @@ def _build_bars_from_ticks(ticks: pl.DataFrame) -> pl.DataFrame:
             .then(pl.lit(-1, dtype=pl.Int8))
             .otherwise(pl.lit(0, dtype=pl.Int8))
             .alias("hl_first"),
-            (
-                (pl.col("low_pos_tick") - pl.col("high_pos_tick")).cast(pl.Float64) / 99.0
-            ).alias("hl_pos_frac"),
+            ((pl.col("low_pos_tick") - pl.col("high_pos_tick")).cast(pl.Float64) / 99.0).alias(
+                "hl_pos_frac"
+            ),
         )
         .select(
             "timestamp",
@@ -257,13 +261,21 @@ def _regime_is_active(
     if r == "asia":
         return h in {0, 1, 2, 3, 4, 5}
     if r == "low_cost_q30":
-        return _regime_cmp(float(features.cost_est_pips), float(q.get("cost_q30", float("nan"))), op="<=")
+        return _regime_cmp(
+            float(features.cost_est_pips), float(q.get("cost_q30", float("nan"))), op="<="
+        )
     if r == "low_cost_q50":
-        return _regime_cmp(float(features.cost_est_pips), float(q.get("cost_q50", float("nan"))), op="<=")
+        return _regime_cmp(
+            float(features.cost_est_pips), float(q.get("cost_q50", float("nan"))), op="<="
+        )
     if r == "high_range_q70":
-        return _regime_cmp(float(features.range_pips), float(q.get("rng_q70", float("nan"))), op=">=")
+        return _regime_cmp(
+            float(features.range_pips), float(q.get("rng_q70", float("nan"))), op=">="
+        )
     if r == "high_range_q80":
-        return _regime_cmp(float(features.range_pips), float(q.get("rng_q80", float("nan"))), op=">=")
+        return _regime_cmp(
+            float(features.range_pips), float(q.get("rng_q80", float("nan"))), op=">="
+        )
     if r == "high_abs_vel_q70":
         return _regime_cmp(
             float(features.vel_abs_cost_units_h1),
@@ -393,7 +405,9 @@ def _score_bars(
     state_id = str(state.get("state_id", ""))
     cand_uid = _candidate_uid(symbol, state)
     regime_name = _candidate_regime_name({**state, "candidate_uid": cand_uid})
-    close_ts = pd.to_datetime(bars.to_pandas().loc[valid_mask, "close_ts"], utc=True, errors="coerce")
+    close_ts = pd.to_datetime(
+        bars.to_pandas().loc[valid_mask, "close_ts"], utc=True, errors="coerce"
+    )
     source_indices = list(valid_features.index)
     valid_rows = valid_features.copy()
     threshold_values: list[float] = []
@@ -420,7 +434,11 @@ def _score_bars(
         elif threshold_schedule:
             threshold = 2.0
         else:
-            threshold = float(threshold_exec if threshold_exec is not None else thresholds.get("threshold_exec", 0.5))
+            threshold = float(
+                threshold_exec
+                if threshold_exec is not None
+                else thresholds.get("threshold_exec", 0.5)
+            )
         threshold_values.append(threshold)
 
         feature_row = valid_rows.iloc[idx]
@@ -504,7 +522,9 @@ def _section_near_miss(results: pl.DataFrame) -> list[str]:
     for group_values, group in near.groupby(group_cols, dropna=False):
         if not isinstance(group_values, tuple):
             group_values = (group_values,)
-        label = ", ".join(f"{col}={val}" for col, val in zip(group_cols, group_values, strict=False))
+        label = ", ".join(
+            f"{col}={val}" for col, val in zip(group_cols, group_values, strict=False)
+        )
         top = group.sort_values(["gap", "close_ts"], ascending=[True, True]).head(10)
         blocks.append(f"### {label}")
         blocks.append(_markdown_table(top[cols]))
@@ -529,18 +549,26 @@ def _section_sensitivity_sweep(results: pl.DataFrame) -> list[str]:
         base = dict(zip(group_cols, group_values, strict=False))
         total = int(len(group))
         for thr in thresholds:
-            active = group["regime_active"].astype(bool) if "regime_active" in group.columns else pd.Series(True, index=group.index)
+            active = (
+                group["regime_active"].astype(bool)
+                if "regime_active" in group.columns
+                else pd.Series(True, index=group.index)
+            )
             trade_count = int(((group["pred_prob"] >= thr) & active).sum())
             rows.append(
                 {
                     **base,
                     "threshold": f"{thr:.2f}",
                     "trade_count": trade_count,
-                    "freq_per_100_bars": float((trade_count / total) * 100.0) if total > 0 else float("nan"),
+                    "freq_per_100_bars": float((trade_count / total) * 100.0)
+                    if total > 0
+                    else float("nan"),
                     "total_bars": total,
                 }
             )
-    rows_df = pd.DataFrame(rows).sort_values(group_cols + ["threshold"]) if rows else pd.DataFrame(rows)
+    rows_df = (
+        pd.DataFrame(rows).sort_values(group_cols + ["threshold"]) if rows else pd.DataFrame(rows)
+    )
     lines.append(_markdown_table(rows_df))
     return lines
 
@@ -550,7 +578,9 @@ def _section_score_drift(results: pl.DataFrame) -> list[str]:
     if results.is_empty():
         lines.append("_No scored rows available._")
         return lines
-    df = results.to_pandas().sort_values(["symbol", "close_ts"] if "symbol" in results.columns else ["close_ts"])
+    df = results.to_pandas().sort_values(
+        ["symbol", "close_ts"] if "symbol" in results.columns else ["close_ts"]
+    )
     if len(df) < 2:
         lines.append("_Insufficient rows for drift analysis._")
         return lines
@@ -635,7 +665,9 @@ def main() -> int:
         if bars.is_empty():
             continue
         states = _load_states(symbol, str(governance_dir))
-        thresholds, threshold_exec = _load_thresholds(symbol, str(models_dir), str(args.model_month))
+        thresholds, threshold_exec = _load_thresholds(
+            symbol, str(models_dir), str(args.model_month)
+        )
         model = _load_model(symbol, str(models_dir), str(args.model_month))
         for state in states:
             if int(state.get("bar_ticks", 100)) != 100:
@@ -675,7 +707,9 @@ def main() -> int:
         )
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(_build_report_with_skips(results, skipped_states=skipped_states), encoding="utf-8")
+    out_path.write_text(
+        _build_report_with_skips(results, skipped_states=skipped_states), encoding="utf-8"
+    )
     return 0
 
 

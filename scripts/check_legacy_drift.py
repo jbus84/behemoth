@@ -9,11 +9,23 @@ FORBIDDEN_TERMS = [
     r"services/api",
     r"src/behemoth",
     r"pipelines/build_events",
-    r"pipelines/simulate"
+    r"pipelines/simulate",
 ]
 
-IGNORE_DIRS = {".git", ".venv", ".pytest_cache", ".ruff_cache", "site", "data", "archive", "node_modules", "catboost_info", "logs"}
+IGNORE_DIRS = {
+    ".git",
+    ".venv",
+    ".pytest_cache",
+    ".ruff_cache",
+    "site",
+    "data",
+    "archive",
+    "node_modules",
+    "catboost_info",
+    "logs",
+}
 IGNORE_FILES = {"check_legacy_drift.py", "AGENTS.md", "Makefile"}
+
 
 def run_sweep(repo_root: Path) -> int:
     issues_found = 0
@@ -38,17 +50,22 @@ def run_sweep(repo_root: Path) -> int:
             for i, line in enumerate(content.splitlines(), 1):
                 for pattern in patterns:
                     if pattern.search(line):
-                        print(f"ERROR: Legacy drift detected in {file_path.relative_to(repo_root)}:{i}")
+                        print(
+                            f"ERROR: Legacy drift detected in {file_path.relative_to(repo_root)}:{i}"
+                        )
                         print(f"       Found forbidden pattern '{pattern.pattern}'")
                         print(f"       Line: {line.strip()}")
                         issues_found += 1
 
     if issues_found > 0:
-        print(f"\n[FAIL] {issues_found} legacy terms found. Clean these up to maintain the OCO architecture.")
+        print(
+            f"\n[FAIL] {issues_found} legacy terms found. Clean these up to maintain the OCO architecture."
+        )
         return 1
 
     print("[PASS] No legacy drift detected. Codebase is clean.")
     return 0
+
 
 if __name__ == "__main__":
     repo_root = Path(__file__).parent.parent

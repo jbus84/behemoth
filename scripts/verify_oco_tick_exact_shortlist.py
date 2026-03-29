@@ -113,7 +113,9 @@ def _default_shortlist_candidates(symbol: str) -> list[Path]:
     s = str(symbol).upper().strip()
     sl = s.lower()
     return [
-        Path(f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_reduced_state_schedule.csv"),
+        Path(
+            f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{s}_oco_reduced_state_schedule.csv"
+        ),
         Path(f"configs/research/governance/oco/{sl}_oco_allowed_states.csv"),
         Path(f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_reduced_states.csv"),
     ]

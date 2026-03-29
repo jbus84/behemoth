@@ -15,10 +15,25 @@ import pandas as pd
 
 METRIC_SPECS: list[dict[str, Any]] = [
     {"metric_id": "ACCOUNT_RISK_ALLOC_BLOCK_RATE", "warn": 0.35, "fail": 0.55, "mode": "ge"},
-    {"metric_id": "ACCOUNT_RISK_ALLOC_BUDGET_EXCEEDED_RATE", "warn": 0.15, "fail": 0.30, "mode": "ge"},
-    {"metric_id": "ACCOUNT_RISK_ALLOC_PIP_VALUE_UNAVAILABLE_RATE", "warn": 0.005, "fail": 0.02, "mode": "ge"},
+    {
+        "metric_id": "ACCOUNT_RISK_ALLOC_BUDGET_EXCEEDED_RATE",
+        "warn": 0.15,
+        "fail": 0.30,
+        "mode": "ge",
+    },
+    {
+        "metric_id": "ACCOUNT_RISK_ALLOC_PIP_VALUE_UNAVAILABLE_RATE",
+        "warn": 0.005,
+        "fail": 0.02,
+        "mode": "ge",
+    },
     {"metric_id": "ACCOUNT_RISK_ALLOC_STALE_PENDING_COUNT", "warn": 1.0, "fail": 3.0, "mode": "ge"},
-    {"metric_id": "ACCOUNT_RISK_ALLOC_OPEN_WITHOUT_BROKER_POS_COUNT", "warn": 1.0, "fail": 2.0, "mode": "ge"},
+    {
+        "metric_id": "ACCOUNT_RISK_ALLOC_OPEN_WITHOUT_BROKER_POS_COUNT",
+        "warn": 1.0,
+        "fail": 2.0,
+        "mode": "ge",
+    },
     {
         "metric_id": "ACCOUNT_RISK_ALLOC_ADMITTED_MISSING_RESERVATION_ID_COUNT",
         "warn": 1.0,
@@ -170,16 +185,30 @@ def run(
         events["block_reason"] = events.get("block_reason", pd.Series(dtype=str)).astype(str)
         events["reservation_id"] = events.get("reservation_id", pd.Series(dtype=str)).astype(str)
         events["event_ts"] = _dt_utc(events.get("event_ts", pd.Series(dtype=object)))
-        events["reserved_loss_ccy"] = _to_num(events.get("reserved_loss_ccy", pd.Series(dtype=float)))
+        events["reserved_loss_ccy"] = _to_num(
+            events.get("reserved_loss_ccy", pd.Series(dtype=float))
+        )
         events = events[events["symbol"].astype(str).str.strip() != ""].copy()
 
     if not reservations.empty:
-        reservations["symbol"] = reservations.get("symbol", pd.Series(dtype=str)).astype(str).str.upper()
-        reservations["status"] = reservations.get("status", pd.Series(dtype=str)).astype(str).str.upper()
-        reservations["reservation_id"] = reservations.get("reservation_id", pd.Series(dtype=str)).astype(str)
-        reservations["broker_pos_id"] = reservations.get("broker_pos_id", pd.Series(dtype=str)).astype(str)
-        reservations["created_ts"] = _dt_utc(reservations.get("created_ts", pd.Series(dtype=object)))
-        reservations["updated_ts"] = _dt_utc(reservations.get("updated_ts", pd.Series(dtype=object)))
+        reservations["symbol"] = (
+            reservations.get("symbol", pd.Series(dtype=str)).astype(str).str.upper()
+        )
+        reservations["status"] = (
+            reservations.get("status", pd.Series(dtype=str)).astype(str).str.upper()
+        )
+        reservations["reservation_id"] = reservations.get(
+            "reservation_id", pd.Series(dtype=str)
+        ).astype(str)
+        reservations["broker_pos_id"] = reservations.get(
+            "broker_pos_id", pd.Series(dtype=str)
+        ).astype(str)
+        reservations["created_ts"] = _dt_utc(
+            reservations.get("created_ts", pd.Series(dtype=object))
+        )
+        reservations["updated_ts"] = _dt_utc(
+            reservations.get("updated_ts", pd.Series(dtype=object))
+        )
         reservations["reserved_loss_ccy"] = _to_num(
             reservations.get("reserved_loss_ccy", pd.Series(dtype=float))
         )
@@ -200,45 +229,76 @@ def run(
             else pd.DataFrame()
         )
         preselected_total = int(len(ev))
-        admitted = int((ev.get("status", pd.Series(dtype=str)).astype(str) == "ADMITTED").sum()) if not ev.empty else 0
-        blocked = int((ev.get("status", pd.Series(dtype=str)).astype(str) == "BLOCKED").sum()) if not ev.empty else 0
-        block_budget = int(
-            (
-                (ev.get("status", pd.Series(dtype=str)).astype(str) == "BLOCKED")
-                & (ev.get("block_reason", pd.Series(dtype=str)).astype(str) == "ACCOUNT_RISK_RESERVED_BUDGET_EXCEEDED")
-            ).sum()
-        ) if not ev.empty else 0
-        block_pip_unavailable = int(
-            (
-                (ev.get("status", pd.Series(dtype=str)).astype(str) == "BLOCKED")
-                & (ev.get("block_reason", pd.Series(dtype=str)).astype(str) == "ACCOUNT_RISK_PIP_VALUE_UNAVAILABLE")
-            ).sum()
-        ) if not ev.empty else 0
-        admitted_missing_reservation_id = int(
-            (
-                (ev.get("status", pd.Series(dtype=str)).astype(str) == "ADMITTED")
-                & (
-                    ev.get("reservation_id", pd.Series(dtype=str)).astype(str).str.strip().isin({"", "None", "nan"})
-                )
-            ).sum()
-        ) if not ev.empty else 0
+        admitted = (
+            int((ev.get("status", pd.Series(dtype=str)).astype(str) == "ADMITTED").sum())
+            if not ev.empty
+            else 0
+        )
+        blocked = (
+            int((ev.get("status", pd.Series(dtype=str)).astype(str) == "BLOCKED").sum())
+            if not ev.empty
+            else 0
+        )
+        block_budget = (
+            int(
+                (
+                    (ev.get("status", pd.Series(dtype=str)).astype(str) == "BLOCKED")
+                    & (
+                        ev.get("block_reason", pd.Series(dtype=str)).astype(str)
+                        == "ACCOUNT_RISK_RESERVED_BUDGET_EXCEEDED"
+                    )
+                ).sum()
+            )
+            if not ev.empty
+            else 0
+        )
+        block_pip_unavailable = (
+            int(
+                (
+                    (ev.get("status", pd.Series(dtype=str)).astype(str) == "BLOCKED")
+                    & (
+                        ev.get("block_reason", pd.Series(dtype=str)).astype(str)
+                        == "ACCOUNT_RISK_PIP_VALUE_UNAVAILABLE"
+                    )
+                ).sum()
+            )
+            if not ev.empty
+            else 0
+        )
+        admitted_missing_reservation_id = (
+            int(
+                (
+                    (ev.get("status", pd.Series(dtype=str)).astype(str) == "ADMITTED")
+                    & (
+                        ev.get("reservation_id", pd.Series(dtype=str))
+                        .astype(str)
+                        .str.strip()
+                        .isin({"", "None", "nan"})
+                    )
+                ).sum()
+            )
+            if not ev.empty
+            else 0
+        )
 
-        open_without_broker = int(
-            (
-                (rr.get("status", pd.Series(dtype=str)).astype(str) == "OPEN")
-                & (rr.get("broker_pos_id", pd.Series(dtype=str)).astype(str).str.strip() == "")
-            ).sum()
-        ) if not rr.empty else 0
+        open_without_broker = (
+            int(
+                (
+                    (rr.get("status", pd.Series(dtype=str)).astype(str) == "OPEN")
+                    & (rr.get("broker_pos_id", pd.Series(dtype=str)).astype(str).str.strip() == "")
+                ).sum()
+            )
+            if not rr.empty
+            else 0
+        )
 
         stale_pending = 0
         if not rr.empty:
             pend = rr[rr.get("status", pd.Series(dtype=str)).astype(str) == "PENDING"].copy()
             if not pend.empty:
                 age_h = (
-                    (now_utc - _dt_utc(pend.get("created_ts", pd.Series(dtype=object))))
-                    .dt.total_seconds()
-                    / 3600.0
-                )
+                    now_utc - _dt_utc(pend.get("created_ts", pd.Series(dtype=object)))
+                ).dt.total_seconds() / 3600.0
                 stale_pending = int((age_h.isna() | (age_h > float(stale_pending_hours))).sum())
 
         stale_open = 0
@@ -246,20 +306,35 @@ def run(
             opn = rr[rr.get("status", pd.Series(dtype=str)).astype(str) == "OPEN"].copy()
             if not opn.empty:
                 age_h_open = (
-                    (now_utc - _dt_utc(opn.get("updated_ts", pd.Series(dtype=object))))
-                    .dt.total_seconds()
-                    / 3600.0
-                )
+                    now_utc - _dt_utc(opn.get("updated_ts", pd.Series(dtype=object)))
+                ).dt.total_seconds() / 3600.0
                 stale_open = int((age_h_open.isna() | (age_h_open > float(stale_open_hours))).sum())
 
-        known_reservation_ids = set(rr.get("reservation_id", pd.Series(dtype=str)).astype(str).tolist()) if not rr.empty else set()
-        admitted_unknown_reservation_id = int(
-            (
-                (ev.get("status", pd.Series(dtype=str)).astype(str) == "ADMITTED")
-                & (~ev.get("reservation_id", pd.Series(dtype=str)).astype(str).str.strip().isin({"", "None", "nan"}))
-                & (~ev.get("reservation_id", pd.Series(dtype=str)).astype(str).isin(known_reservation_ids))
-            ).sum()
-        ) if not ev.empty else 0
+        known_reservation_ids = (
+            set(rr.get("reservation_id", pd.Series(dtype=str)).astype(str).tolist())
+            if not rr.empty
+            else set()
+        )
+        admitted_unknown_reservation_id = (
+            int(
+                (
+                    (ev.get("status", pd.Series(dtype=str)).astype(str) == "ADMITTED")
+                    & (
+                        ~ev.get("reservation_id", pd.Series(dtype=str))
+                        .astype(str)
+                        .str.strip()
+                        .isin({"", "None", "nan"})
+                    )
+                    & (
+                        ~ev.get("reservation_id", pd.Series(dtype=str))
+                        .astype(str)
+                        .isin(known_reservation_ids)
+                    )
+                ).sum()
+            )
+            if not ev.empty
+            else 0
+        )
 
         denom = float(max(1, preselected_total))
         metric_values = {

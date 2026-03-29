@@ -77,23 +77,52 @@ def test_adaptive_offset_selection_helpers() -> None:
 
     by_offset = pd.DataFrame(
         [
-            {"offset": 0, "offset_status": "ok", "degrade_reasons": "", "lb95_trade_mean_gross_pips_delta": 0.0, "selected_rows_delta_pct": 0.0},
-            {"offset": 3, "offset_status": "degraded", "degrade_reasons": "lb95_trade_mean_gross_drop", "lb95_trade_mean_gross_pips_delta": -0.4, "selected_rows_delta_pct": 5.0},
-            {"offset": 6, "offset_status": "degraded", "degrade_reasons": "selected_rows_delta_gt_20pct", "lb95_trade_mean_gross_pips_delta": -0.1, "selected_rows_delta_pct": 25.0},
+            {
+                "offset": 0,
+                "offset_status": "ok",
+                "degrade_reasons": "",
+                "lb95_trade_mean_gross_pips_delta": 0.0,
+                "selected_rows_delta_pct": 0.0,
+            },
+            {
+                "offset": 3,
+                "offset_status": "degraded",
+                "degrade_reasons": "lb95_trade_mean_gross_drop",
+                "lb95_trade_mean_gross_pips_delta": -0.4,
+                "selected_rows_delta_pct": 5.0,
+            },
+            {
+                "offset": 6,
+                "offset_status": "degraded",
+                "degrade_reasons": "selected_rows_delta_gt_20pct",
+                "lb95_trade_mean_gross_pips_delta": -0.1,
+                "selected_rows_delta_pct": 25.0,
+            },
         ]
     )
     centers = _choose_refine_centers(by_offset_df=by_offset, max_centers=1)
     assert centers == [3]
-    refined = _refined_offsets(all_offsets=all_offsets, coarse_offsets=coarse, centers=centers, radius=2)
+    refined = _refined_offsets(
+        all_offsets=all_offsets, coarse_offsets=coarse, centers=centers, radius=2
+    )
     assert refined == [1, 2, 4, 5]
 
 
 def test_api_and_retention_offsets() -> None:
     completed = [0, 1, 2, 3, 4, 5]
     flagged = [3]
-    assert _offsets_for_api_and_warmup(completed_offsets=completed, flagged_centers=flagged, api_confirm_offsets=[0, 25, 50]) == [0, 3]
-    assert _offsets_to_retain(completed_offsets=completed, flagged_centers=flagged, retain_flagged_offset_runs=True) == [0, 3]
-    assert _offsets_to_retain(completed_offsets=completed, flagged_centers=flagged, retain_flagged_offset_runs=False) == []
+    assert _offsets_for_api_and_warmup(
+        completed_offsets=completed, flagged_centers=flagged, api_confirm_offsets=[0, 25, 50]
+    ) == [0, 3]
+    assert _offsets_to_retain(
+        completed_offsets=completed, flagged_centers=flagged, retain_flagged_offset_runs=True
+    ) == [0, 3]
+    assert (
+        _offsets_to_retain(
+            completed_offsets=completed, flagged_centers=flagged, retain_flagged_offset_runs=False
+        )
+        == []
+    )
 
 
 def test_cleanup_symbol_stage_roots_removes_unkept_offsets(tmp_path) -> None:

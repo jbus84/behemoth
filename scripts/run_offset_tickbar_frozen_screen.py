@@ -63,7 +63,9 @@ def _parse_csv_ints(raw: str | None) -> list[int]:
     return vals
 
 
-def _frozen_event_window(wfo_cfg: dict[str, Any]) -> tuple[pd.Timestamp | None, pd.Timestamp | None]:
+def _frozen_event_window(
+    wfo_cfg: dict[str, Any],
+) -> tuple[pd.Timestamp | None, pd.Timestamp | None]:
     eval_start_month = str(wfo_cfg.get("eval_start_month", "")).strip()
     eval_end_month = str(wfo_cfg.get("eval_end_month", "")).strip()
     if not eval_start_month or not eval_end_month:
@@ -79,7 +81,8 @@ def _frozen_event_window(wfo_cfg: dict[str, Any]) -> tuple[pd.Timestamp | None, 
 def _symbol_configs(symbol: str) -> tuple[Path, Path]:
     s = str(symbol).lower().strip()
     return (
-        ROOT / f"configs/research/experiments/{s}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
+        ROOT
+        / f"configs/research/experiments/{s}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
         ROOT / f"configs/research/experiments/{s}_oco_reduced_core_rolling_2025.yaml",
     )
 
@@ -122,7 +125,9 @@ def _manifest_path(frozen_root: Path, symbol: str) -> Path:
 
 
 def _quantiles_path(frozen_root: Path, symbol: str, bar_ticks: int) -> Path:
-    return _frozen_symbol_root(frozen_root, symbol) / f"{symbol}_{int(bar_ticks)}tick_quantiles.json"
+    return (
+        _frozen_symbol_root(frozen_root, symbol) / f"{symbol}_{int(bar_ticks)}tick_quantiles.json"
+    )
 
 
 def _load_model_manifest(frozen_root: Path, symbol: str) -> pd.DataFrame:
@@ -156,7 +161,10 @@ def _ensure_canonical_exports(
     refresh_exports = manifest.empty or manifest_mtime < canonical_mtime
     if not refresh_exports and not manifest.empty:
         for _, rec in manifest.iterrows():
-            if not Path(str(rec.get("model_cbm_path", ""))).exists() or not Path(str(rec.get("model_threshold_json_path", ""))).exists():
+            if (
+                not Path(str(rec.get("model_cbm_path", ""))).exists()
+                or not Path(str(rec.get("model_threshold_json_path", ""))).exists()
+            ):
                 refresh_exports = True
                 break
 
@@ -215,21 +223,44 @@ def _ensure_canonical_exports(
         min_train_count=int(_load_yaml(paths["wfo_cfg"]).get("min_candidate_train_count", 15000)),
         max_candidates=int(_load_yaml(paths["wfo_cfg"]).get("max_candidates_per_library", 300)),
     )
-    bar_ticks_used = sorted(cands["bar_ticks"].astype(int).unique().tolist()) if not cands.empty else [100]
+    bar_ticks_used = (
+        sorted(cands["bar_ticks"].astype(int).unique().tolist()) if not cands.empty else [100]
+    )
     quantiles: dict[int, dict[str, float]] = {}
     wfo_cfg = _load_yaml(paths["wfo_cfg"])
-    train_years = {int(x.strip()) for x in str(wfo_cfg.get("train_years_for_state_fit", "2022,2023,2024")).split(",") if x.strip()}
+    train_years = {
+        int(x.strip())
+        for x in str(wfo_cfg.get("train_years_for_state_fit", "2022,2023,2024")).split(",")
+        if x.strip()
+    }
     for bt in bar_ticks_used:
         q_path = _quantiles_path(frozen_root, symbol, int(bt))
-        if q_path.exists() and not refresh_exports and q_path.stat().st_mtime >= manifest_path.stat().st_mtime:
-            quantiles[int(bt)] = {k: float(v) for k, v in json.loads(q_path.read_text(encoding="utf-8")).items()}
+        if (
+            q_path.exists()
+            and not refresh_exports
+            and q_path.stat().st_mtime >= manifest_path.stat().st_mtime
+        ):
+            quantiles[int(bt)] = {
+                k: float(v) for k, v in json.loads(q_path.read_text(encoding="utf-8")).items()
+            }
             continue
-        df = _prepare_frame(paths["dataset_dir"] / f"{symbol}_{int(bt)}tick_velocity.parquet", symbol=symbol, horizons=sorted(cands[cands["bar_ticks"].astype(int) == int(bt)]["horizon"].astype(int).unique().tolist()))
+        df = _prepare_frame(
+            paths["dataset_dir"] / f"{symbol}_{int(bt)}tick_velocity.parquet",
+            symbol=symbol,
+            horizons=sorted(
+                cands[cands["bar_ticks"].astype(int) == int(bt)]["horizon"]
+                .astype(int)
+                .unique()
+                .tolist()
+            ),
+        )
         fit_df = df[df["year"].isin(train_years)].copy().reset_index(drop=True)
         q_fit = {k: float(v) for k, v in _quantiles(fit_df).items()}
         q_path.write_text(json.dumps(q_fit, indent=2), encoding="utf-8")
         quantiles[int(bt)] = q_fit
     return manifest, quantiles, paths
+
+
 def _build_frozen_events(
     *,
     symbol: str,
@@ -262,9 +293,15 @@ def _build_frozen_events(
         horizons = sorted(sub["horizon"].astype(int).unique().tolist())
         d = _prepare_frame(path, symbol=symbol, horizons=horizons)
         if eval_start_ts is not None and eval_end_ts_excl is not None:
-            eval_df = d[(d["close_ts"] >= eval_start_ts) & (d["close_ts"] < eval_end_ts_excl)].copy().reset_index(drop=True)
+            eval_df = (
+                d[(d["close_ts"] >= eval_start_ts) & (d["close_ts"] < eval_end_ts_excl)]
+                .copy()
+                .reset_index(drop=True)
+            )
         else:
-            eval_df = d[d["year"] == int(wfo_cfg.get("eval_year", 2025))].copy().reset_index(drop=True)
+            eval_df = (
+                d[d["year"] == int(wfo_cfg.get("eval_year", 2025))].copy().reset_index(drop=True)
+            )
         if eval_df.empty:
             continue
         q_fit = quantiles_by_ticks.get(int(bt))
@@ -324,12 +361,19 @@ def _ensure_offset_bars(
 
     for symbol in symbols:
         for offset in offsets:
-            base_path = offset_bar_dir / f"{symbol}_{int(base_ticks)}tick_offset_{int(offset):03d}.parquet"
+            base_path = (
+                offset_bar_dir / f"{symbol}_{int(base_ticks)}tick_offset_{int(offset):03d}.parquet"
+            )
             if not base_path.exists():
                 raise FileNotFoundError(f"missing base offset bar parquet: {base_path}")
             base_bars = pl.read_parquet(base_path)
-            for target_ticks in sorted(set(int(x) for x in bar_ticks_grid if int(x) > int(base_ticks))):
-                out_path = offset_bar_dir / f"{symbol}_{int(target_ticks)}tick_offset_{int(offset):03d}.parquet"
+            for target_ticks in sorted(
+                set(int(x) for x in bar_ticks_grid if int(x) > int(base_ticks))
+            ):
+                out_path = (
+                    offset_bar_dir
+                    / f"{symbol}_{int(target_ticks)}tick_offset_{int(offset):03d}.parquet"
+                )
                 bars, _ = _aggregate_from_base(
                     base_bars,
                     symbol=symbol,
@@ -337,7 +381,9 @@ def _ensure_offset_bars(
                     base_ticks=int(base_ticks),
                 )
                 if bars.height == 0:
-                    raise RuntimeError(f"empty aggregated offset bars for {symbol} offset={offset} target_ticks={target_ticks}")
+                    raise RuntimeError(
+                        f"empty aggregated offset bars for {symbol} offset={offset} target_ticks={target_ticks}"
+                    )
                 out_path.parent.mkdir(parents=True, exist_ok=True)
                 bars.write_parquet(out_path)
 
@@ -353,7 +399,9 @@ def _build_velocity_for_offset(
     velocity_dir = stage_root / "velocity"
     velocity_dir.mkdir(parents=True, exist_ok=True)
     for bar_ticks in sorted(set(int(x) for x in bar_ticks_grid if int(x) > 0)):
-        bar_path = offset_bar_dir / f"{symbol}_{int(bar_ticks)}tick_offset_{int(offset):03d}.parquet"
+        bar_path = (
+            offset_bar_dir / f"{symbol}_{int(bar_ticks)}tick_offset_{int(offset):03d}.parquet"
+        )
         if not bar_path.exists():
             raise FileNotFoundError(f"offset bar parquet missing: {bar_path}")
         out_path = velocity_dir / f"{symbol}_{int(bar_ticks)}tick_velocity.parquet"
@@ -367,7 +415,9 @@ def _build_velocity_for_offset(
             cost_window=288,
         )
         if ds.empty:
-            raise RuntimeError(f"empty velocity dataset for {symbol} offset={offset} bar_ticks={bar_ticks}")
+            raise RuntimeError(
+                f"empty velocity dataset for {symbol} offset={offset} bar_ticks={bar_ticks}"
+            )
         ds["timestamp_mode"] = "as_utc"
         ds.to_parquet(out_path, index=False)
     return velocity_dir
@@ -391,7 +441,9 @@ def _with_test_month(df: pd.DataFrame, *, close_col: str = "close_ts") -> pd.Dat
 
 def _add_event_ordinal(df: pd.DataFrame, *, close_col: str = "close_ts") -> pd.DataFrame:
     out = _with_test_month(df, close_col=close_col)
-    out = out.sort_values(["test_month", "candidate_uid", close_col], kind="stable").reset_index(drop=True)
+    out = out.sort_values(["test_month", "candidate_uid", close_col], kind="stable").reset_index(
+        drop=True
+    )
     out["event_ordinal"] = out.groupby(["test_month", "candidate_uid"]).cumcount().astype(int)
     out["scored_row_id"] = (
         out["test_month"].astype(str)
@@ -423,11 +475,15 @@ def _load_canonical_event_universe(events_path: Path, pred_path: Path) -> pd.Dat
     cols = [c for c in wanted_cols if c in avail_cols] if avail_cols else wanted_cols[:5]
     ev = _load_parquet(events_path, columns=cols)
     if ev.empty:
-        return pd.DataFrame(columns=["candidate_uid", "close_ts", "test_month", "event_ordinal", "frozen_event_id"])
+        return pd.DataFrame(
+            columns=["candidate_uid", "close_ts", "test_month", "event_ordinal", "frozen_event_id"]
+        )
     ev = _with_test_month(ev, close_col="close_ts")
     pred = _load_parquet(pred_path, columns=["candidate_uid", "close_ts", "test_month"])
     if pred.empty:
-        return pd.DataFrame(columns=["candidate_uid", "close_ts", "test_month", "event_ordinal", "frozen_event_id"])
+        return pd.DataFrame(
+            columns=["candidate_uid", "close_ts", "test_month", "event_ordinal", "frozen_event_id"]
+        )
     pred["close_ts"] = pd.to_datetime(pred["close_ts"], utc=True, errors="coerce")
     pred["test_month"] = pred["test_month"].astype(str)
     ev = ev.merge(
@@ -436,10 +492,15 @@ def _load_canonical_event_universe(events_path: Path, pred_path: Path) -> pd.Dat
         how="inner",
     )
     if "scored_row_id" in ev.columns and ev["scored_row_id"].notna().any():
-        ev["event_ordinal"] = pd.to_numeric(ev.get("event_ordinal"), errors="coerce").astype("Int64")
+        ev["event_ordinal"] = pd.to_numeric(ev.get("event_ordinal"), errors="coerce").astype(
+            "Int64"
+        )
         missing_ord = ev["event_ordinal"].isna()
         if bool(missing_ord.any()):
-            rebuilt = _add_event_ordinal(ev.loc[missing_ord, ["candidate_uid", "close_ts", "test_month"]], close_col="close_ts")
+            rebuilt = _add_event_ordinal(
+                ev.loc[missing_ord, ["candidate_uid", "close_ts", "test_month"]],
+                close_col="close_ts",
+            )
             ev.loc[missing_ord, "event_ordinal"] = rebuilt["event_ordinal"].to_numpy()
             ev.loc[missing_ord, "scored_row_id"] = rebuilt["scored_row_id"].to_numpy()
         ev["event_ordinal"] = ev["event_ordinal"].astype(int)
@@ -537,7 +598,9 @@ def _score_frozen_predictions(
                 thresholds.append(static_thr)
                 sources.append(f"{mode}:static_fallback")
         te["threshold_exec"] = np.asarray(thresholds, dtype=float)
-        te["selected_exec"] = (te["pred_prob"].to_numpy(dtype=float) >= te["threshold_exec"].to_numpy(dtype=float)).astype(int)
+        te["selected_exec"] = (
+            te["pred_prob"].to_numpy(dtype=float) >= te["threshold_exec"].to_numpy(dtype=float)
+        ).astype(int)
         te["threshold_mode"] = mode
         te["threshold_days"] = int(thr_cfg.get("rolling_threshold_days", 0) or 0)
         te["threshold_source"] = np.asarray(sources, dtype=object)
@@ -555,63 +618,99 @@ def _score_frozen_predictions(
             "selected_exec",
             "threshold_source",
         ]
-        for extra_col in ["event_ordinal", "scored_row_id", "frozen_event_id", "canonical_close_ts"]:
+        for extra_col in [
+            "event_ordinal",
+            "scored_row_id",
+            "frozen_event_id",
+            "canonical_close_ts",
+        ]:
             if extra_col in te.columns:
                 keep_cols.append(extra_col)
-        out_parts.append(
-            te[keep_cols].copy()
-        )
+        out_parts.append(te[keep_cols].copy())
     return pd.concat(out_parts, ignore_index=True) if out_parts else pd.DataFrame()
 
 
-def _load_canonical_selected(pred_path: Path, schedule_path: Path, canonical_events: pd.DataFrame) -> pd.DataFrame:
+def _load_canonical_selected(
+    pred_path: Path, schedule_path: Path, canonical_events: pd.DataFrame
+) -> pd.DataFrame:
     try:
         import pyarrow.parquet as pq
 
         avail_cols = set(pq.read_schema(pred_path).names) if pred_path.exists() else set()
     except Exception:
         avail_cols = set()
-    wanted_cols = ["candidate_uid", "close_ts", "selected_exec", "test_month", "event_ordinal", "frozen_event_id", "scored_row_id"]
+    wanted_cols = [
+        "candidate_uid",
+        "close_ts",
+        "selected_exec",
+        "test_month",
+        "event_ordinal",
+        "frozen_event_id",
+        "scored_row_id",
+    ]
     use_cols = [c for c in wanted_cols if c in avail_cols] if avail_cols else wanted_cols[:4]
     pred = _load_parquet(pred_path, columns=use_cols)
     if pred.empty:
-        return pd.DataFrame(columns=["candidate_uid", "close_ts", "test_month", "event_ordinal", "frozen_event_id"])
-    pred["selected_exec"] = pd.to_numeric(pred["selected_exec"], errors="coerce").fillna(0).astype(int)
+        return pd.DataFrame(
+            columns=["candidate_uid", "close_ts", "test_month", "event_ordinal", "frozen_event_id"]
+        )
+    pred["selected_exec"] = (
+        pd.to_numeric(pred["selected_exec"], errors="coerce").fillna(0).astype(int)
+    )
     pred = pred[pred["selected_exec"] == 1].copy()
     pred["close_ts"] = pd.to_datetime(pred["close_ts"], utc=True, errors="coerce")
     pred["test_month"] = pred["test_month"].astype(str)
     parts = pred["candidate_uid"].astype(str).str.split("|", n=4, expand=True)
     pred["state_id"] = parts[4].astype(str)
     pred["bar_ticks"] = pd.to_numeric(parts[2], errors="coerce").astype(int)
-    pred["horizon"] = pd.to_numeric(parts[3].astype(str).str.lstrip("hH"), errors="coerce").astype(int)
+    pred["horizon"] = pd.to_numeric(parts[3].astype(str).str.lstrip("hH"), errors="coerce").astype(
+        int
+    )
     sched = pd.read_csv(schedule_path)
     keep = sched[["test_month", "state_id", "bar_ticks", "horizon"]].drop_duplicates().copy()
     keep["test_month"] = keep["test_month"].astype(str)
     out = pred.merge(keep, on=["test_month", "state_id", "bar_ticks", "horizon"], how="inner")
     if "scored_row_id" in out.columns and out["scored_row_id"].notna().any():
         out["frozen_event_id"] = out["scored_row_id"].astype(str)
-    if "event_ordinal" in out.columns and "frozen_event_id" in out.columns and out["frozen_event_id"].notna().any():
+    if (
+        "event_ordinal" in out.columns
+        and "frozen_event_id" in out.columns
+        and out["frozen_event_id"].notna().any()
+    ):
         out["event_ordinal"] = pd.to_numeric(out["event_ordinal"], errors="coerce").astype("Int64")
         return (
-            out[out["event_ordinal"].notna()].assign(event_ordinal=lambda x: x["event_ordinal"].astype(int))[
+            out[out["event_ordinal"].notna()]
+            .assign(event_ordinal=lambda x: x["event_ordinal"].astype(int))[
                 ["candidate_uid", "close_ts", "test_month", "event_ordinal", "frozen_event_id"]
             ]
             .drop_duplicates()
             .reset_index(drop=True)
         )
     if canonical_events.empty:
-        return out[["candidate_uid", "close_ts", "test_month"]].drop_duplicates().reset_index(drop=True)
-    event_keys = canonical_events[["candidate_uid", "test_month", "event_ordinal", "frozen_event_id", "canonical_close_ts"]].drop_duplicates()
+        return (
+            out[["candidate_uid", "close_ts", "test_month"]]
+            .drop_duplicates()
+            .reset_index(drop=True)
+        )
+    event_keys = canonical_events[
+        ["candidate_uid", "test_month", "event_ordinal", "frozen_event_id", "canonical_close_ts"]
+    ].drop_duplicates()
     merged = out.merge(
         event_keys,
         left_on=["candidate_uid", "test_month", "close_ts"],
         right_on=["candidate_uid", "test_month", "canonical_close_ts"],
         how="inner",
     )
-    return merged[["candidate_uid", "close_ts", "test_month", "event_ordinal", "frozen_event_id"]].drop_duplicates().reset_index(drop=True)
+    return (
+        merged[["candidate_uid", "close_ts", "test_month", "event_ordinal", "frozen_event_id"]]
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
 
 
-def _selected_overlap_rate_by_event_id(canonical_selected: pd.DataFrame, current_selected: pd.DataFrame) -> float:
+def _selected_overlap_rate_by_event_id(
+    canonical_selected: pd.DataFrame, current_selected: pd.DataFrame
+) -> float:
     if canonical_selected.empty and current_selected.empty:
         return 1.0
     if canonical_selected.empty or current_selected.empty:
@@ -640,16 +739,28 @@ def _canonical_state_coverage(
         parts = cur["candidate_uid"].astype(str).str.split("|", n=4, expand=True)
         cur["state_id"] = parts[4].astype(str)
         cur["bar_ticks"] = pd.to_numeric(parts[2], errors="coerce").astype(int)
-        cur["horizon"] = pd.to_numeric(parts[3].astype(str).str.lstrip("hH"), errors="coerce").astype(int)
-        cur["state_key"] = cur["state_id"].astype(str) + "|" + cur["bar_ticks"].astype(str) + "|" + cur["horizon"].astype(str)
+        cur["horizon"] = pd.to_numeric(
+            parts[3].astype(str).str.lstrip("hH"), errors="coerce"
+        ).astype(int)
+        cur["state_key"] = (
+            cur["state_id"].astype(str)
+            + "|"
+            + cur["bar_ticks"].astype(str)
+            + "|"
+            + cur["horizon"].astype(str)
+        )
         cur = cur[["test_month", "state_key"]].drop_duplicates().copy()
     sched = canonical_schedule.copy()
-    sched["covered"] = sched.set_index(["test_month", "state_key"]).index.isin(cur.set_index(["test_month", "state_key"]).index)
+    sched["covered"] = sched.set_index(["test_month", "state_key"]).index.isin(
+        cur.set_index(["test_month", "state_key"]).index
+    )
     monthly = sched.groupby("test_month", as_index=False).agg(
         canonical_state_count=("state_key", "nunique"),
         covered_state_count=("covered", "sum"),
     )
-    monthly["canonical_state_coverage_rate"] = monthly["covered_state_count"] / monthly["canonical_state_count"]
+    monthly["canonical_state_coverage_rate"] = (
+        monthly["covered_state_count"] / monthly["canonical_state_count"]
+    )
     overall = float(sched["covered"].mean()) if len(sched) else float("nan")
     return overall, monthly
 
@@ -665,7 +776,11 @@ def _load_canonical_schedule(schedule_path: Path) -> pd.DataFrame:
             + "|"
             + pd.to_numeric(sched["horizon"], errors="coerce").astype(int).astype(str)
         )
-    return sched[["test_month", "state_key", "state_id", "bar_ticks", "horizon"]].drop_duplicates().reset_index(drop=True)
+    return (
+        sched[["test_month", "state_key", "state_id", "bar_ticks", "horizon"]]
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
 
 
 def _build_baseline_parity(
@@ -685,7 +800,9 @@ def _build_baseline_parity(
     overlap_rate = _selected_overlap_rate_by_event_id(canonical_selected, current_selected)
     selected_overlap_exact = np.isfinite(overlap_rate) and abs(float(overlap_rate) - 1.0) < 1e-12
 
-    missing = canonical_events[["frozen_event_id", "candidate_uid", "test_month", "canonical_close_ts"]].merge(
+    missing = canonical_events[
+        ["frozen_event_id", "candidate_uid", "test_month", "canonical_close_ts"]
+    ].merge(
         mapped_events[["frozen_event_id", "offset_close_ts"]].drop_duplicates(),
         on="frozen_event_id",
         how="left",
@@ -702,7 +819,9 @@ def _build_baseline_parity(
         "baseline_event_rows_exact_match": bool(event_rows_exact),
         "baseline_selected_rows_exact_match": bool(selected_rows_exact),
         "baseline_selected_overlap_event_id": float(overlap_rate),
-        "baseline_parity_pass": bool(event_rows_exact and selected_rows_exact and selected_overlap_exact),
+        "baseline_parity_pass": bool(
+            event_rows_exact and selected_rows_exact and selected_overlap_exact
+        ),
         "unmapped_event_rows_total": int((missing["mismatch_reason"] == "unmapped").sum()),
     }
     return summary, mismatches
@@ -724,17 +843,32 @@ def _baseline_gate(summary: dict[str, Any]) -> tuple[bool, str]:
 def _classify_offset_row(row: dict[str, Any]) -> tuple[str, str, str]:
     reasons: list[str] = []
     diagnostics: list[str] = []
-    if np.isfinite(row["selected_rows_delta_pct"]) and abs(float(row["selected_rows_delta_pct"])) > 20.0:
+    if (
+        np.isfinite(row["selected_rows_delta_pct"])
+        and abs(float(row["selected_rows_delta_pct"])) > 20.0
+    ):
         reasons.append("selected_rows_delta_gt_20pct")
     if np.isfinite(row["trade_rows_delta_pct"]) and abs(float(row["trade_rows_delta_pct"])) > 20.0:
         reasons.append("trade_rows_delta_gt_20pct")
-    if np.isfinite(float(row["lb95_trade_mean_gross_pips_delta"])) and float(row["lb95_trade_mean_gross_pips_delta"]) < -0.25:
+    if (
+        np.isfinite(float(row["lb95_trade_mean_gross_pips_delta"]))
+        and float(row["lb95_trade_mean_gross_pips_delta"]) < -0.25
+    ):
         reasons.append("lb95_trade_mean_gross_drop")
-    if np.isfinite(float(row["lb95_trade_mean_net_pips_delta"])) and float(row["lb95_trade_mean_net_pips_delta"]) < -0.25:
+    if (
+        np.isfinite(float(row["lb95_trade_mean_net_pips_delta"]))
+        and float(row["lb95_trade_mean_net_pips_delta"]) < -0.25
+    ):
         reasons.append("lb95_trade_mean_net_drop")
-    if np.isfinite(float(row["canonical_state_coverage_rate"])) and float(row["canonical_state_coverage_rate"]) < 0.90:
+    if (
+        np.isfinite(float(row["canonical_state_coverage_rate"]))
+        and float(row["canonical_state_coverage_rate"]) < 0.90
+    ):
         diagnostics.append("canonical_state_coverage_lt_90pct")
-    if np.isfinite(float(row["candidate_uid_close_ts_overlap_rate"])) and float(row["candidate_uid_close_ts_overlap_rate"]) < 0.60:
+    if (
+        np.isfinite(float(row["candidate_uid_close_ts_overlap_rate"]))
+        and float(row["candidate_uid_close_ts_overlap_rate"]) < 0.60
+    ):
         diagnostics.append("selected_overlap_lt_0.60")
     status = "degraded" if reasons else "ok"
     return status, ",".join(reasons), ",".join(diagnostics)
@@ -752,9 +886,15 @@ def _build_frozen_row(
     mapping_diag: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], pd.DataFrame]:
     pred_path = stage_root / "wfo" / f"{symbol}_oco_monthly_predictions.parquet"
-    current_selected = _load_canonical_selected(pred_path, stage_root / "reduced_core_rolling" / f"{symbol}_oco_reduced_state_schedule.csv", canonical_events)
+    current_selected = _load_canonical_selected(
+        pred_path,
+        stage_root / "reduced_core_rolling" / f"{symbol}_oco_reduced_state_schedule.csv",
+        canonical_events,
+    )
     overlap_rate = _selected_overlap_rate_by_event_id(canonical_selected, current_selected)
-    coverage_rate, coverage_monthly = _canonical_state_coverage(selected_keys=current_selected, canonical_schedule=canonical_schedule)
+    coverage_rate, coverage_monthly = _canonical_state_coverage(
+        selected_keys=current_selected, canonical_schedule=canonical_schedule
+    )
     robust = _load_csv(stage_root / "robustness" / f"{symbol}_oco_robustness_summary.csv")
     if robust.empty:
         return {
@@ -784,13 +924,19 @@ def _build_frozen_row(
         "positive_months": _safe_int(row0.get("positive_months")),
         "candidate_uid_close_ts_overlap_rate": overlap_rate,
         "canonical_state_coverage_rate": coverage_rate,
-        "canonical_event_rows_total": int((mapping_diag or {}).get("canonical_event_rows_total", len(canonical_events))),
+        "canonical_event_rows_total": int(
+            (mapping_diag or {}).get("canonical_event_rows_total", len(canonical_events))
+        ),
         "mapped_event_rows_total": _safe_int((mapping_diag or {}).get("mapped_event_rows_total")),
-        "unmapped_event_rows_total": _safe_int((mapping_diag or {}).get("unmapped_event_rows_total")),
+        "unmapped_event_rows_total": _safe_int(
+            (mapping_diag or {}).get("unmapped_event_rows_total")
+        ),
         "baseline_selected_rows_exact_match": np.nan,
         "baseline_event_rows_exact_match": np.nan,
         "execution_fill_rate": 1.0 - max(0.0, 1.0 - _safe_float(stop_row.get("touch_found_rate"))),
-        "execution_no_touch_rate": float(1.0 - _safe_float(stop_row.get("touch_found_rate"))) if stop_row else float("nan"),
+        "execution_no_touch_rate": float(1.0 - _safe_float(stop_row.get("touch_found_rate")))
+        if stop_row
+        else float("nan"),
         "execution_overshoot_p95_pips": _safe_float(stop_row.get("tick_overshoot_p95_pips")),
         "tick_exact_pass": str(tick_row.get("overall_pass", False)).lower() == "true",
         "selected_rows_delta_pct": 0.0,
@@ -804,21 +950,45 @@ def _build_frozen_row(
         "diagnostic_reasons": "",
         "failure_reason": "",
         "prediction_path": str(pred_path),
-        "reduced_state_schedule_csv": str(stage_root / "reduced_core_rolling" / f"{symbol}_oco_reduced_state_schedule.csv"),
-        "stop_limit_detail_csv": str(stage_root / "stop_limit" / f"{symbol}_stop_limit_tickfill_detail.csv"),
+        "reduced_state_schedule_csv": str(
+            stage_root / "reduced_core_rolling" / f"{symbol}_oco_reduced_state_schedule.csv"
+        ),
+        "stop_limit_detail_csv": str(
+            stage_root / "stop_limit" / f"{symbol}_stop_limit_tickfill_detail.csv"
+        ),
     }
     if baseline_row is not None:
-        out["selected_rows_delta_pct"] = _pct_delta(out["selected_rows_total"], baseline_row.get("selected_rows_total"))
-        out["trade_rows_delta_pct"] = _pct_delta(out["trade_rows_total"], baseline_row.get("trade_rows_total"))
-        out["mean_gross_pips_delta"] = _safe_float(out["mean_gross_pips"]) - _safe_float(baseline_row.get("mean_gross_pips"))
-        out["mean_net_pips_delta"] = _safe_float(out["mean_net_pips"]) - _safe_float(baseline_row.get("mean_net_pips"))
-        out["lb95_trade_mean_gross_pips_delta"] = _safe_float(out["lb95_trade_mean_gross_pips"]) - _safe_float(baseline_row.get("lb95_trade_mean_gross_pips"))
-        out["lb95_trade_mean_net_pips_delta"] = _safe_float(out["lb95_trade_mean_net_pips"]) - _safe_float(baseline_row.get("lb95_trade_mean_net_pips"))
-        out["offset_status"], out["degrade_reasons"], out["diagnostic_reasons"] = _classify_offset_row(out)
+        out["selected_rows_delta_pct"] = _pct_delta(
+            out["selected_rows_total"], baseline_row.get("selected_rows_total")
+        )
+        out["trade_rows_delta_pct"] = _pct_delta(
+            out["trade_rows_total"], baseline_row.get("trade_rows_total")
+        )
+        out["mean_gross_pips_delta"] = _safe_float(out["mean_gross_pips"]) - _safe_float(
+            baseline_row.get("mean_gross_pips")
+        )
+        out["mean_net_pips_delta"] = _safe_float(out["mean_net_pips"]) - _safe_float(
+            baseline_row.get("mean_net_pips")
+        )
+        out["lb95_trade_mean_gross_pips_delta"] = _safe_float(
+            out["lb95_trade_mean_gross_pips"]
+        ) - _safe_float(baseline_row.get("lb95_trade_mean_gross_pips"))
+        out["lb95_trade_mean_net_pips_delta"] = _safe_float(
+            out["lb95_trade_mean_net_pips"]
+        ) - _safe_float(baseline_row.get("lb95_trade_mean_net_pips"))
+        out["offset_status"], out["degrade_reasons"], out["diagnostic_reasons"] = (
+            _classify_offset_row(out)
+        )
     return out, coverage_monthly.assign(symbol=symbol, offset=int(offset))
 
 
-def _write_report(symbol: str, summary_row: dict[str, Any], by_offset: pd.DataFrame, coverage: pd.DataFrame, out_path: Path) -> None:
+def _write_report(
+    symbol: str,
+    summary_row: dict[str, Any],
+    by_offset: pd.DataFrame,
+    coverage: pd.DataFrame,
+    out_path: Path,
+) -> None:
     def _table(df: pd.DataFrame) -> str:
         if df.empty:
             return "_empty_"
@@ -860,7 +1030,9 @@ def _cleanup_completed_symbol_artifacts(
     for offset in offsets:
         shutil.rmtree(_offset_stage_root(out_dir, symbol, int(offset)), ignore_errors=True)
         for bar_ticks in sorted(set(int(x) for x in bar_ticks_grid if int(x) > 0)):
-            path = offset_bar_dir / f"{symbol}_{int(bar_ticks)}tick_offset_{int(offset):03d}.parquet"
+            path = (
+                offset_bar_dir / f"{symbol}_{int(bar_ticks)}tick_offset_{int(offset):03d}.parquet"
+            )
             with contextlib.suppress(Exception):
                 path.unlink(missing_ok=True)
 
@@ -894,14 +1066,18 @@ def run(
     coverage_rows: list[dict[str, Any]] = []
 
     for symbol in symbols:
-        manifest, quantiles_by_ticks, canonical_paths = _ensure_canonical_exports(symbol=symbol, frozen_root=frozen_root, fail_fast=fail_fast)
+        manifest, quantiles_by_ticks, canonical_paths = _ensure_canonical_exports(
+            symbol=symbol, frozen_root=frozen_root, fail_fast=fail_fast
+        )
         wfo_cfg = _load_yaml(canonical_paths["wfo_cfg"])
         canonical_events = _load_canonical_event_universe(
             _canonical_events_path(canonical_paths, symbol, wfo_cfg),
             canonical_paths["pred_path"],
         )
         canonical_schedule = _load_canonical_schedule(canonical_paths["reduced_schedule_csv"])
-        canonical_selected = _load_canonical_selected(canonical_paths["pred_path"], canonical_paths["reduced_schedule_csv"], canonical_events)
+        canonical_selected = _load_canonical_selected(
+            canonical_paths["pred_path"], canonical_paths["reduced_schedule_csv"], canonical_events
+        )
         symbol_rows: list[dict[str, Any]] = []
         baseline_valid = True
         for offset in offsets:
@@ -917,7 +1093,15 @@ def run(
                 continue
             stage_root = _offset_stage_root(out_dir, symbol, int(offset))
             reports_dir = stage_root / "tmp_reports"
-            for d in [stage_root / "velocity", stage_root / "wfo", stage_root / "stop_limit", stage_root / "reduced_core_rolling", stage_root / "robustness", stage_root / "tick_exact", reports_dir]:
+            for d in [
+                stage_root / "velocity",
+                stage_root / "wfo",
+                stage_root / "stop_limit",
+                stage_root / "reduced_core_rolling",
+                stage_root / "robustness",
+                stage_root / "tick_exact",
+                reports_dir,
+            ]:
                 d.mkdir(parents=True, exist_ok=True)
             try:
                 velocity_path = _build_velocity_for_offset(
@@ -938,11 +1122,25 @@ def run(
                     offset_events=offset_events,
                     canonical_events=canonical_events,
                 )
-                preds = _score_frozen_predictions(events=mapped_events, manifest=manifest, wfo_cfg=wfo_cfg)
-                preds.to_parquet(stage_root / "wfo" / f"{symbol}_oco_monthly_predictions.parquet", index=False)
-                shutil.copy2(canonical_paths["reduced_schedule_csv"], stage_root / "reduced_core_rolling" / f"{symbol}_oco_reduced_state_schedule.csv")
+                preds = _score_frozen_predictions(
+                    events=mapped_events, manifest=manifest, wfo_cfg=wfo_cfg
+                )
+                preds.to_parquet(
+                    stage_root / "wfo" / f"{symbol}_oco_monthly_predictions.parquet", index=False
+                )
+                shutil.copy2(
+                    canonical_paths["reduced_schedule_csv"],
+                    stage_root
+                    / "reduced_core_rolling"
+                    / f"{symbol}_oco_reduced_state_schedule.csv",
+                )
             except Exception as exc:
-                row = {"symbol": symbol, "offset": int(offset), "offset_status": "failed_pipeline", "failure_reason": str(exc)}
+                row = {
+                    "symbol": symbol,
+                    "offset": int(offset),
+                    "offset_status": "failed_pipeline",
+                    "failure_reason": str(exc),
+                }
                 symbol_rows.append(row)
                 by_offset_rows.append(row)
                 continue
@@ -984,7 +1182,11 @@ def run(
                     "--execution-quantile",
                     "0.9",
                     "--reduced-state-schedule-csv",
-                    str(stage_root / "reduced_core_rolling" / f"{symbol}_oco_reduced_state_schedule.csv"),
+                    str(
+                        stage_root
+                        / "reduced_core_rolling"
+                        / f"{symbol}_oco_reduced_state_schedule.csv"
+                    ),
                     "--out-summary-csv",
                     str(stage_root / "robustness" / f"{symbol}_oco_robustness_summary.csv"),
                     "--out-monthly-csv",
@@ -1002,7 +1204,11 @@ def run(
                     "--pred-path",
                     str(stage_root / "wfo" / f"{symbol}_oco_monthly_predictions.parquet"),
                     "--shortlist-state-csv",
-                    str(stage_root / "reduced_core_rolling" / f"{symbol}_oco_reduced_state_schedule.csv"),
+                    str(
+                        stage_root
+                        / "reduced_core_rolling"
+                        / f"{symbol}_oco_reduced_state_schedule.csv"
+                    ),
                     "--locked-quantile",
                     "0.9",
                     "--selection-mode",
@@ -1025,7 +1231,12 @@ def run(
             ]:
                 ok, msg = _run_cmd(cmd, fail_fast=fail_fast)
                 if not ok:
-                    row = {"symbol": symbol, "offset": int(offset), "offset_status": "failed_pipeline", "failure_reason": msg}
+                    row = {
+                        "symbol": symbol,
+                        "offset": int(offset),
+                        "offset_status": "failed_pipeline",
+                        "failure_reason": msg,
+                    }
                     symbol_rows.append(row)
                     by_offset_rows.append(row)
                     break
@@ -1038,17 +1249,25 @@ def run(
                     canonical_selected=canonical_selected,
                     canonical_events=canonical_events,
                     canonical_schedule=canonical_schedule,
-                    baseline_row=baseline if baseline and int(baseline.get("offset", -1)) == 0 else None,
+                    baseline_row=baseline
+                    if baseline and int(baseline.get("offset", -1)) == 0
+                    else None,
                     mapping_diag={
                         "canonical_event_rows_total": len(canonical_events),
                         "mapped_event_rows_total": len(mapped_events),
-                        "unmapped_event_rows_total": int((mapping_details.get("mapping_status") == "unmapped").sum()) if not mapping_details.empty else len(canonical_events),
+                        "unmapped_event_rows_total": int(
+                            (mapping_details.get("mapping_status") == "unmapped").sum()
+                        )
+                        if not mapping_details.empty
+                        else len(canonical_events),
                     },
                 )
                 if int(offset) == 0:
                     current_selected = _load_canonical_selected(
                         stage_root / "wfo" / f"{symbol}_oco_monthly_predictions.parquet",
-                        stage_root / "reduced_core_rolling" / f"{symbol}_oco_reduced_state_schedule.csv",
+                        stage_root
+                        / "reduced_core_rolling"
+                        / f"{symbol}_oco_reduced_state_schedule.csv",
                         canonical_events,
                     )
                     baseline_summary, baseline_mismatches = _build_baseline_parity(
@@ -1066,17 +1285,27 @@ def run(
                         baseline_summary.get("baseline_selected_rows_canonical"),
                     )
                     row.update(baseline_summary)
-                    pd.DataFrame([baseline_summary]).to_csv(out_dir / f"{symbol}_frozen_baseline_parity_summary.csv", index=False)
-                    baseline_mismatches.to_csv(out_dir / f"{symbol}_frozen_baseline_mismatches.csv", index=False)
+                    pd.DataFrame([baseline_summary]).to_csv(
+                        out_dir / f"{symbol}_frozen_baseline_parity_summary.csv", index=False
+                    )
+                    baseline_mismatches.to_csv(
+                        out_dir / f"{symbol}_frozen_baseline_mismatches.csv", index=False
+                    )
                     baseline_valid = bool(baseline_gate_pass)
                     if not baseline_valid:
                         row["offset_status"] = "baseline_material_drift"
-                        row["failure_reason"] = baseline_gate_reasons or "offset_000_baseline_material_drift"
+                        row["failure_reason"] = (
+                            baseline_gate_reasons or "offset_000_baseline_material_drift"
+                        )
                 symbol_rows.append(row)
                 by_offset_rows.append(row)
                 coverage_rows.extend(coverage.to_dict(orient="records"))
                 if str(retention_mode) == "compact":
-                    keep = int(offset) == 0 or row.get("offset_status") in {"degraded", "baseline_parity_failed", "baseline_material_drift"}
+                    keep = int(offset) == 0 or row.get("offset_status") in {
+                        "degraded",
+                        "baseline_parity_failed",
+                        "baseline_material_drift",
+                    }
                     if not keep:
                         shutil.rmtree(stage_root, ignore_errors=True)
 
@@ -1084,7 +1313,9 @@ def run(
         status_col = sym_df.get("offset_status", pd.Series(dtype=str)).astype(str)
         classification = (
             "material_drift_under_frozen_month"
-            if status_col.isin(["degraded", "failed_pipeline", "baseline_parity_failed", "baseline_material_drift"]).any()
+            if status_col.isin(
+                ["degraded", "failed_pipeline", "baseline_parity_failed", "baseline_material_drift"]
+            ).any()
             else "stable_under_frozen_month"
         )
         summary_rows.append(
@@ -1093,10 +1324,20 @@ def run(
                 "offsets_total": int(len(sym_df)),
                 "phase_classification": classification,
                 "retention_mode": retention_mode,
-                "report_path": str((out_dir / "reports" / f"{symbol.lower()}_frozen_offset_screen.md").relative_to(ROOT)) if out_dir.is_relative_to(ROOT) else str(out_dir / "reports" / f"{symbol.lower()}_frozen_offset_screen.md"),
+                "report_path": str(
+                    (out_dir / "reports" / f"{symbol.lower()}_frozen_offset_screen.md").relative_to(
+                        ROOT
+                    )
+                )
+                if out_dir.is_relative_to(ROOT)
+                else str(out_dir / "reports" / f"{symbol.lower()}_frozen_offset_screen.md"),
             }
         )
-        sym_coverage = pd.DataFrame([r for r in coverage_rows if r.get("symbol") == symbol]) if coverage_rows else pd.DataFrame()
+        sym_coverage = (
+            pd.DataFrame([r for r in coverage_rows if r.get("symbol") == symbol])
+            if coverage_rows
+            else pd.DataFrame()
+        )
         if not sym_coverage.empty and {"offset", "test_month"}.issubset(sym_coverage.columns):
             sym_coverage = sym_coverage.sort_values(["offset", "test_month"]).reset_index(drop=True)
         _write_report(
@@ -1117,8 +1358,18 @@ def run(
             )
 
     summary_df = pd.DataFrame(summary_rows).sort_values("symbol").reset_index(drop=True)
-    by_offset_df = pd.DataFrame(by_offset_rows).sort_values(["symbol", "offset"]).reset_index(drop=True) if by_offset_rows else pd.DataFrame()
-    coverage_df = pd.DataFrame(coverage_rows).sort_values(["symbol", "offset", "test_month"]).reset_index(drop=True) if coverage_rows else pd.DataFrame()
+    by_offset_df = (
+        pd.DataFrame(by_offset_rows).sort_values(["symbol", "offset"]).reset_index(drop=True)
+        if by_offset_rows
+        else pd.DataFrame()
+    )
+    coverage_df = (
+        pd.DataFrame(coverage_rows)
+        .sort_values(["symbol", "offset", "test_month"])
+        .reset_index(drop=True)
+        if coverage_rows
+        else pd.DataFrame()
+    )
     summary_df.to_csv(out_dir / "frozen_offset_screen_summary.csv", index=False)
     coverage_df.to_csv(out_dir / "frozen_offset_state_coverage.csv", index=False)
     return summary_df, by_offset_df
@@ -1131,7 +1382,9 @@ def main() -> None:
     p.add_argument("--tick-root", default=DEFAULT_TICK_ROOT)
     p.add_argument("--offset-bar-dir", default=DEFAULT_OFFSET_BAR_DIR)
     p.add_argument("--frozen-root", default=DEFAULT_FROZEN_ROOT)
-    p.add_argument("--out-dir", default=str(Path(DEFAULT_OUT_DIR).with_name("offset_robustness_frozen")))
+    p.add_argument(
+        "--out-dir", default=str(Path(DEFAULT_OUT_DIR).with_name("offset_robustness_frozen"))
+    )
     p.add_argument("--retention-mode", choices=["compact", "full"], default="compact")
     p.add_argument("--cleanup-completed-artifacts", action="store_true")
     p.add_argument("--fail-fast", action="store_true")

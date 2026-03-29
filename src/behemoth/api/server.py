@@ -15,19 +15,19 @@ Model loading:
 from __future__ import annotations
 
 import asyncio
-from bisect import bisect_left
 import hashlib
 import json
 import logging
 import math
 import os
 import re
+from bisect import bisect_left
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
@@ -37,8 +37,6 @@ from src.behemoth.api.dashboard import router as dashboard_router
 from src.behemoth.core.features import (
     FeatureConfig,
     compute_feature_matrix_from_bars,
-    compute_features_from_bars,
-    pip_size,
 )
 from src.behemoth.core.historical_governance_validation import (
     failed_checks,
@@ -48,8 +46,8 @@ from src.behemoth.core.historical_governance_validation import (
 from src.behemoth.core.historical_registry import HistoricalCandidateRegistry
 from src.behemoth.core.registry import CandidateRegistry
 from src.behemoth.core.schemas import (
-    ActiveTrade,
     AccountRiskSnapshotRequest,
+    ActiveTrade,
     IncomingTick,
     IncomingTickBar,
     ModelFeatures,
@@ -1867,7 +1865,7 @@ class PredictRequest(BaseModel):
     run_id: str | None = None
 
     @model_validator(mode="after")
-    def _validate_risk_override(self) -> "PredictRequest":
+    def _validate_risk_override(self) -> PredictRequest:
         if self.risk_enabled_override is None and self.account_risk_enabled_override is None:
             raise ValueError("One of risk_enabled_override or account_risk_enabled_override is required")
         return self
@@ -2973,7 +2971,6 @@ async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
     DB via _state.log_audit_event() (single-writer pattern).
     Idempotent: NOT idempotent — repeated calls with the same run_id append duplicate rows to audit_logs; the rolling quantile is robust to duplicates but the run_jforex_live.py caller should call this only once per startup.
     """
-    import numpy as np
     import pandas as pd
 
     if _state is None:
@@ -3169,7 +3166,7 @@ async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
                     "hour_utc", "hl_first", "hl_first_mean_24", "hl_pos_frac_mean_24",
                     "bar_ticks", "horizon", "barrier_pips"
                 ]].values
-                
+
                 # Metadata-level inference: release GIL during bulk CatBoost scoring if possible
                 with METRIC_INFERENCE_LATENCY.labels(symbol=sym).time():
                     pred_probs = model.predict_proba(X)[:, 1]
@@ -3180,12 +3177,12 @@ async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
                 )
                 valid_bars = bars_df.loc[valid_features.index]
                 events_batch = []
-                
+
                 for i in range(len(valid_features)):
                     row_feat = valid_features.iloc[i]
                     # Serialize the features into the JSON format expected by audit_logs
                     feat_obj = ModelFeatures(**row_feat.to_dict())
-                    
+
                     events_batch.append((
                         valid_bars.iloc[i]["close_ts"],
                         sym,

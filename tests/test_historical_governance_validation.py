@@ -185,7 +185,9 @@ def _write_multi_symbol_fixture(
             root / "artifacts" / f"{symbol}_model_{month}.json",
             json.dumps({"model_month": month}),
         )
-        tick_exact = _touch(root / "artifacts" / f"{symbol}_tick_exact_summary.csv", "overall_pass\nTrue\n")
+        tick_exact = _touch(
+            root / "artifacts" / f"{symbol}_tick_exact_summary.csv", "overall_pass\nTrue\n"
+        )
         reduced_sum = _touch(
             root / "artifacts" / f"{symbol}_reduced_summary.csv",
             "capacity_pass_monthly_or_annual\nTrue\n",
@@ -283,9 +285,7 @@ def test_required_symbols_scopes_validation(tmp_path: Path) -> None:
     assert any(c.symbol == "EURUSD" for c in all_bad), "Expected EURUSD failure without scoping"
 
     # With scoping to GBPUSD only — zero failures
-    scoped_checks = validate_historical_governance(
-        history_dir, required_symbols=["GBPUSD"]
-    )
+    scoped_checks = validate_historical_governance(history_dir, required_symbols=["GBPUSD"])
     scoped_bad = failed_checks(scoped_checks)
     assert scoped_bad == [], f"Expected no failures for GBPUSD-only scope, got: {scoped_bad}"
 

@@ -248,13 +248,19 @@ def _rebuild_touch_events(
                     ]
                 ].copy()
             )
-    events_df = pd.concat(events, ignore_index=True) if events else pd.DataFrame(columns=["candidate_uid"])
+    events_df = (
+        pd.concat(events, ignore_index=True) if events else pd.DataFrame(columns=["candidate_uid"])
+    )
 
-    out = d[["close_ts", "candidate_uid", "target_gross_pips", "bar_ticks", "horizon", "barrier_pips"]].copy()
+    out = d[
+        ["close_ts", "candidate_uid", "target_gross_pips", "bar_ticks", "horizon", "barrier_pips"]
+    ].copy()
     if not events_df.empty:
         events_df = events_df.drop_duplicates(subset=["candidate_uid", "close_ts"])
         drop_cols = ["target_gross_pips", "bar_ticks", "horizon", "barrier_pips"]
-        events_df = events_df.drop(columns=[c for c in drop_cols if c in events_df.columns], errors="ignore")
+        events_df = events_df.drop(
+            columns=[c for c in drop_cols if c in events_df.columns], errors="ignore"
+        )
         out = out.merge(events_df, on=["candidate_uid", "close_ts"], how="left")
     else:
         out["side"] = 0
@@ -285,7 +291,9 @@ def _first_cross_overshoot_month(
         x["overshoot_tick_pips"] = np.nan
         return x
 
-    ts_ns = ticks["timestamp"].astype("datetime64[ns, UTC]").astype("int64").to_numpy(dtype=np.int64)
+    ts_ns = (
+        ticks["timestamp"].astype("datetime64[ns, UTC]").astype("int64").to_numpy(dtype=np.int64)
+    )
     px = ticks["bid"].to_numpy(dtype=float)
 
     starts_ns = (
@@ -416,9 +424,11 @@ def run_symbol(
         return events, pd.DataFrame(), {"symbol": symbol, "rows": 0}
 
     pip = float(_pip_size(symbol))
-    events["touch_month"] = pd.to_datetime(
-        events["touch_open_ts"], utc=True, errors="coerce"
-    ).dt.strftime("%Y%m").fillna("missing")
+    events["touch_month"] = (
+        pd.to_datetime(events["touch_open_ts"], utc=True, errors="coerce")
+        .dt.strftime("%Y%m")
+        .fillna("missing")
+    )
 
     out_parts: list[pd.DataFrame] = []
     for m, g in events.groupby("touch_month", sort=True):
@@ -497,12 +507,24 @@ def main() -> None:
         for s in symbols:
             s_up = s.upper()
             defaults = {
-                "EURUSD": Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"),
-                "GBPUSD": Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"),
-                "USDJPY": Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"),
-                "USDCHF": Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"),
-                "AUDUSD": Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"),
-                "USDCAD": Path(f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"),
+                "EURUSD": Path(
+                    f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"
+                ),
+                "GBPUSD": Path(
+                    f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"
+                ),
+                "USDJPY": Path(
+                    f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"
+                ),
+                "USDCHF": Path(
+                    f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"
+                ),
+                "AUDUSD": Path(
+                    f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"
+                ),
+                "USDCAD": Path(
+                    f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"
+                ),
             }
             if s_up not in defaults:
                 raise ValueError(f"Provide --pred-paths for symbol {s_up}")

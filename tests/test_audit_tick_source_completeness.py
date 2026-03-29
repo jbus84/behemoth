@@ -47,9 +47,9 @@ def test_audit_tick_source_completeness_flags_missing_required_columns(tmp_path:
     tick_root = tmp_path / "dukascopy_ticks"
     path = tick_root / "EURUSD" / "EURUSD_202507_ticks.parquet"
     path.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(
-        [{"timestamp": pd.Timestamp("2025-07-01T00:00:00Z"), "bid": 1.1}]
-    ).to_parquet(path, index=False)
+    pd.DataFrame([{"timestamp": pd.Timestamp("2025-07-01T00:00:00Z"), "bid": 1.1}]).to_parquet(
+        path, index=False
+    )
 
     summary, missing = run(
         tick_root=tick_root,

@@ -136,9 +136,7 @@ def _extract_symbol(
 
     # Convert timezone-aware timestamps to naive UTC datetimes for comparison
     # with the tick parquet timestamps (which are stored as naive UTC).
-    event_ts_utc = [
-        r[0].astimezone(timezone.utc).replace(tzinfo=None) for r in raw_events
-    ]
+    event_ts_utc = [r[0].astimezone(timezone.utc).replace(tzinfo=None) for r in raw_events]
     n_events = len(event_ts_utc)
     min_event = min(event_ts_utc)
     max_event = max(event_ts_utc)
@@ -193,9 +191,7 @@ def _extract_symbol(
 
     n_matched = con.execute("SELECT COUNT(*) FROM _event_rns").fetchone()[0]
     if n_matched == 0:
-        print(
-            f"[spotlight] {symbol}: could not match any events to ticks", file=sys.stderr
-        )
+        print(f"[spotlight] {symbol}: could not match any events to ticks", file=sys.stderr)
         return
 
     # ── Step 4: range-join to collect the tick windows ───────────────────────
@@ -210,9 +206,7 @@ def _extract_symbol(
     ).fetchdf()
 
     if df.empty:
-        print(
-            f"[spotlight] {symbol}: range join produced no rows", file=sys.stderr
-        )
+        print(f"[spotlight] {symbol}: range join produced no rows", file=sys.stderr)
         return
 
     # ── Step 5: write output ─────────────────────────────────────────────────
@@ -275,6 +269,7 @@ def main() -> None:
             )
         except Exception as exc:
             import traceback
+
             print(f"[spotlight] {symbol}: extraction failed: {exc}", file=sys.stderr)
             traceback.print_exc(file=sys.stderr)
             failures.append(symbol)

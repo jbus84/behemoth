@@ -22,7 +22,9 @@ def test_jforex_dashboard_contains_demo_certification_panels() -> None:
     readiness_mappings = readiness_panel["fieldConfig"]["defaults"]["mappings"][0]["options"]
     assert readiness_mappings["3"]["text"] == "READY"
 
-    staleness_thresholds = panels_by_title["JForex Tick Staleness"]["fieldConfig"]["defaults"]["thresholds"]["steps"]
+    staleness_thresholds = panels_by_title["JForex Tick Staleness"]["fieldConfig"]["defaults"][
+        "thresholds"
+    ]["steps"]
     assert staleness_thresholds[-1]["value"] == 30
 
     assert panels_by_title["JForex Readiness Transitions"]["targets"][0]["expr"] == (

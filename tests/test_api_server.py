@@ -41,6 +41,7 @@ class TestHealthEndpoint:
     def test_health_uninitialized_state(self, client):
         """If the state manager is missing, health should return 503."""
         from src.behemoth.api import server
+
         original_state = server._state
         server._state = None
         try:
@@ -195,6 +196,7 @@ class TestBarsEndpoint:
     def test_ingest_bar_uninitialized_state(self, client):
         """If _state is None, ingest_bar returns 503."""
         from src.behemoth.api import server
+
         original_state = server._state
         server._state = None
         try:
@@ -217,11 +219,11 @@ class TestBarsEndpoint:
             server._state = original_state
 
 
-
 class TestPredictEndpoint:
     def test_historical_prediction_universe_tolerant_mode_accepts_nearby_row(self, tmp_path):
-        import duckdb
         from types import SimpleNamespace
+
+        import duckdb
 
         from src.behemoth.api import server
 
@@ -270,8 +272,9 @@ class TestPredictEndpoint:
             server._historical_prediction_candidate_index = {}
 
     def test_historical_prediction_universe_tolerant_mode_suppresses_tied_match(self, tmp_path):
-        import duckdb
         from types import SimpleNamespace
+
+        import duckdb
 
         from src.behemoth.api import server
 
@@ -322,8 +325,9 @@ class TestPredictEndpoint:
             server._historical_prediction_candidate_cursor = {}
 
     def test_historical_prediction_universe_tolerant_mode_does_not_reuse_locked_row(self, tmp_path):
-        import duckdb
         from types import SimpleNamespace
+
+        import duckdb
 
         from src.behemoth.api import server
 
@@ -379,8 +383,9 @@ class TestPredictEndpoint:
             server._historical_prediction_candidate_cursor = {}
 
     def test_historical_prediction_payload_override_resolves_nearest_row(self, tmp_path):
-        import duckdb
         from types import SimpleNamespace
+
+        import duckdb
 
         from src.behemoth.api import server
 
@@ -429,9 +434,12 @@ class TestPredictEndpoint:
             server._config.historical_prediction_payload_mode = orig_payload_mode
             server._historical_prediction_payload_rows = {}
 
-    def test_historical_prediction_payload_override_prefers_selected_row_within_tolerance(self, tmp_path):
-        import duckdb
+    def test_historical_prediction_payload_override_prefers_selected_row_within_tolerance(
+        self, tmp_path
+    ):
         from types import SimpleNamespace
+
+        import duckdb
 
         from src.behemoth.api import server
 
@@ -483,8 +491,9 @@ class TestPredictEndpoint:
             server._historical_prediction_payload_rows = {}
 
     def test_historical_prediction_payload_override_does_not_reuse_locked_row(self, tmp_path):
-        import duckdb
         from types import SimpleNamespace
+
+        import duckdb
 
         from src.behemoth.api import server
 
@@ -540,9 +549,12 @@ class TestPredictEndpoint:
             server._historical_prediction_payload_rows = {}
             server._historical_prediction_payload_cursor = {}
 
-    def test_historical_prediction_universe_tolerant_mode_late_release_with_locked_payload(self, tmp_path):
-        import duckdb
+    def test_historical_prediction_universe_tolerant_mode_late_release_with_locked_payload(
+        self, tmp_path
+    ):
         from types import SimpleNamespace
+
+        import duckdb
 
         from src.behemoth.api import server
 
@@ -594,9 +606,12 @@ class TestPredictEndpoint:
             server._historical_prediction_candidate_index = {}
             server._historical_prediction_candidate_cursor = {}
 
-    def test_historical_prediction_universe_tolerant_mode_does_not_release_stale_row(self, tmp_path):
-        import duckdb
+    def test_historical_prediction_universe_tolerant_mode_does_not_release_stale_row(
+        self, tmp_path
+    ):
         from types import SimpleNamespace
+
+        import duckdb
 
         from src.behemoth.api import server
 
@@ -683,21 +698,30 @@ class TestPredictEndpoint:
 
     def test_predict_insufficient_warmup(self, client):
         """With no bars ingested, predict should return 422."""
-        r = client.post("/predict", json={
-            "symbol": "EURUSD",
-            "requested_volume_units": 10000,
-            "account_risk_enabled_override": True,
-        })
+        r = client.post(
+            "/predict",
+            json={
+                "symbol": "EURUSD",
+                "requested_volume_units": 10000,
+                "account_risk_enabled_override": True,
+            },
+        )
         assert r.status_code in (200, 422, 503)
         if r.status_code == 200:
             assert isinstance(r.json(), list)
         else:
             detail = r.json()["detail"].lower()
-            assert "warmup" in detail or "candidate" in detail or "registry" in detail or "model" in detail
+            assert (
+                "warmup" in detail
+                or "candidate" in detail
+                or "registry" in detail
+                or "model" in detail
+            )
 
     def test_predict_uninitialized_state(self, client):
         """If _state is None, predict returns 503."""
         from src.behemoth.api import server
+
         original_state = server._state
         server._state = None
         try:
@@ -717,6 +741,7 @@ class TestPredictEndpoint:
     def test_predict_unloaded_registry(self, client):
         """If _registry is None, predict returns 503."""
         from src.behemoth.api import server
+
         original_registry = server._registry
         server._registry = None
         try:
@@ -816,9 +841,14 @@ class TestPredictEndpoint:
                 for line in trace_path.read_text(encoding="utf-8").splitlines()
                 if line.strip()
             ]
-            response_rows = [row for row in rows if row["endpoint"] == "/predict" and row["phase"] == "response"]
+            response_rows = [
+                row for row in rows if row["endpoint"] == "/predict" and row["phase"] == "response"
+            ]
             assert len(response_rows) == 1
-            assert response_rows[0]["extra"]["reason"] == "historical_prediction_universe_gate_filtered_all_candidates"
+            assert (
+                response_rows[0]["extra"]["reason"]
+                == "historical_prediction_universe_gate_filtered_all_candidates"
+            )
             assert response_rows[0]["extra"]["result_count"] == 0
         finally:
             server._config.debug_http_trace = orig_trace
@@ -827,9 +857,10 @@ class TestPredictEndpoint:
 
     def test_predict_no_model(self, client):
         """If CatBoost model isn't loaded, predict returns 503."""
-        from fastapi import HTTPException
         import unittest.mock as mock
         from types import SimpleNamespace
+
+        from fastapi import HTTPException
 
         from src.behemoth.api import server
 
@@ -895,7 +926,10 @@ class TestPredictEndpoint:
             mock.patch.object(
                 server,
                 "_ensure_model_and_threshold",
-                return_value=(mock.MagicMock(), {"threshold_exec": 0.5, "threshold_source": "test"}),
+                return_value=(
+                    mock.MagicMock(),
+                    {"threshold_exec": 0.5, "threshold_source": "test"},
+                ),
             ),
             mock.patch.object(server._state, "compute_features", return_value=None),
         ):
@@ -913,7 +947,7 @@ class TestPredictEndpoint:
     def test_predict_success(self, client):
         """Mock the pipeline to simulate a successful prediction return."""
         import unittest.mock as mock
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timezone
         from types import SimpleNamespace
 
         from src.behemoth.api import server
@@ -926,14 +960,27 @@ class TestPredictEndpoint:
         dummy_cand.candidate_uid = "cand1"
 
         dummy_features = ModelFeatures(
-            cost_est_pips=1.0, range_pips=10.0, ret1_pips=2.0, ret_z=0.5, ret_abs_z=0.5,
-            vel_cost_units_h1=2.0, vel_abs_cost_units_h1=2.0, spread_z=0.1, tick_rate_z=0.1,
-            hour_utc=10.0, hl_first=1.0, hl_first_mean_24=0.5, hl_pos_frac_mean_24=0.5,
-            bar_ticks=100.0, horizon=24.0, barrier_pips=15.0
+            cost_est_pips=1.0,
+            range_pips=10.0,
+            ret1_pips=2.0,
+            ret_z=0.5,
+            ret_abs_z=0.5,
+            vel_cost_units_h1=2.0,
+            vel_abs_cost_units_h1=2.0,
+            spread_z=0.1,
+            tick_rate_z=0.1,
+            hour_utc=10.0,
+            hl_first=1.0,
+            hl_first_mean_24=0.5,
+            hl_pos_frac_mean_24=0.5,
+            bar_ticks=100.0,
+            horizon=24.0,
+            barrier_pips=15.0,
         )
 
         dummy_model = mock.MagicMock()
         import numpy as np
+
         dummy_model.predict_proba.return_value = np.array([[0.1, 0.85]])  # 85% probability
 
         with (
@@ -946,10 +993,27 @@ class TestPredictEndpoint:
                     cap_pips=1.2,
                 ),
             ),
-            mock.patch.object(server, "_ensure_model_and_threshold", return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test", "rolling_threshold_days": 20, "rolling_threshold_min_history": 1, "execution_quantile": 0.9})),
+            mock.patch.object(
+                server,
+                "_ensure_model_and_threshold",
+                return_value=(
+                    dummy_model,
+                    {
+                        "threshold_exec": 0.5,
+                        "threshold_source": "test",
+                        "rolling_threshold_days": 20,
+                        "rolling_threshold_min_history": 1,
+                        "execution_quantile": 0.9,
+                    },
+                ),
+            ),
             mock.patch.object(server, "_check_warmup", return_value=None),
             mock.patch.object(server._state, "compute_features", return_value=dummy_features),
-            mock.patch.object(server._state, "get_latest_close_ts", return_value=datetime(2025, 1, 1, tzinfo=timezone.utc)),
+            mock.patch.object(
+                server._state,
+                "get_latest_close_ts",
+                return_value=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            ),
             mock.patch.object(server._state, "get_rolling_threshold", return_value=0.5),
         ):
             snap = client.post(
@@ -979,7 +1043,10 @@ class TestPredictEndpoint:
             assert "risk_blocked" in results[0]
             assert results[0]["risk_metrics_snapshot"]["account_risk_enabled_effective"] is True
             assert results[0]["risk_metrics_snapshot"]["account_risk_enabled_override"] is True
-            assert results[0]["risk_metrics_snapshot"]["account_risk_mode_source"] == "request_override"
+            assert (
+                results[0]["risk_metrics_snapshot"]["account_risk_mode_source"]
+                == "request_override"
+            )
 
     def test_predict_logs_evaluation_for_blocked_candidate(self, client):
         import unittest.mock as mock
@@ -1032,11 +1099,24 @@ class TestPredictEndpoint:
             mock.patch.object(
                 server,
                 "_ensure_model_and_threshold",
-                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test", "rolling_threshold_days": 20, "rolling_threshold_min_history": 1, "execution_quantile": 0.9}),
+                return_value=(
+                    dummy_model,
+                    {
+                        "threshold_exec": 0.5,
+                        "threshold_source": "test",
+                        "rolling_threshold_days": 20,
+                        "rolling_threshold_min_history": 1,
+                        "execution_quantile": 0.9,
+                    },
+                ),
             ),
             mock.patch.object(server, "_check_warmup", return_value=None),
             mock.patch.object(server._state, "compute_features", return_value=dummy_features),
-            mock.patch.object(server._state, "get_latest_close_ts", return_value=datetime(2025, 1, 1, tzinfo=timezone.utc)),
+            mock.patch.object(
+                server._state,
+                "get_latest_close_ts",
+                return_value=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            ),
             mock.patch.object(server._state, "get_rolling_threshold", return_value=0.5),
             mock.patch.object(
                 server._state,
@@ -1075,7 +1155,7 @@ class TestPredictEndpoint:
 
     def test_predict_scopes_candidates_to_completed_bar_ticks(self, client):
         import unittest.mock as mock
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timezone
         from types import SimpleNamespace
 
         import numpy as np
@@ -1171,7 +1251,7 @@ class TestPredictEndpoint:
 
     def test_predict_returns_empty_when_completed_ticks_exclude_all_candidates(self, client):
         import unittest.mock as mock
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timezone
         from types import SimpleNamespace
 
         import numpy as np
@@ -1246,7 +1326,7 @@ class TestPredictEndpoint:
 
     def test_predict_override_false_disables_account_risk_guard_eval(self, client):
         import unittest.mock as mock
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timezone
         from types import SimpleNamespace
 
         import numpy as np
@@ -1295,7 +1375,16 @@ class TestPredictEndpoint:
             mock.patch.object(
                 server,
                 "_ensure_model_and_threshold",
-                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test", "rolling_threshold_days": 20, "rolling_threshold_min_history": 1, "execution_quantile": 0.9}),
+                return_value=(
+                    dummy_model,
+                    {
+                        "threshold_exec": 0.5,
+                        "threshold_source": "test",
+                        "rolling_threshold_days": 20,
+                        "rolling_threshold_min_history": 1,
+                        "execution_quantile": 0.9,
+                    },
+                ),
             ),
             mock.patch.object(server, "_check_warmup", return_value=None),
             mock.patch.object(server._state, "compute_features", return_value=dummy_features),
@@ -1305,7 +1394,11 @@ class TestPredictEndpoint:
                 return_value=datetime(2025, 1, 1, tzinfo=timezone.utc),
             ),
             mock.patch.object(server._state, "get_rolling_threshold", return_value=0.5),
-            mock.patch.object(server, "evaluate_trade_guard", side_effect=AssertionError("guard should be skipped")),
+            mock.patch.object(
+                server,
+                "evaluate_trade_guard",
+                side_effect=AssertionError("guard should be skipped"),
+            ),
         ):
             r = client.post(
                 "/predict",
@@ -1325,7 +1418,7 @@ class TestPredictEndpoint:
     def test_predict_warn_trade_cost_gate_keeps_selection(self, client):
         import unittest.mock as mock
         from dataclasses import replace
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timezone
         from pathlib import Path
         from types import SimpleNamespace
 
@@ -1383,7 +1476,16 @@ class TestPredictEndpoint:
             mock.patch.object(
                 server,
                 "_ensure_model_and_threshold",
-                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test", "rolling_threshold_days": 20, "rolling_threshold_min_history": 1, "execution_quantile": 0.9}),
+                return_value=(
+                    dummy_model,
+                    {
+                        "threshold_exec": 0.5,
+                        "threshold_source": "test",
+                        "rolling_threshold_days": 20,
+                        "rolling_threshold_min_history": 1,
+                        "execution_quantile": 0.9,
+                    },
+                ),
             ),
             mock.patch.object(server, "_check_warmup", return_value=None),
             mock.patch.object(server._state, "compute_features", return_value=dummy_features),
@@ -1434,13 +1536,16 @@ class TestPredictEndpoint:
             assert rows[0]["selected_exec"] == 1
             assert rows[0]["risk_blocked"] is False
             assert rows[0]["risk_metrics_snapshot"]["trade_cost_gate_mode"] == "warn"
-            assert rows[0]["risk_metrics_snapshot"]["trade_cost_gate_block_reason"] == "ACCOUNT_RISK_COST_VIABILITY_FAIL"
+            assert (
+                rows[0]["risk_metrics_snapshot"]["trade_cost_gate_block_reason"]
+                == "ACCOUNT_RISK_COST_VIABILITY_FAIL"
+            )
             assert rows[0]["risk_metrics_snapshot"]["would_block_under_trade_cost_gate"] is True
 
     def test_predict_enforce_trade_cost_gate_blocks_selection(self, client):
         import unittest.mock as mock
         from dataclasses import replace
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timezone
         from pathlib import Path
         from types import SimpleNamespace
 
@@ -1498,7 +1603,16 @@ class TestPredictEndpoint:
             mock.patch.object(
                 server,
                 "_ensure_model_and_threshold",
-                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test", "rolling_threshold_days": 20, "rolling_threshold_min_history": 1, "execution_quantile": 0.9}),
+                return_value=(
+                    dummy_model,
+                    {
+                        "threshold_exec": 0.5,
+                        "threshold_source": "test",
+                        "rolling_threshold_days": 20,
+                        "rolling_threshold_min_history": 1,
+                        "execution_quantile": 0.9,
+                    },
+                ),
             ),
             mock.patch.object(server, "_check_warmup", return_value=None),
             mock.patch.object(server._state, "compute_features", return_value=dummy_features),
@@ -1552,7 +1666,7 @@ class TestPredictEndpoint:
 
     def test_predict_blocks_candidate_when_regime_inactive(self, client):
         import unittest.mock as mock
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timezone
         from types import SimpleNamespace
 
         import numpy as np
@@ -1639,7 +1753,7 @@ class TestPredictEndpoint:
 
     def test_predict_allocator_blocks_when_budget_exceeded(self, client):
         import unittest.mock as mock
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timezone
         from types import SimpleNamespace
 
         import numpy as np
@@ -1660,10 +1774,22 @@ class TestPredictEndpoint:
         cand_large.candidate_uid = "cand_large"
 
         dummy_features = ModelFeatures(
-            cost_est_pips=0.1, range_pips=10.0, ret1_pips=2.0, ret_z=0.5, ret_abs_z=0.5,
-            vel_cost_units_h1=2.0, vel_abs_cost_units_h1=2.0, spread_z=0.1, tick_rate_z=0.1,
-            hour_utc=10.0, hl_first=1.0, hl_first_mean_24=0.5, hl_pos_frac_mean_24=0.5,
-            bar_ticks=100.0, horizon=6.0, barrier_pips=3.0
+            cost_est_pips=0.1,
+            range_pips=10.0,
+            ret1_pips=2.0,
+            ret_z=0.5,
+            ret_abs_z=0.5,
+            vel_cost_units_h1=2.0,
+            vel_abs_cost_units_h1=2.0,
+            spread_z=0.1,
+            tick_rate_z=0.1,
+            hour_utc=10.0,
+            hl_first=1.0,
+            hl_first_mean_24=0.5,
+            hl_pos_frac_mean_24=0.5,
+            bar_ticks=100.0,
+            horizon=6.0,
+            barrier_pips=3.0,
         )
         dummy_model = mock.MagicMock()
         dummy_model.predict_proba.side_effect = [
@@ -1684,11 +1810,24 @@ class TestPredictEndpoint:
             mock.patch.object(
                 server,
                 "_ensure_model_and_threshold",
-                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test", "rolling_threshold_days": 20, "rolling_threshold_min_history": 1, "execution_quantile": 0.9}),
+                return_value=(
+                    dummy_model,
+                    {
+                        "threshold_exec": 0.5,
+                        "threshold_source": "test",
+                        "rolling_threshold_days": 20,
+                        "rolling_threshold_min_history": 1,
+                        "execution_quantile": 0.9,
+                    },
+                ),
             ),
             mock.patch.object(server, "_check_warmup", return_value=None),
             mock.patch.object(server._state, "compute_features", return_value=dummy_features),
-            mock.patch.object(server._state, "get_latest_close_ts", return_value=datetime(2025, 1, 1, tzinfo=timezone.utc)),
+            mock.patch.object(
+                server._state,
+                "get_latest_close_ts",
+                return_value=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            ),
             mock.patch.object(server._state, "get_rolling_threshold", return_value=0.5),
             mock.patch.object(
                 server,
@@ -1728,7 +1867,9 @@ class TestPredictEndpoint:
             assert r.status_code == 200
             rows = r.json()
             assert len(rows) == 2
-            blocked = [x for x in rows if x["risk_block_reason"] == "ACCOUNT_RISK_RESERVED_BUDGET_EXCEEDED"]
+            blocked = [
+                x for x in rows if x["risk_block_reason"] == "ACCOUNT_RISK_RESERVED_BUDGET_EXCEEDED"
+            ]
             admitted = [x for x in rows if x["selected_exec"] == 1]
             assert len(blocked) == 1
             assert len(admitted) == 1
@@ -1750,16 +1891,19 @@ class TestTradeEndpoints:
 
         from src.behemoth.api import server
 
-        with mock.patch.object(server._state, 'open_trade', return_value=123):
-            r = client.post("/trades/open", json={
-                "symbol": "EURUSD",
-                "candidate_uid": "test_cand",
-                "broker_pos_id": "456",
-                "side": "BUY",
-                "entry_price": 1.1000,
-                "entry_ts": "2025-01-01T00:00:00Z",
-                "horizon": 12,
-            })
+        with mock.patch.object(server._state, "open_trade", return_value=123):
+            r = client.post(
+                "/trades/open",
+                json={
+                    "symbol": "EURUSD",
+                    "candidate_uid": "test_cand",
+                    "broker_pos_id": "456",
+                    "side": "BUY",
+                    "entry_price": 1.1000,
+                    "entry_ts": "2025-01-01T00:00:00Z",
+                    "horizon": 12,
+                },
+            )
             assert r.status_code == 200
             assert r.json()["internal_trade_id"] == 123
 
@@ -1772,13 +1916,16 @@ class TestTradeEndpoints:
         mock_con.execute().fetchone.return_value = [999]
 
         with (
-            mock.patch.object(server._state, '_con', mock_con),
-            mock.patch.object(server._state, 'touch_trade'),
+            mock.patch.object(server._state, "_con", mock_con),
+            mock.patch.object(server._state, "touch_trade"),
         ):
-            r = client.post("/trades/touch", json={
-                "symbol": "EURUSD",
-                "broker_pos_id": "456",
-            })
+            r = client.post(
+                "/trades/touch",
+                json={
+                    "symbol": "EURUSD",
+                    "broker_pos_id": "456",
+                },
+            )
             assert r.status_code == 200
             assert r.json()["status"] == "ok"
 
@@ -1787,15 +1934,18 @@ class TestTradeEndpoints:
 
         from src.behemoth.api import server
 
-        with mock.patch.object(server._state, 'update_trade'):
-            r = client.post("/trades/update", json={
-                "symbol": "EURUSD",
-                "broker_pos_id": "456",
-                "status": "CLOSED",
-                "exit_price": 1.1050,
-                "exit_ts": "2025-01-01T02:00:00Z",
-                "pnl_pips": 50.0,
-            })
+        with mock.patch.object(server._state, "update_trade"):
+            r = client.post(
+                "/trades/update",
+                json={
+                    "symbol": "EURUSD",
+                    "broker_pos_id": "456",
+                    "status": "CLOSED",
+                    "exit_price": 1.1050,
+                    "exit_ts": "2025-01-01T02:00:00Z",
+                    "pnl_pips": 50.0,
+                },
+            )
             assert r.status_code == 200
             assert r.json()["status"] == "ok"
 
@@ -1804,57 +1954,88 @@ class TestTradeEndpoints:
 
         from src.behemoth.api import server
 
-        with mock.patch.object(server._state, 'get_active_trades', return_value=[]):
+        with mock.patch.object(server._state, "get_active_trades", return_value=[]):
             r = client.get("/trades/active?symbol=EURUSD")
             assert r.status_code == 200
             assert r.json() == []
 
     def test_trade_endpoints_uninitialized_state(self, client):
         from src.behemoth.api import server
+
         original_state = server._state
         server._state = None
         try:
-            assert client.post("/trades/open", json={"symbol": "E", "candidate_uid": "C", "broker_pos_id": "1", "side": "BUY", "entry_price": 1.0, "entry_ts": "2025-01-01T00:00:00Z", "horizon": 12}).status_code == 503
-            assert client.post("/trades/touch", json={"symbol": "E", "broker_pos_id": "1"}).status_code == 503
-            assert client.post("/trades/update", json={"symbol": "E", "broker_pos_id": "1", "status": "CLOSED"}).status_code == 503
+            assert (
+                client.post(
+                    "/trades/open",
+                    json={
+                        "symbol": "E",
+                        "candidate_uid": "C",
+                        "broker_pos_id": "1",
+                        "side": "BUY",
+                        "entry_price": 1.0,
+                        "entry_ts": "2025-01-01T00:00:00Z",
+                        "horizon": 12,
+                    },
+                ).status_code
+                == 503
+            )
+            assert (
+                client.post("/trades/touch", json={"symbol": "E", "broker_pos_id": "1"}).status_code
+                == 503
+            )
+            assert (
+                client.post(
+                    "/trades/update", json={"symbol": "E", "broker_pos_id": "1", "status": "CLOSED"}
+                ).status_code
+                == 503
+            )
             assert client.get("/trades/active?symbol=E").status_code == 503
         finally:
             server._state = original_state
 
     def test_open_trade_passes_reservation_id(self, client):
         import unittest.mock as mock
+
         from src.behemoth.api import server
 
-        with mock.patch.object(server._state, 'open_trade', return_value="trade-abc") as mock_open:
-            r = client.post("/trades/open", json={
-                "symbol": "EURUSD",
-                "candidate_uid": "test_cand",
-                "broker_pos_id": "456",
-                "side": "BUY",
-                "entry_price": 1.1000,
-                "entry_ts": "2025-01-01T00:00:00Z",
-                "horizon": 12,
-                "reservation_id": "res-xyz-999",
-            })
+        with mock.patch.object(server._state, "open_trade", return_value="trade-abc") as mock_open:
+            r = client.post(
+                "/trades/open",
+                json={
+                    "symbol": "EURUSD",
+                    "candidate_uid": "test_cand",
+                    "broker_pos_id": "456",
+                    "side": "BUY",
+                    "entry_price": 1.1000,
+                    "entry_ts": "2025-01-01T00:00:00Z",
+                    "horizon": 12,
+                    "reservation_id": "res-xyz-999",
+                },
+            )
             assert r.status_code == 200
             call_kwargs = mock_open.call_args.kwargs
             assert call_kwargs["reservation_id"] == "res-xyz-999"
 
     def test_update_trade_passes_close_reason_and_commission(self, client):
         import unittest.mock as mock
+
         from src.behemoth.api import server
 
-        with mock.patch.object(server._state, 'update_trade') as mock_update:
-            r = client.post("/trades/update", json={
-                "symbol": "EURUSD",
-                "broker_pos_id": "456",
-                "status": "CLOSED",
-                "exit_price": 1.1050,
-                "exit_ts": "2025-01-01T02:00:00Z",
-                "pnl_pips": 50.0,
-                "close_reason": "HORIZON_COMPLETED",
-                "commission_ccy": -0.46,
-            })
+        with mock.patch.object(server._state, "update_trade") as mock_update:
+            r = client.post(
+                "/trades/update",
+                json={
+                    "symbol": "EURUSD",
+                    "broker_pos_id": "456",
+                    "status": "CLOSED",
+                    "exit_price": 1.1050,
+                    "exit_ts": "2025-01-01T02:00:00Z",
+                    "pnl_pips": 50.0,
+                    "close_reason": "HORIZON_COMPLETED",
+                    "commission_ccy": -0.46,
+                },
+            )
             assert r.status_code == 200
             call_kwargs = mock_update.call_args.kwargs
             assert call_kwargs["close_reason"] == "HORIZON_COMPLETED"
@@ -1865,6 +2046,7 @@ class TestTradeEndpoints:
 class TestIngestionEndpoints:
     def test_backfill_uninitialized(self, client):
         from src.behemoth.api import server
+
         original_state = server._state
         server._state = None
         try:
@@ -1875,13 +2057,19 @@ class TestIngestionEndpoints:
 
     def test_ingest_tick_uninitialized(self, client):
         from src.behemoth.api import server
+
         original_state = server._state
         server._state = None
         try:
-            r = client.post("/ticks", json={
-                "symbol": "EURUSD", "timestamp": "2025-01-01T00:00:00Z",
-                "bid": 1.1, "ask": 1.1
-            })
+            r = client.post(
+                "/ticks",
+                json={
+                    "symbol": "EURUSD",
+                    "timestamp": "2025-01-01T00:00:00Z",
+                    "bid": 1.1,
+                    "ask": 1.1,
+                },
+            )
             assert r.status_code == 503
         finally:
             server._state = original_state
@@ -1896,15 +2084,23 @@ class TestIngestionEndpoints:
 
         with (
             mock.patch.dict(server._aggregators, {"EURUSD": dummy_agg}),
-            mock.patch.object(server._state, 'append_bar') as mock_append,
-            mock.patch.object(server._state, 'bar_count', return_value=300),
+            mock.patch.object(server._state, "append_bar") as mock_append,
+            mock.patch.object(server._state, "bar_count", return_value=300),
         ):
-            r = client.post("/backfill", json={
-                "symbol": "EURUSD",
-                "ticks": [
-                    {"symbol": "EURUSD", "timestamp": "2025-01-01T00:00:00Z", "bid": 1.1, "ask": 1.1},
-                ]
-            })
+            r = client.post(
+                "/backfill",
+                json={
+                    "symbol": "EURUSD",
+                    "ticks": [
+                        {
+                            "symbol": "EURUSD",
+                            "timestamp": "2025-01-01T00:00:00Z",
+                            "bid": 1.1,
+                            "ask": 1.1,
+                        },
+                    ],
+                },
+            )
             assert r.status_code == 201
             res = r.json()
             assert res["bars_created"] == 2
@@ -1918,17 +2114,36 @@ class TestIngestionEndpoints:
         from src.behemoth.runtime.tick_aggregator import IncomingTickBar
 
         dummy_agg = mock.MagicMock()
-        dummy_bar = IncomingTickBar(symbol="EURUSD", bar_ticks=100, timestamp="2025-01-01T00:00:00Z", close_ts="2025-01-01T00:00:10Z", open=1.0, high=1.0, low=1.0, close=1.0, spread=0.0, tick_volume=100.0, hl_first=1.0, hl_pos_frac=0.5)
+        dummy_bar = IncomingTickBar(
+            symbol="EURUSD",
+            bar_ticks=100,
+            timestamp="2025-01-01T00:00:00Z",
+            close_ts="2025-01-01T00:00:10Z",
+            open=1.0,
+            high=1.0,
+            low=1.0,
+            close=1.0,
+            spread=0.0,
+            tick_volume=100.0,
+            hl_first=1.0,
+            hl_pos_frac=0.5,
+        )
         dummy_agg.add_ticks.return_value = [dummy_bar]
 
         with (
             mock.patch.dict(server._aggregators, {"EURUSD": dummy_agg}),
-            mock.patch.object(server._state, 'append_bar') as mock_append,
-            mock.patch.object(server._state, 'bar_count', return_value=150),
+            mock.patch.object(server._state, "append_bar") as mock_append,
+            mock.patch.object(server._state, "bar_count", return_value=150),
         ):
-            r = client.post("/ticks", json={
-                "symbol": "EURUSD", "timestamp": "2025-01-01T00:00:10Z", "bid": 1.1, "ask": 1.1
-            })
+            r = client.post(
+                "/ticks",
+                json={
+                    "symbol": "EURUSD",
+                    "timestamp": "2025-01-01T00:00:10Z",
+                    "bid": 1.1,
+                    "ask": 1.1,
+                },
+            )
             assert r.status_code == 201
             res = r.json()
             assert res["tick_accepted"] is True
@@ -2022,7 +2237,11 @@ class TestIngestionEndpoints:
             with (
                 mock.patch.object(server._state, "record_raw_tick") as mock_raw,
                 mock.patch.object(server._state, "bar_count", return_value=0),
-                mock.patch.dict(server._aggregators, {100: mock.MagicMock(add_ticks=mock.MagicMock(return_value=[]))}, clear=True),
+                mock.patch.dict(
+                    server._aggregators,
+                    {100: mock.MagicMock(add_ticks=mock.MagicMock(return_value=[]))},
+                    clear=True,
+                ),
             ):
                 r = client.post(
                     "/ticks",
@@ -2213,7 +2432,11 @@ class TestIngestionEndpoints:
 
         with (
             mock.patch.object(server._state, "bar_count", return_value=0),
-            mock.patch.dict(server._aggregators, {100: mock.MagicMock(add_ticks=mock.MagicMock(return_value=[]))}, clear=True),
+            mock.patch.dict(
+                server._aggregators,
+                {100: mock.MagicMock(add_ticks=mock.MagicMock(return_value=[]))},
+                clear=True,
+            ),
         ):
             r = client.post(
                 "/ticks/batch",
@@ -2242,6 +2465,7 @@ class TestCheckpointEndpoint:
 
     def test_checkpoint_503_when_state_uninitialized(self, client):
         from src.behemoth.api import server
+
         original = server._state
         server._state = None
         try:
@@ -2291,6 +2515,7 @@ class TestPredictWarmup:
 
     def test_warmup_503_when_state_uninitialized(self, client):
         from src.behemoth.api import server
+
         original = server._state
         server._state = None
         try:
@@ -2303,11 +2528,13 @@ class TestPredictWarmup:
 class TestSeedAuditHistory:
     def test_config_has_dukascopy_ticks_dir(self):
         from src.behemoth.api import server
+
         assert hasattr(server._config, "dukascopy_ticks_dir")
         assert server._config.dukascopy_ticks_dir  # non-empty string
 
     def test_seed_503_when_state_uninitialized(self, client):
         from src.behemoth.api import server
+
         original = server._state
         server._state = None
         try:
@@ -2326,23 +2553,25 @@ class TestSeedAuditHistory:
         sym_dir.mkdir()
         now = datetime.now(tz=timezone.utc)
         ts = pd.date_range(start=now - timedelta(days=25), periods=500, freq="1s", tz="UTC")
-        df = pd.DataFrame({
-            "timestamp": ts,
-            "bid": np.full(500, 1.3000),
-            "ask": np.full(500, 1.3001),
-            "mid": np.full(500, 1.30005),
-            "spread": np.full(500, 0.0001),
-            "log_return": np.zeros(500),
-        })
+        df = pd.DataFrame(
+            {
+                "timestamp": ts,
+                "bid": np.full(500, 1.3000),
+                "ask": np.full(500, 1.3001),
+                "mid": np.full(500, 1.30005),
+                "spread": np.full(500, 0.0001),
+                "log_return": np.zeros(500),
+            }
+        )
         month_str = (now - timedelta(days=25)).strftime("%Y%m")
         df.to_parquet(sym_dir / f"{sym}_{month_str}_ticks.parquet", index=False)
 
         from src.behemoth.api import server
+
         original_dir = server._config.dukascopy_ticks_dir
         server._config.dukascopy_ticks_dir = str(tmp_path)
         try:
-            r = client.post("/state/seed_audit_history",
-                            json={"symbols": [sym], "days_back": 30})
+            r = client.post("/state/seed_audit_history", json={"symbols": [sym], "days_back": 30})
             assert r.status_code == 201
             body = r.json()
             assert body["ok"] is True
@@ -2365,14 +2594,16 @@ class TestSeedAuditHistory:
         n = 30_000
         now = datetime.now(tz=timezone.utc)
         ts = pd.date_range(start=now - timedelta(days=25), periods=n, freq="1s", tz="UTC")
-        df = pd.DataFrame({
-            "timestamp": ts,
-            "bid": np.full(n, 1.3000),
-            "ask": np.full(n, 1.3001),
-            "mid": np.full(n, 1.30005),
-            "spread": np.full(n, 0.0001),
-            "log_return": np.zeros(n),
-        })
+        df = pd.DataFrame(
+            {
+                "timestamp": ts,
+                "bid": np.full(n, 1.3000),
+                "ask": np.full(n, 1.3001),
+                "mid": np.full(n, 1.30005),
+                "spread": np.full(n, 0.0001),
+                "log_return": np.zeros(n),
+            }
+        )
         month_str = (now - timedelta(days=25)).strftime("%Y%m")
         df.to_parquet(sym_dir / f"{sym}_{month_str}_ticks.parquet", index=False)
 
@@ -2385,9 +2616,9 @@ class TestSeedAuditHistory:
         dummy_cand.candidate_uid = "cand1"
 
         dummy_model = mock.MagicMock()
-        dummy_model.predict_proba.side_effect = lambda X: np.column_stack([
-            np.full(len(X), 0.15), np.full(len(X), 0.85)
-        ])
+        dummy_model.predict_proba.side_effect = lambda X: np.column_stack(
+            [np.full(len(X), 0.15), np.full(len(X), 0.85)]
+        )
 
         original_dir = server._config.dukascopy_ticks_dir
         server._config.dukascopy_ticks_dir = str(tmp_path)
@@ -2408,8 +2639,9 @@ class TestSeedAuditHistory:
                     return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
                 ),
             ):
-                r = client.post("/state/seed_audit_history",
-                                json={"symbols": [sym], "days_back": 30})
+                r = client.post(
+                    "/state/seed_audit_history", json={"symbols": [sym], "days_back": 30}
+                )
             assert r.status_code == 201
             body = r.json()
             assert body["ok"] is True
@@ -2421,11 +2653,13 @@ class TestSeedAuditHistory:
     def test_seed_skips_missing_symbol_gracefully(self, client, tmp_path):
         """Symbol with no parquet dir → 201 with 0 events for that symbol."""
         from src.behemoth.api import server
+
         original_dir = server._config.dukascopy_ticks_dir
         server._config.dukascopy_ticks_dir = str(tmp_path)
         try:
-            r = client.post("/state/seed_audit_history",
-                            json={"symbols": ["GBPUSD"], "days_back": 20})
+            r = client.post(
+                "/state/seed_audit_history", json={"symbols": ["GBPUSD"], "days_back": 20}
+            )
             assert r.status_code == 201
             body = r.json()
             assert body["ok"] is True
@@ -2436,6 +2670,7 @@ class TestSeedAuditHistory:
     def test_seed_422_when_ticks_dir_missing(self, client):
         """If dukascopy_ticks_dir does not exist on disk, return 422."""
         from src.behemoth.api import server
+
         original_dir = server._config.dukascopy_ticks_dir
         server._config.dukascopy_ticks_dir = "/nonexistent/path/that/does/not/exist"
         try:

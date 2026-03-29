@@ -22,7 +22,9 @@ def _table(df: pd.DataFrame) -> str:
 
 
 def _parse_symbols(raw: str) -> list[str]:
-    return sorted(list(dict.fromkeys([s.strip().upper() for s in str(raw).split(",") if s.strip()])))
+    return sorted(
+        list(dict.fromkeys([s.strip().upper() for s in str(raw).split(",") if s.strip()]))
+    )
 
 
 def _parse_months(raw: str) -> list[str]:
@@ -59,7 +61,9 @@ def _load_ticks(path: Path) -> pd.DataFrame:
     return out
 
 
-def trim_to_overlap(reference: pd.DataFrame, candidate: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+def trim_to_overlap(
+    reference: pd.DataFrame, candidate: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     if reference.empty or candidate.empty:
         return reference.iloc[0:0].copy(), candidate.iloc[0:0].copy()
     start = max(reference["timestamp"].min(), candidate["timestamp"].min())
@@ -67,7 +71,9 @@ def trim_to_overlap(reference: pd.DataFrame, candidate: pd.DataFrame) -> tuple[p
     if pd.isna(start) or pd.isna(end) or not (start <= end):
         return reference.iloc[0:0].copy(), candidate.iloc[0:0].copy()
     ref_trim = reference[(reference["timestamp"] >= start) & (reference["timestamp"] <= end)].copy()
-    cand_trim = candidate[(candidate["timestamp"] >= start) & (candidate["timestamp"] <= end)].copy()
+    cand_trim = candidate[
+        (candidate["timestamp"] >= start) & (candidate["timestamp"] <= end)
+    ].copy()
     return ref_trim.reset_index(drop=True), cand_trim.reset_index(drop=True)
 
 
@@ -114,7 +120,8 @@ def _intertick_stats(df: pd.DataFrame, prefix: str) -> dict[str, Any]:
             f"{prefix}_intertick_ms_p99": float("nan"),
         }
     diffs = (
-        df["timestamp"].sort_values().diff().dropna().dt.total_seconds().astype(float).to_numpy() * 1000.0
+        df["timestamp"].sort_values().diff().dropna().dt.total_seconds().astype(float).to_numpy()
+        * 1000.0
     )
     return {
         f"{prefix}_intertick_ms_mean": float(np.mean(diffs)),
@@ -143,7 +150,9 @@ def _source_stats(df: pd.DataFrame, prefix: str) -> dict[str, Any]:
         f"{prefix}_last_ts": df["timestamp"].max().isoformat() if not df.empty else "",
         f"{prefix}_covered_days": _covered_days(df),
         f"{prefix}_duplicate_ts_ratio": _duplicate_ratio(df),
-        f"{prefix}_nonpositive_spread_ratio": float((df["spread"] <= 0).mean()) if not df.empty else float("nan"),
+        f"{prefix}_nonpositive_spread_ratio": float((df["spread"] <= 0).mean())
+        if not df.empty
+        else float("nan"),
     }
     for field in ["bid", "ask", "mid", "spread"]:
         row.update(_series_stats(df[field], f"{prefix}_{field}"))
@@ -210,7 +219,9 @@ def infer_daily_lag_schedule(
         best_corr = float("nan")
         best_count = 0
         for lag, shifted_series in shifted.items():
-            cand_day = shifted_series.loc[(shifted_series.index >= day) & (shifted_series.index < nxt)]
+            cand_day = shifted_series.loc[
+                (shifted_series.index >= day) & (shifted_series.index < nxt)
+            ]
             merged = (
                 ref_day.rename("ref")
                 .to_frame()
@@ -282,22 +293,24 @@ def _apply_daily_lag(candidate: pd.DataFrame, schedule: pd.DataFrame) -> pd.Data
         end_ref = start_ref + pd.Timedelta(days=1)
         start_orig = start_ref - pd.Timedelta(hours=lag)
         end_orig = end_ref - pd.Timedelta(hours=lag)
-        mask = (
-            out["timestamp"].ge(start_orig)
-            & out["timestamp"].lt(end_orig)
-            & lag_values.isna()
-        )
+        mask = out["timestamp"].ge(start_orig) & out["timestamp"].lt(end_orig) & lag_values.isna()
         lag_values.loc[mask] = lag
     if lag_values.notna().any():
         lag_values = lag_values.ffill().bfill()
     out["lag_hours_applied"] = lag_values
-    out["timestamp"] = out["timestamp"] + pd.to_timedelta(out["lag_hours_applied"].fillna(0.0), unit="h")
+    out["timestamp"] = out["timestamp"] + pd.to_timedelta(
+        out["lag_hours_applied"].fillna(0.0), unit="h"
+    )
     return out
 
 
-def _minute_similarity(reference: pd.DataFrame, candidate: pd.DataFrame, *, pip_size: float) -> tuple[dict[str, Any], pd.DataFrame]:
+def _minute_similarity(
+    reference: pd.DataFrame, candidate: pd.DataFrame, *, pip_size: float
+) -> tuple[dict[str, Any], pd.DataFrame]:
     ref_minute = _minute_frame(reference).rename(columns={"mid": "ref_mid", "spread": "ref_spread"})
-    cand_minute = _minute_frame(candidate).rename(columns={"mid": "cand_mid", "spread": "cand_spread"})
+    cand_minute = _minute_frame(candidate).rename(
+        columns={"mid": "cand_mid", "spread": "cand_spread"}
+    )
     merged = ref_minute.merge(cand_minute, on="minute", how="inner")
     if merged.empty:
         return (
@@ -339,7 +352,9 @@ def _minute_similarity(reference: pd.DataFrame, candidate: pd.DataFrame, *, pip_
         )
         ref_vol = float(valid_ret["ref_return_pips"].std(ddof=0))
         cand_vol = float(valid_ret["cand_return_pips"].std(ddof=0))
-        vol_ratio = float(cand_vol / ref_vol) if np.isfinite(ref_vol) and ref_vol > 0 else float("nan")
+        vol_ratio = (
+            float(cand_vol / ref_vol) if np.isfinite(ref_vol) and ref_vol > 0 else float("nan")
+        )
 
     mid_mae = float(np.mean(np.abs((merged["cand_mid"] - merged["ref_mid"]) / float(pip_size))))
     spread_mae = float(
@@ -362,11 +377,15 @@ def _minute_similarity(reference: pd.DataFrame, candidate: pd.DataFrame, *, pip_
         .sort_values("hour_start_utc")
         .reset_index(drop=True)
     )
-    hourly["reference_minutes"] = pd.to_numeric(hourly["reference_minutes"], errors="coerce").fillna(0).astype(int)
-    hourly["candidate_minutes"] = pd.to_numeric(hourly["candidate_minutes"], errors="coerce").fillna(0).astype(int)
-    hourly["coverage_ratio_candidate_vs_reference"] = (
-        hourly["candidate_minutes"] / hourly["reference_minutes"].replace(0, np.nan)
+    hourly["reference_minutes"] = (
+        pd.to_numeric(hourly["reference_minutes"], errors="coerce").fillna(0).astype(int)
     )
+    hourly["candidate_minutes"] = (
+        pd.to_numeric(hourly["candidate_minutes"], errors="coerce").fillna(0).astype(int)
+    )
+    hourly["coverage_ratio_candidate_vs_reference"] = hourly["candidate_minutes"] / hourly[
+        "reference_minutes"
+    ].replace(0, np.nan)
     metrics = {
         "overlap_minutes": int(len(merged)),
         "minute_return_corr": corr,
@@ -380,7 +399,9 @@ def _minute_similarity(reference: pd.DataFrame, candidate: pd.DataFrame, *, pip_
         "hourly_coverage_ratio_mean": float(hourly["coverage_ratio_candidate_vs_reference"].mean())
         if not hourly.empty
         else float("nan"),
-        "hourly_coverage_ratio_p05": _quantile(hourly["coverage_ratio_candidate_vs_reference"], 0.05)
+        "hourly_coverage_ratio_p05": _quantile(
+            hourly["coverage_ratio_candidate_vs_reference"], 0.05
+        )
         if not hourly.empty
         else float("nan"),
     }
@@ -411,7 +432,9 @@ def _build_tick_bars(df: pd.DataFrame, *, bar_ticks: int, pip_size: float) -> pd
     return bars.loc[:, ["bar_id", "bar_seconds", "bar_return_pips", "bar_spread_pips"]]
 
 
-def _bar_summary(reference: pd.DataFrame, candidate: pd.DataFrame, *, bar_ticks: int, pip_size: float) -> dict[str, Any]:
+def _bar_summary(
+    reference: pd.DataFrame, candidate: pd.DataFrame, *, bar_ticks: int, pip_size: float
+) -> dict[str, Any]:
     ref_bars = _build_tick_bars(reference, bar_ticks=bar_ticks, pip_size=pip_size)
     cand_bars = _build_tick_bars(candidate, bar_ticks=bar_ticks, pip_size=pip_size)
     row: dict[str, Any] = {
@@ -448,27 +471,32 @@ def _bar_summary(reference: pd.DataFrame, candidate: pd.DataFrame, *, bar_ticks:
         )
     row["seconds_per_bar_mean_delta"] = (
         row["candidate_seconds_per_bar_mean"] - row["reference_seconds_per_bar_mean"]
-        if np.isfinite(row["candidate_seconds_per_bar_mean"]) and np.isfinite(row["reference_seconds_per_bar_mean"])
+        if np.isfinite(row["candidate_seconds_per_bar_mean"])
+        and np.isfinite(row["reference_seconds_per_bar_mean"])
         else float("nan")
     )
     row["bar_return_abs_p50_delta_pips"] = (
         row["candidate_bar_return_abs_p50"] - row["reference_bar_return_abs_p50"]
-        if np.isfinite(row["candidate_bar_return_abs_p50"]) and np.isfinite(row["reference_bar_return_abs_p50"])
+        if np.isfinite(row["candidate_bar_return_abs_p50"])
+        and np.isfinite(row["reference_bar_return_abs_p50"])
         else float("nan")
     )
     row["bar_return_abs_p95_delta_pips"] = (
         row["candidate_bar_return_abs_p95"] - row["reference_bar_return_abs_p95"]
-        if np.isfinite(row["candidate_bar_return_abs_p95"]) and np.isfinite(row["reference_bar_return_abs_p95"])
+        if np.isfinite(row["candidate_bar_return_abs_p95"])
+        and np.isfinite(row["reference_bar_return_abs_p95"])
         else float("nan")
     )
     row["bar_spread_p50_delta_pips"] = (
         row["candidate_bar_spread_p50"] - row["reference_bar_spread_p50"]
-        if np.isfinite(row["candidate_bar_spread_p50"]) and np.isfinite(row["reference_bar_spread_p50"])
+        if np.isfinite(row["candidate_bar_spread_p50"])
+        and np.isfinite(row["reference_bar_spread_p50"])
         else float("nan")
     )
     row["bar_spread_p95_delta_pips"] = (
         row["candidate_bar_spread_p95"] - row["reference_bar_spread_p95"]
-        if np.isfinite(row["candidate_bar_spread_p95"]) and np.isfinite(row["reference_bar_spread_p95"])
+        if np.isfinite(row["candidate_bar_spread_p95"])
+        and np.isfinite(row["reference_bar_spread_p95"])
         else float("nan")
     )
     return row
@@ -531,10 +559,16 @@ def analyze_symbol_month(
         ref_trim, cand_trim = trim_to_overlap(reference, candidate_lens)
         row = dict(base_meta)
         row["lens"] = lens
-        row["overlap_start_ts"] = ref_trim["timestamp"].min().isoformat() if not ref_trim.empty else ""
-        row["overlap_end_ts"] = ref_trim["timestamp"].max().isoformat() if not ref_trim.empty else ""
+        row["overlap_start_ts"] = (
+            ref_trim["timestamp"].min().isoformat() if not ref_trim.empty else ""
+        )
+        row["overlap_end_ts"] = (
+            ref_trim["timestamp"].max().isoformat() if not ref_trim.empty else ""
+        )
         row["overlap_duration_hours"] = (
-            float((ref_trim["timestamp"].max() - ref_trim["timestamp"].min()).total_seconds() / 3600.0)
+            float(
+                (ref_trim["timestamp"].max() - ref_trim["timestamp"].min()).total_seconds() / 3600.0
+            )
             if len(ref_trim) >= 2
             else float("nan")
         )
@@ -552,7 +586,9 @@ def analyze_symbol_month(
         )
         row["lag_schedule_day_count"] = int(len(lag_schedule))
         row["lag_schedule_mode_hours"] = (
-            float(resolved["inferred_lag_hours"].mode().iloc[0]) if not resolved.empty else float("nan")
+            float(resolved["inferred_lag_hours"].mode().iloc[0])
+            if not resolved.empty
+            else float("nan")
         )
         summary_rows.append(row)
 
@@ -598,9 +634,15 @@ def _aggregate_overall(summary: pd.DataFrame) -> pd.DataFrame:
             "overlap_end_ts": grp["overlap_end_ts"].replace("", pd.NA).dropna().max()
             if "overlap_end_ts" in grp
             else "",
-            "lag_schedule_unresolved_days": int(pd.to_numeric(grp["lag_schedule_unresolved_days"], errors="coerce").fillna(0).sum()),
-            "lag_schedule_day_count": int(pd.to_numeric(grp["lag_schedule_day_count"], errors="coerce").fillna(0).sum()),
-            "lag_schedule_mode_hours": float(pd.to_numeric(grp["lag_schedule_mode_hours"], errors="coerce").mode().iloc[0])
+            "lag_schedule_unresolved_days": int(
+                pd.to_numeric(grp["lag_schedule_unresolved_days"], errors="coerce").fillna(0).sum()
+            ),
+            "lag_schedule_day_count": int(
+                pd.to_numeric(grp["lag_schedule_day_count"], errors="coerce").fillna(0).sum()
+            ),
+            "lag_schedule_mode_hours": float(
+                pd.to_numeric(grp["lag_schedule_mode_hours"], errors="coerce").mode().iloc[0]
+            )
             if pd.to_numeric(grp["lag_schedule_mode_hours"], errors="coerce").dropna().size
             else float("nan"),
         }
@@ -614,7 +656,9 @@ def _aggregate_overall(summary: pd.DataFrame) -> pd.DataFrame:
         for col in sum_cols:
             if col in grp.columns:
                 row[col] = float(pd.to_numeric(grp[col], errors="coerce").fillna(0).sum())
-        weighted_overlap = "overlap_minutes" if "overlap_minutes" in grp.columns else "reference_rows"
+        weighted_overlap = (
+            "overlap_minutes" if "overlap_minutes" in grp.columns else "reference_rows"
+        )
         weighted_rows = "reference_rows" if "reference_rows" in grp.columns else weighted_overlap
         for col in grp.columns:
             if col in row or col in {"symbol", "month", "lens", "reference_path", "candidate_path"}:
@@ -661,11 +705,14 @@ def _headline_lines(summary: pd.DataFrame, lag_schedule: pd.DataFrame) -> list[s
                 f"minute mid MAE `{float(row['minute_mid_mae_pips']):.3f}` pips; "
                 f"hourly coverage ratio mean `{float(row['hourly_coverage_ratio_mean']):.3f}`."
             )
-    resolved = lag_schedule[pd.to_numeric(lag_schedule["inferred_lag_hours"], errors="coerce").notna()].copy()
+    resolved = lag_schedule[
+        pd.to_numeric(lag_schedule["inferred_lag_hours"], errors="coerce").notna()
+    ].copy()
     if not resolved.empty:
-        lag_modes = (
-            resolved.groupby(["symbol", "month"], as_index=False)["inferred_lag_hours"]
-            .agg(lambda x: ",".join(sorted({str(int(v)) for v in pd.to_numeric(x, errors="coerce").dropna()})))
+        lag_modes = resolved.groupby(["symbol", "month"], as_index=False)["inferred_lag_hours"].agg(
+            lambda x: ",".join(
+                sorted({str(int(v)) for v in pd.to_numeric(x, errors="coerce").dropna()})
+            )
         )
         for _, row in lag_modes.iterrows():
             lines.append(
@@ -831,9 +878,15 @@ def main() -> None:
         report_out=Path(str(args.report_out)),
         min_overlap_minutes=int(args.min_overlap_minutes),
     )
-    print(f"wrote summary: {Path(str(args.out_dir)) / 'tick_source_similarity_summary.csv'} rows={len(summary)}")
-    print(f"wrote lag schedule: {Path(str(args.out_dir)) / 'tick_source_similarity_lag_schedule.csv'} rows={len(lag_schedule)}")
-    print(f"wrote hourly coverage: {Path(str(args.out_dir)) / 'tick_source_similarity_hourly_coverage.csv'} rows={len(coverage)}")
+    print(
+        f"wrote summary: {Path(str(args.out_dir)) / 'tick_source_similarity_summary.csv'} rows={len(summary)}"
+    )
+    print(
+        f"wrote lag schedule: {Path(str(args.out_dir)) / 'tick_source_similarity_lag_schedule.csv'} rows={len(lag_schedule)}"
+    )
+    print(
+        f"wrote hourly coverage: {Path(str(args.out_dir)) / 'tick_source_similarity_hourly_coverage.csv'} rows={len(coverage)}"
+    )
     print(f"wrote report: {args.report_out}")
 
 

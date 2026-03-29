@@ -1,4 +1,5 @@
 """Tests for JForex coverage gap diagnostic functions."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -83,7 +84,9 @@ def test_warmup_gap_count_zero_when_all_after_cutoff() -> None:
 
 
 def test_post_warmup_coverage_exact_match() -> None:
-    assert post_warmup_coverage(jforex_selected_total=79, locked_after_cutoff=79) == pytest.approx(1.0)
+    assert post_warmup_coverage(jforex_selected_total=79, locked_after_cutoff=79) == pytest.approx(
+        1.0
+    )
 
 
 def test_post_warmup_coverage_ratio_above_one_is_valid() -> None:

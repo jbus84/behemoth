@@ -54,10 +54,14 @@ def test_build_docs_catalog_outputs_manifest_and_index(tmp_path: Path) -> None:
     m = pd.read_csv(analysis / "catalog_manifest.csv")
     assert "analysis/data_reliability_report.md" in set(m["doc_path"].astype(str))
     assert "analysis/eurusd_tick_opportunity_mining_report.md" in set(m["doc_path"].astype(str))
-    candidate_row = m[m["doc_path"].astype(str) == "analysis/EURUSD_candidate_2025-07_h6_london_k2_drift.md"]
+    candidate_row = m[
+        m["doc_path"].astype(str) == "analysis/EURUSD_candidate_2025-07_h6_london_k2_drift.md"
+    ]
     assert not candidate_row.empty
     assert candidate_row.iloc[0]["group"] == "candidate"
-    offset_row = m[m["doc_path"].astype(str) == "analysis/eurusd_offset_tickbar_robustness_report.md"]
+    offset_row = m[
+        m["doc_path"].astype(str) == "analysis/eurusd_offset_tickbar_robustness_report.md"
+    ]
     assert not offset_row.empty
     assert int(offset_row.iloc[0]["stage_id"]) == 8
     assert offset_row.iloc[0]["group"] == "candidate"
@@ -65,7 +69,8 @@ def test_build_docs_catalog_outputs_manifest_and_index(tmp_path: Path) -> None:
     assert not stage12_row.empty
     assert stage12_row.iloc[0]["group"] == "compatibility"
     execution_parity_row = m[
-        m["doc_path"].astype(str) == "analysis/EURUSD_dukascopy_testclient_execution_parity_report.md"
+        m["doc_path"].astype(str)
+        == "analysis/EURUSD_dukascopy_testclient_execution_parity_report.md"
     ]
     assert not execution_parity_row.empty
     assert execution_parity_row.iloc[0]["group"] == "compatibility"
@@ -93,26 +98,30 @@ def test_build_docs_catalog_outputs_manifest_and_index(tmp_path: Path) -> None:
     candidate_block = index_text.split("## Candidate / Experimental Reports", maxsplit=1)[1].split(
         "## Compatibility / Legacy Reports", maxsplit=1
     )[0]
-    assert "[Eurusd Candidate 2025 07 H6 London K2 Drift](EURUSD_candidate_2025-07_h6_london_k2_drift.md)" in (
-        candidate_block
+    assert (
+        "[Eurusd Candidate 2025 07 H6 London K2 Drift](EURUSD_candidate_2025-07_h6_london_k2_drift.md)"
+        in (candidate_block)
     )
-    assert "[Eurusd Offset Tickbar Robustness Report](eurusd_offset_tickbar_robustness_report.md)" in (
-        candidate_block
+    assert (
+        "[Eurusd Offset Tickbar Robustness Report](eurusd_offset_tickbar_robustness_report.md)"
+        in (candidate_block)
     )
 
-    compatibility_block = index_text.split(
-        "## Compatibility / Legacy Reports", maxsplit=1
-    )[1].split("## Archive Reports", maxsplit=1)[0]
+    compatibility_block = index_text.split("## Compatibility / Legacy Reports", maxsplit=1)[
+        1
+    ].split("## Archive Reports", maxsplit=1)[0]
     assert "[Eurusd Stage12 Api Parity Report](EURUSD_stage12_api_parity_report.md)" in (
         compatibility_block
     )
-    assert "[Eurusd Dukascopy Testclient Execution Parity Report](EURUSD_dukascopy_testclient_execution_parity_report.md)" in (
-        compatibility_block
+    assert (
+        "[Eurusd Dukascopy Testclient Execution Parity Report](EURUSD_dukascopy_testclient_execution_parity_report.md)"
+        in (compatibility_block)
     )
 
     archive_block = index_text.split("## Archive Reports", maxsplit=1)[1]
-    assert "[Eurusd Tick Opportunity Ml Ready Report](../archive/analysis/eurusd_tick_opportunity_ml_ready_report.md)" in (
-        archive_block
+    assert (
+        "[Eurusd Tick Opportunity Ml Ready Report](../archive/analysis/eurusd_tick_opportunity_ml_ready_report.md)"
+        in (archive_block)
     )
 
     gaps_text = out_gaps.read_text(encoding="utf-8")
@@ -127,14 +136,16 @@ def test_build_docs_catalog_outputs_manifest_and_index(tmp_path: Path) -> None:
 
     canonical_map = pd.read_csv(analysis / "canonical_stage_map.csv")
     candidate_canonical_row = canonical_map[
-        canonical_map["doc_path"].astype(str) == "analysis/EURUSD_candidate_2025-07_h6_london_k2_drift.md"
+        canonical_map["doc_path"].astype(str)
+        == "analysis/EURUSD_candidate_2025-07_h6_london_k2_drift.md"
     ]
     assert not candidate_canonical_row.empty
     assert candidate_canonical_row.iloc[0]["class"] == "candidate"
     assert bool(candidate_canonical_row.iloc[0]["is_canonical"]) is False
 
     offset_canonical_row = canonical_map[
-        canonical_map["doc_path"].astype(str) == "analysis/eurusd_offset_tickbar_robustness_report.md"
+        canonical_map["doc_path"].astype(str)
+        == "analysis/eurusd_offset_tickbar_robustness_report.md"
     ]
     assert not offset_canonical_row.empty
     assert offset_canonical_row.iloc[0]["class"] == "candidate"

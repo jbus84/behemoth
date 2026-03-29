@@ -163,7 +163,9 @@ def run(
         trades["entry_ts"] = _to_utc_series(trades.get("entry_ts", pd.Series(dtype=object)))
         trades["exit_ts"] = _to_utc_series(trades.get("exit_ts", pd.Series(dtype=object)))
         trades["status"] = trades.get("status", pd.Series(dtype=str)).astype(str).str.upper()
-        trades["pnl_pips"] = pd.to_numeric(trades.get("pnl_pips", pd.Series(dtype=float)), errors="coerce")
+        trades["pnl_pips"] = pd.to_numeric(
+            trades.get("pnl_pips", pd.Series(dtype=float)), errors="coerce"
+        )
 
     if not audit.empty:
         audit["event_ts"] = _to_utc_series(audit.get("event_ts", pd.Series(dtype=object)))
@@ -196,11 +198,7 @@ def run(
         else 0
     )
 
-    audit_ratio = (
-        float(len(audit_window)) / float(len(audit))
-        if len(audit) > 0
-        else 0.0
-    )
+    audit_ratio = float(len(audit_window)) / float(len(audit)) if len(audit) > 0 else 0.0
 
     summary = pd.DataFrame(
         [
@@ -220,7 +218,9 @@ def run(
                 "trades_window_net_pnl_pips": float(
                     trades_window.loc[
                         trades_window.get("status", pd.Series(dtype=str)) == "CLOSED", "pnl_pips"
-                    ].fillna(0.0).sum()
+                    ]
+                    .fillna(0.0)
+                    .sum()
                 )
                 if not trades_window.empty
                 else 0.0,
@@ -233,28 +233,44 @@ def run(
                 "audit_event_window_ratio": float(audit_ratio),
                 "audit_rows_outside_window": audit_outside,
                 "trade_entry_min_utc": (
-                    trades["entry_ts"].min().isoformat() if not trades.empty and trades["entry_ts"].notna().any() else ""
+                    trades["entry_ts"].min().isoformat()
+                    if not trades.empty and trades["entry_ts"].notna().any()
+                    else ""
                 ),
                 "trade_entry_max_utc": (
-                    trades["entry_ts"].max().isoformat() if not trades.empty and trades["entry_ts"].notna().any() else ""
+                    trades["entry_ts"].max().isoformat()
+                    if not trades.empty and trades["entry_ts"].notna().any()
+                    else ""
                 ),
                 "trade_exit_min_utc": (
-                    trades["exit_ts"].min().isoformat() if not trades.empty and trades["exit_ts"].notna().any() else ""
+                    trades["exit_ts"].min().isoformat()
+                    if not trades.empty and trades["exit_ts"].notna().any()
+                    else ""
                 ),
                 "trade_exit_max_utc": (
-                    trades["exit_ts"].max().isoformat() if not trades.empty and trades["exit_ts"].notna().any() else ""
+                    trades["exit_ts"].max().isoformat()
+                    if not trades.empty and trades["exit_ts"].notna().any()
+                    else ""
                 ),
                 "audit_event_min_utc": (
-                    audit["event_ts"].min().isoformat() if not audit.empty and audit["event_ts"].notna().any() else ""
+                    audit["event_ts"].min().isoformat()
+                    if not audit.empty and audit["event_ts"].notna().any()
+                    else ""
                 ),
                 "audit_event_max_utc": (
-                    audit["event_ts"].max().isoformat() if not audit.empty and audit["event_ts"].notna().any() else ""
+                    audit["event_ts"].max().isoformat()
+                    if not audit.empty and audit["event_ts"].notna().any()
+                    else ""
                 ),
                 "audit_close_min_utc": (
-                    audit["close_ts"].min().isoformat() if not audit.empty and audit["close_ts"].notna().any() else ""
+                    audit["close_ts"].min().isoformat()
+                    if not audit.empty and audit["close_ts"].notna().any()
+                    else ""
                 ),
                 "audit_close_max_utc": (
-                    audit["close_ts"].max().isoformat() if not audit.empty and audit["close_ts"].notna().any() else ""
+                    audit["close_ts"].max().isoformat()
+                    if not audit.empty and audit["close_ts"].notna().any()
+                    else ""
                 ),
                 "evaluated_at_utc": now,
             }

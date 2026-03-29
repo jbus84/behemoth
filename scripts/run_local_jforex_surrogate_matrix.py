@@ -17,13 +17,14 @@ from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 
-
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 DEFAULT_START = "2025-07-07T00:00:00Z"
 DEFAULT_END = "2025-07-09T00:00:00Z"
 DEFAULT_MODELS_DIR = "models/oco_dukascopy_candidate"
 DEFAULT_HISTORY_DIR = "configs/research/governance/oco_history_dukascopy_candidate"
-DEFAULT_PREDICTIONS_DIR = "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap"
+DEFAULT_PREDICTIONS_DIR = (
+    "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap"
+)
 DEFAULT_TICK_ROOT = "/Users/danielfisher/Desktop/dukascopy_ticks"
 DEFAULT_API_PORT = 8000
 
@@ -84,7 +85,9 @@ def _parse_args() -> RunConfig:
     parser.add_argument("--phase-bar-ticks", type=int, default=100)
     parser.add_argument("--starting-balance", type=int, default=100000)
     parser.add_argument("--risk-enabled", action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument("--universe-mode", choices=["tolerant", "nearest", "ordinal", "exact"], default="tolerant")
+    parser.add_argument(
+        "--universe-mode", choices=["tolerant", "nearest", "ordinal", "exact"], default="tolerant"
+    )
     parser.add_argument("--ordinal-tolerance", type=int, default=0)
     parser.add_argument("--prediction-tolerance-sec", type=int, default=120)
     parser.add_argument("--locked-predictions-dir", default="")
@@ -146,7 +149,9 @@ def _poll_health(proc: subprocess.Popen[str], base_url: str, timeout_sec: float)
     while time.time() < deadline:
         if proc.poll() is not None:
             tail = _read_process_tail(proc)
-            raise RuntimeError(f"API process exited before becoming healthy: {tail or proc.returncode}")
+            raise RuntimeError(
+                f"API process exited before becoming healthy: {tail or proc.returncode}"
+            )
         try:
             with urllib.request.urlopen(f"{base_url}/health", timeout=2.0) as response:
                 if response.status == 200:
@@ -160,8 +165,12 @@ def _poll_health(proc: subprocess.Popen[str], base_url: str, timeout_sec: float)
 
 def _prediction_path(cfg: RunConfig, symbol: str) -> str:
     if cfg.locked_predictions_dir:
-        return str(Path(cfg.locked_predictions_dir) / f"{symbol.lower()}_oco_locked_predictions.parquet")
-    locked = Path(cfg.history_dir) / cfg.model_month / f"{symbol.lower()}_oco_locked_predictions.parquet"
+        return str(
+            Path(cfg.locked_predictions_dir) / f"{symbol.lower()}_oco_locked_predictions.parquet"
+        )
+    locked = (
+        Path(cfg.history_dir) / cfg.model_month / f"{symbol.lower()}_oco_locked_predictions.parquet"
+    )
     if locked.exists():
         return str(locked)
     return str(Path(cfg.predictions_dir) / f"{symbol}_oco_monthly_predictions.parquet")
@@ -171,7 +180,9 @@ def _state_db_path(cfg: RunConfig, symbol: str) -> Path:
     return _repo_root() / cfg.report_dir / "runtime" / f"{symbol.lower()}_local_jforex_state.db"
 
 
-def _start_api(cfg: RunConfig, symbol: str, api_port: int) -> tuple[subprocess.Popen[str], deque[str]]:
+def _start_api(
+    cfg: RunConfig, symbol: str, api_port: int
+) -> tuple[subprocess.Popen[str], deque[str]]:
     state_db_path = _state_db_path(cfg, symbol)
     state_db_path.parent.mkdir(parents=True, exist_ok=True)
     if state_db_path.exists():

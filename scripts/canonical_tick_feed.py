@@ -44,7 +44,11 @@ def month_tags_between(start: pd.Timestamp, end: pd.Timestamp) -> list[str]:
     if end_inclusive < start:
         return []
     s0 = start.tz_convert("UTC").tz_localize(None) if start.tzinfo is not None else start
-    e0 = end_inclusive.tz_convert("UTC").tz_localize(None) if end_inclusive.tzinfo is not None else end_inclusive
+    e0 = (
+        end_inclusive.tz_convert("UTC").tz_localize(None)
+        if end_inclusive.tzinfo is not None
+        else end_inclusive
+    )
     pr = pd.period_range(start=s0.to_period("M"), end=e0.to_period("M"), freq="M")
     return [str(p).replace("-", "") for p in pr]
 
@@ -65,7 +69,9 @@ def all_symbol_tick_files(symbol: str, root: Path) -> list[Path]:
     return sorted(p for p in (root / sym).glob(f"{sym}_*_ticks.parquet") if p.is_file())
 
 
-def month_scoped_tick_files(symbol: str, root: Path, start: pd.Timestamp, end: pd.Timestamp) -> list[Path]:
+def month_scoped_tick_files(
+    symbol: str, root: Path, start: pd.Timestamp, end: pd.Timestamp
+) -> list[Path]:
     sym = str(symbol).upper().strip()
     return [
         root / sym / f"{sym}_{m}_ticks.parquet"

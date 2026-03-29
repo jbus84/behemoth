@@ -7,7 +7,6 @@ import argparse
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import duckdb
 import pandas as pd
@@ -98,7 +97,9 @@ def _schema_check(path: Path) -> tuple[bool, bool, bool, str]:
             LIMIT 1000
             """
         ).fetchdf()
-        count_df = con.execute(f"SELECT COUNT(*) AS row_count FROM read_parquet('{quoted}')").fetchdf()
+        count_df = con.execute(
+            f"SELECT COUNT(*) AS row_count FROM read_parquet('{quoted}')"
+        ).fetchdf()
     finally:
         con.close()
 
@@ -161,7 +162,11 @@ def run(
                 )
             )
 
-    summary_df = pd.DataFrame([row.__dict__ for row in rows]).sort_values(["symbol", "month"]).reset_index(drop=True)
+    summary_df = (
+        pd.DataFrame([row.__dict__ for row in rows])
+        .sort_values(["symbol", "month"])
+        .reset_index(drop=True)
+    )
     missing_df = summary_df[summary_df["status"].astype(str) != "ok"].copy()
 
     out_summary_csv.parent.mkdir(parents=True, exist_ok=True)
@@ -191,7 +196,9 @@ def run(
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Audit canonical monthly parquet tick source completeness")
+    p = argparse.ArgumentParser(
+        description="Audit canonical monthly parquet tick source completeness"
+    )
     p.add_argument("--tick-root", default=str(DEFAULT_DUKASCOPY_ROOT))
     p.add_argument("--symbols", default="")
     p.add_argument(

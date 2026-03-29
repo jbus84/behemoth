@@ -1,8 +1,11 @@
 """Tests for JForex outcome reconciliation."""
+
 from __future__ import annotations
 
+import contextlib
 import csv
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 import duckdb
@@ -14,9 +17,7 @@ def _write_locked_predictions(tmp: Path, symbol: str, rows: list[dict]) -> Path:
     con = duckdb.connect()
     cols = ", ".join(f"'{k}'" for k in rows[0])
     vals = ", ".join(
-        "(" + ", ".join(
-            f"'{v}'" if isinstance(v, str) else str(v) for v in r.values()
-        ) + ")"
+        "(" + ", ".join(f"'{v}'" if isinstance(v, str) else str(v) for v in r.values()) + ")"
         for r in rows
     )
     con.execute(
@@ -44,14 +45,30 @@ def test_load_locked_predictions_filters_selected():
 
     with tempfile.TemporaryDirectory() as td:
         tmp = Path(td)
-        _write_locked_predictions(tmp, "EURUSD", [
-            {"close_ts": "2025-07-01T00:00:00Z", "candidate_uid": "uid_a",
-             "pred_prob": 0.6, "target_gross_pips": 3.5, "target_gross_pos": 1,
-             "selected_exec": 1, "event_ordinal": 0},
-            {"close_ts": "2025-07-01T01:00:00Z", "candidate_uid": "uid_a",
-             "pred_prob": 0.4, "target_gross_pips": -1.2, "target_gross_pos": 0,
-             "selected_exec": 0, "event_ordinal": 1},
-        ])
+        _write_locked_predictions(
+            tmp,
+            "EURUSD",
+            [
+                {
+                    "close_ts": "2025-07-01T00:00:00Z",
+                    "candidate_uid": "uid_a",
+                    "pred_prob": 0.6,
+                    "target_gross_pips": 3.5,
+                    "target_gross_pos": 1,
+                    "selected_exec": 1,
+                    "event_ordinal": 0,
+                },
+                {
+                    "close_ts": "2025-07-01T01:00:00Z",
+                    "candidate_uid": "uid_a",
+                    "pred_prob": 0.4,
+                    "target_gross_pips": -1.2,
+                    "target_gross_pos": 0,
+                    "selected_exec": 0,
+                    "event_ordinal": 1,
+                },
+            ],
+        )
         df = load_locked_predictions(tmp, "EURUSD")
         assert len(df) == 1
         assert df["target_gross_pips"].iloc[0] == 3.5
@@ -62,20 +79,45 @@ def test_load_runtime_events_counts_categories():
 
     with tempfile.TemporaryDirectory() as td:
         tmp = Path(td)
-        _write_runtime_events(tmp, "EURUSD", "jforex", [
-            {"event_ts_utc": "2025-07-01T00:00:00Z", "symbol": "EURUSD",
-             "category": "signal", "event_name": "predict_cycle", "pass": "true",
-             "detail": "prediction_count=5;selected_count=2;blocked_count=0;completed_bar_ticks=[100]"},
-            {"event_ts_utc": "2025-07-01T00:01:00Z", "symbol": "EURUSD",
-             "category": "execution", "event_name": "order_submitted", "pass": "true",
-             "detail": "OCO_EURUSD_T100_H6:BUY"},
-            {"event_ts_utc": "2025-07-01T00:01:01Z", "symbol": "EURUSD",
-             "category": "execution", "event_name": "order_submitted", "pass": "true",
-             "detail": "OCO_EURUSD_T100_H6:SELL"},
-            {"event_ts_utc": "2025-07-01T00:02:00Z", "symbol": "EURUSD",
-             "category": "execution", "event_name": "order_filled", "pass": "true",
-             "detail": "OCO_EURUSD_T100_H6:BUY"},
-        ])
+        _write_runtime_events(
+            tmp,
+            "EURUSD",
+            "jforex",
+            [
+                {
+                    "event_ts_utc": "2025-07-01T00:00:00Z",
+                    "symbol": "EURUSD",
+                    "category": "signal",
+                    "event_name": "predict_cycle",
+                    "pass": "true",
+                    "detail": "prediction_count=5;selected_count=2;blocked_count=0;completed_bar_ticks=[100]",
+                },
+                {
+                    "event_ts_utc": "2025-07-01T00:01:00Z",
+                    "symbol": "EURUSD",
+                    "category": "execution",
+                    "event_name": "order_submitted",
+                    "pass": "true",
+                    "detail": "OCO_EURUSD_T100_H6:BUY",
+                },
+                {
+                    "event_ts_utc": "2025-07-01T00:01:01Z",
+                    "symbol": "EURUSD",
+                    "category": "execution",
+                    "event_name": "order_submitted",
+                    "pass": "true",
+                    "detail": "OCO_EURUSD_T100_H6:SELL",
+                },
+                {
+                    "event_ts_utc": "2025-07-01T00:02:00Z",
+                    "symbol": "EURUSD",
+                    "category": "execution",
+                    "event_name": "order_filled",
+                    "pass": "true",
+                    "detail": "OCO_EURUSD_T100_H6:BUY",
+                },
+            ],
+        )
         events = load_runtime_events(tmp, "EURUSD")
         assert events["predict_cycles"] == 1
         assert events["orders_submitted"] == 2
@@ -95,22 +137,26 @@ def test_load_runtime_events_counts_execution_failures_when_pass_is_inferred_as_
                 fieldnames=["event_ts_utc", "symbol", "category", "event_name", "pass", "detail"],
             )
             writer.writeheader()
-            writer.writerow({
-                "event_ts_utc": "2025-07-01T00:00:00Z",
-                "symbol": "EURUSD",
-                "category": "execution",
-                "event_name": "order_submitted",
-                "pass": "false",
-                "detail": "OCO_EURUSD_T100_H6:BUY",
-            })
-            writer.writerow({
-                "event_ts_utc": "2025-07-01T00:00:01Z",
-                "symbol": "EURUSD",
-                "category": "execution",
-                "event_name": "order_submitted",
-                "pass": "False",
-                "detail": "OCO_EURUSD_T100_H6:SELL",
-            })
+            writer.writerow(
+                {
+                    "event_ts_utc": "2025-07-01T00:00:00Z",
+                    "symbol": "EURUSD",
+                    "category": "execution",
+                    "event_name": "order_submitted",
+                    "pass": "false",
+                    "detail": "OCO_EURUSD_T100_H6:BUY",
+                }
+            )
+            writer.writerow(
+                {
+                    "event_ts_utc": "2025-07-01T00:00:01Z",
+                    "symbol": "EURUSD",
+                    "category": "execution",
+                    "event_name": "order_submitted",
+                    "pass": "False",
+                    "detail": "OCO_EURUSD_T100_H6:SELL",
+                }
+            )
 
         events = load_runtime_events(tmp, "EURUSD")
         assert events["execution_failures"] == 2
@@ -146,28 +192,51 @@ def test_compare_outcomes_pass():
 
 
 def test_load_locked_predictions_eval_window_filter():
-    from scripts.reconcile_jforex_outcomes import load_locked_predictions
     import tempfile
+
+    from scripts.reconcile_jforex_outcomes import load_locked_predictions
 
     with tempfile.TemporaryDirectory() as td:
         tmp = Path(td)
         # Write 3 events: before window, in window, after window
         import pandas as pd
-        df = pd.DataFrame([
-            {"close_ts": pd.Timestamp("2025-07-06T23:59:00Z"), "candidate_uid": "uid_a",
-             "pred_prob": 0.6, "target_gross_pips": 3.5, "target_gross_pos": 1,
-             "selected_exec": 1, "event_ordinal": 0},
-            {"close_ts": pd.Timestamp("2025-07-07T12:00:00Z"), "candidate_uid": "uid_b",
-             "pred_prob": 0.7, "target_gross_pips": 2.5, "target_gross_pos": 1,
-             "selected_exec": 1, "event_ordinal": 0},
-            {"close_ts": pd.Timestamp("2025-07-09T00:00:01Z"), "candidate_uid": "uid_c",
-             "pred_prob": 0.5, "target_gross_pips": 1.5, "target_gross_pos": 0,
-             "selected_exec": 1, "event_ordinal": 0},
-        ])
+
+        df = pd.DataFrame(
+            [
+                {
+                    "close_ts": pd.Timestamp("2025-07-06T23:59:00Z"),
+                    "candidate_uid": "uid_a",
+                    "pred_prob": 0.6,
+                    "target_gross_pips": 3.5,
+                    "target_gross_pos": 1,
+                    "selected_exec": 1,
+                    "event_ordinal": 0,
+                },
+                {
+                    "close_ts": pd.Timestamp("2025-07-07T12:00:00Z"),
+                    "candidate_uid": "uid_b",
+                    "pred_prob": 0.7,
+                    "target_gross_pips": 2.5,
+                    "target_gross_pos": 1,
+                    "selected_exec": 1,
+                    "event_ordinal": 0,
+                },
+                {
+                    "close_ts": pd.Timestamp("2025-07-09T00:00:01Z"),
+                    "candidate_uid": "uid_c",
+                    "pred_prob": 0.5,
+                    "target_gross_pips": 1.5,
+                    "target_gross_pos": 0,
+                    "selected_exec": 1,
+                    "event_ordinal": 0,
+                },
+            ]
+        )
         df.to_parquet(str(tmp / "eurusd_oco_locked_predictions.parquet"), index=False)
 
         result = load_locked_predictions(
-            tmp, "EURUSD",
+            tmp,
+            "EURUSD",
             eval_start="2025-07-07T00:00:00Z",
             eval_end="2025-07-09T00:00:00Z",
         )
@@ -232,9 +301,6 @@ def test_compare_outcomes_zero_lock_fails_on_unexpected_runtime_activity():
     assert result["overall_pass"] is False
 
 
-from datetime import datetime, timezone
-
-
 def test_parse_order_label_close_ts():
     from scripts.reconcile_jforex_outcomes import parse_order_label_close_ts
 
@@ -262,20 +328,25 @@ def test_parse_predict_cycle_close_ts():
 def test_load_runtime_events_ignores_extra_predict_cycle_diagnostics(tmp_path):
     from scripts.reconcile_jforex_outcomes import load_runtime_events
 
-    _write_runtime_events(tmp_path, "EURUSD", "jforex", [
-        {
-            "event_ts_utc": "2026-03-22T10:00:00Z",
-            "symbol": "EURUSD",
-            "category": "signal",
-            "event_name": "predict_cycle",
-            "pass": "true",
-            "detail": (
-                "prediction_count=4;selected_count=3;executable_selected_count=1;blocked_count=2;"
-                "blocked_reasons=entries_paused,active_candidate_lifecycle,risk_blocked;"
-                "close_ts=2026-02-07T12:00:00Z;completed_bar_ticks=[100]"
-            ),
-        }
-    ])
+    _write_runtime_events(
+        tmp_path,
+        "EURUSD",
+        "jforex",
+        [
+            {
+                "event_ts_utc": "2026-03-22T10:00:00Z",
+                "symbol": "EURUSD",
+                "category": "signal",
+                "event_name": "predict_cycle",
+                "pass": "true",
+                "detail": (
+                    "prediction_count=4;selected_count=3;executable_selected_count=1;blocked_count=2;"
+                    "blocked_reasons=entries_paused,active_candidate_lifecycle,risk_blocked;"
+                    "close_ts=2026-02-07T12:00:00Z;completed_bar_ticks=[100]"
+                ),
+            }
+        ],
+    )
 
     events = load_runtime_events(tmp_path, "EURUSD")
     assert events["predict_cycles"] == 1
@@ -285,20 +356,25 @@ def test_load_runtime_events_ignores_extra_predict_cycle_diagnostics(tmp_path):
 def test_load_runtime_events_ignores_malformed_local_surrogate_file(tmp_path):
     from scripts.reconcile_jforex_outcomes import load_runtime_events
 
-    _write_runtime_events(tmp_path, "EURUSD", "jforex", [
-        {
-            "event_ts_utc": "2026-03-22T10:00:00Z",
-            "symbol": "EURUSD",
-            "category": "signal",
-            "event_name": "predict_cycle",
-            "pass": "true",
-            "detail": (
-                "prediction_count=4;selected_count=1;blocked_count=3;"
-                "blocked_reasons=entries_paused,active_candidate_lifecycle,risk_blocked;"
-                "close_ts=2026-02-07T12:00:00Z;completed_bar_ticks=[100]"
-            ),
-        }
-    ])
+    _write_runtime_events(
+        tmp_path,
+        "EURUSD",
+        "jforex",
+        [
+            {
+                "event_ts_utc": "2026-03-22T10:00:00Z",
+                "symbol": "EURUSD",
+                "category": "signal",
+                "event_name": "predict_cycle",
+                "pass": "true",
+                "detail": (
+                    "prediction_count=4;selected_count=1;blocked_count=3;"
+                    "blocked_reasons=entries_paused,active_candidate_lifecycle,risk_blocked;"
+                    "close_ts=2026-02-07T12:00:00Z;completed_bar_ticks=[100]"
+                ),
+            }
+        ],
+    )
 
     malformed_path = tmp_path / "EURUSD_local_jforex_runtime_events.csv"
     with open(malformed_path, "w", newline="") as f:
@@ -313,20 +389,25 @@ def test_load_runtime_events_ignores_malformed_local_surrogate_file(tmp_path):
 def test_load_runtime_events_accepts_specific_block_reasons(tmp_path):
     from scripts.reconcile_jforex_outcomes import load_runtime_events
 
-    _write_runtime_events(tmp_path, "EURUSD", "jforex", [
-        {
-            "event_ts_utc": "2026-03-22T10:00:00Z",
-            "symbol": "EURUSD",
-            "category": "signal",
-            "event_name": "predict_cycle",
-            "pass": "true",
-            "detail": (
-                "prediction_count=2;selected_count=0;blocked_count=2;"
-                "blocked_reasons=risk_budget_exhausted,active_candidate_lifecycle;"
-                "close_ts=2026-02-07T12:00:00Z;completed_bar_ticks=[100]"
-            ),
-        }
-    ])
+    _write_runtime_events(
+        tmp_path,
+        "EURUSD",
+        "jforex",
+        [
+            {
+                "event_ts_utc": "2026-03-22T10:00:00Z",
+                "symbol": "EURUSD",
+                "category": "signal",
+                "event_name": "predict_cycle",
+                "pass": "true",
+                "detail": (
+                    "prediction_count=2;selected_count=0;blocked_count=2;"
+                    "blocked_reasons=risk_budget_exhausted,active_candidate_lifecycle;"
+                    "close_ts=2026-02-07T12:00:00Z;completed_bar_ticks=[100]"
+                ),
+            }
+        ],
+    )
 
     events = load_runtime_events(tmp_path, "EURUSD")
     assert events["predict_cycles"] == 1
@@ -372,7 +453,10 @@ def test_load_runtime_events_fails_when_canonical_file_is_missing_minimal_requir
 
     import re
 
-    with pytest.raises(SystemExit, match=rf"runtime events file missing minimal required columns \[{re.escape(missing_column)}\]:"):
+    with pytest.raises(
+        SystemExit,
+        match=rf"runtime events file missing minimal required columns \[{re.escape(missing_column)}\]:",
+    ):
         load_runtime_events(tmp_path, "USDJPY")
 
 
@@ -380,7 +464,10 @@ def test_load_runtime_events_fails_when_canonical_file_is_missing_minimal_requir
     ("contents", "expected_message"),
     [
         ("", "runtime events file unreadable"),
-        ("event_ts_utc,symbol,category,event_name,pass,detail\n\"unterminated\n", "runtime events file unreadable"),
+        (
+            'event_ts_utc,symbol,category,event_name,pass,detail\n"unterminated\n',
+            "runtime events file unreadable",
+        ),
     ],
 )
 def test_load_runtime_events_fails_when_canonical_file_is_corrupt_or_empty(
@@ -399,22 +486,39 @@ def test_load_runtime_events_fails_when_canonical_file_is_corrupt_or_empty(
 
 def test_load_runtime_events_fails_when_only_local_surrogate_file_exists():
     """Local surrogate runtime-events files alone are not a valid Stage 14 input."""
+    import csv
+    import tempfile
+
     from scripts.reconcile_jforex_outcomes import load_runtime_events
-    import tempfile, csv
 
     with tempfile.TemporaryDirectory() as td:
         tmp = Path(td)
         events_path = tmp / "EURUSD_local_jforex_runtime_events.csv"
         rows = [
-            {"event_ts_utc": "2025-07-07T16:29:21Z", "symbol": "EURUSD",
-             "category": "execution", "event_name": "order_submitted", "pass": "true",
-             "detail": "OCO_EURUSD_T100_H6_TS20250707162921_RIDNA_CID001:OCO_EURUSD_T100_H6_TS20250707162921_RIDNA_CID001_BUY"},
-            {"event_ts_utc": "2025-07-07T16:29:21Z", "symbol": "EURUSD",
-             "category": "execution", "event_name": "order_submitted", "pass": "true",
-             "detail": "OCO_EURUSD_T100_H6_TS20250707162921_RIDNA_CID001:OCO_EURUSD_T100_H6_TS20250707162921_RIDNA_CID001_SELL"},
-            {"event_ts_utc": "2025-07-07T16:29:22Z", "symbol": "EURUSD",
-             "category": "execution", "event_name": "trade_update_synced", "pass": "true",
-             "detail": "LOCAL-1:CLOSED"},
+            {
+                "event_ts_utc": "2025-07-07T16:29:21Z",
+                "symbol": "EURUSD",
+                "category": "execution",
+                "event_name": "order_submitted",
+                "pass": "true",
+                "detail": "OCO_EURUSD_T100_H6_TS20250707162921_RIDNA_CID001:OCO_EURUSD_T100_H6_TS20250707162921_RIDNA_CID001_BUY",
+            },
+            {
+                "event_ts_utc": "2025-07-07T16:29:21Z",
+                "symbol": "EURUSD",
+                "category": "execution",
+                "event_name": "order_submitted",
+                "pass": "true",
+                "detail": "OCO_EURUSD_T100_H6_TS20250707162921_RIDNA_CID001:OCO_EURUSD_T100_H6_TS20250707162921_RIDNA_CID001_SELL",
+            },
+            {
+                "event_ts_utc": "2025-07-07T16:29:22Z",
+                "symbol": "EURUSD",
+                "category": "execution",
+                "event_name": "trade_update_synced",
+                "pass": "true",
+                "detail": "LOCAL-1:CLOSED",
+            },
         ]
         with open(events_path, "w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
@@ -428,52 +532,57 @@ def test_load_runtime_events_fails_when_only_local_surrogate_file_exists():
 def test_load_runtime_events_filters_eval_window_using_replay_close_ts(tmp_path):
     from scripts.reconcile_jforex_outcomes import load_runtime_events
 
-    _write_runtime_events(tmp_path, "EURUSD", "jforex", [
-        {
-            "event_ts_utc": "2026-03-22T10:00:00Z",
-            "symbol": "EURUSD",
-            "category": "signal",
-            "event_name": "predict_cycle",
-            "pass": "true",
-            "detail": (
-                "prediction_count=4;selected_count=2;blocked_count=0;"
-                "close_ts=2026-02-07T12:00:00Z;completed_bar_ticks=[100]"
-            ),
-        },
-        {
-            "event_ts_utc": "2026-03-22T10:05:00Z",
-            "symbol": "EURUSD",
-            "category": "signal",
-            "event_name": "predict_cycle",
-            "pass": "true",
-            "detail": (
-                "prediction_count=3;selected_count=1;blocked_count=0;"
-                "close_ts=2026-02-10T12:00:00Z;completed_bar_ticks=[100]"
-            ),
-        },
-        {
-            "event_ts_utc": "2026-03-22T10:00:05Z",
-            "symbol": "EURUSD",
-            "category": "execution",
-            "event_name": "order_submitted",
-            "pass": "true",
-            "detail": (
-                "OCO_EURUSD_T100_H6_TS20260207120000_RIDNA_CID001:"
-                "OCO_EURUSD_T100_H6_TS20260207120000_RIDNA_CID001_BUY"
-            ),
-        },
-        {
-            "event_ts_utc": "2026-03-22T10:05:05Z",
-            "symbol": "EURUSD",
-            "category": "execution",
-            "event_name": "order_submitted",
-            "pass": "true",
-            "detail": (
-                "OCO_EURUSD_T100_H6_TS20260210120000_RIDNA_CID002:"
-                "OCO_EURUSD_T100_H6_TS20260210120000_RIDNA_CID002_BUY"
-            ),
-        },
-    ])
+    _write_runtime_events(
+        tmp_path,
+        "EURUSD",
+        "jforex",
+        [
+            {
+                "event_ts_utc": "2026-03-22T10:00:00Z",
+                "symbol": "EURUSD",
+                "category": "signal",
+                "event_name": "predict_cycle",
+                "pass": "true",
+                "detail": (
+                    "prediction_count=4;selected_count=2;blocked_count=0;"
+                    "close_ts=2026-02-07T12:00:00Z;completed_bar_ticks=[100]"
+                ),
+            },
+            {
+                "event_ts_utc": "2026-03-22T10:05:00Z",
+                "symbol": "EURUSD",
+                "category": "signal",
+                "event_name": "predict_cycle",
+                "pass": "true",
+                "detail": (
+                    "prediction_count=3;selected_count=1;blocked_count=0;"
+                    "close_ts=2026-02-10T12:00:00Z;completed_bar_ticks=[100]"
+                ),
+            },
+            {
+                "event_ts_utc": "2026-03-22T10:00:05Z",
+                "symbol": "EURUSD",
+                "category": "execution",
+                "event_name": "order_submitted",
+                "pass": "true",
+                "detail": (
+                    "OCO_EURUSD_T100_H6_TS20260207120000_RIDNA_CID001:"
+                    "OCO_EURUSD_T100_H6_TS20260207120000_RIDNA_CID001_BUY"
+                ),
+            },
+            {
+                "event_ts_utc": "2026-03-22T10:05:05Z",
+                "symbol": "EURUSD",
+                "category": "execution",
+                "event_name": "order_submitted",
+                "pass": "true",
+                "detail": (
+                    "OCO_EURUSD_T100_H6_TS20260210120000_RIDNA_CID002:"
+                    "OCO_EURUSD_T100_H6_TS20260210120000_RIDNA_CID002_BUY"
+                ),
+            },
+        ],
+    )
 
     events = load_runtime_events(
         tmp_path,
@@ -490,19 +599,24 @@ def test_load_runtime_events_filters_eval_window_using_replay_close_ts(tmp_path)
 def test_load_runtime_events_keeps_predict_cycle_schema_when_no_predict_cycles_exist(tmp_path):
     from scripts.reconcile_jforex_outcomes import load_runtime_events
 
-    _write_runtime_events(tmp_path, "EURUSD", "jforex", [
-        {
-            "event_ts_utc": "2026-03-22T10:01:00Z",
-            "symbol": "EURUSD",
-            "category": "execution",
-            "event_name": "order_submitted",
-            "pass": "true",
-            "detail": (
-                "OCO_EURUSD_T100_H6_TS20260208120000_RIDNA_CID001:"
-                "OCO_EURUSD_T100_H6_TS20260208120000_RIDNA_CID001_BUY"
-            ),
-        },
-    ])
+    _write_runtime_events(
+        tmp_path,
+        "EURUSD",
+        "jforex",
+        [
+            {
+                "event_ts_utc": "2026-03-22T10:01:00Z",
+                "symbol": "EURUSD",
+                "category": "execution",
+                "event_name": "order_submitted",
+                "pass": "true",
+                "detail": (
+                    "OCO_EURUSD_T100_H6_TS20260208120000_RIDNA_CID001:"
+                    "OCO_EURUSD_T100_H6_TS20260208120000_RIDNA_CID001_BUY"
+                ),
+            },
+        ],
+    )
 
     events = load_runtime_events(
         tmp_path,
@@ -520,16 +634,21 @@ def test_load_runtime_events_keeps_predict_cycle_schema_when_no_predict_cycles_e
 def test_load_runtime_events_keeps_order_submitted_schema_when_no_orders_exist(tmp_path):
     from scripts.reconcile_jforex_outcomes import load_runtime_events
 
-    _write_runtime_events(tmp_path, "EURUSD", "jforex", [
-        {
-            "event_ts_utc": "2026-03-22T10:00:00Z",
-            "symbol": "EURUSD",
-            "category": "signal",
-            "event_name": "predict_cycle",
-            "pass": "true",
-            "detail": "prediction_count=4;selected_count=3;blocked_count=1;close_ts=2026-02-08T12:00:00Z;completed_bar_ticks=[100]",
-        },
-    ])
+    _write_runtime_events(
+        tmp_path,
+        "EURUSD",
+        "jforex",
+        [
+            {
+                "event_ts_utc": "2026-03-22T10:00:00Z",
+                "symbol": "EURUSD",
+                "category": "signal",
+                "event_name": "predict_cycle",
+                "pass": "true",
+                "detail": "prediction_count=4;selected_count=3;blocked_count=1;close_ts=2026-02-08T12:00:00Z;completed_bar_ticks=[100]",
+            },
+        ],
+    )
 
     events = load_runtime_events(
         tmp_path,
@@ -554,7 +673,7 @@ def test_compare_outcomes_per_event_coverage():
         locked_gross_pips_total=350.0,
         locked_win_rate=0.7,
         jforex_predict_cycles=200,
-        jforex_selected_total=10,   # low signal coverage: 10/100 = 10%
+        jforex_selected_total=10,  # low signal coverage: 10/100 = 10%
         jforex_orders_submitted=200,
         jforex_execution_failures=0,
         jforex_lifecycle_failures=0,
@@ -578,8 +697,8 @@ def test_compare_outcomes_signal_coverage_gates_not_order_coverage():
         locked_gross_pips_total=350.0,
         locked_win_rate=0.7,
         jforex_predict_cycles=100,
-        jforex_selected_total=90,    # 90% signal coverage → signal_coverage_pass=True
-        jforex_orders_submitted=3,   # has_trades=True (OCO-blocked but some orders placed)
+        jforex_selected_total=90,  # 90% signal coverage → signal_coverage_pass=True
+        jforex_orders_submitted=3,  # has_trades=True (OCO-blocked but some orders placed)
         jforex_execution_failures=0,
         jforex_lifecycle_failures=0,
         jforex_submitted_group_count=0,  # 0/100 = 0% order_coverage → order_coverage_pass=False
@@ -611,20 +730,31 @@ def test_overall_pass_uses_signal_coverage_not_order_coverage():
     assert result["signal_coverage_ratio"] == pytest.approx(0.95)
     assert result["signal_coverage_pass"] is True
     assert result["order_coverage_ratio"] == pytest.approx(0.02)
-    assert result["order_coverage_pass"] is False   # still informational
+    assert result["order_coverage_pass"] is False  # still informational
     # FAILS with old code (uses order_coverage_pass as gate):
-    assert result["overall_pass"] is True           # passes because signal_coverage_pass=True
+    assert result["overall_pass"] is True  # passes because signal_coverage_pass=True
 
 
 def test_reconcile_writes_per_symbol_csv(tmp_path):
-    from scripts.reconcile_jforex_outcomes import write_per_symbol_summaries
     import pandas as pd
 
+    from scripts.reconcile_jforex_outcomes import write_per_symbol_summaries
+
     results = [
-        {"symbol": "EURUSD", "overall_pass": True, "order_coverage_ratio": 0.95,
-         "execution_clean_pass": True, "has_trades": True},
-        {"symbol": "GBPUSD", "overall_pass": False, "order_coverage_ratio": 0.5,
-         "execution_clean_pass": True, "has_trades": True},
+        {
+            "symbol": "EURUSD",
+            "overall_pass": True,
+            "order_coverage_ratio": 0.95,
+            "execution_clean_pass": True,
+            "has_trades": True,
+        },
+        {
+            "symbol": "GBPUSD",
+            "overall_pass": False,
+            "order_coverage_ratio": 0.5,
+            "execution_clean_pass": True,
+            "has_trades": True,
+        },
     ]
     write_per_symbol_summaries(results, out_dir=tmp_path)
 
@@ -642,9 +772,11 @@ def test_reconcile_writes_per_symbol_csv(tmp_path):
 
 def test_reconcile_per_symbol_csv_includes_evaluated_at_utc(tmp_path):
     """Per-symbol output CSV must propagate evaluated_at_utc from the result dict."""
-    from scripts.reconcile_jforex_outcomes import write_per_symbol_summaries
+    from datetime import datetime
+
     import pandas as pd
-    from datetime import datetime, timezone
+
+    from scripts.reconcile_jforex_outcomes import write_per_symbol_summaries
 
     results = [
         {"symbol": "EURUSD", "overall_pass": True, "evaluated_at_utc": "2026-03-19T12:00:00Z"},
@@ -654,17 +786,17 @@ def test_reconcile_per_symbol_csv_includes_evaluated_at_utc(tmp_path):
     df = pd.read_csv(tmp_path / "EURUSD_local_jforex_outcome_parity_summary.csv")
     assert "evaluated_at_utc" in df.columns, "Per-symbol CSV missing evaluated_at_utc"
     ts = df["evaluated_at_utc"].iloc[0]
-    from datetime import datetime
     parsed = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
     assert parsed.tzinfo is not None
 
 
 def test_reconcile_aggregate_csv_includes_evaluated_at_utc(tmp_path, monkeypatch):
     """Aggregate output CSV written by main() must include evaluated_at_utc for each symbol."""
-    import pandas as pd
-    import sys
-    import duckdb
     import csv as csv_mod
+    import sys
+
+    import duckdb
+    import pandas as pd
 
     # Write minimal locked predictions and runtime events
     lock_dir = tmp_path / "lock"
@@ -691,45 +823,61 @@ def test_reconcile_aggregate_csv_includes_evaluated_at_utc(tmp_path, monkeypatch
             fieldnames=["event_ts_utc", "symbol", "category", "event_name", "pass", "detail"],
         )
         writer.writeheader()
-        writer.writerow({
-            "event_ts_utc": "2025-07-07T12:00:00Z", "symbol": "EURUSD",
-            "category": "signal", "event_name": "predict_cycle", "pass": "true",
-            "detail": "selected_count=1",
-        })
-        writer.writerow({
-            "event_ts_utc": "2025-07-07T12:01:00Z", "symbol": "EURUSD",
-            "category": "execution", "event_name": "order_submitted", "pass": "true",
-            "detail": "OCO_EURUSD_T100_H6_TS20250707120000_RIDNA_CID001:BUY",
-        })
+        writer.writerow(
+            {
+                "event_ts_utc": "2025-07-07T12:00:00Z",
+                "symbol": "EURUSD",
+                "category": "signal",
+                "event_name": "predict_cycle",
+                "pass": "true",
+                "detail": "selected_count=1",
+            }
+        )
+        writer.writerow(
+            {
+                "event_ts_utc": "2025-07-07T12:01:00Z",
+                "symbol": "EURUSD",
+                "category": "execution",
+                "event_name": "order_submitted",
+                "pass": "true",
+                "detail": "OCO_EURUSD_T100_H6_TS20250707120000_RIDNA_CID001:BUY",
+            }
+        )
 
     monkeypatch.setattr(
-        sys, "argv",
+        sys,
+        "argv",
         [
             "reconcile_jforex_outcomes.py",
-            "--symbols", "EURUSD",
-            "--lock-dir", str(lock_dir),
-            "--reconcile-dir", str(reconcile_dir),
-            "--out-csv", str(out_csv),
+            "--symbols",
+            "EURUSD",
+            "--lock-dir",
+            str(lock_dir),
+            "--reconcile-dir",
+            str(reconcile_dir),
+            "--out-csv",
+            str(out_csv),
         ],
     )
     from scripts.reconcile_jforex_outcomes import main
-    try:
+
+    with contextlib.suppress(SystemExit):
         main()
-    except SystemExit:
-        pass  # exit code 0 or 1 is fine; we just need the CSV written
 
     df = pd.read_csv(out_csv)
     assert "evaluated_at_utc" in df.columns, "Aggregate CSV missing evaluated_at_utc"
     ts = df["evaluated_at_utc"].iloc[0]
     from datetime import datetime
+
     parsed = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
     assert parsed.tzinfo is not None
 
 
 def test_load_runtime_events_prefers_real_over_local(tmp_path):
     """When both real-tester and local-surrogate event files exist, prefer the real one."""
-    from scripts.reconcile_jforex_outcomes import load_runtime_events
     import csv
+
+    from scripts.reconcile_jforex_outcomes import load_runtime_events
 
     # Real tester file: 5 predict_cycles
     real_path = tmp_path / "EURUSD_jforex_runtime_events.csv"
@@ -740,11 +888,16 @@ def test_load_runtime_events_prefers_real_over_local(tmp_path):
         )
         writer.writeheader()
         for _ in range(5):
-            writer.writerow({
-                "event_ts_utc": "2025-07-07T12:00:00Z", "symbol": "EURUSD",
-                "category": "signal", "event_name": "predict_cycle", "pass": "true",
-                "detail": "selected_count=1",
-            })
+            writer.writerow(
+                {
+                    "event_ts_utc": "2025-07-07T12:00:00Z",
+                    "symbol": "EURUSD",
+                    "category": "signal",
+                    "event_name": "predict_cycle",
+                    "pass": "true",
+                    "detail": "selected_count=1",
+                }
+            )
 
     # Local surrogate file: 99 predict_cycles (must NOT be selected)
     local_path = tmp_path / "EURUSD_local_jforex_runtime_events.csv"
@@ -755,11 +908,16 @@ def test_load_runtime_events_prefers_real_over_local(tmp_path):
         )
         writer.writeheader()
         for _ in range(99):
-            writer.writerow({
-                "event_ts_utc": "2025-07-07T12:00:00Z", "symbol": "EURUSD",
-                "category": "signal", "event_name": "predict_cycle", "pass": "true",
-                "detail": "selected_count=1",
-            })
+            writer.writerow(
+                {
+                    "event_ts_utc": "2025-07-07T12:00:00Z",
+                    "symbol": "EURUSD",
+                    "category": "signal",
+                    "event_name": "predict_cycle",
+                    "pass": "true",
+                    "detail": "selected_count=1",
+                }
+            )
 
     events = load_runtime_events(tmp_path, "EURUSD")
     assert events["predict_cycles"] == 5, (
@@ -770,8 +928,9 @@ def test_load_runtime_events_prefers_real_over_local(tmp_path):
 
 
 def test_load_runtime_events_prefers_canonical_jforex_file_when_both_exist_and_are_valid(tmp_path):
-    from scripts.reconcile_jforex_outcomes import load_runtime_events
     import csv
+
+    from scripts.reconcile_jforex_outcomes import load_runtime_events
 
     canonical_path = tmp_path / "EURUSD_jforex_runtime_events.csv"
     with open(canonical_path, "w", newline="") as f:
@@ -780,14 +939,16 @@ def test_load_runtime_events_prefers_canonical_jforex_file_when_both_exist_and_a
             fieldnames=["event_ts_utc", "symbol", "category", "event_name", "pass", "detail"],
         )
         writer.writeheader()
-        writer.writerow({
-            "event_ts_utc": "2026-02-07T00:00:00Z",
-            "symbol": "EURUSD",
-            "category": "signal",
-            "event_name": "predict_cycle",
-            "pass": "true",
-            "detail": "prediction_count=3;selected_count=2;blocked_count=1;completed_bar_ticks=[100]",
-        })
+        writer.writerow(
+            {
+                "event_ts_utc": "2026-02-07T00:00:00Z",
+                "symbol": "EURUSD",
+                "category": "signal",
+                "event_name": "predict_cycle",
+                "pass": "true",
+                "detail": "prediction_count=3;selected_count=2;blocked_count=1;completed_bar_ticks=[100]",
+            }
+        )
 
     local_path = tmp_path / "EURUSD_local_jforex_runtime_events.csv"
     with open(local_path, "w", newline="") as f:
@@ -796,14 +957,16 @@ def test_load_runtime_events_prefers_canonical_jforex_file_when_both_exist_and_a
             fieldnames=["event_ts_utc", "symbol", "category", "event_name", "pass", "detail"],
         )
         writer.writeheader()
-        writer.writerow({
-            "event_ts_utc": "2026-02-07T00:00:00Z",
-            "symbol": "EURUSD",
-            "category": "signal",
-            "event_name": "predict_cycle",
-            "pass": "true",
-            "detail": "prediction_count=3;selected_count=99;blocked_count=0;completed_bar_ticks=[100]",
-        })
+        writer.writerow(
+            {
+                "event_ts_utc": "2026-02-07T00:00:00Z",
+                "symbol": "EURUSD",
+                "category": "signal",
+                "event_name": "predict_cycle",
+                "pass": "true",
+                "detail": "prediction_count=3;selected_count=99;blocked_count=0;completed_bar_ticks=[100]",
+            }
+        )
 
     events = load_runtime_events(tmp_path, "EURUSD")
     assert events["selected_count_total"] == 2
@@ -811,8 +974,9 @@ def test_load_runtime_events_prefers_canonical_jforex_file_when_both_exist_and_a
 
 def test_main_reports_non_deployable_month_without_locked_predictions(tmp_path, monkeypatch):
     import json
-    import pandas as pd
     import sys
+
+    import pandas as pd
 
     lock_dir = tmp_path / "lock"
     lock_dir.mkdir()
@@ -843,14 +1007,16 @@ def test_main_reports_non_deployable_month_without_locked_predictions(tmp_path, 
             fieldnames=["event_ts_utc", "symbol", "category", "event_name", "pass", "detail"],
         )
         writer.writeheader()
-        writer.writerow({
-            "event_ts_utc": "2026-02-07T00:00:00Z",
-            "symbol": "USDCAD",
-            "category": "signal",
-            "event_name": "predict_cycle",
-            "pass": "true",
-            "detail": "selected_count=0",
-        })
+        writer.writerow(
+            {
+                "event_ts_utc": "2026-02-07T00:00:00Z",
+                "symbol": "USDCAD",
+                "category": "signal",
+                "event_name": "predict_cycle",
+                "pass": "true",
+                "detail": "selected_count=0",
+            }
+        )
 
     monkeypatch.setattr(
         sys,

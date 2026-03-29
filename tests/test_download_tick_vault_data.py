@@ -182,7 +182,9 @@ def test_get_missing_months_does_not_refill_after_friday_close(monkeypatch, tmp_
         type("FakeDT", (), {"now": staticmethod(lambda tz=None: fake_now)}),
     )
     # GLOBAL_START_DATE would scan too many months; scope end_date to Oct 2025 only
-    monkeypatch.setattr("scripts.download_tick_vault_data.GLOBAL_START_DATE", datetime(2025, 10, 1, tzinfo=UTC))
+    monkeypatch.setattr(
+        "scripts.download_tick_vault_data.GLOBAL_START_DATE", datetime(2025, 10, 1, tzinfo=UTC)
+    )
     ranges = get_missing_months("EURUSD", out_dir, fake_now)
     assert ranges == []
 
@@ -200,7 +202,9 @@ def test_get_missing_months_appends_before_friday_close(monkeypatch, tmp_path: P
         "scripts.download_tick_vault_data.datetime",
         type("FakeDT", (), {"now": staticmethod(lambda tz=None: fake_now)}),
     )
-    monkeypatch.setattr("scripts.download_tick_vault_data.GLOBAL_START_DATE", datetime(2025, 10, 1, tzinfo=UTC))
+    monkeypatch.setattr(
+        "scripts.download_tick_vault_data.GLOBAL_START_DATE", datetime(2025, 10, 1, tzinfo=UTC)
+    )
     ranges = get_missing_months("EURUSD", out_dir, fake_now)
     expected_start = last_ts + timedelta(microseconds=1000)
     assert len(ranges) == 1
@@ -211,7 +215,9 @@ def test_get_missing_months_appends_before_friday_close(monkeypatch, tmp_path: P
 # --- boundary tolerance for historical months ---
 
 
-def test_get_missing_months_ignores_file_ending_near_month_boundary(monkeypatch, tmp_path: Path) -> None:
+def test_get_missing_months_ignores_file_ending_near_month_boundary(
+    monkeypatch, tmp_path: Path
+) -> None:
     """A file ending seconds before month-end should not trigger a refill."""
     out_dir = tmp_path / "ticks"
     symbol_dir = out_dir / "EURUSD"
@@ -219,7 +225,9 @@ def test_get_missing_months_ignores_file_ending_near_month_boundary(monkeypatch,
     # Jan 2018 file ends at 23:59:47 on Jan 31 (13s before month end)
     month_path = symbol_dir / "EURUSD_201801_ticks.parquet"
     _write_tick_parquet(month_path, [datetime(2018, 1, 31, 23, 59, 47, 19000, tzinfo=UTC)])
-    monkeypatch.setattr("scripts.download_tick_vault_data.GLOBAL_START_DATE", datetime(2018, 1, 1, tzinfo=UTC))
+    monkeypatch.setattr(
+        "scripts.download_tick_vault_data.GLOBAL_START_DATE", datetime(2018, 1, 1, tzinfo=UTC)
+    )
     fake_now = datetime(2026, 3, 27, 17, 0, tzinfo=UTC)
     monkeypatch.setattr(
         "scripts.download_tick_vault_data.datetime",
@@ -229,7 +237,9 @@ def test_get_missing_months_ignores_file_ending_near_month_boundary(monkeypatch,
     assert ranges == []
 
 
-def test_get_missing_months_ignores_file_ending_near_friday_close(monkeypatch, tmp_path: Path) -> None:
+def test_get_missing_months_ignores_file_ending_near_friday_close(
+    monkeypatch, tmp_path: Path
+) -> None:
     """A file ending seconds before Friday close should not trigger a refill."""
     out_dir = tmp_path / "ticks"
     symbol_dir = out_dir / "EURUSD"
@@ -237,7 +247,9 @@ def test_get_missing_months_ignores_file_ending_near_friday_close(monkeypatch, t
     # Jun 2018 file ends at 20:59:56 on Jun 29 (DST close at 21:00)
     month_path = symbol_dir / "EURUSD_201806_ticks.parquet"
     _write_tick_parquet(month_path, [datetime(2018, 6, 29, 20, 59, 56, 236000, tzinfo=UTC)])
-    monkeypatch.setattr("scripts.download_tick_vault_data.GLOBAL_START_DATE", datetime(2018, 6, 1, tzinfo=UTC))
+    monkeypatch.setattr(
+        "scripts.download_tick_vault_data.GLOBAL_START_DATE", datetime(2018, 6, 1, tzinfo=UTC)
+    )
     fake_now = datetime(2026, 3, 27, 17, 0, tzinfo=UTC)
     monkeypatch.setattr(
         "scripts.download_tick_vault_data.datetime",
@@ -256,7 +268,9 @@ def test_get_missing_months_still_flags_genuinely_early_ending(monkeypatch, tmp_
     month_path = symbol_dir / "EURUSD_201806_ticks.parquet"
     last_ts = datetime(2018, 6, 20, 15, 0, tzinfo=UTC)
     _write_tick_parquet(month_path, [last_ts])
-    monkeypatch.setattr("scripts.download_tick_vault_data.GLOBAL_START_DATE", datetime(2018, 6, 1, tzinfo=UTC))
+    monkeypatch.setattr(
+        "scripts.download_tick_vault_data.GLOBAL_START_DATE", datetime(2018, 6, 1, tzinfo=UTC)
+    )
     fake_now = datetime(2026, 3, 27, 17, 0, tzinfo=UTC)
     monkeypatch.setattr(
         "scripts.download_tick_vault_data.datetime",

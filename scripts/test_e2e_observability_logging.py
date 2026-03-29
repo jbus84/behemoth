@@ -24,6 +24,7 @@ logger = logging.getLogger("behemoth.test")
 
 client = TestClient(app)
 
+
 def test_observability_lifecycle():
     symbol = "EURUSD"
 
@@ -62,7 +63,7 @@ def test_observability_lifecycle():
             "side": "BUY",
             "entry_price": 1.0855,
             "entry_ts": datetime.now(tz=timezone.utc).isoformat(),
-            "horizon": 10
+            "horizon": 10,
         }
         resp = client.post("/trades/open", json=trade_req)
         assert resp.status_code == 200
@@ -75,7 +76,7 @@ def test_observability_lifecycle():
             "status": "CLOSED",
             "exit_price": 1.0865,
             "exit_ts": datetime.now(tz=timezone.utc).isoformat(),
-            "pnl_pips": 10.0
+            "pnl_pips": 10.0,
         }
         resp = client.post("/trades/update", json=update_req)
         assert resp.status_code == 200
@@ -92,6 +93,7 @@ def test_observability_lifecycle():
         assert "behemoth_bar_count" in data
 
         logger.info("E2E Observability Test PASSED")
+
 
 if __name__ == "__main__":
     test_observability_lifecycle()

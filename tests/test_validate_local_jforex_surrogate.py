@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import csv
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -113,7 +113,9 @@ def test_build_artifacts_treats_zero_lock_idle_windows_as_execution_pass(tmp_pat
         local_signal_summary_glob=str(tmp_path / "*_local_jforex_signal_parity_summary.csv"),
         local_execution_summary_glob=str(tmp_path / "*_local_jforex_execution_parity_summary.csv"),
         local_lifecycle_summary_glob=str(tmp_path / "*_local_jforex_oco_lifecycle_summary.csv"),
-        local_operational_summary_glob=str(tmp_path / "*_local_jforex_operational_ready_summary.csv"),
+        local_operational_summary_glob=str(
+            tmp_path / "*_local_jforex_operational_ready_summary.csv"
+        ),
         local_outcome_summary_glob=str(tmp_path / "*_local_jforex_outcome_parity_summary.csv"),
         out_summary_csv=tmp_path / "summary.csv",
         out_checks_csv=tmp_path / "checks.csv",
@@ -132,7 +134,9 @@ def test_build_artifacts_treats_zero_lock_idle_windows_as_execution_pass(tmp_pat
     assert execution_check["status"] == "pass"
 
 
-def test_build_artifacts_falls_back_to_outcome_locked_count_for_zero_lock_windows(tmp_path: Path) -> None:
+def test_build_artifacts_falls_back_to_outcome_locked_count_for_zero_lock_windows(
+    tmp_path: Path,
+) -> None:
     from scripts.validate_local_jforex_surrogate import build_artifacts
 
     lock_dir = tmp_path / "locks"
@@ -178,7 +182,9 @@ def test_build_artifacts_falls_back_to_outcome_locked_count_for_zero_lock_window
         local_signal_summary_glob=str(tmp_path / "*_local_jforex_signal_parity_summary.csv"),
         local_execution_summary_glob=str(tmp_path / "*_local_jforex_execution_parity_summary.csv"),
         local_lifecycle_summary_glob=str(tmp_path / "*_local_jforex_oco_lifecycle_summary.csv"),
-        local_operational_summary_glob=str(tmp_path / "*_local_jforex_operational_ready_summary.csv"),
+        local_operational_summary_glob=str(
+            tmp_path / "*_local_jforex_operational_ready_summary.csv"
+        ),
         local_outcome_summary_glob=str(tmp_path / "*_local_jforex_outcome_parity_summary.csv"),
         out_summary_csv=tmp_path / "summary.csv",
         out_checks_csv=tmp_path / "checks.csv",
@@ -237,7 +243,9 @@ def test_build_artifacts_ignores_stage12_summary_input(tmp_path: Path) -> None:
     assert "verdict" in written_summary.columns
 
 
-def test_main_rejects_legacy_stage12_cli_flag(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_main_rejects_legacy_stage12_cli_flag(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     from scripts.validate_local_jforex_surrogate import main
 
     monkeypatch.setattr(

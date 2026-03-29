@@ -1025,14 +1025,10 @@ def _symbol_contexts(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]
 
         wfo_metrics = _glob_latest(
             str(analysis_root / "wfo_*" / f"{symbol}_monthly_metrics_all.csv")
-        ) or _glob_latest(
-            str(analysis_root / "wfo_*" / f"{symbol}_oco_monthly_metrics.csv")
-        )
+        ) or _glob_latest(str(analysis_root / "wfo_*" / f"{symbol}_oco_monthly_metrics.csv"))
         wfo_thresholds = _glob_latest(
             str(analysis_root / "wfo_*" / f"{symbol}_monthly_thresholds_all.csv")
-        ) or _glob_latest(
-            str(analysis_root / "wfo_*" / f"{symbol}_oco_monthly_thresholds.csv")
-        )
+        ) or _glob_latest(str(analysis_root / "wfo_*" / f"{symbol}_oco_monthly_thresholds.csv"))
         wfo_predictions = _glob_latest(
             str(analysis_root / "wfo_*" / f"{symbol}_monthly_predictions_all.parquet")
         ) or _glob_latest(
@@ -1042,7 +1038,9 @@ def _symbol_contexts(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]
             str(analysis_root / f"{str(symbol).lower()}_governance_predeploy*.json")
         )
         if governance_predeploy is None:
-            governance_predeploy = analysis_root / f"{str(symbol).lower()}_governance_predeploy.json"
+            governance_predeploy = (
+                analysis_root / f"{str(symbol).lower()}_governance_predeploy.json"
+            )
         events_eval = _glob_latest(
             str(analysis_root / "wfo_*" / f"{symbol}_oco_events_eval*.parquet")
         )
@@ -1058,9 +1056,11 @@ def _symbol_contexts(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]
                 "execution_risk_checks_csv": analysis_root / "oco_execution_risk_checks.csv",
                 "execution_risk_issues_csv": analysis_root / "oco_execution_risk_issues.csv",
                 "execution_risk_report_md": docs_root / "oco_execution_risk_prelive_report.md",
-                "execution_mc_month_session_csv": analysis_root / "execution_mc_month_session_summary.csv",
+                "execution_mc_month_session_csv": analysis_root
+                / "execution_mc_month_session_summary.csv",
                 "execution_mc_monthly_csv": analysis_root / "execution_mc_monthly_summary.csv",
-                "execution_mc_symbol_scenarios_csv": analysis_root / "execution_mc_symbol_scenarios.csv",
+                "execution_mc_symbol_scenarios_csv": analysis_root
+                / "execution_mc_symbol_scenarios.csv",
                 "execution_mc_checks_csv": analysis_root / "execution_mc_checks.csv",
                 "execution_mc_issues_csv": analysis_root / "execution_mc_issues.csv",
                 "execution_mc_report_md": docs_root / "oco_execution_monte_carlo_report.md",
@@ -1144,8 +1144,12 @@ def _robustness_diag_table(*, contexts: list[dict[str, Any]], exec_q: float) -> 
         p_fdr = _num(row.get("pvalue_fdr_bh"))
         p_perm = _num(row.get("pvalue_perm_uplift"))
         p_perm_fdr = _num(row.get("pvalue_perm_fdr_bh"))
-        lb_iid = _num(row.get("lb95_trade_mean_gross_pips", row.get("lb95_trade_mean_gross_pips_iid")))
-        lb_block = _num(row.get("lb95_month_mean_gross_pips", row.get("lb95_trade_mean_gross_pips_month_block")))
+        lb_iid = _num(
+            row.get("lb95_trade_mean_gross_pips", row.get("lb95_trade_mean_gross_pips_iid"))
+        )
+        lb_block = _num(
+            row.get("lb95_month_mean_gross_pips", row.get("lb95_trade_mean_gross_pips_month_block"))
+        )
         uplift = _num(row.get("uplift_vs_null_pips"))
         rows.append(
             {

@@ -21,6 +21,7 @@ from src.behemoth.core.schemas import (
 
 # ── IncomingTick ──────────────────────────────────────────────────────
 
+
 class TestIncomingTick:
     def test_valid_tick(self):
         t = IncomingTick(
@@ -54,6 +55,7 @@ class TestIncomingTick:
 
 # ── IncomingTickBar ───────────────────────────────────────────────────
 
+
 class TestIncomingTickBar:
     def test_valid_bar(self):
         bar = IncomingTickBar(
@@ -77,8 +79,12 @@ class TestIncomingTickBar:
             bar_ticks=100,
             timestamp=datetime(2025, 12, 1, tzinfo=timezone.utc),
             close_ts=datetime(2025, 12, 1, tzinfo=timezone.utc),
-            open=150.0, high=150.1, low=149.9, close=150.05,
-            spread=0.02, tick_volume=100.0,
+            open=150.0,
+            high=150.1,
+            low=149.9,
+            close=150.05,
+            spread=0.02,
+            tick_volume=100.0,
             hl_first=1.0,
             hl_pos_frac=0.65,
         )
@@ -87,6 +93,7 @@ class TestIncomingTickBar:
 
 
 # ── ModelFeatures ─────────────────────────────────────────────────────
+
 
 class TestModelFeatures:
     """The feature vector must exactly match the 16 columns used in Stage-03."""
@@ -141,14 +148,31 @@ class TestModelFeatures:
 
     def test_to_list_preserves_order(self):
         """The model array must be in the exact order expected by CatBoost."""
-        vals = [0.8, 5.2, 1.3, 0.5, 0.5, 1.6, 1.6, -0.2, 0.1, 14.0,
-                1.0, 0.3, 0.55, 100.0, 30.0, 3.0]
+        vals = [
+            0.8,
+            5.2,
+            1.3,
+            0.5,
+            0.5,
+            1.6,
+            1.6,
+            -0.2,
+            0.1,
+            14.0,
+            1.0,
+            0.3,
+            0.55,
+            100.0,
+            30.0,
+            3.0,
+        ]
         f = ModelFeatures(**dict(zip(self.EXPECTED_FIELDS, vals, strict=False)))
         reconstructed = [getattr(f, k) for k in self.EXPECTED_FIELDS]
         assert reconstructed == vals
 
 
 # ── OcoPrediction ─────────────────────────────────────────────────────
+
 
 class TestOcoPrediction:
     def test_valid_prediction(self):

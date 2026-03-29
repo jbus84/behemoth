@@ -4,6 +4,7 @@
 Joins the governance-locked predictions (ground truth) with JForex runtime events
 to compute aggregate outcome metrics per symbol and produce a pass/fail verdict.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -17,11 +18,10 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
-
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 
 
-def parse_order_label_close_ts(label: str) -> "datetime | None":
+def parse_order_label_close_ts(label: str) -> datetime | None:
     """Extract the prediction bar close_ts from a JForex order label.
 
     Labels are formatted as: OCO_{sym}_T{ticks}_H{horizon}_TS{YYYYMMDDHHMMSS}_...
@@ -36,7 +36,7 @@ def parse_order_label_close_ts(label: str) -> "datetime | None":
         return None
 
 
-def parse_predict_cycle_close_ts(detail: str) -> "datetime | None":
+def parse_predict_cycle_close_ts(detail: str) -> datetime | None:
     """Extract the replay close_ts from a predict_cycle detail string."""
     m = re.search(r"(?:^|;)close_ts=([^;]+)", str(detail))
     if not m:
@@ -47,21 +47,21 @@ def parse_predict_cycle_close_ts(detail: str) -> "datetime | None":
         return None
 
 
-def _parse_eval_ts(value: str) -> "datetime | None":
+def _parse_eval_ts(value: str) -> datetime | None:
     if not value:
         return None
     return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
 
 
-def _in_eval_window(ts: "datetime | None", eval_start: "datetime | None", eval_end: "datetime | None") -> bool:
+def _in_eval_window(
+    ts: datetime | None, eval_start: datetime | None, eval_end: datetime | None
+) -> bool:
     """Treat rows without replay close_ts as unfilterable and keep them for compatibility."""
     if ts is None:
         return True
     if eval_start is not None and ts < eval_start:
         return False
-    if eval_end is not None and ts >= eval_end:
-        return False
-    return True
+    return not (eval_end is not None and ts >= eval_end)
 
 
 DEFAULT_LOCK_DIR = "configs/research/governance/oco_history_dukascopy_candidate/2025-07"
@@ -170,7 +170,9 @@ def load_runtime_events(
     order_submitted_rows = df[df["event_name"] == "order_submitted"].copy()
     if eval_start_dt is not None or eval_end_dt is not None:
         order_submitted_rows = order_submitted_rows.loc[
-            order_submitted_rows["detail"].astype(str).apply(
+            order_submitted_rows["detail"]
+            .astype(str)
+            .apply(
                 lambda detail: _in_eval_window(
                     parse_order_label_close_ts(detail.split(":")[0]),
                     eval_start_dt,
@@ -180,10 +182,12 @@ def load_runtime_events(
         ]
     orders_submitted = len(order_submitted_rows)
     orders_filled = len(df[df["event_name"] == "order_filled"])
-    execution_failures = len(df[
-        (df["category"] == "execution")
-        & (df["pass"].astype(str).str.strip().str.lower() == "false")
-    ])
+    execution_failures = len(
+        df[
+            (df["category"] == "execution")
+            & (df["pass"].astype(str).str.strip().str.lower() == "false")
+        ]
+    )
     lifecycle_failures = len(df[df["event_name"] == "sibling_cancel_failure"])
     lifecycle_violations = len(df[df["event_name"] == "lifecycle_violation"])
 
@@ -259,13 +263,9 @@ def compare_outcomes(
         excluded from overall_pass.  signal_coverage_pass is the actionable gate.
     """
     zero_lock_clean_noop = (
-        locked_count == 0
-        and jforex_selected_total == 0
-        and jforex_orders_submitted == 0
+        locked_count == 0 and jforex_selected_total == 0 and jforex_orders_submitted == 0
     )
-    signal_coverage_ratio = (
-        jforex_selected_total / locked_count if locked_count > 0 else 0.0
-    )
+    signal_coverage_ratio = jforex_selected_total / locked_count if locked_count > 0 else 0.0
     # Zero-lock windows are valid no-op windows if runtime also stayed idle.
     signal_coverage_pass = (
         zero_lock_clean_noop
@@ -273,16 +273,12 @@ def compare_outcomes(
         else signal_coverage_ratio >= signal_coverage_threshold
     )
 
-    execution_clean_pass = (
-        jforex_execution_failures == 0 and jforex_lifecycle_failures == 0
-    )
+    execution_clean_pass = jforex_execution_failures == 0 and jforex_lifecycle_failures == 0
 
     has_trades = jforex_orders_submitted > 0
 
     # Per-event order coverage: unique group submissions vs distinct locked events
-    order_coverage_ratio = (
-        jforex_submitted_group_count / locked_count if locked_count > 0 else 0.0
-    )
+    order_coverage_ratio = jforex_submitted_group_count / locked_count if locked_count > 0 else 0.0
     order_coverage_pass = (
         zero_lock_clean_noop
         if locked_count == 0
@@ -292,8 +288,7 @@ def compare_outcomes(
     # signal_coverage_pass is the gate: did the model see the right events?
     # order_coverage_pass is informational: how many events resulted in orders (depressed by OCO blocking).
     overall_pass = execution_clean_pass and (
-        zero_lock_clean_noop
-        or (signal_coverage_pass and has_trades)
+        zero_lock_clean_noop or (signal_coverage_pass and has_trades)
     )
 
     return {
@@ -361,21 +356,33 @@ def write_per_symbol_summaries(results: list[dict], out_dir: Path) -> None:
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--symbols", default=",".join(DEFAULT_SYMBOLS),
+        "--symbols",
+        default=",".join(DEFAULT_SYMBOLS),
         help="Comma-separated symbol list",
     )
     parser.add_argument("--lock-dir", default=DEFAULT_LOCK_DIR)
     parser.add_argument("--reconcile-dir", default=DEFAULT_RECONCILE_DIR)
     parser.add_argument(
-        "--signal-coverage-threshold", type=float, default=0.8,
+        "--signal-coverage-threshold",
+        type=float,
+        default=0.8,
         help="Min ratio of JForex selected predictions / locked predictions (default: 0.8)",
     )
     parser.add_argument(
-        "--out-csv", default="data/analysis/backtest_reconcile/jforex_outcome_parity_summary.csv",
+        "--out-csv",
+        default="data/analysis/backtest_reconcile/jforex_outcome_parity_summary.csv",
         help="Output CSV path for per-symbol results",
     )
-    parser.add_argument("--eval-start", default="", help="Only include events with close_ts >= this UTC ISO-8601 timestamp (empty = all)")
-    parser.add_argument("--eval-end", default="", help="Only include events with close_ts < this UTC ISO-8601 timestamp (empty = all)")
+    parser.add_argument(
+        "--eval-start",
+        default="",
+        help="Only include events with close_ts >= this UTC ISO-8601 timestamp (empty = all)",
+    )
+    parser.add_argument(
+        "--eval-end",
+        default="",
+        help="Only include events with close_ts < this UTC ISO-8601 timestamp (empty = all)",
+    )
     return parser.parse_args()
 
 
@@ -405,13 +412,13 @@ def main() -> None:
             results.append(result)
             continue
 
-        locked = load_locked_predictions(lock_dir, symbol, eval_start=args.eval_start, eval_end=args.eval_end)
+        locked = load_locked_predictions(
+            lock_dir, symbol, eval_start=args.eval_start, eval_end=args.eval_end
+        )
 
         locked_count = len(locked)
         locked_gross_total = float(locked["target_gross_pips"].sum())
-        locked_win_rate = (
-            float(locked["target_gross_pos"].mean()) if locked_count > 0 else 0.0
-        )
+        locked_win_rate = float(locked["target_gross_pos"].mean()) if locked_count > 0 else 0.0
 
         result = compare_outcomes(
             symbol=symbol,
@@ -430,8 +437,10 @@ def main() -> None:
         results.append(result)
 
     # Print summary table
-    print(f"\n{'Symbol':<8} {'Locked':>7} {'JFX Sel':>8} {'Coverage':>9} "
-          f"{'Orders':>7} {'ExecOK':>7} {'Verdict':>8}")
+    print(
+        f"\n{'Symbol':<8} {'Locked':>7} {'JFX Sel':>8} {'Coverage':>9} "
+        f"{'Orders':>7} {'ExecOK':>7} {'Verdict':>8}"
+    )
     print("-" * 62)
     for r in results:
         verdict = (
@@ -439,7 +448,11 @@ def main() -> None:
             if not bool(r.get("historical_deployable", True))
             else ("PASS" if r["overall_pass"] else "FAIL")
         )
-        coverage_txt = "n/a" if not bool(r.get("historical_deployable", True)) else f"{r['signal_coverage_ratio']:>8.1%}"
+        coverage_txt = (
+            "n/a"
+            if not bool(r.get("historical_deployable", True))
+            else f"{r['signal_coverage_ratio']:>8.1%}"
+        )
         print(
             f"{r['symbol']:<8} {r['locked_selected_count']:>7} "
             f"{r['jforex_selected_total']:>8} {coverage_txt:>9} "

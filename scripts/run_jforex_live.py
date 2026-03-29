@@ -24,7 +24,6 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
-
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 DEFAULT_MODELS_DIR = "models/oco_dukascopy_candidate"
 DEFAULT_HISTORY_DIR = "configs/research/governance/oco_history_dukascopy_candidate"
@@ -132,12 +131,17 @@ def _seed_audit_history(
     test_month_start = None
     if model_month:
         from datetime import datetime as dt
+
         from dateutil.relativedelta import relativedelta
+
         mm = dt.strptime(model_month, "%Y-%m")
         test_month_start = (mm + relativedelta(months=1)).strftime("%Y-%m-%dT00:00:00")
 
-    print(f"[seed] seeding audit_logs (train_pred_dir={train_predictions_dir}, "
-          f"test_month_start={test_month_start})...", flush=True)
+    print(
+        f"[seed] seeding audit_logs (train_pred_dir={train_predictions_dir}, "
+        f"test_month_start={test_month_start})...",
+        flush=True,
+    )
     try:
         r = requests.post(
             f"{base_url}/state/seed_audit_history",
@@ -154,7 +158,10 @@ def _seed_audit_history(
         if body.get("ok"):
             p1 = sum(body.get("phase1_events", {}).values())
             p2 = sum(body.get("phase2_events", {}).values())
-            print(f"[seed] done — phase1: {p1}, phase2: {p2}, total: {body['total_events']}", flush=True)
+            print(
+                f"[seed] done — phase1: {p1}, phase2: {p2}, total: {body['total_events']}",
+                flush=True,
+            )
             for sym, count in body.get("phase1_events", {}).items():
                 print(f"[seed]   {sym} phase1: {count} events", flush=True)
             for sym, count in body.get("phase2_events", {}).items():
@@ -163,7 +170,9 @@ def _seed_audit_history(
             print(f"[seed] WARNING: unexpected response: {body}", flush=True)
     except Exception as exc:
         print(f"[seed] WARNING: seed_audit_history failed: {exc}", flush=True)
-        print("[seed] continuing without historical seed — first predict calls may block", flush=True)
+        print(
+            "[seed] continuing without historical seed — first predict calls may block", flush=True
+        )
 
 
 def _warmup_symbols(symbols: list[str], base_url: str, timeout_sec: float = 60.0) -> None:
@@ -282,7 +291,11 @@ def main() -> None:
     cfg = _parse_args()
 
     # Pre-flight: validate credentials before starting any process
-    for required in ("BEHEMOTH_JFOREX_JNLP_URI", "BEHEMOTH_JFOREX_USERNAME", "BEHEMOTH_JFOREX_PASSWORD"):
+    for required in (
+        "BEHEMOTH_JFOREX_JNLP_URI",
+        "BEHEMOTH_JFOREX_USERNAME",
+        "BEHEMOTH_JFOREX_PASSWORD",
+    ):
         if not os.environ.get(required):
             raise SystemExit(f"Missing required env var: {required}")
 

@@ -311,7 +311,9 @@ def _render_index(manifest: pd.DataFrame, *, docs_root: Path) -> str:
     lines.append(
         "Use `Compatibility / Legacy Reports` for cTrader, HistData, FTMO, and reconciliation surfaces that remain available but are not the primary runtime centerline."
     )
-    lines.append("Use `Archive Reports` for documents already moved out of the live analysis surface.")
+    lines.append(
+        "Use `Archive Reports` for documents already moved out of the live analysis surface."
+    )
     lines.append("")
 
     lines.append("## Active / Core Reports")
@@ -361,9 +363,7 @@ def _render_index(manifest: pd.DataFrame, *, docs_root: Path) -> str:
     lines.append("")
 
     lines.append("## Compatibility / Legacy Reports")
-    compatibility = manifest[
-        manifest["group"].isin(["compatibility", "legacy"])
-    ].copy()
+    compatibility = manifest[manifest["group"].isin(["compatibility", "legacy"])].copy()
     if compatibility.empty:
         lines.append("_empty_")
     else:
@@ -371,9 +371,11 @@ def _render_index(manifest: pd.DataFrame, *, docs_root: Path) -> str:
         compatibility_global = compatibility[compatibility["symbol"] == "ALL"].copy()
         if not compatibility_symbol.empty:
             for s in SYMBOLS:
-                g = compatibility_symbol[
-                    compatibility_symbol["symbol"] == s
-                ].copy().sort_values("doc_path")
+                g = (
+                    compatibility_symbol[compatibility_symbol["symbol"] == s]
+                    .copy()
+                    .sort_values("doc_path")
+                )
                 if g.empty:
                     continue
                 lines.append(f"### {s}")
@@ -478,7 +480,9 @@ def _render_taxonomy_rules() -> str:
     lines.append(
         "3. `candidate`: experimental, offset-robustness, and candidate-labelled analysis artifacts that should stay visible but outside the live centerline."
     )
-    lines.append("4. `compatibility`: cTrader, HistData, FTMO, and reconciliation-oriented surfaces.")
+    lines.append(
+        "4. `compatibility`: cTrader, HistData, FTMO, and reconciliation-oriented surfaces."
+    )
     lines.append(
         "5. `symbol`: filename maps to specific symbol token (`EURUSD`, `GBPUSD`, `USDJPY`, `USDCHF`, `AUDUSD`, `USDCAD`)."
     )

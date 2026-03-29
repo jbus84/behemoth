@@ -141,8 +141,12 @@ def _section_funnel(con: duckdb.DuckDBPyConnection, run_id: str, use_eval: bool)
         return lines
 
     lines.append("Fallback source: `account_risk_allocator_events`.")
-    lines.append("`predict_evaluations` not populated for this session - sub-threshold misses are not visible.")
-    lines.append("`account_risk_allocator_events` has no `run_id`; fallback spans all sessions in the DB.")
+    lines.append(
+        "`predict_evaluations` not populated for this session - sub-threshold misses are not visible."
+    )
+    lines.append(
+        "`account_risk_allocator_events` has no `run_id`; fallback spans all sessions in the DB."
+    )
     df = _safe_query(
         con,
         """
@@ -167,11 +171,15 @@ def _section_funnel(con: duckdb.DuckDBPyConnection, run_id: str, use_eval: bool)
         [],
     )
     if not trade_run_ids.empty and int(trade_run_ids.iloc[0, 0] or 0) > 1:
-        lines.append("Warning: multiple trade `run_id` values are present, so the fallback is broader than a single session.")
+        lines.append(
+            "Warning: multiple trade `run_id` values are present, so the fallback is broader than a single session."
+        )
     return lines
 
 
-def _section_score_distribution(con: duckdb.DuckDBPyConnection, run_id: str, use_eval: bool) -> list[str]:
+def _section_score_distribution(
+    con: duckdb.DuckDBPyConnection, run_id: str, use_eval: bool
+) -> list[str]:
     lines = ["## Score Distribution"]
     if use_eval and _table_exists(con, "predict_evaluations"):
         df = _safe_query(
@@ -200,7 +208,9 @@ def _section_score_distribution(con: duckdb.DuckDBPyConnection, run_id: str, use
             [run_id],
         )
         lines.append("Fallback source: `audit_logs` (admitted rows only).")
-        lines.append("`predict_evaluations` not populated for this session - score visibility is admission-only.")
+        lines.append(
+            "`predict_evaluations` not populated for this session - score visibility is admission-only."
+        )
         if df.empty:
             lines.append("_No score rows found for this run._")
             return lines
@@ -226,7 +236,9 @@ def _section_score_distribution(con: duckdb.DuckDBPyConnection, run_id: str, use
     return lines
 
 
-def _section_block_reasons(con: duckdb.DuckDBPyConnection, run_id: str, use_eval: bool) -> list[str]:
+def _section_block_reasons(
+    con: duckdb.DuckDBPyConnection, run_id: str, use_eval: bool
+) -> list[str]:
     lines = ["## Block Reason Breakdown"]
     if use_eval and _table_exists(con, "predict_evaluations"):
         df = _safe_query(
@@ -251,7 +263,9 @@ def _section_block_reasons(con: duckdb.DuckDBPyConnection, run_id: str, use_eval
             threshold_reason = row.get("threshold_block_reason")
             risk_reason = row.get("risk_block_reason")
             if pd.notna(threshold_reason) and str(threshold_reason).strip():
-                rows.append({"symbol": symbol, "gate": "threshold", "block_reason": threshold_reason})
+                rows.append(
+                    {"symbol": symbol, "gate": "threshold", "block_reason": threshold_reason}
+                )
             if pd.notna(risk_reason) and str(risk_reason).strip():
                 rows.append({"symbol": symbol, "gate": "risk", "block_reason": risk_reason})
         if not rows:
@@ -262,13 +276,17 @@ def _section_block_reasons(con: duckdb.DuckDBPyConnection, run_id: str, use_eval
             .groupby(["symbol", "gate", "block_reason"], dropna=False)
             .size()
             .reset_index(name="count")
-            .sort_values(["symbol", "gate", "count", "block_reason"], ascending=[True, True, False, True])
+            .sort_values(
+                ["symbol", "gate", "count", "block_reason"], ascending=[True, True, False, True]
+            )
         )
         lines.append(_table(out))
         return lines
 
     lines.append("Fallback source: `account_risk_allocator_events`.")
-    lines.append("`predict_evaluations` not populated for this session - threshold-only blocking is not visible.")
+    lines.append(
+        "`predict_evaluations` not populated for this session - threshold-only blocking is not visible."
+    )
     df = _safe_query(
         con,
         """
@@ -296,9 +314,7 @@ def _section_block_reasons(con: duckdb.DuckDBPyConnection, run_id: str, use_eval
 def _section_trade_outcomes(con: duckdb.DuckDBPyConnection, run_id: str) -> list[str]:
     lines = ["## Trade Outcomes"]
     close_reason_expr = (
-        "coalesce(close_reason, '')"
-        if _column_exists(con, "trades", "close_reason")
-        else "''"
+        "coalesce(close_reason, '')" if _column_exists(con, "trades", "close_reason") else "''"
     )
     df = _safe_query(
         con,
@@ -337,10 +353,17 @@ def _section_trade_outcomes(con: duckdb.DuckDBPyConnection, run_id: str) -> list
                 "symbol": symbol,
                 "closed_trades": int(len(closed)),
                 "wins": int(len(wins)),
-                "win_rate": _fmt_float((len(wins) / len(closed) * 100.0) if len(closed) else 0.0, 1) + "%",
-                "avg_winner_pips": _fmt_float(wins["pnl_pips"].mean() if not wins.empty else float("nan")),
-                "avg_loser_pips": _fmt_float(losses["pnl_pips"].mean() if not losses.empty else float("nan")),
-                "total_pnl_pips": _fmt_float(closed["pnl_pips"].sum() if not closed.empty else float("nan")),
+                "win_rate": _fmt_float((len(wins) / len(closed) * 100.0) if len(closed) else 0.0, 1)
+                + "%",
+                "avg_winner_pips": _fmt_float(
+                    wins["pnl_pips"].mean() if not wins.empty else float("nan")
+                ),
+                "avg_loser_pips": _fmt_float(
+                    losses["pnl_pips"].mean() if not losses.empty else float("nan")
+                ),
+                "total_pnl_pips": _fmt_float(
+                    closed["pnl_pips"].sum() if not closed.empty else float("nan")
+                ),
                 "close_reasons": reason_text,
             }
         )

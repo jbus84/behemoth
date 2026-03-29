@@ -1,4 +1,5 @@
 """Tests for JForex dukascopy matrix runner."""
+
 from __future__ import annotations
 
 import subprocess
@@ -154,7 +155,9 @@ def test_missing_summary_file_is_not_treated_as_complete(tmp_path: Path) -> None
         )
 
 
-def test_run_jforex_tester_clears_stale_stage14_artifacts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_jforex_tester_clears_stale_stage14_artifacts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     cfg = _cfg(tmp_path)
     cfg = RunConfig(**{**cfg.__dict__, "report_dir": "reports"})
     report_dir = tmp_path / "reports"
@@ -180,7 +183,9 @@ def test_run_jforex_tester_clears_stale_stage14_artifacts(tmp_path: Path, monkey
     def fake_wait(proc, artifact_paths, **kwargs):
         waited["paths"] = artifact_paths
 
-    monkeypatch.setattr("scripts.run_jforex_dukascopy_matrix._wait_for_artifacts_then_kill", fake_wait)
+    monkeypatch.setattr(
+        "scripts.run_jforex_dukascopy_matrix._wait_for_artifacts_then_kill", fake_wait
+    )
 
     _run_jforex_tester(cfg, "EURUSD", metrics_port=9464)
 

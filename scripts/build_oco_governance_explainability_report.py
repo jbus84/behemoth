@@ -260,11 +260,7 @@ def run(
         source_alert_series = g.get("source_alert", pd.Series(dtype=str)).astype(str).str.strip()
         source_alert_series = source_alert_series[source_alert_series != ""]
         source_alert_mode = source_alert_series.mode()
-        source_alert = (
-            str(source_alert_mode.iloc[0])
-            if not source_alert_mode.empty
-            else "unknown"
-        )
+        source_alert = str(source_alert_mode.iloc[0]) if not source_alert_mode.empty else "unknown"
 
         rows.append(
             {
