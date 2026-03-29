@@ -1,14 +1,8 @@
-## Unreleased
+## v0.2.0 (2026-03-29)
 
 ### Feat
 
-- **ci**: add make pr target for automated PR creation with auto-merge
-- **ci**: add auto-merge workflow for PRs
-- **ci**: add release workflow for auto version bump and changelog
-- **ci**: unify CI into single workflow with test, docs, and commit checks
-- **ci**: add methodology commit body checker script
-- **ci**: add commitizen commit-msg pre-commit hook
-- **ci**: add commitizen for conventional commits and semantic versioning
+- **ci**: add conventional commits, changelog, PR automation and methodology trail (#3)
 - add THRESHOLD_PARITY_PASS to stage 14 certification
 - pass training predictions dir to two-phase seeding
 - two-phase seeding endpoint with training predictions
@@ -57,8 +51,7 @@
 
 ### Fix
 
-- **ci**: install commit-msg hook in precommit-install target
-- switch Stage 0 from HistData to Dukascopy tick source
+- **ci**: remove stray test_fetcher_bug.py that breaks CI
 - remove tick-batch-size from shared args and restore legacy stub targets
 - update threshold blocking response for new source values
 - update test mocks for rolling threshold authority
