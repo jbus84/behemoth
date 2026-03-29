@@ -186,7 +186,7 @@ def stage_2_ml_pipeline(symbol: str, *, model_export_dir: str | None = None, dry
 
     wfo_args_base = [
         "--config",
-        f"configs/research/experiments/{sym}_tick_opportunity_monthly_wfo_2025.yaml",
+        f"configs/research/experiments/{sym}_tick_opportunity_monthly_wfo.yaml",
     ]
 
     _uv_run(
@@ -198,7 +198,7 @@ def stage_2_ml_pipeline(symbol: str, *, model_export_dir: str | None = None, dry
 
     wfo_args_oco = [
         "--config",
-        f"configs/research/experiments/{sym}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
+        f"configs/research/experiments/{sym}_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
     ]
     if model_export_dir:
         # Export deployable API models only from the fullcap OCO run so
@@ -212,7 +212,7 @@ def stage_2_ml_pipeline(symbol: str, *, model_export_dir: str | None = None, dry
         label="Stage 2d: OCO Fullcap WFO",
     )
 
-    pred_path = f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{symbol.upper()}_oco_monthly_predictions.parquet"
+    pred_path = f"data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/{symbol.upper()}_oco_monthly_predictions.parquet"
     _uv_run(
         "analyze_oco_stop_limit_tickfill.py",
         "--symbols",
@@ -228,7 +228,7 @@ def stage_2_ml_pipeline(symbol: str, *, model_export_dir: str | None = None, dry
     _uv_run(
         "select_oco_reduced_core_rolling.py",
         "--config",
-        f"configs/research/experiments/{sym}_oco_reduced_core_rolling_2025.yaml",
+        f"configs/research/experiments/{sym}_oco_reduced_core_rolling.yaml",
         dry_run=dry_run,
         label="Stage 2f: Reduced core rolling selection",
     )
@@ -264,7 +264,7 @@ def stage_3_conditional(symbol: str, *, dry_run: bool) -> None:
     _uv_run(
         "verify_oco_tick_exact_shortlist.py",
         "--config",
-        f"configs/research/experiments/{sym}_oco_reduced_core_rolling_2025.yaml",
+        f"configs/research/experiments/{sym}_oco_reduced_core_rolling.yaml",
         "--shortlist-state-csv",
         f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{SYM}_oco_reduced_state_schedule.csv",
         "--out-summary-csv",
@@ -280,7 +280,7 @@ def stage_3_conditional(symbol: str, *, dry_run: bool) -> None:
     )
 
     # Robustness analysis
-    pred_path = f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{SYM}_oco_monthly_predictions.parquet"
+    pred_path = f"data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/{SYM}_oco_monthly_predictions.parquet"
     schedule_csv = f"data/analysis/tick_opportunity_mining/reduced_core_rolling/{SYM}_oco_reduced_state_schedule.csv"
     out_summary = (
         f"data/analysis/tick_opportunity_mining/full_robustness/{SYM}_oco_robustness_summary.csv"

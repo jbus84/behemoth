@@ -65,7 +65,7 @@ define JFOREX_MATRIX_ARGS
 	--model-month $(or $(MODEL_MONTH),2025-07) \
 	--models-dir $(or $(MODELS_DIR),models/oco_dukascopy_candidate) \
 	--history-dir $(or $(HISTORY_DIR),configs/research/governance/oco_history_dukascopy_candidate) \
-	--predictions-dir $(or $(PREDICTIONS_DIR),data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap) \
+	--predictions-dir $(or $(PREDICTIONS_DIR),data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap) \
 	--report-dir $(or $(REPORT_DIR),data/analysis/backtest_reconcile) \
 	--api-port $(or $(API_PORT),8000) \
 	--requested-volume-units $(or $(REQUESTED_VOLUME_UNITS),10000) \
@@ -354,7 +354,7 @@ freeze-oco:
 		if [ -z "$$JSON" ]; then echo "Error: No model JSON found for $$sym"; exit 1; fi; \
 		SYM_LOWER=$$(echo $$sym | tr '[:upper:]' '[:lower:]'); \
 		uv run python scripts/validate_api_parity.py --symbol $$sym \
-			--predictions data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap_$${SYM_LOWER}/$${sym}_oco_monthly_predictions.parquet \
+			--predictions data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap_$${SYM_LOWER}/$${sym}_oco_monthly_predictions.parquet \
 			--threshold-json $$JSON \
 			--out-summary data/analysis/backtest_reconcile/$${sym}_stage12_api_parity_summary.csv || exit 1; \
 		done
@@ -486,7 +486,7 @@ jforex-dukascopy-matrix:
 		--model-month $(or $(MODEL_MONTH),2025-07) \
 		--models-dir $(or $(MODELS_DIR),models/oco_dukascopy_candidate) \
 		--history-dir $(or $(HISTORY_DIR),configs/research/governance/oco_history_dukascopy_candidate) \
-		--predictions-dir $(or $(PREDICTIONS_DIR),data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap) \
+		--predictions-dir $(or $(PREDICTIONS_DIR),data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap) \
 		--report-dir $(or $(REPORT_DIR),data/analysis/backtest_reconcile) \
 		--api-port $(or $(API_PORT),8000) \
 		--requested-volume-units $(or $(REQUESTED_VOLUME_UNITS),10000) \

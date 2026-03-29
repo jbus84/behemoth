@@ -53,7 +53,7 @@ def _default_configs() -> dict[str, SymbolConfig]:
     configs = {}
     for s in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]:
         s.lower()
-        pred_folder = "wfo_2025_m3to1_oco_fullcap"
+        pred_folder = "wfo_m3to1_oco_fullcap"
         red_folder = "reduced_core_rolling"
         stop_folder = "stop_limit_tickfill_fullcap"
 

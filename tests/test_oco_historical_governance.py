@@ -84,12 +84,12 @@ def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_pa
     out_dir = tmp_path / "history"
     config_dir.mkdir(parents=True)
 
-    (config_dir / f"{sl}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml").write_text(
+    (config_dir / f"{sl}_tick_opportunity_monthly_wfo_oco_fullcap.yaml").write_text(
         "threshold_mode: rolling_days\nproduction_cap_pips: 1.2\noco_hold_mode: from_touch\n"
         "oco_include_no_touch: true\nexecution_quantile: 0.9\n",
         encoding="utf-8",
     )
-    (config_dir / f"{sl}_oco_reduced_core_rolling_2025.yaml").write_text(
+    (config_dir / f"{sl}_oco_reduced_core_rolling.yaml").write_text(
         "locked_quantile: 0.9\nselection_mode: auto\nfamily_keep: oco_first_touch_clean\n",
         encoding="utf-8",
     )
@@ -137,7 +137,7 @@ def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_pa
         stop_limit_dir / f"{symbol}_stop_limit_tickfill_caps.csv", index=False
     )
 
-    pred_dir = analysis_dir / "wfo_2025_m3to1_oco_fullcap"
+    pred_dir = analysis_dir / "wfo_m3to1_oco_fullcap"
     pred_dir.mkdir(parents=True)
     pd.DataFrame(
         [

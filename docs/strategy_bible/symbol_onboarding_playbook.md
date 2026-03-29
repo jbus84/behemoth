@@ -51,12 +51,12 @@ Skip with `--skip-data` if tick bars are already built.
 Duplicates the EURUSD baseline configs, substituting the symbol name.
 
 Templates cloned from `configs/research/experiments/`:
-- `eurusd_oco_reduced_core_2025.yaml` → `<sym>_oco_reduced_core_2025.yaml`
-- `eurusd_oco_reduced_core_rolling_2025.yaml` → `<sym>_oco_reduced_core_rolling_2025.yaml`
+- `eurusd_oco_reduced_core.yaml` → `<sym>_oco_reduced_core.yaml`
+- `eurusd_oco_reduced_core_rolling.yaml` → `<sym>_oco_reduced_core_rolling.yaml`
 - `eurusd_tick_opportunity_mining.yaml` → `<sym>_tick_opportunity_mining.yaml`
 - `eurusd_tick_opportunity_ml_dataset.yaml` → `<sym>_tick_opportunity_ml_dataset.yaml`
-- `eurusd_tick_opportunity_monthly_wfo_2025.yaml` → `<sym>_tick_opportunity_monthly_wfo_2025.yaml`
-- `eurusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml` → `<sym>_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml`
+- `eurusd_tick_opportunity_monthly_wfo.yaml` → `<sym>_tick_opportunity_monthly_wfo.yaml`
+- `eurusd_tick_opportunity_monthly_wfo_oco_fullcap.yaml` → `<sym>_tick_opportunity_monthly_wfo_oco_fullcap.yaml`
 
 The script handles `EURUSD`→`<SYM>` and `eurusd`→`<sym>` substitution,
 and fixes `stop_limit_detail_csv` to point at `stop_limit_tickfill_fullcap/`.

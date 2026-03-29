@@ -10,23 +10,23 @@ TARGET_DIR = REPO_ROOT / "configs" / "research" / "experiments_dukascopy_candida
 
 ACTIVE_CONFIGS = (
     "eurusd_tick_opportunity_mining.yaml",
-    "eurusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
-    "eurusd_oco_reduced_core_rolling_2025.yaml",
+    "eurusd_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
+    "eurusd_oco_reduced_core_rolling.yaml",
     "gbpusd_tick_opportunity_mining.yaml",
-    "gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
-    "gbpusd_oco_reduced_core_rolling_2025.yaml",
+    "gbpusd_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
+    "gbpusd_oco_reduced_core_rolling.yaml",
     "usdjpy_tick_opportunity_mining.yaml",
-    "usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
-    "usdjpy_oco_reduced_core_rolling_2025.yaml",
+    "usdjpy_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
+    "usdjpy_oco_reduced_core_rolling.yaml",
     "usdchf_tick_opportunity_mining.yaml",
-    "usdchf_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
-    "usdchf_oco_reduced_core_rolling_2025.yaml",
+    "usdchf_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
+    "usdchf_oco_reduced_core_rolling.yaml",
     "audusd_tick_opportunity_mining.yaml",
-    "audusd_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
-    "audusd_oco_reduced_core_rolling_2025.yaml",
+    "audusd_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
+    "audusd_oco_reduced_core_rolling.yaml",
     "usdcad_tick_opportunity_mining.yaml",
-    "usdcad_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
-    "usdcad_oco_reduced_core_rolling_2025.yaml",
+    "usdcad_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
+    "usdcad_oco_reduced_core_rolling.yaml",
 )
 
 
@@ -37,7 +37,7 @@ def _rewrite_content(content: str) -> str:
             "__DUKASCOPY_CANDIDATE_STOP_LIMIT__",
         ),
         (
-            "data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap",
+            "data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap",
             "__DUKASCOPY_CANDIDATE_WFO__",
         ),
         (
@@ -54,7 +54,7 @@ def _rewrite_content(content: str) -> str:
         ),
         (
             "__DUKASCOPY_CANDIDATE_WFO__",
-            "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap",
+            "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap",
         ),
         (
             "__DUKASCOPY_CANDIDATE_REDUCED_ROLLING__",

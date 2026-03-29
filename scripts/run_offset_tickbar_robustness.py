@@ -103,8 +103,8 @@ def _symbol_configs(symbol: str) -> SymbolConfigs:
     return SymbolConfigs(
         mining=ROOT / f"configs/research/experiments/{s}_tick_opportunity_mining.yaml",
         wfo=ROOT
-        / f"configs/research/experiments/{s}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
-        reduced=ROOT / f"configs/research/experiments/{s}_oco_reduced_core_rolling_2025.yaml",
+        / f"configs/research/experiments/{s}_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
+        reduced=ROOT / f"configs/research/experiments/{s}_oco_reduced_core_rolling.yaml",
     )
 
 

@@ -508,22 +508,22 @@ def main() -> None:
             s_up = s.upper()
             defaults = {
                 "EURUSD": Path(
-                    f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"
+                    f"data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"
                 ),
                 "GBPUSD": Path(
-                    f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"
+                    f"data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"
                 ),
                 "USDJPY": Path(
-                    f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"
+                    f"data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"
                 ),
                 "USDCHF": Path(
-                    f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"
+                    f"data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"
                 ),
                 "AUDUSD": Path(
-                    f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"
+                    f"data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"
                 ),
                 "USDCAD": Path(
-                    f"data/analysis/tick_opportunity_mining/wfo_2025_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"
+                    f"data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/{s_up}_oco_monthly_predictions.parquet"
                 ),
             }
             if s_up not in defaults:

@@ -46,7 +46,7 @@ def _default_configs(
     base_dir = Path(base_dir)
     configs = {}
     for s in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]:
-        pred_folder = "wfo_2025_m3to1_oco_fullcap"
+        pred_folder = "wfo_m3to1_oco_fullcap"
         red_folder = "reduced_core_rolling"
         stop_folder = "stop_limit_tickfill_fullcap"
 

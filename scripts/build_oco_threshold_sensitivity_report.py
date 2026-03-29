@@ -63,7 +63,7 @@ def _default_paths(symbol: str) -> SymbolPaths:
     s = str(symbol).upper()
     s_low = s.lower()
 
-    folder = "wfo_2025_m3to1_oco_fullcap"
+    folder = "wfo_m3to1_oco_fullcap"
 
     pred = Path(
         f"data/analysis/tick_opportunity_mining/{folder}/{s}_oco_monthly_predictions.parquet"

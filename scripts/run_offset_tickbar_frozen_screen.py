@@ -82,8 +82,8 @@ def _symbol_configs(symbol: str) -> tuple[Path, Path]:
     s = str(symbol).lower().strip()
     return (
         ROOT
-        / f"configs/research/experiments/{s}_tick_opportunity_monthly_wfo_oco_fullcap_2025.yaml",
-        ROOT / f"configs/research/experiments/{s}_oco_reduced_core_rolling_2025.yaml",
+        / f"configs/research/experiments/{s}_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
+        ROOT / f"configs/research/experiments/{s}_oco_reduced_core_rolling.yaml",
     )
 
 

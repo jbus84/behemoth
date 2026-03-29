@@ -290,7 +290,7 @@ Replace the extraction block (lines ~107–116) from:
 	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/extract_spotlight_ticks.py \
 		--symbols $(or $(SYMBOLS),EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD) \
 		--model-month $(or $(MODEL_MONTH),2025-07) \
-		--predictions-dir $(or $(PREDICTIONS_DIR),data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_2025_m3to1_oco_fullcap) \
+		--predictions-dir $(or $(PREDICTIONS_DIR),data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap) \
 		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks) \
 		--output-dir $(or $(SPOTLIGHT_DIR),data/analysis/spotlight_ticks) \
 		--eval-start $(or $(EVAL_START),2025-07-07T00:00:00Z) \

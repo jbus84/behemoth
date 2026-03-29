@@ -1,0 +1,37 @@
+symbol: USDCHF
+
+candidate_csv: data/analysis/tick_opportunity_mining/USDCHF_oco_candidates.csv
+pred_path: data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/USDCHF_oco_monthly_predictions.parquet
+
+family_keep: oco_first_touch_clean
+barrier_keep: "2,3"
+horizon_keep: "5,6"
+locked_quantile: 0.9
+selection_mode: auto
+execution_mode: stop_limit
+stop_limit_detail_csv: data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/USDCHF_stop_limit_tickfill_detail.csv
+stop_limit_cap_pips: 1.2
+stop_limit_slippage_mode: full_overshoot
+stop_limit_min_fill_rate: 0.5
+stop_limit_require_match_rate: 0.95
+
+state_train_months: 3
+min_train_months: 3
+overlap_corr_max: 0.85
+max_states: 12
+min_states: 4
+min_state_avg_rows: 200
+min_positive_months_train: 2
+require_lb95_trade_gt0: true
+require_lb95_month_gt0: true
+bootstrap_paths: 600
+seed: 42
+
+capacity_floor_monthly: 3000
+capacity_floor_annual: 5000
+
+out_state_schedule_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_state_schedule.csv
+out_state_csv: data/analysis/tick_opportunity_mining/reduced_core/USDCHF_oco_reduced_states.csv
+out_monthly_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_monthly.csv
+out_summary_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_summary.csv
+report_out: docs/analysis/usdchf_oco_reduced_core_rolling_report.md
