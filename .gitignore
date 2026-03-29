@@ -15,6 +15,7 @@ models/
 # Data artifacts
 *.csv
 *.parquet
+tick_vault_data/
 
 # Virtual environments
 .venv
