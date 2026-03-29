@@ -1,3 +1,9 @@
+## v0.2.6 (2026-03-29)
+
+### Refactor
+
+- drop misleading _2025 suffix from config names and output dirs (#9)
+
 ## v0.2.5 (2026-03-29)
 
 ### Fix
