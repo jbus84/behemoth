@@ -30,3 +30,10 @@ alertmanager.yml
 .gradle/
 src/jforex/build/
 .worktrees/
+
+# Scratch / temp
+.agent/
+plans/
+tmp/
+.coverage
+test_ticks.cs
