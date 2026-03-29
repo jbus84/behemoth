@@ -459,7 +459,7 @@ def _oco_candidates(
     ts_train = pd.to_datetime(train["close_ts"], utc=True, errors="coerce")
 
     rows: list[dict[str, Any]] = []
-    train_cache: dict[tuple[int, float, str, str], tuple[int, float, float]] = {}
+    train_cache: dict[tuple[int, float, str, str], tuple[int, float, float, float]] = {}
     for h in horizons:
         h = int(h)
         for stage, dct in [
