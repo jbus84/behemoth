@@ -121,6 +121,7 @@ format:
 precommit-install:
 	uv run pre-commit install
 	uv run pre-commit install --hook-type pre-push
+	uv run pre-commit install --hook-type commit-msg
 
 precommit-run:
 	uv run pre-commit run --all-files
