@@ -11,9 +11,17 @@ import pytest
 from src.behemoth.core.registry import CandidateRegistry
 
 LOCK_DIR = Path("configs/research/governance/oco")
+MODELS_DIR = Path("models/oco")
+
+_has_model_artifacts = MODELS_DIR.exists() and any(MODELS_DIR.glob("*.cbm"))
+_skip_no_models = pytest.mark.skipif(
+    not _has_model_artifacts,
+    reason="model artifacts not present (gitignored)",
+)
 
 
 class TestRegistryLoading:
+    @_skip_no_models
     def test_loads_from_json_dir(self):
         reg = CandidateRegistry.load(LOCK_DIR)
         assert len(reg.symbols) > 0
@@ -74,6 +82,7 @@ class TestRegistryLoading:
         assert Path(binding["model_threshold_json_path"]) == model_thr
 
 
+@_skip_no_models
 class TestCandidateGeneration:
     @pytest.fixture
     def registry(self) -> CandidateRegistry:
