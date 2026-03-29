@@ -1,30 +1,30 @@
-name: docs-contract
+name: ci
 
 on:
   push:
     branches: [main]
-    paths:
-      - "docs/**"
-      - "scripts/**"
-      - "configs/research/**"
-      - "tests/**"
-      - "mkdocs.yml"
-      - "Makefile"
-      - "pyproject.toml"
-      - "uv.lock"
   pull_request:
-    paths:
-      - "docs/**"
-      - "scripts/**"
-      - "configs/research/**"
-      - "tests/**"
-      - "mkdocs.yml"
-      - "Makefile"
-      - "pyproject.toml"
-      - "uv.lock"
+
+permissions:
+  contents: read
 
 jobs:
-  docs-contract:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v3
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: Run tests
+        run: make test
+      - name: Run quality checks
+        run: make quality
+
+  docs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -32,10 +32,8 @@ jobs:
       - uses: astral-sh/setup-uv@v3
       - name: Install dependencies
         run: uv sync --frozen
-      - name: Run docs contract (CI-safe)
+      - name: Run docs contract
         run: make docs-contract-ci
-      - name: Build strategy bible snapshots
-        run: uv run python scripts/build_oco_strategy_bible.py --manifest configs/research/docs/oco_bible_manifest.yaml --strict false
       - name: Build docs
         run: uv run mkdocs build
       - name: Upload docs contract artifacts
@@ -55,3 +53,20 @@ jobs:
             docs/analysis/oco_rule_universe_registry_report.md
             docs/analysis/oco_alert_remediation_report.md
             docs/analysis/oco_governance_explainability_report.md
+
+  commits:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v3
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: Validate conventional commit format
+        if: github.event_name == 'pull_request'
+        run: uv run cz check --rev-range ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+      - name: Check methodology commit bodies
+        if: github.event_name == 'pull_request'
+        run: bash scripts/check_methodology_commits.sh ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}

@@ -49,3 +49,8 @@ repos:
         language: system
         pass_filenames: false
         stages: [pre-push]
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.1.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
