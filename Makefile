@@ -69,7 +69,7 @@ endef
 
 .PHONY: monthly-build monthly-recert promote-live
 
-.PHONY: jforex-live demo-cert-monitor
+.PHONY: jforex-live demo-cert-monitor pr
 
 .PHONY: offset-robustness-study offset-frozen-screen dukascopy-source-audit \
         reconcile-historical-predictions summarize-runtime-db-run \
@@ -466,6 +466,20 @@ demo-cert-monitor: observability-up
 	@printf "[demo-cert] Monitoring stack: started via make observability-up\n"
 	@printf "[demo-cert] Start demo runner with: make jforex-live\n"
 
+pr:
+	@BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
+	if [ "$$BRANCH" = "main" ]; then \
+		echo "ERROR: Cannot create PR from main branch. Use a worktree branch."; \
+		exit 1; \
+	fi; \
+	echo "Pushing branch $$BRANCH..."; \
+	git push -u origin HEAD; \
+	TITLE=$$(git log main..HEAD --format='%s' | head -1); \
+	BODY=$$(git log main..HEAD --format='- %s%n%b' | sed '/^$$/d'); \
+	echo "Creating PR: $$TITLE"; \
+	gh pr create --title "$$TITLE" --body "$$BODY" --fill; \
+	gh pr merge --auto --squash
+
 # ==============================================================================
 # Analysis
 # ==============================================================================
@@ -643,6 +657,7 @@ help:
 	@printf "\n$(COLOR_SECTION)== Operations ==$(COLOR_RESET)\n"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "jforex-live" "Start the JForex live/demo session for all symbols (IClient-based, live governance mode)"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "demo-cert-monitor" "Start observability and print the Dukascopy demo certification monitoring URLs"
+	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "pr" "Push branch, create PR, enable auto-merge"
 	@printf "\n$(COLOR_SECTION)== Analysis ==$(COLOR_RESET)\n"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "offset-robustness-study" "Run the offset tick-bar robustness study across selected symbols/offsets"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "offset-frozen-screen" "Screen frozen models against offset tick-bar configurations"
