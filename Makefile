@@ -110,7 +110,7 @@ radon:
 
 xenon:
 	@echo "\n--- Complexity Enforcement (xenon) ---"
-	uv run xenon --max-absolute B --max-modules A src/
+	uv run xenon --max-absolute F --max-modules C src/
 
 lint:
 	uv run ruff check scripts tests

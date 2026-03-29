@@ -308,7 +308,7 @@ def main() -> None:
     api_proc = _start_api(cfg)
     java_proc: subprocess.Popen[str] | None = None
 
-    def _shutdown(signum: int, frame: object) -> None:
+    def _shutdown(_signum: int, frame: object) -> None:
         print("\n[jforex-live] shutting down", flush=True)
         if java_proc is not None:
             _stop_process(java_proc)

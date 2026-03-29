@@ -1127,46 +1127,9 @@ def _run_api_replay(
     warmup_ticks: int,
     fail_fast: bool,
 ) -> tuple[dict[str, Any], pd.DataFrame]:
-    api_root = _api_stage_root(
-        stage_root, offset, None if warmup_ticks == 30000 else int(round(warmup_ticks / 100))
-    )
-    api_root.mkdir(parents=True, exist_ok=True)
-    runtime_selected_csv = api_root / "runtime_selected.csv"
-    api_root / "local_summary.csv"
-    stage12_summary_csv = api_root / "stage12_summary.csv"
     raise NotImplementedError(
         "cBot testclient replay was removed. JForex equivalent is a future task."
     )
-
-    summary = _load_csv(stage12_summary_csv)
-    row = summary.iloc[0].to_dict() if not summary.empty else {}
-    runtime_keys = _load_csv(runtime_selected_csv)
-    perf = _prediction_perf_for_keys(
-        _prediction_path(stage_root, symbol),
-        _stop_limit_detail_path(stage_root, symbol),
-        runtime_keys,
-    )
-    merged = {
-        "symbol": symbol,
-        "offset": int(offset),
-        "warmup_ticks": int(warmup_ticks),
-        "signal_parity_pass": _as_bool(row.get("signal_parity_pass")),
-        "execution_parity_pass": _as_bool(row.get("execution_parity_pass")),
-        "selected_missing_expected": _safe_int(row.get("selected_missing_expected")),
-        "selected_extra_runtime": _safe_int(row.get("selected_extra_runtime")),
-        "execution_failed_checks_high_critical": _safe_int(
-            row.get("execution_failed_checks_high_critical")
-        ),
-        "ticks_streamed": _safe_int(row.get("ticks_streamed")),
-        "predict_warmup_422": _safe_int(row.get("predict_warmup_422")),
-        "runtime_selected_rows": int(perf.get("selected_rows", 0)),
-        "runtime_trade_rows": int(perf.get("trade_rows", 0)),
-        "runtime_mean_gross_pips": perf.get("mean_gross_pips", float("nan")),
-        "runtime_mean_net_pips": perf.get("mean_net_pips", float("nan")),
-        "api_confirmation_status": "ok" if _as_bool(row.get("stage12_api_parity_pass")) else "fail",
-        "failure_reason": "",
-    }
-    return merged, runtime_keys
 
 
 def _run_api_confirmation_and_warmup(
