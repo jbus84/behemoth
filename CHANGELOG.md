@@ -1,3 +1,9 @@
+## v0.2.5 (2026-03-29)
+
+### Fix
+
+- freeze-oco predictions path fallback for base WFO directory
+
 ## v0.2.4 (2026-03-29)
 
 ### Fix
