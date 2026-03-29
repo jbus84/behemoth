@@ -1,3 +1,9 @@
+## v0.2.1 (2026-03-29)
+
+### Fix
+
+- **ci**: skip registry tests when model artifacts are absent (#4)
+
 ## v0.2.0 (2026-03-29)
 
 ### Feat
