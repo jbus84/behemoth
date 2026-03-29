@@ -31,6 +31,12 @@ alertmanager.yml
 src/jforex/build/
 .worktrees/
 
+# Build output
+site/
+
+# Claude Code
+.claude/
+
 # Scratch / temp
 .agent/
 plans/
