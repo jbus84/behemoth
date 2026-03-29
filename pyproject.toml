@@ -47,6 +47,7 @@ dev-dependencies = [
     "radon>=6.0.1",
     "vulture>=2.14",
     "smellcheck>=0.3.8",
+    "commitizen>=4.1.0",
 ]
 
 [tool.ruff]
@@ -94,3 +95,11 @@ exclude = ["*schema*"]
 ignore_decorators = ["@validator", "@root_validator", "@computed_field"]
 ignore_names = ["*schema*", "test_*", "OPEN", "CLOSED", "CANCELLED"]
 min_confidence = 80
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.1.0"
+version_files = ["pyproject.toml:^version"]
+tag_format = "v$version"
+changelog_file = "CHANGELOG.md"
+update_changelog_on_bump = true
