@@ -1,3 +1,9 @@
+## v0.2.2 (2026-03-29)
+
+### Fix
+
+- **ci**: correct train_cache tuple type annotation (#5)
+
 ## v0.2.1 (2026-03-29)
 
 ### Fix
