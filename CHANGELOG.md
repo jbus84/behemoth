@@ -1,3 +1,9 @@
+## v0.2.3 (2026-03-29)
+
+### Fix
+
+- **ci**: fix lint, format, and test errors across codebase (#6)
+
 ## v0.2.2 (2026-03-29)
 
 ### Fix
