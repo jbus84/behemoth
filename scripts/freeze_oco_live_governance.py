@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -93,13 +94,24 @@ def _pick_first_existing(*paths: Path) -> Path:
     return paths[0]
 
 
+def _model_date_key(p: Path) -> datetime:
+    """Parse YYYY-MM suffix from a model filename for robust date-order sorting."""
+    m = re.search(r"(\d{4}-\d{2})$", p.stem)
+    if m:
+        try:
+            return datetime.strptime(m.group(1), "%Y-%m")
+        except ValueError:
+            pass
+    return datetime.min  # unparseable names sort first, never win
+
+
 def _latest_model_pair(symbol: str, *, models_dir: Path = Path("models/oco")) -> tuple[Path, Path]:
     """Return latest exported model binary and paired threshold JSON for symbol."""
     s = str(symbol).upper().strip()
-    candidates = sorted(models_dir.glob(f"{s}_model_*.cbm"))
-    if not candidates:
+    raw = list(models_dir.glob(f"{s}_model_*.cbm"))
+    if not raw:
         raise FileNotFoundError(models_dir / f"{s}_model_*.cbm")
-    model_path = candidates[-1]
+    model_path = sorted(raw, key=_model_date_key)[-1]
     thr_path = model_path.with_suffix(".json")
     if not thr_path.exists():
         raise FileNotFoundError(thr_path)

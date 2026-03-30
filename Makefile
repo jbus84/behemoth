@@ -230,12 +230,19 @@ freeze-oco:
 	@echo "\n--- Verifying API Parity ---"
 	@for sym in $(REBUILD_SYMBOLS); do \
 		echo "Parity check: $$sym"; \
-		JSON=$$(ls models/oco/$${sym}_model_*.json | sort | tail -n 1); \
-		if [ -z "$$JSON" ]; then echo "Error: No model JSON found for $$sym"; exit 1; fi; \
-		SYM_LOWER=$$(echo $$sym | tr '[:upper:]' '[:lower:]'); \
-		PRED_DIR=data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap_$${SYM_LOWER}; \
+		JSON=$$(uv run python -c "\
+import re, sys; from pathlib import Path; from datetime import datetime; \
+files = list(Path('models/oco').glob('$${sym}_model_*.json')); \
+def _key(p): \
+    m = re.search(r'(\\d{4}-\\d{2})$$', p.stem); \
+    return datetime.strptime(m.group(1), '%Y-%m') if m else datetime.min; \
+files.sort(key=_key); \
+print(files[-1] if files else '', end='')"); \
+		if [ -z "$$JSON" ]; then echo "Error: No model JSON found for $$sym in models/oco/"; exit 1; fi; \
+		PRED_DIR=data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap; \
 		if [ ! -f "$${PRED_DIR}/$${sym}_oco_monthly_predictions.parquet" ]; then \
-			PRED_DIR=data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap; \
+			echo "Error: Predictions not found for $$sym at $${PRED_DIR}/$${sym}_oco_monthly_predictions.parquet"; \
+			exit 1; \
 		fi; \
 		uv run python scripts/validate_api_parity.py --symbol $$sym \
 			--predictions $${PRED_DIR}/$${sym}_oco_monthly_predictions.parquet \
