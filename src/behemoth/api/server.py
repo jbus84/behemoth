@@ -1827,27 +1827,34 @@ def _account_risk_limits_payload() -> AccountRiskLimitsResponse:
 
 class PredictRequest(BaseModel):
     """Prediction request with explicit intended size for account-risk allocation."""
+    model_config = {"populate_by_name": True}
+
     symbol: str
     account_risk_enabled_override: bool | None = Field(
         default=None,
+        alias="accountRiskEnabledOverride",
         description="Request-scoped account-risk guard toggle.",
     )
     risk_enabled_override: bool | None = Field(
         default=None,
+        alias="riskEnabledOverride",
         description="Broker-neutral request-scoped account-risk guard toggle.",
     )
     requested_volume_units: float | None = Field(
         default=None,
+        alias="requestedVolumeUnits",
         gt=0.0,
         description="Intended execution size in broker volume units.",
     )
     requested_lot_size: float | None = Field(
         default=None,
+        alias="requestedLotSize",
         gt=0.0,
         description="Optional intended lot size (converted to units using 100k FX lot).",
     )
     completed_bar_ticks: list[int] = Field(
         default_factory=list,
+        alias="completedBarTicks",
         description=(
             "Bar-tick granularities that just completed on the caller side "
             "(e.g. [100], [100,1000]). When provided, prediction is scoped to "
@@ -1856,13 +1863,14 @@ class PredictRequest(BaseModel):
     )
     bar_ordinals: dict[str, int] | None = Field(
         default=None,
+        alias="barOrdinals",
         description=(
             "Map from bar_ticks (string key) to the 0-indexed count of bars of "
             "that granularity closed since session start. Used by ordinal universe "
             "gate mode to match candidates by position rather than timestamp."
         ),
     )
-    run_id: str | None = None
+    run_id: str | None = Field(default=None, alias="runId")
 
     @model_validator(mode="after")
     def _validate_risk_override(self) -> PredictRequest:
