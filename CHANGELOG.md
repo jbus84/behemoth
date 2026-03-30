@@ -1,3 +1,9 @@
+## v0.2.8 (2026-03-30)
+
+### Fix
+
+- correct Makefile python one-liner syntax (#12)
+
 ## v0.2.7 (2026-03-29)
 
 ### Fix
