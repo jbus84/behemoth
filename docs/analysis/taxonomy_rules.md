@@ -1,6 +1,6 @@
 # Analysis Taxonomy Rules
 
-- generated_at_utc: `2026-03-23T20:04:55Z`
+- generated_at_utc: `2026-03-30T10:10:55Z`
 
 ## Group Assignment Order
 1. `archive`: anything already stored below `docs/archive/`.
@@ -62,27 +62,45 @@
 | m5_mom_m15_momrev    |
 
 ## Core Report Set
-| doc_path                                                |
-|:--------------------------------------------------------|
-| analysis/2026-03-23-live-launch-brainstorm.md           |
-| analysis/data_reliability_report.md                     |
-| analysis/dukascopy_source_completeness_report.md        |
-| analysis/local_jforex_surrogate_report.md               |
-| analysis/oco_alert_remediation_report.md                |
-| analysis/oco_docs_contract_report.md                    |
-| analysis/oco_edge_clarity_report.md                     |
-| analysis/oco_execution_drift_report.md                  |
-| analysis/oco_execution_monte_carlo_report.md            |
-| analysis/oco_execution_monte_carlo_validation_report.md |
-| analysis/oco_execution_risk_prelive_report.md           |
-| analysis/oco_governance_explainability_report.md        |
-| analysis/oco_leakage_integrity_report.md                |
-| analysis/oco_logical_audit_report.md                    |
-| analysis/oco_rule_universe_registry_report.md           |
-| analysis/oco_stage_integrity_report.md                  |
-| analysis/oco_threshold_sensitivity_report.md            |
-| analysis/operator_action_report.md                      |
-| analysis/run_delta_dashboard.md                         |
-| analysis/stage13_dukascopy_testclient_report.md         |
-| analysis/stage14_jforex_runtime_certification_report.md |
-| analysis/taxonomy_rules.md                              |
+| doc_path                                                        |
+|:----------------------------------------------------------------|
+| analysis/2026-03-23-live-launch-brainstorm.md                   |
+| analysis/AUDUSD_dukascopy_testclient_execution_parity_report.md |
+| analysis/AUDUSD_histdata_testclient_execution_parity_report.md  |
+| analysis/AUDUSD_stage12_api_parity_report.md                    |
+| analysis/EURUSD_testclient_execution_parity_report.md           |
+| analysis/EURUSD_testclient_execution_parity_tolerant_report.md  |
+| analysis/GBPUSD_dukascopy_testclient_execution_parity_report.md |
+| analysis/GBPUSD_histdata_testclient_execution_parity_report.md  |
+| analysis/GBPUSD_stage12_api_parity_report.md                    |
+| analysis/USDCAD_dukascopy_testclient_execution_parity_report.md |
+| analysis/USDCAD_histdata_testclient_execution_parity_report.md  |
+| analysis/USDCAD_stage12_api_parity_report.md                    |
+| analysis/USDCHF_dukascopy_testclient_execution_parity_report.md |
+| analysis/USDCHF_histdata_testclient_execution_parity_report.md  |
+| analysis/USDCHF_stage12_api_parity_report.md                    |
+| analysis/USDJPY_dukascopy_testclient_execution_parity_report.md |
+| analysis/USDJPY_histdata_testclient_execution_parity_report.md  |
+| analysis/USDJPY_stage12_api_parity_report.md                    |
+| analysis/data_reliability_report.md                             |
+| analysis/dukascopy_source_completeness_report.md                |
+| analysis/eurusd_dukascopy_vs_histdata_tick_similarity_report.md |
+| analysis/local_jforex_surrogate_report.md                       |
+| analysis/oco_alert_remediation_report.md                        |
+| analysis/oco_docs_contract_report.md                            |
+| analysis/oco_edge_clarity_report.md                             |
+| analysis/oco_execution_drift_report.md                          |
+| analysis/oco_execution_monte_carlo_report.md                    |
+| analysis/oco_execution_monte_carlo_validation_report.md         |
+| analysis/oco_execution_risk_prelive_report.md                   |
+| analysis/oco_governance_explainability_report.md                |
+| analysis/oco_leakage_integrity_report.md                        |
+| analysis/oco_logical_audit_report.md                            |
+| analysis/oco_rule_universe_registry_report.md                   |
+| analysis/oco_stage_integrity_report.md                          |
+| analysis/oco_threshold_sensitivity_report.md                    |
+| analysis/operator_action_report.md                              |
+| analysis/run_delta_dashboard.md                                 |
+| analysis/stage13_dukascopy_testclient_report.md                 |
+| analysis/stage14_jforex_runtime_certification_report.md         |
+| analysis/taxonomy_rules.md                                      |

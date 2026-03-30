@@ -88,7 +88,7 @@ uv run python scripts/audit_oco_pipeline_logical_issues.py
 <!-- GENERATED:STAGE_07:START -->
 ### Auto Snapshot - Stage 07
 
-- generated_at: `2026-03-23 20:05:07 UTC`
+- generated_at: `2026-03-30 10:10:58 UTC`
 - C01..C10 checks are the logical contract gate before robustness sign-off.
 - Open issue rows: 0.
 
@@ -117,7 +117,7 @@ uv run python scripts/audit_oco_pipeline_logical_issues.py
 | GBPUSD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR     | within policy band     | research |
 | USDCAD   | S01_lb95_dependence_gap | red    | high       | A2_RECALIBRATE | escalate and remediate | research |
 | USDCAD   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR     | within policy band     | research |
-| USDCHF   | S01_lb95_dependence_gap | red    | high       | A2_RECALIBRATE | escalate and remediate | research |
+| USDCHF   | S01_lb95_dependence_gap | amber  | medium     | A1_REVIEW      | review and monitor     | research |
 | USDCHF   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR     | within policy band     | research |
 | USDJPY   | S01_lb95_dependence_gap | amber  | medium     | A1_REVIEW      | review and monitor     | research |
 | USDJPY   | S02_practical_lb95_gt0  | green  | info       | A0_MONITOR     | within policy band     | research |
@@ -142,10 +142,10 @@ uv run python scripts/audit_oco_pipeline_logical_issues.py
 #### Statistical Inference Ladder (S01-S03)
 | symbol   |   lb95_trade_mean_gross_pips |   s01_lb95_dependence_gap |   pvalue_bonferroni |   pvalue_fdr_bh |   s02_practical_lb95_gt0 |   s03_multiplicity_survival |
 |:---------|-----------------------------:|--------------------------:|--------------------:|----------------:|-------------------------:|----------------------------:|
-| AUDUSD   |                      1.59632 |                  0.414249 |         0           |     0           |                        1 |                           1 |
-| EURUSD   |                      2.72549 |                  0.905055 |         1.13243e-14 |     5.66214e-15 |                        1 |                           1 |
-| GBPUSD   |                      2.69625 |                  0.188283 |         0           |     0           |                        1 |                           1 |
-| USDCAD   |                      2.21911 |                  0.928309 |         5.32907e-15 |     5.32907e-15 |                        1 |                           1 |
-| USDCHF   |                      2.07321 |                  0.786546 |         2.59792e-13 |     2.59792e-13 |                        1 |                           1 |
-| USDJPY   |                      3.79579 |                  0.393225 |         0           |     0           |                        1 |                           1 |
+| AUDUSD   |                      1.51152 |                  0.410158 |         4.17399e-12 |     1.39133e-12 |                        1 |                           1 |
+| EURUSD   |                      2.42312 |                  0.660769 |         9.73222e-13 |     2.30749e-13 |                        1 |                           1 |
+| GBPUSD   |                      2.58253 |                  0.124144 |         0           |     0           |                        1 |                           1 |
+| USDCAD   |                      1.95503 |                  0.79349  |         6.15095e-11 |     1.23019e-11 |                        1 |                           1 |
+| USDCHF   |                      1.748   |                  0.480625 |         1.21902e-13 |     6.09512e-14 |                        1 |                           1 |
+| USDJPY   |                      3.79905 |                  0.347844 |         0           |     0           |                        1 |                           1 |
 <!-- GENERATED:STAGE_07:END -->

@@ -3,28 +3,28 @@
     "capacity_overall_pass": true,
     "live_deployable": true,
     "model_cbm_path": "models/oco/USDCHF_model_2026-02.cbm",
-    "model_cbm_sha256": "051a072c897772c26479c02459d6de4b0e4816d91637dc56a7914ca8417a67b1",
+    "model_cbm_sha256": "0e2c7ffe95ce17665b518f9f0ac3a206a73805b99ed735c008e1e963f6e1b4e8",
     "model_month": "2026-02",
     "model_threshold_json_path": "models/oco/USDCHF_model_2026-02.json",
-    "model_threshold_json_sha256": "16f85a95ed33c39529374549797b74441414ba3a3017ec18a5d6ba2985079666",
+    "model_threshold_json_sha256": "37333d6c64e84f5dc79d9c90c4f3935e9e5c55c292b9711377b66ae507b4b2fe",
     "predictions_path": "data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/USDCHF_oco_monthly_predictions.parquet",
-    "predictions_sha256": "b38d5205f9ed3b016b5c72f4885ea9ee24053ac3765d56707edd33043261254a",
+    "predictions_sha256": "95d0730ce0eb228df2ab2c53ca20c32027b34f7b0f25d24150b10bafb2e95033",
     "reduced_config_path": "configs/research/experiments/usdchf_oco_reduced_core.yaml",
-    "reduced_config_sha256": "61cd27e572cd8ae69a5da01c290e04d7e26a64f15a32e1c7c35938dd1b6b2067",
+    "reduced_config_sha256": "4697fb73da731ccdcaa17f481351c0fa913685247ccee74a5b7e5ad5ef8b80bb",
     "reduced_states_csv_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_state_schedule.csv",
-    "reduced_states_csv_sha256": "e675ef88c557c8ff6bcf1d08778807c17218e7c5a0245f4a500615baea0f48e9",
+    "reduced_states_csv_sha256": "a86d3dd04824232abb3f31e957a3756bc9c6892cda7df070b604c7c450b081a0",
     "reduced_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_summary.csv",
-    "reduced_summary_sha256": "a5bb8ac1395f8fee160a09562a167c37de73d28ef9c268dcebbc021163dcbbe9",
+    "reduced_summary_sha256": "6219f6eba1e36072626609428b21c5770c53eaaae54bdd160c0e4fe4d00db097",
     "tick_exact_overall_pass": true,
     "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_tick_exact_summary.csv",
-    "tick_exact_summary_sha256": "4b8593a720f70bf84d69a6a971e1b9d7b9e40fe97b828a7f1822784e739bce86",
+    "tick_exact_summary_sha256": "1f8cec9becc71a8f7cc7d2c881de9ad5e1302f8cbee85adf1585aec196580ef7",
     "wfo_config_path": "configs/research/experiments/usdchf_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
-    "wfo_config_sha256": "bbc7a83f53f5c3f20cd7250f0b3c51d7d51319e00cb0ea5158dd61065d773148"
+    "wfo_config_sha256": "ca922f713c0d2f8887d325cb380dab70d17b606c4212a282136809ebef40b3f0"
   },
-  "frozen_at_utc": "2026-03-23T14:56:08.958533+00:00",
+  "frozen_at_utc": "2026-03-30T10:06:43.232072+00:00",
   "git": {
     "branch": "main",
-    "commit": "9bb601101a8a011e488955470b0204d1bd7bfda7",
+    "commit": "e78c5dd49f86f12b8d94c39be58b995d9ac167b3",
     "dirty": false
   },
   "locked_runtime": {
@@ -49,7 +49,7 @@
   },
   "schema_version": 1,
   "state_universe": {
-    "count": 2,
+    "count": 1,
     "rows": [
       {
         "bar_ticks": 100,
@@ -59,18 +59,9 @@
         "regime_desc": "low_cost_q30_and_high_abs_vel_q70;barrier=2.0",
         "state_id": "oco_first_touch_clean__low_cost_q30_and_high_abs_vel_q70__k2",
         "symbol": "USDCHF"
-      },
-      {
-        "bar_ticks": 100,
-        "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
-        "horizon": 6,
-        "regime_desc": "ny_overlap;barrier=2.0",
-        "state_id": "oco_first_touch_clean__ny_overlap__k2",
-        "symbol": "USDCHF"
       }
     ],
-    "sha256": "81728ac45615c670a9c53b623fc8af5a2099645ad90fb602cb361af33ed7e0c7"
+    "sha256": "6e1d6f89780c70d7130336bed5328c1f11bef19a0b7307dc13045674d2090dc5"
   },
   "symbol": "USDCHF"
 }

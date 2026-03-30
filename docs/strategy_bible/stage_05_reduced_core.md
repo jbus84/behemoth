@@ -139,7 +139,7 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 <!-- GENERATED:STAGE_05:START -->
 ### Auto Snapshot - Stage 05
 
-- generated_at: `2026-03-23 20:05:07 UTC`
+- generated_at: `2026-03-30 10:10:58 UTC`
 - State schedule is selected month-by-month using only prior-month train data.
 - Summary emphasizes full-path gross behavior after reduced-core filtering.
 - R01-R03 track pruning severity, state concentration, and re-selection stability.
@@ -147,12 +147,12 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 #### Key Results
 | symbol   |   rows_total |   mean_gross_pips |   lb95_month_mean_gross_pips |   fill_rate_overall |   positive_months |   months_total |   r01_post_pre_row_ratio |   r02_top_state_dependency |   r03_reselection_stability |
 |:---------|-------------:|------------------:|-----------------------------:|--------------------:|------------------:|---------------:|-------------------------:|---------------------------:|----------------------------:|
-| EURUSD   |         4320 |           2.3906  |                     1.4302   |            0.970568 |                 8 |             15 |               0.00977462 |                       0.35 |                    0.333333 |
-| GBPUSD   |         8918 |           2.6216  |                     2.09206  |            0.883933 |                11 |             15 |               0.0206839  |                       0.35 |                    0.343939 |
-| AUDUSD   |         4722 |           1.65684 |                     0.992865 |            0.858545 |                 9 |             15 |               0.0122462  |                       0.35 |                    0.351852 |
-| USDJPY   |         8611 |           3.572   |                     2.87881  |            0.842399 |                11 |             15 |               0.018268   |                       0.35 |                    0.530303 |
-| USDCHF   |         4874 |           1.8317  |                     1.28827  |            0.854189 |                11 |             15 |               0.0139665  |                       0.35 |                    0.287879 |
-| USDCAD   |         7083 |         nan       |                     1.23389  |            0.941388 |                10 |             15 |               0.014137   |                       0.35 |                    0.5      |
+| EURUSD   |         4005 |           2.38732 |                     1.62774  |            0.938599 |                10 |             15 |                0.01018   |                       0.35 |                    0.333333 |
+| GBPUSD   |         8212 |           2.55844 |                     1.97469  |            0.840016 |                11 |             15 |                0.0185952 |                       0.35 |                    0.378788 |
+| AUDUSD   |         5432 |           1.50689 |                     0.94026  |            0.8902   |                10 |             15 |                0.0133598 |                       0.35 |                    0.316667 |
+| USDJPY   |         7883 |           3.59345 |                     2.96441  |            0.788142 |                11 |             15 |                0.0166106 |                       0.35 |                    0.560606 |
+| USDCHF   |         5685 |           1.76814 |                     1.01747  |            0.838248 |                11 |             15 |                0.0155253 |                       0.35 |                    0.363636 |
+| USDCAD   |         7366 |           1.90352 |                     0.561625 |            0.927474 |                10 |             15 |                0.0162698 |                       0.35 |                    0.439394 |
 
 #### Interpretation Notes
 - State schedule is selected month-by-month using only prior-month train data.
@@ -172,12 +172,12 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 #### Details
 | symbol   |   months |   rows_total |   mean_fill_rate |   mean_gross |
 |:---------|---------:|-------------:|-----------------:|-------------:|
-| AUDUSD   |       15 |         4722 |         0.861511 |      1.23782 |
-| EURUSD   |       15 |         4320 |         0.968597 |      1.93697 |
-| GBPUSD   |       15 |         8918 |         0.790857 |      2.3668  |
-| USDCAD   |       15 |         7083 |         0.782772 |      1.46948 |
-| USDCHF   |       15 |         4874 |         0.789643 |      1.57772 |
-| USDJPY   |       15 |         8611 |         0.792541 |      3.2536  |
+| AUDUSD   |       15 |         5432 |         0.866181 |      1.19206 |
+| EURUSD   |       15 |         4005 |         0.869747 |      2.06499 |
+| GBPUSD   |       15 |         8212 |         0.790343 |      2.29287 |
+| USDCAD   |       15 |         7366 |         0.779859 |      1.25452 |
+| USDCHF   |       15 |         5685 |         0.786154 |      1.3357  |
+| USDJPY   |       15 |         7883 |         0.791625 |      3.26464 |
 
 #### Plots
 ![stage_05_reduced_monthly_gross](../figures/oco_bible/stage_05_reduced_monthly_gross.png)
@@ -188,46 +188,46 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 | EURUSD   | 2025-01      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
 | EURUSD   | 2025-02      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
 | EURUSD   | 2025-03      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
-| EURUSD   | 2025-04      |                 2 |           0        |          0.557143 |    0.506531 |                0 | ok             |
-| EURUSD   | 2025-05      |                 2 |           1        |          0.654297 |    0.547615 |                0 | ok             |
-| EURUSD   | 2025-06      |                 2 |           1        |          0.848921 |    0.743492 |                0 | ok             |
-| EURUSD   | 2025-07      |                 2 |           0.666667 |          0.520362 |    0.500829 |                0 | ok             |
-| EURUSD   | 2025-08      |                 2 |           0        |          0.529304 |    0.501717 |                0 | ok             |
-| EURUSD   | 2025-09      |                 1 |           1        |          1        |    1        |                0 | ok             |
-| EURUSD   | 2025-10      |                 2 |           1        |          0.653527 |    0.547141 |                0 | ok             |
-| EURUSD   | 2025-11      |                 2 |           0.666667 |          0.514124 |    0.500399 |                0 | ok             |
-| EURUSD   | 2025-12      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
-| EURUSD   | 2026-01      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
+| EURUSD   | 2025-04      |                 2 |           0        |          0.582207 |    0.513516 |                0 | ok             |
+| EURUSD   | 2025-05      |                 2 |           1        |          0.844828 |    0.737812 |                0 | ok             |
+| EURUSD   | 2025-06      |                 1 |           1        |          1        |    1        |                0 | ok             |
+| EURUSD   | 2025-07      |                 2 |           0.5      |          0.620795 |    0.529183 |                0 | ok             |
+| EURUSD   | 2025-08      |                 2 |           0.666667 |          0.791176 |    0.669567 |                0 | ok             |
+| EURUSD   | 2025-09      |                 2 |           1        |          0.644531 |    0.541779 |                0 | ok             |
+| EURUSD   | 2025-10      |                 1 |           1        |          1        |    1        |                0 | ok             |
+| EURUSD   | 2025-11      |                 1 |           0        |          1        |    1        |                0 | ok             |
+| EURUSD   | 2025-12      |                 2 |           1        |          0.639785 |    0.53908  |                0 | ok             |
+| EURUSD   | 2026-01      |                 1 |           0.5      |          1        |    1        |                0 | ok             |
 | EURUSD   | 2026-02      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
 | EURUSD   | 2026-03      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
 | GBPUSD   | 2025-01      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
 | GBPUSD   | 2025-02      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
 | GBPUSD   | 2025-03      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
 | GBPUSD   | 2025-04      |                 1 |           0        |          1        |    1        |                0 | ok             |
-| GBPUSD   | 2025-05      |                 2 |           1        |          0.566923 |    0.508957 |                0 | ok             |
+| GBPUSD   | 2025-05      |                 2 |           1        |          0.66474  |    0.554278 |                0 | ok             |
 | GBPUSD   | 2025-06      |                 1 |           1        |          1        |    1        |                0 | ok             |
-| GBPUSD   | 2025-07      |                 3 |           0.666667 |          0.465217 |    0.401853 |                0 | ok             |
-| GBPUSD   | 2025-08      |                 3 |           0.8      |          0.510676 |    0.397962 |                0 | ok             |
-| GBPUSD   | 2025-09      |                 2 |           0.75     |          0.506815 |    0.500093 |                0 | ok             |
-| GBPUSD   | 2025-10      |                 2 |           0        |          0.512907 |    0.500333 |                0 | ok             |
-| GBPUSD   | 2025-11      |                 2 |           0.666667 |          0.606884 |    0.522848 |                0 | ok             |
-| GBPUSD   | 2025-12      |                 2 |           0.666667 |          0.511727 |    0.500275 |                0 | ok             |
-| GBPUSD   | 2026-01      |                 2 |           0.666667 |          0.597841 |    0.519146 |                0 | ok             |
+| GBPUSD   | 2025-07      |                 2 |           0.5      |          0.724813 |    0.601082 |                0 | ok             |
+| GBPUSD   | 2025-08      |                 2 |           0.666667 |          0.529492 |    0.50174  |                0 | ok             |
+| GBPUSD   | 2025-09      |                 2 |           0.666667 |          0.504474 |    0.50004  |                0 | ok             |
+| GBPUSD   | 2025-10      |                 2 |           0        |          0.502857 |    0.500016 |                0 | ok             |
+| GBPUSD   | 2025-11      |                 2 |           0.666667 |          0.516349 |    0.500535 |                0 | ok             |
+| GBPUSD   | 2025-12      |                 2 |           0.666667 |          0.527778 |    0.501543 |                0 | ok             |
+| GBPUSD   | 2026-01      |                 2 |           0.666667 |          0.543478 |    0.503781 |                0 | ok             |
 | GBPUSD   | 2026-02      |                 1 |           1        |          1        |    1        |                0 | ok             |
 | GBPUSD   | 2026-03      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
 | AUDUSD   | 2025-01      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
 | AUDUSD   | 2025-02      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
 | AUDUSD   | 2025-03      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
 | AUDUSD   | 2025-04      |                 1 |           0        |          1        |    1        |                0 | ok             |
-| AUDUSD   | 2025-05      |                 2 |           0.5      |          0.860034 |    0.759249 |                0 | ok             |
-| AUDUSD   | 2025-06      |                 2 |           0.666667 |          0.553528 |    0.50573  |                0 | ok             |
-| AUDUSD   | 2025-07      |                 2 |           1        |          0.678161 |    0.563483 |                0 | ok             |
-| AUDUSD   | 2025-08      |                 2 |           1        |          0.559441 |    0.507066 |                0 | ok             |
-| AUDUSD   | 2025-09      |                 2 |           0.666667 |          0.613971 |    0.525979 |                0 | ok             |
-| AUDUSD   | 2025-10      |                 1 |           0.5      |          1        |    1        |                0 | ok             |
-| AUDUSD   | 2025-11      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
-| AUDUSD   | 2025-12      |                 1 |           1        |          1        |    1        |                0 | ok             |
-| AUDUSD   | 2026-01      |                 2 |           0.5      |          0.506494 |    0.500084 |                0 | ok             |
+| AUDUSD   | 2025-05      |                 2 |           0.5      |          0.859773 |    0.758874 |                0 | ok             |
+| AUDUSD   | 2025-06      |                 2 |           0.666667 |          0.53373  |    0.502275 |                0 | ok             |
+| AUDUSD   | 2025-07      |                 2 |           1        |          0.672598 |    0.55958  |                0 | ok             |
+| AUDUSD   | 2025-08      |                 2 |           1        |          0.567251 |    0.509046 |                0 | ok             |
+| AUDUSD   | 2025-09      |                 2 |           0.666667 |          0.562334 |    0.507771 |                0 | ok             |
+| AUDUSD   | 2025-10      |                 2 |           0.666667 |          0.567073 |    0.508998 |                0 | ok             |
+| AUDUSD   | 2025-11      |                 2 |           0.666667 |          0.551637 |    0.505333 |                0 | ok             |
+| AUDUSD   | 2025-12      |                 2 |           0.666667 |          0.565097 |    0.508475 |                0 | ok             |
+| AUDUSD   | 2026-01      |                 1 |           1        |          1        |    1        |                0 | ok             |
 | AUDUSD   | 2026-02      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
 | AUDUSD   | 2026-03      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
 | USDJPY   | 2025-01      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
@@ -236,44 +236,44 @@ uv run python scripts/validate_oco_rule_universe_registry.py
 | USDJPY   | 2025-04      |                 1 |           0        |          1        |    1        |                0 | ok             |
 | USDJPY   | 2025-05      |                 1 |           0        |          1        |    1        |                0 | ok             |
 | USDJPY   | 2025-06      |                 1 |           0        |          1        |    1        |                0 | ok             |
-| USDJPY   | 2025-07      |                 2 |           0.5      |          0.504601 |    0.500042 |                0 | ok             |
-| USDJPY   | 2025-08      |                 2 |           0        |          0.501551 |    0.500005 |                0 | ok             |
-| USDJPY   | 2025-09      |                 2 |           1        |          0.666343 |    0.55534  |                0 | ok             |
-| USDJPY   | 2025-10      |                 2 |           0.666667 |          0.509766 |    0.500191 |                0 | ok             |
-| USDJPY   | 2025-11      |                 2 |           0.666667 |          0.532258 |    0.502081 |                0 | ok             |
-| USDJPY   | 2025-12      |                 2 |           0.666667 |          0.555219 |    0.506098 |                0 | ok             |
-| USDJPY   | 2026-01      |                 2 |           0.666667 |          0.57196  |    0.510357 |                0 | ok             |
-| USDJPY   | 2026-02      |                 1 |           1        |          1        |    1        |                0 | ok             |
+| USDJPY   | 2025-07      |                 2 |           0.5      |          0.581205 |    0.513189 |                0 | ok             |
+| USDJPY   | 2025-08      |                 2 |           0.666667 |          0.558696 |    0.50689  |                0 | ok             |
+| USDJPY   | 2025-09      |                 2 |           1        |          0.516408 |    0.500538 |                0 | ok             |
+| USDJPY   | 2025-10      |                 2 |           1        |          0.614929 |    0.526417 |                0 | ok             |
+| USDJPY   | 2025-11      |                 2 |           0        |          0.525038 |    0.501254 |                0 | ok             |
+| USDJPY   | 2025-12      |                 2 |           0.666667 |          0.564029 |    0.508199 |                0 | ok             |
+| USDJPY   | 2026-01      |                 3 |           0.333333 |          0.387709 |    0.340589 |                0 | ok             |
+| USDJPY   | 2026-02      |                 1 |           0.666667 |          1        |    1        |                0 | ok             |
 | USDJPY   | 2026-03      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
 | USDCHF   | 2025-01      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
 | USDCHF   | 2025-02      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
 | USDCHF   | 2025-03      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
-| USDCHF   | 2025-04      |                 1 |           0        |          1        |    1        |                0 | ok             |
-| USDCHF   | 2025-05      |                 1 |           1        |          1        |    1        |                0 | ok             |
-| USDCHF   | 2025-06      |                 2 |           1        |          0.763333 |    0.638689 |                0 | ok             |
+| USDCHF   | 2025-04      |                 2 |           0        |          0.507504 |    0.500113 |                0 | ok             |
+| USDCHF   | 2025-05      |                 1 |           0.5      |          1        |    1        |                0 | ok             |
+| USDCHF   | 2025-06      |                 2 |           1        |          0.810127 |    0.692357 |                0 | ok             |
 | USDCHF   | 2025-07      |                 1 |           1        |          1        |    1        |                0 | ok             |
-| USDCHF   | 2025-08      |                 2 |           0.5      |          0.522496 |    0.501012 |                0 | ok             |
-| USDCHF   | 2025-09      |                 2 |           0.666667 |          0.554415 |    0.505922 |                0 | ok             |
-| USDCHF   | 2025-10      |                 1 |           1        |          1        |    1        |                0 | ok             |
-| USDCHF   | 2025-11      |                 1 |           0        |          1        |    1        |                0 | ok             |
-| USDCHF   | 2025-12      |                 2 |           1        |          0.629921 |    0.533759 |                0 | ok             |
-| USDCHF   | 2026-01      |                 2 |           0.666667 |          0.535645 |    0.502541 |                0 | ok             |
-| USDCHF   | 2026-02      |                 2 |           1        |          0.836634 |    0.726644 |                0 | ok             |
+| USDCHF   | 2025-08      |                 1 |           0        |          1        |    1        |                0 | ok             |
+| USDCHF   | 2025-09      |                 2 |           0.5      |          0.525    |    0.50125  |                0 | ok             |
+| USDCHF   | 2025-10      |                 3 |           0.75     |          0.440056 |    0.35388  |                0 | ok             |
+| USDCHF   | 2025-11      |                 3 |           0.5      |          0.368785 |    0.335242 |                0 | ok             |
+| USDCHF   | 2025-12      |                 2 |           0.75     |          0.558313 |    0.506801 |                0 | ok             |
+| USDCHF   | 2026-01      |                 2 |           1        |          0.568067 |    0.509266 |                0 | ok             |
+| USDCHF   | 2026-02      |                 1 |           1        |          1        |    1        |                0 | ok             |
 | USDCHF   | 2026-03      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
 | USDCAD   | 2025-01      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
 | USDCAD   | 2025-02      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
 | USDCAD   | 2025-03      |                 0 |         nan        |        nan        |  nan        |              nan | warmup_skip    |
-| USDCAD   | 2025-04      |                 2 |           0        |          0.771871 |    0.647827 |                0 | ok             |
-| USDCAD   | 2025-05      |                 2 |           0        |          0.938333 |    0.884272 |                0 | ok             |
-| USDCAD   | 2025-06      |                 2 |           0.666667 |          0.62995  |    0.533774 |                0 | ok             |
-| USDCAD   | 2025-07      |                 2 |           0.666667 |          0.537112 |    0.502755 |                0 | ok             |
-| USDCAD   | 2025-08      |                 2 |           0.666667 |          0.751004 |    0.626006 |                0 | ok             |
-| USDCAD   | 2025-09      |                 2 |           1        |          0.688356 |    0.570956 |                0 | ok             |
-| USDCAD   | 2025-10      |                 1 |           0.5      |          1        |    1        |                0 | ok             |
-| USDCAD   | 2025-11      |                 1 |           1        |          1        |    1        |                0 | ok             |
-| USDCAD   | 2025-12      |                 1 |           0        |          1        |    1        |                0 | ok             |
-| USDCAD   | 2026-01      |                 2 |           0.5      |          0.798206 |    0.677854 |                0 | ok             |
-| USDCAD   | 2026-02      |                 1 |           0.5      |          1        |    1        |                0 | ok             |
+| USDCAD   | 2025-04      |                 2 |           0        |          0.82104  |    0.706134 |                0 | ok             |
+| USDCAD   | 2025-05      |                 2 |           0        |          0.926928 |    0.864536 |                0 | ok             |
+| USDCAD   | 2025-06      |                 2 |           0.666667 |          0.578995 |    0.512481 |                0 | ok             |
+| USDCAD   | 2025-07      |                 2 |           0.666667 |          0.573826 |    0.5109   |                0 | ok             |
+| USDCAD   | 2025-08      |                 2 |           0.666667 |          0.669145 |    0.55722  |                0 | ok             |
+| USDCAD   | 2025-09      |                 1 |           0.5      |          1        |    1        |                0 | ok             |
+| USDCAD   | 2025-10      |                 2 |           0.5      |          0.597701 |    0.519091 |                0 | ok             |
+| USDCAD   | 2025-11      |                 2 |           0.666667 |          0.605128 |    0.522104 |                0 | ok             |
+| USDCAD   | 2025-12      |                 2 |           1        |          0.500864 |    0.500001 |                0 | ok             |
+| USDCAD   | 2026-01      |                 1 |           0.5      |          1        |    1        |                0 | ok             |
+| USDCAD   | 2026-02      |                 1 |           1        |          1        |    1        |                0 | ok             |
 | USDCAD   | 2026-03      |                 0 |         nan        |        nan        |  nan        |              nan | no_gate_states |
 
 #### Leakage/Label Integrity (Reduced-Core Focus)

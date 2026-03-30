@@ -1,6 +1,6 @@
 # Analysis Catalog
 
-- generated_at_utc: `2026-03-23T20:04:55Z`
+- generated_at_utc: `2026-03-30T10:10:55Z`
 - manifest_csv: `analysis/catalog_manifest.csv`
 - gaps_report: `analysis/catalog_gaps_report.md`
 
@@ -11,8 +11,26 @@ Use `Archive Reports` for documents already moved out of the live analysis surfa
 
 ## Active / Core Reports
 - [2026 03 23 Live Launch Brainstorm](2026-03-23-live-launch-brainstorm.md)
+- [Audusd Dukascopy Testclient Execution Parity Report](AUDUSD_dukascopy_testclient_execution_parity_report.md)
+- [Audusd Histdata Testclient Execution Parity Report](AUDUSD_histdata_testclient_execution_parity_report.md)
+- [Audusd Stage12 Api Parity Report](AUDUSD_stage12_api_parity_report.md)
+- [Eurusd Testclient Execution Parity Report](EURUSD_testclient_execution_parity_report.md)
+- [Eurusd Testclient Execution Parity Tolerant Report](EURUSD_testclient_execution_parity_tolerant_report.md)
+- [Gbpusd Dukascopy Testclient Execution Parity Report](GBPUSD_dukascopy_testclient_execution_parity_report.md)
+- [Gbpusd Histdata Testclient Execution Parity Report](GBPUSD_histdata_testclient_execution_parity_report.md)
+- [Gbpusd Stage12 Api Parity Report](GBPUSD_stage12_api_parity_report.md)
+- [Usdcad Dukascopy Testclient Execution Parity Report](USDCAD_dukascopy_testclient_execution_parity_report.md)
+- [Usdcad Histdata Testclient Execution Parity Report](USDCAD_histdata_testclient_execution_parity_report.md)
+- [Usdcad Stage12 Api Parity Report](USDCAD_stage12_api_parity_report.md)
+- [Usdchf Dukascopy Testclient Execution Parity Report](USDCHF_dukascopy_testclient_execution_parity_report.md)
+- [Usdchf Histdata Testclient Execution Parity Report](USDCHF_histdata_testclient_execution_parity_report.md)
+- [Usdchf Stage12 Api Parity Report](USDCHF_stage12_api_parity_report.md)
+- [Usdjpy Dukascopy Testclient Execution Parity Report](USDJPY_dukascopy_testclient_execution_parity_report.md)
+- [Usdjpy Histdata Testclient Execution Parity Report](USDJPY_histdata_testclient_execution_parity_report.md)
+- [Usdjpy Stage12 Api Parity Report](USDJPY_stage12_api_parity_report.md)
 - [Data Reliability Report](data_reliability_report.md)
 - [Dukascopy Source Completeness Report](dukascopy_source_completeness_report.md)
+- [Eurusd Dukascopy Vs Histdata Tick Similarity Report](eurusd_dukascopy_vs_histdata_tick_similarity_report.md)
 - [Local Jforex Surrogate Report](local_jforex_surrogate_report.md)
 - [Oco Alert Remediation Report](oco_alert_remediation_report.md)
 - [Oco Docs Contract Report](oco_docs_contract_report.md)
@@ -116,30 +134,7 @@ Use `Archive Reports` for documents already moved out of the live analysis surfa
 - [Eurusd Runtime Db Run Summary](EURUSD_runtime_db_run_summary.md)
 - [Eurusd Stage12 Api Parity Report](EURUSD_stage12_api_parity_report.md)
 - [Eurusd Stage12 Api Parity Tolerant Report](EURUSD_stage12_api_parity_tolerant_report.md)
-- [Eurusd Testclient Execution Parity Report](EURUSD_testclient_execution_parity_report.md)
-- [Eurusd Testclient Execution Parity Tolerant Report](EURUSD_testclient_execution_parity_tolerant_report.md)
-- [Eurusd Dukascopy Vs Histdata Tick Similarity Report](eurusd_dukascopy_vs_histdata_tick_similarity_report.md)
 - [Runtime Db Summary Eurusd 2025 07](runtime_db_summary_eurusd_2025_07.md)
-### GBPUSD
-- [Gbpusd Dukascopy Testclient Execution Parity Report](GBPUSD_dukascopy_testclient_execution_parity_report.md)
-- [Gbpusd Histdata Testclient Execution Parity Report](GBPUSD_histdata_testclient_execution_parity_report.md)
-- [Gbpusd Stage12 Api Parity Report](GBPUSD_stage12_api_parity_report.md)
-### USDJPY
-- [Usdjpy Dukascopy Testclient Execution Parity Report](USDJPY_dukascopy_testclient_execution_parity_report.md)
-- [Usdjpy Histdata Testclient Execution Parity Report](USDJPY_histdata_testclient_execution_parity_report.md)
-- [Usdjpy Stage12 Api Parity Report](USDJPY_stage12_api_parity_report.md)
-### USDCHF
-- [Usdchf Dukascopy Testclient Execution Parity Report](USDCHF_dukascopy_testclient_execution_parity_report.md)
-- [Usdchf Histdata Testclient Execution Parity Report](USDCHF_histdata_testclient_execution_parity_report.md)
-- [Usdchf Stage12 Api Parity Report](USDCHF_stage12_api_parity_report.md)
-### AUDUSD
-- [Audusd Dukascopy Testclient Execution Parity Report](AUDUSD_dukascopy_testclient_execution_parity_report.md)
-- [Audusd Histdata Testclient Execution Parity Report](AUDUSD_histdata_testclient_execution_parity_report.md)
-- [Audusd Stage12 Api Parity Report](AUDUSD_stage12_api_parity_report.md)
-### USDCAD
-- [Usdcad Dukascopy Testclient Execution Parity Report](USDCAD_dukascopy_testclient_execution_parity_report.md)
-- [Usdcad Histdata Testclient Execution Parity Report](USDCAD_histdata_testclient_execution_parity_report.md)
-- [Usdcad Stage12 Api Parity Report](USDCAD_stage12_api_parity_report.md)
 ### Cross-Symbol / Global
 - [Ctrader Backtest Reconciliation Runbook](ctrader_backtest_reconciliation_runbook.md)
 - [Ftmo Risk Compliance Report](ftmo_risk_compliance_report.md)

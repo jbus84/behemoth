@@ -80,19 +80,19 @@ Run once per active symbol; if `shortlist_state_csv` is a rolling schedule, the 
 <!-- GENERATED:STAGE_06:START -->
 ### Auto Snapshot - Stage 06
 
-- generated_at: `2026-03-23 20:05:07 UTC`
+- generated_at: `2026-03-30 10:10:58 UTC`
 - Verifier recomputes OCO outcomes independently from stored labels.
 - All summary rates should remain near 1.0 for contract consistency.
 
 #### Key Results
 | symbol   |   rows_selected |   rows_verified |   exact_match_rate |   pos_label_match_rate | overall_pass   |
 |:---------|----------------:|----------------:|-------------------:|-----------------------:|:---------------|
-| EURUSD   |            4489 |            4489 |                  1 |                      1 | True           |
-| GBPUSD   |           21828 |           21828 |                  1 |                      1 | True           |
-| AUDUSD   |           10963 |           10963 |                  1 |                      1 | True           |
-| USDJPY   |           16287 |           16287 |                  1 |                      1 | True           |
-| USDCHF   |            3476 |            3476 |                  1 |                      1 | True           |
-| USDCAD   |            8111 |            8111 |                  1 |                      1 | True           |
+| EURUSD   |            4659 |            4659 |                  1 |                      1 | True           |
+| GBPUSD   |            8586 |            8586 |                  1 |                      1 | True           |
+| AUDUSD   |            4130 |            4130 |                  1 |                      1 | True           |
+| USDJPY   |            8362 |            8362 |                  1 |                      1 | True           |
+| USDCHF   |            4136 |            4136 |                  1 |                      1 | True           |
+| USDCAD   |            6159 |            6159 |                  1 |                      1 | True           |
 
 #### Interpretation Notes
 - Verifier recomputes OCO outcomes independently from stored labels.
