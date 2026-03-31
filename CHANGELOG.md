@@ -1,3 +1,10 @@
+## v0.2.9 (2026-03-31)
+
+### Fix
+
+- filter outcome parity by state_universe UIDs and support local_jforex events prefix
+- accept Java surrogate camelCase variables in PredictRequest payload
+
 ## v0.2.8 (2026-03-30)
 
 ### Fix
