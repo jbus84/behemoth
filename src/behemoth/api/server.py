@@ -691,6 +691,9 @@ def _load_seed_files(seed_dir: Path | None = None) -> None:
     """Load pre-computed threshold seed parquets into audit_logs."""
     import pandas as pd
 
+    if _state is None:
+        logger.warning("State manager not initialized — skipping seed load")
+        return
     if seed_dir is None:
         seed_dir = Path(os.getenv("BEHEMOTH_SEED_DIR", "data/runtime/seed"))
     if not seed_dir.exists():
@@ -700,6 +703,8 @@ def _load_seed_files(seed_dir: Path | None = None) -> None:
     if not parquets:
         logger.info("No seed parquets found in %s", seed_dir)
         return
+    # Clear any previously loaded seed rows to ensure idempotent restarts
+    _state._con.execute("DELETE FROM audit_logs WHERE run_id = 'threshold_seed'")
     total = 0
     for pq_path in parquets:
         try:
