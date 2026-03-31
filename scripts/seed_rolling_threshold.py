@@ -37,7 +37,7 @@ def _seed_path(seed_dir: Path, symbol: str) -> Path:
     return seed_dir / f"{symbol.upper()}_threshold_seed.parquet"
 
 
-def _is_fresh(seed_file: Path, days_back: int) -> bool:
+def _is_fresh(seed_file: Path) -> bool:
     """Return True if seed file exists and covers up to yesterday or later."""
     if not seed_file.exists():
         return False
@@ -93,7 +93,6 @@ def _seed_symbol(
 ) -> bool:
     """Generate seed parquet for one symbol. Returns True on success."""
     from src.behemoth.core.features import FeatureConfig, compute_feature_matrix_from_bars
-    from src.behemoth.core.registry import _sha256
     from src.behemoth.core.schemas import IncomingTick, ModelFeatures
     from src.behemoth.runtime.tick_aggregator import TickAggregator
 
@@ -237,7 +236,7 @@ def main() -> None:
     failed = []
     for sym in symbols:
         seed_file = _seed_path(seed_dir, sym)
-        if _is_fresh(seed_file, args.days_back):
+        if _is_fresh(seed_file):
             print(f"  {sym}: seed file is fresh — skipping", flush=True)
             continue
         if not _seed_symbol(sym, registry, models_dir, ticks_dir, seed_dir, args.days_back):
