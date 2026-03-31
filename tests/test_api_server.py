@@ -51,6 +51,19 @@ class TestHealthEndpoint:
         finally:
             server._state = original_state
 
+    def test_health_returns_503_before_lifespan_ready(self, client):
+        """Health must return 503 while lifespan initialization is in progress."""
+        from src.behemoth.api import server
+
+        original = server._lifespan_ready
+        server._lifespan_ready = False
+        try:
+            r = client.get("/health")
+            assert r.status_code == 503
+            assert "Lifespan initialization in progress" in r.json()["detail"]
+        finally:
+            server._lifespan_ready = original
+
 
 class TestMetricsEndpoint:
     def test_metrics_returns_prometheus_format(self, client):
