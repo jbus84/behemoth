@@ -500,6 +500,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         )
     _models_dir = Path(_config.models_dir)
     _load_models()
+    _load_seed_files()
     _account_risk_rules_path = Path(_config.account_risk_rules_path)
     _account_risk_profile = None
     try:
@@ -685,6 +686,48 @@ def _load_models() -> None:
             cache_key=cache_key,
             expected_month=str(binding.get("model_month", "")).strip() or None,
         )
+
+def _load_seed_files(seed_dir: Path | None = None) -> None:
+    """Load pre-computed threshold seed parquets into audit_logs."""
+    import pandas as pd
+
+    if seed_dir is None:
+        seed_dir = Path(os.getenv("BEHEMOTH_SEED_DIR", "data/runtime/seed"))
+    if not seed_dir.exists():
+        logger.info("No seed directory at %s — skipping seed load", seed_dir)
+        return
+    parquets = sorted(seed_dir.glob("*_threshold_seed.parquet"))
+    if not parquets:
+        logger.info("No seed parquets found in %s", seed_dir)
+        return
+    total = 0
+    for pq_path in parquets:
+        try:
+            df = pd.read_parquet(pq_path)
+            if df.empty:
+                continue
+            events = []
+            for row in df.itertuples(index=False):
+                close_ts = row.close_ts
+                if hasattr(close_ts, "to_pydatetime"):
+                    close_ts = close_ts.to_pydatetime()
+                events.append((
+                    close_ts,
+                    str(row.symbol),
+                    str(row.candidate_uid),
+                    float(row.pred_prob),
+                    float(row.threshold),
+                    str(row.features_json),
+                    str(row.model_month),
+                    str(row.run_id),
+                ))
+            _state.log_audit_event_batch(events)
+            total += len(events)
+            logger.info("Loaded %d seed events from %s", len(events), pq_path.name)
+        except Exception as exc:
+            logger.error("Failed to load seed file %s: %s", pq_path.name, exc)
+    logger.info("Seed loading complete: %d total events", total)
+
 
 def _pip_size_for_symbol(sym: str) -> float:
     return 0.01 if sym.upper().endswith("JPY") else 0.0001
