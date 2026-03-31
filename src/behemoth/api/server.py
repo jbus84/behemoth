@@ -95,6 +95,7 @@ _historical_entries_loaded: int = 0
 _historical_preflight_failed_checks: int = 0
 _historical_preflight_summary: str = ""
 _feed_state: dict[str, dict[str, Any]] = {}
+_lifespan_ready: bool = False
 _MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 _HISTORICAL_PREDICTION_TOLERANCE_SEC = 30.0
 
@@ -423,7 +424,7 @@ def _run_historical_preflight(history_dir: Path) -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Modern lifespan handler replacing deprecated on_event."""
-    global _state, _aggregators, _registry, _historical_registry, _feed_state
+    global _state, _aggregators, _registry, _historical_registry, _feed_state, _lifespan_ready
     global _models_dir, _account_risk_rules_path, _account_risk_profile
     global _historical_entries_loaded, _historical_preflight_failed_checks, _historical_preflight_summary
     global _historical_prediction_universes, _historical_prediction_candidate_index
@@ -522,7 +523,9 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     except Exception as exc:
         logger.error("Failed to load account risk rules: %s", exc)
     logger.info("Behemoth API started. Models dir: %s", _models_dir)
+    _lifespan_ready = True
     yield
+    _lifespan_ready = False
     monitor_task.cancel()
     with suppress(asyncio.CancelledError):
         await monitor_task
@@ -3303,6 +3306,8 @@ async def update_trade(req: TradeUpdateRequest):
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     """System health: model validity, buffer depths."""
+    if not _lifespan_ready:
+        raise HTTPException(status_code=503, detail="Lifespan initialization in progress")
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
 
