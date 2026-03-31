@@ -414,6 +414,7 @@ jforex-outcome-parity:
 		--eval-start $(or $(EVAL_START),2025-07-07T00:00:00Z) \
 		--eval-end $(or $(EVAL_END),2025-07-09T00:00:00Z) \
 		--signal-coverage-threshold $(or $(SIGNAL_COVERAGE_THRESHOLD),1.0) \
+		--events-prefix $(or $(EVENTS_PREFIX),jforex) \
 		--out-csv $(or $(OUT_CSV),data/analysis/backtest_reconcile/jforex_outcome_parity_summary.csv)
 
 # -- Legacy stubs (no-op, retained for compatibility) -----------------------

@@ -69,8 +69,10 @@ DEFAULT_RECONCILE_DIR = "data/analysis/backtest_reconcile"
 MINIMAL_RUNTIME_EVENT_COLUMNS = ("event_name", "category", "pass", "detail")
 
 
-def canonical_runtime_events_path(reconcile_dir: Path, symbol: str) -> Path:
-    return reconcile_dir / f"{symbol}_jforex_runtime_events.csv"
+def canonical_runtime_events_path(
+    reconcile_dir: Path, symbol: str, *, events_prefix: str = "jforex"
+) -> Path:
+    return reconcile_dir / f"{symbol}_{events_prefix}_runtime_events.csv"
 
 
 def load_runtime_events_frame(path: Path) -> pd.DataFrame:
@@ -104,17 +106,42 @@ def load_historical_lock_status(lock_dir: Path, symbol: str) -> dict[str, str | 
     }
 
 
+def load_state_universe_uids(lock_dir: Path, symbol: str) -> list[str]:
+    """Extract canonical candidate_uids from the lock's state_universe."""
+    path = lock_dir / f"{symbol.lower()}_oco_live_lock.json"
+    if not path.exists():
+        return []
+    try:
+        lock = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    universe = lock.get("state_universe", {})
+    rows = universe.get("rows", []) if isinstance(universe, dict) else []
+    uids: list[str] = []
+    for row in rows:
+        sym = str(row.get("symbol", symbol)).upper()
+        bar_ticks = int(row.get("bar_ticks", 0))
+        horizon = int(row.get("horizon", 0))
+        state_id = str(row.get("state_id", ""))
+        if bar_ticks and horizon and state_id:
+            uids.append(f"oco|{sym}|{bar_ticks}|h{horizon}|{state_id}")
+    return uids
+
+
 def load_locked_predictions(
     lock_dir: Path,
     symbol: str,
     eval_start: str = "",
     eval_end: str = "",
+    *,
+    candidate_uids: list[str] | None = None,
 ) -> pd.DataFrame:
     """Load locked predictions for a symbol, filtered to selected_exec=1.
 
     Args:
         eval_start: Only include events with close_ts >= this UTC ISO-8601 timestamp (empty = all).
         eval_end:   Only include events with close_ts <  this UTC ISO-8601 timestamp (empty = all).
+        candidate_uids: If provided, only include rows whose candidate_uid is in this list.
     """
     path = lock_dir / f"{symbol.lower()}_oco_locked_predictions.parquet"
     con = duckdb.connect()
@@ -126,6 +153,10 @@ def load_locked_predictions(
     if eval_end:
         clauses += " AND close_ts::TIMESTAMPTZ < ?::TIMESTAMPTZ"
         params.append(eval_end)
+    if candidate_uids:
+        placeholders = ", ".join(["?"] * len(candidate_uids))
+        clauses += f" AND candidate_uid IN ({placeholders})"
+        params.extend(candidate_uids)
     df = con.execute(
         "SELECT close_ts, candidate_uid, pred_prob, target_gross_pips, "
         "target_gross_pos, selected_exec, event_ordinal "
@@ -142,6 +173,8 @@ def load_runtime_events(
     symbol: str,
     eval_start: str = "",
     eval_end: str = "",
+    *,
+    events_prefix: str = "jforex",
 ) -> dict:
     """Load and summarise JForex runtime events for a symbol.
 
@@ -149,7 +182,7 @@ def load_runtime_events(
       predict_cycles, orders_submitted, orders_filled, execution_failures,
       lifecycle_failures, lifecycle_violations, selected_count_total
     """
-    path = canonical_runtime_events_path(Path(reconcile_dir), symbol)
+    path = canonical_runtime_events_path(Path(reconcile_dir), symbol, events_prefix=events_prefix)
     df = load_runtime_events_frame(path)
     eval_start_dt = _parse_eval_ts(eval_start)
     eval_end_dt = _parse_eval_ts(eval_end)
@@ -383,6 +416,11 @@ def _parse_args() -> argparse.Namespace:
         default="",
         help="Only include events with close_ts < this UTC ISO-8601 timestamp (empty = all)",
     )
+    parser.add_argument(
+        "--events-prefix",
+        default="jforex",
+        help="Runtime events file prefix (default: jforex → {SYMBOL}_jforex_runtime_events.csv)",
+    )
     return parser.parse_args()
 
 
@@ -400,6 +438,7 @@ def main() -> None:
             symbol,
             eval_start=args.eval_start,
             eval_end=args.eval_end,
+            events_prefix=args.events_prefix,
         )
         lock_status = load_historical_lock_status(lock_dir, symbol)
         if not bool(lock_status["historical_deployable"]):
@@ -412,8 +451,10 @@ def main() -> None:
             results.append(result)
             continue
 
+        universe_uids = load_state_universe_uids(lock_dir, symbol)
         locked = load_locked_predictions(
-            lock_dir, symbol, eval_start=args.eval_start, eval_end=args.eval_end
+            lock_dir, symbol, eval_start=args.eval_start, eval_end=args.eval_end,
+            candidate_uids=universe_uids or None,
         )
 
         locked_count = len(locked)
