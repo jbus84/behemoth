@@ -2691,3 +2691,37 @@ class TestSeedAuditHistory:
             assert r.status_code == 422
         finally:
             server._config.dukascopy_ticks_dir = original_dir
+
+
+class TestSeedFileLoading:
+    def test_seed_parquet_loaded_into_audit_logs(self, client, tmp_path):
+        """Seed parquets in BEHEMOTH_SEED_DIR are loaded into audit_logs on startup."""
+        import pandas as pd
+        from src.behemoth.api import server
+
+        # Create a seed parquet with known data
+        seed_df = pd.DataFrame(
+            {
+                "close_ts": [pd.Timestamp("2026-03-30T12:00:00", tz="UTC")],
+                "symbol": ["TESTSYM"],
+                "candidate_uid": ["oco|TESTSYM|100|h300|test_state"],
+                "pred_prob": [0.75],
+                "threshold": [0.5],
+                "features_json": ["{}"],
+                "model_month": ["2026-02"],
+                "run_id": ["threshold_seed"],
+            }
+        )
+        seed_file = tmp_path / "TESTSYM_threshold_seed.parquet"
+        seed_df.to_parquet(seed_file, index=False)
+
+        # Inject seed into audit_logs via the loader function
+        assert server._state is not None
+        server._load_seed_files(tmp_path)
+
+        # Verify the row was inserted
+        row = server._state._con.execute(
+            "SELECT pred_prob FROM audit_logs WHERE symbol = 'TESTSYM' AND run_id = 'threshold_seed'"
+        ).fetchone()
+        assert row is not None
+        assert abs(row[0] - 0.75) < 1e-6

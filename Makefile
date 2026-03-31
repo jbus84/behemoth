@@ -451,6 +451,15 @@ promote-live:
 # Operations
 # ==============================================================================
 
+seed-threshold:
+	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/seed_rolling_threshold.py \
+		$(if $(SYMBOLS),--symbols "$(SYMBOLS)",) \
+		--governance-dir $(or $(GOVERNANCE_DIR),configs/research/governance/oco) \
+		--models-dir $(or $(MODELS_DIR),models/oco) \
+		--ticks-dir $(or $(TICKS_DIR),/Users/danielfisher/Desktop/dukascopy_ticks) \
+		--seed-dir $(or $(SEED_DIR),data/runtime/seed) \
+		--days-back $(or $(DAYS_BACK),20)
+
 jforex-live:
 	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/run_jforex_live.py \
 		$(if $(SYMBOLS),--symbols "$(SYMBOLS)",) \
