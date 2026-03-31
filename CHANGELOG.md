@@ -1,3 +1,9 @@
+## v0.2.9 (2026-03-31)
+
+### Fix
+
+- accept Java surrogate camelCase variables in PredictRequest payload
+
 ## v0.2.8 (2026-03-30)
 
 ### Fix
