@@ -1,3 +1,9 @@
+## v0.2.11 (2026-03-31)
+
+### Fix
+
+- gate /health on lifespan completion to prevent startup race condition
+
 ## v0.2.10 (2026-03-31)
 
 ## v0.2.9 (2026-03-31)
