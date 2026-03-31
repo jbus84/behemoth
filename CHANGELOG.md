@@ -1,3 +1,10 @@
+## v0.2.12 (2026-03-31)
+
+### Fix
+
+- add repo root to sys.path in seed script
+- offline threshold seed to unblock API during startup (#16)
+
 ## v0.2.11 (2026-03-31)
 
 ### Fix
