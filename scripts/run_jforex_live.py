@@ -222,6 +222,7 @@ def _start_api(cfg: RunConfig) -> subprocess.Popen[str]:
             "BEHEMOTH_GOVERNANCE_HISTORY_DIR": cfg.history_dir,
             "BEHEMOTH_MODELS_DIR": cfg.models_dir,
             "BEHEMOTH_STATE_DB": str(state_db_path),
+            "BEHEMOTH_SEED_DIR": str(_repo_root() / "data" / "runtime" / "seed"),
         }
     )
     cmd = [
@@ -304,6 +305,24 @@ def main() -> None:
     if state_json.exists():
         state_json.unlink()
 
+    # Run offline seed BEFORE starting the API
+    print("[jforex-live] running offline threshold seed", flush=True)
+    seed_result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/seed_rolling_threshold.py",
+            "--symbols", ",".join(cfg.symbols),
+            "--governance-dir", os.getenv("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco"),
+            "--models-dir", cfg.models_dir,
+            "--ticks-dir", os.getenv("BEHEMOTH_DUKASCOPY_TICKS_DIR", "/Users/danielfisher/Desktop/dukascopy_ticks"),
+            "--seed-dir", str(_repo_root() / "data" / "runtime" / "seed"),
+            "--days-back", "20",
+        ],
+        cwd=_repo_root(),
+    )
+    if seed_result.returncode != 0:
+        print("[jforex-live] WARNING: offline seed failed — API will start without historical thresholds", flush=True)
+
     print("[jforex-live] starting API", flush=True)
     api_proc = _start_api(cfg)
     java_proc: subprocess.Popen[str] | None = None
@@ -321,12 +340,6 @@ def main() -> None:
     try:
         _poll_health(api_proc, f"http://{cfg.api_host}:{cfg.api_port}", timeout_sec=60.0)
         print("[jforex-live] API healthy", flush=True)
-        _seed_audit_history(
-            list(cfg.symbols),
-            base_url=f"http://{cfg.api_host}:{cfg.api_port}",
-            train_predictions_dir=cfg.models_dir,
-            model_month=_resolve_model_month(cfg),
-        )
         print("[jforex-live] waiting for backfill + warming up threshold history", flush=True)
         # Give JForex time to complete initial backfill before warmup scoring
         time.sleep(30)
