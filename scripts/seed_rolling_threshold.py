@@ -50,7 +50,8 @@ def _is_fresh(seed_file: Path) -> bool:
             max_ts = max_ts.tz_localize("UTC")
         cutoff = datetime.now(tz=timezone.utc) - timedelta(days=1)
         return max_ts >= cutoff
-    except Exception:
+    except Exception as exc:
+        print(f"  warning: {seed_file} freshness check failed ({exc}), will regenerate", flush=True)
         return False
 
 
@@ -107,8 +108,13 @@ def _seed_symbol(
         return True
 
     # Load model
-    cbm_path = Path(str(binding.get("model_cbm_path", "")))
-    thr_path = Path(str(binding.get("model_threshold_json_path", "")))
+    cbm_raw = str(binding.get("model_cbm_path", "")).strip()
+    thr_raw = str(binding.get("model_threshold_json_path", "")).strip()
+    if not cbm_raw or not thr_raw:
+        print(f"  {symbol}: model paths not configured — FAILED", flush=True)
+        return False
+    cbm_path = Path(cbm_raw)
+    thr_path = Path(thr_raw)
     if not cbm_path.exists() or not thr_path.exists():
         print(f"  {symbol}: model artifacts missing — FAILED", flush=True)
         return False
