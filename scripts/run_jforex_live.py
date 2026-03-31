@@ -316,7 +316,6 @@ def main() -> None:
             "--models-dir", cfg.models_dir,
             "--ticks-dir", os.getenv("BEHEMOTH_DUKASCOPY_TICKS_DIR", "/Users/danielfisher/Desktop/dukascopy_ticks"),
             "--seed-dir", str(_repo_root() / "data" / "runtime" / "seed"),
-            "--days-back", "20",
         ],
         cwd=_repo_root(),
     )
