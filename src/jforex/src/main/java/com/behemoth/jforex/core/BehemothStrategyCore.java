@@ -1,22 +1,20 @@
 package com.behemoth.jforex.core;
 
-import com.behemoth.jforex.adapter.OcoOrderPlan;
-import com.behemoth.jforex.adapter.OcoOrderPlanner;
 import com.behemoth.jforex.config.JForexSessionConfig;
-import com.behemoth.jforex.domain.PredictionDecision;
 import com.behemoth.jforex.observability.JForexMetrics;
 import com.behemoth.jforex.reporting.Stage14ArtifactWriter;
 import com.behemoth.jforex.runtime.PythonApiException;
 import com.behemoth.jforex.runtime.PythonPredictionClient;
 import com.behemoth.jforex.runtime.dto.AccountSnapshotRequestPayload;
+import com.behemoth.jforex.runtime.dto.BarrierActionPayload;
 import com.behemoth.jforex.runtime.dto.IncomingTickPayload;
 import com.behemoth.jforex.runtime.dto.PredictRequestPayload;
+import com.behemoth.jforex.runtime.dto.PredictResponsePayload;
 import com.behemoth.jforex.runtime.dto.PredictionResponseItem;
 import com.behemoth.jforex.runtime.dto.TickBatchRequestPayload;
 import com.behemoth.jforex.runtime.dto.TickBatchResponsePayload;
 import com.behemoth.jforex.runtime.dto.TickIngestResponsePayload;
 import com.behemoth.jforex.runtime.dto.TradeOpenRequestPayload;
-import com.behemoth.jforex.runtime.dto.TradeTouchRequestPayload;
 import com.behemoth.jforex.runtime.dto.TradeUpdateRequestPayload;
 import com.behemoth.jforex.state.ExecutionStateStore;
 import com.behemoth.jforex.state.OcoGroupState;
@@ -164,12 +162,17 @@ public final class BehemothStrategyCore {
     }
 
     public void onOrderEvent(OrderEvent event) {
-        if (event == null || stateStore.findByOrderLabel(event.orderLabel()) == null) {
+        if (event == null) {
             return;
         }
         switch (event.type()) {
-            case SUBMIT_OK -> handleSubmitOk(event);
-            case SUBMIT_REJECTED, FILL_REJECTED, CHANGE_REJECTED -> handleReject(event);
+            case SUBMIT_OK -> {
+                metrics.recordOrderSubmitted(event.symbol(), event.orderLabel());
+            }
+            case SUBMIT_REJECTED, FILL_REJECTED, CHANGE_REJECTED -> {
+                metrics.recordOrderReject(event.symbol(), event.type().name());
+                artifactWriter.markOperationalStep(event.symbol(), "order_rejected", false, event.detail());
+            }
             case FILL_OK -> handleFill(event);
             case CHANGE_OK -> {
                 // Modification success acknowledged.
@@ -218,33 +221,9 @@ public final class BehemothStrategyCore {
         for (int barTick : completedBarTicks) {
             state.barOrdinalsByBarTicks.compute(barTick, (k, v) -> v == null ? 0L : v + 1L);
         }
-        // Close positions that have reached their exit horizon. Runs before the predict call
-        // so the candidateUid lifecycle is clear when hasActiveCandidateLifecycle is checked below.
-        List<String> labelsToClose = new ArrayList<>();
-        for (Map.Entry<String, PendingExit> e : state.pendingExits.entrySet()) {
-            if (!completedBarTicks.contains(e.getValue().barTicks())) {
-                continue;
-            }
-            long currentOrdinal = state.barOrdinalsByBarTicks.getOrDefault(
-                    e.getValue().barTicks(), 0L);
-            if (currentOrdinal - e.getValue().fillBarOrdinal() >= e.getValue().horizon()) {
-                labelsToClose.add(e.getKey());
-            }
-        }
-        for (String label : labelsToClose) {
-            state.pendingExits.remove(label);
-            state.horizonInitiatedLabels.add(label);
-            try {
-                executionPort.closePosition(state.instrument.symbol(), label);
-            } catch (RuntimeException exc) {
-                state.horizonInitiatedLabels.remove(label);
-                artifactWriter.markOperationalStep(
-                        state.instrument.symbol(), "horizon_close_failure", false, exc.getMessage());
-            }
-        }
         Map<Integer, Long> barOrdinals = Map.copyOf(state.barOrdinalsByBarTicks);
         try (JForexMetrics.TimerContext ignored = metrics.startPredictTimer(state.instrument.symbol())) {
-            List<PredictionResponseItem> predictions = predictionClient.predict(new PredictRequestPayload(
+            PredictResponsePayload response = predictionClient.predict(new PredictRequestPayload(
                     state.instrument.symbol(),
                     sessionConfig.riskEnabled(),
                     sessionConfig.requestedVolumeUnits(),
@@ -252,30 +231,30 @@ public final class BehemothStrategyCore {
                     sessionConfig.runId(),
                     barOrdinals
             ));
-            ExecutableSelectionSummary selectionSummary = classifyExecutablePredictions(state, predictions);
+            List<PredictionResponseItem> predictions = response.predictions();
+
+            int pythonSelected = 0;
+            for (PredictionResponseItem p : predictions) {
+                if (p.isSelected()) pythonSelected++;
+            }
             Instant predictCloseTs = predictions.stream()
                     .map(PredictionResponseItem::closeTs)
                     .filter(Objects::nonNull)
                     .findFirst()
                     .orElseGet(() -> state.lastTick != null ? state.lastTick.timestamp() : Instant.now());
-            metrics.recordSelectedPredictions(
-                    state.instrument.symbol(),
-                    selectionSummary.pythonSelected(),
-                    selectionSummary.blockedCount()
-            );
+            metrics.recordSelectedPredictions(state.instrument.symbol(), pythonSelected, 0);
             artifactWriter.recordPredictCycle(
                     state.instrument.symbol(),
                     predictCloseTs,
                     predictions.size(),
-                    selectionSummary.pythonSelected(),
-                    selectionSummary.executableSelected(),
-                    selectionSummary.blockedCount(),
-                    selectionSummary.blockedReasons(),
+                    pythonSelected,
+                    response.actions().size(),
+                    0,
+                    List.of(),
                     completedBarTicks
             );
-            for (PredictionResponseItem prediction : selectionSummary.executablePredictions()) {
-                submitOcoPlan(state, prediction.toDecision(sessionConfig.requestedVolumeUnits()));
-            }
+
+            executeActions(state, response.actions());
         } catch (PythonApiException exc) {
             if (exc.statusCode() == 422 && exc.detail().contains("Insufficient warmup bars")) {
                 metrics.recordPredictWarmup(state.instrument.symbol());
@@ -283,231 +262,89 @@ public final class BehemothStrategyCore {
             }
             metrics.recordPredictFailure(state.instrument.symbol());
             artifactWriter.recordPredictFailure(state.instrument.symbol(), exc.detail());
-            // Keep the live session running when the Python side is temporarily unavailable
-            // or governance/model state is not ready. The failure is recorded above.
             return;
         }
     }
 
-    private void submitOcoPlan(SymbolRuntimeState state, PredictionDecision decision) {
-        RuntimeTick lastTick = Objects.requireNonNull(state.lastTick, "lastTick");
-        Instant placedAt = lastTick.timestamp();
-        OcoOrderPlan plan = OcoOrderPlanner.build(
-                decision,
-                lastTick.bid(),
-                lastTick.ask(),
-                state.instrument.pipSize(),
-                placedAt
-        );
-        OcoGroupState group = stateStore.registerPlannedGroup(
-                state.instrument.symbol(),
-                decision,
-                plan,
-                sessionConfig.runId(),
-                placedAt,
-                sessionConfig.nativeOcoEnabled()
-        );
-        refreshActiveOcoGauge(state.instrument.symbol());
+    private void executeActions(SymbolRuntimeState state, List<BarrierActionPayload> actions) {
         double amountMillions = sessionConfig.requestedVolumeUnits() / FX_UNITS_PER_MILLION;
-        long goodTillTime = lastTick.timestamp().toEpochMilli() + (sessionConfig.orderTtlSeconds() * 1000L);
-        try {
-            executionPort.submitStopOrder(new OrderRequest(
-                    state.instrument.symbol(),
-                    plan.buyLeg().label(),
-                    plan.buyLeg().side(),
-                    plan.buyLeg().triggerPrice(),
-                    plan.stopLimitRangePips(),
-                    amountMillions,
-                    goodTillTime,
-                    plan.buyLeg().comment(),
-                    placedAt,
-                    state.instrument.pipSize()
-            ));
-        } catch (RuntimeException exc) {
-            metrics.recordOrderSubmitFailure(state.instrument.symbol(), plan.buyLeg().side().name());
-            stateStore.markRejected(plan.buyLeg().label(), exc.getMessage());
-            artifactWriter.recordOrderSubmitFailure(state.instrument.symbol(), group.groupLabel, "buy_leg_submit:" + exc.getMessage());
-            throw exc;
-        }
-
-        try {
-            executionPort.submitStopOrder(new OrderRequest(
-                    state.instrument.symbol(),
-                    plan.sellLeg().label(),
-                    plan.sellLeg().side(),
-                    plan.sellLeg().triggerPrice(),
-                    plan.stopLimitRangePips(),
-                    amountMillions,
-                    goodTillTime,
-                    plan.sellLeg().comment(),
-                    placedAt,
-                    state.instrument.pipSize()
-            ));
-        } catch (RuntimeException exc) {
-            metrics.recordOrderSubmitFailure(state.instrument.symbol(), plan.sellLeg().side().name());
-            stateStore.markRejected(plan.sellLeg().label(), exc.getMessage());
-            artifactWriter.recordOrderSubmitFailure(state.instrument.symbol(), group.groupLabel, "sell_leg_submit:" + exc.getMessage());
-            try {
-                executionPort.cancelOrder(state.instrument.symbol(), plan.buyLeg().label());
-            } catch (RuntimeException cancelExc) {
-                metrics.recordSiblingCancelFailure(state.instrument.symbol());
-                artifactWriter.recordSiblingCancelFailure(state.instrument.symbol(), group.groupLabel, "orphan_buy_leg:" + cancelExc.getMessage());
-            }
-            throw exc;
-        }
-
-        if (sessionConfig.nativeOcoEnabled()) {
-            try {
-                executionPort.enableNativeOco(plan.buyLeg().label(), plan.sellLeg().label());
-            } catch (RuntimeException ignored) {
-                // Manual sibling cancel remains authoritative.
+        Instant now = state.lastTick != null ? state.lastTick.timestamp() : Instant.now();
+        for (BarrierActionPayload action : actions) {
+            if (action.isOpenMarket()) {
+                String label = "BM_" + action.scanId() + "_" + action.side();
+                try {
+                    executionPort.submitMarketOrder(new MarketOrderRequest(
+                            action.symbol(),
+                            label,
+                            action.side(),
+                            amountMillions,
+                            "barrier_scan:" + action.scanId(),
+                            now
+                    ));
+                    metrics.recordOrderSubmitted(action.symbol(), action.side());
+                    artifactWriter.markOperationalStep(action.symbol(), "market_order_submitted", true, label);
+                } catch (RuntimeException exc) {
+                    metrics.recordOrderSubmitFailure(action.symbol(), action.side());
+                    artifactWriter.markOperationalStep(action.symbol(), "market_order_submit_failure", false, exc.getMessage());
+                }
+            } else if (action.isCloseMarket()) {
+                if (action.brokerPosId() != null) {
+                    try {
+                        executionPort.closePosition(action.symbol(), action.brokerPosId());
+                        artifactWriter.markOperationalStep(action.symbol(), "barrier_close_submitted", true, action.brokerPosId());
+                    } catch (RuntimeException exc) {
+                        artifactWriter.markOperationalStep(action.symbol(), "barrier_close_failure", false, exc.getMessage());
+                    }
+                }
             }
         }
-    }
-
-    private void handleSubmitOk(OrderEvent event) {
-        OcoGroupState group = stateStore.markSubmitAccepted(
-                event.orderLabel(),
-                event.brokerOrderId(),
-                sessionConfig.requestedVolumeUnits() / FX_UNITS_PER_MILLION
-        ).group();
-        OcoGroupState.OcoLegState leg = group.legForLabel(event.orderLabel());
-        metrics.recordOrderSubmitted(event.symbol(), leg == null ? "UNKNOWN" : leg.side);
-        artifactWriter.recordOrderSubmitted(event.symbol(), group.groupLabel, event.orderLabel());
-        refreshActiveOcoGauge(event.symbol());
-    }
-
-    private void handleReject(OrderEvent event) {
-        metrics.recordOrderReject(event.symbol(), event.type().name());
-        stateStore.markRejected(event.orderLabel(), event.detail());
-        OcoGroupState group = stateStore.findByOrderLabel(event.orderLabel());
-        artifactWriter.recordOrderSubmitFailure(
-                event.symbol(),
-                group == null ? event.orderLabel() : group.groupLabel,
-                event.detail()
-        );
     }
 
     private void handleFill(OrderEvent event) {
         Instant fillTs = Objects.requireNonNullElse(event.fillTimeUtc(), Instant.now());
-        ExecutionStateStore.FillAction action = stateStore.markFilled(
-                event.orderLabel(),
-                event.brokerOrderId(),
-                event.openPrice(),
-                fillTs
-        );
-        metrics.recordOrderFill(event.symbol(), action.leg().side);
-        artifactWriter.recordFill(event.symbol(), action.group().groupLabel, action.leg().label);
-        if (action.lifecycleViolation()) {
-            metrics.recordLifecycleViolation(event.symbol(), "double_fill_detected");
-            artifactWriter.recordLifecycleViolation(event.symbol(), action.group().groupLabel, "double_fill_detected");
+        metrics.recordOrderFill(event.symbol(), event.orderLabel().contains("BUY") ? "BUY" : "SELL");
+        artifactWriter.recordFill(event.symbol(), event.orderLabel(), event.orderLabel());
+
+        try {
+            predictionClient.openTrade(new TradeOpenRequestPayload(
+                    event.symbol(),
+                    "",
+                    event.brokerOrderId(),
+                    event.orderLabel().contains("BUY") ? "Buy" : "Sell",
+                    event.openPrice(),
+                    fillTs,
+                    0,
+                    "",
+                    sessionConfig.runId()
+            ));
+            artifactWriter.markOperationalStep(event.symbol(), "trade_open_synced", true, event.brokerOrderId());
+        } catch (RuntimeException exc) {
+            metrics.recordPythonSyncFailure(event.symbol(), "trade_open");
+            artifactWriter.recordTradeSyncFailure(event.symbol(), "trade_open_sync_failure", exc.getMessage());
         }
-        if (action.shouldNotifyTradeOpen()) {
-            try {
-                predictionClient.openTrade(new TradeOpenRequestPayload(
-                        event.symbol(),
-                        action.group().candidateUid,
-                        event.brokerOrderId(),
-                        action.leg().side,
-                        event.openPrice(),
-                        fillTs,
-                        action.group().horizon,
-                        action.group().reservationId,
-                        sessionConfig.runId()
-                ));
-                stateStore.markTradeOpenSynced(event.orderLabel());
-                artifactWriter.recordTradeOpenSync(event.symbol(), event.brokerOrderId());
-            } catch (RuntimeException exc) {
-                metrics.recordPythonSyncFailure(event.symbol(), "trade_open");
-                artifactWriter.recordTradeSyncFailure(event.symbol(), "trade_open_sync_failure", exc.getMessage());
-            }
-        }
-        if (action.siblingLabelToCancel() != null) {
-            metrics.recordSiblingCancelAttempt(event.symbol());
-            artifactWriter.recordSiblingCancelAttempt(event.symbol(), action.group().groupLabel, action.siblingLabelToCancel());
-            try {
-                stateStore.markCancelRequested(action.siblingLabelToCancel());
-                executionPort.cancelOrder(event.symbol(), action.siblingLabelToCancel());
-            } catch (RuntimeException exc) {
-                metrics.recordSiblingCancelFailure(event.symbol());
-                artifactWriter.recordSiblingCancelFailure(event.symbol(), action.group().groupLabel, exc.getMessage());
-                throw exc;
-            }
-        }
-        // Register pending horizon exit so triggerPrediction closes this leg after horizon bars.
-        SymbolRuntimeState fillState = symbolStates.get(normalizeSymbol(event.symbol()));
-        if (fillState != null) {
-            long fillBarOrdinal = fillState.barOrdinalsByBarTicks.getOrDefault(
-                    action.group().barTicks, -1L);
-            fillState.pendingExits.put(
-                    event.orderLabel(),
-                    new PendingExit(fillBarOrdinal, action.group().horizon, action.group().barTicks));
-        }
-        refreshActiveOcoGauge(event.symbol());
     }
 
     private void handleClose(OrderEvent event) {
         Instant closeTs = Objects.requireNonNullElse(event.closeTimeUtc(), Instant.now());
-        SymbolRuntimeState closeState = symbolStates.get(normalizeSymbol(event.symbol()));
-        String closeReason = (closeState != null && closeState.horizonInitiatedLabels.remove(event.orderLabel()))
-                ? "HORIZON_COMPLETED"
-                : "UNEXPECTED";
-        ExecutionStateStore.CloseAction action = stateStore.markClosed(
-                event.orderLabel(),
-                event.closePrice(),
-                closeTs,
-                event.pnlPips()
-        );
-        metrics.recordOrderClose(event.symbol(), action.tradeStatus());
-        if (action.shouldNotifyTouch()) {
-            try {
-                predictionClient.touchTrade(new TradeTouchRequestPayload(event.symbol(), event.brokerOrderId(), sessionConfig.runId()));
-                if (stateStore.markTradeTouchSynced(event.orderLabel())) {
-                    artifactWriter.recordTradeTouchSync(event.symbol(), event.brokerOrderId());
-                }
-            } catch (RuntimeException exc) {
-                metrics.recordPythonSyncFailure(event.symbol(), "trade_touch");
-                artifactWriter.recordTradeSyncFailure(event.symbol(), "trade_touch_sync_failure", exc.getMessage());
-            }
-        }
-        if (action.shouldNotifyTradeUpdate()) {
-            try {
-                predictionClient.updateTrade(new TradeUpdateRequestPayload(
-                        event.symbol(),
-                        event.brokerOrderId(),
-                        action.tradeStatus(),
-                        event.closePrice(),
-                        closeTs,
-                        event.pnlPips(),
-                        sessionConfig.runId(),
-                        closeReason,
-                        event.commission()
-                ));
-                if (stateStore.markTradeUpdateSynced(event.orderLabel())) {
-                    artifactWriter.recordTradeUpdateSync(event.symbol(), event.brokerOrderId(), action.tradeStatus());
-                }
-            } catch (RuntimeException exc) {
-                metrics.recordPythonSyncFailure(event.symbol(), "trade_update");
-                artifactWriter.recordTradeSyncFailure(event.symbol(), "trade_update_sync_failure", exc.getMessage());
-            }
-        }
-        if (action != null && action.group() != null && action.leg() != null) {
-            double fillPrice = action.leg().fillPrice != null ? action.leg().fillPrice : Double.NaN;
-            double pnlValue = event.pnlPips() != null ? event.pnlPips() : Double.NaN;
-            artifactWriter.recordTradeOutcome(
+        metrics.recordOrderClose(event.symbol(), "CLOSED");
+
+        try {
+            predictionClient.updateTrade(new TradeUpdateRequestPayload(
                     event.symbol(),
-                    action.group().groupLabel,
-                    action.group().candidateUid != null ? action.group().candidateUid : "",
-                    action.leg().label,
-                    fillPrice,
+                    event.brokerOrderId(),
+                    "CLOSED",
                     event.closePrice(),
-                    pnlValue
-            );
+                    closeTs,
+                    event.pnlPips(),
+                    sessionConfig.runId(),
+                    "BARRIER_MANAGER",
+                    event.commission()
+            ));
+            artifactWriter.markOperationalStep(event.symbol(), "trade_update_synced", true, event.brokerOrderId());
+        } catch (RuntimeException exc) {
+            metrics.recordPythonSyncFailure(event.symbol(), "trade_update");
+            artifactWriter.recordTradeSyncFailure(event.symbol(), "trade_update_sync_failure", exc.getMessage());
         }
-        if (closeState != null) {
-            closeState.pendingExits.remove(event.orderLabel());
-        }
-        refreshActiveOcoGauge(event.symbol());
     }
 
     private void refreshActiveOcoGauge(String symbol) {
@@ -569,72 +406,13 @@ public final class BehemothStrategyCore {
         return new TickIngestAggregate(accepted, dropped, List.copyOf(completedBarTicks));
     }
 
-    private ExecutableSelectionSummary classifyExecutablePredictions(
-            SymbolRuntimeState state,
-            List<PredictionResponseItem> predictions
-    ) {
-        List<PredictionResponseItem> executablePredictions = new ArrayList<>();
-        LinkedHashSet<String> blockedReasons = new LinkedHashSet<>();
-        int pythonSelected = 0;
-        int blockedCount = 0;
-        for (PredictionResponseItem prediction : predictions) {
-            if (!prediction.isSelected()) {
-                continue;
-            }
-            pythonSelected += 1;
-            if (!prediction.isExecutable(sessionConfig.riskEnabled())) {
-                blockedCount += 1;
-                blockedReasons.add(blockedReasonToken(prediction.riskBlockReason(), "risk_blocked"));
-                continue;
-            }
-            if (stateStore.hasActiveCandidateLifecycle(state.instrument.symbol(), prediction.candidateUid())) {
-                blockedCount += 1;
-                blockedReasons.add("active_candidate_lifecycle");
-                continue;
-            }
-            if (state.lastTick == null) {
-                blockedCount += 1;
-                blockedReasons.add("missing_last_tick");
-                continue;
-            }
-            if (!state.entriesAllowed) {
-                blockedCount += 1;
-                blockedReasons.add("entries_paused");
-                continue;
-            }
-            executablePredictions.add(prediction);
-        }
-        return new ExecutableSelectionSummary(
-                List.copyOf(executablePredictions),
-                pythonSelected,
-                executablePredictions.size(),
-                blockedCount,
-                List.copyOf(blockedReasons)
-        );
-    }
-
-    private static String blockedReasonToken(String reason, String fallback) {
-        if (reason == null) {
-            return fallback;
-        }
-        String normalized = reason.trim();
-        return normalized.isEmpty() ? fallback : normalized;
-    }
-
     private static final class SymbolRuntimeState {
         private final RuntimeInstrument instrument;
         private final List<IncomingTickPayload> pendingTicks = new ArrayList<>();
         private long nextClientTickSeq = 1L;
         private boolean entriesAllowed = true;
         private RuntimeTick lastTick;
-        // 0-indexed count of bars closed per bar_ticks granularity since session start.
-        // Incremented before each predict call so bar_ordinals[N] == N means "Nth bar just closed".
         private final Map<Integer, Long> barOrdinalsByBarTicks = new LinkedHashMap<>();
-        // label → pending horizon exit registered at fill time; removed when position closes
-        private final Map<String, PendingExit> pendingExits = new LinkedHashMap<>();
-        // Labels for which the strategy initiated a horizon close. Checked in handleClose()
-        // to distinguish HORIZON_COMPLETED from UNEXPECTED (broker-initiated).
-        private final Set<String> horizonInitiatedLabels = new LinkedHashSet<>();
 
         private SymbolRuntimeState(RuntimeInstrument instrument) {
             this.instrument = instrument;
@@ -648,15 +426,4 @@ public final class BehemothStrategyCore {
     ) {
     }
 
-    private record ExecutableSelectionSummary(
-            List<PredictionResponseItem> executablePredictions,
-            int pythonSelected,
-            int executableSelected,
-            int blockedCount,
-            List<String> blockedReasons
-    ) {
-    }
-
-    private record PendingExit(long fillBarOrdinal, int horizon, int barTicks) {
-    }
 }
