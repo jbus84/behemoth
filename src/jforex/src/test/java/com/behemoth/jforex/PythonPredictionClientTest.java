@@ -21,7 +21,7 @@ class PythonPredictionClientTest {
     void predictUsesCanonicalRiskOverrideFieldAndParsesResponse() throws Exception {
         try (MockWebServer server = new MockWebServer()) {
             server.enqueue(new MockResponse().setBody("""
-                    [{
+                    {"predictions":[{
                       "symbol": "GBPUSD",
                       "close_ts": "2025-07-07T00:00:00Z",
                       "candidate_uid": "oco|GBPUSD|100|h6|state_a",
@@ -34,14 +34,14 @@ class PythonPredictionClientTest {
                       "cap_pips": 1.2,
                       "risk_blocked": false,
                       "risk_reservation_id": "rid-1"
-                    }]
+                    }],"actions":[]}
                     """).addHeader("Content-Type", "application/json"));
             PythonPredictionClient client = new PythonPredictionClient(HttpClient.newHttpClient(), server.url("/").uri());
 
             var response = client.predict(new PredictRequestPayload("GBPUSD", true, 10000.0, List.of(100), "run-1", null));
 
-            assertThat(response).hasSize(1);
-            assertThat(response.getFirst().candidateUid()).isEqualTo("oco|GBPUSD|100|h6|state_a");
+            assertThat(response.predictions()).hasSize(1);
+            assertThat(response.predictions().get(0).candidateUid()).isEqualTo("oco|GBPUSD|100|h6|state_a");
             String requestBody = server.takeRequest().getBody().readUtf8();
             assertThat(requestBody).contains("\"risk_enabled_override\":true");
             assertThat(requestBody).doesNotContain("\"ftmo_enabled_override\"");
@@ -66,7 +66,7 @@ class PythonPredictionClientTest {
     @Test
     void barOrdinalsSerializedAsStringKeyedMap() throws Exception {
         try (MockWebServer server = new MockWebServer()) {
-            server.enqueue(new MockResponse().setBody("[]").addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse().setBody("{\"predictions\":[],\"actions\":[]}").addHeader("Content-Type", "application/json"));
             PythonPredictionClient client = new PythonPredictionClient(HttpClient.newHttpClient(), server.url("/").uri());
 
             client.predict(new PredictRequestPayload("GBPUSD", true, 10000.0, List.of(100), "run-1", Map.of(100, 42L)));

@@ -2,9 +2,6 @@ package com.behemoth.jforex;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.behemoth.jforex.adapter.OcoOrderPlan;
-import com.behemoth.jforex.adapter.OcoOrderPlanner;
-import com.behemoth.jforex.domain.PredictionDecision;
 import com.behemoth.jforex.reporting.Stage14ArtifactWriter;
 import com.behemoth.jforex.state.OcoGroupState;
 import java.nio.file.Files;
@@ -31,31 +28,18 @@ class Stage14ArtifactWriterTest {
         writer.recordTradeOpenSync("GBPUSD", "BUY-1");
         writer.recordTradeTouchSync("GBPUSD", "BUY-1");
         writer.recordTradeUpdateSync("GBPUSD", "BUY-1", "CLOSED");
-        PredictionDecision decision = new PredictionDecision(
-                "GBPUSD",
-                "oco|GBPUSD|100|h6|state_a",
-                2.0,
-                1.2,
-                100,
-                6,
-                10000.0,
-                "rid1"
-        );
-        OcoOrderPlan plan = OcoOrderPlanner.build(
-                decision,
-                1.2500,
-                1.2502,
-                0.0001,
-                Instant.parse("2025-07-07T00:00:00Z")
-        );
-        OcoGroupState group = OcoGroupState.from(
-                "GBPUSD",
-                decision,
-                plan,
-                "run-1",
-                Instant.parse("2025-07-07T00:00:00Z"),
-                false
-        );
+        OcoGroupState group = new OcoGroupState();
+        group.groupLabel = "GROUP1";
+        group.symbol = "GBPUSD";
+        group.candidateUid = "oco|GBPUSD|100|h6|state_a";
+        group.buyLeg = new OcoGroupState.OcoLegState();
+        group.buyLeg.label = "GROUP1_BUY";
+        group.buyLeg.side = "BUY";
+        group.buyLeg.status = "FILLED";
+        group.sellLeg = new OcoGroupState.OcoLegState();
+        group.sellLeg.label = "GROUP1_SELL";
+        group.sellLeg.side = "SELL";
+        group.sellLeg.status = "CANCELLED";
         writer.writeReports(List.of("GBPUSD"), List.of(group));
 
         assertThat(Files.readString(tempDir.resolve("GBPUSD_jforex_signal_parity_summary.csv")))
