@@ -7,6 +7,7 @@ import com.behemoth.jforex.runtime.dto.BackfillRequestPayload;
 import com.behemoth.jforex.runtime.dto.FeedStatusResponsePayload;
 import com.behemoth.jforex.runtime.dto.IncomingTickPayload;
 import com.behemoth.jforex.runtime.dto.PredictRequestPayload;
+import com.behemoth.jforex.runtime.dto.PredictResponsePayload;
 import com.behemoth.jforex.runtime.dto.PredictionResponseItem;
 import com.behemoth.jforex.runtime.dto.TickBatchRequestPayload;
 import com.behemoth.jforex.runtime.dto.TickBatchResponsePayload;
@@ -99,9 +100,8 @@ public final class PythonPredictionClient {
         return sendJson("POST", "/ticks", request, TickIngestResponsePayload.class, tickBatchTimeout);
     }
 
-    public List<PredictionResponseItem> predict(PredictRequestPayload request) {
-        return sendJsonList("POST", "/predict", request, new TypeReference<>() {
-        });
+    public PredictResponsePayload predict(PredictRequestPayload request) {
+        return sendJson("POST", "/predict", request, PredictResponsePayload.class);
     }
 
     public ApiAckResponse openTrade(TradeOpenRequestPayload request) {
