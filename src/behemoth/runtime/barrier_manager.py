@@ -110,3 +110,154 @@ class BarrierManager:
             return None
         cols = [desc[0] for desc in self._con.description]
         return dict(zip(cols, res))
+
+    def evaluate_bar(
+        self,
+        symbol: str,
+        bar_ticks: int,
+        bar_high: float,
+        bar_low: float,
+        bar_hl_first: float,
+        current_bar_idx: int,
+    ) -> list[dict]:
+        """Evaluate a completed bar against all active scans for this symbol.
+
+        Called on every bar completion. Mirrors _oco_precompute barrier detection:
+        - Checks bar_high >= upper_barrier (up touch) and bar_low <= lower_barrier (down touch)
+        - If both touched same bar: uses bar_hl_first to break tie (positive = high first = BUY)
+        - Returns list of action dicts: OPEN_MARKET for new touches, CLOSE_MARKET for completed holds
+        """
+        sym = symbol.upper()
+        actions: list[dict] = []
+
+        # Process SCANNING scans
+        scanning = self._con.execute(
+            "SELECT scan_id, candidate_uid, upper_barrier, lower_barrier, "
+            "scan_bars_remaining, signal_bar_idx, reservation_id, horizon "
+            "FROM barrier_scans WHERE symbol = ? AND status = 'SCANNING'",
+            [sym],
+        ).fetchall()
+
+        for row in scanning:
+            (scan_id, candidate_uid, upper, lower,
+             bars_rem, signal_bar_idx, reservation_id, horizon) = row
+
+            bars_rem -= 1
+            up_touch = bar_high >= upper
+            dn_touch = bar_low <= lower
+            touch_step = current_bar_idx - signal_bar_idx
+
+            if up_touch and dn_touch:
+                # Both touched — use hl_first to break tie
+                if bar_hl_first > 0:
+                    side = "BUY"
+                elif bar_hl_first < 0:
+                    side = "SELL"
+                else:
+                    # hl_first == 0 means undecided; treat as no touch
+                    if bars_rem <= 0:
+                        self._con.execute(
+                            "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",
+                            [scan_id],
+                        )
+                    else:
+                        self._con.execute(
+                            "UPDATE barrier_scans SET scan_bars_remaining = ? WHERE scan_id = ?",
+                            [bars_rem, scan_id],
+                        )
+                    continue
+                self._transition_to_holding(scan_id, touch_step, side, horizon)
+                actions.append({
+                    "type": "OPEN_MARKET",
+                    "symbol": sym,
+                    "side": side,
+                    "candidate_uid": candidate_uid,
+                    "reservation_id": reservation_id,
+                    "scan_id": scan_id,
+                })
+            elif up_touch:
+                self._transition_to_holding(scan_id, touch_step, "BUY", horizon)
+                actions.append({
+                    "type": "OPEN_MARKET",
+                    "symbol": sym,
+                    "side": "BUY",
+                    "candidate_uid": candidate_uid,
+                    "reservation_id": reservation_id,
+                    "scan_id": scan_id,
+                })
+            elif dn_touch:
+                self._transition_to_holding(scan_id, touch_step, "SELL", horizon)
+                actions.append({
+                    "type": "OPEN_MARKET",
+                    "symbol": sym,
+                    "side": "SELL",
+                    "candidate_uid": candidate_uid,
+                    "reservation_id": reservation_id,
+                    "scan_id": scan_id,
+                })
+            elif bars_rem <= 0:
+                self._con.execute(
+                    "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",
+                    [scan_id],
+                )
+            else:
+                self._con.execute(
+                    "UPDATE barrier_scans SET scan_bars_remaining = ? WHERE scan_id = ?",
+                    [bars_rem, scan_id],
+                )
+
+        # Process HOLDING scans (only those already in HOLDING before this bar, not newly transitioned)
+        newly_transitioned = {a["scan_id"] for a in actions if a["type"] == "OPEN_MARKET"}
+        holding = self._con.execute(
+            "SELECT scan_id, candidate_uid, broker_pos_id, hold_bars_remaining "
+            "FROM barrier_scans WHERE symbol = ? AND status = 'HOLDING'",
+            [sym],
+        ).fetchall()
+        holding = [row for row in holding if row[0] not in newly_transitioned]
+
+        for scan_id, candidate_uid, broker_pos_id, hold_rem in holding:
+            hold_rem -= 1
+            if hold_rem <= 0:
+                self._con.execute(
+                    "UPDATE barrier_scans SET hold_bars_remaining = 0, status = 'COMPLETED' WHERE scan_id = ?",
+                    [scan_id],
+                )
+                actions.append({
+                    "type": "CLOSE_MARKET",
+                    "symbol": sym,
+                    "candidate_uid": candidate_uid,
+                    "broker_pos_id": broker_pos_id,
+                    "scan_id": scan_id,
+                })
+            else:
+                self._con.execute(
+                    "UPDATE barrier_scans SET hold_bars_remaining = ? WHERE scan_id = ?",
+                    [hold_rem, scan_id],
+                )
+
+        return actions
+
+    def _transition_to_holding(self, scan_id: str, touch_step: int, side: str, horizon: int) -> None:
+        """Move a scan from SCANNING to HOLDING."""
+        self._con.execute(
+            "UPDATE barrier_scans SET touch_step = ?, touch_side = ?, "
+            "hold_bars_remaining = ?, status = 'HOLDING' WHERE scan_id = ?",
+            [touch_step, side, horizon, scan_id],
+        )
+
+    def set_broker_pos_id(self, scan_id: str, broker_pos_id: str) -> None:
+        """Record the broker position ID after a fill is confirmed."""
+        self._con.execute(
+            "UPDATE barrier_scans SET broker_pos_id = ? WHERE scan_id = ?",
+            [broker_pos_id, scan_id],
+        )
+
+    def find_holding_scans(self, symbol: str, candidate_uid: str) -> list[dict]:
+        """Find HOLDING scans for a candidate (to link broker_pos_id)."""
+        res = self._con.execute(
+            "SELECT scan_id, broker_pos_id FROM barrier_scans "
+            "WHERE symbol = ? AND candidate_uid = ? AND status = 'HOLDING' "
+            "ORDER BY created_ts DESC",
+            [symbol.upper(), candidate_uid],
+        ).fetchall()
+        return [{"scan_id": r[0], "broker_pos_id": r[1]} for r in res]
