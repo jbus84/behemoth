@@ -255,6 +255,28 @@ class OcoPrediction(BaseModel):
     )
 
 
+class BarrierActionType(str, Enum):
+    OPEN_MARKET = "OPEN_MARKET"
+    CLOSE_MARKET = "CLOSE_MARKET"
+
+
+class BarrierAction(BaseModel):
+    """Execution action emitted by the barrier manager."""
+    type: BarrierActionType
+    symbol: str
+    candidate_uid: str
+    scan_id: str
+    side: str | None = None  # BUY or SELL, present for OPEN_MARKET
+    reservation_id: str | None = None  # present for OPEN_MARKET
+    broker_pos_id: str | None = None  # present for CLOSE_MARKET
+
+
+class PredictResponse(BaseModel):
+    """Wrapper response for /predict with predictions and barrier actions."""
+    predictions: list[OcoPrediction]
+    actions: list[BarrierAction] = Field(default_factory=list)
+
+
 class TradeStatus(str, Enum):
     OPEN = "OPEN"
     CLOSED = "CLOSED"

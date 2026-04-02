@@ -387,3 +387,50 @@ class TestParityWithOcoPrecompute:
                     )
 
         assert len(mismatches) == 0, f"Parity failures:\n" + "\n".join(mismatches[:20])
+
+
+class TestActionSchemas:
+    def test_open_market_action_serializes(self):
+        from src.behemoth.core.schemas import BarrierAction, BarrierActionType
+        action = BarrierAction(
+            type=BarrierActionType.OPEN_MARKET,
+            symbol="GBPUSD",
+            candidate_uid="oco|GBPUSD|100|h6|abc",
+            scan_id="scan_001",
+            side="SELL",
+            reservation_id="res-001",
+        )
+        d = action.model_dump()
+        assert d["type"] == "OPEN_MARKET"
+        assert d["side"] == "SELL"
+
+    def test_close_market_action_serializes(self):
+        from src.behemoth.core.schemas import BarrierAction, BarrierActionType
+        action = BarrierAction(
+            type=BarrierActionType.CLOSE_MARKET,
+            symbol="GBPUSD",
+            candidate_uid="oco|GBPUSD|100|h6|abc",
+            scan_id="scan_002",
+            broker_pos_id="272708355",
+        )
+        d = action.model_dump()
+        assert d["type"] == "CLOSE_MARKET"
+        assert d["broker_pos_id"] == "272708355"
+
+    def test_predict_response_wrapper(self):
+        from src.behemoth.core.schemas import BarrierAction, BarrierActionType, PredictResponse
+        resp = PredictResponse(
+            predictions=[],
+            actions=[
+                BarrierAction(
+                    type=BarrierActionType.OPEN_MARKET,
+                    symbol="GBPUSD",
+                    candidate_uid="oco|GBPUSD|100|h6|abc",
+                    scan_id="scan_001",
+                    side="BUY",
+                ),
+            ],
+        )
+        d = resp.model_dump()
+        assert len(d["actions"]) == 1
+        assert d["actions"][0]["type"] == "OPEN_MARKET"
