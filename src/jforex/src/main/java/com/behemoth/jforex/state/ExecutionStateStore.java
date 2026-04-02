@@ -28,21 +28,6 @@ public final class ExecutionStateStore {
         load();
     }
 
-    public synchronized boolean hasActiveCandidateLifecycle(String symbol, String candidateUid) {
-        for (OcoGroupState group : groupsByGroupLabel.values()) {
-            if (!String.valueOf(group.symbol).equalsIgnoreCase(symbol)) {
-                continue;
-            }
-            if (!String.valueOf(group.candidateUid).equals(candidateUid)) {
-                continue;
-            }
-            if (group.isActive()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public synchronized OcoGroupState findByOrderLabel(String label) {
         String groupLabel = orderLabelToGroupLabel.get(label);
         return groupLabel == null ? null : groupsByGroupLabel.get(groupLabel);

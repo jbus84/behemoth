@@ -6,8 +6,6 @@ public interface ExecutionPort {
     /** Submit a single market order (BUY or SELL at current market price). */
     OrderHandle submitMarketOrder(MarketOrderRequest request);
 
-    void enableNativeOco(String primaryLabel, String siblingLabel);
-
     void cancelOrder(String symbol, String label);
 
     /** Close an already-filled position at the strategy's initiative. */

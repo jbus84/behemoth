@@ -87,11 +87,6 @@ public final class LocalExecutionPort implements ExecutionPort {
     }
 
     @Override
-    public void enableNativeOco(String primaryLabel, String siblingLabel) {
-        // Local surrogate always relies on manual sibling cancel.
-    }
-
-    @Override
     public void cancelOrder(String symbol, String label) {
         SimulatedOrder order = ordersByLabel.get(label);
         if (order == null || !order.isActive()) {

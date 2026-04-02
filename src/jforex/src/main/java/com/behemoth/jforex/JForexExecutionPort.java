@@ -68,20 +68,6 @@ final class JForexExecutionPort implements ExecutionPort {
     }
 
     @Override
-    public void enableNativeOco(String primaryLabel, String siblingLabel) {
-        IEngine engine = requireEngine();
-        try {
-            IOrder primary = engine.getOrder(primaryLabel);
-            IOrder sibling = engine.getOrder(siblingLabel);
-            if (primary != null && sibling != null) {
-                primary.groupToOco(sibling);
-            }
-        } catch (JFException exc) {
-            throw new IllegalStateException(exc.getMessage(), exc);
-        }
-    }
-
-    @Override
     public void cancelOrder(String symbol, String label) {
         IEngine engine = requireEngine();
         try {

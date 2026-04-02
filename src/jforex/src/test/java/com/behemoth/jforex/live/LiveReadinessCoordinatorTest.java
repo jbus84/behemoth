@@ -320,11 +320,6 @@ class LiveReadinessCoordinatorTest {
             }
 
             @Override
-            public void enableNativeOco(String primaryLabel, String siblingLabel) {
-                throw new UnsupportedOperationException("not used");
-            }
-
-            @Override
             public void cancelOrder(String symbol, String label) {
                 throw new UnsupportedOperationException("not used");
             }

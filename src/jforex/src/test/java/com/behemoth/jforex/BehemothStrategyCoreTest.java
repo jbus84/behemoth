@@ -438,10 +438,6 @@ class BehemothStrategyCoreTest {
         }
 
         @Override
-        public void enableNativeOco(String primaryLabel, String siblingLabel) {
-        }
-
-        @Override
         public void cancelOrder(String symbol, String label) {
         }
 
@@ -465,10 +461,6 @@ class BehemothStrategyCoreTest {
         public OrderHandle submitMarketOrder(MarketOrderRequest request) {
             marketOrders.add(request);
             return new OrderHandle(request.label(), request.label());
-        }
-
-        @Override
-        public void enableNativeOco(String primaryLabel, String siblingLabel) {
         }
 
         @Override
