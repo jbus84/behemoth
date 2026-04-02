@@ -48,10 +48,13 @@ from src.behemoth.core.registry import CandidateRegistry
 from src.behemoth.core.schemas import (
     AccountRiskSnapshotRequest,
     ActiveTrade,
+    BarrierAction,
+    BarrierActionType,
     IncomingTick,
     IncomingTickBar,
     ModelFeatures,
     OcoPrediction,
+    PredictResponse,
     TradeOpenRequest,
     TradeTouchRequest,
     TradeUpdateRequest,
@@ -63,6 +66,7 @@ from src.behemoth.risk.account import (
     load_account_risk_profile,
     trading_day_id,
 )
+from src.behemoth.runtime.barrier_manager import BarrierManager
 from src.behemoth.runtime.state import StateManager
 from src.behemoth.runtime.tick_aggregator import TickAggregator
 
@@ -76,6 +80,7 @@ logger = logging.getLogger("behemoth.api")
 # ── Global State ──────────────────────────────────────────────────────
 
 _state: StateManager | None = None
+_barrier_manager: BarrierManager | None = None
 _aggregators: dict[int, TickAggregator] = {}
 _registry: CandidateRegistry | None = None
 _historical_registry: HistoricalCandidateRegistry | None = None
@@ -424,7 +429,7 @@ def _run_historical_preflight(history_dir: Path) -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Modern lifespan handler replacing deprecated on_event."""
-    global _state, _aggregators, _registry, _historical_registry, _feed_state, _lifespan_ready
+    global _state, _barrier_manager, _aggregators, _registry, _historical_registry, _feed_state, _lifespan_ready
     global _models_dir, _account_risk_rules_path, _account_risk_profile
     global _historical_entries_loaded, _historical_preflight_failed_checks, _historical_preflight_summary
     global _historical_prediction_universes, _historical_prediction_candidate_index
@@ -449,6 +454,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
             vol_window=_config.vol_window,
             cost_window=_config.cost_window,
         )
+    _barrier_manager = BarrierManager(con=_state._con)
     _feed_state = {}
     try:
         _aggregators = {}
@@ -531,6 +537,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     with suppress(asyncio.CancelledError):
         await monitor_task
 
+    _barrier_manager = None
     if _state:
         _state.close()
         _state = None
@@ -2287,8 +2294,8 @@ async def ingest_bar(bar: IncomingTickBar) -> dict:
     }
 
 
-@app.post("/predict", response_model=list[OcoPrediction])
-async def predict(req: PredictRequest) -> list[OcoPrediction]:
+@app.post("/predict", response_model=PredictResponse)
+async def predict(req: PredictRequest) -> PredictResponse:
     """Evaluate all registry candidates for a symbol and return predictions.
 
     Computes rolling features once, then runs CatBoost inference for each
@@ -2417,6 +2424,58 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
 
     # Sort by pred_prob descending
     results.sort(key=lambda p: p.pred_prob, reverse=True)
+    # ── Barrier Manager: evaluate existing scans and register new ones ──
+    barrier_actions: list[BarrierAction] = []
+    if _barrier_manager is not None:
+        completed_ticks_set = set(completed_ticks) if completed_ticks else set()
+        for bt in (completed_ticks_set or {int(c.bar_ticks) for c in candidates}):
+            latest_bar = _state.get_latest_bar(sym, bt)
+            if latest_bar is None:
+                continue
+            raw_actions = _barrier_manager.evaluate_bar(
+                symbol=sym,
+                bar_ticks=bt,
+                bar_high=latest_bar["high_price"],
+                bar_low=latest_bar["low_price"],
+                bar_hl_first=latest_bar.get("hl_first", 0.0),
+                current_bar_idx=latest_bar["row_id"],
+            )
+            for a in raw_actions:
+                barrier_actions.append(BarrierAction(
+                    type=BarrierActionType(a["type"]),
+                    symbol=a["symbol"],
+                    candidate_uid=a["candidate_uid"],
+                    scan_id=a["scan_id"],
+                    side=a.get("side"),
+                    reservation_id=a.get("reservation_id"),
+                    broker_pos_id=a.get("broker_pos_id"),
+                ))
+
+        # Register new scans for selected predictions (lifecycle blocking in Python now)
+        pip = _pip_size_for_symbol(sym)
+        for pred in results:
+            if pred.selected_exec != 1:
+                continue
+            if _barrier_manager.has_active_scan(sym, pred.candidate_uid):
+                continue
+            latest_bar = _state.get_latest_bar(sym, pred.bar_ticks)
+            if latest_bar is None:
+                continue
+            _barrier_manager.register_scan(
+                symbol=sym,
+                candidate_uid=pred.candidate_uid,
+                signal_bar_idx=latest_bar["row_id"],
+                ref_price=latest_bar["close_price"],
+                barrier_pips=pred.barrier_pips,
+                horizon=pred.horizon,
+                pip_size=pip,
+                pred_prob=pred.pred_prob,
+                threshold=pred.threshold_exec,
+                model_month=pred.model_month,
+                reservation_id=pred.risk_reservation_id,
+                run_id=run_id,
+            )
+
     _trace_predict_response(
         req=req,
         sym=sym,
@@ -2430,7 +2489,7 @@ async def predict(req: PredictRequest) -> list[OcoPrediction]:
         candidate_count_after_universe_gate=len(candidates),
         candidate_trace_rows=candidate_trace_rows,
     )
-    return results
+    return PredictResponse(predictions=results, actions=barrier_actions)
 
 
 def _check_warmup(sym: str, candidates: list[Any]) -> None:
@@ -2981,6 +3040,12 @@ async def open_trade(req: TradeOpenRequest):
             candidate_uid=req.candidate_uid,
             symbol=req.symbol,
         )
+    if _barrier_manager is not None:
+        scans = _barrier_manager.find_holding_scans(req.symbol, req.candidate_uid)
+        for scan in scans:
+            if scan["broker_pos_id"] is None:
+                _barrier_manager.set_broker_pos_id(scan["scan_id"], req.broker_pos_id)
+                break
     METRIC_TRADES_TOTAL.labels(symbol=req.symbol, status="OPEN").inc()
     out = {"status": "ok", "internal_trade_id": internal_id}
     _append_http_trace(
