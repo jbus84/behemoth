@@ -1,7 +1,5 @@
 package com.behemoth.jforex.state;
 
-import com.behemoth.jforex.adapter.OcoOrderPlan;
-import com.behemoth.jforex.domain.PredictionDecision;
 import java.time.Instant;
 
 /**
@@ -23,29 +21,6 @@ public final class OcoGroupState {
     public OcoLegState sellLeg;
 
     public OcoGroupState() {
-    }
-
-    public static OcoGroupState from(
-            String symbol,
-            PredictionDecision decision,
-            OcoOrderPlan plan,
-            String runId,
-            Instant placedAtUtc,
-            boolean nativeOcoRequested
-    ) {
-        OcoGroupState out = new OcoGroupState();
-        out.groupLabel = plan.groupLabel();
-        out.symbol = symbol;
-        out.candidateUid = decision.candidateUid();
-        out.reservationId = decision.reservationId();
-        out.barTicks = decision.barTicks();
-        out.horizon = decision.horizon();
-        out.runId = runId;
-        out.placedAtEpochMs = placedAtUtc.toEpochMilli();
-        out.nativeOcoRequested = nativeOcoRequested;
-        out.buyLeg = OcoLegState.from(plan.buyLeg());
-        out.sellLeg = OcoLegState.from(plan.sellLeg());
-        return out;
     }
 
     public OcoLegState legForLabel(String label) {
@@ -92,16 +67,6 @@ public final class OcoGroupState {
         public String lastMessage;
 
         public OcoLegState() {
-        }
-
-        static OcoLegState from(OcoOrderPlan.EntryLeg leg) {
-            OcoLegState out = new OcoLegState();
-            out.label = leg.label();
-            out.side = leg.side().name();
-            out.comment = leg.comment();
-            out.triggerPrice = leg.triggerPrice();
-            out.status = "PLANNED";
-            return out;
         }
 
         public boolean isActive() {

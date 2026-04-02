@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 
+
 final class JForexExecutionPort implements ExecutionPort {
     private final Supplier<IEngine> engineSupplier;
     private final Map<String, Instrument> instrumentsBySymbol;
@@ -29,7 +30,7 @@ final class JForexExecutionPort implements ExecutionPort {
             IOrder order = engine.submitOrder(
                     request.label(),
                     instrument,
-                    request.side() == com.behemoth.jforex.adapter.OcoOrderPlan.Side.BUY
+                    "BUY".equals(request.side())
                             ? IEngine.OrderCommand.BUYSTOP
                             : IEngine.OrderCommand.SELLSTOP,
                     request.amountMillions(),

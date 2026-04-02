@@ -1,13 +1,12 @@
 package com.behemoth.jforex.core;
 
-import com.behemoth.jforex.adapter.OcoOrderPlan;
 import java.time.Instant;
 import java.util.Objects;
 
 public record OrderRequest(
         String symbol,
         String label,
-        OcoOrderPlan.Side side,
+        String side,
         double triggerPrice,
         double stopLimitRangePips,
         double amountMillions,
@@ -19,7 +18,7 @@ public record OrderRequest(
     public OrderRequest {
         symbol = symbol == null ? "" : symbol.trim().replace("/", "").toUpperCase();
         label = Objects.requireNonNull(label, "label").trim();
-        side = Objects.requireNonNull(side, "side");
+        side = Objects.requireNonNull(side, "side").trim().toUpperCase();
         comment = Objects.requireNonNullElse(comment, "");
         submittedAtUtc = Objects.requireNonNull(submittedAtUtc, "submittedAtUtc");
         if (symbol.isEmpty()) {
