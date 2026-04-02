@@ -154,17 +154,13 @@ class BarrierManager:
                 elif bar_hl_first < 0:
                     side = "SELL"
                 else:
-                    # hl_first == 0 means undecided; treat as no touch
-                    if bars_rem <= 0:
-                        self._con.execute(
-                            "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",
-                            [scan_id],
-                        )
-                    else:
-                        self._con.execute(
-                            "UPDATE barrier_scans SET scan_bars_remaining = ? WHERE scan_id = ?",
-                            [bars_rem, scan_id],
-                        )
+                    # hl_first == 0 means undecided; expire immediately — mirrors
+                    # _oco_precompute which locks in side=0 on the first simultaneous
+                    # touch and does not evaluate later bars for this signal
+                    self._con.execute(
+                        "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",
+                        [scan_id],
+                    )
                     continue
                 self._transition_to_holding(scan_id, touch_step, side, horizon)
                 actions.append({
