@@ -2332,7 +2332,7 @@ async def predict(req: PredictRequest) -> PredictResponse:
     if completed_ticks:
         candidates = [c for c in candidates if int(getattr(c, "bar_ticks", 0)) in completed_ticks]
         if not candidates:
-            return _trace_predict_response(
+            _trace_predict_response(
                 req=req,
                 sym=sym,
                 run_id=run_id,
@@ -2344,6 +2344,7 @@ async def predict(req: PredictRequest) -> PredictResponse:
                 candidate_count_after_completed_ticks=0,
                 candidate_count_after_universe_gate=0,
             )
+            return PredictResponse(predictions=[], actions=[])
     candidate_count_after_completed_ticks = len(candidates)
     candidates = _apply_historical_prediction_universe_gate(
         contract=contract,
@@ -2352,7 +2353,7 @@ async def predict(req: PredictRequest) -> PredictResponse:
         bar_ordinals=req.bar_ordinals,
     )
     if not candidates:
-        return _trace_predict_response(
+        _trace_predict_response(
             req=req,
             sym=sym,
             run_id=run_id,
@@ -2364,6 +2365,7 @@ async def predict(req: PredictRequest) -> PredictResponse:
             candidate_count_after_completed_ticks=candidate_count_after_completed_ticks,
             candidate_count_after_universe_gate=0,
         )
+        return PredictResponse(predictions=[], actions=[])
 
     _check_warmup(sym, candidates)
 

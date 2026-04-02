@@ -847,7 +847,7 @@ class TestPredictEndpoint:
                     },
                 )
                 assert r.status_code == 200
-                assert r.json() == []
+                assert r.json()["predictions"] == []
 
             rows = [
                 json.loads(line)
@@ -1048,7 +1048,7 @@ class TestPredictEndpoint:
                 },
             )
             assert r.status_code == 200
-            results = r.json()
+            results = r.json()["predictions"]
             assert isinstance(results, list)
             assert len(results) == 1
             assert results[0]["pred_prob"] == 0.85
@@ -1146,7 +1146,7 @@ class TestPredictEndpoint:
                 },
             )
             assert r.status_code == 200
-            rows = r.json()
+            rows = r.json()["predictions"]
             assert len(rows) == 1
             assert rows[0]["selected_exec"] == 0
             log_predict_evaluation.assert_called_once()
@@ -1257,7 +1257,7 @@ class TestPredictEndpoint:
                 },
             )
             assert r.status_code == 200
-            rows = r.json()
+            rows = r.json()["predictions"]
             assert len(rows) == 1
             assert rows[0]["bar_ticks"] == 100
             assert rows[0]["candidate_uid"].endswith("|cand_100")
@@ -1335,7 +1335,7 @@ class TestPredictEndpoint:
                 },
             )
             assert r.status_code == 200
-            assert r.json() == []
+            assert r.json()["predictions"] == []
 
     def test_predict_override_false_disables_account_risk_guard_eval(self, client):
         import unittest.mock as mock
@@ -1422,7 +1422,7 @@ class TestPredictEndpoint:
                 },
             )
             assert r.status_code == 200
-            results = r.json()
+            results = r.json()["predictions"]
             assert len(results) == 1
             assert results[0]["selected_exec"] == 1
             assert results[0]["risk_metrics_snapshot"]["account_risk_enabled_effective"] is False
@@ -1544,7 +1544,7 @@ class TestPredictEndpoint:
                 },
             )
             assert r.status_code == 200
-            rows = r.json()
+            rows = r.json()["predictions"]
             assert len(rows) == 1
             assert rows[0]["selected_exec"] == 1
             assert rows[0]["risk_blocked"] is False
@@ -1671,7 +1671,7 @@ class TestPredictEndpoint:
                 },
             )
             assert r.status_code == 200
-            rows = r.json()
+            rows = r.json()["predictions"]
             assert len(rows) == 1
             assert rows[0]["selected_exec"] == 0
             assert rows[0]["risk_blocked"] is True
@@ -1758,7 +1758,7 @@ class TestPredictEndpoint:
                 },
             )
             assert r.status_code == 200
-            rows = r.json()
+            rows = r.json()["predictions"]
             assert len(rows) == 1
             assert rows[0]["selected_exec"] == 0
             assert rows[0]["risk_metrics_snapshot"]["regime_name"] == "london"
@@ -1878,7 +1878,7 @@ class TestPredictEndpoint:
                 },
             )
             assert r.status_code == 200
-            rows = r.json()
+            rows = r.json()["predictions"]
             assert len(rows) == 2
             blocked = [
                 x for x in rows if x["risk_block_reason"] == "ACCOUNT_RISK_RESERVED_BUDGET_EXCEEDED"
