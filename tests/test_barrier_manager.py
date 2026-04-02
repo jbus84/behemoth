@@ -215,7 +215,7 @@ class TestHoldCompletion:
 
     def test_lifecycle_blocking_during_scan_and_hold(self):
         mgr = BarrierManager()
-        scan_id = mgr.register_scan(
+        mgr.register_scan(
             symbol="GBPUSD",
             candidate_uid="oco|GBPUSD|100|h6|abc",
             signal_bar_idx=10,
@@ -386,7 +386,7 @@ class TestParityWithOcoPrecompute:
                         f"bar {signal_bar}: expected no decision but got side={actual_side}"
                     )
 
-        assert len(mismatches) == 0, f"Parity failures:\n" + "\n".join(mismatches[:20])
+        assert len(mismatches) == 0, "Parity failures:\n" + "\n".join(mismatches[:20])
 
 
 class TestActionSchemas:
