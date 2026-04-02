@@ -2,6 +2,7 @@ package com.behemoth.jforex.local;
 
 import com.behemoth.jforex.adapter.OcoOrderPlan;
 import com.behemoth.jforex.core.ExecutionPort;
+import com.behemoth.jforex.core.MarketOrderRequest;
 import com.behemoth.jforex.core.OrderEvent;
 import com.behemoth.jforex.core.OrderEventType;
 import com.behemoth.jforex.core.OrderHandle;
@@ -44,6 +45,43 @@ public final class LocalExecutionPort implements ExecutionPort {
                 null,
                 null,
                 "local_submit_ok",
+                null
+        ));
+        return new OrderHandle(request.label(), orderId);
+    }
+
+    @Override
+    public OrderHandle submitMarketOrder(MarketOrderRequest request) {
+        String orderId = "LOCAL-MKT-" + ids.getAndIncrement();
+        RuntimeTick tick = lastTickBySymbol.get(normalizeSymbol(request.symbol()));
+        Instant fillTs = tick != null ? tick.timestamp() : request.submittedAtUtc();
+        double fillPrice = tick != null
+                ? ("BUY".equals(request.side()) ? tick.ask() : tick.bid())
+                : 0.0;
+        emit(new OrderEvent(
+                OrderEventType.SUBMIT_OK,
+                request.symbol(),
+                request.label(),
+                orderId,
+                0.0,
+                null,
+                0.0,
+                null,
+                null,
+                "local_market_submit_ok",
+                null
+        ));
+        emit(new OrderEvent(
+                OrderEventType.FILL_OK,
+                request.symbol(),
+                request.label(),
+                orderId,
+                fillPrice,
+                fillTs,
+                0.0,
+                null,
+                null,
+                "local_market_fill_ok",
                 null
         ));
         return new OrderHandle(request.label(), orderId);

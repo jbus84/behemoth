@@ -1,6 +1,7 @@
 package com.behemoth.jforex;
 
 import com.behemoth.jforex.core.ExecutionPort;
+import com.behemoth.jforex.core.MarketOrderRequest;
 import com.behemoth.jforex.core.OrderHandle;
 import com.behemoth.jforex.core.OrderRequest;
 import com.dukascopy.api.IEngine;
@@ -38,6 +39,26 @@ final class JForexExecutionPort implements ExecutionPort {
                     0.0,
                     request.goodTillEpochMs(),
                     request.comment()
+            );
+            return new OrderHandle(request.label(), order.getId());
+        } catch (JFException exc) {
+            throw new IllegalStateException(exc.getMessage(), exc);
+        }
+    }
+
+    @Override
+    public OrderHandle submitMarketOrder(MarketOrderRequest request) {
+        IEngine engine = requireEngine();
+        Instrument instrument = requireInstrument(request.symbol());
+        try {
+            IEngine.OrderCommand command = request.side().equals("BUY")
+                    ? IEngine.OrderCommand.BUY
+                    : IEngine.OrderCommand.SELL;
+            IOrder order = engine.submitOrder(
+                    request.label(),
+                    instrument,
+                    command,
+                    request.amountMillions()
             );
             return new OrderHandle(request.label(), order.getId());
         } catch (JFException exc) {
