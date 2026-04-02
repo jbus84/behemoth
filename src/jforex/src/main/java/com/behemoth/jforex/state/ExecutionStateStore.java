@@ -1,7 +1,5 @@
 package com.behemoth.jforex.state;
 
-import com.behemoth.jforex.adapter.OcoOrderPlan;
-import com.behemoth.jforex.domain.PredictionDecision;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -28,47 +26,6 @@ public final class ExecutionStateStore {
         this.statePath = Objects.requireNonNull(statePath, "statePath");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
         load();
-    }
-
-    public synchronized OcoGroupState registerPlannedGroup(
-            String symbol,
-            PredictionDecision decision,
-            OcoOrderPlan plan,
-            String runId,
-            Instant placedAtUtc,
-            boolean nativeOcoRequested
-    ) {
-        OcoGroupState existing = groupsByGroupLabel.get(plan.groupLabel());
-        if (existing != null) {
-            return existing;
-        }
-        OcoGroupState group = OcoGroupState.from(
-                symbol,
-                decision,
-                plan,
-                runId,
-                placedAtUtc,
-                nativeOcoRequested
-        );
-        groupsByGroupLabel.put(group.groupLabel, group);
-        index(group);
-        persist();
-        return group;
-    }
-
-    public synchronized boolean hasActiveCandidateLifecycle(String symbol, String candidateUid) {
-        for (OcoGroupState group : groupsByGroupLabel.values()) {
-            if (!String.valueOf(group.symbol).equalsIgnoreCase(symbol)) {
-                continue;
-            }
-            if (!String.valueOf(group.candidateUid).equals(candidateUid)) {
-                continue;
-            }
-            if (group.isActive()) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public synchronized OcoGroupState findByOrderLabel(String label) {

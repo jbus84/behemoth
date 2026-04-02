@@ -1,7 +1,7 @@
 package com.behemoth.jforex.local;
 
-import com.behemoth.jforex.adapter.OcoOrderPlan;
 import com.behemoth.jforex.core.ExecutionPort;
+import com.behemoth.jforex.core.MarketOrderRequest;
 import com.behemoth.jforex.core.OrderEvent;
 import com.behemoth.jforex.core.OrderEventType;
 import com.behemoth.jforex.core.OrderHandle;
@@ -50,8 +50,40 @@ public final class LocalExecutionPort implements ExecutionPort {
     }
 
     @Override
-    public void enableNativeOco(String primaryLabel, String siblingLabel) {
-        // Local surrogate always relies on manual sibling cancel.
+    public OrderHandle submitMarketOrder(MarketOrderRequest request) {
+        String orderId = "LOCAL-MKT-" + ids.getAndIncrement();
+        RuntimeTick tick = lastTickBySymbol.get(normalizeSymbol(request.symbol()));
+        Instant fillTs = tick != null ? tick.timestamp() : request.submittedAtUtc();
+        double fillPrice = tick != null
+                ? ("BUY".equals(request.side()) ? tick.ask() : tick.bid())
+                : 0.0;
+        emit(new OrderEvent(
+                OrderEventType.SUBMIT_OK,
+                request.symbol(),
+                request.label(),
+                orderId,
+                0.0,
+                null,
+                0.0,
+                null,
+                null,
+                "local_market_submit_ok",
+                null
+        ));
+        emit(new OrderEvent(
+                OrderEventType.FILL_OK,
+                request.symbol(),
+                request.label(),
+                orderId,
+                fillPrice,
+                fillTs,
+                0.0,
+                null,
+                null,
+                "local_market_fill_ok",
+                null
+        ));
+        return new OrderHandle(request.label(), orderId);
     }
 
     @Override
@@ -99,7 +131,7 @@ public final class LocalExecutionPort implements ExecutionPort {
             }
             order.filled = true;
             order.fillTimeUtc = tick.timestamp();
-            order.fillPrice = order.request.side() == OcoOrderPlan.Side.BUY ? tick.ask() : tick.bid();
+            order.fillPrice = "BUY".equals(order.request.side()) ? tick.ask() : tick.bid();
             emit(new OrderEvent(
                     OrderEventType.FILL_OK,
                     order.request.symbol(),
@@ -126,7 +158,7 @@ public final class LocalExecutionPort implements ExecutionPort {
                 continue;
             }
             order.closed = true;
-            double closePrice = order.request.side() == OcoOrderPlan.Side.BUY ? tick.bid() : tick.ask();
+            double closePrice = "BUY".equals(order.request.side()) ? tick.bid() : tick.ask();
             emit(new OrderEvent(
                     OrderEventType.CLOSE_OK,
                     order.request.symbol(),
@@ -146,20 +178,22 @@ public final class LocalExecutionPort implements ExecutionPort {
     private boolean canFill(SimulatedOrder order, RuntimeTick tick) {
         double trigger = order.request.triggerPrice();
         double capPx = order.request.stopLimitRangePips() * order.request.pipSize();
-        return switch (order.request.side()) {
-            case BUY -> tick.ask() >= trigger && tick.ask() <= trigger + capPx;
-            case SELL -> tick.bid() <= trigger && tick.bid() >= trigger - capPx;
-        };
+        if ("BUY".equals(order.request.side())) {
+            return tick.ask() >= trigger && tick.ask() <= trigger + capPx;
+        } else {
+            return tick.bid() <= trigger && tick.bid() >= trigger - capPx;
+        }
     }
 
     private double pnlPips(SimulatedOrder order, RuntimeTick tick) {
         if (!order.filled || tick == null) {
             return 0.0;
         }
-        return switch (order.request.side()) {
-            case BUY -> (tick.bid() - order.fillPrice) / order.request.pipSize();
-            case SELL -> (order.fillPrice - tick.ask()) / order.request.pipSize();
-        };
+        if ("BUY".equals(order.request.side())) {
+            return (tick.bid() - order.fillPrice) / order.request.pipSize();
+        } else {
+            return (order.fillPrice - tick.ask()) / order.request.pipSize();
+        }
     }
 
     private void emit(OrderEvent event) {

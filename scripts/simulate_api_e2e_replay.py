@@ -209,7 +209,9 @@ def run_simulation(
                 predictions_fired += 1
 
                 if pred_res.status_code == 200:
-                    preds = pred_res.json()
+                    resp_body = pred_res.json()
+                    preds = resp_body.get("predictions", resp_body) if isinstance(resp_body, dict) else resp_body
+                    actions = resp_body.get("actions", []) if isinstance(resp_body, dict) else []
                     for p in preds:
                         if p.get("selected_exec") == 1:
                             # Normalize timestamp identically to offline expectations
@@ -247,42 +249,50 @@ def run_simulation(
                     still_active.append(vt)
             active_trades = still_active
 
-            # ── Process New Predictions ──
-            if data.get("bar_completed") and "preds" in locals():
-                for p in preds:
-                    if p.get("selected_exec") == 1:
-                        cand = p["candidate_uid"]
-                        horizon = p["horizon"]
-
-                        # 1. Register with API Ledger
+            # ── Process Barrier Actions ──
+            if data.get("bar_completed") and "actions" in locals() and actions:
+                for action in actions:
+                    if action["type"] == "OPEN_MARKET":
                         pos_id = str(trade_id_counter)
                         trade_id_counter += 1
-
                         open_payload = {
                             "symbol": symbol,
-                            "candidate_uid": cand,
+                            "candidate_uid": action["candidate_uid"],
                             "broker_pos_id": pos_id,
-                            "side": "Buy",  # Simplified
-                            "entry_price": asks[i],
+                            "side": action["side"],
+                            "entry_price": asks[i] if action["side"] == "BUY" else bids[i],
                             "entry_ts": times[i].strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-                            "horizon": horizon,
+                            "horizon": 0,
                         }
                         client.post("/trades/open", json=open_payload)
-
-                        # 2. Add to Virtual Tracker
                         active_trades.append(
                             VirtualTrade(
                                 broker_pos_id=pos_id,
-                                candidate_uid=cand,
+                                candidate_uid=action["candidate_uid"],
                                 entry_bar_id=current_bar_count,
-                                horizon=horizon,
+                                horizon=0,
                             )
                         )
+                    elif action["type"] == "CLOSE_MARKET":
+                        if action.get("broker_pos_id"):
+                            update_payload = {
+                                "broker_pos_id": action["broker_pos_id"],
+                                "status": "CLOSED",
+                                "exit_price": bids[i],
+                                "exit_ts": times[i].strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                            }
+                            client.post("/trades/update", json=update_payload)
+                            active_trades = [t for t in active_trades if t.broker_pos_id != action["broker_pos_id"]]
 
-                        # 3. Normalize for drift check
+            # ── Drift Check for Selected Predictions ──
+            if data.get("bar_completed") and "preds" in locals():
+                for p in preds:
+                    if p.get("selected_exec") == 1:
+                        cand_uid = p["candidate_uid"]
+                        # Normalize for drift check
                         dt = pd.to_datetime(p["close_ts"])
                         ts_str = dt.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
-                        api_results[(cand, ts_str)] = float(p["pred_prob"])
+                        api_results[(cand_uid, ts_str)] = float(p["pred_prob"])
 
         # Latency Reporting
         if predict_latencies:

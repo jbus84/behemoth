@@ -2,7 +2,6 @@ package com.behemoth.jforex;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.behemoth.jforex.adapter.OcoOrderPlan;
 import com.behemoth.jforex.core.OrderEvent;
 import com.behemoth.jforex.core.OrderEventType;
 import com.behemoth.jforex.core.OrderRequest;
@@ -23,7 +22,7 @@ class LocalExecutionPortTest {
         port.submitStopOrder(new OrderRequest(
                 "GBPUSD",
                 "ORDER1",
-                OcoOrderPlan.Side.BUY,
+                "BUY",
                 1.2502,
                 1.0,
                 0.01,
@@ -54,7 +53,7 @@ class LocalExecutionPortTest {
 
         // Submit a buy-stop above current ask
         port.submitStopOrder(new OrderRequest(
-                "EURUSD", "LEG1", OcoOrderPlan.Side.BUY, 1.0858,
+                "EURUSD", "LEG1", "BUY", 1.0858,
                 1.0,   // stopLimitRangePips
                 0.01,  // amountMillions
                 Instant.parse("2025-07-07T01:00:00Z").toEpochMilli(),

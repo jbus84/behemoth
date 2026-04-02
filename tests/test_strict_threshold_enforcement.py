@@ -93,7 +93,7 @@ def test_predict_blocks_on_rolling_threshold_gap_in_live_mode(client):
                 },
             )
             assert r.status_code == 200
-            rows = r.json()
+            rows = r.json()["predictions"]
             assert len(rows) == 1
             # VERIFY BLOCKED
             assert rows[0]["selected_exec"] == 0
@@ -178,7 +178,7 @@ def test_predict_blocks_on_expired_schedule_in_live_mode(client):
                 },
             )
             assert r.status_code == 200
-            rows = r.json()
+            rows = r.json()["predictions"]
             assert rows[0]["selected_exec"] == 0
             assert rows[0]["threshold_blocked"] is True
             assert rows[0]["threshold_block_reason"] == "NO_ROLLING_CONFIG"
@@ -258,7 +258,7 @@ def test_predict_allows_static_fallback_in_research_mode(client):
                 },
             )
             assert r.status_code == 200
-            rows = r.json()
+            rows = r.json()["predictions"]
             assert rows[0]["selected_exec"] == 1
             assert rows[0]["threshold_blocked"] is False
             assert rows[0]["threshold_exec"] == 0.5

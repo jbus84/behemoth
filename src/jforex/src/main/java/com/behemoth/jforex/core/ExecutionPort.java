@@ -3,7 +3,8 @@ package com.behemoth.jforex.core;
 public interface ExecutionPort {
     OrderHandle submitStopOrder(OrderRequest request);
 
-    void enableNativeOco(String primaryLabel, String siblingLabel);
+    /** Submit a single market order (BUY or SELL at current market price). */
+    OrderHandle submitMarketOrder(MarketOrderRequest request);
 
     void cancelOrder(String symbol, String label);
 

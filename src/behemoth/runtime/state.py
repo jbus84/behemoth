@@ -351,6 +351,24 @@ class StateManager:
         ).fetchone()
         return int(r[0]) if r else 0
 
+    def get_latest_bar(self, symbol: str, bar_ticks: int) -> dict | None:
+        """Get the most recent completed bar for a symbol/bar_ticks pair."""
+        res = self._con.execute(
+            "SELECT row_id, high_price, low_price, close_price, hl_first "
+            "FROM tick_bars WHERE symbol = ? AND bar_ticks = ? "
+            "ORDER BY row_id DESC LIMIT 1",
+            [symbol.upper(), bar_ticks],
+        ).fetchone()
+        if res is None:
+            return None
+        return {
+            "row_id": res[0],
+            "high_price": res[1],
+            "low_price": res[2],
+            "close_price": res[3],
+            "hl_first": res[4] if res[4] is not None else 0.0,
+        }
+
     def get_latest_close_ts(self, symbol: str) -> datetime | None:
         """Return the close_ts of the most recent bar."""
         r = self._con.execute(

@@ -3,19 +3,15 @@ package com.behemoth.jforex.core;
 import java.time.Instant;
 import java.util.Objects;
 
-public record OrderRequest(
+public record MarketOrderRequest(
         String symbol,
         String label,
         String side,
-        double triggerPrice,
-        double stopLimitRangePips,
         double amountMillions,
-        long goodTillEpochMs,
         String comment,
-        Instant submittedAtUtc,
-        double pipSize
+        Instant submittedAtUtc
 ) {
-    public OrderRequest {
+    public MarketOrderRequest {
         symbol = symbol == null ? "" : symbol.trim().replace("/", "").toUpperCase();
         label = Objects.requireNonNull(label, "label").trim();
         side = Objects.requireNonNull(side, "side").trim().toUpperCase();
@@ -27,17 +23,11 @@ public record OrderRequest(
         if (label.isEmpty()) {
             throw new IllegalArgumentException("label must not be blank");
         }
-        if (triggerPrice <= 0.0) {
-            throw new IllegalArgumentException("triggerPrice must be > 0");
-        }
-        if (stopLimitRangePips < 0.0) {
-            throw new IllegalArgumentException("stopLimitRangePips must be >= 0");
+        if (!side.equals("BUY") && !side.equals("SELL")) {
+            throw new IllegalArgumentException("side must be BUY or SELL, got: " + side);
         }
         if (amountMillions <= 0.0) {
             throw new IllegalArgumentException("amountMillions must be > 0");
-        }
-        if (pipSize <= 0.0) {
-            throw new IllegalArgumentException("pipSize must be > 0");
         }
     }
 }

@@ -315,7 +315,7 @@ class LiveReadinessCoordinatorTest {
             }
 
             @Override
-            public void enableNativeOco(String primaryLabel, String siblingLabel) {
+            public OrderHandle submitMarketOrder(com.behemoth.jforex.core.MarketOrderRequest request) {
                 throw new UnsupportedOperationException("not used");
             }
 

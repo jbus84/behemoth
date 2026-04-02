@@ -1,6 +1,7 @@
 package com.behemoth.jforex;
 
 import com.behemoth.jforex.core.ExecutionPort;
+import com.behemoth.jforex.core.MarketOrderRequest;
 import com.behemoth.jforex.core.OrderHandle;
 import com.behemoth.jforex.core.OrderRequest;
 import com.dukascopy.api.IEngine;
@@ -10,6 +11,7 @@ import com.dukascopy.api.JFException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
+
 
 final class JForexExecutionPort implements ExecutionPort {
     private final Supplier<IEngine> engineSupplier;
@@ -28,7 +30,7 @@ final class JForexExecutionPort implements ExecutionPort {
             IOrder order = engine.submitOrder(
                     request.label(),
                     instrument,
-                    request.side() == com.behemoth.jforex.adapter.OcoOrderPlan.Side.BUY
+                    "BUY".equals(request.side())
                             ? IEngine.OrderCommand.BUYSTOP
                             : IEngine.OrderCommand.SELLSTOP,
                     request.amountMillions(),
@@ -46,14 +48,20 @@ final class JForexExecutionPort implements ExecutionPort {
     }
 
     @Override
-    public void enableNativeOco(String primaryLabel, String siblingLabel) {
+    public OrderHandle submitMarketOrder(MarketOrderRequest request) {
         IEngine engine = requireEngine();
+        Instrument instrument = requireInstrument(request.symbol());
         try {
-            IOrder primary = engine.getOrder(primaryLabel);
-            IOrder sibling = engine.getOrder(siblingLabel);
-            if (primary != null && sibling != null) {
-                primary.groupToOco(sibling);
-            }
+            IEngine.OrderCommand command = request.side().equals("BUY")
+                    ? IEngine.OrderCommand.BUY
+                    : IEngine.OrderCommand.SELL;
+            IOrder order = engine.submitOrder(
+                    request.label(),
+                    instrument,
+                    command,
+                    request.amountMillions()
+            );
+            return new OrderHandle(request.label(), order.getId());
         } catch (JFException exc) {
             throw new IllegalStateException(exc.getMessage(), exc);
         }
