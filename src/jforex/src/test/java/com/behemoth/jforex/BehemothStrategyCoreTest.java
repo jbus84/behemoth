@@ -360,7 +360,9 @@ class BehemothStrategyCoreTest {
             core.start(List.of(new RuntimeInstrument("EURUSD", 0.0001)));
             core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:00:00Z"), 1.1000, 1.1002));
 
-            assertThat(port.closePositionCalls).containsExactly("broker-pos-123");
+            // No preceding fill event to populate brokerIdToLabel, so closePosition is not called.
+            // This verifies graceful handling when broker_pos_id has no known label mapping.
+            assertThat(port.closePositionCalls).isEmpty();
         }
     }
 
@@ -423,6 +425,95 @@ class BehemothStrategyCoreTest {
 
             assertThat(port.marketOrders).isEmpty();
             assertThat(port.closePositionCalls).isEmpty();
+        }
+    }
+
+    @Test
+    void closeMarketUsesLabelFromPriorFill() throws Exception {
+        try (MockWebServer server = new MockWebServer()) {
+            // 1. Config handshake
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"as_of_utc":"2025-07-07T00:00:00Z","governance_mode":"historical_auto","record_raw_ticks":false,"symbols":[]}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            // 2. Tick ingest → bar completed
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"ok":true,"symbol":"EURUSD","ticks_received":1,"accepted_count":1,"dropped_count":0,"bar_completed":true,"completed_bar_ticks":[100],"symbol_tick_seq":1,"last_tick_ts_utc":"2025-07-07T00:00:00Z","last_client_tick_seq":1,"bar_count":289}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            // 3. Predict → OPEN_MARKET
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {
+                              "predictions": [{"symbol":"EURUSD","close_ts":"2025-07-07T00:00:00Z","candidate_uid":"cand1","pred_prob":0.78,"threshold_exec":0.61,"selected_exec":1,"bar_ticks":100,"horizon":6,"barrier_pips":2.0,"cap_pips":1.2,"risk_blocked":false}],
+                              "actions": [{"type":"OPEN_MARKET","symbol":"EURUSD","candidate_uid":"cand1","scan_id":"scan-001","side":"BUY","reservation_id":"rid-1","broker_pos_id":null}]
+                            }
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            // 4. /trades/open callback from handleFill
+            server.enqueue(new MockResponse()
+                    .setBody("{\"status\":\"ok\",\"internal_trade_id\":\"t1\"}")
+                    .addHeader("Content-Type", "application/json"));
+            // 5. Second tick ingest → bar completed
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"ok":true,"symbol":"EURUSD","ticks_received":1,"accepted_count":1,"dropped_count":0,"bar_completed":true,"completed_bar_ticks":[100],"symbol_tick_seq":2,"last_tick_ts_utc":"2025-07-07T00:01:00Z","last_client_tick_seq":2,"bar_count":290}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            // 6. Predict → CLOSE_MARKET with same broker_pos_id
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {
+                              "predictions": [],
+                              "actions": [{"type":"CLOSE_MARKET","symbol":"EURUSD","candidate_uid":"cand1","scan_id":"scan-001","side":null,"reservation_id":null,"broker_pos_id":"BROKER-42"}]
+                            }
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+
+            Path tempDir = Files.createTempDirectory("behemoth-close-label-test");
+            JForexSessionConfig sessionConfig = new JForexSessionConfig(
+                    server.url("/").uri(), URI.create("http://example.test/jnlp"),
+                    "user", "pass", "", List.of("EURUSD"),
+                    Instant.parse("2025-07-07T00:00:00Z"), Instant.parse("2025-07-09T00:00:00Z"),
+                    tempDir, "run-1",
+                    false, 10_000.0, 1, 900L, false, 60, false, "", 0
+            );
+            PythonPredictionClient client = new PythonPredictionClient(
+                    HttpClient.newHttpClient(), server.url("/").uri(),
+                    Duration.ofSeconds(5), Duration.ofSeconds(5));
+            ExecutionStateStore stateStore = new ExecutionStateStore(
+                    tempDir.resolve("state.json"), client.objectMapper());
+            RecordingExecutionPort port = new RecordingExecutionPort();
+            BehemothStrategyCore core = new BehemothStrategyCore(
+                    sessionConfig, client, stateStore,
+                    new Stage14ArtifactWriter(tempDir, "test"),
+                    JForexMetrics.start(sessionConfig), port);
+
+            core.start(List.of(new RuntimeInstrument("EURUSD", 0.0001)));
+
+            // Tick 1: triggers OPEN_MARKET
+            core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:00:00Z"), 1.1000, 1.1002));
+            assertThat(port.marketOrders).hasSize(1);
+            assertThat(port.marketOrders.get(0).label()).isEqualTo("BM_scan-001_BUY");
+
+            // Simulate fill event from broker (the broker assigns order ID "BROKER-42")
+            core.onOrderEvent(new com.behemoth.jforex.core.OrderEvent(
+                    com.behemoth.jforex.core.OrderEventType.FILL_OK,
+                    "EURUSD",
+                    "BM_scan-001_BUY",
+                    "BROKER-42",
+                    1.1002,
+                    Instant.parse("2025-07-07T00:00:01Z"),
+                    0.0, null, null, "fill_ok", null
+            ));
+
+            // Tick 2: triggers CLOSE_MARKET with broker_pos_id=BROKER-42
+            core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:01:00Z"), 1.1005, 1.1007));
+
+            // closePosition should have been called with the LABEL, not the broker_pos_id
+            assertThat(port.closePositionCalls).containsExactly("BM_scan-001_BUY");
         }
     }
 

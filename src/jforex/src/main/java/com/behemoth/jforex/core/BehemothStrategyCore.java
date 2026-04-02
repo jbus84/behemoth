@@ -272,6 +272,7 @@ public final class BehemothStrategyCore {
         for (BarrierActionPayload action : actions) {
             if (action.isOpenMarket()) {
                 String label = "BM_" + action.scanId() + "_" + action.side();
+                state.pendingActionsByLabel.put(label, action);
                 try {
                     executionPort.submitMarketOrder(new MarketOrderRequest(
                             action.symbol(),
@@ -284,16 +285,23 @@ public final class BehemothStrategyCore {
                     metrics.recordOrderSubmitted(action.symbol(), action.side());
                     artifactWriter.markOperationalStep(action.symbol(), "market_order_submitted", true, label);
                 } catch (RuntimeException exc) {
+                    state.pendingActionsByLabel.remove(label);
                     metrics.recordOrderSubmitFailure(action.symbol(), action.side());
                     artifactWriter.markOperationalStep(action.symbol(), "market_order_submit_failure", false, exc.getMessage());
                 }
             } else if (action.isCloseMarket()) {
                 if (action.brokerPosId() != null) {
-                    try {
-                        executionPort.closePosition(action.symbol(), action.brokerPosId());
-                        artifactWriter.markOperationalStep(action.symbol(), "barrier_close_submitted", true, action.brokerPosId());
-                    } catch (RuntimeException exc) {
-                        artifactWriter.markOperationalStep(action.symbol(), "barrier_close_failure", false, exc.getMessage());
+                    String label = state.brokerIdToLabel.get(action.brokerPosId());
+                    if (label != null) {
+                        try {
+                            executionPort.closePosition(action.symbol(), label);
+                            artifactWriter.markOperationalStep(action.symbol(), "barrier_close_submitted", true, action.brokerPosId());
+                        } catch (RuntimeException exc) {
+                            artifactWriter.markOperationalStep(action.symbol(), "barrier_close_failure", false, exc.getMessage());
+                        }
+                    } else {
+                        artifactWriter.markOperationalStep(action.symbol(), "barrier_close_no_label",
+                                false, "no label mapping for broker_pos_id=" + action.brokerPosId());
                     }
                 }
             }
@@ -302,19 +310,31 @@ public final class BehemothStrategyCore {
 
     private void handleFill(OrderEvent event) {
         Instant fillTs = Objects.requireNonNullElse(event.fillTimeUtc(), Instant.now());
-        metrics.recordOrderFill(event.symbol(), event.orderLabel().contains("BUY") ? "BUY" : "SELL");
+        SymbolRuntimeState state = symbolStates.get(normalizeSymbol(event.symbol()));
+        BarrierActionPayload action = state != null
+                ? state.pendingActionsByLabel.remove(event.orderLabel())
+                : null;
+        String side = action != null ? action.side() : "UNKNOWN";
+        String candidateUid = action != null ? action.candidateUid() : "";
+        String reservationId = action != null ? action.reservationId() : "";
+
+        if (state != null) {
+            state.brokerIdToLabel.put(event.brokerOrderId(), event.orderLabel());
+        }
+
+        metrics.recordOrderFill(event.symbol(), side);
         artifactWriter.recordFill(event.symbol(), event.orderLabel(), event.orderLabel());
 
         try {
             predictionClient.openTrade(new TradeOpenRequestPayload(
                     event.symbol(),
-                    "",
+                    candidateUid,
                     event.brokerOrderId(),
-                    event.orderLabel().contains("BUY") ? "Buy" : "Sell",
+                    "BUY".equals(side) ? "Buy" : "Sell",
                     event.openPrice(),
                     fillTs,
                     0,
-                    "",
+                    reservationId != null ? reservationId : "",
                     sessionConfig.runId()
             ));
             artifactWriter.markOperationalStep(event.symbol(), "trade_open_synced", true, event.brokerOrderId());
@@ -413,6 +433,10 @@ public final class BehemothStrategyCore {
         private boolean entriesAllowed = true;
         private RuntimeTick lastTick;
         private final Map<Integer, Long> barOrdinalsByBarTicks = new LinkedHashMap<>();
+        // label → action payload for fills that haven't been processed yet
+        private final Map<String, BarrierActionPayload> pendingActionsByLabel = new LinkedHashMap<>();
+        // broker order ID → label for looking up label when closing by broker_pos_id
+        private final Map<String, String> brokerIdToLabel = new LinkedHashMap<>();
 
         private SymbolRuntimeState(RuntimeInstrument instrument) {
             this.instrument = instrument;

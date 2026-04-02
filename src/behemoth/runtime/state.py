@@ -261,6 +261,11 @@ class StateManager:
             if r[2] is not None:
                 self._row_counters[f"{r[0].upper()}_{r[1]}"] = int(r[2]) + 1
 
+    @property
+    def connection(self) -> duckdb.DuckDBPyConnection:
+        """Public accessor for the shared DuckDB connection."""
+        return self._con
+
     def _ensure_runtime_schema(self) -> None:
         """Add new debug columns for backward-compatible schema migration."""
         try:

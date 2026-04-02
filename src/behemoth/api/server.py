@@ -454,7 +454,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
             vol_window=_config.vol_window,
             cost_window=_config.cost_window,
         )
-    _barrier_manager = BarrierManager(con=_state._con)
+    _barrier_manager = BarrierManager(con=_state.connection)
     _feed_state = {}
     try:
         _aggregators = {}
