@@ -196,7 +196,11 @@ public final class Stage14ArtifactWriter {
                 .filter(row -> row.category().equals("operational")
                         && row.eventName().equals("market_order_submit_failure"))
                 .count();
-        long closeFailures = rows.stream()
+        long blockedOrders = rows.stream()
+                .filter(row -> row.category().equals("operational")
+                        && row.eventName().equals("market_order_blocked"))
+                .count();
+        long closeAnomalies = rows.stream()
                 .filter(row -> row.category().equals("operational")
                         && row.eventName().equals("barrier_close_failure"))
                 .count();
@@ -205,12 +209,16 @@ public final class Stage14ArtifactWriter {
                         && (row.eventName().equals("market_order_submitted")
                             || row.eventName().equals("barrier_close_submitted")))
                 .count();
-        boolean pass = submitFailures == 0 && closeFailures == 0 && successActions > 0;
+        boolean pass = submitFailures == 0
+                && blockedOrders == 0
+                && closeAnomalies == 0
+                && successActions > 0;
         List<String> lines = List.of(
-                "symbol,execution_lifecycle_pass,submit_failures,close_failures,success_actions",
+                "symbol,execution_lifecycle_pass,submit_failures,blocked_orders,close_anomalies,success_actions",
                 csv(symbol, Boolean.toString(pass),
                         Long.toString(submitFailures),
-                        Long.toString(closeFailures),
+                        Long.toString(blockedOrders),
+                        Long.toString(closeAnomalies),
                         Long.toString(successActions))
         );
         writeFile(reportDir.resolve(symbol + "_" + artifactPrefix + "_execution_lifecycle_summary.csv"), lines);

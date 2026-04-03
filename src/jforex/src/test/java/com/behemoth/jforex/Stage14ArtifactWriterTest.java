@@ -66,6 +66,35 @@ class Stage14ArtifactWriterTest {
     }
 
     @Test
+    void executionLifecycleFailsWhenMarketOrderWasBlocked() throws Exception {
+        Stage14ArtifactWriter writer = new Stage14ArtifactWriter(tempDir);
+        writer.markOperationalStep("GBPUSD", "market_order_blocked", false, "active_candidate_lifecycle");
+        writer.writeReports(List.of("GBPUSD"));
+
+        String csv = Files.readString(tempDir.resolve("GBPUSD_jforex_execution_lifecycle_summary.csv"));
+        assertThat(csv)
+                .contains("execution_lifecycle_pass")
+                .contains("blocked_orders")
+                .contains("\"1\"")
+                .contains("false");
+    }
+
+    @Test
+    void executionLifecycleFailsWhenBarrierCloseHasMissingPositionAnomaly() throws Exception {
+        Stage14ArtifactWriter writer = new Stage14ArtifactWriter(tempDir);
+        writer.markOperationalStep("GBPUSD", "market_order_submitted", true, "BM_scan-001_BUY");
+        writer.markOperationalStep("GBPUSD", "barrier_close_failure", false, "unknown broker_pos_id=missing-123");
+        writer.writeReports(List.of("GBPUSD"));
+
+        String csv = Files.readString(tempDir.resolve("GBPUSD_jforex_execution_lifecycle_summary.csv"));
+        assertThat(csv)
+                .contains("execution_lifecycle_pass")
+                .contains("close_anomalies")
+                .contains("\"1\"")
+                .contains("false");
+    }
+
+    @Test
     void supportsAlternateArtifactPrefixesForLocalSurrogateRuns() throws Exception {
         Stage14ArtifactWriter writer = new Stage14ArtifactWriter(tempDir, "local_jforex");
         writer.markOperationalStep("GBPUSD", "strategy_started", true, "ok");

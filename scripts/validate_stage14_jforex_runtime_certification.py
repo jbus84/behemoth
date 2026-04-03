@@ -82,6 +82,14 @@ def _pick_text(row: pd.Series, candidates: tuple[str, ...]) -> str:
     return ""
 
 
+def _required_runtime_events_path(reconcile_dir: Path, symbol: str, events_prefix: str) -> Path:
+    return reconcile_dir / f"{symbol}_{events_prefix}_runtime_events.csv"
+
+
+def _runtime_artifact_failure_details(path: Path) -> str:
+    return f"missing deterministic execution artifact: {path.name}"
+
+
 def _load_summary_rows(source: InputSource) -> pd.DataFrame:
     paths = _resolve_paths(source.summary_glob)
     rows: list[dict[str, Any]] = []
@@ -204,6 +212,7 @@ def build_stage14_artifacts(
     jforex_operational_summary_glob: str,
     jforex_outcome_summary_glob: str = "",
     local_surrogate_summary_glob: str = "",
+    reconcile_dir: Path | None = None,
     max_artifact_age_days: int = 7,
     out_summary_csv: Path,
     out_checks_csv: Path,
@@ -324,6 +333,19 @@ def build_stage14_artifacts(
                             row[src.check_id] = False
                     except ValueError:
                         pass
+            runtime_artifact_path: Path | None = None
+            if reconcile_dir is not None and src.check_id == "jforex_outcome_parity_pass":
+                runtime_artifact_path = _required_runtime_events_path(
+                    reconcile_dir, symbol, "jforex"
+                )
+            elif reconcile_dir is not None and src.check_id == "local_jforex_surrogate_pass":
+                runtime_artifact_path = _required_runtime_events_path(
+                    reconcile_dir, symbol, "local_jforex"
+                )
+            if runtime_artifact_path is not None and status == "pass" and not runtime_artifact_path.exists():
+                row[src.check_id] = False
+                status = "fail"
+                details = _runtime_artifact_failure_details(runtime_artifact_path)
             if (
                 historical_deployable is False
                 and src.check_id
@@ -340,6 +362,10 @@ def build_stage14_artifacts(
                     {"non_deployable_reason": non_deployable_reason}
                 )
             source_path = "" if match.empty else str(match.iloc[-1].get("source_path") or "")
+            if runtime_artifact_path is not None and status == "fail" and details.startswith(
+                "missing deterministic execution artifact:"
+            ):
+                source_path = str(runtime_artifact_path)
             check_rows.append(
                 {
                     "symbol": symbol,
@@ -411,8 +437,8 @@ def build_stage14_artifacts(
         "## Interpretation",
         "- Stage 14 is green only when Stage 13 remains green and all JForex-specific certification checks pass.",
         "- Missing JForex tester/demo artifacts are treated as certification failures until the adapter path is exercised.",
-        "- jforex_outcome_parity_pass: reconciles JForex runtime signal counts against locked Python predictions (signal_coverage_ratio must be 1.0, zero execution failures, trades present).",
-        "- local_jforex_surrogate_pass: the shared Java strategy core must pass the parquet-driven local surrogate harness; an explicit NO_GO is accepted only for historically non-deployable symbols.",
+        "- jforex_outcome_parity_pass: reconciles `{SYMBOL}_jforex_runtime_events.csv` against locked Python predictions; the summary is not trusted unless the canonical runtime events file exists.",
+        "- local_jforex_surrogate_pass: the shared Java strategy core must pass the parquet-driven local surrogate harness, and `{SYMBOL}_local_jforex_runtime_events.csv` must exist; an explicit NO_GO is accepted only for historically non-deployable symbols.",
         "- order_coverage_ratio is expected to be low (<0.2): barrier lifecycle blocking prevents new orders while an existing scan or position is active. This metric is informational; signal_coverage_pass is the gate.",
     ]
     report_out.write_text("\n".join(report_lines).strip() + "\n", encoding="utf-8")
@@ -422,7 +448,7 @@ def build_stage14_artifacts(
         "",
         f"- generated_at: `{now_utc}`",
         "- Stage 14 is a hard gate for the Dukascopy JForex adapter.",
-        "- Stage 13 Dukascopy TestClient parity, JForex tester parity, execution lifecycle correctness, and operational readiness must all be green.",
+        "- Stage 13 Dukascopy TestClient parity, JForex tester parity, execution lifecycle correctness, deterministic runtime evidence, and operational readiness must all be green.",
         "",
         "#### Key Results",
         _table(summary),
@@ -450,6 +476,7 @@ def main() -> None:
     parser.add_argument("--jforex-operational-summary-glob", default="")
     parser.add_argument("--jforex-outcome-summary-glob", default="")
     parser.add_argument("--local-surrogate-summary-glob", default="")
+    parser.add_argument("--reconcile-dir", default="data/analysis/backtest_reconcile")
     parser.add_argument("--models-dir", default="models/oco_dukascopy_candidate")
     parser.add_argument(
         "--history-dir", default="configs/research/governance/oco_history_dukascopy_candidate"
@@ -481,6 +508,7 @@ def main() -> None:
         jforex_operational_summary_glob=str(args.jforex_operational_summary_glob),
         jforex_outcome_summary_glob=str(args.jforex_outcome_summary_glob),
         local_surrogate_summary_glob=str(args.local_surrogate_summary_glob),
+        reconcile_dir=Path(str(args.reconcile_dir)),
         max_artifact_age_days=int(args.max_artifact_age_days),
         out_summary_csv=Path(str(args.out_summary_csv)),
         out_checks_csv=Path(str(args.out_checks_csv)),
