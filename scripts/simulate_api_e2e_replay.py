@@ -16,6 +16,7 @@ import sys
 import time
 from collections import Counter
 from pathlib import Path
+from uuid import uuid4
 
 import duckdb
 import numpy as np
@@ -70,6 +71,7 @@ def load_archived_predict_action_evidence(
     runtime_db_path: Path,
     symbol: str,
     target_month: str,
+    run_id: str,
 ) -> tuple[dict[tuple[str, str], float], Counter[tuple[str, ...]], dict[str, int]]:
     month_key = str(target_month).replace("-", "")
     con = duckdb.connect(str(runtime_db_path), read_only=True)
@@ -95,9 +97,10 @@ def load_archived_predict_action_evidence(
             FROM predict_action_audit
             WHERE upper(symbol) = ?
               AND strftime(close_ts, '%Y%m') = ?
+              AND lower(coalesce(run_id, '')) = lower(?)
             ORDER BY close_ts
             """,
-            [symbol.upper(), month_key],
+            [symbol.upper(), month_key, run_id],
         ).fetchall()
     finally:
         con.close()
@@ -182,6 +185,7 @@ def run_simulation(
     args_offset: int = 0,
     runtime_db_path: Path | None = None,
     inspect_archived_evidence: bool = False,
+    replay_run_id: str | None = None,
 ) -> None:
     tick_path = Path(
         f"/Users/danielfisher/Desktop/tick/{symbol}/{symbol}_{target_month}_ticks.parquet"
@@ -215,6 +219,7 @@ def run_simulation(
 
     # Warmup parameters
     WARMUP_COUNT = 2_000
+    run_id = replay_run_id or f"simulate_api_e2e_replay:{symbol.upper()}:{target_month}:{uuid4().hex[:12]}"
 
     # Set model month dynamically before importing the FastAPI app
     formatted_month = str(target_month)
@@ -233,6 +238,7 @@ def run_simulation(
 
     print("Bootstrapping FastAPI TestClient...")
     with TestClient(app) as client:
+        print(f"Replay run_id: {run_id}")
         # Check health
         health = client.get("/health").json()
         if health["status"] != "ok":
@@ -243,12 +249,14 @@ def run_simulation(
         warmup_payload = {
             "symbol": symbol,
             "bar_ticks": 100,
+            "run_id": run_id,
             "ticks": [
                 {
                     "symbol": symbol,
                     "timestamp": ts.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
                     "bid": bid,
                     "ask": ask,
+                    "run_id": run_id,
                 }
                 for ts, bid, ask in zip(
                     warmup_df["timestamp"], warmup_df["bid"], warmup_df["ask"], strict=False
@@ -286,6 +294,7 @@ def run_simulation(
                 "timestamp": times[i].strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
                 "bid": bids[i],
                 "ask": asks[i],
+                "run_id": run_id,
             }
 
             t0 = time.perf_counter()
@@ -307,6 +316,7 @@ def run_simulation(
                         "symbol": symbol,
                         "requested_volume_units": 10000,
                         "account_risk_enabled_override": True,
+                        "run_id": run_id,
                     },
                 )
                 t1_p = time.perf_counter()
@@ -342,11 +352,13 @@ def run_simulation(
                     # Trigger Virtual Close
                     t_close = times[i].strftime("%Y-%m-%dT%H:%M:%S.%fZ")
                     update_payload = {
+                        "symbol": symbol,
                         "broker_pos_id": vt.broker_pos_id,
                         "status": "CLOSED",
                         "exit_price": bids[i],  # Simulating market close
                         "exit_ts": t_close,
                         "pnl_pips": 0.0,  # PnL not the focus of this alignment check
+                        "run_id": run_id,
                     }
                     client.post("/trades/update", json=update_payload)
                     # print(f" [SIM] Horizon Exit: {vt.candidate_uid} at bar {current_bar_count} (Age: {age})")
@@ -370,6 +382,7 @@ def run_simulation(
                             "entry_price": asks[i] if action["side"] == "BUY" else bids[i],
                             "entry_ts": times[i].strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
                             "horizon": 0,
+                            "run_id": run_id,
                         }
                         client.post("/trades/open", json=open_payload)
                         active_trades.append(
@@ -383,10 +396,12 @@ def run_simulation(
                     elif action["type"] == "CLOSE_MARKET":
                         if action.get("broker_pos_id"):
                             update_payload = {
+                                "symbol": symbol,
                                 "broker_pos_id": action["broker_pos_id"],
                                 "status": "CLOSED",
                                 "exit_price": bids[i],
                                 "exit_ts": times[i].strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                                "run_id": run_id,
                             }
                             client.post("/trades/update", json=update_payload)
                             active_trades = [t for t in active_trades if t.broker_pos_id != action["broker_pos_id"]]
@@ -471,8 +486,10 @@ def run_simulation(
                 runtime_db_path,
                 symbol,
                 target_month,
+                run_id,
             )
             print("\n--- Archived Predict/Action Evidence ---")
+            print(f"Archive run_id         : {run_id}")
             print(f"Audit Rows             : {archived_summary['rows']}")
             print(f"Selected Predictions   : {archived_summary['selected_predictions']}")
             print(f"Actions                : {archived_summary['actions']}")
@@ -541,6 +558,12 @@ def main():
         action="store_true",
         help="Compare replayed predict/action outputs with archived predict_action_audit rows",
     )
+    parser.add_argument(
+        "--run-id",
+        type=str,
+        default=None,
+        help="Optional run_id override. Defaults to a unique replay-specific value.",
+    )
     args = parser.parse_args()
 
     run_simulation(
@@ -550,6 +573,7 @@ def main():
         args.tick_offset,
         args.runtime_db_path,
         args.inspect_archived_evidence,
+        args.run_id,
     )
 
 

@@ -31,6 +31,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.jupiter.api.Test;
@@ -107,7 +108,16 @@ class LiveReadinessCoordinatorTest {
             assertThat(statusWriter.writeCount()).isGreaterThanOrEqualTo(3);
             assertThat(metrics.readinessStates.get("EURUSD")).isEqualTo(SymbolReadinessState.READY);
             assertThat(metrics.readinessStates.get("GBPUSD")).isEqualTo(SymbolReadinessState.ERROR_PAUSED);
-            LiveReadinessSnapshot snapshot = statusWriter.latestSnapshot();
+            LiveReadinessSnapshot snapshot = statusWriter.awaitSnapshot(liveSnapshot ->
+                    liveSnapshot.sessionTradableSymbolCount() == 1
+                            && liveSnapshot.sessionTotalSymbolCount() == 2
+                            && liveSnapshot.symbols().stream().anyMatch(symbolSnapshot ->
+                            "GBPUSD".equals(symbolSnapshot.symbol())
+                                    && symbolSnapshot.state() == SymbolReadinessState.ERROR_PAUSED
+                                    && !symbolSnapshot.entriesAllowed()
+                                    && symbolSnapshot.startupTimeoutReached()
+                                    && "bridge failed".equals(symbolSnapshot.lastFailureReason()))
+            );
             assertThat(snapshot.sessionTradableSymbolCount()).isEqualTo(1);
             assertThat(snapshot.sessionTotalSymbolCount()).isEqualTo(2);
             assertThat(snapshot.symbols())
@@ -460,16 +470,30 @@ class LiveReadinessCoordinatorTest {
         private final List<LiveReadinessSnapshot> snapshots = new ArrayList<>();
 
         @Override
-        public void accept(LiveReadinessSnapshot snapshot) {
+        public synchronized void accept(LiveReadinessSnapshot snapshot) {
             snapshots.add(snapshot);
         }
 
-        private int writeCount() {
+        private synchronized int writeCount() {
             return snapshots.size();
         }
 
-        private LiveReadinessSnapshot latestSnapshot() {
+        private synchronized LiveReadinessSnapshot latestSnapshot() {
             return snapshots.get(snapshots.size() - 1);
+        }
+
+        private LiveReadinessSnapshot awaitSnapshot(Predicate<LiveReadinessSnapshot> predicate) throws InterruptedException {
+            waitUntil(() -> matchingSnapshot(predicate) != null);
+            return matchingSnapshot(predicate);
+        }
+
+        private synchronized LiveReadinessSnapshot matchingSnapshot(Predicate<LiveReadinessSnapshot> predicate) {
+            for (LiveReadinessSnapshot snapshot : snapshots) {
+                if (predicate.test(snapshot)) {
+                    return snapshot;
+                }
+            }
+            return null;
         }
     }
 
