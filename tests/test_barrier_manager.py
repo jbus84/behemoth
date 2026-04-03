@@ -1,6 +1,9 @@
 """Tests for BarrierManager barrier detection parity with _oco_precompute."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
+import duckdb
 import numpy as np
 import pandas as pd
 import pytest
@@ -245,6 +248,51 @@ class TestEvaluateBar:
             "SCAN_TOUCH_DETECTED",
             "SCAN_TRANSITIONED_TO_HOLDING",
         ]
+
+    def test_legacy_event_rows_are_backfilled_before_new_inserts(self):
+        con = duckdb.connect()
+        con.execute("CREATE TABLE barrier_scans (scan_id VARCHAR PRIMARY KEY)")
+        con.execute(
+            """
+            CREATE TABLE barrier_scan_events (
+                event_ts TIMESTAMPTZ NOT NULL,
+                scan_id VARCHAR NOT NULL,
+                symbol VARCHAR NOT NULL,
+                candidate_uid VARCHAR NOT NULL,
+                event_type VARCHAR NOT NULL,
+                detail VARCHAR,
+                run_id VARCHAR
+            )
+            """
+        )
+        legacy_ts = datetime(2026, 3, 1, 12, 0, tzinfo=timezone.utc)
+        con.execute(
+            """
+            INSERT INTO barrier_scan_events (
+                event_ts, scan_id, symbol, candidate_uid, event_type, detail, run_id
+            ) VALUES
+                (?, 'scan_legacy', 'EURUSD', 'legacy|cand', 'SCAN_TOUCH_DETECTED', 'BUY', 'run-legacy'),
+                (?, 'scan_legacy', 'EURUSD', 'legacy|cand', 'SCAN_TRANSITIONED_TO_HOLDING', 'side=BUY', 'run-legacy')
+            """,
+            [legacy_ts, legacy_ts],
+        )
+
+        mgr = BarrierManager(con=con)
+        events = mgr.list_scan_events("scan_legacy")
+        assert [event["event_seq"] for event in events] == [1, 2]
+
+        mgr._record_event(
+            scan_id="scan_legacy",
+            symbol="EURUSD",
+            candidate_uid="legacy|cand",
+            event_type="SCAN_EXPIRED",
+            detail="NO_TOUCH_WITHIN_HORIZON",
+            run_id="run-legacy",
+        )
+
+        events = mgr.list_scan_events("scan_legacy")
+        assert [event["event_seq"] for event in events] == [1, 2, 3]
+        assert events[-1]["event_type"] == "SCAN_EXPIRED"
 
 
 class TestTieBreaking:

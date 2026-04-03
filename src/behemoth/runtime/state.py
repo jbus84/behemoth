@@ -340,6 +340,7 @@ class StateManager:
                 column_name="event_seq",
                 column_sql="BIGINT",
             )
+            self._backfill_barrier_scan_event_sequences()
         except Exception:
             # Best-effort migration only; avoid startup hard failure.
             pass
@@ -358,6 +359,52 @@ class StateManager:
             self._con.execute(
                 f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_sql}"
             )
+
+    def _backfill_barrier_scan_event_sequences(self) -> None:
+        null_count = self._con.execute(
+            "SELECT COUNT(*) FROM barrier_scan_events WHERE event_seq IS NULL"
+        ).fetchone()
+        if null_count is None or int(null_count[0]) == 0:
+            return
+
+        self._con.execute(
+            """
+            CREATE TEMPORARY TABLE barrier_scan_events_backfill AS
+            SELECT
+                ROW_NUMBER() OVER (
+                    PARTITION BY scan_id
+                    ORDER BY
+                        CASE WHEN event_seq IS NULL THEN 1 ELSE 0 END,
+                        event_seq,
+                        event_ts,
+                        event_type,
+                        symbol,
+                        candidate_uid,
+                        COALESCE(detail, ''),
+                        COALESCE(run_id, '')
+                ) AS event_seq,
+                event_ts,
+                scan_id,
+                symbol,
+                candidate_uid,
+                event_type,
+                detail,
+                run_id
+            FROM barrier_scan_events
+            """
+        )
+        self._con.execute("DELETE FROM barrier_scan_events")
+        self._con.execute(
+            """
+            INSERT INTO barrier_scan_events (
+                event_seq, event_ts, scan_id, symbol, candidate_uid, event_type, detail, run_id
+            )
+            SELECT event_seq, event_ts, scan_id, symbol, candidate_uid, event_type, detail, run_id
+            FROM barrier_scan_events_backfill
+            ORDER BY scan_id, event_seq
+            """
+        )
+        self._con.execute("DROP TABLE barrier_scan_events_backfill")
 
     def append_bar(self, bar: IncomingTickBar) -> None:
         """Append a validated tick bar to the state buffer."""
