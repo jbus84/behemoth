@@ -1,6 +1,5 @@
 package com.behemoth.jforex.reporting;
 
-import com.behemoth.jforex.state.OcoGroupState;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -106,28 +105,12 @@ public final class Stage14ArtifactWriter {
         ));
     }
 
-    public synchronized void recordSiblingCancelAttempt(String symbol, String groupLabel, String legLabel) {
-        events.add(EventRow.pass(symbol, "lifecycle", "sibling_cancel_attempt", groupLabel + ":" + legLabel));
-    }
-
-    public synchronized void recordSiblingCancelFailure(String symbol, String groupLabel, String detail) {
-        events.add(EventRow.fail(symbol, "lifecycle", "sibling_cancel_failure", groupLabel + ":" + detail));
-    }
-
-    public synchronized void recordLifecycleViolation(String symbol, String groupLabel, String detail) {
-        events.add(EventRow.fail(symbol, "lifecycle", "lifecycle_violation", groupLabel + ":" + detail));
-    }
-
     public synchronized void recordTradeSyncFailure(String symbol, String operation, String detail) {
         events.add(EventRow.fail(symbol, "execution", operation, detail));
     }
 
     public synchronized void recordTradeOpenSync(String symbol, String brokerPosId) {
         events.add(EventRow.pass(symbol, "execution", "trade_open_synced", brokerPosId));
-    }
-
-    public synchronized void recordTradeTouchSync(String symbol, String brokerPosId) {
-        events.add(EventRow.pass(symbol, "lifecycle", "trade_touch_synced", brokerPosId));
     }
 
     public synchronized void recordTradeUpdateSync(String symbol, String brokerPosId, String status) {
@@ -138,7 +121,7 @@ public final class Stage14ArtifactWriter {
         events.add(new EventRow(Instant.now(), symbol, "operational", step, pass, detail));
     }
 
-    public synchronized void writeReports(Collection<String> rawSymbols, Collection<OcoGroupState> groups) {
+    public synchronized void writeReports(Collection<String> rawSymbols) {
         try {
             Files.createDirectories(reportDir);
         } catch (IOException exc) {
@@ -157,7 +140,7 @@ public final class Stage14ArtifactWriter {
             writeEvents(symbol, bySymbol);
             writeSignalSummary(symbol, bySymbol);
             writeExecutionSummary(symbol, bySymbol);
-            writeLifecycleSummary(symbol, bySymbol, groups);
+            writeLifecycleSummary(symbol, bySymbol);
             writeOperationalSummary(symbol, bySymbol);
         }
     }
@@ -208,18 +191,29 @@ public final class Stage14ArtifactWriter {
         writeFile(reportDir.resolve(symbol + "_" + artifactPrefix + "_execution_parity_summary.csv"), lines);
     }
 
-    private void writeLifecycleSummary(String symbol, List<EventRow> rows, Collection<OcoGroupState> groups) {
-        long failed = rows.stream().filter(row -> row.category().equals("lifecycle") && !row.pass()).count();
-        long violations = groups.stream()
-                .filter(group -> symbol.equalsIgnoreCase(group.symbol))
-                .filter(group -> group.lifecycleViolation)
+    private void writeLifecycleSummary(String symbol, List<EventRow> rows) {
+        long submitFailures = rows.stream()
+                .filter(row -> row.category().equals("operational")
+                        && row.eventName().equals("market_order_submit_failure"))
                 .count();
-        boolean pass = failed == 0 && violations == 0;
+        long closeFailures = rows.stream()
+                .filter(row -> row.category().equals("operational")
+                        && row.eventName().equals("barrier_close_failure"))
+                .count();
+        long successActions = rows.stream()
+                .filter(row -> row.category().equals("operational")
+                        && (row.eventName().equals("market_order_submitted")
+                            || row.eventName().equals("barrier_close_submitted")))
+                .count();
+        boolean pass = submitFailures == 0 && closeFailures == 0 && successActions > 0;
         List<String> lines = List.of(
-                "symbol,oco_lifecycle_pass,lifecycle_failures,lifecycle_violations",
-                csv(symbol, Boolean.toString(pass), Long.toString(failed), Long.toString(violations))
+                "symbol,execution_lifecycle_pass,submit_failures,close_failures,success_actions",
+                csv(symbol, Boolean.toString(pass),
+                        Long.toString(submitFailures),
+                        Long.toString(closeFailures),
+                        Long.toString(successActions))
         );
-        writeFile(reportDir.resolve(symbol + "_" + artifactPrefix + "_oco_lifecycle_summary.csv"), lines);
+        writeFile(reportDir.resolve(symbol + "_" + artifactPrefix + "_execution_lifecycle_summary.csv"), lines);
     }
 
     private void writeOperationalSummary(String symbol, List<EventRow> rows) {
