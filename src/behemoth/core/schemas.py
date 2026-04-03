@@ -269,6 +269,15 @@ class BarrierAction(BaseModel):
     side: str | None = None  # BUY or SELL, present for OPEN_MARKET
     reservation_id: str | None = None  # present for OPEN_MARKET
     broker_pos_id: str | None = None  # present for CLOSE_MARKET
+    blocked: bool = False
+    block_reason: str | None = None
+
+
+class BarrierFailureRequest(BaseModel):
+    """Marks an open barrier submission as failed in the barrier manager."""
+    scan_id: str
+    reason: str
+    run_id: str | None = None
 
 
 class PredictResponse(BaseModel):
@@ -331,5 +340,4 @@ class AccountRiskSnapshotRequest(BaseModel):
     equity: float = Field(..., gt=0.0)
     snapshot_ts: datetime | None = None
     run_id: str | None = None
-
 

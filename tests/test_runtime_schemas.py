@@ -13,6 +13,8 @@ from datetime import datetime, timezone
 import pytest
 
 from src.behemoth.core.schemas import (
+    BarrierAction,
+    BarrierFailureRequest,
     IncomingTick,
     IncomingTickBar,
     ModelFeatures,
@@ -206,3 +208,38 @@ class TestOcoPrediction:
                 threshold_source="rolling_history",
                 model_month="2025-12",
             )
+
+
+class TestBarrierAction:
+    def test_blocked_defaults_to_false(self):
+        action = BarrierAction(
+            type="OPEN_MARKET",
+            symbol="EURUSD",
+            candidate_uid="cand-1",
+            scan_id="scan-1",
+        )
+        assert action.blocked is False
+        assert action.block_reason is None
+
+    def test_blocked_action_records_reason(self):
+        action = BarrierAction(
+            type="OPEN_MARKET",
+            symbol="EURUSD",
+            candidate_uid="cand-1",
+            scan_id="scan-1",
+            blocked=True,
+            block_reason="python_kill_switch_enabled",
+        )
+        assert action.blocked is True
+        assert action.block_reason == "python_kill_switch_enabled"
+
+
+class TestBarrierFailureRequest:
+    def test_valid_request(self):
+        req = BarrierFailureRequest(
+            scan_id="scan-123",
+            reason="BROKER_REJECTED",
+            run_id="run-1",
+        )
+        assert req.scan_id == "scan-123"
+        assert req.reason == "BROKER_REJECTED"
