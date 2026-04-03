@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS barrier_scans (
 );
 
 CREATE TABLE IF NOT EXISTS barrier_scan_events (
+    event_seq BIGINT NOT NULL,
     event_ts TIMESTAMPTZ NOT NULL,
     scan_id VARCHAR NOT NULL,
     symbol VARCHAR NOT NULL,
@@ -292,7 +293,7 @@ class BarrierManager:
 
     def mark_open_submission_failed(self, scan_id: str, reason: str) -> None:
         row = self.get_scan(scan_id)
-        if row is None:
+        if row is None or row["status"] != "HOLDING":
             return
         self._con.execute(
             "UPDATE barrier_scans SET status = 'FAILED', terminal_reason = ? WHERE scan_id = ?",
@@ -309,8 +310,8 @@ class BarrierManager:
 
     def list_scan_events(self, scan_id: str) -> list[dict]:
         rows = self._con.execute(
-            "SELECT event_ts, scan_id, symbol, candidate_uid, event_type, detail, run_id "
-            "FROM barrier_scan_events WHERE scan_id = ? ORDER BY event_ts",
+            "SELECT event_seq, event_ts, scan_id, symbol, candidate_uid, event_type, detail, run_id "
+            "FROM barrier_scan_events WHERE scan_id = ? ORDER BY event_seq, event_ts",
             [scan_id],
         ).fetchall()
         cols = [desc[0] for desc in self._con.description]
@@ -318,21 +319,24 @@ class BarrierManager:
 
     def _ensure_schema(self) -> None:
         try:
-            self._con.execute(
-                """
-                SELECT column_name
-                FROM information_schema.columns
-                WHERE lower(table_name) = 'barrier_scans'
-                  AND lower(column_name) = 'terminal_reason'
-                """
-            )
-            if self._con.fetchone() is None:
-                self._con.execute(
-                    "ALTER TABLE barrier_scans ADD COLUMN terminal_reason VARCHAR"
-                )
+            self._ensure_table_column("barrier_scans", "terminal_reason", "VARCHAR")
+            self._ensure_table_column("barrier_scan_events", "event_seq", "BIGINT")
         except Exception:
             # Best-effort migration only; keep manager usable in ephemeral tests.
             pass
+
+    def _ensure_table_column(self, table_name: str, column_name: str, column_sql: str) -> None:
+        cols = self._con.execute(
+            """
+            SELECT lower(column_name)
+            FROM information_schema.columns
+            WHERE lower(table_name) = ?
+            """,
+            [str(table_name).lower()],
+        ).fetchall()
+        colset = {str(r[0]).lower() for r in cols}
+        if str(column_name).lower() not in colset:
+            self._con.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_sql}")
 
     def _record_event(
         self,
@@ -344,9 +348,15 @@ class BarrierManager:
         detail: str | None,
         run_id: str | None,
     ) -> None:
+        seq_row = self._con.execute(
+            "SELECT COALESCE(MAX(event_seq), 0) + 1 FROM barrier_scan_events WHERE scan_id = ?",
+            [scan_id],
+        ).fetchone()
+        event_seq = int(seq_row[0]) if seq_row and seq_row[0] is not None else 1
         self._con.execute(
-            "INSERT INTO barrier_scan_events VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO barrier_scan_events VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             [
+                event_seq,
                 datetime.now(tz=timezone.utc),
                 scan_id,
                 symbol.upper(),

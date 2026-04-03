@@ -191,6 +191,61 @@ class TestEvaluateBar:
         events = mgr.list_scan_events(scan_id)
         assert events[-1]["event_type"] == "OPEN_SUBMISSION_FAILED"
 
+    def test_open_submission_failure_does_not_override_terminal_scan(self):
+        mgr = BarrierManager()
+        scan_id = mgr.register_scan(
+            symbol="EURUSD",
+            candidate_uid="oco|EURUSD|100|h2|cand3",
+            signal_bar_idx=30,
+            ref_price=1.3000,
+            barrier_pips=2.0,
+            horizon=2,
+            pip_size=0.0001,
+            pred_prob=0.91,
+            threshold=0.64,
+            model_month="2026-03",
+            reservation_id="res-2",
+            run_id="run-demo",
+        )
+
+        mgr.evaluate_bar("EURUSD", 100, 1.3001, 1.2999, 1.0, 31)
+        mgr.evaluate_bar("EURUSD", 100, 1.3001, 1.2999, 1.0, 32)
+
+        before_events = mgr.list_scan_events(scan_id)
+        mgr.mark_open_submission_failed(scan_id, "BROKER_REJECTED")
+
+        scan = mgr.get_scan(scan_id)
+        assert scan["status"] == "EXPIRED"
+        assert scan["terminal_reason"] == "NO_TOUCH_WITHIN_HORIZON"
+        assert mgr.list_scan_events(scan_id) == before_events
+
+    def test_list_scan_events_returns_deterministic_sequence(self):
+        mgr = BarrierManager()
+        scan_id = mgr.register_scan(
+            symbol="EURUSD",
+            candidate_uid="oco|EURUSD|100|h2|cand4",
+            signal_bar_idx=40,
+            ref_price=1.4000,
+            barrier_pips=2.0,
+            horizon=3,
+            pip_size=0.0001,
+            pred_prob=0.93,
+            threshold=0.65,
+            model_month="2026-03",
+            reservation_id="res-3",
+            run_id="run-demo",
+        )
+
+        mgr.evaluate_bar("EURUSD", 100, 1.4003, 1.3999, 1.0, 41)
+        events = mgr.list_scan_events(scan_id)
+
+        assert [event["event_seq"] for event in events] == [1, 2, 3]
+        assert [event["event_type"] for event in events] == [
+            "SCAN_REGISTERED",
+            "SCAN_TOUCH_DETECTED",
+            "SCAN_TRANSITIONED_TO_HOLDING",
+        ]
+
 
 class TestTieBreaking:
     def _make_manager_with_scan(self, **kwargs):

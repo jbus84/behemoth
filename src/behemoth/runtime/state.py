@@ -175,6 +175,7 @@ CREATE TABLE IF NOT EXISTS barrier_scans (
 );
 
 CREATE TABLE IF NOT EXISTS barrier_scan_events (
+    event_seq BIGINT NOT NULL,
     event_ts TIMESTAMP WITH TIME ZONE NOT NULL,
     scan_id VARCHAR NOT NULL,
     symbol VARCHAR NOT NULL,
@@ -333,6 +334,11 @@ class StateManager:
                 table_name="barrier_scans",
                 column_name="terminal_reason",
                 column_sql="VARCHAR",
+            )
+            self._ensure_table_column(
+                table_name="barrier_scan_events",
+                column_name="event_seq",
+                column_sql="BIGINT",
             )
         except Exception:
             # Best-effort migration only; avoid startup hard failure.
