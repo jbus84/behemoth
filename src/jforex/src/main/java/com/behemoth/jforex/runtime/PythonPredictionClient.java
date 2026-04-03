@@ -120,6 +120,14 @@ public final class PythonPredictionClient {
         return sendJson("GET", "/runtime/feed/status", null, FeedStatusResponsePayload.class);
     }
 
+    public ApiAckResponse barrierFailure(String scanId, String reason, String runId) {
+        return sendJson("POST", "/barrier/failure", Map.of(
+                "scan_id", Objects.requireNonNull(scanId, "scanId"),
+                "reason", Objects.requireNonNull(reason, "reason"),
+                "run_id", runId == null ? "" : runId
+        ), ApiAckResponse.class);
+    }
+
     public List<ActiveTradePayload> activeTrades(String symbol) {
         String encoded = URLEncoder.encode(symbol, StandardCharsets.UTF_8);
         return sendJsonList("GET", "/trades/active?symbol=" + encoded, null, new TypeReference<>() {
