@@ -90,6 +90,33 @@ def _runtime_artifact_failure_details(path: Path) -> str:
     return f"missing deterministic execution artifact: {path.name}"
 
 
+def _runtime_artifact_invalid_details(path: Path, reason: str) -> str:
+    return f"invalid deterministic execution artifact: {path.name} ({reason})"
+
+
+def _runtime_artifact_ok(path: Path) -> tuple[bool, str]:
+    if not path.exists():
+        return False, _runtime_artifact_failure_details(path)
+    try:
+        if path.stat().st_size <= 0:
+            return False, _runtime_artifact_invalid_details(path, "empty file")
+    except OSError:
+        return False, _runtime_artifact_invalid_details(path, "stat failed")
+    try:
+        df = pd.read_csv(path)
+    except Exception:
+        return False, _runtime_artifact_invalid_details(path, "unreadable csv")
+    if df.empty:
+        return False, _runtime_artifact_invalid_details(path, "no event rows")
+    required_columns = {"event_ts_utc", "symbol", "category", "event_name", "pass", "detail"}
+    missing_columns = sorted(required_columns.difference(df.columns))
+    if missing_columns:
+        return False, _runtime_artifact_invalid_details(
+            path, "missing columns: " + ",".join(missing_columns)
+        )
+    return True, ""
+
+
 def _load_summary_rows(source: InputSource) -> pd.DataFrame:
     paths = _resolve_paths(source.summary_glob)
     rows: list[dict[str, Any]] = []
@@ -346,6 +373,14 @@ def build_stage14_artifacts(
                 row[src.check_id] = False
                 status = "fail"
                 details = _runtime_artifact_failure_details(runtime_artifact_path)
+                missing_inputs += 1
+            elif runtime_artifact_path is not None and status == "pass":
+                artifact_ok, artifact_details = _runtime_artifact_ok(runtime_artifact_path)
+                if not artifact_ok:
+                    row[src.check_id] = False
+                    status = "fail"
+                    details = artifact_details
+                    missing_inputs += 1
             if (
                 historical_deployable is False
                 and src.check_id

@@ -792,3 +792,73 @@ def test_build_stage14_artifacts_requires_local_surrogate_runtime_events_file(
     surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"].iloc[0]
     assert surrogate_check["status"] == "fail"
     assert "EURUSD_local_jforex_runtime_events.csv" in surrogate_check["details"]
+
+
+def test_build_stage14_artifacts_rejects_zero_byte_canonical_runtime_events_file(
+    tmp_path: Path,
+) -> None:
+    _write_stage14_green_inputs(tmp_path, "EURUSD")
+    (tmp_path / "EURUSD_jforex_runtime_events.csv").write_bytes(b"")
+    _write_runtime_events(tmp_path / "EURUSD_local_jforex_runtime_events.csv", "EURUSD")
+    _write_csv(
+        tmp_path / "local_surrogate.csv",
+        [{"symbol": "EURUSD", "local_jforex_surrogate_pass": True}],
+    )
+
+    summary, checks = build_stage14_artifacts(
+        symbols=["EURUSD"],
+        stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
+        jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
+        jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_lifecycle.csv"),
+        jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
+        jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
+        local_surrogate_summary_glob=str(tmp_path / "local_surrogate.csv"),
+        reconcile_dir=tmp_path,
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+    )
+
+    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
+    assert int(summary.loc[0, "missing_inputs"]) == 1
+    outcome_check = checks[checks["metric_name"] == "jforex_outcome_parity_pass"].iloc[0]
+    assert outcome_check["status"] == "fail"
+    assert "invalid deterministic execution artifact" in outcome_check["details"]
+
+
+def test_build_stage14_artifacts_rejects_unreadable_local_runtime_events_file(
+    tmp_path: Path,
+) -> None:
+    _write_stage14_green_inputs(tmp_path, "EURUSD")
+    _write_runtime_events(tmp_path / "EURUSD_jforex_runtime_events.csv", "EURUSD")
+    (tmp_path / "EURUSD_local_jforex_runtime_events.csv").write_bytes(b"\xff\xfe\x00\x81")
+    _write_csv(
+        tmp_path / "local_surrogate.csv",
+        [{"symbol": "EURUSD", "local_jforex_surrogate_pass": True}],
+    )
+
+    summary, checks = build_stage14_artifacts(
+        symbols=["EURUSD"],
+        stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
+        jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
+        jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_lifecycle.csv"),
+        jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
+        jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
+        local_surrogate_summary_glob=str(tmp_path / "local_surrogate.csv"),
+        reconcile_dir=tmp_path,
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+    )
+
+    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
+    assert int(summary.loc[0, "missing_inputs"]) == 1
+    surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"].iloc[0]
+    assert surrogate_check["status"] == "fail"
+    assert "invalid deterministic execution artifact" in surrogate_check["details"]
