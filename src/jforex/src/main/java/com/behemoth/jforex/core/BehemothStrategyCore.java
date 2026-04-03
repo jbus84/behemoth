@@ -169,7 +169,12 @@ public final class BehemothStrategyCore {
             case SUBMIT_OK -> {
                 metrics.recordOrderSubmitted(event.symbol(), event.orderLabel());
             }
-            case SUBMIT_REJECTED, FILL_REJECTED, CHANGE_REJECTED -> {
+            case SUBMIT_REJECTED -> {
+                handleSubmitRejected(event);
+                metrics.recordOrderReject(event.symbol(), event.type().name());
+                artifactWriter.markOperationalStep(event.symbol(), "order_rejected", false, event.detail());
+            }
+            case FILL_REJECTED, CHANGE_REJECTED -> {
                 metrics.recordOrderReject(event.symbol(), event.type().name());
                 artifactWriter.markOperationalStep(event.symbol(), "order_rejected", false, event.detail());
             }
@@ -237,20 +242,25 @@ public final class BehemothStrategyCore {
             for (PredictionResponseItem p : predictions) {
                 if (p.isSelected()) pythonSelected++;
             }
+            PredictActionSummary actionSummary = summarizePredictActions(response.actions());
             Instant predictCloseTs = predictions.stream()
                     .map(PredictionResponseItem::closeTs)
                     .filter(Objects::nonNull)
                     .findFirst()
                     .orElseGet(() -> state.lastTick != null ? state.lastTick.timestamp() : Instant.now());
-            metrics.recordSelectedPredictions(state.instrument.symbol(), pythonSelected, 0);
+            metrics.recordSelectedPredictions(
+                    state.instrument.symbol(),
+                    pythonSelected,
+                    actionSummary.blockedCount()
+            );
             artifactWriter.recordPredictCycle(
                     state.instrument.symbol(),
                     predictCloseTs,
                     predictions.size(),
                     pythonSelected,
-                    response.actions().size(),
-                    0,
-                    List.of(),
+                    actionSummary.executableSelectedCount(),
+                    actionSummary.blockedCount(),
+                    actionSummary.blockedReasons(),
                     completedBarTicks
             );
 
@@ -328,6 +338,18 @@ public final class BehemothStrategyCore {
         }
     }
 
+    private void handleSubmitRejected(OrderEvent event) {
+        SymbolRuntimeState state = symbolStates.get(normalizeSymbol(event.symbol()));
+        if (state == null || event.orderLabel() == null || event.orderLabel().isBlank()) {
+            return;
+        }
+        BarrierActionPayload action = state.pendingActionsByLabel.remove(event.orderLabel());
+        if (action == null) {
+            return;
+        }
+        notifyBarrierFailure(action, brokerSubmitRejectedReason(event.detail()));
+    }
+
     private void handleBlockedMarketOrder(BarrierActionPayload action, String rawReason, String fallbackReason) {
         String reason = rawReason == null || rawReason.isBlank() ? fallbackReason : rawReason;
         artifactWriter.markOperationalStep(action.symbol(), "market_order_blocked", false, reason);
@@ -344,6 +366,42 @@ public final class BehemothStrategyCore {
             metrics.recordPythonSyncFailure(action.symbol(), "barrier_failure");
             artifactWriter.recordTradeSyncFailure(action.symbol(), "barrier_failure_sync_failure", exc.getMessage());
         }
+    }
+
+    private PredictActionSummary summarizePredictActions(List<BarrierActionPayload> actions) {
+        int blockedCount = 0;
+        List<String> blockedReasons = new ArrayList<>();
+        int executableSelectedCount = 0;
+        for (BarrierActionPayload action : actions) {
+            String blockedReason = blockedReasonForPredictCycle(action);
+            if (blockedReason != null) {
+                blockedCount += 1;
+                blockedReasons.add(blockedReason);
+                continue;
+            }
+            executableSelectedCount += 1;
+        }
+        return new PredictActionSummary(executableSelectedCount, blockedCount, List.copyOf(blockedReasons));
+    }
+
+    private String blockedReasonForPredictCycle(BarrierActionPayload action) {
+        if (!action.isOpenMarket()) {
+            return null;
+        }
+        if (action.blocked()) {
+            return action.blockReason() == null || action.blockReason().isBlank()
+                    ? "python_blocked_open"
+                    : action.blockReason();
+        }
+        if (!sessionConfig.demoExecutionEnabled()) {
+            return "demo_execution_disabled";
+        }
+        return null;
+    }
+
+    private static String brokerSubmitRejectedReason(String detail) {
+        String suffix = detail == null || detail.isBlank() ? "order_rejected" : detail;
+        return "broker_submit_rejected:" + suffix;
     }
 
     private void handleFill(OrderEvent event) {
@@ -485,6 +543,13 @@ public final class BehemothStrategyCore {
             int acceptedCount,
             int droppedCount,
             List<Integer> completedBarTicks
+    ) {
+    }
+
+    private record PredictActionSummary(
+            int executableSelectedCount,
+            int blockedCount,
+            List<String> blockedReasons
     ) {
     }
 
