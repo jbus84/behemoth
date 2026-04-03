@@ -384,7 +384,20 @@ class BehemothStrategyCoreTest {
             server.enqueue(new MockResponse()
                     .setBody("""
                             {
-                              "predictions": [],
+                              "predictions": [{
+                                "symbol":"EURUSD",
+                                "close_ts":"2025-07-07T00:00:00Z",
+                                "candidate_uid":"oco|EURUSD|100|h6|cand1",
+                                "pred_prob":0.78,
+                                "threshold_exec":0.61,
+                                "selected_exec":1,
+                                "bar_ticks":100,
+                                "horizon":6,
+                                "barrier_pips":2.0,
+                                "cap_pips":1.2,
+                                "risk_blocked":false,
+                                "risk_reservation_id":"rid-1"
+                              }],
                               "actions": [{
                                 "type":"OPEN_MARKET",
                                 "symbol":"EURUSD",
@@ -438,7 +451,7 @@ class BehemothStrategyCoreTest {
             assertThat(server.takeRequest(1, TimeUnit.SECONDS).getPath()).isEqualTo("/barrier/failure");
             assertThat(Files.readString(tempDir.resolve("EURUSD_test_runtime_events.csv")))
                     .contains("predict_cycle")
-                    .contains("executable_selected_count=0")
+                    .contains("prediction_count=1;selected_count=0;executable_selected_count=0;blocked_count=1")
                     .contains("blocked_count=1")
                     .contains("blocked_reasons=demo_execution_disabled");
             assertThat(Files.readString(tempDir.resolve("EURUSD_test_runtime_events.csv")))
@@ -463,7 +476,20 @@ class BehemothStrategyCoreTest {
             server.enqueue(new MockResponse()
                     .setBody("""
                             {
-                              "predictions": [],
+                              "predictions": [{
+                                "symbol":"EURUSD",
+                                "close_ts":"2025-07-07T00:00:00Z",
+                                "candidate_uid":"oco|EURUSD|100|h6|cand1",
+                                "pred_prob":0.78,
+                                "threshold_exec":0.61,
+                                "selected_exec":1,
+                                "bar_ticks":100,
+                                "horizon":6,
+                                "barrier_pips":2.0,
+                                "cap_pips":1.2,
+                                "risk_blocked":false,
+                                "risk_reservation_id":"rid-2"
+                              }],
                               "actions": [{
                                 "type":"OPEN_MARKET",
                                 "symbol":"EURUSD",
@@ -517,7 +543,7 @@ class BehemothStrategyCoreTest {
             assertThat(server.takeRequest(1, TimeUnit.SECONDS).getPath()).isEqualTo("/barrier/failure");
             assertThat(Files.readString(tempDir.resolve("EURUSD_test_runtime_events.csv")))
                     .contains("predict_cycle")
-                    .contains("executable_selected_count=0")
+                    .contains("prediction_count=1;selected_count=0;executable_selected_count=0;blocked_count=1")
                     .contains("blocked_count=1")
                     .contains("blocked_reasons=python_barrier_action_kill_switch_enabled");
             assertThat(Files.readString(tempDir.resolve("EURUSD_test_runtime_events.csv")))

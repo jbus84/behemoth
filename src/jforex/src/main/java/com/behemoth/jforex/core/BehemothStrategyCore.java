@@ -243,6 +243,7 @@ public final class BehemothStrategyCore {
                 if (p.isSelected()) pythonSelected++;
             }
             PredictActionSummary actionSummary = summarizePredictActions(response.actions());
+            int effectiveSelectedCount = actionSummary.executableSelectedCount();
             Instant predictCloseTs = predictions.stream()
                     .map(PredictionResponseItem::closeTs)
                     .filter(Objects::nonNull)
@@ -250,15 +251,15 @@ public final class BehemothStrategyCore {
                     .orElseGet(() -> state.lastTick != null ? state.lastTick.timestamp() : Instant.now());
             metrics.recordSelectedPredictions(
                     state.instrument.symbol(),
-                    pythonSelected,
+                    effectiveSelectedCount,
                     actionSummary.blockedCount()
             );
             artifactWriter.recordPredictCycle(
                     state.instrument.symbol(),
                     predictCloseTs,
                     predictions.size(),
-                    pythonSelected,
-                    actionSummary.executableSelectedCount(),
+                    effectiveSelectedCount,
+                    effectiveSelectedCount,
                     actionSummary.blockedCount(),
                     actionSummary.blockedReasons(),
                     completedBarTicks
