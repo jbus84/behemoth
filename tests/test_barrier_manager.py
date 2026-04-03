@@ -133,7 +133,63 @@ class TestEvaluateBar:
         assert len(actions) == 0
         scan = mgr.get_scan(scan_id)
         assert scan["status"] == "EXPIRED"
+        assert scan["terminal_reason"] == "NO_TOUCH_WITHIN_HORIZON"
+        events = mgr.list_scan_events(scan_id)
+        assert [event["event_type"] for event in events][-1] == "SCAN_EXPIRED"
         assert not mgr.has_active_scan("GBPUSD", "oco|GBPUSD|100|h6|abc")
+
+    def test_expired_scan_records_terminal_reason_and_event_row(self):
+        mgr = BarrierManager()
+        scan_id = mgr.register_scan(
+            symbol="EURUSD",
+            candidate_uid="oco|EURUSD|100|h2|cand1",
+            signal_bar_idx=10,
+            ref_price=1.1000,
+            barrier_pips=2.0,
+            horizon=2,
+            pip_size=0.0001,
+            pred_prob=0.77,
+            threshold=0.61,
+            model_month="2026-03",
+            reservation_id=None,
+            run_id="run-demo",
+        )
+
+        mgr.evaluate_bar("EURUSD", 100, 1.1001, 1.0999, 1.0, 11)
+        mgr.evaluate_bar("EURUSD", 100, 1.1001, 1.0999, 1.0, 12)
+
+        scan = mgr.get_scan(scan_id)
+        assert scan["status"] == "EXPIRED"
+        assert scan["terminal_reason"] == "NO_TOUCH_WITHIN_HORIZON"
+
+        events = mgr.list_scan_events(scan_id)
+        assert events[-1]["event_type"] == "SCAN_EXPIRED"
+
+    def test_open_submission_failure_marks_scan_non_recoverable(self):
+        mgr = BarrierManager()
+        scan_id = mgr.register_scan(
+            symbol="EURUSD",
+            candidate_uid="oco|EURUSD|100|h2|cand2",
+            signal_bar_idx=20,
+            ref_price=1.2000,
+            barrier_pips=2.0,
+            horizon=2,
+            pip_size=0.0001,
+            pred_prob=0.88,
+            threshold=0.63,
+            model_month="2026-03",
+            reservation_id="res-1",
+            run_id="run-demo",
+        )
+
+        mgr.evaluate_bar("EURUSD", 100, 1.2003, 1.1999, 1.0, 21)
+        mgr.mark_open_submission_failed(scan_id, "BROKER_REJECTED")
+
+        scan = mgr.get_scan(scan_id)
+        assert scan["status"] == "FAILED"
+        assert scan["terminal_reason"] == "BROKER_REJECTED"
+        events = mgr.list_scan_events(scan_id)
+        assert events[-1]["event_type"] == "OPEN_SUBMISSION_FAILED"
 
 
 class TestTieBreaking:

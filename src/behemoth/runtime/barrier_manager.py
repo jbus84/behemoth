@@ -32,7 +32,18 @@ CREATE TABLE IF NOT EXISTS barrier_scans (
     model_month VARCHAR,
     reservation_id VARCHAR,
     run_id VARCHAR,
+    terminal_reason VARCHAR,
     created_ts TIMESTAMPTZ NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS barrier_scan_events (
+    event_ts TIMESTAMPTZ NOT NULL,
+    scan_id VARCHAR NOT NULL,
+    symbol VARCHAR NOT NULL,
+    candidate_uid VARCHAR NOT NULL,
+    event_type VARCHAR NOT NULL,
+    detail VARCHAR,
+    run_id VARCHAR
 );
 """
 
@@ -52,6 +63,7 @@ class BarrierManager:
             self._con = duckdb.connect()
             self._owns_con = True
         self._con.execute(_CREATE_BARRIER_SCANS_SQL)
+        self._ensure_schema()
 
     def close(self) -> None:
         if self._owns_con:
@@ -90,6 +102,14 @@ class BarrierManager:
                 model_month, reservation_id, run_id,
                 datetime.now(tz=timezone.utc),
             ],
+        )
+        self._record_event(
+            scan_id=scan_id,
+            symbol=symbol,
+            candidate_uid=candidate_uid,
+            event_type="SCAN_REGISTERED",
+            detail=f"horizon={horizon}; barrier_pips={barrier_pips}",
+            run_id=run_id,
         )
         return scan_id
 
@@ -133,14 +153,14 @@ class BarrierManager:
         # Process SCANNING scans
         scanning = self._con.execute(
             "SELECT scan_id, candidate_uid, upper_barrier, lower_barrier, "
-            "scan_bars_remaining, signal_bar_idx, reservation_id, horizon "
+            "scan_bars_remaining, signal_bar_idx, reservation_id, horizon, run_id "
             "FROM barrier_scans WHERE symbol = ? AND status = 'SCANNING'",
             [sym],
         ).fetchall()
 
         for row in scanning:
             (scan_id, candidate_uid, upper, lower,
-             bars_rem, signal_bar_idx, reservation_id, horizon) = row
+             bars_rem, signal_bar_idx, reservation_id, horizon, run_id) = row
 
             bars_rem -= 1
             up_touch = bar_high >= upper
@@ -154,15 +174,25 @@ class BarrierManager:
                 elif bar_hl_first < 0:
                     side = "SELL"
                 else:
-                    # hl_first == 0 means undecided; expire immediately — mirrors
-                    # _oco_precompute which locks in side=0 on the first simultaneous
-                    # touch and does not evaluate later bars for this signal
-                    self._con.execute(
-                        "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",
-                        [scan_id],
+                    # hl_first == 0 means undecided; expire immediately with an
+                    # explicit terminal reason so the lifecycle remains auditable.
+                    self._expire_scan(
+                        scan_id,
+                        reason="AMBIGUOUS_TOUCH",
+                        symbol=sym,
+                        candidate_uid=candidate_uid,
+                        run_id=run_id,
                     )
                     continue
-                self._transition_to_holding(scan_id, touch_step, side, horizon)
+                self._transition_to_holding(
+                    scan_id=scan_id,
+                    touch_step=touch_step,
+                    side=side,
+                    horizon=horizon,
+                    symbol=sym,
+                    candidate_uid=candidate_uid,
+                    run_id=run_id,
+                )
                 actions.append({
                     "type": "OPEN_MARKET",
                     "symbol": sym,
@@ -172,7 +202,15 @@ class BarrierManager:
                     "scan_id": scan_id,
                 })
             elif up_touch:
-                self._transition_to_holding(scan_id, touch_step, "BUY", horizon)
+                self._transition_to_holding(
+                    scan_id=scan_id,
+                    touch_step=touch_step,
+                    side="BUY",
+                    horizon=horizon,
+                    symbol=sym,
+                    candidate_uid=candidate_uid,
+                    run_id=run_id,
+                )
                 actions.append({
                     "type": "OPEN_MARKET",
                     "symbol": sym,
@@ -182,7 +220,15 @@ class BarrierManager:
                     "scan_id": scan_id,
                 })
             elif dn_touch:
-                self._transition_to_holding(scan_id, touch_step, "SELL", horizon)
+                self._transition_to_holding(
+                    scan_id=scan_id,
+                    touch_step=touch_step,
+                    side="SELL",
+                    horizon=horizon,
+                    symbol=sym,
+                    candidate_uid=candidate_uid,
+                    run_id=run_id,
+                )
                 actions.append({
                     "type": "OPEN_MARKET",
                     "symbol": sym,
@@ -192,9 +238,12 @@ class BarrierManager:
                     "scan_id": scan_id,
                 })
             elif bars_rem <= 0:
-                self._con.execute(
-                    "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",
-                    [scan_id],
+                self._expire_scan(
+                    scan_id,
+                    reason="NO_TOUCH_WITHIN_HORIZON",
+                    symbol=sym,
+                    candidate_uid=candidate_uid,
+                    run_id=run_id,
                 )
             else:
                 self._con.execute(
@@ -205,18 +254,26 @@ class BarrierManager:
         # Process HOLDING scans (only those already in HOLDING before this bar, not newly transitioned)
         newly_transitioned = {a["scan_id"] for a in actions if a["type"] == "OPEN_MARKET"}
         holding = self._con.execute(
-            "SELECT scan_id, candidate_uid, broker_pos_id, hold_bars_remaining "
+            "SELECT scan_id, candidate_uid, broker_pos_id, hold_bars_remaining, run_id "
             "FROM barrier_scans WHERE symbol = ? AND status = 'HOLDING'",
             [sym],
         ).fetchall()
         holding = [row for row in holding if row[0] not in newly_transitioned]
 
-        for scan_id, candidate_uid, broker_pos_id, hold_rem in holding:
+        for scan_id, candidate_uid, broker_pos_id, hold_rem, run_id in holding:
             hold_rem -= 1
             if hold_rem <= 0:
                 self._con.execute(
-                    "UPDATE barrier_scans SET hold_bars_remaining = 0, status = 'COMPLETED' WHERE scan_id = ?",
+                    "UPDATE barrier_scans SET hold_bars_remaining = 0, status = 'COMPLETED', terminal_reason = 'HOLD_DURATION_ELAPSED' WHERE scan_id = ?",
                     [scan_id],
+                )
+                self._record_event(
+                    scan_id=scan_id,
+                    symbol=sym,
+                    candidate_uid=candidate_uid,
+                    event_type="SCAN_COMPLETED",
+                    detail=f"broker_pos_id={broker_pos_id}",
+                    run_id=run_id,
                 )
                 actions.append({
                     "type": "CLOSE_MARKET",
@@ -233,12 +290,127 @@ class BarrierManager:
 
         return actions
 
-    def _transition_to_holding(self, scan_id: str, touch_step: int, side: str, horizon: int) -> None:
+    def mark_open_submission_failed(self, scan_id: str, reason: str) -> None:
+        row = self.get_scan(scan_id)
+        if row is None:
+            return
+        self._con.execute(
+            "UPDATE barrier_scans SET status = 'FAILED', terminal_reason = ? WHERE scan_id = ?",
+            [reason, scan_id],
+        )
+        self._record_event(
+            scan_id=scan_id,
+            symbol=row["symbol"],
+            candidate_uid=row["candidate_uid"],
+            event_type="OPEN_SUBMISSION_FAILED",
+            detail=reason,
+            run_id=row["run_id"],
+        )
+
+    def list_scan_events(self, scan_id: str) -> list[dict]:
+        rows = self._con.execute(
+            "SELECT event_ts, scan_id, symbol, candidate_uid, event_type, detail, run_id "
+            "FROM barrier_scan_events WHERE scan_id = ? ORDER BY event_ts",
+            [scan_id],
+        ).fetchall()
+        cols = [desc[0] for desc in self._con.description]
+        return [dict(zip(cols, row)) for row in rows]
+
+    def _ensure_schema(self) -> None:
+        try:
+            self._con.execute(
+                """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE lower(table_name) = 'barrier_scans'
+                  AND lower(column_name) = 'terminal_reason'
+                """
+            )
+            if self._con.fetchone() is None:
+                self._con.execute(
+                    "ALTER TABLE barrier_scans ADD COLUMN terminal_reason VARCHAR"
+                )
+        except Exception:
+            # Best-effort migration only; keep manager usable in ephemeral tests.
+            pass
+
+    def _record_event(
+        self,
+        *,
+        scan_id: str,
+        symbol: str,
+        candidate_uid: str,
+        event_type: str,
+        detail: str | None,
+        run_id: str | None,
+    ) -> None:
+        self._con.execute(
+            "INSERT INTO barrier_scan_events VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [
+                datetime.now(tz=timezone.utc),
+                scan_id,
+                symbol.upper(),
+                candidate_uid,
+                event_type,
+                detail,
+                run_id,
+            ],
+        )
+
+    def _expire_scan(
+        self,
+        scan_id: str,
+        *,
+        reason: str,
+        symbol: str,
+        candidate_uid: str,
+        run_id: str | None,
+    ) -> None:
+        self._con.execute(
+            "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED', terminal_reason = ? WHERE scan_id = ?",
+            [reason, scan_id],
+        )
+        self._record_event(
+            scan_id=scan_id,
+            symbol=symbol,
+            candidate_uid=candidate_uid,
+            event_type="SCAN_EXPIRED",
+            detail=reason,
+            run_id=run_id,
+        )
+
+    def _transition_to_holding(
+        self,
+        *,
+        scan_id: str,
+        touch_step: int,
+        side: str,
+        horizon: int,
+        symbol: str,
+        candidate_uid: str,
+        run_id: str | None,
+    ) -> None:
         """Move a scan from SCANNING to HOLDING."""
         self._con.execute(
             "UPDATE barrier_scans SET touch_step = ?, touch_side = ?, "
-            "hold_bars_remaining = ?, status = 'HOLDING' WHERE scan_id = ?",
+            "hold_bars_remaining = ?, status = 'HOLDING', terminal_reason = NULL WHERE scan_id = ?",
             [touch_step, side, horizon, scan_id],
+        )
+        self._record_event(
+            scan_id=scan_id,
+            symbol=symbol,
+            candidate_uid=candidate_uid,
+            event_type="SCAN_TOUCH_DETECTED",
+            detail=side,
+            run_id=run_id,
+        )
+        self._record_event(
+            scan_id=scan_id,
+            symbol=symbol,
+            candidate_uid=candidate_uid,
+            event_type="SCAN_TRANSITIONED_TO_HOLDING",
+            detail=f"side={side}; hold_bars_remaining={horizon}; touch_step={touch_step}",
+            run_id=run_id,
         )
 
     def set_broker_pos_id(self, scan_id: str, broker_pos_id: str) -> None:
