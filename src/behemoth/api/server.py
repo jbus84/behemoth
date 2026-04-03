@@ -190,6 +190,13 @@ def _fail_blocked_open_barrier_actions(actions: list[BarrierAction]) -> None:
             action.scan_id,
             action.block_reason or "python_barrier_action_kill_switch_enabled",
         )
+        if _state is not None and action.reservation_id:
+            _state.release_account_risk_reservation(
+                reservation_id=action.reservation_id,
+                candidate_uid=action.candidate_uid,
+                symbol=action.symbol,
+                reason=action.block_reason or "python_barrier_action_kill_switch_enabled",
+            )
 
 
 def _archive_predict_action_response(

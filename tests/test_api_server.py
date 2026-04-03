@@ -996,70 +996,74 @@ class TestPredictEndpoint:
 
         dummy_model.predict_proba.return_value = np.array([[0.1, 0.85]])  # 85% probability
 
-        with (
-            mock.patch.object(
-                server,
-                "_resolve_runtime_contract",
-                return_value=SimpleNamespace(
-                    candidates=[dummy_cand],
-                    model_month="2025-01",
-                    cap_pips=1.2,
+        server._state._con.execute("DELETE FROM account_risk_reservations WHERE symbol = 'EURUSD'")
+        try:
+            with (
+                mock.patch.object(
+                    server,
+                    "_resolve_runtime_contract",
+                    return_value=SimpleNamespace(
+                        candidates=[dummy_cand],
+                        model_month="2025-01",
+                        cap_pips=1.2,
+                    ),
                 ),
-            ),
-            mock.patch.object(
-                server,
-                "_ensure_model_and_threshold",
-                return_value=(
-                    dummy_model,
-                    {
-                        "threshold_exec": 0.5,
-                        "threshold_source": "test",
-                        "rolling_threshold_days": 20,
-                        "rolling_threshold_min_history": 1,
-                        "execution_quantile": 0.9,
+                mock.patch.object(
+                    server,
+                    "_ensure_model_and_threshold",
+                    return_value=(
+                        dummy_model,
+                        {
+                            "threshold_exec": 0.5,
+                            "threshold_source": "test",
+                            "rolling_threshold_days": 20,
+                            "rolling_threshold_min_history": 1,
+                            "execution_quantile": 0.9,
+                        },
+                    ),
+                ),
+                mock.patch.object(server, "_check_warmup", return_value=None),
+                mock.patch.object(server._state, "compute_features", return_value=dummy_features),
+                mock.patch.object(
+                    server._state,
+                    "get_latest_close_ts",
+                    return_value=datetime(2025, 1, 1, tzinfo=timezone.utc),
+                ),
+                mock.patch.object(server._state, "get_rolling_threshold", return_value=0.5),
+            ):
+                snap = client.post(
+                    "/risk/account_risk/snapshot",
+                    json={
+                        "symbol": "EURUSD",
+                        "balance": 10000.0,
+                        "equity": 10000.0,
+                        "snapshot_ts": "2025-01-01T00:00:00Z",
                     },
-                ),
-            ),
-            mock.patch.object(server, "_check_warmup", return_value=None),
-            mock.patch.object(server._state, "compute_features", return_value=dummy_features),
-            mock.patch.object(
-                server._state,
-                "get_latest_close_ts",
-                return_value=datetime(2025, 1, 1, tzinfo=timezone.utc),
-            ),
-            mock.patch.object(server._state, "get_rolling_threshold", return_value=0.5),
-        ):
-            snap = client.post(
-                "/risk/account_risk/snapshot",
-                json={
-                    "symbol": "EURUSD",
-                    "balance": 10000.0,
-                    "equity": 10000.0,
-                    "snapshot_ts": "2025-01-01T00:00:00Z",
-                },
-            )
-            assert snap.status_code == 201
-            r = client.post(
-                "/predict",
-                json={
-                    "symbol": "EURUSD",
-                    "requested_volume_units": 10000,
-                    "account_risk_enabled_override": True,
-                },
-            )
-            assert r.status_code == 200
-            results = r.json()["predictions"]
-            assert isinstance(results, list)
-            assert len(results) == 1
-            assert results[0]["pred_prob"] == 0.85
-            assert results[0]["selected_exec"] == 1
-            assert "risk_blocked" in results[0]
-            assert results[0]["risk_metrics_snapshot"]["account_risk_enabled_effective"] is True
-            assert results[0]["risk_metrics_snapshot"]["account_risk_enabled_override"] is True
-            assert (
-                results[0]["risk_metrics_snapshot"]["account_risk_mode_source"]
-                == "request_override"
-            )
+                )
+                assert snap.status_code == 201
+                r = client.post(
+                    "/predict",
+                    json={
+                        "symbol": "EURUSD",
+                        "requested_volume_units": 10000,
+                        "account_risk_enabled_override": True,
+                    },
+                )
+                assert r.status_code == 200
+                results = r.json()["predictions"]
+                assert isinstance(results, list)
+                assert len(results) == 1
+                assert results[0]["pred_prob"] == 0.85
+                assert results[0]["selected_exec"] == 1
+                assert "risk_blocked" in results[0]
+                assert results[0]["risk_metrics_snapshot"]["account_risk_enabled_effective"] is True
+                assert results[0]["risk_metrics_snapshot"]["account_risk_enabled_override"] is True
+                assert (
+                    results[0]["risk_metrics_snapshot"]["account_risk_mode_source"]
+                    == "request_override"
+                )
+        finally:
+            server._state._con.execute("DELETE FROM account_risk_reservations WHERE symbol = 'EURUSD'")
 
     def test_predict_marks_actions_blocked_when_python_kill_switch_enabled(self, client):
         import unittest.mock as mock
@@ -1099,6 +1103,18 @@ class TestPredictEndpoint:
         dummy_model = mock.MagicMock()
         dummy_model.predict_proba.return_value = np.array([[0.1, 0.85]])
 
+        reservation_id = server._state.create_account_risk_reservation(
+            symbol="EURUSD",
+            candidate_uid="cand-kill-switch",
+            reserved_loss_ccy=9.75,
+            barrier_pips=15.0,
+            cap_pips=1.2,
+            cost_est_pips=0.8,
+            volume_units=10000,
+            side="BUY",
+            source="predict_allocator",
+            status="PENDING",
+        )
         barrier_manager = server.BarrierManager()
         scan_id = barrier_manager.register_scan(
             symbol="EURUSD",
@@ -1111,7 +1127,7 @@ class TestPredictEndpoint:
             pred_prob=0.85,
             threshold=0.5,
             model_month="2025-01",
-            reservation_id=None,
+            reservation_id=reservation_id,
             run_id="run-demo",
         )
 
@@ -1174,17 +1190,37 @@ class TestPredictEndpoint:
             finally:
                 server._config.barrier_actions_kill_switch_enabled = original_flag
 
-        assert r.status_code == 200
-        body = r.json()
-        assert len(body["predictions"]) == 1
-        assert len(body["actions"]) == 1
-        assert body["actions"][0]["blocked"] is True
-        assert body["actions"][0]["block_reason"] == "python_barrier_action_kill_switch_enabled"
-        assert body["predictions"][0]["selected_exec"] == 1
-        scan = barrier_manager.get_scan(scan_id)
-        assert scan["status"] == "FAILED"
-        assert scan["terminal_reason"] == "python_barrier_action_kill_switch_enabled"
-        assert not barrier_manager.has_active_scan("EURUSD", "cand-kill-switch")
+        try:
+            assert r.status_code == 200
+            body = r.json()
+            assert len(body["predictions"]) == 1
+            assert len(body["actions"]) == 1
+            assert body["actions"][0]["blocked"] is True
+            assert body["actions"][0]["block_reason"] == "python_barrier_action_kill_switch_enabled"
+            assert body["predictions"][0]["selected_exec"] == 1
+            scan = barrier_manager.get_scan(scan_id)
+            assert scan["status"] == "FAILED"
+            assert scan["terminal_reason"] == "python_barrier_action_kill_switch_enabled"
+            assert not barrier_manager.has_active_scan("EURUSD", "cand-kill-switch")
+            row = server._state._con.execute(
+                """
+                SELECT status, source
+                FROM account_risk_reservations
+                WHERE reservation_id = ?
+                """,
+                [reservation_id],
+            ).fetchone()
+            assert row is not None
+            assert row[0] == "RELEASED"
+            assert "python_barrier_action_kill_switch_enabled" in str(row[1])
+        finally:
+            server._state._con.execute(
+                """
+                DELETE FROM account_risk_reservations
+                WHERE symbol = ? AND candidate_uid IN (?, ?)
+                """,
+                ["EURUSD", "cand-kill-switch", "oco|EURUSD|100|h24|cand-kill-switch"],
+            )
 
     def test_predict_archives_predictions_and_actions(self, client):
         import unittest.mock as mock
@@ -2106,84 +2142,88 @@ class TestPredictEndpoint:
             np.array([[0.1, 0.85]]),
         ]
 
-        with (
-            mock.patch.object(
-                server,
-                "_resolve_runtime_contract",
-                return_value=SimpleNamespace(
-                    candidates=[cand_small, cand_large],
-                    model_month="2025-01",
-                    cap_pips=1.2,
+        server._state._con.execute("DELETE FROM account_risk_reservations WHERE symbol = 'EURUSD'")
+        try:
+            with (
+                mock.patch.object(
+                    server,
+                    "_resolve_runtime_contract",
+                    return_value=SimpleNamespace(
+                        candidates=[cand_small, cand_large],
+                        model_month="2025-01",
+                        cap_pips=1.2,
+                    ),
                 ),
-            ),
-            mock.patch.object(
-                server,
-                "_ensure_model_and_threshold",
-                return_value=(
-                    dummy_model,
-                    {
-                        "threshold_exec": 0.5,
-                        "threshold_source": "test",
-                        "rolling_threshold_days": 20,
-                        "rolling_threshold_min_history": 1,
-                        "execution_quantile": 0.9,
+                mock.patch.object(
+                    server,
+                    "_ensure_model_and_threshold",
+                    return_value=(
+                        dummy_model,
+                        {
+                            "threshold_exec": 0.5,
+                            "threshold_source": "test",
+                            "rolling_threshold_days": 20,
+                            "rolling_threshold_min_history": 1,
+                            "execution_quantile": 0.9,
+                        },
+                    ),
+                ),
+                mock.patch.object(server, "_check_warmup", return_value=None),
+                mock.patch.object(server._state, "compute_features", return_value=dummy_features),
+                mock.patch.object(
+                    server._state,
+                    "get_latest_close_ts",
+                    return_value=datetime(2025, 1, 1, tzinfo=timezone.utc),
+                ),
+                mock.patch.object(server._state, "get_rolling_threshold", return_value=0.5),
+                mock.patch.object(
+                    server,
+                    "_resolve_account_risk_eval",
+                    return_value={
+                        "enabled": True,
+                        "profile_id": "ftmo_10k_challenge_2step",
+                        "allow_trading": True,
+                        "block_reason": None,
+                        "snapshot_available": True,
+                        "daily_loss_headroom": 200.0,
+                        "max_loss_headroom": 200.0,
+                        "daily_loss_used": 0.0,
+                        "max_loss_used": 0.0,
+                        "trading_day_id": "2025-01-01",
                     },
                 ),
-            ),
-            mock.patch.object(server, "_check_warmup", return_value=None),
-            mock.patch.object(server._state, "compute_features", return_value=dummy_features),
-            mock.patch.object(
-                server._state,
-                "get_latest_close_ts",
-                return_value=datetime(2025, 1, 1, tzinfo=timezone.utc),
-            ),
-            mock.patch.object(server._state, "get_rolling_threshold", return_value=0.5),
-            mock.patch.object(
-                server,
-                "_resolve_account_risk_eval",
-                return_value={
-                    "enabled": True,
-                    "profile_id": "ftmo_10k_challenge_2step",
-                    "allow_trading": True,
-                    "block_reason": None,
-                    "snapshot_available": True,
-                    "daily_loss_headroom": 200.0,
-                    "max_loss_headroom": 200.0,
-                    "daily_loss_used": 0.0,
-                    "max_loss_used": 0.0,
-                    "trading_day_id": "2025-01-01",
-                },
-            ),
-        ):
-            snap = client.post(
-                "/risk/account_risk/snapshot",
-                json={
-                    "symbol": "EURUSD",
-                    "balance": 10000.0,
-                    "equity": 10000.0,
-                    "snapshot_ts": "2025-01-01T00:00:00Z",
-                },
-            )
-            assert snap.status_code == 201
-            r = client.post(
-                "/predict",
-                json={
-                    "symbol": "EURUSD",
-                    "requested_volume_units": 10000,
-                    "account_risk_enabled_override": True,
-                },
-            )
-            assert r.status_code == 200
-            rows = r.json()["predictions"]
-            assert len(rows) == 2
-            blocked = [
-                x for x in rows if x["risk_block_reason"] == "ACCOUNT_RISK_RESERVED_BUDGET_EXCEEDED"
-            ]
-            admitted = [x for x in rows if x["selected_exec"] == 1]
-            assert len(blocked) == 1
-            assert len(admitted) == 1
-            assert admitted[0]["risk_reserved"] is True
-            assert admitted[0]["risk_reservation_id"] is not None
+            ):
+                snap = client.post(
+                    "/risk/account_risk/snapshot",
+                    json={
+                        "symbol": "EURUSD",
+                        "balance": 10000.0,
+                        "equity": 10000.0,
+                        "snapshot_ts": "2025-01-01T00:00:00Z",
+                    },
+                )
+                assert snap.status_code == 201
+                r = client.post(
+                    "/predict",
+                    json={
+                        "symbol": "EURUSD",
+                        "requested_volume_units": 10000,
+                        "account_risk_enabled_override": True,
+                    },
+                )
+                assert r.status_code == 200
+                rows = r.json()["predictions"]
+                assert len(rows) == 2
+                blocked = [
+                    x for x in rows if x["risk_block_reason"] == "ACCOUNT_RISK_RESERVED_BUDGET_EXCEEDED"
+                ]
+                admitted = [x for x in rows if x["selected_exec"] == 1]
+                assert len(blocked) == 1
+                assert len(admitted) == 1
+                assert admitted[0]["risk_reserved"] is True
+                assert admitted[0]["risk_reservation_id"] is not None
+        finally:
+            server._state._con.execute("DELETE FROM account_risk_reservations WHERE symbol = 'EURUSD'")
 
 
 class TestReloadEndpoint:
