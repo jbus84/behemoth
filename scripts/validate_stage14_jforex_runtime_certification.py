@@ -397,8 +397,9 @@ def build_stage14_artifacts(
                     {"non_deployable_reason": non_deployable_reason}
                 )
             source_path = "" if match.empty else str(match.iloc[-1].get("source_path") or "")
-            if runtime_artifact_path is not None and status == "fail" and details.startswith(
-                "missing deterministic execution artifact:"
+            if runtime_artifact_path is not None and status == "fail" and (
+                details.startswith("missing deterministic execution artifact:")
+                or details.startswith("invalid deterministic execution artifact:")
             ):
                 source_path = str(runtime_artifact_path)
             check_rows.append(

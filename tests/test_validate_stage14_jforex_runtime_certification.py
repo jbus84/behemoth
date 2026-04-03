@@ -827,6 +827,7 @@ def test_build_stage14_artifacts_rejects_zero_byte_canonical_runtime_events_file
     outcome_check = checks[checks["metric_name"] == "jforex_outcome_parity_pass"].iloc[0]
     assert outcome_check["status"] == "fail"
     assert "invalid deterministic execution artifact" in outcome_check["details"]
+    assert str(tmp_path / "EURUSD_jforex_runtime_events.csv") == outcome_check["source_path"]
 
 
 def test_build_stage14_artifacts_rejects_unreadable_local_runtime_events_file(
@@ -862,3 +863,4 @@ def test_build_stage14_artifacts_rejects_unreadable_local_runtime_events_file(
     surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"].iloc[0]
     assert surrogate_check["status"] == "fail"
     assert "invalid deterministic execution artifact" in surrogate_check["details"]
+    assert str(tmp_path / "EURUSD_local_jforex_runtime_events.csv") == surrogate_check["source_path"]
