@@ -180,6 +180,18 @@ def _apply_barrier_action_kill_switch(actions: list[BarrierAction]) -> list[Barr
     return blocked_actions
 
 
+def _fail_blocked_open_barrier_actions(actions: list[BarrierAction]) -> None:
+    if _barrier_manager is None or not _config.barrier_actions_kill_switch_enabled:
+        return
+    for action in actions:
+        if action.type != BarrierActionType.OPEN_MARKET or not action.blocked:
+            continue
+        _barrier_manager.mark_open_submission_failed(
+            action.scan_id,
+            action.block_reason or "python_barrier_action_kill_switch_enabled",
+        )
+
+
 def _archive_predict_action_response(
     *,
     sym: str,
@@ -2562,6 +2574,7 @@ async def predict(req: PredictRequest) -> PredictResponse:
             )
 
     barrier_actions = _apply_barrier_action_kill_switch(barrier_actions)
+    _fail_blocked_open_barrier_actions(barrier_actions)
     _archive_predict_action_response(
         sym=sym,
         close_ts=close_ts,
@@ -3171,6 +3184,14 @@ async def barrier_failure(req: BarrierFailureRequest):
     if before is None:
         raise HTTPException(status_code=404, detail=f"Barrier scan not found: {req.scan_id}")
     _barrier_manager.mark_open_submission_failed(req.scan_id, req.reason)
+    if _state is not None:
+        _state.release_account_risk_reservation(
+            reservation_id=before.get("reservation_id"),
+            broker_pos_id=before.get("broker_pos_id"),
+            candidate_uid=before.get("candidate_uid"),
+            symbol=before.get("symbol"),
+            reason=f"barrier_failure:{req.reason}",
+        )
     after = _barrier_manager.get_scan(req.scan_id) or before
     marked_failed = (
         str(after.get("status", "")).upper() == "FAILED"

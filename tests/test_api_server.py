@@ -1099,18 +1099,21 @@ class TestPredictEndpoint:
         dummy_model = mock.MagicMock()
         dummy_model.predict_proba.return_value = np.array([[0.1, 0.85]])
 
-        barrier_manager = mock.MagicMock()
-        barrier_manager.evaluate_bar.return_value = [
-            {
-                "type": "OPEN_MARKET",
-                "symbol": "EURUSD",
-                "candidate_uid": "cand-kill-switch",
-                "scan_id": "scan-123",
-                "side": "BUY",
-                "reservation_id": "res-123",
-            }
-        ]
-        barrier_manager.has_active_scan.return_value = False
+        barrier_manager = server.BarrierManager()
+        scan_id = barrier_manager.register_scan(
+            symbol="EURUSD",
+            candidate_uid="cand-kill-switch",
+            signal_bar_idx=10,
+            ref_price=1.1000,
+            barrier_pips=15.0,
+            horizon=24,
+            pip_size=0.0001,
+            pred_prob=0.85,
+            threshold=0.5,
+            model_month="2025-01",
+            reservation_id=None,
+            run_id="run-demo",
+        )
 
         with (
             mock.patch.object(
@@ -1140,6 +1143,17 @@ class TestPredictEndpoint:
             mock.patch.object(server._state, "compute_features", return_value=dummy_features),
             mock.patch.object(
                 server._state,
+                "get_latest_bar",
+                return_value={
+                    "high_price": 1.1020,
+                    "low_price": 1.0980,
+                    "hl_first": 1.0,
+                    "row_id": 11,
+                    "close_price": 1.1005,
+                },
+            ),
+            mock.patch.object(
+                server._state,
                 "get_latest_close_ts",
                 return_value=datetime(2025, 1, 1, tzinfo=timezone.utc),
             ),
@@ -1167,6 +1181,10 @@ class TestPredictEndpoint:
         assert body["actions"][0]["blocked"] is True
         assert body["actions"][0]["block_reason"] == "python_barrier_action_kill_switch_enabled"
         assert body["predictions"][0]["selected_exec"] == 1
+        scan = barrier_manager.get_scan(scan_id)
+        assert scan["status"] == "FAILED"
+        assert scan["terminal_reason"] == "python_barrier_action_kill_switch_enabled"
+        assert not barrier_manager.has_active_scan("EURUSD", "cand-kill-switch")
 
     def test_predict_archives_predictions_and_actions(self, client):
         import unittest.mock as mock
@@ -1288,6 +1306,18 @@ class TestPredictEndpoint:
 
         mgr = server._barrier_manager
         assert mgr is not None
+        reservation_id = server._state.create_account_risk_reservation(
+            symbol="EURUSD",
+            candidate_uid="cand-failure",
+            reserved_loss_ccy=12.5,
+            barrier_pips=2.0,
+            cap_pips=1.5,
+            cost_est_pips=0.8,
+            volume_units=10000,
+            side="BUY",
+            source="predict_allocator",
+            status="PENDING",
+        )
         scan_id = mgr.register_scan(
             symbol="EURUSD",
             candidate_uid="cand-failure",
@@ -1299,7 +1329,7 @@ class TestPredictEndpoint:
             pred_prob=0.77,
             threshold=0.61,
             model_month="2026-03",
-            reservation_id=None,
+            reservation_id=reservation_id,
             run_id="run-demo",
         )
         mgr.evaluate_bar("EURUSD", 100, 1.1003, 1.0999, 1.0, 11)
@@ -1315,6 +1345,17 @@ class TestPredictEndpoint:
         assert scan["status"] == "FAILED"
         assert scan["terminal_reason"] == "BROKER_REJECTED"
         assert mgr.list_scan_events(scan_id)[-1]["event_type"] == "OPEN_SUBMISSION_FAILED"
+        row = server._state._con.execute(
+            """
+            SELECT status, source
+            FROM account_risk_reservations
+            WHERE reservation_id = ?
+            """,
+            [reservation_id],
+        ).fetchone()
+        assert row is not None
+        assert row[0] == "RELEASED"
+        assert "BROKER_REJECTED" in str(row[1])
 
     def test_predict_logs_evaluation_for_blocked_candidate(self, client):
         import unittest.mock as mock
