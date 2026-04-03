@@ -1,7 +1,7 @@
 # Stage 14 - JForex Runtime Certification
 
 ## Objective
-Certify that the Dukascopy JForex adapter reproduces the governed OCO execution contract after the local JForex surrogate and Stage 13 have already proven source/runtime parity against Stage 12 truth.
+Certify that the Dukascopy JForex adapter faithfully executes barrier manager actions after the local JForex surrogate and Stage 13 have already proven source/runtime parity against Stage 12 truth.
 
 ## Inputs
 - `data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv`
@@ -49,10 +49,10 @@ Certify that the Dukascopy JForex adapter reproduces the governed OCO execution 
 - Historical Stage 14 replay should use tolerant locked-prediction matching so broker-side timestamp drift does not suppress otherwise valid locked selections.
 - Run the Java JForex tester path against the same governed truth window used for certification.
 - Treat `ITesterClient` as the official broker-certification harness for Stage 14.
-- Confirm the adapter reproduces the OCO contract:
-  - paired opposite stop-limit entries,
-  - one fill cancels the sibling leg,
-  - no double-live-leg drift after partial fill, cancel, reconnect, or replay recovery.
+- Confirm the adapter faithfully executes barrier manager actions:
+  - OPEN_MARKET actions result in submitted market orders,
+  - CLOSE_MARKET actions result in position closes,
+  - no dropped or mishandled actions during the certification window.
 - Confirm demo-session readiness separately from tester parity:
   - authentication,
   - subscriptions,
@@ -64,7 +64,7 @@ Certify that the Dukascopy JForex adapter reproduces the governed OCO execution 
 - `stage13_dukascopy_testclient_pass=true`
 - `jforex_signal_parity_pass=true`
 - `jforex_execution_parity_pass=true`
-- `oco_lifecycle_pass=true`
+- `execution_lifecycle_pass=true`
 - `operational_ready_pass=true`
 
 Stage 14 passes only when all five are green.
@@ -73,7 +73,7 @@ Stage 14 passes only when all five are green.
 - If Stage 13 is red, do not trust any JForex tester/demo result.
 - If JForex signal parity is red, the adapter is not reproducing research-approved selection timing.
 - If JForex execution parity is red, the adapter lifecycle diverges after nominally matched signals.
-- If OCO lifecycle is red, the adapter cannot safely enforce the paired stop-limit contract.
+- If execution lifecycle is red, the adapter failed to execute barrier manager actions without errors.
 - If operational readiness is red, the adapter is not deployable even if tester parity is green.
 
 ## Canonical Command
