@@ -210,7 +210,7 @@ public final class BehemothStrategyCore {
             flushSymbol(symbol);
         }
         stateStore.persist();
-        artifactWriter.writeReports(symbolStates.keySet(), stateStore.groups());
+        artifactWriter.writeReports(symbolStates.keySet());
     }
 
     public Set<String> symbols() {
