@@ -107,6 +107,17 @@ class LiveReadinessCoordinatorTest {
             assertThat(statusWriter.writeCount()).isGreaterThanOrEqualTo(3);
             assertThat(metrics.readinessStates.get("EURUSD")).isEqualTo(SymbolReadinessState.READY);
             assertThat(metrics.readinessStates.get("GBPUSD")).isEqualTo(SymbolReadinessState.ERROR_PAUSED);
+            LiveReadinessSnapshot snapshot = statusWriter.latestSnapshot();
+            assertThat(snapshot.sessionTradableSymbolCount()).isEqualTo(1);
+            assertThat(snapshot.sessionTotalSymbolCount()).isEqualTo(2);
+            assertThat(snapshot.symbols())
+                    .anySatisfy(symbolSnapshot -> {
+                        assertThat(symbolSnapshot.symbol()).isEqualTo("GBPUSD");
+                        assertThat(symbolSnapshot.state()).isEqualTo(SymbolReadinessState.ERROR_PAUSED);
+                        assertThat(symbolSnapshot.entriesAllowed()).isFalse();
+                        assertThat(symbolSnapshot.startupTimeoutReached()).isTrue();
+                        assertThat(symbolSnapshot.lastFailureReason()).isEqualTo("bridge failed");
+                    });
         }
     }
 
@@ -455,6 +466,10 @@ class LiveReadinessCoordinatorTest {
 
         private int writeCount() {
             return snapshots.size();
+        }
+
+        private LiveReadinessSnapshot latestSnapshot() {
+            return snapshots.get(snapshots.size() - 1);
         }
     }
 
