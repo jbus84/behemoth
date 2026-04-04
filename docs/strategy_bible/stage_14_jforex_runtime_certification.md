@@ -9,6 +9,51 @@ Certify that the Dukascopy JForex adapter faithfully executes barrier manager ac
 - `data/analysis/backtest_reconcile/*_jforex_execution_parity_summary.csv`
 - `data/analysis/backtest_reconcile/*_jforex_execution_lifecycle_summary.csv`
 - `data/analysis/backtest_reconcile/*_jforex_operational_ready_summary.csv`
+Stage 14 is the single runtime certification authority for the JForex adapter. It has two layers:
+
+1. prerequisite certification gates
+2. recurring demo-session certification
+
+The prerequisite layer establishes whether the JForex runtime path is eligible for certification. The recurring session layer evaluates the current demo run. Keep those layers separate when reading the page and when interpreting reports.
+
+## Prerequisite Certification Gates
+
+These gates establish that the runtime path is trustworthy before any live demo session is treated as certified evidence:
+
+- Stage 13 Dukascopy-source prerequisite
+- local JForex surrogate prerequisite
+- JForex tester signal parity
+- JForex tester execution parity
+- execution-lifecycle contract correctness
+
+The local JForex surrogate prerequisite is mandatory for the prerequisite layer. It maps to `local_jforex_surrogate_pass` and proves that the shared Java strategy core can still run against parquet-driven local harness input. For non-deployable symbols, the validator may still treat the prerequisite as satisfied when the Stage 14 checks record an accepted local-surrogate `NO_GO`. Operators should verify that case in `data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_checks.csv` via the `local_jforex_surrogate_pass` row and its details field rather than by ad hoc judgment.
+
+## Recurring Demo-Session Certification
+
+Every future demo session must prove:
+
+- active symbols reach acceptable readiness for the session
+- the Python barrier-manager predict/action path is active
+- required runtime evidence artifacts are produced and readable
+- no hard execution-lifecycle anomalies invalidate the session
+- the session can be classified deterministically from evidence rather than ad hoc interpretation
+
+Stage 14 remains the authority for both the prerequisite gates and the recurring session gate, but the two layers must not be collapsed into one opaque requirement.
+
+## Session Evidence Bundle
+
+Each demo session must produce a session-scoped evidence bundle that is sufficient to reconstruct the run without relying on ephemeral logs.
+
+The bundle is session-scoped by the runtime `run_id` and freshness timestamps recorded inside the artifacts, not by unique filenames alone. Operators should review the fixed-path outputs immediately after the session and confirm that the `run_id`, `evaluated_at_utc`, and readiness snapshot timestamp fields all refer to the same session window before treating the bundle as valid certification evidence.
+
+Minimum evidence bundle:
+
+- `data/analysis/backtest_reconcile/runtime/live_symbol_readiness.json`
+- `data/analysis/backtest_reconcile/{SYMBOL}_jforex_runtime_events.csv`
+- `data/analysis/backtest_reconcile/{SYMBOL}_jforex_signal_parity_summary.csv`
+- `data/analysis/backtest_reconcile/{SYMBOL}_jforex_execution_parity_summary.csv`
+- `data/analysis/backtest_reconcile/{SYMBOL}_jforex_execution_lifecycle_summary.csv`
+- `data/analysis/backtest_reconcile/{SYMBOL}_jforex_operational_ready_summary.csv`
 - `data/analysis/backtest_reconcile/jforex_outcome_parity_summary.csv`
 - `data/analysis/backtest_reconcile/local_jforex_surrogate_summary.csv`
 - `data/analysis/backtest_reconcile/<SYMBOL>_jforex_runtime_events.csv`
@@ -126,8 +171,9 @@ make stage14-jforex-cert
 ### Auto Snapshot - Stage 14
 
 - generated_at: `pending`
-- Stage 14 is a hard gate for the Dukascopy JForex adapter.
-- Stage 13 Dukascopy TestClient parity, JForex tester parity, execution lifecycle correctness, deterministic runtime evidence, and operational readiness must all be green.
+- Stage 14 is the single runtime certification authority for the Dukascopy JForex adapter.
+- Stage 13 Dukascopy TestClient parity, JForex tester parity, execution lifecycle correctness, deterministic runtime evidence, and operational readiness must all be green before recurring demo certification can pass.
+- A no-touch demo session may still pass when the full evidence bundle is complete and the runtime path was live.
 
 #### Key Results
 _pending_
