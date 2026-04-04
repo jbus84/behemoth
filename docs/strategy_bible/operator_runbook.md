@@ -1,7 +1,7 @@
-# OCO Operator Runbook
+# Operator Runbook
 
 ## Objective
-Provide deterministic daily, weekly, and monthly operating actions for OCO pipeline governance and incident handling.
+Provide deterministic operating actions for strategy governance, JForex runtime review, and the supervised barrier-manager demo-session shakedown.
 
 ## Operating Cadence
 | cadence | owner | purpose |
@@ -19,14 +19,19 @@ Provide deterministic daily, weekly, and monthly operating actions for OCO pipel
 - Runtime readiness status is written to `data/analysis/backtest_reconcile/runtime/live_symbol_readiness.json`.
 
 ## Dukascopy Demo Certification Checklist
-1. Run `make demo-cert-monitor`.
-2. Open Grafana and the provisioned JForex dashboard.
-3. Run `make jforex-live`.
-4. Wait for all 6 symbols to reach `READY`.
-5. Confirm tick staleness stays within the `30s` SLA.
-6. Confirm predict activity appears for all 6 symbols once bars advance.
-7. Inspect `data/analysis/backtest_reconcile/runtime/live_symbol_readiness.json`.
-8. Classify the run using the definitions below.
+1. Run the preflight checks below before the session window opens.
+2. Start monitoring with `make demo-cert-monitor`.
+3. Start the live/demo runner with `make jforex-live`.
+4. Observe readiness, predict/action flow, and runtime anomalies during the session.
+5. Run `make stage14-jforex-cert` after the session.
+6. Review the evidence bundle in the order below.
+7. Classify the shakedown and capture the exposed gaps.
+
+### Preflight
+1. Confirm the active symbol universe is `EURUSD, GBPUSD, USDJPY, USDCHF, AUDUSD, USDCAD`.
+2. Confirm the operator has the Grafana/Prometheus links printed by `make demo-cert-monitor`.
+3. Confirm the expected evidence paths under `data/analysis/backtest_reconcile/` are writable and discoverable.
+4. Confirm the session will be treated as a supervised shakedown, not as already-hardened recurring certification.
 
 ### Session Start
 1. Start the monitor with `make demo-cert-monitor`.
@@ -46,10 +51,11 @@ Provide deterministic daily, weekly, and monthly operating actions for OCO pipel
 ### Post-Session Evidence Review
 1. Inspect `data/analysis/backtest_reconcile/runtime/live_symbol_readiness.json`.
 2. Inspect the per-symbol runtime trace in `data/analysis/backtest_reconcile/{SYMBOL}_jforex_runtime_events.csv`.
-3. Confirm the fixed-path artifacts belong to the same session window by matching `run_id`, `evaluated_at_utc`, and the readiness snapshot timestamp before treating them as the current certification bundle.
-4. Inspect the session summaries in `data/analysis/backtest_reconcile/{SYMBOL}_jforex_signal_parity_summary.csv`, `data/analysis/backtest_reconcile/{SYMBOL}_jforex_execution_parity_summary.csv`, `data/analysis/backtest_reconcile/{SYMBOL}_jforex_execution_lifecycle_summary.csv`, `data/analysis/backtest_reconcile/{SYMBOL}_jforex_operational_ready_summary.csv`, `data/analysis/backtest_reconcile/jforex_outcome_parity_summary.csv`, `data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_summary.csv`, and `data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_checks.csv`.
-5. Inspect `docs/analysis/stage14_jforex_runtime_certification_report.md` and `docs/strategy_bible/generated/stage_14_snapshot.md`.
-6. Classify the run using the Stage 14 outcome definitions below.
+3. Run `make stage14-jforex-cert`.
+4. Inspect the generated session summaries in `data/analysis/backtest_reconcile/`.
+5. Inspect `docs/analysis/stage14_jforex_runtime_certification_report.md`.
+6. Inspect `docs/strategy_bible/generated/stage_14_snapshot.md`.
+7. Classify the run and fill in the shakedown gap-capture table.
 
 ### Session Outcome Definitions
 - `pass`: the required evidence bundle exists and is readable, active symbols in the session-scoped deployable universe satisfy the readiness contract for the session, `predict/action` activity is present and healthy, no hard execution-lifecycle anomalies occurred, and the session outcome can be reconstructed deterministically from the evidence.
@@ -67,6 +73,17 @@ Provide deterministic daily, weekly, and monthly operating actions for OCO pipel
 - An unexpected blocked order is a runtime anomaly and must be treated as evidence of degraded execution behavior.
 - If unexpected blocked orders are isolated and the evidence bundle remains usable, classify the run as `conditional fail`.
 - If unexpected blocked orders indicate broken `predict/action` flow, repeated lifecycle drift, or unresolved execution failure, classify the run as `fail`.
+
+### Shakedown Gap Capture
+Record every exposed gap using this format:
+
+| gap_type | observed_symptom | affected_command_or_artifact | blocked_classification | follow_up_owner |
+| --- | --- | --- | --- | --- |
+| missing_artifact |  |  | yes/no |  |
+| unclear_step |  |  | yes/no |  |
+| validator_or_report_ambiguity |  |  | yes/no |  |
+| runtime_anomaly |  |  | yes/no |  |
+| too_manual |  |  | yes/no |  |
 
 ## Daily Checks
 | trigger | threshold / signal | severity | owner | action | evidence artifact | SLA |
