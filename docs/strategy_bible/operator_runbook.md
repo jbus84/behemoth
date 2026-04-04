@@ -28,10 +28,45 @@ Provide deterministic daily, weekly, and monthly operating actions for OCO pipel
 7. Inspect `data/analysis/backtest_reconcile/runtime/live_symbol_readiness.json`.
 8. Classify the run using the definitions below.
 
-### Certification Outcome Definitions
-- `pass`: all 6 symbols reach `READY`, all 6 ingest live ticks, all 6 demonstrate live predict activity once bars advance, and no symbol remains `STALE_PAUSED` or `ERROR_PAUSED` during the observation window.
-- `conditional fail`: all 6 symbols reach `READY`, but one or more symbols later become stale or show missing or suspect predict-path activity.
-- `fail`: any symbol never reaches `READY`, lands in `ERROR_PAUSED`, remains `STALE_PAUSED`, or fails to demonstrate live predict activity during the certification window.
+### Session Start
+1. Start the monitor with `make demo-cert-monitor`.
+2. Start live paper trading with `make jforex-live`.
+3. Record the session start time and watch for `READY` transitions.
+4. Treat `READY` as the signal that a symbol may open new entries.
+5. Treat `STALE_PAUSED` as a freshness pause and `ERROR_PAUSED` as a startup or bridge failure.
+
+### Live Observation Window
+1. Observe the full session trace for `predict/action` sequencing, barrier scan lifecycle progression, and action submission.
+2. Confirm the freshness SLA stays within `30s` for symbols that remain live.
+3. Confirm `predict/action` activity appears for every active symbol in the session-scoped deployable universe once bars advance.
+4. Distinguish intentional kill-switch blocked actions from unexpected blocked orders.
+5. Treat a blocked action as intentional only when the runtime events and operator intent both show the kill-switch or equivalent pause mechanism was engaged.
+6. Treat unexpected blocked orders as a runtime anomaly, not as a normal control event.
+
+### Post-Session Evidence Review
+1. Inspect `data/analysis/backtest_reconcile/runtime/live_symbol_readiness.json`.
+2. Inspect the per-symbol runtime trace in `data/analysis/backtest_reconcile/{SYMBOL}_jforex_runtime_events.csv`.
+3. Confirm the fixed-path artifacts belong to the same session window by matching `run_id`, `evaluated_at_utc`, and the readiness snapshot timestamp before treating them as the current certification bundle.
+4. Inspect the session summaries in `data/analysis/backtest_reconcile/{SYMBOL}_jforex_signal_parity_summary.csv`, `data/analysis/backtest_reconcile/{SYMBOL}_jforex_execution_parity_summary.csv`, `data/analysis/backtest_reconcile/{SYMBOL}_jforex_execution_lifecycle_summary.csv`, `data/analysis/backtest_reconcile/{SYMBOL}_jforex_operational_ready_summary.csv`, `data/analysis/backtest_reconcile/jforex_outcome_parity_summary.csv`, `data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_summary.csv`, and `data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_checks.csv`.
+5. Inspect `docs/analysis/stage14_jforex_runtime_certification_report.md` and `docs/strategy_bible/generated/stage_14_snapshot.md`.
+6. Classify the run using the Stage 14 outcome definitions below.
+
+### Session Outcome Definitions
+- `pass`: the required evidence bundle exists and is readable, active symbols in the session-scoped deployable universe satisfy the readiness contract for the session, `predict/action` activity is present and healthy, no hard execution-lifecycle anomalies occurred, and the session outcome can be reconstructed deterministically from the evidence.
+- `conditional fail`: the evidence bundle exists and is usable, the session remains diagnostically valuable, and degradations or anomalies require follow-up before the run can count as a clean certified session.
+- `fail`: required evidence is missing, unreadable, or malformed; one or more symbols in the session-scoped deployable universe never reach required operational readiness; the `predict/action` path is broken; hard execution-lifecycle anomalies occur; or unresolved execution failures invalidate trust in the session outcome.
+
+### Escalation Rules
+- Treat any `fail` outcome as an immediate escalation to the research lead and risk owner.
+- Treat hard execution-lifecycle anomalies, unresolved execution failures, or unexpected blocked orders that prevent safe operation as deployment-hold conditions until reviewed.
+- Record the triggering metric or trace row, the chosen operator action, and the remediation owner in the incident record.
+
+### Kill-Switch and Blocked-Order Handling
+- An intentional kill-switch blocked action is an expected control outcome when it is documented in the runtime events and aligns with the operator's session intent.
+- An intentional kill-switch blocked action does not by itself create a `fail` outcome.
+- An unexpected blocked order is a runtime anomaly and must be treated as evidence of degraded execution behavior.
+- If unexpected blocked orders are isolated and the evidence bundle remains usable, classify the run as `conditional fail`.
+- If unexpected blocked orders indicate broken `predict/action` flow, repeated lifecycle drift, or unresolved execution failure, classify the run as `fail`.
 
 ## Daily Checks
 | trigger | threshold / signal | severity | owner | action | evidence artifact | SLA |
