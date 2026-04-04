@@ -1,5 +1,18 @@
 # Baseline Branch Contract And Recovery Design
 
+## Baseline Contract
+
+- target branch: `main`
+- target commit: `a939ec5`
+- authoritative semantics:
+  - repo workflow requires explicit target branch/commit for specs, plans, and execution
+  - recurring Stage 14 demo-certification recovery must re-root onto `feat/bar-level-barrier-manager`
+  - branch-semantic drift at final verification is a hard stop
+- required compatibility checks:
+  - confirm `AGENTS.md` states the branch-truth guardrail explicitly
+  - confirm this spec and its implementation plan both carry a baseline contract block
+  - confirm recovery work executes from a worktree based on `feat/bar-level-barrier-manager`
+
 ## Scope
 
 Define a permanent workflow guardrail that prevents specs, plans, and implementation work from drifting away from the branch whose semantics they are supposed to describe.
