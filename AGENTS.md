@@ -18,6 +18,12 @@ Execution runtime direction:
 - Dukascopy JForex is the active broker-adapter target.
 - CTrader/cBot and FTMO paths are legacy compatibility surfaces pending removal after Stage 14 is green.
 
+Branch truth:
+
+- Specs, plans, and execution notes must name the target branch and target commit.
+- If a required semantic is not on `main`, move the work to the authoritative feature branch.
+- branch-semantic drift at final verification is a hard stop, not a docs patching opportunity.
+
 ## 2) Active Symbol Universe
 
 - `EURUSD`
