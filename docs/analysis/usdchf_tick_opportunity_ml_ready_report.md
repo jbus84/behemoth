@@ -14,8 +14,8 @@
 ## Summary
 | library     |    rows |   candidates |   train_rows |   test_rows |   mean_target_gross_pips |   target_pos_rate |
 |:------------|--------:|-------------:|-------------:|------------:|-------------------------:|------------------:|
-| directional | 4688767 |          120 |      2400000 |     2288767 |                0.0639806 |          0.502411 |
-| oco         | 4740359 |          120 |      2400000 |     2340359 |                1.04142   |          0.522447 |
+| directional | 4696747 |          120 |      2400000 |     2296747 |                0.0618209 |          0.502058 |
+| oco         | 4588009 |          120 |      2400000 |     2188009 |                1.23925   |          0.53982  |
 
 ## Directional Sample
 | split   |   bar_ticks |   horizon | family      | state_id         | quality_tier   |   target_gross_pips |   target_gross_pos |

@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 08
 
-- generated_at: `2026-03-30 10:10:58 UTC`
+- generated_at: `2026-04-03 12:49:19 UTC`
 - Robustness summary uses bootstrap lower bounds from the configured smoke/full run artifacts.
 - Interpretation: LB95 > 0 indicates conservative positive expectancy under sampled uncertainty.
 - Overfit panel adds month-stratified null uplift and dependence-aware LB95 comparisons.
@@ -9,12 +9,12 @@
 #### Key Results
 | symbol   |   quantile |   rows |   months |   mean_gross_pips |   lb95_trade_mean_gross_pips |   positive_months |
 |:---------|-----------:|-------:|---------:|------------------:|-----------------------------:|------------------:|
-| EURUSD   |        0.9 |   4267 |       10 |           2.55697 |                      2.42312 |                10 |
-| GBPUSD   |        0.9 |   9776 |       11 |           2.66908 |                      2.58253 |                11 |
-| AUDUSD   |        0.9 |   6102 |       10 |           1.60241 |                      1.51152 |                10 |
-| USDJPY   |        0.9 |  10002 |       11 |           3.89593 |                      3.79905 |                11 |
-| USDCHF   |        0.9 |   6782 |       11 |           1.83285 |                      1.748   |                11 |
-| USDCAD   |        0.9 |   7942 |       11 |           2.04433 |                      1.95503 |                11 |
+| EURUSD   |        0.9 |   6771 |       11 |           2.41681 |                      2.31991 |                11 |
+| GBPUSD   |        0.9 |  13737 |       11 |           2.70327 |                      2.63023 |                11 |
+| AUDUSD   |        0.9 |   8867 |       11 |           1.64042 |                      1.56594 |                11 |
+| USDJPY   |        0.9 |  17066 |       11 |           3.65559 |                      3.58099 |                11 |
+| USDCHF   |        0.9 |   8287 |       11 |           2.31187 |                      2.21857 |                11 |
+| USDCAD   |        0.9 |   6905 |       11 |           1.75629 |                      1.66355 |                11 |
 
 #### Interpretation Notes
 - Robustness summary uses bootstrap lower bounds from the configured smoke/full run artifacts.
@@ -40,12 +40,12 @@
 #### Details
 | symbol   |   pvalue_month_mean_gt0 |   pvalue_bonferroni |   pvalue_fdr_bh |   t01_stress_elasticity |   t02_first_negative_costplus |   t04_max_survivable_cost_lb95_trade |   t03_post_worst_month_recovery |   lb95_trade_mean_net_pips_costplus_0.10 |   lb95_trade_mean_net_pips_costplus_0.20 |   lb95_trade_mean_net_pips_costplus_0.30 |   lb95_trade_mean_net_pips_costplus_0.50 |
 |:---------|------------------------:|--------------------:|----------------:|------------------------:|------------------------------:|-------------------------------------:|--------------------------------:|-----------------------------------------:|-----------------------------------------:|-----------------------------------------:|-----------------------------------------:|
-| EURUSD   |             1.62204e-13 |         9.73222e-13 |     2.30749e-13 |                      -1 |                          2    |                              2       |                         2.97078 |                                  2.33169 |                                  2.23077 |                                  2.12758 |                                  1.92353 |
-| GBPUSD   |             0           |         0           |     0           |                      -1 |                          2    |                              2       |                         0.51401 |                                  2.48606 |                                  2.38786 |                                  2.28805 |                                  2.08465 |
-| AUDUSD   |             6.95666e-13 |         4.17399e-12 |     1.39133e-12 |                      -1 |                          1.75 |                              1.51241 |                         1.53875 |                                  1.41331 |                                  1.31332 |                                  1.20679 |                                  1.01151 |
-| USDJPY   |             0           |         0           |     0           |                      -1 |                          2    |                              2       |                         1.35218 |                                  3.7027  |                                  3.5985  |                                  3.49429 |                                  3.30007 |
-| USDCHF   |             2.03171e-14 |         1.21902e-13 |     6.09512e-14 |                      -1 |                          2    |                              1.74068 |                         1.74994 |                                  1.6445  |                                  1.53811 |                                  1.44225 |                                  1.24097 |
-| USDCAD   |             1.02516e-11 |         6.15095e-11 |     1.23019e-11 |                      -1 |                          2    |                              1.9572  |                         1.3123  |                                  1.85645 |                                  1.75757 |                                  1.65324 |                                  1.45234 |
+| EURUSD   |             1.11022e-16 |         6.66134e-16 |     1.66533e-16 |                      -1 |                          2    |                              2       |                         1.16067 |                                  2.21662 |                                  2.11159 |                                  2.01666 |                                  1.81668 |
+| GBPUSD   |             0           |         0           |     0           |                      -1 |                          2    |                              2       |                         1.26364 |                                  2.53224 |                                  2.43298 |                                  2.32649 |                                  2.13224 |
+| AUDUSD   |             4.41092e-12 |         2.64655e-11 |     5.2931e-12  |                      -1 |                          1.75 |                              1.56404 |                         3.21804 |                                  1.46337 |                                  1.3619  |                                  1.263   |                                  1.06448 |
+| USDJPY   |             0           |         0           |     0           |                      -1 |                          2    |                              2       |                         1.30391 |                                  3.48385 |                                  3.37869 |                                  3.28286 |                                  3.08388 |
+| USDCHF   |             1.97176e-12 |         1.18305e-11 |     3.94351e-12 |                      -1 |                          2    |                              2       |                         1.85057 |                                  2.12269 |                                  2.02059 |                                  1.92036 |                                  1.71939 |
+| USDCAD   |             0           |         0           |     0           |                      -1 |                          2    |                              1.6664  |                         1.72207 |                                  1.57259 |                                  1.46583 |                                  1.36772 |                                  1.16719 |
 
 #### Plots
 ![stage_08_robustness_lb95](../../figures/oco_bible/stage_08_robustness_lb95.png)

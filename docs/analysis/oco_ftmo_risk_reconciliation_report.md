@@ -1,6 +1,6 @@
 # Account Risk Reservation Reconciliation Report
 
-- generated_at_utc: `2026-03-30T10:10:56Z`
+- generated_at_utc: `2026-04-03T12:49:16Z`
 - runtime_db_path: `data/db/behemoth_runtime.db`
 - event_lookback_days: `30`
 - stale_pending_hours: `6.0`

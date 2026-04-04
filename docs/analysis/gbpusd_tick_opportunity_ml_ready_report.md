@@ -14,8 +14,8 @@
 ## Summary
 | library     |    rows |   candidates |   train_rows |   test_rows |   mean_target_gross_pips |   target_pos_rate |
 |:------------|--------:|-------------:|-------------:|------------:|-------------------------:|------------------:|
-| directional | 4343325 |          120 |      2400000 |     1943325 |                0.0711588 |          0.502013 |
-| oco         | 4800000 |          120 |      2400000 |     2400000 |                1.369     |          0.573344 |
+| directional | 4372693 |          120 |      2400000 |     1972693 |                0.0693453 |          0.501397 |
+| oco         | 4800000 |          120 |      2400000 |     2400000 |                1.37803   |          0.575091 |
 
 ## Directional Sample
 | split   |   bar_ticks |   horizon | family       | state_id                       | quality_tier   |   target_gross_pips |   target_gross_pos |
@@ -63,4 +63,4 @@
 | test    |        1000 |         3 | oco_first_touch_clean | oco_first_touch_clean__all__k8  | A              |               110.1 |                  1 |
 | test    |        1000 |         3 | oco_first_touch_clean | oco_first_touch_clean__all__k8  | A              |               109.9 |                  1 |
 | test    |        1000 |         3 | oco_first_touch_clean | oco_first_touch_clean__all__k8  | A              |              -107.6 |                  0 |
-| test    |         100 |         6 | oco_first_touch_clean | oco_first_touch_clean__all__k2  | A              |               105.2 |                  1 |
+| test    |        1000 |         2 | oco_first_touch_clean | oco_first_touch_clean__all__k3  | A              |               104.7 |                  1 |
