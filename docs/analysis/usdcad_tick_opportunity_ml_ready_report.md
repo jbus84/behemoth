@@ -14,32 +14,32 @@
 ## Summary
 | library     |    rows |   candidates |   train_rows |   test_rows |   mean_target_gross_pips |   target_pos_rate |
 |:------------|--------:|-------------:|-------------:|------------:|-------------------------:|------------------:|
-| directional | 4411310 |          120 |      2400000 |     2011310 |                0.0892027 |          0.503369 |
-| oco         | 4703102 |          120 |      2400000 |     2303102 |                1.01416   |          0.529796 |
+| directional | 4568445 |          120 |      2400000 |     2168445 |                0.0816457 |          0.50224  |
+| oco         | 4577776 |          120 |      2400000 |     2177776 |                1.32472   |          0.546294 |
 
 ## Directional Sample
-| split   |   bar_ticks |   horizon | family               | state_id                             | quality_tier   |   target_gross_pips |   target_gross_pos |
-|:--------|------------:|----------:|:---------------------|:-------------------------------------|:---------------|--------------------:|-------------------:|
-| test    |         100 |         6 | shock_extreme_revert | shock_extreme_revert__high_range_q80 | B              |               215.1 |                  1 |
-| test    |         100 |         6 | path_persist_24      | path_persist_24__high_abs_vel_q70    | B              |              -215.1 |                  0 |
-| test    |         100 |         6 | path_persist_24      | path_persist_24__high_range_q70      | B              |              -215.1 |                  0 |
-| test    |         100 |         6 | path_persist_24      | path_persist_24__high_abs_vel_q80    | B              |              -215.1 |                  0 |
-| test    |         100 |         6 | path_persist_24      | path_persist_24__high_range_q80      | B              |              -215.1 |                  0 |
-| test    |         100 |         5 | shock_extreme_revert | shock_extreme_revert__high_range_q80 | B              |               214.1 |                  1 |
-| test    |         100 |         5 | path_persist_24      | path_persist_24__high_abs_vel_q70    | B              |              -214.1 |                  0 |
-| test    |         100 |         5 | path_persist_24      | path_persist_24__high_range_q70      | B              |              -214.1 |                  0 |
-| test    |         100 |         5 | path_persist_24      | path_persist_24__high_abs_vel_q80    | B              |              -214.1 |                  0 |
-| test    |         100 |         5 | path_persist_24      | path_persist_24__high_range_q80      | B              |              -214.1 |                  0 |
-| test    |        1000 |         4 | path_follow          | path_follow__all                     | B              |               213.6 |                  1 |
-| test    |        1000 |         4 | path_follow          | path_follow__high_abs_vel_q70        | B              |               213.6 |                  1 |
-| test    |        1000 |         5 | path_follow          | path_follow__all                     | B              |               207.4 |                  1 |
-| test    |        1000 |         5 | path_follow          | path_follow__high_abs_vel_q70        | B              |               207.4 |                  1 |
-| test    |         100 |         4 | path_persist_24      | path_persist_24__high_range_q70      | B              |              -204.6 |                  0 |
-| test    |         100 |         4 | path_persist_24      | path_persist_24__high_range_q80      | B              |              -204.6 |                  0 |
-| test    |        1000 |         3 | path_follow          | path_follow__all                     | B              |              -201.7 |                  0 |
-| test    |        1000 |         3 | path_follow          | path_follow__high_abs_vel_q70        | B              |              -201.7 |                  0 |
-| test    |        1000 |         3 | path_follow          | path_follow__all                     | B              |               200.7 |                  1 |
-| test    |        1000 |         3 | path_follow          | path_follow__high_abs_vel_q70        | B              |               200.7 |                  1 |
+| split   |   bar_ticks |   horizon | family       | state_id                      | quality_tier   |   target_gross_pips |   target_gross_pos |
+|:--------|------------:|----------:|:-------------|:------------------------------|:---------------|--------------------:|-------------------:|
+| test    |        1000 |         4 | path_follow  | path_follow__all              | B              |               213.6 |                  1 |
+| test    |        1000 |         4 | path_follow  | path_follow__high_abs_vel_q70 | B              |               213.6 |                  1 |
+| test    |        1000 |         5 | path_follow  | path_follow__all              | B              |               207.4 |                  1 |
+| test    |        1000 |         5 | path_follow  | path_follow__high_abs_vel_q70 | B              |               207.4 |                  1 |
+| test    |        1000 |         3 | path_follow  | path_follow__all              | B              |              -201.7 |                  0 |
+| test    |        1000 |         3 | path_follow  | path_follow__high_abs_vel_q70 | B              |              -201.7 |                  0 |
+| test    |        1000 |         3 | path_follow  | path_follow__all              | B              |               200.7 |                  1 |
+| test    |        1000 |         3 | path_follow  | path_follow__high_abs_vel_q70 | B              |               200.7 |                  1 |
+| test    |        1000 |         4 | path_follow  | path_follow__all              | B              |              -195.5 |                  0 |
+| test    |        1000 |         4 | path_follow  | path_follow__high_abs_vel_q70 | B              |              -195.5 |                  0 |
+| test    |        1000 |         5 | path_follow  | path_follow__all              | B              |              -188.9 |                  0 |
+| test    |        1000 |         5 | shock_revert | shock_revert__all             | B              |              -188.9 |                  0 |
+| test    |        1000 |         5 | path_follow  | path_follow__high_abs_vel_q70 | B              |              -188.9 |                  0 |
+| test    |        1000 |         2 | path_follow  | path_follow__all              | B              |              -188.8 |                  0 |
+| test    |        1000 |         2 | path_follow  | path_follow__high_abs_vel_q70 | B              |              -188.8 |                  0 |
+| test    |        1000 |         6 | path_follow  | path_follow__all              | B              |               183.7 |                  1 |
+| test    |        1000 |         6 | path_follow  | path_follow__high_abs_vel_q70 | B              |               183.7 |                  1 |
+| test    |        1000 |         6 | path_follow  | path_follow__all              | B              |              -182.6 |                  0 |
+| test    |        1000 |         6 | path_follow  | path_follow__high_abs_vel_q70 | B              |              -182.6 |                  0 |
+| test    |        1000 |         4 | path_follow  | path_follow__all              | B              |              -181.3 |                  0 |
 
 ## OCO Sample
 | split   |   bar_ticks |   horizon | family                | state_id                        | quality_tier   |   target_gross_pips |   target_gross_pos |
