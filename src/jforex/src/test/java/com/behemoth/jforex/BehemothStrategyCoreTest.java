@@ -23,9 +23,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.jupiter.api.Test;
 
 class BehemothStrategyCoreTest {
@@ -367,6 +369,347 @@ class BehemothStrategyCoreTest {
     }
 
     @Test
+    void doesNotSubmitMarketOrderWhenDemoExecutionIsDisabled() throws Exception {
+        try (MockWebServer server = new MockWebServer()) {
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"as_of_utc":"2025-07-07T00:00:00Z","governance_mode":"historical_auto","record_raw_ticks":false,"symbols":[]}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"ok":true,"symbol":"EURUSD","ticks_received":1,"accepted_count":1,"dropped_count":0,"bar_completed":true,"completed_bar_ticks":[100],"symbol_tick_seq":1,"last_tick_ts_utc":"2025-07-07T00:00:00Z","last_client_tick_seq":1,"bar_count":289}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {
+                              "predictions": [{
+                                "symbol":"EURUSD",
+                                "close_ts":"2025-07-07T00:00:00Z",
+                                "candidate_uid":"oco|EURUSD|100|h6|cand1",
+                                "pred_prob":0.78,
+                                "threshold_exec":0.61,
+                                "selected_exec":1,
+                                "bar_ticks":100,
+                                "horizon":6,
+                                "barrier_pips":2.0,
+                                "cap_pips":1.2,
+                                "risk_blocked":false,
+                                "risk_reservation_id":"rid-1"
+                              }],
+                              "actions": [{
+                                "type":"OPEN_MARKET",
+                                "symbol":"EURUSD",
+                                "candidate_uid":"oco|EURUSD|100|h6|cand1",
+                                "scan_id":"scan-001",
+                                "side":"BUY",
+                                "reservation_id":"rid-1",
+                                "broker_pos_id":null,
+                                "blocked":false,
+                                "block_reason":null
+                              }]
+                            }
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"status":"ok","scan_id":"scan-001","marked_failed":true,"scan_status":"FAILED","terminal_reason":"demo_execution_disabled"}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+
+            Path tempDir = Files.createTempDirectory("behemoth-demo-disabled-test");
+            JForexSessionConfig sessionConfig = new JForexSessionConfig(
+                    server.url("/").uri(), URI.create("http://example.test/jnlp"),
+                    "user", "pass", "", List.of("EURUSD"),
+                    Instant.parse("2025-07-07T00:00:00Z"), Instant.parse("2025-07-09T00:00:00Z"),
+                    tempDir, "run-1",
+                    false, 10_000.0, 1, 900L, false, 60, false, "", 0,
+                    false,
+                    true, 30_000, 31, 60, 30, 20
+            );
+            PythonPredictionClient client = new PythonPredictionClient(
+                    HttpClient.newHttpClient(), server.url("/").uri(),
+                    Duration.ofSeconds(5), Duration.ofSeconds(5));
+            ExecutionStateStore stateStore = new ExecutionStateStore(
+                    tempDir.resolve("state.json"), client.objectMapper());
+            RecordingExecutionPort port = new RecordingExecutionPort();
+            BehemothStrategyCore core = new BehemothStrategyCore(
+                    sessionConfig, client, stateStore,
+                    new Stage14ArtifactWriter(tempDir, "test"),
+                    JForexMetrics.start(sessionConfig), port);
+
+            core.start(List.of(new RuntimeInstrument("EURUSD", 0.0001)));
+            core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:00:00Z"), 1.1000, 1.1002));
+            core.stop();
+
+            assertThat(port.marketOrders).isEmpty();
+            assertThat(server.getRequestCount()).isEqualTo(4);
+            assertThat(server.takeRequest(1, TimeUnit.SECONDS).getPath()).isEqualTo("/runtime/feed/status");
+            assertThat(server.takeRequest(1, TimeUnit.SECONDS).getPath()).isEqualTo("/ticks/batch");
+            assertThat(server.takeRequest(1, TimeUnit.SECONDS).getPath()).isEqualTo("/predict");
+            assertThat(server.takeRequest(1, TimeUnit.SECONDS).getPath()).isEqualTo("/barrier/failure");
+            assertThat(Files.readString(tempDir.resolve("EURUSD_test_runtime_events.csv")))
+                    .contains("predict_cycle")
+                    .contains("prediction_count=1;selected_count=1;executable_selected_count=0;blocked_count=1")
+                    .contains("blocked_count=1")
+                    .contains("blocked_reasons=demo_execution_disabled");
+            assertThat(Files.readString(tempDir.resolve("EURUSD_test_runtime_events.csv")))
+                    .contains("market_order_blocked")
+                    .contains("demo_execution_disabled");
+        }
+    }
+
+    @Test
+    void blockedBarrierActionsFromPythonAreNotExecuted() throws Exception {
+        try (MockWebServer server = new MockWebServer()) {
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"as_of_utc":"2025-07-07T00:00:00Z","governance_mode":"historical_auto","record_raw_ticks":false,"symbols":[]}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"ok":true,"symbol":"EURUSD","ticks_received":1,"accepted_count":1,"dropped_count":0,"bar_completed":true,"completed_bar_ticks":[100],"symbol_tick_seq":1,"last_tick_ts_utc":"2025-07-07T00:00:00Z","last_client_tick_seq":1,"bar_count":289}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {
+                              "predictions": [{
+                                "symbol":"EURUSD",
+                                "close_ts":"2025-07-07T00:00:00Z",
+                                "candidate_uid":"oco|EURUSD|100|h6|cand1",
+                                "pred_prob":0.78,
+                                "threshold_exec":0.61,
+                                "selected_exec":1,
+                                "bar_ticks":100,
+                                "horizon":6,
+                                "barrier_pips":2.0,
+                                "cap_pips":1.2,
+                                "risk_blocked":false,
+                                "risk_reservation_id":"rid-2"
+                              }],
+                              "actions": [{
+                                "type":"OPEN_MARKET",
+                                "symbol":"EURUSD",
+                                "candidate_uid":"oco|EURUSD|100|h6|cand1",
+                                "scan_id":"scan-002",
+                                "side":"BUY",
+                                "reservation_id":"rid-2",
+                                "broker_pos_id":null,
+                                "blocked":true,
+                                "block_reason":"python_barrier_action_kill_switch_enabled"
+                              }]
+                            }
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"status":"ok","scan_id":"scan-002","marked_failed":true,"scan_status":"FAILED","terminal_reason":"python_barrier_action_kill_switch_enabled"}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+
+            Path tempDir = Files.createTempDirectory("behemoth-python-blocked-test");
+            JForexSessionConfig sessionConfig = new JForexSessionConfig(
+                    server.url("/").uri(), URI.create("http://example.test/jnlp"),
+                    "user", "pass", "", List.of("EURUSD"),
+                    Instant.parse("2025-07-07T00:00:00Z"), Instant.parse("2025-07-09T00:00:00Z"),
+                    tempDir, "run-1",
+                    false, 10_000.0, 1, 900L, false, 60, false, "", 0,
+                    true,
+                    true, 30_000, 31, 60, 30, 20
+            );
+            PythonPredictionClient client = new PythonPredictionClient(
+                    HttpClient.newHttpClient(), server.url("/").uri(),
+                    Duration.ofSeconds(5), Duration.ofSeconds(5));
+            ExecutionStateStore stateStore = new ExecutionStateStore(
+                    tempDir.resolve("state.json"), client.objectMapper());
+            RecordingExecutionPort port = new RecordingExecutionPort();
+            BehemothStrategyCore core = new BehemothStrategyCore(
+                    sessionConfig, client, stateStore,
+                    new Stage14ArtifactWriter(tempDir, "test"),
+                    JForexMetrics.start(sessionConfig), port);
+
+            core.start(List.of(new RuntimeInstrument("EURUSD", 0.0001)));
+            core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:00:00Z"), 1.1000, 1.1002));
+            core.stop();
+
+            assertThat(port.marketOrders).isEmpty();
+            assertThat(server.getRequestCount()).isEqualTo(4);
+            assertThat(server.takeRequest(1, TimeUnit.SECONDS).getPath()).isEqualTo("/runtime/feed/status");
+            assertThat(server.takeRequest(1, TimeUnit.SECONDS).getPath()).isEqualTo("/ticks/batch");
+            assertThat(server.takeRequest(1, TimeUnit.SECONDS).getPath()).isEqualTo("/predict");
+            assertThat(server.takeRequest(1, TimeUnit.SECONDS).getPath()).isEqualTo("/barrier/failure");
+            assertThat(Files.readString(tempDir.resolve("EURUSD_test_runtime_events.csv")))
+                    .contains("predict_cycle")
+                    .contains("prediction_count=1;selected_count=1;executable_selected_count=0;blocked_count=1")
+                    .contains("blocked_count=1")
+                    .contains("blocked_reasons=python_barrier_action_kill_switch_enabled");
+            assertThat(Files.readString(tempDir.resolve("EURUSD_test_runtime_events.csv")))
+                    .contains("market_order_blocked")
+                    .contains("python_barrier_action_kill_switch_enabled");
+        }
+    }
+
+    @Test
+    void closeActionWithUnknownBrokerPositionIsRecordedAsLifecycleRelevantAnomaly() throws Exception {
+        try (MockWebServer server = new MockWebServer()) {
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"as_of_utc":"2025-07-07T00:00:00Z","governance_mode":"historical_auto","record_raw_ticks":false,"symbols":[]}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"ok":true,"symbol":"EURUSD","ticks_received":1,"accepted_count":1,"dropped_count":0,"bar_completed":true,"completed_bar_ticks":[100],"symbol_tick_seq":1,"last_tick_ts_utc":"2025-07-07T00:00:00Z","last_client_tick_seq":1,"bar_count":289}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {
+                              "predictions": [],
+                              "actions": [{
+                                "type":"CLOSE_MARKET",
+                                "symbol":"EURUSD",
+                                "candidate_uid":"oco|EURUSD|100|h6|cand1",
+                                "scan_id":"scan-003",
+                                "side":"BUY",
+                                "reservation_id":"rid-3",
+                                "broker_pos_id":"unknown-broker-pos"
+                              }]
+                            }
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+
+            Path tempDir = Files.createTempDirectory("behemoth-close-anomaly-test");
+            JForexSessionConfig sessionConfig = new JForexSessionConfig(
+                    server.url("/").uri(), URI.create("http://example.test/jnlp"),
+                    "user", "pass", "", List.of("EURUSD"),
+                    Instant.parse("2025-07-07T00:00:00Z"), Instant.parse("2025-07-09T00:00:00Z"),
+                    tempDir, "run-1",
+                    false, 10_000.0, 1, 900L, false, 60, false, "", 0,
+                    true,
+                    true, 30_000, 31, 60, 30, 20
+            );
+            PythonPredictionClient client = new PythonPredictionClient(
+                    HttpClient.newHttpClient(), server.url("/").uri(),
+                    Duration.ofSeconds(5), Duration.ofSeconds(5));
+            ExecutionStateStore stateStore = new ExecutionStateStore(
+                    tempDir.resolve("state.json"), client.objectMapper());
+            RecordingExecutionPort port = new RecordingExecutionPort();
+            BehemothStrategyCore core = new BehemothStrategyCore(
+                    sessionConfig, client, stateStore,
+                    new Stage14ArtifactWriter(tempDir, "test"),
+                    JForexMetrics.start(sessionConfig), port);
+
+            core.start(List.of(new RuntimeInstrument("EURUSD", 0.0001)));
+            core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:00:00Z"), 1.1000, 1.1002));
+            core.stop();
+
+            assertThat(port.closePositionCalls).isEmpty();
+            String runtimeEvents = Files.readString(tempDir.resolve("EURUSD_test_runtime_events.csv"));
+            assertThat(runtimeEvents)
+                    .contains("predict_cycle")
+                    .contains("prediction_count=0;selected_count=0;executable_selected_count=0;blocked_count=0");
+            assertThat(runtimeEvents)
+                    .contains("barrier_close_failure")
+                    .contains("unknown-broker-pos");
+            assertThat(Files.readString(tempDir.resolve("EURUSD_test_execution_lifecycle_summary.csv")))
+                    .contains("\"false\"")
+                    .contains("\"1\"");
+        }
+    }
+
+    @Test
+    void asyncSubmitRejectedOpenNotifiesPythonAndClearsPendingAction() throws Exception {
+        try (MockWebServer server = new MockWebServer()) {
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"as_of_utc":"2025-07-07T00:00:00Z","governance_mode":"historical_auto","record_raw_ticks":false,"symbols":[]}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"ok":true,"symbol":"EURUSD","ticks_received":1,"accepted_count":1,"dropped_count":0,"bar_completed":true,"completed_bar_ticks":[100],"symbol_tick_seq":1,"last_tick_ts_utc":"2025-07-07T00:00:00Z","last_client_tick_seq":1,"bar_count":289}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {
+                              "predictions": [],
+                              "actions": [{
+                                "type":"OPEN_MARKET",
+                                "symbol":"EURUSD",
+                                "candidate_uid":"oco|EURUSD|100|h6|cand1",
+                                "scan_id":"scan-async-reject",
+                                "side":"BUY",
+                                "reservation_id":"rid-async",
+                                "broker_pos_id":null,
+                                "blocked":false,
+                                "block_reason":null
+                              }]
+                            }
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"status":"ok","scan_id":"scan-async-reject","marked_failed":true,"scan_status":"FAILED","terminal_reason":"broker_submit_rejected:broker rejected open"}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+
+            Path tempDir = Files.createTempDirectory("behemoth-async-submit-reject");
+            JForexSessionConfig sessionConfig = new JForexSessionConfig(
+                    server.url("/").uri(), URI.create("http://example.test/jnlp"),
+                    "user", "pass", "", List.of("EURUSD"),
+                    Instant.parse("2025-07-07T00:00:00Z"), Instant.parse("2025-07-09T00:00:00Z"),
+                    tempDir, "run-1",
+                    false, 10_000.0, 1, 900L, false, 60, false, "", 0
+            );
+            PythonPredictionClient client = new PythonPredictionClient(
+                    HttpClient.newHttpClient(), server.url("/").uri(),
+                    Duration.ofSeconds(5), Duration.ofSeconds(5));
+            ExecutionStateStore stateStore = new ExecutionStateStore(
+                    tempDir.resolve("state.json"), client.objectMapper());
+            RecordingExecutionPort port = new RecordingExecutionPort();
+            BehemothStrategyCore core = new BehemothStrategyCore(
+                    sessionConfig, client, stateStore,
+                    new Stage14ArtifactWriter(tempDir, "test"),
+                    JForexMetrics.start(sessionConfig), port);
+
+            core.start(List.of(new RuntimeInstrument("EURUSD", 0.0001)));
+            core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:00:00Z"), 1.1000, 1.1002));
+            assertThat(port.marketOrders).hasSize(1);
+
+            core.onOrderEvent(new com.behemoth.jforex.core.OrderEvent(
+                    com.behemoth.jforex.core.OrderEventType.SUBMIT_REJECTED,
+                    "EURUSD",
+                    "BM_scan-async-reject_BUY",
+                    "BROKER-REJECTED",
+                    0.0,
+                    null,
+                    0.0,
+                    null,
+                    null,
+                    "broker rejected open",
+                    null
+            ));
+            core.stop();
+
+            assertThat(pendingActions(core, "EURUSD")).isEmpty();
+            assertThat(server.getRequestCount()).isEqualTo(4);
+            assertThat(server.takeRequest(1, TimeUnit.SECONDS).getPath()).isEqualTo("/runtime/feed/status");
+            assertThat(server.takeRequest(1, TimeUnit.SECONDS).getPath()).isEqualTo("/ticks/batch");
+            assertThat(server.takeRequest(1, TimeUnit.SECONDS).getPath()).isEqualTo("/predict");
+            RecordedRequest failureRequest = server.takeRequest(1, TimeUnit.SECONDS);
+            assertThat(failureRequest.getPath()).isEqualTo("/barrier/failure");
+            assertThat(failureRequest.getBody().readUtf8())
+                    .contains("\"scan_id\":\"scan-async-reject\"")
+                    .contains("\"reason\":\"broker_submit_rejected:broker rejected open\"");
+        }
+    }
+
+    @Test
     void emptyActionsDoesNotSubmitAnyOrders() throws Exception {
         try (MockWebServer server = new MockWebServer()) {
             server.enqueue(new MockResponse()
@@ -562,5 +905,16 @@ class BehemothStrategyCoreTest {
         public void closePosition(String symbol, String label) {
             closePositionCalls.add(label);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, ?> pendingActions(BehemothStrategyCore core, String symbol) throws Exception {
+        java.lang.reflect.Field symbolStatesField = BehemothStrategyCore.class.getDeclaredField("symbolStates");
+        symbolStatesField.setAccessible(true);
+        Map<String, ?> symbolStates = (Map<String, ?>) symbolStatesField.get(core);
+        Object state = symbolStates.get(symbol);
+        java.lang.reflect.Field pendingField = state.getClass().getDeclaredField("pendingActionsByLabel");
+        pendingField.setAccessible(true);
+        return (Map<String, ?>) pendingField.get(state);
     }
 }

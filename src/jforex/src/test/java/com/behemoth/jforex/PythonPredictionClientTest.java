@@ -49,6 +49,34 @@ class PythonPredictionClientTest {
     }
 
     @Test
+    void predictParsesBlockedBarrierActionsFromWrapperResponse() throws Exception {
+        try (MockWebServer server = new MockWebServer()) {
+            server.enqueue(new MockResponse().setBody("""
+                    {"predictions":[],"actions":[{
+                      "type": "OPEN_MARKET",
+                      "symbol": "GBPUSD",
+                      "candidate_uid": "oco|GBPUSD|100|h6|state_a",
+                      "scan_id": "scan-001",
+                      "side": "BUY",
+                      "reservation_id": "rid-1",
+                      "broker_pos_id": null,
+                      "blocked": true,
+                      "block_reason": "python_barrier_action_kill_switch_enabled"
+                    }]}
+                    """).addHeader("Content-Type", "application/json"));
+            PythonPredictionClient client = new PythonPredictionClient(HttpClient.newHttpClient(), server.url("/").uri());
+
+            var response = client.predict(new PredictRequestPayload("GBPUSD", true, 10000.0, List.of(100), "run-1", null));
+
+            assertThat(response.predictions()).isEmpty();
+            assertThat(response.actions()).hasSize(1);
+            assertThat(response.actions().get(0).isOpenMarket()).isTrue();
+            assertThat(response.actions().get(0).blocked()).isTrue();
+            assertThat(response.actions().get(0).blockReason()).isEqualTo("python_barrier_action_kill_switch_enabled");
+        }
+    }
+
+    @Test
     void surfacesStructuredApiErrors() throws Exception {
         try (MockWebServer server = new MockWebServer()) {
             server.enqueue(new MockResponse()

@@ -50,6 +50,7 @@ from src.behemoth.core.schemas import (
     ActiveTrade,
     BarrierAction,
     BarrierActionType,
+    BarrierFailureRequest,
     IncomingTick,
     IncomingTickBar,
     ModelFeatures,
@@ -127,6 +128,100 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+_CREATE_PREDICT_ACTION_AUDIT_SQL = """
+CREATE TABLE IF NOT EXISTS predict_action_audit (
+    event_ts TIMESTAMPTZ NOT NULL,
+    close_ts TIMESTAMPTZ,
+    symbol VARCHAR NOT NULL,
+    candidate_uid VARCHAR,
+    predictions_json VARCHAR NOT NULL,
+    actions_json VARCHAR NOT NULL,
+    kill_switch_enabled BOOLEAN NOT NULL,
+    run_id VARCHAR
+);
+"""
+
+_PREDICT_ACTION_AUDIT_INSERT_SQL = """
+INSERT INTO predict_action_audit (
+    event_ts,
+    close_ts,
+    symbol,
+    candidate_uid,
+    predictions_json,
+    actions_json,
+    kill_switch_enabled,
+    run_id
+) VALUES (
+    CURRENT_TIMESTAMP,
+    ?, ?, ?, ?, ?, ?, ?
+)
+"""
+
+
+def _ensure_predict_action_audit_table() -> None:
+    if _state is None:
+        return
+    _state.connection.execute(_CREATE_PREDICT_ACTION_AUDIT_SQL)
+
+
+def _apply_barrier_action_kill_switch(actions: list[BarrierAction]) -> list[BarrierAction]:
+    if not _config.barrier_actions_kill_switch_enabled:
+        return actions
+    blocked_actions: list[BarrierAction] = []
+    for action in actions:
+        payload = action.model_dump()
+        payload["blocked"] = True
+        payload["block_reason"] = "python_barrier_action_kill_switch_enabled"
+        blocked_actions.append(
+            BarrierAction(**payload)
+        )
+    return blocked_actions
+
+
+def _fail_blocked_open_barrier_actions(actions: list[BarrierAction]) -> None:
+    if _barrier_manager is None or not _config.barrier_actions_kill_switch_enabled:
+        return
+    for action in actions:
+        if action.type != BarrierActionType.OPEN_MARKET or not action.blocked:
+            continue
+        _barrier_manager.mark_open_submission_failed(
+            action.scan_id,
+            action.block_reason or "python_barrier_action_kill_switch_enabled",
+        )
+        if _state is not None and action.reservation_id:
+            _state.release_account_risk_reservation(
+                reservation_id=action.reservation_id,
+                candidate_uid=action.candidate_uid,
+                symbol=action.symbol,
+                reason=action.block_reason or "python_barrier_action_kill_switch_enabled",
+            )
+
+
+def _archive_predict_action_response(
+    *,
+    sym: str,
+    close_ts: datetime,
+    predictions: list[OcoPrediction],
+    actions: list[BarrierAction],
+    run_id: str | None,
+) -> None:
+    if _state is None or not predictions:
+        return
+    _ensure_predict_action_audit_table()
+    _state.connection.execute(
+        _PREDICT_ACTION_AUDIT_INSERT_SQL,
+        [
+            close_ts,
+            sym.upper(),
+            predictions[0].candidate_uid if predictions else None,
+            json.dumps([p.model_dump(mode="json") for p in predictions], separators=(",", ":")),
+            json.dumps([a.model_dump(mode="json") for a in actions], separators=(",", ":")),
+            bool(_config.barrier_actions_kill_switch_enabled),
+            run_id,
+        ],
+    )
 
 # ── Prometheus Metrics ────────────────────────────────────────────────
 METRIC_INFERENCE_LATENCY = Histogram(
@@ -216,6 +311,12 @@ class AppConfig(BaseModel):
     )
     persist_db_path: str | None = Field(
         default_factory=lambda: os.getenv("BEHEMOTH_STATE_DB", "data/db/behemoth_runtime.db")
+    )
+    barrier_actions_kill_switch_enabled: bool = Field(
+        default_factory=lambda: _env_bool(
+            "BEHEMOTH_BARRIER_ACTIONS_KILL_SWITCH",
+            default="false",
+        )
     )
     account_risk_enabled: bool = Field(
         default_factory=lambda: _env_bool(
@@ -454,6 +555,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
             vol_window=_config.vol_window,
             cost_window=_config.cost_window,
         )
+    _ensure_predict_action_audit_table()
     _barrier_manager = BarrierManager(con=_state.connection)
     _feed_state = {}
     try:
@@ -2478,6 +2580,15 @@ async def predict(req: PredictRequest) -> PredictResponse:
                 run_id=run_id,
             )
 
+    barrier_actions = _apply_barrier_action_kill_switch(barrier_actions)
+    _fail_blocked_open_barrier_actions(barrier_actions)
+    _archive_predict_action_response(
+        sym=sym,
+        close_ts=close_ts,
+        predictions=results,
+        actions=barrier_actions,
+        run_id=run_id,
+    )
     _trace_predict_response(
         req=req,
         sym=sym,
@@ -3055,6 +3166,56 @@ async def open_trade(req: TradeOpenRequest):
         phase="response",
         run_id=run_id,
         symbol=req.symbol,
+        request_payload=req,
+        response_payload=out,
+        status_code=200,
+    )
+    return out
+
+
+@app.post("/barrier/failure")
+async def barrier_failure(req: BarrierFailureRequest):
+    """Mark a barrier open submission as failed in the barrier manager."""
+    if _barrier_manager is None:
+        raise HTTPException(status_code=503, detail="Barrier manager not initialized")
+    run_id = _effective_run_id(req.run_id)
+    _append_http_trace(
+        endpoint="/barrier/failure",
+        phase="request",
+        run_id=run_id,
+        symbol=None,
+        request_payload=req,
+    )
+
+    before = _barrier_manager.get_scan(req.scan_id)
+    if before is None:
+        raise HTTPException(status_code=404, detail=f"Barrier scan not found: {req.scan_id}")
+    _barrier_manager.mark_open_submission_failed(req.scan_id, req.reason)
+    if _state is not None:
+        _state.release_account_risk_reservation(
+            reservation_id=before.get("reservation_id"),
+            broker_pos_id=before.get("broker_pos_id"),
+            candidate_uid=before.get("candidate_uid"),
+            symbol=before.get("symbol"),
+            reason=f"barrier_failure:{req.reason}",
+        )
+    after = _barrier_manager.get_scan(req.scan_id) or before
+    marked_failed = (
+        str(after.get("status", "")).upper() == "FAILED"
+        and str(after.get("terminal_reason", "")) == req.reason
+    )
+    out = {
+        "status": "ok",
+        "scan_id": req.scan_id,
+        "marked_failed": marked_failed,
+        "scan_status": after.get("status"),
+        "terminal_reason": after.get("terminal_reason"),
+    }
+    _append_http_trace(
+        endpoint="/barrier/failure",
+        phase="response",
+        run_id=run_id,
+        symbol=after.get("symbol"),
         request_payload=req,
         response_payload=out,
         status_code=200,

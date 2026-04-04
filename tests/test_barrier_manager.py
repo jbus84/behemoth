@@ -1,6 +1,9 @@
 """Tests for BarrierManager barrier detection parity with _oco_precompute."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
+import duckdb
 import numpy as np
 import pandas as pd
 import pytest
@@ -133,7 +136,163 @@ class TestEvaluateBar:
         assert len(actions) == 0
         scan = mgr.get_scan(scan_id)
         assert scan["status"] == "EXPIRED"
+        assert scan["terminal_reason"] == "NO_TOUCH_WITHIN_HORIZON"
+        events = mgr.list_scan_events(scan_id)
+        assert [event["event_type"] for event in events][-1] == "SCAN_EXPIRED"
         assert not mgr.has_active_scan("GBPUSD", "oco|GBPUSD|100|h6|abc")
+
+    def test_expired_scan_records_terminal_reason_and_event_row(self):
+        mgr = BarrierManager()
+        scan_id = mgr.register_scan(
+            symbol="EURUSD",
+            candidate_uid="oco|EURUSD|100|h2|cand1",
+            signal_bar_idx=10,
+            ref_price=1.1000,
+            barrier_pips=2.0,
+            horizon=2,
+            pip_size=0.0001,
+            pred_prob=0.77,
+            threshold=0.61,
+            model_month="2026-03",
+            reservation_id=None,
+            run_id="run-demo",
+        )
+
+        mgr.evaluate_bar("EURUSD", 100, 1.1001, 1.0999, 1.0, 11)
+        mgr.evaluate_bar("EURUSD", 100, 1.1001, 1.0999, 1.0, 12)
+
+        scan = mgr.get_scan(scan_id)
+        assert scan["status"] == "EXPIRED"
+        assert scan["terminal_reason"] == "NO_TOUCH_WITHIN_HORIZON"
+
+        events = mgr.list_scan_events(scan_id)
+        assert events[-1]["event_type"] == "SCAN_EXPIRED"
+
+    def test_open_submission_failure_marks_scan_non_recoverable(self):
+        mgr = BarrierManager()
+        scan_id = mgr.register_scan(
+            symbol="EURUSD",
+            candidate_uid="oco|EURUSD|100|h2|cand2",
+            signal_bar_idx=20,
+            ref_price=1.2000,
+            barrier_pips=2.0,
+            horizon=2,
+            pip_size=0.0001,
+            pred_prob=0.88,
+            threshold=0.63,
+            model_month="2026-03",
+            reservation_id="res-1",
+            run_id="run-demo",
+        )
+
+        mgr.evaluate_bar("EURUSD", 100, 1.2003, 1.1999, 1.0, 21)
+        mgr.mark_open_submission_failed(scan_id, "BROKER_REJECTED")
+
+        scan = mgr.get_scan(scan_id)
+        assert scan["status"] == "FAILED"
+        assert scan["terminal_reason"] == "BROKER_REJECTED"
+        events = mgr.list_scan_events(scan_id)
+        assert events[-1]["event_type"] == "OPEN_SUBMISSION_FAILED"
+
+    def test_open_submission_failure_does_not_override_terminal_scan(self):
+        mgr = BarrierManager()
+        scan_id = mgr.register_scan(
+            symbol="EURUSD",
+            candidate_uid="oco|EURUSD|100|h2|cand3",
+            signal_bar_idx=30,
+            ref_price=1.3000,
+            barrier_pips=2.0,
+            horizon=2,
+            pip_size=0.0001,
+            pred_prob=0.91,
+            threshold=0.64,
+            model_month="2026-03",
+            reservation_id="res-2",
+            run_id="run-demo",
+        )
+
+        mgr.evaluate_bar("EURUSD", 100, 1.3001, 1.2999, 1.0, 31)
+        mgr.evaluate_bar("EURUSD", 100, 1.3001, 1.2999, 1.0, 32)
+
+        before_events = mgr.list_scan_events(scan_id)
+        mgr.mark_open_submission_failed(scan_id, "BROKER_REJECTED")
+
+        scan = mgr.get_scan(scan_id)
+        assert scan["status"] == "EXPIRED"
+        assert scan["terminal_reason"] == "NO_TOUCH_WITHIN_HORIZON"
+        assert mgr.list_scan_events(scan_id) == before_events
+
+    def test_list_scan_events_returns_deterministic_sequence(self):
+        mgr = BarrierManager()
+        scan_id = mgr.register_scan(
+            symbol="EURUSD",
+            candidate_uid="oco|EURUSD|100|h2|cand4",
+            signal_bar_idx=40,
+            ref_price=1.4000,
+            barrier_pips=2.0,
+            horizon=3,
+            pip_size=0.0001,
+            pred_prob=0.93,
+            threshold=0.65,
+            model_month="2026-03",
+            reservation_id="res-3",
+            run_id="run-demo",
+        )
+
+        mgr.evaluate_bar("EURUSD", 100, 1.4003, 1.3999, 1.0, 41)
+        events = mgr.list_scan_events(scan_id)
+
+        assert [event["event_seq"] for event in events] == [1, 2, 3]
+        assert [event["event_type"] for event in events] == [
+            "SCAN_REGISTERED",
+            "SCAN_TOUCH_DETECTED",
+            "SCAN_TRANSITIONED_TO_HOLDING",
+        ]
+
+    def test_legacy_event_rows_are_backfilled_before_new_inserts(self):
+        con = duckdb.connect()
+        con.execute("CREATE TABLE barrier_scans (scan_id VARCHAR PRIMARY KEY)")
+        con.execute(
+            """
+            CREATE TABLE barrier_scan_events (
+                event_ts TIMESTAMPTZ NOT NULL,
+                scan_id VARCHAR NOT NULL,
+                symbol VARCHAR NOT NULL,
+                candidate_uid VARCHAR NOT NULL,
+                event_type VARCHAR NOT NULL,
+                detail VARCHAR,
+                run_id VARCHAR
+            )
+            """
+        )
+        legacy_ts = datetime(2026, 3, 1, 12, 0, tzinfo=timezone.utc)
+        con.execute(
+            """
+            INSERT INTO barrier_scan_events (
+                event_ts, scan_id, symbol, candidate_uid, event_type, detail, run_id
+            ) VALUES
+                (?, 'scan_legacy', 'EURUSD', 'legacy|cand', 'SCAN_TOUCH_DETECTED', 'BUY', 'run-legacy'),
+                (?, 'scan_legacy', 'EURUSD', 'legacy|cand', 'SCAN_TRANSITIONED_TO_HOLDING', 'side=BUY', 'run-legacy')
+            """,
+            [legacy_ts, legacy_ts],
+        )
+
+        mgr = BarrierManager(con=con)
+        events = mgr.list_scan_events("scan_legacy")
+        assert [event["event_seq"] for event in events] == [1, 2]
+
+        mgr._record_event(
+            scan_id="scan_legacy",
+            symbol="EURUSD",
+            candidate_uid="legacy|cand",
+            event_type="SCAN_EXPIRED",
+            detail="NO_TOUCH_WITHIN_HORIZON",
+            run_id="run-legacy",
+        )
+
+        events = mgr.list_scan_events("scan_legacy")
+        assert [event["event_seq"] for event in events] == [1, 2, 3]
+        assert events[-1]["event_type"] == "SCAN_EXPIRED"
 
 
 class TestTieBreaking:
