@@ -115,6 +115,45 @@ def test_build_stage14_artifacts_marks_green_when_all_checks_pass(tmp_path: Path
     assert len(checks) == 7
 
 
+def test_build_stage14_artifacts_writes_recurring_session_wording(tmp_path: Path) -> None:
+    _write_runtime_events(tmp_path / "EURUSD_jforex_runtime_events.csv", "EURUSD")
+    _write_runtime_events(tmp_path / "EURUSD_local_jforex_runtime_events.csv", "EURUSD")
+    _write_stage14_green_inputs(tmp_path, "EURUSD")
+    _write_csv(
+        tmp_path / "local_surrogate.csv",
+        [{"symbol": "EURUSD", "local_jforex_surrogate_pass": True}],
+    )
+
+    report_out = tmp_path / "out" / "report.md"
+    snapshot_out = tmp_path / "out" / "snapshot.md"
+
+    build_stage14_artifacts(
+        symbols=["EURUSD"],
+        stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
+        jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
+        jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_lifecycle.csv"),
+        jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
+        jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
+        local_surrogate_summary_glob=str(tmp_path / "local_surrogate.csv"),
+        reconcile_dir=tmp_path,
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=report_out,
+        snapshot_out=snapshot_out,
+    )
+
+    report_txt = report_out.read_text(encoding="utf-8")
+    snapshot_txt = snapshot_out.read_text(encoding="utf-8")
+
+    assert "single runtime certification authority" in report_txt
+    assert "supervised shakedown" in report_txt
+    assert "does not by itself claim recurring live certification" in report_txt
+    assert "single runtime certification authority" in snapshot_txt
+    assert "hard gate for the Dukascopy JForex adapter" not in snapshot_txt
+
+
 def test_build_stage14_artifacts_fails_when_jforex_inputs_missing(tmp_path: Path) -> None:
     _write_csv(
         tmp_path / "GBPUSD_stage13.csv",
