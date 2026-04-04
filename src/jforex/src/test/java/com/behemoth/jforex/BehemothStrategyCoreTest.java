@@ -451,7 +451,7 @@ class BehemothStrategyCoreTest {
             assertThat(server.takeRequest(1, TimeUnit.SECONDS).getPath()).isEqualTo("/barrier/failure");
             assertThat(Files.readString(tempDir.resolve("EURUSD_test_runtime_events.csv")))
                     .contains("predict_cycle")
-                    .contains("prediction_count=1;selected_count=0;executable_selected_count=0;blocked_count=1")
+                    .contains("prediction_count=1;selected_count=1;executable_selected_count=0;blocked_count=1")
                     .contains("blocked_count=1")
                     .contains("blocked_reasons=demo_execution_disabled");
             assertThat(Files.readString(tempDir.resolve("EURUSD_test_runtime_events.csv")))
@@ -543,7 +543,7 @@ class BehemothStrategyCoreTest {
             assertThat(server.takeRequest(1, TimeUnit.SECONDS).getPath()).isEqualTo("/barrier/failure");
             assertThat(Files.readString(tempDir.resolve("EURUSD_test_runtime_events.csv")))
                     .contains("predict_cycle")
-                    .contains("prediction_count=1;selected_count=0;executable_selected_count=0;blocked_count=1")
+                    .contains("prediction_count=1;selected_count=1;executable_selected_count=0;blocked_count=1")
                     .contains("blocked_count=1")
                     .contains("blocked_reasons=python_barrier_action_kill_switch_enabled");
             assertThat(Files.readString(tempDir.resolve("EURUSD_test_runtime_events.csv")))
@@ -608,7 +608,11 @@ class BehemothStrategyCoreTest {
             core.stop();
 
             assertThat(port.closePositionCalls).isEmpty();
-            assertThat(Files.readString(tempDir.resolve("EURUSD_test_runtime_events.csv")))
+            String runtimeEvents = Files.readString(tempDir.resolve("EURUSD_test_runtime_events.csv"));
+            assertThat(runtimeEvents)
+                    .contains("predict_cycle")
+                    .contains("prediction_count=0;selected_count=0;executable_selected_count=0;blocked_count=0");
+            assertThat(runtimeEvents)
                     .contains("barrier_close_failure")
                     .contains("unknown-broker-pos");
             assertThat(Files.readString(tempDir.resolve("EURUSD_test_execution_lifecycle_summary.csv")))

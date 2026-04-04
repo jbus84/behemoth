@@ -243,7 +243,6 @@ public final class BehemothStrategyCore {
                 if (p.isSelected()) pythonSelected++;
             }
             PredictActionSummary actionSummary = summarizePredictActions(response.actions());
-            int effectiveSelectedCount = actionSummary.executableSelectedCount();
             Instant predictCloseTs = predictions.stream()
                     .map(PredictionResponseItem::closeTs)
                     .filter(Objects::nonNull)
@@ -251,15 +250,15 @@ public final class BehemothStrategyCore {
                     .orElseGet(() -> state.lastTick != null ? state.lastTick.timestamp() : Instant.now());
             metrics.recordSelectedPredictions(
                     state.instrument.symbol(),
-                    effectiveSelectedCount,
+                    pythonSelected,
                     actionSummary.blockedCount()
             );
             artifactWriter.recordPredictCycle(
                     state.instrument.symbol(),
                     predictCloseTs,
                     predictions.size(),
-                    effectiveSelectedCount,
-                    effectiveSelectedCount,
+                    pythonSelected,
+                    actionSummary.executableSelectedCount(),
                     actionSummary.blockedCount(),
                     actionSummary.blockedReasons(),
                     completedBarTicks
@@ -374,6 +373,9 @@ public final class BehemothStrategyCore {
         List<String> blockedReasons = new ArrayList<>();
         int executableSelectedCount = 0;
         for (BarrierActionPayload action : actions) {
+            if (!action.isOpenMarket()) {
+                continue;
+            }
             String blockedReason = blockedReasonForPredictCycle(action);
             if (blockedReason != null) {
                 blockedCount += 1;
@@ -386,9 +388,6 @@ public final class BehemothStrategyCore {
     }
 
     private String blockedReasonForPredictCycle(BarrierActionPayload action) {
-        if (!action.isOpenMarket()) {
-            return null;
-        }
         if (action.blocked()) {
             return action.blockReason() == null || action.blockReason().isBlank()
                     ? "python_blocked_open"
