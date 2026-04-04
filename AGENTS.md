@@ -20,7 +20,7 @@ Execution runtime direction:
 
 Branch truth:
 
-- Specs and plans must name the target branch and target commit, and execution must run from a worktree that matches that branch baseline.
+- Specs and plans must name the target branch and target commit, and execution must run from a worktree created from that target branch at the target commit or a descendant of it.
 - If a required semantic is not on `main`, move the work to the authoritative feature branch.
 - branch-semantic drift at final verification is a hard stop, not a docs patching opportunity.
 
