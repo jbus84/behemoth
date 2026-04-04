@@ -24,7 +24,7 @@ Certify that the Dukascopy JForex adapter reproduces the governed OCO execution 
 - [Placeholder] Review parity results.
 
 ## Validation Gates
-- [Placeholder] All 5 gates must be green.
+- [Placeholder] All 6 gates must be green.
 
 ## Operator Decision Tree
 - [Placeholder] If partial fill, check risk state.
@@ -43,7 +43,7 @@ Certify that the Dukascopy JForex adapter reproduces the governed OCO execution 
 
 ## Process
 - Treat Stage 13 as a prerequisite, not a substitute for Stage 14.
-- Treat the local parquet-driven JForex surrogate as a prerequisite debug gate before Stage 14.
+- Treat the local parquet-driven JForex surrogate as a prerequisite debug gate before Stage 14 tester/demo certification.
 - Do not use `*_local_jforex_*` surrogate summaries as Stage 14 evidence; Stage 14 consumes only real JForex tester/demo artifacts.
 - When running the Python API in `historical_auto`, scope the certification surface with `BEHEMOTH_SYMBOLS`.
 - Historical Stage 14 replay should use tolerant locked-prediction matching so broker-side timestamp drift does not suppress otherwise valid locked selections.
@@ -65,15 +65,17 @@ Certify that the Dukascopy JForex adapter reproduces the governed OCO execution 
 - `jforex_signal_parity_pass=true`
 - `jforex_execution_parity_pass=true`
 - `oco_lifecycle_pass=true`
+- `local_jforex_surrogate_pass=true`
 - `operational_ready_pass=true`
 
-Stage 14 passes only when all five are green.
+Stage 14 passes only when all six are green.
 
 ## Failure Interpretation
 - If Stage 13 is red, do not trust any JForex tester/demo result.
 - If JForex signal parity is red, the adapter is not reproducing research-approved selection timing.
 - If JForex execution parity is red, the adapter lifecycle diverges after nominally matched signals.
 - If OCO lifecycle is red, the adapter cannot safely enforce the paired stop-limit contract.
+- If the local JForex surrogate is red, the shared Java strategy core is not validated before Stage 14 tester/demo certification.
 - If operational readiness is red, the adapter is not deployable even if tester parity is green.
 
 ## Canonical Command
@@ -98,7 +100,7 @@ make stage14-jforex-cert
 
 - generated_at: `pending`
 - Stage 14 is a hard gate for the Dukascopy JForex adapter.
-- Stage 13 Dukascopy TestClient parity, JForex tester parity, OCO lifecycle correctness, and operational readiness must all be green.
+- Stage 13 Dukascopy TestClient parity, JForex tester parity, local JForex surrogate readiness, OCO lifecycle correctness, and operational readiness must all be green.
 
 #### Key Results
 _pending_
