@@ -9,6 +9,12 @@ Certify that the Dukascopy JForex adapter faithfully executes barrier manager ac
 - `data/analysis/backtest_reconcile/*_jforex_execution_parity_summary.csv`
 - `data/analysis/backtest_reconcile/*_jforex_execution_lifecycle_summary.csv`
 - `data/analysis/backtest_reconcile/*_jforex_operational_ready_summary.csv`
+- `data/analysis/backtest_reconcile/jforex_outcome_parity_summary.csv`
+- `data/analysis/backtest_reconcile/local_jforex_surrogate_summary.csv`
+- `data/analysis/backtest_reconcile/<SYMBOL>_jforex_runtime_events.csv`
+- `data/analysis/backtest_reconcile/<SYMBOL>_local_jforex_runtime_events.csv`
+- `docs/analysis/stage14_jforex_runtime_certification_report.md`
+
 Stage 14 is the single runtime certification authority for the JForex adapter. It has two layers:
 
 1. prerequisite certification gates
@@ -40,6 +46,8 @@ Every future demo session must prove:
 
 Stage 14 remains the authority for both the prerequisite gates and the recurring session gate, but the two layers must not be collapsed into one opaque requirement.
 
+The first Monday run should be treated as a supervised shakedown. It should produce a complete evidence bundle and a bounded list of exposed gaps, but it should not be over-claimed as the final hardened recurring certification process until those gaps are reviewed and incorporated.
+
 ## Session Evidence Bundle
 
 Each demo session must produce a session-scoped evidence bundle that is sufficient to reconstruct the run without relying on ephemeral logs.
@@ -61,10 +69,13 @@ Minimum evidence bundle:
 - `docs/analysis/stage14_jforex_runtime_certification_report.md`
 
 ## Exact Calculations
-- [Placeholder] Parity is calculated via direct event-log comparison.
+- Stage 14 treats the generated summary CSVs as certification inputs and compares them against the canonical runtime-event files for the symbol under review.
+- `stage14_jforex_cert_pass` is green only when all seven hard gates are green for the symbol under review.
 
 ## Causality / Leakage Controls
-- [Placeholder] JForex tester client isolation.
+- Treat Stage 13 and the local JForex surrogate as prerequisites, not substitutes for Stage 14.
+- Use the governed symbol universe and locked historical prediction matching when running replay or tester certification commands.
+- Do not infer certification from derived summaries when the canonical runtime-event artifacts are missing.
 
 ## Failure Modes
 - Order submission failures on OPEN_MARKET actions.
@@ -73,22 +84,33 @@ Minimum evidence bundle:
 - Missing deterministic runtime evidence files even when derived summaries exist.
 
 ## Interpretation Guide
-- [Placeholder] Review parity results.
+- Read prerequisite gates first to decide whether the runtime path is eligible for certification.
+- Read recurring demo-session evidence second to judge the current run.
+- Treat the Monday run as a supervised shakedown: operationally real and evidence-bearing, but still intended to expose the remaining process/tooling gaps.
 
 ## Validation Gates
 - Stage 14 is green only when all 7 checks below are green for the symbol under review.
 
 ## Operator Decision Tree
-- [Placeholder] If partial fill, check risk state.
+- 1. Confirm all expected evidence artifacts exist.
+- 2. Confirm they belong to the same session window using `run_id`, `evaluated_at_utc`, and readiness timestamps.
+- 3. Check for hard execution-lifecycle anomalies, blocked orders, or readiness failures.
+- 4. Classify the run and capture any gaps exposed by the shakedown.
 
 ## How To Run
-- See canonical command.
+- 1. Start monitoring with `make demo-cert-monitor`.
+- 2. Start the live/demo runner with `make jforex-live`.
+- 3. After the session, regenerate the Stage 14 outputs with `make stage14-jforex-cert`.
 
 ## How To Interpret Outputs
-- [Placeholder] Review JForex operational logs.
+- Use `docs/analysis/stage14_jforex_runtime_certification_report.md` for the consolidated summary/check table.
+- Use `docs/strategy_bible/generated/stage_14_snapshot.md` for the generated governance snapshot.
+- Use the per-symbol runtime-event and summary artifacts to reconcile any red or conditional findings.
 
 ## What To Do If It Fails
-- [Placeholder] Check API parity.
+- Treat missing evidence, hard execution-lifecycle anomalies, or unreadable runtime-event artifacts as immediate blockers.
+- Inspect the per-symbol runtime-event CSVs before trusting any failing summary.
+- Record the gap or anomaly in the shakedown gap-capture section of the operator runbook.
 
 ## Reproduction Commands
 - See canonical command.
