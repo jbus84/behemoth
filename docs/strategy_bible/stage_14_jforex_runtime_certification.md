@@ -2,6 +2,7 @@
 
 ## Objective
 Certify that the Dukascopy JForex adapter reproduces the execution-lifecycle contract after Stage 13 and the local JForex surrogate have already established the prerequisite runtime and parity surface.
+Stage 14 also records the symbol-level operational decision separately from certification so `PASS / NO_GO` can be expressed without collapsing it into failure.
 
 ## Inputs
 - `data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv`
@@ -16,6 +17,8 @@ Certify that the Dukascopy JForex adapter reproduces the execution-lifecycle con
 - `docs/analysis/stage14_jforex_runtime_certification_report.md`
 
 ## Exact Calculations
+- `certification_outcome` is the certification result for the symbol and is emitted as `PASS` or `FAIL`.
+- `go_decision` is the operational decision for the symbol and is emitted as `GO` or `NO_GO`.
 - `stage14_jforex_cert_pass` is the conjunction of:
   - `stage13_dukascopy_testclient_pass`
   - `jforex_signal_parity_pass`
@@ -24,6 +27,7 @@ Certify that the Dukascopy JForex adapter reproduces the execution-lifecycle con
   - `operational_ready_pass`
   - `jforex_outcome_parity_pass`
   - `local_jforex_surrogate_pass`
+- A symbol may still resolve to `PASS / NO_GO` when the certification gates pass but the historical lock marks the symbol as non-deployable.
 - `THRESHOLD_PARITY_PASS` is emitted as a certification check for the current model/history pair, but it is informational and does not gate `stage14_jforex_cert_pass`.
 - Missing inputs are recorded explicitly as `missing input artifact` and count toward `missing_inputs`.
 
@@ -35,12 +39,13 @@ Certify that the Dukascopy JForex adapter reproduces the execution-lifecycle con
 ## Failure Modes
 - Missing Stage 13, JForex parity, execution lifecycle, operational readiness, outcome parity, or surrogate summaries produce a failed gate with `missing input artifact`.
 - A red execution lifecycle summary means the adapter did not emit a complete execution lifecycle for certification.
-- If the historical summary marks a symbol as non-deployable, the report surfaces `nogo` for the affected parity checks instead of treating the symbol as deployable.
+- If the historical summary marks a symbol as non-deployable, the report surfaces `PASS / NO_GO` for the affected symbol instead of treating the symbol as a certification failure.
 
 ## Interpretation Guide
-- Green means the Stage 13 prerequisite remains green and every Stage 14 gate in the summary is green.
-- Red means at least one required input or gate failed and the adapter is not Stage 14 certified.
-- Nogo means the symbol is historically non-deployable and should be interpreted as a blocked certification path, not as a green deployable result.
+- Green means the Stage 13 prerequisite remains satisfied and every Stage 14 hard gate in the summary is green.
+- Red means at least one required input or hard gate failed and the adapter is not Stage 14 certified.
+- `PASS / NO_GO` means the adapter certified correctly but the symbol is not operationally tradeable.
+- `FAIL / NO_GO` should be treated as a conservative failure state, not as a successful certification result.
 
 ## Validation Gates
 - `stage13_dukascopy_testclient_pass`
@@ -55,7 +60,7 @@ Certify that the Dukascopy JForex adapter reproduces the execution-lifecycle con
 - If a required CSV is missing, regenerate the adapter/runtime artifact that owns that summary.
 - If `execution_lifecycle_pass` is red, inspect the JForex execution lifecycle summary and adapter runtime event stream.
 - If `operational_ready_pass` is red, inspect the operational step coverage in the adapter runtime.
-- If a symbol is `nogo`, treat it as a historical non-deployable case and do not reinterpret it as a deployable green.
+- If a symbol is `PASS / NO_GO`, treat it as certified but not tradeable.
 
 ## How To Run
 ```bash
@@ -105,10 +110,12 @@ uv run mkdocs build
 - `local_jforex_surrogate_pass=true`
 - `operational_ready_pass=true`
 
-Stage 14 passes only when all seven gates are green.
+Stage 14 certifies only when all six hard gates are green.
+The generated outputs then separately report whether the symbol is `GO` or `NO_GO`.
 
 ## Failure Interpretation
 - If Stage 13 is red, do not trust any JForex tester/demo result.
+- If Stage 13 is `PASS / NO_GO`, treat it as a valid prerequisite and not as a certification failure by itself.
 - If JForex signal parity is red, the adapter is not reproducing research-approved selection timing.
 - If JForex execution parity is red, the adapter lifecycle diverges after nominally matched signals.
 - If execution lifecycle is red, the adapter cannot safely enforce the runtime lifecycle contract.
@@ -137,7 +144,7 @@ make stage14-jforex-cert
 
 - generated_at: `pending`
 - Stage 14 is a hard gate for the Dukascopy JForex adapter.
-- Stage 13 Dukascopy TestClient parity, JForex tester parity, execution lifecycle correctness, local JForex surrogate readiness, and operational readiness must all be green.
+- Stage 13 `PASS / NO_GO` is an acceptable prerequisite; JForex tester parity, execution lifecycle correctness, local JForex surrogate readiness, and operational readiness must still pass their hard gates.
 
 #### Key Results
 _pending_
