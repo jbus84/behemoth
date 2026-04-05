@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pandas as pd
+
 from scripts.run_stage12_stage13_certification import run_stage12_stage13_certification
 
 
@@ -18,6 +20,9 @@ def test_orchestrator_skips_stage13_when_stage12_fails(tmp_path: Path) -> None:
     assert result[0]["stage13_attempted"] is False
     assert result[0]["certification_outcome"] == "FAIL"
     assert result[0]["go_decision"] == "NO_GO"
+    summary = pd.read_csv(tmp_path / "stage12_stage13_certification_summary.csv")
+    assert summary.loc[0, "certification_outcome"] == "FAIL"
+    assert summary.loc[0, "go_decision"] == "NO_GO"
 
 
 def test_orchestrator_resolves_final_outputs_without_unknown(tmp_path: Path) -> None:
@@ -32,3 +37,6 @@ def test_orchestrator_resolves_final_outputs_without_unknown(tmp_path: Path) -> 
     assert row["certification_outcome"] in {"PASS", "FAIL"}
     assert row["go_decision"] in {"GO", "NO_GO"}
     assert row["go_decision"] == "NO_GO"
+    summary = pd.read_csv(tmp_path / "stage12_stage13_certification_summary.csv")
+    assert summary.loc[0, "certification_outcome"] == "PASS"
+    assert summary.loc[0, "go_decision"] == "NO_GO"

@@ -57,7 +57,7 @@ endef
         stage10 stage11 stage12 stage13 stage14 \
         onboard-symbol retrain-all rebuild-all audit-all \
         freeze-oco freeze-oco-history freeze-oco-dukascopy-candidate validate-oco-history \
-        stage12-api-parity local-jforex-parity local-jforex-parity-matrix \
+        stage12-api-parity stage12-stage13-cert-artifacts local-jforex-parity local-jforex-parity-matrix \
         local-jforex-parity-ordinal local-jforex-parity-spotlight local-jforex-cert \
         jforex-dukascopy-matrix stage13-dukascopy-cert stage14-jforex-cert \
         full-stage14-cert jforex-outcome-parity \
@@ -267,7 +267,18 @@ validate-oco-history:
 		--history-dir configs/research/governance/oco_history \
 		--symbols $(shell echo $(REBUILD_SYMBOLS) | sed 's/ /,/g')
 
-stage12-api-parity:
+stage12-stage13-cert-artifacts:
+	uv run python scripts/run_stage12_stage13_certification.py \
+		--symbols $(or $(SYMBOLS),EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD) \
+		--predictions-dir $(or $(PREDICTIONS_DIR),data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap) \
+		--models-dir $(or $(MODELS_DIR),models/oco) \
+		--lock-dir $(or $(LOCK_DIR),configs/research/governance/oco_history_dukascopy_candidate/2025-07) \
+		--reconcile-dir $(or $(RECONCILE_DIR),data/analysis/backtest_reconcile) \
+		--out-dir $(or $(OUT_DIR),data/analysis/backtest_reconcile)
+
+stage12-api-parity: stage12-stage13-cert-artifacts
+stage13-dukascopy-cert: stage12-stage13-cert-artifacts
+dukascopy-testclient-parity: stage12-stage13-cert-artifacts
 
 local-jforex-parity:
 	BEHEMOTH_LOCAL_JFOREX_INSTRUMENTS=$(or $(SYMBOL),GBPUSD) \
@@ -378,18 +389,7 @@ jforex-dukascopy-matrix:
 		--api-timeout-seconds $(or $(API_TIMEOUT_SECONDS),60) \
 		--metrics-port-base $(or $(METRICS_PORT_BASE),9464)
 
-stage13-dukascopy-cert:
-	uv run python scripts/validate_stage13_dukascopy_testclient.py \
-		--lock-dir $(or $(LOCK_DIR),configs/research/governance/oco_history_dukascopy_candidate/2025-07) \
-		--stage12-api-parity-summary-glob '$(or $(STAGE12_API_PARITY_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_stage12_api_parity_summary.csv)' \
-		--dukascopy-testclient-replay-summary-glob '$(or $(DUKASCOPY_TESTCLIENT_REPLAY_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_dukascopy_testclient_replay_summary.csv)' \
-		--dukascopy-testclient-signal-summary-glob '$(or $(DUKASCOPY_TESTCLIENT_SIGNAL_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_jforex_signal_parity_summary.csv)' \
-		--dukascopy-testclient-execution-summary-glob '$(or $(DUKASCOPY_TESTCLIENT_EXECUTION_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_jforex_execution_parity_summary.csv)' \
-		--reconcile-dir $(or $(RECONCILE_DIR),data/analysis/backtest_reconcile) \
-		--out-summary-csv $(or $(OUT_SUMMARY_CSV),data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv) \
-		--out-checks-csv $(or $(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/stage13_dukascopy_testclient_checks.csv) \
-		--report-out $(or $(REPORT_OUT),docs/analysis/stage13_dukascopy_testclient_report.md) \
-		--snapshot-out $(or $(SNAPSHOT_OUT),docs/strategy_bible/generated/stage_13_snapshot.md)
+stage13-dukascopy-cert: stage12-stage13-cert-artifacts
 
 stage14-jforex-cert:
 	uv run python scripts/validate_stage14_jforex_runtime_certification.py \
@@ -424,7 +424,7 @@ jforex-outcome-parity:
 deploy-cbot deploy-ctrader reconcile-ctrader-run \
 export-ctrader-custom-data ctrader-debug-up ctrader-debug-down \
 ctrader-debug-status ctrader-ab-parity-report ctrader-parity \
-testclient-parity dukascopy-testclient-parity \
+testclient-parity \
 histdata-ctrader-parity histdata-testclient-parity:
 
 # ==============================================================================
@@ -656,14 +656,15 @@ help:
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "freeze-oco-history" "Freeze month-scoped historical governance locks for replay/backtests"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "freeze-oco-dukascopy-candidate" "Freeze mutable candidate governance locks to oco_dukascopy_candidate/"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "validate-oco-history" "Validate historical lock integrity and index coverage"
-	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage12-api-parity" "Stage 12 API parity check (no-op placeholder)"
+	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage12-stage13-cert-artifacts" "Run the unified Stage 12 -> Stage 13 certification artifact flow"
+	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage12-api-parity" "Alias for stage12-stage13-cert-artifacts"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "local-jforex-parity" "Run the local parquet-driven JForex surrogate against the shared Java strategy core"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "local-jforex-parity-matrix" "Run local JForex surrogate matrix across all symbols"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "local-jforex-parity-ordinal" "Run local JForex surrogate in ordinal mode for Stage 14 alignment verification"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "local-jforex-parity-spotlight" "Extract event-bar tick windows and run fast surrogate alignment check"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "local-jforex-cert" "Summarize local JForex surrogate outputs into a pre-Stage certification report"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "jforex-dukascopy-matrix" "Run JForex Dukascopy matrix (uses metrics-port-base 9464)"
-	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage13-dukascopy-cert" "Build Stage 13 Dukascopy TestClient summary, checks, report, and snapshot"
+	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage13-dukascopy-cert" "Alias for stage12-stage13-cert-artifacts"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage14-jforex-cert" "Build Stage 14 JForex certification summary, checks, report, and snapshot"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "full-stage14-cert" "Run outcome-parity → local-jforex-cert → stage14-jforex-cert in order"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "jforex-outcome-parity" "Reconcile JForex outcome parity across symbols"
