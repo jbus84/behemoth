@@ -202,3 +202,44 @@ def test_build_stage13_artifacts_prefers_explicit_replay_over_fallback_summaries
     assert set(checks.loc[checks["metric_name"].str.contains("dukascopy_testclient_"), "source_path"]) == {
         str(tmp_path / "backtest_reconcile" / "AUDUSD_dukascopy_testclient_replay_summary.csv")
     }
+
+
+def test_build_stage13_artifacts_uses_fallback_when_replay_glob_matches_nothing(tmp_path: Path) -> None:
+    _write_lock(tmp_path / "locks" / "usdchf_oco_live_lock.json", symbol="USDCHF", deployable=True)
+    _write_stage12_summary(tmp_path / "backtest_reconcile" / "USDCHF_stage12_api_parity_summary.csv", symbol="USDCHF", passed=True)
+    _write_csv(
+        tmp_path / "backtest_reconcile" / "USDCHF_jforex_signal_parity_summary.csv",
+        [{"symbol": "USDCHF", "jforex_signal_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "backtest_reconcile" / "USDCHF_jforex_execution_parity_summary.csv",
+        [{"symbol": "USDCHF", "jforex_execution_parity_pass": True}],
+    )
+    runtime = tmp_path / "backtest_reconcile" / "USDCHF_jforex_runtime_events.csv"
+    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n")
+
+    summary, checks = build_stage13_artifacts(
+        symbols=["USDCHF"],
+        lock_dir=tmp_path / "locks",
+        stage12_api_parity_summary_glob=str(tmp_path / "backtest_reconcile" / "*_stage12_api_parity_summary.csv"),
+        dukascopy_testclient_replay_summary_glob=str(
+            tmp_path / "backtest_reconcile" / "*_dukascopy_testclient_replay_summary.csv"
+        ),
+        dukascopy_testclient_signal_summary_glob=str(
+            tmp_path / "backtest_reconcile" / "*_jforex_signal_parity_summary.csv"
+        ),
+        dukascopy_testclient_execution_summary_glob=str(
+            tmp_path / "backtest_reconcile" / "*_jforex_execution_parity_summary.csv"
+        ),
+        reconcile_dir=tmp_path / "backtest_reconcile",
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+    )
+
+    assert bool(summary.loc[0, "stage13_dukascopy_testclient_pass"]) is True
+    assert set(checks.loc[checks["metric_name"].str.contains("dukascopy_testclient_"), "source_path"]) == {
+        str(tmp_path / "backtest_reconcile" / "USDCHF_jforex_signal_parity_summary.csv"),
+        str(tmp_path / "backtest_reconcile" / "USDCHF_jforex_execution_parity_summary.csv"),
+    }

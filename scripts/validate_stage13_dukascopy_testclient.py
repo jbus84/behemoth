@@ -96,6 +96,16 @@ def _load_summary_rows(source: InputSource) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _latest_match(frames: list[pd.DataFrame], symbol: str, check_id: str) -> pd.DataFrame:
+    for frame in frames:
+        if frame.empty:
+            continue
+        match = frame[(frame["symbol"] == symbol) & (frame["check_id"] == check_id)].copy()
+        if not match.empty:
+            return match
+    return pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
+
+
 def _load_historical_lock_status(lock_dir: Path, symbol: str) -> dict[str, str | bool]:
     path = lock_dir / f"{symbol.lower()}_oco_live_lock.json"
     if not path.exists():
@@ -136,91 +146,105 @@ def build_stage13_artifacts(
     report_out: Path,
     snapshot_out: Path,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    sources: list[InputSource] = [
+    stage12_source = InputSource(
+        check_id="stage12_api_parity_pass",
+        summary_glob=stage12_api_parity_summary_glob,
+        candidate_columns=("stage12_api_parity_pass", "api_parity_pass", "overall_pass"),
+    )
+    replay_sources = [
         InputSource(
-            check_id="stage12_api_parity_pass",
-            summary_glob=stage12_api_parity_summary_glob,
-            candidate_columns=("stage12_api_parity_pass", "api_parity_pass", "overall_pass"),
-        )
+            check_id="dukascopy_testclient_signal_parity_pass",
+            summary_glob="",
+            candidate_columns=(
+                "dukascopy_testclient_signal_parity_pass",
+                "jforex_signal_parity_pass",
+                "signal_parity_pass",
+                "overall_pass",
+            ),
+            excluded_path_tokens=("local_jforex",),
+        ),
+        InputSource(
+            check_id="dukascopy_testclient_execution_parity_pass",
+            summary_glob="",
+            candidate_columns=(
+                "dukascopy_testclient_execution_parity_pass",
+                "jforex_execution_parity_pass",
+                "execution_parity_pass",
+                "overall_pass",
+            ),
+            excluded_path_tokens=("local_jforex",),
+        ),
     ]
     replay_glob = str(dukascopy_testclient_replay_summary_glob).strip()
     signal_glob = str(dukascopy_testclient_signal_summary_glob).strip()
     execution_glob = str(dukascopy_testclient_execution_summary_glob).strip()
-
-    if replay_glob:
-        sources.extend(
-            [
-                InputSource(
-                    check_id="dukascopy_testclient_signal_parity_pass",
-                    summary_glob=replay_glob,
-                    candidate_columns=(
-                        "dukascopy_testclient_signal_parity_pass",
-                        "jforex_signal_parity_pass",
-                        "signal_parity_pass",
-                        "overall_pass",
-                    ),
-                    excluded_path_tokens=("local_jforex",),
-                ),
-                InputSource(
-                    check_id="dukascopy_testclient_execution_parity_pass",
-                    summary_glob=replay_glob,
-                    candidate_columns=(
-                        "dukascopy_testclient_execution_parity_pass",
-                        "jforex_execution_parity_pass",
-                        "execution_parity_pass",
-                        "overall_pass",
-                    ),
-                    excluded_path_tokens=("local_jforex",),
-                ),
-            ]
+    stage12_checks = _load_summary_rows(stage12_source)
+    replay_signal_checks = (
+        _load_summary_rows(
+            InputSource(
+                check_id="dukascopy_testclient_signal_parity_pass",
+                summary_glob=replay_glob,
+                candidate_columns=replay_sources[0].candidate_columns,
+                excluded_path_tokens=replay_sources[0].excluded_path_tokens,
+            )
         )
-    else:
-        if signal_glob:
-            sources.append(
-                InputSource(
-                    check_id="dukascopy_testclient_signal_parity_pass",
-                    summary_glob=signal_glob,
-                    candidate_columns=(
-                        "dukascopy_testclient_signal_parity_pass",
-                        "jforex_signal_parity_pass",
-                        "signal_parity_pass",
-                        "overall_pass",
-                    ),
-                    excluded_path_tokens=("local_jforex",),
-                )
-            )
-        if execution_glob:
-            sources.append(
-                InputSource(
-                    check_id="dukascopy_testclient_execution_parity_pass",
-                    summary_glob=execution_glob,
-                    candidate_columns=(
-                        "dukascopy_testclient_execution_parity_pass",
-                        "jforex_execution_parity_pass",
-                        "execution_parity_pass",
-                        "overall_pass",
-                    ),
-                    excluded_path_tokens=("local_jforex",),
-                )
-            )
-
-    checks_frames = [_load_summary_rows(src) for src in sources]
-    checks = pd.concat([df for df in checks_frames if not df.empty], ignore_index=True)
-    if checks.empty:
-        checks = pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
-
-    symbol_list = sorted({str(s).strip().upper() for s in symbols if str(s).strip()}) or sorted(
-        set(checks.get("symbol", pd.Series(dtype=str)).astype(str))
+        if replay_glob
+        else pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
     )
-    symbol_list = sorted(
-        set(symbol_list) | set(checks.get("symbol", pd.Series(dtype=str)).astype(str))
+    replay_execution_checks = (
+        _load_summary_rows(
+            InputSource(
+                check_id="dukascopy_testclient_execution_parity_pass",
+                summary_glob=replay_glob,
+                candidate_columns=replay_sources[1].candidate_columns,
+                excluded_path_tokens=replay_sources[1].excluded_path_tokens,
+            )
+        )
+        if replay_glob
+        else pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
     )
+    fallback_signal_checks = (
+        _load_summary_rows(
+            InputSource(
+                check_id="dukascopy_testclient_signal_parity_pass",
+                summary_glob=signal_glob,
+                candidate_columns=replay_sources[0].candidate_columns,
+                excluded_path_tokens=replay_sources[0].excluded_path_tokens,
+            )
+        )
+        if signal_glob
+        else pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
+    )
+    fallback_execution_checks = (
+        _load_summary_rows(
+            InputSource(
+                check_id="dukascopy_testclient_execution_parity_pass",
+                summary_glob=execution_glob,
+                candidate_columns=replay_sources[1].candidate_columns,
+                excluded_path_tokens=replay_sources[1].excluded_path_tokens,
+            )
+        )
+        if execution_glob
+        else pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
+    )
+
+    all_frames = [
+        stage12_checks,
+        replay_signal_checks,
+        replay_execution_checks,
+        fallback_signal_checks,
+        fallback_execution_checks,
+    ]
+    known_symbols = set()
+    for frame in all_frames:
+        if not frame.empty:
+            known_symbols.update(frame.get("symbol", pd.Series(dtype=str)).astype(str))
+    symbol_list = sorted({str(s).strip().upper() for s in symbols if str(s).strip()} | known_symbols)
 
     summary_rows: list[dict[str, Any]] = []
     check_rows: list[dict[str, Any]] = []
     now_utc = _now_utc()
     for symbol in symbol_list:
-        by_symbol = checks[checks["symbol"] == symbol].copy()
         status = _load_historical_lock_status(lock_dir, symbol)
         historical_deployable = bool(status["historical_deployable"])
         non_deployable_reason = str(status["non_deployable_reason"])
@@ -250,8 +274,18 @@ def build_stage13_artifacts(
             }
         )
 
-        for src in sources:
-            match = by_symbol[by_symbol["check_id"] == src.check_id].copy()
+        for src, candidate_frames in (
+            (stage12_source, [stage12_checks]),
+            (
+                replay_sources[0],
+                [replay_signal_checks, fallback_signal_checks],
+            ),
+            (
+                replay_sources[1],
+                [replay_execution_checks, fallback_execution_checks],
+            ),
+        ):
+            match = _latest_match(candidate_frames, symbol, src.check_id)
             value = None if match.empty else match.iloc[-1].get("pass")
             details = ""
             if src.check_id == "dukascopy_testclient_signal_parity_pass" and not historical_deployable:
