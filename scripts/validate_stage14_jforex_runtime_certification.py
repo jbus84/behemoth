@@ -106,6 +106,8 @@ def _load_summary_rows(source: InputSource) -> pd.DataFrame:
                     "symbol": symbol,
                     "check_id": source.check_id,
                     "pass": _pick_bool(row, source.candidate_columns),
+                    "certification_outcome": _pick_text(row, ("certification_outcome",)),
+                    "go_decision": _pick_text(row, ("go_decision",)),
                     "historical_deployable": _pick_bool(row, ("historical_deployable",)),
                     "non_deployable_reason": _pick_text(row, ("non_deployable_reason",)),
                     "raw_verdict": _pick_text(row, ("verdict",)),
@@ -140,6 +142,32 @@ def _evaluate_local_surrogate(match: pd.DataFrame) -> tuple[bool | None, str]:
     if value is None or pd.isna(value):
         return None, "missing input artifact"
     return bool(value), ""
+
+
+def _evaluate_stage13_prerequisite(match: pd.DataFrame) -> tuple[bool | None, str, str, str]:
+    if match.empty:
+        return None, "missing input artifact", "", ""
+    row = match.iloc[-1]
+    certification_outcome = str(row.get("certification_outcome") or "").strip().upper()
+    go_decision = str(row.get("go_decision") or "").strip().upper()
+    bool_value = row.get("pass")
+
+    if certification_outcome == "PASS":
+        details = ""
+        if go_decision == "NO_GO":
+            details = "accepted Stage 13 PASS / NO_GO prerequisite"
+        return True, details, certification_outcome, go_decision
+    if certification_outcome == "FAIL":
+        return False, "Stage 13 certification FAIL", certification_outcome, go_decision or "NO_GO"
+
+    if bool_value is None or pd.isna(bool_value):
+        return None, "missing input artifact", certification_outcome, go_decision
+
+    passed = bool(bool_value)
+    details = ""
+    if passed and go_decision == "NO_GO":
+        details = "accepted Stage 13 PASS / NO_GO prerequisite"
+    return passed, details, certification_outcome, go_decision
 
 
 def _non_deployable_nogo_details(row: dict[str, Any]) -> str:
@@ -289,7 +317,15 @@ def build_stage14_artifacts(
                 ).strip()
         for src in sources:
             match = by_symbol[by_symbol["check_id"] == src.check_id].copy()
-            if src.check_id == "local_jforex_surrogate_pass":
+            if src.check_id == "stage13_dukascopy_testclient_pass":
+                value, details, stage13_outcome, stage13_go = _evaluate_stage13_prerequisite(match)
+                row["stage13_certification_outcome"] = stage13_outcome or (
+                    "PASS" if bool(value) else "FAIL" if value is not None else ""
+                )
+                row["stage13_go_decision"] = stage13_go or (
+                    "NO_GO" if bool(value) is False else "GO" if value else ""
+                )
+            elif src.check_id == "local_jforex_surrogate_pass":
                 value, details = _evaluate_local_surrogate(match)
             else:
                 value = None if match.empty else match.iloc[-1].get("pass")
@@ -376,9 +412,15 @@ def build_stage14_artifacts(
                 }
             )
         row["stage14_jforex_cert_pass"] = all(bool(row[src.check_id]) for src in sources)
+        row["certification_outcome"] = "PASS" if row["stage14_jforex_cert_pass"] else "FAIL"
+        row["go_decision"] = (
+            "NO_GO"
+            if (historical_deployable is False or not row["stage14_jforex_cert_pass"])
+            else "GO"
+        )
         # missing_inputs counts absent-file failures only; stale artifacts fail the cert but do not increment this counter
         row["missing_inputs"] = missing_inputs
-        if historical_deployable is False:
+        if row["stage14_jforex_cert_pass"] and historical_deployable is False:
             row["verdict"] = "nogo"
         else:
             row["verdict"] = "green" if row["stage14_jforex_cert_pass"] else "red"

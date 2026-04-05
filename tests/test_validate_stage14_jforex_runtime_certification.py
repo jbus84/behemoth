@@ -298,7 +298,25 @@ def test_build_stage14_artifacts_includes_local_surrogate_check(tmp_path: Path) 
 def test_build_stage14_artifacts_accepts_local_surrogate_nogo_for_non_deployable_symbol(
     tmp_path: Path,
 ) -> None:
-    _write_stage14_green_inputs(tmp_path, "USDCAD")
+    _write_csv(
+        tmp_path / "USDCAD_stage13.csv",
+        [
+            {
+                "symbol": "USDCAD",
+                "stage13_dukascopy_testclient_pass": True,
+                "certification_outcome": "PASS",
+                "go_decision": "NO_GO",
+            }
+        ],
+    )
+    for name, col in [
+        ("jforex_signal", "jforex_signal_parity_pass"),
+        ("jforex_execution", "jforex_execution_parity_pass"),
+        ("jforex_execution_lifecycle", "execution_lifecycle_pass"),
+        ("jforex_ops", "operational_ready_pass"),
+        ("outcome", "jforex_outcome_parity_pass"),
+    ]:
+        _write_csv(tmp_path / f"USDCAD_{name}.csv", [{"symbol": "USDCAD", col: True}])
     local_surrogate_path = _write_local_surrogate_row(
         tmp_path,
         "USDCAD",
@@ -328,6 +346,13 @@ def test_build_stage14_artifacts_accepts_local_surrogate_nogo_for_non_deployable
     assert surrogate_check.iloc[0]["status"] == "pass"
     assert "no_go" in surrogate_check.iloc[0]["details"].lower()
     assert bool(surrogate_check.iloc[0]["metric_value"]) is True
+    stage13_check = checks[checks["metric_name"] == "stage13_dukascopy_testclient_pass"].iloc[0]
+    assert stage13_check["status"] == "pass"
+    assert "PASS / NO_GO" in stage13_check["details"]
+    assert summary.loc[0, "stage13_certification_outcome"] == "PASS"
+    assert summary.loc[0, "stage13_go_decision"] == "NO_GO"
+    assert summary.loc[0, "certification_outcome"] == "PASS"
+    assert summary.loc[0, "go_decision"] == "NO_GO"
     assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is True
     assert summary.loc[0, "verdict"] == "nogo"
 
@@ -335,7 +360,14 @@ def test_build_stage14_artifacts_accepts_local_surrogate_nogo_for_non_deployable
 def test_build_stage14_artifacts_marks_non_deployable_symbol_as_nogo(tmp_path: Path) -> None:
     _write_csv(
         tmp_path / "USDCAD_stage13.csv",
-        [{"symbol": "USDCAD", "stage13_dukascopy_testclient_pass": True}],
+        [
+            {
+                "symbol": "USDCAD",
+                "stage13_dukascopy_testclient_pass": True,
+                "certification_outcome": "PASS",
+                "go_decision": "NO_GO",
+            }
+        ],
     )
     _write_csv(
         tmp_path / "USDCAD_jforex_signal.csv",
@@ -394,7 +426,14 @@ def test_build_stage14_artifacts_marks_non_deployable_symbol_as_nogo(tmp_path: P
     assert len(surrogate_check) == 1
     assert surrogate_check.iloc[0]["status"] == "pass"
     assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is True
-    assert summary.loc[0, "verdict"] == "nogo"
+    stage13_check = checks[checks["metric_name"] == "stage13_dukascopy_testclient_pass"].iloc[0]
+    assert stage13_check["status"] == "pass"
+    assert "PASS / NO_GO" in stage13_check["details"]
+    assert summary.loc[0, "stage13_certification_outcome"] == "PASS"
+    assert summary.loc[0, "stage13_go_decision"] == "NO_GO"
+    assert summary.loc[0, "certification_outcome"] == "FAIL"
+    assert summary.loc[0, "go_decision"] == "NO_GO"
+    assert summary.loc[0, "verdict"] == "red"
 
 
 def test_build_stage14_artifacts_rejects_deployable_symbol_with_local_surrogate_nogo(
