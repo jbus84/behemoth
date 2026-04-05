@@ -355,6 +355,11 @@ def test_build_stage14_artifacts_accepts_local_surrogate_nogo_for_non_deployable
     assert summary.loc[0, "go_decision"] == "NO_GO"
     assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is True
     assert summary.loc[0, "verdict"] == "nogo"
+    report_text = (tmp_path / "out" / "report.md").read_text()
+    snapshot_text = (tmp_path / "out" / "snapshot.md").read_text()
+    assert "PASS / NO_GO is accepted as a valid prerequisite" in report_text
+    assert "PASS / NO_GO" in snapshot_text
+    assert "accepted as a valid prerequisite" in snapshot_text
 
 
 def test_build_stage14_artifacts_marks_non_deployable_symbol_as_nogo(tmp_path: Path) -> None:
