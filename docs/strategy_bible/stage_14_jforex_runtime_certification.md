@@ -5,7 +5,7 @@ Certify that the Dukascopy JForex adapter reproduces the execution-lifecycle con
 Stage 14 also records the symbol-level operational decision separately from certification so `PASS / NO_GO` can be expressed without collapsing it into failure.
 
 ## Inputs
-- `data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv`
+- `data/analysis/backtest_reconcile/stage12_stage13_certification_summary.csv`
 - `data/analysis/backtest_reconcile/*_jforex_signal_parity_summary.csv`
 - `data/analysis/backtest_reconcile/*_jforex_execution_parity_summary.csv`
 - `data/analysis/backtest_reconcile/*_jforex_execution_lifecycle_summary.csv`
