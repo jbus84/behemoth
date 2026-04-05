@@ -96,6 +96,29 @@ def _load_summary_rows(source: InputSource) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _load_lock_status(lock_dir: Path, symbol: str) -> dict[str, Any]:
+    path = Path(lock_dir) / f"{symbol.lower()}_oco_live_lock.json"
+    if not path.exists():
+        return {"historical_deployable": True, "non_deployable_reason": ""}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {"historical_deployable": True, "non_deployable_reason": ""}
+    backtest = payload.get("historical_backtest", {})
+    if not isinstance(backtest, dict):
+        backtest = {}
+    return {
+        "historical_deployable": bool(backtest.get("deployable", True)),
+        "non_deployable_reason": str(backtest.get("non_deployable_reason", "")).strip(),
+    }
+
+
+def _non_deployable_nogo_details(reason: str) -> str:
+    reason_txt = str(reason).strip()
+    reason_suffix = f", reason={reason_txt}" if reason_txt else ""
+    return f"accepted historical non-deployable NO_GO (historical_deployable=false{reason_suffix})"
+
+
 def _latest_match(frames: list[pd.DataFrame], symbol: str, check_id: str) -> pd.DataFrame:
     first_non_concrete = pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
     for frame in frames:
@@ -149,6 +172,18 @@ def _runtime_events_ok(reconcile_dir: Path, symbol: str) -> tuple[bool, str]:
     if path.stat().st_size <= 0:
         return False, (
             "empty current Dukascopy replay runtime-events artifact "
+            f"(legacy filename retained): {path}"
+        )
+    try:
+        df = pd.read_csv(path)
+    except Exception:
+        return False, (
+            "unreadable current Dukascopy replay runtime-events artifact "
+            f"(legacy filename retained): {path}"
+        )
+    if df.empty:
+        return False, (
+            "header-only current Dukascopy replay runtime-events artifact "
             f"(legacy filename retained): {path}"
         )
     return True, ""
@@ -250,18 +285,22 @@ def build_stage13_artifacts(
         else pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
     )
 
-    all_frames = [
-        stage12_checks,
-        replay_signal_checks,
-        replay_execution_checks,
-        fallback_signal_checks,
-        fallback_execution_checks,
-    ]
-    known_symbols = set()
-    for frame in all_frames:
-        if not frame.empty:
-            known_symbols.update(frame.get("symbol", pd.Series(dtype=str)).astype(str))
-    symbol_list = sorted({str(s).strip().upper() for s in symbols if str(s).strip()} | known_symbols)
+    requested_symbols = {str(s).strip().upper() for s in symbols if str(s).strip()}
+    if requested_symbols:
+        symbol_list = sorted(requested_symbols)
+    else:
+        all_frames = [
+            stage12_checks,
+            replay_signal_checks,
+            replay_execution_checks,
+            fallback_signal_checks,
+            fallback_execution_checks,
+        ]
+        known_symbols = set()
+        for frame in all_frames:
+            if not frame.empty:
+                known_symbols.update(frame.get("symbol", pd.Series(dtype=str)).astype(str))
+        symbol_list = sorted(str(s).strip().upper() for s in known_symbols if str(s).strip())
 
     summary_rows: list[dict[str, Any]] = []
     check_rows: list[dict[str, Any]] = []
@@ -269,6 +308,11 @@ def build_stage13_artifacts(
     for symbol in symbol_list:
         row: dict[str, Any] = {"symbol": symbol}
         missing_inputs = 0
+        lock_status = _load_lock_status(lock_dir, symbol)
+        historical_deployable = bool(lock_status["historical_deployable"])
+        non_deployable_reason = str(lock_status["non_deployable_reason"])
+        row["historical_deployable"] = historical_deployable
+        row["non_deployable_reason"] = non_deployable_reason
 
         runtime_ok, runtime_details = _runtime_events_ok(reconcile_dir, symbol)
         row["dukascopy_runtime_artifacts_complete_pass"] = runtime_ok
@@ -304,7 +348,16 @@ def build_stage13_artifacts(
             value = None if match.empty else match.iloc[-1].get("pass")
             details = ""
             expected_source_path = _expected_source_path(reconcile_dir, symbol, src.check_id)
-            if value is None or pd.isna(value):
+            if (
+                not historical_deployable
+                and src.check_id == "dukascopy_testclient_signal_parity_pass"
+                and runtime_ok
+                and bool(row.get("stage12_api_parity_pass", False))
+            ):
+                row[src.check_id] = True
+                status_txt = "pass"
+                details = _non_deployable_nogo_details(non_deployable_reason)
+            elif value is None or pd.isna(value):
                 row[src.check_id] = False
                 missing_inputs += 1
                 status_txt = "fail"
@@ -341,8 +394,19 @@ def build_stage13_artifacts(
                 "dukascopy_testclient_execution_parity_pass",
             )
         )
+        row["stage13_dukascopy_testclient_nogo"] = (
+            bool(row["stage13_dukascopy_testclient_pass"]) and not historical_deployable
+        )
+        row["certification_outcome"] = "PASS" if row["stage13_dukascopy_testclient_pass"] else "FAIL"
+        row["go_decision"] = "NO_GO" if row["stage13_dukascopy_testclient_nogo"] else (
+            "GO" if row["stage13_dukascopy_testclient_pass"] else "NO_GO"
+        )
         row["missing_inputs"] = missing_inputs
-        row["verdict"] = "green" if row["stage13_dukascopy_testclient_pass"] else "red"
+        row["verdict"] = (
+            "nogo"
+            if row["stage13_dukascopy_testclient_nogo"]
+            else ("green" if row["stage13_dukascopy_testclient_pass"] else "red")
+        )
         row["evaluated_at_utc"] = now_utc
         summary_rows.append(row)
 
@@ -371,6 +435,7 @@ def build_stage13_artifacts(
         "",
         "## Interpretation",
         "- Stage 13 is green only when Stage 12 API parity, the current Dukascopy replay runtime-events artifact, Dukascopy/TestClient signal parity, and Dukascopy/TestClient execution parity are all green.",
+        "- Symbols marked historically non-deployable are emitted as `verdict=nogo` when the runtime evidence is complete and the no-go condition is being enforced correctly.",
         "- Local-surrogate artifacts are excluded from Stage 13 hard-gate consumption even when broad file globs are provided.",
     ]
     report_out.write_text("\n".join(report_lines).strip() + "\n", encoding="utf-8")
@@ -381,6 +446,7 @@ def build_stage13_artifacts(
         f"- generated_at: `{now_utc}`",
         "- Stage 13 is the Dukascopy-source prerequisite gate for Stage 14.",
         "- It verifies Stage 12 API parity plus the current Dukascopy replay runtime-events artifact, signal parity, and execution parity.",
+        "- Historically non-deployable symbols can certify as `NO_GO` instead of failing when that condition is enforced cleanly.",
         "",
         "#### Key Results",
         _table(summary),

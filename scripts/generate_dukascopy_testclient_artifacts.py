@@ -140,7 +140,8 @@ def generate_dukascopy_testclient_artifacts(
         runtime_events = pd.DataFrame([dict(runtime_events_rows)])
     else:
         runtime_events = pd.DataFrame(list(runtime_events_rows))
-    runtime_events.to_csv(runtime_events_path, index=False)
+    if not runtime_events.empty:
+        runtime_events.to_csv(runtime_events_path, index=False)
 
     return DukascopyTestClientArtifactOutputs(
         symbol=symbol,

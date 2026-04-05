@@ -23,11 +23,14 @@ This spec also defines the one-time recovery path for the current recurring Stag
 
 Stop recurring branch-truth mismatches by making the target branch and its semantics explicit before planning and execution begin.
 
+Also stop recurring runtime-truth mismatches by making the authoritative local evidence environment explicit before claiming stage-status outcomes.
+
 The desired end state is:
 
 - every spec identifies the branch and commit it describes
 - every plan identifies the branch and commit it is meant to execute against
 - execution refuses to proceed when branch semantics do not match the spec assumptions
+- final Stage 12, Stage 13, and Stage 14 status claims are made only from an explicitly authoritative runtime environment
 - the current recurring demo-certification docs work is re-rooted onto the correct branch rather than patched against the wrong one
 
 ## Non-Goals
@@ -146,7 +149,23 @@ If the compatibility checks fail, execution must stop immediately and re-root th
 
 This gives the repo a simple global rule while leaving the detailed contract in the spec and plan.
 
-### 5. Treat semantic drift as a hard blocker, not a docs polish issue
+### 5. Add a runtime-authority rule for stage-status claims
+
+For stage certifications whose verdict depends on local runtime evidence or credentials, execution must distinguish between:
+
+- code/test verification in a worktree
+- authoritative stage-status verification in the local runtime environment
+
+The repo rule should say, in effect:
+
+- isolated worktrees are the default place for implementation and tests
+- Stage 12, Stage 13, and Stage 14 verdicts are not authoritative unless the run has the same required local evidence and runtime prerequisites as the designated runtime environment
+- if that equivalence is not explicit, final stage-status commands must be rerun from the root checkout or another designated authoritative runtime worktree
+- runtime prerequisites should be loaded from the authoritative local env source without committing new secret-loader files such as `.envrc`
+
+This prevents the recurring confusion between “the code works in this branch” and “the stage is actually green.”
+
+### 6. Treat semantic drift as a hard blocker, not a docs polish issue
 
 When branch truth and spec truth diverge, the agent should not try to “paper over” the mismatch with wording changes.
 
@@ -159,7 +178,7 @@ Instead, the required response is:
 
 This is important because otherwise docs become inaccurate relative to the branch they live on.
 
-### 6. Recovery path for the current recurring demo-certification docs work
+### 7. Recovery path for the current recurring demo-certification docs work
 
 For the current issue, the correct recovery is to re-root the docs work onto `feat/bar-level-barrier-manager`.
 
@@ -181,13 +200,16 @@ This work is successful when:
 - new specs and plans explicitly declare the target branch and semantics they assume
 - execution has a mandatory semantic compatibility check before Task 1
 - `AGENTS.md` states the branch-truth rule clearly
+- `AGENTS.md` states the runtime-authority rule for stage-status claims clearly
 - future branch-semantic mismatches are caught before implementation, not during final verification
+- future runtime-stage claims are not made from non-authoritative worktree environments by accident
 - the current recurring demo-certification docs work is re-rooted onto `feat/bar-level-barrier-manager`
 
 ## Risks
 
 - If the baseline block is added but never checked during execution, the process will still fail in practice.
 - If the repo-level rule is too vague, agents will still improvise against `main`.
+- If branch truth is enforced but runtime truth is not, stage-status claims will still drift away from the authoritative local environment.
 - If recovery work is merged without re-rooting, docs may become internally polished but branch-inaccurate.
 
 ## Implementation Notes
@@ -205,4 +227,6 @@ The implementation should keep the rule simple:
 
 - declare branch truth
 - verify branch truth
+- declare runtime truth for stage-status claims
+- verify runtime truth before calling a stage green or red
 - stop if branch truth does not match the spec

@@ -24,6 +24,18 @@ Branch truth:
 - If a required semantic is not on `main`, move the work to the authoritative feature branch.
 - branch-semantic drift at final verification is a hard stop, not a docs patching opportunity.
 
+Runtime truth:
+
+- Stage certification verdicts are not authoritative unless they are run against the authoritative local runtime environment and evidence root.
+- Worktrees are the default place for implementation and tests, but they are not automatically authoritative for Stage 12, Stage 13, or Stage 14 verdicts.
+- Before claiming a stage is green or red, confirm the execution context has the same required local inputs as the root environment:
+  - local artifact/evidence files under `data/analysis/backtest_reconcile/`
+  - local model/governance inputs used by the target stage
+  - machine-local runtime credentials or broker prerequisites
+- If that equivalence is not explicit and verified, final stage verdicts must be run from the root checkout or another explicitly designated authoritative runtime worktree.
+- Treat “code/tests pass in worktree” and “stage certification is green” as different claims. Do not collapse them.
+- JForex-dependent human or agent commands should ensure the shared root `.env` is sourced before execution. Do not commit `.envrc`; prefer command wrappers or an already-loaded shell.
+
 ## 2) Active Symbol Universe
 
 - `EURUSD`

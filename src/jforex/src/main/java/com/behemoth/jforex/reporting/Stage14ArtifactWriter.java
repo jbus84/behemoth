@@ -195,17 +195,43 @@ public final class Stage14ArtifactWriter {
 
     private void writeExecutionSummary(String symbol, List<EventRow> rows) {
         long failed = rows.stream().filter(row -> row.category().equals("execution") && !row.pass()).count();
-        boolean pass = failed == 0 && rows.stream().anyMatch(row -> row.eventName().equals("order_submitted"));
+        long submittedOrders = rows.stream().filter(row -> row.eventName().equals("order_submitted")).count();
+        boolean hadExecutableSelections = rows.stream()
+                .filter(row -> row.category().equals("signal"))
+                .filter(row -> row.eventName().equals("predict_cycle"))
+                .map(EventRow::detail)
+                .mapToInt(detail -> parsePredictCycleInt(detail, "executable_selected_count"))
+                .anyMatch(count -> count > 0);
+        boolean pass = failed == 0 && (submittedOrders > 0 || !hadExecutableSelections);
         List<String> lines = List.of(
                 "symbol,jforex_execution_parity_pass,submitted_orders,execution_failures",
                 csv(
                         symbol,
                         Boolean.toString(pass),
-                        Long.toString(rows.stream().filter(row -> row.eventName().equals("order_submitted")).count()),
+                        Long.toString(submittedOrders),
                         Long.toString(failed)
                 )
         );
         writeFile(reportDir.resolve(symbol + "_" + artifactPrefix + "_execution_parity_summary.csv"), lines);
+    }
+
+    private static int parsePredictCycleInt(String detail, String key) {
+        if (detail == null || detail.isBlank()) {
+            return 0;
+        }
+        String prefix = key + "=";
+        for (String part : detail.split(";")) {
+            String trimmed = part.trim();
+            if (!trimmed.startsWith(prefix)) {
+                continue;
+            }
+            try {
+                return Integer.parseInt(trimmed.substring(prefix.length()));
+            } catch (NumberFormatException ignored) {
+                return 0;
+            }
+        }
+        return 0;
     }
 
     private void writeLifecycleSummary(String symbol, List<EventRow> rows, Collection<OcoGroupState> groups) {

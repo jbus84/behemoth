@@ -48,6 +48,22 @@ def test_orchestrator_resolves_final_outputs_without_unknown(tmp_path: Path) -> 
     assert summary.loc[0, "go_decision"] == "NO_GO"
 
 
+def test_orchestrator_preserves_stage13_nogo_when_certified(tmp_path: Path) -> None:
+    result = run_stage12_stage13_certification(
+        symbols=["USDCAD"],
+        stage12_runner=lambda symbol: {"certification_outcome": "PASS", "go_decision": "GO"},
+        stage13_runner=lambda symbol: {"certification_outcome": "PASS", "go_decision": "NO_GO"},
+        out_dir=tmp_path,
+    )
+
+    row = result[0]
+    assert row["certification_outcome"] == "PASS"
+    assert row["go_decision"] == "NO_GO"
+    summary = pd.read_csv(tmp_path / "stage12_stage13_certification_summary.csv")
+    assert summary.loc[0, "certification_outcome"] == "PASS"
+    assert summary.loc[0, "go_decision"] == "NO_GO"
+
+
 def test_resolve_lock_dir_defaults_to_history_dir_and_model_month(tmp_path: Path) -> None:
     history_dir = tmp_path / "history"
     resolved = _resolve_lock_dir(None, history_dir, "2025-08")

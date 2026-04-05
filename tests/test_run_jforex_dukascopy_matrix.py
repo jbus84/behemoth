@@ -12,9 +12,11 @@ import pytest
 from scripts.run_jforex_dukascopy_matrix import (
     RunConfig,
     _load_phase_aligned_warmup_ticks,
+    _next_available_port,
     _prediction_path,
     _run_jforex_tester,
     _stage14_artifact_paths,
+    _with_mise_trusted_paths,
     _wait_for_artifacts_then_kill,
 )
 
@@ -109,19 +111,19 @@ def test_process_exits_nonzero_before_csv_raises(tmp_path: Path) -> None:
         )
 
 
-def test_process_exits_zero_before_csv_returns_cleanly(tmp_path: Path) -> None:
-    """If process exits 0 before CSV appears, function returns without error (graceful exit)."""
+def test_process_exits_zero_before_csv_raises(tmp_path: Path) -> None:
+    """A clean process exit without the full artifact set is still a failed replay."""
     paths = _stage14_artifact_paths(tmp_path, "EURUSD")
     proc = _make_proc(returncode=0)  # exited cleanly
 
-    # Should not raise — clean exit is acceptable even without CSV
-    _wait_for_artifacts_then_kill(
-        proc=proc,
-        artifact_paths=paths,
-        poll_interval_sec=0.05,
-        settle_sec=0.0,
-        timeout_sec=5.0,
-    )
+    with pytest.raises(RuntimeError, match="did not produce complete Stage 14 artifacts"):
+        _wait_for_artifacts_then_kill(
+            proc=proc,
+            artifact_paths=paths,
+            poll_interval_sec=0.05,
+            settle_sec=0.0,
+            timeout_sec=5.0,
+        )
 
 
 def test_timeout_raises_if_csv_never_appears(tmp_path: Path) -> None:
@@ -193,6 +195,34 @@ def test_run_jforex_tester_clears_stale_stage14_artifacts(
     for path in stale_paths:
         assert not path.exists()
     assert not (runtime_dir / "active_oco_state.json").exists()
+
+
+def test_with_mise_trusted_paths_adds_repo_roots(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "scripts.run_jforex_dukascopy_matrix._repo_root",
+        lambda: Path("/repo/.worktrees/branch"),
+    )
+    monkeypatch.setattr(
+        "scripts.run_jforex_dukascopy_matrix._repo_common_root",
+        lambda: Path("/repo"),
+    )
+
+    env = _with_mise_trusted_paths({})
+
+    assert env["MISE_TRUSTED_CONFIG_PATHS"].split(":") == ["/repo", "/repo/.worktrees/branch"]
+
+
+def test_next_available_port_skips_bound_port(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[int] = []
+
+    def fake_available(_host: str, port: int) -> bool:
+        seen.append(port)
+        return port != 9464
+
+    monkeypatch.setattr("scripts.run_jforex_dukascopy_matrix._is_port_available", fake_available)
+
+    assert _next_available_port("127.0.0.1", 9464, max_attempts=3) == 9465
+    assert seen == [9464, 9465]
 
 
 def test_load_phase_aligned_warmup_ticks_uses_full_history_modulo(tmp_path: Path) -> None:

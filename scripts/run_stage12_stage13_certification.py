@@ -527,9 +527,17 @@ def main(argv: list[str] | None = None) -> int:
         for _, row in stage13_summary.iterrows():
             symbol = _normalize_symbol(str(row.get("symbol", "")))
             stage13_pass = bool(row.get("stage13_dukascopy_testclient_pass"))
+            stage13_outcome = _normalize_outcome(
+                row.get("certification_outcome"),
+                default="PASS" if stage13_pass else "FAIL",
+            )
+            stage13_go = _normalize_go_decision(
+                row.get("go_decision"),
+                default="GO" if stage13_pass else "NO_GO",
+            )
             stage13_rows[symbol] = {
-                "certification_outcome": "PASS" if stage13_pass else "FAIL",
-                "go_decision": "GO" if stage13_pass else "NO_GO",
+                "certification_outcome": stage13_outcome,
+                "go_decision": stage13_go,
                 "stage13_dukascopy_testclient_pass": stage13_pass,
                 "stage13_verdict": row.get("verdict"),
             }
