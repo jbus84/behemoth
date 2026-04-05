@@ -114,13 +114,10 @@ make stage13-dukascopy-cert
 - `docs/strategy_bible/stage_12_api_parity.md`
 
 ### Auto Snapshot - Stage 13
-<!-- GENERATED:STAGE_13:START -->
-### Auto Snapshot - Stage 13
-
-- generated_at: `pending`
+- generated_at: `2026-04-05T12:26:26Z`
 - Stage 13 is a hard gate for Dukascopy source parity via the FastAPI `TestClient`.
-- Stage 12 parity, Dukascopy TestClient signal parity, and Dukascopy TestClient execution parity must all be green.
+- Stage 13 evaluates `stage12_api_parity_pass`, `dukascopy_runtime_artifacts_complete_pass`, `dukascopy_testclient_signal_parity_pass`, and `dukascopy_testclient_execution_parity_pass`.
 
 #### Key Results
-_pending_
-<!-- GENERATED:STAGE_13:END -->
+- The current certification run is red for all active symbols because all four gate inputs are false in the regenerated Stage 13 outputs.
+- Local JForex surrogate artifacts remain outside the Stage 13 hard-gate decision.
