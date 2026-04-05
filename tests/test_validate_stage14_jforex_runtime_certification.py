@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from scripts.run_jforex_dukascopy_matrix import _stage14_artifact_paths
 from scripts.validate_stage14_jforex_runtime_certification import build_stage14_artifacts
 
 
@@ -701,3 +702,63 @@ def test_build_stage14_artifacts_rejects_legacy_oco_lifecycle_only_inputs(tmp_pa
     execution_lifecycle_checks = checks[checks["metric_name"] == "execution_lifecycle_pass"]
     assert len(execution_lifecycle_checks) == 1
     assert execution_lifecycle_checks.iloc[0]["status"] == "fail"
+
+
+def test_build_stage14_artifacts_rejects_lifecycle_pass_only_inputs(tmp_path: Path) -> None:
+    _write_csv(
+        tmp_path / "EURUSD_stage13.csv",
+        [{"symbol": "EURUSD", "stage13_dukascopy_testclient_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_signal.csv",
+        [{"symbol": "EURUSD", "jforex_signal_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_execution.csv",
+        [{"symbol": "EURUSD", "jforex_execution_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_execution_lifecycle.csv",
+        [{"symbol": "EURUSD", "lifecycle_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_ops.csv",
+        [{"symbol": "EURUSD", "operational_ready_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_outcome.csv",
+        [{"symbol": "EURUSD", "jforex_outcome_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "local_surrogate.csv",
+        [{"symbol": "EURUSD", "local_jforex_surrogate_pass": True}],
+    )
+
+    summary, checks = build_stage14_artifacts(
+        symbols=["EURUSD"],
+        stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
+        jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
+        jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_execution_lifecycle.csv"),
+        jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
+        jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
+        local_surrogate_summary_glob=str(tmp_path / "local_surrogate.csv"),
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+    )
+
+    lifecycle_check = checks[checks["metric_name"] == "execution_lifecycle_pass"]
+    assert len(lifecycle_check) == 1
+    assert lifecycle_check.iloc[0]["status"] == "fail"
+    assert lifecycle_check.iloc[0]["source_path"].endswith("EURUSD_jforex_execution_lifecycle.csv")
+    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
+    assert int(summary.loc[0, "missing_inputs"]) >= 1
+
+
+def test_stage14_matrix_helper_uses_execution_lifecycle_artifact_name() -> None:
+    paths = _stage14_artifact_paths(Path("/tmp/report"), "EURUSD")
+    assert Path("/tmp/report/EURUSD_jforex_execution_lifecycle_summary.csv") in paths
+    assert all("oco_lifecycle_summary" not in str(path) for path in paths)

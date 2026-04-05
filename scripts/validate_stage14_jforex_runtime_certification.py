@@ -237,7 +237,7 @@ def build_stage14_artifacts(
         InputSource(
             check_id="execution_lifecycle_pass",
             summary_glob=jforex_lifecycle_summary_glob,
-            candidate_columns=("execution_lifecycle_pass", "lifecycle_pass", "overall_pass"),
+            candidate_columns=("execution_lifecycle_pass", "overall_pass"),
             excluded_path_substrings=("_local_jforex_",),
         ),
         InputSource(

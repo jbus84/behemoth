@@ -333,7 +333,7 @@ def _stage14_artifact_paths(report_dir: Path, symbol: str) -> list[Path]:
         report_dir / f"{symbol}_jforex_runtime_events.csv",
         report_dir / f"{symbol}_jforex_signal_parity_summary.csv",
         report_dir / f"{symbol}_jforex_execution_parity_summary.csv",
-        report_dir / f"{symbol}_jforex_oco_lifecycle_summary.csv",
+        report_dir / f"{symbol}_jforex_execution_lifecycle_summary.csv",
         report_dir / f"{symbol}_jforex_operational_ready_summary.csv",
     ]
 
