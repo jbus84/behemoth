@@ -243,3 +243,41 @@ def test_build_stage13_artifacts_uses_fallback_when_replay_glob_matches_nothing(
         str(tmp_path / "backtest_reconcile" / "USDCHF_jforex_signal_parity_summary.csv"),
         str(tmp_path / "backtest_reconcile" / "USDCHF_jforex_execution_parity_summary.csv"),
     }
+
+
+def test_build_stage13_artifacts_uses_fallback_for_partial_replay_family(tmp_path: Path) -> None:
+    _write_lock(tmp_path / "locks" / "usdjpy_oco_live_lock.json", symbol="USDJPY", deployable=True)
+    _write_stage12_summary(tmp_path / "backtest_reconcile" / "USDJPY_stage12_api_parity_summary.csv", symbol="USDJPY", passed=True)
+    _write_csv(
+        tmp_path / "backtest_reconcile" / "USDJPY_dukascopy_testclient_replay_summary.csv",
+        [{"symbol": "USDJPY", "dukascopy_testclient_signal_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "backtest_reconcile" / "USDJPY_jforex_execution_parity_summary.csv",
+        [{"symbol": "USDJPY", "jforex_execution_parity_pass": True}],
+    )
+    runtime = tmp_path / "backtest_reconcile" / "USDJPY_jforex_runtime_events.csv"
+    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n")
+
+    summary, checks = build_stage13_artifacts(
+        symbols=["USDJPY"],
+        lock_dir=tmp_path / "locks",
+        stage12_api_parity_summary_glob=str(tmp_path / "backtest_reconcile" / "*_stage12_api_parity_summary.csv"),
+        dukascopy_testclient_replay_summary_glob=str(
+            tmp_path / "backtest_reconcile" / "*_dukascopy_testclient_replay_summary.csv"
+        ),
+        dukascopy_testclient_execution_summary_glob=str(
+            tmp_path / "backtest_reconcile" / "*_jforex_execution_parity_summary.csv"
+        ),
+        reconcile_dir=tmp_path / "backtest_reconcile",
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+    )
+
+    assert bool(summary.loc[0, "stage13_dukascopy_testclient_pass"]) is True
+    assert set(checks.loc[checks["metric_name"].str.contains("dukascopy_testclient_"), "source_path"]) == {
+        str(tmp_path / "backtest_reconcile" / "USDJPY_dukascopy_testclient_replay_summary.csv"),
+        str(tmp_path / "backtest_reconcile" / "USDJPY_jforex_execution_parity_summary.csv"),
+    }

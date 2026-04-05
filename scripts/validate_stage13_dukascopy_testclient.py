@@ -97,13 +97,18 @@ def _load_summary_rows(source: InputSource) -> pd.DataFrame:
 
 
 def _latest_match(frames: list[pd.DataFrame], symbol: str, check_id: str) -> pd.DataFrame:
+    first_non_concrete = pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
     for frame in frames:
         if frame.empty:
             continue
         match = frame[(frame["symbol"] == symbol) & (frame["check_id"] == check_id)].copy()
         if not match.empty:
-            return match
-    return pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
+            concrete = match[match["pass"].notna()].copy()
+            if not concrete.empty:
+                return concrete
+            if first_non_concrete.empty:
+                first_non_concrete = match
+    return first_non_concrete
 
 
 def _load_historical_lock_status(lock_dir: Path, symbol: str) -> dict[str, str | bool]:
