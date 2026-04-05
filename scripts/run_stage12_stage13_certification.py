@@ -10,20 +10,31 @@ The orchestration layer is intentionally small:
 from __future__ import annotations
 
 import argparse
+import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
 import pandas as pd
 
+from scripts.generate_dukascopy_testclient_artifacts import (
+    DukascopyTestClientArtifactOutputs,
+    generate_dukascopy_testclient_artifacts,
+)
 from scripts.validate_api_parity import run as validate_api_parity_run
 from scripts.validate_stage13_dukascopy_testclient import build_stage13_artifacts
 
 DEFAULT_SYMBOLS = ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]
 DEFAULT_PREDICTIONS_DIR = Path("data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap")
 DEFAULT_MODELS_DIR = Path("models/oco")
+DEFAULT_TICK_ROOT = Path("/Users/danielfisher/Desktop/dukascopy_ticks")
+DEFAULT_START_TS = "2025-07-07T00:00:00Z"
+DEFAULT_END_TS = "2025-07-09T00:00:00Z"
+DEFAULT_MODEL_MONTH = "2025-07"
 DEFAULT_RECONCILE_DIR = Path("data/analysis/backtest_reconcile")
 DEFAULT_LOCK_DIR = Path("configs/research/governance/oco_history_dukascopy_candidate/2025-07")
+DEFAULT_HISTORY_DIR = Path("configs/research/governance/oco_history_dukascopy_candidate")
 FINAL_SUMMARY_FILENAME = "stage12_stage13_certification_summary.csv"
 
 
@@ -174,6 +185,130 @@ def _stage13_default_runner(
     )
 
 
+def _bool_from_summary(path: Path, candidates: tuple[str, ...]) -> bool:
+    try:
+        df = pd.read_csv(path)
+    except Exception:
+        return False
+    if df.empty:
+        return False
+    row = df.iloc[-1]
+    for candidate in candidates:
+        if candidate not in row.index:
+            continue
+        value = row.get(candidate)
+        if pd.isna(value):
+            continue
+        if isinstance(value, bool):
+            return value
+        txt = str(value).strip().lower()
+        if txt in {"1", "true", "yes", "y", "pass", "green"}:
+            return True
+        if txt in {"0", "false", "no", "n", "fail", "red"}:
+            return False
+    return False
+
+
+def _runtime_events_rows(path: Path) -> list[dict[str, Any]]:
+    try:
+        df = pd.read_csv(path)
+    except Exception:
+        return []
+    if df.empty:
+        return []
+    return df.to_dict(orient="records")
+
+
+def _run_stage13_matrix_replay(
+    *,
+    symbol: str,
+    start_ts: str,
+    end_ts: str,
+    model_month: str,
+    history_dir: Path,
+    predictions_dir: Path,
+    tick_root: Path,
+    report_dir: Path,
+) -> dict[str, Any]:
+    cmd = [
+        sys.executable,
+        "scripts/run_jforex_dukascopy_matrix.py",
+        "--symbols",
+        symbol,
+        "--start-ts",
+        start_ts,
+        "--end-ts",
+        end_ts,
+        "--model-month",
+        model_month,
+        "--history-dir",
+        str(history_dir),
+        "--predictions-dir",
+        str(predictions_dir),
+        "--tick-root",
+        str(tick_root),
+        "--report-dir",
+        str(report_dir),
+    ]
+    completed = subprocess.run(cmd, check=False, capture_output=True, text=True)
+    signal_summary = report_dir / f"{symbol}_jforex_signal_parity_summary.csv"
+    execution_summary = report_dir / f"{symbol}_jforex_execution_parity_summary.csv"
+    runtime_events = report_dir / f"{symbol}_jforex_runtime_events.csv"
+
+    if completed.returncode != 0:
+        return {
+            "signal_pass": False,
+            "execution_pass": False,
+            "runtime_events_rows": _runtime_events_rows(runtime_events),
+            "details": completed.stderr.strip() or completed.stdout.strip(),
+        }
+
+    return {
+        "signal_pass": _bool_from_summary(
+            signal_summary,
+            ("jforex_signal_parity_pass", "signal_parity_pass", "overall_pass"),
+        ),
+        "execution_pass": _bool_from_summary(
+            execution_summary,
+            ("jforex_execution_parity_pass", "execution_parity_pass", "overall_pass"),
+        ),
+        "runtime_events_rows": _runtime_events_rows(runtime_events),
+    }
+
+
+def _generate_stage13_replay_artifacts(
+    *,
+    symbols: list[str],
+    start_ts: str,
+    end_ts: str,
+    model_month: str,
+    history_dir: Path,
+    predictions_dir: Path,
+    tick_root: Path,
+    out_dir: Path,
+) -> dict[str, DukascopyTestClientArtifactOutputs]:
+    outputs: dict[str, DukascopyTestClientArtifactOutputs] = {}
+    for symbol in symbols:
+        outputs[symbol] = generate_dukascopy_testclient_artifacts(
+            symbol=symbol,
+            tick_root=tick_root,
+            out_dir=out_dir,
+            start_ts=start_ts,
+            end_ts=end_ts,
+            replay_impl=lambda **_: _run_stage13_matrix_replay(
+                symbol=symbol,
+                start_ts=start_ts,
+                end_ts=end_ts,
+                model_month=model_month,
+                history_dir=history_dir,
+                predictions_dir=predictions_dir,
+                tick_root=tick_root,
+                report_dir=out_dir,
+            ),
+        )
+    return outputs
+
+
 def _resolved_stage_row(
     *,
     symbol: str,
@@ -265,6 +400,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--symbols", default=",".join(DEFAULT_SYMBOLS))
     parser.add_argument("--predictions-dir", type=Path, default=DEFAULT_PREDICTIONS_DIR)
     parser.add_argument("--models-dir", type=Path, default=DEFAULT_MODELS_DIR)
+    parser.add_argument("--tick-root", type=Path, default=DEFAULT_TICK_ROOT)
+    parser.add_argument("--start-ts", default=DEFAULT_START_TS)
+    parser.add_argument("--end-ts", default=DEFAULT_END_TS)
+    parser.add_argument("--model-month", default=DEFAULT_MODEL_MONTH)
+    parser.add_argument("--history-dir", type=Path, default=DEFAULT_HISTORY_DIR)
     parser.add_argument("--lock-dir", type=Path, default=DEFAULT_LOCK_DIR)
     parser.add_argument("--reconcile-dir", type=Path, default=DEFAULT_RECONCILE_DIR)
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_RECONCILE_DIR)
@@ -285,6 +425,23 @@ def main(argv: list[str] | None = None) -> int:
             models_dir=Path(args.models_dir),
             out_dir=reconcile_dir,
             tolerance=args.stage12_tolerance,
+        )
+
+    eligible_stage13_symbols = [
+        symbol
+        for symbol in symbols
+        if _normalize_outcome(stage12_rows.get(symbol, {}).get("certification_outcome")) == "PASS"
+    ]
+    if eligible_stage13_symbols:
+        _generate_stage13_replay_artifacts(
+            symbols=eligible_stage13_symbols,
+            start_ts=args.start_ts,
+            end_ts=args.end_ts,
+            model_month=args.model_month,
+            history_dir=Path(args.history_dir),
+            predictions_dir=Path(args.predictions_dir),
+            tick_root=Path(args.tick_root),
+            out_dir=reconcile_dir,
         )
 
     stage13_summary, stage13_checks = _stage13_default_runner(
