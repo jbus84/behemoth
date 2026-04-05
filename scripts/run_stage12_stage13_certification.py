@@ -37,7 +37,6 @@ DEFAULT_START_TS = "2025-07-07T00:00:00Z"
 DEFAULT_END_TS = "2025-07-09T00:00:00Z"
 DEFAULT_MODEL_MONTH = "2025-07"
 DEFAULT_RECONCILE_DIR = Path("data/analysis/backtest_reconcile")
-DEFAULT_LOCK_DIR = Path("configs/research/governance/oco_history_dukascopy_candidate/2025-07")
 DEFAULT_HISTORY_DIR = Path("configs/research/governance/oco_history_dukascopy_candidate")
 FINAL_SUMMARY_FILENAME = "stage12_stage13_certification_summary.csv"
 
@@ -399,6 +398,12 @@ def _parse_symbols(raw: str) -> list[str]:
     return _normalize_symbols([part for part in str(raw).split(",") if part.strip()])
 
 
+def _resolve_lock_dir(lock_dir: Path | None, history_dir: Path, model_month: str) -> Path:
+    if lock_dir is not None:
+        return Path(lock_dir)
+    return Path(history_dir) / str(model_month)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--symbols", default=",".join(DEFAULT_SYMBOLS))
@@ -409,7 +414,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--end-ts", default=DEFAULT_END_TS)
     parser.add_argument("--model-month", default=DEFAULT_MODEL_MONTH)
     parser.add_argument("--history-dir", type=Path, default=DEFAULT_HISTORY_DIR)
-    parser.add_argument("--lock-dir", type=Path, default=DEFAULT_LOCK_DIR)
+    parser.add_argument("--lock-dir", type=Path)
     parser.add_argument("--reconcile-dir", type=Path, default=DEFAULT_RECONCILE_DIR)
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_RECONCILE_DIR)
     parser.add_argument("--stage12-tolerance", type=float, default=0.0)
@@ -420,6 +425,7 @@ def main(argv: list[str] | None = None) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     reconcile_dir = Path(args.reconcile_dir)
     reconcile_dir.mkdir(parents=True, exist_ok=True)
+    lock_dir = _resolve_lock_dir(args.lock_dir, Path(args.history_dir), args.model_month)
 
     stage12_rows: dict[str, dict[str, Any]] = {}
     for symbol in symbols:
@@ -450,7 +456,7 @@ def main(argv: list[str] | None = None) -> int:
 
     stage13_summary, stage13_checks = _stage13_default_runner(
         symbols=symbols,
-        lock_dir=Path(args.lock_dir),
+        lock_dir=lock_dir,
         out_dir=reconcile_dir,
     )
 
