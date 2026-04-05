@@ -328,11 +328,7 @@ def build_stage13_artifacts(
             value = None if match.empty else match.iloc[-1].get("pass")
             details = ""
             expected_source_path = _expected_source_path(reconcile_dir, symbol, src.check_id)
-            if src.check_id == "dukascopy_testclient_signal_parity_pass" and not historical_deployable:
-                row[src.check_id] = True
-                details = f"non-deployable historical month: {non_deployable_reason or 'no reason provided'}"
-                status_txt = "pass"
-            elif value is None or pd.isna(value):
+            if value is None or pd.isna(value):
                 row[src.check_id] = False
                 missing_inputs += 1
                 status_txt = "fail"
@@ -400,7 +396,6 @@ def build_stage13_artifacts(
         "## Interpretation",
         "- Stage 13 is green only when Stage 12 API parity, the current Dukascopy replay runtime-events artifact, Dukascopy/TestClient signal parity, and Dukascopy/TestClient execution parity are all green.",
         "- Local-surrogate artifacts are excluded from Stage 13 hard-gate consumption even when broad file globs are provided.",
-        "- Historical non-deployable symbols may bypass the signal parity check only when their lock explicitly marks them non-deployable.",
     ]
     report_out.write_text("\n".join(report_lines).strip() + "\n", encoding="utf-8")
 
