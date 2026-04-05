@@ -53,6 +53,34 @@ def _write_stage14_green_inputs(tmp_path: Path, symbol: str) -> None:
         _write_csv(tmp_path / f"{symbol}_{name}.csv", [{"symbol": symbol, col: True}])
 
 
+def _write_stage13_normalized_summary(
+    tmp_path: Path,
+    symbol: str,
+    *,
+    stage13_certification_outcome: str,
+    stage13_go_decision: str,
+    certification_outcome: str,
+    go_decision: str,
+) -> Path:
+    path = tmp_path / "stage12_stage13_certification_summary.csv"
+    _write_csv(
+        path,
+        [
+            {
+                "symbol": symbol,
+                "stage12_certification_outcome": "PASS",
+                "stage12_go_decision": "GO",
+                "stage13_attempted": True,
+                "stage13_certification_outcome": stage13_certification_outcome,
+                "stage13_go_decision": stage13_go_decision,
+                "certification_outcome": certification_outcome,
+                "go_decision": go_decision,
+            }
+        ],
+    )
+    return path
+
+
 def test_build_stage14_artifacts_fails_when_jforex_inputs_missing(tmp_path: Path) -> None:
     _write_csv(
         tmp_path / "GBPUSD_stage13.csv",
@@ -141,6 +169,70 @@ def test_build_stage14_artifacts_ignores_local_surrogate_matches(tmp_path: Path)
     assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
     execution_check = checks[checks["metric_name"] == "jforex_execution_parity_pass"].iloc[0]
     assert execution_check["source_path"].endswith("GBPUSD_jforex_execution.csv")
+
+
+def test_build_stage14_artifacts_uses_normalized_stage13_summary(tmp_path: Path) -> None:
+    stage13_summary = _write_stage13_normalized_summary(
+        tmp_path,
+        "GBPUSD",
+        stage13_certification_outcome="PASS",
+        stage13_go_decision="NO_GO",
+        certification_outcome="PASS",
+        go_decision="NO_GO",
+    )
+    _write_csv(
+        tmp_path / "GBPUSD_jforex_signal.csv",
+        [{"symbol": "GBPUSD", "jforex_signal_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "GBPUSD_jforex_execution.csv",
+        [{"symbol": "GBPUSD", "jforex_execution_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "GBPUSD_jforex_execution_lifecycle.csv",
+        [{"symbol": "GBPUSD", "execution_lifecycle_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "GBPUSD_jforex_ops.csv",
+        [{"symbol": "GBPUSD", "operational_ready_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "GBPUSD_outcome.csv",
+        [{"symbol": "GBPUSD", "jforex_outcome_parity_pass": True}],
+    )
+    local_surrogate_path = _write_local_surrogate_row(
+        tmp_path,
+        "GBPUSD",
+        historical_deployable=False,
+        non_deployable_reason="no_gate_states",
+        verdict="NO_GO",
+    )
+
+    summary, checks = build_stage14_artifacts(
+        symbols=["GBPUSD"],
+        stage13_summary_glob=str(stage13_summary),
+        jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
+        jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_execution_lifecycle.csv"),
+        jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
+        jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
+        local_surrogate_summary_glob=str(local_surrogate_path),
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+    )
+
+    stage13_check = checks[checks["metric_name"] == "stage13_dukascopy_testclient_pass"].iloc[0]
+    assert stage13_check["status"] == "pass"
+    assert summary.loc[0, "stage13_certification_outcome"] == "PASS"
+    assert summary.loc[0, "stage13_go_decision"] == "NO_GO"
+    assert summary.loc[0, "certification_outcome"] == "PASS"
+    assert summary.loc[0, "go_decision"] == "NO_GO"
+    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is True
+    assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is True
+    assert summary.loc[0, "verdict"] == "nogo"
 
 
 def test_build_stage14_artifacts_keeps_requested_symbol_scope(tmp_path: Path) -> None:
@@ -298,7 +390,25 @@ def test_build_stage14_artifacts_includes_local_surrogate_check(tmp_path: Path) 
 def test_build_stage14_artifacts_accepts_local_surrogate_nogo_for_non_deployable_symbol(
     tmp_path: Path,
 ) -> None:
-    _write_stage14_green_inputs(tmp_path, "USDCAD")
+    _write_csv(
+        tmp_path / "USDCAD_stage13.csv",
+        [
+            {
+                "symbol": "USDCAD",
+                "stage13_dukascopy_testclient_pass": True,
+                "certification_outcome": "PASS",
+                "go_decision": "NO_GO",
+            }
+        ],
+    )
+    for name, col in [
+        ("jforex_signal", "jforex_signal_parity_pass"),
+        ("jforex_execution", "jforex_execution_parity_pass"),
+        ("jforex_execution_lifecycle", "execution_lifecycle_pass"),
+        ("jforex_ops", "operational_ready_pass"),
+        ("outcome", "jforex_outcome_parity_pass"),
+    ]:
+        _write_csv(tmp_path / f"USDCAD_{name}.csv", [{"symbol": "USDCAD", col: True}])
     local_surrogate_path = _write_local_surrogate_row(
         tmp_path,
         "USDCAD",
@@ -328,14 +438,40 @@ def test_build_stage14_artifacts_accepts_local_surrogate_nogo_for_non_deployable
     assert surrogate_check.iloc[0]["status"] == "pass"
     assert "no_go" in surrogate_check.iloc[0]["details"].lower()
     assert bool(surrogate_check.iloc[0]["metric_value"]) is True
+    stage13_check = checks[checks["metric_name"] == "stage13_dukascopy_testclient_pass"].iloc[0]
+    assert stage13_check["status"] == "pass"
+    assert "PASS / NO_GO" in stage13_check["details"]
+    assert summary.loc[0, "stage13_certification_outcome"] == "PASS"
+    assert summary.loc[0, "stage13_go_decision"] == "NO_GO"
+    assert summary.loc[0, "certification_outcome"] == "PASS"
+    assert summary.loc[0, "go_decision"] == "NO_GO"
     assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is True
     assert summary.loc[0, "verdict"] == "nogo"
+    report_text = (tmp_path / "out" / "report.md").read_text()
+    snapshot_text = (tmp_path / "out" / "snapshot.md").read_text()
+    assert "PASS / NO_GO is accepted as a valid prerequisite" in report_text
+    assert "PASS / NO_GO" in snapshot_text
+    assert "accepted as a valid prerequisite" in snapshot_text
+
+
+def test_stage14_makefile_default_points_to_normalized_stage13_summary() -> None:
+    makefile = Path(__file__).resolve().parents[1] / "Makefile"
+    stage14_block = makefile.read_text().split("stage14-jforex-cert:", 1)[1]
+    assert "stage12_stage13_certification_summary.csv" in stage14_block
+    assert "stage13_dukascopy_testclient_summary.csv" not in stage14_block
 
 
 def test_build_stage14_artifacts_marks_non_deployable_symbol_as_nogo(tmp_path: Path) -> None:
     _write_csv(
         tmp_path / "USDCAD_stage13.csv",
-        [{"symbol": "USDCAD", "stage13_dukascopy_testclient_pass": True}],
+        [
+            {
+                "symbol": "USDCAD",
+                "stage13_dukascopy_testclient_pass": True,
+                "certification_outcome": "PASS",
+                "go_decision": "NO_GO",
+            }
+        ],
     )
     _write_csv(
         tmp_path / "USDCAD_jforex_signal.csv",
@@ -394,7 +530,75 @@ def test_build_stage14_artifacts_marks_non_deployable_symbol_as_nogo(tmp_path: P
     assert len(surrogate_check) == 1
     assert surrogate_check.iloc[0]["status"] == "pass"
     assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is True
-    assert summary.loc[0, "verdict"] == "nogo"
+    stage13_check = checks[checks["metric_name"] == "stage13_dukascopy_testclient_pass"].iloc[0]
+    assert stage13_check["status"] == "pass"
+    assert "PASS / NO_GO" in stage13_check["details"]
+    assert summary.loc[0, "stage13_certification_outcome"] == "PASS"
+    assert summary.loc[0, "stage13_go_decision"] == "NO_GO"
+    assert summary.loc[0, "certification_outcome"] == "FAIL"
+    assert summary.loc[0, "go_decision"] == "NO_GO"
+    assert summary.loc[0, "verdict"] == "red"
+
+
+def test_build_stage14_artifacts_rejects_contradictory_stage13_inputs(tmp_path: Path) -> None:
+    _write_csv(
+        tmp_path / "EURUSD_stage13.csv",
+        [
+            {
+                "symbol": "EURUSD",
+                "stage13_dukascopy_testclient_pass": False,
+                "certification_outcome": "PASS",
+                "go_decision": "GO",
+            }
+        ],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_signal.csv",
+        [{"symbol": "EURUSD", "jforex_signal_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_execution.csv",
+        [{"symbol": "EURUSD", "jforex_execution_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_execution_lifecycle.csv",
+        [{"symbol": "EURUSD", "execution_lifecycle_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_ops.csv",
+        [{"symbol": "EURUSD", "operational_ready_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_outcome.csv",
+        [{"symbol": "EURUSD", "jforex_outcome_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "local_surrogate.csv",
+        [{"symbol": "EURUSD", "local_jforex_surrogate_pass": True}],
+    )
+
+    summary, checks = build_stage14_artifacts(
+        symbols=["EURUSD"],
+        stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
+        jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
+        jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_execution_lifecycle.csv"),
+        jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
+        jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
+        local_surrogate_summary_glob=str(tmp_path / "local_surrogate.csv"),
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+    )
+
+    stage13_check = checks[checks["metric_name"] == "stage13_dukascopy_testclient_pass"].iloc[0]
+    assert stage13_check["status"] == "fail"
+    assert "contradictory Stage 13 inputs" in stage13_check["details"]
+    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
+    assert summary.loc[0, "certification_outcome"] == "FAIL"
+    assert summary.loc[0, "go_decision"] == "NO_GO"
 
 
 def test_build_stage14_artifacts_rejects_deployable_symbol_with_local_surrogate_nogo(

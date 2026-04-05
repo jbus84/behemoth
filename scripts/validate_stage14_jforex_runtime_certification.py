@@ -106,6 +106,12 @@ def _load_summary_rows(source: InputSource) -> pd.DataFrame:
                     "symbol": symbol,
                     "check_id": source.check_id,
                     "pass": _pick_bool(row, source.candidate_columns),
+                    "stage13_certification_outcome": _pick_text(
+                        row, ("stage13_certification_outcome",)
+                    ),
+                    "stage13_go_decision": _pick_text(row, ("stage13_go_decision",)),
+                    "certification_outcome": _pick_text(row, ("certification_outcome",)),
+                    "go_decision": _pick_text(row, ("go_decision",)),
                     "historical_deployable": _pick_bool(row, ("historical_deployable",)),
                     "non_deployable_reason": _pick_text(row, ("non_deployable_reason",)),
                     "raw_verdict": _pick_text(row, ("verdict",)),
@@ -140,6 +146,49 @@ def _evaluate_local_surrogate(match: pd.DataFrame) -> tuple[bool | None, str]:
     if value is None or pd.isna(value):
         return None, "missing input artifact"
     return bool(value), ""
+
+
+def _evaluate_stage13_prerequisite(match: pd.DataFrame) -> tuple[bool | None, str, str, str]:
+    if match.empty:
+        return None, "missing input artifact", "", ""
+    row = match.iloc[-1]
+    certification_outcome = str(
+        row.get("stage13_certification_outcome") or row.get("certification_outcome") or ""
+    ).strip().upper()
+    go_decision = str(row.get("stage13_go_decision") or row.get("go_decision") or "").strip().upper()
+    bool_value = row.get("pass")
+    bool_pass = None if bool_value is None or pd.isna(bool_value) else bool(bool_value)
+
+    if certification_outcome == "PASS":
+        if bool_pass is False:
+            return (
+                False,
+                "contradictory Stage 13 inputs: certification_outcome=PASS but pass=false",
+                certification_outcome,
+                go_decision or "GO",
+            )
+        details = ""
+        if go_decision == "NO_GO":
+            details = "accepted Stage 13 PASS / NO_GO prerequisite"
+        return True, details, certification_outcome, go_decision
+    if certification_outcome == "FAIL":
+        if bool_pass is True:
+            return (
+                False,
+                "contradictory Stage 13 inputs: certification_outcome=FAIL but pass=true",
+                certification_outcome,
+                go_decision or "NO_GO",
+            )
+        return False, "Stage 13 certification FAIL", certification_outcome, go_decision or "NO_GO"
+
+    if bool_pass is None:
+        return None, "missing input artifact", certification_outcome, go_decision
+
+    passed = bool_pass
+    details = ""
+    if passed and go_decision == "NO_GO":
+        details = "accepted Stage 13 PASS / NO_GO prerequisite"
+    return passed, details, certification_outcome, go_decision
 
 
 def _non_deployable_nogo_details(row: dict[str, Any]) -> str:
@@ -216,7 +265,12 @@ def build_stage14_artifacts(
         InputSource(
             check_id="stage13_dukascopy_testclient_pass",
             summary_glob=stage13_summary_glob,
-            candidate_columns=("stage13_dukascopy_testclient_pass", "overall_pass"),
+            candidate_columns=(
+                "stage13_certification_outcome",
+                "stage13_dukascopy_testclient_pass",
+                "certification_outcome",
+                "overall_pass",
+            ),
         ),
         InputSource(
             check_id="jforex_signal_parity_pass",
@@ -289,7 +343,15 @@ def build_stage14_artifacts(
                 ).strip()
         for src in sources:
             match = by_symbol[by_symbol["check_id"] == src.check_id].copy()
-            if src.check_id == "local_jforex_surrogate_pass":
+            if src.check_id == "stage13_dukascopy_testclient_pass":
+                value, details, stage13_outcome, stage13_go = _evaluate_stage13_prerequisite(match)
+                row["stage13_certification_outcome"] = stage13_outcome or (
+                    "PASS" if bool(value) else "FAIL" if value is not None else ""
+                )
+                row["stage13_go_decision"] = stage13_go or (
+                    "NO_GO" if bool(value) is False else "GO" if value else ""
+                )
+            elif src.check_id == "local_jforex_surrogate_pass":
                 value, details = _evaluate_local_surrogate(match)
             else:
                 value = None if match.empty else match.iloc[-1].get("pass")
@@ -376,9 +438,15 @@ def build_stage14_artifacts(
                 }
             )
         row["stage14_jforex_cert_pass"] = all(bool(row[src.check_id]) for src in sources)
+        row["certification_outcome"] = "PASS" if row["stage14_jforex_cert_pass"] else "FAIL"
+        row["go_decision"] = (
+            "NO_GO"
+            if (historical_deployable is False or not row["stage14_jforex_cert_pass"])
+            else "GO"
+        )
         # missing_inputs counts absent-file failures only; stale artifacts fail the cert but do not increment this counter
         row["missing_inputs"] = missing_inputs
-        if historical_deployable is False:
+        if row["stage14_jforex_cert_pass"] and historical_deployable is False:
             row["verdict"] = "nogo"
         else:
             row["verdict"] = "green" if row["stage14_jforex_cert_pass"] else "red"
@@ -409,7 +477,8 @@ def build_stage14_artifacts(
         _table(checks_out),
         "",
         "## Interpretation",
-        "- Stage 14 is green only when Stage 13 remains green and all JForex-specific certification checks pass.",
+        "- Stage 14 is green only when the Stage 13 prerequisite is satisfied and all JForex-specific certification checks pass.",
+        "- Stage 13 PASS / NO_GO is accepted as a valid prerequisite and does not fail Stage 14 by itself.",
         "- Missing JForex tester/demo artifacts are treated as certification failures until the adapter path is exercised.",
         "- jforex_outcome_parity_pass: reconciles JForex runtime signal counts against locked Python predictions (signal_coverage_ratio must be 1.0, zero execution failures, trades present).",
         "- execution_lifecycle_pass: validates the JForex execution lifecycle summary emitted by the adapter runtime.",
@@ -423,7 +492,7 @@ def build_stage14_artifacts(
         "",
         f"- generated_at: `{now_utc}`",
         "- Stage 14 is a hard gate for the Dukascopy JForex adapter.",
-        "- Stage 13 Dukascopy TestClient parity, JForex tester parity, execution lifecycle correctness, local JForex surrogate readiness, and operational readiness must all be green.",
+        "- Stage 13 `PASS / NO_GO` is accepted as a valid prerequisite; JForex tester parity, execution lifecycle correctness, local JForex surrogate readiness, and operational readiness must all pass their gates.",
         "",
         "#### Key Results",
         _table(summary),
@@ -443,7 +512,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--stage13-summary-glob",
-        default="data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv",
+        default="data/analysis/backtest_reconcile/stage12_stage13_certification_summary.csv",
     )
     parser.add_argument("--jforex-signal-summary-glob", default="")
     parser.add_argument("--jforex-execution-summary-glob", default="")
