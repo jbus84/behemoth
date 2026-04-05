@@ -281,3 +281,68 @@ def test_build_stage13_artifacts_uses_fallback_for_partial_replay_family(tmp_pat
         str(tmp_path / "backtest_reconcile" / "USDJPY_dukascopy_testclient_replay_summary.csv"),
         str(tmp_path / "backtest_reconcile" / "USDJPY_jforex_execution_parity_summary.csv"),
     }
+
+
+def test_build_stage13_artifacts_reports_missing_inputs_with_expected_source_paths(tmp_path: Path) -> None:
+    _write_lock(tmp_path / "locks" / "eurusd_oco_live_lock.json", symbol="EURUSD", deployable=True)
+    runtime = tmp_path / "backtest_reconcile" / "EURUSD_jforex_runtime_events.csv"
+    runtime.parent.mkdir(parents=True, exist_ok=True)
+    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n")
+
+    summary, checks = build_stage13_artifacts(
+        symbols=["EURUSD"],
+        lock_dir=tmp_path / "locks",
+        stage12_api_parity_summary_glob=str(tmp_path / "backtest_reconcile" / "*_stage12_api_parity_summary.csv"),
+        dukascopy_testclient_replay_summary_glob=str(
+            tmp_path / "backtest_reconcile" / "*_dukascopy_testclient_replay_summary.csv"
+        ),
+        reconcile_dir=tmp_path / "backtest_reconcile",
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+    )
+
+    assert bool(summary.loc[0, "stage13_dukascopy_testclient_pass"]) is False
+
+    stage12_check = checks[checks["metric_name"] == "stage12_api_parity_pass"].iloc[0]
+    signal_check = checks[checks["metric_name"] == "dukascopy_testclient_signal_parity_pass"].iloc[0]
+    execution_check = checks[checks["metric_name"] == "dukascopy_testclient_execution_parity_pass"].iloc[0]
+
+    assert stage12_check["source_path"].endswith("EURUSD_stage12_api_parity_summary.csv")
+    assert stage12_check["details"] == "missing Stage 12 API parity summary: " + stage12_check["source_path"]
+    assert signal_check["source_path"].endswith("EURUSD_dukascopy_testclient_replay_summary.csv")
+    assert signal_check["details"] == "missing Dukascopy/TestClient signal parity summary: " + signal_check["source_path"]
+    assert execution_check["source_path"].endswith("EURUSD_dukascopy_testclient_replay_summary.csv")
+    assert execution_check["details"] == "missing Dukascopy/TestClient execution parity summary: " + execution_check["source_path"]
+
+
+def test_build_stage13_artifacts_reports_runtime_artifact_as_current_dukascopy_surface(tmp_path: Path) -> None:
+    _write_lock(tmp_path / "locks" / "gbpusd_oco_live_lock.json", symbol="GBPUSD", deployable=True)
+    _write_stage12_summary(tmp_path / "backtest_reconcile" / "GBPUSD_stage12_api_parity_summary.csv", symbol="GBPUSD", passed=True)
+    _write_dukascopy_replay_summary(
+        tmp_path / "backtest_reconcile" / "GBPUSD_dukascopy_testclient_replay_summary.csv",
+        symbol="GBPUSD",
+        signal_pass=True,
+        execution_pass=True,
+    )
+
+    summary, checks = build_stage13_artifacts(
+        symbols=["GBPUSD"],
+        lock_dir=tmp_path / "locks",
+        stage12_api_parity_summary_glob=str(tmp_path / "backtest_reconcile" / "*_stage12_api_parity_summary.csv"),
+        dukascopy_testclient_replay_summary_glob=str(
+            tmp_path / "backtest_reconcile" / "*_dukascopy_testclient_replay_summary.csv"
+        ),
+        reconcile_dir=tmp_path / "backtest_reconcile",
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+    )
+
+    assert bool(summary.loc[0, "dukascopy_runtime_artifacts_complete_pass"]) is False
+    runtime_check = checks[checks["metric_name"] == "dukascopy_runtime_artifacts_complete_pass"].iloc[0]
+    assert runtime_check["source_path"].endswith("GBPUSD_jforex_runtime_events.csv")
+    assert "current Dukascopy replay runtime-events artifact" in runtime_check["details"]
+    assert "legacy filename retained" in runtime_check["details"]

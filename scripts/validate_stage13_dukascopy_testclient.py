@@ -128,12 +128,46 @@ def _load_historical_lock_status(lock_dir: Path, symbol: str) -> dict[str, str |
     }
 
 
+def _expected_source_path(reconcile_dir: Path, symbol: str, check_id: str) -> Path:
+    if check_id == "stage12_api_parity_pass":
+        return reconcile_dir / f"{symbol}_stage12_api_parity_summary.csv"
+    if check_id in {
+        "dukascopy_testclient_signal_parity_pass",
+        "dukascopy_testclient_execution_parity_pass",
+    }:
+        return reconcile_dir / f"{symbol}_dukascopy_testclient_replay_summary.csv"
+    if check_id == "dukascopy_runtime_artifacts_complete_pass":
+        return reconcile_dir / f"{symbol}_jforex_runtime_events.csv"
+    return reconcile_dir / f"{symbol}_{check_id}.csv"
+
+
+def _missing_details(check_id: str, source_path: Path) -> str:
+    if check_id == "dukascopy_runtime_artifacts_complete_pass":
+        return (
+            "missing current Dukascopy replay runtime-events artifact "
+            f"(legacy filename retained): {source_path}"
+        )
+    if check_id == "stage12_api_parity_pass":
+        return f"missing Stage 12 API parity summary: {source_path}"
+    if check_id == "dukascopy_testclient_signal_parity_pass":
+        return f"missing Dukascopy/TestClient signal parity summary: {source_path}"
+    if check_id == "dukascopy_testclient_execution_parity_pass":
+        return f"missing Dukascopy/TestClient execution parity summary: {source_path}"
+    return f"missing input artifact: {source_path}"
+
+
 def _runtime_events_ok(reconcile_dir: Path, symbol: str) -> tuple[bool, str]:
     path = reconcile_dir / f"{symbol}_jforex_runtime_events.csv"
     if not path.exists():
-        return False, f"missing runtime events file: {path}"
+        return False, (
+            "missing current Dukascopy replay runtime-events artifact "
+            f"(legacy filename retained): {path}"
+        )
     if path.stat().st_size <= 0:
-        return False, f"empty runtime events file: {path}"
+        return False, (
+            "empty current Dukascopy replay runtime-events artifact "
+            f"(legacy filename retained): {path}"
+        )
     return True, ""
 
 
@@ -293,6 +327,7 @@ def build_stage13_artifacts(
             match = _latest_match(candidate_frames, symbol, src.check_id)
             value = None if match.empty else match.iloc[-1].get("pass")
             details = ""
+            expected_source_path = _expected_source_path(reconcile_dir, symbol, src.check_id)
             if src.check_id == "dukascopy_testclient_signal_parity_pass" and not historical_deployable:
                 row[src.check_id] = True
                 details = f"non-deployable historical month: {non_deployable_reason or 'no reason provided'}"
@@ -301,11 +336,15 @@ def build_stage13_artifacts(
                 row[src.check_id] = False
                 missing_inputs += 1
                 status_txt = "fail"
-                details = "missing input artifact"
+                details = _missing_details(src.check_id, expected_source_path)
             else:
                 row[src.check_id] = bool(value)
                 status_txt = "pass" if bool(value) else "fail"
-            source_path = "" if match.empty else str(match.iloc[-1].get("source_path") or "")
+            source_path = (
+                str(expected_source_path) if match.empty else str(match.iloc[-1].get("source_path") or "")
+            )
+            if not source_path:
+                source_path = str(expected_source_path)
             check_rows.append(
                 {
                     "symbol": symbol,
@@ -359,7 +398,7 @@ def build_stage13_artifacts(
         _table(checks_out),
         "",
         "## Interpretation",
-        "- Stage 13 is green only when Stage 12 API parity, Dukascopy runtime artifacts, Dukascopy/TestClient signal parity, and Dukascopy/TestClient execution parity are all green.",
+        "- Stage 13 is green only when Stage 12 API parity, the current Dukascopy replay runtime-events artifact, Dukascopy/TestClient signal parity, and Dukascopy/TestClient execution parity are all green.",
         "- Local-surrogate artifacts are excluded from Stage 13 hard-gate consumption even when broad file globs are provided.",
         "- Historical non-deployable symbols may bypass the signal parity check only when their lock explicitly marks them non-deployable.",
     ]
@@ -370,7 +409,7 @@ def build_stage13_artifacts(
         "",
         f"- generated_at: `{now_utc}`",
         "- Stage 13 is the Dukascopy-source prerequisite gate for Stage 14.",
-        "- It verifies Stage 12 API parity plus Dukascopy runtime, signal parity, and execution parity.",
+        "- It verifies Stage 12 API parity plus the current Dukascopy replay runtime-events artifact, signal parity, and execution parity.",
         "",
         "#### Key Results",
         _table(summary),

@@ -24,7 +24,7 @@ Certify that canonical Dukascopy parquet ticks reproduce Stage 12-approved Pytho
 
 ## Failure Modes
 - `stage12_api_parity_pass=false` means the Python baseline prerequisite is not trusted for that symbol.
-- `dukascopy_runtime_artifacts_complete_pass=false` means the Dukascopy replay evidence bundle is incomplete.
+- `dukascopy_runtime_artifacts_complete_pass=false` means the current Dukascopy replay runtime-events artifact is missing or empty; the file still uses the legacy `*_jforex_runtime_events.csv` name on disk.
 - `dukascopy_testclient_signal_parity_pass=false` means the Dukascopy replay did not reproduce governed signal timing or selection.
 - `dukascopy_testclient_execution_parity_pass=false` means the Python runtime diverged after the replayed signal state matched.
 - Local JForex surrogate artifacts are not a Stage 13 failure mode. They are not part of the hard-gate decision.
