@@ -473,6 +473,7 @@ def test_build_stage14_artifacts_green_with_all_seven_checks(tmp_path: Path) -> 
     snapshot_text = (tmp_path / "out" / "snapshot.md").read_text()
     assert "execution_lifecycle_pass" in report_text
     assert "execution lifecycle correctness" in snapshot_text
+    assert "local JForex surrogate readiness" in snapshot_text
     assert summary.loc[0, "verdict"] == "green"
     assert int(summary.loc[0, "missing_inputs"]) == 0
     assert len(checks) == 7

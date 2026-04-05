@@ -423,7 +423,7 @@ def build_stage14_artifacts(
         "",
         f"- generated_at: `{now_utc}`",
         "- Stage 14 is a hard gate for the Dukascopy JForex adapter.",
-        "- Stage 13 Dukascopy TestClient parity, JForex tester parity, execution lifecycle correctness, and operational readiness must all be green.",
+        "- Stage 13 Dukascopy TestClient parity, JForex tester parity, execution lifecycle correctness, local JForex surrogate readiness, and operational readiness must all be green.",
         "",
         "#### Key Results",
         _table(summary),
