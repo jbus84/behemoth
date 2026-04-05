@@ -275,9 +275,9 @@ stage12-stage13-cert-artifacts:
 		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks) \
 		--start-ts $(or $(START_TS),2025-07-07T00:00:00Z) \
 		--end-ts $(or $(END_TS),2025-07-09T00:00:00Z) \
-		--model-month $(or $(MODEL_MONTH),2025-07) \
+		$(if $(MODEL_MONTH),--model-month $(MODEL_MONTH)) \
 		--history-dir $(or $(HISTORY_DIR),configs/research/governance/oco_history_dukascopy_candidate) \
-		--lock-dir $(or $(LOCK_DIR),$(or $(HISTORY_DIR),configs/research/governance/oco_history_dukascopy_candidate)/$(or $(MODEL_MONTH),2025-07)) \
+		$(if $(LOCK_DIR),--lock-dir $(LOCK_DIR)) \
 		--reconcile-dir $(or $(RECONCILE_DIR),data/analysis/backtest_reconcile) \
 		--out-dir $(or $(OUT_DIR),data/analysis/backtest_reconcile)
 
