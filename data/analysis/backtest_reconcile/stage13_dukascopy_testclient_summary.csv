@@ -1,7 +1,7 @@
 symbol,dukascopy_runtime_artifacts_complete_pass,stage12_api_parity_pass,dukascopy_testclient_signal_parity_pass,dukascopy_testclient_execution_parity_pass,stage13_dukascopy_testclient_pass,missing_inputs,verdict,evaluated_at_utc
-AUDUSD,False,False,False,False,False,4,red,2026-04-05T12:38:06Z
-EURUSD,False,False,False,False,False,4,red,2026-04-05T12:38:06Z
-GBPUSD,False,False,False,False,False,4,red,2026-04-05T12:38:06Z
-USDCAD,False,False,False,False,False,4,red,2026-04-05T12:38:06Z
-USDCHF,False,False,False,False,False,4,red,2026-04-05T12:38:06Z
-USDJPY,False,False,False,False,False,4,red,2026-04-05T12:38:06Z
+AUDUSD,False,False,False,False,False,4,red,2026-04-05T12:39:55Z
+EURUSD,False,False,False,False,False,4,red,2026-04-05T12:39:55Z
+GBPUSD,False,False,False,False,False,4,red,2026-04-05T12:39:55Z
+USDCAD,False,False,False,False,False,4,red,2026-04-05T12:39:55Z
+USDCHF,False,False,False,False,False,4,red,2026-04-05T12:39:55Z
+USDJPY,False,False,False,False,False,4,red,2026-04-05T12:39:55Z
