@@ -102,6 +102,12 @@ def test_build_stage14_artifacts_marks_green_when_all_checks_pass(tmp_path: Path
     assert summary.loc[0, "verdict"] == "green"
     assert int(summary.loc[0, "missing_inputs"]) == 0
     assert len(checks) == 7
+    assert "execution_lifecycle_pass" in summary.columns
+    assert "oco_lifecycle_pass" not in summary.columns
+    lifecycle_check = checks[checks["metric_name"] == "execution_lifecycle_pass"]
+    assert len(lifecycle_check) == 1
+    assert lifecycle_check.iloc[0]["status"] == "pass"
+    assert "oco_lifecycle_pass" not in set(checks["metric_name"])
 
 
 def test_build_stage14_artifacts_fails_when_jforex_inputs_missing(tmp_path: Path) -> None:
@@ -517,6 +523,12 @@ def test_build_stage14_artifacts_green_with_all_seven_checks(tmp_path: Path) -> 
     assert summary.loc[0, "verdict"] == "green"
     assert int(summary.loc[0, "missing_inputs"]) == 0
     assert len(checks) == 7
+    assert "execution_lifecycle_pass" in summary.columns
+    assert "oco_lifecycle_pass" not in summary.columns
+    lifecycle_check = checks[checks["metric_name"] == "execution_lifecycle_pass"]
+    assert len(lifecycle_check) == 1
+    assert lifecycle_check.iloc[0]["status"] == "pass"
+    assert "oco_lifecycle_pass" not in set(checks["metric_name"])
 
 
 def test_build_stage14_artifacts_fails_when_input_artifact_is_stale(tmp_path: Path) -> None:
@@ -709,6 +721,14 @@ def test_build_stage14_artifacts_rejects_legacy_oco_lifecycle_only_inputs(tmp_pa
         tmp_path / "EURUSD_jforex_ops.csv",
         [{"symbol": "EURUSD", "operational_ready_pass": True}],
     )
+    _write_csv(
+        tmp_path / "EURUSD_outcome.csv",
+        [{"symbol": "EURUSD", "jforex_outcome_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "local_surrogate.csv",
+        [{"symbol": "EURUSD", "local_jforex_surrogate_pass": True}],
+    )
 
     summary, checks = build_stage14_artifacts(
         symbols=["EURUSD"],
@@ -717,8 +737,8 @@ def test_build_stage14_artifacts_rejects_legacy_oco_lifecycle_only_inputs(tmp_pa
         jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
         jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_lifecycle.csv"),
         jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
-        jforex_outcome_summary_glob="",
-        local_surrogate_summary_glob="",
+        jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
+        local_surrogate_summary_glob=str(tmp_path / "local_surrogate.csv"),
         max_artifact_age_days=0,
         out_summary_csv=tmp_path / "out" / "summary.csv",
         out_checks_csv=tmp_path / "out" / "checks.csv",
@@ -726,8 +746,9 @@ def test_build_stage14_artifacts_rejects_legacy_oco_lifecycle_only_inputs(tmp_pa
         snapshot_out=tmp_path / "out" / "snapshot.md",
     )
 
-    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
+    assert int(summary.loc[0, "missing_inputs"]) == 0
     lifecycle_check = checks[checks["metric_name"] == "execution_lifecycle_pass"]
     assert len(lifecycle_check) == 1
     assert lifecycle_check.iloc[0]["status"] == "fail"
     assert "oco_lifecycle_pass" in lifecycle_check.iloc[0]["details"]
+    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
