@@ -216,10 +216,10 @@ public final class Stage14ArtifactWriter {
                 .count();
         boolean pass = failed == 0 && violations == 0;
         List<String> lines = List.of(
-                "symbol,oco_lifecycle_pass,lifecycle_failures,lifecycle_violations",
+                "symbol,execution_lifecycle_pass,lifecycle_failures,lifecycle_violations",
                 csv(symbol, Boolean.toString(pass), Long.toString(failed), Long.toString(violations))
         );
-        writeFile(reportDir.resolve(symbol + "_" + artifactPrefix + "_oco_lifecycle_summary.csv"), lines);
+        writeFile(reportDir.resolve(symbol + "_" + artifactPrefix + "_execution_lifecycle_summary.csv"), lines);
     }
 
     private void writeOperationalSummary(String symbol, List<EventRow> rows) {

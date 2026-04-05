@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from scripts.run_jforex_dukascopy_matrix import _stage14_artifact_paths
 from scripts.validate_stage14_jforex_runtime_certification import build_stage14_artifacts
 
 
@@ -45,63 +46,11 @@ def _write_stage14_green_inputs(tmp_path: Path, symbol: str) -> None:
         ("stage13", "stage13_dukascopy_testclient_pass"),
         ("jforex_signal", "jforex_signal_parity_pass"),
         ("jforex_execution", "jforex_execution_parity_pass"),
-        ("jforex_lifecycle", "oco_lifecycle_pass"),
+        ("jforex_execution_lifecycle", "execution_lifecycle_pass"),
         ("jforex_ops", "operational_ready_pass"),
         ("outcome", "jforex_outcome_parity_pass"),
     ]:
         _write_csv(tmp_path / f"{symbol}_{name}.csv", [{"symbol": symbol, col: True}])
-
-
-def test_build_stage14_artifacts_marks_green_when_all_checks_pass(tmp_path: Path) -> None:
-    _write_csv(
-        tmp_path / "EURUSD_stage13.csv",
-        [{"symbol": "EURUSD", "stage13_dukascopy_testclient_pass": True}],
-    )
-    _write_csv(
-        tmp_path / "EURUSD_jforex_signal.csv",
-        [{"symbol": "EURUSD", "jforex_signal_parity_pass": True}],
-    )
-    _write_csv(
-        tmp_path / "EURUSD_jforex_execution.csv",
-        [{"symbol": "EURUSD", "jforex_execution_parity_pass": True}],
-    )
-    _write_csv(
-        tmp_path / "EURUSD_jforex_lifecycle.csv",
-        [{"symbol": "EURUSD", "oco_lifecycle_pass": True}],
-    )
-    _write_csv(
-        tmp_path / "EURUSD_jforex_ops.csv",
-        [{"symbol": "EURUSD", "operational_ready_pass": True}],
-    )
-    _write_csv(
-        tmp_path / "EURUSD_outcome.csv",
-        [{"symbol": "EURUSD", "jforex_outcome_parity_pass": True}],
-    )
-    _write_csv(
-        tmp_path / "local_surrogate.csv",
-        [{"symbol": "EURUSD", "local_jforex_surrogate_pass": True}],
-    )
-
-    summary, checks = build_stage14_artifacts(
-        symbols=["EURUSD"],
-        stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
-        jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
-        jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
-        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_lifecycle.csv"),
-        jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
-        jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
-        local_surrogate_summary_glob=str(tmp_path / "local_surrogate.csv"),
-        max_artifact_age_days=0,
-        out_summary_csv=tmp_path / "out" / "summary.csv",
-        out_checks_csv=tmp_path / "out" / "checks.csv",
-        report_out=tmp_path / "out" / "report.md",
-        snapshot_out=tmp_path / "out" / "snapshot.md",
-    )
-
-    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is True
-    assert summary.loc[0, "verdict"] == "green"
-    assert int(summary.loc[0, "missing_inputs"]) == 0
-    assert len(checks) == 7
 
 
 def test_build_stage14_artifacts_fails_when_jforex_inputs_missing(tmp_path: Path) -> None:
@@ -155,12 +104,12 @@ def test_build_stage14_artifacts_ignores_local_surrogate_matches(tmp_path: Path)
         [{"symbol": "GBPUSD", "jforex_execution_parity_pass": True}],
     )
     _write_csv(
-        tmp_path / "GBPUSD_jforex_lifecycle.csv",
-        [{"symbol": "GBPUSD", "oco_lifecycle_pass": True}],
+        tmp_path / "GBPUSD_jforex_execution_lifecycle.csv",
+        [{"symbol": "GBPUSD", "execution_lifecycle_pass": True}],
     )
     _write_csv(
-        tmp_path / "GBPUSD_local_jforex_lifecycle.csv",
-        [{"symbol": "GBPUSD", "oco_lifecycle_pass": False}],
+        tmp_path / "GBPUSD_local_jforex_execution_lifecycle.csv",
+        [{"symbol": "GBPUSD", "execution_lifecycle_pass": False}],
     )
     _write_csv(
         tmp_path / "GBPUSD_jforex_ops.csv",
@@ -176,7 +125,7 @@ def test_build_stage14_artifacts_ignores_local_surrogate_matches(tmp_path: Path)
         stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
         jforex_signal_summary_glob=str(tmp_path / "*jforex_signal.csv"),
         jforex_execution_summary_glob=str(tmp_path / "*jforex_execution.csv"),
-        jforex_lifecycle_summary_glob=str(tmp_path / "*jforex_lifecycle.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*jforex_execution_lifecycle.csv"),
         jforex_operational_summary_glob=str(tmp_path / "*jforex_ops.csv"),
         jforex_outcome_summary_glob="",
         local_surrogate_summary_glob="",
@@ -208,8 +157,8 @@ def test_build_stage14_artifacts_keeps_requested_symbol_scope(tmp_path: Path) ->
         [{"symbol": "GBPUSD", "jforex_execution_parity_pass": True}],
     )
     _write_csv(
-        tmp_path / "GBPUSD_jforex_lifecycle.csv",
-        [{"symbol": "GBPUSD", "oco_lifecycle_pass": True}],
+        tmp_path / "GBPUSD_jforex_execution_lifecycle.csv",
+        [{"symbol": "GBPUSD", "execution_lifecycle_pass": True}],
     )
     _write_csv(
         tmp_path / "GBPUSD_jforex_ops.csv",
@@ -228,8 +177,8 @@ def test_build_stage14_artifacts_keeps_requested_symbol_scope(tmp_path: Path) ->
         [{"symbol": "EURUSD", "jforex_execution_parity_pass": True}],
     )
     _write_csv(
-        tmp_path / "EURUSD_jforex_lifecycle.csv",
-        [{"symbol": "EURUSD", "oco_lifecycle_pass": True}],
+        tmp_path / "EURUSD_jforex_execution_lifecycle.csv",
+        [{"symbol": "EURUSD", "execution_lifecycle_pass": True}],
     )
     _write_csv(
         tmp_path / "EURUSD_jforex_ops.csv",
@@ -241,7 +190,7 @@ def test_build_stage14_artifacts_keeps_requested_symbol_scope(tmp_path: Path) ->
         stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
         jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
         jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
-        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_lifecycle.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_execution_lifecycle.csv"),
         jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
         jforex_outcome_summary_glob="",
         local_surrogate_summary_glob="",
@@ -271,7 +220,8 @@ def test_build_stage14_artifacts_includes_outcome_parity_check(tmp_path: Path) -
         [{"symbol": "EURUSD", "jforex_execution_parity_pass": True}],
     )
     _write_csv(
-        tmp_path / "EURUSD_jforex_lifecycle.csv", [{"symbol": "EURUSD", "oco_lifecycle_pass": True}]
+        tmp_path / "EURUSD_jforex_execution_lifecycle.csv",
+        [{"symbol": "EURUSD", "execution_lifecycle_pass": True}]
     )
     _write_csv(
         tmp_path / "EURUSD_jforex_ops.csv", [{"symbol": "EURUSD", "operational_ready_pass": True}]
@@ -282,7 +232,7 @@ def test_build_stage14_artifacts_includes_outcome_parity_check(tmp_path: Path) -
         stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
         jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
         jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
-        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_lifecycle.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_execution_lifecycle.csv"),
         jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
         jforex_outcome_summary_glob="",
         local_surrogate_summary_glob="",
@@ -314,7 +264,8 @@ def test_build_stage14_artifacts_includes_local_surrogate_check(tmp_path: Path) 
         [{"symbol": "EURUSD", "jforex_execution_parity_pass": True}],
     )
     _write_csv(
-        tmp_path / "EURUSD_jforex_lifecycle.csv", [{"symbol": "EURUSD", "oco_lifecycle_pass": True}]
+        tmp_path / "EURUSD_jforex_execution_lifecycle.csv",
+        [{"symbol": "EURUSD", "execution_lifecycle_pass": True}]
     )
     _write_csv(
         tmp_path / "EURUSD_jforex_ops.csv", [{"symbol": "EURUSD", "operational_ready_pass": True}]
@@ -328,7 +279,7 @@ def test_build_stage14_artifacts_includes_local_surrogate_check(tmp_path: Path) 
         stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
         jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
         jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
-        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_lifecycle.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_execution_lifecycle.csv"),
         jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
         jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
         local_surrogate_summary_glob="",
@@ -361,7 +312,7 @@ def test_build_stage14_artifacts_accepts_local_surrogate_nogo_for_non_deployable
         stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
         jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
         jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
-        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_lifecycle.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_execution_lifecycle.csv"),
         jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
         jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
         local_surrogate_summary_glob=str(local_surrogate_path),
@@ -372,13 +323,13 @@ def test_build_stage14_artifacts_accepts_local_surrogate_nogo_for_non_deployable
         snapshot_out=tmp_path / "out" / "snapshot.md",
     )
 
-    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is True
-    assert summary.loc[0, "verdict"] == "nogo"
     surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"]
     assert len(surrogate_check) == 1
     assert surrogate_check.iloc[0]["status"] == "pass"
     assert "no_go" in surrogate_check.iloc[0]["details"].lower()
     assert bool(surrogate_check.iloc[0]["metric_value"]) is True
+    assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is True
+    assert summary.loc[0, "verdict"] == "nogo"
 
 
 def test_build_stage14_artifacts_marks_non_deployable_symbol_as_nogo(tmp_path: Path) -> None:
@@ -395,8 +346,8 @@ def test_build_stage14_artifacts_marks_non_deployable_symbol_as_nogo(tmp_path: P
         [{"symbol": "USDCAD", "jforex_execution_parity_pass": False}],
     )
     _write_csv(
-        tmp_path / "USDCAD_jforex_lifecycle.csv",
-        [{"symbol": "USDCAD", "oco_lifecycle_pass": True}],
+        tmp_path / "USDCAD_jforex_execution_lifecycle.csv",
+        [{"symbol": "USDCAD", "execution_lifecycle_pass": True}],
     )
     _write_csv(
         tmp_path / "USDCAD_jforex_ops.csv",
@@ -419,7 +370,7 @@ def test_build_stage14_artifacts_marks_non_deployable_symbol_as_nogo(tmp_path: P
         stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
         jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
         jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
-        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_lifecycle.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_execution_lifecycle.csv"),
         jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
         jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
         local_surrogate_summary_glob=str(local_surrogate_path),
@@ -430,8 +381,6 @@ def test_build_stage14_artifacts_marks_non_deployable_symbol_as_nogo(tmp_path: P
         snapshot_out=tmp_path / "out" / "snapshot.md",
     )
 
-    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
-    assert summary.loc[0, "verdict"] == "nogo"
     for metric_name in (
         "jforex_signal_parity_pass",
         "jforex_execution_parity_pass",
@@ -444,6 +393,8 @@ def test_build_stage14_artifacts_marks_non_deployable_symbol_as_nogo(tmp_path: P
     surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"]
     assert len(surrogate_check) == 1
     assert surrogate_check.iloc[0]["status"] == "pass"
+    assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is True
+    assert summary.loc[0, "verdict"] == "nogo"
 
 
 def test_build_stage14_artifacts_rejects_deployable_symbol_with_local_surrogate_nogo(
@@ -462,7 +413,7 @@ def test_build_stage14_artifacts_rejects_deployable_symbol_with_local_surrogate_
         stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
         jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
         jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
-        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_lifecycle.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_execution_lifecycle.csv"),
         jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
         jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
         local_surrogate_summary_glob=str(local_surrogate_path),
@@ -473,11 +424,12 @@ def test_build_stage14_artifacts_rejects_deployable_symbol_with_local_surrogate_
         snapshot_out=tmp_path / "out" / "snapshot.md",
     )
 
-    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
     surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"]
     assert len(surrogate_check) == 1
     assert surrogate_check.iloc[0]["status"] == "fail"
     assert "historical_deployable" in surrogate_check.iloc[0]["details"].lower()
+    assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is False
+    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
 
 
 def test_build_stage14_artifacts_green_with_all_seven_checks(tmp_path: Path) -> None:
@@ -486,7 +438,7 @@ def test_build_stage14_artifacts_green_with_all_seven_checks(tmp_path: Path) -> 
         ("stage13", "stage13_dukascopy_testclient_pass"),
         ("jforex_signal", "jforex_signal_parity_pass"),
         ("jforex_execution", "jforex_execution_parity_pass"),
-        ("jforex_lifecycle", "oco_lifecycle_pass"),
+        ("jforex_execution_lifecycle", "execution_lifecycle_pass"),
         ("jforex_ops", "operational_ready_pass"),
         ("outcome", "jforex_outcome_parity_pass"),
     ]:
@@ -501,7 +453,7 @@ def test_build_stage14_artifacts_green_with_all_seven_checks(tmp_path: Path) -> 
         stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
         jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
         jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
-        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_lifecycle.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_execution_lifecycle.csv"),
         jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
         jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
         local_surrogate_summary_glob=str(tmp_path / "local_surrogate.csv"),
@@ -511,10 +463,21 @@ def test_build_stage14_artifacts_green_with_all_seven_checks(tmp_path: Path) -> 
         report_out=tmp_path / "out" / "report.md",
         snapshot_out=tmp_path / "out" / "snapshot.md",
     )
-    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is True
+    assert "execution_lifecycle_pass" in summary.columns
+    assert "oco_lifecycle_pass" not in summary.columns
+    lifecycle_check = checks[checks["metric_name"] == "execution_lifecycle_pass"]
+    assert len(lifecycle_check) == 1
+    assert lifecycle_check.iloc[0]["status"] == "pass"
+    assert "oco_lifecycle_pass" not in set(checks["metric_name"])
+    report_text = (tmp_path / "out" / "report.md").read_text()
+    snapshot_text = (tmp_path / "out" / "snapshot.md").read_text()
+    assert "execution_lifecycle_pass" in report_text
+    assert "execution lifecycle correctness" in snapshot_text
+    assert "local JForex surrogate readiness" in snapshot_text
     assert summary.loc[0, "verdict"] == "green"
     assert int(summary.loc[0, "missing_inputs"]) == 0
     assert len(checks) == 7
+    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is True
 
 
 def test_build_stage14_artifacts_fails_when_input_artifact_is_stale(tmp_path: Path) -> None:
@@ -534,7 +497,7 @@ def test_build_stage14_artifacts_fails_when_input_artifact_is_stale(tmp_path: Pa
     for name, col in [
         ("jforex_signal", "jforex_signal_parity_pass"),
         ("jforex_execution", "jforex_execution_parity_pass"),
-        ("jforex_lifecycle", "oco_lifecycle_pass"),
+        ("jforex_execution_lifecycle", "execution_lifecycle_pass"),
         ("jforex_ops", "operational_ready_pass"),
     ]:
         _write_csv(
@@ -547,7 +510,7 @@ def test_build_stage14_artifacts_fails_when_input_artifact_is_stale(tmp_path: Pa
         stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
         jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
         jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
-        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_lifecycle.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_execution_lifecycle.csv"),
         jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
         jforex_outcome_summary_glob="",
         local_surrogate_summary_glob="",
@@ -570,7 +533,7 @@ def test_build_stage14_artifacts_passes_when_all_fresh(tmp_path: Path) -> None:
         ("stage13", "stage13_dukascopy_testclient_pass"),
         ("jforex_signal", "jforex_signal_parity_pass"),
         ("jforex_execution", "jforex_execution_parity_pass"),
-        ("jforex_lifecycle", "oco_lifecycle_pass"),
+        ("jforex_execution_lifecycle", "execution_lifecycle_pass"),
         ("jforex_ops", "operational_ready_pass"),
     ]:
         _write_csv(
@@ -583,7 +546,7 @@ def test_build_stage14_artifacts_passes_when_all_fresh(tmp_path: Path) -> None:
         stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
         jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
         jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
-        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_lifecycle.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_execution_lifecycle.csv"),
         jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
         jforex_outcome_summary_glob="",
         local_surrogate_summary_glob="",
@@ -606,7 +569,7 @@ def test_build_stage14_artifacts_accepts_non_deployable_local_surrogate_nogo(
         ("stage13", "stage13_dukascopy_testclient_pass"),
         ("jforex_signal", "jforex_signal_parity_pass"),
         ("jforex_execution", "jforex_execution_parity_pass"),
-        ("jforex_lifecycle", "oco_lifecycle_pass"),
+        ("jforex_execution_lifecycle", "execution_lifecycle_pass"),
         ("jforex_ops", "operational_ready_pass"),
         ("outcome", "jforex_outcome_parity_pass"),
     ]:
@@ -628,7 +591,7 @@ def test_build_stage14_artifacts_accepts_non_deployable_local_surrogate_nogo(
         stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
         jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
         jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
-        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_lifecycle.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_execution_lifecycle.csv"),
         jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
         jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
         local_surrogate_summary_glob=str(tmp_path / "local_surrogate.csv"),
@@ -639,13 +602,13 @@ def test_build_stage14_artifacts_accepts_non_deployable_local_surrogate_nogo(
         snapshot_out=tmp_path / "out" / "snapshot.md",
     )
 
-    assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is True
-    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is True
     surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"].iloc[0]
     assert surrogate_check["status"] == "pass"
     assert "non-deployable" in surrogate_check["details"].lower()
     assert "historical_deployable=false" in surrogate_check["details"].lower()
     assert "no_gate_states" in surrogate_check["details"]
+    assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is True
+    assert summary.loc[0, "verdict"] == "nogo"
 
 
 def test_build_stage14_artifacts_rejects_deployable_local_surrogate_nogo(tmp_path: Path) -> None:
@@ -653,7 +616,7 @@ def test_build_stage14_artifacts_rejects_deployable_local_surrogate_nogo(tmp_pat
         ("stage13", "stage13_dukascopy_testclient_pass"),
         ("jforex_signal", "jforex_signal_parity_pass"),
         ("jforex_execution", "jforex_execution_parity_pass"),
-        ("jforex_lifecycle", "oco_lifecycle_pass"),
+        ("jforex_execution_lifecycle", "execution_lifecycle_pass"),
         ("jforex_ops", "operational_ready_pass"),
         ("outcome", "jforex_outcome_parity_pass"),
     ]:
@@ -661,6 +624,59 @@ def test_build_stage14_artifacts_rejects_deployable_local_surrogate_nogo(tmp_pat
     _write_csv(
         tmp_path / "local_surrogate.csv",
         [{"symbol": "EURUSD", "verdict": "NO_GO", "historical_deployable": True}],
+    )
+
+    summary, checks = build_stage14_artifacts(
+        symbols=["EURUSD"],
+        stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
+        jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
+        jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_execution_lifecycle.csv"),
+        jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
+        jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
+        local_surrogate_summary_glob=str(tmp_path / "local_surrogate.csv"),
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+    )
+
+    assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is False
+    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
+    surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"].iloc[0]
+    assert surrogate_check["status"] == "fail"
+    assert "historical_deployable" in surrogate_check["details"].lower()
+
+
+def test_build_stage14_artifacts_rejects_legacy_oco_lifecycle_only_inputs(tmp_path: Path) -> None:
+    _write_csv(
+        tmp_path / "EURUSD_stage13.csv",
+        [{"symbol": "EURUSD", "stage13_dukascopy_testclient_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_signal.csv",
+        [{"symbol": "EURUSD", "jforex_signal_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_execution.csv",
+        [{"symbol": "EURUSD", "jforex_execution_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_lifecycle.csv",
+        [{"symbol": "EURUSD", "oco_lifecycle_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_ops.csv",
+        [{"symbol": "EURUSD", "operational_ready_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_outcome.csv",
+        [{"symbol": "EURUSD", "jforex_outcome_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "local_surrogate.csv",
+        [{"symbol": "EURUSD", "local_jforex_surrogate_pass": True}],
     )
 
     summary, checks = build_stage14_artifacts(
@@ -679,8 +695,71 @@ def test_build_stage14_artifacts_rejects_deployable_local_surrogate_nogo(tmp_pat
         snapshot_out=tmp_path / "out" / "snapshot.md",
     )
 
-    assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is False
+    lifecycle_check = checks[checks["source_path"].astype(str).str.endswith("EURUSD_jforex_lifecycle.csv")]
+    assert len(lifecycle_check) == 1
+    assert lifecycle_check.iloc[0]["source_path"].endswith("EURUSD_jforex_lifecycle.csv")
     assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
-    surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"].iloc[0]
-    assert surrogate_check["status"] == "fail"
-    assert "historical_deployable" in surrogate_check["details"].lower()
+    assert int(summary.loc[0, "missing_inputs"]) >= 1
+    execution_lifecycle_checks = checks[checks["metric_name"] == "execution_lifecycle_pass"]
+    assert len(execution_lifecycle_checks) == 1
+    assert execution_lifecycle_checks.iloc[0]["status"] == "fail"
+
+
+def test_build_stage14_artifacts_rejects_lifecycle_pass_only_inputs(tmp_path: Path) -> None:
+    _write_csv(
+        tmp_path / "EURUSD_stage13.csv",
+        [{"symbol": "EURUSD", "stage13_dukascopy_testclient_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_signal.csv",
+        [{"symbol": "EURUSD", "jforex_signal_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_execution.csv",
+        [{"symbol": "EURUSD", "jforex_execution_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_execution_lifecycle.csv",
+        [{"symbol": "EURUSD", "lifecycle_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_jforex_ops.csv",
+        [{"symbol": "EURUSD", "operational_ready_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "EURUSD_outcome.csv",
+        [{"symbol": "EURUSD", "jforex_outcome_parity_pass": True}],
+    )
+    _write_csv(
+        tmp_path / "local_surrogate.csv",
+        [{"symbol": "EURUSD", "local_jforex_surrogate_pass": True}],
+    )
+
+    summary, checks = build_stage14_artifacts(
+        symbols=["EURUSD"],
+        stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
+        jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
+        jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_execution_lifecycle.csv"),
+        jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
+        jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
+        local_surrogate_summary_glob=str(tmp_path / "local_surrogate.csv"),
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+    )
+
+    lifecycle_check = checks[checks["metric_name"] == "execution_lifecycle_pass"]
+    assert len(lifecycle_check) == 1
+    assert lifecycle_check.iloc[0]["status"] == "fail"
+    assert lifecycle_check.iloc[0]["source_path"].endswith("EURUSD_jforex_execution_lifecycle.csv")
+    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
+    assert int(summary.loc[0, "missing_inputs"]) >= 1
+
+
+def test_stage14_matrix_helper_uses_execution_lifecycle_artifact_name() -> None:
+    paths = _stage14_artifact_paths(Path("/tmp/report"), "EURUSD")
+    assert Path("/tmp/report/EURUSD_jforex_execution_lifecycle_summary.csv") in paths
+    assert all("oco_lifecycle_summary" not in str(path) for path in paths)

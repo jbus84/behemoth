@@ -42,17 +42,41 @@ class Stage14ArtifactWriterTest {
         group.sellLeg.status = "CANCELLED";
         writer.writeReports(List.of("GBPUSD"), List.of(group));
 
+        assertThat(tempDir.resolve("GBPUSD_jforex_signal_parity_summary.csv")).exists();
         assertThat(Files.readString(tempDir.resolve("GBPUSD_jforex_signal_parity_summary.csv")))
                 .contains("jforex_signal_parity_pass")
                 .contains("true");
+        assertThat(tempDir.resolve("GBPUSD_jforex_execution_parity_summary.csv")).exists();
         assertThat(Files.readString(tempDir.resolve("GBPUSD_jforex_execution_parity_summary.csv")))
                 .contains("jforex_execution_parity_pass")
                 .contains("true");
-        assertThat(Files.readString(tempDir.resolve("GBPUSD_jforex_oco_lifecycle_summary.csv")))
-                .contains("oco_lifecycle_pass")
-                .contains("true");
+        assertThat(tempDir.resolve("GBPUSD_jforex_operational_ready_summary.csv")).exists();
         assertThat(Files.readString(tempDir.resolve("GBPUSD_jforex_operational_ready_summary.csv")))
                 .contains("operational_ready_pass")
+                .contains("true");
+    }
+
+    @Test
+    void writesExecutionLifecycleSummaryFile() throws Exception {
+        Stage14ArtifactWriter writer = new Stage14ArtifactWriter(tempDir);
+        writer.markOperationalStep("GBPUSD", "strategy_started", true, "ok");
+        writer.markOperationalStep("GBPUSD", "subscribed", true, "ok");
+        writer.markOperationalStep("GBPUSD", "feed_status", true, "ok");
+        writer.markOperationalStep("GBPUSD", "account_snapshot", true, "ok");
+        writer.recordPredictCycle("GBPUSD", Instant.parse("2025-07-07T00:00:00Z"), 3, 1, 1, 0, List.of(), List.of(100));
+        writer.recordOrderSubmitted("GBPUSD", "GROUP1", "GROUP1_BUY");
+        writer.recordFill("GBPUSD", "GROUP1", "GROUP1_BUY");
+        writer.recordTradeTouchSync("GBPUSD", "BUY-1");
+        OcoGroupState group = new OcoGroupState();
+        group.groupLabel = "GROUP1";
+        group.symbol = "GBPUSD";
+        group.candidateUid = "oco|GBPUSD|100|h6|state_a";
+        writer.writeReports(List.of("GBPUSD"), List.of(group));
+
+        assertThat(tempDir.resolve("GBPUSD_jforex_execution_lifecycle_summary.csv")).exists();
+        assertThat(tempDir.resolve("GBPUSD_jforex_oco_lifecycle_summary.csv")).doesNotExist();
+        assertThat(Files.readString(tempDir.resolve("GBPUSD_jforex_execution_lifecycle_summary.csv")))
+                .contains("symbol,execution_lifecycle_pass,lifecycle_failures,lifecycle_violations")
                 .contains("true");
     }
 
