@@ -1,5 +1,9 @@
 .DEFAULT_GOAL := help
 
+REPO_COMMON_ROOT := $(shell dirname "$$(git rev-parse --git-common-dir)")
+SHARED_ENV_FILE ?= $(REPO_COMMON_ROOT)/.env
+LOAD_SHARED_ENV = if [ -f "$(SHARED_ENV_FILE)" ]; then set -a; . "$(SHARED_ENV_FILE)"; set +a; fi;
+
 # ==============================================================================
 # Variables & Configuration
 # ==============================================================================
@@ -268,7 +272,7 @@ validate-oco-history:
 		--symbols $(shell echo $(REBUILD_SYMBOLS) | sed 's/ /,/g')
 
 stage12-stage13-cert-artifacts:
-	uv run python scripts/run_stage12_stage13_certification.py \
+	@$(LOAD_SHARED_ENV) uv run python scripts/run_stage12_stage13_certification.py \
 		--symbols $(or $(SYMBOLS),EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD) \
 		--predictions-dir $(or $(PREDICTIONS_DIR),data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap) \
 		--models-dir $(or $(MODELS_DIR),models/oco) \
@@ -378,7 +382,7 @@ local-jforex-cert:
 		--report-out $(or $(REPORT_OUT),docs/analysis/local_jforex_surrogate_report.md)
 
 jforex-dukascopy-matrix:
-	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/run_jforex_dukascopy_matrix.py \
+	@$(LOAD_SHARED_ENV) env UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/run_jforex_dukascopy_matrix.py \
 		$(if $(SYMBOLS),--symbols "$(SYMBOLS)",) \
 		--start-ts $(or $(START_TS),2025-07-04T00:00:00Z) \
 		--end-ts $(or $(END_TS),2025-07-09T00:00:00Z) \
@@ -468,7 +472,7 @@ seed-threshold:
 		--days-back $(or $(DAYS_BACK),20)
 
 jforex-live:
-	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/run_jforex_live.py \
+	@$(LOAD_SHARED_ENV) env UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/run_jforex_live.py \
 		$(if $(SYMBOLS),--symbols "$(SYMBOLS)",) \
 		--report-dir $(or $(REPORT_DIR),data/analysis/backtest_reconcile) \
 		--models-dir $(or $(MODELS_DIR),models/oco_dukascopy_candidate) \
