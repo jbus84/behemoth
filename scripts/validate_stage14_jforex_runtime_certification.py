@@ -235,9 +235,9 @@ def build_stage14_artifacts(
             excluded_path_substrings=("_local_jforex_",),
         ),
         InputSource(
-            check_id="oco_lifecycle_pass",
+            check_id="execution_lifecycle_pass",
             summary_glob=jforex_lifecycle_summary_glob,
-            candidate_columns=("oco_lifecycle_pass", "lifecycle_pass", "overall_pass"),
+            candidate_columns=("execution_lifecycle_pass", "lifecycle_pass", "overall_pass"),
             excluded_path_substrings=("_local_jforex_",),
         ),
         InputSource(
@@ -412,6 +412,7 @@ def build_stage14_artifacts(
         "- Stage 14 is green only when Stage 13 remains green and all JForex-specific certification checks pass.",
         "- Missing JForex tester/demo artifacts are treated as certification failures until the adapter path is exercised.",
         "- jforex_outcome_parity_pass: reconciles JForex runtime signal counts against locked Python predictions (signal_coverage_ratio must be 1.0, zero execution failures, trades present).",
+        "- execution_lifecycle_pass: validates the JForex execution lifecycle summary emitted by the adapter runtime.",
         "- local_jforex_surrogate_pass: the shared Java strategy core must pass the parquet-driven local surrogate harness; an explicit NO_GO is accepted only for historically non-deployable symbols.",
         "- order_coverage_ratio is expected to be low (<0.2): OCO mechanics block new orders while an existing position is live. This metric is informational; signal_coverage_pass is the gate.",
     ]
@@ -422,7 +423,7 @@ def build_stage14_artifacts(
         "",
         f"- generated_at: `{now_utc}`",
         "- Stage 14 is a hard gate for the Dukascopy JForex adapter.",
-        "- Stage 13 Dukascopy TestClient parity, JForex tester parity, OCO lifecycle correctness, and operational readiness must all be green.",
+        "- Stage 13 Dukascopy TestClient parity, JForex tester parity, execution lifecycle correctness, and operational readiness must all be green.",
         "",
         "#### Key Results",
         _table(summary),
