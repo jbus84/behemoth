@@ -272,6 +272,11 @@ stage12-stage13-cert-artifacts:
 		--symbols $(or $(SYMBOLS),EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD) \
 		--predictions-dir $(or $(PREDICTIONS_DIR),data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap) \
 		--models-dir $(or $(MODELS_DIR),models/oco) \
+		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks) \
+		--start-ts $(or $(START_TS),2025-07-07T00:00:00Z) \
+		--end-ts $(or $(END_TS),2025-07-09T00:00:00Z) \
+		--model-month $(or $(MODEL_MONTH),2025-07) \
+		--history-dir $(or $(HISTORY_DIR),configs/research/governance/oco_history_dukascopy_candidate) \
 		--lock-dir $(or $(LOCK_DIR),configs/research/governance/oco_history_dukascopy_candidate/2025-07) \
 		--reconcile-dir $(or $(RECONCILE_DIR),data/analysis/backtest_reconcile) \
 		--out-dir $(or $(OUT_DIR),data/analysis/backtest_reconcile)

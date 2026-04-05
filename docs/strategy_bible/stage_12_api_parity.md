@@ -1,7 +1,7 @@
 # Stage 12 - API Parity Against Reduced Core
 
 ## Objective
-Confirm that the production API, when driven by canonical parquet ticks, reproduces reduced-core research truth at both the signal-selection layer and the execution layer.
+Confirm that the production Python/API runtime, when driven by canonical parquet ticks, reproduces reduced-core research truth and produces the Stage 12 prerequisite artifacts consumed by the unified Stage 12 -> Stage 13 certification flow.
 
 ## Inputs
 - `data/analysis/backtest_reconcile/<SYMBOL>_stage12_api_parity_summary.csv`
@@ -12,7 +12,8 @@ Confirm that the production API, when driven by canonical parquet ticks, reprodu
 - `data/analysis/tick_opportunity_mining/reduced_core_rolling/<SYMBOL>_oco_reduced_state_schedule.csv`
 
 ## Process
-- Replay canonical parquet ticks through the API using the no-cTrader TestClient harness.
+- Run the unified Stage 12 -> Stage 13 certification command for the active universe or a requested symbol subset.
+- Stage 12 executes first for each symbol.
 - Trigger prediction only on completed bars, matching cBot cadence.
 - In historical replay mode, preserve exact tick-bar phase using the full-history tail:
   - warmup sent = `warmup_ticks + (all_prior_ticks mod bar_ticks)`
@@ -21,9 +22,9 @@ Confirm that the production API, when driven by canonical parquet ticks, reprodu
   - only `(candidate_uid, close_ts)` rows present in the locked predictions parquet are eligible.
   - this prevents the API from evaluating bars the research pipeline never treated as candidate events.
 - In that locked historical path, the repo prediction-universe row is already regime-qualified, so Stage 12 does not apply a second runtime regime veto on top of the locked row.
-- Check 2: compare API-selected keys to reduced-core truth on `candidate_uid + close_ts`.
-- Check 3: compare resulting API executions to reduced-core execution truth.
-- Emit Stage 12 artifacts and feed them into the strategy bible build.
+- Compare API-selected keys to reduced-core truth on `candidate_uid + close_ts`.
+- Emit `*_stage12_api_parity_summary.csv` per symbol.
+- Allow Stage 13 replay generation only for Stage 12-passing symbols.
 
 ## Exact Calculations
 - Signal parity passes only when:
@@ -69,24 +70,23 @@ Confirm that the production API, when driven by canonical parquet ticks, reprodu
 - If both pass: Stage 12 may be treated as satisfied for the validated window only.
 
 ## Historical Replay Contract
-- Canonical runner: `make stage12-api-parity`
+- Canonical runner: `make stage12-stage13-cert-artifacts`
 - Canonical truth window: repo reduced-core outputs for the requested `START_TS/END_TS`
 - Canonical feed: Dukascopy parquet under `/Users/danielfisher/Desktop/dukascopy_ticks`
 - Canonical warmup mode: `history_tail`
-- Canonical historical lock source: `configs/research/governance/oco_history/<YYYY-MM>/<symbol>_oco_live_lock.json`
+- Canonical historical lock source: `configs/research/governance/oco_history_dukascopy_candidate/<YYYY-MM>/<symbol>_oco_live_lock.json`
 - Canonical expectations:
   - exact signal parity on `candidate_uid + close_ts`
-  - green execution parity
+  - green Stage 12 prerequisite summary
   - any miss or extra row is a critical failure
 
 ## How To Run
 ```bash
-make stage12-api-parity \
-  SYMBOL=EURUSD \
-  RUNTIME_DB=data/db/backtests/eurusd_stage12.db \
-  EVENTS_JSON=data/analysis/backtest_reconcile/EURUSD_stage12_events.json \
-  REPO_DETAIL_CSV=data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv \
-  REDUCED_STATE_SCHEDULE_CSV=data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv \
+make stage12-stage13-cert-artifacts \
+  SYMBOLS=EURUSD \
+  MODEL_MONTH=2025-07 \
+  HISTORY_DIR=configs/research/governance/oco_history_dukascopy_candidate \
+  TICK_ROOT=/Users/danielfisher/Desktop/dukascopy_ticks \
   START_TS=2025-07-07T00:00:00Z \
   END_TS=2025-07-09T00:00:00Z
 ```
@@ -99,32 +99,26 @@ make stage12-api-parity \
 ## What To Do If It Fails
 - Treat the failure as critical.
 - Do not infer deployability from Stage 04, Stage 06, or Stage 11 if Stage 12 is red.
-- Fix the API/replay/runtime behavior and rerun Stage 12 until both checks are green.
+- Fix the API/replay/runtime behavior and rerun `make stage12-stage13-cert-artifacts` until the Stage 12 prerequisite is green.
 
 ## Canonical Analysis Reports
-- `docs/analysis/ctrader_backtest_reconciliation_runbook.md`
 - `docs/analysis/EURUSD_stage12_api_parity_report.md`
+- `docs/analysis/stage13_dukascopy_testclient_report.md`
 
 ## Reproduction Commands
 ```bash
-uv run python scripts/replay_cbot_testclient.py \
-  --symbol EURUSD \
-  --source dukascopy \
+uv run python scripts/run_stage12_stage13_certification.py \
+  --symbols EURUSD \
+  --model-month 2025-07 \
+  --history-dir configs/research/governance/oco_history_dukascopy_candidate \
   --tick-root /Users/danielfisher/Desktop/dukascopy_ticks \
-  --runtime-db data/db/backtests/eurusd_stage12.db \
-  --events-json data/analysis/backtest_reconcile/EURUSD_stage12_events.json \
-  --repo-stoplimit-detail-csv data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv \
-  --reduced-core-state-schedule-csv data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv \
   --start-ts 2025-07-07T00:00:00Z \
-  --end-ts 2025-07-09T00:00:00Z \
-  --enable-sequence-fallback false \
-  --fail-on-gate true \
-  --require-selected-parity true
+  --end-ts 2025-07-09T00:00:00Z
 ```
 
 ## Traceability
-- `scripts/replay_cbot_testclient.py`
-- `scripts/validate_ctrader_execution_parity.py`
+- `scripts/run_stage12_stage13_certification.py`
+- `scripts/validate_api_parity.py`
 - `scripts/build_oco_strategy_bible.py`
 - `scripts/validate_oco_docs_contract.py`
 

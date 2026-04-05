@@ -1,7 +1,7 @@
 # Stage 13 - Dukascopy TestClient Parity
 
 ## Objective
-Certify that canonical Dukascopy parquet ticks reproduce Stage 12-approved Python-runtime behavior when replayed through the in-process FastAPI `TestClient`.
+Certify that canonical Dukascopy parquet ticks reproduce Stage 12-approved Python-runtime behavior under the unified Stage 12 -> Stage 13 certification flow.
 
 ## Inputs
 - `data/analysis/backtest_reconcile/*_stage12_api_parity_summary.csv`
@@ -55,13 +55,21 @@ Certify that canonical Dukascopy parquet ticks reproduce Stage 12-approved Pytho
 - If a local JForex surrogate artifact is missing or red, treat that as a separate diagnostic issue outside the Stage 13 pass/fail decision.
 
 ## How To Run
-- Run the Stage 13 certification target from the repo root:
+- Run the unified Stage 12 -> Stage 13 certification target from the repo root:
 
 ```bash
-make stage13-dukascopy-cert
+make stage12-stage13-cert-artifacts
 ```
 
-- To inspect the underlying validator directly, run:
+- The legacy public aliases still resolve to the same command surface:
+
+```bash
+make stage12-api-parity
+make stage13-dukascopy-cert
+make dukascopy-testclient-parity
+```
+
+- To inspect the underlying validator directly after artifact generation, run:
 
 ```bash
 uv run python scripts/validate_stage13_dukascopy_testclient.py \
@@ -84,17 +92,17 @@ uv run python scripts/validate_stage13_dukascopy_testclient.py \
 
 ## What To Do If It Fails
 - Do not infer Stage 13 health from local JForex surrogate artifacts.
-- Fix the failing prerequisite or evidence family, rerun `make stage13-dukascopy-cert`, and inspect the regenerated Stage 13 outputs.
+- Fix the failing prerequisite or evidence family, rerun `make stage12-stage13-cert-artifacts`, and inspect the regenerated Stage 13 outputs.
 - Use the checks CSV to localize whether the issue is prerequisite, runtime-artifact completeness, signal parity, or execution parity.
 
 ## Reproduction Commands
-- Same as `How To Run`. The authoritative Stage 13 entrypoint is `make stage13-dukascopy-cert`, which regenerates the summary, checks, report, and snapshot from the repaired validator.
+- Same as `How To Run`. The authoritative entrypoint is `make stage12-stage13-cert-artifacts`, which regenerates Stage 12 prerequisites first, then Stage 13 replay artifacts, then the repaired Stage 13 summary, checks, report, and snapshot.
 
 ## Process
 - Treat Stage 12 as a prerequisite, not a substitute for Stage 13.
 - Treat the local JForex surrogate as a Java-side diagnostic prerequisite, not as a Stage 13 hard-gate input.
 - Replay canonical Dukascopy parquet ticks from `/Users/danielfisher/Desktop/dukascopy_ticks`.
-- Drive the Python runtime in-process through the FastAPI `TestClient` harness.
+- Reuse the real Dukascopy/JForex matrix surface to generate the runtime-events and parity evidence, then normalize that evidence into the explicit `*_dukascopy_testclient_replay_summary.csv` artifact consumed by the Stage 13 validator.
 - Validate governed signal parity and execution parity on the same certification window used by Stage 12.
 - Treat this as the official credential-free broker-source gate before any JForex runtime certification work.
 
@@ -115,8 +123,11 @@ Stage 13 passes only when all four are green.
 
 ## Canonical Commands
 ```bash
-make dukascopy-testclient-parity \
-  SYMBOL=GBPUSD \
+make stage12-stage13-cert-artifacts \
+  SYMBOLS=GBPUSD \
+  MODEL_MONTH=2025-07 \
+  HISTORY_DIR=configs/research/governance/oco_history_dukascopy_candidate \
+  TICK_ROOT=/Users/danielfisher/Desktop/dukascopy_ticks \
   START_TS=2025-07-07T00:00:00Z \
   END_TS=2025-07-09T00:00:00Z
 
@@ -130,6 +141,8 @@ make stage13-dukascopy-cert
 - `docs/strategy_bible/generated/stage_13_snapshot.md`
 
 ## Traceability
-- `scripts/replay_dukascopy_testclient.py`
+- `scripts/run_stage12_stage13_certification.py`
+- `scripts/generate_dukascopy_testclient_artifacts.py`
+- `scripts/run_jforex_dukascopy_matrix.py`
 - `scripts/validate_stage13_dukascopy_testclient.py`
 - `docs/strategy_bible/stage_12_api_parity.md`
