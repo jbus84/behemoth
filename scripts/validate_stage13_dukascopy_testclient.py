@@ -151,6 +151,18 @@ def _runtime_events_ok(reconcile_dir: Path, symbol: str) -> tuple[bool, str]:
             "empty current Dukascopy replay runtime-events artifact "
             f"(legacy filename retained): {path}"
         )
+    try:
+        df = pd.read_csv(path)
+    except Exception:
+        return False, (
+            "unreadable current Dukascopy replay runtime-events artifact "
+            f"(legacy filename retained): {path}"
+        )
+    if df.empty:
+        return False, (
+            "header-only current Dukascopy replay runtime-events artifact "
+            f"(legacy filename retained): {path}"
+        )
     return True, ""
 
 

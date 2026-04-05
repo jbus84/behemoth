@@ -21,3 +21,22 @@ def test_generate_dukascopy_testclient_artifacts_emits_required_paths(tmp_path: 
 
     assert outputs.replay_summary_path.name == "USDJPY_dukascopy_testclient_replay_summary.csv"
     assert outputs.runtime_events_path.name == "USDJPY_jforex_runtime_events.csv"
+
+
+def test_generate_dukascopy_testclient_artifacts_skips_runtime_events_when_replay_has_no_events(
+    tmp_path: Path,
+) -> None:
+    outputs = generate_dukascopy_testclient_artifacts(
+        symbol="EURUSD",
+        tick_root=tmp_path / "ticks",
+        out_dir=tmp_path / "backtest_reconcile",
+        start_ts="2025-07-07T00:00:00Z",
+        end_ts="2025-07-09T00:00:00Z",
+        replay_impl=lambda **_: {
+            "signal_pass": False,
+            "execution_pass": False,
+            "runtime_events_rows": [],
+        },
+    )
+
+    assert outputs.runtime_events_path.exists() is False

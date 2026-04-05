@@ -62,7 +62,7 @@ def test_build_stage13_artifacts_requires_stage12_prerequisite(tmp_path: Path) -
         execution_pass=True,
     )
     runtime = tmp_path / "backtest_reconcile" / "EURUSD_jforex_runtime_events.csv"
-    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n")
+    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n2025-07-07T00:00:00Z,EURUSD,runtime,predict_cycle,True,\n")
 
     summary, checks = build_stage13_artifacts(
         symbols=["EURUSD"],
@@ -102,7 +102,7 @@ def test_build_stage13_artifacts_ignores_local_surrogate_summaries(tmp_path: Pat
         [{"symbol": "USDCAD", "operational_ready_pass": False, "overall_pass": False}],
     )
     runtime = tmp_path / "backtest_reconcile" / "USDCAD_jforex_runtime_events.csv"
-    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n")
+    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n2025-07-07T00:00:00Z,USDCAD,runtime,predict_cycle,True,\n")
 
     summary, checks = build_stage13_artifacts(
         symbols=["USDCAD"],
@@ -135,7 +135,7 @@ def test_build_stage13_artifacts_treats_execution_parity_as_direct_gate(tmp_path
         execution_pass=False,
     )
     runtime = tmp_path / "backtest_reconcile" / "GBPUSD_jforex_runtime_events.csv"
-    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n")
+    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n2025-07-07T00:00:00Z,GBPUSD,runtime,predict_cycle,True,\n")
 
     summary, checks = build_stage13_artifacts(
         symbols=["GBPUSD"],
@@ -176,7 +176,7 @@ def test_build_stage13_artifacts_prefers_explicit_replay_over_fallback_summaries
         [{"symbol": "AUDUSD", "jforex_execution_parity_pass": False}],
     )
     runtime = tmp_path / "backtest_reconcile" / "AUDUSD_jforex_runtime_events.csv"
-    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n")
+    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n2025-07-07T00:00:00Z,AUDUSD,runtime,predict_cycle,True,\n")
 
     summary, checks = build_stage13_artifacts(
         symbols=["AUDUSD"],
@@ -216,7 +216,7 @@ def test_build_stage13_artifacts_uses_fallback_when_replay_glob_matches_nothing(
         [{"symbol": "USDCHF", "jforex_execution_parity_pass": True}],
     )
     runtime = tmp_path / "backtest_reconcile" / "USDCHF_jforex_runtime_events.csv"
-    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n")
+    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n2025-07-07T00:00:00Z,USDCHF,runtime,predict_cycle,True,\n")
 
     summary, checks = build_stage13_artifacts(
         symbols=["USDCHF"],
@@ -257,7 +257,7 @@ def test_build_stage13_artifacts_uses_fallback_for_partial_replay_family(tmp_pat
         [{"symbol": "USDJPY", "jforex_execution_parity_pass": True}],
     )
     runtime = tmp_path / "backtest_reconcile" / "USDJPY_jforex_runtime_events.csv"
-    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n")
+    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n2025-07-07T00:00:00Z,USDJPY,runtime,predict_cycle,True,\n")
 
     summary, checks = build_stage13_artifacts(
         symbols=["USDJPY"],
@@ -287,7 +287,7 @@ def test_build_stage13_artifacts_reports_missing_inputs_with_expected_source_pat
     _write_lock(tmp_path / "locks" / "eurusd_oco_live_lock.json", symbol="EURUSD", deployable=True)
     runtime = tmp_path / "backtest_reconcile" / "EURUSD_jforex_runtime_events.csv"
     runtime.parent.mkdir(parents=True, exist_ok=True)
-    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n")
+    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n2025-07-07T00:00:00Z,EURUSD,runtime,predict_cycle,True,\n")
 
     summary, checks = build_stage13_artifacts(
         symbols=["EURUSD"],
@@ -348,6 +348,42 @@ def test_build_stage13_artifacts_reports_runtime_artifact_as_current_dukascopy_s
     assert "legacy filename retained" in runtime_check["details"]
 
 
+def test_build_stage13_artifacts_rejects_header_only_runtime_events_artifact(tmp_path: Path) -> None:
+    _write_lock(tmp_path / "locks" / "eurusd_oco_live_lock.json", symbol="EURUSD", deployable=True)
+    _write_stage12_summary(
+        tmp_path / "backtest_reconcile" / "EURUSD_stage12_api_parity_summary.csv",
+        symbol="EURUSD",
+        passed=True,
+    )
+    _write_dukascopy_replay_summary(
+        tmp_path / "backtest_reconcile" / "EURUSD_dukascopy_testclient_replay_summary.csv",
+        symbol="EURUSD",
+        signal_pass=True,
+        execution_pass=True,
+    )
+    runtime = tmp_path / "backtest_reconcile" / "EURUSD_jforex_runtime_events.csv"
+    runtime.parent.mkdir(parents=True, exist_ok=True)
+    runtime.write_text("event_name,pass\n")
+
+    summary, checks = build_stage13_artifacts(
+        symbols=["EURUSD"],
+        lock_dir=tmp_path / "locks",
+        stage12_api_parity_summary_glob=str(tmp_path / "backtest_reconcile" / "*_stage12_api_parity_summary.csv"),
+        dukascopy_testclient_replay_summary_glob=str(
+            tmp_path / "backtest_reconcile" / "*_dukascopy_testclient_replay_summary.csv"
+        ),
+        reconcile_dir=tmp_path / "backtest_reconcile",
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+    )
+
+    assert bool(summary.loc[0, "dukascopy_runtime_artifacts_complete_pass"]) is False
+    runtime_check = checks[checks["metric_name"] == "dukascopy_runtime_artifacts_complete_pass"].iloc[0]
+    assert runtime_check["status"] == "fail"
+
+
 def test_build_stage13_artifacts_keeps_primary_summary_contract_minimal(tmp_path: Path) -> None:
     _write_lock(tmp_path / "locks" / "audusd_oco_live_lock.json", symbol="AUDUSD", deployable=True)
     _write_stage12_summary(tmp_path / "backtest_reconcile" / "AUDUSD_stage12_api_parity_summary.csv", symbol="AUDUSD", passed=True)
@@ -359,7 +395,7 @@ def test_build_stage13_artifacts_keeps_primary_summary_contract_minimal(tmp_path
     )
     runtime = tmp_path / "backtest_reconcile" / "AUDUSD_jforex_runtime_events.csv"
     runtime.parent.mkdir(parents=True, exist_ok=True)
-    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n")
+    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n2025-07-07T00:00:00Z,AUDUSD,runtime,predict_cycle,True,\n")
 
     summary, _checks = build_stage13_artifacts(
         symbols=["AUDUSD"],
@@ -404,7 +440,7 @@ def test_build_stage13_artifacts_does_not_bypass_signal_parity_for_non_deployabl
     )
     runtime = tmp_path / "backtest_reconcile" / "USDCAD_jforex_runtime_events.csv"
     runtime.parent.mkdir(parents=True, exist_ok=True)
-    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n")
+    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n2025-07-07T00:00:00Z,USDCAD,runtime,predict_cycle,True,\n")
 
     summary, checks = build_stage13_artifacts(
         symbols=["USDCAD"],
