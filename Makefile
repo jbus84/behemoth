@@ -402,7 +402,7 @@ stage13-dukascopy-cert: stage12-stage13-cert-artifacts
 
 stage14-jforex-cert:
 	uv run python scripts/validate_stage14_jforex_runtime_certification.py \
-		--stage13-summary-glob '$(or $(STAGE13_SUMMARY_GLOB),data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv)' \
+		--stage13-summary-glob '$(or $(STAGE13_SUMMARY_GLOB),data/analysis/backtest_reconcile/stage12_stage13_certification_summary.csv)' \
 		--jforex-signal-summary-glob '$(or $(JFOREX_SIGNAL_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_jforex_signal_parity_summary.csv)' \
 		--jforex-execution-summary-glob '$(or $(JFOREX_EXECUTION_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_jforex_execution_parity_summary.csv)' \
 		--jforex-lifecycle-summary-glob '$(or $(JFOREX_LIFECYCLE_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_jforex_execution_lifecycle_summary.csv)' \

@@ -106,6 +106,10 @@ def _load_summary_rows(source: InputSource) -> pd.DataFrame:
                     "symbol": symbol,
                     "check_id": source.check_id,
                     "pass": _pick_bool(row, source.candidate_columns),
+                    "stage13_certification_outcome": _pick_text(
+                        row, ("stage13_certification_outcome",)
+                    ),
+                    "stage13_go_decision": _pick_text(row, ("stage13_go_decision",)),
                     "certification_outcome": _pick_text(row, ("certification_outcome",)),
                     "go_decision": _pick_text(row, ("go_decision",)),
                     "historical_deployable": _pick_bool(row, ("historical_deployable",)),
@@ -148,8 +152,10 @@ def _evaluate_stage13_prerequisite(match: pd.DataFrame) -> tuple[bool | None, st
     if match.empty:
         return None, "missing input artifact", "", ""
     row = match.iloc[-1]
-    certification_outcome = str(row.get("certification_outcome") or "").strip().upper()
-    go_decision = str(row.get("go_decision") or "").strip().upper()
+    certification_outcome = str(
+        row.get("stage13_certification_outcome") or row.get("certification_outcome") or ""
+    ).strip().upper()
+    go_decision = str(row.get("stage13_go_decision") or row.get("go_decision") or "").strip().upper()
     bool_value = row.get("pass")
     bool_pass = None if bool_value is None or pd.isna(bool_value) else bool(bool_value)
 
@@ -259,7 +265,12 @@ def build_stage14_artifacts(
         InputSource(
             check_id="stage13_dukascopy_testclient_pass",
             summary_glob=stage13_summary_glob,
-            candidate_columns=("stage13_dukascopy_testclient_pass", "overall_pass"),
+            candidate_columns=(
+                "stage13_certification_outcome",
+                "stage13_dukascopy_testclient_pass",
+                "certification_outcome",
+                "overall_pass",
+            ),
         ),
         InputSource(
             check_id="jforex_signal_parity_pass",
@@ -501,7 +512,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--stage13-summary-glob",
-        default="data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv",
+        default="data/analysis/backtest_reconcile/stage12_stage13_certification_summary.csv",
     )
     parser.add_argument("--jforex-signal-summary-glob", default="")
     parser.add_argument("--jforex-execution-summary-glob", default="")
