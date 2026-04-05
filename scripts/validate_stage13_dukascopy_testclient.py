@@ -19,6 +19,7 @@ class InputSource:
     check_id: str
     summary_glob: str
     candidate_columns: tuple[str, ...]
+    excluded_path_tokens: tuple[str, ...] = ()
 
 
 def _now_utc() -> str:
@@ -71,6 +72,9 @@ def _pick_bool(row: pd.Series, candidates: tuple[str, ...]) -> bool | None:
 def _load_summary_rows(source: InputSource) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for path in _resolve_paths(source.summary_glob):
+        path_name = path.name.lower()
+        if any(token in path_name for token in source.excluded_path_tokens):
+            continue
         try:
             df = pd.read_csv(path)
         except Exception:
@@ -122,26 +126,78 @@ def build_stage13_artifacts(
     *,
     symbols: list[str],
     lock_dir: Path,
-    jforex_signal_summary_glob: str,
-    jforex_operational_summary_glob: str,
+    stage12_api_parity_summary_glob: str,
+    dukascopy_testclient_replay_summary_glob: str = "",
+    dukascopy_testclient_signal_summary_glob: str = "",
+    dukascopy_testclient_execution_summary_glob: str = "",
     reconcile_dir: Path,
     out_summary_csv: Path,
     out_checks_csv: Path,
     report_out: Path,
     snapshot_out: Path,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    sources = [
+    sources: list[InputSource] = [
         InputSource(
-            check_id="dukascopy_signal_path_exercised_pass",
-            summary_glob=jforex_signal_summary_glob,
-            candidate_columns=("jforex_signal_parity_pass", "signal_parity_pass", "overall_pass"),
-        ),
-        InputSource(
-            check_id="dukascopy_operational_ready_pass",
-            summary_glob=jforex_operational_summary_glob,
-            candidate_columns=("operational_ready_pass", "demo_ready_pass", "overall_pass"),
-        ),
+            check_id="stage12_api_parity_pass",
+            summary_glob=stage12_api_parity_summary_glob,
+            candidate_columns=("stage12_api_parity_pass", "api_parity_pass", "overall_pass"),
+        )
     ]
+    if str(dukascopy_testclient_replay_summary_glob).strip():
+        sources.extend(
+            [
+                InputSource(
+                    check_id="dukascopy_testclient_signal_parity_pass",
+                    summary_glob=dukascopy_testclient_replay_summary_glob,
+                    candidate_columns=(
+                        "dukascopy_testclient_signal_parity_pass",
+                        "jforex_signal_parity_pass",
+                        "signal_parity_pass",
+                        "overall_pass",
+                    ),
+                    excluded_path_tokens=("local_jforex",),
+                ),
+                InputSource(
+                    check_id="dukascopy_testclient_execution_parity_pass",
+                    summary_glob=dukascopy_testclient_replay_summary_glob,
+                    candidate_columns=(
+                        "dukascopy_testclient_execution_parity_pass",
+                        "jforex_execution_parity_pass",
+                        "execution_parity_pass",
+                        "overall_pass",
+                    ),
+                    excluded_path_tokens=("local_jforex",),
+                ),
+            ]
+        )
+    if str(dukascopy_testclient_signal_summary_glob).strip():
+        sources.append(
+            InputSource(
+                check_id="dukascopy_testclient_signal_parity_pass",
+                summary_glob=dukascopy_testclient_signal_summary_glob,
+                candidate_columns=(
+                    "dukascopy_testclient_signal_parity_pass",
+                    "jforex_signal_parity_pass",
+                    "signal_parity_pass",
+                    "overall_pass",
+                ),
+                excluded_path_tokens=("local_jforex",),
+            )
+        )
+    if str(dukascopy_testclient_execution_summary_glob).strip():
+        sources.append(
+            InputSource(
+                check_id="dukascopy_testclient_execution_parity_pass",
+                summary_glob=dukascopy_testclient_execution_summary_glob,
+                candidate_columns=(
+                    "dukascopy_testclient_execution_parity_pass",
+                    "jforex_execution_parity_pass",
+                    "execution_parity_pass",
+                    "overall_pass",
+                ),
+                excluded_path_tokens=("local_jforex",),
+            )
+        )
 
     checks_frames = [_load_summary_rows(src) for src in sources]
     checks = pd.concat([df for df in checks_frames if not df.empty], ignore_index=True)
@@ -193,7 +249,7 @@ def build_stage13_artifacts(
             match = by_symbol[by_symbol["check_id"] == src.check_id].copy()
             value = None if match.empty else match.iloc[-1].get("pass")
             details = ""
-            if src.check_id == "dukascopy_signal_path_exercised_pass" and not historical_deployable:
+            if src.check_id == "dukascopy_testclient_signal_parity_pass" and not historical_deployable:
                 row[src.check_id] = True
                 details = f"non-deployable historical month: {non_deployable_reason or 'no reason provided'}"
                 status_txt = "pass"
@@ -224,9 +280,10 @@ def build_stage13_artifacts(
         row["stage13_dukascopy_testclient_pass"] = all(
             bool(row[name])
             for name in (
+                "stage12_api_parity_pass",
                 "dukascopy_runtime_artifacts_complete_pass",
-                "dukascopy_signal_path_exercised_pass",
-                "dukascopy_operational_ready_pass",
+                "dukascopy_testclient_signal_parity_pass",
+                "dukascopy_testclient_execution_parity_pass",
             )
         )
         row["missing_inputs"] = missing_inputs
@@ -258,9 +315,9 @@ def build_stage13_artifacts(
         _table(checks_out),
         "",
         "## Interpretation",
-        "- Stage 13 is green only when the Dukascopy tester produced complete runtime artifacts and the operational path is healthy.",
-        "- Deployable symbols must also exercise the signal path via the tester artifacts before Stage 14 is trusted.",
-        "- Historical non-deployable symbols may pass Stage 13 without signal-path exercise when their lock explicitly marks them non-deployable.",
+        "- Stage 13 is green only when Stage 12 API parity, Dukascopy runtime artifacts, Dukascopy/TestClient signal parity, and Dukascopy/TestClient execution parity are all green.",
+        "- Local-surrogate artifacts are excluded from Stage 13 hard-gate consumption even when broad file globs are provided.",
+        "- Historical non-deployable symbols may bypass the signal parity check only when their lock explicitly marks them non-deployable.",
     ]
     report_out.write_text("\n".join(report_lines).strip() + "\n", encoding="utf-8")
 
@@ -269,7 +326,7 @@ def build_stage13_artifacts(
         "",
         f"- generated_at: `{now_utc}`",
         "- Stage 13 is the Dukascopy-source prerequisite gate for Stage 14.",
-        "- It verifies runtime artifact completeness, operational readiness, and deployable-symbol signal-path exercise.",
+        "- It verifies Stage 12 API parity plus Dukascopy runtime, signal parity, and execution parity.",
         "",
         "#### Key Results",
         _table(summary),
@@ -289,12 +346,20 @@ def main() -> None:
         default="configs/research/governance/oco_history_dukascopy_candidate/2025-07",
     )
     parser.add_argument(
-        "--jforex-signal-summary-glob",
+        "--stage12-api-parity-summary-glob",
+        default="data/analysis/backtest_reconcile/*_stage12_api_parity_summary.csv",
+    )
+    parser.add_argument(
+        "--dukascopy-testclient-replay-summary-glob",
+        default="",
+    )
+    parser.add_argument(
+        "--dukascopy-testclient-signal-summary-glob",
         default="data/analysis/backtest_reconcile/*_jforex_signal_parity_summary.csv",
     )
     parser.add_argument(
-        "--jforex-operational-summary-glob",
-        default="data/analysis/backtest_reconcile/*_jforex_operational_ready_summary.csv",
+        "--dukascopy-testclient-execution-summary-glob",
+        default="data/analysis/backtest_reconcile/*_jforex_execution_parity_summary.csv",
     )
     parser.add_argument(
         "--reconcile-dir",
@@ -320,8 +385,10 @@ def main() -> None:
     build_stage13_artifacts(
         symbols=[s.strip().upper() for s in str(args.symbols).split(",") if s.strip()],
         lock_dir=Path(str(args.lock_dir)),
-        jforex_signal_summary_glob=str(args.jforex_signal_summary_glob),
-        jforex_operational_summary_glob=str(args.jforex_operational_summary_glob),
+        stage12_api_parity_summary_glob=str(args.stage12_api_parity_summary_glob),
+        dukascopy_testclient_replay_summary_glob=str(args.dukascopy_testclient_replay_summary_glob),
+        dukascopy_testclient_signal_summary_glob=str(args.dukascopy_testclient_signal_summary_glob),
+        dukascopy_testclient_execution_summary_glob=str(args.dukascopy_testclient_execution_summary_glob),
         reconcile_dir=Path(str(args.reconcile_dir)),
         out_summary_csv=Path(str(args.out_summary_csv)),
         out_checks_csv=Path(str(args.out_checks_csv)),
