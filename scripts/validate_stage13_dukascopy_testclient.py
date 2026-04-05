@@ -143,12 +143,16 @@ def build_stage13_artifacts(
             candidate_columns=("stage12_api_parity_pass", "api_parity_pass", "overall_pass"),
         )
     ]
-    if str(dukascopy_testclient_replay_summary_glob).strip():
+    replay_glob = str(dukascopy_testclient_replay_summary_glob).strip()
+    signal_glob = str(dukascopy_testclient_signal_summary_glob).strip()
+    execution_glob = str(dukascopy_testclient_execution_summary_glob).strip()
+
+    if replay_glob:
         sources.extend(
             [
                 InputSource(
                     check_id="dukascopy_testclient_signal_parity_pass",
-                    summary_glob=dukascopy_testclient_replay_summary_glob,
+                    summary_glob=replay_glob,
                     candidate_columns=(
                         "dukascopy_testclient_signal_parity_pass",
                         "jforex_signal_parity_pass",
@@ -159,7 +163,7 @@ def build_stage13_artifacts(
                 ),
                 InputSource(
                     check_id="dukascopy_testclient_execution_parity_pass",
-                    summary_glob=dukascopy_testclient_replay_summary_glob,
+                    summary_glob=replay_glob,
                     candidate_columns=(
                         "dukascopy_testclient_execution_parity_pass",
                         "jforex_execution_parity_pass",
@@ -170,34 +174,35 @@ def build_stage13_artifacts(
                 ),
             ]
         )
-    if str(dukascopy_testclient_signal_summary_glob).strip():
-        sources.append(
-            InputSource(
-                check_id="dukascopy_testclient_signal_parity_pass",
-                summary_glob=dukascopy_testclient_signal_summary_glob,
-                candidate_columns=(
-                    "dukascopy_testclient_signal_parity_pass",
-                    "jforex_signal_parity_pass",
-                    "signal_parity_pass",
-                    "overall_pass",
-                ),
-                excluded_path_tokens=("local_jforex",),
+    else:
+        if signal_glob:
+            sources.append(
+                InputSource(
+                    check_id="dukascopy_testclient_signal_parity_pass",
+                    summary_glob=signal_glob,
+                    candidate_columns=(
+                        "dukascopy_testclient_signal_parity_pass",
+                        "jforex_signal_parity_pass",
+                        "signal_parity_pass",
+                        "overall_pass",
+                    ),
+                    excluded_path_tokens=("local_jforex",),
+                )
             )
-        )
-    if str(dukascopy_testclient_execution_summary_glob).strip():
-        sources.append(
-            InputSource(
-                check_id="dukascopy_testclient_execution_parity_pass",
-                summary_glob=dukascopy_testclient_execution_summary_glob,
-                candidate_columns=(
-                    "dukascopy_testclient_execution_parity_pass",
-                    "jforex_execution_parity_pass",
-                    "execution_parity_pass",
-                    "overall_pass",
-                ),
-                excluded_path_tokens=("local_jforex",),
+        if execution_glob:
+            sources.append(
+                InputSource(
+                    check_id="dukascopy_testclient_execution_parity_pass",
+                    summary_glob=execution_glob,
+                    candidate_columns=(
+                        "dukascopy_testclient_execution_parity_pass",
+                        "jforex_execution_parity_pass",
+                        "execution_parity_pass",
+                        "overall_pass",
+                    ),
+                    excluded_path_tokens=("local_jforex",),
+                )
             )
-        )
 
     checks_frames = [_load_summary_rows(src) for src in sources]
     checks = pd.concat([df for df in checks_frames if not df.empty], ignore_index=True)
@@ -351,15 +356,15 @@ def main() -> None:
     )
     parser.add_argument(
         "--dukascopy-testclient-replay-summary-glob",
-        default="",
+        default="data/analysis/backtest_reconcile/*_dukascopy_testclient_replay_summary.csv",
     )
     parser.add_argument(
         "--dukascopy-testclient-signal-summary-glob",
-        default="data/analysis/backtest_reconcile/*_jforex_signal_parity_summary.csv",
+        default="",
     )
     parser.add_argument(
         "--dukascopy-testclient-execution-summary-glob",
-        default="data/analysis/backtest_reconcile/*_jforex_execution_parity_summary.csv",
+        default="",
     )
     parser.add_argument(
         "--reconcile-dir",

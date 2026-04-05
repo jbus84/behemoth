@@ -382,9 +382,9 @@ stage13-dukascopy-cert:
 	uv run python scripts/validate_stage13_dukascopy_testclient.py \
 		--lock-dir $(or $(LOCK_DIR),configs/research/governance/oco_history_dukascopy_candidate/2025-07) \
 		--stage12-api-parity-summary-glob '$(or $(STAGE12_API_PARITY_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_stage12_api_parity_summary.csv)' \
-		--dukascopy-testclient-replay-summary-glob '$(or $(DUKASCOPY_TESTCLIENT_REPLAY_SUMMARY_GLOB),)' \
-		--dukascopy-testclient-signal-summary-glob '$(or $(DUKASCOPY_TESTCLIENT_SIGNAL_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_jforex_signal_parity_summary.csv)' \
-		--dukascopy-testclient-execution-summary-glob '$(or $(DUKASCOPY_TESTCLIENT_EXECUTION_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_jforex_execution_parity_summary.csv)' \
+		--dukascopy-testclient-replay-summary-glob '$(or $(DUKASCOPY_TESTCLIENT_REPLAY_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_dukascopy_testclient_replay_summary.csv)' \
+		--dukascopy-testclient-signal-summary-glob '$(or $(DUKASCOPY_TESTCLIENT_SIGNAL_SUMMARY_GLOB),)' \
+		--dukascopy-testclient-execution-summary-glob '$(or $(DUKASCOPY_TESTCLIENT_EXECUTION_SUMMARY_GLOB),)' \
 		--reconcile-dir $(or $(RECONCILE_DIR),data/analysis/backtest_reconcile) \
 		--out-summary-csv $(or $(OUT_SUMMARY_CSV),data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv) \
 		--out-checks-csv $(or $(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/stage13_dukascopy_testclient_checks.csv) \
