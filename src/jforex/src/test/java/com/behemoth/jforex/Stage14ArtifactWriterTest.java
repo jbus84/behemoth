@@ -57,7 +57,7 @@ class Stage14ArtifactWriterTest {
     }
 
     @Test
-    void writesRenamedExecutionLifecycleSummaryFile() throws Exception {
+    void writesExecutionLifecycleSummaryFile() throws Exception {
         Stage14ArtifactWriter writer = new Stage14ArtifactWriter(tempDir);
         writer.markOperationalStep("GBPUSD", "strategy_started", true, "ok");
         writer.markOperationalStep("GBPUSD", "subscribed", true, "ok");
