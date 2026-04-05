@@ -177,7 +177,7 @@ def build_artifacts(
         InputSource(
             "local_lifecycle_pass",
             local_lifecycle_summary_glob,
-            ("oco_lifecycle_pass", "lifecycle_pass", "overall_pass"),
+            ("execution_lifecycle_pass", "lifecycle_pass", "overall_pass"),
         ),
         InputSource(
             "local_operational_ready_pass",
@@ -329,7 +329,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--local-lifecycle-summary-glob",
-        default="data/analysis/backtest_reconcile/*_local_jforex_oco_lifecycle_summary.csv",
+        default="data/analysis/backtest_reconcile/*_local_jforex_execution_lifecycle_summary.csv",
     )
     parser.add_argument(
         "--local-operational-summary-glob",

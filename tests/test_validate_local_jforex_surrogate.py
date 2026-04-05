@@ -92,9 +92,9 @@ def test_build_artifacts_treats_zero_lock_idle_windows_as_execution_pass(tmp_pat
         ],
     )
     _write_csv(
-        tmp_path / "EURUSD_local_jforex_oco_lifecycle_summary.csv",
-        ["symbol", "oco_lifecycle_pass"],
-        [{"symbol": "EURUSD", "oco_lifecycle_pass": True}],
+        tmp_path / "EURUSD_local_jforex_execution_lifecycle_summary.csv",
+        ["symbol", "execution_lifecycle_pass"],
+        [{"symbol": "EURUSD", "execution_lifecycle_pass": True}],
     )
     _write_csv(
         tmp_path / "EURUSD_local_jforex_operational_ready_summary.csv",
@@ -112,7 +112,9 @@ def test_build_artifacts_treats_zero_lock_idle_windows_as_execution_pass(tmp_pat
         lock_dir=lock_dir,
         local_signal_summary_glob=str(tmp_path / "*_local_jforex_signal_parity_summary.csv"),
         local_execution_summary_glob=str(tmp_path / "*_local_jforex_execution_parity_summary.csv"),
-        local_lifecycle_summary_glob=str(tmp_path / "*_local_jforex_oco_lifecycle_summary.csv"),
+        local_lifecycle_summary_glob=str(
+            tmp_path / "*_local_jforex_execution_lifecycle_summary.csv"
+        ),
         local_operational_summary_glob=str(
             tmp_path / "*_local_jforex_operational_ready_summary.csv"
         ),
@@ -161,9 +163,9 @@ def test_build_artifacts_falls_back_to_outcome_locked_count_for_zero_lock_window
         ],
     )
     _write_csv(
-        tmp_path / "USDCHF_local_jforex_oco_lifecycle_summary.csv",
-        ["symbol", "oco_lifecycle_pass"],
-        [{"symbol": "USDCHF", "oco_lifecycle_pass": True}],
+        tmp_path / "USDCHF_local_jforex_execution_lifecycle_summary.csv",
+        ["symbol", "execution_lifecycle_pass"],
+        [{"symbol": "USDCHF", "execution_lifecycle_pass": True}],
     )
     _write_csv(
         tmp_path / "USDCHF_local_jforex_operational_ready_summary.csv",
@@ -181,7 +183,9 @@ def test_build_artifacts_falls_back_to_outcome_locked_count_for_zero_lock_window
         lock_dir=lock_dir,
         local_signal_summary_glob=str(tmp_path / "*_local_jforex_signal_parity_summary.csv"),
         local_execution_summary_glob=str(tmp_path / "*_local_jforex_execution_parity_summary.csv"),
-        local_lifecycle_summary_glob=str(tmp_path / "*_local_jforex_oco_lifecycle_summary.csv"),
+        local_lifecycle_summary_glob=str(
+            tmp_path / "*_local_jforex_execution_lifecycle_summary.csv"
+        ),
         local_operational_summary_glob=str(
             tmp_path / "*_local_jforex_operational_ready_summary.csv"
         ),

@@ -354,7 +354,7 @@ local-jforex-cert:
 		--lock-dir $(or $(LOCK_DIR),configs/research/governance/oco) \
 		--local-signal-summary-glob '$(or $(LOCAL_SIGNAL_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_local_jforex_signal_parity_summary.csv)' \
 		--local-execution-summary-glob '$(or $(LOCAL_EXECUTION_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_local_jforex_execution_parity_summary.csv)' \
-		--local-lifecycle-summary-glob '$(or $(LOCAL_LIFECYCLE_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_local_jforex_oco_lifecycle_summary.csv)' \
+		--local-lifecycle-summary-glob '$(or $(LOCAL_LIFECYCLE_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_local_jforex_execution_lifecycle_summary.csv)' \
 		--local-operational-summary-glob '$(or $(LOCAL_OPERATIONAL_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_local_jforex_operational_ready_summary.csv)' \
 		--local-outcome-summary-glob '$(or $(LOCAL_OUTCOME_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_local_jforex_outcome_parity_summary.csv)' \
 		--out-summary-csv $(or $(OUT_SUMMARY_CSV),data/analysis/backtest_reconcile/local_jforex_surrogate_summary.csv) \
