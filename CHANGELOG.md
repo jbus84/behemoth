@@ -1,3 +1,11 @@
+## v0.3.2 (2026-04-05)
+
+### Fix
+
+- certify historical no-go symbols in stage13
+- harden stage13 jforex replay parity
+- tighten stage13 runtime artifact completeness gate
+
 ## v0.3.1 (2026-04-05)
 
 ### Fix
