@@ -151,19 +151,34 @@ def _evaluate_stage13_prerequisite(match: pd.DataFrame) -> tuple[bool | None, st
     certification_outcome = str(row.get("certification_outcome") or "").strip().upper()
     go_decision = str(row.get("go_decision") or "").strip().upper()
     bool_value = row.get("pass")
+    bool_pass = None if bool_value is None or pd.isna(bool_value) else bool(bool_value)
 
     if certification_outcome == "PASS":
+        if bool_pass is False:
+            return (
+                False,
+                "contradictory Stage 13 inputs: certification_outcome=PASS but pass=false",
+                certification_outcome,
+                go_decision or "GO",
+            )
         details = ""
         if go_decision == "NO_GO":
             details = "accepted Stage 13 PASS / NO_GO prerequisite"
         return True, details, certification_outcome, go_decision
     if certification_outcome == "FAIL":
+        if bool_pass is True:
+            return (
+                False,
+                "contradictory Stage 13 inputs: certification_outcome=FAIL but pass=true",
+                certification_outcome,
+                go_decision or "NO_GO",
+            )
         return False, "Stage 13 certification FAIL", certification_outcome, go_decision or "NO_GO"
 
-    if bool_value is None or pd.isna(bool_value):
+    if bool_pass is None:
         return None, "missing input artifact", certification_outcome, go_decision
 
-    passed = bool(bool_value)
+    passed = bool_pass
     details = ""
     if passed and go_decision == "NO_GO":
         details = "accepted Stage 13 PASS / NO_GO prerequisite"
@@ -451,7 +466,8 @@ def build_stage14_artifacts(
         _table(checks_out),
         "",
         "## Interpretation",
-        "- Stage 14 is green only when Stage 13 remains green and all JForex-specific certification checks pass.",
+        "- Stage 14 is green only when the Stage 13 prerequisite is satisfied and all JForex-specific certification checks pass.",
+        "- Stage 13 PASS / NO_GO is accepted as a valid prerequisite and does not fail Stage 14 by itself.",
         "- Missing JForex tester/demo artifacts are treated as certification failures until the adapter path is exercised.",
         "- jforex_outcome_parity_pass: reconciles JForex runtime signal counts against locked Python predictions (signal_coverage_ratio must be 1.0, zero execution failures, trades present).",
         "- execution_lifecycle_pass: validates the JForex execution lifecycle summary emitted by the adapter runtime.",
@@ -465,7 +481,7 @@ def build_stage14_artifacts(
         "",
         f"- generated_at: `{now_utc}`",
         "- Stage 14 is a hard gate for the Dukascopy JForex adapter.",
-        "- Stage 13 Dukascopy TestClient parity, JForex tester parity, execution lifecycle correctness, local JForex surrogate readiness, and operational readiness must all be green.",
+        "- Stage 13 `PASS / NO_GO` is accepted as a valid prerequisite; JForex tester parity, execution lifecycle correctness, local JForex surrogate readiness, and operational readiness must all pass their gates.",
         "",
         "#### Key Results",
         _table(summary),
