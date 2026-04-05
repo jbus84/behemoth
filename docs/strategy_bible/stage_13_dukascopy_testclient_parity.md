@@ -54,7 +54,27 @@ Certify that canonical Dukascopy parquet ticks reproduce Stage 12-approved Pytho
 - If a local JForex surrogate artifact is missing or red, treat that as a separate diagnostic issue outside the Stage 13 pass/fail decision.
 
 ## How To Run
-- See canonical commands.
+- Run the Stage 13 certification target from the repo root:
+
+```bash
+make stage13-dukascopy-cert
+```
+
+- To inspect the underlying validator directly, run:
+
+```bash
+uv run python scripts/validate_stage13_dukascopy_testclient.py \
+  --lock-dir configs/research/governance/oco_history_dukascopy_candidate/2025-07 \
+  --stage12-api-parity-summary-glob 'data/analysis/backtest_reconcile/*_stage12_api_parity_summary.csv' \
+  --dukascopy-testclient-replay-summary-glob 'data/analysis/backtest_reconcile/*_dukascopy_testclient_replay_summary.csv' \
+  --dukascopy-testclient-signal-summary-glob 'data/analysis/backtest_reconcile/*_jforex_signal_parity_summary.csv' \
+  --dukascopy-testclient-execution-summary-glob 'data/analysis/backtest_reconcile/*_jforex_execution_parity_summary.csv' \
+  --reconcile-dir data/analysis/backtest_reconcile \
+  --out-summary-csv data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv \
+  --out-checks-csv data/analysis/backtest_reconcile/stage13_dukascopy_testclient_checks.csv \
+  --report-out docs/analysis/stage13_dukascopy_testclient_report.md \
+  --snapshot-out docs/strategy_bible/generated/stage_13_snapshot.md
+```
 
 ## How To Interpret Outputs
 - Review the summary CSV for the per-symbol `stage13_dukascopy_testclient_pass` verdict and the four gate columns.
@@ -67,7 +87,7 @@ Certify that canonical Dukascopy parquet ticks reproduce Stage 12-approved Pytho
 - Use the checks CSV to localize whether the issue is prerequisite, runtime-artifact completeness, signal parity, or execution parity.
 
 ## Reproduction Commands
-- See canonical commands.
+- Same as `How To Run`. The authoritative Stage 13 entrypoint is `make stage13-dukascopy-cert`, which regenerates the summary, checks, report, and snapshot from the repaired validator.
 
 ## Process
 - Treat Stage 12 as a prerequisite, not a substitute for Stage 13.
@@ -112,12 +132,3 @@ make stage13-dukascopy-cert
 - `scripts/replay_dukascopy_testclient.py`
 - `scripts/validate_stage13_dukascopy_testclient.py`
 - `docs/strategy_bible/stage_12_api_parity.md`
-
-### Auto Snapshot - Stage 13
-- generated_at: `2026-04-05T12:26:26Z`
-- Stage 13 is a hard gate for Dukascopy source parity via the FastAPI `TestClient`.
-- Stage 13 evaluates `stage12_api_parity_pass`, `dukascopy_runtime_artifacts_complete_pass`, `dukascopy_testclient_signal_parity_pass`, and `dukascopy_testclient_execution_parity_pass`.
-
-#### Key Results
-- The current certification run is red for all active symbols because all four gate inputs are false in the regenerated Stage 13 outputs.
-- Local JForex surrogate artifacts remain outside the Stage 13 hard-gate decision.
