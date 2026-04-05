@@ -262,18 +262,22 @@ def build_stage13_artifacts(
         else pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
     )
 
-    all_frames = [
-        stage12_checks,
-        replay_signal_checks,
-        replay_execution_checks,
-        fallback_signal_checks,
-        fallback_execution_checks,
-    ]
-    known_symbols = set()
-    for frame in all_frames:
-        if not frame.empty:
-            known_symbols.update(frame.get("symbol", pd.Series(dtype=str)).astype(str))
-    symbol_list = sorted({str(s).strip().upper() for s in symbols if str(s).strip()} | known_symbols)
+    requested_symbols = {str(s).strip().upper() for s in symbols if str(s).strip()}
+    if requested_symbols:
+        symbol_list = sorted(requested_symbols)
+    else:
+        all_frames = [
+            stage12_checks,
+            replay_signal_checks,
+            replay_execution_checks,
+            fallback_signal_checks,
+            fallback_execution_checks,
+        ]
+        known_symbols = set()
+        for frame in all_frames:
+            if not frame.empty:
+                known_symbols.update(frame.get("symbol", pd.Series(dtype=str)).astype(str))
+        symbol_list = sorted(str(s).strip().upper() for s in known_symbols if str(s).strip())
 
     summary_rows: list[dict[str, Any]] = []
     check_rows: list[dict[str, Any]] = []

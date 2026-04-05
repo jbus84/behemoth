@@ -384,6 +384,58 @@ def test_build_stage13_artifacts_rejects_header_only_runtime_events_artifact(tmp
     assert runtime_check["status"] == "fail"
 
 
+def test_build_stage13_artifacts_limits_outputs_to_requested_symbols(tmp_path: Path) -> None:
+    _write_lock(tmp_path / "locks" / "eurusd_oco_live_lock.json", symbol="EURUSD", deployable=True)
+    _write_lock(tmp_path / "locks" / "gbpusd_oco_live_lock.json", symbol="GBPUSD", deployable=True)
+    _write_stage12_summary(
+        tmp_path / "backtest_reconcile" / "EURUSD_stage12_api_parity_summary.csv",
+        symbol="EURUSD",
+        passed=True,
+    )
+    _write_stage12_summary(
+        tmp_path / "backtest_reconcile" / "GBPUSD_stage12_api_parity_summary.csv",
+        symbol="GBPUSD",
+        passed=True,
+    )
+    _write_dukascopy_replay_summary(
+        tmp_path / "backtest_reconcile" / "EURUSD_dukascopy_testclient_replay_summary.csv",
+        symbol="EURUSD",
+        signal_pass=True,
+        execution_pass=True,
+    )
+    _write_dukascopy_replay_summary(
+        tmp_path / "backtest_reconcile" / "GBPUSD_dukascopy_testclient_replay_summary.csv",
+        symbol="GBPUSD",
+        signal_pass=True,
+        execution_pass=True,
+    )
+    (tmp_path / "backtest_reconcile" / "EURUSD_jforex_runtime_events.csv").write_text(
+        "event_ts_utc,symbol,category,event_name,pass,detail\n"
+        "2025-07-07T00:00:00Z,EURUSD,runtime,predict_cycle,True,\n"
+    )
+    (tmp_path / "backtest_reconcile" / "GBPUSD_jforex_runtime_events.csv").write_text(
+        "event_ts_utc,symbol,category,event_name,pass,detail\n"
+        "2025-07-07T00:00:00Z,GBPUSD,runtime,predict_cycle,True,\n"
+    )
+
+    summary, checks = build_stage13_artifacts(
+        symbols=["EURUSD"],
+        lock_dir=tmp_path / "locks",
+        stage12_api_parity_summary_glob=str(tmp_path / "backtest_reconcile" / "*_stage12_api_parity_summary.csv"),
+        dukascopy_testclient_replay_summary_glob=str(
+            tmp_path / "backtest_reconcile" / "*_dukascopy_testclient_replay_summary.csv"
+        ),
+        reconcile_dir=tmp_path / "backtest_reconcile",
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+    )
+
+    assert set(summary["symbol"]) == {"EURUSD"}
+    assert set(checks["symbol"]) == {"EURUSD"}
+
+
 def test_build_stage13_artifacts_keeps_primary_summary_contract_minimal(tmp_path: Path) -> None:
     _write_lock(tmp_path / "locks" / "audusd_oco_live_lock.json", symbol="AUDUSD", deployable=True)
     _write_stage12_summary(tmp_path / "backtest_reconcile" / "AUDUSD_stage12_api_parity_summary.csv", symbol="AUDUSD", passed=True)

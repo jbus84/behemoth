@@ -17,6 +17,7 @@ import contextlib
 import json
 import os
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -136,6 +137,43 @@ def _parse_args() -> RunConfig:
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
+
+
+def _repo_common_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _with_mise_trusted_paths(env: dict[str, str]) -> dict[str, str]:
+    trusted = [str(_repo_common_root()), str(_repo_root())]
+    existing = [part for part in str(env.get("MISE_TRUSTED_CONFIG_PATHS", "")).split(os.pathsep) if part]
+    for path in trusted:
+        if path not in existing:
+            existing.append(path)
+    updated = env.copy()
+    updated["MISE_TRUSTED_CONFIG_PATHS"] = os.pathsep.join(existing)
+    return updated
+
+
+def _is_port_available(host: str, port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            sock.bind((host, port))
+        except OSError:
+            return False
+    return True
+
+
+def _next_available_port(host: str, start_port: int, max_attempts: int = 100) -> int:
+    port = int(start_port)
+    for _ in range(max_attempts):
+        if _is_port_available(host, port):
+            return port
+        port += 1
+    raise RuntimeError(
+        f"Could not find available port for host {host} starting at {start_port} "
+        f"within {max_attempts} attempts"
+    )
 
 
 def _poll_health(proc: subprocess.Popen[str], base_url: str, timeout_sec: float) -> None:
@@ -266,7 +304,7 @@ def _start_api(cfg: RunConfig, symbol: str) -> subprocess.Popen[str]:
     state_db_path.parent.mkdir(parents=True, exist_ok=True)
     if state_db_path.exists():
         state_db_path.unlink()
-    env = os.environ.copy()
+    env = _with_mise_trusted_paths(os.environ.copy())
     env.update(
         {
             "UV_CACHE_DIR": ".uv_cache",
@@ -367,7 +405,13 @@ def _wait_for_artifacts_then_kill(
         rc = proc.poll()
         if rc is not None:
             if rc == 0:
-                return  # clean exit — accept even without CSV
+                missing = [str(path) for path in artifact_paths if not (path.exists() and path.stat().st_size > 0)]
+                if not missing:
+                    return
+                raise RuntimeError(
+                    "JForex tester exited cleanly but did not produce complete Stage 14 artifacts: "
+                    + ", ".join(missing)
+                )
             raise subprocess.CalledProcessError(rc, "JForexTesterRunner")
 
         artifacts_ready = all(path.exists() and path.stat().st_size > 0 for path in artifact_paths)
@@ -413,7 +457,8 @@ def _run_jforex_tester(cfg: RunConfig, symbol: str, metrics_port: int) -> None:
         if not os.environ.get(required):
             raise RuntimeError(f"Missing required env var: {required}")
 
-    env = os.environ.copy()
+    selected_metrics_port = _next_available_port(cfg.metrics_host, metrics_port)
+    env = _with_mise_trusted_paths(os.environ.copy())
     env.update(
         {
             "BEHEMOTH_JFOREX_INSTRUMENTS": symbol,
@@ -428,7 +473,7 @@ def _run_jforex_tester(cfg: RunConfig, symbol: str, metrics_port: int) -> None:
             "BEHEMOTH_JFOREX_API_TIMEOUT_SECONDS": str(cfg.api_timeout_seconds),
             "BEHEMOTH_JFOREX_METRICS_ENABLED": str(cfg.metrics_enabled).lower(),
             "BEHEMOTH_JFOREX_METRICS_HOST": cfg.metrics_host,
-            "BEHEMOTH_JFOREX_METRICS_PORT": str(metrics_port),
+            "BEHEMOTH_JFOREX_METRICS_PORT": str(selected_metrics_port),
             "BEHEMOTH_API_BASE_URI": f"http://{cfg.api_host}:{cfg.api_port}",
         }
     )

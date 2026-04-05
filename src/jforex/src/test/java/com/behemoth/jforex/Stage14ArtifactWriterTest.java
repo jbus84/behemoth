@@ -96,6 +96,22 @@ class Stage14ArtifactWriterTest {
     }
 
     @Test
+    void executionParityPassesWhenNoExecutableSelectionsOccurred() throws Exception {
+        Stage14ArtifactWriter writer = new Stage14ArtifactWriter(tempDir);
+        writer.markOperationalStep("EURUSD", "strategy_started", true, "ok");
+        writer.markOperationalStep("EURUSD", "subscribed", true, "ok");
+        writer.markOperationalStep("EURUSD", "feed_status", true, "ok");
+        writer.markOperationalStep("EURUSD", "account_snapshot", true, "ok");
+        writer.recordPredictCycle("EURUSD", Instant.parse("2025-07-07T00:00:00Z"), 0, 0, 0, 0, List.of(), List.of(100));
+        writer.writeReports(List.of("EURUSD"), List.of());
+
+        assertThat(Files.readString(tempDir.resolve("EURUSD_jforex_execution_parity_summary.csv")))
+                .contains("jforex_execution_parity_pass")
+                .contains("\"true\"")
+                .contains("\"0\",\"0\"");
+    }
+
+    @Test
     void recordPredictCycle_writesReplayCloseTimestamp() throws Exception {
         Stage14ArtifactWriter writer = new Stage14ArtifactWriter(tempDir, "local_jforex");
         writer.recordPredictCycle("EURUSD", Instant.parse("2026-02-07T12:00:00Z"), 2, 1, 1, 0, List.of(), List.of(100));
