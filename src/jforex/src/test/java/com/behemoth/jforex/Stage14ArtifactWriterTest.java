@@ -48,8 +48,8 @@ class Stage14ArtifactWriterTest {
         assertThat(Files.readString(tempDir.resolve("GBPUSD_jforex_execution_parity_summary.csv")))
                 .contains("jforex_execution_parity_pass")
                 .contains("true");
-        assertThat(Files.readString(tempDir.resolve("GBPUSD_jforex_oco_lifecycle_summary.csv")))
-                .contains("oco_lifecycle_pass")
+        assertThat(Files.readString(tempDir.resolve("GBPUSD_jforex_execution_lifecycle_summary.csv")))
+                .contains("execution_lifecycle_pass")
                 .contains("true");
         assertThat(Files.readString(tempDir.resolve("GBPUSD_jforex_operational_ready_summary.csv")))
                 .contains("operational_ready_pass")
