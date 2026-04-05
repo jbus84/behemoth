@@ -1,3 +1,23 @@
+## v0.3.0 (2026-04-05)
+
+### Feat
+
+- normalize stage12 stage13 certification outputs
+- add unified stage12 stage13 orchestrator
+- add dukascopy testclient artifact producer
+- replace OCO stop-limit pairs with bar-level barrier manager (#17)
+
+### Fix
+
+- forward models dir to stage13 replay runner
+- derive stage13 lock dir from model month
+- make unified certification runner executable
+- repair stage13 dukascopy python gate (#24)
+
+### Refactor
+
+- port stage14 certification to execution lifecycle (#23)
+
 ## v0.2.12 (2026-03-31)
 
 ### Fix
