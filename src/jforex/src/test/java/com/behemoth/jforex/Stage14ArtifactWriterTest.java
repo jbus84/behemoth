@@ -76,7 +76,7 @@ class Stage14ArtifactWriterTest {
         assertThat(tempDir.resolve("GBPUSD_jforex_execution_lifecycle_summary.csv")).exists();
         assertThat(tempDir.resolve("GBPUSD_jforex_oco_lifecycle_summary.csv")).doesNotExist();
         assertThat(Files.readString(tempDir.resolve("GBPUSD_jforex_execution_lifecycle_summary.csv")))
-                .contains("execution_lifecycle_pass")
+                .contains("symbol,execution_lifecycle_pass,lifecycle_failures,lifecycle_violations")
                 .contains("true");
     }
 
