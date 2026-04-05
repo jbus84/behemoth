@@ -6,6 +6,7 @@ Certify that canonical Dukascopy parquet ticks reproduce Stage 12-approved Pytho
 ## Inputs
 - `data/analysis/backtest_reconcile/*_stage12_api_parity_summary.csv`
 - `data/analysis/backtest_reconcile/*_dukascopy_testclient_replay_summary.csv`
+- `data/analysis/backtest_reconcile/*_jforex_runtime_events.csv`
 - `docs/analysis/stage13_dukascopy_testclient_report.md`
 
 ## Exact Calculations

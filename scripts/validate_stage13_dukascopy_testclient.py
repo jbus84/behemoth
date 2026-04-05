@@ -111,23 +111,6 @@ def _latest_match(frames: list[pd.DataFrame], symbol: str, check_id: str) -> pd.
     return first_non_concrete
 
 
-def _load_historical_lock_status(lock_dir: Path, symbol: str) -> dict[str, str | bool]:
-    path = lock_dir / f"{symbol.lower()}_oco_live_lock.json"
-    if not path.exists():
-        return {"historical_deployable": True, "non_deployable_reason": ""}
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return {"historical_deployable": True, "non_deployable_reason": ""}
-    hist = payload.get("historical_backtest", {})
-    if not isinstance(hist, dict):
-        hist = {}
-    return {
-        "historical_deployable": bool(hist.get("deployable", True)),
-        "non_deployable_reason": str(hist.get("non_deployable_reason", "")).strip(),
-    }
-
-
 def _expected_source_path(reconcile_dir: Path, symbol: str, check_id: str) -> Path:
     if check_id == "stage12_api_parity_pass":
         return reconcile_dir / f"{symbol}_stage12_api_parity_summary.csv"
@@ -284,14 +267,7 @@ def build_stage13_artifacts(
     check_rows: list[dict[str, Any]] = []
     now_utc = _now_utc()
     for symbol in symbol_list:
-        status = _load_historical_lock_status(lock_dir, symbol)
-        historical_deployable = bool(status["historical_deployable"])
-        non_deployable_reason = str(status["non_deployable_reason"])
-        row: dict[str, Any] = {
-            "symbol": symbol,
-            "historical_deployable": historical_deployable,
-            "non_deployable_reason": non_deployable_reason,
-        }
+        row: dict[str, Any] = {"symbol": symbol}
         missing_inputs = 0
 
         runtime_ok, runtime_details = _runtime_events_ok(reconcile_dir, symbol)

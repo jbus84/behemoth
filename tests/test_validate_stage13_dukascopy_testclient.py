@@ -348,6 +348,46 @@ def test_build_stage13_artifacts_reports_runtime_artifact_as_current_dukascopy_s
     assert "legacy filename retained" in runtime_check["details"]
 
 
+def test_build_stage13_artifacts_keeps_primary_summary_contract_minimal(tmp_path: Path) -> None:
+    _write_lock(tmp_path / "locks" / "audusd_oco_live_lock.json", symbol="AUDUSD", deployable=True)
+    _write_stage12_summary(tmp_path / "backtest_reconcile" / "AUDUSD_stage12_api_parity_summary.csv", symbol="AUDUSD", passed=True)
+    _write_dukascopy_replay_summary(
+        tmp_path / "backtest_reconcile" / "AUDUSD_dukascopy_testclient_replay_summary.csv",
+        symbol="AUDUSD",
+        signal_pass=True,
+        execution_pass=True,
+    )
+    runtime = tmp_path / "backtest_reconcile" / "AUDUSD_jforex_runtime_events.csv"
+    runtime.parent.mkdir(parents=True, exist_ok=True)
+    runtime.write_text("event_ts_utc,symbol,category,event_name,pass,detail\n")
+
+    summary, _checks = build_stage13_artifacts(
+        symbols=["AUDUSD"],
+        lock_dir=tmp_path / "locks",
+        stage12_api_parity_summary_glob=str(tmp_path / "backtest_reconcile" / "*_stage12_api_parity_summary.csv"),
+        dukascopy_testclient_replay_summary_glob=str(
+            tmp_path / "backtest_reconcile" / "*_dukascopy_testclient_replay_summary.csv"
+        ),
+        reconcile_dir=tmp_path / "backtest_reconcile",
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+    )
+
+    assert list(summary.columns) == [
+        "symbol",
+        "dukascopy_runtime_artifacts_complete_pass",
+        "stage12_api_parity_pass",
+        "dukascopy_testclient_signal_parity_pass",
+        "dukascopy_testclient_execution_parity_pass",
+        "stage13_dukascopy_testclient_pass",
+        "missing_inputs",
+        "verdict",
+        "evaluated_at_utc",
+    ]
+
+
 def test_build_stage13_artifacts_does_not_bypass_signal_parity_for_non_deployable_symbols(
     tmp_path: Path,
 ) -> None:
