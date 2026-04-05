@@ -10,6 +10,8 @@ The orchestration layer is intentionally small:
 from __future__ import annotations
 
 import argparse
+import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -35,7 +37,6 @@ DEFAULT_MODELS_DIR = Path("models/oco")
 DEFAULT_TICK_ROOT = Path("/Users/danielfisher/Desktop/dukascopy_ticks")
 DEFAULT_START_TS = "2025-07-07T00:00:00Z"
 DEFAULT_END_TS = "2025-07-09T00:00:00Z"
-DEFAULT_MODEL_MONTH = "2025-07"
 DEFAULT_RECONCILE_DIR = Path("data/analysis/backtest_reconcile")
 DEFAULT_HISTORY_DIR = Path("configs/research/governance/oco_history_dukascopy_candidate")
 FINAL_SUMMARY_FILENAME = "stage12_stage13_certification_summary.csv"
@@ -116,18 +117,53 @@ def _latest_model_json(models_dir: Path, symbol: str) -> Path | None:
     return candidates[-1] if candidates else None
 
 
+def _resolve_model_json(models_dir: Path, symbol: str, model_month: str | None) -> Path | None:
+    if model_month:
+        explicit = models_dir / f"{symbol}_model_{model_month}.json"
+        if explicit.exists():
+            return explicit
+    return _latest_model_json(models_dir, symbol)
+
+
+def _extract_model_month(path: Path, symbol: str) -> str | None:
+    match = re.fullmatch(rf"{re.escape(symbol)}_model_(\d{{4}}-\d{{2}})\.json", path.name)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _resolve_model_month(
+    requested_model_month: str | None,
+    models_dir: Path,
+    symbols: list[str],
+) -> str | None:
+    if requested_model_month:
+        return str(requested_model_month)
+
+    months: list[str] = []
+    for symbol in _normalize_symbols(symbols):
+        latest = _latest_model_json(models_dir, symbol)
+        if latest is None:
+            continue
+        month = _extract_model_month(latest, symbol)
+        if month:
+            months.append(month)
+    return max(months) if months else None
+
+
 def _stage12_default_runner(
     *,
     symbol: str,
     predictions_dir: Path,
     models_dir: Path,
+    model_month: str | None,
     out_dir: Path,
     tolerance: float = 0.0,
 ) -> dict[str, Any]:
     symbol = _normalize_symbol(symbol)
     summary_path = _stage12_summary_path(out_dir, symbol)
     predictions_path = predictions_dir / f"{symbol}_oco_monthly_predictions.parquet"
-    threshold_json = _latest_model_json(models_dir, symbol)
+    threshold_json = _resolve_model_json(models_dir, symbol, model_month)
 
     if not predictions_path.exists() or threshold_json is None:
         _write_stage12_failure_summary(summary_path, symbol)
@@ -234,6 +270,20 @@ def _run_stage13_matrix_replay(
     tick_root: Path,
     report_dir: Path,
 ) -> dict[str, Any]:
+    required_env = (
+        "BEHEMOTH_JFOREX_JNLP_URI",
+        "BEHEMOTH_JFOREX_USERNAME",
+        "BEHEMOTH_JFOREX_PASSWORD",
+    )
+    missing = [name for name in required_env if not os.environ.get(name)]
+    if missing:
+        return {
+            "signal_pass": False,
+            "execution_pass": False,
+            "runtime_events_rows": [],
+            "details": "missing required JForex credentials: " + ", ".join(missing),
+        }
+
     cmd = [
         sys.executable,
         "scripts/run_jforex_dukascopy_matrix.py",
@@ -417,7 +467,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--tick-root", type=Path, default=DEFAULT_TICK_ROOT)
     parser.add_argument("--start-ts", default=DEFAULT_START_TS)
     parser.add_argument("--end-ts", default=DEFAULT_END_TS)
-    parser.add_argument("--model-month", default=DEFAULT_MODEL_MONTH)
+    parser.add_argument("--model-month")
     parser.add_argument("--history-dir", type=Path, default=DEFAULT_HISTORY_DIR)
     parser.add_argument("--lock-dir", type=Path)
     parser.add_argument("--reconcile-dir", type=Path, default=DEFAULT_RECONCILE_DIR)
@@ -426,11 +476,16 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     symbols = _parse_symbols(args.symbols)
+    resolved_model_month = _resolve_model_month(args.model_month, Path(args.models_dir), symbols)
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     reconcile_dir = Path(args.reconcile_dir)
     reconcile_dir.mkdir(parents=True, exist_ok=True)
-    lock_dir = _resolve_lock_dir(args.lock_dir, Path(args.history_dir), args.model_month)
+    lock_dir = _resolve_lock_dir(
+        args.lock_dir,
+        Path(args.history_dir),
+        resolved_model_month or "",
+    )
 
     stage12_rows: dict[str, dict[str, Any]] = {}
     for symbol in symbols:
@@ -438,6 +493,7 @@ def main(argv: list[str] | None = None) -> int:
             symbol=symbol,
             predictions_dir=Path(args.predictions_dir),
             models_dir=Path(args.models_dir),
+            model_month=resolved_model_month,
             out_dir=reconcile_dir,
             tolerance=args.stage12_tolerance,
         )
@@ -452,7 +508,7 @@ def main(argv: list[str] | None = None) -> int:
             symbols=eligible_stage13_symbols,
             start_ts=args.start_ts,
             end_ts=args.end_ts,
-            model_month=args.model_month,
+            model_month=resolved_model_month or "",
             models_dir=Path(args.models_dir),
             history_dir=Path(args.history_dir),
             predictions_dir=Path(args.predictions_dir),
