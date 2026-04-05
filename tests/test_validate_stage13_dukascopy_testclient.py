@@ -465,18 +465,23 @@ def test_build_stage13_artifacts_keeps_primary_summary_contract_minimal(tmp_path
 
     assert list(summary.columns) == [
         "symbol",
+        "historical_deployable",
+        "non_deployable_reason",
         "dukascopy_runtime_artifacts_complete_pass",
         "stage12_api_parity_pass",
         "dukascopy_testclient_signal_parity_pass",
         "dukascopy_testclient_execution_parity_pass",
         "stage13_dukascopy_testclient_pass",
+        "stage13_dukascopy_testclient_nogo",
+        "certification_outcome",
+        "go_decision",
         "missing_inputs",
         "verdict",
         "evaluated_at_utc",
     ]
 
 
-def test_build_stage13_artifacts_does_not_bypass_signal_parity_for_non_deployable_symbols(
+def test_build_stage13_artifacts_emits_nogo_for_non_deployable_symbols(
     tmp_path: Path,
 ) -> None:
     _write_lock(
@@ -489,6 +494,12 @@ def test_build_stage13_artifacts_does_not_bypass_signal_parity_for_non_deployabl
         tmp_path / "backtest_reconcile" / "USDCAD_stage12_api_parity_summary.csv",
         symbol="USDCAD",
         passed=True,
+    )
+    _write_dukascopy_replay_summary(
+        tmp_path / "backtest_reconcile" / "USDCAD_dukascopy_testclient_replay_summary.csv",
+        symbol="USDCAD",
+        signal_pass=False,
+        execution_pass=True,
     )
     runtime = tmp_path / "backtest_reconcile" / "USDCAD_jforex_runtime_events.csv"
     runtime.parent.mkdir(parents=True, exist_ok=True)
@@ -508,11 +519,14 @@ def test_build_stage13_artifacts_does_not_bypass_signal_parity_for_non_deployabl
         snapshot_out=tmp_path / "out" / "snapshot.md",
     )
 
-    assert bool(summary.loc[0, "stage13_dukascopy_testclient_pass"]) is False
+    assert bool(summary.loc[0, "historical_deployable"]) is False
+    assert bool(summary.loc[0, "stage13_dukascopy_testclient_pass"]) is True
+    assert bool(summary.loc[0, "stage13_dukascopy_testclient_nogo"]) is True
+    assert summary.loc[0, "certification_outcome"] == "PASS"
+    assert summary.loc[0, "go_decision"] == "NO_GO"
+    assert summary.loc[0, "verdict"] == "nogo"
     signal_check = checks[checks["metric_name"] == "dukascopy_testclient_signal_parity_pass"].iloc[0]
-    assert bool(signal_check["metric_value"]) is False
-    assert "non-deployable historical month" not in str(signal_check["details"])
-    assert signal_check["details"] == (
-        "missing Dukascopy/TestClient signal parity summary: "
-        + signal_check["source_path"]
-    )
+    assert bool(signal_check["metric_value"]) is True
+    assert signal_check["status"] == "pass"
+    assert "historical non-deployable" in str(signal_check["details"]).lower()
+    assert "historically non-deployable" in str(signal_check["details"])
