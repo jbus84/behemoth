@@ -19,6 +19,7 @@ class InputSource:
     check_id: str
     summary_glob: str
     candidate_columns: tuple[str, ...]
+    excluded_path_tokens: tuple[str, ...] = ()
 
 
 def _now_utc() -> str:
@@ -71,6 +72,9 @@ def _pick_bool(row: pd.Series, candidates: tuple[str, ...]) -> bool | None:
 def _load_summary_rows(source: InputSource) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for path in _resolve_paths(source.summary_glob):
+        path_name = path.name.lower()
+        if any(token in path_name for token in source.excluded_path_tokens):
+            continue
         try:
             df = pd.read_csv(path)
         except Exception:
@@ -92,29 +96,61 @@ def _load_summary_rows(source: InputSource) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def _load_historical_lock_status(lock_dir: Path, symbol: str) -> dict[str, str | bool]:
-    path = lock_dir / f"{symbol.lower()}_oco_live_lock.json"
-    if not path.exists():
-        return {"historical_deployable": True, "non_deployable_reason": ""}
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return {"historical_deployable": True, "non_deployable_reason": ""}
-    hist = payload.get("historical_backtest", {})
-    if not isinstance(hist, dict):
-        hist = {}
-    return {
-        "historical_deployable": bool(hist.get("deployable", True)),
-        "non_deployable_reason": str(hist.get("non_deployable_reason", "")).strip(),
-    }
+def _latest_match(frames: list[pd.DataFrame], symbol: str, check_id: str) -> pd.DataFrame:
+    first_non_concrete = pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
+    for frame in frames:
+        if frame.empty:
+            continue
+        match = frame[(frame["symbol"] == symbol) & (frame["check_id"] == check_id)].copy()
+        if not match.empty:
+            concrete = match[match["pass"].notna()].copy()
+            if not concrete.empty:
+                return concrete
+            if first_non_concrete.empty:
+                first_non_concrete = match
+    return first_non_concrete
+
+
+def _expected_source_path(reconcile_dir: Path, symbol: str, check_id: str) -> Path:
+    if check_id == "stage12_api_parity_pass":
+        return reconcile_dir / f"{symbol}_stage12_api_parity_summary.csv"
+    if check_id in {
+        "dukascopy_testclient_signal_parity_pass",
+        "dukascopy_testclient_execution_parity_pass",
+    }:
+        return reconcile_dir / f"{symbol}_dukascopy_testclient_replay_summary.csv"
+    if check_id == "dukascopy_runtime_artifacts_complete_pass":
+        return reconcile_dir / f"{symbol}_jforex_runtime_events.csv"
+    return reconcile_dir / f"{symbol}_{check_id}.csv"
+
+
+def _missing_details(check_id: str, source_path: Path) -> str:
+    if check_id == "dukascopy_runtime_artifacts_complete_pass":
+        return (
+            "missing current Dukascopy replay runtime-events artifact "
+            f"(legacy filename retained): {source_path}"
+        )
+    if check_id == "stage12_api_parity_pass":
+        return f"missing Stage 12 API parity summary: {source_path}"
+    if check_id == "dukascopy_testclient_signal_parity_pass":
+        return f"missing Dukascopy/TestClient signal parity summary: {source_path}"
+    if check_id == "dukascopy_testclient_execution_parity_pass":
+        return f"missing Dukascopy/TestClient execution parity summary: {source_path}"
+    return f"missing input artifact: {source_path}"
 
 
 def _runtime_events_ok(reconcile_dir: Path, symbol: str) -> tuple[bool, str]:
     path = reconcile_dir / f"{symbol}_jforex_runtime_events.csv"
     if not path.exists():
-        return False, f"missing runtime events file: {path}"
+        return False, (
+            "missing current Dukascopy replay runtime-events artifact "
+            f"(legacy filename retained): {path}"
+        )
     if path.stat().st_size <= 0:
-        return False, f"empty runtime events file: {path}"
+        return False, (
+            "empty current Dukascopy replay runtime-events artifact "
+            f"(legacy filename retained): {path}"
+        )
     return True, ""
 
 
@@ -122,52 +158,116 @@ def build_stage13_artifacts(
     *,
     symbols: list[str],
     lock_dir: Path,
-    jforex_signal_summary_glob: str,
-    jforex_operational_summary_glob: str,
+    stage12_api_parity_summary_glob: str,
+    dukascopy_testclient_replay_summary_glob: str = "",
+    dukascopy_testclient_signal_summary_glob: str = "",
+    dukascopy_testclient_execution_summary_glob: str = "",
     reconcile_dir: Path,
     out_summary_csv: Path,
     out_checks_csv: Path,
     report_out: Path,
     snapshot_out: Path,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    sources = [
+    stage12_source = InputSource(
+        check_id="stage12_api_parity_pass",
+        summary_glob=stage12_api_parity_summary_glob,
+        candidate_columns=("stage12_api_parity_pass", "api_parity_pass", "overall_pass"),
+    )
+    replay_sources = [
         InputSource(
-            check_id="dukascopy_signal_path_exercised_pass",
-            summary_glob=jforex_signal_summary_glob,
-            candidate_columns=("jforex_signal_parity_pass", "signal_parity_pass", "overall_pass"),
+            check_id="dukascopy_testclient_signal_parity_pass",
+            summary_glob="",
+            candidate_columns=(
+                "dukascopy_testclient_signal_parity_pass",
+                "jforex_signal_parity_pass",
+                "signal_parity_pass",
+                "overall_pass",
+            ),
+            excluded_path_tokens=("local_jforex",),
         ),
         InputSource(
-            check_id="dukascopy_operational_ready_pass",
-            summary_glob=jforex_operational_summary_glob,
-            candidate_columns=("operational_ready_pass", "demo_ready_pass", "overall_pass"),
+            check_id="dukascopy_testclient_execution_parity_pass",
+            summary_glob="",
+            candidate_columns=(
+                "dukascopy_testclient_execution_parity_pass",
+                "jforex_execution_parity_pass",
+                "execution_parity_pass",
+                "overall_pass",
+            ),
+            excluded_path_tokens=("local_jforex",),
         ),
     ]
-
-    checks_frames = [_load_summary_rows(src) for src in sources]
-    checks = pd.concat([df for df in checks_frames if not df.empty], ignore_index=True)
-    if checks.empty:
-        checks = pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
-
-    symbol_list = sorted({str(s).strip().upper() for s in symbols if str(s).strip()}) or sorted(
-        set(checks.get("symbol", pd.Series(dtype=str)).astype(str))
+    replay_glob = str(dukascopy_testclient_replay_summary_glob).strip()
+    signal_glob = str(dukascopy_testclient_signal_summary_glob).strip()
+    execution_glob = str(dukascopy_testclient_execution_summary_glob).strip()
+    stage12_checks = _load_summary_rows(stage12_source)
+    replay_signal_checks = (
+        _load_summary_rows(
+            InputSource(
+                check_id="dukascopy_testclient_signal_parity_pass",
+                summary_glob=replay_glob,
+                candidate_columns=replay_sources[0].candidate_columns,
+                excluded_path_tokens=replay_sources[0].excluded_path_tokens,
+            )
+        )
+        if replay_glob
+        else pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
     )
-    symbol_list = sorted(
-        set(symbol_list) | set(checks.get("symbol", pd.Series(dtype=str)).astype(str))
+    replay_execution_checks = (
+        _load_summary_rows(
+            InputSource(
+                check_id="dukascopy_testclient_execution_parity_pass",
+                summary_glob=replay_glob,
+                candidate_columns=replay_sources[1].candidate_columns,
+                excluded_path_tokens=replay_sources[1].excluded_path_tokens,
+            )
+        )
+        if replay_glob
+        else pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
     )
+    fallback_signal_checks = (
+        _load_summary_rows(
+            InputSource(
+                check_id="dukascopy_testclient_signal_parity_pass",
+                summary_glob=signal_glob,
+                candidate_columns=replay_sources[0].candidate_columns,
+                excluded_path_tokens=replay_sources[0].excluded_path_tokens,
+            )
+        )
+        if signal_glob
+        else pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
+    )
+    fallback_execution_checks = (
+        _load_summary_rows(
+            InputSource(
+                check_id="dukascopy_testclient_execution_parity_pass",
+                summary_glob=execution_glob,
+                candidate_columns=replay_sources[1].candidate_columns,
+                excluded_path_tokens=replay_sources[1].excluded_path_tokens,
+            )
+        )
+        if execution_glob
+        else pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
+    )
+
+    all_frames = [
+        stage12_checks,
+        replay_signal_checks,
+        replay_execution_checks,
+        fallback_signal_checks,
+        fallback_execution_checks,
+    ]
+    known_symbols = set()
+    for frame in all_frames:
+        if not frame.empty:
+            known_symbols.update(frame.get("symbol", pd.Series(dtype=str)).astype(str))
+    symbol_list = sorted({str(s).strip().upper() for s in symbols if str(s).strip()} | known_symbols)
 
     summary_rows: list[dict[str, Any]] = []
     check_rows: list[dict[str, Any]] = []
     now_utc = _now_utc()
     for symbol in symbol_list:
-        by_symbol = checks[checks["symbol"] == symbol].copy()
-        status = _load_historical_lock_status(lock_dir, symbol)
-        historical_deployable = bool(status["historical_deployable"])
-        non_deployable_reason = str(status["non_deployable_reason"])
-        row: dict[str, Any] = {
-            "symbol": symbol,
-            "historical_deployable": historical_deployable,
-            "non_deployable_reason": non_deployable_reason,
-        }
+        row: dict[str, Any] = {"symbol": symbol}
         missing_inputs = 0
 
         runtime_ok, runtime_details = _runtime_events_ok(reconcile_dir, symbol)
@@ -189,23 +289,34 @@ def build_stage13_artifacts(
             }
         )
 
-        for src in sources:
-            match = by_symbol[by_symbol["check_id"] == src.check_id].copy()
+        for src, candidate_frames in (
+            (stage12_source, [stage12_checks]),
+            (
+                replay_sources[0],
+                [replay_signal_checks, fallback_signal_checks],
+            ),
+            (
+                replay_sources[1],
+                [replay_execution_checks, fallback_execution_checks],
+            ),
+        ):
+            match = _latest_match(candidate_frames, symbol, src.check_id)
             value = None if match.empty else match.iloc[-1].get("pass")
             details = ""
-            if src.check_id == "dukascopy_signal_path_exercised_pass" and not historical_deployable:
-                row[src.check_id] = True
-                details = f"non-deployable historical month: {non_deployable_reason or 'no reason provided'}"
-                status_txt = "pass"
-            elif value is None or pd.isna(value):
+            expected_source_path = _expected_source_path(reconcile_dir, symbol, src.check_id)
+            if value is None or pd.isna(value):
                 row[src.check_id] = False
                 missing_inputs += 1
                 status_txt = "fail"
-                details = "missing input artifact"
+                details = _missing_details(src.check_id, expected_source_path)
             else:
                 row[src.check_id] = bool(value)
                 status_txt = "pass" if bool(value) else "fail"
-            source_path = "" if match.empty else str(match.iloc[-1].get("source_path") or "")
+            source_path = (
+                str(expected_source_path) if match.empty else str(match.iloc[-1].get("source_path") or "")
+            )
+            if not source_path:
+                source_path = str(expected_source_path)
             check_rows.append(
                 {
                     "symbol": symbol,
@@ -224,9 +335,10 @@ def build_stage13_artifacts(
         row["stage13_dukascopy_testclient_pass"] = all(
             bool(row[name])
             for name in (
+                "stage12_api_parity_pass",
                 "dukascopy_runtime_artifacts_complete_pass",
-                "dukascopy_signal_path_exercised_pass",
-                "dukascopy_operational_ready_pass",
+                "dukascopy_testclient_signal_parity_pass",
+                "dukascopy_testclient_execution_parity_pass",
             )
         )
         row["missing_inputs"] = missing_inputs
@@ -258,9 +370,8 @@ def build_stage13_artifacts(
         _table(checks_out),
         "",
         "## Interpretation",
-        "- Stage 13 is green only when the Dukascopy tester produced complete runtime artifacts and the operational path is healthy.",
-        "- Deployable symbols must also exercise the signal path via the tester artifacts before Stage 14 is trusted.",
-        "- Historical non-deployable symbols may pass Stage 13 without signal-path exercise when their lock explicitly marks them non-deployable.",
+        "- Stage 13 is green only when Stage 12 API parity, the current Dukascopy replay runtime-events artifact, Dukascopy/TestClient signal parity, and Dukascopy/TestClient execution parity are all green.",
+        "- Local-surrogate artifacts are excluded from Stage 13 hard-gate consumption even when broad file globs are provided.",
     ]
     report_out.write_text("\n".join(report_lines).strip() + "\n", encoding="utf-8")
 
@@ -269,7 +380,7 @@ def build_stage13_artifacts(
         "",
         f"- generated_at: `{now_utc}`",
         "- Stage 13 is the Dukascopy-source prerequisite gate for Stage 14.",
-        "- It verifies runtime artifact completeness, operational readiness, and deployable-symbol signal-path exercise.",
+        "- It verifies Stage 12 API parity plus the current Dukascopy replay runtime-events artifact, signal parity, and execution parity.",
         "",
         "#### Key Results",
         _table(summary),
@@ -289,12 +400,20 @@ def main() -> None:
         default="configs/research/governance/oco_history_dukascopy_candidate/2025-07",
     )
     parser.add_argument(
-        "--jforex-signal-summary-glob",
-        default="data/analysis/backtest_reconcile/*_jforex_signal_parity_summary.csv",
+        "--stage12-api-parity-summary-glob",
+        default="data/analysis/backtest_reconcile/*_stage12_api_parity_summary.csv",
     )
     parser.add_argument(
-        "--jforex-operational-summary-glob",
-        default="data/analysis/backtest_reconcile/*_jforex_operational_ready_summary.csv",
+        "--dukascopy-testclient-replay-summary-glob",
+        default="data/analysis/backtest_reconcile/*_dukascopy_testclient_replay_summary.csv",
+    )
+    parser.add_argument(
+        "--dukascopy-testclient-signal-summary-glob",
+        default="",
+    )
+    parser.add_argument(
+        "--dukascopy-testclient-execution-summary-glob",
+        default="",
     )
     parser.add_argument(
         "--reconcile-dir",
@@ -320,8 +439,10 @@ def main() -> None:
     build_stage13_artifacts(
         symbols=[s.strip().upper() for s in str(args.symbols).split(",") if s.strip()],
         lock_dir=Path(str(args.lock_dir)),
-        jforex_signal_summary_glob=str(args.jforex_signal_summary_glob),
-        jforex_operational_summary_glob=str(args.jforex_operational_summary_glob),
+        stage12_api_parity_summary_glob=str(args.stage12_api_parity_summary_glob),
+        dukascopy_testclient_replay_summary_glob=str(args.dukascopy_testclient_replay_summary_glob),
+        dukascopy_testclient_signal_summary_glob=str(args.dukascopy_testclient_signal_summary_glob),
+        dukascopy_testclient_execution_summary_glob=str(args.dukascopy_testclient_execution_summary_glob),
         reconcile_dir=Path(str(args.reconcile_dir)),
         out_summary_csv=Path(str(args.out_summary_csv)),
         out_checks_csv=Path(str(args.out_checks_csv)),

@@ -1,7 +1,7 @@
-symbol,historical_deployable,non_deployable_reason,dukascopy_runtime_artifacts_complete_pass,dukascopy_signal_path_exercised_pass,dukascopy_operational_ready_pass,stage13_dukascopy_testclient_pass,missing_inputs,verdict,evaluated_at_utc
-AUDUSD,True,,True,False,True,False,0,red,2026-03-30T10:16:49Z
-EURUSD,True,,True,False,True,False,0,red,2026-03-30T10:16:49Z
-GBPUSD,True,,True,False,True,False,0,red,2026-03-30T10:16:49Z
-USDCAD,True,,True,False,True,False,0,red,2026-03-30T10:16:49Z
-USDCHF,True,,True,False,True,False,0,red,2026-03-30T10:16:49Z
-USDJPY,True,,True,False,True,False,0,red,2026-03-30T10:16:49Z
+symbol,dukascopy_runtime_artifacts_complete_pass,stage12_api_parity_pass,dukascopy_testclient_signal_parity_pass,dukascopy_testclient_execution_parity_pass,stage13_dukascopy_testclient_pass,missing_inputs,verdict,evaluated_at_utc
+AUDUSD,False,False,False,False,False,4,red,2026-04-05T12:39:55Z
+EURUSD,False,False,False,False,False,4,red,2026-04-05T12:39:55Z
+GBPUSD,False,False,False,False,False,4,red,2026-04-05T12:39:55Z
+USDCAD,False,False,False,False,False,4,red,2026-04-05T12:39:55Z
+USDCHF,False,False,False,False,False,4,red,2026-04-05T12:39:55Z
+USDJPY,False,False,False,False,False,4,red,2026-04-05T12:39:55Z
