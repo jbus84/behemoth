@@ -1,3 +1,9 @@
+## v0.3.1 (2026-04-05)
+
+### Fix
+
+- align stage12 stage13 defaults and prereqs
+
 ## v0.3.0 (2026-04-05)
 
 ### Feat
