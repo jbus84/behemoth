@@ -10,13 +10,15 @@ The orchestration layer is intentionally small:
 from __future__ import annotations
 
 import argparse
+import importlib
 import os
 import re
 import subprocess
 import sys
+from collections.abc import Callable, Mapping
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any
 
 import pandas as pd
 
@@ -24,12 +26,22 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.generate_dukascopy_testclient_artifacts import (
-    DukascopyTestClientArtifactOutputs,
-    generate_dukascopy_testclient_artifacts,
+_generate_dukascopy_testclient_artifacts = importlib.import_module(
+    "scripts.generate_dukascopy_testclient_artifacts"
 )
-from scripts.validate_api_parity import run as validate_api_parity_run
-from scripts.validate_stage13_dukascopy_testclient import build_stage13_artifacts
+_validate_api_parity = importlib.import_module("scripts.validate_api_parity")
+_validate_stage13_dukascopy_testclient = importlib.import_module(
+    "scripts.validate_stage13_dukascopy_testclient"
+)
+
+DukascopyTestClientArtifactOutputs = (
+    _generate_dukascopy_testclient_artifacts.DukascopyTestClientArtifactOutputs
+)
+generate_dukascopy_testclient_artifacts = (
+    _generate_dukascopy_testclient_artifacts.generate_dukascopy_testclient_artifacts
+)
+validate_api_parity_run = _validate_api_parity.run
+build_stage13_artifacts = _validate_stage13_dukascopy_testclient.build_stage13_artifacts
 
 DEFAULT_SYMBOLS = ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]
 DEFAULT_PREDICTIONS_DIR = Path("data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap")

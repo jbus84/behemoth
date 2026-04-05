@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta, timezone
 
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
@@ -698,12 +699,14 @@ class TestPredictEndpoint:
     def test_predict_request_accepts_canonical_risk_override(self):
         from src.behemoth.api.server import PredictRequest
 
-        req = PredictRequest(
-            symbol="EURUSD",
-            risk_enabled_override=True,
-            requested_volume_units=10000,
-            completed_bar_ticks=[100],
-            run_id="jforex-gbpusd-slice",
+        req = PredictRequest.model_validate(
+            {
+                "symbol": "EURUSD",
+                "risk_enabled_override": True,
+                "requested_volume_units": 10000,
+                "completed_bar_ticks": [100],
+                "run_id": "jforex-gbpusd-slice",
+            }
         )
 
         assert req.effective_risk_enabled_override() is True
@@ -2696,7 +2699,6 @@ class TestSeedAuditHistory:
 class TestSeedFileLoading:
     def test_seed_parquet_loaded_into_audit_logs(self, client, tmp_path):
         """Seed parquets in BEHEMOTH_SEED_DIR are loaded into audit_logs on startup."""
-        import pandas as pd
         from src.behemoth.api import server
 
         # Create a seed parquet with known data
