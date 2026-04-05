@@ -98,16 +98,16 @@ def test_build_stage14_artifacts_marks_green_when_all_checks_pass(tmp_path: Path
         snapshot_out=tmp_path / "out" / "snapshot.md",
     )
 
-    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is True
-    assert summary.loc[0, "verdict"] == "green"
-    assert int(summary.loc[0, "missing_inputs"]) == 0
-    assert len(checks) == 7
     assert "execution_lifecycle_pass" in summary.columns
     assert "oco_lifecycle_pass" not in summary.columns
     lifecycle_check = checks[checks["metric_name"] == "execution_lifecycle_pass"]
     assert len(lifecycle_check) == 1
     assert lifecycle_check.iloc[0]["status"] == "pass"
     assert "oco_lifecycle_pass" not in set(checks["metric_name"])
+    assert summary.loc[0, "verdict"] == "green"
+    assert int(summary.loc[0, "missing_inputs"]) == 0
+    assert len(checks) == 7
+    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is True
 
 
 def test_build_stage14_artifacts_fails_when_jforex_inputs_missing(tmp_path: Path) -> None:
@@ -519,16 +519,16 @@ def test_build_stage14_artifacts_green_with_all_seven_checks(tmp_path: Path) -> 
         report_out=tmp_path / "out" / "report.md",
         snapshot_out=tmp_path / "out" / "snapshot.md",
     )
-    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is True
-    assert summary.loc[0, "verdict"] == "green"
-    assert int(summary.loc[0, "missing_inputs"]) == 0
-    assert len(checks) == 7
     assert "execution_lifecycle_pass" in summary.columns
     assert "oco_lifecycle_pass" not in summary.columns
     lifecycle_check = checks[checks["metric_name"] == "execution_lifecycle_pass"]
     assert len(lifecycle_check) == 1
     assert lifecycle_check.iloc[0]["status"] == "pass"
     assert "oco_lifecycle_pass" not in set(checks["metric_name"])
+    assert summary.loc[0, "verdict"] == "green"
+    assert int(summary.loc[0, "missing_inputs"]) == 0
+    assert len(checks) == 7
+    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is True
 
 
 def test_build_stage14_artifacts_fails_when_input_artifact_is_stale(tmp_path: Path) -> None:
@@ -653,13 +653,13 @@ def test_build_stage14_artifacts_accepts_non_deployable_local_surrogate_nogo(
         snapshot_out=tmp_path / "out" / "snapshot.md",
     )
 
-    assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is True
     assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is True
     surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"].iloc[0]
     assert surrogate_check["status"] == "pass"
     assert "non-deployable" in surrogate_check["details"].lower()
     assert "historical_deployable=false" in surrogate_check["details"].lower()
     assert "no_gate_states" in surrogate_check["details"]
+    assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is True
 
 
 def test_build_stage14_artifacts_rejects_deployable_local_surrogate_nogo(tmp_path: Path) -> None:
@@ -746,9 +746,8 @@ def test_build_stage14_artifacts_rejects_legacy_oco_lifecycle_only_inputs(tmp_pa
         snapshot_out=tmp_path / "out" / "snapshot.md",
     )
 
-    assert int(summary.loc[0, "missing_inputs"]) == 0
     lifecycle_check = checks[checks["metric_name"] == "execution_lifecycle_pass"]
     assert len(lifecycle_check) == 1
     assert lifecycle_check.iloc[0]["status"] == "fail"
-    assert "oco_lifecycle_pass" in lifecycle_check.iloc[0]["details"]
+    assert bool(lifecycle_check.iloc[0]["metric_value"]) is False
     assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False

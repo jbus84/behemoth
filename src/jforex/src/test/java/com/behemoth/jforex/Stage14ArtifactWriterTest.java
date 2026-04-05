@@ -42,16 +42,20 @@ class Stage14ArtifactWriterTest {
         group.sellLeg.status = "CANCELLED";
         writer.writeReports(List.of("GBPUSD"), List.of(group));
 
+        assertThat(tempDir.resolve("GBPUSD_jforex_signal_parity_summary.csv")).exists();
         assertThat(Files.readString(tempDir.resolve("GBPUSD_jforex_signal_parity_summary.csv")))
                 .contains("jforex_signal_parity_pass")
                 .contains("true");
+        assertThat(tempDir.resolve("GBPUSD_jforex_execution_parity_summary.csv")).exists();
         assertThat(Files.readString(tempDir.resolve("GBPUSD_jforex_execution_parity_summary.csv")))
                 .contains("jforex_execution_parity_pass")
                 .contains("true");
+        assertThat(tempDir.resolve("GBPUSD_jforex_execution_lifecycle_summary.csv")).exists();
+        assertThat(tempDir.resolve("GBPUSD_jforex_oco_lifecycle_summary.csv")).doesNotExist();
         assertThat(Files.readString(tempDir.resolve("GBPUSD_jforex_execution_lifecycle_summary.csv")))
                 .contains("execution_lifecycle_pass")
                 .contains("true");
-        assertThat(tempDir.resolve("GBPUSD_jforex_oco_lifecycle_summary.csv")).doesNotExist();
+        assertThat(tempDir.resolve("GBPUSD_jforex_operational_ready_summary.csv")).exists();
         assertThat(Files.readString(tempDir.resolve("GBPUSD_jforex_operational_ready_summary.csv")))
                 .contains("operational_ready_pass")
                 .contains("true");
