@@ -6,7 +6,7 @@ candidate_dir: data/analysis/tick_opportunity_mining
 library: oco
 train_years_for_state_fit: "2022,2023,2024"
 eval_start_month: "2025-01"
-eval_end_month: "2026-02"
+eval_end_month: "2026-03"
 
 # full-cap style (materially larger than fast caps)
 min_candidate_train_count: 15000
