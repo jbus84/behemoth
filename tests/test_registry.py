@@ -11,22 +11,98 @@ import pytest
 from src.behemoth.core.registry import CandidateRegistry
 
 LOCK_DIR = Path("configs/research/governance/oco")
-MODELS_DIR = Path("models/oco")
 
-_has_model_artifacts = MODELS_DIR.exists() and any(MODELS_DIR.glob("*.cbm"))
-_skip_no_models = pytest.mark.skipif(
-    not _has_model_artifacts,
-    reason="model artifacts not present (gitignored)",
-)
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _write_symbol_lock(
+    sym: str,
+    lock_dir: Path,
+    models_dir: Path,
+    state_rows: list[dict],
+    live_deployable: bool = True,
+    model_suffix: str = "2026-02",
+) -> None:
+    """Write a self-consistent lock file + fake model artifacts for one symbol."""
+    cbm = models_dir / f"{sym}_model_{model_suffix}.cbm"
+    thr = models_dir / f"{sym}_model_{model_suffix}.json"
+    cbm.write_bytes(b"fake-cbm-" + sym.encode())
+    thr.write_text('{"threshold": 0.5}')
+
+    lock = {
+        "symbol": sym,
+        "frozen_at_utc": f"2026-{model_suffix}-01T00:00:00Z",
+        "artifacts": {
+            "live_deployable": live_deployable,
+            "model_cbm_path": f"models/oco/{cbm.name}",
+            "model_cbm_sha256": _sha256(cbm),
+            "model_threshold_json_path": f"models/oco/{thr.name}",
+            "model_threshold_json_sha256": _sha256(thr),
+            "model_month": model_suffix,
+        },
+        "locked_runtime": {"production_cap_pips": 1.2},
+        "state_universe": {"rows": state_rows},
+    }
+    (lock_dir / f"{sym}_oco_live_lock.json").write_text(json.dumps(lock))
+
+
+@pytest.fixture
+def hermetic_registry(tmp_path: Path) -> CandidateRegistry:
+    """Self-consistent registry with EURUSD and GBPUSD, no real artifacts needed."""
+    lock_dir = tmp_path / "locks"
+    models_dir = tmp_path / "models"
+    lock_dir.mkdir()
+    models_dir.mkdir()
+
+    _write_symbol_lock(
+        "EURUSD",
+        lock_dir,
+        models_dir,
+        state_rows=[
+            {
+                "symbol": "EURUSD",
+                "bar_ticks": 100,
+                "horizon": 5,
+                "barrier_pips": 2.0,
+                "state_id": "oco_first_touch_clean__high_range_q70__k1",
+                "regime_desc": "high_range_q70",
+            }
+        ],
+    )
+    _write_symbol_lock(
+        "GBPUSD",
+        lock_dir,
+        models_dir,
+        state_rows=[
+            {
+                "symbol": "GBPUSD",
+                "bar_ticks": 100,
+                "horizon": 5,
+                "barrier_pips": 2.0,
+                "state_id": "oco_first_touch_clean__high_range_q70__k2",
+                "regime_desc": "high_range_q70",
+            },
+            {
+                "symbol": "GBPUSD",
+                "bar_ticks": 100,
+                "horizon": 6,
+                "barrier_pips": 3.0,
+                "state_id": "oco_first_touch_clean__med_range_q50__k1",
+                "regime_desc": "med_range_q50",
+            },
+        ],
+    )
+
+    return CandidateRegistry.load(lock_dir, models_dir=models_dir)
 
 
 class TestRegistryLoading:
-    @_skip_no_models
-    def test_loads_from_json_dir(self):
-        reg = CandidateRegistry.load(LOCK_DIR)
-        assert len(reg.symbols) > 0
-        assert "EURUSD" in reg.symbols
-        assert "GBPUSD" in reg.symbols
+    def test_loads_from_json_dir(self, hermetic_registry: CandidateRegistry):
+        assert len(hermetic_registry.symbols) > 0
+        assert "EURUSD" in hermetic_registry.symbols
+        assert "GBPUSD" in hermetic_registry.symbols
 
     def test_invalid_dir_raises(self):
         with pytest.raises(FileNotFoundError):
@@ -43,18 +119,15 @@ class TestRegistryLoading:
         model_cbm.write_bytes(b"cbm-bytes")
         model_thr.write_text('{"threshold": 0.5}')
 
-        def sha256(path: Path) -> str:
-            return hashlib.sha256(path.read_bytes()).hexdigest()
-
         lock = {
             "symbol": "EURUSD",
             "frozen_at_utc": "2026-03-25T00:00:00Z",
             "artifacts": {
                 "live_deployable": True,
                 "model_cbm_path": "models/oco/EURUSD_model_2026-02.cbm",
-                "model_cbm_sha256": sha256(model_cbm),
+                "model_cbm_sha256": _sha256(model_cbm),
                 "model_threshold_json_path": "models/oco/EURUSD_model_2026-02.json",
-                "model_threshold_json_sha256": sha256(model_thr),
+                "model_threshold_json_sha256": _sha256(model_thr),
                 "model_month": "2026-02",
             },
             "locked_runtime": {"production_cap_pips": 1.2},
@@ -82,29 +155,24 @@ class TestRegistryLoading:
         assert Path(binding["model_threshold_json_path"]) == model_thr
 
 
-@_skip_no_models
 class TestCandidateGeneration:
-    @pytest.fixture
-    def registry(self) -> CandidateRegistry:
-        return CandidateRegistry.load(LOCK_DIR)
-
-    def test_gbpusd_has_candidates(self, registry):
-        cands = registry.get_candidates("GBPUSD")
+    def test_gbpusd_has_candidates(self, hermetic_registry: CandidateRegistry):
+        cands = hermetic_registry.get_candidates("GBPUSD")
         assert len(cands) >= 1
 
-    def test_unknown_symbol_returns_empty(self, registry):
-        assert registry.get_candidates("XYZABC") == []
+    def test_unknown_symbol_returns_empty(self, hermetic_registry: CandidateRegistry):
+        assert hermetic_registry.get_candidates("XYZABC") == []
 
-    def test_model_binding_present(self, registry):
-        binding = registry.get_model_binding("EURUSD")
+    def test_model_binding_present(self, hermetic_registry: CandidateRegistry):
+        binding = hermetic_registry.get_model_binding("EURUSD")
         assert binding is not None
         assert binding["model_cbm_path"].endswith(".cbm")
         assert binding["model_threshold_json_path"].endswith(".json")
         assert len(str(binding["model_cbm_sha256"])) == 64
         assert len(str(binding["model_threshold_json_sha256"])) == 64
 
-    def test_candidate_fields_populated(self, registry):
-        cands = registry.get_candidates("GBPUSD")
+    def test_candidate_fields_populated(self, hermetic_registry: CandidateRegistry):
+        cands = hermetic_registry.get_candidates("GBPUSD")
         assert cands, "Expected GBPUSD to have candidates"
         c = cands[0]
         assert c.symbol == "GBPUSD"
@@ -114,17 +182,17 @@ class TestCandidateGeneration:
         assert c.regime_desc != ""
         assert "oco_first_touch_clean" in c.candidate_uid
 
-    def test_candidate_uid_format(self, registry):
-        cands = registry.get_candidates("GBPUSD")
+    def test_candidate_uid_format(self, hermetic_registry: CandidateRegistry):
+        cands = hermetic_registry.get_candidates("GBPUSD")
         for c in cands:
-            # WFO output format is library|symbol|bar_ticks|hN|state_id
-            # Wait, the state_id IS the candidate_uid in the JSON
-            # so it should be e.g. oco_first_touch_clean__high_range_q70__k2
             assert "__" in c.candidate_uid
             assert c.candidate_uid.startswith("oco_first_touch_clean")
 
-    def test_all_candidates_count(self, registry):
-        all_cands = registry.all_candidates()
-        expected = sum(len(registry.get_candidates(sym)) for sym in registry.symbols)
+    def test_all_candidates_count(self, hermetic_registry: CandidateRegistry):
+        all_cands = hermetic_registry.all_candidates()
+        expected = sum(
+            len(hermetic_registry.get_candidates(sym))
+            for sym in hermetic_registry.symbols
+        )
         assert len(all_cands) == expected
         assert len(all_cands) > 0
