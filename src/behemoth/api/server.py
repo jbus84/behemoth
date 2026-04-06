@@ -2633,18 +2633,15 @@ def _build_predictions(
                     curr_source = f"{threshold_mode}:no_valid_threshold"
                     threshold_blocked = True
                     threshold_block_reason = "ROLLING_HISTORY_GAP"
-                elif is_live:
+                else:
                     logger.warning(
-                        "No valid threshold for %s %s: no rolling config in live mode. Blocking.",
+                        "No valid threshold for %s %s: no rolling config — blocking (static fallback is unsafe).",
                         sym, canonical_uid,
                     )
                     curr_threshold = 2.0
                     curr_source = f"{threshold_mode}:no_rolling_config"
                     threshold_blocked = True
                     threshold_block_reason = "NO_ROLLING_CONFIG"
-                else:
-                    curr_threshold = threshold_exec
-                    curr_source = f"{threshold_mode}:static_fallback"
 
             preselected_exec = 1 if (regime_active and pred_prob >= curr_threshold) else 0
         risk_metrics_snapshot: dict[str, Any] = {
