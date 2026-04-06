@@ -1,3 +1,11 @@
+## v0.3.3 (2026-04-06)
+
+### Fix
+
+- block instead of static-fallback when rolling threshold unavailable (#30)
+- quality gate, api test isolation, hermetic registry tests (#29)
+- repair stage14 pre-monday certification contract (#28)
+
 ## v0.3.2 (2026-04-05)
 
 ### Fix
