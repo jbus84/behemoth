@@ -16,8 +16,8 @@ from scripts.run_jforex_dukascopy_matrix import (
     _prediction_path,
     _run_jforex_tester,
     _stage14_artifact_paths,
-    _with_mise_trusted_paths,
     _wait_for_artifacts_then_kill,
+    _with_mise_trusted_paths,
 )
 
 
