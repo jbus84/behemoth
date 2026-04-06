@@ -25,6 +25,8 @@ endif
 
 # Active symbol list — single source of truth for multi-symbol targets
 REBUILD_SYMBOLS := EURUSD GBPUSD USDJPY USDCHF AUDUSD USDCAD
+# Override WFO eval end month (YYYY-MM). Leave unset to auto-detect last complete month.
+EVAL_END_MONTH ?=
 # Default comma-separated symbol list for targets that accept --symbols (e.g. jforex-outcome-parity)
 SYMBOLS ?= EURUSD,GBPUSD,USDJPY,USDCHF,AUDUSD,USDCAD
 CTRADER_ROBOT_DST := ~/cAlgo/Sources/Robots/BehemothTradeManager/BehemothTradeManager/BehemothTradeManager.cs
@@ -190,7 +192,7 @@ retrain-all:
 	@echo "══════════════════════════════════════════"
 	@for sym in $(REBUILD_SYMBOLS); do \
 		echo "\n=== Retraining $$sym ==="; \
-		uv run python scripts/onboard_symbol.py --symbol $$sym --skip-data --skip-docs --skip-registration --model-export-dir models/oco || exit 1; \
+		uv run python scripts/onboard_symbol.py --symbol $$sym --skip-data --skip-docs --skip-registration --model-export-dir models/oco $(if $(EVAL_END_MONTH),--eval-end-month $(EVAL_END_MONTH),) || exit 1; \
 	done
 	@echo "\n=== Running Stage-1 data reliability audit (all active symbols) ==="
 	uv run python scripts/audit_data_reliability.py \

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -759,6 +760,10 @@ def main() -> None:
     eval_year = int(cfg["eval_year"])
     eval_start_month = str(cfg.get("eval_start_month", "")).strip()
     eval_end_month = str(cfg.get("eval_end_month", "")).strip()
+    if not eval_end_month:
+        today = date.today()
+        last_complete = date(today.year, today.month, 1) - timedelta(days=1)
+        eval_end_month = f"{last_complete.year}-{last_complete.month:02d}"
     libs_raw = str(cfg["library"]).strip().lower()
     oco_include_no_touch = bool(cfg.get("oco_include_no_touch", DEFAULTS["oco_include_no_touch"]))
     threshold_mode = str(cfg.get("threshold_mode", DEFAULTS["threshold_mode"])).strip().lower()

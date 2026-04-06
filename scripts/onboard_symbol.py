@@ -164,7 +164,7 @@ def stage_1_configs(symbol: str, *, dry_run: bool, force: bool) -> list[Path]:
 # ---------------------------------------------------------------------------
 
 
-def stage_2_ml_pipeline(symbol: str, *, model_export_dir: str | None = None, dry_run: bool) -> None:
+def stage_2_ml_pipeline(symbol: str, *, model_export_dir: str | None = None, eval_end_month: str | None = None, dry_run: bool) -> None:
     """Run the 6 core ML scripts in sequence."""
     sym = symbol.lower()
 
@@ -184,9 +184,12 @@ def stage_2_ml_pipeline(symbol: str, *, model_export_dir: str | None = None, dry
         label="Stage 2b: Build ML dataset",
     )
 
+    wfo_eval_end_args = ["--eval-end-month", eval_end_month] if eval_end_month else []
+
     wfo_args_base = [
         "--config",
         f"configs/research/experiments/{sym}_tick_opportunity_monthly_wfo.yaml",
+        *wfo_eval_end_args,
     ]
 
     _uv_run(
@@ -199,6 +202,7 @@ def stage_2_ml_pipeline(symbol: str, *, model_export_dir: str | None = None, dry
     wfo_args_oco = [
         "--config",
         f"configs/research/experiments/{sym}_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
+        *wfo_eval_end_args,
     ]
     if model_export_dir:
         # Export deployable API models only from the fullcap OCO run so
@@ -524,6 +528,11 @@ Examples:
         default=None,
         help="Directory to export .cbm models + .json thresholds",
     )
+    p.add_argument(
+        "--eval-end-month",
+        default=None,
+        help="Override WFO eval end month (YYYY-MM). Defaults to most recent complete month.",
+    )
     args = p.parse_args()
 
     symbol = str(args.symbol).strip().upper()
@@ -563,7 +572,7 @@ Examples:
 
     # Stage 2
     if not args.skip_ml:
-        stage_2_ml_pipeline(symbol, model_export_dir=args.model_export_dir, dry_run=args.dry_run)
+        stage_2_ml_pipeline(symbol, model_export_dir=args.model_export_dir, eval_end_month=args.eval_end_month, dry_run=args.dry_run)
     else:
         print("\n  --- Stage 2 skipped (--skip-ml) ---")
 
