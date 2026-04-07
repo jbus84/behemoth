@@ -94,6 +94,38 @@ def _verify_cert(report_dir: str, model_month: str, repo_root: Path | None = Non
         )
 
 
+def _copy_candidate_models(model_month: str) -> None:
+    """Copy model .cbm and .json files into models/oco_dukascopy_candidate/.
+
+    Reads model paths from the promoted lock files in oco_history_dukascopy_candidate
+    so the source of truth is always the lock manifest.
+    """
+    dest_dir = _repo_root() / "models" / "oco_dukascopy_candidate"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    lock_dir = _repo_root() / HISTORY_ROOT / model_month
+    copied: list[str] = []
+    for lock_path in sorted(lock_dir.glob("*_oco_live_lock.json")):
+        with lock_path.open() as f:
+            manifest = json.load(f)
+        artifacts = manifest.get("artifacts", {})
+        for key in ("model_cbm_path", "model_threshold_json_path"):
+            rel = artifacts.get(key, "")
+            if not rel:
+                continue
+            src = _repo_root() / rel
+            if not src.exists():
+                raise SystemExit(f"[promote-live] model file not found: {src}")
+            dest = dest_dir / src.name
+            shutil.copy2(src, dest)
+            copied.append(src.name)
+    if not copied:
+        raise SystemExit(
+            f"[promote-live] no model files found for {model_month}; "
+            "check that monthly-build ran successfully"
+        )
+    print(f"[promote-live] copied {len(copied)} model files to models/oco_dukascopy_candidate/")
+
+
 def _archive_build_bundle(model_month: str) -> None:
     source_dir = _repo_root() / MONTHLY_BUILD_ROOT / model_month
     target_root = _repo_root() / HISTORY_ROOT
@@ -114,6 +146,7 @@ def _archive_build_bundle(model_month: str) -> None:
     shutil.copytree(source_dir, target_dir)
     _rewrite_promoted_lock_paths(source_dir, target_dir)
     _rebuild_promoted_index(target_root)
+    _copy_candidate_models(model_month)
 
 
 def _rewrite_path_prefix(path_value: str, source_dir: Path, target_dir: Path) -> str:
