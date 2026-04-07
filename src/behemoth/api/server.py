@@ -554,6 +554,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
     # Start background monitor
     monitor_task = asyncio.create_task(_monitor_ledger())
+    position_summary_task = asyncio.create_task(_write_position_summary_loop())
 
     if _config.persist_db_path:
         db_path = Path(_config.persist_db_path)
@@ -649,8 +650,11 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
     _lifespan_ready = False
     monitor_task.cancel()
+    position_summary_task.cancel()
     with suppress(asyncio.CancelledError):
         await monitor_task
+    with suppress(asyncio.CancelledError):
+        await position_summary_task
 
     _barrier_manager = None
     if _state:
@@ -685,6 +689,24 @@ async def _monitor_ledger() -> None:
         except Exception as e:
             logger.error("Ledger monitor error: %s", e)
         await asyncio.sleep(60)
+
+
+async def _write_position_summary_loop() -> None:
+    """Background task: write live_position_summary.json every 5 seconds."""
+    while True:
+        try:
+            if _state and _config.persist_db_path:
+                now = datetime.now(tz=timezone.utc)
+                summary = _build_open_positions_summary(_state, now)
+                summary_path = (
+                    Path(_config.persist_db_path).parent / "live_position_summary.json"
+                )
+                summary_path.write_text(
+                    json.dumps(summary, indent=2, default=str), encoding="utf-8"
+                )
+        except Exception as e:
+            logger.error("Position summary writer error: %s", e)
+        await asyncio.sleep(5)
 
 
 app = FastAPI(

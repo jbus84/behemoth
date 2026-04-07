@@ -2852,3 +2852,38 @@ class TestOpenSummaryEndpoint:
             assert r.status_code == 503
         finally:
             server._state = original
+
+    def test_position_summary_writer_skips_without_persist_path(self, client):
+        """Writer loop body does not write when persist_db_path is falsy."""
+        import asyncio
+        import unittest.mock as mock
+        from pathlib import Path
+        from src.behemoth.api import server
+
+        original_path = server._config.persist_db_path
+        server._config.persist_db_path = ""
+        written_paths = []
+        real_write_text = Path.write_text
+
+        def tracking_write_text(self, *args, **kwargs):
+            written_paths.append(str(self))
+            return real_write_text(self, *args, **kwargs)
+
+        server._config.persist_db_path = ""
+        try:
+            with mock.patch.object(Path, "write_text", tracking_write_text):
+                # Run one iteration of the loop body manually
+                coro = server._write_position_summary_loop()
+                try:
+                    # Drive the coroutine until the first sleep (which we interrupt)
+                    loop = asyncio.new_event_loop()
+                    task = loop.create_task(coro)
+                    loop.call_soon(task.cancel)
+                    loop.run_until_complete(asyncio.gather(task, return_exceptions=True))
+                    loop.close()
+                except Exception:
+                    pass
+        finally:
+            server._config.persist_db_path = original_path
+
+        assert not any("live_position_summary" in p for p in written_paths)
