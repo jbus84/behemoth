@@ -305,6 +305,21 @@ def main() -> None:
     if state_json.exists():
         state_json.unlink()
 
+    # Archive previous live_state.db so each session starts clean.
+    # audit_logs are repopulated from seed parquets on API startup — no data
+    # needs to be carried forward.
+    state_db_path = _repo_root() / cfg.report_dir / "runtime" / "live_state.db"
+    if state_db_path.exists():
+        archive_dir = state_db_path.parent / "archive"
+        archive_dir.mkdir(parents=True, exist_ok=True)
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        archived = archive_dir / f"live_state_{ts}.db"
+        state_db_path.rename(archived)
+        print(f"[jforex-live] archived previous state DB → {archived.name}", flush=True)
+        wal = state_db_path.with_suffix(".db.wal")
+        if wal.exists():
+            wal.rename(archive_dir / f"live_state_{ts}.db.wal")
+
     # Run offline seed BEFORE starting the API
     print("[jforex-live] running offline threshold seed", flush=True)
     seed_result = subprocess.run(
