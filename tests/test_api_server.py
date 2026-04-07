@@ -2793,3 +2793,62 @@ class TestOpenSummaryEndpoint:
         assert pos["entry_price"] is None
         assert pos["estimated_unrealized_pips"] is None
         assert pos["open_minutes"] == 12.5
+
+    def test_open_summary_with_pending_reservation(self, client):
+        """Endpoint returns one PENDING position with correct shape."""
+        import unittest.mock as mock
+        from datetime import datetime, timezone, timedelta
+        from src.behemoth.api import server
+
+        now_fixed = datetime(2026, 4, 7, 14, 15, 0, tzinfo=timezone.utc)
+        created = now_fixed - timedelta(minutes=5)
+        fake_reservation = {
+            "reservation_id": "res-001",
+            "created_ts": created,
+            "updated_ts": created,
+            "symbol": "EURUSD",
+            "candidate_uid": "cand-001",
+            "broker_pos_id": None,
+            "status": "PENDING",
+            "reserved_loss_ccy": 10.0,
+            "barrier_pips": 20.0,
+            "cap_pips": 30.0,
+            "cost_est_pips": 5.0,
+            "volume_units": 1000.0,
+            "side": "BUY",
+            "source": "algo",
+        }
+        with (
+            mock.patch.object(
+                server._state,
+                "list_active_account_risk_reservations",
+                return_value=[fake_reservation],
+            ),
+            mock.patch.object(server._state, "get_last_bar_close_price", return_value=None),
+            mock.patch.object(server._state, "get_all_symbols", return_value=["EURUSD"]),
+        ):
+            r = client.get("/trades/open-summary")
+
+        assert r.status_code == 200
+        body = r.json()
+        assert body["total_open"] == 1
+        assert body["pending_broker_confirm"] == 1
+        assert len(body["positions"]) == 1
+        pos = body["positions"][0]
+        assert pos["symbol"] == "EURUSD"
+        assert pos["status"] == "PENDING"
+        assert pos["broker_confirmed"] is False
+        assert pos["entry_price"] is None
+        assert pos["estimated_unrealized_pips"] is None
+
+    def test_open_summary_uninitialized_state(self, client):
+        """Returns 503 when state manager is not initialized."""
+        from src.behemoth.api import server
+
+        original = server._state
+        server._state = None
+        try:
+            r = client.get("/trades/open-summary")
+            assert r.status_code == 503
+        finally:
+            server._state = original

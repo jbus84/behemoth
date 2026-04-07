@@ -3190,6 +3190,15 @@ async def get_trades_summary():
     return _state.get_ledger_stats()
 
 
+@app.get("/trades/open-summary")
+async def get_open_positions_summary():
+    """Cross-symbol view of all non-closed reservations with best-effort unrealized P&L."""
+    if _state is None:
+        raise HTTPException(status_code=503, detail="State manager not initialized")
+    now = datetime.now(tz=timezone.utc)
+    return _build_open_positions_summary(_state, now)
+
+
 @app.get("/state/checkpoint")
 async def checkpoint_state():
     """Force DuckDB to flush WAL to the on-disk database file."""
