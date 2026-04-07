@@ -195,7 +195,8 @@ public final class Stage14ArtifactWriter {
 
     private void writeExecutionSummary(String symbol, List<EventRow> rows) {
         long failed = rows.stream().filter(row -> row.category().equals("execution") && !row.pass()).count();
-        long submittedOrders = rows.stream().filter(row -> row.eventName().equals("order_submitted")).count();
+        long submittedOrders = rows.stream().filter(row ->
+                row.eventName().equals("order_submitted") || row.eventName().equals("market_order_submitted")).count();
         boolean hadExecutableSelections = rows.stream()
                 .filter(row -> row.category().equals("signal"))
                 .filter(row -> row.eventName().equals("predict_cycle"))

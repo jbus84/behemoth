@@ -200,7 +200,7 @@ def load_runtime_events(
         ]
     predict_cycles = len(predict_cycle_rows)
 
-    order_submitted_rows = df[df["event_name"] == "order_submitted"].copy()
+    order_submitted_rows = df[df["event_name"].isin(["order_submitted", "market_order_submitted"])].copy()
     if eval_start_dt is not None or eval_end_dt is not None:
         order_submitted_rows = order_submitted_rows.loc[
             order_submitted_rows["detail"]
