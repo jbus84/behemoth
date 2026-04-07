@@ -594,12 +594,11 @@ class StateManager:
         if res is None:
             return None
         close_price, close_ts = res
-        if isinstance(close_ts, datetime):
-            close_ts = (
-                close_ts.replace(tzinfo=timezone.utc)
-                if close_ts.tzinfo is None
-                else close_ts.astimezone(timezone.utc)
-            )
+        close_ts = (
+            close_ts.replace(tzinfo=timezone.utc)
+            if close_ts.tzinfo is None
+            else close_ts.astimezone(timezone.utc)
+        )
         return float(close_price), close_ts
 
     def touch_trade(self, broker_pos_id: str, touch_bar_id: int) -> None:
