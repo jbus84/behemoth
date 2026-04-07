@@ -10,7 +10,7 @@ import com.dukascopy.api.system.IClient;
  * Demo/live session bootstrapper for the JForex adapter.
  */
 public final class JForexLiveRunner {
-    private static final int CONNECT_TIMEOUT_SECONDS = 30;
+    private static final int CONNECT_TIMEOUT_SECONDS = 120;
 
     private JForexLiveRunner() {
     }
