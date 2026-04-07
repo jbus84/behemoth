@@ -235,7 +235,10 @@ public final class LiveReadinessCoordinator implements AutoCloseable {
                     WARMUP_BAR_COUNT_THRESHOLD,
                     initialWarmupBarCount100
             );
-            bridgeRuntime.bridge(bridgeConfig);
+            BrokerBridgeLoader.BridgeResult bridgeResult = bridgeRuntime.bridge(bridgeConfig);
+            if (bridgeResult.lastClientTickSeq() != null) {
+                core.seedClientTickSeq(symbol, bridgeResult.lastClientTickSeq());
+            }
             publishSnapshot(clock.instant(), true);
         } catch (RuntimeException exc) {
             registry.markErrorPaused(symbol, clock.instant(), "Live readiness startup failed: " + exc.getMessage());

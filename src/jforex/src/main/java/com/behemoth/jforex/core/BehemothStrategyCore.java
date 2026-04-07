@@ -78,6 +78,13 @@ public final class BehemothStrategyCore {
         }
     }
 
+    public void seedClientTickSeq(String symbol, long lastClientTickSeq) {
+        SymbolRuntimeState state = symbolStates.get(normalizeSymbol(symbol));
+        if (state != null) {
+            state.nextClientTickSeq = lastClientTickSeq + 1L;
+        }
+    }
+
     public void onTick(RuntimeTick tick) {
         SymbolRuntimeState state = symbolStates.get(normalizeSymbol(tick.symbol()));
         if (state == null) {
