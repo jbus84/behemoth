@@ -1,3 +1,11 @@
+## v0.4.1 (2026-04-07)
+
+### Fix
+
+- archive live_state.db on startup so each session starts clean (#35)
+- promote-live now copies model files to oco_dukascopy_candidate (#34)
+- increase JForex connection timeout from 30s to 120s (#33)
+
 ## v0.4.0 (2026-04-07)
 
 ### Feat
