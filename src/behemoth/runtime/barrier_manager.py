@@ -161,6 +161,14 @@ class BarrierManager:
                         "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",
                         [scan_id],
                     )
+                    if reservation_id is not None:
+                        actions.append({
+                            "type": "RELEASE_RESERVATION",
+                            "symbol": sym,
+                            "candidate_uid": candidate_uid,
+                            "scan_id": scan_id,
+                            "reservation_id": reservation_id,
+                        })
                     continue
                 self._transition_to_holding(scan_id, touch_step, side, horizon)
                 actions.append({
@@ -196,6 +204,14 @@ class BarrierManager:
                     "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",
                     [scan_id],
                 )
+                if reservation_id is not None:
+                    actions.append({
+                        "type": "RELEASE_RESERVATION",
+                        "symbol": sym,
+                        "candidate_uid": candidate_uid,
+                        "scan_id": scan_id,
+                        "reservation_id": reservation_id,
+                    })
             else:
                 self._con.execute(
                     "UPDATE barrier_scans SET scan_bars_remaining = ? WHERE scan_id = ?",

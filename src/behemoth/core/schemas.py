@@ -258,6 +258,7 @@ class OcoPrediction(BaseModel):
 class BarrierActionType(str, Enum):
     OPEN_MARKET = "OPEN_MARKET"
     CLOSE_MARKET = "CLOSE_MARKET"
+    RELEASE_RESERVATION = "RELEASE_RESERVATION"
 
 
 class BarrierAction(BaseModel):
