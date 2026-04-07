@@ -1,3 +1,9 @@
+## v0.5.1 (2026-04-07)
+
+### Fix
+
+- seed strategy core tick seq from bridge result after backfill (#37)
+
 ## v0.5.0 (2026-04-07)
 
 ### Feat
