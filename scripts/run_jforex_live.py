@@ -288,6 +288,68 @@ def _stop_process(proc: subprocess.Popen[str]) -> None:
     proc.wait(timeout=10)
 
 
+# Tables consolidated into the archive. audit_logs are seed-only and
+# reproducible; tick_bars / raw_ticks are too large to carry forward.
+_ARCHIVE_TABLES = [
+    "trades",
+    "predict_evaluations",
+    "account_risk_allocator_events",
+    "account_risk_reservations",
+    "account_risk_snapshots",
+]
+
+
+def _consolidate_to_archive(state_db_path: Path) -> None:
+    """Append live_state.db into a single consolidated archive DB, then delete it.
+
+    A ``session_started_at`` column is stamped on every inserted row so
+    sessions remain distinguishable without needing separate files.
+    """
+    import duckdb
+
+    archive_dir = state_db_path.parent / "archive"
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    archive_db = archive_dir / "live_state_archive.db"
+    session_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+    src = duckdb.connect(str(state_db_path), read_only=True)
+    src_tables = {row[0] for row in src.execute("SHOW TABLES").fetchall()}
+    src.close()
+
+    arc = duckdb.connect(str(archive_db))
+    arc.execute(f"ATTACH '{state_db_path}' AS src (READ_ONLY)")
+
+    total_rows = 0
+    for table in _ARCHIVE_TABLES:
+        if table not in src_tables:
+            continue
+        # Bootstrap archive table from source schema + session column
+        arc.execute(
+            f"CREATE TABLE IF NOT EXISTS {table} AS "
+            f"SELECT *, CAST(NULL AS VARCHAR) AS session_started_at "
+            f"FROM src.{table} WHERE 1=0"
+        )
+        n = arc.execute(
+            f"INSERT INTO {table} "
+            f"SELECT *, '{session_ts}' AS session_started_at FROM src.{table}"
+        ).rowcount
+        total_rows += n
+
+    arc.close()
+
+    # Remove the source DB now that it's consolidated
+    state_db_path.unlink()
+    wal = state_db_path.with_suffix(".db.wal")
+    if wal.exists():
+        wal.unlink()
+
+    print(
+        f"[jforex-live] consolidated {total_rows} rows into {archive_db.name} "
+        f"(session={session_ts})",
+        flush=True,
+    )
+
+
 def main() -> None:
     cfg = _parse_args()
 
@@ -305,20 +367,13 @@ def main() -> None:
     if state_json.exists():
         state_json.unlink()
 
-    # Archive previous live_state.db so each session starts clean.
-    # audit_logs are repopulated from seed parquets on API startup — no data
-    # needs to be carried forward.
+    # Consolidate previous live_state.db into the persistent archive and start
+    # fresh. audit_logs and tick tables are excluded — audit_logs are
+    # repopulated from seed parquets on API startup; tick_bars/raw_ticks are
+    # large and not needed for post-session analysis.
     state_db_path = _repo_root() / cfg.report_dir / "runtime" / "live_state.db"
     if state_db_path.exists():
-        archive_dir = state_db_path.parent / "archive"
-        archive_dir.mkdir(parents=True, exist_ok=True)
-        ts = time.strftime("%Y%m%d_%H%M%S")
-        archived = archive_dir / f"live_state_{ts}.db"
-        state_db_path.rename(archived)
-        print(f"[jforex-live] archived previous state DB → {archived.name}", flush=True)
-        wal = state_db_path.with_suffix(".db.wal")
-        if wal.exists():
-            wal.rename(archive_dir / f"live_state_{ts}.db.wal")
+        _consolidate_to_archive(state_db_path)
 
     # Run offline seed BEFORE starting the API
     print("[jforex-live] running offline threshold seed", flush=True)
