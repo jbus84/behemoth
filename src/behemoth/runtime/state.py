@@ -582,6 +582,26 @@ class StateManager:
             for r in res
         ]
 
+    def get_last_bar_close_price(
+        self, symbol: str, bar_ticks: int = 100
+    ) -> tuple[float, datetime] | None:
+        """Return (close_price, close_ts) for the most recent bar, or None if no data."""
+        res = self._con.execute(
+            "SELECT close_price, close_ts FROM tick_bars "
+            "WHERE symbol = ? AND bar_ticks = ? ORDER BY row_id DESC LIMIT 1",
+            [symbol.upper(), bar_ticks],
+        ).fetchone()
+        if res is None:
+            return None
+        close_price, close_ts = res
+        if isinstance(close_ts, datetime):
+            close_ts = (
+                close_ts.replace(tzinfo=timezone.utc)
+                if close_ts.tzinfo is None
+                else close_ts.astimezone(timezone.utc)
+            )
+        return float(close_price), close_ts
+
     def touch_trade(self, broker_pos_id: str, touch_bar_id: int) -> None:
         """Record the bar id when a position's barrier was touched."""
         self._con.execute(

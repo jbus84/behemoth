@@ -2727,3 +2727,22 @@ class TestSeedFileLoading:
         ).fetchone()
         assert row is not None
         assert abs(row[0] - 0.75) < 1e-6
+
+
+class TestOpenSummaryEndpoint:
+    def test_open_summary_empty(self, client):
+        """No open reservations → empty positions list."""
+        r = client.get("/trades/open-summary")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["total_open"] == 0
+        assert body["broker_confirmed"] == 0
+        assert body["pending_broker_confirm"] == 0
+        assert body["positions"] == []
+        assert "as_of_utc" in body
+
+    def test_get_last_bar_close_price_returns_none_when_no_bars(self, client):
+        """StateManager returns None when tick_bars has no rows for symbol."""
+        from src.behemoth.api import server
+        result = server._state.get_last_bar_close_price("EURUSD")
+        assert result is None
