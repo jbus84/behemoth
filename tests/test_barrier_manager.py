@@ -126,14 +126,50 @@ class TestEvaluateBar:
         assert scan["scan_bars_remaining"] == 5
 
     def test_scan_expires_after_horizon_bars_no_touch(self):
-        """After horizon bars with no touch -> EXPIRED."""
+        """After horizon bars with no touch -> EXPIRED + RELEASE_RESERVATION."""
         mgr, scan_id = self._make_manager_with_scan(horizon=2)
+        mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 11)
+        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 12)
+        assert len(actions) == 1
+        assert actions[0]["type"] == "RELEASE_RESERVATION"
+        scan = mgr.get_scan(scan_id)
+        assert scan["status"] == "EXPIRED"
+        assert not mgr.has_active_scan("GBPUSD", "oco|GBPUSD|100|h6|abc")
+
+    def test_expiry_emits_release_reservation_when_reservation_id_set(self):
+        """Expired scan with reservation_id -> RELEASE_RESERVATION action."""
+        mgr, scan_id = self._make_manager_with_scan(horizon=2)
+        # reservation_id="res-001" from _make_manager_with_scan
+        mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 11)
+        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 12)
+        assert len(actions) == 1
+        assert actions[0]["type"] == "RELEASE_RESERVATION"
+        assert actions[0]["reservation_id"] == "res-001"
+        assert actions[0]["scan_id"] == scan_id
+        assert actions[0]["symbol"] == "GBPUSD"
+
+    def test_expiry_no_release_when_no_reservation_id(self):
+        """Expired scan with reservation_id=None -> no RELEASE_RESERVATION action."""
+        mgr = BarrierManager()
+        scan_id = mgr.register_scan(
+            symbol="GBPUSD",
+            candidate_uid="oco|GBPUSD|100|h6|abc",
+            signal_bar_idx=10,
+            ref_price=1.29500,
+            barrier_pips=2.0,
+            horizon=2,
+            pip_size=0.0001,
+            pred_prob=0.625,
+            threshold=0.599,
+            model_month="2026-02",
+            reservation_id=None,
+            run_id="test",
+        )
         mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 11)
         actions = mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 12)
         assert len(actions) == 0
         scan = mgr.get_scan(scan_id)
         assert scan["status"] == "EXPIRED"
-        assert not mgr.has_active_scan("GBPUSD", "oco|GBPUSD|100|h6|abc")
 
 
 class TestTieBreaking:
@@ -173,10 +209,21 @@ class TestTieBreaking:
         # on the first simultaneous touch and does not evaluate later bars.
         mgr, scan_id = self._make_manager_with_scan()
         actions = mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29470, 0.0, 11)
-        assert len(actions) == 0
+        assert len(actions) == 1
+        assert actions[0]["type"] == "RELEASE_RESERVATION"
         scan = mgr.get_scan(scan_id)
         assert scan["status"] == "EXPIRED"
         assert not mgr.has_active_scan("GBPUSD", "oco|GBPUSD|100|h6|abc")
+
+    def test_simultaneous_touch_zero_hl_first_emits_release_reservation(self):
+        """Both barriers hit with hl_first=0 -> EXPIRED + RELEASE_RESERVATION."""
+        mgr, scan_id = self._make_manager_with_scan()
+        # reservation_id="res-001" from _make_manager_with_scan
+        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29470, 0.0, 11)
+        assert len(actions) == 1
+        assert actions[0]["type"] == "RELEASE_RESERVATION"
+        assert actions[0]["reservation_id"] == "res-001"
+        assert actions[0]["scan_id"] == scan_id
 
 
 class TestHoldCompletion:

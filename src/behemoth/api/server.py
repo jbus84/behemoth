@@ -2580,6 +2580,15 @@ async def predict(req: PredictRequest) -> PredictResponse:
                 current_bar_idx=latest_bar["row_id"],
             )
             for a in raw_actions:
+                if a["type"] == "RELEASE_RESERVATION":
+                    # Expired barrier — release the risk reservation directly; JForex
+                    # never opened a position so the release is Python-side only.
+                    if _config.account_risk_enabled and a.get("reservation_id"):
+                        _state.release_account_risk_reservation(
+                            reservation_id=a["reservation_id"],
+                            reason="barrier_expired",
+                        )
+                    continue
                 barrier_actions.append(BarrierAction(
                     type=BarrierActionType(a["type"]),
                     symbol=a["symbol"],
