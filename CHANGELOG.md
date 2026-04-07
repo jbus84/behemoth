@@ -1,3 +1,9 @@
+## v0.5.0 (2026-04-07)
+
+### Feat
+
+- consolidate live sessions into single archive DB (#36)
+
 ## v0.4.1 (2026-04-07)
 
 ### Fix
