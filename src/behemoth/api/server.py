@@ -448,6 +448,8 @@ def _build_open_positions_summary(state: StateManager, now: datetime) -> dict:
     Side-effect: updates METRIC_OPEN_POSITIONS_TOTAL, METRIC_OPEN_POSITION_AGE_SECONDS,
     and METRIC_ESTIMATED_UNREALIZED_PIPS for every known symbol.
     """
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
     reservations = state.list_active_account_risk_reservations()
 
     # Group by symbol for gauge updates
