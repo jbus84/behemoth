@@ -1,3 +1,13 @@
+## v0.4.0 (2026-04-07)
+
+### Feat
+
+- auto-detect last complete month as default eval_end_month (#31)
+
+### Fix
+
+- certify USDCAD for stage 14 and freeze 2026-03 governance (#32)
+
 ## v0.3.3 (2026-04-06)
 
 ### Fix
