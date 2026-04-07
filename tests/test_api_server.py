@@ -2727,3 +2727,163 @@ class TestSeedFileLoading:
         ).fetchone()
         assert row is not None
         assert abs(row[0] - 0.75) < 1e-6
+
+
+class TestOpenSummaryEndpoint:
+    def test_open_summary_empty(self, client):
+        """No open reservations → empty positions list."""
+        r = client.get("/trades/open-summary")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["total_open"] == 0
+        assert body["broker_confirmed"] == 0
+        assert body["pending_broker_confirm"] == 0
+        assert body["positions"] == []
+        assert "as_of_utc" in body
+
+    def test_get_last_bar_close_price_returns_none_when_no_bars(self, client):
+        """StateManager returns None when tick_bars has no rows for symbol."""
+        from src.behemoth.api import server
+        result = server._state.get_last_bar_close_price("EURUSD")
+        assert result is None
+
+    def test_build_summary_with_pending_reservation(self, client):
+        """PENDING reservation with no broker_pos_id → entry_price null, unrealized null."""
+        import unittest.mock as mock
+        from datetime import datetime, timezone, timedelta
+        from src.behemoth.api import server
+
+        now = datetime(2026, 4, 7, 14, 15, 0, tzinfo=timezone.utc)
+        created = now - timedelta(minutes=12, seconds=30)
+        fake_reservation = {
+            "reservation_id": "res-001",
+            "created_ts": created,
+            "updated_ts": created,
+            "symbol": "USDCHF",
+            "candidate_uid": "cand-001",
+            "broker_pos_id": None,
+            "status": "PENDING",
+            "reserved_loss_ccy": 10.0,
+            "barrier_pips": 20.0,
+            "cap_pips": 30.0,
+            "cost_est_pips": 5.0,
+            "volume_units": 1000.0,
+            "side": "BUY",
+            "source": "algo",
+        }
+        with (
+            mock.patch.object(
+                server._state,
+                "list_active_account_risk_reservations",
+                return_value=[fake_reservation],
+            ),
+            mock.patch.object(server._state, "get_last_bar_close_price", return_value=None),
+            mock.patch.object(server._state, "get_all_symbols", return_value=["USDCHF"]),
+        ):
+            summary = server._build_open_positions_summary(server._state, now)
+
+        assert summary["total_open"] == 1
+        assert summary["broker_confirmed"] == 0
+        assert summary["pending_broker_confirm"] == 1
+        pos = summary["positions"][0]
+        assert pos["symbol"] == "USDCHF"
+        assert pos["status"] == "PENDING"
+        assert pos["broker_confirmed"] is False
+        assert pos["broker_pos_id"] is None
+        assert pos["entry_price"] is None
+        assert pos["estimated_unrealized_pips"] is None
+        assert pos["open_minutes"] == 12.5
+
+    def test_open_summary_with_pending_reservation(self, client):
+        """Endpoint returns one PENDING position with correct shape."""
+        import unittest.mock as mock
+        from datetime import datetime, timezone, timedelta
+        from src.behemoth.api import server
+
+        now_fixed = datetime(2026, 4, 7, 14, 15, 0, tzinfo=timezone.utc)
+        created = now_fixed - timedelta(minutes=5)
+        fake_reservation = {
+            "reservation_id": "res-001",
+            "created_ts": created,
+            "updated_ts": created,
+            "symbol": "EURUSD",
+            "candidate_uid": "cand-001",
+            "broker_pos_id": None,
+            "status": "PENDING",
+            "reserved_loss_ccy": 10.0,
+            "barrier_pips": 20.0,
+            "cap_pips": 30.0,
+            "cost_est_pips": 5.0,
+            "volume_units": 1000.0,
+            "side": "BUY",
+            "source": "algo",
+        }
+        with (
+            mock.patch.object(
+                server._state,
+                "list_active_account_risk_reservations",
+                return_value=[fake_reservation],
+            ),
+            mock.patch.object(server._state, "get_last_bar_close_price", return_value=None),
+            mock.patch.object(server._state, "get_all_symbols", return_value=["EURUSD"]),
+        ):
+            r = client.get("/trades/open-summary")
+
+        assert r.status_code == 200
+        body = r.json()
+        assert body["total_open"] == 1
+        assert body["pending_broker_confirm"] == 1
+        assert len(body["positions"]) == 1
+        pos = body["positions"][0]
+        assert pos["symbol"] == "EURUSD"
+        assert pos["status"] == "PENDING"
+        assert pos["broker_confirmed"] is False
+        assert pos["entry_price"] is None
+        assert pos["estimated_unrealized_pips"] is None
+
+    def test_open_summary_uninitialized_state(self, client):
+        """Returns 503 when state manager is not initialized."""
+        from src.behemoth.api import server
+
+        original = server._state
+        server._state = None
+        try:
+            r = client.get("/trades/open-summary")
+            assert r.status_code == 503
+        finally:
+            server._state = original
+
+    def test_position_summary_writer_skips_without_persist_path(self, client):
+        """Writer loop body does not write when persist_db_path is falsy."""
+        import asyncio
+        import unittest.mock as mock
+        from pathlib import Path
+        from src.behemoth.api import server
+
+        original_path = server._config.persist_db_path
+        server._config.persist_db_path = ""
+        written_paths = []
+        real_write_text = Path.write_text
+
+        def tracking_write_text(self, *args, **kwargs):
+            written_paths.append(str(self))
+            return real_write_text(self, *args, **kwargs)
+
+        server._config.persist_db_path = ""
+        try:
+            with mock.patch.object(Path, "write_text", tracking_write_text):
+                # Run one iteration of the loop body manually
+                coro = server._write_position_summary_loop()
+                try:
+                    # Drive the coroutine until the first sleep (which we interrupt)
+                    loop = asyncio.new_event_loop()
+                    task = loop.create_task(coro)
+                    loop.call_soon(task.cancel)
+                    loop.run_until_complete(asyncio.gather(task, return_exceptions=True))
+                    loop.close()
+                except Exception:
+                    pass
+        finally:
+            server._config.persist_db_path = original_path
+
+        assert not any("live_position_summary" in p for p in written_paths)

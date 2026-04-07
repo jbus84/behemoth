@@ -40,6 +40,7 @@ site/
 # Scratch / temp
 .agent/
 plans/
+!docs/superpowers/plans/
 tmp/
 .coverage
 test_ticks.cs

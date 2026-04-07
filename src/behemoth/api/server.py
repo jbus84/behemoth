@@ -197,6 +197,24 @@ METRIC_ACCOUNT_RISK_ALLOCATOR_ADMITTED_TOTAL = Counter(
     ["symbol"],
 )
 
+METRIC_OPEN_POSITIONS_TOTAL = Gauge(
+    "behemoth_open_positions_total",
+    "Count of non-closed reservations (PENDING + OPEN)",
+    ["symbol"],
+)
+
+METRIC_OPEN_POSITION_AGE_SECONDS = Gauge(
+    "behemoth_open_position_age_seconds",
+    "Wall-clock seconds since the oldest open reservation was created",
+    ["symbol"],
+)
+
+METRIC_ESTIMATED_UNREALIZED_PIPS = Gauge(
+    "behemoth_estimated_unrealized_pips",
+    "Best-effort unrealized P&L in pips based on last known bar close price",
+    ["symbol"],
+)
+
 
 class AppConfig(BaseModel):
     """Runtime configuration for the inference server."""
@@ -424,6 +442,103 @@ def _run_historical_preflight(history_dir: Path) -> None:
     )
 
 
+def _build_open_positions_summary(state: StateManager, now: datetime) -> dict:
+    """Compute cross-symbol open position summary from DB state.
+
+    Side-effect: updates METRIC_OPEN_POSITIONS_TOTAL, METRIC_OPEN_POSITION_AGE_SECONDS,
+    and METRIC_ESTIMATED_UNREALIZED_PIPS for every known symbol.
+    """
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    reservations = state.list_active_account_risk_reservations()
+
+    # Group by symbol for gauge updates
+    by_symbol: dict[str, list[dict]] = {}
+    for r in reservations:
+        by_symbol.setdefault(r["symbol"], []).append(r)
+
+    positions: list[dict] = []
+    for sym, sym_reservations in by_symbol.items():
+        price_data = state.get_last_bar_close_price(sym)
+        last_tick_price: float | None = price_data[0] if price_data else None
+        last_tick_ts: datetime | None = price_data[1] if price_data else None
+        last_tick_age_seconds: float | None = (
+            round((now - last_tick_ts).total_seconds(), 1) if last_tick_ts else None
+        )
+
+        sym_unrealized_total = 0.0
+        for r in sym_reservations:
+            entry_price: float | None = None
+            if r["broker_pos_id"]:
+                row = state._con.execute(
+                    "SELECT entry_price FROM trades WHERE reservation_id = ? AND status = 'OPEN'",
+                    [r["reservation_id"]],
+                ).fetchone()
+                if row:
+                    entry_price = float(row[0])
+
+            estimated_unrealized_pips: float | None = None
+            if entry_price is not None and last_tick_price is not None:
+                pip_size = _pip_size_for_symbol(sym)
+                if r["side"] == "BUY":
+                    estimated_unrealized_pips = round(
+                        (last_tick_price - entry_price) / pip_size, 1
+                    )
+                else:
+                    estimated_unrealized_pips = round(
+                        (entry_price - last_tick_price) / pip_size, 1
+                    )
+                sym_unrealized_total += estimated_unrealized_pips
+
+            created_ts: datetime | None = r["created_ts"]
+            open_minutes: float | None = (
+                round((now - created_ts).total_seconds() / 60.0, 1)
+                if created_ts
+                else None
+            )
+            positions.append(
+                {
+                    "symbol": sym,
+                    "direction": r["side"],
+                    "status": r["status"],
+                    "broker_confirmed": r["broker_pos_id"] is not None,
+                    "broker_pos_id": r["broker_pos_id"],
+                    "open_since_utc": created_ts.isoformat() if created_ts else None,
+                    "open_minutes": open_minutes,
+                    "entry_price": entry_price,
+                    "last_tick_price": last_tick_price,
+                    "last_tick_age_seconds": last_tick_age_seconds,
+                    "estimated_unrealized_pips": estimated_unrealized_pips,
+                }
+            )
+
+        METRIC_OPEN_POSITIONS_TOTAL.labels(symbol=sym).set(len(sym_reservations))
+        oldest = min(
+            (r["created_ts"] for r in sym_reservations if r["created_ts"]),
+            default=None,
+        )
+        METRIC_OPEN_POSITION_AGE_SECONDS.labels(symbol=sym).set(
+            (now - oldest).total_seconds() if oldest else 0.0
+        )
+        METRIC_ESTIMATED_UNREALIZED_PIPS.labels(symbol=sym).set(sym_unrealized_total)
+
+    # Zero out gauges for symbols with no open positions
+    for sym in state.get_all_symbols():
+        if sym not in by_symbol:
+            METRIC_OPEN_POSITIONS_TOTAL.labels(symbol=sym).set(0)
+            METRIC_OPEN_POSITION_AGE_SECONDS.labels(symbol=sym).set(0)
+            METRIC_ESTIMATED_UNREALIZED_PIPS.labels(symbol=sym).set(0)
+
+    broker_confirmed = sum(1 for p in positions if p["broker_confirmed"])
+    return {
+        "as_of_utc": now.isoformat(),
+        "total_open": len(positions),
+        "broker_confirmed": broker_confirmed,
+        "pending_broker_confirm": len(positions) - broker_confirmed,
+        "positions": positions,
+    }
+
+
 # ── Lifespan ──────────────────────────────────────────────────────────
 
 @asynccontextmanager
@@ -439,6 +554,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
     # Start background monitor
     monitor_task = asyncio.create_task(_monitor_ledger())
+    position_summary_task = asyncio.create_task(_write_position_summary_loop())
 
     if _config.persist_db_path:
         db_path = Path(_config.persist_db_path)
@@ -534,8 +650,11 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
     _lifespan_ready = False
     monitor_task.cancel()
+    position_summary_task.cancel()
     with suppress(asyncio.CancelledError):
         await monitor_task
+    with suppress(asyncio.CancelledError):
+        await position_summary_task
 
     _barrier_manager = None
     if _state:
@@ -570,6 +689,24 @@ async def _monitor_ledger() -> None:
         except Exception as e:
             logger.error("Ledger monitor error: %s", e)
         await asyncio.sleep(60)
+
+
+async def _write_position_summary_loop() -> None:
+    """Background task: write live_position_summary.json every 5 seconds."""
+    while True:
+        try:
+            if _state and _config.persist_db_path:
+                now = datetime.now(tz=timezone.utc)
+                summary = _build_open_positions_summary(_state, now)
+                summary_path = (
+                    Path(_config.persist_db_path).parent / "live_position_summary.json"
+                )
+                summary_path.write_text(
+                    json.dumps(summary, indent=2, default=str), encoding="utf-8"
+                )
+        except Exception as e:
+            logger.error("Position summary writer error: %s", e)
+        await asyncio.sleep(5)
 
 
 app = FastAPI(
@@ -3073,6 +3210,15 @@ async def get_trades_summary():
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
     return _state.get_ledger_stats()
+
+
+@app.get("/trades/open-summary")
+async def get_open_positions_summary():
+    """Cross-symbol view of all non-closed reservations with best-effort unrealized P&L."""
+    if _state is None:
+        raise HTTPException(status_code=503, detail="State manager not initialized")
+    now = datetime.now(tz=timezone.utc)
+    return _build_open_positions_summary(_state, now)
 
 
 @app.get("/state/checkpoint")
