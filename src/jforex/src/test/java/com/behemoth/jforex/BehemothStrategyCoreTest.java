@@ -406,16 +406,44 @@ class BehemothStrategyCoreTest {
     }
 
     @Test
-    void executesCloseMarketActionFromPredictResponse() throws Exception {
+    void closeMarketUsesOrderLabelFromOpenMarketNotBrokerPosId() throws Exception {
+        // Regression test: closePosition must use the JForex order label (e.g. "BM_scan-001_BUY"),
+        // NOT the numeric broker_pos_id from Python. The JForex engine.getOrder() API only accepts
+        // labels, so passing a numeric ID silently returns null and the close is never submitted.
         try (MockWebServer server = new MockWebServer()) {
+            // 1. session config
             server.enqueue(new MockResponse()
                     .setBody("""
                             {"as_of_utc":"2025-07-07T00:00:00Z","governance_mode":"historical_auto","record_raw_ticks":false,"symbols":[]}
                             """)
                     .addHeader("Content-Type", "application/json"));
+            // 2. first bar completes → OPEN_MARKET for scan-001
             server.enqueue(new MockResponse()
                     .setBody("""
                             {"ok":true,"symbol":"EURUSD","ticks_received":1,"accepted_count":1,"dropped_count":0,"bar_completed":true,"completed_bar_ticks":[100],"symbol_tick_seq":1,"last_tick_ts_utc":"2025-07-07T00:00:00Z","last_client_tick_seq":1,"bar_count":289}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {
+                              "predictions": [],
+                              "actions": [{
+                                "type":"OPEN_MARKET",
+                                "symbol":"EURUSD",
+                                "candidate_uid":"oco|EURUSD|100|h6|cand1",
+                                "scan_id":"scan-001",
+                                "side":"BUY",
+                                "reservation_id":"rid-1",
+                                "broker_pos_id":null,
+                                "horizon":6
+                              }]
+                            }
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            // 3. second bar completes → CLOSE_MARKET for scan-001 (broker_pos_id is numeric)
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"ok":true,"symbol":"EURUSD","ticks_received":1,"accepted_count":1,"dropped_count":0,"bar_completed":true,"completed_bar_ticks":[100],"symbol_tick_seq":2,"last_tick_ts_utc":"2025-07-07T00:01:00Z","last_client_tick_seq":2,"bar_count":290}
                             """)
                     .addHeader("Content-Type", "application/json"));
             server.enqueue(new MockResponse()
@@ -427,15 +455,13 @@ class BehemothStrategyCoreTest {
                                 "symbol":"EURUSD",
                                 "candidate_uid":"oco|EURUSD|100|h6|cand1",
                                 "scan_id":"scan-001",
-                                "side":"BUY",
-                                "reservation_id":"rid-1",
-                                "broker_pos_id":"broker-pos-123"
+                                "broker_pos_id":"272947788"
                               }]
                             }
                             """)
                     .addHeader("Content-Type", "application/json"));
 
-            Path tempDir = Files.createTempDirectory("behemoth-close-market-test");
+            Path tempDir = Files.createTempDirectory("behemoth-close-market-label-test");
             JForexSessionConfig sessionConfig = new JForexSessionConfig(
                     server.url("/").uri(), URI.create("http://example.test/jnlp"),
                     "user", "pass", "", List.of("EURUSD"),
@@ -455,9 +481,13 @@ class BehemothStrategyCoreTest {
                     JForexMetrics.start(sessionConfig), port);
 
             core.start(List.of(new RuntimeInstrument("EURUSD", 0.0001)));
+            // bar 1: OPEN_MARKET
             core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:00:00Z"), 1.1000, 1.1002));
+            // bar 2: CLOSE_MARKET
+            core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:01:00Z"), 1.1010, 1.1012));
 
-            assertThat(port.closePositionCalls).containsExactly("broker-pos-123");
+            // Must use the JForex order label, NOT the numeric broker_pos_id "272947788"
+            assertThat(port.closePositionCalls).containsExactly("BM_scan-001_BUY");
         }
     }
 
