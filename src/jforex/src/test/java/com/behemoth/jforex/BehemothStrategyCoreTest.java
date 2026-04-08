@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 import com.behemoth.jforex.config.JForexSessionConfig;
+import com.behemoth.jforex.core.OrderEvent;
+import com.behemoth.jforex.core.OrderEventType;
 import com.behemoth.jforex.core.BehemothStrategyCore;
 import com.behemoth.jforex.core.ExecutionPort;
 import com.behemoth.jforex.core.MarketOrderRequest;
@@ -272,7 +274,8 @@ class BehemothStrategyCoreTest {
                                 "scan_id":"scan-001",
                                 "side":"BUY",
                                 "reservation_id":"rid-1",
-                                "broker_pos_id":null
+                                "broker_pos_id":null,
+                                "horizon":6
                               }]
                             }
                             """)
@@ -305,6 +308,100 @@ class BehemothStrategyCoreTest {
             assertThat(order.symbol()).isEqualTo("EURUSD");
             assertThat(order.side()).isEqualTo("BUY");
             assertThat(order.label()).isEqualTo("BM_scan-001_BUY");
+        }
+    }
+
+    @Test
+    void fillEventSyncToOpenTradeUsesHorizonAndCandidateUidFromAction() throws Exception {
+        // When a fill arrives after an OPEN_MARKET action, /trades/open must receive
+        // the candidateUid, reservationId, and horizon from the action — not hardcoded zeros.
+        try (MockWebServer server = new MockWebServer()) {
+            // feedStatus
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"as_of_utc":"2025-07-07T00:00:00Z","governance_mode":"live","record_raw_ticks":true,"symbols":[]}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            // tick batch (bar completed -> triggers predict)
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"ok":true,"symbol":"EURUSD","ticks_received":1,"accepted_count":1,"dropped_count":0,"bar_completed":true,"completed_bar_ticks":[100],"symbol_tick_seq":1,"last_tick_ts_utc":"2025-07-07T00:00:00Z","last_client_tick_seq":1,"bar_count":289}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            // predict response with OPEN_MARKET action carrying horizon=6
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {
+                              "predictions": [],
+                              "actions": [{
+                                "type":"OPEN_MARKET",
+                                "symbol":"EURUSD",
+                                "candidate_uid":"oco|EURUSD|100|h6|cand1",
+                                "scan_id":"scan-42",
+                                "side":"BUY",
+                                "reservation_id":"res-xyz",
+                                "broker_pos_id":null,
+                                "horizon":6
+                              }]
+                            }
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            // /trades/open response
+            server.enqueue(new MockResponse()
+                    .setBody("{\"status\":\"ok\",\"internal_trade_id\":\"t-1\"}")
+                    .addHeader("Content-Type", "application/json"));
+
+            Path tempDir = Files.createTempDirectory("behemoth-fill-horizon-test");
+            JForexSessionConfig sessionConfig = new JForexSessionConfig(
+                    server.url("/").uri(), URI.create("http://example.test/jnlp"),
+                    "user", "pass", "", List.of("EURUSD"),
+                    Instant.parse("2025-07-07T00:00:00Z"), Instant.parse("2025-07-09T00:00:00Z"),
+                    tempDir, "run-1",
+                    false, 10_000.0, 1, 900L, false, 60, false, "", 0
+            );
+            PythonPredictionClient client = new PythonPredictionClient(
+                    HttpClient.newHttpClient(), server.url("/").uri(),
+                    Duration.ofSeconds(5), Duration.ofSeconds(5));
+            ExecutionStateStore stateStore = new ExecutionStateStore(
+                    tempDir.resolve("state.json"), client.objectMapper());
+            BehemothStrategyCore core = new BehemothStrategyCore(
+                    sessionConfig, client, stateStore,
+                    new Stage14ArtifactWriter(tempDir, "test"),
+                    JForexMetrics.start(sessionConfig), new NoopExecutionPort());
+
+            core.start(List.of(new RuntimeInstrument("EURUSD", 0.0001)));
+            // Trigger tick -> predict -> OPEN_MARKET action cached internally
+            core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:00:00Z"), 1.1000, 1.1002));
+
+            // Simulate broker fill on the label produced by executeActions
+            core.onOrderEvent(new OrderEvent(
+                    OrderEventType.FILL_OK,
+                    "EURUSD",
+                    "BM_scan-42_BUY",
+                    "broker-pos-999",
+                    1.1001,
+                    Instant.parse("2025-07-07T00:00:01Z"),
+                    0.0,
+                    null,
+                    null,
+                    null,
+                    null
+            ));
+
+            // Drain setup requests (feedStatus, tickBatch, predict)
+            server.takeRequest(1, TimeUnit.SECONDS);
+            server.takeRequest(1, TimeUnit.SECONDS);
+            server.takeRequest(1, TimeUnit.SECONDS);
+
+            // The 4th request must be POST /trades/open with correct fields
+            var tradeOpenReq = server.takeRequest(1, TimeUnit.SECONDS);
+            assertThat(tradeOpenReq).isNotNull();
+            assertThat(tradeOpenReq.getPath()).isEqualTo("/trades/open");
+
+            String body = tradeOpenReq.getBody().readUtf8();
+            assertThat(body).contains("\"candidate_uid\":\"oco|EURUSD|100|h6|cand1\"");
+            assertThat(body).contains("\"reservation_id\":\"res-xyz\"");
+            assertThat(body).contains("\"horizon\":6");
         }
     }
 

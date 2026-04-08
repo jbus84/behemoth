@@ -270,6 +270,7 @@ class BarrierAction(BaseModel):
     side: str | None = None  # BUY or SELL, present for OPEN_MARKET
     reservation_id: str | None = None  # present for OPEN_MARKET
     broker_pos_id: str | None = None  # present for CLOSE_MARKET
+    horizon: int | None = None  # present for OPEN_MARKET
 
 
 class PredictResponse(BaseModel):

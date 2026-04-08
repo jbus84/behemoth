@@ -11,7 +11,8 @@ public record BarrierActionPayload(
         @JsonProperty("scan_id") String scanId,
         @JsonProperty("side") String side,
         @JsonProperty("reservation_id") String reservationId,
-        @JsonProperty("broker_pos_id") String brokerPosId
+        @JsonProperty("broker_pos_id") String brokerPosId,
+        @JsonProperty("horizon") int horizon
 ) {
     public boolean isOpenMarket() {
         return "OPEN_MARKET".equals(type);

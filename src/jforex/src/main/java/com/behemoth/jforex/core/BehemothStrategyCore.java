@@ -39,6 +39,8 @@ public final class BehemothStrategyCore {
     private final JForexMetrics metrics;
     private final ExecutionPort executionPort;
     private final Map<String, SymbolRuntimeState> symbolStates = new LinkedHashMap<>();
+    /** Maps order label → fill context so handleFill can pass real values to /trades/open. */
+    private final Map<String, PendingFillContext> pendingFills = new LinkedHashMap<>();
 
     public BehemothStrategyCore(
             JForexSessionConfig sessionConfig,
@@ -279,6 +281,11 @@ public final class BehemothStrategyCore {
         for (BarrierActionPayload action : actions) {
             if (action.isOpenMarket()) {
                 String label = "BM_" + action.scanId() + "_" + action.side();
+                pendingFills.put(label, new PendingFillContext(
+                        action.candidateUid() != null ? action.candidateUid() : "",
+                        action.reservationId() != null ? action.reservationId() : "",
+                        action.horizon()
+                ));
                 try {
                     executionPort.submitMarketOrder(new MarketOrderRequest(
                             action.symbol(),
@@ -291,6 +298,7 @@ public final class BehemothStrategyCore {
                     metrics.recordOrderSubmitted(action.symbol(), action.side());
                     artifactWriter.markOperationalStep(action.symbol(), "market_order_submitted", true, label);
                 } catch (RuntimeException exc) {
+                    pendingFills.remove(label);
                     metrics.recordOrderSubmitFailure(action.symbol(), action.side());
                     artifactWriter.markOperationalStep(action.symbol(), "market_order_submit_failure", false, exc.getMessage());
                 }
@@ -312,16 +320,21 @@ public final class BehemothStrategyCore {
         metrics.recordOrderFill(event.symbol(), event.orderLabel().contains("BUY") ? "BUY" : "SELL");
         artifactWriter.recordFill(event.symbol(), event.orderLabel(), event.orderLabel());
 
+        PendingFillContext ctx = pendingFills.remove(event.orderLabel());
+        String candidateUid = ctx != null ? ctx.candidateUid() : "";
+        String reservationId = ctx != null ? ctx.reservationId() : "";
+        int horizon = ctx != null ? ctx.horizon() : 0;
+
         try {
             predictionClient.openTrade(new TradeOpenRequestPayload(
                     event.symbol(),
-                    "",
+                    candidateUid,
                     event.brokerOrderId(),
                     event.orderLabel().contains("BUY") ? "Buy" : "Sell",
                     event.openPrice(),
                     fillTs,
-                    0,
-                    "",
+                    horizon,
+                    reservationId,
                     sessionConfig.runId()
             ));
             artifactWriter.markOperationalStep(event.symbol(), "trade_open_synced", true, event.brokerOrderId());
@@ -430,6 +443,13 @@ public final class BehemothStrategyCore {
             int acceptedCount,
             int droppedCount,
             List<Integer> completedBarTicks
+    ) {
+    }
+
+    private record PendingFillContext(
+            String candidateUid,
+            String reservationId,
+            int horizon
     ) {
     }
 

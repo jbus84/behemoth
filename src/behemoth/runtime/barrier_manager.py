@@ -178,6 +178,7 @@ class BarrierManager:
                     "candidate_uid": candidate_uid,
                     "reservation_id": reservation_id,
                     "scan_id": scan_id,
+                    "horizon": horizon,
                 })
             elif up_touch:
                 self._transition_to_holding(scan_id, touch_step, "BUY", horizon)
@@ -188,6 +189,7 @@ class BarrierManager:
                     "candidate_uid": candidate_uid,
                     "reservation_id": reservation_id,
                     "scan_id": scan_id,
+                    "horizon": horizon,
                 })
             elif dn_touch:
                 self._transition_to_holding(scan_id, touch_step, "SELL", horizon)
@@ -198,6 +200,7 @@ class BarrierManager:
                     "candidate_uid": candidate_uid,
                     "reservation_id": reservation_id,
                     "scan_id": scan_id,
+                    "horizon": horizon,
                 })
             elif bars_rem <= 0:
                 self._con.execute(
