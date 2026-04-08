@@ -2597,6 +2597,7 @@ async def predict(req: PredictRequest) -> PredictResponse:
                     side=a.get("side"),
                     reservation_id=a.get("reservation_id"),
                     broker_pos_id=a.get("broker_pos_id"),
+                    horizon=a.get("horizon"),
                 ))
 
         # Register new scans for selected predictions (lifecycle blocking in Python now)

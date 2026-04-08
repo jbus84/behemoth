@@ -94,6 +94,35 @@ class TestEvaluateBar:
         assert scan["touch_step"] == 1
         assert scan["hold_bars_remaining"] == 6
 
+    def test_open_market_action_includes_horizon(self):
+        """OPEN_MARKET action must carry horizon so the Java adapter can pass it to /trades/open."""
+        mgr, scan_id = self._make_manager_with_scan(horizon=6)
+        actions = mgr.evaluate_bar(
+            symbol="GBPUSD",
+            bar_ticks=100,
+            bar_high=1.29525,
+            bar_low=1.29490,
+            bar_hl_first=1.0,
+            current_bar_idx=11,
+        )
+        assert len(actions) == 1
+        assert actions[0]["type"] == "OPEN_MARKET"
+        assert actions[0]["horizon"] == 6
+
+    def test_open_market_action_includes_candidate_uid_and_reservation_id(self):
+        """OPEN_MARKET action must carry candidateUid and reservationId."""
+        mgr, scan_id = self._make_manager_with_scan()
+        actions = mgr.evaluate_bar(
+            symbol="GBPUSD",
+            bar_ticks=100,
+            bar_high=1.29525,
+            bar_low=1.29490,
+            bar_hl_first=1.0,
+            current_bar_idx=11,
+        )
+        assert actions[0]["candidate_uid"] == "oco|GBPUSD|100|h6|abc"
+        assert actions[0]["reservation_id"] == "res-001"
+
     def test_lower_barrier_touch_produces_sell(self):
         """Bar low <= lower_barrier -> SELL action."""
         mgr, scan_id = self._make_manager_with_scan()
@@ -108,6 +137,7 @@ class TestEvaluateBar:
         assert len(actions) == 1
         assert actions[0]["type"] == "OPEN_MARKET"
         assert actions[0]["side"] == "SELL"
+        assert actions[0]["horizon"] == 6
 
     def test_no_touch_decrements_scan_bars(self):
         """No barrier touched -> no actions, scan_bars_remaining decremented."""
@@ -446,10 +476,26 @@ class TestActionSchemas:
             scan_id="scan_001",
             side="SELL",
             reservation_id="res-001",
+            horizon=6,
         )
         d = action.model_dump()
         assert d["type"] == "OPEN_MARKET"
         assert d["side"] == "SELL"
+        assert d["horizon"] == 6
+
+    def test_open_market_action_horizon_required(self):
+        """BarrierAction for OPEN_MARKET must carry horizon so Java adapter can sync it."""
+        from src.behemoth.core.schemas import BarrierAction, BarrierActionType
+        action = BarrierAction(
+            type=BarrierActionType.OPEN_MARKET,
+            symbol="GBPUSD",
+            candidate_uid="oco|GBPUSD|100|h6|abc",
+            scan_id="scan_001",
+            side="BUY",
+            reservation_id="res-001",
+            horizon=8,
+        )
+        assert action.horizon == 8
 
     def test_close_market_action_serializes(self):
         from src.behemoth.core.schemas import BarrierAction, BarrierActionType
