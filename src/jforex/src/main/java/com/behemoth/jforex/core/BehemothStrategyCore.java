@@ -41,6 +41,8 @@ public final class BehemothStrategyCore {
     private final Map<String, SymbolRuntimeState> symbolStates = new LinkedHashMap<>();
     /** Maps order label → fill context so handleFill can pass real values to /trades/open. */
     private final Map<String, PendingFillContext> pendingFills = new LinkedHashMap<>();
+    /** Maps scan_id → order label so CLOSE_MARKET can look up the JForex order by label. */
+    private final Map<String, String> scanToOrderLabel = new LinkedHashMap<>();
 
     public BehemothStrategyCore(
             JForexSessionConfig sessionConfig,
@@ -281,6 +283,7 @@ public final class BehemothStrategyCore {
         for (BarrierActionPayload action : actions) {
             if (action.isOpenMarket()) {
                 String label = "BM_" + action.scanId() + "_" + action.side();
+                scanToOrderLabel.put(action.scanId(), label);
                 pendingFills.put(label, new PendingFillContext(
                         action.candidateUid() != null ? action.candidateUid() : "",
                         action.reservationId() != null ? action.reservationId() : "",
@@ -303,13 +306,17 @@ public final class BehemothStrategyCore {
                     artifactWriter.markOperationalStep(action.symbol(), "market_order_submit_failure", false, exc.getMessage());
                 }
             } else if (action.isCloseMarket()) {
-                if (action.brokerPosId() != null) {
+                String orderLabel = scanToOrderLabel.remove(action.scanId());
+                if (orderLabel != null) {
                     try {
-                        executionPort.closePosition(action.symbol(), action.brokerPosId());
-                        artifactWriter.markOperationalStep(action.symbol(), "barrier_close_submitted", true, action.brokerPosId());
+                        executionPort.closePosition(action.symbol(), orderLabel);
+                        artifactWriter.markOperationalStep(action.symbol(), "barrier_close_submitted", true, orderLabel);
                     } catch (RuntimeException exc) {
                         artifactWriter.markOperationalStep(action.symbol(), "barrier_close_failure", false, exc.getMessage());
                     }
+                } else {
+                    artifactWriter.markOperationalStep(action.symbol(), "barrier_close_skipped_no_label", false,
+                            "scan_id=" + action.scanId() + " broker_pos_id=" + action.brokerPosId());
                 }
             }
         }
