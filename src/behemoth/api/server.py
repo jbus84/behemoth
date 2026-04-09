@@ -215,6 +215,12 @@ METRIC_ESTIMATED_UNREALIZED_PIPS = Gauge(
     ["symbol"],
 )
 
+METRIC_OPEN_POSITION_AGE_BARS = Gauge(
+    "behemoth_open_position_age_bars",
+    "Bars elapsed since the oldest broker-confirmed open trade entered",
+    ["symbol"],
+)
+
 
 class AppConfig(BaseModel):
     """Runtime configuration for the inference server."""
@@ -446,7 +452,7 @@ def _build_open_positions_summary(state: StateManager, now: datetime) -> dict:
     """Compute cross-symbol open position summary from DB state.
 
     Side-effect: updates METRIC_OPEN_POSITIONS_TOTAL, METRIC_OPEN_POSITION_AGE_SECONDS,
-    and METRIC_ESTIMATED_UNREALIZED_PIPS for every known symbol.
+    METRIC_OPEN_POSITION_AGE_BARS, and METRIC_ESTIMATED_UNREALIZED_PIPS for every known symbol.
     """
     if now.tzinfo is None:
         now = now.replace(tzinfo=timezone.utc)
@@ -522,11 +528,25 @@ def _build_open_positions_summary(state: StateManager, now: datetime) -> dict:
         )
         METRIC_ESTIMATED_UNREALIZED_PIPS.labels(symbol=sym).set(sym_unrealized_total)
 
+        # Bars elapsed for the oldest broker-confirmed (OPEN) trade on this symbol
+        active_trades = state.get_active_trades(sym)
+        if active_trades:
+            oldest_trade = min(active_trades, key=lambda t: t["entry_bar_id"])
+            current_row_id = state._con.execute(
+                "SELECT MAX(row_id) FROM tick_bars WHERE symbol = ?", [sym.upper()]
+            ).fetchone()
+            current_bar = int(current_row_id[0]) if current_row_id and current_row_id[0] else 0
+            bars_elapsed = max(0, current_bar - oldest_trade["entry_bar_id"])
+            METRIC_OPEN_POSITION_AGE_BARS.labels(symbol=sym).set(bars_elapsed)
+        else:
+            METRIC_OPEN_POSITION_AGE_BARS.labels(symbol=sym).set(0)
+
     # Zero out gauges for symbols with no open positions
     for sym in state.get_all_symbols():
         if sym not in by_symbol:
             METRIC_OPEN_POSITIONS_TOTAL.labels(symbol=sym).set(0)
             METRIC_OPEN_POSITION_AGE_SECONDS.labels(symbol=sym).set(0)
+            METRIC_OPEN_POSITION_AGE_BARS.labels(symbol=sym).set(0)
             METRIC_ESTIMATED_UNREALIZED_PIPS.labels(symbol=sym).set(0)
 
     broker_confirmed = sum(1 for p in positions if p["broker_confirmed"])
@@ -555,6 +575,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     # Start background monitor
     monitor_task = asyncio.create_task(_monitor_ledger())
     position_summary_task = asyncio.create_task(_write_position_summary_loop())
+    orphan_cleanup_task = asyncio.create_task(_orphan_reservation_cleanup_loop())
 
     if _config.persist_db_path:
         db_path = Path(_config.persist_db_path)
@@ -707,6 +728,52 @@ async def _write_position_summary_loop() -> None:
         except Exception as e:
             logger.error("Position summary writer error: %s", e)
         await asyncio.sleep(5)
+
+
+async def _orphan_reservation_cleanup_loop() -> None:
+    """Background task: release PENDING reservations that have no active barrier scan.
+
+    A reservation is considered orphaned if it has been PENDING for longer than
+    order_ttl_seconds and no HOLDING/SCANNING barrier scan references its reservation_id.
+    This covers the race where predict_allocator creates a reservation but the Java side
+    never starts a scan (or the scan expired without linking back to the reservation).
+    """
+    while True:
+        await asyncio.sleep(300)  # check every 5 minutes
+        try:
+            if _state is None or _barrier_manager is None:
+                continue
+            now = datetime.now(tz=timezone.utc)
+            ttl_seconds = _config.account_risk_pending_reservation_ttl_sec
+            reservations = _state.list_active_account_risk_reservations()
+            for r in reservations:
+                if r["status"] != "PENDING":
+                    continue
+                created_ts: datetime | None = r["created_ts"]
+                if created_ts is None:
+                    continue
+                age_seconds = (now - created_ts).total_seconds()
+                if age_seconds < ttl_seconds:
+                    continue
+                # Check if any active (SCANNING/HOLDING) scan references this reservation
+                scan = _barrier_manager.get_scan_by_reservation_id(r["reservation_id"])
+                if scan is not None:
+                    continue
+                # Orphaned — release it
+                released = _state.release_risk_reservation(
+                    reservation_id=r["reservation_id"],
+                    reason="orphaned_no_scan_ttl_expired",
+                )
+                if released:
+                    logger.warning(
+                        "Released orphaned PENDING reservation %s for %s (age=%.0fs, ttl=%ss)",
+                        r["reservation_id"],
+                        r["symbol"],
+                        age_seconds,
+                        ttl_seconds,
+                    )
+        except Exception as e:
+            logger.error("Orphan reservation cleanup error: %s", e)
 
 
 app = FastAPI(

@@ -907,6 +907,77 @@
       },
       "fieldConfig": {
         "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 3
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "mappings": [],
+          "displayName": "${__series.name}",
+          "noValue": "\u2014"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 40
+      },
+      "id": 13,
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "behemoth-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "behemoth_open_position_age_bars > 0",
+          "legendFormat": "{{symbol}}",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Open Position Age (bars)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "behemoth-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
           "unit": "s",
           "decimals": 0,
           "color": {
@@ -930,17 +1001,18 @@
             ]
           },
           "mappings": [],
-          "displayName": "${__series.name}"
+          "displayName": "${__series.name}",
+          "noValue": "\u2014"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 4,
         "w": 8,
         "x": 16,
-        "y": 40
+        "y": 44
       },
-      "id": 13,
+      "id": 50,
       "options": {
         "reduceOptions": {
           "calcs": [
@@ -967,7 +1039,7 @@
           "refId": "A"
         }
       ],
-      "title": "Open Position Age by Symbol",
+      "title": "Open Position Age (minutes)",
       "type": "stat"
     }
   ],
