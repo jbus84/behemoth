@@ -98,7 +98,7 @@ def _poll_health(proc: subprocess.Popen[str], base_url: str, timeout_sec: float)
                 if response.status == 200:
                     return
                 last_error = f"status={response.status}"
-        except urllib.error.URLError as exc:
+        except (urllib.error.URLError, OSError) as exc:
             last_error = str(exc)
         time.sleep(0.5)
     raise RuntimeError(f"API did not become healthy within {timeout_sec:.0f}s: {last_error}")
