@@ -2,13 +2,13 @@ groups:
   - name: behemoth_alerts
     rules:
       - alert: HighPredictFailureRate
-        expr: rate(behemoth_jforex_predict_failures_total[5m]) > 0.1
-        for: 2m
+        expr: rate(behemoth_jforex_predict_failures_total[5m]) > 0
+        for: 1m
         labels:
           severity: warning
         annotations:
-          summary: "High predict failure rate on {{ $labels.symbol }}"
-          description: "Predict failure rate is {{ $value | humanize }}/s over the last 5 minutes on {{ $labels.symbol }}."
+          summary: "Predict failures on {{ $labels.symbol }}"
+          description: "Sustained predict failures on {{ $labels.symbol }} for over 1 minute."
 
       - alert: HighPredictLatency
         expr: histogram_quantile(0.99, sum by (symbol, le) (rate(behemoth_jforex_predict_latency_seconds_bucket[5m]))) > 0.2
@@ -20,13 +20,13 @@ groups:
           description: "P99 predict latency is {{ $value }}s, exceeding the 200ms threshold on {{ $labels.symbol }}."
 
       - alert: HighTickStaleness
-        expr: behemoth_jforex_live_tick_staleness_seconds > 60
+        expr: behemoth_jforex_live_tick_staleness_seconds > 60 and behemoth_jforex_live_readiness_state == 1
         for: 2m
         labels:
           severity: critical
         annotations:
           summary: "Tick staleness too high on {{ $labels.symbol }}"
-          description: "Last tick was {{ $value }}s ago on {{ $labels.symbol }}. JForex connectivity may be lost."
+          description: "Last tick was {{ $value }}s ago on {{ $labels.symbol }} while readiness is active. JForex connectivity may be lost."
 
       - alert: JForexReadinessLost
         expr: behemoth_jforex_live_readiness_state == 0
@@ -36,3 +36,21 @@ groups:
         annotations:
           summary: "JForex readiness lost on {{ $labels.symbol }}"
           description: "{{ $labels.symbol }} has been in a non-ready state for over 5 minutes. Check JForex connection."
+
+      - alert: HighTickDropRate
+        expr: rate(behemoth_jforex_ticks_dropped_total[5m]) / rate(behemoth_jforex_ticks_received_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High tick drop rate on {{ $labels.symbol }}"
+          description: "{{ $value | humanizePercentage }} of ticks are being dropped on {{ $labels.symbol }}. Check network or tick batch sizing."
+
+      - alert: AccountRiskMaxedOut
+        expr: behemoth_account_risk_reserved_loss_ccy > 0 and rate(behemoth_jforex_blocked_predictions_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Account risk blocking predictions on {{ $labels.symbol }}"
+          description: "Predictions are being blocked by account risk limits on {{ $labels.symbol }} for over 5 minutes."
