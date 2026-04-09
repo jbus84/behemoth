@@ -1,3 +1,9 @@
+## v0.6.4 (2026-04-09)
+
+### Fix
+
+- fill rate double-count + unrealized pips stat panel per symbol (#47)
+
 ## v0.6.3 (2026-04-09)
 
 ### Fix
