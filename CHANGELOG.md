@@ -1,3 +1,9 @@
+## v0.8.0 (2026-04-09)
+
+### Feat
+
+- combine position age panels into single sorted table (#50)
+
 ## v0.7.0 (2026-04-09)
 
 ### Feat
