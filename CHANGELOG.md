@@ -1,3 +1,9 @@
+## v0.6.2 (2026-04-09)
+
+### Fix
+
+- replace Order Submit vs Fill timeseries with fill rate stat + unconfirmed stat + clean symbol-aggregated timeseries (#45)
+
 ## v0.6.1 (2026-04-09)
 
 ### Fix
