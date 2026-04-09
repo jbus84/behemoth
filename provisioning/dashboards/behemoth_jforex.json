@@ -183,7 +183,7 @@
             "uid": "behemoth-prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(behemoth_jforex_order_fills_total) / sum(behemoth_jforex_orders_submitted_total)",
+          "expr": "sum(behemoth_jforex_order_fills_total) / sum(behemoth_jforex_orders_submitted_total{side=~\"BUY|SELL\"})",
           "legendFormat": "Fill Rate",
           "range": false,
           "instant": true,
@@ -251,7 +251,7 @@
             "uid": "behemoth-prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(behemoth_jforex_orders_submitted_total) - sum(behemoth_jforex_order_fills_total)",
+          "expr": "sum(behemoth_jforex_orders_submitted_total{side=~\"BUY|SELL\"}) - sum(behemoth_jforex_order_fills_total)",
           "legendFormat": "Unconfirmed",
           "range": false,
           "instant": true,
@@ -837,10 +837,30 @@
       },
       "fieldConfig": {
         "defaults": {
+          "unit": "none",
+          "decimals": 1,
           "color": {
-            "mode": "palette-classic"
+            "mode": "thresholds"
           },
-          "unit": "pips"
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": -2
+              },
+              {
+                "color": "green",
+                "value": 2
+              }
+            ]
+          },
+          "mappings": [],
+          "displayName": "${__series.name}"
         },
         "overrides": []
       },
@@ -852,15 +872,16 @@
       },
       "id": 12,
       "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
         },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center"
       },
       "targets": [
         {
@@ -872,11 +893,12 @@
           "expr": "behemoth_estimated_unrealized_pips",
           "legendFormat": "{{symbol}}",
           "range": true,
+          "instant": false,
           "refId": "A"
         }
       ],
       "title": "Estimated Unrealized Pips by Symbol",
-      "type": "timeseries"
+      "type": "stat"
     },
     {
       "datasource": {
