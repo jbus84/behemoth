@@ -253,6 +253,31 @@
           "color": {
             "mode": "palette-classic"
           },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "text": "COLD"
+                },
+                "1": {
+                  "text": "PARQUET_WARMING"
+                },
+                "2": {
+                  "text": "BRIDGING"
+                },
+                "3": {
+                  "text": "READY"
+                },
+                "4": {
+                  "text": "STALE_PAUSED"
+                },
+                "5": {
+                  "text": "ERROR_PAUSED"
+                }
+              },
+              "type": "value"
+            }
+          ],
           "unit": "short"
         },
         "overrides": []
@@ -289,40 +314,6 @@
         }
       ],
       "description": "Readiness state mapping: 0=COLD, 1=PARQUET_WARMING, 2=BRIDGING, 3=READY, 4=STALE_PAUSED, 5=ERROR_PAUSED.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "text": "COLD"
-                },
-                "1": {
-                  "text": "PARQUET_WARMING"
-                },
-                "2": {
-                  "text": "BRIDGING"
-                },
-                "3": {
-                  "text": "READY"
-                },
-                "4": {
-                  "text": "STALE_PAUSED"
-                },
-                "5": {
-                  "text": "ERROR_PAUSED"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "unit": "short"
-        },
-        "overrides": []
-      },
       "title": "JForex Symbol Readiness",
       "type": "timeseries"
     },
@@ -545,7 +536,7 @@
           },
           "editorMode": "code",
           "expr": "sum by (symbol, from_state, to_state) (rate(behemoth_jforex_live_readiness_transitions_total[5m]))",
-          "legendFormat": "{{symbol}} {{from_state}}→{{to_state}}",
+          "legendFormat": "{{symbol}} {{from_state}}\u2192{{to_state}}",
           "range": true,
           "refId": "A"
         }
@@ -608,20 +599,36 @@
       },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 1 },
-              { "color": "red", "value": 4 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 4
+              }
             ]
           },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 40 },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 40
+      },
       "id": 11,
       "options": {
         "colorMode": "background",
@@ -629,7 +636,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -637,7 +646,10 @@
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "behemoth-prometheus" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "behemoth-prometheus"
+          },
           "editorMode": "code",
           "expr": "sum(behemoth_open_positions_total)",
           "legendFormat": "Open Positions",
@@ -656,20 +668,37 @@
       },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
-          "unit": "short"
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "pips"
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 4, "y": 40 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 4,
+        "y": 40
+      },
       "id": 12,
       "options": {
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "single", "sort": "none" }
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "behemoth-prometheus" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "behemoth-prometheus"
+          },
           "editorMode": "code",
           "expr": "behemoth_estimated_unrealized_pips",
           "legendFormat": "{{symbol}}",
@@ -687,28 +716,49 @@
       },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 300 },
-              { "color": "red", "value": 900 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 300
+              },
+              {
+                "color": "red",
+                "value": 900
+              }
             ]
           },
           "unit": "s"
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 40 },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 40
+      },
       "id": 13,
       "options": {
-        "footer": { "enablePagination": false },
+        "footer": {
+          "enablePagination": false
+        },
         "showHeader": true
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "behemoth-prometheus" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "behemoth-prometheus"
+          },
           "editorMode": "code",
           "expr": "behemoth_open_position_age_seconds > 0",
           "legendFormat": "{{symbol}}",
@@ -724,7 +774,11 @@
   "refresh": "10s",
   "schemaVersion": 39,
   "style": "dark",
-  "tags": ["behemoth", "jforex", "dukascopy"],
+  "tags": [
+    "behemoth",
+    "jforex",
+    "dukascopy"
+  ],
   "templating": {
     "list": []
   },
