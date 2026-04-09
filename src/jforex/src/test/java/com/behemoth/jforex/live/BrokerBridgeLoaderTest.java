@@ -49,8 +49,8 @@ class BrokerBridgeLoaderTest {
             assertThat(historyPort.requests()).hasSize(2);
             assertThat(historyPort.requests().get(0).fromInclusive()).isEqualTo(Instant.parse("2026-03-22T11:00:00.001Z"));
             assertThat(historyPort.requests().get(0).toInclusive()).isEqualTo(Instant.parse("2026-03-22T12:00:00Z"));
-            assertThat(historyPort.requests().get(1).fromInclusive()).isEqualTo(Instant.parse("2026-03-22T12:00:00.001Z"));
-            assertThat(historyPort.requests().get(1).toInclusive()).isEqualTo(Instant.parse("2026-03-22T12:10:00Z"));
+            assertThat(historyPort.requests().get(1).fromInclusive()).isEqualTo(Instant.parse("2026-03-22T11:00:00.001Z"));
+            assertThat(historyPort.requests().get(1).toInclusive()).isEqualTo(Instant.parse("2026-03-22T12:00:00Z"));
             assertThat(server.getRequestCount()).isEqualTo(2);
             assertThat(server.takeRequest().getPath()).isEqualTo("/runtime/feed/status");
             assertThat(server.takeRequest().getPath()).isEqualTo("/runtime/feed/status");
@@ -249,6 +249,7 @@ class BrokerBridgeLoaderTest {
         FakeBrokerHistoryPort historyPort = new FakeBrokerHistoryPort(
                 List.of(
                         List.of(),
+                        List.of(new RuntimeTick("EURUSD", Instant.parse("2026-03-22T12:00:00Z"), 1.0850, 1.0852)),
                         List.of(new RuntimeTick("EURUSD", Instant.parse("2026-03-22T12:00:00Z"), 1.0850, 1.0852))
                 ),
                 () -> {}
@@ -260,8 +261,6 @@ class BrokerBridgeLoaderTest {
             server.enqueue(feedStatusResponse("EURUSD", "2026-03-22T10:00:00Z"));
             // First /ticks/batch → disconnect (simulates 599 / IOException)
             server.enqueue(new MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_END));
-            // Feed status → fresh
-            server.enqueue(feedStatusResponse("EURUSD", "2026-03-22T12:00:20Z"));
             // Second /ticks/batch → success, bar_count >= 289
             server.enqueue(new MockResponse()
                     .setHeader("Content-Type", "application/json")
@@ -291,6 +290,27 @@ class BrokerBridgeLoaderTest {
 
             assertThat(result.ready()).isTrue();
             assertThat(registry.snapshot("EURUSD").state()).isEqualTo(SymbolReadinessState.READY);
+            assertThat(server.getRequestCount()).isEqualTo(4);
+            assertThat(server.takeRequest().getPath()).isEqualTo("/runtime/feed/status");
+
+            RecordedRequest failedBatchRequest = server.takeRequest();
+            assertThat(failedBatchRequest.getPath()).isEqualTo("/ticks/batch");
+            TickBatchRequestPayload failedBatchPayload = predictionClient.objectMapper()
+                    .readValue(failedBatchRequest.getBody().readUtf8(), TickBatchRequestPayload.class);
+
+            RecordedRequest successfulBatchRequest = server.takeRequest();
+            assertThat(successfulBatchRequest.getPath()).isEqualTo("/ticks/batch");
+            TickBatchRequestPayload successfulBatchPayload = predictionClient.objectMapper()
+                    .readValue(successfulBatchRequest.getBody().readUtf8(), TickBatchRequestPayload.class);
+
+            assertThat(failedBatchPayload.ticks())
+                    .extracting(tick -> tick.clientTickSeq())
+                    .containsExactly(1L);
+            assertThat(successfulBatchPayload.ticks())
+                    .extracting(tick -> tick.clientTickSeq())
+                    .containsExactly(1L);
+
+            assertThat(server.takeRequest().getPath()).isEqualTo("/runtime/feed/status");
         }
     }
 

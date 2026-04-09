@@ -1,6 +1,7 @@
 package com.behemoth.jforex.live;
 
 import com.behemoth.jforex.core.RuntimeTick;
+import com.behemoth.jforex.runtime.PythonApiException;
 import com.behemoth.jforex.runtime.PythonPredictionClient;
 import com.behemoth.jforex.runtime.dto.FeedStatusResponsePayload;
 import com.behemoth.jforex.runtime.dto.FeedStatusSymbolPayload;
@@ -60,59 +61,102 @@ public final class BrokerBridgeLoader {
         Long lastClientTickSeq = null;
 
         registry.markBridging(symbol, startedAt);
-        try {
-            while (true) {
-                Instant now = clock.instant();
-                Instant minAcceptedTickTs = nextFromInclusive;
-                Instant requestFromInclusive = now.isBefore(nextFromInclusive) ? now : nextFromInclusive;
-                Instant requestedToInclusive = nextWindowEnd(requestFromInclusive, window, now);
-                boolean caughtUpToNow = requestedToInclusive.isBefore(nextFromInclusive);
-                List<RuntimeTick> ticks = historyPort.getTicks(symbol, requestFromInclusive, requestedToInclusive).stream()
+        while (true) {
+            Instant now = clock.instant();
+            Instant minAcceptedTickTs = nextFromInclusive;
+            Instant requestFromInclusive = now.isBefore(nextFromInclusive) ? now : nextFromInclusive;
+            Instant requestedToInclusive = nextWindowEnd(requestFromInclusive, window, now);
+            boolean caughtUpToNow = !requestedToInclusive.isBefore(now);
+            List<RuntimeTick> ticks;
+            try {
+                ticks = historyPort.getTicks(symbol, requestFromInclusive, requestedToInclusive).stream()
                         .filter(tick -> !tick.timestamp().isBefore(minAcceptedTickTs))
                         .sorted(Comparator.comparing(RuntimeTick::timestamp))
                         .toList();
-                if (!ticks.isEmpty()) {
+            } catch (Exception exc) {
+                registry.markErrorPaused(symbol, clock.instant(), "Broker bridge failed: " + exc.getMessage());
+                return new BridgeResult(false, latestBarCount, lastBridgedTickTs, lastClientTickSeq);
+            }
+            if (!ticks.isEmpty()) {
+                try {
+                    long nextClientTickSeq = nextClientTickSeqBySymbol.getOrDefault(symbol, 1L);
                     TickBatchResponsePayload batchResponse = predictionClient.tickBatch(new TickBatchRequestPayload(
                             symbol,
-                            toPayloads(symbol, cfg.runId(), ticks),
+                            toPayloads(symbol, cfg.runId(), ticks, nextClientTickSeq),
                             cfg.runId()
                     ));
+                    if (batchResponse == null) {
+                        throw new PythonApiException(599, "empty tick batch response", "");
+                    }
                     latestBarCount = batchResponse.barCount();
                     lastClientTickSeq = batchResponse.lastClientTickSeq();
                     lastBridgedTickTs = ticks.getLast().timestamp();
                     registry.recordBridgeProgress(symbol, requestedToInclusive, lastBridgedTickTs);
+                    nextClientTickSeqBySymbol.put(symbol, nextClientTickSeq + ticks.size());
                     nextFromInclusive = lastBridgedTickTs.plusMillis(1L);
-                }
-
-                FeedBridgeStatus feedStatus = feedStatus(symbol, clock.instant(), cfg.freshnessThreshold());
-                if (feedStatus.lastTickTsUtc() != null) {
-                    registry.recordBridgeProgress(symbol, requestedToInclusive, feedStatus.lastTickTsUtc());
-                }
-                if (latestBarCount >= cfg.warmupBarCountThreshold() && feedStatus.fresh()) {
-                    if (lastBridgedTickTs != null) {
-                        registry.markBridgeComplete(symbol, lastBridgedTickTs);
+                } catch (PythonApiException exc) {
+                    if (exc.statusCode() == 599) {
+                        idlePoll();
+                        if (!clock.instant().isBefore(deadline)) {
+                            registry.markStartupTimeoutReached(symbol);
+                            registry.markErrorPaused(
+                                    symbol,
+                                    clock.instant(),
+                                    "Broker bridge timed out before warmup/freshness requirements were satisfied"
+                            );
+                            return new BridgeResult(false, latestBarCount, lastBridgedTickTs, lastClientTickSeq);
+                        }
+                        continue;
                     }
-                    registry.markReady(symbol, clock.instant(), latestBarCount, feedStatus.lastTickTsUtc());
-                    return new BridgeResult(true, latestBarCount, feedStatus.lastTickTsUtc(), feedStatus.lastClientTickSeq());
-                }
-                if (!clock.instant().isBefore(deadline)) {
-                    registry.markStartupTimeoutReached(symbol);
-                    registry.markErrorPaused(
-                            symbol,
-                            clock.instant(),
-                            "Broker bridge timed out before warmup/freshness requirements were satisfied"
-                    );
+                    registry.markErrorPaused(symbol, clock.instant(), "Broker bridge failed: " + exc.getMessage());
                     return new BridgeResult(false, latestBarCount, lastBridgedTickTs, lastClientTickSeq);
                 }
-                if (ticks.isEmpty() && caughtUpToNow) {
-                    idlePoll();
-                } else if (ticks.isEmpty()) {
-                    nextFromInclusive = requestedToInclusive.plusMillis(1L);
-                }
             }
-        } catch (Exception exc) {
-            registry.markErrorPaused(symbol, clock.instant(), "Broker bridge failed: " + exc.getMessage());
-            return new BridgeResult(false, latestBarCount, lastBridgedTickTs, lastClientTickSeq);
+
+            FeedBridgeStatus feedStatus;
+            try {
+                feedStatus = feedStatus(symbol, clock.instant(), cfg.freshnessThreshold());
+            } catch (PythonApiException exc) {
+                if (exc.statusCode() == 599) {
+                    idlePoll();
+                    if (!clock.instant().isBefore(deadline)) {
+                        registry.markStartupTimeoutReached(symbol);
+                        registry.markErrorPaused(
+                                symbol,
+                                clock.instant(),
+                                "Broker bridge timed out before warmup/freshness requirements were satisfied"
+                        );
+                        return new BridgeResult(false, latestBarCount, lastBridgedTickTs, lastClientTickSeq);
+                    }
+                    continue;
+                }
+                registry.markErrorPaused(symbol, clock.instant(), "Broker bridge failed: " + exc.getMessage());
+                return new BridgeResult(false, latestBarCount, lastBridgedTickTs, lastClientTickSeq);
+            }
+            if (feedStatus.lastTickTsUtc() != null) {
+                registry.recordBridgeProgress(symbol, requestedToInclusive, feedStatus.lastTickTsUtc());
+            }
+            if (latestBarCount >= cfg.warmupBarCountThreshold() && feedStatus.fresh()) {
+                if (lastBridgedTickTs != null) {
+                    registry.markBridgeComplete(symbol, lastBridgedTickTs);
+                }
+                registry.markReady(symbol, clock.instant(), latestBarCount, feedStatus.lastTickTsUtc());
+                return new BridgeResult(true, latestBarCount, feedStatus.lastTickTsUtc(), feedStatus.lastClientTickSeq());
+            }
+            if (!clock.instant().isBefore(deadline)) {
+                registry.markStartupTimeoutReached(symbol);
+                registry.markErrorPaused(
+                        symbol,
+                        clock.instant(),
+                        "Broker bridge timed out before warmup/freshness requirements were satisfied"
+                );
+                return new BridgeResult(false, latestBarCount, lastBridgedTickTs, lastClientTickSeq);
+            }
+            if (ticks.isEmpty() && caughtUpToNow) {
+                idlePoll();
+            } else if (ticks.isEmpty()) {
+                nextFromInclusive = requestedToInclusive.plusMillis(1L);
+            }
         }
     }
 
@@ -128,9 +172,13 @@ public final class BrokerBridgeLoader {
         LockSupport.parkNanos(IDLE_POLL_INTERVAL.toNanos());
     }
 
-    private List<IncomingTickPayload> toPayloads(String symbol, String runId, List<RuntimeTick> ticks) {
+    private List<IncomingTickPayload> toPayloads(
+            String symbol,
+            String runId,
+            List<RuntimeTick> ticks,
+            long nextClientTickSeq
+    ) {
         List<IncomingTickPayload> payloads = new ArrayList<>(ticks.size());
-        long nextClientTickSeq = nextClientTickSeqBySymbol.getOrDefault(symbol, 1L);
         for (RuntimeTick tick : ticks) {
             payloads.add(new IncomingTickPayload(
                     symbol,
@@ -142,12 +190,14 @@ public final class BrokerBridgeLoader {
                     runId
             ));
         }
-        nextClientTickSeqBySymbol.put(symbol, nextClientTickSeq);
         return payloads;
     }
 
     private FeedBridgeStatus feedStatus(String symbol, Instant asOfUtc, Duration freshnessThreshold) {
         FeedStatusResponsePayload response = predictionClient.feedStatus();
+        if (response == null) {
+            throw new PythonApiException(599, "empty feed status response", "");
+        }
         List<FeedStatusSymbolPayload> symbols = response.symbols() == null ? List.of() : response.symbols();
         FeedStatusSymbolPayload payload = symbols.stream()
                 .filter(candidate -> normalizeSymbol(candidate.symbol()).equals(symbol))
