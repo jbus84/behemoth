@@ -307,6 +307,8 @@ class BrokerBridgeLoaderTest {
         SymbolReadinessRegistry registry = SymbolReadinessRegistry.forSymbols(List.of("EURUSD"));
 
         try (MockWebServer server = new MockWebServer()) {
+            // Enqueue enough disconnects to cover all retries before the 20-minute deadline expires
+            // (the clock advances 11 min per cycle via the FakeBrokerHistoryPort callback, so deadline is hit within 2 cycles)
             for (int i = 0; i < 10; i++) {
                 server.enqueue(new MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_END));
             }
