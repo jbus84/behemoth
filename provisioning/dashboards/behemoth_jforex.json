@@ -907,6 +907,8 @@
       },
       "fieldConfig": {
         "defaults": {
+          "unit": "s",
+          "decimals": 0,
           "color": {
             "mode": "thresholds"
           },
@@ -927,7 +929,8 @@
               }
             ]
           },
-          "unit": "dtdurations"
+          "mappings": [],
+          "displayName": "${__series.name}"
         },
         "overrides": []
       },
@@ -939,10 +942,16 @@
       },
       "id": 13,
       "options": {
-        "footer": {
-          "enablePagination": false
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
         },
-        "showHeader": true
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
       },
       "targets": [
         {
@@ -959,7 +968,7 @@
         }
       ],
       "title": "Open Position Age by Symbol",
-      "type": "table"
+      "type": "stat"
     }
   ],
   "refresh": "10s",
