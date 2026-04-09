@@ -368,20 +368,9 @@
           "legendFormat": "{{symbol}} active",
           "range": true,
           "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "behemoth-prometheus"
-          },
-          "editorMode": "code",
-          "expr": "sum by (symbol) (rate(behemoth_jforex_sibling_cancel_failures_total[5m]))",
-          "legendFormat": "{{symbol}} sibling cancel fail",
-          "range": true,
-          "refId": "B"
         }
       ],
-      "title": "JForex OCO Lifecycle Health",
+      "title": "Active OCO Groups",
       "type": "timeseries"
     },
     {
@@ -419,7 +408,7 @@
               "type": "value"
             }
           ],
-          "unit": "bool"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -579,7 +568,35 @@
           },
           "unit": "ops"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "D"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Failure %"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -632,6 +649,17 @@
           "legendFormat": "{{symbol}} warmup422",
           "range": true,
           "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "behemoth-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (symbol) (rate(behemoth_jforex_predict_failures_total[5m])) / sum by (symbol) (rate(behemoth_jforex_predict_calls_total[5m]))",
+          "legendFormat": "{{symbol}} failure%",
+          "range": true,
+          "refId": "D"
         }
       ],
       "title": "JForex Predict Health",
