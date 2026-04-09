@@ -1,3 +1,9 @@
+## v0.6.3 (2026-04-09)
+
+### Fix
+
+- dashboard panel accuracy improvements (#46)
+
 ## v0.6.2 (2026-04-09)
 
 ### Fix
