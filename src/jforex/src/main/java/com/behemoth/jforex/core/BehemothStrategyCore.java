@@ -282,6 +282,16 @@ public final class BehemothStrategyCore {
         Instant now = state.lastTick != null ? state.lastTick.timestamp() : Instant.now();
         for (BarrierActionPayload action : actions) {
             if (action.isOpenMarket()) {
+                if (!state.entriesAllowed) {
+                    metrics.recordEntryBlocked(action.symbol());
+                    artifactWriter.markOperationalStep(
+                            action.symbol(),
+                            "entry_blocked_not_ready",
+                            false,
+                            "entries not allowed in current readiness state"
+                    );
+                    continue;
+                }
                 String label = "BM_" + action.scanId() + "_" + action.side();
                 scanToOrderLabel.put(action.scanId(), label);
                 pendingFills.put(label, new PendingFillContext(
