@@ -197,6 +197,12 @@ public final class JForexMetrics implements AutoCloseable, LiveReadinessMetrics 
         }
     }
 
+    public void recordEntryBlocked(String symbol) {
+        if (enabled) {
+            blockedPredictions.labels(symbol).inc();
+        }
+    }
+
     public void recordPredictWarmup(String symbol) {
         if (enabled) {
             predictWarmup422.labels(symbol).inc();
