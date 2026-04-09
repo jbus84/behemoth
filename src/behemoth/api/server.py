@@ -221,6 +221,12 @@ METRIC_OPEN_POSITION_AGE_BARS = Gauge(
     ["symbol"],
 )
 
+METRIC_OPEN_POSITION_BARS_REMAINING = Gauge(
+    "behemoth_open_position_bars_remaining",
+    "Bars remaining until the oldest broker-confirmed open trade reaches its horizon",
+    ["symbol"],
+)
+
 
 class AppConfig(BaseModel):
     """Runtime configuration for the inference server."""
@@ -528,7 +534,7 @@ def _build_open_positions_summary(state: StateManager, now: datetime) -> dict:
         )
         METRIC_ESTIMATED_UNREALIZED_PIPS.labels(symbol=sym).set(sym_unrealized_total)
 
-        # Bars elapsed for the oldest broker-confirmed (OPEN) trade on this symbol
+        # Bars elapsed / remaining for the oldest broker-confirmed (OPEN) trade on this symbol
         active_trades = state.get_active_trades(sym)
         if active_trades:
             oldest_trade = min(active_trades, key=lambda t: t["entry_bar_id"])
@@ -537,9 +543,12 @@ def _build_open_positions_summary(state: StateManager, now: datetime) -> dict:
             ).fetchone()
             current_bar = int(current_row_id[0]) if current_row_id and current_row_id[0] else 0
             bars_elapsed = max(0, current_bar - oldest_trade["entry_bar_id"])
+            bars_remaining = max(0, oldest_trade["horizon"] - bars_elapsed)
             METRIC_OPEN_POSITION_AGE_BARS.labels(symbol=sym).set(bars_elapsed)
+            METRIC_OPEN_POSITION_BARS_REMAINING.labels(symbol=sym).set(bars_remaining)
         else:
             METRIC_OPEN_POSITION_AGE_BARS.labels(symbol=sym).set(0)
+            METRIC_OPEN_POSITION_BARS_REMAINING.labels(symbol=sym).set(0)
 
     # Zero out gauges for symbols with no open positions
     for sym in state.get_all_symbols():
@@ -547,6 +556,7 @@ def _build_open_positions_summary(state: StateManager, now: datetime) -> dict:
             METRIC_OPEN_POSITIONS_TOTAL.labels(symbol=sym).set(0)
             METRIC_OPEN_POSITION_AGE_SECONDS.labels(symbol=sym).set(0)
             METRIC_OPEN_POSITION_AGE_BARS.labels(symbol=sym).set(0)
+            METRIC_OPEN_POSITION_BARS_REMAINING.labels(symbol=sym).set(0)
             METRIC_ESTIMATED_UNREALIZED_PIPS.labels(symbol=sym).set(0)
 
     broker_confirmed = sum(1 for p in positions if p["broker_confirmed"])

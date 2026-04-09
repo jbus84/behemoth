@@ -907,8 +907,6 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "decimals": 0,
           "color": {
             "mode": "thresholds"
           },
@@ -921,38 +919,181 @@
               },
               {
                 "color": "yellow",
-                "value": 3
+                "value": 2
               },
               {
                 "color": "red",
-                "value": 5
+                "value": 4
               }
             ]
           },
-          "mappings": [],
-          "displayName": "${__series.name}",
-          "noValue": "\u2014"
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "inspect": false
+          }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Symbol"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "auto"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Bars elapsed"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 95
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 3
+                    },
+                    {
+                      "color": "red",
+                      "value": 5
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Bars remaining"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 110
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 2
+                    },
+                    {
+                      "color": "green",
+                      "value": 4
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Age (min)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              },
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "auto"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
-        "h": 4,
+        "h": 8,
         "w": 8,
         "x": 16,
         "y": 40
       },
       "id": 13,
       "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
+        "showHeader": true,
+        "footer": {
+          "enablePagination": false
         },
-        "orientation": "auto",
-        "textMode": "value_and_name",
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center"
+        "sortBy": [
+          {
+            "displayName": "Bars remaining",
+            "desc": false
+          }
+        ]
       },
       "targets": [
         {
@@ -966,66 +1107,19 @@
           "instant": true,
           "range": false,
           "refId": "A"
-        }
-      ],
-      "title": "Open Position Age (bars)",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "behemoth-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "decimals": 0,
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 300
-              },
-              {
-                "color": "red",
-                "value": 900
-              }
-            ]
-          },
-          "mappings": [],
-          "displayName": "${__series.name}",
-          "noValue": "\u2014"
         },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 8,
-        "x": 16,
-        "y": 44
-      },
-      "id": 50,
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "behemoth-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "behemoth_open_position_bars_remaining >= 0",
+          "legendFormat": "{{symbol}}",
+          "instant": true,
+          "range": false,
+          "refId": "B"
         },
-        "orientation": "auto",
-        "textMode": "value_and_name",
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center"
-      },
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
@@ -1036,11 +1130,40 @@
           "legendFormat": "{{symbol}}",
           "instant": true,
           "range": false,
-          "refId": "A"
+          "refId": "C"
         }
       ],
-      "title": "Open Position Age (minutes)",
-      "type": "stat"
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "Value #A": "Bars elapsed",
+              "Value #B": "Bars remaining",
+              "Value #C": "Age (min)",
+              "symbol": "Symbol"
+            },
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "instance": true,
+              "job": true
+            },
+            "indexByName": {
+              "symbol": 0,
+              "Value #B": 1,
+              "Value #A": 2,
+              "Value #C": 3
+            }
+          }
+        }
+      ],
+      "title": "Open Positions",
+      "type": "table"
     }
   ],
   "refresh": "10s",
