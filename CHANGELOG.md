@@ -1,3 +1,9 @@
+## v0.6.5 (2026-04-09)
+
+### Fix
+
+- replace Open Position Age table with stat panel per symbol (#48)
+
 ## v0.6.4 (2026-04-09)
 
 ### Fix
