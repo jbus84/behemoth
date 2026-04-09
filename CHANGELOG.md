@@ -1,3 +1,9 @@
+## v0.6.1 (2026-04-09)
+
+### Fix
+
+- correct prometheus scrape port for behemoth-api (8001 → 8000)
+
 ## v0.6.0 (2026-04-09)
 
 ### Feat
