@@ -353,6 +353,15 @@ def _consolidate_to_archive(state_db_path: Path) -> None:
 def main() -> None:
     cfg = _parse_args()
 
+    # Resolve the correct governance lock directory (latest month from history_dir)
+    # and export it so that both the seed subprocess and the API process use the
+    # reduced-core candidates rather than the stale default in configs/research/governance/oco.
+    if "BEHEMOTH_GOVERNANCE_DIR" not in os.environ:
+        latest_month = _resolve_model_month(cfg)
+        if latest_month:
+            os.environ["BEHEMOTH_GOVERNANCE_DIR"] = str(Path(cfg.history_dir) / latest_month)
+            print(f"[jforex-live] governance dir: {os.environ['BEHEMOTH_GOVERNANCE_DIR']}", flush=True)
+
     # Pre-flight: validate credentials before starting any process
     for required in (
         "BEHEMOTH_JFOREX_JNLP_URI",
@@ -382,7 +391,7 @@ def main() -> None:
             sys.executable,
             "scripts/seed_rolling_threshold.py",
             "--symbols", ",".join(cfg.symbols),
-            "--governance-dir", os.getenv("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco"),
+            "--governance-dir", os.environ.get("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco"),
             "--models-dir", cfg.models_dir,
             "--ticks-dir", os.getenv("BEHEMOTH_DUKASCOPY_TICKS_DIR", "/Users/danielfisher/Desktop/dukascopy_ticks"),
             "--seed-dir", str(_repo_root() / "data" / "runtime" / "seed"),
