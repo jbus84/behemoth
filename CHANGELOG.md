@@ -1,3 +1,9 @@
+## v0.7.0 (2026-04-09)
+
+### Feat
+
+- orphaned reservation cleanup + position age in bars (#49)
+
 ## v0.6.5 (2026-04-09)
 
 ### Fix
