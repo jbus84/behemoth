@@ -28,7 +28,7 @@
           "color": {
             "mode": "palette-classic"
           },
-          "unit": "short"
+          "unit": "ops"
         },
         "overrides": []
       },
@@ -135,7 +135,7 @@
           "color": {
             "mode": "palette-classic"
           },
-          "unit": "short"
+          "unit": "ops"
         },
         "overrides": []
       },
@@ -278,7 +278,7 @@
               "type": "value"
             }
           ],
-          "unit": "short"
+          "unit": "bool"
         },
         "overrides": []
       },
@@ -327,7 +327,7 @@
           "color": {
             "mode": "palette-classic"
           },
-          "unit": "short"
+          "unit": "bool"
         },
         "overrides": []
       },
@@ -436,7 +436,7 @@
           "color": {
             "mode": "palette-classic"
           },
-          "unit": "short"
+          "unit": "ops"
         },
         "overrides": []
       },
@@ -506,7 +506,7 @@
           "color": {
             "mode": "palette-classic"
           },
-          "unit": "short"
+          "unit": "ops"
         },
         "overrides": []
       },
@@ -554,7 +554,7 @@
           "color": {
             "mode": "palette-classic"
           },
-          "unit": "short"
+          "unit": "ops"
         },
         "overrides": []
       },
@@ -736,7 +736,7 @@
               }
             ]
           },
-          "unit": "s"
+          "unit": "dtdurations"
         },
         "overrides": []
       },

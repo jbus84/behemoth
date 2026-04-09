@@ -4,6 +4,12 @@ route:
   group_interval: 5m
   repeat_interval: 4h
   receiver: 'default-receiver'
+  routes:
+    - match:
+        severity: critical
+      receiver: 'critical-receiver'
+      group_wait: 10s
+      repeat_interval: 1h
 
 receivers:
   - name: 'default-receiver'
@@ -14,3 +20,14 @@ receivers:
         auth_username: '${SMTP_USER}'
         auth_password: '${SMTP_PASS}'
         require_tls: true
+
+  - name: 'critical-receiver'
+    email_configs:
+      - to: 'danielfisher0@gmail.com'
+        from: '${SMTP_FROM}'
+        smarthost: '${SMTP_HOST}'
+        auth_username: '${SMTP_USER}'
+        auth_password: '${SMTP_PASS}'
+        require_tls: true
+        headers:
+          Subject: '[CRITICAL] {{ .GroupLabels.alertname }} - {{ .GroupLabels.symbol }}'
