@@ -276,3 +276,14 @@ class BarrierManager:
             [symbol.upper(), candidate_uid],
         ).fetchall()
         return [{"scan_id": r[0], "broker_pos_id": r[1]} for r in res]
+
+    def get_scan_by_reservation_id(self, reservation_id: str) -> dict | None:
+        """Return the active (SCANNING/HOLDING) scan for a reservation, or None if not found."""
+        row = self._con.execute(
+            "SELECT scan_id, status FROM barrier_scans "
+            "WHERE reservation_id = ? AND status IN ('SCANNING', 'HOLDING') LIMIT 1",
+            [reservation_id],
+        ).fetchone()
+        if row is None:
+            return None
+        return {"scan_id": row[0], "status": row[1]}
