@@ -1,3 +1,18 @@
+## v0.6.0 (2026-04-09)
+
+### Feat
+
+- live position observability (open-summary endpoint + metrics + Grafana) (#38)
+
+### Fix
+
+- complete observability improvements missed in PR #43 auto-merge (#44)
+- replace stale prometheus alerts and fix grafana pips unit (#43)
+- wire BEHEMOTH_GOVERNANCE_DIR to latest history month in jforex-live (#42)
+- use JForex order label (not broker_pos_id) when closing positions (#41)
+- pass candidateUid, reservationId, horizon from OPEN_MARKET action to /trades/open (#40)
+- release risk reservation when barrier scan expires (#39)
+
 ## v0.5.1 (2026-04-07)
 
 ### Fix
