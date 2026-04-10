@@ -41,7 +41,9 @@ CREATE TABLE IF NOT EXISTS tick_bars (
     spread DOUBLE,
     tick_volume DOUBLE,
     hl_first DOUBLE,
-    hl_pos_frac DOUBLE
+    hl_pos_frac DOUBLE,
+    high_ask DOUBLE,
+    close_ask DOUBLE
 );
 
 CREATE TABLE IF NOT EXISTS audit_logs (
@@ -151,7 +153,7 @@ CREATE TABLE IF NOT EXISTS raw_ticks (
 """
 
 _INSERT_SQL = (
-    "INSERT INTO tick_bars VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO tick_bars VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 )
 
 _SELECT_SQL = """
@@ -289,6 +291,16 @@ class StateManager:
                 column_name="run_id",
                 column_sql="VARCHAR",
             )
+            self._ensure_table_column(
+                table_name="tick_bars",
+                column_name="high_ask",
+                column_sql="DOUBLE",
+            )
+            self._ensure_table_column(
+                table_name="tick_bars",
+                column_name="close_ask",
+                column_sql="DOUBLE",
+            )
         except Exception:
             # Best-effort migration only; avoid startup hard failure.
             pass
@@ -329,6 +341,8 @@ class StateManager:
                 bar.tick_volume,
                 bar.hl_first,
                 bar.hl_pos_frac,
+                bar.high_ask,
+                bar.close_ask,
             ],
         )
         self._row_counters[key] = idx + 1
@@ -354,7 +368,7 @@ class StateManager:
     def get_latest_bar(self, symbol: str, bar_ticks: int) -> dict | None:
         """Get the most recent completed bar for a symbol/bar_ticks pair."""
         res = self._con.execute(
-            "SELECT row_id, high_price, low_price, close_price, hl_first "
+            "SELECT row_id, high_price, low_price, close_price, hl_first, high_ask "
             "FROM tick_bars WHERE symbol = ? AND bar_ticks = ? "
             "ORDER BY row_id DESC LIMIT 1",
             [symbol.upper(), bar_ticks],
@@ -367,6 +381,7 @@ class StateManager:
             "low_price": res[2],
             "close_price": res[3],
             "hl_first": res[4] if res[4] is not None else 0.0,
+            "high_ask": res[5] if res[5] is not None else 0.0,
         }
 
     def get_latest_close_ts(self, symbol: str) -> datetime | None:
