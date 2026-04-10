@@ -61,6 +61,8 @@ def _make_synthetic_bars(
                 tick_volume=tv,
                 hl_first=hl_first_val,
                 hl_pos_frac=hl_pos_frac_val,
+                high_ask=round(h + spread, 5),
+                close_ask=round(c + spread, 5),
             )
         )
         t = close_ts + timedelta(seconds=rng.uniform(0.5, 5.0))

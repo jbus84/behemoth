@@ -45,6 +45,10 @@ class IncomingTickBar(BaseModel):
     hl_pos_delta_tick: float | None = None
     hl_pos_frac: float | None = None
 
+    # ASK-side price columns for spread-adjusted barrier detection and label generation
+    high_ask: float = Field(..., gt=0, description="Max ASK price over all ticks in the bar")
+    close_ask: float = Field(..., gt=0, description="Last ASK price of the bar")
+
 
 class ModelFeatures(BaseModel):
     """The exact 16-parameter feature vector expected by the Stage-03 CatBoost model.

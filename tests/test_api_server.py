@@ -313,6 +313,8 @@ class TestBarsEndpoint:
             "close": 1.10550,
             "spread": 0.00012,
             "tick_volume": 100,
+            "high_ask": 1.10612,
+            "close_ask": 1.10562,
         }
         r = client.post("/bars", json=bar)
         assert r.status_code == 201
@@ -333,6 +335,8 @@ class TestBarsEndpoint:
             "close": 1.10550,
             "spread": 0.00012,
             "tick_volume": 100,
+            "high_ask": 1.10612,
+            "close_ask": 1.10562,
         }
         r = client.post("/bars", json=bar)
         assert r.status_code == 422
@@ -355,6 +359,8 @@ class TestBarsEndpoint:
                 "close": 1.10550,
                 "spread": 0.00012,
                 "tick_volume": 100,
+                "high_ask": 1.10612,
+                "close_ask": 1.10562,
             }
             r = client.post("/bars", json=bar)
             assert r.status_code == 503
@@ -2273,6 +2279,8 @@ class TestIngestionEndpoints:
             tick_volume=100.0,
             hl_first=1.0,
             hl_pos_frac=0.5,
+            high_ask=1.0,
+            close_ask=1.0,
         )
         dummy_agg.add_ticks.return_value = [dummy_bar]
 
@@ -2533,6 +2541,8 @@ class TestIngestionEndpoints:
             tick_volume=100.0,
             hl_first=1.0,
             hl_pos_frac=0.5,
+            high_ask=1.0,
+            close_ask=1.0,
         )
         dummy_agg.add_ticks.side_effect = [[], [dummy_bar]]
 
