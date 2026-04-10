@@ -271,7 +271,12 @@ def main() -> None:
     failed = []
     for sym in symbols:
         seed_file = _seed_path(seed_dir, sym)
-        if _is_fresh(seed_file):
+        sym_candidates = registry.get_candidates(sym)
+        expected_uids = [
+            f"oco|{sym}|{c.bar_ticks}|h{c.horizon}|{c.candidate_uid}"
+            for c in sym_candidates
+        ] or None
+        if _is_fresh(seed_file, expected_candidates=expected_uids):
             print(f"  {sym}: seed file is fresh — skipping", flush=True)
             continue
         if not _seed_symbol(sym, registry, models_dir, ticks_dir, seed_dir, args.days_back):
