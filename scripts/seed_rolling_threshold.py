@@ -230,10 +230,21 @@ def _seed_symbol(
         print(f"  {symbol}: no valid prediction events — FAILED", flush=True)
         return False
 
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    canonical_uids = [
+        f"oco|{symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+        for cand in candidates
+    ]
     out_df = pd.DataFrame(all_events)
     seed_dir.mkdir(parents=True, exist_ok=True)
     out_path = _seed_path(seed_dir, symbol)
-    out_df.to_parquet(out_path, index=False)
+    table = pa.Table.from_pandas(out_df, preserve_index=False)
+    existing_meta = table.schema.metadata or {}
+    gov_meta = {b"governance_candidates": json.dumps(sorted(set(canonical_uids))).encode()}
+    table = table.replace_schema_metadata({**existing_meta, **gov_meta})
+    pq.write_table(table, out_path)
     print(f"  {symbol}: {len(all_events)} events → {out_path}", flush=True)
     return True
 
