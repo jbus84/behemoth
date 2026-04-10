@@ -14,6 +14,7 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
+from src.behemoth.api import server
 from src.behemoth.api.server import app
 
 
@@ -72,6 +73,19 @@ class TestMetricsEndpoint:
         assert r.status_code == 200
         assert r.headers["content-type"].startswith("text/plain")
         assert "behemoth_" in r.text
+
+    def test_metrics_drop_stale_equity_symbols_when_current_ledger_is_empty(self, client):
+        server.METRIC_EQUITY_PIPS.clear()
+
+        server._sync_equity_pips_metrics(
+            [{"symbol": "GBPUSD", "total_pnl": -17.9}]
+        )
+        populated = client.get("/metrics")
+        assert 'behemoth_equity_pips{symbol="GBPUSD"} -17.9' in populated.text
+
+        server._sync_equity_pips_metrics([])
+        cleared = client.get("/metrics")
+        assert 'behemoth_equity_pips{symbol="GBPUSD"}' not in cleared.text
 
 
 class TestAccountRiskEndpoints:
