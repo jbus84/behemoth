@@ -178,9 +178,11 @@ def _seed_symbol(
 
     bars_df = pd.DataFrame([b.model_dump() for b in bars])
     all_events = []
+    canonical_uids: list[str] = []
 
     for cand in candidates:
         canonical_uid = f"oco|{symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+        canonical_uids.append(canonical_uid)
 
         features_df = compute_feature_matrix_from_bars(
             bars_df,
@@ -233,10 +235,6 @@ def _seed_symbol(
     import pyarrow as pa
     import pyarrow.parquet as pq
 
-    canonical_uids = [
-        f"oco|{symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
-        for cand in candidates
-    ]
     out_df = pd.DataFrame(all_events)
     seed_dir.mkdir(parents=True, exist_ok=True)
     out_path = _seed_path(seed_dir, symbol)
