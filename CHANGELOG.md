@@ -1,3 +1,9 @@
+## v0.8.3 (2026-04-10)
+
+### Fix
+
+- color unrealized pips by sign
+
 ## v0.8.2 (2026-04-10)
 
 ### Fix
