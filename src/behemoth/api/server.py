@@ -203,6 +203,12 @@ METRIC_OPEN_POSITIONS_TOTAL = Gauge(
     ["symbol"],
 )
 
+METRIC_BROKER_OPEN_POSITIONS_TOTAL = Gauge(
+    "behemoth_broker_open_positions_total",
+    "Count of broker-confirmed open trades",
+    ["symbol"],
+)
+
 METRIC_OPEN_POSITION_AGE_SECONDS = Gauge(
     "behemoth_open_position_age_seconds",
     "Wall-clock seconds since the oldest open reservation was created",
@@ -458,7 +464,8 @@ def _build_open_positions_summary(state: StateManager, now: datetime) -> dict:
     """Compute cross-symbol open position summary from DB state.
 
     Side-effect: updates METRIC_OPEN_POSITIONS_TOTAL, METRIC_OPEN_POSITION_AGE_SECONDS,
-    METRIC_OPEN_POSITION_AGE_BARS, and METRIC_ESTIMATED_UNREALIZED_PIPS for every known symbol.
+    METRIC_BROKER_OPEN_POSITIONS_TOTAL, METRIC_OPEN_POSITION_AGE_BARS, and
+    METRIC_ESTIMATED_UNREALIZED_PIPS for every known symbol.
     """
     if now.tzinfo is None:
         now = now.replace(tzinfo=timezone.utc)
@@ -470,6 +477,7 @@ def _build_open_positions_summary(state: StateManager, now: datetime) -> dict:
         by_symbol.setdefault(r["symbol"], []).append(r)
 
     positions: list[dict] = []
+    broker_open_count_by_symbol: dict[str, int] = {}
     for sym, sym_reservations in by_symbol.items():
         price_data = state.get_last_bar_close_price(sym)
         last_tick_price: float | None = price_data[0] if price_data else None
@@ -525,6 +533,9 @@ def _build_open_positions_summary(state: StateManager, now: datetime) -> dict:
             )
 
         METRIC_OPEN_POSITIONS_TOTAL.labels(symbol=sym).set(len(sym_reservations))
+        active_trades = state.get_active_trades(sym)
+        broker_open_count_by_symbol[sym] = len(active_trades)
+        METRIC_BROKER_OPEN_POSITIONS_TOTAL.labels(symbol=sym).set(len(active_trades))
         oldest = min(
             (r["created_ts"] for r in sym_reservations if r["created_ts"]),
             default=None,
@@ -535,7 +546,6 @@ def _build_open_positions_summary(state: StateManager, now: datetime) -> dict:
         METRIC_ESTIMATED_UNREALIZED_PIPS.labels(symbol=sym).set(sym_unrealized_total)
 
         # Bars elapsed / remaining for the oldest broker-confirmed (OPEN) trade on this symbol
-        active_trades = state.get_active_trades(sym)
         if active_trades:
             oldest_trade = min(active_trades, key=lambda t: t["entry_bar_id"])
             current_row_id = state._con.execute(
@@ -554,12 +564,13 @@ def _build_open_positions_summary(state: StateManager, now: datetime) -> dict:
     for sym in state.get_all_symbols():
         if sym not in by_symbol:
             METRIC_OPEN_POSITIONS_TOTAL.labels(symbol=sym).set(0)
+            METRIC_BROKER_OPEN_POSITIONS_TOTAL.labels(symbol=sym).set(0)
             METRIC_OPEN_POSITION_AGE_SECONDS.labels(symbol=sym).set(0)
             METRIC_OPEN_POSITION_AGE_BARS.labels(symbol=sym).set(0)
             METRIC_OPEN_POSITION_BARS_REMAINING.labels(symbol=sym).set(0)
             METRIC_ESTIMATED_UNREALIZED_PIPS.labels(symbol=sym).set(0)
 
-    broker_confirmed = sum(1 for p in positions if p["broker_confirmed"])
+    broker_confirmed = sum(broker_open_count_by_symbol.values())
     return {
         "as_of_utc": now.isoformat(),
         "total_open": len(positions),
