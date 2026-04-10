@@ -1078,11 +1078,11 @@
               },
               {
                 "id": "unit",
-                "value": "s"
+                "value": "short"
               },
               {
                 "id": "decimals",
-                "value": 0
+                "value": 1
               },
               {
                 "id": "custom.cellOptions",
@@ -1149,7 +1149,7 @@
             "uid": "behemoth-prometheus"
           },
           "editorMode": "code",
-          "expr": "behemoth_open_position_age_seconds > 0",
+          "expr": "behemoth_open_position_age_seconds / 60 > 0",
           "instant": true,
           "range": false,
           "refId": "C"
