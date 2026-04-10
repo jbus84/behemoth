@@ -41,8 +41,9 @@ def _seed_path(seed_dir: Path, symbol: str) -> Path:
     return seed_dir / f"{symbol.upper()}_threshold_seed.parquet"
 
 
-def _is_fresh(seed_file: Path) -> bool:
-    """Return True if seed file exists and covers up to yesterday or later."""
+def _is_fresh(seed_file: Path, expected_candidates: list[str] | None = None) -> bool:
+    """Return True if seed file exists, covers up to yesterday or later,
+    and (if expected_candidates provided) was generated with matching governance UIDs."""
     if not seed_file.exists():
         return False
     try:
@@ -53,10 +54,25 @@ def _is_fresh(seed_file: Path) -> bool:
         if max_ts.tzinfo is None:
             max_ts = max_ts.tz_localize("UTC")
         cutoff = datetime.now(tz=timezone.utc) - timedelta(days=1)
-        return max_ts >= cutoff
+        if max_ts < cutoff:
+            return False
     except Exception as exc:
         print(f"  warning: {seed_file} freshness check failed ({exc}), will regenerate", flush=True)
         return False
+    if expected_candidates is not None:
+        try:
+            import pyarrow.parquet as pq
+            schema = pq.read_schema(seed_file)
+            meta = schema.metadata or {}
+            stored_raw = meta.get(b"governance_candidates")
+            if stored_raw is None:
+                return False
+            if set(json.loads(stored_raw)) != set(expected_candidates):
+                return False
+        except Exception as exc:
+            print(f"  warning: {seed_file} governance check failed ({exc}), will regenerate", flush=True)
+            return False
+    return True
 
 
 def _load_ticks(ticks_dir: Path, symbol: str, start_dt: datetime, end_dt: datetime) -> pd.DataFrame:
@@ -162,9 +178,11 @@ def _seed_symbol(
 
     bars_df = pd.DataFrame([b.model_dump() for b in bars])
     all_events = []
+    canonical_uids: list[str] = []
 
     for cand in candidates:
         canonical_uid = f"oco|{symbol}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
+        canonical_uids.append(canonical_uid)
 
         features_df = compute_feature_matrix_from_bars(
             bars_df,
@@ -214,10 +232,17 @@ def _seed_symbol(
         print(f"  {symbol}: no valid prediction events — FAILED", flush=True)
         return False
 
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
     out_df = pd.DataFrame(all_events)
     seed_dir.mkdir(parents=True, exist_ok=True)
     out_path = _seed_path(seed_dir, symbol)
-    out_df.to_parquet(out_path, index=False)
+    table = pa.Table.from_pandas(out_df, preserve_index=False)
+    existing_meta = table.schema.metadata or {}
+    gov_meta = {b"governance_candidates": json.dumps(sorted(set(canonical_uids))).encode()}
+    table = table.replace_schema_metadata({**existing_meta, **gov_meta})
+    pq.write_table(table, out_path)
     print(f"  {symbol}: {len(all_events)} events → {out_path}", flush=True)
     return True
 
@@ -246,7 +271,12 @@ def main() -> None:
     failed = []
     for sym in symbols:
         seed_file = _seed_path(seed_dir, sym)
-        if _is_fresh(seed_file):
+        sym_candidates = registry.get_candidates(sym)
+        expected_uids = [
+            f"oco|{sym}|{c.bar_ticks}|h{c.horizon}|{c.candidate_uid}"
+            for c in sym_candidates
+        ] or None
+        if _is_fresh(seed_file, expected_candidates=expected_uids):
             print(f"  {sym}: seed file is fresh — skipping", flush=True)
             continue
         if not _seed_symbol(sym, registry, models_dir, ticks_dir, seed_dir, args.days_back):
