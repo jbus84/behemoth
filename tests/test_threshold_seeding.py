@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 from src.behemoth.runtime.state import StateManager
+from scripts.seed_rolling_threshold import _is_fresh
 
 
 def test_seed_training_predictions_populates_audit_logs(tmp_path) -> None:
@@ -67,3 +72,28 @@ def test_seed_training_predictions_sets_close_ts_from_day(tmp_path) -> None:
         assert rows[1][0].date().isoformat() == "2025-01-16"
     finally:
         sm.close()
+
+
+def _write_seed_with_meta(path, candidates: list[str]) -> None:
+    """Helper: write a minimal parquet with a recent close_ts and given governance metadata."""
+    df = pd.DataFrame(
+        {"close_ts": [pd.Timestamp.now(tz="UTC") - pd.Timedelta(hours=1)]}
+    )
+    table = pa.Table.from_pandas(df, preserve_index=False)
+    meta = {b"governance_candidates": json.dumps(candidates).encode()}
+    table = table.replace_schema_metadata({**(table.schema.metadata or {}), **meta})
+    pq.write_table(table, path)
+
+
+def test_is_fresh_returns_false_on_governance_mismatch(tmp_path) -> None:
+    """A fresh-by-recency seed with old governance candidates is not fresh."""
+    path = tmp_path / "GBPUSD_threshold_seed.parquet"
+    _write_seed_with_meta(path, ["oco|GBPUSD|100|h6|old__k2"])
+    assert _is_fresh(path, expected_candidates=["oco|GBPUSD|100|h6|new__k2"]) is False
+
+
+def test_is_fresh_returns_true_on_governance_match(tmp_path) -> None:
+    """A fresh-by-recency seed whose governance fingerprint matches is fresh."""
+    path = tmp_path / "GBPUSD_threshold_seed.parquet"
+    _write_seed_with_meta(path, ["oco|GBPUSD|100|h6|match__k2"])
+    assert _is_fresh(path, expected_candidates=["oco|GBPUSD|100|h6|match__k2"]) is True
