@@ -460,7 +460,11 @@ def _run_historical_preflight(history_dir: Path) -> None:
     )
 
 
-def _build_open_positions_summary(state: StateManager, now: datetime) -> dict:
+def _build_open_positions_summary(
+    state: StateManager,
+    now: datetime,
+    aggregators: dict[int, TickAggregator] | None = None,
+) -> dict:
     """Compute cross-symbol open position summary from DB state.
 
     Side-effect: updates METRIC_OPEN_POSITIONS_TOTAL, METRIC_OPEN_POSITION_AGE_SECONDS,
@@ -480,11 +484,22 @@ def _build_open_positions_summary(state: StateManager, now: datetime) -> dict:
     broker_open_count_by_symbol: dict[str, int] = {}
     for sym, sym_reservations in by_symbol.items():
         price_data = state.get_last_bar_close_price(sym)
-        last_tick_price: float | None = price_data[0] if price_data else None
         last_tick_ts: datetime | None = price_data[1] if price_data else None
         last_tick_age_seconds: float | None = (
             round((now - last_tick_ts).total_seconds(), 1) if last_tick_ts else None
         )
+        # Prefer the latest buffered tick bid (most recent received tick) over the
+        # last completed bar close — bars can be several minutes old during quiet
+        # periods and will invert the sign of unrealized pips when price crosses entry.
+        last_tick_price: float | None = None
+        if aggregators:
+            for agg in aggregators.values():
+                bid = agg.latest_bid(sym)
+                if bid is not None:
+                    last_tick_price = bid
+                    break
+        if last_tick_price is None:
+            last_tick_price = price_data[0] if price_data else None
 
         sym_unrealized_total = 0.0
         for r in sym_reservations:
@@ -743,7 +758,7 @@ async def _write_position_summary_loop() -> None:
         try:
             if _state and _config.persist_db_path:
                 now = datetime.now(tz=timezone.utc)
-                summary = _build_open_positions_summary(_state, now)
+                summary = _build_open_positions_summary(_state, now, _aggregators)
                 summary_path = (
                     Path(_config.persist_db_path).parent / "live_position_summary.json"
                 )
@@ -3320,7 +3335,7 @@ async def get_open_positions_summary():
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
     now = datetime.now(tz=timezone.utc)
-    return _build_open_positions_summary(_state, now)
+    return _build_open_positions_summary(_state, now, _aggregators)
 
 
 @app.get("/state/checkpoint")
