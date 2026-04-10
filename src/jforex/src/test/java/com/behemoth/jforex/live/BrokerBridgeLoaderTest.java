@@ -309,6 +309,39 @@ class BrokerBridgeLoaderTest {
     }
 
     @Test
+    void bridgeFailureIncludesNestedHistoryCauseDetails() throws Exception {
+        MutableClock clock = new MutableClock(Instant.parse("2026-03-22T12:00:00Z"), ZoneId.of("UTC"));
+        SymbolReadinessRegistry registry = SymbolReadinessRegistry.forSymbols(List.of("EURUSD"));
+
+        try (MockWebServer server = new MockWebServer()) {
+            PythonPredictionClient predictionClient = new PythonPredictionClient(HttpClient.newHttpClient(), server.url("/").uri());
+            BrokerBridgeLoader loader = new BrokerBridgeLoader((symbol, fromInclusive, toInclusive) -> {
+                throw new RuntimeException(
+                        "Error while loading ticks",
+                        new IllegalStateException("\"to\" parameter can't be greater than time of the last tick for this instrument")
+                );
+            }, predictionClient, registry, clock);
+
+            BrokerBridgeLoader.BridgeResult result = loader.bridge(new BrokerBridgeLoader.BridgeConfig(
+                    "EURUSD",
+                    Instant.parse("2026-03-22T11:59:00Z"),
+                    "run-1",
+                    Duration.ofMinutes(60),
+                    Duration.ofSeconds(30),
+                    Duration.ofMinutes(20),
+                    289,
+                    0
+            ));
+
+            assertThat(result.ready()).isFalse();
+            assertThat(registry.snapshot("EURUSD").state()).isEqualTo(SymbolReadinessState.ERROR_PAUSED);
+            assertThat(registry.snapshot("EURUSD").lastFailureReason())
+                    .contains("Error while loading ticks")
+                    .contains("\"to\" parameter can't be greater than time of the last tick for this instrument");
+        }
+    }
+
+    @Test
     void bridgeRetriesTransient599AndReachesReady() throws Exception {
         MutableClock clock = new MutableClock(Instant.parse("2026-03-22T12:00:20Z"), ZoneId.of("UTC"));
         FakeBrokerHistoryPort historyPort = new FakeBrokerHistoryPort(
