@@ -845,7 +845,7 @@
             "uid": "behemoth-prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(behemoth_open_positions_total)",
+          "expr": "sum(behemoth_broker_open_positions_total)",
           "legendFormat": "Open Positions",
           "range": false,
           "instant": true,

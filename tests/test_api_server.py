@@ -87,6 +87,122 @@ class TestMetricsEndpoint:
         cleared = client.get("/metrics")
         assert 'behemoth_equity_pips{symbol="GBPUSD"}' not in cleared.text
 
+    def test_metrics_publish_broker_open_positions_separately_from_reservations(self, client):
+        import unittest.mock as mock
+
+        now = datetime(2026, 4, 10, 11, 30, 0, tzinfo=timezone.utc)
+        created = now - timedelta(minutes=5)
+        reservations = [
+            {
+                "reservation_id": "eur-open",
+                "created_ts": created,
+                "updated_ts": created,
+                "symbol": "EURUSD",
+                "candidate_uid": "cand-1",
+                "broker_pos_id": "bp-eur-1",
+                "status": "OPEN",
+                "reserved_loss_ccy": 10.0,
+                "barrier_pips": 20.0,
+                "cap_pips": 30.0,
+                "cost_est_pips": 5.0,
+                "volume_units": 1000.0,
+                "side": "BUY",
+                "source": "algo",
+            },
+            {
+                "reservation_id": "eur-pending",
+                "created_ts": created,
+                "updated_ts": created,
+                "symbol": "EURUSD",
+                "candidate_uid": "cand-2",
+                "broker_pos_id": None,
+                "status": "PENDING",
+                "reserved_loss_ccy": 10.0,
+                "barrier_pips": 20.0,
+                "cap_pips": 30.0,
+                "cost_est_pips": 5.0,
+                "volume_units": 1000.0,
+                "side": "BUY",
+                "source": "algo",
+            },
+            {
+                "reservation_id": "gbp-open",
+                "created_ts": created,
+                "updated_ts": created,
+                "symbol": "GBPUSD",
+                "candidate_uid": "cand-3",
+                "broker_pos_id": "bp-gbp-1",
+                "status": "OPEN",
+                "reserved_loss_ccy": 10.0,
+                "barrier_pips": 20.0,
+                "cap_pips": 30.0,
+                "cost_est_pips": 5.0,
+                "volume_units": 1000.0,
+                "side": "SELL",
+                "source": "algo",
+            },
+            {
+                "reservation_id": "usdcad-open",
+                "created_ts": created,
+                "updated_ts": created,
+                "symbol": "USDCAD",
+                "candidate_uid": "cand-4",
+                "broker_pos_id": "bp-cad-1",
+                "status": "OPEN",
+                "reserved_loss_ccy": 10.0,
+                "barrier_pips": 20.0,
+                "cap_pips": 30.0,
+                "cost_est_pips": 5.0,
+                "volume_units": 1000.0,
+                "side": "BUY",
+                "source": "algo",
+            },
+            {
+                "reservation_id": "aud-pending",
+                "created_ts": created,
+                "updated_ts": created,
+                "symbol": "AUDUSD",
+                "candidate_uid": "cand-5",
+                "broker_pos_id": None,
+                "status": "PENDING",
+                "reserved_loss_ccy": 10.0,
+                "barrier_pips": 20.0,
+                "cap_pips": 30.0,
+                "cost_est_pips": 5.0,
+                "volume_units": 1000.0,
+                "side": "BUY",
+                "source": "algo",
+            },
+        ]
+
+        active_trades = {
+            "EURUSD": [{"broker_pos_id": "bp-eur-1", "entry_bar_id": 10, "horizon": 6, "touch_bar_id": None}],
+            "GBPUSD": [{"broker_pos_id": "bp-gbp-1", "entry_bar_id": 10, "horizon": 6, "touch_bar_id": None}],
+            "USDCAD": [{"broker_pos_id": "bp-cad-1", "entry_bar_id": 10, "horizon": 6, "touch_bar_id": None}],
+            "AUDUSD": [],
+            "USDCHF": [],
+            "USDJPY": [],
+        }
+
+        with (
+            mock.patch.object(server._state, "list_active_account_risk_reservations", return_value=reservations),
+            mock.patch.object(server._state, "get_last_bar_close_price", return_value=None),
+            mock.patch.object(server._state, "get_all_symbols", return_value=["EURUSD", "GBPUSD", "USDCAD", "AUDUSD", "USDCHF", "USDJPY"]),
+            mock.patch.object(server._state, "get_active_trades", side_effect=lambda symbol: active_trades[symbol]),
+        ):
+            summary = server._build_open_positions_summary(server._state, now)
+
+        assert summary["total_open"] == 5
+        assert summary["broker_confirmed"] == 3
+        assert summary["pending_broker_confirm"] == 2
+
+        metrics = client.get("/metrics")
+        assert 'behemoth_open_positions_total{symbol="EURUSD"} 2.0' in metrics.text
+        assert 'behemoth_broker_open_positions_total{symbol="EURUSD"} 1.0' in metrics.text
+        assert 'behemoth_broker_open_positions_total{symbol="GBPUSD"} 1.0' in metrics.text
+        assert 'behemoth_broker_open_positions_total{symbol="USDCAD"} 1.0' in metrics.text
+        assert 'behemoth_broker_open_positions_total{symbol="AUDUSD"} 0.0' in metrics.text
+
 
 class TestAccountRiskEndpoints:
     def test_account_limits_endpoint(self, client):
