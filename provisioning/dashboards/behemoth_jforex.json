@@ -876,11 +876,11 @@
               },
               {
                 "color": "yellow",
-                "value": -2
+                "value": 0
               },
               {
                 "color": "green",
-                "value": 2
+                "value": 0.000001
               }
             ]
           },
@@ -917,8 +917,8 @@
           "editorMode": "code",
           "expr": "behemoth_estimated_unrealized_pips",
           "legendFormat": "{{symbol}}",
-          "range": true,
-          "instant": false,
+          "range": false,
+          "instant": true,
           "refId": "A"
         }
       ],
