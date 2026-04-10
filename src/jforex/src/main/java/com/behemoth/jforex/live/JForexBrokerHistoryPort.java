@@ -35,6 +35,13 @@ public final class JForexBrokerHistoryPort implements BrokerHistoryPort {
                 .toList();
     }
 
+    @Override
+    public Instant getLastTickTimestamp(String symbol) throws Exception {
+        String normalized = normalizeSymbol(symbol);
+        Instrument instrument = Instrument.valueOf(normalized);
+        return Instant.ofEpochMilli(history.getTimeOfLastTick(instrument));
+    }
+
     private static String normalizeSymbol(String rawSymbol) {
         return Objects.requireNonNull(rawSymbol, "symbol").trim().replace("/", "").toUpperCase();
     }

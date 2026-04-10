@@ -67,12 +67,24 @@ public final class BrokerBridgeLoader {
             Instant requestFromInclusive = now.isBefore(nextFromInclusive) ? now : nextFromInclusive;
             Instant requestedToInclusive = nextWindowEnd(requestFromInclusive, window, now);
             boolean caughtUpToNow = !requestedToInclusive.isBefore(now);
+            Instant brokerLastTickTs = null;
+            Instant effectiveRequestToInclusive = requestedToInclusive;
+            boolean cappedToBrokerLastTick = false;
             List<RuntimeTick> ticks;
             try {
-                ticks = historyPort.getTicks(symbol, requestFromInclusive, requestedToInclusive).stream()
-                        .filter(tick -> !tick.timestamp().isBefore(minAcceptedTickTs))
-                        .sorted(Comparator.comparing(RuntimeTick::timestamp))
-                        .toList();
+                brokerLastTickTs = historyPort.getLastTickTimestamp(symbol);
+                if (brokerLastTickTs != null && brokerLastTickTs.isBefore(effectiveRequestToInclusive)) {
+                    effectiveRequestToInclusive = brokerLastTickTs;
+                    cappedToBrokerLastTick = true;
+                }
+                if (effectiveRequestToInclusive.isBefore(requestFromInclusive)) {
+                    ticks = List.of();
+                } else {
+                    ticks = historyPort.getTicks(symbol, requestFromInclusive, effectiveRequestToInclusive).stream()
+                            .filter(tick -> !tick.timestamp().isBefore(minAcceptedTickTs))
+                            .sorted(Comparator.comparing(RuntimeTick::timestamp))
+                            .toList();
+                }
             } catch (Exception exc) {
                 registry.markErrorPaused(symbol, clock.instant(), "Broker bridge failed: " + exc.getMessage());
                 return new BridgeResult(false, latestBarCount, lastBridgedTickTs, lastClientTickSeq);
@@ -91,7 +103,7 @@ public final class BrokerBridgeLoader {
                     latestBarCount = batchResponse.barCount();
                     lastClientTickSeq = batchResponse.lastClientTickSeq();
                     lastBridgedTickTs = ticks.getLast().timestamp();
-                    registry.recordBridgeProgress(symbol, requestedToInclusive, lastBridgedTickTs);
+                    registry.recordBridgeProgress(symbol, effectiveRequestToInclusive, lastBridgedTickTs);
                     nextClientTickSeqBySymbol.put(symbol, nextClientTickSeq + ticks.size());
                     nextFromInclusive = lastBridgedTickTs.plusMillis(1L);
                 } catch (PythonApiException exc) {
@@ -134,7 +146,7 @@ public final class BrokerBridgeLoader {
                 return new BridgeResult(false, latestBarCount, lastBridgedTickTs, lastClientTickSeq);
             }
             if (feedStatus.lastTickTsUtc() != null) {
-                registry.recordBridgeProgress(symbol, requestedToInclusive, feedStatus.lastTickTsUtc());
+                registry.recordBridgeProgress(symbol, effectiveRequestToInclusive, feedStatus.lastTickTsUtc());
             }
             if (latestBarCount >= cfg.warmupBarCountThreshold() && feedStatus.fresh()) {
                 if (lastBridgedTickTs != null) {
@@ -152,10 +164,10 @@ public final class BrokerBridgeLoader {
                 );
                 return new BridgeResult(false, latestBarCount, lastBridgedTickTs, lastClientTickSeq);
             }
-            if (ticks.isEmpty() && caughtUpToNow) {
+            if (ticks.isEmpty() && (caughtUpToNow || cappedToBrokerLastTick || effectiveRequestToInclusive.isBefore(requestFromInclusive))) {
                 idlePoll();
             } else if (ticks.isEmpty()) {
-                nextFromInclusive = requestedToInclusive.plusMillis(1L);
+                nextFromInclusive = effectiveRequestToInclusive.plusMillis(1L);
             }
         }
     }
