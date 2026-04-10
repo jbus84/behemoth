@@ -1,3 +1,16 @@
+## v0.8.1 (2026-04-10)
+
+### Fix
+
+- clamp jforex bridge requests to broker last tick
+- make equity panel current-session authoritative (#57)
+- Open Positions — Age (min) column converts seconds to minutes (#56)
+- seed governance fingerprint check prevents stale threshold seeds (#55)
+- Active OCO Groups line visibility + Entries Allowed state-timeline panel (#54)
+- Open Positions table — correct legend format and zero-value filter (#53)
+- bridge transient retry + wire entry gate (#52)
+- catch OSError in _poll_health to handle connection reset during API startup (#51)
+
 ## v0.8.0 (2026-04-09)
 
 ### Feat
