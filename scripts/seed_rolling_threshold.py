@@ -41,8 +41,9 @@ def _seed_path(seed_dir: Path, symbol: str) -> Path:
     return seed_dir / f"{symbol.upper()}_threshold_seed.parquet"
 
 
-def _is_fresh(seed_file: Path) -> bool:
-    """Return True if seed file exists and covers up to yesterday or later."""
+def _is_fresh(seed_file: Path, expected_candidates: list[str] | None = None) -> bool:
+    """Return True if seed file exists, covers up to yesterday or later,
+    and (if expected_candidates provided) was generated with matching governance UIDs."""
     if not seed_file.exists():
         return False
     try:
@@ -53,10 +54,25 @@ def _is_fresh(seed_file: Path) -> bool:
         if max_ts.tzinfo is None:
             max_ts = max_ts.tz_localize("UTC")
         cutoff = datetime.now(tz=timezone.utc) - timedelta(days=1)
-        return max_ts >= cutoff
+        if max_ts < cutoff:
+            return False
     except Exception as exc:
         print(f"  warning: {seed_file} freshness check failed ({exc}), will regenerate", flush=True)
         return False
+    if expected_candidates is not None:
+        try:
+            import pyarrow.parquet as pq
+            schema = pq.read_schema(seed_file)
+            meta = schema.metadata or {}
+            stored_raw = meta.get(b"governance_candidates")
+            if stored_raw is None:
+                return False
+            if set(json.loads(stored_raw)) != set(expected_candidates):
+                return False
+        except Exception as exc:
+            print(f"  warning: {seed_file} governance check failed ({exc}), will regenerate", flush=True)
+            return False
+    return True
 
 
 def _load_ticks(ticks_dir: Path, symbol: str, start_dt: datetime, end_dt: datetime) -> pd.DataFrame:
