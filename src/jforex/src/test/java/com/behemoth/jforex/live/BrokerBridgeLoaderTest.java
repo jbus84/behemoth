@@ -216,6 +216,71 @@ class BrokerBridgeLoaderTest {
     }
 
     @Test
+    void bridgeClampsHistoryRequestToBrokerLastTickBeforeBrokerCall() throws Exception {
+        MutableClock clock = new MutableClock(Instant.parse("2026-03-22T12:00:20Z"), ZoneId.of("UTC"));
+        Instant brokerLastTickTs = Instant.parse("2026-03-22T12:00:00Z");
+        List<WindowRequest> requests = new ArrayList<>();
+        SymbolReadinessRegistry registry = SymbolReadinessRegistry.forSymbols(List.of("EURUSD"));
+
+        try (MockWebServer server = new MockWebServer()) {
+            server.enqueue(new MockResponse()
+                    .setHeader("Content-Type", "application/json")
+                    .setBody("""
+                            {
+                              "ok": true,
+                              "symbol": "EURUSD",
+                              "ticks_received": 1,
+                              "accepted_count": 1,
+                              "dropped_count": 0,
+                              "bar_completed": false,
+                              "completed_bar_ticks": [],
+                              "symbol_tick_seq": 1,
+                              "last_tick_ts_utc": "2026-03-22T12:00:00Z",
+                              "last_client_tick_seq": 1,
+                              "bar_count": 289
+                            }
+                            """));
+            server.enqueue(feedStatusResponse("EURUSD", "2026-03-22T12:00:00Z"));
+            PythonPredictionClient predictionClient = new PythonPredictionClient(HttpClient.newHttpClient(), server.url("/").uri());
+            BrokerHistoryPort historyPort = new BrokerHistoryPort() {
+                @Override
+                public List<RuntimeTick> getTicks(String symbol, Instant fromInclusive, Instant toInclusive) {
+                    requests.add(new WindowRequest(fromInclusive, toInclusive));
+                    if (toInclusive.isAfter(brokerLastTickTs)) {
+                        throw new IllegalStateException("\"to\" parameter can't be greater than time of the last tick for this instrument");
+                    }
+                    return List.of(new RuntimeTick("EURUSD", brokerLastTickTs, 1.0852, 1.0854));
+                }
+
+                @Override
+                public Instant getLastTickTimestamp(String symbol) {
+                    return brokerLastTickTs;
+                }
+            };
+            BrokerBridgeLoader loader = new BrokerBridgeLoader(historyPort, predictionClient, registry, clock);
+
+            BrokerBridgeLoader.BridgeResult result = loader.bridge(new BrokerBridgeLoader.BridgeConfig(
+                    "EURUSD",
+                    Instant.parse("2026-03-22T11:59:59Z"),
+                    "run-1",
+                    Duration.ofMinutes(60),
+                    Duration.ofSeconds(30),
+                    Duration.ofMinutes(20),
+                    289,
+                    0
+            ));
+
+            assertThat(result.ready()).isTrue();
+            assertThat(registry.snapshot("EURUSD").state()).isEqualTo(SymbolReadinessState.READY);
+            assertThat(requests).singleElement().satisfies(request -> {
+                assertThat(request.fromInclusive()).isEqualTo(Instant.parse("2026-03-22T11:59:59.001Z"));
+                assertThat(request.toInclusive()).isEqualTo(brokerLastTickTs);
+            });
+            assertThat(server.getRequestCount()).isEqualTo(2);
+        }
+    }
+
+    @Test
     void bridgeFailureIsContainedToErrorPausedResult() throws Exception {
         MutableClock clock = new MutableClock(Instant.parse("2026-03-22T12:00:00Z"), ZoneId.of("UTC"));
         SymbolReadinessRegistry registry = SymbolReadinessRegistry.forSymbols(List.of("EURUSD"));

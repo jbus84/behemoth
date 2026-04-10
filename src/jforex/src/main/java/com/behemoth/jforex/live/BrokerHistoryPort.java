@@ -6,4 +6,8 @@ import java.util.List;
 
 public interface BrokerHistoryPort {
     List<RuntimeTick> getTicks(String symbol, Instant fromInclusive, Instant toInclusive) throws Exception;
+
+    default Instant getLastTickTimestamp(String symbol) throws Exception {
+        return null;
+    }
 }
