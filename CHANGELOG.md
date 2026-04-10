@@ -1,3 +1,9 @@
+## v0.8.2 (2026-04-10)
+
+### Fix
+
+- retry startup bridge failures on fresh ticks
+
 ## v0.8.1 (2026-04-10)
 
 ### Fix
