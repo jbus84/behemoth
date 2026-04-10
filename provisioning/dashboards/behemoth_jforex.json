@@ -335,6 +335,11 @@
           "color": {
             "mode": "palette-classic"
           },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "axisSoftMin": 0
+          },
           "unit": "short"
         },
         "overrides": []
@@ -455,9 +460,24 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
+            "mode": "thresholds"
           },
-          "unit": "bool"
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "green", "value": 1}
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {"text": "Blocked", "color": "red", "index": 0},
+                "1": {"text": "Allowed", "color": "green", "index": 1}
+              }
+            }
+          ]
         },
         "overrides": []
       },
@@ -477,7 +497,12 @@
         "tooltip": {
           "mode": "single",
           "sort": "none"
-        }
+        },
+        "mergeValues": true,
+        "fillOpacity": 70,
+        "showValue": "auto",
+        "alignValue": "left",
+        "rowHeight": 0.9
       },
       "targets": [
         {
@@ -487,13 +512,13 @@
           },
           "editorMode": "code",
           "expr": "behemoth_jforex_live_entries_allowed",
-          "legendFormat": "{{symbol}} entries",
+          "legendFormat": "{{symbol}}",
           "range": true,
           "refId": "A"
         }
       ],
       "title": "JForex Entries Allowed",
-      "type": "timeseries"
+      "type": "state-timeline"
     },
     {
       "datasource": {
