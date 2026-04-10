@@ -1103,7 +1103,6 @@
           },
           "editorMode": "code",
           "expr": "behemoth_open_position_age_bars > 0",
-          "legendFormat": "{{symbol}}",
           "instant": true,
           "range": false,
           "refId": "A"
@@ -1114,8 +1113,7 @@
             "uid": "behemoth-prometheus"
           },
           "editorMode": "code",
-          "expr": "behemoth_open_position_bars_remaining >= 0",
-          "legendFormat": "{{symbol}}",
+          "expr": "behemoth_open_position_bars_remaining > 0",
           "instant": true,
           "range": false,
           "refId": "B"
@@ -1127,7 +1125,6 @@
           },
           "editorMode": "code",
           "expr": "behemoth_open_position_age_seconds > 0",
-          "legendFormat": "{{symbol}}",
           "instant": true,
           "range": false,
           "refId": "C"
