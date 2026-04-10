@@ -703,10 +703,7 @@ async def _monitor_ledger() -> None:
                     METRIC_BAR_COUNT.labels(symbol=sym).set(_state.bar_count(sym, 100))
 
                 # Update ledger stats (PnL, Win Rate)
-                stats = _state.get_ledger_stats()
-                for s in stats:
-                    METRIC_EQUITY_PIPS.labels(symbol=s["symbol"]).set(s["total_pnl"])
-                    # We could add a win_rate gauge here if needed
+                _sync_equity_pips_metrics(_state.get_ledger_stats())
                 if _config.account_risk_enabled and (_account_risk_profile is not None):
                     include_pending = bool(_account_risk_profile.allocator.allocator_reserve_pending)
                     include_open = bool(_account_risk_profile.allocator.allocator_reserve_open)
@@ -720,6 +717,13 @@ async def _monitor_ledger() -> None:
         except Exception as e:
             logger.error("Ledger monitor error: %s", e)
         await asyncio.sleep(60)
+
+
+def _sync_equity_pips_metrics(stats: list[dict[str, Any]]) -> None:
+    """Rebuild realized-PnL gauges from the current ledger snapshot only."""
+    METRIC_EQUITY_PIPS.clear()
+    for stat in stats:
+        METRIC_EQUITY_PIPS.labels(symbol=stat["symbol"]).set(stat["total_pnl"])
 
 
 async def _write_position_summary_loop() -> None:

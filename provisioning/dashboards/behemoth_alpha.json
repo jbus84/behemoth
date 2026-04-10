@@ -104,8 +104,9 @@
           },
           "editorMode": "code",
           "expr": "behemoth_equity_pips",
+          "instant": true,
           "legendFormat": "{{symbol}} Equity",
-          "range": true,
+          "range": false,
           "refId": "A"
         }
       ],
