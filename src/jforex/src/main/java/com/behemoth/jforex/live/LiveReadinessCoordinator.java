@@ -12,13 +12,14 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -39,6 +40,7 @@ public final class LiveReadinessCoordinator implements AutoCloseable {
     private final boolean autoStartHeartbeatScheduler;
     private final Map<String, SymbolReadinessState> lastPublishedStates = new LinkedHashMap<>();
     private final Map<String, Boolean> lastPublishedTimeouts = new LinkedHashMap<>();
+    private final HashSet<String> initializationInFlightSymbols = new HashSet<>();
 
     private ScheduledExecutorService scheduler;
     private ExecutorService startupExecutor;
@@ -135,6 +137,7 @@ public final class LiveReadinessCoordinator implements AutoCloseable {
         this.lastStatusWriteAt = null;
         this.lastPublishedStates.clear();
         this.lastPublishedTimeouts.clear();
+        this.initializationInFlightSymbols.clear();
 
         if (!liveReadinessActive) {
             Instant now = clock.instant();
@@ -165,6 +168,7 @@ public final class LiveReadinessCoordinator implements AutoCloseable {
         }
         registry.recordFreshTick(symbol, tickTs);
         registry.refreshFreshness(tickTs, sessionConfig.liveFreshnessSeconds());
+        maybeRetryBridgeInitialization(symbol);
         publishSnapshot(tickTs, false);
     }
 
@@ -208,6 +212,9 @@ public final class LiveReadinessCoordinator implements AutoCloseable {
 
     private void submitSymbolInitialization(String symbol) {
         Objects.requireNonNull(startupExecutor, "startupExecutor");
+        if (!initializationInFlightSymbols.add(symbol)) {
+            return;
+        }
         startupExecutor.submit(() -> initializeSymbol(symbol));
     }
 
@@ -243,7 +250,25 @@ public final class LiveReadinessCoordinator implements AutoCloseable {
         } catch (RuntimeException exc) {
             registry.markErrorPaused(symbol, clock.instant(), "Live readiness startup failed: " + exc.getMessage());
             publishSnapshot(clock.instant(), true);
+        } finally {
+            synchronized (this) {
+                initializationInFlightSymbols.remove(symbol);
+            }
         }
+    }
+
+    private void maybeRetryBridgeInitialization(String symbol) {
+        SymbolReadinessSnapshot snapshot = registry.snapshot(symbol);
+        if (snapshot.state() != SymbolReadinessState.ERROR_PAUSED) {
+            return;
+        }
+        if (snapshot.startupTimeoutReached()) {
+            return;
+        }
+        if (!snapshot.lastFailureReason().startsWith("Broker bridge failed:")) {
+            return;
+        }
+        submitSymbolInitialization(symbol);
     }
 
     private synchronized void publishSnapshot(Instant asOfUtc, boolean forceWrite) {

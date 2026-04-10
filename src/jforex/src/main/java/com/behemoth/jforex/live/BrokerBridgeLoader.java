@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -86,7 +87,7 @@ public final class BrokerBridgeLoader {
                             .toList();
                 }
             } catch (Exception exc) {
-                registry.markErrorPaused(symbol, clock.instant(), "Broker bridge failed: " + exc.getMessage());
+                registry.markErrorPaused(symbol, clock.instant(), "Broker bridge failed: " + describeException(exc));
                 return new BridgeResult(false, latestBarCount, lastBridgedTickTs, lastClientTickSeq);
             }
             if (!ticks.isEmpty()) {
@@ -120,7 +121,7 @@ public final class BrokerBridgeLoader {
                         }
                         continue;
                     }
-                    registry.markErrorPaused(symbol, clock.instant(), "Broker bridge failed: " + exc.getMessage());
+                    registry.markErrorPaused(symbol, clock.instant(), "Broker bridge failed: " + describeException(exc));
                     return new BridgeResult(false, latestBarCount, lastBridgedTickTs, lastClientTickSeq);
                 }
             }
@@ -142,7 +143,7 @@ public final class BrokerBridgeLoader {
                     }
                     continue;
                 }
-                registry.markErrorPaused(symbol, clock.instant(), "Broker bridge failed: " + exc.getMessage());
+                registry.markErrorPaused(symbol, clock.instant(), "Broker bridge failed: " + describeException(exc));
                 return new BridgeResult(false, latestBarCount, lastBridgedTickTs, lastClientTickSeq);
             }
             if (feedStatus.lastTickTsUtc() != null) {
@@ -182,6 +183,22 @@ public final class BrokerBridgeLoader {
 
     private static void idlePoll() {
         LockSupport.parkNanos(IDLE_POLL_INTERVAL.toNanos());
+    }
+
+    private static String describeException(Throwable throwable) {
+        LinkedHashSet<String> messages = new LinkedHashSet<>();
+        Throwable current = throwable;
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null && !message.isBlank()) {
+                messages.add(message.trim());
+            }
+            current = current.getCause();
+        }
+        if (messages.isEmpty()) {
+            return throwable.getClass().getSimpleName();
+        }
+        return String.join(" | caused by: ", messages);
     }
 
     private List<IncomingTickPayload> toPayloads(

@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -266,6 +267,81 @@ class LiveReadinessCoordinatorTest {
             initializeFuture.get(1, TimeUnit.SECONDS);
         }
     }
+
+    @Test
+    void freshTickRetriesBridgeInitializationAfterRetryableStartupFailure() throws Exception {
+        JForexSessionConfig config = config(List.of("AUDUSD"), true);
+        RecordingStatusWriter statusWriter = new RecordingStatusWriter();
+        RecordingLiveReadinessMetrics metrics = new RecordingLiveReadinessMetrics();
+        Map<String, WarmupSlice> warmups = Map.of(
+                "AUDUSD",
+                warmupSlice("AUDUSD", Instant.parse("2026-03-22T11:59:59Z"), 30_075)
+        );
+        AtomicInteger bridgeAttempts = new AtomicInteger();
+
+        try (MockWebServer server = new MockWebServer()) {
+            enqueueFeedStatusOk(server);
+            BehemothStrategyCore core = buildCore(config, server);
+            LiveReadinessCoordinator coordinator = new LiveReadinessCoordinator(
+                    config,
+                    metrics,
+                    Clock.fixed(Instant.parse("2026-03-22T12:00:00Z"), ZoneId.of("UTC")),
+                    tempDir.resolve("dukascopy_ticks"),
+                    statusWriter,
+                    (symbol, bridgeAnchorTs) -> warmups.get(symbol),
+                    (symbol, ticks, runId) -> {
+                    },
+                    (context, registry) -> new LiveReadinessCoordinator.BridgeRuntime() {
+                        @Override
+                        public void seedClientTickSeq(String symbol, long lastClientTickSeq) {
+                        }
+
+                        @Override
+                        public BrokerBridgeLoader.BridgeResult bridge(BrokerBridgeLoader.BridgeConfig bridgeConfig) {
+                            int attempt = bridgeAttempts.incrementAndGet();
+                            if (attempt == 1) {
+                                registry.markErrorPaused(
+                                        bridgeConfig.symbol(),
+                                        bridgeConfig.parquetAnchorTsUtc(),
+                                        "Broker bridge failed: Error while loading ticks"
+                                );
+                                return new BrokerBridgeLoader.BridgeResult(
+                                        false,
+                                        bridgeConfig.initialWarmupBarCount100(),
+                                        bridgeConfig.parquetAnchorTsUtc(),
+                                        null
+                                );
+                            }
+                            registry.markBridgeComplete(bridgeConfig.symbol(), bridgeConfig.parquetAnchorTsUtc());
+                            registry.markReady(
+                                    bridgeConfig.symbol(),
+                                    bridgeConfig.parquetAnchorTsUtc(),
+                                    bridgeConfig.initialWarmupBarCount100(),
+                                    bridgeConfig.parquetAnchorTsUtc()
+                            );
+                            return new BrokerBridgeLoader.BridgeResult(
+                                    true,
+                                    bridgeConfig.initialWarmupBarCount100(),
+                                    bridgeConfig.parquetAnchorTsUtc(),
+                                    30_075L
+                            );
+                        }
+                    },
+                    false
+            );
+
+            coordinator.initialize(null, core, config.instruments());
+            waitUntil(() -> coordinator.snapshot("AUDUSD").state() == SymbolReadinessState.ERROR_PAUSED);
+
+            coordinator.recordLiveTick("AUDUSD", Instant.parse("2026-03-22T12:00:01Z"));
+
+            waitUntil(() -> coordinator.snapshot("AUDUSD").state() == SymbolReadinessState.READY);
+            assertThat(bridgeAttempts.get()).isEqualTo(2);
+            assertThat(coreEntriesAllowed(core, "AUDUSD")).isTrue();
+            assertThat(metrics.readinessStates.get("AUDUSD")).isEqualTo(SymbolReadinessState.READY);
+        }
+    }
+
     private LiveReadinessCoordinator.BridgeRuntimeFactory fakeBridgeRuntimeFactory(Map<String, WarmupSlice> warmups) {
         return (context, registry) -> new LiveReadinessCoordinator.BridgeRuntime() {
             @Override
