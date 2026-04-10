@@ -60,6 +60,11 @@ class TickAggregator:
         """Return the number of buffered ticks not yet forming a bar."""
         return len(self._buffers.get(symbol.upper(), []))
 
+    def latest_bid(self, symbol: str) -> float | None:
+        """Return the bid price of the most recently received tick, or None if no ticks buffered."""
+        buf = self._buffers.get(symbol.upper(), [])
+        return float(buf[-1].bid) if buf else None
+
 
 def _build_bar(
     ticks: list[IncomingTick],
