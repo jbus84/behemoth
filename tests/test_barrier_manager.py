@@ -85,6 +85,7 @@ class TestEvaluateBar:
             bar_low=1.29490,   # > lower (1.29480)
             bar_hl_first=1.0,
             current_bar_idx=11,
+            bar_high_ask=1.29525,
         )
         assert len(actions) == 1
         assert actions[0]["type"] == "OPEN_MARKET"
@@ -104,6 +105,7 @@ class TestEvaluateBar:
             bar_low=1.29490,
             bar_hl_first=1.0,
             current_bar_idx=11,
+            bar_high_ask=1.29525,
         )
         assert len(actions) == 1
         assert actions[0]["type"] == "OPEN_MARKET"
@@ -119,6 +121,7 @@ class TestEvaluateBar:
             bar_low=1.29490,
             bar_hl_first=1.0,
             current_bar_idx=11,
+            bar_high_ask=1.29525,
         )
         assert actions[0]["candidate_uid"] == "oco|GBPUSD|100|h6|abc"
         assert actions[0]["reservation_id"] == "res-001"
@@ -223,13 +226,13 @@ class TestTieBreaking:
 
     def test_both_touched_hl_first_positive_is_buy(self):
         mgr, scan_id = self._make_manager_with_scan()
-        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29470, 1.0, 11)
+        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29470, 1.0, 11, bar_high_ask=1.29530)
         assert len(actions) == 1
         assert actions[0]["side"] == "BUY"
 
     def test_both_touched_hl_first_negative_is_sell(self):
         mgr, scan_id = self._make_manager_with_scan()
-        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29470, -1.0, 11)
+        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29470, -1.0, 11, bar_high_ask=1.29530)
         assert len(actions) == 1
         assert actions[0]["side"] == "SELL"
 
@@ -238,7 +241,7 @@ class TestTieBreaking:
         # is immediately expired — mirrors _oco_precompute which locks in side=0
         # on the first simultaneous touch and does not evaluate later bars.
         mgr, scan_id = self._make_manager_with_scan()
-        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29470, 0.0, 11)
+        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29470, 0.0, 11, bar_high_ask=1.29530)
         assert len(actions) == 1
         assert actions[0]["type"] == "RELEASE_RESERVATION"
         scan = mgr.get_scan(scan_id)
@@ -249,7 +252,7 @@ class TestTieBreaking:
         """Both barriers hit with hl_first=0 -> EXPIRED + RELEASE_RESERVATION."""
         mgr, scan_id = self._make_manager_with_scan()
         # reservation_id="res-001" from _make_manager_with_scan
-        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29470, 0.0, 11)
+        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29470, 0.0, 11, bar_high_ask=1.29530)
         assert len(actions) == 1
         assert actions[0]["type"] == "RELEASE_RESERVATION"
         assert actions[0]["reservation_id"] == "res-001"
@@ -274,7 +277,7 @@ class TestHoldCompletion:
             run_id="test",
         )
         mgr.set_broker_pos_id(scan_id, "broker-123")
-        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29490, 1.0, 11)
+        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29490, 1.0, 11, bar_high_ask=1.29530)
         assert len(actions) == 1
         assert actions[0]["type"] == "OPEN_MARKET"
 
@@ -307,7 +310,7 @@ class TestHoldCompletion:
             run_id="test",
         )
         assert mgr.has_active_scan("GBPUSD", "oco|GBPUSD|100|h6|abc")
-        mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29490, 1.0, 11)
+        mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29490, 1.0, 11, bar_high_ask=1.29530)
         assert mgr.has_active_scan("GBPUSD", "oco|GBPUSD|100|h6|abc")
         mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 12)
         assert mgr.has_active_scan("GBPUSD", "oco|GBPUSD|100|h6|abc")
@@ -441,6 +444,7 @@ class TestParityWithOcoPrecompute:
                     bar_low=float(lows[bar_idx]),
                     bar_hl_first=float(hl_firsts[bar_idx]),
                     current_bar_idx=bar_idx,
+                    bar_high_ask=float(highs[bar_idx]),
                 )
                 if actions and actions[0]["type"] == "OPEN_MARKET":
                     actual_side = 1 if actions[0]["side"] == "BUY" else -1
@@ -527,3 +531,59 @@ class TestActionSchemas:
         d = resp.model_dump()
         assert len(d["actions"]) == 1
         assert d["actions"][0]["type"] == "OPEN_MARKET"
+
+
+class TestAskBarrierTrigger:
+    """BUY trigger uses bar_high_ask; SELL trigger continues to use bar_low."""
+
+    def _make_manager_with_scan(self, ref_price=1.29500, barrier_pips=2.0, horizon=6):
+        mgr = BarrierManager()
+        mgr.register_scan(
+            symbol="GBPUSD",
+            candidate_uid="oco|GBPUSD|100|h6|abc",
+            signal_bar_idx=10,
+            ref_price=ref_price,
+            barrier_pips=barrier_pips,
+            horizon=horizon,
+            pip_size=0.0001,
+            pred_prob=0.625,
+            threshold=0.599,
+            model_month="2026-02",
+            reservation_id="res-001",
+            run_id="test",
+        )
+        return mgr
+
+    def test_up_touch_fires_on_ask_when_bid_misses(self):
+        """BUY fires when bar_high_ask >= upper even if bar_high (BID) < upper."""
+        # upper = 1.29500 + 2.0 * 0.0001 = 1.29520
+        mgr = self._make_manager_with_scan()
+        actions = mgr.evaluate_bar(
+            symbol="GBPUSD",
+            bar_ticks=100,
+            bar_high=1.29515,       # BID high — misses barrier
+            bar_low=1.29490,
+            bar_hl_first=1.0,
+            current_bar_idx=11,
+            bar_high_ask=1.29525,   # ASK high — touches barrier
+        )
+        assert len(actions) == 1
+        assert actions[0]["type"] == "OPEN_MARKET"
+        assert actions[0]["side"] == "BUY"
+
+    def test_dn_touch_unchanged_by_ask_param(self):
+        """SELL still fires when bar_low <= lower_barrier regardless of bar_high_ask."""
+        # lower = 1.29500 - 2.0 * 0.0001 = 1.29480
+        mgr = self._make_manager_with_scan()
+        actions = mgr.evaluate_bar(
+            symbol="GBPUSD",
+            bar_ticks=100,
+            bar_high=1.29510,
+            bar_low=1.29475,        # BID low — touches lower barrier
+            bar_hl_first=-1.0,
+            current_bar_idx=11,
+            bar_high_ask=1.29512,   # ASK < upper; should NOT trigger BUY
+        )
+        assert len(actions) == 1
+        assert actions[0]["type"] == "OPEN_MARKET"
+        assert actions[0]["side"] == "SELL"
