@@ -111,20 +111,13 @@ def _select_tick_exprs(
 ) -> tuple[pl.Expr, pl.Expr, pl.Expr]:
     price_source = str(price_source).lower().strip()
 
-    if price_source == "mid":
-        if "mid" in schema_names:
-            price_expr = pl.col("mid").cast(pl.Float64)
-        elif "bid" in schema_names and "ask" in schema_names:
-            price_expr = ((pl.col("bid") + pl.col("ask")) / 2.0).cast(pl.Float64)
-        else:
-            raise ValueError("missing mid and bid/ask for price_source=mid")
-    else:
-        if "bid" in schema_names:
-            price_expr = pl.col("bid").cast(pl.Float64)
-        elif "mid" in schema_names:
-            price_expr = pl.col("mid").cast(pl.Float64)
-        else:
-            raise ValueError("missing bid (and no mid fallback)")
+    if price_source != "bid":
+        raise ValueError("price_source=mid is not supported for the canonical bid schema; use bid")
+
+    if "bid" not in schema_names:
+        raise ValueError("missing bid for canonical bid schema output")
+
+    price_expr = pl.col("bid").cast(pl.Float64)
 
     if "ask" in schema_names:
         ask_expr = pl.col("ask").cast(pl.Float64)
@@ -495,7 +488,10 @@ def main() -> None:
         help="Comma-separated multiples of base ticks (default: 1,2,4 -> 50,100,200 if base=50)",
     )
     p.add_argument(
-        "--price-source", choices=["bid", "mid"], default="bid", help="OHLC source price"
+        "--price-source",
+        choices=["bid"],
+        default="bid",
+        help="OHLC source price (canonical bid schema only)",
     )
     p.add_argument(
         "--timestamp-mode",

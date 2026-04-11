@@ -14,7 +14,7 @@ import polars as pl
 import pytest
 
 from src.behemoth.core.schemas import IncomingTick
-from scripts.build_global_tick_bars import _bars_from_ticks
+from scripts.build_global_tick_bars import _bars_from_ticks, _build_symbol
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
@@ -282,3 +282,50 @@ class TestOfflineBarSchema:
         assert "close_EURUSD" not in bars.columns
         assert "ask_EURUSD" not in bars.columns
         assert "spread_EURUSD" not in bars.columns
+
+
+def test_build_symbol_aggregates_base_bars_from_files(tmp_path) -> None:
+    tick_root = tmp_path / "tick"
+    output_dir = tmp_path / "bars"
+    sym_dir = tick_root / "EURUSD"
+    sym_dir.mkdir(parents=True, exist_ok=True)
+
+    ticks = pl.DataFrame(
+        {
+            "timestamp": [
+                datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+                datetime(2025, 1, 1, 0, 0, 1, tzinfo=timezone.utc),
+                datetime(2025, 1, 1, 0, 0, 2, tzinfo=timezone.utc),
+                datetime(2025, 1, 1, 0, 0, 3, tzinfo=timezone.utc),
+            ],
+            "bid": [1.1, 1.2, 1.0, 1.3],
+            "ask": [1.1002, 1.2002, 1.0002, 1.3002],
+            "spread": [0.0002, 0.0002, 0.0002, 0.0002],
+        },
+        schema_overrides={"timestamp": pl.Datetime("ns", "UTC")},
+    )
+    ticks.write_parquet(sym_dir / "EURUSD_202501_ticks.parquet")
+
+    msgs = _build_symbol(
+        tick_root=tick_root,
+        output_dir=output_dir,
+        symbol="EURUSD",
+        base_ticks=2,
+        target_ticks=[2, 4],
+        price_source="bid",
+        timestamp_mode="as_utc",
+        overwrite=True,
+    )
+
+    out_path = output_dir / "EURUSD_4tick.parquet"
+    assert out_path.exists()
+    assert any(msg.startswith("ok EURUSD 4tick: 1 bars") for msg in msgs)
+
+    bars = pl.read_parquet(out_path)
+    assert bars.height == 1
+    assert bars["timestamp"][0] == datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    assert bars["close_ts"][0] == datetime(2025, 1, 1, 0, 0, 3, tzinfo=timezone.utc)
+    assert bars["open_bid"][0] == pytest.approx(1.1)
+    assert bars["high_bid"][0] == pytest.approx(1.3)
+    assert bars["low_bid"][0] == pytest.approx(1.0)
+    assert bars["close_bid"][0] == pytest.approx(1.3)

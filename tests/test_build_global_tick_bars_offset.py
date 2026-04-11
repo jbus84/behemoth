@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 import polars as pl
+import pytest
 
 from scripts.build_global_tick_bars_offset import _build_offset_bars
 
@@ -83,3 +84,20 @@ def test_build_offset_bars_uses_explicit_bid_ask_schema(tmp_path: Path) -> None:
     assert "close_EURUSD" not in bars.columns
     assert "ask_EURUSD" not in bars.columns
     assert "spread_EURUSD" not in bars.columns
+
+
+def test_build_offset_bars_rejects_mid_price_source(tmp_path: Path) -> None:
+    tick_root = tmp_path / "tick"
+    sym_dir = tick_root / "EURUSD"
+    sym_dir.mkdir(parents=True, exist_ok=True)
+    _write_ticks(sym_dir / "EURUSD_202501_ticks.parquet", [1.0, 1.001])
+
+    with pytest.raises(ValueError, match="mid.*canonical bid"):
+        _build_offset_bars(
+            tick_root=tick_root,
+            symbol="EURUSD",
+            bar_ticks=2,
+            tick_offset=0,
+            price_source="mid",
+            timestamp_mode="as_utc",
+        )
