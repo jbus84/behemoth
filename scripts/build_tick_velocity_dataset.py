@@ -164,6 +164,10 @@ def _build_symbol_dataset(
     ]
     d = pd.read_parquet(bar_path)
 
+    legacy = sorted({"open", "high", "low", "close", "ask"} & set(d.columns))
+    if legacy:
+        raise ValueError(f"{bar_path.name}: legacy ambiguous bar schema unsupported: {legacy}")
+
     miss = [c for c in req if c not in d.columns]
     if miss:
         raise ValueError(f"{bar_path.name}: missing columns: {miss}")
