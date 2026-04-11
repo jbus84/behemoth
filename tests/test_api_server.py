@@ -318,8 +318,8 @@ class TestPredictLatestBarSchema:
             barrier_manager.evaluate_bar.assert_called_once_with(
                 symbol="EURUSD",
                 bar_ticks=100,
-                bar_high=latest_bar["high_bid"],
-                bar_low=latest_bar["low_bid"],
+                bar_high_bid=latest_bar["high_bid"],
+                bar_low_bid=latest_bar["low_bid"],
                 bar_hl_first=latest_bar["hl_first"],
                 current_bar_idx=latest_bar["row_id"],
                 bar_high_ask=latest_bar["high_ask"],
@@ -340,6 +340,80 @@ class TestPredictLatestBarSchema:
             )
         finally:
             server._barrier_manager = original_barrier_manager
+
+    def test_predict_rejects_legacy_latest_bar_keys(self, client):
+        import unittest.mock as mock
+        from datetime import datetime, timezone
+        from types import SimpleNamespace
+
+        import numpy as np
+
+        dummy_cand = mock.MagicMock()
+        dummy_cand.bar_ticks = 100
+        dummy_cand.horizon = 24
+        dummy_cand.barrier_pips = 15.0
+        dummy_cand.candidate_uid = "cand1"
+
+        latest_bar = {
+            "row_id": 17,
+            "high": 1.1025,
+            "low": 1.0985,
+            "close": 1.1015,
+            "hl_first": 1.0,
+            "high_ask": 1.1027,
+            "close_ask": 1.1017,
+        }
+
+        with (
+            mock.patch.object(
+                server,
+                "_resolve_runtime_contract",
+                return_value=SimpleNamespace(
+                    candidates=[dummy_cand],
+                    model_month="2025-01",
+                    cap_pips=1.2,
+                ),
+            ),
+            mock.patch.object(
+                server,
+                "_ensure_model_and_threshold",
+                return_value=(
+                    mock.MagicMock(predict_proba=mock.MagicMock(return_value=np.array([[0.1, 0.85]]))),
+                    {
+                        "threshold_exec": 0.5,
+                        "threshold_source": "test",
+                        "rolling_threshold_days": 20,
+                        "rolling_threshold_min_history": 1,
+                        "execution_quantile": 0.9,
+                    },
+                ),
+            ),
+            mock.patch.object(server, "_check_warmup", return_value=None),
+            mock.patch.object(
+                server._state,
+                "compute_features",
+                return_value=mock.MagicMock(),
+            ),
+            mock.patch.object(
+                server._state,
+                "get_latest_close_ts",
+                return_value=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            ),
+            mock.patch.object(server._state, "get_rolling_threshold", return_value=0.5),
+            mock.patch.object(server._state, "get_latest_bar", return_value=latest_bar),
+            mock.patch.object(server, "_build_predictions", return_value=([], [])),
+        ):
+            response = client.post(
+                "/predict",
+                json={
+                    "symbol": "EURUSD",
+                    "requested_volume_units": 10000,
+                    "account_risk_enabled_override": False,
+                },
+            )
+
+        assert response.status_code == 422
+        assert "legacy ambiguous bar schema unsupported" in response.json()["detail"]
 
 
 class TestAccountRiskEndpoints:
@@ -445,10 +519,10 @@ class TestBarsEndpoint:
             "bar_ticks": 100,
             "timestamp": "2025-12-01T10:00:00Z",
             "close_ts": "2025-12-01T10:00:30Z",
-            "open": 1.10500,
-            "high": 1.10600,
-            "low": 1.10400,
-            "close": 1.10550,
+            "open_bid": 1.10500,
+            "high_bid": 1.10600,
+            "low_bid": 1.10400,
+            "close_bid": 1.10550,
             "spread": 0.00012,
             "tick_volume": 100,
             "high_ask": 1.10612,
@@ -467,10 +541,10 @@ class TestBarsEndpoint:
             "bar_ticks": 100,
             "timestamp": "2025-12-01T10:00:00Z",
             "close_ts": "2025-12-01T10:00:30Z",
-            "open": -1.0,  # invalid
-            "high": 1.10600,
-            "low": 1.10400,
-            "close": 1.10550,
+            "open_bid": -1.0,  # invalid
+            "high_bid": 1.10600,
+            "low_bid": 1.10400,
+            "close_bid": 1.10550,
             "spread": 0.00012,
             "tick_volume": 100,
             "high_ask": 1.10612,
@@ -491,10 +565,10 @@ class TestBarsEndpoint:
                 "bar_ticks": 100,
                 "timestamp": "2025-12-01T10:00:00Z",
                 "close_ts": "2025-12-01T10:00:30Z",
-                "open": 1.10500,
-                "high": 1.10600,
-                "low": 1.10400,
-                "close": 1.10550,
+                "open_bid": 1.10500,
+                "high_bid": 1.10600,
+                "low_bid": 1.10400,
+                "close_bid": 1.10550,
                 "spread": 0.00012,
                 "tick_volume": 100,
                 "high_ask": 1.10612,
@@ -2409,10 +2483,10 @@ class TestIngestionEndpoints:
             bar_ticks=100,
             timestamp="2025-01-01T00:00:00Z",
             close_ts="2025-01-01T00:00:10Z",
-            open=1.0,
-            high=1.0,
-            low=1.0,
-            close=1.0,
+            open_bid=1.0,
+            high_bid=1.0,
+            low_bid=1.0,
+            close_bid=1.0,
             spread=0.0,
             tick_volume=100.0,
             hl_first=1.0,
@@ -2671,10 +2745,10 @@ class TestIngestionEndpoints:
             bar_ticks=100,
             timestamp="2025-01-01T00:00:00Z",
             close_ts="2025-01-01T00:00:10Z",
-            open=1.0,
-            high=1.0,
-            low=1.0,
-            close=1.0,
+            open_bid=1.0,
+            high_bid=1.0,
+            low_bid=1.0,
+            close_bid=1.0,
             spread=0.0,
             tick_volume=100.0,
             hl_first=1.0,
