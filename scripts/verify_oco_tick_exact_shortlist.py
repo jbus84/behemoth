@@ -450,6 +450,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         bars = read_explicit_bar_parquet(
             path,
             columns=["close_ts", "close_bid", "high_bid", "low_bid", "hl_first"],
+            required=["close_ts", "close_bid", "high_bid", "low_bid", "hl_first"],
         )
         bars["close_ts"] = pd.to_datetime(bars["close_ts"], utc=True, errors="coerce")
         bars = bars.dropna(subset=["close_ts"]).sort_values("close_ts").reset_index(drop=True)
