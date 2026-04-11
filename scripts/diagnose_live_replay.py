@@ -87,39 +87,35 @@ def _tick_price_frame(ticks: pl.DataFrame) -> pl.DataFrame:
 
 def _build_bars_from_ticks(ticks: pl.DataFrame) -> pl.DataFrame:
     """Aggregate ticks into 100-tick bars and drop the final partial bar."""
+    _empty_schema = {
+        "timestamp": pl.Datetime(time_zone="UTC"),
+        "close_ts": pl.Datetime(time_zone="UTC"),
+        "open": pl.Float64,
+        "high": pl.Float64,
+        "low": pl.Float64,
+        "close": pl.Float64,
+        "spread": pl.Float64,
+        "tick_volume": pl.Int64,
+        "hl_first": pl.Int8,
+        "hl_pos_frac": pl.Float64,
+        "high_ask": pl.Float64,
+        "close_ask": pl.Float64,
+    }
     if ticks.is_empty():
-        return pl.DataFrame(
-            schema={
-                "timestamp": pl.Datetime(time_zone="UTC"),
-                "close_ts": pl.Datetime(time_zone="UTC"),
-                "open": pl.Float64,
-                "high": pl.Float64,
-                "low": pl.Float64,
-                "close": pl.Float64,
-                "spread": pl.Float64,
-                "tick_volume": pl.Int64,
-                "hl_first": pl.Int8,
-                "hl_pos_frac": pl.Float64,
-            }
-        )
+        return pl.DataFrame(schema=_empty_schema)
+
+    # Extract ask prices before _tick_price_frame discards them.
+    has_ask = "ask" in ticks.columns
+    n_complete = (ticks.height // 100) * 100
+    if n_complete <= 0:
+        return pl.DataFrame(schema=_empty_schema)
 
     df = _tick_price_frame(ticks)
-    n_complete = (df.height // 100) * 100
+    if df.height < n_complete:
+        # _tick_price_frame may drop nulls; recompute n_complete from cleaned frame
+        n_complete = (df.height // 100) * 100
     if n_complete <= 0:
-        return pl.DataFrame(
-            schema={
-                "timestamp": pl.Datetime(time_zone="UTC"),
-                "close_ts": pl.Datetime(time_zone="UTC"),
-                "open": pl.Float64,
-                "high": pl.Float64,
-                "low": pl.Float64,
-                "close": pl.Float64,
-                "spread": pl.Float64,
-                "tick_volume": pl.Int64,
-                "hl_first": pl.Int8,
-                "hl_pos_frac": pl.Float64,
-            }
-        )
+        return pl.DataFrame(schema=_empty_schema)
 
     complete = (
         df.slice(0, n_complete)
@@ -181,6 +177,29 @@ def _build_bars_from_ticks(ticks: pl.DataFrame) -> pl.DataFrame:
             "hl_pos_frac",
         )
     )
+
+    # Compute ask-side bar columns directly from the raw tick ask prices.
+    if has_ask:
+        ask_col = ticks.get_column("ask").cast(pl.Float64)
+        ask_complete = ask_col.slice(0, n_complete)
+        ask_with_bar = pl.DataFrame({"ask": ask_complete}).with_row_index("row_idx").with_columns(
+            (pl.col("row_idx") // 100).cast(pl.Int64).alias("bar_id")
+        )
+        ask_bars = (
+            ask_with_bar.group_by("bar_id", maintain_order=True)
+            .agg(
+                pl.col("ask").max().alias("high_ask"),
+                pl.col("ask").last().alias("close_ask"),
+            )
+            .select("high_ask", "close_ask")
+        )
+        bars = pl.concat([bars, ask_bars], how="horizontal")
+    else:
+        bars = bars.with_columns(
+            pl.col("close").alias("high_ask"),
+            pl.col("close").alias("close_ask"),
+        )
+
     return bars
 
 
