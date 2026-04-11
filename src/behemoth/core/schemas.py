@@ -31,10 +31,10 @@ class IncomingTickBar(BaseModel):
     bar_ticks: int = Field(..., gt=0, description="Number of ticks in this bar")
     timestamp: datetime = Field(..., description="Open timestamp (UTC)")
     close_ts: datetime = Field(..., description="Close timestamp (UTC)")
-    open: float = Field(..., gt=0)
-    high: float = Field(..., gt=0)
-    low: float = Field(..., gt=0)
-    close: float = Field(..., gt=0)
+    open_bid: float = Field(..., gt=0)
+    high_bid: float = Field(..., gt=0)
+    low_bid: float = Field(..., gt=0)
+    close_bid: float = Field(..., gt=0)
     spread: float = Field(..., ge=0, description="Spread in absolute price units (e.g., sum or mean during bar)")
     tick_volume: float = Field(..., ge=0, description="Total tick volume during bar")
 
@@ -337,5 +337,4 @@ class AccountRiskSnapshotRequest(BaseModel):
     equity: float = Field(..., gt=0.0)
     snapshot_ts: datetime | None = None
     run_id: str | None = None
-
 

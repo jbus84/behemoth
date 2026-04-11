@@ -256,12 +256,21 @@ def compute_regime_quantiles_from_bars(
 
 
 def _extract_core_series(df: pd.DataFrame) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series, pd.Series, pd.Series]:
-    """Resolve column names and return strongly-typed base series."""
-    cc = "close_price" if "close_price" in df.columns else "close"
-    oc = "open_price" if "open_price" in df.columns else "open"
-    hc = "high_price" if "high_price" in df.columns else "high"
-    lc = "low_price" if "low_price" in df.columns else "low"
+    """Resolve explicit bid-side column names and return base series."""
+    cc = "close_bid" if "close_bid" in df.columns else None
+    oc = "open_bid" if "open_bid" in df.columns else None
+    hc = "high_bid" if "high_bid" in df.columns else None
+    lc = "low_bid" if "low_bid" in df.columns else None
     tc = "ts" if "ts" in df.columns else "timestamp"
+
+    missing = [name for name, col in {
+        "open_bid": oc,
+        "high_bid": hc,
+        "low_bid": lc,
+        "close_bid": cc,
+    }.items() if col is None]
+    if missing:
+        raise KeyError(f"expected explicit bid columns: {', '.join(missing)}")
 
     close = df[cc].astype(float)
     open_ = df[oc].astype(float)

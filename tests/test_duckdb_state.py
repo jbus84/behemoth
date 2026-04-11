@@ -53,10 +53,10 @@ def _make_synthetic_bars(
                 bar_ticks=bar_ticks,
                 timestamp=t,
                 close_ts=close_ts,
-                open=round(o, 5),
-                high=round(h, 5),
-                low=round(l, 5),
-                close=round(c, 5),
+                open_bid=round(o, 5),
+                high_bid=round(h, 5),
+                low_bid=round(l, 5),
+                close_bid=round(c, 5),
                 spread=round(spread, 6),
                 tick_volume=tv,
                 hl_first=hl_first_val,
@@ -86,10 +86,10 @@ def _pandas_velocity_features(
             {
                 "timestamp": b.timestamp,
                 "close_ts": b.close_ts,
-                "open": b.open,
-                "high": b.high,
-                "low": b.low,
-                "close": b.close,
+                "open_bid": b.open_bid,
+                "high_bid": b.high_bid,
+                "low_bid": b.low_bid,
+                "close_bid": b.close_bid,
                 "spread": b.spread,
                 "tick_volume": b.tick_volume,
                 "bar_ticks": b.bar_ticks,
@@ -102,10 +102,10 @@ def _pandas_velocity_features(
     df["close_ts"] = pd.to_datetime(df["close_ts"], utc=True)
     df = df.sort_values("close_ts").reset_index(drop=True)
 
-    close = df["close"].astype(float)
-    open_ = df["open"].astype(float)
-    high = df["high"].astype(float)
-    low = df["low"].astype(float)
+    close = df["close_bid"].astype(float)
+    open_ = df["open_bid"].astype(float)
+    high = df["high_bid"].astype(float)
+    low = df["low_bid"].astype(float)
 
     df["hour_utc"] = df["close_ts"].dt.hour.astype(int)
     df["duration_sec"] = (df["close_ts"] - df["timestamp"]).dt.total_seconds().clip(lower=1e-6)
@@ -775,3 +775,22 @@ class TestHighAskPersistence:
         latest = mgr.get_latest_bar(bar.symbol, bar.bar_ticks)
         assert latest is not None
         assert latest["high_ask"] == pytest.approx(1.30050)
+
+
+class TestCanonicalBarSchemaNames:
+    def test_latest_bar_uses_explicit_bid_field_names_only(self):
+        from src.behemoth.runtime.state import StateManager
+
+        mgr = StateManager()
+        bar = _make_synthetic_bars(n=1)[0]
+        mgr.append_bar(bar)
+        latest = mgr.get_latest_bar(bar.symbol, bar.bar_ticks)
+        assert latest is not None
+        assert "open_bid" in latest
+        assert "high_bid" in latest
+        assert "low_bid" in latest
+        assert "close_bid" in latest
+        assert "open" not in latest
+        assert "high" not in latest
+        assert "low" not in latest
+        assert "close" not in latest

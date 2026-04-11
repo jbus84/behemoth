@@ -90,7 +90,7 @@ class TestTickAggregatorBarCount:
 class TestTickAggregatorOHLC:
     """Verify OHLC values are correct."""
 
-    def test_open_is_first_tick_mid(self):
+    def test_open_bid_is_first_tick_mid(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
 
         agg = TickAggregator(bar_ticks=5)
@@ -98,9 +98,9 @@ class TestTickAggregatorOHLC:
         bars = agg.add_ticks(ticks)
         bar = bars[0]
         expected_open = round(ticks[0].bid, 5)
-        assert abs(bar.open - expected_open) < 1e-5
+        assert abs(bar.open_bid - expected_open) < 1e-5
 
-    def test_close_is_last_tick_mid(self):
+    def test_close_bid_is_last_tick_mid(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
 
         agg = TickAggregator(bar_ticks=5)
@@ -108,9 +108,9 @@ class TestTickAggregatorOHLC:
         bars = agg.add_ticks(ticks)
         bar = bars[0]
         expected_close = round(ticks[4].bid, 5)
-        assert abs(bar.close - expected_close) < 1e-5
+        assert abs(bar.close_bid - expected_close) < 1e-5
 
-    def test_high_is_max_mid(self):
+    def test_high_bid_is_max_mid(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
 
         agg = TickAggregator(bar_ticks=5)
@@ -118,9 +118,9 @@ class TestTickAggregatorOHLC:
         bars = agg.add_ticks(ticks)
         bar = bars[0]
         bids = [t.bid for t in ticks]
-        assert abs(bar.high - max(bids)) < 1e-5
+        assert abs(bar.high_bid - max(bids)) < 1e-5
 
-    def test_low_is_min_mid(self):
+    def test_low_bid_is_min_mid(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
 
         agg = TickAggregator(bar_ticks=5)
@@ -128,7 +128,7 @@ class TestTickAggregatorOHLC:
         bars = agg.add_ticks(ticks)
         bar = bars[0]
         bids = [t.bid for t in ticks]
-        assert abs(bar.low - min(bids)) < 1e-5
+        assert abs(bar.low_bid - min(bids)) < 1e-5
 
 
 class TestTickAggregatorMicrostructure:

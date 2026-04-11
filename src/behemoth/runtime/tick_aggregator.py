@@ -5,7 +5,7 @@ using the same fixed-tick-count logic as ``build_global_tick_bars.py``.
 
 Each symbol maintains its own buffer.  When the buffer reaches
 ``bar_ticks`` ticks, a completed bar is emitted with:
-- OHLC from mid prices (bid+ask)/2
+- OHLC from bid prices
 - spread = mean(ask-bid) over the bar
 - hl_first, hl_pos_frac matching the Polars reference implementation
 - tick_volume = bar_ticks
@@ -87,10 +87,10 @@ def _build_bar(
         bar_ticks=bar_ticks,
         timestamp=ticks[0].timestamp,
         close_ts=ticks[-1].timestamp,
-        open=open_price,
-        high=high_price,
-        low=low_price,
-        close=close_price,
+        open_bid=open_price,
+        high_bid=high_price,
+        low_bid=low_price,
+        close_bid=close_price,
         spread=spread_mean,
         tick_volume=float(bar_ticks),
         hl_first=hl_first,
