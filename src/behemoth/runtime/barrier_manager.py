@@ -124,7 +124,7 @@ class BarrierManager:
         """Evaluate a completed bar against all active scans for this symbol.
 
         Called on every bar completion. Mirrors _oco_precompute barrier detection:
-        - Checks bar_high >= upper_barrier (up touch) and bar_low <= lower_barrier (down touch)
+        - Checks bar_high_ask >= upper_barrier (up touch) and bar_low <= lower_barrier (dn touch)
         - If both touched same bar: uses bar_hl_first to break tie (positive = high first = BUY)
         - Returns list of action dicts: OPEN_MARKET for new touches, CLOSE_MARKET for completed holds
         """
