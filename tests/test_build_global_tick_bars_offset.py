@@ -52,3 +52,34 @@ def test_build_offset_bars_shifts_first_completed_bar(tmp_path: Path) -> None:
     assert skipped1 == 1
     assert str(bars0["timestamp"][0]).startswith("2025-01-01 00:00:00")
     assert str(bars1["timestamp"][0]).startswith("2025-01-01 00:00:01")
+
+
+def test_build_offset_bars_uses_explicit_bid_ask_schema(tmp_path: Path) -> None:
+    tick_root = tmp_path / "tick"
+    sym_dir = tick_root / "EURUSD"
+    sym_dir.mkdir(parents=True, exist_ok=True)
+    _write_ticks(sym_dir / "EURUSD_202501_ticks.parquet", [1.0 + 0.001 * i for i in range(4)])
+
+    bars, _, _ = _build_offset_bars(
+        tick_root=tick_root,
+        symbol="EURUSD",
+        bar_ticks=2,
+        tick_offset=0,
+        price_source="bid",
+        timestamp_mode="as_utc",
+    )
+
+    assert "open_bid" in bars.columns
+    assert "high_bid" in bars.columns
+    assert "low_bid" in bars.columns
+    assert "close_bid" in bars.columns
+    assert "high_ask" in bars.columns
+    assert "close_ask" in bars.columns
+    assert "open" not in bars.columns
+    assert "high" not in bars.columns
+    assert "low" not in bars.columns
+    assert "close" not in bars.columns
+    assert "ask" not in bars.columns
+    assert "close_EURUSD" not in bars.columns
+    assert "ask_EURUSD" not in bars.columns
+    assert "spread_EURUSD" not in bars.columns

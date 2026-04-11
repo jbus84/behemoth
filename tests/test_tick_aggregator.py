@@ -10,9 +10,11 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
+import polars as pl
 import pytest
 
 from src.behemoth.core.schemas import IncomingTick
+from scripts.build_global_tick_bars import _bars_from_ticks
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
@@ -239,3 +241,44 @@ class TestAskColumns:
 
         assert len(bars) == 1
         assert bars[0].close_ask == pytest.approx(expected_close_ask)
+
+
+class TestOfflineBarSchema:
+    """Verify offline bar builders emit the explicit bid/ask schema."""
+
+    def test_bars_from_ticks_uses_explicit_bid_ask_columns(self):
+        ticks = pl.DataFrame(
+            {
+                "timestamp": [
+                    datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+                    datetime(2025, 1, 1, 0, 0, 1, tzinfo=timezone.utc),
+                ],
+                "bid": [1.1, 1.2],
+                "price": [1.1, 1.2],
+                "ask": [1.1002, 1.2002],
+                "spread": [0.0002, 0.0002],
+            },
+            schema_overrides={"timestamp": pl.Datetime("ns", "UTC")},
+        )
+
+        bars, _, _ = _bars_from_ticks(
+            ticks,
+            symbol="EURUSD",
+            bar_ticks=2,
+            start_tick_index=0,
+        )
+
+        assert "open_bid" in bars.columns
+        assert "high_bid" in bars.columns
+        assert "low_bid" in bars.columns
+        assert "close_bid" in bars.columns
+        assert "high_ask" in bars.columns
+        assert "close_ask" in bars.columns
+        assert "open" not in bars.columns
+        assert "high" not in bars.columns
+        assert "low" not in bars.columns
+        assert "close" not in bars.columns
+        assert "ask" not in bars.columns
+        assert "close_EURUSD" not in bars.columns
+        assert "ask_EURUSD" not in bars.columns
+        assert "spread_EURUSD" not in bars.columns

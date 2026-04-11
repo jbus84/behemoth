@@ -148,11 +148,12 @@ def _empty_bar_frame(symbol: str) -> pl.DataFrame:
         schema={
             "timestamp": UTC_TS,
             "close_ts": UTC_TS,
-            "open": pl.Float64,
-            "high": pl.Float64,
-            "low": pl.Float64,
-            "close": pl.Float64,
-            "ask": pl.Float64,
+            "open_bid": pl.Float64,
+            "high_bid": pl.Float64,
+            "low_bid": pl.Float64,
+            "close_bid": pl.Float64,
+            "high_ask": pl.Float64,
+            "close_ask": pl.Float64,
             "spread": pl.Float64,
             "tick_volume": pl.Int64,
             "high_pos_tick": pl.Int32,
@@ -160,9 +161,6 @@ def _empty_bar_frame(symbol: str) -> pl.DataFrame:
             "hl_first": pl.Int8,
             "hl_pos_delta_tick": pl.Int32,
             "hl_pos_frac": pl.Float64,
-            f"close_{symbol}": pl.Float64,
-            f"ask_{symbol}": pl.Float64,
-            f"spread_{symbol}": pl.Float64,
         }
     )
 
@@ -202,11 +200,12 @@ def _bars_from_ticks(
         .agg(
             pl.col("timestamp").first().alias("timestamp"),
             pl.col("timestamp").last().alias("close_ts"),
-            pl.col("price").first().alias("open"),
-            pl.col("price").max().alias("high"),
-            pl.col("price").min().alias("low"),
-            pl.col("price").last().alias("close"),
-            pl.col("ask").last().alias("ask"),
+            pl.col("price").first().alias("open_bid"),
+            pl.col("price").max().alias("high_bid"),
+            pl.col("price").min().alias("low_bid"),
+            pl.col("price").last().alias("close_bid"),
+            pl.col("ask").max().alias("high_ask"),
+            pl.col("ask").last().alias("close_ask"),
             pl.col("spread").mean().alias("spread"),
             pl.len().cast(pl.Int64).alias("tick_volume"),
             pl.when(pl.col("price") == pl.col("_bar_high"))
@@ -236,18 +235,16 @@ def _bars_from_ticks(
                 (pl.col("low_pos_tick") - pl.col("high_pos_tick")).cast(pl.Float64)
                 / float(max(1, int(bar_ticks) - 1))
             ).alias("hl_pos_frac"),
-            pl.col("close").alias(f"close_{symbol}"),
-            pl.col("ask").alias(f"ask_{symbol}"),
-            pl.col("spread").alias(f"spread_{symbol}"),
         )
         .select(
             "timestamp",
             "close_ts",
-            "open",
-            "high",
-            "low",
-            "close",
-            "ask",
+            "open_bid",
+            "high_bid",
+            "low_bid",
+            "close_bid",
+            "high_ask",
+            "close_ask",
             "spread",
             "tick_volume",
             "high_pos_tick",
@@ -255,9 +252,6 @@ def _bars_from_ticks(
             "hl_first",
             "hl_pos_delta_tick",
             "hl_pos_frac",
-            f"close_{symbol}",
-            f"ask_{symbol}",
-            f"spread_{symbol}",
         )
     )
 
@@ -364,8 +358,8 @@ def _aggregate_from_base(
             (pl.col("row_idx") % factor).cast(pl.Int32).alias("agg_child_idx"),
         )
         .with_columns(
-            pl.col("high").max().over("agg_id").alias("_agg_high"),
-            pl.col("low").min().over("agg_id").alias("_agg_low"),
+            pl.col("high_bid").max().over("agg_id").alias("_agg_high_bid"),
+            pl.col("low_bid").min().over("agg_id").alias("_agg_low_bid"),
         )
     )
 
@@ -374,20 +368,21 @@ def _aggregate_from_base(
         .agg(
             pl.col("timestamp").first().alias("timestamp"),
             pl.col("close_ts").last().alias("close_ts"),
-            pl.col("open").first().alias("open"),
-            pl.col("high").max().alias("high"),
-            pl.col("low").min().alias("low"),
-            pl.col("close").last().alias("close"),
-            pl.col("ask").last().alias("ask"),
+            pl.col("open_bid").first().alias("open_bid"),
+            pl.col("high_bid").max().alias("high_bid"),
+            pl.col("low_bid").min().alias("low_bid"),
+            pl.col("close_bid").last().alias("close_bid"),
+            pl.col("high_ask").max().alias("high_ask"),
+            pl.col("close_ask").last().alias("close_ask"),
             pl.col("spread").mean().alias("spread"),
             pl.col("tick_volume").sum().cast(pl.Int64).alias("tick_volume"),
-            pl.when(pl.col("high") == pl.col("_agg_high"))
+            pl.when(pl.col("high_bid") == pl.col("_agg_high_bid"))
             .then(pl.col("agg_child_idx") * int(base_ticks) + pl.col("high_pos_tick"))
             .otherwise(None)
             .min()
             .cast(pl.Int32)
             .alias("high_pos_tick"),
-            pl.when(pl.col("low") == pl.col("_agg_low"))
+            pl.when(pl.col("low_bid") == pl.col("_agg_low_bid"))
             .then(pl.col("agg_child_idx") * int(base_ticks) + pl.col("low_pos_tick"))
             .otherwise(None)
             .min()
@@ -408,18 +403,16 @@ def _aggregate_from_base(
                 (pl.col("low_pos_tick") - pl.col("high_pos_tick")).cast(pl.Float64)
                 / float(max(1, int(target_ticks) - 1))
             ).alias("hl_pos_frac"),
-            pl.col("close").alias(f"close_{symbol}"),
-            pl.col("ask").alias(f"ask_{symbol}"),
-            pl.col("spread").alias(f"spread_{symbol}"),
         )
         .select(
             "timestamp",
             "close_ts",
-            "open",
-            "high",
-            "low",
-            "close",
-            "ask",
+            "open_bid",
+            "high_bid",
+            "low_bid",
+            "close_bid",
+            "high_ask",
+            "close_ask",
             "spread",
             "tick_volume",
             "high_pos_tick",
@@ -427,9 +420,6 @@ def _aggregate_from_base(
             "hl_first",
             "hl_pos_delta_tick",
             "hl_pos_frac",
-            f"close_{symbol}",
-            f"ask_{symbol}",
-            f"spread_{symbol}",
         )
     )
     return out, dropped_base_bars
