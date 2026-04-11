@@ -1,3 +1,22 @@
+## v0.9.0 (2026-04-11)
+
+### Feat
+
+- diagnose_live_replay emits high_ask and close_ask from _build_bars_from_ticks
+- _oco_precompute uses high_ask for BUY trigger and close_ask for SELL exit label
+- pass bar_high_ask from tick_bars state to barrier manager evaluate_bar
+- barrier_manager up_touch uses bar_high_ask (ASK price) for BUY trigger
+- add high_ask and close_ask columns to tick_bars DDL and state manager
+- add high_ask and close_ask fields to IncomingTickBar and TickAggregator
+
+### Fix
+
+- align ask aggregation with bid filtering in _build_bars_from_ticks
+- remove unused pytest import from test_oco_precompute_spread
+- clarify TestHoldCompletion test intent with explicit bar_high_ask values
+- use latest buffered tick bid for unrealized pips instead of stale bar close (#62)
+- count broker-open positions separately (#61)
+
 ## v0.8.3 (2026-04-10)
 
 ### Fix
