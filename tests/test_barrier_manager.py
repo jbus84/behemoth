@@ -312,9 +312,9 @@ class TestHoldCompletion:
         assert mgr.has_active_scan("GBPUSD", "oco|GBPUSD|100|h6|abc")
         mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29490, 1.0, 11, bar_high_ask=1.29530)
         assert mgr.has_active_scan("GBPUSD", "oco|GBPUSD|100|h6|abc")
-        mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 12)
+        mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 12, bar_high_ask=1.29510)
         assert mgr.has_active_scan("GBPUSD", "oco|GBPUSD|100|h6|abc")
-        mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 13)
+        mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 13, bar_high_ask=1.29510)
         assert not mgr.has_active_scan("GBPUSD", "oco|GBPUSD|100|h6|abc")
 
 
