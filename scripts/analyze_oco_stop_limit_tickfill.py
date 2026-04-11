@@ -166,6 +166,7 @@ def _rebuild_touch_events(
         bars = read_explicit_bar_parquet(
             vpath,
             columns=["timestamp", "close_ts", "close_bid", "high_bid", "low_bid", "hl_first"],
+            required=["timestamp", "close_ts", "close_bid", "high_bid", "low_bid"],
         )
         bars["timestamp"] = pd.to_datetime(bars["timestamp"], utc=True, errors="coerce")
         bars["close_ts"] = pd.to_datetime(bars["close_ts"], utc=True, errors="coerce")

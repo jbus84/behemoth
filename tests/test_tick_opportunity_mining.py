@@ -76,6 +76,32 @@ def _build_legacy_velocity_bars(path: Path, *, symbol: str, bar_ticks: int) -> p
     return bars
 
 
+def _build_explicit_velocity_bars(path: Path, *, symbol: str, bar_ticks: int) -> pd.DataFrame:
+    ts = pd.date_range("2025-01-01", periods=240, freq="30min", tz="UTC")
+    close = 1.10 + np.linspace(0.0, 0.003, len(ts))
+    open_ = np.r_[close[0], close[:-1]]
+    high = np.maximum(open_, close) + 0.0002
+    low = np.minimum(open_, close) - 0.0002
+    bars = pd.DataFrame(
+        {
+            "symbol": symbol,
+            "bar_ticks": bar_ticks,
+            "timestamp": ts - pd.to_timedelta(30, unit="m"),
+            "close_ts": ts,
+            "open_bid": open_,
+            "high_bid": high,
+            "low_bid": low,
+            "close_bid": close,
+            "high_ask": high + 0.0001,
+            "close_ask": close + 0.0001,
+            "spread": 0.0001,
+            "hl_first": np.where(np.arange(len(ts)) % 2 == 0, 1.0, -1.0),
+        }
+    )
+    bars.to_parquet(path, index=False)
+    return bars
+
+
 def test_tick_opportunity_mining_outputs(tmp_path: Path) -> None:
     dataset_dir = tmp_path / "tick_velocity"
     dataset_dir.mkdir(parents=True, exist_ok=True)
@@ -152,3 +178,35 @@ def test_stop_limit_tickfill_rejects_legacy_ambiguous_bar_schema(tmp_path: Path)
             use_exec_selected=False,
             quantile=0.9,
         )
+
+
+def test_stop_limit_tickfill_accepts_partial_read_from_explicit_schema_velocity(tmp_path: Path) -> None:
+    symbol = "EURUSD"
+    bar_ticks = 1000
+    velocity_dir = tmp_path / "tick_velocity"
+    velocity_dir.mkdir(parents=True, exist_ok=True)
+    bars = _build_explicit_velocity_bars(
+        velocity_dir / f"{symbol}_{bar_ticks}tick_velocity.parquet",
+        symbol=symbol,
+        bar_ticks=bar_ticks,
+    )
+    pred_path = tmp_path / "predictions.parquet"
+    pd.DataFrame(
+        {
+            "close_ts": [bars.loc[150, "close_ts"]],
+            "candidate_uid": [f"oco|{symbol}|{bar_ticks}|h3|oco_first_touch_clean_k2"],
+            "target_gross_pips": [2.0],
+            "pred_prob": [0.95],
+        }
+    ).to_parquet(pred_path, index=False)
+
+    events = _rebuild_touch_events(
+        symbol=symbol,
+        pred_path=pred_path,
+        velocity_dir=velocity_dir,
+        use_exec_selected=False,
+        quantile=0.9,
+    )
+
+    assert not events.empty
+    assert events.loc[0, "candidate_uid"] == f"oco|{symbol}|{bar_ticks}|h3|oco_first_touch_clean_k2"
