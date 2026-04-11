@@ -76,6 +76,7 @@ def _build_bar(
     # Research reference (build_global_tick_bars.py) defaults to price_source="bid"
     prices = [float(t.bid) for t in ticks]
     spreads = [float(t.ask - t.bid) for t in ticks]
+    asks = [float(t.ask) for t in ticks]
 
     open_price, close_price, high_price, low_price, spread_mean = _compute_price_stats(prices, spreads)
 
@@ -94,6 +95,8 @@ def _build_bar(
         tick_volume=float(bar_ticks),
         hl_first=hl_first,
         hl_pos_frac=hl_pos_frac,
+        high_ask=max(asks),
+        close_ask=asks[-1],
     )
 
 

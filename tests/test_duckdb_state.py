@@ -61,6 +61,8 @@ def _make_synthetic_bars(
                 tick_volume=tv,
                 hl_first=hl_first_val,
                 hl_pos_frac=hl_pos_frac_val,
+                high_ask=round(h + spread, 5),
+                close_ask=round(c + spread, 5),
             )
         )
         t = close_ts + timedelta(seconds=rng.uniform(0.5, 5.0))
@@ -757,3 +759,19 @@ class TestTradeRicherRecording:
             "SELECT entry_bar_id, exit_bar_id FROM trades WHERE broker_pos_id = 'bp_5'"
         ).fetchone()
         assert row[1] > row[0]
+
+
+class TestHighAskPersistence:
+    """high_ask and close_ask survive the append_bar → get_latest_bar round-trip."""
+
+    def test_get_latest_bar_returns_high_ask(self):
+        from src.behemoth.runtime.state import StateManager
+
+        mgr = StateManager()
+        bar = _make_synthetic_bars(n=1)[0]
+        # Override to known values so the assertion is unambiguous
+        bar = bar.model_copy(update={"high_ask": 1.30050, "close_ask": 1.29980})
+        mgr.append_bar(bar)
+        latest = mgr.get_latest_bar(bar.symbol, bar.bar_ticks)
+        assert latest is not None
+        assert latest["high_ask"] == pytest.approx(1.30050)

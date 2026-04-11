@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
+import pytest
 
 from src.behemoth.core.schemas import IncomingTick
 
@@ -209,3 +210,32 @@ class TestTickAggregatorMultiSymbol:
         assert len(eu_bars) == 1
         assert len(gb_bars) == 0
         assert agg.remainder_count("GBPUSD") == 3
+
+
+class TestAskColumns:
+    """Verify high_ask and close_ask are correctly computed from ask prices."""
+
+    def test_high_ask_is_max_ask_per_bar(self):
+        from src.behemoth.runtime.tick_aggregator import TickAggregator
+
+        ticks = _make_ticks(100, spread=0.00012)
+        # Manually record the expected max ask
+        expected_high_ask = max(float(t.ask) for t in ticks)
+
+        agg = TickAggregator(bar_ticks=100)
+        bars = agg.add_ticks(ticks)
+
+        assert len(bars) == 1
+        assert bars[0].high_ask == pytest.approx(expected_high_ask)
+
+    def test_close_ask_is_last_ask_per_bar(self):
+        from src.behemoth.runtime.tick_aggregator import TickAggregator
+
+        ticks = _make_ticks(100, spread=0.00012)
+        expected_close_ask = float(ticks[-1].ask)
+
+        agg = TickAggregator(bar_ticks=100)
+        bars = agg.add_ticks(ticks)
+
+        assert len(bars) == 1
+        assert bars[0].close_ask == pytest.approx(expected_close_ask)

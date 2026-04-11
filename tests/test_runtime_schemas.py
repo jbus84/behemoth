@@ -69,6 +69,8 @@ class TestIncomingTickBar:
             close=1.26450,
             spread=0.00012,
             tick_volume=100.0,
+            high_ask=1.26512,
+            close_ask=1.26462,
         )
         assert bar.bar_ticks == 100
         assert bar.hl_first is None  # optional
@@ -87,6 +89,8 @@ class TestIncomingTickBar:
             tick_volume=100.0,
             hl_first=1.0,
             hl_pos_frac=0.65,
+            high_ask=150.12,
+            close_ask=150.07,
         )
         assert bar.hl_first == 1.0
         assert bar.hl_pos_frac == 0.65

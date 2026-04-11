@@ -615,6 +615,23 @@ def test_section_sensitivity_sweep_includes_expected_thresholds() -> None:
     assert "s1" in text and "s2" in text
 
 
+def test_build_bars_from_ticks_emits_high_ask_and_close_ask() -> None:
+    from scripts.diagnose_live_replay import _build_bars_from_ticks
+
+    bars = _build_bars_from_ticks(_tick_frame(200))
+
+    assert bars.height == 2
+    assert "high_ask" in bars.columns
+    assert "close_ask" in bars.columns
+
+    # _tick_frame sets ask = 1.1003 + n*0.0001 for tick n.
+    # Bar 0 covers ticks 0-99: ask ranges from 1.1003 to 1.1003+99*0.0001 = 1.1102.
+    # high_ask = max(ask over bar) = ask of tick 99 = 1.1003 + 0.0099 = 1.1102
+    # close_ask = ask of last tick in bar = same value
+    assert float(bars[0, "high_ask"]) == pytest.approx(1.1003 + 99 * 0.0001, abs=1e-6)
+    assert float(bars[0, "close_ask"]) == pytest.approx(1.1003 + 99 * 0.0001, abs=1e-6)
+
+
 def test_section_score_drift_reports_rolling_50_bar_average() -> None:
     from scripts.diagnose_live_replay import _section_score_drift
 

@@ -119,11 +119,12 @@ class BarrierManager:
         bar_low: float,
         bar_hl_first: float,
         current_bar_idx: int,
+        bar_high_ask: float = 0.0,
     ) -> list[dict]:
         """Evaluate a completed bar against all active scans for this symbol.
 
         Called on every bar completion. Mirrors _oco_precompute barrier detection:
-        - Checks bar_high >= upper_barrier (up touch) and bar_low <= lower_barrier (down touch)
+        - Checks bar_high_ask >= upper_barrier (up touch) and bar_low <= lower_barrier (dn touch)
         - If both touched same bar: uses bar_hl_first to break tie (positive = high first = BUY)
         - Returns list of action dicts: OPEN_MARKET for new touches, CLOSE_MARKET for completed holds
         """
@@ -143,7 +144,7 @@ class BarrierManager:
              bars_rem, signal_bar_idx, reservation_id, horizon) = row
 
             bars_rem -= 1
-            up_touch = bar_high >= upper
+            up_touch = bar_high_ask >= upper
             dn_touch = bar_low <= lower
             touch_step = current_bar_idx - signal_bar_idx
 
