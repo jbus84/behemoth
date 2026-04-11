@@ -1005,7 +1005,7 @@ def _latest_tick_price_snapshot(sym: str) -> dict[str, Any] | None:
         return None
     row = _state._con.execute(
         """
-        SELECT close_price, close_ts
+        SELECT close_bid, close_ts
         FROM tick_bars
         WHERE symbol = ?
         ORDER BY row_id DESC

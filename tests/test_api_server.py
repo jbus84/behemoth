@@ -3008,6 +3008,49 @@ class TestSeedFileLoading:
 
 
 class TestOpenSummaryEndpoint:
+    def test_fx_snapshot_and_conversion_use_canonical_close_bid_schema(self):
+        from datetime import datetime, timezone
+
+        from src.behemoth.api import server
+        from src.behemoth.core.schemas import IncomingTickBar
+        from src.behemoth.runtime.state import StateManager
+
+        original_state = server._state
+        server._state = StateManager()
+        try:
+            server._state.append_bar(
+                IncomingTickBar(
+                    symbol="USDJPY",
+                    bar_ticks=100,
+                    timestamp=datetime(2026, 4, 10, 10, 0, tzinfo=timezone.utc),
+                    close_ts=datetime(2026, 4, 10, 10, 1, tzinfo=timezone.utc),
+                    open_bid=145.10,
+                    high_bid=145.22,
+                    low_bid=145.05,
+                    close_bid=145.20,
+                    spread=0.02,
+                    tick_volume=100.0,
+                    high_ask=145.24,
+                    close_ask=145.22,
+                )
+            )
+
+            snapshot = server._latest_tick_price_snapshot("USDJPY")
+            conversion = server._pip_value_per_unit_usd(
+                "USDJPY",
+                now_utc=datetime(2026, 4, 10, 10, 1, 30, tzinfo=timezone.utc),
+                max_age_sec=300,
+            )
+
+            assert snapshot is not None
+            assert snapshot["price"] == pytest.approx(145.20)
+            assert conversion["conversion_status"] == "direct_base_usd"
+            assert conversion["conversion_pair"] == "USDJPY"
+            assert conversion["conversion_rate"] == pytest.approx(145.20)
+            assert conversion["pip_value_per_unit_usd"] == pytest.approx(0.01 / 145.20)
+        finally:
+            server._state = original_state
+
     def test_open_summary_empty(self, client):
         """No open reservations → empty positions list."""
         r = client.get("/trades/open-summary")
