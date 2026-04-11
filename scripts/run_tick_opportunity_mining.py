@@ -40,6 +40,16 @@ DEFAULTS: dict[str, Any] = {
 CANDIDATE_SCHEMA_VERSION = "2.0"
 SELECTION_PASS_BASIS = "train_only"
 QUALITY_TIER_BASIS = "train_only"
+EXPLICIT_BAR_SCHEMA_COLUMNS = [
+    "open_bid",
+    "high_bid",
+    "low_bid",
+    "close_bid",
+    "high_ask",
+    "close_ask",
+    "spread",
+]
+LEGACY_AMBIGUOUS_BAR_COLUMNS = {"open", "high", "low", "close", "ask"}
 
 
 def _parse_ints(raw: str) -> list[int]:
@@ -101,20 +111,55 @@ def _safe_numeric(s: pd.Series) -> pd.Series:
     return pd.to_numeric(s, errors="coerce").astype(float)
 
 
-def _prepare_frame(path: Path, *, symbol: str, horizons: list[int]) -> pd.DataFrame:
-    d = pd.read_parquet(path).copy()
-    d["close_ts"] = pd.to_datetime(d["close_ts"], utc=True, errors="coerce")
-    d = d[d["close_ts"].notna()].sort_values("close_ts").reset_index(drop=True)
-    if d.empty:
-        return d
+def _schema_source_label(path: str | Path | None) -> str:
+    if path is None:
+        return "bar frame"
+    return Path(path).name
 
-    req = [
-        "open_bid",
-        "high_bid",
-        "low_bid",
-        "close_bid",
-        "high_ask",
-        "close_ask",
+
+def require_explicit_bar_schema(
+    columns: list[str] | pd.Index | set[str],
+    *,
+    path: str | Path | None = None,
+) -> None:
+    cols = {str(c) for c in columns}
+    legacy = sorted(LEGACY_AMBIGUOUS_BAR_COLUMNS & cols)
+    if legacy:
+        raise ValueError(
+            f"{_schema_source_label(path)} legacy ambiguous bar schema unsupported: {legacy}"
+        )
+
+
+def load_bar_frame(
+    frame: pd.DataFrame,
+    *,
+    path: str | Path | None = None,
+    required: list[str] | None = None,
+) -> pd.DataFrame:
+    out = frame.copy()
+    require_explicit_bar_schema(out.columns, path=path)
+    need = list(required) if required is not None else list(EXPLICIT_BAR_SCHEMA_COLUMNS)
+    miss = [c for c in need if c not in out.columns]
+    if miss:
+        raise ValueError(f"{_schema_source_label(path)} missing explicit bar schema columns: {miss}")
+    return out
+
+
+def read_explicit_bar_parquet(
+    path: Path,
+    *,
+    columns: list[str] | None = None,
+    required: list[str] | None = None,
+) -> pd.DataFrame:
+    try:
+        frame = pd.read_parquet(path, columns=columns).copy() if columns is not None else pd.read_parquet(path).copy()
+    except Exception:
+        frame = pd.read_parquet(path).copy()
+    return load_bar_frame(frame, path=path, required=required)
+
+
+def _prepare_frame(path: Path, *, symbol: str, horizons: list[int]) -> pd.DataFrame:
+    req = EXPLICIT_BAR_SCHEMA_COLUMNS + [
         "cost_est_pips",
         "range_pips",
         "hour_utc",
@@ -122,12 +167,11 @@ def _prepare_frame(path: Path, *, symbol: str, horizons: list[int]) -> pd.DataFr
         "tick_rate_z",
         "vel_cost_units_h1",
     ]
-    miss = [c for c in req if c not in d.columns]
-    if miss:
-        raise ValueError(f"{path.name} missing columns: {miss}")
-    legacy = sorted({"open", "high", "low", "close", "ask"} & set(d.columns))
-    if legacy:
-        raise ValueError(f"{path.name} legacy ambiguous bar schema unsupported: {legacy}")
+    d = load_bar_frame(pd.read_parquet(path).copy(), path=path, required=req)
+    d["close_ts"] = pd.to_datetime(d["close_ts"], utc=True, errors="coerce")
+    d = d[d["close_ts"].notna()].sort_values("close_ts").reset_index(drop=True)
+    if d.empty:
+        return d
 
     pip = float(_pip_size(symbol))
     d["open_bid"] = _safe_numeric(d["open_bid"])

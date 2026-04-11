@@ -17,6 +17,11 @@ try:
 except Exception:
     pq = None  # type: ignore[assignment]
 
+try:
+    from scripts.run_tick_opportunity_mining import require_explicit_bar_schema
+except ModuleNotFoundError:
+    from run_tick_opportunity_mining import require_explicit_bar_schema  # type: ignore
+
 
 @dataclass(frozen=True)
 class Thresholds:
@@ -145,10 +150,13 @@ def run(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     req_cols = [
         "close_ts",
-        "open",
-        "high",
-        "low",
-        "close",
+        "open_bid",
+        "high_bid",
+        "low_bid",
+        "close_bid",
+        "high_ask",
+        "close_ask",
+        "spread",
         "cost_est_pips",
         "range_pips",
         "hour_utc",
@@ -181,12 +189,14 @@ def run(
 
         schema = _schema_columns(src)
         if schema:
+            require_explicit_bar_schema(schema, path=src)
             missing_req = [c for c in req_cols if c not in schema]
             read_cols = [c for c in (req_cols + opt_cols) if c in schema]
         else:
             missing_req = []
             read_cols = req_cols + opt_cols
         d = _safe_read_parquet(src, read_cols).copy()
+        require_explicit_bar_schema(d.columns, path=src)
         if not schema:
             missing_req = [c for c in req_cols if c not in d.columns]
 
@@ -277,10 +287,13 @@ def run(
         core_num = [
             c
             for c in [
-                "open",
-                "high",
-                "low",
-                "close",
+                "open_bid",
+                "high_bid",
+                "low_bid",
+                "close_bid",
+                "high_ask",
+                "close_ask",
+                "spread",
                 "cost_est_pips",
                 "range_pips",
                 "hour_utc",
@@ -331,10 +344,10 @@ def run(
             source_path=src,
         )
 
-        o = cnum.get("open")
-        h = cnum.get("high")
-        l = cnum.get("low")
-        c = cnum.get("close")
+        o = cnum.get("open_bid")
+        h = cnum.get("high_bid")
+        l = cnum.get("low_bid")
+        c = cnum.get("close_bid")
         ohlc_violation_rate = float("nan")
         if o is not None and h is not None and l is not None and c is not None:
             good = o.notna() & h.notna() & l.notna() & c.notna()
@@ -363,12 +376,13 @@ def run(
         )
 
         nonneg_violation_rate = float("nan")
-        if "cost_est_pips" in cnum and "range_pips" in cnum:
+        if "cost_est_pips" in cnum and "range_pips" in cnum and "spread" in cnum:
             cc = cnum["cost_est_pips"]
             rr = cnum["range_pips"]
-            good = cc.notna() & rr.notna()
+            sp = cnum["spread"]
+            good = cc.notna() & rr.notna() & sp.notna()
             if int(good.sum()) > 0:
-                bad = (cc[good] < 0.0) | (rr[good] < 0.0)
+                bad = (cc[good] < 0.0) | (rr[good] < 0.0) | (sp[good] < 0.0)
                 nonneg_violation_rate = float(np.mean(bad.to_numpy(dtype=bool)))
         _add_check(
             checks_rows,

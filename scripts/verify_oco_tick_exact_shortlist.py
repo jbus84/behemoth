@@ -16,6 +16,11 @@ try:
 except Exception:
     yaml = None  # type: ignore[assignment]
 
+try:
+    from scripts.run_tick_opportunity_mining import read_explicit_bar_parquet
+except ModuleNotFoundError:
+    from run_tick_opportunity_mining import read_explicit_bar_parquet  # type: ignore
+
 
 DEFAULTS: dict[str, Any] = {
     "symbol": "EURUSD",
@@ -442,14 +447,15 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         path = dataset_dir / f"{symbol}_{bt}tick_velocity.parquet"
         if not path.exists():
             raise FileNotFoundError(path)
-        bars = pd.read_parquet(
-            path, columns=["close_ts", "close", "high", "low", "hl_first"]
-        ).copy()
+        bars = read_explicit_bar_parquet(
+            path,
+            columns=["close_ts", "close_bid", "high_bid", "low_bid", "hl_first"],
+        )
         bars["close_ts"] = pd.to_datetime(bars["close_ts"], utc=True, errors="coerce")
         bars = bars.dropna(subset=["close_ts"]).sort_values("close_ts").reset_index(drop=True)
-        close = pd.to_numeric(bars["close"], errors="coerce").to_numpy(dtype=float)
-        high = pd.to_numeric(bars["high"], errors="coerce").to_numpy(dtype=float)
-        low = pd.to_numeric(bars["low"], errors="coerce").to_numpy(dtype=float)
+        close = pd.to_numeric(bars["close_bid"], errors="coerce").to_numpy(dtype=float)
+        high = pd.to_numeric(bars["high_bid"], errors="coerce").to_numpy(dtype=float)
+        low = pd.to_numeric(bars["low_bid"], errors="coerce").to_numpy(dtype=float)
         hlf = pd.to_numeric(bars["hl_first"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
         idx_map = pd.Series(np.arange(len(bars), dtype=np.int64), index=bars["close_ts"])
         idx_map = idx_map[~idx_map.index.duplicated(keep="first")]
