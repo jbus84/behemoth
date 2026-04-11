@@ -2685,6 +2685,7 @@ async def predict(req: PredictRequest) -> PredictResponse:
                 bar_low=latest_bar["low_price"],
                 bar_hl_first=latest_bar.get("hl_first", 0.0),
                 current_bar_idx=latest_bar["row_id"],
+                bar_high_ask=latest_bar.get("high_ask", 0.0),
             )
             for a in raw_actions:
                 if a["type"] == "RELEASE_RESERVATION":
