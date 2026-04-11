@@ -342,6 +342,21 @@ def _oco_precompute(
     high = pd.to_numeric(df["high"], errors="coerce").to_numpy(dtype=float)
     low = pd.to_numeric(df["low"], errors="coerce").to_numpy(dtype=float)
     hlf = pd.to_numeric(df["hl_first"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
+
+    # ASK-side columns for spread-adjusted trigger and SELL exit label.
+    # Fall back to BID columns when missing (degrades to pre-fix behaviour).
+    if "high_ask" in df.columns:
+        _raw = pd.to_numeric(df["high_ask"], errors="coerce")
+        high_ask = np.where(_raw.isna(), high, _raw.to_numpy(dtype=float))
+    else:
+        high_ask = high
+
+    if "close_ask" in df.columns:
+        _raw = pd.to_numeric(df["close_ask"], errors="coerce")
+        close_ask = np.where(_raw.isna(), close, _raw.to_numpy(dtype=float))
+    else:
+        close_ask = close
+
     h = int(horizon)
     mode = str(hold_mode).strip().lower()
     if mode not in {"from_touch", "from_start"}:
@@ -365,8 +380,8 @@ def _oco_precompute(
     any_dn = np.zeros(len(i0), dtype=bool)
     for s in range(1, h + 1):
         idx = i0 + int(s)
-        hu = high[idx] >= up_thr
-        hd = low[idx] <= dn_thr
+        hu = high_ask[idx] >= up_thr   # ASK reaches upper barrier (BUY trigger)
+        hd = low[idx] <= dn_thr        # BID reaches lower barrier (SELL trigger, unchanged)
         set_up = (up_step == inf) & hu
         set_dn = (dn_step == inf) & hd
         up_step[set_up] = int(s)
@@ -402,7 +417,12 @@ def _oco_precompute(
             num_ok = np.isfinite(ex_ok) & np.isfinite(ref[ok_idx])
             use = ok_idx[num_ok]
             if len(use) > 0:
-                gross[use] = side[use].astype(float) * ((close[exit_i[use]] - ref[use]) / pip) - k
+                exit_price_use = np.where(
+                    side[use] == -1,
+                    close_ask[exit_i[use]],
+                    close[exit_i[use]],
+                )
+                gross[use] = side[use].astype(float) * ((exit_price_use - ref[use]) / pip) - k
     return {
         "i0": i0,
         "gross": gross,
