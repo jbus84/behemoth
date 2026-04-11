@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from scripts.build_tick_opportunity_ml_dataset import _oco_precompute
 
