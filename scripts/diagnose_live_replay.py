@@ -178,12 +178,33 @@ def _build_bars_from_ticks(ticks: pl.DataFrame) -> pl.DataFrame:
         )
     )
 
-    # Compute ask-side bar columns directly from the raw tick ask prices.
+    # Compute ask-side bar columns, applying the same null-drop and
+    # timestamp-sort as _tick_price_frame so ask data aligns with bid bars.
     if has_ask:
-        ask_col = ticks.get_column("ask").cast(pl.Float64)
-        ask_complete = ask_col.slice(0, n_complete)
-        ask_with_bar = pl.DataFrame({"ask": ask_complete}).with_row_index("row_idx").with_columns(
-            (pl.col("row_idx") // 100).cast(pl.Int64).alias("bar_id")
+        # Apply the same null-drop and timestamp-sort as _tick_price_frame
+        # so ask data aligns with bid-price bars row-for-row.
+        cols_set = set(ticks.columns)
+        if "bid" in cols_set:
+            _price_for_filter = pl.col("bid").cast(pl.Float64)
+        elif "mid" in cols_set:
+            _price_for_filter = pl.col("mid").cast(pl.Float64)
+        else:
+            _price_for_filter = pl.col("close").cast(pl.Float64)
+        ask_aligned = (
+            ticks.select(
+                pl.col("timestamp"),
+                _price_for_filter.alias("_price"),
+                pl.col("ask").cast(pl.Float64).alias("ask"),
+            )
+            .drop_nulls(["timestamp", "_price"])
+            .sort("timestamp")
+            .get_column("ask")
+            .slice(0, n_complete)
+        )
+        ask_with_bar = (
+            pl.DataFrame({"ask": ask_aligned})
+            .with_row_index("row_idx")
+            .with_columns((pl.col("row_idx") // 100).cast(pl.Int64).alias("bar_id"))
         )
         ask_bars = (
             ask_with_bar.group_by("bar_id", maintain_order=True)
