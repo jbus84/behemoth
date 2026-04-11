@@ -204,6 +204,144 @@ class TestMetricsEndpoint:
         assert 'behemoth_broker_open_positions_total{symbol="AUDUSD"} 0.0' in metrics.text
 
 
+class TestPredictLatestBarSchema:
+    def test_predict_uses_explicit_bid_latest_bar_keys_for_barrier_lifecycle(self, client):
+        import unittest.mock as mock
+        from datetime import datetime, timezone
+        from types import SimpleNamespace
+
+        import numpy as np
+
+        from src.behemoth.api import server
+        from src.behemoth.core.schemas import ModelFeatures, OcoPrediction
+
+        dummy_cand = mock.MagicMock()
+        dummy_cand.bar_ticks = 100
+        dummy_cand.horizon = 24
+        dummy_cand.barrier_pips = 15.0
+        dummy_cand.candidate_uid = "cand1"
+
+        dummy_features = ModelFeatures(
+            cost_est_pips=1.0,
+            range_pips=10.0,
+            ret1_pips=2.0,
+            ret_z=0.5,
+            ret_abs_z=0.5,
+            vel_cost_units_h1=2.0,
+            vel_abs_cost_units_h1=2.0,
+            spread_z=0.1,
+            tick_rate_z=0.1,
+            hour_utc=10.0,
+            hl_first=1.0,
+            hl_first_mean_24=0.5,
+            hl_pos_frac_mean_24=0.5,
+            bar_ticks=100.0,
+            horizon=24.0,
+            barrier_pips=15.0,
+        )
+        prediction = OcoPrediction(
+            symbol="EURUSD",
+            close_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            candidate_uid="cand1",
+            pred_prob=0.85,
+            threshold_exec=0.5,
+            selected_exec=1,
+            bar_ticks=100,
+            horizon=24,
+            barrier_pips=15.0,
+            cap_pips=1.2,
+            threshold_source="test",
+            model_month="2025-01",
+        )
+        barrier_manager = mock.MagicMock()
+        barrier_manager.evaluate_bar.return_value = []
+        barrier_manager.has_active_scan.return_value = False
+        latest_bar = {
+            "row_id": 17,
+            "open_bid": 1.1000,
+            "high_bid": 1.1025,
+            "low_bid": 1.0985,
+            "close_bid": 1.1015,
+            "hl_first": 1.0,
+            "high_ask": 1.1027,
+            "close_ask": 1.1017,
+        }
+
+        original_barrier_manager = server._barrier_manager
+        server._barrier_manager = barrier_manager
+        try:
+            with (
+                mock.patch.object(
+                    server,
+                    "_resolve_runtime_contract",
+                    return_value=SimpleNamespace(
+                        candidates=[dummy_cand],
+                        model_month="2025-01",
+                        cap_pips=1.2,
+                    ),
+                ),
+                mock.patch.object(
+                    server,
+                    "_ensure_model_and_threshold",
+                    return_value=(
+                        mock.MagicMock(predict_proba=mock.MagicMock(return_value=np.array([[0.1, 0.85]]))),
+                        {
+                            "threshold_exec": 0.5,
+                            "threshold_source": "test",
+                            "rolling_threshold_days": 20,
+                            "rolling_threshold_min_history": 1,
+                            "execution_quantile": 0.9,
+                        },
+                    ),
+                ),
+                mock.patch.object(server, "_check_warmup", return_value=None),
+                mock.patch.object(server._state, "compute_features", return_value=dummy_features),
+                mock.patch.object(
+                    server._state,
+                    "get_latest_close_ts",
+                    return_value=datetime(2025, 1, 1, tzinfo=timezone.utc),
+                ),
+                mock.patch.object(server._state, "get_rolling_threshold", return_value=0.5),
+                mock.patch.object(server._state, "get_latest_bar", return_value=latest_bar),
+                mock.patch.object(server, "_build_predictions", return_value=([prediction], [])),
+            ):
+                response = client.post(
+                    "/predict",
+                    json={
+                        "symbol": "EURUSD",
+                        "requested_volume_units": 10000,
+                        "account_risk_enabled_override": False,
+                    },
+                )
+
+            assert response.status_code == 200
+            barrier_manager.evaluate_bar.assert_called_once_with(
+                symbol="EURUSD",
+                bar_ticks=100,
+                bar_high=latest_bar["high_bid"],
+                bar_low=latest_bar["low_bid"],
+                bar_hl_first=latest_bar["hl_first"],
+                current_bar_idx=latest_bar["row_id"],
+                bar_high_ask=latest_bar["high_ask"],
+            )
+            barrier_manager.register_scan.assert_called_once_with(
+                symbol="EURUSD",
+                candidate_uid="cand1",
+                signal_bar_idx=latest_bar["row_id"],
+                ref_price=latest_bar["close_bid"],
+                barrier_pips=15.0,
+                horizon=24,
+                pip_size=0.0001,
+                pred_prob=0.85,
+                threshold=0.5,
+                model_month="2025-01",
+                reservation_id=None,
+                run_id=mock.ANY,
+            )
+        finally:
+            server._barrier_manager = original_barrier_manager
+
+
 class TestAccountRiskEndpoints:
     def test_account_limits_endpoint(self, client):
         r = client.get("/risk/account/limits")

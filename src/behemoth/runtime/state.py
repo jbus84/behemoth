@@ -264,48 +264,42 @@ class StateManager:
                 self._row_counters[f"{r[0].upper()}_{r[1]}"] = int(r[2]) + 1
 
     def _ensure_runtime_schema(self) -> None:
-        """Ensure runtime tables expose the explicit bar-side columns we use."""
-        try:
-            self._ensure_table_column(
-                table_name="audit_logs",
-                column_name="close_ts",
-                column_sql="TIMESTAMP WITH TIME ZONE",
-            )
-            self._ensure_table_column(
-                table_name="audit_logs",
-                column_name="run_id",
-                column_sql="VARCHAR",
-            )
-            self._ensure_table_column(
-                table_name="trades",
-                column_name="run_id",
-                column_sql="VARCHAR",
-            )
-            self._ensure_table_column(
-                table_name="raw_ticks",
-                column_name="client_tick_seq",
-                column_sql="BIGINT",
-            )
-            self._ensure_table_column(
-                table_name="raw_ticks",
-                column_name="run_id",
-                column_sql="VARCHAR",
-            )
-            self._ensure_table_column(
-                table_name="tick_bars",
-                column_name="high_ask",
-                column_sql="DOUBLE",
-            )
-            self._ensure_table_column(
-                table_name="tick_bars",
-                column_name="close_ask",
-                column_sql="DOUBLE",
-            )
-        except Exception:
-            # Best-effort migration only; avoid startup hard failure.
-            pass
+        """Ensure persisted runtime tables match the canonical explicit-bid schema."""
+        self._migrate_tick_bars_table()
+        self._ensure_table_column(
+            table_name="audit_logs",
+            column_name="close_ts",
+            column_sql="TIMESTAMP WITH TIME ZONE",
+        )
+        self._ensure_table_column(
+            table_name="audit_logs",
+            column_name="run_id",
+            column_sql="VARCHAR",
+        )
+        self._ensure_table_column(
+            table_name="trades",
+            column_name="run_id",
+            column_sql="VARCHAR",
+        )
+        self._ensure_table_column(
+            table_name="raw_ticks",
+            column_name="client_tick_seq",
+            column_sql="BIGINT",
+        )
+        self._ensure_table_column(
+            table_name="raw_ticks",
+            column_name="run_id",
+            column_sql="VARCHAR",
+        )
 
     def _ensure_table_column(self, *, table_name: str, column_name: str, column_sql: str) -> None:
+        colset = self._get_table_columns(table_name)
+        if str(column_name).lower() not in colset:
+            self._con.execute(
+                f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_sql}"
+            )
+
+    def _get_table_columns(self, table_name: str) -> set[str]:
         cols = self._con.execute(
             """
             SELECT lower(column_name)
@@ -314,11 +308,37 @@ class StateManager:
             """,
             [str(table_name).lower()],
         ).fetchall()
-        colset = {str(r[0]).lower() for r in cols}
-        if str(column_name).lower() not in colset:
-            self._con.execute(
-                f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_sql}"
-            )
+        return {str(r[0]).lower() for r in cols}
+
+    def _migrate_tick_bars_table(self) -> None:
+        """Upgrade persisted tick_bars tables from legacy *_price columns once."""
+        legacy_to_canonical = {
+            "open_price": "open_bid",
+            "high_price": "high_bid",
+            "low_price": "low_bid",
+            "close_price": "close_bid",
+        }
+        columns = self._get_table_columns("tick_bars")
+        for legacy_name, canonical_name in legacy_to_canonical.items():
+            if canonical_name in columns:
+                continue
+            if legacy_name in columns:
+                self._con.execute(
+                    f"ALTER TABLE tick_bars RENAME COLUMN {legacy_name} TO {canonical_name}"
+                )
+                columns.remove(legacy_name)
+                columns.add(canonical_name)
+
+        self._ensure_table_column(
+            table_name="tick_bars",
+            column_name="high_ask",
+            column_sql="DOUBLE",
+        )
+        self._ensure_table_column(
+            table_name="tick_bars",
+            column_name="close_ask",
+            column_sql="DOUBLE",
+        )
 
     def append_bar(self, bar: IncomingTickBar) -> None:
         """Append a validated tick bar to the state buffer."""

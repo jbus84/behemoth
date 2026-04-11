@@ -794,3 +794,64 @@ class TestCanonicalBarSchemaNames:
         assert "high" not in latest
         assert "low" not in latest
         assert "close" not in latest
+
+
+class TestTickBarSchemaMigration:
+    def test_state_manager_renames_legacy_price_columns_to_explicit_bid_columns(self, tmp_path):
+        import duckdb
+
+        from src.behemoth.runtime.state import StateManager
+
+        db_path = tmp_path / "runtime.duckdb"
+        con = duckdb.connect(str(db_path))
+        con.execute(
+            """
+            CREATE TABLE tick_bars (
+                row_id INTEGER,
+                symbol VARCHAR,
+                bar_ticks INTEGER,
+                ts TIMESTAMP WITH TIME ZONE,
+                close_ts TIMESTAMP WITH TIME ZONE,
+                open_price DOUBLE,
+                high_price DOUBLE,
+                low_price DOUBLE,
+                close_price DOUBLE,
+                spread DOUBLE,
+                tick_volume DOUBLE,
+                hl_first DOUBLE,
+                hl_pos_frac DOUBLE
+            )
+            """
+        )
+        con.execute(
+            """
+            INSERT INTO tick_bars VALUES
+            (1, 'EURUSD', 100, TIMESTAMPTZ '2025-01-01 00:00:00+00', TIMESTAMPTZ '2025-01-01 00:01:00+00',
+             1.1000, 1.1010, 1.0990, 1.1005, 0.0002, 100.0, 1.0, 0.6)
+            """
+        )
+        con.close()
+
+        mgr = StateManager(persist_path=str(db_path))
+        columns = {
+            row[0]
+            for row in mgr._con.execute(
+                """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = 'tick_bars'
+                """
+            ).fetchall()
+        }
+        latest = mgr.get_latest_bar("EURUSD", 100)
+
+        assert {"open_bid", "high_bid", "low_bid", "close_bid"} <= columns
+        assert "open_price" not in columns
+        assert "high_price" not in columns
+        assert "low_price" not in columns
+        assert "close_price" not in columns
+        assert latest is not None
+        assert latest["open_bid"] == pytest.approx(1.1)
+        assert latest["high_bid"] == pytest.approx(1.101)
+        assert latest["low_bid"] == pytest.approx(1.099)
+        assert latest["close_bid"] == pytest.approx(1.1005)

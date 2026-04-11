@@ -150,7 +150,16 @@ def _build_symbol_dataset(
     vol_window: int,
     cost_window: int,
 ) -> pd.DataFrame:
-    req = ["timestamp", "close_ts", "open", "high", "low", "close", "spread", "tick_volume"]
+    req = [
+        "timestamp",
+        "close_ts",
+        "open_bid",
+        "high_bid",
+        "low_bid",
+        "close_bid",
+        "spread",
+        "tick_volume",
+    ]
     d = pd.read_parquet(bar_path)
 
     miss = [c for c in req if c not in d.columns]
@@ -165,10 +174,10 @@ def _build_symbol_dataset(
                 d["timestamp"], column="timestamp", source=bar_path
             ),
             "close_ts": _require_utc_timestamp(d["close_ts"], column="close_ts", source=bar_path),
-            "open": pd.to_numeric(d["open"], errors="coerce").astype(float),
-            "high": pd.to_numeric(d["high"], errors="coerce").astype(float),
-            "low": pd.to_numeric(d["low"], errors="coerce").astype(float),
-            "close": pd.to_numeric(d["close"], errors="coerce").astype(float),
+            "open": pd.to_numeric(d["open_bid"], errors="coerce").astype(float),
+            "high": pd.to_numeric(d["high_bid"], errors="coerce").astype(float),
+            "low": pd.to_numeric(d["low_bid"], errors="coerce").astype(float),
+            "close": pd.to_numeric(d["close_bid"], errors="coerce").astype(float),
             "spread": pd.to_numeric(d["spread"], errors="coerce").astype(float),
             "tick_volume": pd.to_numeric(d["tick_volume"], errors="coerce").astype(float),
         }
