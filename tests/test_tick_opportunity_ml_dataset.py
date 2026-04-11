@@ -4,7 +4,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 
+from behemoth.core.features import _extract_core_series
 from scripts.build_tick_opportunity_ml_dataset import run
 from scripts.run_tick_opportunity_mining import (
     CANDIDATE_SCHEMA_VERSION,
@@ -30,10 +32,12 @@ def _synth_tick_velocity(path: Path, *, symbol: str) -> None:
                 "bar_ticks": 1000,
                 "timestamp": ts - pd.to_timedelta(15, unit="m"),
                 "close_ts": ts,
-                "open": open_,
-                "high": high,
-                "low": low,
-                "close": close,
+                "open_bid": open_,
+                "high_bid": high,
+                "low_bid": low,
+                "close_bid": close,
+                "high_ask": high + 0.0001,
+                "close_ask": close + 0.0001,
                 "cost_est_pips": 0.3 + np.abs(rng.normal(0.0, 0.05, size=len(ts))),
                 "range_pips": (high - low) / 0.0001,
                 "hour_utc": ts.hour.astype(int),
@@ -193,7 +197,41 @@ def test_build_tick_opportunity_ml_dataset_rejects_stale_candidate_schema(tmp_pa
         "max_candidates_per_library": 10,
         "max_events_per_candidate": 1000,
     }
-    import pytest
-
     with pytest.raises(ValueError, match="candidate_schema_version"):
         run(cfg)
+
+
+def test_extract_core_series_requires_explicit_bid_columns() -> None:
+    df = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(["2025-01-01T00:00:00Z"]),
+            "close_ts": pd.to_datetime(["2025-01-01T00:15:00Z"]),
+            "open_bid": [1.0],
+            "high_bid": [1.1],
+            "low_bid": [0.9],
+            "close_bid": [1.0],
+        }
+    )
+
+    close_bid, open_bid, high_bid, low_bid, *_ = _extract_core_series(df)
+
+    assert float(close_bid.iloc[0]) == 1.0
+    assert float(open_bid.iloc[0]) == 1.0
+    assert float(high_bid.iloc[0]) == 1.1
+    assert float(low_bid.iloc[0]) == 0.9
+
+
+def test_extract_core_series_rejects_legacy_ambiguous_columns() -> None:
+    df = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(["2025-01-01T00:00:00Z"]),
+            "close_ts": pd.to_datetime(["2025-01-01T00:15:00Z"]),
+            "open": [1.0],
+            "high": [1.1],
+            "low": [0.9],
+            "close": [1.0],
+        }
+    )
+
+    with pytest.raises(ValueError, match="legacy ambiguous bar schema unsupported"):
+        _extract_core_series(df)

@@ -157,6 +157,8 @@ def _build_symbol_dataset(
         "high_bid",
         "low_bid",
         "close_bid",
+        "high_ask",
+        "close_ask",
         "spread",
         "tick_volume",
     ]
@@ -174,10 +176,12 @@ def _build_symbol_dataset(
                 d["timestamp"], column="timestamp", source=bar_path
             ),
             "close_ts": _require_utc_timestamp(d["close_ts"], column="close_ts", source=bar_path),
-            "open": pd.to_numeric(d["open_bid"], errors="coerce").astype(float),
-            "high": pd.to_numeric(d["high_bid"], errors="coerce").astype(float),
-            "low": pd.to_numeric(d["low_bid"], errors="coerce").astype(float),
-            "close": pd.to_numeric(d["close_bid"], errors="coerce").astype(float),
+            "open_bid": pd.to_numeric(d["open_bid"], errors="coerce").astype(float),
+            "high_bid": pd.to_numeric(d["high_bid"], errors="coerce").astype(float),
+            "low_bid": pd.to_numeric(d["low_bid"], errors="coerce").astype(float),
+            "close_bid": pd.to_numeric(d["close_bid"], errors="coerce").astype(float),
+            "high_ask": pd.to_numeric(d["high_ask"], errors="coerce").astype(float),
+            "close_ask": pd.to_numeric(d["close_ask"], errors="coerce").astype(float),
             "spread": pd.to_numeric(d["spread"], errors="coerce").astype(float),
             "tick_volume": pd.to_numeric(d["tick_volume"], errors="coerce").astype(float),
         }
@@ -188,7 +192,18 @@ def _build_symbol_dataset(
             out[c] = pd.to_numeric(d[c], errors="coerce").astype(float)
 
     out = (
-        out.dropna(subset=["timestamp", "close_ts", "open", "high", "low", "close"])
+        out.dropna(
+            subset=[
+                "timestamp",
+                "close_ts",
+                "open_bid",
+                "high_bid",
+                "low_bid",
+                "close_bid",
+                "high_ask",
+                "close_ask",
+            ]
+        )
         .sort_values("close_ts")
         .reset_index(drop=True)
     )
@@ -196,10 +211,10 @@ def _build_symbol_dataset(
         return out
 
     pip = float(_pip_size(symbol))
-    close = out["close"].astype(float)
-    open_ = out["open"].astype(float)
-    high = out["high"].astype(float)
-    low = out["low"].astype(float)
+    close_bid = out["close_bid"].astype(float)
+    open_bid = out["open_bid"].astype(float)
+    high_bid = out["high_bid"].astype(float)
+    low_bid = out["low_bid"].astype(float)
 
     out["year"] = out["close_ts"].dt.year.astype(int)
     out["hour_utc"] = out["close_ts"].dt.hour.astype(int)
@@ -224,8 +239,8 @@ def _build_symbol_dataset(
     out["tick_rate_z"] = (out["tick_rate_hz"] - tr_mu) / tr_sd.replace(0.0, np.nan)
 
     out["spread_pips"] = out["spread"] / pip
-    out["range_pips"] = (high - low) / pip
-    out["bar_move_pips"] = (close - open_) / pip
+    out["range_pips"] = (high_bid - low_bid) / pip
+    out["bar_move_pips"] = (close_bid - open_bid) / pip
 
     if "hl_first" in out.columns:
         out["high_first_flag"] = (out["hl_first"] > 0).astype(float)
@@ -251,7 +266,7 @@ def _build_symbol_dataset(
     )
     out["spread_z"] = (out["spread_pips"] - sp_mu) / sp_sd.replace(0.0, np.nan)
 
-    out["vel_pips_h1"] = (close - close.shift(1)) / pip
+    out["vel_pips_h1"] = (close_bid - close_bid.shift(1)) / pip
     out[f"vel_{int(bar_ticks)}_pips"] = out["vel_pips_h1"]
     out["accel_pips"] = out["vel_pips_h1"] - out["vel_pips_h1"].shift(1)
 
@@ -261,7 +276,7 @@ def _build_symbol_dataset(
         .median()
         .shift(1)
     )
-    gap_abs_pips = (open_ - close.shift(1)).abs() / pip
+    gap_abs_pips = (open_bid - close_bid.shift(1)).abs() / pip
     slip_proxy = (
         gap_abs_pips.rolling(int(cost_window), min_periods=max(8, int(cost_window) // 6))
         .quantile(0.75)
@@ -289,8 +304,8 @@ def _build_symbol_dataset(
     )
 
     for h in sorted(set(int(x) for x in vel_horizons if int(x) > 0)):
-        vel = (close - close.shift(h)) / pip
-        vel_bps = (1.0 - close / close.shift(h)) * 10000.0
+        vel = (close_bid - close_bid.shift(h)) / pip
+        vel_bps = (1.0 - close_bid / close_bid.shift(h)) * 10000.0
         dt_h = (out["close_ts"] - out["close_ts"].shift(h)).dt.total_seconds().clip(lower=1e-6)
         out[f"vel_pips_h{h}"] = vel
         out[f"vel_bps_h{h}"] = vel_bps
@@ -299,7 +314,7 @@ def _build_symbol_dataset(
         out[f"vel_cost_units_h{h}"] = vel / out["cost_est_pips"].replace(0.0, np.nan)
 
     for h in sorted(set(int(x) for x in target_horizons if int(x) > 0)):
-        out[f"y_fwd_pips_h{h}"] = (close.shift(-h) - open_.shift(-1)) / pip
+        out[f"y_fwd_pips_h{h}"] = (close_bid.shift(-h) - open_bid.shift(-1)) / pip
 
     out = out.replace([np.inf, -np.inf], np.nan)
     return out

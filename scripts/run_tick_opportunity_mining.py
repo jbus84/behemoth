@@ -109,10 +109,12 @@ def _prepare_frame(path: Path, *, symbol: str, horizons: list[int]) -> pd.DataFr
         return d
 
     req = [
-        "open",
-        "high",
-        "low",
-        "close",
+        "open_bid",
+        "high_bid",
+        "low_bid",
+        "close_bid",
+        "high_ask",
+        "close_ask",
         "cost_est_pips",
         "range_pips",
         "hour_utc",
@@ -123,12 +125,17 @@ def _prepare_frame(path: Path, *, symbol: str, horizons: list[int]) -> pd.DataFr
     miss = [c for c in req if c not in d.columns]
     if miss:
         raise ValueError(f"{path.name} missing columns: {miss}")
+    legacy = sorted({"open", "high", "low", "close", "ask"} & set(d.columns))
+    if legacy:
+        raise ValueError(f"{path.name} legacy ambiguous bar schema unsupported: {legacy}")
 
     pip = float(_pip_size(symbol))
-    d["open"] = _safe_numeric(d["open"])
-    d["high"] = _safe_numeric(d["high"])
-    d["low"] = _safe_numeric(d["low"])
-    d["close"] = _safe_numeric(d["close"])
+    d["open_bid"] = _safe_numeric(d["open_bid"])
+    d["high_bid"] = _safe_numeric(d["high_bid"])
+    d["low_bid"] = _safe_numeric(d["low_bid"])
+    d["close_bid"] = _safe_numeric(d["close_bid"])
+    d["high_ask"] = _safe_numeric(d["high_ask"])
+    d["close_ask"] = _safe_numeric(d["close_ask"])
     d["cost_est_pips"] = _safe_numeric(d["cost_est_pips"])
     d["range_pips"] = _safe_numeric(d["range_pips"])
     d["hour_utc"] = _safe_numeric(d["hour_utc"])
@@ -139,7 +146,7 @@ def _prepare_frame(path: Path, *, symbol: str, horizons: list[int]) -> pd.DataFr
     if "vel_pips_h1" in d.columns:
         d["ret1_pips"] = _safe_numeric(d["vel_pips_h1"]).fillna(0.0)
     else:
-        d["ret1_pips"] = ((d["close"] - d["close"].shift(1)) / pip).fillna(0.0)
+        d["ret1_pips"] = ((d["close_bid"] - d["close_bid"].shift(1)) / pip).fillna(0.0)
     if "vel_z_h1" in d.columns:
         d["ret_z"] = _safe_numeric(d["vel_z_h1"])
     else:
@@ -165,7 +172,7 @@ def _prepare_frame(path: Path, *, symbol: str, horizons: list[int]) -> pd.DataFr
     for h in sorted(set(int(x) for x in horizons if int(x) > 0)):
         col = f"y_fwd_pips_h{h}"
         if col not in d.columns:
-            d[col] = ((d["close"].shift(-h) - d["open"].shift(-1)) / pip).astype(float)
+            d[col] = ((d["close_bid"].shift(-h) - d["open_bid"].shift(-1)) / pip).astype(float)
         else:
             d[col] = _safe_numeric(d[col])
     return d.replace([np.inf, -np.inf], np.nan)
@@ -450,15 +457,15 @@ def _oco_candidates(
     {k: np.asarray(v, dtype=bool) for k, v in train_regimes}
 
     pip = float(_pip_size(symbol))
-    close_test = pd.to_numeric(test["close"], errors="coerce").to_numpy(dtype=float)
-    high_test = pd.to_numeric(test["high"], errors="coerce").to_numpy(dtype=float)
-    low_test = pd.to_numeric(test["low"], errors="coerce").to_numpy(dtype=float)
+    close_test = pd.to_numeric(test["close_bid"], errors="coerce").to_numpy(dtype=float)
+    high_test = pd.to_numeric(test["high_bid"], errors="coerce").to_numpy(dtype=float)
+    low_test = pd.to_numeric(test["low_bid"], errors="coerce").to_numpy(dtype=float)
     hlf_test = pd.to_numeric(test["hl_first"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
     ts_test = pd.to_datetime(test["close_ts"], utc=True, errors="coerce")
 
-    close_train = pd.to_numeric(train["close"], errors="coerce").to_numpy(dtype=float)
-    high_train = pd.to_numeric(train["high"], errors="coerce").to_numpy(dtype=float)
-    low_train = pd.to_numeric(train["low"], errors="coerce").to_numpy(dtype=float)
+    close_train = pd.to_numeric(train["close_bid"], errors="coerce").to_numpy(dtype=float)
+    high_train = pd.to_numeric(train["high_bid"], errors="coerce").to_numpy(dtype=float)
+    low_train = pd.to_numeric(train["low_bid"], errors="coerce").to_numpy(dtype=float)
     hlf_train = pd.to_numeric(train["hl_first"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
     ts_train = pd.to_datetime(train["close_ts"], utc=True, errors="coerce")
 

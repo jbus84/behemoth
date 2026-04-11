@@ -4,7 +4,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 
+from behemoth.core.features import _extract_core_series
 from scripts.run_tick_opportunity_mining import run
 
 
@@ -25,10 +27,12 @@ def _build_synth_tick_velocity(path: Path, *, symbol: str) -> None:
                 "bar_ticks": 1000,
                 "timestamp": ts - pd.to_timedelta(30, unit="m"),
                 "close_ts": ts,
-                "open": open_,
-                "high": high,
-                "low": low,
-                "close": close,
+                "open_bid": open_,
+                "high_bid": high,
+                "low_bid": low,
+                "close_bid": close,
+                "high_ask": high + 0.0001,
+                "close_ask": close + 0.0001,
                 "cost_est_pips": 0.25 + np.abs(rng.normal(0.0, 0.03, size=len(ts))),
                 "range_pips": (high - low) / 0.0001,
                 "hour_utc": ts.hour.astype(int),
@@ -76,3 +80,19 @@ def test_tick_opportunity_mining_outputs(tmp_path: Path) -> None:
     assert {"state_id", "both_window_rate", "p_up_first", "selection_pass"}.issubset(oco.columns)
     assert directional["selection_pass"].isin([True, False]).all()
     assert oco["selection_pass"].isin([True, False]).all()
+
+
+def test_extract_core_series_rejects_legacy_mining_shape() -> None:
+    df = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(["2025-01-01T00:00:00Z"]),
+            "close_ts": pd.to_datetime(["2025-01-01T00:30:00Z"]),
+            "open": [1.0],
+            "high": [1.1],
+            "low": [0.9],
+            "close": [1.0],
+        }
+    )
+
+    with pytest.raises(ValueError, match="legacy ambiguous bar schema unsupported"):
+        _extract_core_series(df)

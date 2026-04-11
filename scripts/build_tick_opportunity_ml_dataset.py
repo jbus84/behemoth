@@ -338,24 +338,19 @@ def _oco_precompute(
     pip: float,
     hold_mode: str,
 ) -> dict[str, np.ndarray]:
-    close = pd.to_numeric(df["close"], errors="coerce").to_numpy(dtype=float)
-    high = pd.to_numeric(df["high"], errors="coerce").to_numpy(dtype=float)
-    low = pd.to_numeric(df["low"], errors="coerce").to_numpy(dtype=float)
+    legacy = sorted({"open", "high", "low", "close", "ask"} & set(df.columns))
+    required = ["close_bid", "high_bid", "low_bid", "high_ask", "close_ask"]
+    missing = [column for column in required if column not in df.columns]
+    if legacy or missing:
+        detail = f"legacy {legacy}" if legacy else f"missing {missing}"
+        raise ValueError(f"legacy ambiguous bar schema unsupported: {detail}")
+
+    close_bid = pd.to_numeric(df["close_bid"], errors="coerce").to_numpy(dtype=float)
+    high_bid = pd.to_numeric(df["high_bid"], errors="coerce").to_numpy(dtype=float)
+    low_bid = pd.to_numeric(df["low_bid"], errors="coerce").to_numpy(dtype=float)
     hlf = pd.to_numeric(df["hl_first"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
-
-    # ASK-side columns for spread-adjusted trigger and SELL exit label.
-    # Fall back to BID columns when missing (degrades to pre-fix behaviour).
-    if "high_ask" in df.columns:
-        _raw = pd.to_numeric(df["high_ask"], errors="coerce")
-        high_ask = np.where(_raw.isna(), high, _raw.to_numpy(dtype=float))
-    else:
-        high_ask = high
-
-    if "close_ask" in df.columns:
-        _raw = pd.to_numeric(df["close_ask"], errors="coerce")
-        close_ask = np.where(_raw.isna(), close, _raw.to_numpy(dtype=float))
-    else:
-        close_ask = close
+    high_ask = pd.to_numeric(df["high_ask"], errors="coerce").to_numpy(dtype=float)
+    close_ask = pd.to_numeric(df["close_ask"], errors="coerce").to_numpy(dtype=float)
 
     h = int(horizon)
     mode = str(hold_mode).strip().lower()
@@ -365,7 +360,7 @@ def _oco_precompute(
     if n_eff <= 100:
         return {}
     i0 = np.arange(n_eff, dtype=np.int64)
-    ref = close[i0]
+    ref = close_bid[i0]
     valid = np.isfinite(ref)
     i0 = i0[valid]
     ref = ref[valid]
@@ -381,7 +376,7 @@ def _oco_precompute(
     for s in range(1, h + 1):
         idx = i0 + int(s)
         hu = high_ask[idx] >= up_thr   # ASK reaches upper barrier (BUY trigger)
-        hd = low[idx] <= dn_thr        # BID reaches lower barrier (SELL trigger, unchanged)
+        hd = low_bid[idx] <= dn_thr    # BID reaches lower barrier (SELL trigger)
         set_up = (up_step == inf) & hu
         set_dn = (dn_step == inf) & hd
         up_step[set_up] = int(s)
@@ -404,23 +399,23 @@ def _oco_precompute(
     touch_step[~decided] = np.nan
     gross = np.full(len(i0), np.nan, dtype=float)
     if mode == "from_start":
-        ex = close[i0 + h]
+        ex = close_bid[i0 + h]
         ret = (ex - ref) / pip
         gross[decided] = side[decided].astype(float) * ret[decided] - k
     else:
         touch_i = np.minimum(up_step, dn_step).astype(np.int64, copy=False)
         exit_i = i0 + touch_i + int(h)
-        ok = decided & (exit_i < len(close))
+        ok = decided & (exit_i < len(close_bid))
         if np.any(ok):
             ok_idx = np.flatnonzero(ok)
-            ex_ok = close[exit_i[ok_idx]]
+            ex_ok = close_bid[exit_i[ok_idx]]
             num_ok = np.isfinite(ex_ok) & np.isfinite(ref[ok_idx])
             use = ok_idx[num_ok]
             if len(use) > 0:
                 exit_price_use = np.where(
                     side[use] == -1,
                     close_ask[exit_i[use]],
-                    close[exit_i[use]],
+                    close_bid[exit_i[use]],
                 )
                 gross[use] = side[use].astype(float) * ((exit_price_use - ref[use]) / pip) - k
     return {
