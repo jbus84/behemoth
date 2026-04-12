@@ -3,9 +3,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import pandas as pd
+import pytest
 
 from scripts.verify_oco_tick_exact_shortlist import (
     _normalize_shortlist_states,
+    _recompute_first_touch,
     _resolve_shortlist_state_csv,
     run,
 )
@@ -70,6 +72,8 @@ def test_run_accepts_partial_read_from_explicit_schema_velocity(tmp_path, monkey
                 "close_bid": 1.1000,
                 "high_bid": 1.1010,
                 "low_bid": 1.0990,
+                "high_ask": 1.1012,
+                "close_ask": 1.1002,
                 "hl_first": 1.0,
             },
             {
@@ -78,6 +82,8 @@ def test_run_accepts_partial_read_from_explicit_schema_velocity(tmp_path, monkey
                 "close_bid": 1.1005,
                 "high_bid": 1.1015,
                 "low_bid": 1.1000,
+                "high_ask": 1.1017,
+                "close_ask": 1.1007,
                 "hl_first": -1.0,
             },
         ]
@@ -130,3 +136,43 @@ def test_run_accepts_partial_read_from_explicit_schema_velocity(tmp_path, monkey
     assert not summary.empty
     assert not state.empty
     assert not monthly.empty
+
+
+def test_recompute_first_touch_uses_ask_side_for_buy_touch_and_sell_exit() -> None:
+    out = _recompute_first_touch(
+        close_bid=pd.Series([1.1000, 1.1000, 1.10015, 1.1000]).to_numpy(dtype=float),
+        high_bid=pd.Series([1.1000, 1.1001, 1.1000, 1.1000]).to_numpy(dtype=float),
+        low_bid=pd.Series([1.1000, 1.0995, 1.1000, 1.1000]).to_numpy(dtype=float),
+        high_ask=pd.Series([1.1000, 1.1002, 1.1000, 1.1000]).to_numpy(dtype=float),
+        close_ask=pd.Series([1.1002, 1.1003, 1.1004, 1.1005]).to_numpy(dtype=float),
+        hlf=pd.Series([0.0, 1.0, 0.0, 0.0]).to_numpy(dtype=float),
+        idx=pd.Series([0]).to_numpy(dtype="int64"),
+        horizon=1,
+        barrier_pips=1.5,
+        pip=0.0001,
+        hold_mode="from_touch",
+        include_no_touch=False,
+    )
+
+    assert out["expected_side"][0] == 1
+    assert out["expected_decided"][0]
+    assert out["expected_gross_pips"][0] == pytest.approx(0.0, abs=1e-9)
+
+    sell = _recompute_first_touch(
+        close_bid=pd.Series([1.1000, 1.1000, 1.1000, 1.1000]).to_numpy(dtype=float),
+        high_bid=pd.Series([1.1000, 1.1000, 1.1000, 1.1000]).to_numpy(dtype=float),
+        low_bid=pd.Series([1.1000, 1.0998, 1.1000, 1.1000]).to_numpy(dtype=float),
+        high_ask=pd.Series([1.1002, 1.1002, 1.1002, 1.1002]).to_numpy(dtype=float),
+        close_ask=pd.Series([1.1002, 1.1003, 1.1003, 1.1005]).to_numpy(dtype=float),
+        hlf=pd.Series([0.0, -1.0, 0.0, 0.0]).to_numpy(dtype=float),
+        idx=pd.Series([0]).to_numpy(dtype="int64"),
+        horizon=1,
+        barrier_pips=1.5,
+        pip=0.0001,
+        hold_mode="from_touch",
+        include_no_touch=False,
+    )
+
+    assert sell["expected_side"][0] == -1
+    assert sell["expected_decided"][0]
+    assert sell["expected_gross_pips"][0] == pytest.approx(-4.5, abs=1e-9)

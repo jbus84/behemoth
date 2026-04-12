@@ -165,9 +165,11 @@ def _select_events(d: pd.DataFrame, *, q: float, mode: str) -> pd.DataFrame:
 
 def _recompute_first_touch(
     *,
-    close: np.ndarray,
-    high: np.ndarray,
-    low: np.ndarray,
+    close_bid: np.ndarray,
+    high_bid: np.ndarray,
+    low_bid: np.ndarray,
+    high_ask: np.ndarray,
+    close_ask: np.ndarray,
     hlf: np.ndarray,
     idx: np.ndarray,
     horizon: int,
@@ -190,7 +192,7 @@ def _recompute_first_touch(
     if mode not in {"from_touch", "from_start"}:
         raise ValueError("oco_hold_mode must be from_touch|from_start")
     req = (2 * h) if mode == "from_touch" else h
-    valid = (idx >= 0) & ((idx + req) < len(close))
+    valid = (idx >= 0) & ((idx + req) < len(close_bid))
     if not np.any(valid):
         return {
             "expected_gross_pips": expected,
@@ -201,10 +203,10 @@ def _recompute_first_touch(
             "map_ok": map_ok,
         }
     i = idx[valid].astype(np.int64, copy=False)
-    ref = close[i]
+    ref = close_bid[i]
     num_ok = np.isfinite(ref)
     if mode == "from_start":
-        ex = close[i + h]
+        ex = close_bid[i + h]
         num_ok = num_ok & np.isfinite(ex)
     if not np.any(num_ok):
         return {
@@ -232,8 +234,8 @@ def _recompute_first_touch(
     any_dn = np.zeros(len(i), dtype=bool)
     for s in range(1, h + 1):
         j = i + int(s)
-        hu = high[j] >= up_thr
-        hd = low[j] <= dn_thr
+        hu = high_ask[j] >= up_thr
+        hd = low_bid[j] <= dn_thr
         set_up = (up_step == inf) & hu
         set_dn = (dn_step == inf) & hd
         up_step[set_up] = int(s)
@@ -261,15 +263,24 @@ def _recompute_first_touch(
     else:
         touch_i = np.minimum(up_step, dn_step).astype(np.int64, copy=False)
         exit_i = i + touch_i + int(h)
-        ok = decided_v & (exit_i < len(close))
+        ok = decided_v & (exit_i < len(close_bid))
         if np.any(ok):
             ok_idx = np.flatnonzero(ok)
-            ex_ok = close[exit_i[ok_idx]]
+            ex_ok = np.where(
+                side_v[ok_idx] == -1,
+                close_ask[exit_i[ok_idx]],
+                close_bid[exit_i[ok_idx]],
+            )
             num2 = np.isfinite(ex_ok) & np.isfinite(ref[ok_idx])
             use = ok_idx[num2]
             if len(use) > 0:
+                exit_price_use = np.where(
+                    side_v[use] == -1,
+                    close_ask[exit_i[use]],
+                    close_bid[exit_i[use]],
+                )
                 gross_v[use] = side_v[use].astype(float) * (
-                    (close[exit_i[use]] - ref[use]) / float(pip)
+                    (exit_price_use - ref[use]) / float(pip)
                 ) - float(k)
 
     expected_v = (
@@ -449,14 +460,32 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             raise FileNotFoundError(path)
         bars = read_explicit_bar_parquet(
             path,
-            columns=["close_ts", "close_bid", "high_bid", "low_bid", "hl_first"],
-            required=["close_ts", "close_bid", "high_bid", "low_bid", "hl_first"],
+            columns=[
+                "close_ts",
+                "close_bid",
+                "high_bid",
+                "low_bid",
+                "high_ask",
+                "close_ask",
+                "hl_first",
+            ],
+            required=[
+                "close_ts",
+                "close_bid",
+                "high_bid",
+                "low_bid",
+                "high_ask",
+                "close_ask",
+                "hl_first",
+            ],
         )
         bars["close_ts"] = pd.to_datetime(bars["close_ts"], utc=True, errors="coerce")
         bars = bars.dropna(subset=["close_ts"]).sort_values("close_ts").reset_index(drop=True)
-        close = pd.to_numeric(bars["close_bid"], errors="coerce").to_numpy(dtype=float)
-        high = pd.to_numeric(bars["high_bid"], errors="coerce").to_numpy(dtype=float)
-        low = pd.to_numeric(bars["low_bid"], errors="coerce").to_numpy(dtype=float)
+        close_bid = pd.to_numeric(bars["close_bid"], errors="coerce").to_numpy(dtype=float)
+        high_bid = pd.to_numeric(bars["high_bid"], errors="coerce").to_numpy(dtype=float)
+        low_bid = pd.to_numeric(bars["low_bid"], errors="coerce").to_numpy(dtype=float)
+        high_ask = pd.to_numeric(bars["high_ask"], errors="coerce").to_numpy(dtype=float)
+        close_ask = pd.to_numeric(bars["close_ask"], errors="coerce").to_numpy(dtype=float)
         hlf = pd.to_numeric(bars["hl_first"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
         idx_map = pd.Series(np.arange(len(bars), dtype=np.int64), index=bars["close_ts"])
         idx_map = idx_map[~idx_map.index.duplicated(keep="first")]
@@ -469,9 +498,11 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             m_ok = np.isfinite(mapped)
             idx[m_ok] = mapped[m_ok].astype(np.int64, copy=False)
             out = _recompute_first_touch(
-                close=close,
-                high=high,
-                low=low,
+                close_bid=close_bid,
+                high_bid=high_bid,
+                low_bid=low_bid,
+                high_ask=high_ask,
+                close_ask=close_ask,
                 hlf=hlf,
                 idx=idx,
                 horizon=int(h),
