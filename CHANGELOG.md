@@ -1,3 +1,19 @@
+## v0.9.1 (2026-04-12)
+
+### Fix
+
+- align tick exact verifier with spread aware oco semantics
+- use close bid in fx snapshot helpers
+- wire explicit bid schema through api and velocity builder
+
+### Refactor
+
+- enforce explicit bid ask schema in analysis pipeline
+- use explicit bid ask bar fields in runtime and api
+- require explicit bid ask columns in research builders
+- emit explicit bid ask offline bar schema
+- rename canonical bar schema to explicit bid ask fields
+
 ## v0.9.0 (2026-04-11)
 
 ### Feat
