@@ -1,4 +1,4 @@
-"""Tests for spread-adjusted _oco_precompute: ASK BUY trigger and ASK SELL exit."""
+"""Tests for spread-adjusted _oco_precompute: touch-bar entry and side-aware exit pricing."""
 from __future__ import annotations
 
 import numpy as np
@@ -7,32 +7,34 @@ import pandas as pd
 from scripts.build_tick_opportunity_ml_dataset import _oco_precompute
 
 
-def _make_bars(n: int, *, close: float = 1.10000, pip: float = 0.0001) -> pd.DataFrame:
-    """Minimal bar DataFrame with flat prices and placeholder ask columns."""
-    return pd.DataFrame(
-        {
-            "close_bid": [close] * n,
-            "high_bid": [close + 0.00005] * n,   # BID high: 0.5 pips above ref
-            "low_bid": [close - 0.00050] * n,
-            "hl_first": [1.0] * n,
-            "high_ask": [close + 0.00025] * n,  # ASK high: 2.5 pips above ref
-            "close_ask": [close + 0.00015] * n,  # ASK close: 1.5 pips above ref
-        }
-    )
+def _gross_for_start(result: dict[str, np.ndarray], start_idx: int) -> float:
+    matches = np.flatnonzero(result["i0"] == start_idx)
+    assert len(matches) == 1, f"Expected exactly one match for start {start_idx}, got {matches}"
+    return float(result["gross"][matches[0]])
 
 
-def test_buy_trigger_uses_ask():
-    """BUY fires when high_ask >= upper_barrier even when high (BID) < upper_barrier.
+def _side_for_start(result: dict[str, np.ndarray], start_idx: int) -> int:
+    matches = np.flatnonzero(result["i0"] == start_idx)
+    assert len(matches) == 1, f"Expected exactly one match for start {start_idx}, got {matches}"
+    return int(result["side"][matches[0]])
 
-    barrier_pips=2.0 → upper = ref + 0.0002.
-    BID high = ref + 0.00005 — misses.
-    ASK high = ref + 0.00025 — hits.
-    Expect at least one event with side=1 (BUY).
-    """
+
+def test_buy_trigger_anchors_off_signal_close_ask() -> None:
+    """BUY should not trigger if only close_bid + barrier is cleared."""
     pip = 0.0001
     barrier_pips = 2.0
-    n = 500
-    df = _make_bars(n)
+    n = 120
+    df = pd.DataFrame(
+        {
+            "close_bid": [1.10000] * n,
+            "high_bid": [1.10005] * n,
+            "low_bid": [1.09990] * n,
+            "hl_first": [1.0] * n,
+            "high_ask": [1.10005] * n,
+            "close_ask": [1.10010] * n,
+        }
+    )
+    df.loc[1, "high_ask"] = 1.10025
 
     result = _oco_precompute(
         df,
@@ -42,40 +44,112 @@ def test_buy_trigger_uses_ask():
         hold_mode="from_touch",
     )
     assert result, "Expected non-empty result"
-    side = result["side"]
-    decided = result["decided"]
-    assert np.any(side[decided] == 1), "Expected at least one BUY event"
-    assert not np.any(side[decided] == -1), "Expected no SELL events (low never hits dn_thr)"
+    assert _side_for_start(result, 0) == 0
 
 
-def test_sell_exit_label_uses_close_ask():
-    """SELL exit label uses close_ask (ASK), not close (BID).
-
-    Setup: all bars have close=1.10000, dn_thr = ref - 0.0002 = 1.09980.
-    bar_low = ref - 0.00050 = 1.09950 — triggers SELL.
-    BID close = 1.10000, ASK close = 1.10015.
-
-    SELL gross for from_touch:
-      side=-1, ref=1.10000, exit_price=close_ask[exit_bar]=1.10015
-      gross = -1 * ((1.10015 - 1.10000) / 0.0001) - 2.0
-            = -1 * 1.5 - 2.0 = -3.5
-
-    If BID close were used (old behaviour):
-      gross = -1 * ((1.10000 - 1.10000) / 0.0001) - 2.0 = -2.0
-    """
+def test_sell_trigger_anchors_off_signal_close_bid() -> None:
+    """SELL should not trigger if only close_ask - barrier is cleared."""
     pip = 0.0001
     barrier_pips = 2.0
-    n = 500
-
-    # Build bars where SELL triggers but BUY never does
+    n = 120
     df = pd.DataFrame(
         {
             "close_bid": [1.10000] * n,
-            "high_bid": [1.10005] * n,       # BID high: never reaches upper (1.10020)
-            "low_bid": [1.09950] * n,        # BID low: reaches dn_thr (1.09980) — SELL
+            "high_bid": [1.10005] * n,
+            "low_bid": [1.09990] * n,
             "hl_first": [-1.0] * n,
-            "high_ask": [1.10007] * n,   # ASK high: still below upper (1.10020) — no BUY
-            "close_ask": [1.10015] * n,  # ASK close: 1.5 pips above BID close
+            "high_ask": [1.10005] * n,
+            "close_ask": [1.10010] * n,
+        }
+    )
+    df.loc[1, "low_bid"] = 1.09985
+
+    result = _oco_precompute(
+        df,
+        horizon=6,
+        barrier_pips=barrier_pips,
+        pip=pip,
+        hold_mode="from_touch",
+    )
+    assert result, "Expected non-empty result"
+    assert _side_for_start(result, 0) == 0
+
+
+def test_buy_entry_gross_uses_touch_bar_close_ask() -> None:
+    """BUY should trigger on high_ask and price entry from the touch bar close_ask."""
+    pip = 0.0001
+    barrier_pips = 2.0
+    n = 120
+    df = pd.DataFrame(
+        {
+            "close_bid": [1.10000] * n,
+            "high_bid": [1.10005] * n,
+            "low_bid": [1.09990] * n,
+            "hl_first": [1.0] * n,
+            "high_ask": [1.10005] * n,
+            "close_ask": [1.10010] * n,
+        }
+    )
+    df.loc[1, "high_ask"] = 1.10035
+    df.loc[1, "close_ask"] = 1.10025
+    df.loc[7, "close_bid"] = 1.10050
+
+    result = _oco_precompute(
+        df,
+        horizon=6,
+        barrier_pips=barrier_pips,
+        pip=pip,
+        hold_mode="from_touch",
+    )
+    assert result, "Expected non-empty result"
+    assert _side_for_start(result, 0) == 1
+    assert np.isclose(_gross_for_start(result, 0), 2.5, atol=1e-6)
+
+
+def test_sell_entry_gross_uses_touch_bar_close_bid_and_ask_exit() -> None:
+    """SELL should trigger on low_bid and price entry from the touch bar close_bid."""
+    pip = 0.0001
+    barrier_pips = 2.0
+    n = 120
+    df = pd.DataFrame(
+        {
+            "close_bid": [1.10000] * n,
+            "high_bid": [1.10005] * n,
+            "low_bid": [1.09990] * n,
+            "hl_first": [-1.0] * n,
+            "high_ask": [1.10005] * n,
+            "close_ask": [1.10010] * n,
+        }
+    )
+    df.loc[1, "low_bid"] = 1.09975
+    df.loc[1, "close_bid"] = 1.09990
+    df.loc[7, "close_ask"] = 1.09970
+
+    result = _oco_precompute(
+        df,
+        horizon=6,
+        barrier_pips=barrier_pips,
+        pip=pip,
+        hold_mode="from_touch",
+    )
+    assert result, "Expected non-empty result"
+    assert _side_for_start(result, 0) == -1
+    assert np.isclose(_gross_for_start(result, 0), 2.0, atol=1e-6)
+
+
+def test_sell_exit_label_uses_close_ask() -> None:
+    """SELL exit label still uses close_ask (ASK), not close_bid (BID)."""
+    pip = 0.0001
+    barrier_pips = 2.0
+    n = 120
+    df = pd.DataFrame(
+        {
+            "close_bid": [1.10000] * n,
+            "high_bid": [1.10005] * n,
+            "low_bid": [1.09950] * n,
+            "hl_first": [-1.0] * n,
+            "high_ask": [1.10007] * n,
+            "close_ask": [1.10015] * n,
         }
     )
 
@@ -93,7 +167,6 @@ def test_sell_exit_label_uses_close_ask():
 
     sell_gross = gross[decided & (side == -1)]
     assert len(sell_gross) > 0, "Expected SELL events"
-    # All SELL gross values should be -3.5 (using close_ask), not -2.0 (using BID close)
-    assert np.allclose(sell_gross, -3.5, atol=1e-6), (
-        f"Expected sell gross=-3.5 (ASK exit), got {sell_gross[:5]}"
+    assert np.allclose(sell_gross, -1.5, atol=1e-6), (
+        f"Expected sell gross=-1.5 (ASK exit), got {sell_gross[:5]}"
     )
