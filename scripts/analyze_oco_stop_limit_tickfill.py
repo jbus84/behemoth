@@ -17,6 +17,11 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+try:
+    from scripts.run_tick_opportunity_mining import read_explicit_bar_parquet
+except ModuleNotFoundError:
+    from run_tick_opportunity_mining import read_explicit_bar_parquet  # type: ignore
+
 
 def _pip_size(symbol: str) -> float:
     s = str(symbol).upper().strip()
@@ -158,9 +163,11 @@ def _rebuild_touch_events(
         vpath = velocity_dir / f"{symbol}_{int(bt)}tick_velocity.parquet"
         if not vpath.exists():
             continue
-        bars = pd.read_parquet(
-            vpath, columns=["timestamp", "close_ts", "close", "high", "low", "hl_first"]
-        ).copy()
+        bars = read_explicit_bar_parquet(
+            vpath,
+            columns=["timestamp", "close_ts", "close_bid", "high_bid", "low_bid", "hl_first"],
+            required=["timestamp", "close_ts", "close_bid", "high_bid", "low_bid"],
+        )
         bars["timestamp"] = pd.to_datetime(bars["timestamp"], utc=True, errors="coerce")
         bars["close_ts"] = pd.to_datetime(bars["close_ts"], utc=True, errors="coerce")
         bars = (
@@ -174,9 +181,9 @@ def _rebuild_touch_events(
         if g.empty:
             continue
 
-        close = pd.to_numeric(bars["close"], errors="coerce").to_numpy(dtype=float)
-        high = pd.to_numeric(bars["high"], errors="coerce").to_numpy(dtype=float)
-        low = pd.to_numeric(bars["low"], errors="coerce").to_numpy(dtype=float)
+        close = pd.to_numeric(bars["close_bid"], errors="coerce").to_numpy(dtype=float)
+        high = pd.to_numeric(bars["high_bid"], errors="coerce").to_numpy(dtype=float)
+        low = pd.to_numeric(bars["low_bid"], errors="coerce").to_numpy(dtype=float)
         hlf = pd.to_numeric(bars["hl_first"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
 
         for (h, k), g_hk in g.groupby(["horizon", "barrier_pips"], sort=False):

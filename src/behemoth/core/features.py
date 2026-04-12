@@ -153,7 +153,7 @@ def compute_feature_matrix_from_bars(
         return None
 
     pip = pip_size(symbol)
-    close, open_, high, low, close_ts, timestamp = _extract_core_series(df)
+    close_bid, open_bid, high_bid, low_bid, close_ts, timestamp = _extract_core_series(df)
 
     # ── Temporal gap masking (weekend protection) ──
     bar_gap_sec = (timestamp - timestamp.shift(1)).dt.total_seconds()
@@ -163,10 +163,10 @@ def compute_feature_matrix_from_bars(
 
     # ── Sub-components (all vectorized pd.Series) ──
     tick_rate_z, spread_z, spread_pips = _compute_micro_features(df, pip, durations, cfg)
-    vel_h1, ret_z, ret_abs_z = _compute_velocity_features(close, pip, is_weekend_gap, cfg)
-    range_pips = (high - low) / pip
+    vel_h1, ret_z, ret_abs_z = _compute_velocity_features(close_bid, pip, is_weekend_gap, cfg)
+    range_pips = (high_bid - low_bid) / pip
     cost_est, vel_cu, vel_abs_cu = _compute_cost_features(
-        spread_pips, range_pips, open_, close, pip, is_weekend_gap, vel_h1, cfg
+        spread_pips, range_pips, open_bid, close_bid, pip, is_weekend_gap, vel_h1, cfg
     )
     hl_first_m24, hl_pos_frac_m24 = _compute_structural_features(df)
 
@@ -222,16 +222,16 @@ def compute_regime_quantiles_from_bars(
         return {}
 
     pip = pip_size(symbol)
-    close, open_, high, low, _close_ts, timestamp = _extract_core_series(df)
+    close_bid, open_bid, high_bid, low_bid, _close_ts, timestamp = _extract_core_series(df)
     bar_gap_sec = (timestamp - timestamp.shift(1)).dt.total_seconds()
     is_weekend_gap = bar_gap_sec > FeatureConstants.WEEKEND_GAP_SEC
     durations = (_close_ts - timestamp).dt.total_seconds().clip(lower=FeatureConstants.DURATION_MIN_SEC)
 
     tick_rate_z, spread_z, spread_pips = _compute_micro_features(df, pip, durations, cfg)
-    vel_h1, _ret_z, ret_abs_z = _compute_velocity_features(close, pip, is_weekend_gap, cfg)
-    range_pips = (high - low) / pip
+    vel_h1, _ret_z, ret_abs_z = _compute_velocity_features(close_bid, pip, is_weekend_gap, cfg)
+    range_pips = (high_bid - low_bid) / pip
     cost_est, _vel_cu, vel_abs_cu = _compute_cost_features(
-        spread_pips, range_pips, open_, close, pip, is_weekend_gap, vel_h1, cfg
+        spread_pips, range_pips, open_bid, close_bid, pip, is_weekend_gap, vel_h1, cfg
     )
 
     def _q(series: pd.Series, quantile: float) -> float:
@@ -256,20 +256,22 @@ def compute_regime_quantiles_from_bars(
 
 
 def _extract_core_series(df: pd.DataFrame) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series, pd.Series, pd.Series]:
-    """Resolve column names and return strongly-typed base series."""
-    cc = "close_price" if "close_price" in df.columns else "close"
-    oc = "open_price" if "open_price" in df.columns else "open"
-    hc = "high_price" if "high_price" in df.columns else "high"
-    lc = "low_price" if "low_price" in df.columns else "low"
-    tc = "ts" if "ts" in df.columns else "timestamp"
+    """Resolve explicit bid-side column names and return base series."""
+    legacy = sorted({"open", "high", "low", "close"} & set(df.columns))
+    required = ["open_bid", "high_bid", "low_bid", "close_bid"]
+    missing = [column for column in required if column not in df.columns]
+    if legacy or missing:
+        detail = f"legacy {legacy}" if legacy else f"missing {missing}"
+        raise ValueError(f"legacy ambiguous bar schema unsupported: {detail}")
 
-    close = df[cc].astype(float)
-    open_ = df[oc].astype(float)
-    high = df[hc].astype(float)
-    low = df[lc].astype(float)
+    tc = "ts" if "ts" in df.columns else "timestamp"
+    close_bid = df["close_bid"].astype(float)
+    open_bid = df["open_bid"].astype(float)
+    high_bid = df["high_bid"].astype(float)
+    low_bid = df["low_bid"].astype(float)
     close_ts = pd.to_datetime(df["close_ts"], utc=True)
     timestamp = pd.to_datetime(df[tc], utc=True)
-    return close, open_, high, low, close_ts, timestamp
+    return close_bid, open_bid, high_bid, low_bid, close_ts, timestamp
 
 
 def _build_model_features(df: pd.DataFrame, feats: tuple, context: tuple) -> ModelFeatures:

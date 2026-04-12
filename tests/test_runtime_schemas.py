@@ -57,16 +57,44 @@ class TestIncomingTick:
 
 
 class TestIncomingTickBar:
+    def test_canonical_bar_schema_uses_explicit_bid_names_only(self):
+        expected_fields = [
+            "symbol",
+            "bar_ticks",
+            "timestamp",
+            "close_ts",
+            "open_bid",
+            "high_bid",
+            "low_bid",
+            "close_bid",
+            "spread",
+            "tick_volume",
+            "high_pos_tick",
+            "low_pos_tick",
+            "hl_first",
+            "hl_pos_delta_tick",
+            "hl_pos_frac",
+            "high_ask",
+            "close_ask",
+        ]
+
+        assert list(IncomingTickBar.model_fields.keys()) == expected_fields
+        assert "open" not in IncomingTickBar.model_fields
+        assert "high" not in IncomingTickBar.model_fields
+        assert "low" not in IncomingTickBar.model_fields
+        assert "close" not in IncomingTickBar.model_fields
+        assert "ask" not in IncomingTickBar.model_fields
+
     def test_valid_bar(self):
         bar = IncomingTickBar(
             symbol="GBPUSD",
             bar_ticks=100,
             timestamp=datetime(2025, 12, 1, 10, 0, 0, tzinfo=timezone.utc),
             close_ts=datetime(2025, 12, 1, 10, 0, 30, tzinfo=timezone.utc),
-            open=1.26400,
-            high=1.26500,
-            low=1.26300,
-            close=1.26450,
+            open_bid=1.26400,
+            high_bid=1.26500,
+            low_bid=1.26300,
+            close_bid=1.26450,
             spread=0.00012,
             tick_volume=100.0,
             high_ask=1.26512,
@@ -81,10 +109,10 @@ class TestIncomingTickBar:
             bar_ticks=100,
             timestamp=datetime(2025, 12, 1, tzinfo=timezone.utc),
             close_ts=datetime(2025, 12, 1, tzinfo=timezone.utc),
-            open=150.0,
-            high=150.1,
-            low=149.9,
-            close=150.05,
+            open_bid=150.0,
+            high_bid=150.1,
+            low_bid=149.9,
+            close_bid=150.05,
             spread=0.02,
             tick_volume=100.0,
             hl_first=1.0,

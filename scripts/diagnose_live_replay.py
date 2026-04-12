@@ -90,10 +90,10 @@ def _build_bars_from_ticks(ticks: pl.DataFrame) -> pl.DataFrame:
     _empty_schema = {
         "timestamp": pl.Datetime(time_zone="UTC"),
         "close_ts": pl.Datetime(time_zone="UTC"),
-        "open": pl.Float64,
-        "high": pl.Float64,
-        "low": pl.Float64,
-        "close": pl.Float64,
+        "open_bid": pl.Float64,
+        "high_bid": pl.Float64,
+        "low_bid": pl.Float64,
+        "close_bid": pl.Float64,
         "spread": pl.Float64,
         "tick_volume": pl.Int64,
         "hl_first": pl.Int8,
@@ -134,10 +134,10 @@ def _build_bars_from_ticks(ticks: pl.DataFrame) -> pl.DataFrame:
         .agg(
             pl.col("timestamp").first().alias("timestamp"),
             pl.col("timestamp").last().alias("close_ts"),
-            pl.col("price").first().alias("open"),
-            pl.col("price").max().alias("high"),
-            pl.col("price").min().alias("low"),
-            pl.col("price").last().alias("close"),
+            pl.col("price").first().alias("open_bid"),
+            pl.col("price").max().alias("high_bid"),
+            pl.col("price").min().alias("low_bid"),
+            pl.col("price").last().alias("close_bid"),
             pl.col("spread").mean().alias("spread"),
             pl.len().cast(pl.Int64).alias("tick_volume"),
             pl.when(pl.col("price") == pl.col("_bar_high"))
@@ -167,10 +167,10 @@ def _build_bars_from_ticks(ticks: pl.DataFrame) -> pl.DataFrame:
         .select(
             "timestamp",
             "close_ts",
-            "open",
-            "high",
-            "low",
-            "close",
+            "open_bid",
+            "high_bid",
+            "low_bid",
+            "close_bid",
             "spread",
             "tick_volume",
             "hl_first",
@@ -189,7 +189,7 @@ def _build_bars_from_ticks(ticks: pl.DataFrame) -> pl.DataFrame:
         elif "mid" in cols_set:
             _price_for_filter = pl.col("mid").cast(pl.Float64)
         else:
-            _price_for_filter = pl.col("close").cast(pl.Float64)
+            _price_for_filter = pl.col("close_bid").cast(pl.Float64)
         ask_aligned = (
             ticks.select(
                 pl.col("timestamp"),
@@ -217,8 +217,8 @@ def _build_bars_from_ticks(ticks: pl.DataFrame) -> pl.DataFrame:
         bars = pl.concat([bars, ask_bars], how="horizontal")
     else:
         bars = bars.with_columns(
-            pl.col("close").alias("high_ask"),
-            pl.col("close").alias("close_ask"),
+            pl.col("close_bid").alias("high_ask"),
+            pl.col("close_bid").alias("close_ask"),
         )
 
     return bars

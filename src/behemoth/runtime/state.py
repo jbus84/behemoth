@@ -34,10 +34,10 @@ CREATE TABLE IF NOT EXISTS tick_bars (
     bar_ticks INTEGER,
     ts TIMESTAMP WITH TIME ZONE,
     close_ts TIMESTAMP WITH TIME ZONE,
-    open_price DOUBLE,
-    high_price DOUBLE,
-    low_price DOUBLE,
-    close_price DOUBLE,
+    open_bid DOUBLE,
+    high_bid DOUBLE,
+    low_bid DOUBLE,
+    close_bid DOUBLE,
     spread DOUBLE,
     tick_volume DOUBLE,
     hl_first DOUBLE,
@@ -158,8 +158,8 @@ _INSERT_SQL = (
 
 _SELECT_SQL = """
 SELECT * FROM (
-    SELECT row_id, ts, close_ts, open_price, high_price, low_price,
-           close_price, spread, tick_volume, hl_first, hl_pos_frac
+    SELECT row_id, ts, close_ts, open_bid, high_bid, low_bid,
+           close_bid, spread, tick_volume, hl_first, hl_pos_frac
     FROM tick_bars
     WHERE symbol = ? AND bar_ticks = ?
     ORDER BY row_id DESC
@@ -264,48 +264,42 @@ class StateManager:
                 self._row_counters[f"{r[0].upper()}_{r[1]}"] = int(r[2]) + 1
 
     def _ensure_runtime_schema(self) -> None:
-        """Add new debug columns for backward-compatible schema migration."""
-        try:
-            self._ensure_table_column(
-                table_name="audit_logs",
-                column_name="close_ts",
-                column_sql="TIMESTAMP WITH TIME ZONE",
-            )
-            self._ensure_table_column(
-                table_name="audit_logs",
-                column_name="run_id",
-                column_sql="VARCHAR",
-            )
-            self._ensure_table_column(
-                table_name="trades",
-                column_name="run_id",
-                column_sql="VARCHAR",
-            )
-            self._ensure_table_column(
-                table_name="raw_ticks",
-                column_name="client_tick_seq",
-                column_sql="BIGINT",
-            )
-            self._ensure_table_column(
-                table_name="raw_ticks",
-                column_name="run_id",
-                column_sql="VARCHAR",
-            )
-            self._ensure_table_column(
-                table_name="tick_bars",
-                column_name="high_ask",
-                column_sql="DOUBLE",
-            )
-            self._ensure_table_column(
-                table_name="tick_bars",
-                column_name="close_ask",
-                column_sql="DOUBLE",
-            )
-        except Exception:
-            # Best-effort migration only; avoid startup hard failure.
-            pass
+        """Ensure persisted runtime tables match the canonical explicit-bid schema."""
+        self._migrate_tick_bars_table()
+        self._ensure_table_column(
+            table_name="audit_logs",
+            column_name="close_ts",
+            column_sql="TIMESTAMP WITH TIME ZONE",
+        )
+        self._ensure_table_column(
+            table_name="audit_logs",
+            column_name="run_id",
+            column_sql="VARCHAR",
+        )
+        self._ensure_table_column(
+            table_name="trades",
+            column_name="run_id",
+            column_sql="VARCHAR",
+        )
+        self._ensure_table_column(
+            table_name="raw_ticks",
+            column_name="client_tick_seq",
+            column_sql="BIGINT",
+        )
+        self._ensure_table_column(
+            table_name="raw_ticks",
+            column_name="run_id",
+            column_sql="VARCHAR",
+        )
 
     def _ensure_table_column(self, *, table_name: str, column_name: str, column_sql: str) -> None:
+        colset = self._get_table_columns(table_name)
+        if str(column_name).lower() not in colset:
+            self._con.execute(
+                f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_sql}"
+            )
+
+    def _get_table_columns(self, table_name: str) -> set[str]:
         cols = self._con.execute(
             """
             SELECT lower(column_name)
@@ -314,11 +308,37 @@ class StateManager:
             """,
             [str(table_name).lower()],
         ).fetchall()
-        colset = {str(r[0]).lower() for r in cols}
-        if str(column_name).lower() not in colset:
-            self._con.execute(
-                f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_sql}"
-            )
+        return {str(r[0]).lower() for r in cols}
+
+    def _migrate_tick_bars_table(self) -> None:
+        """Upgrade persisted tick_bars tables from legacy *_price columns once."""
+        legacy_to_canonical = {
+            "open_price": "open_bid",
+            "high_price": "high_bid",
+            "low_price": "low_bid",
+            "close_price": "close_bid",
+        }
+        columns = self._get_table_columns("tick_bars")
+        for legacy_name, canonical_name in legacy_to_canonical.items():
+            if canonical_name in columns:
+                continue
+            if legacy_name in columns:
+                self._con.execute(
+                    f"ALTER TABLE tick_bars RENAME COLUMN {legacy_name} TO {canonical_name}"
+                )
+                columns.remove(legacy_name)
+                columns.add(canonical_name)
+
+        self._ensure_table_column(
+            table_name="tick_bars",
+            column_name="high_ask",
+            column_sql="DOUBLE",
+        )
+        self._ensure_table_column(
+            table_name="tick_bars",
+            column_name="close_ask",
+            column_sql="DOUBLE",
+        )
 
     def append_bar(self, bar: IncomingTickBar) -> None:
         """Append a validated tick bar to the state buffer."""
@@ -333,10 +353,10 @@ class StateManager:
                 bar.bar_ticks,
                 bar.timestamp,
                 bar.close_ts,
-                bar.open,
-                bar.high,
-                bar.low,
-                bar.close,
+                bar.open_bid,
+                bar.high_bid,
+                bar.low_bid,
+                bar.close_bid,
                 bar.spread,
                 bar.tick_volume,
                 bar.hl_first,
@@ -368,7 +388,7 @@ class StateManager:
     def get_latest_bar(self, symbol: str, bar_ticks: int) -> dict | None:
         """Get the most recent completed bar for a symbol/bar_ticks pair."""
         res = self._con.execute(
-            "SELECT row_id, high_price, low_price, close_price, hl_first, high_ask "
+            "SELECT row_id, open_bid, high_bid, low_bid, close_bid, hl_first, high_ask, close_ask "
             "FROM tick_bars WHERE symbol = ? AND bar_ticks = ? "
             "ORDER BY row_id DESC LIMIT 1",
             [symbol.upper(), bar_ticks],
@@ -377,11 +397,13 @@ class StateManager:
             return None
         return {
             "row_id": res[0],
-            "high_price": res[1],
-            "low_price": res[2],
-            "close_price": res[3],
-            "hl_first": res[4] if res[4] is not None else 0.0,
-            "high_ask": res[5] if res[5] is not None else 0.0,
+            "open_bid": res[1],
+            "high_bid": res[2],
+            "low_bid": res[3],
+            "close_bid": res[4],
+            "hl_first": res[5] if res[5] is not None else 0.0,
+            "high_ask": res[6] if res[6] is not None else 0.0,
+            "close_ask": res[7] if res[7] is not None else 0.0,
         }
 
     def get_latest_close_ts(self, symbol: str) -> datetime | None:
@@ -600,21 +622,21 @@ class StateManager:
     def get_last_bar_close_price(
         self, symbol: str, bar_ticks: int = 100
     ) -> tuple[float, datetime] | None:
-        """Return (close_price, close_ts) for the most recent bar, or None if no data."""
+        """Return (close_bid, close_ts) for the most recent bar, or None if no data."""
         res = self._con.execute(
-            "SELECT close_price, close_ts FROM tick_bars "
+            "SELECT close_bid, close_ts FROM tick_bars "
             "WHERE symbol = ? AND bar_ticks = ? ORDER BY row_id DESC LIMIT 1",
             [symbol.upper(), bar_ticks],
         ).fetchone()
         if res is None:
             return None
-        close_price, close_ts = res
+        close_bid, close_ts = res
         close_ts = (
             close_ts.replace(tzinfo=timezone.utc)
             if close_ts.tzinfo is None
             else close_ts.astimezone(timezone.utc)
         )
-        return float(close_price), close_ts
+        return float(close_bid), close_ts
 
     def touch_trade(self, broker_pos_id: str, touch_bar_id: int) -> None:
         """Record the bar id when a position's barrier was touched."""

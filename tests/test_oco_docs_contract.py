@@ -4,7 +4,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
+from scripts.audit_data_reliability import Thresholds as ReliabilityThresholds
+from scripts.audit_data_reliability import run as run_data_reliability_audit
 from scripts.build_oco_system_reference_docs import run as build_system_reference_docs
 from scripts.validate_oco_docs_contract import (
     CORE_METRIC_IDS,
@@ -54,6 +57,7 @@ def _write_stage_docs(root: Path) -> None:
                 txt
                 + "\n\n## Tick Build Contract\n"
                 + "raw ticks are transformed via build_global_tick_bars.py and build_tick_velocity_dataset.py into tick_velocity datasets.\n"
+                + "canonical bars use open_bid high_bid low_bid close_bid high_ask close_ask spread.\n"
             )
         if i == 3:
             txt = (
@@ -853,6 +857,73 @@ def test_docs_contract_smoke_pass(tmp_path: Path) -> None:
     assert not checks.empty
     assert issues.empty
     assert (checks["status"].astype(str) == "pass").all()
+
+
+def test_docs_contract_flags_missing_explicit_bar_schema_terms_in_stage01(tmp_path: Path) -> None:
+    f = _build_smoke_fixture(tmp_path, with_system_reference=True)
+    stage01 = f["docs_root"] / "stage_01_data_foundation.md"
+    stage01.write_text(
+        _stage_doc_text()
+        + "\n\n## Tick Build Contract\n"
+        + "raw ticks are transformed via build_global_tick_bars.py and build_tick_velocity_dataset.py into tick_velocity datasets.\n",
+        encoding="utf-8",
+    )
+
+    checks, _issues = run(
+        docs_root=f["docs_root"],
+        generated_root=f["generated_root"],
+        edge_metrics_csv=f["edge_metrics_csv"],
+        stage_status_csv=f["stage_status_csv"],
+        metric_dictionary_md=f["metric_dictionary_md"],
+        edge_report_md=f["edge_report_md"],
+        mkdocs_yml=f["mkdocs_yml"],
+        out_checks_csv=tmp_path / "checks.csv",
+        out_issues_csv=tmp_path / "issues.csv",
+        out_report_md=tmp_path / "report.md",
+        thresholds=Thresholds(max_age_hours=24.0),
+    )
+
+    c51 = checks[checks["check_id"].astype(str) == "C51"]
+    assert not c51.empty
+    assert (c51["status"].astype(str) == "fail").all()
+
+
+def test_data_reliability_audit_rejects_legacy_ambiguous_bar_schema(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    base = tmp_path / "data" / "analysis" / "tick_velocity"
+    base.mkdir(parents=True, exist_ok=True)
+    ts = pd.date_range("2025-01-01", periods=32, freq="30min", tz="UTC")
+    close = 1.10 + pd.Series(range(len(ts)), dtype=float) * 0.0001
+    legacy = pd.DataFrame(
+        {
+            "close_ts": ts,
+            "open": close.shift(1).fillna(close.iloc[0]),
+            "high": close + 0.0002,
+            "low": close - 0.0002,
+            "close": close,
+            "ask": close + 0.0001,
+            "cost_est_pips": 0.2,
+            "range_pips": 4.0,
+            "hour_utc": ts.hour.astype(int),
+            "spread_z": 0.0,
+            "tick_rate_z": 0.0,
+            "vel_cost_units_h1": 0.0,
+            "hl_first": 1.0,
+        }
+    )
+    legacy.to_parquet(base / "EURUSD_1000tick_velocity.parquet", index=False)
+
+    with pytest.raises(ValueError, match="legacy ambiguous bar schema unsupported"):
+        run_data_reliability_audit(
+            symbols=["EURUSD"],
+            source_pattern="data/analysis/tick_velocity/{symbol}_1000tick_velocity.parquet",
+            thresholds=ReliabilityThresholds(min_rows=1, min_trading_days=1, min_hours_covered=1),
+            out_checks_csv=tmp_path / "checks.csv",
+            out_issues_csv=tmp_path / "issues.csv",
+            out_report_md=tmp_path / "report.md",
+        )
 
 
 def test_docs_contract_flags_nan_metric_values(tmp_path: Path) -> None:

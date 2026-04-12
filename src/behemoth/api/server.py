@@ -595,6 +595,46 @@ def _build_open_positions_summary(
     }
 
 
+_LEGACY_LATEST_BAR_KEYS = frozenset({"open", "high", "low", "close", "ask"})
+_REQUIRED_EXPLICIT_LATEST_BAR_KEYS = (
+    "row_id",
+    "high_bid",
+    "low_bid",
+    "close_bid",
+    "high_ask",
+    "close_ask",
+)
+
+
+def _require_explicit_latest_bar_schema(
+    latest_bar: dict[str, Any],
+    *,
+    symbol: str,
+    bar_ticks: int,
+) -> dict[str, Any]:
+    legacy = sorted(_LEGACY_LATEST_BAR_KEYS & set(latest_bar))
+    if legacy:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "legacy ambiguous bar schema unsupported for latest_bar "
+                f"{symbol}/{bar_ticks}: {legacy}"
+            ),
+        )
+
+    missing = [key for key in _REQUIRED_EXPLICIT_LATEST_BAR_KEYS if key not in latest_bar]
+    if missing:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "explicit latest_bar schema missing required keys for latest_bar "
+                f"{symbol}/{bar_ticks}: {missing}"
+            ),
+        )
+
+    return latest_bar
+
+
 # ── Lifespan ──────────────────────────────────────────────────────────
 
 @asynccontextmanager
@@ -1005,7 +1045,7 @@ def _latest_tick_price_snapshot(sym: str) -> dict[str, Any] | None:
         return None
     row = _state._con.execute(
         """
-        SELECT close_price, close_ts
+        SELECT close_bid, close_ts
         FROM tick_bars
         WHERE symbol = ?
         ORDER BY row_id DESC
@@ -2678,14 +2718,22 @@ async def predict(req: PredictRequest) -> PredictResponse:
             latest_bar = _state.get_latest_bar(sym, bt)
             if latest_bar is None:
                 continue
+            latest_bar = _require_explicit_latest_bar_schema(
+                latest_bar,
+                symbol=sym,
+                bar_ticks=bt,
+            )
+            bar_high_bid = latest_bar["high_bid"]
+            bar_low_bid = latest_bar["low_bid"]
+            bar_high_ask = latest_bar["high_ask"]
             raw_actions = _barrier_manager.evaluate_bar(
                 symbol=sym,
                 bar_ticks=bt,
-                bar_high=latest_bar["high_price"],
-                bar_low=latest_bar["low_price"],
+                bar_high_bid=bar_high_bid,
+                bar_low_bid=bar_low_bid,
                 bar_hl_first=latest_bar.get("hl_first", 0.0),
                 current_bar_idx=latest_bar["row_id"],
-                bar_high_ask=latest_bar.get("high_ask", 0.0),
+                bar_high_ask=bar_high_ask,
             )
             for a in raw_actions:
                 if a["type"] == "RELEASE_RESERVATION":
@@ -2718,11 +2766,17 @@ async def predict(req: PredictRequest) -> PredictResponse:
             latest_bar = _state.get_latest_bar(sym, pred.bar_ticks)
             if latest_bar is None:
                 continue
+            latest_bar = _require_explicit_latest_bar_schema(
+                latest_bar,
+                symbol=sym,
+                bar_ticks=pred.bar_ticks,
+            )
+            bar_close_bid = latest_bar["close_bid"]
             _barrier_manager.register_scan(
                 symbol=sym,
                 candidate_uid=pred.candidate_uid,
                 signal_bar_idx=latest_bar["row_id"],
-                ref_price=latest_bar["close_price"],
+                ref_price=bar_close_bid,
                 barrier_pips=pred.barrier_pips,
                 horizon=pred.horizon,
                 pip_size=pip,

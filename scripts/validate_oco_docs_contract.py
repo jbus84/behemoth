@@ -463,6 +463,13 @@ STAGE01_TICK_BUILDER_REQUIRED_TERMS = [
     "build_tick_velocity_dataset.py",
     "raw ticks",
     "tick_velocity",
+    "open_bid",
+    "high_bid",
+    "low_bid",
+    "close_bid",
+    "high_ask",
+    "close_ask",
+    "spread",
 ]
 
 

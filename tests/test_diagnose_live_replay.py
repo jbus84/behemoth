@@ -33,18 +33,20 @@ def test_build_bars_from_ticks_aggregates_1000_ticks_into_10_bars() -> None:
     assert {
         "timestamp",
         "close_ts",
-        "open",
-        "high",
-        "low",
-        "close",
+        "open_bid",
+        "high_bid",
+        "low_bid",
+        "close_bid",
         "spread",
         "tick_volume",
         "hl_first",
         "hl_pos_frac",
+        "high_ask",
+        "close_ask",
     }.issubset(set(bars.columns))
-    assert float(bars[0, "open"]) == pytest.approx(1.1000)
-    assert float(bars[0, "close"]) == pytest.approx(1.1099)
-    assert float(bars[0, "open"]) != pytest.approx(9.9001)
+    assert float(bars[0, "open_bid"]) == pytest.approx(1.1000)
+    assert float(bars[0, "close_bid"]) == pytest.approx(1.1099)
+    assert float(bars[0, "open_bid"]) != pytest.approx(9.9001)
 
 
 def test_build_bars_from_ticks_drops_partial_final_bar() -> None:
@@ -108,14 +110,16 @@ def test_score_bars_returns_required_columns(monkeypatch: pytest.MonkeyPatch) ->
             "close_ts": pd.date_range(
                 "2026-03-01T00:01:39Z", periods=2, freq="100s", tz="UTC"
             ).to_list(),
-            "open": [1.0, 1.1],
-            "high": [1.2, 1.3],
-            "low": [0.9, 1.0],
-            "close": [1.15, 1.25],
+            "open_bid": [1.0, 1.1],
+            "high_bid": [1.2, 1.3],
+            "low_bid": [0.9, 1.0],
+            "close_bid": [1.15, 1.25],
             "spread": [0.0002, 0.0002],
             "tick_volume": [100, 100],
             "hl_first": [1, -1],
             "hl_pos_frac": [0.4, 0.6],
+            "high_ask": [1.2002, 1.3002],
+            "close_ask": [1.1502, 1.2502],
         }
     )
 
@@ -158,14 +162,16 @@ def test_score_bars_filters_invalid_feature_rows_before_inference(
             "close_ts": pd.date_range(
                 "2026-03-01T00:01:39Z", periods=289, freq="100s", tz="UTC"
             ).to_list(),
-            "open": [1.0 + i * 0.001 for i in range(289)],
-            "high": [1.1 + i * 0.001 for i in range(289)],
-            "low": [0.9 + i * 0.001 for i in range(289)],
-            "close": [1.05 + i * 0.001 for i in range(289)],
+            "open_bid": [1.0 + i * 0.001 for i in range(289)],
+            "high_bid": [1.1 + i * 0.001 for i in range(289)],
+            "low_bid": [0.9 + i * 0.001 for i in range(289)],
+            "close_bid": [1.05 + i * 0.001 for i in range(289)],
             "spread": [0.0002] * 289,
             "tick_volume": [100] * 289,
             "hl_first": [1] * 289,
             "hl_pos_frac": [0.4] * 289,
+            "high_ask": [1.1002 + i * 0.001 for i in range(289)],
+            "close_ask": [1.0502 + i * 0.001 for i in range(289)],
         }
     )
 
@@ -211,14 +217,16 @@ def test_score_bars_applies_threshold_schedule_per_row_date_and_blocks_expired(
             "close_ts": pd.to_datetime(
                 ["2026-03-01T00:01:39Z", "2026-03-02T00:01:39Z", "2026-03-03T00:01:39Z"], utc=True
             ).to_list(),
-            "open": [1.0, 1.1, 1.2],
-            "high": [1.2, 1.3, 1.4],
-            "low": [0.9, 1.0, 1.1],
-            "close": [1.15, 1.25, 1.35],
+            "open_bid": [1.0, 1.1, 1.2],
+            "high_bid": [1.2, 1.3, 1.4],
+            "low_bid": [0.9, 1.0, 1.1],
+            "close_bid": [1.15, 1.25, 1.35],
             "spread": [0.0002, 0.0002, 0.0002],
             "tick_volume": [100, 100, 100],
             "hl_first": [1, -1, 1],
             "hl_pos_frac": [0.4, 0.6, 0.5],
+            "high_ask": [1.2002, 1.3002, 1.4002],
+            "close_ask": [1.1502, 1.2502, 1.3502],
         }
     )
 
@@ -266,14 +274,16 @@ def test_score_bars_uses_rolling_threshold_success_path(monkeypatch: pytest.Monk
             "close_ts": pd.to_datetime(
                 ["2026-03-01T00:01:39Z", "2026-03-02T00:01:39Z", "2026-03-03T00:01:39Z"], utc=True
             ).to_list(),
-            "open": [1.0, 1.1, 1.2],
-            "high": [1.2, 1.3, 1.4],
-            "low": [0.9, 1.0, 1.1],
-            "close": [1.15, 1.25, 1.35],
+            "open_bid": [1.0, 1.1, 1.2],
+            "high_bid": [1.2, 1.3, 1.4],
+            "low_bid": [0.9, 1.0, 1.1],
+            "close_bid": [1.15, 1.25, 1.35],
             "spread": [0.0002, 0.0002, 0.0002],
             "tick_volume": [100, 100, 100],
             "hl_first": [1, -1, 1],
             "hl_pos_frac": [0.4, 0.6, 0.5],
+            "high_ask": [1.2002, 1.3002, 1.4002],
+            "close_ask": [1.1502, 1.2502, 1.3502],
         }
     )
 
@@ -317,14 +327,16 @@ def test_score_bars_applies_regime_gating(monkeypatch: pytest.MonkeyPatch) -> No
             "close_ts": pd.to_datetime(
                 ["2026-03-01T00:01:39Z", "2026-03-01T14:01:39Z"], utc=True
             ).to_list(),
-            "open": [1.0, 1.1],
-            "high": [1.2, 1.3],
-            "low": [0.9, 1.0],
-            "close": [1.15, 1.25],
+            "open_bid": [1.0, 1.1],
+            "high_bid": [1.2, 1.3],
+            "low_bid": [0.9, 1.0],
+            "close_bid": [1.15, 1.25],
             "spread": [0.0002, 0.0002],
             "tick_volume": [100, 100],
             "hl_first": [1, -1],
             "hl_pos_frac": [0.4, 0.6],
+            "high_ask": [1.2002, 1.3002],
+            "close_ask": [1.1502, 1.2502],
         }
     )
 
@@ -369,14 +381,16 @@ def test_score_bars_uses_causal_quantile_regime_thresholds(monkeypatch: pytest.M
             "close_ts": pd.to_datetime(
                 ["2026-03-01T00:01:39Z", "2026-03-01T00:03:19Z", "2026-03-01T00:04:59Z"], utc=True
             ).to_list(),
-            "open": [1.0, 1.1, 1.2],
-            "high": [1.2, 1.3, 1.4],
-            "low": [0.9, 1.0, 1.1],
-            "close": [1.15, 1.25, 1.35],
+            "open_bid": [1.0, 1.1, 1.2],
+            "high_bid": [1.2, 1.3, 1.4],
+            "low_bid": [0.9, 1.0, 1.1],
+            "close_bid": [1.15, 1.25, 1.35],
             "spread": [0.0002, 0.0002, 0.0002],
             "tick_volume": [100, 100, 100],
             "hl_first": [1, -1, 1],
             "hl_pos_frac": [0.4, 0.6, 0.5],
+            "high_ask": [1.2002, 1.3002, 1.4002],
+            "close_ask": [1.1502, 1.2502, 1.3502],
         }
     )
 
@@ -443,14 +457,16 @@ def test_score_bars_preserves_source_indices_for_causal_quantiles(
                 ],
                 utc=True,
             ).to_list(),
-            "open": [1.0, 1.1, 1.2, 1.3],
-            "high": [1.2, 1.3, 1.4, 1.5],
-            "low": [0.9, 1.0, 1.1, 1.2],
-            "close": [1.15, 1.25, 1.35, 1.45],
+            "open_bid": [1.0, 1.1, 1.2, 1.3],
+            "high_bid": [1.2, 1.3, 1.4, 1.5],
+            "low_bid": [0.9, 1.0, 1.1, 1.2],
+            "close_bid": [1.15, 1.25, 1.35, 1.45],
             "spread": [0.0002, 0.0002, 0.0002, 0.0002],
             "tick_volume": [100, 100, 100, 100],
             "hl_first": [1, -1, 1, -1],
             "hl_pos_frac": [0.4, 0.6, 0.5, 0.7],
+            "high_ask": [1.2002, 1.3002, 1.4002, 1.5002],
+            "close_ask": [1.1502, 1.2502, 1.3502, 1.4502],
         }
     )
 
@@ -506,14 +522,16 @@ def test_score_bars_skips_non_100_tick_states(monkeypatch: pytest.MonkeyPatch) -
             "close_ts": pd.to_datetime(
                 ["2026-03-01T00:01:39Z", "2026-03-02T00:01:39Z", "2026-03-03T00:01:39Z"], utc=True
             ).to_list(),
-            "open": [1.0, 1.1, 1.2],
-            "high": [1.2, 1.3, 1.4],
-            "low": [0.9, 1.0, 1.1],
-            "close": [1.15, 1.25, 1.35],
+            "open_bid": [1.0, 1.1, 1.2],
+            "high_bid": [1.2, 1.3, 1.4],
+            "low_bid": [0.9, 1.0, 1.1],
+            "close_bid": [1.15, 1.25, 1.35],
             "spread": [0.0002, 0.0002, 0.0002],
             "tick_volume": [100, 100, 100],
             "hl_first": [1, -1, 1],
             "hl_pos_frac": [0.4, 0.6, 0.5],
+            "high_ask": [1.2002, 1.3002, 1.4002],
+            "close_ask": [1.1502, 1.2502, 1.3502],
         }
     )
 

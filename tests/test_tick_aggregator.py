@@ -10,9 +10,11 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
+import polars as pl
 import pytest
 
 from src.behemoth.core.schemas import IncomingTick
+from scripts.build_global_tick_bars import _bars_from_ticks, _build_symbol
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
@@ -90,7 +92,7 @@ class TestTickAggregatorBarCount:
 class TestTickAggregatorOHLC:
     """Verify OHLC values are correct."""
 
-    def test_open_is_first_tick_mid(self):
+    def test_open_bid_is_first_tick_mid(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
 
         agg = TickAggregator(bar_ticks=5)
@@ -98,9 +100,9 @@ class TestTickAggregatorOHLC:
         bars = agg.add_ticks(ticks)
         bar = bars[0]
         expected_open = round(ticks[0].bid, 5)
-        assert abs(bar.open - expected_open) < 1e-5
+        assert abs(bar.open_bid - expected_open) < 1e-5
 
-    def test_close_is_last_tick_mid(self):
+    def test_close_bid_is_last_tick_mid(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
 
         agg = TickAggregator(bar_ticks=5)
@@ -108,9 +110,9 @@ class TestTickAggregatorOHLC:
         bars = agg.add_ticks(ticks)
         bar = bars[0]
         expected_close = round(ticks[4].bid, 5)
-        assert abs(bar.close - expected_close) < 1e-5
+        assert abs(bar.close_bid - expected_close) < 1e-5
 
-    def test_high_is_max_mid(self):
+    def test_high_bid_is_max_mid(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
 
         agg = TickAggregator(bar_ticks=5)
@@ -118,9 +120,9 @@ class TestTickAggregatorOHLC:
         bars = agg.add_ticks(ticks)
         bar = bars[0]
         bids = [t.bid for t in ticks]
-        assert abs(bar.high - max(bids)) < 1e-5
+        assert abs(bar.high_bid - max(bids)) < 1e-5
 
-    def test_low_is_min_mid(self):
+    def test_low_bid_is_min_mid(self):
         from src.behemoth.runtime.tick_aggregator import TickAggregator
 
         agg = TickAggregator(bar_ticks=5)
@@ -128,7 +130,7 @@ class TestTickAggregatorOHLC:
         bars = agg.add_ticks(ticks)
         bar = bars[0]
         bids = [t.bid for t in ticks]
-        assert abs(bar.low - min(bids)) < 1e-5
+        assert abs(bar.low_bid - min(bids)) < 1e-5
 
 
 class TestTickAggregatorMicrostructure:
@@ -239,3 +241,91 @@ class TestAskColumns:
 
         assert len(bars) == 1
         assert bars[0].close_ask == pytest.approx(expected_close_ask)
+
+
+class TestOfflineBarSchema:
+    """Verify offline bar builders emit the explicit bid/ask schema."""
+
+    def test_bars_from_ticks_uses_explicit_bid_ask_columns(self):
+        ticks = pl.DataFrame(
+            {
+                "timestamp": [
+                    datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+                    datetime(2025, 1, 1, 0, 0, 1, tzinfo=timezone.utc),
+                ],
+                "bid": [1.1, 1.2],
+                "price": [1.1, 1.2],
+                "ask": [1.1002, 1.2002],
+                "spread": [0.0002, 0.0002],
+            },
+            schema_overrides={"timestamp": pl.Datetime("ns", "UTC")},
+        )
+
+        bars, _, _ = _bars_from_ticks(
+            ticks,
+            symbol="EURUSD",
+            bar_ticks=2,
+            start_tick_index=0,
+        )
+
+        assert "open_bid" in bars.columns
+        assert "high_bid" in bars.columns
+        assert "low_bid" in bars.columns
+        assert "close_bid" in bars.columns
+        assert "high_ask" in bars.columns
+        assert "close_ask" in bars.columns
+        assert "open" not in bars.columns
+        assert "high" not in bars.columns
+        assert "low" not in bars.columns
+        assert "close" not in bars.columns
+        assert "ask" not in bars.columns
+        assert "close_EURUSD" not in bars.columns
+        assert "ask_EURUSD" not in bars.columns
+        assert "spread_EURUSD" not in bars.columns
+
+
+def test_build_symbol_aggregates_base_bars_from_files(tmp_path) -> None:
+    tick_root = tmp_path / "tick"
+    output_dir = tmp_path / "bars"
+    sym_dir = tick_root / "EURUSD"
+    sym_dir.mkdir(parents=True, exist_ok=True)
+
+    ticks = pl.DataFrame(
+        {
+            "timestamp": [
+                datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+                datetime(2025, 1, 1, 0, 0, 1, tzinfo=timezone.utc),
+                datetime(2025, 1, 1, 0, 0, 2, tzinfo=timezone.utc),
+                datetime(2025, 1, 1, 0, 0, 3, tzinfo=timezone.utc),
+            ],
+            "bid": [1.1, 1.2, 1.0, 1.3],
+            "ask": [1.1002, 1.2002, 1.0002, 1.3002],
+            "spread": [0.0002, 0.0002, 0.0002, 0.0002],
+        },
+        schema_overrides={"timestamp": pl.Datetime("ns", "UTC")},
+    )
+    ticks.write_parquet(sym_dir / "EURUSD_202501_ticks.parquet")
+
+    msgs = _build_symbol(
+        tick_root=tick_root,
+        output_dir=output_dir,
+        symbol="EURUSD",
+        base_ticks=2,
+        target_ticks=[2, 4],
+        price_source="bid",
+        timestamp_mode="as_utc",
+        overwrite=True,
+    )
+
+    out_path = output_dir / "EURUSD_4tick.parquet"
+    assert out_path.exists()
+    assert any(msg.startswith("ok EURUSD 4tick: 1 bars") for msg in msgs)
+
+    bars = pl.read_parquet(out_path)
+    assert bars.height == 1
+    assert bars["timestamp"][0] == datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    assert bars["close_ts"][0] == datetime(2025, 1, 1, 0, 0, 3, tzinfo=timezone.utc)
+    assert bars["open_bid"][0] == pytest.approx(1.1)
+    assert bars["high_bid"][0] == pytest.approx(1.3)
+    assert bars["low_bid"][0] == pytest.approx(1.0)
+    assert bars["close_bid"][0] == pytest.approx(1.3)

@@ -81,8 +81,8 @@ class TestEvaluateBar:
         actions = mgr.evaluate_bar(
             symbol="GBPUSD",
             bar_ticks=100,
-            bar_high=1.29525,
-            bar_low=1.29490,   # > lower (1.29480)
+            bar_high_bid=1.29525,
+            bar_low_bid=1.29490,   # > lower (1.29480)
             bar_hl_first=1.0,
             current_bar_idx=11,
             bar_high_ask=1.29525,
@@ -101,8 +101,8 @@ class TestEvaluateBar:
         actions = mgr.evaluate_bar(
             symbol="GBPUSD",
             bar_ticks=100,
-            bar_high=1.29525,
-            bar_low=1.29490,
+            bar_high_bid=1.29525,
+            bar_low_bid=1.29490,
             bar_hl_first=1.0,
             current_bar_idx=11,
             bar_high_ask=1.29525,
@@ -117,8 +117,8 @@ class TestEvaluateBar:
         actions = mgr.evaluate_bar(
             symbol="GBPUSD",
             bar_ticks=100,
-            bar_high=1.29525,
-            bar_low=1.29490,
+            bar_high_bid=1.29525,
+            bar_low_bid=1.29490,
             bar_hl_first=1.0,
             current_bar_idx=11,
             bar_high_ask=1.29525,
@@ -132,8 +132,8 @@ class TestEvaluateBar:
         actions = mgr.evaluate_bar(
             symbol="GBPUSD",
             bar_ticks=100,
-            bar_high=1.29510,
-            bar_low=1.29475,   # <= 1.29480
+            bar_high_bid=1.29510,
+            bar_low_bid=1.29475,   # <= 1.29480
             bar_hl_first=-1.0,
             current_bar_idx=11,
         )
@@ -148,8 +148,8 @@ class TestEvaluateBar:
         actions = mgr.evaluate_bar(
             symbol="GBPUSD",
             bar_ticks=100,
-            bar_high=1.29510,
-            bar_low=1.29490,
+            bar_high_bid=1.29510,
+            bar_low_bid=1.29490,
             bar_hl_first=0.0,
             current_bar_idx=11,
         )
@@ -203,6 +203,30 @@ class TestEvaluateBar:
         assert len(actions) == 0
         scan = mgr.get_scan(scan_id)
         assert scan["status"] == "EXPIRED"
+
+    def test_evaluate_bar_uses_explicit_bid_ask_bar_values(self):
+        mgr, _scan_id = self._make_manager_with_scan(ref_price=1.10010, barrier_pips=2.0, horizon=6)
+        latest_bar = {
+            "high_bid": 1.10025,
+            "low_bid": 1.09990,
+            "close_bid": 1.10015,
+            "high_ask": 1.10035,
+            "close_ask": 1.10025,
+        }
+
+        actions = mgr.evaluate_bar(
+            symbol="GBPUSD",
+            bar_ticks=100,
+            bar_high_bid=latest_bar["high_bid"],
+            bar_low_bid=latest_bar["low_bid"],
+            bar_hl_first=1.0,
+            current_bar_idx=11,
+            bar_high_ask=latest_bar["high_ask"],
+        )
+
+        assert len(actions) == 1
+        assert actions[0]["type"] == "OPEN_MARKET"
+        assert actions[0]["side"] == "BUY"
 
 
 class TestTieBreaking:
@@ -327,9 +351,9 @@ def _oco_precompute_reference(
 ) -> dict[str, np.ndarray]:
     """Exact copy of _oco_precompute from build_tick_opportunity_ml_dataset.py
     in from_touch mode — the ground truth for barrier detection."""
-    close = pd.to_numeric(df["close"], errors="coerce").to_numpy(dtype=float)
-    high = pd.to_numeric(df["high"], errors="coerce").to_numpy(dtype=float)
-    low = pd.to_numeric(df["low"], errors="coerce").to_numpy(dtype=float)
+    close = pd.to_numeric(df["close_bid"], errors="coerce").to_numpy(dtype=float)
+    high = pd.to_numeric(df["high_bid"], errors="coerce").to_numpy(dtype=float)
+    low = pd.to_numeric(df["low_bid"], errors="coerce").to_numpy(dtype=float)
     hlf = pd.to_numeric(df["hl_first"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
     h = int(horizon)
     n_eff = len(df) - 2 * h
@@ -387,9 +411,9 @@ class TestParityWithOcoPrecompute:
         hl_firsts = rng.choice([-1.0, 0.0, 1.0], n_bars)
 
         df = pd.DataFrame({
-            "close": prices,
-            "high": highs,
-            "low": lows,
+            "close_bid": prices,
+            "high_bid": highs,
+            "low_bid": lows,
             "hl_first": hl_firsts,
         })
 
@@ -440,8 +464,8 @@ class TestParityWithOcoPrecompute:
                 actions = mgr.evaluate_bar(
                     symbol="GBPUSD",
                     bar_ticks=100,
-                    bar_high=float(highs[bar_idx]),
-                    bar_low=float(lows[bar_idx]),
+                    bar_high_bid=float(highs[bar_idx]),
+                    bar_low_bid=float(lows[bar_idx]),
                     bar_hl_first=float(hl_firsts[bar_idx]),
                     current_bar_idx=bar_idx,
                     bar_high_ask=float(highs[bar_idx]),
@@ -561,8 +585,8 @@ class TestAskBarrierTrigger:
         actions = mgr.evaluate_bar(
             symbol="GBPUSD",
             bar_ticks=100,
-            bar_high=1.29515,       # BID high — misses barrier
-            bar_low=1.29490,
+            bar_high_bid=1.29515,       # BID high — misses barrier
+            bar_low_bid=1.29490,
             bar_hl_first=1.0,
             current_bar_idx=11,
             bar_high_ask=1.29525,   # ASK high — touches barrier
@@ -578,8 +602,8 @@ class TestAskBarrierTrigger:
         actions = mgr.evaluate_bar(
             symbol="GBPUSD",
             bar_ticks=100,
-            bar_high=1.29510,
-            bar_low=1.29475,        # BID low — touches lower barrier
+            bar_high_bid=1.29510,
+            bar_low_bid=1.29475,        # BID low — touches lower barrier
             bar_hl_first=-1.0,
             current_bar_idx=11,
             bar_high_ask=1.29512,   # ASK < upper; should NOT trigger BUY

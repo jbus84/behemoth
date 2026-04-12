@@ -199,7 +199,12 @@ def main() -> None:
     p.add_argument("--symbols", default="")
     p.add_argument("--offsets", default="0")
     p.add_argument("--bar-ticks", type=int, default=100)
-    p.add_argument("--price-source", choices=["bid", "mid"], default="bid")
+    p.add_argument(
+        "--price-source",
+        choices=["bid"],
+        default="bid",
+        help="OHLC source price (canonical bid schema only)",
+    )
     p.add_argument(
         "--timestamp-mode",
         choices=["as_utc", "ny_local_tagged_utc"],

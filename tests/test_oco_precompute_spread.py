@@ -11,9 +11,9 @@ def _make_bars(n: int, *, close: float = 1.10000, pip: float = 0.0001) -> pd.Dat
     """Minimal bar DataFrame with flat prices and placeholder ask columns."""
     return pd.DataFrame(
         {
-            "close": [close] * n,
-            "high": [close + 0.00005] * n,   # BID high: 0.5 pips above ref
-            "low": [close - 0.00050] * n,
+            "close_bid": [close] * n,
+            "high_bid": [close + 0.00005] * n,   # BID high: 0.5 pips above ref
+            "low_bid": [close - 0.00050] * n,
             "hl_first": [1.0] * n,
             "high_ask": [close + 0.00025] * n,  # ASK high: 2.5 pips above ref
             "close_ask": [close + 0.00015] * n,  # ASK close: 1.5 pips above ref
@@ -70,9 +70,9 @@ def test_sell_exit_label_uses_close_ask():
     # Build bars where SELL triggers but BUY never does
     df = pd.DataFrame(
         {
-            "close": [1.10000] * n,
-            "high": [1.10005] * n,       # BID high: never reaches upper (1.10020)
-            "low": [1.09950] * n,        # BID low: reaches dn_thr (1.09980) — SELL
+            "close_bid": [1.10000] * n,
+            "high_bid": [1.10005] * n,       # BID high: never reaches upper (1.10020)
+            "low_bid": [1.09950] * n,        # BID low: reaches dn_thr (1.09980) — SELL
             "hl_first": [-1.0] * n,
             "high_ask": [1.10007] * n,   # ASK high: still below upper (1.10020) — no BUY
             "close_ask": [1.10015] * n,  # ASK close: 1.5 pips above BID close

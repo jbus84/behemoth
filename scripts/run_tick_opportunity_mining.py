@@ -40,6 +40,16 @@ DEFAULTS: dict[str, Any] = {
 CANDIDATE_SCHEMA_VERSION = "2.0"
 SELECTION_PASS_BASIS = "train_only"
 QUALITY_TIER_BASIS = "train_only"
+EXPLICIT_BAR_SCHEMA_COLUMNS = [
+    "open_bid",
+    "high_bid",
+    "low_bid",
+    "close_bid",
+    "high_ask",
+    "close_ask",
+    "spread",
+]
+LEGACY_AMBIGUOUS_BAR_COLUMNS = {"open", "high", "low", "close", "ask"}
 
 
 def _parse_ints(raw: str) -> list[int]:
@@ -101,18 +111,55 @@ def _safe_numeric(s: pd.Series) -> pd.Series:
     return pd.to_numeric(s, errors="coerce").astype(float)
 
 
-def _prepare_frame(path: Path, *, symbol: str, horizons: list[int]) -> pd.DataFrame:
-    d = pd.read_parquet(path).copy()
-    d["close_ts"] = pd.to_datetime(d["close_ts"], utc=True, errors="coerce")
-    d = d[d["close_ts"].notna()].sort_values("close_ts").reset_index(drop=True)
-    if d.empty:
-        return d
+def _schema_source_label(path: str | Path | None) -> str:
+    if path is None:
+        return "bar frame"
+    return Path(path).name
 
-    req = [
-        "open",
-        "high",
-        "low",
-        "close",
+
+def require_explicit_bar_schema(
+    columns: list[str] | pd.Index | set[str],
+    *,
+    path: str | Path | None = None,
+) -> None:
+    cols = {str(c) for c in columns}
+    legacy = sorted(LEGACY_AMBIGUOUS_BAR_COLUMNS & cols)
+    if legacy:
+        raise ValueError(
+            f"{_schema_source_label(path)} legacy ambiguous bar schema unsupported: {legacy}"
+        )
+
+
+def load_bar_frame(
+    frame: pd.DataFrame,
+    *,
+    path: str | Path | None = None,
+    required: list[str] | None = None,
+) -> pd.DataFrame:
+    out = frame.copy()
+    require_explicit_bar_schema(out.columns, path=path)
+    need = list(required) if required is not None else list(EXPLICIT_BAR_SCHEMA_COLUMNS)
+    miss = [c for c in need if c not in out.columns]
+    if miss:
+        raise ValueError(f"{_schema_source_label(path)} missing explicit bar schema columns: {miss}")
+    return out
+
+
+def read_explicit_bar_parquet(
+    path: Path,
+    *,
+    columns: list[str] | None = None,
+    required: list[str] | None = None,
+) -> pd.DataFrame:
+    try:
+        frame = pd.read_parquet(path, columns=columns).copy() if columns is not None else pd.read_parquet(path).copy()
+    except Exception:
+        frame = pd.read_parquet(path).copy()
+    return load_bar_frame(frame, path=path, required=required)
+
+
+def _prepare_frame(path: Path, *, symbol: str, horizons: list[int]) -> pd.DataFrame:
+    req = EXPLICIT_BAR_SCHEMA_COLUMNS + [
         "cost_est_pips",
         "range_pips",
         "hour_utc",
@@ -120,15 +167,19 @@ def _prepare_frame(path: Path, *, symbol: str, horizons: list[int]) -> pd.DataFr
         "tick_rate_z",
         "vel_cost_units_h1",
     ]
-    miss = [c for c in req if c not in d.columns]
-    if miss:
-        raise ValueError(f"{path.name} missing columns: {miss}")
+    d = load_bar_frame(pd.read_parquet(path).copy(), path=path, required=req)
+    d["close_ts"] = pd.to_datetime(d["close_ts"], utc=True, errors="coerce")
+    d = d[d["close_ts"].notna()].sort_values("close_ts").reset_index(drop=True)
+    if d.empty:
+        return d
 
     pip = float(_pip_size(symbol))
-    d["open"] = _safe_numeric(d["open"])
-    d["high"] = _safe_numeric(d["high"])
-    d["low"] = _safe_numeric(d["low"])
-    d["close"] = _safe_numeric(d["close"])
+    d["open_bid"] = _safe_numeric(d["open_bid"])
+    d["high_bid"] = _safe_numeric(d["high_bid"])
+    d["low_bid"] = _safe_numeric(d["low_bid"])
+    d["close_bid"] = _safe_numeric(d["close_bid"])
+    d["high_ask"] = _safe_numeric(d["high_ask"])
+    d["close_ask"] = _safe_numeric(d["close_ask"])
     d["cost_est_pips"] = _safe_numeric(d["cost_est_pips"])
     d["range_pips"] = _safe_numeric(d["range_pips"])
     d["hour_utc"] = _safe_numeric(d["hour_utc"])
@@ -139,7 +190,7 @@ def _prepare_frame(path: Path, *, symbol: str, horizons: list[int]) -> pd.DataFr
     if "vel_pips_h1" in d.columns:
         d["ret1_pips"] = _safe_numeric(d["vel_pips_h1"]).fillna(0.0)
     else:
-        d["ret1_pips"] = ((d["close"] - d["close"].shift(1)) / pip).fillna(0.0)
+        d["ret1_pips"] = ((d["close_bid"] - d["close_bid"].shift(1)) / pip).fillna(0.0)
     if "vel_z_h1" in d.columns:
         d["ret_z"] = _safe_numeric(d["vel_z_h1"])
     else:
@@ -165,7 +216,7 @@ def _prepare_frame(path: Path, *, symbol: str, horizons: list[int]) -> pd.DataFr
     for h in sorted(set(int(x) for x in horizons if int(x) > 0)):
         col = f"y_fwd_pips_h{h}"
         if col not in d.columns:
-            d[col] = ((d["close"].shift(-h) - d["open"].shift(-1)) / pip).astype(float)
+            d[col] = ((d["close_bid"].shift(-h) - d["open_bid"].shift(-1)) / pip).astype(float)
         else:
             d[col] = _safe_numeric(d[col])
     return d.replace([np.inf, -np.inf], np.nan)
@@ -450,15 +501,15 @@ def _oco_candidates(
     {k: np.asarray(v, dtype=bool) for k, v in train_regimes}
 
     pip = float(_pip_size(symbol))
-    close_test = pd.to_numeric(test["close"], errors="coerce").to_numpy(dtype=float)
-    high_test = pd.to_numeric(test["high"], errors="coerce").to_numpy(dtype=float)
-    low_test = pd.to_numeric(test["low"], errors="coerce").to_numpy(dtype=float)
+    close_test = pd.to_numeric(test["close_bid"], errors="coerce").to_numpy(dtype=float)
+    high_test = pd.to_numeric(test["high_bid"], errors="coerce").to_numpy(dtype=float)
+    low_test = pd.to_numeric(test["low_bid"], errors="coerce").to_numpy(dtype=float)
     hlf_test = pd.to_numeric(test["hl_first"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
     ts_test = pd.to_datetime(test["close_ts"], utc=True, errors="coerce")
 
-    close_train = pd.to_numeric(train["close"], errors="coerce").to_numpy(dtype=float)
-    high_train = pd.to_numeric(train["high"], errors="coerce").to_numpy(dtype=float)
-    low_train = pd.to_numeric(train["low"], errors="coerce").to_numpy(dtype=float)
+    close_train = pd.to_numeric(train["close_bid"], errors="coerce").to_numpy(dtype=float)
+    high_train = pd.to_numeric(train["high_bid"], errors="coerce").to_numpy(dtype=float)
+    low_train = pd.to_numeric(train["low_bid"], errors="coerce").to_numpy(dtype=float)
     hlf_train = pd.to_numeric(train["hl_first"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
     ts_train = pd.to_datetime(train["close_ts"], utc=True, errors="coerce")
 

@@ -53,10 +53,10 @@ def _make_synthetic_bars(
                 bar_ticks=bar_ticks,
                 timestamp=t,
                 close_ts=close_ts,
-                open=round(o, 5),
-                high=round(h, 5),
-                low=round(l, 5),
-                close=round(c, 5),
+                open_bid=round(o, 5),
+                high_bid=round(h, 5),
+                low_bid=round(l, 5),
+                close_bid=round(c, 5),
                 spread=round(spread, 6),
                 tick_volume=tv,
                 hl_first=hl_first_val,
@@ -86,10 +86,10 @@ def _pandas_velocity_features(
             {
                 "timestamp": b.timestamp,
                 "close_ts": b.close_ts,
-                "open": b.open,
-                "high": b.high,
-                "low": b.low,
-                "close": b.close,
+                "open_bid": b.open_bid,
+                "high_bid": b.high_bid,
+                "low_bid": b.low_bid,
+                "close_bid": b.close_bid,
                 "spread": b.spread,
                 "tick_volume": b.tick_volume,
                 "bar_ticks": b.bar_ticks,
@@ -102,10 +102,10 @@ def _pandas_velocity_features(
     df["close_ts"] = pd.to_datetime(df["close_ts"], utc=True)
     df = df.sort_values("close_ts").reset_index(drop=True)
 
-    close = df["close"].astype(float)
-    open_ = df["open"].astype(float)
-    high = df["high"].astype(float)
-    low = df["low"].astype(float)
+    close = df["close_bid"].astype(float)
+    open_ = df["open_bid"].astype(float)
+    high = df["high_bid"].astype(float)
+    low = df["low_bid"].astype(float)
 
     df["hour_utc"] = df["close_ts"].dt.hour.astype(int)
     df["duration_sec"] = (df["close_ts"] - df["timestamp"]).dt.total_seconds().clip(lower=1e-6)
@@ -775,3 +775,83 @@ class TestHighAskPersistence:
         latest = mgr.get_latest_bar(bar.symbol, bar.bar_ticks)
         assert latest is not None
         assert latest["high_ask"] == pytest.approx(1.30050)
+
+
+class TestCanonicalBarSchemaNames:
+    def test_latest_bar_uses_explicit_bid_field_names_only(self):
+        from src.behemoth.runtime.state import StateManager
+
+        mgr = StateManager()
+        bar = _make_synthetic_bars(n=1)[0]
+        mgr.append_bar(bar)
+        latest = mgr.get_latest_bar(bar.symbol, bar.bar_ticks)
+        assert latest is not None
+        assert "open_bid" in latest
+        assert "high_bid" in latest
+        assert "low_bid" in latest
+        assert "close_bid" in latest
+        assert "open" not in latest
+        assert "high" not in latest
+        assert "low" not in latest
+        assert "close" not in latest
+
+
+class TestTickBarSchemaMigration:
+    def test_state_manager_renames_legacy_price_columns_to_explicit_bid_columns(self, tmp_path):
+        import duckdb
+
+        from src.behemoth.runtime.state import StateManager
+
+        db_path = tmp_path / "runtime.duckdb"
+        con = duckdb.connect(str(db_path))
+        con.execute(
+            """
+            CREATE TABLE tick_bars (
+                row_id INTEGER,
+                symbol VARCHAR,
+                bar_ticks INTEGER,
+                ts TIMESTAMP WITH TIME ZONE,
+                close_ts TIMESTAMP WITH TIME ZONE,
+                open_price DOUBLE,
+                high_price DOUBLE,
+                low_price DOUBLE,
+                close_price DOUBLE,
+                spread DOUBLE,
+                tick_volume DOUBLE,
+                hl_first DOUBLE,
+                hl_pos_frac DOUBLE
+            )
+            """
+        )
+        con.execute(
+            """
+            INSERT INTO tick_bars VALUES
+            (1, 'EURUSD', 100, TIMESTAMPTZ '2025-01-01 00:00:00+00', TIMESTAMPTZ '2025-01-01 00:01:00+00',
+             1.1000, 1.1010, 1.0990, 1.1005, 0.0002, 100.0, 1.0, 0.6)
+            """
+        )
+        con.close()
+
+        mgr = StateManager(persist_path=str(db_path))
+        columns = {
+            row[0]
+            for row in mgr._con.execute(
+                """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = 'tick_bars'
+                """
+            ).fetchall()
+        }
+        latest = mgr.get_latest_bar("EURUSD", 100)
+
+        assert {"open_bid", "high_bid", "low_bid", "close_bid"} <= columns
+        assert "open_price" not in columns
+        assert "high_price" not in columns
+        assert "low_price" not in columns
+        assert "close_price" not in columns
+        assert latest is not None
+        assert latest["open_bid"] == pytest.approx(1.1)
+        assert latest["high_bid"] == pytest.approx(1.101)
+        assert latest["low_bid"] == pytest.approx(1.099)
+        assert latest["close_bid"] == pytest.approx(1.1005)
