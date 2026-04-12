@@ -2,8 +2,8 @@
 
 Produces identical signal selection, side determination, and lifecycle blocking
 as _oco_precompute in scripts/build_tick_opportunity_ml_dataset.py.
- Touch confirmation is completed-bar based; the live adapter then submits a
- market order immediately after confirmation.
+Touch confirmation is completed-bar based; the live adapter then submits a
+market order immediately after confirmation.
 """
 from __future__ import annotations
 
@@ -86,14 +86,22 @@ class BarrierManager:
     ) -> str:
         """Register a new barrier scan. Called when selected_exec=1 passes all gates."""
         scan_id = f"scan_{uuid.uuid4().hex[:12]}"
-        if ref_price is None and signal_close_ask is None and signal_close_bid is None:
-            raise ValueError("register_scan requires ref_price or signal_close_ask/close_bid")
-        if signal_close_ask is None:
-            signal_close_ask = ref_price if ref_price is not None else signal_close_bid
-        if signal_close_bid is None:
-            signal_close_bid = ref_price if ref_price is not None else signal_close_ask
-        if ref_price is None:
-            ref_price = signal_close_bid
+        explicit_mode = signal_close_ask is not None or signal_close_bid is not None
+        if explicit_mode:
+            if signal_close_ask is None or signal_close_bid is None:
+                raise ValueError(
+                    "register_scan requires both signal_close_ask and signal_close_bid "
+                    "when using explicit side-aware inputs"
+                )
+            if ref_price is None:
+                ref_price = signal_close_bid
+        else:
+            if ref_price is None:
+                raise ValueError(
+                    "register_scan requires ref_price or explicit signal_close_ask/signal_close_bid"
+                )
+            signal_close_ask = ref_price
+            signal_close_bid = ref_price
         upper = signal_close_ask + barrier_pips * pip_size
         lower = signal_close_bid - barrier_pips * pip_size
         self._con.execute(
@@ -113,6 +121,39 @@ class BarrierManager:
             ],
         )
         return scan_id
+
+    def reject_legacy_active_scans(self) -> list[dict[str, str | None]]:
+        """Expire active scans that predate the side-aware signal close columns.
+
+        Legacy scans cannot be reconstructed safely because the stored reference
+        price alone does not encode whether the scan should anchor off close_ask
+        or close_bid. Rejecting them on startup prevents stale barriers from
+        surviving a restart on a persistent DB.
+        """
+        rows = self._con.execute(
+            "SELECT scan_id, symbol, candidate_uid, reservation_id "
+            "FROM barrier_scans "
+            "WHERE status IN ('SCANNING', 'HOLDING') "
+            "AND (signal_close_ask IS NULL OR signal_close_bid IS NULL)"
+        ).fetchall()
+        rejected = [
+            {
+                "scan_id": row[0],
+                "symbol": row[1],
+                "candidate_uid": row[2],
+                "reservation_id": row[3],
+            }
+            for row in rows
+        ]
+        if not rejected:
+            return []
+        self._con.execute(
+            "UPDATE barrier_scans "
+            "SET scan_bars_remaining = 0, hold_bars_remaining = 0, status = 'EXPIRED' "
+            "WHERE status IN ('SCANNING', 'HOLDING') "
+            "AND (signal_close_ask IS NULL OR signal_close_bid IS NULL)"
+        )
+        return rejected
 
     def has_active_scan(self, symbol: str, candidate_uid: str) -> bool:
         """Check if candidate has an active (SCANNING or HOLDING) scan."""

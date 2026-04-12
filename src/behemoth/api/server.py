@@ -668,6 +668,20 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
             cost_window=_config.cost_window,
         )
     _barrier_manager = BarrierManager(con=_state._con)
+    legacy_rejected_scans = _barrier_manager.reject_legacy_active_scans()
+    if legacy_rejected_scans:
+        logger.warning(
+            "Rejected %d legacy active barrier scans missing side-aware signal closes",
+            len(legacy_rejected_scans),
+        )
+        if _config.account_risk_enabled:
+            for scan in legacy_rejected_scans:
+                reservation_id = scan.get("reservation_id")
+                if reservation_id:
+                    _state.release_account_risk_reservation(
+                        reservation_id=str(reservation_id),
+                        reason="legacy_barrier_scan_migration",
+                    )
     _feed_state = {}
     try:
         _aggregators = {}
