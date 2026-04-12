@@ -329,6 +329,8 @@ class TestPredictLatestBarSchema:
                 candidate_uid="cand1",
                 signal_bar_idx=latest_bar["row_id"],
                 ref_price=latest_bar["close_bid"],
+                signal_close_ask=latest_bar["close_ask"],
+                signal_close_bid=latest_bar["close_bid"],
                 barrier_pips=15.0,
                 horizon=24,
                 pip_size=0.0001,
