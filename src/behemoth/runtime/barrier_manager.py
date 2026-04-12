@@ -1,7 +1,9 @@
-"""Bar-level barrier manager — detects barrier touches using completed bar OHLC.
+"""Bar-level barrier manager for completed-bar OCO touch confirmation.
 
 Produces identical signal selection, side determination, and lifecycle blocking
 as _oco_precompute in scripts/build_tick_opportunity_ml_dataset.py.
+ Touch confirmation is completed-bar based; the live adapter then submits a
+ market order immediately after confirmation.
 """
 from __future__ import annotations
 
@@ -17,6 +19,8 @@ CREATE TABLE IF NOT EXISTS barrier_scans (
     candidate_uid VARCHAR NOT NULL,
     signal_bar_idx INTEGER NOT NULL,
     ref_price DOUBLE NOT NULL,
+    signal_close_ask DOUBLE,
+    signal_close_bid DOUBLE,
     upper_barrier DOUBLE NOT NULL,
     lower_barrier DOUBLE NOT NULL,
     barrier_pips DOUBLE NOT NULL,
@@ -52,6 +56,12 @@ class BarrierManager:
             self._con = duckdb.connect()
             self._owns_con = True
         self._con.execute(_CREATE_BARRIER_SCANS_SQL)
+        self._con.execute(
+            "ALTER TABLE barrier_scans ADD COLUMN IF NOT EXISTS signal_close_ask DOUBLE"
+        )
+        self._con.execute(
+            "ALTER TABLE barrier_scans ADD COLUMN IF NOT EXISTS signal_close_bid DOUBLE"
+        )
 
     def close(self) -> None:
         if self._owns_con:
@@ -62,7 +72,6 @@ class BarrierManager:
         symbol: str,
         candidate_uid: str,
         signal_bar_idx: int,
-        ref_price: float,
         barrier_pips: float,
         horizon: int,
         pip_size: float,
@@ -71,21 +80,33 @@ class BarrierManager:
         model_month: str,
         reservation_id: str | None,
         run_id: str | None,
+        ref_price: float | None = None,
+        signal_close_ask: float | None = None,
+        signal_close_bid: float | None = None,
     ) -> str:
         """Register a new barrier scan. Called when selected_exec=1 passes all gates."""
         scan_id = f"scan_{uuid.uuid4().hex[:12]}"
-        upper = ref_price + barrier_pips * pip_size
-        lower = ref_price - barrier_pips * pip_size
+        if ref_price is None and signal_close_ask is None and signal_close_bid is None:
+            raise ValueError("register_scan requires ref_price or signal_close_ask/close_bid")
+        if signal_close_ask is None:
+            signal_close_ask = ref_price if ref_price is not None else signal_close_bid
+        if signal_close_bid is None:
+            signal_close_bid = ref_price if ref_price is not None else signal_close_ask
+        if ref_price is None:
+            ref_price = signal_close_bid
+        upper = signal_close_ask + barrier_pips * pip_size
+        lower = signal_close_bid - barrier_pips * pip_size
         self._con.execute(
             """INSERT INTO barrier_scans (
                 scan_id, symbol, candidate_uid, signal_bar_idx,
-                ref_price, upper_barrier, lower_barrier, barrier_pips, horizon,
+                ref_price, signal_close_ask, signal_close_bid,
+                upper_barrier, lower_barrier, barrier_pips, horizon,
                 scan_bars_remaining, status, pred_prob, threshold,
                 model_month, reservation_id, run_id, created_ts
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SCANNING', ?, ?, ?, ?, ?, ?)""",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SCANNING', ?, ?, ?, ?, ?, ?)""",
             [
                 scan_id, symbol.upper(), candidate_uid, signal_bar_idx,
-                ref_price, upper, lower, barrier_pips, horizon,
+                ref_price, signal_close_ask, signal_close_bid, upper, lower, barrier_pips, horizon,
                 horizon, pred_prob, threshold,
                 model_month, reservation_id, run_id,
                 datetime.now(tz=timezone.utc),
@@ -127,6 +148,8 @@ class BarrierManager:
         - Checks bar_high_ask >= upper_barrier (up touch) and bar_low_bid <= lower_barrier (dn touch)
         - If both touched same bar: uses bar_hl_first to break tie (positive = high first = BUY)
         - Returns list of action dicts: OPEN_MARKET for new touches, CLOSE_MARKET for completed holds
+        - Touch confirmation is completed-bar based; the live adapter submits a
+          market order immediately after touch confirmation
         """
         sym = symbol.upper()
         actions: list[dict] = []

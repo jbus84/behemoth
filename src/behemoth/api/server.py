@@ -2771,12 +2771,15 @@ async def predict(req: PredictRequest) -> PredictResponse:
                 symbol=sym,
                 bar_ticks=pred.bar_ticks,
             )
-            bar_close_bid = latest_bar["close_bid"]
+            signal_close_ask = latest_bar["close_ask"]
+            signal_close_bid = latest_bar["close_bid"]
             _barrier_manager.register_scan(
                 symbol=sym,
                 candidate_uid=pred.candidate_uid,
                 signal_bar_idx=latest_bar["row_id"],
-                ref_price=bar_close_bid,
+                ref_price=signal_close_bid,
+                signal_close_ask=signal_close_ask,
+                signal_close_bid=signal_close_bid,
                 barrier_pips=pred.barrier_pips,
                 horizon=pred.horizon,
                 pip_size=pip,
@@ -3654,7 +3657,7 @@ async def seed_audit_history(req: SeedAuditHistoryRequest) -> dict:
 
 @app.post("/trades/touch")
 async def touch_trade(req: TradeTouchRequest):
-    """Record that a position's barrier was touched."""
+    """Record that a touch confirmation was processed for an open position."""
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
     run_id = _effective_run_id(req.run_id)

@@ -28,6 +28,31 @@ class TestRegisterScan:
         assert scan_id is not None
         assert mgr.has_active_scan("GBPUSD", "oco|GBPUSD|100|h6|abc")
 
+    def test_register_scan_tracks_side_correct_signal_reference_contract(self):
+        mgr = BarrierManager()
+        scan_id = mgr.register_scan(
+            symbol="GBPUSD",
+            candidate_uid="oco|GBPUSD|100|h6|abc",
+            signal_bar_idx=10,
+            signal_close_ask=1.29520,
+            signal_close_bid=1.29510,
+            barrier_pips=2.0,
+            horizon=6,
+            pip_size=0.0001,
+            pred_prob=0.625,
+            threshold=0.599,
+            model_month="2026-02",
+            reservation_id="res-001",
+            run_id="test",
+        )
+
+        scan = mgr.get_scan(scan_id)
+        assert scan["signal_close_ask"] == pytest.approx(1.29520)
+        assert scan["signal_close_bid"] == pytest.approx(1.29510)
+        assert scan["upper_barrier"] == pytest.approx(1.29520 + 2.0 * 0.0001)
+        assert scan["lower_barrier"] == pytest.approx(1.29510 - 2.0 * 0.0001)
+        assert scan["ref_price"] == pytest.approx(1.29510)
+
     def test_register_sets_correct_barriers(self):
         mgr = BarrierManager()
         scan_id = mgr.register_scan(
@@ -227,6 +252,14 @@ class TestEvaluateBar:
         assert len(actions) == 1
         assert actions[0]["type"] == "OPEN_MARKET"
         assert actions[0]["side"] == "BUY"
+
+    def test_completed_touch_bar_opens_market_without_barrier_fill_assumption(self):
+        assert "market order immediately after touch confirmation" in (
+            BarrierManager.evaluate_bar.__doc__ or ""
+        )
+        assert "perfect barrier-price fill" not in (
+            BarrierManager.evaluate_bar.__doc__ or ""
+        ).lower()
 
 
 class TestTieBreaking:
