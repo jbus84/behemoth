@@ -315,3 +315,75 @@ def test_rolling_core_strict_gate_only_blocks_gate_fail_backfill(tmp_path: Path)
     assert jul_month["status"] == "no_gate_states"
     assert float(jul_month["rows"]) == 0.0
     assert schedule.empty
+
+
+def test_rolling_core_capacity_can_pass_on_annual_floor(tmp_path: Path):
+    cand = pd.DataFrame(
+        [
+            {
+                "symbol": "EURUSD",
+                "bar_ticks": 100,
+                "horizon": 5,
+                "state_id": "state_a",
+                "family": "oco_first_touch_clean",
+                "regime_desc": "a;barrier=2.0",
+                "barrier_pips": 2.0,
+            }
+        ]
+    )
+    cpath = tmp_path / "candidates4.csv"
+    cand.to_csv(cpath, index=False)
+
+    months = ["2025-04", "2025-05", "2025-06", "2025-07"]
+    rows: list[dict] = []
+    for m in months:
+        for _ in range(300):
+            rows.append(
+                {
+                    "candidate_uid": _uid("state_a"),
+                    "pred_prob": 0.95,
+                    "target_gross_pips": 1.0,
+                    "test_month": m,
+                    "selected_exec": 1,
+                    "threshold_exec": 0.9,
+                }
+            )
+    p = pd.DataFrame(rows)
+    ppath = tmp_path / "pred4.parquet"
+    p.to_parquet(ppath, index=False)
+
+    cfg = {
+        "symbol": "EURUSD",
+        "candidate_csv": str(cpath),
+        "pred_path": str(ppath),
+        "family_keep": "oco_first_touch_clean",
+        "barrier_keep": "2",
+        "horizon_keep": "5",
+        "locked_quantile": 0.9,
+        "selection_mode": "exec_flag",
+        "state_train_months": 3,
+        "min_train_months": 3,
+        "overlap_corr_max": 0.85,
+        "max_states": 1,
+        "min_states": 1,
+        "min_state_avg_rows": 1.0,
+        "min_positive_months_train": 2,
+        "strict_gate_only": True,
+        "require_lb95_trade_gt0": True,
+        "require_lb95_month_gt0": True,
+        "bootstrap_paths": 120,
+        "seed": 42,
+        "capacity_floor_monthly": 3000.0,
+        "capacity_floor_annual": 3000.0,
+        "out_state_schedule_csv": str(tmp_path / "schedule4.csv"),
+        "out_monthly_csv": str(tmp_path / "monthly4.csv"),
+        "out_summary_csv": str(tmp_path / "summary4.csv"),
+        "report_out": str(tmp_path / "report4.md"),
+    }
+    _, monthly, summary = run(cfg)
+
+    jul_month = monthly[monthly["test_month"] == "2025-07"].iloc[0]
+    assert jul_month["status"] == "ok"
+    assert float(summary.iloc[0]["avg_month_rows"]) == 300.0
+    assert float(summary.iloc[0]["annualized_rows"]) == 3600.0
+    assert bool(summary.iloc[0]["capacity_pass_monthly_or_annual"]) is True

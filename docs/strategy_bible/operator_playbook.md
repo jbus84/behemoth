@@ -1,6 +1,6 @@
 # OCO Operator Playbook
 
-- generated_at_utc: `2026-04-03T12:49:18Z`
+- generated_at_utc: `2026-04-12T17:21:08Z`
 - source_rules: `configs/research/docs/operator_action_rules.yaml`
 
 ## Action Codes
@@ -20,20 +20,17 @@
 5. Block deployment if any `A3_` action remains unresolved.
 
 ## Current Escalations
-| symbol   | metric_id                                        | band   | action_code           | owner     | action_summary         |
-|:---------|:-------------------------------------------------|:-------|:----------------------|:----------|:-----------------------|
-| AUDUSD   | S01_lb95_dependence_gap                          | amber  | A1_REVIEW             | research  | review and monitor     |
-| EURUSD   | FTMO_ALLOC_BLOCK_RATE                            | amber  | A1_REVIEW             | risk      | review and monitor     |
-| EURUSD   | FTMO_ALLOC_BUDGET_EXCEEDED_RATE                  | amber  | A1_REVIEW             | risk      | review and monitor     |
-| GBPUSD   | T03_post_worst_month_recovery                    | amber  | A1_REVIEW             | risk      | review and monitor     |
-| USDCHF   | E11_session_overshoot_dispersion                 | amber  | A2_RECALIBRATE        | execution | review and monitor     |
-| USDCHF   | S01_lb95_dependence_gap                          | amber  | A1_REVIEW             | research  | review and monitor     |
-| USDJPY   | S01_lb95_dependence_gap                          | amber  | A1_REVIEW             | research  | review and monitor     |
-| AUDUSD   | E11_session_overshoot_dispersion                 | red    | A3_HALT_AND_REMEDIATE | execution | escalate and remediate |
-| EURUSD   | E11_session_overshoot_dispersion                 | red    | A3_HALT_AND_REMEDIATE | execution | escalate and remediate |
-| EURUSD   | FTMO_ALLOC_ADMITTED_MISSING_RESERVATION_ID_COUNT | red    | A3_HALT_AND_REMEDIATE | risk      | escalate and remediate |
-| EURUSD   | S01_lb95_dependence_gap                          | red    | A2_RECALIBRATE        | research  | escalate and remediate |
-| EURUSD   | W13_threshold_fragility                          | red    | A3_HALT_AND_REMEDIATE | research  | escalate and remediate |
-| GBPUSD   | E11_session_overshoot_dispersion                 | red    | A3_HALT_AND_REMEDIATE | execution | escalate and remediate |
-| USDCAD   | E11_session_overshoot_dispersion                 | red    | A3_HALT_AND_REMEDIATE | execution | escalate and remediate |
-| USDCAD   | S01_lb95_dependence_gap                          | red    | A2_RECALIBRATE        | research  | escalate and remediate |
+| symbol   | metric_id                        | band   | action_code           | owner     | action_summary         |
+|:---------|:---------------------------------|:-------|:----------------------|:----------|:-----------------------|
+| EURUSD   | E11_session_overshoot_dispersion | amber  | A2_RECALIBRATE        | execution | review and monitor     |
+| GBPUSD   | S01_lb95_dependence_gap          | amber  | A1_REVIEW             | research  | review and monitor     |
+| USDCAD   | S01_lb95_dependence_gap          | amber  | A1_REVIEW             | research  | review and monitor     |
+| USDCHF   | T03_post_worst_month_recovery    | amber  | A1_REVIEW             | risk      | review and monitor     |
+| USDCHF   | W13_threshold_fragility          | amber  | A2_RECALIBRATE        | research  | review and monitor     |
+| AUDUSD   | W13_threshold_fragility          | red    | A3_HALT_AND_REMEDIATE | research  | escalate and remediate |
+| EURUSD   | S01_lb95_dependence_gap          | red    | A2_RECALIBRATE        | research  | escalate and remediate |
+| EURUSD   | W13_threshold_fragility          | red    | A3_HALT_AND_REMEDIATE | research  | escalate and remediate |
+| GBPUSD   | W13_threshold_fragility          | red    | A3_HALT_AND_REMEDIATE | research  | escalate and remediate |
+| USDCAD   | W13_threshold_fragility          | red    | A3_HALT_AND_REMEDIATE | research  | escalate and remediate |
+| USDCHF   | S01_lb95_dependence_gap          | red    | A2_RECALIBRATE        | research  | escalate and remediate |
+| USDJPY   | W13_threshold_fragility          | red    | A3_HALT_AND_REMEDIATE | research  | escalate and remediate |

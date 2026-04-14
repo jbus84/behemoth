@@ -278,7 +278,7 @@ def _load_phase_aligned_warmup_ticks(cfg: RunConfig, symbol: str) -> list[dict[s
     ]
 
 
-def _prime_api_with_warmup(cfg: RunConfig, symbol: str) -> None:
+def _prime_api_with_warmup(cfg: RunConfig, symbol: str, api_port: int) -> None:
     ticks = _load_phase_aligned_warmup_ticks(cfg, symbol)
     if not ticks:
         return
@@ -289,7 +289,7 @@ def _prime_api_with_warmup(cfg: RunConfig, symbol: str) -> None:
         "run_id": f"jforex_dukascopy_{symbol.lower()}_warmup",
     }
     req = urllib.request.Request(
-        f"http://{cfg.api_host}:{cfg.api_port}/backfill",
+        f"http://{cfg.api_host}:{api_port}/backfill",
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json"},
         method="POST",
@@ -299,7 +299,7 @@ def _prime_api_with_warmup(cfg: RunConfig, symbol: str) -> None:
             raise RuntimeError(f"Warmup backfill failed for {symbol}: status={response.status}")
 
 
-def _start_api(cfg: RunConfig, symbol: str) -> subprocess.Popen[str]:
+def _start_api(cfg: RunConfig, symbol: str, api_port: int) -> subprocess.Popen[str]:
     state_db_path = _state_db_path(cfg, symbol)
     state_db_path.parent.mkdir(parents=True, exist_ok=True)
     if state_db_path.exists():
@@ -329,7 +329,7 @@ def _start_api(cfg: RunConfig, symbol: str) -> subprocess.Popen[str]:
         "--host",
         cfg.api_host,
         "--port",
-        str(cfg.api_port),
+        str(api_port),
     ]
     log_path = _repo_root() / "logs" / f"api_{symbol.lower()}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -447,7 +447,7 @@ def _wait_for_artifacts_then_kill(
         time.sleep(poll_interval_sec)
 
 
-def _run_jforex_tester(cfg: RunConfig, symbol: str, metrics_port: int) -> None:
+def _run_jforex_tester(cfg: RunConfig, symbol: str, api_port: int, metrics_port: int) -> None:
     """Run the real Dukascopy JForex tester for a single symbol."""
     for required in (
         "BEHEMOTH_JFOREX_JNLP_URI",
@@ -474,7 +474,7 @@ def _run_jforex_tester(cfg: RunConfig, symbol: str, metrics_port: int) -> None:
             "BEHEMOTH_JFOREX_METRICS_ENABLED": str(cfg.metrics_enabled).lower(),
             "BEHEMOTH_JFOREX_METRICS_HOST": cfg.metrics_host,
             "BEHEMOTH_JFOREX_METRICS_PORT": str(selected_metrics_port),
-            "BEHEMOTH_API_BASE_URI": f"http://{cfg.api_host}:{cfg.api_port}",
+            "BEHEMOTH_API_BASE_URI": f"http://{cfg.api_host}:{api_port}",
         }
     )
     report_dir = _repo_root() / cfg.report_dir
@@ -511,14 +511,15 @@ def main() -> None:
     cfg = _parse_args()
     failures: list[str] = []
     for index, symbol in enumerate(cfg.symbols):
+        api_port = _next_available_port(cfg.api_host, cfg.api_port + index)
         metrics_port = cfg.metrics_port_base + index
-        print(f"[jforex-dukascopy] {symbol}: starting API", flush=True)
-        api_proc = _start_api(cfg, symbol)
+        print(f"[jforex-dukascopy] {symbol}: starting API on port {api_port}", flush=True)
+        api_proc = _start_api(cfg, symbol, api_port)
         try:
-            _poll_health(api_proc, f"http://{cfg.api_host}:{cfg.api_port}", timeout_sec=60.0)
-            _prime_api_with_warmup(cfg, symbol)
+            _poll_health(api_proc, f"http://{cfg.api_host}:{api_port}", timeout_sec=60.0)
+            _prime_api_with_warmup(cfg, symbol, api_port)
             print(f"[jforex-dukascopy] {symbol}: running JForex tester", flush=True)
-            _run_jforex_tester(cfg, symbol, metrics_port)
+            _run_jforex_tester(cfg, symbol, api_port, metrics_port)
             print(f"[jforex-dukascopy] {symbol}: complete", flush=True)
         except Exception as exc:
             failures.append(f"{symbol}: {exc}")

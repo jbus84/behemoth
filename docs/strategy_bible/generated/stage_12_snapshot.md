@@ -1,18 +1,18 @@
 ### Auto Snapshot - Stage 12
 
-- generated_at: `2026-04-03 12:49:19 UTC`
+- generated_at: `2026-04-12 17:21:09 UTC`
 - Stage 12 is a hard gate: strict signal parity and execution parity must both match reduced-core truth.
 - Any non-green Stage 12 symbol is a critical deployment blocker.
 
 #### Key Results
 | symbol   | signal_parity_pass   | execution_parity_pass   | api_parity_pass   |   selected_missing_expected |   selected_extra_runtime |   execution_failed_checks_high_critical | verdict   | report_path                                       |
 |:---------|:---------------------|:------------------------|:------------------|----------------------------:|-------------------------:|----------------------------------------:|:----------|:--------------------------------------------------|
-| EURUSD   | True                 | True                    | True              |                           0 |                        0 |                                       0 | green     | docs/analysis/EURUSD_stage12_api_parity_report.md |
-| GBPUSD   | True                 | True                    | True              |                           0 |                        0 |                                       0 | green     | docs/analysis/GBPUSD_stage12_api_parity_report.md |
-| AUDUSD   | True                 | True                    | True              |                           0 |                        0 |                                       0 | green     | docs/analysis/AUDUSD_stage12_api_parity_report.md |
-| USDJPY   | True                 | True                    | True              |                           0 |                        0 |                                       0 | green     | docs/analysis/USDJPY_stage12_api_parity_report.md |
-| USDCHF   | True                 | True                    | True              |                           0 |                        0 |                                       0 | green     | docs/analysis/USDCHF_stage12_api_parity_report.md |
-| USDCAD   | True                 | True                    | True              |                           0 |                        0 |                                       0 | green     | docs/analysis/USDCAD_stage12_api_parity_report.md |
+| EURUSD   | False                | False                   | False             |                           1 |                        1 |                                       1 | red       | docs/analysis/EURUSD_stage12_api_parity_report.md |
+| GBPUSD   | False                | False                   | False             |                           1 |                        1 |                                       1 | red       | docs/analysis/GBPUSD_stage12_api_parity_report.md |
+| AUDUSD   | False                | False                   | False             |                           1 |                        1 |                                       1 | red       | docs/analysis/AUDUSD_stage12_api_parity_report.md |
+| USDJPY   | False                | False                   | False             |                           1 |                        1 |                                       1 | red       | docs/analysis/USDJPY_stage12_api_parity_report.md |
+| USDCHF   | False                | False                   | False             |                           1 |                        1 |                                       1 | red       | docs/analysis/USDCHF_stage12_api_parity_report.md |
+| USDCAD   | False                | False                   | False             |                           1 |                        1 |                                       1 | red       | docs/analysis/USDCAD_stage12_api_parity_report.md |
 
 #### Interpretation Notes
 - Stage 12 is a hard gate: strict signal parity and execution parity must both match reduced-core truth.

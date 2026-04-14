@@ -360,64 +360,108 @@ def _oco_precompute(
     if n_eff <= 100:
         return {}
     i0 = np.arange(n_eff, dtype=np.int64)
-    ref = close_bid[i0]
-    valid = np.isfinite(ref)
-    i0 = i0[valid]
-    ref = ref[valid]
 
     k = float(barrier_pips)
-    up_thr = ref + k * pip
-    dn_thr = ref - k * pip
     inf = h + 1
-    up_step = np.full(len(i0), inf, dtype=np.int32)
-    dn_step = np.full(len(i0), inf, dtype=np.int32)
-    any_up = np.zeros(len(i0), dtype=bool)
-    any_dn = np.zeros(len(i0), dtype=bool)
-    for s in range(1, h + 1):
-        idx = i0 + int(s)
-        hu = high_ask[idx] >= up_thr   # ASK reaches upper barrier (BUY trigger)
-        hd = low_bid[idx] <= dn_thr    # BID reaches lower barrier (SELL trigger)
-        set_up = (up_step == inf) & hu
-        set_dn = (dn_step == inf) & hd
-        up_step[set_up] = int(s)
-        dn_step[set_dn] = int(s)
-        any_up |= hu
-        any_dn |= hd
-    side = np.zeros(len(i0), dtype=np.int8)
-    side[up_step < dn_step] = 1
-    side[dn_step < up_step] = -1
-    same = (up_step == dn_step) & (up_step <= h)
-    if np.any(same):
-        same_idx = np.flatnonzero(same)
-        tie_idx = i0[same_idx] + up_step[same_idx].astype(np.int64)
-        tie_hlf = hlf[tie_idx]
-        side[same_idx[tie_hlf > 0]] = 1
-        side[same_idx[tie_hlf < 0]] = -1
-    decided = side != 0
-    both = any_up & any_dn
-    touch_step = np.minimum(up_step, dn_step).astype(float)
-    touch_step[~decided] = np.nan
-    gross = np.full(len(i0), np.nan, dtype=float)
     if mode == "from_start":
+        ref = close_bid[i0]
+        valid = np.isfinite(ref)
+        i0 = i0[valid]
+        ref = ref[valid]
+        up_thr = ref + k * pip
+        dn_thr = ref - k * pip
+        up_step = np.full(len(i0), inf, dtype=np.int32)
+        dn_step = np.full(len(i0), inf, dtype=np.int32)
+        any_up = np.zeros(len(i0), dtype=bool)
+        any_dn = np.zeros(len(i0), dtype=bool)
+        for s in range(1, h + 1):
+            idx = i0 + int(s)
+            hu = high_ask[idx] >= up_thr   # ASK reaches upper barrier (BUY trigger)
+            hd = low_bid[idx] <= dn_thr    # BID reaches lower barrier (SELL trigger)
+            set_up = (up_step == inf) & hu
+            set_dn = (dn_step == inf) & hd
+            up_step[set_up] = int(s)
+            dn_step[set_dn] = int(s)
+            any_up |= hu
+            any_dn |= hd
+        side = np.zeros(len(i0), dtype=np.int8)
+        side[up_step < dn_step] = 1
+        side[dn_step < up_step] = -1
+        same = (up_step == dn_step) & (up_step <= h)
+        if np.any(same):
+            same_idx = np.flatnonzero(same)
+            tie_idx = i0[same_idx] + up_step[same_idx].astype(np.int64)
+            tie_hlf = hlf[tie_idx]
+            side[same_idx[tie_hlf > 0]] = 1
+            side[same_idx[tie_hlf < 0]] = -1
+        decided = side != 0
+        both = any_up & any_dn
+        touch_step = np.minimum(up_step, dn_step).astype(float)
+        touch_step[~decided] = np.nan
+        gross = np.full(len(i0), np.nan, dtype=float)
         ex = close_bid[i0 + h]
         ret = (ex - ref) / pip
         gross[decided] = side[decided].astype(float) * ret[decided] - k
     else:
+        buy_ref = close_ask[i0]
+        sell_ref = close_bid[i0]
+        valid = np.isfinite(buy_ref) & np.isfinite(sell_ref)
+        i0 = i0[valid]
+        buy_ref = buy_ref[valid]
+        sell_ref = sell_ref[valid]
+        up_thr = buy_ref + k * pip
+        dn_thr = sell_ref - k * pip
+        up_step = np.full(len(i0), inf, dtype=np.int32)
+        dn_step = np.full(len(i0), inf, dtype=np.int32)
+        any_up = np.zeros(len(i0), dtype=bool)
+        any_dn = np.zeros(len(i0), dtype=bool)
+        for s in range(1, h + 1):
+            idx = i0 + int(s)
+            hu = high_ask[idx] >= up_thr   # ASK reaches upper barrier (BUY trigger)
+            hd = low_bid[idx] <= dn_thr    # BID reaches lower barrier (SELL trigger)
+            set_up = (up_step == inf) & hu
+            set_dn = (dn_step == inf) & hd
+            up_step[set_up] = int(s)
+            dn_step[set_dn] = int(s)
+            any_up |= hu
+            any_dn |= hd
+        side = np.zeros(len(i0), dtype=np.int8)
+        side[up_step < dn_step] = 1
+        side[dn_step < up_step] = -1
+        same = (up_step == dn_step) & (up_step <= h)
+        if np.any(same):
+            same_idx = np.flatnonzero(same)
+            tie_idx = i0[same_idx] + up_step[same_idx].astype(np.int64)
+            tie_hlf = hlf[tie_idx]
+            side[same_idx[tie_hlf > 0]] = 1
+            side[same_idx[tie_hlf < 0]] = -1
+        decided = side != 0
+        both = any_up & any_dn
+        touch_step = np.minimum(up_step, dn_step).astype(float)
+        touch_step[~decided] = np.nan
+        gross = np.full(len(i0), np.nan, dtype=float)
         touch_i = np.minimum(up_step, dn_step).astype(np.int64, copy=False)
+        entry_i = i0 + touch_i
         exit_i = i0 + touch_i + int(h)
         ok = decided & (exit_i < len(close_bid))
         if np.any(ok):
             ok_idx = np.flatnonzero(ok)
-            ex_ok = close_bid[exit_i[ok_idx]]
-            num_ok = np.isfinite(ex_ok) & np.isfinite(ref[ok_idx])
+            exit_price_use = np.where(
+                side[ok_idx] == -1,
+                close_ask[exit_i[ok_idx]],
+                close_bid[exit_i[ok_idx]],
+            )
+            entry_price_use = np.where(
+                side[ok_idx] == -1,
+                close_bid[entry_i[ok_idx]],
+                close_ask[entry_i[ok_idx]],
+            )
+            num_ok = np.isfinite(exit_price_use) & np.isfinite(entry_price_use)
             use = ok_idx[num_ok]
             if len(use) > 0:
-                exit_price_use = np.where(
-                    side[use] == -1,
-                    close_ask[exit_i[use]],
-                    close_bid[exit_i[use]],
+                gross[use] = side[use].astype(float) * (
+                    (exit_price_use[num_ok] - entry_price_use[num_ok]) / pip
                 )
-                gross[use] = side[use].astype(float) * ((exit_price_use - ref[use]) / pip) - k
     return {
         "i0": i0,
         "gross": gross,
@@ -479,7 +523,7 @@ def _build_oco_events(
             continue
         tradable = base & reg0 & np.isfinite(ck["gross"])
         if bool(include_no_touch):
-            arm = reg0
+            arm = reg0 & (~ck["both"]) if fam == "oco_first_touch_clean" else reg0
             pos0 = np.flatnonzero(arm)
         else:
             pos0 = np.flatnonzero(tradable)

@@ -43,6 +43,19 @@ DEFAULTS: dict[str, Any] = {
 }
 
 
+def _derive_symbol_defaults(symbol: str) -> dict[str, str]:
+    s = str(symbol).upper().strip()
+    sl = s.lower()
+    return {
+        "pred_path": f"data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/{s}_oco_monthly_predictions.parquet",
+        "shortlist_state_csv": f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_reduced_states.csv",
+        "out_summary_csv": f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_tick_exact_summary.csv",
+        "out_monthly_csv": f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_tick_exact_monthly.csv",
+        "out_state_csv": f"data/analysis/tick_opportunity_mining/reduced_core/{s}_oco_tick_exact_state.csv",
+        "report_out": f"docs/analysis/{sl}_oco_tick_exact_shortlist_report.md",
+    }
+
+
 def _load_yaml(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
@@ -60,7 +73,17 @@ def _merge_config(args: argparse.Namespace) -> dict[str, Any]:
     cfg = dict(DEFAULTS)
     if str(getattr(args, "config", "")).strip():
         cfg.update(_load_yaml(Path(str(args.config))))
-    for k, v in vars(args).items():
+    raw_args = vars(args)
+    chosen_symbol = raw_args.get("symbol")
+    if chosen_symbol is None:
+        chosen_symbol = cfg.get("symbol", DEFAULTS["symbol"])
+    if chosen_symbol is not None:
+        derived = _derive_symbol_defaults(str(chosen_symbol))
+        for k, v in derived.items():
+            current = cfg.get(k)
+            if current == DEFAULTS.get(k):
+                cfg[k] = v
+    for k, v in raw_args.items():
         if k == "config":
             continue
         if v is not None:
@@ -220,13 +243,33 @@ def _recompute_first_touch(
     i = i[num_ok]
     map_pos = np.flatnonzero(valid)[num_ok]
     map_ok[map_pos] = True
-    ref = ref[num_ok]
     if mode == "from_start":
+        ref = ref[num_ok]
         ex = ex[num_ok]
         ret = (ex - ref) / float(pip)
-
-    up_thr = ref + k * float(pip)
-    dn_thr = ref - k * float(pip)
+        up_thr = ref + k * float(pip)
+        dn_thr = ref - k * float(pip)
+    else:
+        buy_ref = close_ask[i]
+        sell_ref = close_bid[i]
+        side_ok = np.isfinite(buy_ref) & np.isfinite(sell_ref)
+        if not np.any(side_ok):
+            return {
+                "expected_gross_pips": expected,
+                "expected_side": side,
+                "expected_decided": decided,
+                "expected_both_window": both,
+                "expected_clean": clean,
+                "map_ok": map_ok,
+            }
+        i = i[side_ok]
+        map_pos = map_pos[side_ok]
+        map_ok[:] = False
+        map_ok[map_pos] = True
+        buy_ref = buy_ref[side_ok]
+        sell_ref = sell_ref[side_ok]
+        up_thr = buy_ref + k * float(pip)
+        dn_thr = sell_ref - k * float(pip)
     inf = h + 1
     up_step = np.full(len(i), inf, dtype=np.int32)
     dn_step = np.full(len(i), inf, dtype=np.int32)
@@ -262,26 +305,27 @@ def _recompute_first_touch(
         gross_v[decided_v] = side_v[decided_v].astype(float) * ret[decided_v] - float(k)
     else:
         touch_i = np.minimum(up_step, dn_step).astype(np.int64, copy=False)
+        entry_i = i + touch_i
         exit_i = i + touch_i + int(h)
         ok = decided_v & (exit_i < len(close_bid))
         if np.any(ok):
             ok_idx = np.flatnonzero(ok)
-            ex_ok = np.where(
+            exit_price_use = np.where(
                 side_v[ok_idx] == -1,
                 close_ask[exit_i[ok_idx]],
                 close_bid[exit_i[ok_idx]],
             )
-            num2 = np.isfinite(ex_ok) & np.isfinite(ref[ok_idx])
+            entry_price_use = np.where(
+                side_v[ok_idx] == -1,
+                close_bid[entry_i[ok_idx]],
+                close_ask[entry_i[ok_idx]],
+            )
+            num2 = np.isfinite(exit_price_use) & np.isfinite(entry_price_use)
             use = ok_idx[num2]
             if len(use) > 0:
-                exit_price_use = np.where(
-                    side_v[use] == -1,
-                    close_ask[exit_i[use]],
-                    close_bid[exit_i[use]],
-                )
                 gross_v[use] = side_v[use].astype(float) * (
-                    (exit_price_use - ref[use]) / float(pip)
-                ) - float(k)
+                    (exit_price_use[num2] - entry_price_use[num2]) / float(pip)
+                )
 
     expected_v = (
         np.zeros(len(i), dtype=float)

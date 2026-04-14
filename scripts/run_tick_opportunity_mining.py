@@ -37,7 +37,7 @@ DEFAULTS: dict[str, Any] = {
     "report_out": "docs/analysis/eurusd_tick_opportunity_mining_report.md",
 }
 
-CANDIDATE_SCHEMA_VERSION = "2.0"
+CANDIDATE_SCHEMA_VERSION = "3.0"
 SELECTION_PASS_BASIS = "train_only"
 QUALITY_TIER_BASIS = "train_only"
 EXPLICIT_BAR_SCHEMA_COLUMNS = [
@@ -340,6 +340,102 @@ def _metric_from_gross(gross: np.ndarray) -> dict[str, float]:
     }
 
 
+def _oco_precompute_candidates(
+    frame: pd.DataFrame,
+    *,
+    symbol: str,
+    horizon: int,
+    barrier_pips: float,
+) -> dict[str, np.ndarray]:
+    load_bar_frame(
+        frame,
+        required=["close_bid", "high_bid", "low_bid", "high_ask", "close_ask"],
+    )
+    close_bid = pd.to_numeric(frame["close_bid"], errors="coerce").to_numpy(dtype=float)
+    high_bid = pd.to_numeric(frame["high_bid"], errors="coerce").to_numpy(dtype=float)
+    low_bid = pd.to_numeric(frame["low_bid"], errors="coerce").to_numpy(dtype=float)
+    high_ask = pd.to_numeric(frame["high_ask"], errors="coerce").to_numpy(dtype=float)
+    close_ask = pd.to_numeric(frame["close_ask"], errors="coerce").to_numpy(dtype=float)
+    hlf = pd.to_numeric(frame["hl_first"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
+
+    h = int(horizon)
+    n_eff = len(frame) - 2 * h
+    if n_eff <= 100:
+        return {}
+
+    pip = float(_pip_size(symbol))
+    k = float(barrier_pips)
+    inf = h + 1
+    i0 = np.arange(n_eff, dtype=np.int64)
+    buy_ref = close_ask[i0]
+    sell_ref = close_bid[i0]
+    valid = np.isfinite(buy_ref) & np.isfinite(sell_ref)
+    i0 = i0[valid]
+    buy_ref = buy_ref[valid]
+    sell_ref = sell_ref[valid]
+    up_thr = buy_ref + k * pip
+    dn_thr = sell_ref - k * pip
+    up_step = np.full(len(i0), inf, dtype=np.int32)
+    dn_step = np.full(len(i0), inf, dtype=np.int32)
+    any_up = np.zeros(len(i0), dtype=bool)
+    any_dn = np.zeros(len(i0), dtype=bool)
+    for s in range(1, h + 1):
+        idx = i0 + int(s)
+        hu = high_ask[idx] >= up_thr
+        hd = low_bid[idx] <= dn_thr
+        set_up = (up_step == inf) & hu
+        set_dn = (dn_step == inf) & hd
+        up_step[set_up] = int(s)
+        dn_step[set_dn] = int(s)
+        any_up |= hu
+        any_dn |= hd
+    side = np.zeros(len(i0), dtype=np.int8)
+    side[up_step < dn_step] = 1
+    side[dn_step < up_step] = -1
+    same = (up_step == dn_step) & (up_step <= h)
+    if np.any(same):
+        same_idx = np.flatnonzero(same)
+        tie_idx = i0[same_idx] + up_step[same_idx].astype(np.int64)
+        tie_hlf = hlf[tie_idx]
+        side[same_idx[tie_hlf > 0]] = 1
+        side[same_idx[tie_hlf < 0]] = -1
+    decided = side != 0
+    both = any_up & any_dn
+    touch_step = np.minimum(up_step, dn_step).astype(float)
+    touch_step[~decided] = np.nan
+    gross = np.full(len(i0), np.nan, dtype=float)
+    touch_i = np.minimum(up_step, dn_step).astype(np.int64, copy=False)
+    entry_i = i0 + touch_i
+    exit_i = i0 + touch_i + int(h)
+    ok = decided & (exit_i < len(close_bid))
+    if np.any(ok):
+        ok_idx = np.flatnonzero(ok)
+        exit_price_use = np.where(
+            side[ok_idx] == -1,
+            close_ask[exit_i[ok_idx]],
+            close_bid[exit_i[ok_idx]],
+        )
+        entry_price_use = np.where(
+            side[ok_idx] == -1,
+            close_bid[entry_i[ok_idx]],
+            close_ask[entry_i[ok_idx]],
+        )
+        num_ok = np.isfinite(exit_price_use) & np.isfinite(entry_price_use)
+        use = ok_idx[num_ok]
+        if len(use) > 0:
+            gross[use] = side[use].astype(float) * (
+                (exit_price_use[num_ok] - entry_price_use[num_ok]) / pip
+            )
+    return {
+        "i0": i0,
+        "gross": gross,
+        "side": side,
+        "both": both,
+        "decided": decided,
+        "touch_step": touch_step,
+    }
+
+
 def _assign_quality_tier(df: pd.DataFrame, *, library: str) -> pd.DataFrame:
     """Assign quality tiers (A/B/C/D) using train-only metrics.
 
@@ -501,16 +597,7 @@ def _oco_candidates(
     {k: np.asarray(v, dtype=bool) for k, v in train_regimes}
 
     pip = float(_pip_size(symbol))
-    close_test = pd.to_numeric(test["close_bid"], errors="coerce").to_numpy(dtype=float)
-    high_test = pd.to_numeric(test["high_bid"], errors="coerce").to_numpy(dtype=float)
-    low_test = pd.to_numeric(test["low_bid"], errors="coerce").to_numpy(dtype=float)
-    hlf_test = pd.to_numeric(test["hl_first"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
     ts_test = pd.to_datetime(test["close_ts"], utc=True, errors="coerce")
-
-    close_train = pd.to_numeric(train["close_bid"], errors="coerce").to_numpy(dtype=float)
-    high_train = pd.to_numeric(train["high_bid"], errors="coerce").to_numpy(dtype=float)
-    low_train = pd.to_numeric(train["low_bid"], errors="coerce").to_numpy(dtype=float)
-    hlf_train = pd.to_numeric(train["hl_first"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
     ts_train = pd.to_datetime(train["close_ts"], utc=True, errors="coerce")
 
     rows: list[dict[str, Any]] = []
@@ -518,59 +605,30 @@ def _oco_candidates(
     for h in horizons:
         h = int(h)
         for stage, dct in [
-            ("test", (close_test, high_test, low_test, hlf_test, ts_test, regimes)),
-            ("train", (close_train, high_train, low_train, hlf_train, ts_train, train_regimes)),
+            ("test", (test, ts_test, regimes)),
+            ("train", (train, ts_train, train_regimes)),
         ]:
-            close, high, low, hlf, ts, reg_list = dct
-            n_eff = len(close) - h - 1
-            if n_eff <= 100:
-                continue
-            i0 = np.arange(n_eff, dtype=np.int64)
-            ref = close[i0]
-            ex = close[i0 + h]
-            valid = np.isfinite(ref) & np.isfinite(ex)
-            i0 = i0[valid]
-            ref = ref[valid]
-            ex = ex[valid]
-            ret = (ex - ref) / pip
-            reg_masks = [(name, np.asarray(mask, dtype=bool)[i0]) for name, mask in reg_list]
-
+            frame, ts, reg_list = dct
+            reg_masks = [(name, np.asarray(mask, dtype=bool)) for name, mask in reg_list]
             for k in barrier_grid_pips:
                 k = float(k)
-                up_thr = ref + k * pip
-                dn_thr = ref - k * pip
-                inf = h + 1
-                up_step = np.full(len(i0), inf, dtype=np.int32)
-                dn_step = np.full(len(i0), inf, dtype=np.int32)
-                any_up = np.zeros(len(i0), dtype=bool)
-                any_dn = np.zeros(len(i0), dtype=bool)
-                for s in range(1, h + 1):
-                    idx = i0 + int(s)
-                    hu = high[idx] >= up_thr
-                    hd = low[idx] <= dn_thr
-                    set_up = (up_step == inf) & hu
-                    set_dn = (dn_step == inf) & hd
-                    up_step[set_up] = int(s)
-                    dn_step[set_dn] = int(s)
-                    any_up |= hu
-                    any_dn |= hd
-                side = np.zeros(len(i0), dtype=np.int8)
-                side[up_step < dn_step] = 1
-                side[dn_step < up_step] = -1
-                same = (up_step == dn_step) & (up_step <= h)
-                if np.any(same):
-                    same_idx = np.flatnonzero(same)
-                    tie_idx = i0[same_idx] + up_step[same_idx].astype(np.int64)
-                    tie_hlf = hlf[tie_idx]
-                    side[same_idx[tie_hlf > 0]] = 1
-                    side[same_idx[tie_hlf < 0]] = -1
-                decided = side != 0
-                both = any_up & any_dn
-                touch = np.minimum(up_step, dn_step).astype(float)
-                touch[~decided] = np.nan
-
-                gross_all = side.astype(float) * ret - k
-                for reg_name, reg_mask in reg_masks:
+                prep = _oco_precompute_candidates(
+                    frame,
+                    symbol=symbol,
+                    horizon=int(h),
+                    barrier_pips=float(k),
+                )
+                if not prep:
+                    continue
+                i0 = prep["i0"]
+                decided = prep["decided"]
+                both = prep["both"]
+                side = prep["side"]
+                gross_all = prep["gross"]
+                reg_masks_i0 = [(name, mask[i0]) for name, mask in reg_masks]
+                if len(i0) == 0:
+                    continue
+                for reg_name, reg_mask in reg_masks_i0:
                     for fam, fam_mask in [
                         ("first_touch", decided & reg_mask),
                         ("first_touch_clean", decided & reg_mask & (~both)),
@@ -590,12 +648,12 @@ def _oco_candidates(
                                     "family": f"oco_{fam}",
                                     "state_id": f"oco_{fam}__{reg_name}__k{int(round(k))}",
                                     "regime_desc": f"{reg_name};barrier={k:.1f}",
-                                    "train_count": -1,  # filled in later
+                                    "train_count": -1,
                                     "test_count": int(n),
                                     "annualized_test_fills": float(annual),
-                                    "mean_gross_pips_train": float("nan"),  # filled in later
+                                    "mean_gross_pips_train": float("nan"),
                                     "mean_gross_pips_test": stats["mean_gross_pips_test"],
-                                    "median_gross_pips_train": float("nan"),  # filled in later
+                                    "median_gross_pips_train": float("nan"),
                                     "median_gross_pips_test": stats["median_gross_pips_test"],
                                     "gross_std_test": stats["gross_std_test"],
                                     "hit_rate_gross_test": stats["hit_rate_gross_test"],
@@ -604,22 +662,13 @@ def _oco_candidates(
                                     else float("nan"),
                                     "p_up_first": float(np.mean(side[fam_mask] > 0.0)),
                                     "ml_ready_target_type": "oco_expand",
-                                    "selection_pass": True,  # placeholder; set from train after join
+                                    "selection_pass": True,
                                     "_tmp_regime": reg_name,
                                     "_tmp_family": fam,
                                     "_tmp_k": float(k),
                                 }
                             )
                         else:
-                            # keep train metrics keyed for joining after test pass
-                            pass
-
-                if stage == "train":
-                    for reg_name, reg_mask in reg_masks:
-                        for fam, fam_mask in [
-                            ("first_touch", decided & reg_mask),
-                            ("first_touch_clean", decided & reg_mask & (~both)),
-                        ]:
                             gross = gross_all[fam_mask]
                             vals = gross[np.isfinite(gross)]
                             train_cache[(int(h), float(k), reg_name, fam)] = (
@@ -630,6 +679,8 @@ def _oco_candidates(
                                 if np.any(reg_mask)
                                 else float("nan"),
                             )
+            if stage == "test":
+                continue
 
     out = pd.DataFrame(rows)
     if out.empty:

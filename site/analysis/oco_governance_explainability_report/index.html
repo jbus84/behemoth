@@ -4470,7 +4470,7 @@
 
 <h1 id="oco-governance-explainability-report">OCO Governance Explainability Report<a class="headerlink" href="#oco-governance-explainability-report" title="Permanent link">&para;</a></h1>
 <ul>
-<li>generated_at_utc: <code>2026-04-03T12:49:17Z</code></li>
+<li>generated_at_utc: <code>2026-04-12T17:21:08Z</code></li>
 <li>disposition_csv: <code>data/analysis/tick_opportunity_mining/oco_alert_disposition.csv</code></li>
 <li>exceptions_yaml: <code>configs/research/governance/oco_monitoring_exceptions.yaml</code></li>
 <li>output_csv: <code>data/analysis/tick_opportunity_mining/oco_governance_explainability.csv</code></li>
@@ -4491,36 +4491,29 @@
 <td style="text-align: left;">execution_drift</td>
 <td style="text-align: left;">amber</td>
 <td style="text-align: left;">medium</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">3</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">4</td>
 </tr>
 <tr>
 <td style="text-align: left;">execution_drift</td>
 <td style="text-align: left;">red</td>
 <td style="text-align: left;">high</td>
-<td style="text-align: right;">3</td>
-<td style="text-align: right;">7</td>
-</tr>
-<tr>
-<td style="text-align: left;">ftmo_allocator</td>
-<td style="text-align: left;">amber</td>
-<td style="text-align: left;">medium</td>
 <td style="text-align: right;">2</td>
-<td style="text-align: right;">2</td>
-</tr>
-<tr>
-<td style="text-align: left;">ftmo_allocator</td>
-<td style="text-align: left;">red</td>
-<td style="text-align: left;">high</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: right;">10</td>
 </tr>
 <tr>
 <td style="text-align: left;">threshold_sensitivity</td>
 <td style="text-align: left;">amber</td>
 <td style="text-align: left;">medium</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">2</td>
+</tr>
+<tr>
+<td style="text-align: left;">threshold_sensitivity</td>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">high</td>
 <td style="text-align: right;">1</td>
-<td style="text-align: right;">5</td>
+<td style="text-align: right;">4</td>
 </tr>
 </tbody>
 </table>
@@ -4560,16 +4553,16 @@
 <td style="text-align: left;">Fill-rate drop returns below warn threshold for two consecutive runs.</td>
 <td style="text-align: left;">red</td>
 <td style="text-align: left;">high</td>
-<td style="text-align: right;">3</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: left;">EURUSD</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">AUDUSD,GBPUSD,USDCHF,USDJPY</td>
 <td style="text-align: left;">A1_RECALIBRATE_CAP</td>
 <td style="text-align: left;">research</td>
 <td style="text-align: right;">60</td>
 <td style="text-align: left;">True</td>
-<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/AUDUSD_stop_limit_tickfill_detail.csv</td>
 <td style="text-align: left;">covered</td>
-<td style="text-align: left;">2026-04-03T12:49:17Z</td>
+<td style="text-align: left;">2026-04-12T17:21:08Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">E_DRIFT_NO_TOUCH</td>
@@ -4581,16 +4574,16 @@
 <td style="text-align: left;">No-touch delta reverts to green band and monthly distribution normalizes.</td>
 <td style="text-align: left;">red</td>
 <td style="text-align: left;">high</td>
+<td style="text-align: right;">13</td>
 <td style="text-align: right;">6</td>
-<td style="text-align: right;">3</td>
-<td style="text-align: left;">AUDUSD,EURUSD,USDCAD</td>
+<td style="text-align: left;">AUDUSD,EURUSD,GBPUSD,USDCAD,USDCHF,USDJPY</td>
 <td style="text-align: left;">A1_RECALIBRATE_CAP</td>
 <td style="text-align: left;">research</td>
 <td style="text-align: right;">60</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/AUDUSD_stop_limit_tickfill_detail.csv</td>
 <td style="text-align: left;">covered</td>
-<td style="text-align: left;">2026-04-03T12:49:17Z</td>
+<td style="text-align: left;">2026-04-12T17:21:08Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">E_DRIFT_OVERSHOOT_P50</td>
@@ -4602,16 +4595,16 @@
 <td style="text-align: left;">Median overshoot delta returns to green and cap policy remains stable.</td>
 <td style="text-align: left;">amber</td>
 <td style="text-align: left;">medium</td>
-<td style="text-align: right;">7</td>
+<td style="text-align: right;">10</td>
 <td style="text-align: right;">3</td>
-<td style="text-align: left;">AUDUSD,EURUSD,USDCHF</td>
+<td style="text-align: left;">EURUSD,GBPUSD,USDCHF</td>
 <td style="text-align: left;">A2_SESSION_GUARD</td>
 <td style="text-align: left;">execution_research</td>
 <td style="text-align: right;">30</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">docs/analysis/oco_execution_drift_report.md</td>
 <td style="text-align: left;">covered</td>
-<td style="text-align: left;">2026-04-03T12:49:17Z</td>
+<td style="text-align: left;">2026-04-12T17:21:08Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">E_DRIFT_OVERSHOOT_P95</td>
@@ -4621,102 +4614,81 @@
 <td style="text-align: left;">Compared to configured warn/fail overshoot p95 thresholds in drift alerts.</td>
 <td style="text-align: left;">Session-guard style control is used to contain execution drift while preserving coverage.</td>
 <td style="text-align: left;">Tail overshoot delta remains below warn threshold for follow-up runs.</td>
-<td style="text-align: left;">red</td>
-<td style="text-align: left;">high</td>
-<td style="text-align: right;">8</td>
+<td style="text-align: left;">amber</td>
+<td style="text-align: left;">medium</td>
 <td style="text-align: right;">3</td>
-<td style="text-align: left;">EURUSD,USDCAD,USDCHF</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">USDCHF</td>
 <td style="text-align: left;">A2_SESSION_GUARD</td>
 <td style="text-align: left;">execution_research</td>
 <td style="text-align: right;">30</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">docs/analysis/oco_execution_drift_report.md</td>
 <td style="text-align: left;">covered</td>
-<td style="text-align: left;">2026-04-03T12:49:17Z</td>
+<td style="text-align: left;">2026-04-12T17:21:08Z</td>
 </tr>
 <tr>
-<td style="text-align: left;">FTMO_ALLOC_ADMITTED_MISSING_RESERVATION_ID_COUNT</td>
-<td style="text-align: left;">ftmo_allocator</td>
-<td style="text-align: left;">Count of admitted allocator decisions without valid reservation linkage.</td>
-<td style="text-align: left;">Missing reservation linkage weakens loss-budget accounting integrity.</td>
-<td style="text-align: left;">Count includes missing or unknown reservation ids on admitted events.</td>
+<td style="text-align: left;">TS01_W13_THRESHOLD_FRAGILITY</td>
+<td style="text-align: left;">threshold_sensitivity</td>
+<td style="text-align: left;">Sensitivity of selected population to threshold perturbations.</td>
+<td style="text-align: left;">High fragility indicates unstable selection behavior under small policy changes.</td>
+<td style="text-align: left;">Derived from threshold sensitivity grid around active rolling policy.</td>
 <td style="text-align: left;">Session-guard style control is used to contain execution drift while preserving coverage.</td>
-<td style="text-align: left;">Admitted events consistently map to valid reservations.</td>
+<td style="text-align: left;">Fragility falls within green band at current policy parameters.</td>
+<td style="text-align: left;">amber</td>
+<td style="text-align: left;">medium</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">USDJPY</td>
+<td style="text-align: left;">A2_RECALIBRATE_THRESHOLD</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: right;">60</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/USDJPY_oco_monthly_predictions.parquet</td>
+<td style="text-align: left;">covered</td>
+<td style="text-align: left;">2026-04-12T17:21:08Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">TS02_W14_BRIER_DRIFT_STD</td>
+<td style="text-align: left;">threshold_sensitivity</td>
+<td style="text-align: left;">Calibration drift proxy for probability quality across policy grid.</td>
+<td style="text-align: left;">Poor calibration drift can weaken rank-quality of selection decisions.</td>
+<td style="text-align: left;">Computed as drift std under lookback/cadence/window perturbations.</td>
+<td style="text-align: left;">Session-guard style control is used to contain execution drift while preserving coverage.</td>
+<td style="text-align: left;">Brier drift remains near baseline with low variance across candidates.</td>
 <td style="text-align: left;">red</td>
 <td style="text-align: left;">high</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: left;">EURUSD</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">AUDUSD,GBPUSD,USDCHF,USDJPY</td>
 <td style="text-align: left;">A2_RECALIBRATE_THRESHOLD</td>
 <td style="text-align: left;">research</td>
 <td style="text-align: right;">60</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">data/db/behemoth_runtime.db</td>
-<td style="text-align: left;">covered</td>
-<td style="text-align: left;">2026-04-03T12:49:17Z</td>
-</tr>
-<tr>
-<td style="text-align: left;">FTMO_ALLOC_BLOCK_RATE</td>
-<td style="text-align: left;">ftmo_allocator</td>
-<td style="text-align: left;">Share of preselected candidates blocked by the FTMO allocator budget layer.</td>
-<td style="text-align: left;">Persistently high block rate indicates reduced live opportunity capture.</td>
-<td style="text-align: left;">Compared to warn/fail bands in FTMO allocator monitoring alerts.</td>
-<td style="text-align: left;">Session-guard style control is used to contain execution drift while preserving coverage.</td>
-<td style="text-align: left;">Block rate returns to green with stable admitted coverage.</td>
-<td style="text-align: left;">amber</td>
-<td style="text-align: left;">medium</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">A2_RECALIBRATE_THRESHOLD</td>
-<td style="text-align: left;">research</td>
-<td style="text-align: right;">60</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">data/db/behemoth_runtime.db</td>
-<td style="text-align: left;">covered</td>
-<td style="text-align: left;">2026-04-03T12:49:17Z</td>
-</tr>
-<tr>
-<td style="text-align: left;">FTMO_ALLOC_BUDGET_EXCEEDED_RATE</td>
-<td style="text-align: left;">ftmo_allocator</td>
-<td style="text-align: left;">Share of preselected candidates blocked due to reserved budget exhaustion.</td>
-<td style="text-align: left;">Frequent budget exhaustion suggests sizing/headroom mismatch under live flow.</td>
-<td style="text-align: left;">Computed over recent allocator events using monitoring lookback window.</td>
-<td style="text-align: left;">Session-guard style control is used to contain execution drift while preserving coverage.</td>
-<td style="text-align: left;">Budget-exceeded blocks drop below warn threshold.</td>
-<td style="text-align: left;">amber</td>
-<td style="text-align: left;">medium</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">A2_RECALIBRATE_THRESHOLD</td>
-<td style="text-align: left;">research</td>
-<td style="text-align: right;">60</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">data/db/behemoth_runtime.db</td>
-<td style="text-align: left;">covered</td>
-<td style="text-align: left;">2026-04-03T12:49:17Z</td>
-</tr>
-<tr>
-<td style="text-align: left;">TS03_LB95_MONTH_SIGNAL</td>
-<td style="text-align: left;">threshold_sensitivity</td>
-<td style="text-align: left;">Conservative lower bound of month mean per-signal performance.</td>
-<td style="text-align: left;">Negative/weak LB95 suggests policy may not sustain conservative profitability.</td>
-<td style="text-align: left;">Evaluated under threshold sensitivity candidate grid.</td>
-<td style="text-align: left;">Cap/threshold recalibration is preferred for controlled recovery under amber conditions.</td>
-<td style="text-align: left;">LB95 per-signal returns to positive or target floor.</td>
-<td style="text-align: left;">amber</td>
-<td style="text-align: left;">medium</td>
-<td style="text-align: right;">5</td>
-<td style="text-align: right;">5</td>
-<td style="text-align: left;">AUDUSD,EURUSD,GBPUSD,USDCAD,USDCHF</td>
-<td style="text-align: left;">A1_RECALIBRATE_CAP</td>
-<td style="text-align: left;">wfo_research</td>
-<td style="text-align: right;">30</td>
 <td style="text-align: left;">True</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/AUDUSD_oco_monthly_predictions.parquet</td>
 <td style="text-align: left;">covered</td>
-<td style="text-align: left;">2026-04-03T12:49:17Z</td>
+<td style="text-align: left;">2026-04-12T17:21:08Z</td>
+</tr>
+<tr>
+<td style="text-align: left;">TS05_POLICY_GAP_LB95</td>
+<td style="text-align: left;">threshold_sensitivity</td>
+<td style="text-align: left;">LB95 gap between current policy and recommended alternatives.</td>
+<td style="text-align: left;">Large negative gap implies current policy may lag better robust settings.</td>
+<td style="text-align: left;">Difference metric in threshold sensitivity candidate table.</td>
+<td style="text-align: left;">Session-guard style control is used to contain execution drift while preserving coverage.</td>
+<td style="text-align: left;">Policy gap narrows or current policy aligns with recommended row.</td>
+<td style="text-align: left;">amber</td>
+<td style="text-align: left;">medium</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">AUDUSD</td>
+<td style="text-align: left;">A2_RECALIBRATE_THRESHOLD</td>
+<td style="text-align: left;">research</td>
+<td style="text-align: right;">60</td>
+<td style="text-align: left;">True</td>
+<td style="text-align: left;">data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/AUDUSD_oco_monthly_predictions.parquet</td>
+<td style="text-align: left;">covered</td>
+<td style="text-align: left;">2026-04-12T17:21:08Z</td>
 </tr>
 </tbody>
 </table>

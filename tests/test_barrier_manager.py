@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import duckdb
 import pytest
 
 from src.behemoth.runtime.barrier_manager import BarrierManager
@@ -28,6 +29,49 @@ class TestRegisterScan:
         assert scan_id is not None
         assert mgr.has_active_scan("GBPUSD", "oco|GBPUSD|100|h6|abc")
 
+    def test_register_scan_tracks_side_correct_signal_reference_contract(self):
+        mgr = BarrierManager()
+        scan_id = mgr.register_scan(
+            symbol="GBPUSD",
+            candidate_uid="oco|GBPUSD|100|h6|abc",
+            signal_bar_idx=10,
+            signal_close_ask=1.29520,
+            signal_close_bid=1.29510,
+            barrier_pips=2.0,
+            horizon=6,
+            pip_size=0.0001,
+            pred_prob=0.625,
+            threshold=0.599,
+            model_month="2026-02",
+            reservation_id="res-001",
+            run_id="test",
+        )
+
+        scan = mgr.get_scan(scan_id)
+        assert scan["signal_close_ask"] == pytest.approx(1.29520)
+        assert scan["signal_close_bid"] == pytest.approx(1.29510)
+        assert scan["upper_barrier"] == pytest.approx(1.29520 + 2.0 * 0.0001)
+        assert scan["lower_barrier"] == pytest.approx(1.29510 - 2.0 * 0.0001)
+        assert scan["ref_price"] == pytest.approx(1.29510)
+
+    def test_register_scan_rejects_partial_explicit_signal_reference_inputs(self):
+        mgr = BarrierManager()
+        with pytest.raises(ValueError, match="signal_close_ask.*signal_close_bid"):
+            mgr.register_scan(
+                symbol="GBPUSD",
+                candidate_uid="oco|GBPUSD|100|h6|abc",
+                signal_bar_idx=10,
+                barrier_pips=2.0,
+                horizon=6,
+                pip_size=0.0001,
+                pred_prob=0.625,
+                threshold=0.599,
+                model_month="2026-02",
+                reservation_id="res-001",
+                run_id="test",
+                signal_close_ask=1.29520,
+            )
+
     def test_register_sets_correct_barriers(self):
         mgr = BarrierManager()
         scan_id = mgr.register_scan(
@@ -49,6 +93,86 @@ class TestRegisterScan:
         assert scan["lower_barrier"] == pytest.approx(1.29500 - 2.0 * 0.0001)
         assert scan["status"] == "SCANNING"
         assert scan["scan_bars_remaining"] == 6
+
+    def test_reject_legacy_active_scans_expires_rows_with_missing_signal_closes(self):
+        con = duckdb.connect()
+        con.execute(
+            """
+            CREATE TABLE barrier_scans (
+                scan_id VARCHAR PRIMARY KEY,
+                symbol VARCHAR NOT NULL,
+                candidate_uid VARCHAR NOT NULL,
+                signal_bar_idx INTEGER NOT NULL,
+                ref_price DOUBLE NOT NULL,
+                upper_barrier DOUBLE NOT NULL,
+                lower_barrier DOUBLE NOT NULL,
+                barrier_pips DOUBLE NOT NULL,
+                horizon INTEGER NOT NULL,
+                scan_bars_remaining INTEGER NOT NULL,
+                touch_step INTEGER,
+                touch_side VARCHAR,
+                hold_bars_remaining INTEGER,
+                status VARCHAR NOT NULL,
+                broker_pos_id VARCHAR,
+                pred_prob DOUBLE,
+                threshold DOUBLE,
+                model_month VARCHAR,
+                reservation_id VARCHAR,
+                run_id VARCHAR,
+                created_ts TIMESTAMPTZ NOT NULL
+            );
+            """
+        )
+        con.execute(
+            """
+            INSERT INTO barrier_scans (
+                scan_id, symbol, candidate_uid, signal_bar_idx,
+                ref_price, upper_barrier, lower_barrier, barrier_pips,
+                horizon, scan_bars_remaining, touch_step, touch_side,
+                hold_bars_remaining, status, broker_pos_id, pred_prob,
+                threshold, model_month, reservation_id, run_id, created_ts
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                "legacy-scan",
+                "GBPUSD",
+                "oco|GBPUSD|100|h6|abc",
+                10,
+                1.29500,
+                1.29520,
+                1.29480,
+                2.0,
+                6,
+                6,
+                None,
+                None,
+                None,
+                "SCANNING",
+                None,
+                0.625,
+                0.599,
+                "2026-02",
+                "res-legacy",
+                "test",
+                "2026-04-12 00:00:00+00",
+            ],
+        )
+
+        mgr = BarrierManager(con=con)
+        rejected = mgr.reject_legacy_active_scans()
+        scan = mgr.get_scan("legacy-scan")
+
+        assert rejected == [
+            {
+                "scan_id": "legacy-scan",
+                "symbol": "GBPUSD",
+                "candidate_uid": "oco|GBPUSD|100|h6|abc",
+                "reservation_id": "res-legacy",
+            }
+        ]
+        assert scan["status"] == "EXPIRED"
+        assert scan["scan_bars_remaining"] == 0
+        assert scan["hold_bars_remaining"] == 0
 
     def test_has_active_scan_false_when_none(self):
         mgr = BarrierManager()
@@ -227,6 +351,38 @@ class TestEvaluateBar:
         assert len(actions) == 1
         assert actions[0]["type"] == "OPEN_MARKET"
         assert actions[0]["side"] == "BUY"
+
+    def test_completed_touch_bar_opens_market_after_touch_confirmation(self):
+        mgr = BarrierManager()
+        scan_id = mgr.register_scan(
+            symbol="GBPUSD",
+            candidate_uid="oco|GBPUSD|100|h6|abc",
+            signal_bar_idx=10,
+            barrier_pips=2.0,
+            horizon=6,
+            pip_size=0.0001,
+            pred_prob=0.625,
+            threshold=0.599,
+            model_month="2026-02",
+            reservation_id="res-001",
+            run_id="test",
+            signal_close_ask=1.29520,
+            signal_close_bid=1.29510,
+        )
+        actions = mgr.evaluate_bar(
+            symbol="GBPUSD",
+            bar_ticks=100,
+            bar_high_bid=1.29518,
+            bar_low_bid=1.29500,
+            bar_hl_first=1.0,
+            current_bar_idx=11,
+            bar_high_ask=1.29541,
+        )
+        assert len(actions) == 1
+        assert actions[0]["type"] == "OPEN_MARKET"
+        scan = mgr.get_scan(scan_id)
+        assert scan["status"] == "HOLDING"
+        assert scan["touch_side"] == "BUY"
 
 
 class TestTieBreaking:

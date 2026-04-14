@@ -12,6 +12,7 @@ import pytest
 from scripts.run_jforex_dukascopy_matrix import (
     RunConfig,
     _load_phase_aligned_warmup_ticks,
+    main,
     _next_available_port,
     _prediction_path,
     _run_jforex_tester,
@@ -189,7 +190,7 @@ def test_run_jforex_tester_clears_stale_stage14_artifacts(
         "scripts.run_jforex_dukascopy_matrix._wait_for_artifacts_then_kill", fake_wait
     )
 
-    _run_jforex_tester(cfg, "EURUSD", metrics_port=9464)
+    _run_jforex_tester(cfg, "EURUSD", api_port=8000, metrics_port=9464)
 
     assert waited["paths"] == stale_paths
     for path in stale_paths:
@@ -223,6 +224,85 @@ def test_next_available_port_skips_bound_port(monkeypatch: pytest.MonkeyPatch) -
 
     assert _next_available_port("127.0.0.1", 9464, max_attempts=3) == 9465
     assert seen == [9464, 9465]
+
+
+def test_main_uses_available_api_port_per_symbol(monkeypatch: pytest.MonkeyPatch, capsys) -> None:
+    cfg = RunConfig(
+        symbols=("EURUSD",),
+        start_ts="2025-04-07T00:00:00Z",
+        end_ts="2025-04-09T00:00:00Z",
+        model_month="2025-07",
+        models_dir="models/oco",
+        history_dir="configs/research/governance/oco_history_dukascopy_candidate",
+        predictions_dir="data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap",
+        tick_root="/tmp/ticks",
+        report_dir="data/analysis/backtest_reconcile",
+        api_host="127.0.0.1",
+        api_port=8000,
+        requested_volume_units=10000,
+        tick_batch_size=200,
+        order_ttl_seconds=900,
+        api_timeout_seconds=60,
+        metrics_enabled=True,
+        metrics_host="127.0.0.1",
+        metrics_port_base=9464,
+        risk_enabled=False,
+        universe_mode="tolerant",
+        ordinal_tolerance=0,
+        warmup_ticks=30000,
+        lookback_days=31,
+        phase_bar_ticks=100,
+        tester_completion_timeout_seconds=14400,
+    )
+    proc = _make_proc(returncode=None)
+    calls: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        "scripts.run_jforex_dukascopy_matrix._parse_args",
+        lambda: cfg,
+    )
+    monkeypatch.setattr(
+        "scripts.run_jforex_dukascopy_matrix._next_available_port",
+        lambda host, port, max_attempts=100: 8001 if port == 8000 else port,
+    )
+    def fake_start_api(cfg, symbol, api_port):
+        calls["start_api"] = (symbol, api_port)
+        return proc
+
+    monkeypatch.setattr(
+        "scripts.run_jforex_dukascopy_matrix._start_api",
+        fake_start_api,
+    )
+    monkeypatch.setattr(
+        "scripts.run_jforex_dukascopy_matrix._poll_health",
+        lambda proc, base_url, timeout_sec: calls.setdefault("poll_health", base_url),
+    )
+    monkeypatch.setattr(
+        "scripts.run_jforex_dukascopy_matrix._prime_api_with_warmup",
+        lambda cfg, symbol, api_port: calls.setdefault("warmup", (symbol, api_port)),
+    )
+    monkeypatch.setattr(
+        "scripts.run_jforex_dukascopy_matrix._run_jforex_tester",
+        lambda cfg, symbol, api_port, metrics_port: calls.setdefault(
+            "run_tester", (symbol, api_port, metrics_port)
+        ),
+    )
+    monkeypatch.setattr(
+        "scripts.run_jforex_dukascopy_matrix._stop_process",
+        lambda proc: calls.setdefault("stopped", True),
+    )
+    monkeypatch.setattr(
+        "scripts.run_jforex_dukascopy_matrix._read_process_tail",
+        lambda proc: "",
+    )
+
+    main()
+
+    assert calls["start_api"] == ("EURUSD", 8001)
+    assert calls["poll_health"] == "http://127.0.0.1:8001"
+    assert calls["warmup"] == ("EURUSD", 8001)
+    assert calls["run_tester"] == ("EURUSD", 8001, 9464)
+    assert "starting API on port 8001" in capsys.readouterr().out
 
 
 def test_load_phase_aligned_warmup_ticks_uses_full_history_modulo(tmp_path: Path) -> None:
