@@ -1,2 +1,2 @@
 symbol,locked_selected_count,locked_gross_pips_total,locked_win_rate,jforex_predict_cycles,jforex_selected_total,jforex_orders_submitted,jforex_submitted_group_count,signal_coverage_ratio,signal_coverage_pass,execution_clean_pass,has_trades,order_coverage_ratio,order_coverage_pass,overall_pass,historical_deployable,non_deployable_reason,evaluated_at_utc,jforex_outcome_parity_pass
-EURUSD,11,3.1,0.4545,2222,11,18,9,1.0,True,True,True,0.8182,False,True,True,,2026-03-31T12:20:33Z,True
+EURUSD,0,0.0,0.0,0,0,0,0,0.0,False,True,False,0.0,False,False,False,no_test_rows,2026-04-14T18:17:44Z,False
