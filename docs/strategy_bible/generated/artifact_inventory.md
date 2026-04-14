@@ -1,6 +1,6 @@
 # Artifact Inventory
 
-- generated_at: `2026-04-03 12:49:19 UTC`
+- generated_at: `2026-04-12 17:21:09 UTC`
 
 | group              | symbol   | artifact               | path                                                                                         | exists   | required   |
 |:-------------------|:---------|:-----------------------|:---------------------------------------------------------------------------------------------|:---------|:-----------|
@@ -52,8 +52,8 @@
 | symbol             | USDCAD   | tick_exact_report_md   | docs/analysis/usdcad_oco_tick_exact_rolling_report.md                                        | True     | True       |
 | symbol             | USDCAD   | tick_exact_summary_csv | data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_tick_exact_summary.csv | True     | True       |
 | symbol             | USDCAD   | wfo_report_md          | docs/analysis/usdcad_tick_opportunity_monthly_wfo_oco_fullcap_report.md                      | True     | True       |
-| audit              | ALL      | checks_csv             | data/analysis/tick_opportunity_mining/oco_logical_audit_checks.csv                           | True     | True       |
-| audit              | ALL      | issues_csv             | data/analysis/tick_opportunity_mining/oco_logical_audit_issues.csv                           | True     | True       |
+| audit              | ALL      | checks_csv             | configs/research/docs/data/analysis/tick_opportunity_mining/oco_logical_audit_checks.csv     | False    | True       |
+| audit              | ALL      | issues_csv             | configs/research/docs/data/analysis/tick_opportunity_mining/oco_logical_audit_issues.csv     | False    | True       |
 | audit              | ALL      | report_md              | docs/analysis/oco_logical_audit_report.md                                                    | True     | True       |
 | required_artifacts | ALL      | required_artifact      | docs/analysis/index.md                                                                       | True     | True       |
 | required_artifacts | ALL      | required_artifact      | docs/analysis/catalog_manifest.csv                                                           | True     | True       |

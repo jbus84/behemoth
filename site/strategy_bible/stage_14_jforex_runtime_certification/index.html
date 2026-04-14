@@ -4912,69 +4912,106 @@
 
 <h1 id="stage-14-jforex-runtime-certification">Stage 14 - JForex Runtime Certification<a class="headerlink" href="#stage-14-jforex-runtime-certification" title="Permanent link">&para;</a></h1>
 <h2 id="objective">Objective<a class="headerlink" href="#objective" title="Permanent link">&para;</a></h2>
-<p>Certify that the Dukascopy JForex adapter reproduces the governed OCO execution contract after the local JForex surrogate and Stage 13 have already proven source/runtime parity against Stage 12 truth.</p>
+<p>Certify that the Dukascopy JForex adapter reproduces the execution-lifecycle contract after Stage 13 and the local JForex surrogate have already established the prerequisite runtime and parity surface.
+Stage 14 also records the symbol-level operational decision separately from certification so <code>PASS / NO_GO</code> can be expressed without collapsing it into failure.</p>
 <h2 id="inputs">Inputs<a class="headerlink" href="#inputs" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv</code></li>
+<li><code>data/analysis/backtest_reconcile/stage12_stage13_certification_summary.csv</code></li>
 <li><code>data/analysis/backtest_reconcile/*_jforex_signal_parity_summary.csv</code></li>
 <li><code>data/analysis/backtest_reconcile/*_jforex_execution_parity_summary.csv</code></li>
-<li><code>data/analysis/backtest_reconcile/*_jforex_oco_lifecycle_summary.csv</code></li>
+<li><code>data/analysis/backtest_reconcile/*_jforex_execution_lifecycle_summary.csv</code></li>
 <li><code>data/analysis/backtest_reconcile/*_jforex_operational_ready_summary.csv</code></li>
+<li><code>data/analysis/backtest_reconcile/jforex_outcome_parity_summary.csv</code></li>
+<li><code>data/analysis/backtest_reconcile/local_jforex_surrogate_summary.csv</code></li>
+<li><code>configs/research/governance/oco_history_dukascopy_candidate/</code></li>
+<li><code>models/oco_dukascopy_candidate/</code></li>
 <li><code>docs/analysis/stage14_jforex_runtime_certification_report.md</code></li>
 </ul>
 <h2 id="exact-calculations">Exact Calculations<a class="headerlink" href="#exact-calculations" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[Placeholder] Parity is calculated via direct event-log comparison.</li>
+<li><code>certification_outcome</code> is the certification result for the symbol and is emitted as <code>PASS</code> or <code>FAIL</code>.</li>
+<li><code>go_decision</code> is the operational decision for the symbol and is emitted as <code>GO</code> or <code>NO_GO</code>.</li>
+<li><code>stage14_jforex_cert_pass</code> is the conjunction of:</li>
+<li><code>stage13_dukascopy_testclient_pass</code></li>
+<li><code>jforex_signal_parity_pass</code></li>
+<li><code>jforex_execution_parity_pass</code></li>
+<li><code>execution_lifecycle_pass</code></li>
+<li><code>operational_ready_pass</code></li>
+<li><code>jforex_outcome_parity_pass</code></li>
+<li><code>local_jforex_surrogate_pass</code></li>
+<li>A symbol may resolve to <code>PASS / NO_GO</code> only when the hard gates pass and the historical lock marks the symbol as non-deployable.</li>
+<li>Otherwise, a non-deployable or contradictory symbol must resolve conservatively to <code>FAIL / NO_GO</code>.</li>
+<li><code>THRESHOLD_PARITY_PASS</code> is emitted as a certification check for the current model/history pair, but it is informational and does not gate <code>stage14_jforex_cert_pass</code>.</li>
+<li>Missing inputs are recorded explicitly as <code>missing input artifact</code> and count toward <code>missing_inputs</code>.</li>
 </ul>
 <h2 id="causality-leakage-controls">Causality / Leakage Controls<a class="headerlink" href="#causality-leakage-controls" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[Placeholder] JForex tester client isolation.</li>
+<li>Stage 14 only consumes broker/tester summaries written by the JForex adapter or the certification harness.</li>
+<li>Local surrogate outputs are accepted as surrogate evidence only when the source summary marks the symbol as historically non-deployable.</li>
+<li>The execution-lifecycle check is sourced from the adapter runtime summary, not from the OCO research artifacts.</li>
 </ul>
 <h2 id="failure-modes">Failure Modes<a class="headerlink" href="#failure-modes" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[Placeholder] Order submission delay, cancellation fail.</li>
+<li>Missing Stage 13, JForex parity, execution lifecycle, operational readiness, outcome parity, or surrogate summaries produce a failed gate with <code>missing input artifact</code>.</li>
+<li>A red execution lifecycle summary means the adapter did not emit a complete execution lifecycle for certification.</li>
+<li>If the historical summary marks a symbol as non-deployable but the hard gates are not green, the symbol remains <code>FAIL / NO_GO</code>.</li>
 </ul>
 <h2 id="interpretation-guide">Interpretation Guide<a class="headerlink" href="#interpretation-guide" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[Placeholder] Review parity results.</li>
+<li>Green means the Stage 13 prerequisite remains satisfied and every Stage 14 hard gate in the summary is green.</li>
+<li>Red means at least one required input or hard gate failed and the adapter is not Stage 14 certified.</li>
+<li><code>PASS / NO_GO</code> means the adapter certified correctly but the symbol is not operationally tradeable.</li>
+<li><code>FAIL / NO_GO</code> should be treated as a conservative failure state, not as a successful certification result.</li>
 </ul>
 <h2 id="validation-gates">Validation Gates<a class="headerlink" href="#validation-gates" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[Placeholder] All 5 gates must be green.</li>
+<li><code>stage13_dukascopy_testclient_pass</code></li>
+<li><code>jforex_signal_parity_pass</code></li>
+<li><code>jforex_execution_parity_pass</code></li>
+<li><code>execution_lifecycle_pass</code></li>
+<li><code>operational_ready_pass</code></li>
+<li><code>jforex_outcome_parity_pass</code></li>
+<li><code>local_jforex_surrogate_pass</code></li>
 </ul>
 <h2 id="operator-decision-tree">Operator Decision Tree<a class="headerlink" href="#operator-decision-tree" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[Placeholder] If partial fill, check risk state.</li>
+<li>If a required CSV is missing, regenerate the adapter/runtime artifact that owns that summary.</li>
+<li>If <code>execution_lifecycle_pass</code> is red, inspect the JForex execution lifecycle summary and adapter runtime event stream.</li>
+<li>If <code>operational_ready_pass</code> is red, inspect the operational step coverage in the adapter runtime.</li>
+<li>If a symbol is <code>PASS / NO_GO</code>, treat it as certified but not tradeable.</li>
 </ul>
 <h2 id="how-to-run">How To Run<a class="headerlink" href="#how-to-run" title="Permanent link">&para;</a></h2>
-<ul>
-<li>See canonical command.</li>
-</ul>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>stage14-jforex-cert
+</code></pre></div>
 <h2 id="how-to-interpret-outputs">How To Interpret Outputs<a class="headerlink" href="#how-to-interpret-outputs" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[Placeholder] Review JForex operational logs.</li>
+<li>The summary CSV is the certification ledger for each active symbol.</li>
+<li>The checks CSV shows the source path, metric name, severity, and failure detail for each gate.</li>
+<li>The generated report and snapshot are direct renderings of the validator output and should match the CSV state for the same run.</li>
 </ul>
 <h2 id="what-to-do-if-it-fails">What To Do If It Fails<a class="headerlink" href="#what-to-do-if-it-fails" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[Placeholder] Check API parity.</li>
+<li>Rebuild the missing adapter/runtime artifact and rerun the certification target.</li>
+<li>Do not use the Stage 14 report as a substitute for the missing source summary.</li>
+<li>Keep the failure interpretation anchored to the current branch state, not to older OCO-language documents.</li>
 </ul>
 <h2 id="reproduction-commands">Reproduction Commands<a class="headerlink" href="#reproduction-commands" title="Permanent link">&para;</a></h2>
-<ul>
-<li>See canonical command.</li>
-</ul>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>stage14-jforex-cert
+uv<span class="w"> </span>run<span class="w"> </span>mkdocs<span class="w"> </span>build
+</code></pre></div>
 <h2 id="process">Process<a class="headerlink" href="#process" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Treat Stage 13 as a prerequisite, not a substitute for Stage 14.</li>
-<li>Treat the local parquet-driven JForex surrogate as a prerequisite debug gate before Stage 14.</li>
+<li>Treat the local parquet-driven JForex surrogate as a prerequisite debug gate before Stage 14 tester/demo certification.</li>
 <li>Do not use <code>*_local_jforex_*</code> surrogate summaries as Stage 14 evidence; Stage 14 consumes only real JForex tester/demo artifacts.</li>
 <li>When running the Python API in <code>historical_auto</code>, scope the certification surface with <code>BEHEMOTH_SYMBOLS</code>.</li>
 <li>Historical Stage 14 replay should use tolerant locked-prediction matching so broker-side timestamp drift does not suppress otherwise valid locked selections.</li>
 <li>Run the Java JForex tester path against the same governed truth window used for certification.</li>
 <li>Treat <code>ITesterClient</code> as the official broker-certification harness for Stage 14.</li>
-<li>Confirm the adapter reproduces the OCO contract:</li>
-<li>paired opposite stop-limit entries,</li>
-<li>one fill cancels the sibling leg,</li>
-<li>no double-live-leg drift after partial fill, cancel, reconnect, or replay recovery.</li>
+<li>Confirm the adapter reproduces the execution lifecycle contract:</li>
+<li>signal, execution, lifecycle, and operational summaries are emitted for the same symbol set,</li>
+<li>one fill cancels the sibling leg without leaving an inconsistent live-leg state,</li>
+<li>replay recovery and reconnect paths preserve the same execution-lifecycle result.</li>
 <li>Confirm demo-session readiness separately from tester parity:</li>
 <li>authentication,</li>
 <li>subscriptions,</li>
@@ -4987,16 +5024,21 @@
 <li><code>stage13_dukascopy_testclient_pass=true</code></li>
 <li><code>jforex_signal_parity_pass=true</code></li>
 <li><code>jforex_execution_parity_pass=true</code></li>
-<li><code>oco_lifecycle_pass=true</code></li>
+<li><code>execution_lifecycle_pass=true</code></li>
+<li><code>jforex_outcome_parity_pass=true</code></li>
+<li><code>local_jforex_surrogate_pass=true</code></li>
 <li><code>operational_ready_pass=true</code></li>
 </ul>
-<p>Stage 14 passes only when all five are green.</p>
+<p>Stage 14 certifies only when all seven hard gates are green.
+The generated outputs then separately report whether the symbol is <code>GO</code> or <code>NO_GO</code>.</p>
 <h2 id="failure-interpretation">Failure Interpretation<a class="headerlink" href="#failure-interpretation" title="Permanent link">&para;</a></h2>
 <ul>
 <li>If Stage 13 is red, do not trust any JForex tester/demo result.</li>
+<li>If Stage 13 is <code>PASS / NO_GO</code>, treat it as a valid prerequisite and not as a certification failure by itself.</li>
 <li>If JForex signal parity is red, the adapter is not reproducing research-approved selection timing.</li>
 <li>If JForex execution parity is red, the adapter lifecycle diverges after nominally matched signals.</li>
-<li>If OCO lifecycle is red, the adapter cannot safely enforce the paired stop-limit contract.</li>
+<li>If execution lifecycle is red, the adapter cannot safely enforce the runtime lifecycle contract.</li>
+<li>If the local JForex surrogate is red, the shared Java strategy core is not validated before Stage 14 tester/demo certification.</li>
 <li>If operational readiness is red, the adapter is not deployable even if tester parity is green.</li>
 </ul>
 <h2 id="canonical-command">Canonical Command<a class="headerlink" href="#canonical-command" title="Permanent link">&para;</a></h2>
@@ -5019,12 +5061,16 @@
 <!-- GENERATED:STAGE_14:START -->
 <h3 id="auto-snapshot-stage-14_1">Auto Snapshot - Stage 14<a class="headerlink" href="#auto-snapshot-stage-14_1" title="Permanent link">&para;</a></h3>
 <ul>
-<li>generated_at: <code>pending</code></li>
+<li>This section is regenerated by <code>make stage14-jforex-cert</code>.</li>
 <li>Stage 14 is a hard gate for the Dukascopy JForex adapter.</li>
-<li>Stage 13 Dukascopy TestClient parity, JForex tester parity, OCO lifecycle correctness, and operational readiness must all be green.</li>
+<li>Stage 13 <code>PASS / NO_GO</code> is an acceptable prerequisite; the Stage 14 hard gates, including <code>jforex_outcome_parity_pass</code>, must still pass.</li>
 </ul>
 <h4 id="key-results">Key Results<a class="headerlink" href="#key-results" title="Permanent link">&para;</a></h4>
-<p><em>pending</em></p>
+<ul>
+<li><code>certification_outcome</code> and <code>go_decision</code> are reported separately for each symbol.</li>
+<li><code>PASS / NO_GO</code> is reserved for symbols that pass the hard gates but remain operationally non-tradeable.</li>
+<li><code>FAIL / NO_GO</code> remains a conservative failure state, not a certified result.</li>
+</ul>
 <!-- GENERATED:STAGE_14:END -->
 
 

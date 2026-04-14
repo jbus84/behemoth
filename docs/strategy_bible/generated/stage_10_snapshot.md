@@ -1,6 +1,6 @@
 ### Auto Snapshot - Stage 10
 
-- generated_at: `2026-04-03 12:49:19 UTC`
+- generated_at: `2026-04-12 17:21:09 UTC`
 - Risk backlog is derived from current logical-audit failures.
 - When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.
 
@@ -14,44 +14,22 @@
 - When no failures exist, residual risks remain model/process assumptions rather than hard contract breaks.
 
 #### Action Trigger Summary
-| symbol   | metric_id                                        | band   | severity   | action_code           | action_summary         | owner     |
-|:---------|:-------------------------------------------------|:-------|:-----------|:----------------------|:-----------------------|:----------|
-| AUDUSD   | FTMO_ALLOC_ADMITTED_MISSING_RESERVATION_ID_COUNT | green  | info       | A0_MONITOR            | within policy band     | risk      |
-| AUDUSD   | FTMO_ALLOC_BLOCK_RATE                            | green  | info       | A0_MONITOR            | within policy band     | risk      |
-| AUDUSD   | FTMO_ALLOC_BUDGET_EXCEEDED_RATE                  | green  | info       | A0_MONITOR            | within policy band     | risk      |
-| AUDUSD   | FTMO_ALLOC_OPEN_WITHOUT_BROKER_POS_COUNT         | green  | info       | A0_MONITOR            | within policy band     | execution |
-| AUDUSD   | FTMO_ALLOC_PIP_VALUE_UNAVAILABLE_RATE            | green  | info       | A0_MONITOR            | within policy band     | data      |
-| AUDUSD   | FTMO_ALLOC_STALE_PENDING_COUNT                   | green  | info       | A0_MONITOR            | within policy band     | execution |
-| EURUSD   | FTMO_ALLOC_ADMITTED_MISSING_RESERVATION_ID_COUNT | red    | high       | A3_HALT_AND_REMEDIATE | escalate and remediate | risk      |
-| EURUSD   | FTMO_ALLOC_BLOCK_RATE                            | amber  | medium     | A1_REVIEW             | review and monitor     | risk      |
-| EURUSD   | FTMO_ALLOC_BUDGET_EXCEEDED_RATE                  | amber  | medium     | A1_REVIEW             | review and monitor     | risk      |
-| EURUSD   | FTMO_ALLOC_OPEN_WITHOUT_BROKER_POS_COUNT         | green  | info       | A0_MONITOR            | within policy band     | execution |
-| EURUSD   | FTMO_ALLOC_PIP_VALUE_UNAVAILABLE_RATE            | green  | info       | A0_MONITOR            | within policy band     | data      |
-| EURUSD   | FTMO_ALLOC_STALE_PENDING_COUNT                   | green  | info       | A0_MONITOR            | within policy band     | execution |
-
-#### Details
-| symbol   | severity_if_fail   |   total_checks |   failed_checks |
-|:---------|:-------------------|---------------:|----------------:|
-| AUDUSD   | critical           |              3 |               0 |
-| AUDUSD   | high               |              5 |               0 |
-| AUDUSD   | medium             |              2 |               0 |
-| EURUSD   | critical           |              3 |               0 |
-| EURUSD   | high               |              5 |               0 |
-| EURUSD   | medium             |              2 |               0 |
-| GBPUSD   | critical           |              3 |               0 |
-| GBPUSD   | high               |              5 |               0 |
-| GBPUSD   | medium             |              2 |               0 |
-| USDCAD   | critical           |              3 |               0 |
-| USDCAD   | high               |              5 |               0 |
-| USDCAD   | medium             |              2 |               0 |
-| USDCHF   | critical           |              3 |               0 |
-| USDCHF   | high               |              5 |               0 |
-| USDCHF   | medium             |              2 |               0 |
-| USDJPY   | critical           |              3 |               0 |
-| USDJPY   | high               |              5 |               0 |
-| USDJPY   | medium             |              2 |               0 |
+| symbol   | metric_id                                        | band   | severity   | action_code   | action_summary                      | owner     |
+|:---------|:-------------------------------------------------|:-------|:-----------|:--------------|:------------------------------------|:----------|
+| AUDUSD   | FTMO_ALLOC_ADMITTED_MISSING_RESERVATION_ID_COUNT | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | risk      |
+| AUDUSD   | FTMO_ALLOC_BLOCK_RATE                            | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | risk      |
+| AUDUSD   | FTMO_ALLOC_BUDGET_EXCEEDED_RATE                  | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | risk      |
+| AUDUSD   | FTMO_ALLOC_OPEN_WITHOUT_BROKER_POS_COUNT         | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | execution |
+| AUDUSD   | FTMO_ALLOC_PIP_VALUE_UNAVAILABLE_RATE            | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | data      |
+| AUDUSD   | FTMO_ALLOC_STALE_PENDING_COUNT                   | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | execution |
+| EURUSD   | FTMO_ALLOC_ADMITTED_MISSING_RESERVATION_ID_COUNT | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | risk      |
+| EURUSD   | FTMO_ALLOC_BLOCK_RATE                            | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | risk      |
+| EURUSD   | FTMO_ALLOC_BUDGET_EXCEEDED_RATE                  | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | risk      |
+| EURUSD   | FTMO_ALLOC_OPEN_WITHOUT_BROKER_POS_COUNT         | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | execution |
+| EURUSD   | FTMO_ALLOC_PIP_VALUE_UNAVAILABLE_RATE            | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | data      |
+| EURUSD   | FTMO_ALLOC_STALE_PENDING_COUNT                   | gray   | high       | A9_DATA_GAP   | metric not present in stage metrics | execution |
 
 #### Plots
 ![stage_10_risk_matrix](../../figures/oco_bible/stage_10_risk_matrix.png)
 
-- Risk SLA tracker exists but has no open rows. `source=data/analysis/tick_opportunity_mining/risk_sla_tracker.csv`
+- Risk SLA tracker not found; run `scripts/audit_oco_pipeline_logical_issues.py` with `--out-risk-sla-csv` to populate Stage 10 operational aging metrics.

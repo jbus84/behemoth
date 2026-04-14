@@ -523,7 +523,7 @@ def _build_oco_events(
             continue
         tradable = base & reg0 & np.isfinite(ck["gross"])
         if bool(include_no_touch):
-            arm = reg0
+            arm = reg0 & (~ck["both"]) if fam == "oco_first_touch_clean" else reg0
             pos0 = np.flatnonzero(arm)
         else:
             pos0 = np.flatnonzero(tradable)

@@ -51,7 +51,7 @@ DEFAULTS: dict[str, Any] = {
     "bootstrap_paths": 600,
     "seed": 42,
     "capacity_floor_monthly": 3000.0,
-    "capacity_floor_annual": 5000.0,
+    "capacity_floor_annual": 3000.0,
     "max_state_churn": 0.45,
     "max_top_state_share": 0.35,
     "max_state_hhi": 0.25,

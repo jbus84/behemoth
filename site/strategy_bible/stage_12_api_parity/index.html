@@ -4934,7 +4934,7 @@
 
 <h1 id="stage-12-api-parity-against-reduced-core">Stage 12 - API Parity Against Reduced Core<a class="headerlink" href="#stage-12-api-parity-against-reduced-core" title="Permanent link">&para;</a></h1>
 <h2 id="objective">Objective<a class="headerlink" href="#objective" title="Permanent link">&para;</a></h2>
-<p>Confirm that the production API, when driven by canonical parquet ticks, reproduces reduced-core research truth at both the signal-selection layer and the execution layer.</p>
+<p>Confirm that the production Python/API runtime, when driven by canonical parquet ticks, reproduces reduced-core research truth and produces the Stage 12 prerequisite artifacts consumed by the unified Stage 12 -&gt; Stage 13 certification flow.</p>
 <h2 id="inputs">Inputs<a class="headerlink" href="#inputs" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>data/analysis/backtest_reconcile/&lt;SYMBOL&gt;_stage12_api_parity_summary.csv</code></li>
@@ -4946,7 +4946,8 @@
 </ul>
 <h2 id="process">Process<a class="headerlink" href="#process" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Replay canonical parquet ticks through the API using the no-cTrader TestClient harness.</li>
+<li>Run the unified Stage 12 -&gt; Stage 13 certification command for the active universe or a requested symbol subset.</li>
+<li>Stage 12 executes first for each symbol.</li>
 <li>Trigger prediction only on completed bars, matching cBot cadence.</li>
 <li>In historical replay mode, preserve exact tick-bar phase using the full-history tail:</li>
 <li>warmup sent = <code>warmup_ticks + (all_prior_ticks mod bar_ticks)</code></li>
@@ -4955,9 +4956,9 @@
 <li>only <code>(candidate_uid, close_ts)</code> rows present in the locked predictions parquet are eligible.</li>
 <li>this prevents the API from evaluating bars the research pipeline never treated as candidate events.</li>
 <li>In that locked historical path, the repo prediction-universe row is already regime-qualified, so Stage 12 does not apply a second runtime regime veto on top of the locked row.</li>
-<li>Check 2: compare API-selected keys to reduced-core truth on <code>candidate_uid + close_ts</code>.</li>
-<li>Check 3: compare resulting API executions to reduced-core execution truth.</li>
-<li>Emit Stage 12 artifacts and feed them into the strategy bible build.</li>
+<li>Compare API-selected keys to reduced-core truth on <code>candidate_uid + close_ts</code>.</li>
+<li>Emit <code>*_stage12_api_parity_summary.csv</code> per symbol.</li>
+<li>Allow Stage 13 replay generation only for Stage 12-passing symbols.</li>
 </ul>
 <h2 id="exact-calculations">Exact Calculations<a class="headerlink" href="#exact-calculations" title="Permanent link">&para;</a></h2>
 <ul>
@@ -5010,23 +5011,22 @@
 </ul>
 <h2 id="historical-replay-contract">Historical Replay Contract<a class="headerlink" href="#historical-replay-contract" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Canonical runner: <code>make stage12-api-parity</code></li>
+<li>Canonical runner: <code>make stage12-stage13-cert-artifacts</code></li>
 <li>Canonical truth window: repo reduced-core outputs for the requested <code>START_TS/END_TS</code></li>
 <li>Canonical feed: Dukascopy parquet under <code>/Users/danielfisher/Desktop/dukascopy_ticks</code></li>
 <li>Canonical warmup mode: <code>history_tail</code></li>
-<li>Canonical historical lock source: <code>configs/research/governance/oco_history/&lt;YYYY-MM&gt;/&lt;symbol&gt;_oco_live_lock.json</code></li>
+<li>Canonical historical lock source: <code>configs/research/governance/oco_history_dukascopy_candidate/&lt;YYYY-MM&gt;/&lt;symbol&gt;_oco_live_lock.json</code></li>
 <li>Canonical expectations:</li>
 <li>exact signal parity on <code>candidate_uid + close_ts</code></li>
-<li>green execution parity</li>
+<li>green Stage 12 prerequisite summary</li>
 <li>any miss or extra row is a critical failure</li>
 </ul>
 <h2 id="how-to-run">How To Run<a class="headerlink" href="#how-to-run" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>make<span class="w"> </span>stage12-api-parity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="nv">SYMBOL</span><span class="o">=</span>EURUSD<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="nv">RUNTIME_DB</span><span class="o">=</span>data/db/backtests/eurusd_stage12.db<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="nv">EVENTS_JSON</span><span class="o">=</span>data/analysis/backtest_reconcile/EURUSD_stage12_events.json<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="nv">REPO_DETAIL_CSV</span><span class="o">=</span>data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="nv">REDUCED_STATE_SCHEDULE_CSV</span><span class="o">=</span>data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>stage12-stage13-cert-artifacts<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">SYMBOLS</span><span class="o">=</span>EURUSD<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">MODEL_MONTH</span><span class="o">=</span><span class="m">2025</span>-07<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">HISTORY_DIR</span><span class="o">=</span>configs/research/governance/oco_history_dukascopy_candidate<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">TICK_ROOT</span><span class="o">=</span>/Users/danielfisher/Desktop/dukascopy_ticks<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span><span class="nv">START_TS</span><span class="o">=</span><span class="m">2025</span>-07-07T00:00:00Z<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span><span class="nv">END_TS</span><span class="o">=</span><span class="m">2025</span>-07-09T00:00:00Z
 </code></pre></div>
@@ -5040,32 +5040,26 @@
 <ul>
 <li>Treat the failure as critical.</li>
 <li>Do not infer deployability from Stage 04, Stage 06, or Stage 11 if Stage 12 is red.</li>
-<li>Fix the API/replay/runtime behavior and rerun Stage 12 until both checks are green.</li>
+<li>Fix the API/replay/runtime behavior and rerun <code>make stage12-stage13-cert-artifacts</code> until the Stage 12 prerequisite is green.</li>
 </ul>
 <h2 id="canonical-analysis-reports">Canonical Analysis Reports<a class="headerlink" href="#canonical-analysis-reports" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>docs/analysis/ctrader_backtest_reconciliation_runbook.md</code></li>
 <li><code>docs/analysis/EURUSD_stage12_api_parity_report.md</code></li>
+<li><code>docs/analysis/stage13_dukascopy_testclient_report.md</code></li>
 </ul>
 <h2 id="reproduction-commands">Reproduction Commands<a class="headerlink" href="#reproduction-commands" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/replay_cbot_testclient.py<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--symbol<span class="w"> </span>EURUSD<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--source<span class="w"> </span>dukascopy<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/run_stage12_stage13_certification.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--symbols<span class="w"> </span>EURUSD<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--model-month<span class="w"> </span><span class="m">2025</span>-07<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--history-dir<span class="w"> </span>configs/research/governance/oco_history_dukascopy_candidate<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--tick-root<span class="w"> </span>/Users/danielfisher/Desktop/dukascopy_ticks<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--runtime-db<span class="w"> </span>data/db/backtests/eurusd_stage12.db<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--events-json<span class="w"> </span>data/analysis/backtest_reconcile/EURUSD_stage12_events.json<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--repo-stoplimit-detail-csv<span class="w"> </span>data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reduced-core-state-schedule-csv<span class="w"> </span>data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--start-ts<span class="w"> </span><span class="m">2025</span>-07-07T00:00:00Z<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--end-ts<span class="w"> </span><span class="m">2025</span>-07-09T00:00:00Z<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--enable-sequence-fallback<span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--fail-on-gate<span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--require-selected-parity<span class="w"> </span><span class="nb">true</span>
+<span class="w">  </span>--end-ts<span class="w"> </span><span class="m">2025</span>-07-09T00:00:00Z
 </code></pre></div>
 <h2 id="traceability">Traceability<a class="headerlink" href="#traceability" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>scripts/replay_cbot_testclient.py</code></li>
-<li><code>scripts/validate_ctrader_execution_parity.py</code></li>
+<li><code>scripts/run_stage12_stage13_certification.py</code></li>
+<li><code>scripts/validate_api_parity.py</code></li>
 <li><code>scripts/build_oco_strategy_bible.py</code></li>
 <li><code>scripts/validate_oco_docs_contract.py</code></li>
 </ul>
@@ -5073,7 +5067,7 @@
 <!-- GENERATED:STAGE_12:START -->
 <h3 id="auto-snapshot-stage-12_1">Auto Snapshot - Stage 12<a class="headerlink" href="#auto-snapshot-stage-12_1" title="Permanent link">&para;</a></h3>
 <ul>
-<li>generated_at: <code>2026-04-03 12:49:19 UTC</code></li>
+<li>generated_at: <code>2026-04-12 17:21:09 UTC</code></li>
 <li>Stage 12 is a hard gate: strict signal parity and execution parity must both match reduced-core truth.</li>
 <li>Any non-green Stage 12 symbol is a critical deployment blocker.</li>
 </ul>
@@ -5095,68 +5089,68 @@
 <tbody>
 <tr>
 <td style="text-align: left;">EURUSD</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: left;">green</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">red</td>
 <td style="text-align: left;">docs/analysis/EURUSD_stage12_api_parity_report.md</td>
 </tr>
 <tr>
 <td style="text-align: left;">GBPUSD</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: left;">green</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">red</td>
 <td style="text-align: left;">docs/analysis/GBPUSD_stage12_api_parity_report.md</td>
 </tr>
 <tr>
 <td style="text-align: left;">AUDUSD</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: left;">green</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">red</td>
 <td style="text-align: left;">docs/analysis/AUDUSD_stage12_api_parity_report.md</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDJPY</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: left;">green</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">red</td>
 <td style="text-align: left;">docs/analysis/USDJPY_stage12_api_parity_report.md</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCHF</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: left;">green</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">red</td>
 <td style="text-align: left;">docs/analysis/USDCHF_stage12_api_parity_report.md</td>
 </tr>
 <tr>
 <td style="text-align: left;">USDCAD</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: left;">True</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: left;">green</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">red</td>
 <td style="text-align: left;">docs/analysis/USDCAD_stage12_api_parity_report.md</td>
 </tr>
 </tbody>

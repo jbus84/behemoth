@@ -4492,15 +4492,15 @@
 
 <h1 id="oco-docs-contract-report">OCO Docs Contract Report<a class="headerlink" href="#oco-docs-contract-report" title="Permanent link">&para;</a></h1>
 <ul>
-<li>generated_at_utc: <code>2026-04-03T12:49:45Z</code></li>
+<li>generated_at_utc: <code>2026-04-13T10:54:56Z</code></li>
 <li>checks_csv: <code>data/analysis/tick_opportunity_mining/docs_contract_checks.csv</code></li>
 <li>issues_csv: <code>data/analysis/tick_opportunity_mining/docs_contract_issues.csv</code></li>
 </ul>
 <h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
 <ul>
 <li>checks_total: <code>82</code></li>
-<li>failed: <code>3</code></li>
-<li>high_or_critical_failed: <code>2</code></li>
+<li>failed: <code>12</code></li>
+<li>high_or_critical_failed: <code>11</code></li>
 </ul>
 <h2 id="checks">Checks<a class="headerlink" href="#checks" title="Permanent link">&para;</a></h2>
 <table>
@@ -4535,7 +4535,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stage04_execution_policy_status.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4550,7 +4550,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stage04_execution_policy_status.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4565,37 +4565,37 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/generated/stage_04_snapshot.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
 <td style="text-align: left;">C13</td>
 <td style="text-align: left;">stage11_execution_mc_artifacts_schema</td>
-<td style="text-align: left;">pass</td>
+<td style="text-align: left;">fail</td>
 <td style="text-align: left;">critical</td>
 <td style="text-align: left;">docs_contract</td>
 <td style="text-align: left;">missing_stage11_columns</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">7</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">{"checks_rows": 15, "missing_columns": [], "month_session_rows": 944, "scenario_ok": true, "symbol_rows": 24}</td>
+<td style="text-align: left;">{"checks_rows": 0, "missing_columns": ["symbol", "scenario_id", "mean_per_signal_pips", "lb95_per_signal_pips", "mean_fill_rate", "prob_negative_month", "fill_rate_drop_vs_S0"], "month_session_rows": 0, "scenario_ok": false, "symbol_rows": 0}</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
 <td style="text-align: left;">C14</td>
 <td style="text-align: left;">stage11_snapshot_present_and_populated</td>
-<td style="text-align: left;">pass</td>
+<td style="text-align: left;">fail</td>
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">docs_contract</td>
 <td style="text-align: left;">stage11_snapshot_sections_present</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/generated/stage_11_snapshot.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4610,22 +4610,22 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/analysis/index.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
 <td style="text-align: left;">C16</td>
 <td style="text-align: left;">analysis_catalog_manifest_coverage</td>
-<td style="text-align: left;">pass</td>
+<td style="text-align: left;">fail</td>
 <td style="text-align: left;">critical</td>
 <td style="text-align: left;">docs_contract</td>
 <td style="text-align: left;">missing_manifest_paths</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">5</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;"></td>
+<td style="text-align: left;">analysis/audusd_oco_tick_exact_shortlist_report.md,analysis/gbpusd_oco_tick_exact_shortlist_report.md,analysis/usdcad_oco_tick_exact_shortlist_report.md,analysis/usdchf_oco_tick_exact_shortlist_report.md,analysis/usdjpy_oco_tick_exact_shortlist_report.md</td>
 <td style="text-align: left;">docs/analysis/catalog_manifest.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4640,7 +4640,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">mkdocs.yml</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4655,22 +4655,22 @@
 <td style="text-align: left;">&lt;=</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/generated/stage_04_snapshot.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
 <td style="text-align: left;">C19</td>
 <td style="text-align: left;">run_delta_artifacts_and_baseline</td>
-<td style="text-align: left;">pass</td>
+<td style="text-align: left;">fail</td>
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">docs_contract</td>
 <td style="text-align: left;">run_delta_missing_or_invalid</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">{"baseline_count": 1, "baseline_ref_ok": true, "missing_gate_cols": [], "missing_summary_cols": [], "report_exists": true}</td>
+<td style="text-align: left;">{"baseline_count": 0, "baseline_ref_ok": false, "missing_gate_cols": ["symbol", "gate_id", "baseline_value", "latest_value", "delta", "changed"], "missing_summary_cols": ["baseline_run_id", "latest_run_id", "metric_rows_baseline", "metric_rows_latest", "metric_rows_changed", "gate_rows_changed"], "report_exists": true}</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/run_delta_summary.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4685,7 +4685,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_01_data_foundation.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4700,7 +4700,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_02_opportunity_mining.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4715,7 +4715,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_03_monthly_wfo.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4730,7 +4730,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_04_execution_realism.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4745,7 +4745,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_05_reduced_core.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4760,7 +4760,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_06_tick_exact_and_portability.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4775,7 +4775,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_07_logical_and_statistical_audit.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4790,7 +4790,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_08_robustness_and_stress.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4805,7 +4805,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_09_live_governance_and_deployment.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4820,7 +4820,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_10_known_risks_and_backlog.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4835,7 +4835,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_11_execution_monte_carlo.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4850,7 +4850,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_12_api_parity.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4865,7 +4865,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_13_dukascopy_testclient_parity.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4880,7 +4880,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_14_jforex_runtime_certification.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4895,7 +4895,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;">taxonomy_rules_exists=True</td>
 <td style="text-align: left;">docs/analysis/catalog_manifest.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4910,7 +4910,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/analysis/catalog_manifest.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4925,7 +4925,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;">{"blank_band_action_rows": 0, "missing_columns": [], "playbook_exists": true, "report_exists": true}</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/operator_action_status.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4940,7 +4940,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4950,12 +4950,12 @@
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">docs_contract</td>
 <td style="text-align: left;">canonical_map_invalid_rows</td>
-<td style="text-align: right;">16</td>
+<td style="text-align: right;">18</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">{"invalid_classes": 8, "missing_columns": [], "primary_misclassified": 8}</td>
+<td style="text-align: left;">{"invalid_classes": 8, "missing_columns": [], "primary_misclassified": 10}</td>
 <td style="text-align: left;">docs/analysis/canonical_stage_map.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4970,7 +4970,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">mkdocs.yml</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -4985,7 +4985,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;">{"duplicate_groups": 0, "missing_groups": 0}</td>
 <td style="text-align: left;">docs/analysis/canonical_stage_map.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5000,7 +5000,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_01_data_foundation.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5015,7 +5015,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_02_opportunity_mining.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5030,7 +5030,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_03_monthly_wfo.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5045,7 +5045,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_04_execution_realism.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5060,7 +5060,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_05_reduced_core.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5075,7 +5075,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_06_tick_exact_and_portability.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5090,7 +5090,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_07_logical_and_statistical_audit.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5105,7 +5105,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_08_robustness_and_stress.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5120,7 +5120,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_09_live_governance_and_deployment.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5135,7 +5135,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_10_known_risks_and_backlog.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5150,7 +5150,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_11_execution_monte_carlo.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5165,7 +5165,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_12_api_parity.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5180,7 +5180,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_13_dukascopy_testclient_parity.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5195,7 +5195,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_14_jforex_runtime_certification.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5210,7 +5210,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/metric_dictionary.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5223,9 +5223,9 @@
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">{"checks_rows": 306, "issues_exists": true, "missing_columns": [], "report_exists": true}</td>
+<td style="text-align: left;">{"checks_rows": 108, "issues_exists": true, "missing_columns": [], "report_exists": true}</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_stage_integrity_checks.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5240,7 +5240,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;">{"alerts_exists": true, "missing_columns": [], "report_exists": true, "symbols_present": ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"]}</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_execution_drift_monthly.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5255,22 +5255,22 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;">{"alerts_exists": true, "current_policy_rows": 6, "missing_columns": [], "recommended_rows": 6, "report_exists": true, "symbols_present": ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"]}</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_threshold_sensitivity.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
 <td style="text-align: left;">C33</td>
 <td style="text-align: left;">rule_universe_registry_artifacts_present_and_clean</td>
-<td style="text-align: left;">pass</td>
+<td style="text-align: left;">fail</td>
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">docs_contract</td>
 <td style="text-align: left;">rule_universe_registry_high_critical_fails</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">3</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">{"checks_exists": true, "checks_rows": 29, "issues_exists": true, "missing_columns": [], "registry_yaml_exists": true, "report_exists": true}</td>
+<td style="text-align: left;">{"checks_exists": true, "checks_rows": 26, "issues_exists": true, "missing_columns": [], "registry_yaml_exists": true, "report_exists": true}</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_rule_universe_registry_checks.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5283,9 +5283,9 @@
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">{"disposition_exists": true, "exceptions_yaml_exists": true, "expected_non_green_alerts": 29, "expired_exception_count": 0, "missing_columns": [], "missing_dispositions": 0, "report_exists": true}</td>
+<td style="text-align: left;">{"disposition_exists": true, "exceptions_yaml_exists": true, "expected_non_green_alerts": 40, "expired_exception_count": 0, "missing_columns": [], "missing_dispositions": 0, "report_exists": true}</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_alert_disposition.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5300,22 +5300,22 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;">{"expired_accepted_exception_count": 0, "hard_fail_on_expired_exception": true}</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_alert_disposition.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
 <td style="text-align: left;">C36</td>
 <td style="text-align: left;">no_recurrence_breach_under_hard_fail_policy</td>
-<td style="text-align: left;">fail</td>
+<td style="text-align: left;">pass</td>
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">docs_contract</td>
 <td style="text-align: left;">recurrence_breach_count</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">{"hard_fail_on_recurrence_breach": true, "max_amber_consecutive_runs": 6, "max_amber_months": 12, "recurrence_breach_count": 1}</td>
+<td style="text-align: left;">{"hard_fail_on_recurrence_breach": true, "max_amber_consecutive_runs": 6, "max_amber_months": 12, "recurrence_breach_count": 0}</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_alert_disposition.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5330,7 +5330,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_alert_disposition.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5345,7 +5345,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_alert_disposition.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5358,9 +5358,9 @@
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">{"active_metric_ids": ["E_DRIFT_FILL_DROP", "E_DRIFT_NO_TOUCH", "E_DRIFT_OVERSHOOT_P50", "E_DRIFT_OVERSHOOT_P95", "FTMO_ALLOC_ADMITTED_MISSING_RESERVATION_ID_COUNT", "FTMO_ALLOC_BLOCK_RATE", "FTMO_ALLOC_BUDGET_EXCEEDED_RATE", "TS03_LB95_MONTH_SIGNAL"], "explain_csv_exists": true, "explain_report_exists": true, "missing_columns": [], "missing_metric_coverage": []}</td>
+<td style="text-align: left;">{"active_metric_ids": ["E_DRIFT_FILL_DROP", "E_DRIFT_NO_TOUCH", "E_DRIFT_OVERSHOOT_P50", "E_DRIFT_OVERSHOOT_P95", "TS01_W13_THRESHOLD_FRAGILITY", "TS02_W14_BRIER_DRIFT_STD", "TS05_POLICY_GAP_LB95"], "explain_csv_exists": true, "explain_report_exists": true, "missing_columns": [], "missing_metric_coverage": []}</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_governance_explainability.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5375,7 +5375,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;">{}</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/edge_clarity_stage_metrics.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5390,7 +5390,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;">{"missing_markers": [], "missing_pages": [], "missing_status_columns": [], "missing_status_page_keys": []}</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/system_reference_build_status.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5405,7 +5405,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5420,7 +5420,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5430,12 +5430,12 @@
 <td style="text-align: left;">medium</td>
 <td style="text-align: left;">docs_contract</td>
 <td style="text-align: left;">system_reference_max_age_hours</td>
-<td style="text-align: right;">0.000363346</td>
+<td style="text-align: right;">17.561</td>
 <td style="text-align: right;">168</td>
 <td style="text-align: left;">&lt;=</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5450,7 +5450,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5465,7 +5465,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5480,7 +5480,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_03_monthly_wfo.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5495,7 +5495,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5510,7 +5510,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_05_reduced_core.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5525,22 +5525,22 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/edge_clarity_stage_metrics.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
 <td style="text-align: left;">C4B</td>
 <td style="text-align: left;">core_metric_ids_present_and_non_nan</td>
-<td style="text-align: left;">pass</td>
+<td style="text-align: left;">fail</td>
 <td style="text-align: left;">critical</td>
 <td style="text-align: left;">docs_contract</td>
 <td style="text-align: left;">core_missing_or_nan</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">7</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;"></td>
+<td style="text-align: left;">EM01_lb95_per_signal_s1,EM02_lb95_per_signal_s2,EM03_prob_negative_month_s1,EM04_fill_rate_drop_vs_s0_s1,EM05_nan_core_fields,G01_near_fail_count,G03_lock_drift_flags</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/edge_clarity_stage_metrics.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5555,7 +5555,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stop_limit_tickfill/summary.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5570,7 +5570,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;">{"edge_metrics": ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"], "edge_report": ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"], "stage09_snapshot": ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"], "stage_status": ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"]}</td>
 <td style="text-align: left;">docs/strategy_bible/generated/stage_09_snapshot.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5585,37 +5585,37 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_03_monthly_wfo.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
 <td style="text-align: left;">C51</td>
 <td style="text-align: left;">tick_builder_scripts_present_and_stage01_documented</td>
-<td style="text-align: left;">pass</td>
+<td style="text-align: left;">fail</td>
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">docs_contract</td>
 <td style="text-align: left;">tick_builder_contract_gaps</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">6</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">scripts_missing=;stage01_terms_missing=</td>
-<td style="text-align: left;">docs/strategy_bible/stage_01_data_foundation.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">scripts_missing=;stage01_terms_missing=open_bid</td>
+<td style="text-align: left;">high_bid</td>
+<td style="text-align: left;">low_bid</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
 <td style="text-align: left;">C52</td>
 <td style="text-align: left;">stage09_predeploy_json_coverage_for_expected_symbols</td>
-<td style="text-align: left;">pass</td>
+<td style="text-align: left;">fail</td>
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">docs_contract</td>
 <td style="text-align: left;">missing_predeploy_symbol_coverage</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">6</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">{"expected_symbols": ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"], "missing_predeploy_files": [], "missing_predeploy_rows": [], "predeploy_table_present": true, "violations": []}</td>
+<td style="text-align: left;">{"expected_symbols": ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"], "missing_predeploy_files": ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"], "missing_predeploy_rows": ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"], "predeploy_table_present": true, "violations": ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"]}</td>
 <td style="text-align: left;">docs/strategy_bible/generated/stage_09_snapshot.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5630,7 +5630,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;">{"expected_symbols": ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"], "nan_rows": [], "predeploy_table_present": true}</td>
 <td style="text-align: left;">docs/strategy_bible/generated/stage_09_snapshot.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5645,37 +5645,37 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;">{"expected_symbols": ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"], "failing_symbols": [], "strict_mode_enabled": false}</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_status.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
 <td style="text-align: left;">C55</td>
 <td style="text-align: left;">stage12_api_parity_artifacts_schema</td>
-<td style="text-align: left;">pass</td>
+<td style="text-align: left;">fail</td>
 <td style="text-align: left;">critical</td>
 <td style="text-align: left;">docs_contract</td>
 <td style="text-align: left;">missing_stage12_columns</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">8</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;"></td>
+<td style="text-align: left;">symbol,signal_parity_pass,execution_parity_pass,stage12_api_parity_pass,selected_missing_expected,selected_extra_runtime,execution_failed_checks_high_critical,stage12_api_parity_verdict</td>
 <td style="text-align: left;">data/analysis/backtest_reconcile/EURUSD_stage12_api_parity_summary.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
 <td style="text-align: left;">C56</td>
 <td style="text-align: left;">stage12_api_parity_all_symbols_green</td>
-<td style="text-align: left;">pass</td>
+<td style="text-align: left;">fail</td>
 <td style="text-align: left;">critical</td>
 <td style="text-align: left;">docs_contract</td>
 <td style="text-align: left;">stage12_api_parity_fail_count</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: right;">6</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: left;">==</td>
-<td style="text-align: left;">{"failing_symbols": [], "missing_gate_columns": []}</td>
+<td style="text-align: left;">{"failing_symbols": ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"], "missing_gate_columns": []}</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/oco_bible_stage_status.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5690,7 +5690,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;">{"family_present": true, "missing_artifacts": ["data/analysis/tick_opportunity_mining/offset_robustness/AUDUSD_offset_robustness_by_offset.csv", "data/analysis/tick_opportunity_mining/offset_robustness/AUDUSD_warmup_sensitivity.csv", "data/analysis/tick_opportunity_mining/offset_robustness/AUDUSD_api_offset_confirmation.csv", "data/analysis/tick_opportunity_mining/offset_robustness/EURUSD_offset_robustness_by_offset.csv", "data/analysis/tick_opportunity_mining/offset_robustness/EURUSD_warmup_sensitivity.csv", "data/analysis/tick_opportunity_mining/offset_robustness/EURUSD_api_offset_confirmation.csv", "data/analysis/tick_opportunity_mining/offset_robustness/GBPUSD_offset_robustness_by_offset.csv", "data/analysis/tick_opportunity_mining/offset_robustness/GBPUSD_warmup_sensitivity.csv", "data/analysis/tick_opportunity_mining/offset_robustness/GBPUSD_api_offset_confirmation.csv", "data/analysis/tick_opportunity_mining/offset_robustness/USDCAD_offset_robustness_by_offset.csv", "data/analysis/tick_opportunity_mining/offset_robustness/USDCAD_warmup_sensitivity.csv", "data/analysis/tick_opportunity_mining/offset_robustness/USDCAD_api_offset_confirmation.csv", "data/analysis/tick_opportunity_mining/offset_robustness/USDCHF_offset_robustness_by_offset.csv", "data/analysis/tick_opportunity_mining/offset_robustness/USDCHF_warmup_sensitivity.csv", "data/analysis/tick_opportunity_mining/offset_robustness/USDCHF_api_offset_confirmation.csv", "data/analysis/tick_opportunity_mining/offset_robustness/USDJPY_offset_robustness_by_offset.csv", "data/analysis/tick_opportunity_mining/offset_robustness/USDJPY_warmup_sensitivity.csv", "data/analysis/tick_opportunity_mining/offset_robustness/USDJPY_api_offset_confirmation.csv"], "schema_issues": []}</td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/offset_robustness</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5700,12 +5700,12 @@
 <td style="text-align: left;">medium</td>
 <td style="text-align: left;">docs_contract</td>
 <td style="text-align: left;">max_age_hours</td>
-<td style="text-align: right;">0.000617545</td>
+<td style="text-align: right;">17.5613</td>
 <td style="text-align: right;">168</td>
 <td style="text-align: left;">&lt;=</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/edge_clarity_stage_metrics.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5720,7 +5720,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">mkdocs.yml</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5735,7 +5735,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">docs/strategy_bible/stage_04_execution_realism.md</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 <tr>
 <td style="text-align: left;">ALL</td>
@@ -5750,7 +5750,7 @@
 <td style="text-align: left;">==</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;">data/analysis/tick_opportunity_mining/stage04_execution_policy_status.csv</td>
-<td style="text-align: left;">2026-04-03T12:49:45Z</td>
+<td style="text-align: left;">2026-04-13T10:54:56Z</td>
 </tr>
 </tbody>
 </table>
@@ -5769,22 +5769,103 @@
 </thead>
 <tbody>
 <tr>
+<td style="text-align: left;">DOC_C13</td>
+<td style="text-align: left;">ALL</td>
+<td style="text-align: left;">C13</td>
+<td style="text-align: left;">critical</td>
+<td style="text-align: left;">docs_contract</td>
+<td style="text-align: left;">stage11_execution_mc_artifacts_schema</td>
+<td style="text-align: left;">{"details": "{\"checks_rows\": 0, \"missing_columns\": [\"symbol\", \"scenario_id\", \"mean_per_signal_pips\", \"lb95_per_signal_pips\", \"mean_fill_rate\", \"prob_negative_month\", \"fill_rate_drop_vs_S0\"], \"month_session_rows\": 0, \"scenario_ok\": false, \"symbol_rows\": 0}", "metric_name": "missing_stage11_columns", "metric_value": 7.0, "source_path": "data/analysis/tick_opportunity_mining/execution_mc_symbol_scenarios.csv", "threshold": 0.0}</td>
+</tr>
+<tr>
+<td style="text-align: left;">DOC_C14</td>
+<td style="text-align: left;">ALL</td>
+<td style="text-align: left;">C14</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">docs_contract</td>
+<td style="text-align: left;">stage11_snapshot_present_and_populated</td>
+<td style="text-align: left;">{"details": "", "metric_name": "stage11_snapshot_sections_present", "metric_value": 0.0, "source_path": "docs/strategy_bible/generated/stage_11_snapshot.md", "threshold": 1.0}</td>
+</tr>
+<tr>
+<td style="text-align: left;">DOC_C16</td>
+<td style="text-align: left;">ALL</td>
+<td style="text-align: left;">C16</td>
+<td style="text-align: left;">critical</td>
+<td style="text-align: left;">docs_contract</td>
+<td style="text-align: left;">analysis_catalog_manifest_coverage</td>
+<td style="text-align: left;">{"details": "analysis/audusd_oco_tick_exact_shortlist_report.md,analysis/gbpusd_oco_tick_exact_shortlist_report.md,analysis/usdcad_oco_tick_exact_shortlist_report.md,analysis/usdchf_oco_tick_exact_shortlist_report.md,analysis/usdjpy_oco_tick_exact_shortlist_report.md", "metric_name": "missing_manifest_paths", "metric_value": 5.0, "source_path": "docs/analysis/catalog_manifest.csv", "threshold": 0.0}</td>
+</tr>
+<tr>
+<td style="text-align: left;">DOC_C19</td>
+<td style="text-align: left;">ALL</td>
+<td style="text-align: left;">C19</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">docs_contract</td>
+<td style="text-align: left;">run_delta_artifacts_and_baseline</td>
+<td style="text-align: left;">{"details": "{\"baseline_count\": 0, \"baseline_ref_ok\": false, \"missing_gate_cols\": [\"symbol\", \"gate_id\", \"baseline_value\", \"latest_value\", \"delta\", \"changed\"], \"missing_summary_cols\": [\"baseline_run_id\", \"latest_run_id\", \"metric_rows_baseline\", \"metric_rows_latest\", \"metric_rows_changed\", \"gate_rows_changed\"], \"report_exists\": true}", "metric_name": "run_delta_missing_or_invalid", "metric_value": 1.0, "source_path": "data/analysis/tick_opportunity_mining/run_delta_summary.csv", "threshold": 0.0}</td>
+</tr>
+<tr>
 <td style="text-align: left;">DOC_C27</td>
 <td style="text-align: left;">ALL</td>
 <td style="text-align: left;">C27</td>
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">docs_contract</td>
 <td style="text-align: left;">canonical_map_valid_primary_classification</td>
-<td style="text-align: left;">{"details": "{\"invalid_classes\": 8, \"missing_columns\": [], \"primary_misclassified\": 8}", "metric_name": "canonical_map_invalid_rows", "metric_value": 16.0, "source_path": "docs/analysis/canonical_stage_map.csv", "threshold": 0.0}</td>
+<td style="text-align: left;">{"details": "{\"invalid_classes\": 8, \"missing_columns\": [], \"primary_misclassified\": 10}", "metric_name": "canonical_map_invalid_rows", "metric_value": 18.0, "source_path": "docs/analysis/canonical_stage_map.csv", "threshold": 0.0}</td>
 </tr>
 <tr>
-<td style="text-align: left;">DOC_C36</td>
+<td style="text-align: left;">DOC_C33</td>
 <td style="text-align: left;">ALL</td>
-<td style="text-align: left;">C36</td>
+<td style="text-align: left;">C33</td>
 <td style="text-align: left;">high</td>
 <td style="text-align: left;">docs_contract</td>
-<td style="text-align: left;">no_recurrence_breach_under_hard_fail_policy</td>
-<td style="text-align: left;">{"details": "{\"hard_fail_on_recurrence_breach\": true, \"max_amber_consecutive_runs\": 6, \"max_amber_months\": 12, \"recurrence_breach_count\": 1}", "metric_name": "recurrence_breach_count", "metric_value": 1.0, "source_path": "data/analysis/tick_opportunity_mining/oco_alert_disposition.csv", "threshold": 0.0}</td>
+<td style="text-align: left;">rule_universe_registry_artifacts_present_and_clean</td>
+<td style="text-align: left;">{"details": "{\"checks_exists\": true, \"checks_rows\": 26, \"issues_exists\": true, \"missing_columns\": [], \"registry_yaml_exists\": true, \"report_exists\": true}", "metric_name": "rule_universe_registry_high_critical_fails", "metric_value": 3.0, "source_path": "data/analysis/tick_opportunity_mining/oco_rule_universe_registry_checks.csv", "threshold": 0.0}</td>
+</tr>
+<tr>
+<td style="text-align: left;">DOC_C4B</td>
+<td style="text-align: left;">ALL</td>
+<td style="text-align: left;">C4B</td>
+<td style="text-align: left;">critical</td>
+<td style="text-align: left;">docs_contract</td>
+<td style="text-align: left;">core_metric_ids_present_and_non_nan</td>
+<td style="text-align: left;">{"details": "EM01_lb95_per_signal_s1,EM02_lb95_per_signal_s2,EM03_prob_negative_month_s1,EM04_fill_rate_drop_vs_s0_s1,EM05_nan_core_fields,G01_near_fail_count,G03_lock_drift_flags", "metric_name": "core_missing_or_nan", "metric_value": 7.0, "source_path": "data/analysis/tick_opportunity_mining/edge_clarity_stage_metrics.csv", "threshold": 0.0}</td>
+</tr>
+<tr>
+<td style="text-align: left;">DOC_C51</td>
+<td style="text-align: left;">ALL</td>
+<td style="text-align: left;">C51</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">docs_contract</td>
+<td style="text-align: left;">tick_builder_scripts_present_and_stage01_documented</td>
+<td style="text-align: left;">{"details": "scripts_missing=;stage01_terms_missing=open_bid</td>
+</tr>
+<tr>
+<td style="text-align: left;">DOC_C52</td>
+<td style="text-align: left;">ALL</td>
+<td style="text-align: left;">C52</td>
+<td style="text-align: left;">high</td>
+<td style="text-align: left;">docs_contract</td>
+<td style="text-align: left;">stage09_predeploy_json_coverage_for_expected_symbols</td>
+<td style="text-align: left;">{"details": "{\"expected_symbols\": [\"AUDUSD\", \"EURUSD\", \"GBPUSD\", \"USDCAD\", \"USDCHF\", \"USDJPY\"], \"missing_predeploy_files\": [\"AUDUSD\", \"EURUSD\", \"GBPUSD\", \"USDCAD\", \"USDCHF\", \"USDJPY\"], \"missing_predeploy_rows\": [\"AUDUSD\", \"EURUSD\", \"GBPUSD\", \"USDCAD\", \"USDCHF\", \"USDJPY\"], \"predeploy_table_present\": true, \"violations\": [\"AUDUSD\", \"EURUSD\", \"GBPUSD\", \"USDCAD\", \"USDCHF\", \"USDJPY\"]}", "metric_name": "missing_predeploy_symbol_coverage", "metric_value": 6.0, "source_path": "docs/strategy_bible/generated/stage_09_snapshot.md", "threshold": 0.0}</td>
+</tr>
+<tr>
+<td style="text-align: left;">DOC_C55</td>
+<td style="text-align: left;">ALL</td>
+<td style="text-align: left;">C55</td>
+<td style="text-align: left;">critical</td>
+<td style="text-align: left;">docs_contract</td>
+<td style="text-align: left;">stage12_api_parity_artifacts_schema</td>
+<td style="text-align: left;">{"details": "symbol,signal_parity_pass,execution_parity_pass,stage12_api_parity_pass,selected_missing_expected,selected_extra_runtime,execution_failed_checks_high_critical,stage12_api_parity_verdict", "metric_name": "missing_stage12_columns", "metric_value": 8.0, "source_path": "data/analysis/backtest_reconcile/EURUSD_stage12_api_parity_summary.csv", "threshold": 0.0}</td>
+</tr>
+<tr>
+<td style="text-align: left;">DOC_C56</td>
+<td style="text-align: left;">ALL</td>
+<td style="text-align: left;">C56</td>
+<td style="text-align: left;">critical</td>
+<td style="text-align: left;">docs_contract</td>
+<td style="text-align: left;">stage12_api_parity_all_symbols_green</td>
+<td style="text-align: left;">{"details": "{\"failing_symbols\": [\"AUDUSD\", \"EURUSD\", \"GBPUSD\", \"USDCAD\", \"USDCHF\", \"USDJPY\"], \"missing_gate_columns\": []}", "metric_name": "stage12_api_parity_fail_count", "metric_value": 6.0, "source_path": "data/analysis/tick_opportunity_mining/oco_bible_stage_status.csv", "threshold": 0.0}</td>
 </tr>
 <tr>
 <td style="text-align: left;">DOC_C57</td>

@@ -2,10 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+import numpy as np
 import pandas as pd
 import pytest
 
+from scripts.build_tick_opportunity_ml_dataset import _oco_precompute
+from scripts.run_tick_opportunity_mining import _pip_size
 from scripts.verify_oco_tick_exact_shortlist import (
+    _merge_config,
     _normalize_shortlist_states,
     _recompute_first_touch,
     _resolve_shortlist_state_csv,
@@ -54,6 +58,50 @@ def test_resolve_shortlist_prefers_symbol_schedule_over_default(monkeypatch, tmp
         symbol="USDCHF",
     )
     assert picked.resolve() == schedule.resolve()
+
+
+def test_merge_config_derives_symbol_specific_outputs_when_not_explicit() -> None:
+    import argparse
+
+    cfg = _merge_config(
+        argparse.Namespace(
+            config=None,
+            symbol="GBPUSD",
+            dataset_dir=None,
+            pred_path=None,
+            shortlist_state_csv=None,
+            locked_quantile=None,
+            selection_mode=None,
+            family_required=None,
+            oco_hold_mode=None,
+            oco_include_no_touch=None,
+            sample_rows_per_combo=None,
+            abs_tol_pips=None,
+            min_exact_match_rate=None,
+            min_pos_label_match_rate=None,
+            out_summary_csv=None,
+            out_monthly_csv=None,
+            out_state_csv=None,
+            report_out=None,
+        )
+    )
+
+    assert cfg["pred_path"].endswith(
+        "data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/GBPUSD_oco_monthly_predictions.parquet"
+    )
+    assert cfg["shortlist_state_csv"].endswith(
+        "data/analysis/tick_opportunity_mining/reduced_core/GBPUSD_oco_reduced_states.csv"
+    )
+    assert cfg["out_summary_csv"].endswith(
+        "data/analysis/tick_opportunity_mining/reduced_core/GBPUSD_oco_tick_exact_summary.csv"
+    )
+    assert cfg["out_monthly_csv"].endswith(
+        "data/analysis/tick_opportunity_mining/reduced_core/GBPUSD_oco_tick_exact_monthly.csv"
+    )
+    assert cfg["out_state_csv"].endswith(
+        "data/analysis/tick_opportunity_mining/reduced_core/GBPUSD_oco_tick_exact_state.csv"
+    )
+    assert cfg["report_out"].endswith("docs/analysis/gbpusd_oco_tick_exact_shortlist_report.md")
 
 
 def test_run_accepts_partial_read_from_explicit_schema_velocity(tmp_path, monkeypatch) -> None:
@@ -142,8 +190,8 @@ def test_recompute_first_touch_uses_ask_side_for_buy_touch_and_sell_exit() -> No
     out = _recompute_first_touch(
         close_bid=pd.Series([1.1000, 1.1000, 1.10015, 1.1000]).to_numpy(dtype=float),
         high_bid=pd.Series([1.1000, 1.1001, 1.1000, 1.1000]).to_numpy(dtype=float),
-        low_bid=pd.Series([1.1000, 1.0995, 1.1000, 1.1000]).to_numpy(dtype=float),
-        high_ask=pd.Series([1.1000, 1.1002, 1.1000, 1.1000]).to_numpy(dtype=float),
+        low_bid=pd.Series([1.1000, 1.0999, 1.1000, 1.1000]).to_numpy(dtype=float),
+        high_ask=pd.Series([1.1000, 1.1004, 1.1000, 1.1000]).to_numpy(dtype=float),
         close_ask=pd.Series([1.1002, 1.1003, 1.1004, 1.1005]).to_numpy(dtype=float),
         hlf=pd.Series([0.0, 1.0, 0.0, 0.0]).to_numpy(dtype=float),
         idx=pd.Series([0]).to_numpy(dtype="int64"),
@@ -156,7 +204,7 @@ def test_recompute_first_touch_uses_ask_side_for_buy_touch_and_sell_exit() -> No
 
     assert out["expected_side"][0] == 1
     assert out["expected_decided"][0]
-    assert out["expected_gross_pips"][0] == pytest.approx(0.0, abs=1e-9)
+    assert out["expected_gross_pips"][0] == pytest.approx(-1.5, abs=1e-9)
 
     sell = _recompute_first_touch(
         close_bid=pd.Series([1.1000, 1.1000, 1.1000, 1.1000]).to_numpy(dtype=float),
@@ -175,4 +223,47 @@ def test_recompute_first_touch_uses_ask_side_for_buy_touch_and_sell_exit() -> No
 
     assert sell["expected_side"][0] == -1
     assert sell["expected_decided"][0]
-    assert sell["expected_gross_pips"][0] == pytest.approx(-4.5, abs=1e-9)
+    assert sell["expected_gross_pips"][0] == pytest.approx(-3.0, abs=1e-9)
+
+
+def test_recompute_first_touch_matches_oco_precompute_from_touch_contract() -> None:
+    rows = 140
+    close_bid = 1.1000 + np.arange(rows) * 0.00025
+    close_ask = close_bid + 0.0001
+    df = pd.DataFrame(
+        {
+            "close_bid": close_bid,
+            "high_bid": close_bid + 0.00005,
+            "low_bid": close_bid - 0.00005,
+            "high_ask": close_ask + 0.00025,
+            "close_ask": close_ask,
+            "hl_first": np.ones(rows),
+        }
+    )
+    prep = _oco_precompute(
+        df,
+        horizon=1,
+        barrier_pips=2.0,
+        pip=_pip_size("EURUSD"),
+        hold_mode="from_touch",
+    )
+
+    out = _recompute_first_touch(
+        close_bid=df["close_bid"].to_numpy(dtype=float),
+        high_bid=df["high_bid"].to_numpy(dtype=float),
+        low_bid=df["low_bid"].to_numpy(dtype=float),
+        high_ask=df["high_ask"].to_numpy(dtype=float),
+        close_ask=df["close_ask"].to_numpy(dtype=float),
+        hlf=df["hl_first"].to_numpy(dtype=float),
+        idx=prep["i0"],
+        horizon=1,
+        barrier_pips=2.0,
+        pip=_pip_size("EURUSD"),
+        hold_mode="from_touch",
+        include_no_touch=True,
+    )
+
+    np.testing.assert_allclose(out["expected_gross_pips"], np.nan_to_num(prep["gross"], nan=0.0))
+    np.testing.assert_array_equal(out["expected_side"], prep["side"])
+    np.testing.assert_array_equal(out["expected_decided"], prep["decided"])
+    np.testing.assert_array_equal(out["expected_both_window"], prep["both"])

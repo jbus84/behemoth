@@ -1,6 +1,6 @@
 # Analysis Catalog
 
-- generated_at_utc: `2026-04-03T12:40:44Z`
+- generated_at_utc: `2026-04-12T17:19:19Z`
 - manifest_csv: `analysis/catalog_manifest.csv`
 - gaps_report: `analysis/catalog_gaps_report.md`
 
@@ -54,8 +54,10 @@ Use `Archive Reports` for documents already moved out of the live analysis surfa
 ## Active Symbol Reports
 ### EURUSD
 - [Eurusd Oco Monthly Wfo Robustness Fullcap Report](eurusd_oco_monthly_wfo_robustness_fullcap_report.md)
+- [Eurusd Oco Monthly Wfo Robustness Report](eurusd_oco_monthly_wfo_robustness_report.md)
 - [Eurusd Oco Reduced Core Rolling Report](eurusd_oco_reduced_core_rolling_report.md)
 - [Eurusd Oco Tick Exact Rolling Report](eurusd_oco_tick_exact_rolling_report.md)
+- [Eurusd Oco Tick Exact Shortlist Report](eurusd_oco_tick_exact_shortlist_report.md)
 - [Eurusd Tick Opportunity Mining Report](eurusd_tick_opportunity_mining_report.md)
 - [Eurusd Tick Opportunity Ml Ready Report](eurusd_tick_opportunity_ml_ready_report.md)
 - [Eurusd Tick Opportunity Monthly Wfo Oco Fullcap Report](eurusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md)
@@ -161,10 +163,10 @@ Use `Archive Reports` for documents already moved out of the live analysis surfa
 |-----------:|---------------:|
 |          1 |              1 |
 |          2 |             12 |
-|          3 |             19 |
+|          3 |             20 |
 |          4 |              8 |
 |          5 |              7 |
-|          6 |              6 |
+|          6 |              7 |
 |          7 |              1 |
 |          8 |              8 |
 |          9 |              3 |

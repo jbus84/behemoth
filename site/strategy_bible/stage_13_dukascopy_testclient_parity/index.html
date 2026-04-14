@@ -2919,51 +2919,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Traceability">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#auto-snapshot-stage-13" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Auto Snapshot - Stage 13
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#auto-snapshot-stage-13_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Auto Snapshot - Stage 13
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Auto Snapshot - Stage 13">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#key-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Key Results
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
     </ul>
@@ -4846,51 +4801,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Traceability">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#auto-snapshot-stage-13" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Auto Snapshot - Stage 13
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#auto-snapshot-stage-13_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Auto Snapshot - Stage 13
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Auto Snapshot - Stage 13">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#key-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Key Results
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
     </ul>
@@ -4912,78 +4822,140 @@
 
 <h1 id="stage-13-dukascopy-testclient-parity">Stage 13 - Dukascopy TestClient Parity<a class="headerlink" href="#stage-13-dukascopy-testclient-parity" title="Permanent link">&para;</a></h1>
 <h2 id="objective">Objective<a class="headerlink" href="#objective" title="Permanent link">&para;</a></h2>
-<p>Certify that canonical Dukascopy parquet ticks reproduce Stage 12-approved Python-runtime behavior when replayed through the in-process FastAPI <code>TestClient</code>.</p>
+<p>Certify that canonical Dukascopy parquet ticks reproduce Stage 12-approved Python-runtime behavior under the unified Stage 12 -&gt; Stage 13 certification flow.</p>
 <h2 id="inputs">Inputs<a class="headerlink" href="#inputs" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>data/analysis/backtest_reconcile/*_stage12_api_parity_summary.csv</code></li>
 <li><code>data/analysis/backtest_reconcile/*_dukascopy_testclient_replay_summary.csv</code></li>
+<li><code>data/analysis/backtest_reconcile/*_jforex_runtime_events.csv</code></li>
 <li><code>docs/analysis/stage13_dukascopy_testclient_report.md</code></li>
 </ul>
 <h2 id="exact-calculations">Exact Calculations<a class="headerlink" href="#exact-calculations" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[Placeholder] Parity is calculated as the intersection of signals and execution events.</li>
+<li>Stage 13 evaluates four booleans per symbol:</li>
+<li><code>stage12_api_parity_pass</code></li>
+<li><code>dukascopy_runtime_artifacts_complete_pass</code></li>
+<li><code>dukascopy_testclient_signal_parity_pass</code></li>
+<li><code>dukascopy_testclient_execution_parity_pass</code></li>
+<li><code>stage13_dukascopy_testclient_pass</code> is true only when all four booleans are true for the symbol.</li>
+<li>The Stage 12 prerequisite is an explicit dependency, not a substitute for Dukascopy/TestClient evidence.</li>
 </ul>
 <h2 id="causality-leakage-controls">Causality / Leakage Controls<a class="headerlink" href="#causality-leakage-controls" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[Placeholder] No future-data leaks in tick replay.</li>
+<li>Dukascopy replay must consume only the canonical historical tick inputs for the certification window.</li>
+<li>Stage 13 does not permit any lookahead from future ticks, future summary rows, or future execution artifacts.</li>
+<li>Local JForex surrogate artifacts are outside the Stage 13 causal boundary. They may exist as diagnostics, but they do not contribute to the Stage 13 result.</li>
 </ul>
 <h2 id="failure-modes">Failure Modes<a class="headerlink" href="#failure-modes" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[Placeholder] Signal mismatch, execution divergence.</li>
+<li><code>stage12_api_parity_pass=false</code> means the Python baseline prerequisite is not trusted for that symbol.</li>
+<li><code>dukascopy_runtime_artifacts_complete_pass=false</code> means the current Dukascopy replay runtime-events artifact is missing or empty; the file still uses the legacy <code>*_jforex_runtime_events.csv</code> name on disk.</li>
+<li><code>dukascopy_testclient_signal_parity_pass=false</code> means the Dukascopy replay did not reproduce governed signal timing or selection.</li>
+<li><code>dukascopy_testclient_execution_parity_pass=false</code> means the Python runtime diverged after the replayed signal state matched.</li>
+<li>Local JForex surrogate artifacts are not a Stage 13 failure mode. They are not part of the hard-gate decision.</li>
 </ul>
 <h2 id="interpretation-guide">Interpretation Guide<a class="headerlink" href="#interpretation-guide" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[Placeholder] See failure interpretation section.</li>
+<li>Stage 13 is the Dukascopy-source certification gate for the Python decision layer.</li>
+<li>Read the four checks together:</li>
+<li>Stage 12 red invalidates the prerequisite baseline.</li>
+<li>Runtime-artifacts red means the certification bundle is incomplete.</li>
+<li>Signal-parity red means the Dukascopy replay did not reproduce the governed Python selection behavior.</li>
+<li>Execution-parity red means the Python-managed lifecycle diverged under Dukascopy replay.</li>
+<li>Local JForex surrogate files can help explain a Java-side prerequisite problem, but they do not flip Stage 13 green or red.</li>
 </ul>
 <h2 id="validation-gates">Validation Gates<a class="headerlink" href="#validation-gates" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[Placeholder] All hard gates must be true.</li>
+<li><code>stage12_api_parity_pass=true</code></li>
+<li><code>dukascopy_runtime_artifacts_complete_pass=true</code></li>
+<li><code>dukascopy_testclient_signal_parity_pass=true</code></li>
+<li><code>dukascopy_testclient_execution_parity_pass=true</code></li>
+<li><code>stage13_dukascopy_testclient_pass=true</code></li>
+<li>Stage 13 passes only when all four hard gates are true for the symbol.</li>
 </ul>
 <h2 id="operator-decision-tree">Operator Decision Tree<a class="headerlink" href="#operator-decision-tree" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[Placeholder] If red, check logs.</li>
+<li>If Stage 12 is red, stop and repair the Python baseline before trusting any Dukascopy replay.</li>
+<li>If runtime artifacts are red, regenerate or restore the missing Dukascopy evidence bundle.</li>
+<li>If signal parity is red, inspect replay timing, governed selection, and the Dukascopy/TestClient signal trace.</li>
+<li>If execution parity is red, inspect the lifecycle divergence after the signal trace matched.</li>
+<li>If a local JForex surrogate artifact is missing or red, treat that as a separate diagnostic issue outside the Stage 13 pass/fail decision.</li>
 </ul>
 <h2 id="how-to-run">How To Run<a class="headerlink" href="#how-to-run" title="Permanent link">&para;</a></h2>
 <ul>
-<li>See canonical commands.</li>
+<li>Run the unified Stage 12 -&gt; Stage 13 certification target from the repo root:</li>
 </ul>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>stage12-stage13-cert-artifacts
+</code></pre></div>
+<ul>
+<li>The legacy public aliases still resolve to the same command surface:</li>
+</ul>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>stage12-api-parity
+make<span class="w"> </span>stage13-dukascopy-cert
+make<span class="w"> </span>dukascopy-testclient-parity
+</code></pre></div>
+<ul>
+<li>To inspect the underlying validator directly after artifact generation, run:</li>
+</ul>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/validate_stage13_dukascopy_testclient.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lock-dir<span class="w"> </span>configs/research/governance/oco_history_dukascopy_candidate/2025-07<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--stage12-api-parity-summary-glob<span class="w"> </span><span class="s1">&#39;data/analysis/backtest_reconcile/*_stage12_api_parity_summary.csv&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--dukascopy-testclient-replay-summary-glob<span class="w"> </span><span class="s1">&#39;data/analysis/backtest_reconcile/*_dukascopy_testclient_replay_summary.csv&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--dukascopy-testclient-signal-summary-glob<span class="w"> </span><span class="s1">&#39;data/analysis/backtest_reconcile/*_jforex_signal_parity_summary.csv&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--dukascopy-testclient-execution-summary-glob<span class="w"> </span><span class="s1">&#39;data/analysis/backtest_reconcile/*_jforex_execution_parity_summary.csv&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--reconcile-dir<span class="w"> </span>data/analysis/backtest_reconcile<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--out-summary-csv<span class="w"> </span>data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--out-checks-csv<span class="w"> </span>data/analysis/backtest_reconcile/stage13_dukascopy_testclient_checks.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--report-out<span class="w"> </span>docs/analysis/stage13_dukascopy_testclient_report.md<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--snapshot-out<span class="w"> </span>docs/strategy_bible/generated/stage_13_snapshot.md
+</code></pre></div>
 <h2 id="how-to-interpret-outputs">How To Interpret Outputs<a class="headerlink" href="#how-to-interpret-outputs" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[Placeholder] Review summary CSVs.</li>
+<li>Review the summary CSV for the per-symbol <code>stage13_dukascopy_testclient_pass</code> verdict and the four gate columns.</li>
+<li>Review the checks CSV for the exact missing artifact or mismatch that drove each red check.</li>
+<li>Review the report and snapshot to confirm the textual contract matches the validator output.</li>
 </ul>
 <h2 id="what-to-do-if-it-fails">What To Do If It Fails<a class="headerlink" href="#what-to-do-if-it-fails" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[Placeholder] Re-calculate parity.</li>
+<li>Do not infer Stage 13 health from local JForex surrogate artifacts.</li>
+<li>Fix the failing prerequisite or evidence family, rerun <code>make stage12-stage13-cert-artifacts</code>, and inspect the regenerated Stage 13 outputs.</li>
+<li>Use the checks CSV to localize whether the issue is prerequisite, runtime-artifact completeness, signal parity, or execution parity.</li>
 </ul>
 <h2 id="reproduction-commands">Reproduction Commands<a class="headerlink" href="#reproduction-commands" title="Permanent link">&para;</a></h2>
 <ul>
-<li>See canonical commands.</li>
+<li>Same as <code>How To Run</code>. The authoritative entrypoint is <code>make stage12-stage13-cert-artifacts</code>, which regenerates Stage 12 prerequisites first, then Stage 13 replay artifacts, then the repaired Stage 13 summary, checks, report, and snapshot.</li>
 </ul>
 <h2 id="process">Process<a class="headerlink" href="#process" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Treat Stage 12 as a prerequisite, not a substitute for Stage 13.</li>
-<li>Treat the local JForex surrogate as a Java-side prerequisite, not a substitute for Stage 13.</li>
+<li>Treat the local JForex surrogate as a Java-side diagnostic prerequisite, not as a Stage 13 hard-gate input.</li>
 <li>Replay canonical Dukascopy parquet ticks from <code>/Users/danielfisher/Desktop/dukascopy_ticks</code>.</li>
-<li>Drive the Python runtime in-process through the FastAPI <code>TestClient</code> harness.</li>
+<li>Reuse the real Dukascopy/JForex matrix surface to generate the runtime-events and parity evidence, then normalize that evidence into the explicit <code>*_dukascopy_testclient_replay_summary.csv</code> artifact consumed by the Stage 13 validator.</li>
 <li>Validate governed signal parity and execution parity on the same certification window used by Stage 12.</li>
 <li>Treat this as the official credential-free broker-source gate before any JForex runtime certification work.</li>
 </ul>
 <h2 id="hard-gates">Hard Gates<a class="headerlink" href="#hard-gates" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>stage12_api_parity_pass=true</code></li>
+<li><code>dukascopy_runtime_artifacts_complete_pass=true</code></li>
 <li><code>dukascopy_testclient_signal_parity_pass=true</code></li>
 <li><code>dukascopy_testclient_execution_parity_pass=true</code></li>
 </ul>
-<p>Stage 13 passes only when all three are green.</p>
+<p>Stage 13 passes only when all four are green.</p>
 <h2 id="failure-interpretation">Failure Interpretation<a class="headerlink" href="#failure-interpretation" title="Permanent link">&para;</a></h2>
 <ul>
 <li>If Stage 12 is red, do not trust any Dukascopy replay result.</li>
+<li>If runtime artifacts are red, the replay bundle is incomplete and Stage 13 is not certifiable.</li>
 <li>If Dukascopy TestClient signal parity is red, broker-source replay is not reproducing governed selection timing.</li>
 <li>If Dukascopy TestClient execution parity is red, the Python runtime diverges after nominally matched signals.</li>
+<li>If a local JForex surrogate artifact is red, treat that as a separate Java-side diagnostic and do not use it to decide Stage 13.</li>
 </ul>
 <h2 id="canonical-commands">Canonical Commands<a class="headerlink" href="#canonical-commands" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>make<span class="w"> </span>dukascopy-testclient-parity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="nv">SYMBOL</span><span class="o">=</span>GBPUSD<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>stage12-stage13-cert-artifacts<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">SYMBOLS</span><span class="o">=</span>GBPUSD<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">MODEL_MONTH</span><span class="o">=</span><span class="m">2025</span>-07<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">HISTORY_DIR</span><span class="o">=</span>configs/research/governance/oco_history_dukascopy_candidate<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">TICK_ROOT</span><span class="o">=</span>/Users/danielfisher/Desktop/dukascopy_ticks<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span><span class="nv">START_TS</span><span class="o">=</span><span class="m">2025</span>-07-07T00:00:00Z<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span><span class="nv">END_TS</span><span class="o">=</span><span class="m">2025</span>-07-09T00:00:00Z
 
@@ -4998,21 +4970,12 @@ make<span class="w"> </span>stage13-dukascopy-cert
 </ul>
 <h2 id="traceability">Traceability<a class="headerlink" href="#traceability" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>scripts/replay_dukascopy_testclient.py</code></li>
+<li><code>scripts/run_stage12_stage13_certification.py</code></li>
+<li><code>scripts/generate_dukascopy_testclient_artifacts.py</code></li>
+<li><code>scripts/run_jforex_dukascopy_matrix.py</code></li>
 <li><code>scripts/validate_stage13_dukascopy_testclient.py</code></li>
 <li><code>docs/strategy_bible/stage_12_api_parity.md</code></li>
 </ul>
-<h3 id="auto-snapshot-stage-13">Auto Snapshot - Stage 13<a class="headerlink" href="#auto-snapshot-stage-13" title="Permanent link">&para;</a></h3>
-<!-- GENERATED:STAGE_13:START -->
-<h3 id="auto-snapshot-stage-13_1">Auto Snapshot - Stage 13<a class="headerlink" href="#auto-snapshot-stage-13_1" title="Permanent link">&para;</a></h3>
-<ul>
-<li>generated_at: <code>pending</code></li>
-<li>Stage 13 is a hard gate for Dukascopy source parity via the FastAPI <code>TestClient</code>.</li>
-<li>Stage 12 parity, Dukascopy TestClient signal parity, and Dukascopy TestClient execution parity must all be green.</li>
-</ul>
-<h4 id="key-results">Key Results<a class="headerlink" href="#key-results" title="Permanent link">&para;</a></h4>
-<p><em>pending</em></p>
-<!-- GENERATED:STAGE_13:END -->
 
 
 
