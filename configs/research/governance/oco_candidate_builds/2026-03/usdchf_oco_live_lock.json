@@ -2,10 +2,10 @@
   "artifacts": {
     "capacity_overall_pass": false,
     "live_deployable": false,
-    "model_cbm_path": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_history_dukascopy_candidate/2026-03/models/oco_dukascopy_candidate/USDCHF_model_2026-03.cbm",
+    "model_cbm_path": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_candidate_builds/2026-03/models/oco_dukascopy_candidate/USDCHF_model_2026-03.cbm",
     "model_cbm_sha256": "515ba8040d67099cff24fa8976e935c2ffbae45451a80b4d2e0a72607e31c539",
     "model_month": "2026-03",
-    "model_threshold_json_path": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_history_dukascopy_candidate/2026-03/models/oco_dukascopy_candidate/USDCHF_model_2026-03.json",
+    "model_threshold_json_path": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_candidate_builds/2026-03/models/oco_dukascopy_candidate/USDCHF_model_2026-03.json",
     "model_threshold_json_sha256": "707114b82056d0a30d41ca544ea2b58903c8f9c4406ce315db250ec69668af2c",
     "model_valid_through": "2026-03-31",
     "predictions_path": "",

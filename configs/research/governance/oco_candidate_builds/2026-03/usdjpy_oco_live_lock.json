@@ -2,10 +2,10 @@
   "artifacts": {
     "capacity_overall_pass": true,
     "live_deployable": false,
-    "model_cbm_path": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_history_dukascopy_candidate/2026-03/models/oco_dukascopy_candidate/USDJPY_model_2026-03.cbm",
+    "model_cbm_path": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_candidate_builds/2026-03/models/oco_dukascopy_candidate/USDJPY_model_2026-03.cbm",
     "model_cbm_sha256": "93e0cfe494953d47f6e63d4b422d71e9776d517404fada74bfef3ca72cbb8552",
     "model_month": "2026-03",
-    "model_threshold_json_path": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_history_dukascopy_candidate/2026-03/models/oco_dukascopy_candidate/USDJPY_model_2026-03.json",
+    "model_threshold_json_path": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_candidate_builds/2026-03/models/oco_dukascopy_candidate/USDJPY_model_2026-03.json",
     "model_threshold_json_sha256": "152723af6b97f7f25bbcc64c52fa3a73789b8c62166d5367dbba429e8f29937b",
     "model_valid_through": "2026-03-31",
     "predictions_path": "",

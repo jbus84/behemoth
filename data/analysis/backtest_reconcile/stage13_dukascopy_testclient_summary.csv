@@ -1,7 +1,7 @@
 symbol,historical_deployable,non_deployable_reason,dukascopy_runtime_artifacts_complete_pass,stage12_api_parity_pass,dukascopy_testclient_signal_parity_pass,dukascopy_testclient_execution_parity_pass,stage13_dukascopy_testclient_pass,stage13_dukascopy_testclient_nogo,certification_outcome,go_decision,missing_inputs,verdict,evaluated_at_utc
-AUDUSD,True,,True,True,True,True,True,False,PASS,GO,0,green,2026-04-14T09:12:38Z
-EURUSD,True,,True,True,True,True,True,False,PASS,GO,0,green,2026-04-14T09:12:38Z
-GBPUSD,True,,True,True,True,True,True,False,PASS,GO,0,green,2026-04-14T09:12:38Z
-USDCAD,True,,True,True,True,True,True,False,PASS,GO,0,green,2026-04-14T09:12:38Z
-USDCHF,True,,True,True,True,True,True,False,PASS,GO,0,green,2026-04-14T09:12:38Z
-USDJPY,True,,True,True,True,True,True,False,PASS,GO,0,green,2026-04-14T09:12:38Z
+AUDUSD,False,no_test_rows,True,True,True,True,True,True,PASS,NO_GO,0,nogo,2026-04-14T18:14:03Z
+EURUSD,False,no_test_rows,True,True,True,True,True,True,PASS,NO_GO,0,nogo,2026-04-14T18:14:03Z
+GBPUSD,False,no_test_rows,True,True,True,True,True,True,PASS,NO_GO,0,nogo,2026-04-14T18:14:03Z
+USDCAD,False,no_test_rows,True,True,True,True,True,True,PASS,NO_GO,0,nogo,2026-04-14T18:14:03Z
+USDCHF,False,no_gate_states,True,True,True,True,True,True,PASS,NO_GO,0,nogo,2026-04-14T18:14:03Z
+USDJPY,False,no_test_rows,True,True,True,True,True,True,PASS,NO_GO,0,nogo,2026-04-14T18:14:03Z

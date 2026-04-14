@@ -2,10 +2,10 @@
   "artifacts": {
     "capacity_overall_pass": true,
     "live_deployable": false,
-    "model_cbm_path": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_history_dukascopy_candidate/2026-03/models/oco_dukascopy_candidate/GBPUSD_model_2026-03.cbm",
+    "model_cbm_path": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_candidate_builds/2026-03/models/oco_dukascopy_candidate/GBPUSD_model_2026-03.cbm",
     "model_cbm_sha256": "c1b7360594dc9ba261cfa2239500ac506463dd31217aa224a037e6dbc993cddb",
     "model_month": "2026-03",
-    "model_threshold_json_path": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_history_dukascopy_candidate/2026-03/models/oco_dukascopy_candidate/GBPUSD_model_2026-03.json",
+    "model_threshold_json_path": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_candidate_builds/2026-03/models/oco_dukascopy_candidate/GBPUSD_model_2026-03.json",
     "model_threshold_json_sha256": "f74edc83f1fffa1d5a279a073d19549f79f6fde15e9c57d21bfd2db234cbdd48",
     "model_valid_through": "2026-03-31",
     "predictions_path": "",
