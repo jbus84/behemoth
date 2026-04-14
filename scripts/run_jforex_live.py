@@ -418,13 +418,14 @@ def main() -> None:
     try:
         _poll_health(api_proc, f"http://{cfg.api_host}:{cfg.api_port}", timeout_sec=60.0)
         print("[jforex-live] API healthy", flush=True)
+        print("[jforex-live] starting JForex runner", flush=True)
+        java_proc = _start_live_runner(cfg)
+        print(f"[jforex-live] running (symbols={','.join(cfg.symbols)})", flush=True)
         print("[jforex-live] waiting for backfill + warming up threshold history", flush=True)
         # Give JForex time to complete initial backfill before warmup scoring
         time.sleep(30)
         _warmup_symbols(list(cfg.symbols), base_url=f"http://{cfg.api_host}:{cfg.api_port}")
-        print("[jforex-live] warmup complete, starting JForex runner", flush=True)
-        java_proc = _start_live_runner(cfg)
-        print(f"[jforex-live] running (symbols={','.join(cfg.symbols)})", flush=True)
+        print("[jforex-live] warmup complete", flush=True)
 
         # Monitor loop: exit non-zero if either process dies unexpectedly
         while True:
