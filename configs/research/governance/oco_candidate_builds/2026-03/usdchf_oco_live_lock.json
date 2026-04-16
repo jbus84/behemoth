@@ -1,6 +1,6 @@
 {
   "artifacts": {
-    "capacity_overall_pass": false,
+    "capacity_overall_pass": true,
     "live_deployable": false,
     "model_cbm_path": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_candidate_builds/2026-03/models/oco_dukascopy_candidate/USDCHF_model_2026-03.cbm",
     "model_cbm_sha256": "515ba8040d67099cff24fa8976e935c2ffbae45451a80b4d2e0a72607e31c539",
@@ -11,11 +11,11 @@
     "predictions_path": "",
     "predictions_sha256": "",
     "reduced_config_path": "configs/research/experiments_dukascopy_candidate/usdchf_oco_reduced_core_rolling.yaml",
-    "reduced_config_sha256": "64389dd493bdc9d1c2471628d90463358826a53dd2a012016ae1e584339e1253",
+    "reduced_config_sha256": "4f13a9012e3de193daa2287bb59cf4398c9bbaad1b56339b73e328d50b4bd1e4",
     "reduced_states_csv_path": "configs/research/governance/oco_candidate_builds/2026-03/usdchf_oco_allowed_states.csv",
     "reduced_states_csv_sha256": "2350f03a63ce7e7bf9643322d1a68da98b4e9419921417875720a4beb5d29f34",
     "reduced_summary_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/USDCHF_oco_reduced_summary.csv",
-    "reduced_summary_sha256": "62b8cba4420d07a9d50fbd34a8d554eaf84a614dd9c2c6c12784cf99be026d94",
+    "reduced_summary_sha256": "cc1cd36b061e70458382713e0667ffa038eddcfa25c82f9448ab1472ecd3ee66",
     "source_predictions_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap/USDCHF_oco_monthly_predictions.parquet",
     "source_predictions_sha256": "ce4a2d6fcc27b9f42d62e7fdff45e4ba212a60fcf9e55f8fc01dec131d4dd532",
     "tick_exact_overall_pass": true,
@@ -26,10 +26,10 @@
     "wfo_config_path": "configs/research/experiments_dukascopy_candidate/usdchf_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
     "wfo_config_sha256": "fef7557cdf3cdf37add77fef175136a0740bad94def26ffb81bf666263c68dfb"
   },
-  "frozen_at_utc": "2026-04-14T18:38:47.551925+00:00",
+  "frozen_at_utc": "2026-04-15T18:35:09.238714+00:00",
   "git": {
-    "branch": "main",
-    "commit": "57023d52714bec0a21a7ce23c89bee31ef4b64cc",
+    "branch": "fix/candidate-wfo-eval-end-month-2026-03",
+    "commit": "348b8b5e179630fade888f10d7ed6e6101369706",
     "dirty": true
   },
   "historical_backtest": {

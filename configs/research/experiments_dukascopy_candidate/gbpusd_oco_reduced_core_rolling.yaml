@@ -28,7 +28,7 @@ bootstrap_paths: 600
 seed: 42
 
 capacity_floor_monthly: 3000
-capacity_floor_annual: 5000
+capacity_floor_annual: 3000
 
 out_state_schedule_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/GBPUSD_oco_reduced_state_schedule.csv
 out_state_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/GBPUSD_oco_reduced_states.csv
