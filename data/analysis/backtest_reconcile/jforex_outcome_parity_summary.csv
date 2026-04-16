@@ -1,7 +1,7 @@
 symbol,locked_selected_count,locked_gross_pips_total,locked_win_rate,jforex_predict_cycles,jforex_selected_total,jforex_orders_submitted,jforex_submitted_group_count,signal_coverage_ratio,signal_coverage_pass,execution_clean_pass,has_trades,order_coverage_ratio,order_coverage_pass,overall_pass,historical_deployable,non_deployable_reason,evaluated_at_utc
-EURUSD,4,31.8,1.0,137,4,20,0,1.0,True,True,True,0.0,False,True,True,,2026-04-16T14:38:35Z
-GBPUSD,0,0.0,0.0,121,0,18,0,0.0,True,True,True,0.0,True,True,True,,2026-04-16T14:38:35Z
-USDJPY,1,13.0,1.0,186,1,8,0,1.0,True,True,True,0.0,False,True,True,,2026-04-16T14:38:35Z
-USDCHF,0,0.0,0.0,0,0,0,0,0.0,False,True,False,0.0,False,False,False,no_gate_states,2026-04-16T14:38:35Z
-AUDUSD,0,0.0,0.0,0,0,0,0,0.0,False,True,False,0.0,False,False,False,no_gate_states,2026-04-16T14:38:35Z
-USDCAD,1,2.6,1.0,117,1,5,0,1.0,True,True,True,0.0,False,True,True,,2026-04-16T14:38:35Z
+EURUSD,0,0.0,0.0,0,0,0,0,0.0,False,True,False,0.0,False,False,False,no_test_rows,2026-04-14T18:17:44Z
+GBPUSD,0,0.0,0.0,0,0,0,0,0.0,False,True,False,0.0,False,False,False,no_test_rows,2026-04-14T18:17:44Z
+USDJPY,0,0.0,0.0,0,0,0,0,0.0,False,True,False,0.0,False,False,False,no_test_rows,2026-04-14T18:17:44Z
+USDCHF,0,0.0,0.0,0,0,0,0,0.0,False,True,False,0.0,False,False,False,no_gate_states,2026-04-14T18:17:44Z
+AUDUSD,0,0.0,0.0,0,0,0,0,0.0,False,True,False,0.0,False,False,False,no_test_rows,2026-04-14T18:17:44Z
+USDCAD,0,0.0,0.0,0,0,0,0,0.0,False,True,False,0.0,False,False,False,no_test_rows,2026-04-14T18:17:44Z

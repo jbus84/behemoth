@@ -1,21 +1,21 @@
 {
   "artifacts": {
     "capacity_overall_pass": true,
-    "live_deployable": true,
+    "live_deployable": false,
     "model_cbm_path": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_candidate_builds/2026-03/models/oco_dukascopy_candidate/USDJPY_model_2026-03.cbm",
     "model_cbm_sha256": "93e0cfe494953d47f6e63d4b422d71e9776d517404fada74bfef3ca72cbb8552",
     "model_month": "2026-03",
     "model_threshold_json_path": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_candidate_builds/2026-03/models/oco_dukascopy_candidate/USDJPY_model_2026-03.json",
     "model_threshold_json_sha256": "152723af6b97f7f25bbcc64c52fa3a73789b8c62166d5367dbba429e8f29937b",
     "model_valid_through": "2026-03-31",
-    "predictions_path": "configs/research/governance/oco_candidate_builds/2026-03/usdjpy_oco_locked_predictions.parquet",
-    "predictions_sha256": "7ae13ab9101acb5546d073a8d86543b50eb1f39a031a41611e57d33798515b9e",
+    "predictions_path": "",
+    "predictions_sha256": "",
     "reduced_config_path": "configs/research/experiments_dukascopy_candidate/usdjpy_oco_reduced_core_rolling.yaml",
-    "reduced_config_sha256": "d62c26a1e49790f5172a0a4f6af012121aa985373d7e9c66f796a1f0fbfb9cf7",
+    "reduced_config_sha256": "e0fc2506aabaf0dc3d2722f1709a367ebfa06a081b462f52110871f13206b241",
     "reduced_states_csv_path": "configs/research/governance/oco_candidate_builds/2026-03/usdjpy_oco_allowed_states.csv",
-    "reduced_states_csv_sha256": "a085e40adc865c574bc85b0cd4f65723414979dd4ffe5c8f2dfe0dfa6e373239",
+    "reduced_states_csv_sha256": "2350f03a63ce7e7bf9643322d1a68da98b4e9419921417875720a4beb5d29f34",
     "reduced_summary_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/USDJPY_oco_reduced_summary.csv",
-    "reduced_summary_sha256": "f58a671e9ff7457b5017823ab5ec59932f11107b7d05aec02073c0ecf4267595",
+    "reduced_summary_sha256": "d8d8e5f200894feaea81ef4d9ab6d2532d019f31787fec9efe6ad55438e02882",
     "source_predictions_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap/USDJPY_oco_monthly_predictions.parquet",
     "source_predictions_sha256": "4f1209407fd8a8765ba053842160e683b580a3f7488d74c48b9a910a80baeea0",
     "tick_exact_overall_pass": true,
@@ -26,16 +26,16 @@
     "wfo_config_path": "configs/research/experiments_dukascopy_candidate/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
     "wfo_config_sha256": "0ab3258974fc56f8612d140cb747144ee3924f9c081072b48dd0708cd0722f8a"
   },
-  "frozen_at_utc": "2026-04-15T18:35:09.195444+00:00",
+  "frozen_at_utc": "2026-04-14T18:38:47.506178+00:00",
   "git": {
-    "branch": "fix/candidate-wfo-eval-end-month-2026-03",
-    "commit": "348b8b5e179630fade888f10d7ed6e6101369706",
+    "branch": "main",
+    "commit": "57023d52714bec0a21a7ce23c89bee31ef4b64cc",
     "dirty": true
   },
   "historical_backtest": {
-    "deployable": true,
+    "deployable": false,
     "mode": "month_locked",
-    "non_deployable_reason": "",
+    "non_deployable_reason": "no_test_rows",
     "target_month": "2026-03"
   },
   "locked_runtime": {
@@ -60,19 +60,9 @@
   },
   "schema_version": 1,
   "state_universe": {
-    "count": 1,
-    "rows": [
-      {
-        "bar_ticks": 1000,
-        "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
-        "horizon": 6,
-        "regime_desc": "all;barrier=2.0",
-        "state_id": "oco_first_touch_clean__all__k2",
-        "symbol": "USDJPY"
-      }
-    ],
-    "sha256": "ba2caf946d9f823a3ccab9471ec7710e2d4a85618e93ec2dc13986230afd2614"
+    "count": 0,
+    "rows": [],
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "symbol": "USDJPY"
 }

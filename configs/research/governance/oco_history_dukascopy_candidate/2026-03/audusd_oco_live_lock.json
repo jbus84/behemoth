@@ -1,6 +1,6 @@
 {
   "artifacts": {
-    "capacity_overall_pass": true,
+    "capacity_overall_pass": false,
     "live_deployable": false,
     "model_cbm_path": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_history_dukascopy_candidate/2026-03/models/oco_dukascopy_candidate/AUDUSD_model_2026-03.cbm",
     "model_cbm_sha256": "3f6f2ade1572fa38b491fae5e11d4db89714d2b91d119ea3747cdcb4d70727d0",
@@ -11,11 +11,11 @@
     "predictions_path": "",
     "predictions_sha256": "",
     "reduced_config_path": "configs/research/experiments_dukascopy_candidate/audusd_oco_reduced_core_rolling.yaml",
-    "reduced_config_sha256": "ee72bbf09d647ead5811d7ac962c878e6d2702119e3c7379845f2976bd57d8c1",
+    "reduced_config_sha256": "7c9b2d5c4dc578f24b822a7590de01fa267a95d00189ac7093da35cc9a3a3027",
     "reduced_states_csv_path": "configs/research/governance/oco_candidate_builds/2026-03/audusd_oco_allowed_states.csv",
     "reduced_states_csv_sha256": "2350f03a63ce7e7bf9643322d1a68da98b4e9419921417875720a4beb5d29f34",
     "reduced_summary_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/AUDUSD_oco_reduced_summary.csv",
-    "reduced_summary_sha256": "4097c57252329fd899c35e08ea0a765da5d7ba9f3fd27e1b3ec9ea61dd56fc2e",
+    "reduced_summary_sha256": "cff31638bd2e64b5fc36e1d4a573f1f9b16ee0552b1835d3f84fb7055f5932c7",
     "source_predictions_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap/AUDUSD_oco_monthly_predictions.parquet",
     "source_predictions_sha256": "67d2b63049127bf07806342dba065723edd631dfaadc14dce959d3e88997ad14",
     "tick_exact_overall_pass": true,
@@ -26,16 +26,16 @@
     "wfo_config_path": "configs/research/experiments_dukascopy_candidate/audusd_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
     "wfo_config_sha256": "5bd6420a12b42b6bcc9eda8790e15bfdfa522937bd13f6be3156335510ad5278"
   },
-  "frozen_at_utc": "2026-04-15T18:35:09.254438+00:00",
+  "frozen_at_utc": "2026-04-14T18:38:47.566997+00:00",
   "git": {
-    "branch": "fix/candidate-wfo-eval-end-month-2026-03",
-    "commit": "348b8b5e179630fade888f10d7ed6e6101369706",
+    "branch": "main",
+    "commit": "57023d52714bec0a21a7ce23c89bee31ef4b64cc",
     "dirty": true
   },
   "historical_backtest": {
     "deployable": false,
     "mode": "month_locked",
-    "non_deployable_reason": "no_gate_states",
+    "non_deployable_reason": "no_test_rows",
     "target_month": "2026-03"
   },
   "locked_runtime": {
@@ -46,7 +46,7 @@
     "locked_quantile": 0.9,
     "oco_hold_mode": "from_touch",
     "oco_include_no_touch": true,
-    "production_cap_pips": 1.2,
+    "production_cap_pips": 1.0,
     "rolling_threshold_days": 20,
     "rolling_threshold_min_history": 1000,
     "selection_mode": "auto",
