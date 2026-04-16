@@ -1,3 +1,17 @@
+## v0.10.0 (2026-04-16)
+
+### Feat
+
+- certify executable-side oco contract (#65)
+
+### Fix
+
+- clear hardcoded eval_end_month in candidate WFO configs and promote 2026-03 live governance (#67)
+- reclassify backfill publish failure as retryable bridge error
+- promote 2026-03 live governance and repair monthly-recert pipeline
+- clear hardcoded eval_end_month in candidate WFO configs and promote 2026-03 live governance
+- start jforex live before warmup (#66)
+
 ## v0.9.1 (2026-04-12)
 
 ### Fix
