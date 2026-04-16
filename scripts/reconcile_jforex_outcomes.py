@@ -295,9 +295,10 @@ def compare_outcomes(
         position is live.  order_coverage_pass is therefore informational and is intentionally
         excluded from overall_pass.  signal_coverage_pass is the actionable gate.
     """
-    zero_lock_clean_noop = (
-        locked_count == 0 and jforex_selected_total == 0 and jforex_orders_submitted == 0
-    )
+    # Order labels use BM_scan_... format which lacks parseable timestamps, so
+    # jforex_orders_submitted cannot be reliably scoped to the eval window.
+    # jforex_selected_total=0 is the authoritative idle signal (no predictions fired).
+    zero_lock_clean_noop = locked_count == 0 and jforex_selected_total == 0
     signal_coverage_ratio = jforex_selected_total / locked_count if locked_count > 0 else 0.0
     # Zero-lock windows are valid no-op windows if runtime also stayed idle.
     signal_coverage_pass = (

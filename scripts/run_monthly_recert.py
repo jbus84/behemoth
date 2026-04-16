@@ -264,6 +264,15 @@ def main() -> None:
     _run_step(
         [
             "make",
+            "stage13-dukascopy-cert",
+            f"LOCK_DIR={bundle_dir}",
+            f"RECONCILE_DIR={args.report_dir}",
+        ],
+        "step 1/4: stage13-dukascopy-cert",
+    )
+    _run_step(
+        [
+            "make",
             "jforex-dukascopy-matrix",
             f"HISTORY_DIR={MONTHLY_BUILD_ROOT}",
             f"MODELS_DIR={bundle_models_dir}",
@@ -272,16 +281,7 @@ def main() -> None:
             f"END_TS={end_ts}",
             f"TICK_BATCH_SIZE={CERT_TICK_BATCH_SIZE}",
         ],
-        "step 1/4: jforex-dukascopy-matrix",
-    )
-    _run_step(
-        [
-            "make",
-            "stage13-dukascopy-cert",
-            f"LOCK_DIR={bundle_dir}",
-            f"RECONCILE_DIR={args.report_dir}",
-        ],
-        "step 2/4: stage13-dukascopy-cert",
+        "step 2/4: jforex-dukascopy-matrix",
     )
     _run_step(
         [

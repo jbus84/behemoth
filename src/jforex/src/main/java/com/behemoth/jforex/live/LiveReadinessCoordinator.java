@@ -225,7 +225,13 @@ public final class LiveReadinessCoordinator implements AutoCloseable {
             registry.markParquetWarming(symbol, startedAt, warmup.bridgeAnchorTs());
             publishSnapshot(clock.instant(), true);
 
-            warmupPublisher.publish(symbol, toPayloads(symbol, warmup.ticks(), sessionConfig.runId()), sessionConfig.runId());
+            try {
+                warmupPublisher.publish(symbol, toPayloads(symbol, warmup.ticks(), sessionConfig.runId()), sessionConfig.runId());
+            } catch (RuntimeException exc) {
+                // Backfill publish is an HTTP call to the Python API — transient failures
+                // (e.g. 503 during server startup) are retryable, same as broker bridge errors.
+                throw new RuntimeException("Broker bridge failed: backfill publish: " + exc.getMessage(), exc);
+            }
             bridgeRuntime.seedClientTickSeq(symbol, warmup.ticks().size());
 
             registry.markBridging(symbol, clock.instant());

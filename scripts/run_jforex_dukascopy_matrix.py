@@ -315,7 +315,7 @@ def _start_api(cfg: RunConfig, symbol: str, api_port: int) -> subprocess.Popen[s
             "BEHEMOTH_HISTORICAL_PREDICTION_UNIVERSE_MODE": cfg.universe_mode,
             "BEHEMOTH_HISTORICAL_PREDICTION_ORDINAL_TOLERANCE": str(cfg.ordinal_tolerance),
             "BEHEMOTH_HISTORICAL_PREDICTION_PAYLOAD_MODE": "locked",
-            "BEHEMOTH_HISTORICAL_PREDICTION_TOLERANCE_SEC": "120",
+            "BEHEMOTH_HISTORICAL_PREDICTION_TOLERANCE_SEC": "600",
             "BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE": _prediction_path(cfg, symbol),
             "BEHEMOTH_FORCE_MODEL_MONTH": cfg.model_month,
             "BEHEMOTH_STATE_DB": str(state_db_path),
