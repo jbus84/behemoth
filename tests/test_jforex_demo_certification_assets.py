@@ -120,11 +120,16 @@ def test_oco_lifecycle_now_panel_uses_current_state_layout() -> None:
     )
 
     transformations = panel["transformations"]
-    assert transformations[0]["id"] == "joinByLabels"
-    assert transformations[0]["options"]["join"] == ["symbol"]
-    assert transformations[0]["options"]["value"] == "metric"
+    join = next(t for t in transformations if t["id"] == "joinByLabels")
+    assert join["options"]["join"] == ["symbol"]
+    assert join["options"]["value"] == "metric"
 
-    pending = transformations[1]
+    pending = next(
+        t
+        for t in transformations
+        if t["id"] == "calculateField"
+        and t["options"].get("alias") == "Pending / canceling"
+    )
     assert pending["id"] == "calculateField"
     assert pending["options"]["alias"] == "Pending / canceling"
     assert pending["options"]["binary"]["left"] == "behemoth_jforex_active_oco_groups"
@@ -132,7 +137,7 @@ def test_oco_lifecycle_now_panel_uses_current_state_layout() -> None:
     assert pending["options"]["binary"]["right"] == "behemoth_broker_open_positions_total"
     assert pending["options"]["replaceFields"] is False
 
-    organize = transformations[2]
+    organize = next(t for t in transformations if t["id"] == "organize")
     assert organize["id"] == "organize"
     rename_map = organize["options"]["renameByName"]
     assert rename_map["symbol"] == "Symbol"
