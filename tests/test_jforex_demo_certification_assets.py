@@ -103,6 +103,7 @@ def test_oco_lifecycle_now_panel_uses_current_state_layout() -> None:
     dashboard = json.loads(dashboard_path.read_text(encoding="utf-8"))
     panels_by_title = {panel["title"]: panel for panel in dashboard["panels"]}
 
+    assert "OCO Lifecycle Now" in panels_by_title
     panel = panels_by_title["OCO Lifecycle Now"]
     assert panel["type"] == "table"
     assert panel["options"]["sortBy"] == [{"displayName": "Active groups", "desc": True}]
