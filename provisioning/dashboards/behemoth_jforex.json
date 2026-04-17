@@ -891,7 +891,7 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 8,
         "x": 4,
         "y": 40
       },
@@ -955,7 +955,7 @@
           "custom": {
             "align": "center",
             "cellOptions": {
-              "type": "color-background"
+              "type": "auto"
             },
             "inspect": false
           }
@@ -989,46 +989,6 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Bars elapsed"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 95
-              },
-              {
-                "id": "unit",
-                "value": "short"
-              },
-              {
-                "id": "decimals",
-                "value": 0
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "yellow",
-                      "value": 3
-                    },
-                    {
-                      "color": "red",
-                      "value": 5
-                    }
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
               "options": "Bars remaining"
             },
             "properties": [
@@ -1045,23 +1005,9 @@
                 "value": 0
               },
               {
-                "id": "thresholds",
+                "id": "custom.cellOptions",
                 "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "red",
-                      "value": null
-                    },
-                    {
-                      "color": "yellow",
-                      "value": 2
-                    },
-                    {
-                      "color": "green",
-                      "value": 4
-                    }
-                  ]
+                  "type": "auto"
                 }
               }
             ]
@@ -1089,12 +1035,56 @@
                 "value": {
                   "type": "auto"
                 }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Progress to expiry"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 220
               },
               {
-                "id": "color",
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 1
+              },
+              {
+                "id": "custom.cellOptions",
                 "value": {
-                  "mode": "fixed",
-                  "fixedColor": "text"
+                  "type": "gauge",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.6
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.85
+                    }
+                  ]
                 }
               }
             ]
@@ -1103,8 +1093,8 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 8,
-        "x": 16,
+        "w": 12,
+        "x": 12,
         "y": 40
       },
       "id": 13,
@@ -1127,7 +1117,7 @@
             "uid": "behemoth-prometheus"
           },
           "editorMode": "code",
-          "expr": "behemoth_open_position_age_bars > 0",
+          "expr": "behemoth_open_position_age_bars and on(symbol) (behemoth_open_position_bars_remaining > 0)",
           "instant": true,
           "range": false,
           "refId": "A"
@@ -1161,10 +1151,34 @@
           "options": {}
         },
         {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "binary": {
+              "left": "Value #A",
+              "operator": "+",
+              "right": "Value #B"
+            },
+            "alias": "Lifecycle total",
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "binary": {
+              "left": "Value #A",
+              "operator": "/",
+              "right": "Lifecycle total"
+            },
+            "alias": "Progress to expiry"
+          }
+        },
+        {
           "id": "organize",
           "options": {
             "renameByName": {
-              "Value #A": "Bars elapsed",
               "Value #B": "Bars remaining",
               "Value #C": "Age (min)",
               "symbol": "Symbol"
@@ -1172,14 +1186,16 @@
             "excludeByName": {
               "Time": true,
               "__name__": true,
+              "Value #A": true,
+              "Lifecycle total": true,
               "instance": true,
               "job": true
             },
             "indexByName": {
               "symbol": 0,
               "Value #B": 1,
-              "Value #A": 2,
-              "Value #C": 3
+              "Value #C": 2,
+              "Progress to expiry": 3
             }
           }
         }
