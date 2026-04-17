@@ -280,10 +280,81 @@ class TestMetricsEndpoint:
 
         metrics = client.get("/metrics")
         assert 'behemoth_open_positions_total{symbol="EURUSD"} 2.0' in metrics.text
+        assert 'behemoth_pending_broker_confirm_positions_total{symbol="EURUSD"} 1.0' in metrics.text
         assert 'behemoth_broker_open_positions_total{symbol="EURUSD"} 1.0' in metrics.text
+        assert 'behemoth_pending_broker_confirm_positions_total{symbol="GBPUSD"} 0.0' in metrics.text
         assert 'behemoth_broker_open_positions_total{symbol="GBPUSD"} 1.0' in metrics.text
+        assert 'behemoth_pending_broker_confirm_positions_total{symbol="USDCAD"} 0.0' in metrics.text
         assert 'behemoth_broker_open_positions_total{symbol="USDCAD"} 1.0' in metrics.text
+        assert 'behemoth_pending_broker_confirm_positions_total{symbol="AUDUSD"} 1.0' in metrics.text
         assert 'behemoth_broker_open_positions_total{symbol="AUDUSD"} 0.0' in metrics.text
+        assert 'behemoth_pending_broker_confirm_positions_total{symbol="USDCHF"} 0.0' in metrics.text
+        assert 'behemoth_pending_broker_confirm_positions_total{symbol="USDJPY"} 0.0' in metrics.text
+
+    def test_open_position_age_seconds_uses_oldest_broker_confirmed_trade(self, client):
+        import unittest.mock as mock
+
+        now = datetime(2026, 4, 10, 11, 30, 0, tzinfo=timezone.utc)
+        older_pending = now - timedelta(minutes=20)
+        newer_confirmed = now - timedelta(minutes=5)
+        reservations = [
+            {
+                "reservation_id": "eur-pending",
+                "created_ts": older_pending,
+                "updated_ts": older_pending,
+                "symbol": "EURUSD",
+                "candidate_uid": "cand-1",
+                "broker_pos_id": None,
+                "status": "PENDING",
+                "reserved_loss_ccy": 10.0,
+                "barrier_pips": 20.0,
+                "cap_pips": 30.0,
+                "cost_est_pips": 5.0,
+                "volume_units": 1000.0,
+                "side": "BUY",
+                "source": "algo",
+            },
+            {
+                "reservation_id": "eur-open",
+                "created_ts": newer_confirmed,
+                "updated_ts": newer_confirmed,
+                "symbol": "EURUSD",
+                "candidate_uid": "cand-2",
+                "broker_pos_id": "bp-eur-1",
+                "status": "OPEN",
+                "reserved_loss_ccy": 10.0,
+                "barrier_pips": 20.0,
+                "cap_pips": 30.0,
+                "cost_est_pips": 5.0,
+                "volume_units": 1000.0,
+                "side": "BUY",
+                "source": "algo",
+            },
+        ]
+
+        active_trades = {
+            "EURUSD": [{"broker_pos_id": "bp-eur-1", "entry_bar_id": 10, "horizon": 6, "touch_bar_id": None}],
+            "GBPUSD": [],
+            "USDCAD": [],
+            "AUDUSD": [],
+            "USDCHF": [],
+            "USDJPY": [],
+        }
+
+        with (
+            mock.patch.object(server._state, "list_active_account_risk_reservations", return_value=reservations),
+            mock.patch.object(server._state, "get_last_bar_close_price", return_value=None),
+            mock.patch.object(
+                server._state,
+                "get_all_symbols",
+                return_value=["EURUSD", "GBPUSD", "USDCAD", "AUDUSD", "USDCHF", "USDJPY"],
+            ),
+            mock.patch.object(server._state, "get_active_trades", side_effect=lambda symbol: active_trades[symbol]),
+        ):
+            server._build_open_positions_summary(server._state, now)
+
+        metrics = client.get("/metrics")
+        assert 'behemoth_open_position_age_seconds{symbol="EURUSD"} 300.0' in metrics.text
 
 
 class TestPredictLatestBarSchema:

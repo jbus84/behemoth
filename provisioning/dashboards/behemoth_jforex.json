@@ -40,16 +40,15 @@
       },
       "id": 1,
       "options": {
-        "showHeader": true,
-        "footer": {
-          "enablePagination": false
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
         },
-        "sortBy": [
-          {
-            "displayName": "Active groups",
-            "desc": true
-          }
-        ]
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
       "targets": [
         {
@@ -100,16 +99,15 @@
       },
       "id": 2,
       "options": {
-        "showHeader": true,
-        "footer": {
-          "enablePagination": false
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
         },
-        "sortBy": [
-          {
-            "displayName": "Active groups",
-            "desc": true
-          }
-        ]
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
       "targets": [
         {
@@ -334,36 +332,204 @@
       },
       "fieldConfig": {
         "defaults": {
+          "unit": "short",
           "color": {
-            "mode": "palette-classic"
+            "mode": "thresholds"
           },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "axisSoftMin": 0
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
           },
-          "unit": "short"
+          "mappings": []
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
+        "h": 3,
+        "w": 4,
         "x": 12,
         "y": 8
       },
-      "id": 4,
+      "id": 32,
       "options": {
-        "showHeader": true,
-        "footer": {
-          "enablePagination": false
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
         },
-        "sortBy": [
-          {
-            "displayName": "Active groups",
-            "desc": true
-          }
-        ]
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "behemoth-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(behemoth_jforex_active_oco_groups)",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Active groups now",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "behemoth-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 16,
+        "y": 8
+      },
+      "id": 33,
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "behemoth-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(behemoth_broker_open_positions_total)",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Open trades",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "behemoth-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 20,
+        "y": 8
+      },
+      "id": 34,
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "behemoth-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(behemoth_pending_broker_confirm_positions_total)",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Pending / canceling",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "behemoth-prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -437,6 +603,25 @@
           }
         ]
       },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 12,
+        "y": 11
+      },
+      "id": 4,
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "enablePagination": false
+        },
+        "sortBy": [
+          {
+            "displayName": "Active groups",
+            "desc": true
+          }
+        ]
+      },
       "targets": [
         {
           "datasource": {
@@ -444,7 +629,7 @@
             "uid": "behemoth-prometheus"
           },
           "editorMode": "code",
-          "expr": "label_replace(sum by (symbol) (behemoth_jforex_active_oco_groups) and on(symbol) (sum by (symbol) (behemoth_jforex_active_oco_groups) > 0), \"metric\", \"behemoth_jforex_active_oco_groups\", \"symbol\", \".*\")",
+          "expr": "label_replace(sum by (symbol) (behemoth_jforex_active_oco_groups) and on(symbol) ((sum by (symbol) (behemoth_jforex_active_oco_groups) + sum by (symbol) (behemoth_broker_open_positions_total) + sum by (symbol) (behemoth_pending_broker_confirm_positions_total)) > 0), \"metric\", \"behemoth_jforex_active_oco_groups\", \"symbol\", \".*\")",
           "instant": true,
           "range": false,
           "refId": "A"
@@ -455,10 +640,21 @@
             "uid": "behemoth-prometheus"
           },
           "editorMode": "code",
-          "expr": "label_replace(sum by (symbol) (behemoth_broker_open_positions_total) and on(symbol) (sum by (symbol) (behemoth_jforex_active_oco_groups) > 0), \"metric\", \"behemoth_broker_open_positions_total\", \"symbol\", \".*\")",
+          "expr": "label_replace(sum by (symbol) (behemoth_broker_open_positions_total) and on(symbol) ((sum by (symbol) (behemoth_jforex_active_oco_groups) + sum by (symbol) (behemoth_broker_open_positions_total) + sum by (symbol) (behemoth_pending_broker_confirm_positions_total)) > 0), \"metric\", \"behemoth_broker_open_positions_total\", \"symbol\", \".*\")",
           "instant": true,
           "range": false,
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "behemoth-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "label_replace(sum by (symbol) (behemoth_pending_broker_confirm_positions_total) and on(symbol) ((sum by (symbol) (behemoth_jforex_active_oco_groups) + sum by (symbol) (behemoth_broker_open_positions_total) + sum by (symbol) (behemoth_pending_broker_confirm_positions_total)) > 0), \"metric\", \"behemoth_pending_broker_confirm_positions_total\", \"symbol\", \".*\")",
+          "instant": true,
+          "range": false,
+          "refId": "C"
         }
       ],
       "transformations": [
@@ -472,25 +668,13 @@
           }
         },
         {
-          "id": "calculateField",
-          "options": {
-            "mode": "binary",
-            "binary": {
-              "left": "behemoth_jforex_active_oco_groups",
-              "operator": "-",
-              "right": "behemoth_broker_open_positions_total"
-            },
-            "alias": "Pending / canceling",
-            "replaceFields": false
-          }
-        },
-        {
           "id": "organize",
           "options": {
             "renameByName": {
               "symbol": "Symbol",
               "behemoth_jforex_active_oco_groups": "Active groups",
-              "behemoth_broker_open_positions_total": "Open trades"
+              "behemoth_broker_open_positions_total": "Open trades",
+              "behemoth_pending_broker_confirm_positions_total": "Pending / canceling"
             },
             "excludeByName": {
               "Time": true,
@@ -502,7 +686,7 @@
               "symbol": 0,
               "behemoth_jforex_active_oco_groups": 1,
               "behemoth_broker_open_positions_total": 2,
-              "Pending / canceling": 3
+              "behemoth_pending_broker_confirm_positions_total": 3
             }
           }
         }
