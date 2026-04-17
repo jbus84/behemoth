@@ -32,14 +32,16 @@ def _read_csv_row(path: Path) -> dict:
     return rows[0] if rows else {}
 
 
-def _session_summary() -> str:
+def _session_summary(generated_at: str | None = None) -> str:
+    if generated_at is None:
+        generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
     readiness_path = RUNTIME_DIR / "live_symbol_readiness.json"
     position_path = RUNTIME_DIR / "live_position_summary.json"
 
     readiness = json.loads(readiness_path.read_text()) if readiness_path.exists() else {}
     positions = json.loads(position_path.read_text()) if position_path.exists() else {}
 
-    as_of = readiness.get("as_of_utc", "unknown")
     run_id = readiness.get("run_id", "unknown")
     sym_rows = readiness.get("symbols", [])
     session_start = min(
@@ -52,7 +54,7 @@ def _session_summary() -> str:
         "",
         f"- **Run ID:** `{run_id}`",
         f"- **Session started (UTC):** `{session_start}`",
-        f"- **Report generated (UTC):** `{as_of}`",
+        f"- **Report generated (UTC):** `{generated_at}`",
         f"- **Symbols live:** {readiness.get('session_tradable_symbol_count', '?')} / {readiness.get('session_total_symbol_count', '?')}",
         "",
     ]
@@ -104,7 +106,7 @@ def _phase1_report() -> str:
         f"",
         f"_Generated: {now} UTC_",
         f"",
-        _session_summary(),
+        _session_summary(generated_at=now),
         "",
         _signal_parity_section(),
         "",
