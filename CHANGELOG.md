@@ -1,3 +1,9 @@
+## v0.11.0 (2026-04-17)
+
+### Feat
+
+- demo-live vs offline model comparison report script (#70)
+
 ## v0.10.0 (2026-04-16)
 
 ### Feat
