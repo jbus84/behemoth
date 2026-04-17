@@ -209,9 +209,15 @@ METRIC_BROKER_OPEN_POSITIONS_TOTAL = Gauge(
     ["symbol"],
 )
 
+METRIC_PENDING_BROKER_CONFIRM_POSITIONS_TOTAL = Gauge(
+    "behemoth_pending_broker_confirm_positions_total",
+    "Count of non-closed reservations still awaiting broker confirmation",
+    ["symbol"],
+)
+
 METRIC_OPEN_POSITION_AGE_SECONDS = Gauge(
     "behemoth_open_position_age_seconds",
-    "Wall-clock seconds since the oldest open reservation was created",
+    "Wall-clock seconds since the oldest broker-confirmed open trade was created",
     ["symbol"],
 )
 
@@ -548,15 +554,30 @@ def _build_open_positions_summary(
             )
 
         METRIC_OPEN_POSITIONS_TOTAL.labels(symbol=sym).set(len(sym_reservations))
+        # Oldest broker-confirmed trade metrics are keyed off the same confirmed-trade set.
+        confirmed_reservations = {
+            str(r["broker_pos_id"]): r
+            for r in sym_reservations
+            if r.get("broker_pos_id") is not None and r.get("created_ts") is not None
+        }
         active_trades = state.get_active_trades(sym)
         broker_open_count_by_symbol[sym] = len(active_trades)
         METRIC_BROKER_OPEN_POSITIONS_TOTAL.labels(symbol=sym).set(len(active_trades))
-        oldest = min(
-            (r["created_ts"] for r in sym_reservations if r["created_ts"]),
+        METRIC_PENDING_BROKER_CONFIRM_POSITIONS_TOTAL.labels(symbol=sym).set(
+            max(0, len(sym_reservations) - len(active_trades))
+        )
+        oldest_confirmed_created_ts = min(
+            (
+                confirmed_reservations[str(trade["broker_pos_id"])]["created_ts"]
+                for trade in active_trades
+                if str(trade["broker_pos_id"]) in confirmed_reservations
+            ),
             default=None,
         )
         METRIC_OPEN_POSITION_AGE_SECONDS.labels(symbol=sym).set(
-            (now - oldest).total_seconds() if oldest else 0.0
+            (now - oldest_confirmed_created_ts).total_seconds()
+            if oldest_confirmed_created_ts
+            else 0.0
         )
         METRIC_ESTIMATED_UNREALIZED_PIPS.labels(symbol=sym).set(sym_unrealized_total)
 
@@ -580,6 +601,7 @@ def _build_open_positions_summary(
         if sym not in by_symbol:
             METRIC_OPEN_POSITIONS_TOTAL.labels(symbol=sym).set(0)
             METRIC_BROKER_OPEN_POSITIONS_TOTAL.labels(symbol=sym).set(0)
+            METRIC_PENDING_BROKER_CONFIRM_POSITIONS_TOTAL.labels(symbol=sym).set(0)
             METRIC_OPEN_POSITION_AGE_SECONDS.labels(symbol=sym).set(0)
             METRIC_OPEN_POSITION_AGE_BARS.labels(symbol=sym).set(0)
             METRIC_OPEN_POSITION_BARS_REMAINING.labels(symbol=sym).set(0)
