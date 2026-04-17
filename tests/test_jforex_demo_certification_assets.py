@@ -35,78 +35,44 @@ def test_jforex_dashboard_contains_demo_certification_panels() -> None:
     )
 
 
-def test_open_trades_by_symbol_panel_uses_symbol_summary_layout() -> None:
+def test_open_positions_panel_uses_timeline_table_layout() -> None:
     dashboard_path = Path("provisioning/dashboards/behemoth_jforex.json")
     dashboard = json.loads(dashboard_path.read_text(encoding="utf-8"))
     panels_by_title = {panel["title"]: panel for panel in dashboard["panels"]}
 
-    total_panel = panels_by_title["Open Trades (total)"]
-    assert total_panel["type"] == "stat"
-    assert total_panel["targets"][0]["expr"] == "sum(behemoth_broker_open_positions_total)"
-
-    open_positions = panels_by_title["Open Trades by Symbol"]
+    open_positions = panels_by_title["Open Positions"]
     assert open_positions["type"] == "table"
     assert open_positions["gridPos"]["w"] >= 10
-    assert open_positions["options"]["sortBy"] == [{"displayName": "Open trades", "desc": True}]
+    assert open_positions["options"]["sortBy"] == [{"displayName": "Bars remaining", "desc": False}]
 
     targets = {target["refId"]: target for target in open_positions["targets"]}
     assert targets["A"]["expr"] == (
-        'label_replace(sum by (symbol) (behemoth_open_position_age_bars and on(symbol) '
-        '(behemoth_broker_open_positions_total > 0)), "metric", '
-        '"behemoth_open_position_age_bars", "symbol", ".*")'
+        "behemoth_open_position_age_bars and on(symbol) (behemoth_open_position_bars_remaining > 0)"
     )
-    assert targets["B"]["expr"] == (
-        'label_replace(sum by (symbol) (behemoth_broker_open_positions_total) and on(symbol) '
-        '(sum by (symbol) (behemoth_broker_open_positions_total) > 0), "metric", '
-        '"behemoth_broker_open_positions_total", "symbol", ".*")'
-    )
-    assert targets["C"]["expr"] == (
-        'label_replace(sum by (symbol) (behemoth_open_position_age_seconds and on(symbol) '
-        '(behemoth_broker_open_positions_total > 0)), "metric", '
-        '"behemoth_open_position_age_seconds", "symbol", ".*")'
-    )
-    assert targets["D"]["expr"] == (
-        'label_replace(sum by (symbol) (behemoth_open_position_bars_remaining and on(symbol) '
-        '(behemoth_broker_open_positions_total > 0)), "metric", '
-        '"behemoth_open_position_bars_remaining", "symbol", ".*")'
-    )
+    assert targets["B"]["expr"] == "behemoth_open_position_bars_remaining > 0"
+    assert targets["C"]["expr"] == "behemoth_open_position_age_seconds / 60 > 0"
     assert all(target["instant"] is True for target in targets.values())
 
     transformations = open_positions["transformations"]
-    assert transformations[0]["id"] == "joinByLabels"
-    assert transformations[0]["options"]["join"] == ["symbol"]
-    assert transformations[0]["options"]["value"] == "metric"
     add_total = transformations[1]
     add_progress = transformations[2]
-    age_minutes = transformations[3]
-    organize = transformations[4]
+    organize = transformations[3]
 
     assert add_total["id"] == "calculateField"
     assert add_total["options"]["alias"] == "Lifecycle total"
-    assert add_total["options"]["binary"]["left"] == "behemoth_open_position_age_bars"
-    assert add_total["options"]["binary"]["right"] == "behemoth_open_position_bars_remaining"
     assert add_progress["id"] == "calculateField"
     assert add_progress["options"]["alias"] == "Progress to expiry"
-    assert add_progress["options"]["binary"]["left"] == "behemoth_open_position_age_bars"
-    assert add_progress["options"]["binary"]["right"] == "Lifecycle total"
-    assert add_progress["options"]["replaceFields"] is False
-    assert age_minutes["id"] == "calculateField"
-    assert age_minutes["options"]["alias"] == "Age (min)"
-    assert age_minutes["options"]["binary"]["left"] == "behemoth_open_position_age_seconds"
-    assert age_minutes["options"]["binary"]["right"] == "60"
-    assert age_minutes["options"]["replaceFields"] is False
 
     rename_map = organize["options"]["renameByName"]
-    assert rename_map["behemoth_broker_open_positions_total"] == "Open trades"
-    assert rename_map["behemoth_open_position_bars_remaining"] == "Oldest bars remaining"
+    assert rename_map["Value #B"] == "Bars remaining"
+    assert rename_map["Value #C"] == "Age (min)"
 
     overrides = {
         override["matcher"]["options"]: override["properties"]
         for override in open_positions["fieldConfig"]["overrides"]
     }
     progress_props = {prop["id"]: prop["value"] for prop in overrides["Progress to expiry"]}
-    remaining_props = {prop["id"]: prop["value"] for prop in overrides["Oldest bars remaining"]}
-    trade_count_props = {prop["id"]: prop["value"] for prop in overrides["Open trades"]}
+    remaining_props = {prop["id"]: prop["value"] for prop in overrides["Bars remaining"]}
     age_props = {prop["id"]: prop["value"] for prop in overrides["Age (min)"]}
 
     assert progress_props["custom.cellOptions"]["type"] == "gauge"
@@ -114,7 +80,6 @@ def test_open_trades_by_symbol_panel_uses_symbol_summary_layout() -> None:
     assert progress_props["max"] == 1
     assert progress_props["thresholds"]["steps"][1]["value"] == 0.6
     assert progress_props["thresholds"]["steps"][2]["value"] == 0.85
-    assert trade_count_props["decimals"] == 0
     assert remaining_props["custom.cellOptions"]["type"] == "auto"
     assert age_props["custom.cellOptions"]["type"] == "auto"
 
