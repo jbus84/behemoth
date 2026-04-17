@@ -46,7 +46,9 @@ def test_open_positions_panel_uses_timeline_table_layout() -> None:
     assert open_positions["options"]["sortBy"] == [{"displayName": "Bars remaining", "desc": False}]
 
     targets = {target["refId"]: target for target in open_positions["targets"]}
-    assert targets["A"]["expr"] == "behemoth_open_position_bars_remaining > 0"
+    assert targets["A"]["expr"] == (
+        "behemoth_open_position_age_bars and on(symbol) (behemoth_open_position_bars_remaining > 0)"
+    )
     assert targets["B"]["expr"] == "behemoth_open_position_bars_remaining > 0"
     assert targets["C"]["expr"] == "behemoth_open_position_age_seconds / 60 > 0"
     assert all(target["instant"] is True for target in targets.values())
