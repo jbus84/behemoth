@@ -251,7 +251,83 @@ Tolerances:
 
 ## Surfaces — Risk & governance
 
-_Pending. Populated in Task 4._
+### risk_gov.volume_sizing_source
+
+- **layer:** risk_gov
+- **python_locus:** src/behemoth/api/server.py:1233-1246 (`_resolve_requested_volume_units` — mandates `requested_volume_units > 0` or a positive `requested_lot_size`); src/behemoth/api/server.py:2628,2735,3149-3201 (reservation sizing uses the resolved value); src/behemoth/risk/account.py:159-224 (`evaluate_account_risk_limits` — account-level headroom/limits evaluation feeding the trade guard); src/behemoth/risk/account.py:227-300 (`evaluate_trade_guard` — per-candidate admission given `barrier_pips`/`cost_est_pips` and the resolved account state)
+- **jforex_locus:** src/jforex/src/main/java/com/behemoth/jforex/config/JForexSessionConfig.java:13-93 (`requestedVolumeUnits` record field, validated > 0 in the compact constructor); src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:231-244 (passes `sessionConfig.requestedVolumeUnits()` on every `/predict`); src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:280-317 (`executeActions` converts to millions via `sessionConfig.requestedVolumeUnits() / FX_UNITS_PER_MILLION` before `IEngine.submitOrder`)
+- **contract:** The requested FX-unit volume Python reserves against the allocator / account-risk headroom via `/predict` will equal the FX-unit volume JForex converts to millions and submits to the broker for the same scan. Session-config drift (a different `BEHEMOTH_JFOREX_REQUESTED_VOLUME_UNITS` than Python reserved against) must be impossible for any single `/predict` → `OPEN_MARKET` → `IEngine.submitOrder` chain.
+- **observed_state:** Code: Java sends the same `requestedVolumeUnits` value on every `/predict` for the session (it is read once from `JForexSessionConfig`, a final record); Python's `/predict` both resolves the admission against that value (`_resolve_requested_volume_units`) and uses it to compute reservation currency via `gross_loss_pips * pip_value_per_unit * requested_volume_units`. On OPEN_MARKET, Java divides the same value by `FX_UNITS_PER_MILLION = 1_000_000.0` and submits `amountMillions`. Drift windows: if the JForex process is restarted with a different `BEHEMOTH_JFOREX_REQUESTED_VOLUME_UNITS` mid-session, PENDING reservations issued under the old value will be promoted against the new submit volume (single-session-config invariant not enforced by Python). Replay evidence: _pending Task 10._
+- **divergence:** latent
+- **severity:** critical
+- **evidence:** _pending Task 10._
+- **harness_check:** no — the two-sided volume check compares a Python reservation number to a broker submit amount across a process boundary; no dedicated seed check covers it. Covered indirectly by `lifecycle.active_oco_reconciled` (mismatched volumes surface as reconciliation drift).
+- **fix_owner:** future
+
+### risk_gov.governance_lock_model_month
+
+- **layer:** risk_gov
+- **python_locus:** src/behemoth/api/server.py:89-97 (`_model_months` cache keyed by `symbol|model_month`); src/behemoth/api/server.py:929-977 (lock binding loader — reads `model_month` from `*_oco_live_lock.json` artifacts and pins it per symbol); src/behemoth/api/server.py:1014,1599-1625,1680 (predict/contract path uses `expected_month = binding.model_month` for audit/context resolution); src/behemoth/api/server.py:377-384,1554-1584 (`BEHEMOTH_FORCE_MODEL_MONTH` override and normalization)
+- **jforex_locus:** _no client-side equivalent — JForex never reads or validates `model_month`._ src/jforex/src/main/java/com/behemoth/jforex/config/JForexSessionConfig.java:13-39 (session config carries `runId` but no `model_month` field); src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:231-244 (every `/predict` request ships only `runId`, expecting Python to resolve the model month)
+- **contract:** Python is the single authority on `model_month`; it resolves the locked month from the per-symbol governance lock at startup and pins predictions to that month. JForex must pass a `runId` that corresponds to a run whose audit trail lands within the currently locked month — a `runId` belonging to a stale (unlocked) month must not silently produce predictions under a newer model without tripping the governance validator.
+- **observed_state:** Code: on `init_models`, Python reads `model_month` from each symbol's `*_oco_live_lock.json` under `artifacts.model_month` and caches it in `_model_months`; `/predict` uses the cache key `f"{symbol}|{model_month}"` with `model_month` resolved from the active binding (not from the request). JForex's `runId` is propagated to audit rows only; there is no server-side assertion that the run's earlier predictions (if any) were made under the same lock generation. `scripts/validate_oco_live_governance.py` asserts `model_month_matches_cbm_name` and `model_month_matches_threshold_json` at deploy/retrain time, but no runtime gate rejects mid-session lock drift. Replay evidence: _pending Task 10._
+- **divergence:** latent
+- **severity:** critical
+- **evidence:** _pending Task 10._
+- **harness_check:** yes — risk_gov.governance_lock_pin
+- **fix_owner:** future
+
+### risk_gov.governance_lock_hash_integrity
+
+- **layer:** risk_gov
+- **python_locus:** scripts/validate_oco_live_governance.py:29-35 (`_sha256` helper); scripts/validate_oco_live_governance.py:93-216 (`run` — per-artifact hash recompute + expected-hash match for `wfo_config`, `reduced_config`, `reduced_states_csv`, `predictions`, `model_cbm`, `model_threshold_json`, `tick_exact_summary`, `reduced_summary`; plus `lock_provenance_clean` on `git.dirty`); configs/research/governance/oco/audusd_oco_live_lock.json:1-23 (lock artifact with `*_sha256` fields for each referenced file)
+- **jforex_locus:** _no client-side equivalent — JForex does not read the lock JSON or verify artifact hashes._ src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:231-244 (JForex trusts whatever Python has loaded at session start)
+- **contract:** At session-start (deploy mode) and at every retrain boundary, every hash in `*_oco_live_lock.json` (model .cbm, threshold .json, reduced/wfo configs, reduced-states CSV, predictions parquet, tick-exact summary) must match the current file contents on disk, `git.dirty == false`, and the tick-exact / capacity overall-pass flags must both be `true`. The JForex adapter's `runId` attaches to a session that is, by construction, running against a validated lock.
+- **observed_state:** Code: `validate_oco_live_governance.run` recomputes SHA-256 for every artifact path declared in the lock and compares against the recorded digest; any mismatch fails the gate with `SystemExit(2)`. The `capacity_overall_pass` + `tick_exact_overall_pass` booleans and `live_deployable_consistent` are separately asserted. The runtime check is single-sided on the Python side (JForex has no hash awareness); this surface records that an unverified lock → live-run chain is possible if `make`/`CI` fails to call the validator before starting the session. Replay evidence: _pending Task 10._
+- **divergence:** latent
+- **severity:** high
+- **evidence:** scripts/validate_oco_live_governance.py:110-216; configs/research/governance/oco/audusd_oco_live_lock.json:1-50 (representative lock shape); _replay evidence pending Task 10._
+- **harness_check:** no — artifact-hash integrity is verified by a one-shot Python script at deploy/retrain time and is not part of the in-session seed-check loop.
+- **fix_owner:** future
+
+### risk_gov.run_id_plumbing
+
+- **layer:** risk_gov
+- **python_locus:** src/behemoth/api/server.py:384,1396-1484 (`debug_run_id` override + `_effective_run_id` resolver threaded into every request handler); src/behemoth/api/server.py:2206-2251 (`PredictRequest.run_id` / `runId`); src/behemoth/api/server.py:2442-2476 (`/risk/account/snapshot` consumes `req.run_id` via `_effective_run_id`); src/behemoth/api/server.py:3358-3415 (`/trades/open` + `/trades/active` keyed by run_id for reconciliation); src/behemoth/api/server.py:1053-1054,1680,1873 (audit_logs rows persist `model_month` + `run_id` together)
+- **jforex_locus:** src/jforex/src/main/java/com/behemoth/jforex/config/JForexSessionConfig.java:13-39,173 (`runId` field, env-seeded from `BEHEMOTH_JFOREX_RUN_ID`); src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:199-217 (`onAccountSnapshot` sends `sessionConfig.runId()`); BehemothStrategyCore.java:231-244 (predict payload carries `runId`); BehemothStrategyCore.java:335-385 (`handleFill` / `handleClose` send `runId` on `/trades/open` and `/trades/update`); and the batch-ticks path in the same file (`TickBatchRequestPayload` carries `runId`)
+- **contract:** Every JForex → Python request for the lifetime of a session will carry the same non-empty `run_id`, set once from `BEHEMOTH_JFOREX_RUN_ID` via `JForexSessionConfig.runId()`. Python joins ticks ↔ predictions ↔ account snapshots ↔ trade opens/updates by `run_id`; a missing, empty, or drifted `run_id` silently splits the session into two logical runs and breaks `/trades/active` reconciliation.
+- **observed_state:** Code: Java has a single `runId` resolved at config construction and reuses it on every outbound payload (`TickBatchRequestPayload`, `PredictRequestPayload`, `AccountSnapshotRequestPayload`, `TradeOpenRequestPayload`, `TradeUpdateRequestPayload`). Python's `_effective_run_id` accepts either the request's `run_id` or a `BEHEMOTH_DEBUG_RUN_ID` override; no endpoint rejects an empty/missing `run_id` outright — empty ids coerce to `None` and audit rows store `NULL`, so any drift is only observable via later reconciliation counts. No cross-request invariant asserts "all requests in the current session share the same run_id." Replay evidence: _pending Task 10._
+- **divergence:** latent
+- **severity:** high
+- **evidence:** _pending Task 10._
+- **harness_check:** no — run_id consistency is a per-session invariant observable only via audit_logs/row-join cardinality; no seed check targets it. Partially covered by `lifecycle.active_oco_reconciled` which joins on run_id.
+- **fix_owner:** future
+
+### risk_gov.account_snapshot_cadence
+
+- **layer:** risk_gov
+- **python_locus:** src/behemoth/api/server.py:2442-2476 (`/risk/account/snapshot` handler → `_state.record_account_snapshot`); src/behemoth/api/server.py:2187 (cost gate's `require_account_snapshot` flag); src/behemoth/risk/account.py:159-224 (`evaluate_account_risk_limits` — returns `snapshot_available=False` → `ACCOUNT_RISK_SNAPSHOT_MISSING` block when no snapshot has been recorded and the profile requires one); src/behemoth/risk/account.py:227-300 (`evaluate_trade_guard` consumes the latest account evaluation)
+- **jforex_locus:** src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:199-217 (`onAccountSnapshot(balance, equity, snapshotTs)` fans out `AccountSnapshotRequestPayload` to Python for every currently-subscribed symbol on each broker account event); src/jforex/src/main/java/com/behemoth/jforex/BehemothJForexStrategy.java (`onAccount(IAccount)` → `onAccountSnapshot`; broker-driven cadence)
+- **contract:** While a session is running with `require_account_snapshot=true`, each `/predict` call's account-risk evaluation will use a `snapshotTs` within the freshness window implied by the risk profile. The broker-driven `onAccount` cadence must be fast enough that a fresh snapshot arrives between any two consecutive `/predict` calls; stale snapshots must either block trades (`ACCOUNT_RISK_SNAPSHOT_MISSING` / headroom breach) or be tagged `snapshot_available=False`.
+- **observed_state:** Code: JForex only pushes a snapshot when the broker fires `onAccount(IAccount)` — frequency depends entirely on Dukascopy's cadence and is not surfaced in configuration. Python's `evaluate_account_risk_limits` uses "latest recorded balance/equity/day_start_balance" with no TTL check; a stale snapshot produces a stale `daily_loss_used` / `max_loss_used` that can cause under-sizing (recent loss not yet reflected → headroom overstated) or over-blocking (recent recovery not yet reflected → headroom understated). There is no freshness assertion in `evaluate_account_risk_limits` beyond `snapshot_available`. Replay evidence: _pending Task 10._
+- **divergence:** latent
+- **severity:** high
+- **evidence:** _pending Task 10._
+- **harness_check:** no — snapshot-freshness is a wall-clock invariant that depends on broker cadence; the 8 seed checks do not cover it. Observable via `audit_logs` row pairs (snapshot_ts, predict_ts) at reconciliation time.
+- **fix_owner:** future
+
+### risk_gov.entries_allowed_gate
+
+- **layer:** risk_gov
+- **python_locus:** _no Python counterpart — the backtest pipeline (`scripts/verify_oco_tick_exact_shortlist.py`) has no readiness-blocked-entries concept; every OPEN_MARKET action is assumed to execute._ src/behemoth/runtime/barrier_manager.py:238-269 (OPEN_MARKET emit path is unconditional relative to live readiness)
+- **jforex_locus:** src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:450 (`SymbolRuntimeState.entriesAllowed = true` default); BehemothStrategyCore.java:167-173 (`setEntriesAllowed(symbol, allowed)`); BehemothStrategyCore.java:280-294 (`executeActions` OPEN_MARKET branch: on `entriesAllowed=false` records `entry_blocked_not_ready` via `recordEntryBlocked` and skips the submit); src/jforex/src/main/java/com/behemoth/jforex/live/LiveReadinessCoordinator.java:285-311 (`syncMetricsAndCore` pushes `symbol.entriesAllowed()` from the readiness FSM into `core.setEntriesAllowed`)
+- **contract:** `state.entriesAllowed` is the single client-side gate that can drop a Python-emitted OPEN_MARKET action on the JForex side. Because the backtest pipeline has no equivalent gate, any bar on which live readiness drops (`entriesAllowed=false`) will diverge: live reports `entry_blocked_not_ready`, backtest executes the open. This surface records the known asymmetry and scopes the admissible evidence (blocked entries are not replay-comparable).
+- **observed_state:** Code: `LiveReadinessCoordinator` transitions per-symbol state and calls `core.setEntriesAllowed(symbol, symbol.entriesAllowed())` on every readiness publish; default at process start is `true`, flipped to `false` when readiness drops (stale ticks, startup warmup not reached, bridge incomplete). Python has no mirror of this flag — `/predict` does not know which symbols are currently gated on the JForex side, and the offline backtest ingests the parquet end-to-end without any readiness simulation. Consequence: the parity harness must exclude bars where `entries_allowed=false` from the OPEN_MARKET execution-diff checks. Replay evidence: _pending Task 10._
+- **divergence:** observed
+- **severity:** high
+- **evidence:** src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:167-173,280-294,450 (gate code); src/jforex/src/main/java/com/behemoth/jforex/live/LiveReadinessCoordinator.java:285-311 (FSM → gate plumbing); _replay evidence pending Task 10._
+- **harness_check:** yes — core.entries_allowed_vs_readiness
+- **fix_owner:** future
 
 ## Surfaces — Time & data
 
