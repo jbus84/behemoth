@@ -158,7 +158,96 @@ Tolerances:
 
 ## Surfaces — Lifecycle & state
 
-_Pending. Populated in Task 3._
+### lifecycle.client_tick_seq_monotonic
+
+- **layer:** lifecycle
+- **python_locus:** src/behemoth/api/server.py:4016-4046 (`_ingest_tick_internal` — dedupes on equality and rejects regressions via `last_client_tick_seq`); src/behemoth/api/server.py:4100-4102 (advance on accept); src/behemoth/api/server.py:1513-1516 / 2309-2312 (feed tracker defaults + summary schema)
+- **jforex_locus:** src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:85-105 (`seedClientTickSeq`, `onTick` increments `state.nextClientTickSeq`); src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:446-457 (`SymbolRuntimeState.nextClientTickSeq` initialised to 1L)
+- **contract:** For each symbol, `client_tick_seq` is a strictly increasing per-symbol integer assigned by JForex at `onTick` time. Python will reject any tick whose seq equals the last accepted (`duplicate_client_tick_seq`) or is smaller (`non_monotonic_client_tick_seq`) and will never advance `last_client_tick_seq` backwards.
+- **observed_state:** Code: Java `SymbolRuntimeState.nextClientTickSeq` starts at 1L, post-increments on every `onTick` enqueue, and can be re-seeded via `seedClientTickSeq(symbol, lastClientTickSeq)` (used for cross-restart continuation). Python stores `last_client_tick_seq` in the per-symbol feed tracker and advances it only after accept; on equal or lower incoming values the tick is dropped with counters `duplicate_client_tick_seq` / `client_seq_violations`. When `client_tick_seq` is present the timestamp-monotonicity check is demoted to informational (duplicates and regressions counted but not rejected). Replay evidence: _pending Task 10._
+- **divergence:** latent
+- **severity:** critical
+- **evidence:** _pending Task 10._
+- **harness_check:** yes — core.tick_seq_monotonic
+- **fix_owner:** future
+
+### lifecycle.reservation_id_lifecycle
+
+- **layer:** lifecycle
+- **python_locus:** src/behemoth/runtime/state.py:870-1107 (`create_account_risk_reservation` → `promote_account_risk_reservation` → `release_account_risk_reservation` / `expire_stale_account_risk_pending_reservations`); src/behemoth/runtime/barrier_manager.py:107-123 (reservation_id stored on scan row); src/behemoth/runtime/barrier_manager.py:229-282 (RELEASE_RESERVATION emitted on tie-expiry or scan expiry); src/behemoth/api/server.py:3383-3395 (/trades/open promotes PENDING → OPEN and binds to broker_pos_id)
+- **jforex_locus:** src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:297-317 (stores `reservationId` inside `PendingFillContext` keyed by order label); BehemothStrategyCore.java:340-356 (`handleFill` pops the context and forwards `reservation_id` on /trades/open); BehemothStrategyCore.java:466-471 (`PendingFillContext` record)
+- **contract:** Every PENDING reservation_id issued at selection must terminate in exactly one of: promoted to OPEN by `/trades/open` (bound to broker_pos_id), released on scan expiry / tie, released on `/trades/update` close, or expired by the stale-PENDING sweep. No PENDING row will leak past the expiry TTL, and every HOLDING scan with a broker fill will have its reservation_id promoted to OPEN within one /trades/open round-trip.
+- **observed_state:** Code: Python issues reservation_id inside `/predict` and attaches it to the barrier scan; `OPEN_MARKET` and `RELEASE_RESERVATION` actions carry `reservation_id` to JForex. JForex does not mutate or persist reservation_id — it just threads it through `PendingFillContext` (in-memory only) and replays it back on `/trades/open`. Risk: if JForex restarts between order submit and fill, the in-memory `pendingFills[label]` entry is lost and `/trades/open` will be sent with `reservation_id=""` (see lifecycle.pending_fills_map), leaving the Python PENDING row to be cleaned up by `expire_stale_account_risk_pending_reservations`. Replay evidence: _pending Task 10._
+- **divergence:** latent
+- **severity:** high
+- **evidence:** _pending Task 10._
+- **harness_check:** no — reservation-lifecycle correctness spans three endpoints and a stale-sweep timer; covered indirectly by `lifecycle.active_oco_reconciled` (which catches orphan active rows) plus DB-side assertions in `scripts/diagnose_live_audit.py`.
+- **fix_owner:** future
+
+### lifecycle.active_oco_state_json
+
+- **layer:** lifecycle
+- **python_locus:** src/behemoth/runtime/barrier_manager.py:15-41 (`barrier_scans` table DDL in `live_state.db`); src/behemoth/runtime/barrier_manager.py:125-164 (`reject_legacy_active_scans`, `has_active_scan`, `find_holding_scans`); src/behemoth/runtime/state.py:78-101 (`trades` table DDL, which is the Python side of active-position recovery); src/behemoth/api/server.py:3410-3415 (`/trades/active` reconciliation endpoint)
+- **jforex_locus:** src/jforex/src/main/java/com/behemoth/jforex/BehemothJForexStrategy.java:81-82 (`ExecutionStateStore` rooted at `sessionConfig.reportDir().resolve("runtime").resolve("active_oco_state.json")`); src/jforex/src/main/java/com/behemoth/jforex/state/ExecutionStateStore.java:19-132 (load/persist, index by order label, fill/close/cancel state transitions); src/jforex/src/main/java/com/behemoth/jforex/state/OcoGroupState.java:8-82 (group + leg schema with `candidateUid`, `reservationId`, `runId`, `barTicks`, per-leg `status` ∈ {PLANNED, SUBMIT_OK, FILLED, CANCEL_REQUESTED, CANCELLED, CLOSED, REJECTED})
+- **contract:** For each active OCO group the JForex-side `active_oco_state.json` and the Python `live_state.db` (barrier_scans + trades) will agree: every group with `buyLeg.isActive()` or `sellLeg.isActive()` in JSON corresponds to either a SCANNING/HOLDING row in `barrier_scans` or an OPEN row in `trades` (by `reservationId`/`candidateUid`/`runId`), and every such Python row has a JSON entry. No one-sided lifecycle states after restart or reconnect.
+- **observed_state:** Code: `ExecutionStateStore.persist()` writes after every state transition so the JSON is crash-consistent on the JForex side. Python's barrier_scans survive via `persist_path` (DuckDB). However, there is no dedicated reconciliation loop that diffs the two stores end-to-end on startup — reconciliation relies on per-event replay (/trades/open binding broker_pos_id into the matching HOLDING scan at `find_holding_scans`) and on `/trades/active` being queried by JForex recovery code. Legacy barrier_scans without side-aware `signal_close_ask/bid` are force-expired on Python startup via `reject_legacy_active_scans`. Replay evidence: _pending Task 10._
+- **divergence:** latent
+- **severity:** high
+- **evidence:** _pending Task 10._
+- **harness_check:** yes — lifecycle.active_oco_reconciled
+- **fix_owner:** future
+
+### lifecycle.barrier_scan_status_transitions
+
+- **layer:** lifecycle
+- **python_locus:** src/behemoth/runtime/barrier_manager.py:44-49 (documented SCANNING → HOLDING → COMPLETED / EXPIRED state machine); src/behemoth/runtime/barrier_manager.py:176-326 (`evaluate_bar` + `_transition_to_holding` implement the transitions); src/behemoth/runtime/barrier_manager.py:125-156 (`reject_legacy_active_scans` terminal-transitions stale SCANNING/HOLDING rows on startup)
+- **jforex_locus:** _no client-side equivalent — JForex does not own scan state; it only consumes `OPEN_MARKET` / `CLOSE_MARKET` / `RELEASE_RESERVATION` actions emitted by Python._ src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:280-333 (action consumer)
+- **contract:** Each barrier scan will follow one of exactly two terminal paths: SCANNING → HOLDING → COMPLETED (emits OPEN_MARKET then CLOSE_MARKET) or SCANNING → EXPIRED (emits RELEASE_RESERVATION if a reservation was attached). A Python restart with a persistent `live_state.db` must not leave a HOLDING scan without continuing its hold_bars_remaining countdown on the next bar — HOLDING scans are the only state that depends on subsequent bar evaluation to progress to CLOSE_MARKET.
+- **observed_state:** Code: `evaluate_bar` decrements both `scan_bars_remaining` (SCANNING) and `hold_bars_remaining` (HOLDING) atomically per bar and transitions to EXPIRED / COMPLETED when the counter hits zero. Simultaneous up/down touch with `hl_first == 0` terminates as EXPIRED (mirrors `_oco_precompute`). Ties with a reservation_id emit `RELEASE_RESERVATION` so Python can clean up. Restart risk: on reconnect, HOLDING rows remain in `live_state.db` with their `hold_bars_remaining` frozen at the value before shutdown; they will only resume counting if `/predict` continues to be driven by bar completions for the same symbol/bar_ticks pair — any gap in bar ingestion delays CLOSE_MARKET. Replay evidence: _pending Task 10._
+- **divergence:** latent
+- **severity:** high
+- **evidence:** _pending Task 10._
+- **harness_check:** no — the state-machine integrity check is covered by `lifecycle.active_oco_reconciled` at the JSON↔DB boundary; a dedicated per-transition seed check is out of scope.
+- **fix_owner:** future
+
+### lifecycle.scan_to_order_label_map
+
+- **layer:** lifecycle
+- **python_locus:** _no Python counterpart — Python emits `CLOSE_MARKET` actions with `scan_id` and expects JForex to resolve to an open broker order._ src/behemoth/runtime/barrier_manager.py:298-311 (CLOSE_MARKET emit path); src/behemoth/runtime/barrier_manager.py:328-333 (`set_broker_pos_id` is the only Python-side persisted link)
+- **jforex_locus:** src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:45 (`Map<String, String> scanToOrderLabel = new LinkedHashMap<>();`); BehemothStrategyCore.java:296 (put on OPEN_MARKET submit); BehemothStrategyCore.java:319-330 (remove+close on CLOSE_MARKET, else `barrier_close_skipped_no_label`)
+- **contract:** For the lifetime of an active barrier scan, JForex will hold a `scan_id → order_label` mapping that CLOSE_MARKET actions use to close the correct broker position. The mapping must survive the full scan lifetime — from OPEN_MARKET submit through the final HOLDING bar.
+- **observed_state:** Code: `scanToOrderLabel` is an in-memory `LinkedHashMap` with no persistence; a JForex restart between OPEN_MARKET submit and CLOSE_MARKET emit will empty the map, and Python's CLOSE_MARKET will be dropped as `barrier_close_skipped_no_label`. There is no durable label-lookup fallback (e.g. via `ExecutionStateStore` even though group/leg labels exist there). This is a known recovery gap. Replay evidence: _pending Task 10._
+- **divergence:** observed
+- **severity:** critical
+- **evidence:** src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:45,296,319-330 (in-memory only, no persistence); _replay evidence pending Task 10._
+- **harness_check:** no — JForex-local in-memory map; parity harness has no visibility into this process memory. Observable only indirectly via `barrier_close_skipped_no_label` operational events.
+- **fix_owner:** future
+
+### lifecycle.pending_fills_map
+
+- **layer:** lifecycle
+- **python_locus:** _no Python counterpart — Python expects `/trades/open` to carry the correct `candidate_uid`, `reservation_id`, and `horizon`._ src/behemoth/api/server.py:3358-3395 (consumer: promotes reservation, binds broker_pos_id, opens trade row)
+- **jforex_locus:** src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:43 (`Map<String, PendingFillContext> pendingFills = new LinkedHashMap<>();`); BehemothStrategyCore.java:297-301 (put on OPEN_MARKET submit); BehemothStrategyCore.java:313-314 (rollback on submit failure); BehemothStrategyCore.java:340-356 (remove on `handleFill`, forward ctx to `/trades/open`); BehemothStrategyCore.java:466-471 (`PendingFillContext` record: candidateUid, reservationId, horizon)
+- **contract:** For every submitted market order, JForex will retain `(candidateUid, reservationId, horizon)` keyed by order label until the broker ACKs with `ORDER_FILL_OK`, at which point the context will be consumed exactly once and forwarded to Python via `/trades/open`. If the context is missing, `/trades/open` sends empty `candidate_uid`/`reservation_id` and `horizon=0`, leaving the PENDING reservation to be TTL-expired and the trade row missing its entry model context.
+- **observed_state:** Code: `pendingFills` is an in-memory `LinkedHashMap`; a restart between submit and fill-ACK loses the context entirely. The sole rollback path (`pendingFills.remove(label)` on submit exception) covers only synchronous submit failures, not disconnect-or-crash scenarios. `handleFill` falls back silently to empty strings + horizon=0, producing `/trades/open` rows that bypass audit_logs linkage (the `open_trade` helper logs a WARN when no matching audit row exists — see state.py:593-596). Known recovery gap. Replay evidence: _pending Task 10._
+- **divergence:** observed
+- **severity:** critical
+- **evidence:** src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:43,297-301,340-356 (in-memory only); src/behemoth/runtime/state.py:592-597 (silent-fallback warning on missing audit linkage); _replay evidence pending Task 10._
+- **harness_check:** no — JForex-local in-memory map; observable only indirectly via trades rows with NULL `entry_pred_prob` / empty `reservation_id` after a restart.
+- **fix_owner:** future
+
+### lifecycle.bar_ordinals_by_bar_ticks
+
+- **layer:** lifecycle
+- **python_locus:** src/behemoth/api/server.py:2206-2251 (PredictRequest schema — `bar_ordinals: dict[str, int]` alias `barOrdinals`); src/behemoth/api/server.py:2617-2745 (`/predict` handler consumes ordinals for candidate filtering / audit context)
+- **jforex_locus:** src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:231-244 (`triggerPrediction` increments `state.barOrdinalsByBarTicks` per completed `bar_ticks` and snapshots the map into `PredictRequestPayload.barOrdinals`); BehemothStrategyCore.java:452 (`Map<Integer, Long> barOrdinalsByBarTicks` on SymbolRuntimeState, seeded empty)
+- **contract:** For each `(symbol, bar_ticks)` pair, the ordinal sent on `/predict` will be monotonically non-decreasing across the session (strictly +1 per completed bar), starting at 0 on the first completion and incrementing by 1 on each subsequent bar. Python treats the ordinal as the authoritative session-scoped bar index for that granularity; any repeat or regression indicates a JForex restart or a lost bar-completed signal.
+- **observed_state:** Code: Java uses `compute((k,v) -> v == null ? 0L : v + 1L)` — first call stores 0L, so the first prediction for a fresh process carries ordinal 0, second 1, etc. The map is in-memory only, so a JForex restart resets every symbol's counter back to 0 even though Python's bar buffer may be mid-stream; this will create overlapping ordinal ranges if Python compares ordinals across sessions. `Map.copyOf` snapshotting guarantees the request serialises a consistent view. Replay evidence: _pending Task 10._
+- **divergence:** latent
+- **severity:** high
+- **evidence:** _pending Task 10._
+- **harness_check:** no — ordinal monotonicity is single-symbol per-session; no seed check exists. Covered indirectly by `core.predict_cycles_per_bar` (one /predict per completed bar) and `time_data.bar_close_ts_sorted_per_symbol` (close_ts ordering on the Python side).
+- **fix_owner:** future
 
 ## Surfaces — Risk & governance
 
