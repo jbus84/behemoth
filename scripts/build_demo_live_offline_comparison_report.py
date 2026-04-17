@@ -19,7 +19,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SYMBOLS = ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"]
-RECONCILE_DIR = Path("data/analysis/backtest_reconcile")
+ROOT = Path(__file__).resolve().parents[1]
+RECONCILE_DIR = ROOT / "data/analysis/backtest_reconcile"
 RUNTIME_DIR = RECONCILE_DIR / "runtime"
 LIVE_STATE_DB = RUNTIME_DIR / "live_state.db"
 
@@ -102,7 +103,7 @@ def _signal_parity_section() -> str:
 def _phase1_report() -> str:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     sections = [
-        f"# Demo-Live vs Offline Model Comparison — 2026-04-17",
+        f"# Demo-Live vs Offline Model Comparison — {now[:10]}",
         f"",
         f"_Generated: {now} UTC_",
         f"",
@@ -154,22 +155,33 @@ def _append_phase2(out: Path) -> None:
         print(f"ERROR: live_state.db not accessible: {e}", file=sys.stderr)
         sys.exit(1)
 
+    readiness_path = RUNTIME_DIR / "live_symbol_readiness.json"
+    readiness = json.loads(readiness_path.read_text()) if readiness_path.exists() else {}
+    run_id = readiness.get("run_id", "jforex_live")
+
     exec_section = _execution_parity_section()
-    outcome_section = _outcome_parity_section()
+    outcome_section = _outcome_parity_section(run_id)
 
     content = out.read_text()
-    content = content.replace(
-        "## Execution Parity\n\n_Pending: requires `live_state.db` to unlock after session end. Run with `--phase 2`._",
-        exec_section,
-    )
-    content = content.replace(
-        "## Outcome Parity\n\n_Pending: requires `live_state.db` to unlock after session end. Run with `--phase 2`._",
-        outcome_section,
-    )
-    content = content.replace(
-        "_Execution and outcome analysis pending. Re-run with `--phase 2` after session ends._",
-        _findings_section(),
-    )
+
+    old1 = "## Execution Parity\n\n_Pending: requires `live_state.db` to unlock after session end. Run with `--phase 2`._"
+    new_content = content.replace(old1, exec_section)
+    if new_content == content:
+        print(f"WARNING: placeholder not found in report; section may not have been inserted: {old1[:60]!r}", file=sys.stderr)
+    content = new_content
+
+    old2 = "## Outcome Parity\n\n_Pending: requires `live_state.db` to unlock after session end. Run with `--phase 2`._"
+    new_content = content.replace(old2, outcome_section)
+    if new_content == content:
+        print(f"WARNING: placeholder not found in report; section may not have been inserted: {old2[:60]!r}", file=sys.stderr)
+    content = new_content
+
+    old3 = "_Execution and outcome analysis pending. Re-run with `--phase 2` after session ends._"
+    new_content = content.replace(old3, _findings_section())
+    if new_content == content:
+        print(f"WARNING: placeholder not found in report; section may not have been inserted: {old3[:60]!r}", file=sys.stderr)
+    content = new_content
+
     out.write_text(content)
     print(f"Phase 2 sections appended to {out}")
 
@@ -196,14 +208,14 @@ def _execution_parity_section() -> str:
     return "\n".join(lines)
 
 
-def _outcome_parity_section() -> str:
+def _outcome_parity_section(run_id: str) -> str:
     # Run diagnose_live_performance_gap.py and capture output
-    perf_gap_script = Path("scripts/diagnose_live_performance_gap.py")
-    perf_gap_out = Path("data/analysis/live_perf_gap_report.md")
+    perf_gap_script = ROOT / "scripts/diagnose_live_performance_gap.py"
+    perf_gap_out = ROOT / "data/analysis/live_perf_gap_report.md"
     subprocess.run(
         [sys.executable, str(perf_gap_script),
          "--db", str(LIVE_STATE_DB),
-         "--run-id", "jforex_live",
+         "--run-id", run_id,
          "--out", str(perf_gap_out)],
         check=True,
     )
@@ -244,8 +256,6 @@ def _outcome_parity_section() -> str:
         f"### Performance Gap Detail",
         "",
         f"_See full report: `{perf_gap_out}`_",
-        "",
-        perf_gap_out.read_text() if perf_gap_out.exists() else "_Report not generated._",
     ]
     return "\n".join(lines)
 
