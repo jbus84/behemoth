@@ -40,15 +40,16 @@
       },
       "id": 1,
       "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+        "showHeader": true,
+        "footer": {
+          "enablePagination": false
         },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
+        "sortBy": [
+          {
+            "displayName": "Active groups",
+            "desc": true
+          }
+        ]
       },
       "targets": [
         {
@@ -99,15 +100,16 @@
       },
       "id": 2,
       "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+        "showHeader": true,
+        "footer": {
+          "enablePagination": false
         },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
+        "sortBy": [
+          {
+            "displayName": "Active groups",
+            "desc": true
+          }
+        ]
       },
       "targets": [
         {
@@ -352,15 +354,88 @@
       },
       "id": 4,
       "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+        "showHeader": true,
+        "footer": {
+          "enablePagination": false
         },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
+        "sortBy": [
+          {
+            "displayName": "Active groups",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Active groups"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 110
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Open trades"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 110
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pending / canceling"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 150
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          }
+        ]
       },
       "targets": [
         {
@@ -369,14 +444,71 @@
             "uid": "behemoth-prometheus"
           },
           "editorMode": "code",
-          "expr": "behemoth_jforex_active_oco_groups",
-          "legendFormat": "{{symbol}} active",
-          "range": true,
+          "expr": "label_replace(sum by (symbol) (behemoth_jforex_active_oco_groups) and on(symbol) (sum by (symbol) (behemoth_jforex_active_oco_groups) > 0), \"metric\", \"behemoth_jforex_active_oco_groups\", \"symbol\", \".*\")",
+          "instant": true,
+          "range": false,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "behemoth-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "label_replace(sum by (symbol) (behemoth_broker_open_positions_total) and on(symbol) (sum by (symbol) (behemoth_jforex_active_oco_groups) > 0), \"metric\", \"behemoth_broker_open_positions_total\", \"symbol\", \".*\")",
+          "instant": true,
+          "range": false,
+          "refId": "B"
         }
       ],
-      "title": "Active OCO Groups",
-      "type": "timeseries"
+      "transformations": [
+        {
+          "id": "joinByLabels",
+          "options": {
+            "join": [
+              "symbol"
+            ],
+            "value": "metric"
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "binary": {
+              "left": "behemoth_jforex_active_oco_groups",
+              "operator": "-",
+              "right": "behemoth_broker_open_positions_total"
+            },
+            "alias": "Pending / canceling",
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "symbol": "Symbol",
+              "behemoth_jforex_active_oco_groups": "Active groups",
+              "behemoth_broker_open_positions_total": "Open trades"
+            },
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "instance": true,
+              "job": true
+            },
+            "indexByName": {
+              "symbol": 0,
+              "behemoth_jforex_active_oco_groups": 1,
+              "behemoth_broker_open_positions_total": 2,
+              "Pending / canceling": 3
+            }
+          }
+        }
+      ],
+      "title": "OCO Lifecycle Now",
+      "type": "table"
     },
     {
       "datasource": {
@@ -846,13 +978,13 @@
           },
           "editorMode": "code",
           "expr": "sum(behemoth_broker_open_positions_total)",
-          "legendFormat": "Open Positions",
+          "legendFormat": "Open Trades",
           "range": false,
           "instant": true,
           "refId": "A"
         }
       ],
-      "title": "Open Positions (total)",
+      "title": "Open Trades (total)",
       "type": "stat"
     },
     {
@@ -989,12 +1121,38 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Bars remaining"
+              "options": "Open trades"
             },
             "properties": [
               {
                 "id": "custom.width",
                 "value": 110
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "auto"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Oldest bars remaining"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 140
               },
               {
                 "id": "unit",
@@ -1105,8 +1263,8 @@
         },
         "sortBy": [
           {
-            "displayName": "Bars remaining",
-            "desc": false
+            "displayName": "Open trades",
+            "desc": true
           }
         ]
       },
@@ -1117,7 +1275,7 @@
             "uid": "behemoth-prometheus"
           },
           "editorMode": "code",
-          "expr": "behemoth_open_position_age_bars and on(symbol) (behemoth_open_position_bars_remaining > 0)",
+          "expr": "label_replace(sum by (symbol) (behemoth_open_position_age_bars and on(symbol) (behemoth_broker_open_positions_total > 0)), \"metric\", \"behemoth_open_position_age_bars\", \"symbol\", \".*\")",
           "instant": true,
           "range": false,
           "refId": "A"
@@ -1128,7 +1286,7 @@
             "uid": "behemoth-prometheus"
           },
           "editorMode": "code",
-          "expr": "behemoth_open_position_bars_remaining > 0",
+          "expr": "label_replace(sum by (symbol) (behemoth_broker_open_positions_total) and on(symbol) (sum by (symbol) (behemoth_broker_open_positions_total) > 0), \"metric\", \"behemoth_broker_open_positions_total\", \"symbol\", \".*\")",
           "instant": true,
           "range": false,
           "refId": "B"
@@ -1139,25 +1297,41 @@
             "uid": "behemoth-prometheus"
           },
           "editorMode": "code",
-          "expr": "behemoth_open_position_age_seconds / 60 > 0",
+          "expr": "label_replace(sum by (symbol) (behemoth_open_position_age_seconds and on(symbol) (behemoth_broker_open_positions_total > 0)), \"metric\", \"behemoth_open_position_age_seconds\", \"symbol\", \".*\")",
           "instant": true,
           "range": false,
           "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "behemoth-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "label_replace(sum by (symbol) (behemoth_open_position_bars_remaining and on(symbol) (behemoth_broker_open_positions_total > 0)), \"metric\", \"behemoth_open_position_bars_remaining\", \"symbol\", \".*\")",
+          "instant": true,
+          "range": false,
+          "refId": "D"
         }
       ],
       "transformations": [
         {
-          "id": "merge",
-          "options": {}
+          "id": "joinByLabels",
+          "options": {
+            "join": [
+              "symbol"
+            ],
+            "value": "metric"
+          }
         },
         {
           "id": "calculateField",
           "options": {
             "mode": "binary",
             "binary": {
-              "left": "Value #A",
+              "left": "behemoth_open_position_age_bars",
               "operator": "+",
-              "right": "Value #B"
+              "right": "behemoth_open_position_bars_remaining"
             },
             "alias": "Lifecycle total",
             "replaceFields": false
@@ -1168,39 +1342,55 @@
           "options": {
             "mode": "binary",
             "binary": {
-              "left": "Value #A",
+              "left": "behemoth_open_position_age_bars",
               "operator": "/",
               "right": "Lifecycle total"
             },
-            "alias": "Progress to expiry"
+            "alias": "Progress to expiry",
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "binary": {
+              "left": "behemoth_open_position_age_seconds",
+              "operator": "/",
+              "right": "60"
+            },
+            "alias": "Age (min)",
+            "replaceFields": false
           }
         },
         {
           "id": "organize",
           "options": {
             "renameByName": {
-              "Value #B": "Bars remaining",
-              "Value #C": "Age (min)",
+              "behemoth_broker_open_positions_total": "Open trades",
+              "behemoth_open_position_bars_remaining": "Oldest bars remaining",
               "symbol": "Symbol"
             },
             "excludeByName": {
               "Time": true,
               "__name__": true,
-              "Value #A": true,
+              "behemoth_open_position_age_bars": true,
+              "behemoth_open_position_age_seconds": true,
               "Lifecycle total": true,
               "instance": true,
               "job": true
             },
             "indexByName": {
               "symbol": 0,
-              "Value #B": 1,
-              "Value #C": 2,
-              "Progress to expiry": 3
+              "behemoth_broker_open_positions_total": 1,
+              "behemoth_open_position_bars_remaining": 2,
+              "Age (min)": 3,
+              "Progress to expiry": 4
             }
           }
         }
       ],
-      "title": "Open Positions",
+      "title": "Open Trades by Symbol",
       "type": "table"
     }
   ],

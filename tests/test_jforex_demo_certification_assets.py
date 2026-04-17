@@ -120,6 +120,23 @@ def test_oco_lifecycle_now_panel_uses_current_state_layout() -> None:
         '"metric", "behemoth_broker_open_positions_total", "symbol", ".*")'
     )
 
+    overrides = {
+        override["matcher"]["options"]: override["properties"]
+        for override in panel["fieldConfig"]["overrides"]
+    }
+    active_groups_props = {prop["id"]: prop["value"] for prop in overrides["Active groups"]}
+    open_trades_props = {prop["id"]: prop["value"] for prop in overrides["Open trades"]}
+    pending_props = {prop["id"]: prop["value"] for prop in overrides["Pending / canceling"]}
+
+    assert active_groups_props["custom.width"] == 110
+    assert active_groups_props["decimals"] == 0
+    assert open_trades_props["custom.width"] == 110
+    assert open_trades_props["decimals"] == 0
+    assert open_trades_props["color"] == {"mode": "fixed", "fixedColor": "green"}
+    assert pending_props["custom.width"] == 150
+    assert pending_props["decimals"] == 0
+    assert pending_props["color"] == {"mode": "fixed", "fixedColor": "yellow"}
+
     transformations = panel["transformations"]
     join = next(t for t in transformations if t["id"] == "joinByLabels")
     assert join["options"]["join"] == ["symbol"]
