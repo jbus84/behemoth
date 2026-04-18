@@ -411,7 +411,44 @@ Tolerances:
 
 ## Surfaces — Failure paths
 
-_Pending. Populated in Task 6._
+### failure.tick_batch_599_fallback
+
+- **layer:** failure
+- **python_locus:** src/behemoth/api/server.py:4158-4189 (`/ticks/batch` endpoint; 422 raised on empty/invalid payload, 599 surfaced upstream by client on read timeout)
+- **jforex_locus:** src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:125-165 (retry loop + single-tick fallback), 401-410 (`isRetriableTickBatchFailure` — 599 + "timeout" detail), 412-419 (`sleepBeforeRetry` = 250 ms), 421-444 (`ingestTicksIndividually` per-tick `/tick` fallback), 32-33 (`MAX_TICK_BATCH_TIMEOUT_RETRIES = 2`, `TICK_BATCH_RETRY_BACKOFF_MS = 250`)
+- **contract:** Every tick in the original `flushSymbol` batch will be either accepted or dropped exactly once across the retry attempts and the per-tick fallback. No tick will be submitted twice (no duplicate `client_tick_seq` re-send within one flush) and no tick will be silently discarded (gap-free): on a non-retriable error or per-tick exception the unprocessed suffix will be re-prepended to `pendingTicks` for the next flush, while on the fallback path each tick will be POSTed individually with its original `client_tick_seq`.
+- **observed_state:** Code: on `PythonApiException(statusCode=599, detail~="timeout")` the Java loop will retry up to 2 times with 250 ms backoff; on the 3rd retriable failure it switches to `ingestTicksIndividually`, calling `/tick` once per `IncomingTickPayload` in the original `payload` list (preserving order and `client_tick_seq`). On a non-retriable `RuntimeException` the entire `payload` is re-prepended to `state.pendingTicks` (line 160) and rethrown. The aggregate accepted/dropped counts from the fallback are reported via `recordTickBatch` so per-tick outcomes are observable. Replay evidence: _pending Task 10._
+- **divergence:** latent
+- **severity:** high
+- **evidence:** _pending Task 10._
+- **harness_check:** yes — failure.tick_batch_599_fallback_consistency
+- **fix_owner:** future
+
+### failure.predict_422_warmup
+
+- **layer:** failure
+- **python_locus:** src/behemoth/api/server.py:2845-2857 (`_check_warmup` raises `HTTPException(422, "Insufficient warmup bars …")`), invoked from `/predict` at server.py:2690
+- **jforex_locus:** src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:269-277 (catch on `PythonApiException`; 422 + detail-substring branch returns silently after `recordPredictWarmup`)
+- **contract:** Warmup-skip will be the only 422 case the client treats as a non-error: the catch block matches *both* `statusCode() == 422` *and* `detail().contains("Insufficient warmup bars")` before swallowing the exception. Any other 422 (e.g. `No candidates registered`, `No model loaded`, malformed request) will fall through to the failure arm (`metrics.recordPredictFailure` + `artifactWriter.recordPredictFailure`) and will not silently no-op the predict cycle.
+- **observed_state:** Code: branch at line 270 is the conjunction `exc.statusCode() == 422 && exc.detail().contains("Insufficient warmup bars")` — substring match is exact and case-sensitive against the Python detail string at server.py:2855 (`f"Insufficient warmup bars for {sym} at {cand.bar_ticks} ticks. Have {bar_count}, need ≥{warmup_needed}."`). All other 422 routes (server.py:2650 `No candidates registered`, server.py:3309 `No model loaded`, server.py:1237/1242 volume validation, server.py:4164/4177 tick-batch validation, etc.) carry distinct detail strings and will fall through to the generic `recordPredictFailure` arm. Replay evidence: _pending Task 10._
+- **divergence:** latent
+- **severity:** medium
+- **evidence:** _pending Task 10._
+- **harness_check:** yes — failure.predict_422_warmup_only
+- **fix_owner:** future
+
+### failure.submit_rejected
+
+- **layer:** failure
+- **python_locus:** src/behemoth/api/server.py:849-880 (`_orphan_reservation_cleanup_loop` background task — releases PENDING reservations after `order_ttl_seconds` when no HOLDING/SCANNING scan references them); src/behemoth/api/server.py:701-704 (`release_account_risk_reservation` call site for explicit release on scan teardown)
+- **jforex_locus:** src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:175-197 (`onOrderEvent` switch — `SUBMIT_REJECTED, FILL_REJECTED, CHANGE_REJECTED` arm: `recordOrderReject` + `markOperationalStep("order_rejected", false, event.detail())`); 297-317 (`pendingFills.put` followed by `executionPort.submitMarketOrder` with `pendingFills.remove(label)` only inside the catch block); 340 (`pendingFills.remove` on FILL_OK)
+- **contract:** When the broker emits `SUBMIT_REJECTED` for a label that was placed via `executeActions`, the corresponding `pendingFills` entry will be removed and the associated Python-side `reservation_id` will be released so that subsequent `/predict` cycles see no stale PENDING reservation count attributable to this rejected order.
+- **observed_state:** Code: `pendingFills.remove(label)` is reachable only on (a) the synchronous `submitMarketOrder` exception path (line 314) and (b) `handleFill` on `FILL_OK` (line 340). The `SUBMIT_REJECTED` arm at lines 183-186 records metrics + an operational-step artifact but does not remove the `pendingFills` entry, and there is no Python-facing call (e.g. an explicit `release_account_risk_reservation` or trade-cancel notification) on this path. The reservation will only be cleaned up asynchronously by `_orphan_reservation_cleanup_loop` after `account_risk_pending_reservation_ttl_sec` elapses, leaving a window in which `pendingFills` is over-counted Java-side and a PENDING reservation is over-counted Python-side. Latent divergence regardless of replay outcome; Task 10 will upgrade to `divergence: observed` if the diff confirms a count mismatch in the 2026-04-15 evidence window. Replay evidence: _pending Task 10._
+- **divergence:** latent
+- **severity:** high
+- **evidence:** _pending Task 10._
+- **harness_check:** no — no seed check this cycle covers the SUBMIT_REJECTED → pendingFills/reservation cleanup invariant; would require a new `lifecycle.pending_fills_cleared_on_reject` check beyond the 8-check seed scope.
+- **fix_owner:** future
 
 ## Replay diff findings
 
