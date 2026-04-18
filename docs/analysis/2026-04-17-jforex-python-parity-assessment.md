@@ -331,7 +331,83 @@ Tolerances:
 
 ## Surfaces — Time & data
 
-_Pending. Populated in Task 5._
+### time_data.tick_timestamp_source
+
+- **layer:** time_data
+- **python_locus:** src/behemoth/core/schemas.py:10-25 (`IncomingTick.timestamp: datetime` declared UTC); src/behemoth/api/server.py:4003-4014 (`_ingest_tick_internal` coerces incoming ts via `_as_utc_ts`); src/behemoth/api/server.py:1385-1393 (`_as_utc_ts` UTC-normaliser); scripts/build_global_tick_bars.py:32-69 (canonical tick parquet `timestamp` must be UTC, validated at build time)
+- **jforex_locus:** src/jforex/src/main/java/com/behemoth/jforex/BehemothJForexStrategy.java:115-131 (`onTick` builds `tickTs = Instant.ofEpochMilli(tick.getTime())` and forwards as `RuntimeTick.timestamp`); src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:92-105 (`onTick` propagates `tick.timestamp()` into `IncomingTickPayload.timestamp`); src/jforex/src/main/java/com/behemoth/jforex/runtime/dto/IncomingTickPayload.java (record field `Instant timestamp`)
+- **contract:** Every tick timestamp on both sides is a UTC instant with millisecond precision. Java reads `tick.getTime()` (Dukascopy UTC epoch millis) and wraps it via `Instant.ofEpochMilli`; backtest reads the canonical tick parquet `timestamp` column whose schema forces a UTC tz-aware Datetime. No local-time conversion, no naive timestamps.
+- **observed_state:** Code: Java's `Instant.ofEpochMilli(tick.getTime())` is the only timestamp source (no `LocalDateTime`/`ZonedDateTime` paths). Python's `_as_utc_ts` accepts `datetime.tzinfo is None` (treats as UTC) or any aware instant (re-projects to UTC); the canonical tick-parquet builder rejects naive or non-UTC tz at ingest time. Both sides serialise as UTC ISO-8601 strings over the wire (Java `Instant.toString()` → Python `datetime` parse). Replay evidence: _pending Task 10._
+- **divergence:** none
+- **severity:** medium
+- **evidence:** _pending Task 10._
+- **harness_check:** no — UTC normalisation is single-sided on Python (`_as_utc_ts`) and structurally guaranteed on Java (`Instant.ofEpochMilli`); covered indirectly by `core.tick_seq_monotonic` (any ts unit drift would surface as ordering anomalies).
+- **fix_owner:** n/a
+
+### time_data.bid_ask_schema
+
+- **layer:** time_data
+- **python_locus:** src/behemoth/core/schemas.py:10-25 (`IncomingTick.bid`, `IncomingTick.ask` both required, both `gt=0`); src/behemoth/core/schemas.py:28-50 (`IncomingTickBar` carries explicit `open_bid`/`high_bid`/`low_bid`/`close_bid` plus `high_ask`/`close_ask`); src/behemoth/runtime/tick_aggregator.py:69-100 (`_build_bar` uses bid for OHLC and asks for `high_ask`/`close_ask`); scripts/build_global_tick_bars.py:109-136 (`_select_tick_exprs` rejects `price_source != "bid"` and requires `bid` column); scripts/build_global_tick_bars.py:139-158 (canonical bar schema asserts both bid- and ask-side columns); AGENTS.md:56-63 (canonical raw tick parquet schema lists `bid`/`ask`/`mid`/`spread` as separate columns)
+- **jforex_locus:** src/jforex/src/main/java/com/behemoth/jforex/BehemothJForexStrategy.java:126-131 (`onTick` forwards `tick.getBid()` and `tick.getAsk()` directly into `RuntimeTick`); src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:97-105 (`onTick` packs both `tick.bid()` and `tick.ask()` into `IncomingTickPayload`)
+- **contract:** Both ticks and bars carry explicit, non-derived bid and ask prices end-to-end. Implicit-mid (i.e. inferring one side from `(bid+ask)/2` or treating `price` as a single-sided proxy) is unacceptable on either side. Java never collapses bid/ask to a mid; Python's bar builder uses bid for OHLC and asks for the dedicated `high_ask`/`close_ask` columns.
+- **observed_state:** Code: Java's `IncomingTickPayload` exposes `bid` and `ask` as distinct doubles populated from Dukascopy's `ITick.getBid()`/`getAsk()`; the canonical tick parquet schema (per AGENTS.md §3) lists `bid` and `ask` as required columns and the bar builder enforces this via `_select_tick_exprs`. Python's `IncomingTickBar` carries six bid-side OHLC fields plus two ask-side fields (`high_ask`, `close_ask`), all `gt=0` validated. The aggregator never derives a mid; the only `mid`-like notion is the legacy raw-tick column (informational; not a path input). Replay evidence: _pending Task 10._
+- **divergence:** none
+- **severity:** high
+- **evidence:** _pending Task 10._
+- **harness_check:** no — schema-level assertion (Pydantic `gt=0` on bid/ask plus parquet builder validation); a runtime seed check is unnecessary because schema rejection is fail-stop.
+- **fix_owner:** n/a
+
+### time_data.spread_handling
+
+- **layer:** time_data
+- **python_locus:** src/behemoth/runtime/tick_aggregator.py:78,94 (`spreads = [ask-bid for tick in ticks]`, `spread_mean` is the bar's mean spread); scripts/build_global_tick_bars.py:129-134 (server-side `spread = ask - bid` fallback when raw schema lacks the column); src/behemoth/runtime/barrier_manager.py:80-106 (`register_scan` uses `signal_close_ask` for the upper barrier and `signal_close_bid` for the lower barrier — `upper = signal_close_ask + barrier_pips * pip_size`, `lower = signal_close_bid - barrier_pips * pip_size`)
+- **jforex_locus:** src/jforex/src/main/java/com/behemoth/jforex/BehemothJForexStrategy.java:126-131 (`onTick` ships raw bid + ask, never computes spread); src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:92-111 (no spread computation in client path); src/jforex/src/main/java/com/behemoth/jforex/runtime/dto/IncomingTickPayload.java (no spread field)
+- **contract:** Spread is always derived as `ask - bid` on the Python side from the explicit bid/ask columns; Java never computes or transmits a spread value. OCO barrier sides are asymmetric: the up-barrier anchors on `signal_close_ask` (cost-aware long entry) and the down-barrier anchors on `signal_close_bid` (cost-aware short entry). This asymmetry is the authoritative contract; any future refactor that collapses both sides to a single mid breaks it.
+- **observed_state:** Code: `TickAggregator._build_bar` computes per-tick `ask - bid`, then takes the mean over the bar for the `spread` field — matching `build_global_tick_bars.py` which falls back to `(ask - bid)` when the parquet lacks a precomputed `spread` column. `BarrierManager.register_scan` enforces explicit `signal_close_ask` and `signal_close_bid` (raises if either is missing in the explicit-mode path, lines 90-95), then computes side-aware barriers at lines 105-106. Java has zero spread logic — neither in the tick payload, in the predict request, nor in the action consumer. Replay evidence: _pending Task 10._
+- **divergence:** latent
+- **severity:** high
+- **evidence:** src/behemoth/runtime/barrier_manager.py:85-106 (side-aware barrier construction); src/behemoth/runtime/tick_aggregator.py:78,94 (server-side spread mean); _replay evidence pending Task 10._
+- **harness_check:** no — spread-handling correctness is observable via barrier-fill divergence in the existing replay-diff (`fill_price` ≤1 pip tolerance) and via `lifecycle.active_oco_reconciled` for cross-side barrier matches; no dedicated seed check is in scope.
+- **fix_owner:** future
+
+### time_data.weekend_gap_skip
+
+- **layer:** time_data
+- **python_locus:** src/behemoth/runtime/tick_aggregator.py:34-57 (purely tick-count-driven aggregation; no wall-clock gap detection); src/behemoth/api/server.py:4048-4060 (timestamp-monotonicity check is informational when `client_tick_seq` is present, so a large positive gap is accepted without bar-closure side-effects); scripts/build_global_tick_bars.py (canonical bar build operates on tick-count windows and is naturally robust to gaps because it never inspects wall-clock deltas)
+- **jforex_locus:** src/jforex/src/main/java/com/behemoth/jforex/BehemothJForexStrategy.java:115-135 (`onTick` forwards every tick the broker emits; no gap-suppression logic); src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:92-111 (no per-tick wall-clock heuristics); src/jforex/src/main/java/com/behemoth/jforex/live/LiveReadinessCoordinator.java (readiness FSM owns staleness alerts but does not emit synthetic gap ticks)
+- **contract:** The Dukascopy feed is silent during the FX weekend (Fri ~22:00 UTC → Sun ~22:00 UTC) and the canonical tick parquets omit the gap entirely. The first live tick after the gap may carry a `timestamp` delta of ~48 hours from the previous tick; this large delta must not trigger any bar-closure heuristic (closures are tick-count-driven only) and must not be rejected as monotonicity-violating (it is monotonically increasing, just discontinuous). Both sides treat tick-count, not wall-clock, as the bar-boundary source of truth.
+- **observed_state:** Code: Python's `TickAggregator.add_ticks` only checks `len(buf) >= bar_ticks`; nothing in the live path inspects `t.timestamp - prev.timestamp`. The server-side monotonicity check (`tick_ts_utc <= last_tick_ts`) only flags duplicates / regressions and is demoted to informational once `client_tick_seq` is present. Java has no gap detection — `onTick` is invoked once per broker tick and `LiveReadinessCoordinator.recordLiveTick` updates `lastLiveTick` for staleness purposes only. Risk: the operator may see a single very large `tick_ts_utc - last_tick_ts_utc` value in the feed status payload after each weekend; this is expected behaviour, not drift. Replay evidence: _pending Task 10._
+- **divergence:** none
+- **severity:** low
+- **evidence:** _pending Task 10._
+- **harness_check:** no — gap-tolerance is a structural property of the tick-count aggregator (no wall-clock dependency); covered indirectly by `core.tick_seq_monotonic` (the gap is ordering-monotonic) and `core.predict_cycles_per_bar` (one /predict per completed bar regardless of wall-clock spacing).
+- **fix_owner:** n/a
+
+### time_data.dst_boundary
+
+- **layer:** time_data
+- **python_locus:** src/behemoth/api/server.py:1385-1393 (`_as_utc_ts` always normalises to UTC); src/behemoth/api/server.py:28 (only `datetime`, `timedelta`, `timezone` imports — no `pytz`/`zoneinfo`/local-time dependency on the hot path); scripts/build_global_tick_bars.py:32-69 (parquet timestamp must be tz-aware UTC); scripts/build_tick_velocity_dataset.py:31-48 (`_require_utc_timestamp` enforces UTC-only on the velocity build path)
+- **jforex_locus:** src/jforex/src/main/java/com/behemoth/jforex/BehemothJForexStrategy.java:120,146-150 (`Instant.ofEpochMilli` is timezone-agnostic; `LiveReadinessCoordinator.onHeartbeat` uses `Instant` only); src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java (no `ZoneId`/`ZonedDateTime` references on the hot path)
+- **contract:** Both sides operate exclusively in UTC instants; no wall-clock handler converts to or from a DST-observing local zone. DST transitions (e.g. EU/US clock changes at 01:00 UTC on the appropriate Sunday) cannot introduce divergence because no code branch depends on a local-time hour or local-day boundary on the tick → bar → predict → action path. Risk-profile daily-reset uses an explicit `daily_reset_timezone` field (`risk_gov.account_snapshot_cadence`) but that is a Python-only configuration consumer, not a parity boundary.
+- **observed_state:** Code: a UTC end-to-end design eliminates the standard DST drift surfaces. The only place a non-UTC zone appears is in account-risk profile evaluation (`prof.daily_reset_timezone`), which both Python sides (live + backtest) consume identically — Java is not involved. Surface kept in the inventory so the next assessment cycle does not re-derive it. Replay evidence: _pending Task 10._
+- **divergence:** none
+- **severity:** low
+- **evidence:** _pending Task 10._
+- **harness_check:** no — UTC end-to-end design eliminates the divergence vector at code level; no seed check needed.
+- **fix_owner:** n/a
+
+### time_data.bar_close_ts_per_bar_ticks
+
+- **layer:** time_data
+- **python_locus:** src/behemoth/runtime/tick_aggregator.py:85-100 (`_build_bar` sets `close_ts=ticks[-1].timestamp` — the timestamp of the last tick in the `bar_ticks`-sized chunk); src/behemoth/core/schemas.py:33 (`IncomingTickBar.close_ts: datetime` UTC); src/behemoth/runtime/state.py:343-358,409-414 (`append_bar` persists `close_ts` into the `tick_bars` table, `get_latest_close_ts` reads the most recent value); scripts/build_global_tick_bars.py:191-216 (offline canonical build uses `pl.col("timestamp").last()` over each `bar_id` group — same per-bar-last-tick semantics)
+- **jforex_locus:** _no client-side equivalent — `bar_close_ts` is a Python-only artifact derived from the tick stream; JForex never observes it._ src/jforex/src/main/java/com/behemoth/jforex/core/BehemothStrategyCore.java:113-165 (Java only sees `bar_completed=True` and `completed_bar_ticks` from the `/ticks/batch` response; no close_ts is sent back)
+- **contract:** For each (symbol, bar_ticks) pair, `close_ts` is the UTC timestamp of the Nth (final) tick in the bar — strictly monotonically increasing across the session, with successive bars satisfying `close_ts[i+1] > close_ts[i]`. Both the live aggregator and the offline canonical build use the same per-bar-last-tick rule, so a session-scoped sort over (symbol, bar_ticks) yields identical close_ts sequences on both sides.
+- **observed_state:** Code: live `TickAggregator._build_bar` and offline `build_global_tick_bars` both use the last tick's timestamp as `close_ts` (live uses `ticks[-1].timestamp`; offline uses `pl.col("timestamp").last().alias("close_ts")` per `bar_id` group). Strict monotonicity follows from tick-stream monotonicity (`core.tick_seq_monotonic`) plus integer chunking. The persisted `tick_bars.close_ts` column is the audit anchor for cross-side replay. Replay evidence: _pending Task 10._
+- **divergence:** latent
+- **severity:** medium
+- **evidence:** _pending Task 10._
+- **harness_check:** yes — time_data.bar_close_ts_sorted_per_symbol
+- **fix_owner:** future
 
 ## Surfaces — Failure paths
 
