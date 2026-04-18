@@ -1,0 +1,62 @@
+Side A replay — JForex Dukascopy matrix for 2026-04-15
+========================================================
+
+Run metadata
+------------
+Start (UTC):       2026-04-18T11:29Z  (directory ctime)
+End (UTC):         2026-04-18T11:36Z  (last artifact mtime)
+Duration:          ~7 minutes (narrow one-day window)
+Branch:            feat/jforex-python-parity-assessment
+Worktree:          /Users/danielfisher/repositories/behemoth-parity-assessment
+
+Command actually used
+---------------------
+The plan's stated command used EVAL_START/EVAL_END/RECONCILE_DIR; the Makefile
+target `jforex-dukascopy-matrix` actually accepts START_TS/END_TS/REPORT_DIR.
+Falling back to the Makefile's native variable names:
+
+    make jforex-dukascopy-matrix \
+        SYMBOLS="AUDUSD USDCHF EURUSD" \
+        START_TS=2026-04-15T00:00:00Z \
+        END_TS=2026-04-16T00:00:00Z \
+        REPORT_DIR=data/analysis/backtest_reconcile/replay_2026_04_15
+
+This delegates to `scripts/run_jforex_dukascopy_matrix.py` with default
+--model-month 2025-07, --models-dir models/oco_dukascopy_candidate, etc.
+
+Per-symbol signal parity outcome
+---------------------------------
+AUDUSD:   jforex_signal_parity_pass=false   predict_cycles=0     failed_signal_events=649
+USDCHF:   jforex_signal_parity_pass=false   predict_cycles=0     failed_signal_events=543
+EURUSD:   jforex_signal_parity_pass=true    predict_cycles=715   failed_signal_events=0
+
+Key finding
+-----------
+The same AUDUSD/USDCHF zero-predict divergence observed during the 2026-04-17
+demo-live session reproduces on 2026-04-15 Dukascopy replay under the Stage 14
+tester. That rules out an isolated 2026-04-17 flake — the divergence is
+reproducible and deterministic for these two symbols against this model-month.
+
+Deviations from plan
+--------------------
+1. Plan variable names (EVAL_START/EVAL_END/RECONCILE_DIR) do not match
+   `jforex-dukascopy-matrix` target variables (START_TS/END_TS/REPORT_DIR).
+   Used the Makefile's native names. Plan reference to update in a follow-up.
+2. Plan Step 3 says to archive `data/analysis/backtest_reconcile/runtime/api_access.log`.
+   `scripts/run_jforex_dukascopy_matrix.py` does not write such a file — the
+   Python API access log is not materialised to disk by this target.
+   Step 3 skipped as non-applicable. Prometheus metrics on port 9464+ are the
+   runtime observability surface for this target instead.
+
+Artifacts produced under this directory
+---------------------------------------
+AUDUSD_jforex_{runtime_events,signal_parity_summary,execution_parity_summary,
+               execution_lifecycle_summary,operational_ready_summary}.csv
+USDCHF_jforex_{runtime_events,signal_parity_summary,execution_parity_summary,
+               execution_lifecycle_summary,operational_ready_summary}.csv
+EURUSD_jforex_{runtime_events,signal_parity_summary,execution_parity_summary,
+               execution_lifecycle_summary,operational_ready_summary}.csv
+runtime/{audusd,usdchf,eurusd}_jforex_dukascopy_state.db
+runtime/active_oco_state.json
+runtime/live_position_summary.json
+runtime/live_symbol_readiness.json
