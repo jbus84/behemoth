@@ -8,7 +8,7 @@ from behemoth.parity.registry import register_check
 from behemoth.parity.types import CheckContext, CheckResult
 
 _SYMBOLS = ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"]
-_SEQ_RE = re.compile(r"client_tick_seq=(\d+)")
+_SEQ_RE = re.compile(r"\bclient_tick_seq=(\d+)")
 
 
 @register_check(surface_id="core.tick_seq_monotonic", severity="critical")
