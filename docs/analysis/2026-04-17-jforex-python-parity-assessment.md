@@ -411,6 +411,19 @@ Tolerances:
 
 ## Surfaces — Failure paths
 
+### failure.predict_failure_no_historical_lock
+
+- **layer:** failure
+- **python_locus:** `src/behemoth/governance/historical_lock_loader.py` (lock loader filters entries by `artifacts.live_deployable == true`); `configs/research/governance/oco_history_dukascopy_candidate/<YYYY-MM>/<sym>_oco_live_lock.json` (per-month lock files; `artifacts.live_deployable` field)
+- **jforex_locus:** `src/jforex/src/main/java/com/behemoth/jforex/core/PredictBridge.java` (predict policy — when no lock matches the active model month, branches by policy in {`error`, `warn`, `passthrough`}; `error` raises `PredictFailureException("No historical lock for <SYM> month <YYYY-MM> (policy=error). available_months=…")` and aborts the predict cycle without any HTTP call to Python)
+- **contract:** For every JForex bar event, the predict bridge will resolve a `live_deployable=true` lock for the symbol and the active model_month (per the rotation defined by `model_valid_through` on the latest deployable lock for that symbol). If no such lock exists and `policy=error` is configured, the predict cycle will be suppressed and counted as a `predict_failure` with the explicit `available_months=…` detail.
+- **observed_state:** **observed**, replay 2026-04-15. Lock-month inventory across `oco_history_dukascopy_candidate/`: AUDUSD has live_deployable=true for {2025-07, 2026-02}, false for 2026-03; USDCHF identical; EURUSD true for {2025-07, 2026-02, 2026-03}; USDCAD true for {2025-07, 2026-03} (false for 2026-02); GBPUSD/USDJPY true for all three. Side A replay produces 0 predict cycles for AUDUSD (649 failed events) and USDCHF (543 failed events) with detail `No historical lock for <sym> month 2026-03 (policy=error). available_months=2025-07,2026-02`. EURUSD passes with 715 cycles. The same pattern reproduced from the 2026-04-17 demo-live session (165 failed AUDUSD, 82 failed USDCHF). The upstream cause — why the 2026-03 monthly cert produced `live_deployable=false` for those two symbols — is a separate workstream and not characterised here.
+- **divergence:** observed
+- **severity:** critical
+- **evidence:** `data/analysis/backtest_reconcile/replay_2026_04_15/{AUDUSD,USDCHF,EURUSD}_jforex_runtime_events.csv` (filter `category=signal AND event_name=predict_failure` for failure samples); `data/analysis/backtest_reconcile/replay_2026_04_15/INVOCATION.txt`; `configs/research/governance/oco_history_dukascopy_candidate/2026-03/{audusd,usdchf}_oco_live_lock.json` (`artifacts.live_deployable=false`); committed at 72a73e2a.
+- **harness_check:** yes — **risk_gov.live_deployable_lock_present_for_active_month** (new 9th seed check, added by 2026-04-19 plan amendment / Task 20a). The check compares per-symbol active model_month from runtime headers against the set of `live_deployable=true` lock months on disk and fails when no compatible lock exists. Distinct from `risk_gov.governance_lock_pin` (which validates pin correctness given a loaded lock) and from `core.predict_cycles_per_bar` (downstream symptom).
+- **fix_owner:** this-cycle (the missing-lock detection itself; the cert-time fix that produces correctly-deployable 2026-03 locks for AUDUSD/USDCHF is a separate follow-up)
+
 ### failure.tick_batch_599_fallback
 
 - **layer:** failure
@@ -452,7 +465,54 @@ Tolerances:
 
 ## Replay diff findings
 
-_Pending. Populated in Task 10._
+### Replay setup
+
+- **Day:** 2026-04-15 (one trading day)
+- **Symbols:** AUDUSD, USDCHF, EURUSD
+- **Side A:** `make jforex-dukascopy-matrix SYMBOLS="AUDUSD USDCHF EURUSD" START_TS=2026-04-15T00:00:00Z END_TS=2026-04-16T00:00:00Z REPORT_DIR=data/analysis/backtest_reconcile/replay_2026_04_15` — see `…/replay_2026_04_15/INVOCATION.txt` (committed at 72a73e2a) for the full record and per-symbol artefact list.
+- **Side B (offline tick-exact):** **not run.** Side A's runtime events alone identified the divergence at full clarity, with explicit error messages naming the failing condition. A diff against offline predictions was unnecessary because the failure occurs *upstream* of any predict call (no predict was attempted at all). See `live_deployable=false` finding below.
+- **Compute deviation note:** an attempt to extend the WFO-pipeline predictions through 2026-04 (`scripts/onboard_symbol.py --skip-data --eval-end-month 2026-04` for the three symbols, sandboxed to `models/oco_parity_replay/`) was completed before this finding was identified — completed in 20m 43s. The output is unused but does not pollute production: predictions land at the standard path, models land in the sandboxed dir. No artefacts from the WFO extension are referenced by Side A or this report.
+
+### Per-symbol Side A signal-parity outcome
+
+| Symbol | predict_cycles | failed_signal_events | jforex_signal_parity_pass |
+|--------|---------------:|---------------------:|:-------------------------:|
+| AUDUSD | 0 | 649 | ❌ |
+| USDCHF | 0 | 543 | ❌ |
+| EURUSD | 715 | 0 | ✅ |
+
+This reproduces the 2026-04-17 demo-live divergence exactly (AUDUSD 165 failed, USDCHF 82 failed in that session). The 2026-04-15 replay produces a higher failed-event count because the day's bar-event volume is higher, but the qualitative signature (AUDUSD/USDCHF zero predicts, EURUSD healthy) is identical.
+
+### Root cause: 2026-03 lock published with `live_deployable: false`
+
+Side A's runtime_events `predict_failure` detail field on every failed AUDUSD/USDCHF event reads:
+
+> `No historical lock for AUDUSD month 2026-03 (policy=error). available_months=2025-07,2026-02`
+
+Auditing every `*_oco_live_lock.json` under `configs/research/governance/oco_history_dukascopy_candidate/` reveals the asymmetry:
+
+| Symbol | 2025-07 | 2026-02 | 2026-03 |
+|--------|:---:|:---:|:---:|
+| AUDUSD | live_deployable=true | true | **false** |
+| USDCHF | true | true | **false** |
+| EURUSD | true | true | true |
+| USDCAD | true | **false** | true |
+| GBPUSD | true | true | true |
+| USDJPY | true | true | true |
+
+The bridge's lock loader filters by `live_deployable=true`, so the 2026-03 lock files for AUDUSD/USDCHF are present on disk but invisible to the runtime. With `policy=error`, bars stamped in March 2026 (and onward, until a future month is published with `live_deployable=true`) cannot resolve a lock and the predict call is suppressed before any HTTP request. The Stage-14 replay for 2026-04-15 hits this immediately because the active model rotation for that bar window is 2026-03.
+
+The *upstream* question — why the 2026-03 monthly cert produced `live_deployable=false` for those two symbols — is a separate workstream and out of scope for this assessment.
+
+### New surface added by this finding (not in seed shortlist)
+
+The original 8-check seed list does not directly cover this missing-lock condition. `risk_gov.governance_lock_pin` covers lock-pinning correctness *given a lock is loaded*. `core.predict_cycles_per_bar` is a downstream symptom check that catches the failure but doesn't diagnose it.
+
+A 9th seed check — `risk_gov.live_deployable_lock_present_for_active_month` — has been added to the plan (Task 20a). It compares per-symbol active model_month (from runtime headers) against the set of `live_deployable=true` lock months in the history dir, and fails when no compatible lock exists.
+
+### Failure-path surfaces affected
+
+- **`failure.predict_failure_no_historical_lock`** — promoted from latent to **observed** by this replay; severity **critical**. See Failure-paths section for full surface entry (added below in 2026-04-19 amendment).
 
 ## Harness coverage matrix
 
