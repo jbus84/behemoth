@@ -1,5 +1,6 @@
 """Parity check implementations — imported for side effect (register_check)."""
 from behemoth.parity.checks import (
+    core_entries_allowed_vs_readiness,  # noqa: F401
     core_predict_cycles_per_bar,  # noqa: F401
     core_tick_seq_monotonic,  # noqa: F401
     failure_predict_422_warmup_only,  # noqa: F401
