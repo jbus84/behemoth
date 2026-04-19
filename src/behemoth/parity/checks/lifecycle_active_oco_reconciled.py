@@ -25,24 +25,28 @@ def check(ctx: CheckContext) -> CheckResult:
             expected="runtime/active_oco_state.json present",
             evidence="",
         )
-    json_path = ctx.reconcile_dir / "runtime" / "active_oco_state.json"
-    if not json_path.exists():
-        return CheckResult(
-            passed=True, severity="critical",
-            observed="no active_oco_state.json — empty live state",
-            expected="matching entries between JSON and DB",
-            evidence="",
-        )
-    entries = json.loads(json_path.read_text() or "[]")
-    con = duckdb.connect(str(ctx.live_state_db_path), read_only=True)
-    try:
+    with duckdb.connect(str(ctx.live_state_db_path), read_only=True) as con:
         db_ids = {
             row[0] for row in con.execute(
                 "SELECT scan_id FROM barrier_scans WHERE status IN ('SCANNING','HOLDING')"
             ).fetchall()
         }
-    finally:
-        con.close()
+    json_path = ctx.reconcile_dir / "runtime" / "active_oco_state.json"
+    if not json_path.exists():
+        if not db_ids:
+            return CheckResult(
+                passed=True, severity="critical",
+                observed="no active_oco_state.json and DB has no active scans",
+                expected="matching entries between JSON and DB",
+                evidence="",
+            )
+        return CheckResult(
+            passed=False, severity="critical",
+            observed=f"DB has {len(db_ids)} active scans but active_oco_state.json missing",
+            expected="active_oco_state.json present when DB has active scans",
+            evidence=str(json_path),
+        )
+    entries = json.loads(json_path.read_text() or "[]")
     json_ids = {e["scan_id"] for e in entries}
     orphans_in_json = json_ids - db_ids
     orphans_in_db = db_ids - json_ids
