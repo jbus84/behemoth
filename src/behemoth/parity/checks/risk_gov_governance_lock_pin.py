@@ -44,7 +44,7 @@ def check(ctx: CheckContext) -> CheckResult:
         )
     return CheckResult(
         passed=True, severity="critical",
-        observed=f"all 6 symbols pinned to {ctx.model_month}",
+        observed=f"all {len(_SYMBOLS)} symbols pinned to {ctx.model_month}",
         expected=f"every lock pinned to model_month={ctx.model_month}",
         evidence="",
     )
