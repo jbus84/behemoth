@@ -66,7 +66,7 @@ endef
         stage12-api-parity stage12-stage13-cert-artifacts local-jforex-parity local-jforex-parity-matrix \
         local-jforex-parity-ordinal local-jforex-parity-spotlight local-jforex-cert \
         jforex-dukascopy-matrix stage13-dukascopy-cert stage14-jforex-cert \
-        full-stage14-cert jforex-outcome-parity \
+        full-stage14-cert jforex-outcome-parity audit-runtime-parity \
         deploy-cbot deploy-ctrader reconcile-ctrader-run \
         export-ctrader-custom-data ctrader-debug-up ctrader-debug-down \
         ctrader-debug-status ctrader-ab-parity-report ctrader-parity \
@@ -402,7 +402,17 @@ jforex-dukascopy-matrix:
 
 stage13-dukascopy-cert: stage12-stage13-cert-artifacts
 
-stage14-jforex-cert:
+audit-runtime-parity:
+	uv run python scripts/audit_runtime_parity.py \
+		--run-id $(or $(RUN_ID),jforex_live) \
+		--model-month $(or $(MODEL_MONTH),2026-04) \
+		--reconcile-dir $(or $(RECONCILE_DIR),data/analysis/backtest_reconcile) \
+		--governance-lock-dir $(or $(GOV_LOCK_DIR),configs/research/governance/oco) \
+		--live-state-db $(or $(LIVE_STATE_DB),data/analysis/backtest_reconcile/runtime/live_state.db) \
+		--out-report $(or $(AUDIT_OUT_REPORT),docs/analysis/runtime_parity_audit/$(or $(RUN_ID),jforex_live)_audit.md) \
+		--out-csv $(or $(AUDIT_OUT_CSV),docs/analysis/runtime_parity_audit/$(or $(RUN_ID),jforex_live)_findings.csv)
+
+stage14-jforex-cert: audit-runtime-parity
 	uv run python scripts/validate_stage14_jforex_runtime_certification.py \
 		--stage13-summary-glob '$(or $(STAGE13_SUMMARY_GLOB),data/analysis/backtest_reconcile/stage12_stage13_certification_summary.csv)' \
 		--jforex-signal-summary-glob '$(or $(JFOREX_SIGNAL_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_jforex_signal_parity_summary.csv)' \
