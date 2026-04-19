@@ -2,6 +2,7 @@
 from behemoth.parity.checks import (
     core_predict_cycles_per_bar,  # noqa: F401
     core_tick_seq_monotonic,  # noqa: F401
+    failure_tick_batch_599_fallback,  # noqa: F401
     lifecycle_active_oco_reconciled,  # noqa: F401
     risk_gov_governance_lock_pin,  # noqa: F401
 )
