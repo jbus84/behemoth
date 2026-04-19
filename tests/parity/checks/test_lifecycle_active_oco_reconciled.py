@@ -44,3 +44,23 @@ def test_orphan_in_json_fails(parity_ctx_factory):
     result = registry.call("lifecycle.active_oco_reconciled", ctx)
     assert result.passed is False
     assert "scan_missing" in result.observed
+
+
+def test_orphan_in_db_fails(parity_ctx_factory):
+    ctx = parity_ctx_factory()
+    _prime_db(ctx.live_state_db_path)
+    (ctx.reconcile_dir / "runtime").mkdir(exist_ok=True)
+    (ctx.reconcile_dir / "runtime" / "active_oco_state.json").write_text(
+        json.dumps([])
+    )
+    result = registry.call("lifecycle.active_oco_reconciled", ctx)
+    assert result.passed is False
+    assert "scan_a" in result.observed
+
+
+def test_db_has_rows_but_json_missing_fails(parity_ctx_factory):
+    ctx = parity_ctx_factory()
+    _prime_db(ctx.live_state_db_path)
+    result = registry.call("lifecycle.active_oco_reconciled", ctx)
+    assert result.passed is False
+    assert "active_oco_state.json missing" in result.observed
