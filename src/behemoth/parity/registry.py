@@ -1,7 +1,7 @@
 """Check registry for the parity audit harness."""
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from behemoth.parity.types import CheckContext, CheckResult, Severity
 
@@ -9,7 +9,9 @@ _Check = Callable[[CheckContext], CheckResult]
 _CHECKS: dict[str, tuple[_Check, Severity]] = {}
 
 
-def register_check(*, surface_id: str, severity: Severity) -> Callable[[_Check], _Check]:
+def register_check(
+    surface_id: str, *, severity: Severity = "critical"
+) -> Callable[[_Check], _Check]:
     def _decorator(fn: _Check) -> _Check:
         if surface_id in _CHECKS:
             raise ValueError(f"Check {surface_id!r} already registered")
