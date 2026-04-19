@@ -421,7 +421,7 @@ Tolerances:
 - **divergence:** observed
 - **severity:** critical
 - **evidence:** `data/analysis/backtest_reconcile/replay_2026_04_15/{AUDUSD,USDCHF,EURUSD}_jforex_runtime_events.csv` (filter `category=signal AND event_name=predict_failure` for failure samples); `data/analysis/backtest_reconcile/replay_2026_04_15/INVOCATION.txt`; `configs/research/governance/oco_history_dukascopy_candidate/2026-03/{audusd,usdchf}_oco_live_lock.json` (`artifacts.live_deployable=false`); committed at 72a73e2a.
-- **harness_check:** yes — **risk_gov.live_deployable_lock_present_for_active_month** (new 9th seed check, added by 2026-04-19 plan amendment / Task 20a). The check compares per-symbol active model_month from runtime headers against the set of `live_deployable=true` lock months on disk and fails when no compatible lock exists. Distinct from `risk_gov.governance_lock_pin` (which validates pin correctness given a loaded lock) and from `core.predict_cycles_per_bar` (downstream symptom).
+- **harness_check:** yes — risk_gov.live_deployable_lock_present_for_active_month (new 9th seed check, added by 2026-04-19 plan amendment / Task 20a). The check compares per-symbol active model_month from runtime headers against the set of `live_deployable=true` lock months on disk and fails when no compatible lock exists. Distinct from `risk_gov.governance_lock_pin` (which validates pin correctness given a loaded lock) and from `core.predict_cycles_per_bar` (downstream symptom).
 - **fix_owner:** this-cycle (the missing-lock detection itself; the cert-time fix that produces correctly-deployable 2026-03 locks for AUDUSD/USDCHF is a separate follow-up)
 
 ### failure.tick_batch_599_fallback
