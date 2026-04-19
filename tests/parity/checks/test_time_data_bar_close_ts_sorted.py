@@ -43,3 +43,22 @@ def test_out_of_order_bar_close_fails(parity_ctx_factory):
     )
     result = registry.call("time_data.bar_close_ts_sorted_per_symbol", ctx)
     assert result.passed is False
+
+
+def test_prefixed_bar_close_key_is_not_matched(parity_ctx_factory):
+    ctx = parity_ctx_factory()
+    _write(
+        ctx.reconcile_dir / "EURUSD_jforex_runtime_events.csv",
+        [
+            {"event_ts_utc": "2026-04-15T09:00:00Z", "symbol": "EURUSD",
+             "category": "prediction", "event_name": "predict_cycle",
+             "pass": "true",
+             "detail": "prev_bar_close=2025-01-01T00:00:00Z;bar_close=2026-04-15T09:00:00Z"},
+            {"event_ts_utc": "2026-04-15T09:01:00Z", "symbol": "EURUSD",
+             "category": "prediction", "event_name": "predict_cycle",
+             "pass": "true",
+             "detail": "prev_bar_close=2025-01-01T00:00:00Z;bar_close=2026-04-15T09:01:00Z"},
+        ],
+    )
+    result = registry.call("time_data.bar_close_ts_sorted_per_symbol", ctx)
+    assert result.passed is True
