@@ -10,7 +10,7 @@ from behemoth.parity.registry import register_check
 from behemoth.parity.types import CheckContext, CheckResult
 
 _SYMBOLS = ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"]
-_BAR_CLOSE_RE = re.compile(r"bar_close=([0-9T:Z\-.]+)")
+_BAR_CLOSE_RE = re.compile(r"\bbar_close=([0-9T:Z\-.]+)")
 
 
 @register_check(surface_id="time_data.bar_close_ts_sorted_per_symbol", severity="high")
