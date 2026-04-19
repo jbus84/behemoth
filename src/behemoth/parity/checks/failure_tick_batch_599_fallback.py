@@ -8,7 +8,7 @@ from behemoth.parity.registry import register_check
 from behemoth.parity.types import CheckContext, CheckResult
 
 _SYMBOLS = ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"]
-_ACCEPTED_RE = re.compile(r"accepted=(\d+)")
+_ACCEPTED_RE = re.compile(r"\baccepted=(\d+)")
 
 
 @register_check(
