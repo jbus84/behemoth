@@ -205,6 +205,27 @@ def _normalize_go_decision(value: Any) -> str:
     return str(value or "").strip().upper()
 
 
+def _normalized_month_tokens(value: str) -> set[str]:
+    txt = str(value or "").strip()
+    compact = txt.replace("-", "")
+    return {token for token in (txt, compact) if token}
+
+
+def _path_has_bundle_provenance(source_path: str, target_bundle_dir: Path, target_model_month: str) -> bool:
+    source_txt = str(source_path or "").strip()
+    if not source_txt:
+        return False
+    target_root = target_bundle_dir.resolve().as_posix().rstrip("/") + "/"
+    try:
+        resolved_source = Path(source_txt).resolve().as_posix()
+    except Exception:
+        resolved_source = source_txt.replace("\\", "/")
+    month_tokens = _normalized_month_tokens(target_model_month)
+    return resolved_source.startswith(target_root) and any(
+        token in resolved_source for token in month_tokens
+    )
+
+
 def _check_threshold_parity(
     symbol: str,
     history_dir: Path,
@@ -272,6 +293,11 @@ def build_stage14_artifacts(
     models_dir: Path | None = None,
     history_dir: Path | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    if require_provenance and (target_bundle_dir is None or not target_model_month):
+        raise ValueError(
+            "require_provenance=True requires both target_bundle_dir and target_model_month"
+        )
+
     sources = [
         InputSource(
             check_id="stage13_dukascopy_testclient_pass",
@@ -362,26 +388,41 @@ def build_stage14_artifacts(
             match = by_symbol[by_symbol["check_id"] == src.check_id].copy()
             source_row = match.iloc[-1] if not match.empty else None
             provenance_details = ""
-            if source_row is not None and require_provenance and target_bundle_dir is not None:
-                source_path = str(source_row.get("source_path") or "")
-                if source_path and target_model_month and target_model_month not in source_path:
+            failing_source_path = ""
+            if not match.empty and require_provenance and target_bundle_dir is not None:
+                invalid_source_paths = [
+                    str(candidate.get("source_path") or "")
+                    for _, candidate in match.iterrows()
+                    if not _path_has_bundle_provenance(
+                        str(candidate.get("source_path") or ""),
+                        target_bundle_dir,
+                        str(target_model_month),
+                    )
+                ]
+                if invalid_source_paths:
+                    failing_source_path = invalid_source_paths[0]
                     provenance_details = (
-                        f"provenance mismatch for {symbol} {src.check_id}: {source_path}"
+                        f"provenance mismatch for {symbol} {src.check_id}: {failing_source_path}"
                     )
                     _record_process_failure(provenance_details)
             forbidden_fail_go = False
-            if source_row is not None:
-                source_certification_outcome = _normalize_outcome(
-                    source_row.get("stage13_certification_outcome")
-                    or source_row.get("certification_outcome")
-                )
-                source_go_decision = _normalize_go_decision(
-                    source_row.get("stage13_go_decision") or source_row.get("go_decision")
-                )
-                if source_certification_outcome == "FAIL" and source_go_decision == "GO":
+            if not match.empty:
+                invalid_fail_go_paths = []
+                for _, candidate in match.iterrows():
+                    source_certification_outcome = _normalize_outcome(
+                        candidate.get("stage13_certification_outcome")
+                        or candidate.get("certification_outcome")
+                    )
+                    source_go_decision = _normalize_go_decision(
+                        candidate.get("stage13_go_decision") or candidate.get("go_decision")
+                    )
+                    if source_certification_outcome == "FAIL" and source_go_decision == "GO":
+                        invalid_fail_go_paths.append(str(candidate.get("source_path") or ""))
+                if invalid_fail_go_paths:
                     forbidden_fail_go = True
+                    failing_source_path = failing_source_path or invalid_fail_go_paths[0]
                     provenance_details = (
-                        f"forbidden FAIL/GO combination for {symbol} {src.check_id}"
+                        f"forbidden FAIL/GO combination for {symbol} {src.check_id}: {failing_source_path}"
                     )
                     _record_process_failure(provenance_details)
             if src.check_id == "stage13_dukascopy_testclient_pass":
@@ -409,6 +450,9 @@ def build_stage14_artifacts(
             else:
                 row[src.check_id] = bool(value)
                 status = "pass" if bool(value) else "fail"
+            if provenance_details or forbidden_fail_go:
+                row[src.check_id] = False
+                status = "fail"
             if (
                 value is not None
                 and not pd.isna(value)
@@ -440,13 +484,17 @@ def build_stage14_artifacts(
                     "jforex_outcome_parity_pass",
                     "local_jforex_surrogate_pass",
                 }
+                and not provenance_details
+                and not forbidden_fail_go
                 and status != "pass"
             ):
                 status = "nogo"
                 details = _non_deployable_nogo_details(
                     {"non_deployable_reason": non_deployable_reason}
                 )
-            source_path = "" if match.empty else str(match.iloc[-1].get("source_path") or "")
+            source_path = failing_source_path or (
+                "" if match.empty else str(match.iloc[-1].get("source_path") or "")
+            )
             check_rows.append(
                 {
                     "symbol": symbol,
@@ -594,6 +642,10 @@ def main() -> None:
         default="docs/strategy_bible/generated/stage_14_snapshot.md",
     )
     args = parser.parse_args()
+    if args.require_provenance and (
+        not str(args.target_bundle_dir).strip() or not str(args.target_model_month).strip()
+    ):
+        parser.error("--require-provenance requires --target-bundle-dir and --target-model-month")
     build_stage14_artifacts(
         symbols=[s.strip().upper() for s in str(args.symbols).split(",") if s.strip()],
         stage13_summary_glob=str(args.stage13_summary_glob),
