@@ -197,6 +197,14 @@ def _non_deployable_nogo_details(row: dict[str, Any]) -> str:
     return f"accepted historical non-deployable NO_GO (historical_deployable=false{reason_suffix})"
 
 
+def _normalize_outcome(value: Any) -> str:
+    return str(value or "").strip().upper()
+
+
+def _normalize_go_decision(value: Any) -> str:
+    return str(value or "").strip().upper()
+
+
 def _check_threshold_parity(
     symbol: str,
     history_dir: Path,
@@ -258,6 +266,9 @@ def build_stage14_artifacts(
     out_checks_csv: Path,
     report_out: Path,
     snapshot_out: Path,
+    target_bundle_dir: Path | None = None,
+    target_model_month: str | None = None,
+    require_provenance: bool = False,
     models_dir: Path | None = None,
     history_dir: Path | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -323,6 +334,7 @@ def build_stage14_artifacts(
     )
     summary_rows: list[dict[str, Any]] = []
     check_rows: list[dict[str, Any]] = []
+
     now_utc = _now_utc()
     for symbol in symbols:
         by_symbol = checks[checks["symbol"] == symbol].copy()
@@ -330,6 +342,11 @@ def build_stage14_artifacts(
         missing_inputs = 0
         historical_deployable: bool | None = None
         non_deployable_reason = ""
+        process_failures: list[str] = []
+
+        def _record_process_failure(reason: str) -> None:
+            process_failures.append(reason)
+
         if not by_symbol.empty:
             deployable_rows = by_symbol[by_symbol["historical_deployable"].notna()]
             if not deployable_rows.empty:
@@ -343,6 +360,30 @@ def build_stage14_artifacts(
                 ).strip()
         for src in sources:
             match = by_symbol[by_symbol["check_id"] == src.check_id].copy()
+            source_row = match.iloc[-1] if not match.empty else None
+            provenance_details = ""
+            if source_row is not None and require_provenance and target_bundle_dir is not None:
+                source_path = str(source_row.get("source_path") or "")
+                if source_path and target_model_month and target_model_month not in source_path:
+                    provenance_details = (
+                        f"provenance mismatch for {symbol} {src.check_id}: {source_path}"
+                    )
+                    _record_process_failure(provenance_details)
+            forbidden_fail_go = False
+            if source_row is not None:
+                source_certification_outcome = _normalize_outcome(
+                    source_row.get("stage13_certification_outcome")
+                    or source_row.get("certification_outcome")
+                )
+                source_go_decision = _normalize_go_decision(
+                    source_row.get("stage13_go_decision") or source_row.get("go_decision")
+                )
+                if source_certification_outcome == "FAIL" and source_go_decision == "GO":
+                    forbidden_fail_go = True
+                    provenance_details = (
+                        f"forbidden FAIL/GO combination for {symbol} {src.check_id}"
+                    )
+                    _record_process_failure(provenance_details)
             if src.check_id == "stage13_dukascopy_testclient_pass":
                 value, details, stage13_outcome, stage13_go = _evaluate_stage13_prerequisite(match)
                 row["stage13_certification_outcome"] = stage13_outcome or (
@@ -351,11 +392,15 @@ def build_stage14_artifacts(
                 row["stage13_go_decision"] = stage13_go or (
                     "NO_GO" if bool(value) is False else "GO" if value else ""
                 )
+                if forbidden_fail_go:
+                    details = provenance_details
             elif src.check_id == "local_jforex_surrogate_pass":
                 value, details = _evaluate_local_surrogate(match)
             else:
                 value = None if match.empty else match.iloc[-1].get("pass")
                 details = ""
+            if provenance_details and not details:
+                details = provenance_details
             if value is None or pd.isna(value):
                 missing_inputs += 1
                 row[src.check_id] = False
@@ -437,19 +482,23 @@ def build_stage14_artifacts(
                     "evaluated_at_utc": now_utc,
                 }
             )
+        process_status = "FAIL" if process_failures else "PASS"
         row["stage14_jforex_cert_pass"] = all(bool(row[src.check_id]) for src in sources)
         row["certification_outcome"] = "PASS" if row["stage14_jforex_cert_pass"] else "FAIL"
         row["go_decision"] = (
             "NO_GO"
-            if (historical_deployable is False or not row["stage14_jforex_cert_pass"])
+            if (process_status == "FAIL" or historical_deployable is False or not row["stage14_jforex_cert_pass"])
             else "GO"
         )
         # missing_inputs counts absent-file failures only; stale artifacts fail the cert but do not increment this counter
         row["missing_inputs"] = missing_inputs
-        if row["stage14_jforex_cert_pass"] and historical_deployable is False:
+        if process_status == "FAIL":
+            row["verdict"] = "red"
+        elif row["stage14_jforex_cert_pass"] and historical_deployable is False:
             row["verdict"] = "nogo"
         else:
             row["verdict"] = "green" if row["stage14_jforex_cert_pass"] else "red"
+        row["process_status"] = process_status
         row["evaluated_at_utc"] = now_utc
         summary_rows.append(row)
 
@@ -520,6 +569,9 @@ def main() -> None:
     parser.add_argument("--jforex-operational-summary-glob", default="")
     parser.add_argument("--jforex-outcome-summary-glob", default="")
     parser.add_argument("--local-surrogate-summary-glob", default="")
+    parser.add_argument("--target-bundle-dir", default="")
+    parser.add_argument("--target-model-month", default="")
+    parser.add_argument("--require-provenance", action="store_true")
     parser.add_argument("--models-dir", default="models/oco_dukascopy_candidate")
     parser.add_argument(
         "--history-dir", default="configs/research/governance/oco_history_dukascopy_candidate"
@@ -556,6 +608,9 @@ def main() -> None:
         out_checks_csv=Path(str(args.out_checks_csv)),
         report_out=Path(str(args.report_out)),
         snapshot_out=Path(str(args.snapshot_out)),
+        target_bundle_dir=Path(str(args.target_bundle_dir)) if str(args.target_bundle_dir).strip() else None,
+        target_model_month=str(args.target_model_month).strip() or None,
+        require_provenance=bool(args.require_provenance),
         models_dir=Path(str(args.models_dir)),
         history_dir=Path(str(args.history_dir)),
     )
