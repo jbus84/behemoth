@@ -429,6 +429,33 @@ def _latest_loaded_month_for_symbol(symbol: str) -> str | None:
     return sorted(months)[-1]
 
 
+def _effective_governance_dir() -> str:
+    if _is_historical_mode():
+        return str(_config.governance_history_dir)
+    return str(os.getenv("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco"))
+
+
+def _active_bar_ticks_for_symbol(symbol: str) -> list[int]:
+    sym = str(symbol).upper().strip()
+    candidates = []
+    if _is_historical_mode():
+        month = _latest_loaded_month_for_symbol(sym)
+        if month and _historical_registry is not None:
+            candidates = _historical_registry.get_candidates(sym, month)
+    elif _registry is not None:
+        candidates = _registry.get_candidates(sym)
+
+    ticks = sorted({int(c.bar_ticks) for c in candidates})
+    return ticks or [100]
+
+
+def _active_bar_count_for_symbol(symbol: str) -> int:
+    if _state is None:
+        return 0
+    active_ticks = _active_bar_ticks_for_symbol(symbol)
+    return _state.bar_count(symbol, active_ticks[0]) if active_ticks else 0
+
+
 def _run_historical_preflight(history_dir: Path) -> None:
     global _historical_preflight_failed_checks, _historical_preflight_summary
     checks = validate_historical_governance(
@@ -2259,7 +2286,9 @@ class HealthResponse(BaseModel):
     status: str
     utc_now: datetime
     models_loaded: dict[str, str]
+    bar_ticks: dict[str, list[int]]
     bar_counts: dict[str, int]
+    governance_dir: str
     model_cache_entries: int = 0
     governance_mode: str | None = None
     governance_missing_month_policy: str | None = None
@@ -2270,7 +2299,9 @@ class HealthResponse(BaseModel):
 
 class StatusSymbol(BaseModel):
     symbol: str
+    bar_ticks: list[int]
     bar_count: int
+    governance_dir: str
     model_loaded: bool
     model_month: str | None = None
     has_threshold: bool
@@ -3758,9 +3789,11 @@ async def health() -> HealthResponse:
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
 
+    bar_ticks: dict[str, list[int]] = {}
     bar_counts: dict[str, int] = {}
     for sym in _config.symbols:
-        bar_counts[sym] = _state.bar_count(sym, 100)
+        bar_ticks[sym] = _active_bar_ticks_for_symbol(sym)
+        bar_counts[sym] = _active_bar_count_for_symbol(sym)
 
     mode = str(_config.governance_mode).strip().lower()
     has_runtime_contracts = bool(_models)
@@ -3771,7 +3804,9 @@ async def health() -> HealthResponse:
         status="ok" if has_runtime_contracts else "no_models",
         utc_now=datetime.now(tz=timezone.utc),
         models_loaded=dict(_model_months),
+        bar_ticks=bar_ticks,
         bar_counts=bar_counts,
+        governance_dir=_effective_governance_dir(),
         model_cache_entries=len(_models),
         governance_mode=mode,
         governance_missing_month_policy=(
@@ -3793,6 +3828,7 @@ async def health() -> HealthResponse:
 async def status() -> list[StatusSymbol]:
     """Per-symbol detailed status."""
     out: list[StatusSymbol] = []
+    governance_dir = _effective_governance_dir()
     for sym in _config.symbols:
         has_threshold = bool(_thresholds.get(sym))
         if (not has_threshold) and _is_historical_mode():
@@ -3800,7 +3836,9 @@ async def status() -> list[StatusSymbol]:
             has_threshold = any(k.startswith(pref) for k in _thresholds)
         out.append(StatusSymbol(
             symbol=sym,
-            bar_count=_state.bar_count(sym, 100) if _state else 0,
+            bar_ticks=_active_bar_ticks_for_symbol(sym),
+            bar_count=_active_bar_count_for_symbol(sym),
+            governance_dir=governance_dir,
             model_loaded=_has_loaded_model_for_symbol(sym),
             model_month=_latest_loaded_month_for_symbol(sym),
             has_threshold=has_threshold,

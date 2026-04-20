@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
-DEFAULT_MODELS_DIR = "models/oco_dukascopy_candidate"
+DEFAULT_MODELS_DIR = "models/oco"
 DEFAULT_HISTORY_DIR = "configs/research/governance/oco_history_dukascopy_candidate"
 DEFAULT_API_PORT = 8000
 
@@ -352,15 +352,6 @@ def _consolidate_to_archive(state_db_path: Path) -> None:
 
 def main() -> None:
     cfg = _parse_args()
-
-    # Resolve the correct governance lock directory (latest month from history_dir)
-    # and export it so that both the seed subprocess and the API process use the
-    # reduced-core candidates rather than the stale default in configs/research/governance/oco.
-    if "BEHEMOTH_GOVERNANCE_DIR" not in os.environ:
-        latest_month = _resolve_model_month(cfg)
-        if latest_month:
-            os.environ["BEHEMOTH_GOVERNANCE_DIR"] = str(Path(cfg.history_dir) / latest_month)
-            print(f"[jforex-live] governance dir: {os.environ['BEHEMOTH_GOVERNANCE_DIR']}", flush=True)
 
     # Pre-flight: validate credentials before starting any process
     for required in (
