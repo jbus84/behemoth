@@ -40,6 +40,27 @@ class TestHealthEndpoint:
         for sym in ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"]:
             assert sym in body["bar_counts"]
 
+    def test_health_reports_active_bar_ticks_and_governance_dir(self, client, monkeypatch):
+        monkeypatch.setattr(server, "_effective_governance_dir", lambda: "configs/research/governance/oco")
+        monkeypatch.setattr(server, "_active_bar_ticks_for_symbol", lambda sym: [1000])
+        monkeypatch.setattr(
+            server,
+            "_state",
+            type(
+                "StateStub",
+                (),
+                {"bar_count": staticmethod(lambda sym, bt: 7 if bt == 1000 else 0)},
+            )(),
+        )
+
+        r = client.get("/health")
+
+        assert r.status_code == 200
+        body = r.json()
+        assert body["governance_dir"] == "configs/research/governance/oco"
+        assert body["bar_ticks"]["EURUSD"] == [1000]
+        assert body["bar_counts"]["EURUSD"] == 7
+
     def test_health_uninitialized_state(self, client):
         """If the state manager is missing, health should return 503."""
         from src.behemoth.api import server
@@ -503,6 +524,28 @@ class TestStatusEndpoint:
         assert len(body) == 6
         symbols = {s["symbol"] for s in body}
         assert symbols == {"EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"}
+
+    def test_status_uses_active_candidate_bar_ticks(self, client, monkeypatch):
+        monkeypatch.setattr(server, "_effective_governance_dir", lambda: "configs/research/governance/oco")
+        monkeypatch.setattr(server, "_active_bar_ticks_for_symbol", lambda sym: [1000])
+        monkeypatch.setattr(
+            server,
+            "_state",
+            type(
+                "StateStub",
+                (),
+                {"bar_count": staticmethod(lambda sym, bt: 11 if bt == 1000 else 0)},
+            )(),
+        )
+
+        r = client.get("/status")
+
+        assert r.status_code == 200
+        body = r.json()
+        eurusd = next(row for row in body if row["symbol"] == "EURUSD")
+        assert eurusd["governance_dir"] == "configs/research/governance/oco"
+        assert eurusd["bar_ticks"] == [1000]
+        assert eurusd["bar_count"] == 11
 
     def test_runtime_feed_status_returns_symbols(self, client):
         r = client.get("/runtime/feed/status")

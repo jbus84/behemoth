@@ -79,3 +79,50 @@ def test_main_starts_live_runner_before_warmup(monkeypatch, tmp_path, capsys) ->
 
     assert order[:4] == ["start_api", "poll_health", "start_live_runner", "warmup"]
     assert "live runner exited unexpectedly" in capsys.readouterr().err
+
+
+def test_main_defaults_seed_to_promoted_governance_dir(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(run_jforex_live, "_repo_root", lambda: tmp_path)
+    monkeypatch.delenv("BEHEMOTH_GOVERNANCE_DIR", raising=False)
+    monkeypatch.setenv("BEHEMOTH_JFOREX_JNLP_URI", "demo")
+    monkeypatch.setenv("BEHEMOTH_JFOREX_USERNAME", "user")
+    monkeypatch.setenv("BEHEMOTH_JFOREX_PASSWORD", "pass")
+
+    recorded_run: dict[str, object] = {}
+
+    def fake_run(args, **kwargs):
+        recorded_run["args"] = args
+        return type("Result", (), {"returncode": 0})()
+
+    monkeypatch.setattr(run_jforex_live.subprocess, "run", fake_run)
+    monkeypatch.setattr(run_jforex_live, "_start_api", lambda cfg: _FakeProc(returncode=None, pid=20001))
+    monkeypatch.setattr(run_jforex_live, "_poll_health", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        run_jforex_live, "_start_live_runner", lambda cfg: _FakeProc(returncode=0, pid=20002)
+    )
+    monkeypatch.setattr(run_jforex_live, "_warmup_symbols", lambda *args, **kwargs: None)
+    monkeypatch.setattr(run_jforex_live, "_stop_process", lambda proc: None)
+    monkeypatch.setattr(run_jforex_live.time, "sleep", lambda _: None)
+    monkeypatch.setattr(run_jforex_live.signal, "signal", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_jforex_live.py",
+            "--symbols",
+            "EURUSD,GBPUSD",
+            "--report-dir",
+            "data/analysis/backtest_reconcile",
+        ],
+    )
+
+    with pytest.raises(SystemExit, match="1"):
+        run_jforex_live.main()
+
+    args = recorded_run["args"]
+    assert "--governance-dir" in args
+    idx = args.index("--governance-dir")
+    assert args[idx + 1] == "configs/research/governance/oco"
+    model_idx = args.index("--models-dir")
+    assert args[model_idx + 1] == "models/oco"
+    assert "BEHEMOTH_GOVERNANCE_DIR" not in run_jforex_live.os.environ
