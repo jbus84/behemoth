@@ -8,7 +8,31 @@
 
 ## Executive summary
 
-_Pending. Populated in Task 25._
+**Scope:** static code audit + 2026-04-15 replay day across AUDUSD + USDCHF + EURUSD.
+**Symbols covered by the harness:** all 6 live symbols.
+**Seed harness checks:** 9 (see coverage matrix).
+
+### Severity tally
+
+| Layer | Critical | High | Medium | Low |
+|---|---|---|---|---|
+| core | 2 | 4 | 2 | 2 |
+| lifecycle | 3 | 4 | 0 | 0 |
+| risk_gov | 2 | 4 | 0 | 0 |
+| time_data | 0 | 2 | 2 | 2 |
+| failure | 1 | 2 | 1 | 0 |
+
+### Top findings
+
+1. **Core — `core.order_open_market_submit` (critical):** JForex-side volume sizing divides Python's `requested_volume_units` by 1,000,000 to build the broker market-order amount, and the submit is gated by `state.entriesAllowed`. Any drift between Python's reservation volume and the JForex units-to-millions conversion is only observable after the fill lands, not at submit time. Seed coverage: `core.entries_allowed_vs_readiness`.
+2. **Lifecycle — `lifecycle.pending_fills_map` (critical):** JForex's `pendingFills[label] → {candidateUid, reservationId, horizon}` context is in-memory only. A JForex restart between `submitOrder` and `ORDER_FILL_OK` drops the context, so `/trades/open` arrives with empty reservation_id and the Python PENDING row must be cleaned up by the stale-sweep TTL. No seed check has visibility into that process memory.
+3. **Risk & governance — `risk_gov.volume_sizing_source` (critical):** the reservation volume computed in Python and the submit amount executed by JForex live in two processes with a JSON hop between them; no seed check cross-validates them end-to-end. Drift is observed only indirectly via `lifecycle.active_oco_reconciled` reconciliation mismatches.
+4. **Time & data — `time_data.spread_handling` (high):** the JForex tester sends `bid` / `ask` per tick and Python materialises `spread_pips` from `(ask − bid) / pip_size`; any symbol-wise pip-size mismatch (JPY crosses vs majors) manifests as fill-price drift. Covered indirectly by the replay-diff `fill_price` ≤1 pip tolerance, not by a dedicated seed check.
+5. **Failure paths — `failure.predict_failure_no_historical_lock` (critical, OBSERVED):** the motivating 2026-04-17 divergence. AUDUSD and USDCHF had 2026-03 lock files published with `live_deployable: false`; the bridge's lock loader filters them out, so bars stamped in the 2026-03 model window produce `predict_failure` with detail `"No historical lock for <symbol> month 2026-03 (policy=error)"` before any HTTP call. Seed coverage: the new 9th check `risk_gov.live_deployable_lock_present_for_active_month` (Task 20a).
+
+### AUDUSD/USDCHF zero-predict (motivating example)
+
+2026-04-17 demo-live: AUDUSD (165 bar events) and USDCHF (82 bar events) produced zero `/predict` cycles while EURUSD ran healthy. The 2026-04-15 Stage-14 replay reproduces the signature exactly (AUDUSD 0 predicts / 649 failed events, USDCHF 0 / 543, EURUSD 715 / 0 — see "Replay diff findings" below). The downstream symptom is caught by `core.predict_cycles_per_bar` (critical); the upstream root cause — a 2026-03 lock published with `live_deployable=false` — is caught by the 9th seed check `risk_gov.live_deployable_lock_present_for_active_month`. The upstream question of why the 2026-03 monthly certification produced `live_deployable=false` for those two symbols is out of scope for this assessment and belongs to a separate workstream.
 
 ## Methodology
 
@@ -516,8 +540,50 @@ A 9th seed check — `risk_gov.live_deployable_lock_present_for_active_month` �
 
 ## Harness coverage matrix
 
-_Pending. Populated in Task 25._
+| surface_id | severity | check module |
+|---|---|---|
+| core.predict_cycles_per_bar | critical | src/behemoth/parity/checks/core_predict_cycles_per_bar.py |
+| risk_gov.governance_lock_pin | critical | src/behemoth/parity/checks/risk_gov_governance_lock_pin.py |
+| core.tick_seq_monotonic | critical | src/behemoth/parity/checks/core_tick_seq_monotonic.py |
+| lifecycle.active_oco_reconciled | critical | src/behemoth/parity/checks/lifecycle_active_oco_reconciled.py |
+| failure.tick_batch_599_fallback_consistency | high | src/behemoth/parity/checks/failure_tick_batch_599_fallback.py |
+| failure.predict_422_warmup_only | critical | src/behemoth/parity/checks/failure_predict_422_warmup_only.py |
+| core.entries_allowed_vs_readiness | high | src/behemoth/parity/checks/core_entries_allowed_vs_readiness.py |
+| time_data.bar_close_ts_sorted_per_symbol | high | src/behemoth/parity/checks/time_data_bar_close_ts_sorted.py |
+| risk_gov.live_deployable_lock_present_for_active_month | critical | src/behemoth/parity/checks/risk_gov_live_deployable_lock_present.py |
+
+### Surfaces with `harness_check: no`
+
+**Static contract / single-sided / structurally guaranteed** — the invariant is enforced at code or schema level, a runtime seed check adds no signal:
+- core.bar_boundary_alignment — bar boundary decision is single-sided in Python
+- core.feature_computation_locus — features only computed inside `/predict`
+- core.prediction_request_payload — DTO schema drift rejected at deserialisation
+- core.selected_exec_decision — `>=` comparison, single-sided
+- core.barrier_touch_detection — logic single-sided in Python
+- lifecycle.barrier_scan_status_transitions — state-machine integrity
+- risk_gov.governance_lock_hash_integrity — one-shot artifact hash at deploy
+- time_data.tick_timestamp_source — UTC normalisation structurally guaranteed
+- time_data.bid_ask_schema — Pydantic `gt=0` is fail-stop
+- time_data.weekend_gap_skip — structural property of tick-count aggregator
+- time_data.dst_boundary — UTC end-to-end design
+
+**Not yet parameterizable / cross-process or wall-clock boundary** — would require new harness infrastructure or JForex-process visibility the seed scope doesn't have:
+- core.fill_ack_syncs_trade_open — observed via `/trades/active` reconciliation
+- lifecycle.reservation_id_lifecycle — spans three endpoints plus stale-sweep timer
+- lifecycle.scan_to_order_label_map — JForex-local in-memory map
+- lifecycle.pending_fills_map — JForex-local in-memory map
+- lifecycle.bar_ordinals_by_bar_ticks — per-session single-symbol ordinal
+- risk_gov.volume_sizing_source — two-sided volume across process boundary
+- risk_gov.run_id_plumbing — per-session row-join cardinality invariant
+- risk_gov.account_snapshot_cadence — wall-clock snapshot freshness
+- time_data.spread_handling — covered by replay-diff `fill_price` ≤1 pip tolerance
+- failure.submit_rejected — would need a new `lifecycle.pending_fills_cleared_on_reject` check
 
 ## Appendix — Replay diff artifact index
 
-_Pending. Populated in Task 25._
+- Side A artifacts: `data/analysis/backtest_reconcile/replay_2026_04_15/`
+- Side B artifacts: `data/analysis/backtest_reconcile/replay_2026_04_15/side_b/` (not populated this cycle — Side A alone identified the divergence; see "Replay setup" above)
+- Combined diff parquet: `data/analysis/backtest_reconcile/replay_diff/2026-04-15/parity_replay_diff.parquet`
+- One-shot diff script: `scripts/diff_parity_replay.py`
+- Side A invocation record: `data/analysis/backtest_reconcile/replay_2026_04_15/INVOCATION.txt`
+- Side B invocation record: `data/analysis/backtest_reconcile/replay_2026_04_15/side_b/INVOCATION.txt` (absent — Side B not executed)
