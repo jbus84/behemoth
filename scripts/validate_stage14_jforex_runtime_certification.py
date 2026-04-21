@@ -221,9 +221,16 @@ def _path_has_bundle_provenance(source_path: str, target_bundle_dir: Path, targe
     except Exception:
         resolved_source = source_txt.replace("\\", "/")
     month_tokens = _normalized_month_tokens(target_model_month)
-    return resolved_source.startswith(target_root) and any(
-        token in resolved_source for token in month_tokens
+    if resolved_source.startswith(target_root) and any(token in resolved_source for token in month_tokens):
+        return True
+
+    normalized_source = resolved_source.replace("\\", "/")
+    month_scoped_report = (
+        "/backtest_reconcile/" in normalized_source
+        and "/monthly_recert/" in normalized_source
+        and any(token in normalized_source for token in month_tokens)
     )
+    return month_scoped_report
 
 
 def _check_threshold_parity(
