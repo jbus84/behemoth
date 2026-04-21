@@ -1,3 +1,9 @@
+## v0.11.2 (2026-04-21)
+
+### Fix
+
+- pass recert replay window into stage13 (#78)
+
 ## v0.11.1 (2026-04-21)
 
 ### Fix
