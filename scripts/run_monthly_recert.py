@@ -341,6 +341,8 @@ def main() -> None:
                 "PREDICTIONS_DIR="
                 "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap"
             ),
+            f"START_TS={start_ts}",
+            f"END_TS={end_ts}",
             f"LOCK_DIR={bundle_dir}",
             f"RECONCILE_DIR={run_report_dir}",
             f"OUT_DIR={run_report_dir}",
