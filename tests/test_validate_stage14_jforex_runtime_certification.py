@@ -287,6 +287,94 @@ def test_stage14_emits_process_fail_when_inputs_are_mixed_from_wrong_bundle(
     assert execution_check["metric_value"] == 0
 
 
+def test_stage14_accepts_month_scoped_recert_report_paths_with_bundle_inputs(
+    tmp_path: Path,
+) -> None:
+    bundle_dir = tmp_path / "configs/research/governance/oco_candidate_builds/2024-04"
+    report_dir = tmp_path / "data/analysis/backtest_reconcile/2024-04/monthly_recert"
+    bundle_dir.mkdir(parents=True, exist_ok=True)
+    report_dir.mkdir(parents=True, exist_ok=True)
+
+    _write_csv(
+        report_dir / "stage12_stage13_certification_summary.csv",
+        [
+            {
+                "symbol": "EURUSD",
+                "stage12_certification_outcome": "PASS",
+                "stage12_go_decision": "GO",
+                "stage13_attempted": True,
+                "stage13_certification_outcome": "PASS",
+                "stage13_go_decision": "GO",
+                "certification_outcome": "PASS",
+                "go_decision": "GO",
+            }
+        ],
+    )
+    _write_csv(
+        report_dir / "EURUSD_jforex_signal_parity_summary.csv",
+        [{"symbol": "EURUSD", "jforex_signal_parity_pass": True}],
+    )
+    _write_csv(
+        report_dir / "EURUSD_jforex_execution_parity_summary.csv",
+        [{"symbol": "EURUSD", "jforex_execution_parity_pass": True}],
+    )
+    _write_csv(
+        report_dir / "EURUSD_jforex_execution_lifecycle_summary.csv",
+        [{"symbol": "EURUSD", "execution_lifecycle_pass": True}],
+    )
+    _write_csv(
+        report_dir / "EURUSD_jforex_operational_ready_summary.csv",
+        [{"symbol": "EURUSD", "operational_ready_pass": True}],
+    )
+    _write_csv(
+        report_dir / "jforex_outcome_parity_summary.csv",
+        [
+            {
+                "symbol": "EURUSD",
+                "jforex_outcome_parity_pass": True,
+                "overall_pass": True,
+                "historical_deployable": True,
+                "lock_dir": "configs/research/governance/oco_candidate_builds/2024-04",
+            }
+        ],
+    )
+    _write_csv(
+        report_dir / "local_jforex_surrogate_summary.csv",
+        [
+            {
+                "symbol": "EURUSD",
+                "historical_deployable": True,
+                "local_jforex_surrogate_pass": True,
+                "verdict": "green",
+            }
+        ],
+    )
+
+    summary, checks = build_stage14_artifacts(
+        symbols=["EURUSD"],
+        stage13_summary_glob=str(report_dir / "stage12_stage13_certification_summary.csv"),
+        jforex_signal_summary_glob=str(report_dir / "*_jforex_signal_parity_summary.csv"),
+        jforex_execution_summary_glob=str(report_dir / "*_jforex_execution_parity_summary.csv"),
+        jforex_lifecycle_summary_glob=str(report_dir / "*_jforex_execution_lifecycle_summary.csv"),
+        jforex_operational_summary_glob=str(report_dir / "*_jforex_operational_ready_summary.csv"),
+        jforex_outcome_summary_glob=str(report_dir / "jforex_outcome_parity_summary.csv"),
+        local_surrogate_summary_glob=str(report_dir / "local_jforex_surrogate_summary.csv"),
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+        target_bundle_dir=bundle_dir,
+        target_model_month="2024-04",
+        require_provenance=True,
+    )
+
+    assert summary.loc[0, "process_status"] == "PASS"
+    assert summary.loc[0, "certification_outcome"] == "PASS"
+    assert summary.loc[0, "go_decision"] == "GO"
+    assert not checks["details"].astype(str).str.contains("provenance mismatch", case=False).any()
+
+
 def test_stage14_emits_process_fail_when_glob_matches_target_and_non_target_bundle(
     tmp_path: Path,
 ) -> None:
