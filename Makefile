@@ -379,9 +379,9 @@ local-jforex-cert:
 		--local-lifecycle-summary-glob '$(or $(LOCAL_LIFECYCLE_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_local_jforex_execution_lifecycle_summary.csv)' \
 		--local-operational-summary-glob '$(or $(LOCAL_OPERATIONAL_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_local_jforex_operational_ready_summary.csv)' \
 		--local-outcome-summary-glob '$(or $(LOCAL_OUTCOME_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_local_jforex_outcome_parity_summary.csv)' \
-		--out-summary-csv $(or $(OUT_SUMMARY_CSV),data/analysis/backtest_reconcile/local_jforex_surrogate_summary.csv) \
-		--out-checks-csv $(or $(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/local_jforex_surrogate_checks.csv) \
-		--report-out $(or $(REPORT_OUT),docs/analysis/local_jforex_surrogate_report.md)
+		--out-summary-csv $(or $(LOCAL_OUT_SUMMARY_CSV),$(OUT_SUMMARY_CSV),data/analysis/backtest_reconcile/local_jforex_surrogate_summary.csv) \
+		--out-checks-csv $(or $(LOCAL_OUT_CHECKS_CSV),$(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/local_jforex_surrogate_checks.csv) \
+		--report-out $(or $(LOCAL_REPORT_OUT),$(REPORT_OUT),docs/analysis/local_jforex_surrogate_report.md)
 
 jforex-dukascopy-matrix:
 	@$(LOAD_SHARED_ENV) env UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/run_jforex_dukascopy_matrix.py \
@@ -412,10 +412,13 @@ stage14-jforex-cert:
 		--jforex-outcome-summary-glob '$(or $(JFOREX_OUTCOME_SUMMARY_GLOB),data/analysis/backtest_reconcile/jforex_outcome_parity_summary.csv)' \
 		--local-surrogate-summary-glob '$(or $(LOCAL_SURROGATE_SUMMARY_GLOB),data/analysis/backtest_reconcile/local_jforex_surrogate_summary.csv)' \
 		--max-artifact-age-days $(or $(MAX_ARTIFACT_AGE_DAYS),35) \
-		--out-summary-csv $(or $(OUT_SUMMARY_CSV),data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_summary.csv) \
-		--out-checks-csv $(or $(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_checks.csv) \
-		--report-out $(or $(REPORT_OUT),docs/analysis/stage14_jforex_runtime_certification_report.md) \
-		--snapshot-out $(or $(SNAPSHOT_OUT),docs/strategy_bible/generated/stage_14_snapshot.md)
+		$(if $(TARGET_BUNDLE_DIR),--target-bundle-dir '$(TARGET_BUNDLE_DIR)') \
+		$(if $(TARGET_MODEL_MONTH),--target-model-month '$(TARGET_MODEL_MONTH)') \
+		$(if $(REQUIRE_PROVENANCE),--require-provenance) \
+		--out-summary-csv $(or $(STAGE14_OUT_SUMMARY_CSV),$(OUT_SUMMARY_CSV),data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_summary.csv) \
+		--out-checks-csv $(or $(STAGE14_OUT_CHECKS_CSV),$(OUT_CHECKS_CSV),data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_checks.csv) \
+		--report-out $(or $(STAGE14_REPORT_OUT),$(REPORT_OUT),docs/analysis/stage14_jforex_runtime_certification_report.md) \
+		--snapshot-out $(or $(STAGE14_SNAPSHOT_OUT),$(SNAPSHOT_OUT),docs/strategy_bible/generated/stage_14_snapshot.md)
 
 full-stage14-cert: jforex-outcome-parity local-jforex-cert stage14-jforex-cert
 
