@@ -55,6 +55,10 @@ def test_main_runs_definitive_recert_chain(monkeypatch, tmp_path) -> None:
         [
             "make",
             "stage13-dukascopy-cert",
+            "HISTORY_DIR=configs/research/governance/oco_candidate_builds",
+            f"MODELS_DIR={build_bundle_dir / 'models/oco_dukascopy_candidate'}",
+            "MODEL_MONTH=2026-02",
+            "PREDICTIONS_DIR=data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap",
             "LOCK_DIR=configs/research/governance/oco_candidate_builds/2026-02",
             f"RECONCILE_DIR={expected_run_dir}",
             f"OUT_DIR={expected_run_dir}",

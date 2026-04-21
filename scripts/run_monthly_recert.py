@@ -334,6 +334,13 @@ def main() -> None:
         [
             "make",
             "stage13-dukascopy-cert",
+            f"HISTORY_DIR={MONTHLY_BUILD_ROOT}",
+            f"MODELS_DIR={bundle_models_dir}",
+            f"MODEL_MONTH={model_month}",
+            (
+                "PREDICTIONS_DIR="
+                "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap"
+            ),
             f"LOCK_DIR={bundle_dir}",
             f"RECONCILE_DIR={run_report_dir}",
             f"OUT_DIR={run_report_dir}",
