@@ -119,6 +119,31 @@ def _non_deployable_nogo_details(reason: str) -> str:
     return f"accepted historical non-deployable NO_GO (historical_deployable=false{reason_suffix})"
 
 
+def _normalized_month_tokens(value: str) -> set[str]:
+    txt = str(value or "").strip()
+    compact = txt.replace("-", "")
+    return {token for token in (txt, compact) if token}
+
+
+def _path_has_required_provenance(
+    source_path: str,
+    reconcile_dir: Path,
+    target_model_month: str,
+) -> bool:
+    source_txt = str(source_path or "").strip()
+    if not source_txt:
+        return False
+    reconcile_root = reconcile_dir.resolve().as_posix().rstrip("/") + "/"
+    try:
+        resolved_source = Path(source_txt).resolve().as_posix()
+    except Exception:
+        resolved_source = source_txt.replace("\\", "/")
+    month_tokens = _normalized_month_tokens(target_model_month)
+    return resolved_source.startswith(reconcile_root) and any(
+        token in resolved_source for token in month_tokens
+    )
+
+
 def _latest_match(frames: list[pd.DataFrame], symbol: str, check_id: str) -> pd.DataFrame:
     first_non_concrete = pd.DataFrame(columns=["symbol", "check_id", "pass", "source_path"])
     for frame in frames:
@@ -202,7 +227,14 @@ def build_stage13_artifacts(
     out_checks_csv: Path,
     report_out: Path,
     snapshot_out: Path,
+    target_bundle_dir: Path | None = None,
+    target_model_month: str | None = None,
+    require_provenance: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    if require_provenance and (target_bundle_dir is None or not target_model_month):
+        raise ValueError(
+            "require_provenance=True requires both target_bundle_dir and target_model_month"
+        )
     stage12_source = InputSource(
         check_id="stage12_api_parity_pass",
         summary_glob=stage12_api_parity_summary_glob,
@@ -370,6 +402,18 @@ def build_stage13_artifacts(
             )
             if not source_path:
                 source_path = str(expected_source_path)
+            if (
+                not match.empty
+                and require_provenance
+                and not _path_has_required_provenance(
+                    source_path,
+                    reconcile_dir,
+                    str(target_model_month),
+                )
+            ):
+                row[src.check_id] = False
+                status_txt = "fail"
+                details = f"provenance mismatch: {source_path}"
             check_rows.append(
                 {
                     "symbol": symbol,
@@ -501,7 +545,14 @@ def main() -> None:
         "--snapshot-out",
         default="docs/strategy_bible/generated/stage_13_snapshot.md",
     )
+    parser.add_argument("--target-bundle-dir", default="")
+    parser.add_argument("--target-model-month", default="")
+    parser.add_argument("--require-provenance", action="store_true")
     args = parser.parse_args()
+    if args.require_provenance and (
+        not str(args.target_bundle_dir).strip() or not str(args.target_model_month).strip()
+    ):
+        parser.error("--require-provenance requires --target-bundle-dir and --target-model-month")
     build_stage13_artifacts(
         symbols=[s.strip().upper() for s in str(args.symbols).split(",") if s.strip()],
         lock_dir=Path(str(args.lock_dir)),
@@ -514,6 +565,9 @@ def main() -> None:
         out_checks_csv=Path(str(args.out_checks_csv)),
         report_out=Path(str(args.report_out)),
         snapshot_out=Path(str(args.snapshot_out)),
+        target_bundle_dir=Path(str(args.target_bundle_dir)) if str(args.target_bundle_dir).strip() else None,
+        target_model_month=str(args.target_model_month).strip() or None,
+        require_provenance=bool(args.require_provenance),
     )
 
 

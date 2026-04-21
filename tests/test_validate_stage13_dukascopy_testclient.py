@@ -530,3 +530,51 @@ def test_build_stage13_artifacts_emits_nogo_for_non_deployable_symbols(
     assert signal_check["status"] == "pass"
     assert "historical non-deployable" in str(signal_check["details"]).lower()
     assert "historically non-deployable" in str(signal_check["details"])
+
+
+def test_build_stage13_artifacts_rejects_summary_rows_without_target_bundle_provenance(
+    tmp_path: Path,
+) -> None:
+    bundle_dir = tmp_path / "configs/research/governance/oco_candidate_builds/2026-03"
+    bundle_dir.mkdir(parents=True)
+    _write_lock(tmp_path / "locks" / "eurusd_oco_live_lock.json", symbol="EURUSD", deployable=True)
+    wrong_run_dir = tmp_path / "shared_reconcile"
+    right_run_dir = tmp_path / "data/analysis/backtest_reconcile/2026-03/monthly_recert"
+    _write_stage12_summary(
+        wrong_run_dir / "EURUSD_stage12_api_parity_summary.csv",
+        symbol="EURUSD",
+        passed=True,
+    )
+    _write_dukascopy_replay_summary(
+        wrong_run_dir / "EURUSD_dukascopy_testclient_replay_summary.csv",
+        symbol="EURUSD",
+        signal_pass=True,
+        execution_pass=True,
+    )
+    runtime = right_run_dir / "EURUSD_jforex_runtime_events.csv"
+    runtime.parent.mkdir(parents=True, exist_ok=True)
+    runtime.write_text(
+        "event_ts_utc,symbol,category,event_name,pass,detail\n"
+        "2025-07-07T00:00:00Z,EURUSD,runtime,predict_cycle,True,\n"
+    )
+
+    summary, checks = build_stage13_artifacts(
+        symbols=["EURUSD"],
+        lock_dir=tmp_path / "locks",
+        stage12_api_parity_summary_glob=str(wrong_run_dir / "*_stage12_api_parity_summary.csv"),
+        dukascopy_testclient_replay_summary_glob=str(
+            wrong_run_dir / "*_dukascopy_testclient_replay_summary.csv"
+        ),
+        reconcile_dir=right_run_dir,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+        target_bundle_dir=bundle_dir,
+        target_model_month="2026-03",
+        require_provenance=True,
+    )
+
+    assert bool(summary.loc[0, "stage13_dukascopy_testclient_pass"]) is False
+    failed = checks[checks["details"].astype(str).str.contains("provenance mismatch", case=False)]
+    assert not failed.empty
