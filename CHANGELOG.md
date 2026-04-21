@@ -1,3 +1,11 @@
+## v0.11.1 (2026-04-21)
+
+### Fix
+
+- scope monthly recert stage13 to month bundle (#77)
+- repair certification and promotion provenance flow (#75)
+- default live runtime to promoted governance locks (#73)
+
 ## v0.11.0 (2026-04-17)
 
 ### Feat
