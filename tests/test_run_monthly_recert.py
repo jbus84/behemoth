@@ -59,6 +59,8 @@ def test_main_runs_definitive_recert_chain(monkeypatch, tmp_path) -> None:
             f"MODELS_DIR={build_bundle_dir / 'models/oco_dukascopy_candidate'}",
             "MODEL_MONTH=2026-02",
             "PREDICTIONS_DIR=data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap",
+            "START_TS=2026-02-04T00:00:00Z",
+            "END_TS=2026-02-09T00:00:00Z",
             "LOCK_DIR=configs/research/governance/oco_candidate_builds/2026-02",
             f"RECONCILE_DIR={expected_run_dir}",
             f"OUT_DIR={expected_run_dir}",

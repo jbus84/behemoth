@@ -1,7 +1,7 @@
 # Graph Report - /Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope  (2026-04-21)
 
 ## Corpus Check
-- 269 files · ~898,480 words
+- 269 files · ~898,801 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -755,11 +755,11 @@ Nodes (1): Compare threshold_schedule values against rolling computation from se
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `run()` connect `Community 7` to `Community 1`, `Community 2`, `Community 4`, `Community 5`, `Community 6`, `Community 8`, `Community 10`, `Community 11`, `Community 12`, `Community 13`, `Community 15`, `Community 16`, `Community 18`?**
-  _High betweenness centrality (0.067) - this node is a cross-community bridge._
-- **Why does `next()` connect `Community 3` to `Community 0`, `Community 1`, `Community 4`, `Community 6`, `Community 7`, `Community 9`?**
-  _High betweenness centrality (0.063) - this node is a cross-community bridge._
-- **Why does `range()` connect `Community 2` to `Community 0`, `Community 4`, `Community 5`, `Community 6`, `Community 7`, `Community 8`, `Community 9`, `Community 10`, `Community 12`, `Community 13`, `Community 14`, `Community 18`, `Community 20`?**
-  _High betweenness centrality (0.063) - this node is a cross-community bridge._
+  _High betweenness centrality (0.077) - this node is a cross-community bridge._
+- **Why does `timestamp()` connect `Community 6` to `Community 0`, `Community 1`, `Community 2`, `Community 4`, `Community 7`, `Community 9`, `Community 10`, `Community 13`, `Community 14`, `Community 18`, `Community 20`?**
+  _High betweenness centrality (0.061) - this node is a cross-community bridge._
+- **Why does `StateManager` connect `Community 0` to `Community 8`, `Community 9`, `Community 34`, `Community 5`?**
+  _High betweenness centrality (0.053) - this node is a cross-community bridge._
 - **Are the 565 inferred relationships involving `str` (e.g. with `test_build_artifacts_treats_zero_lock_idle_windows_as_execution_pass()` and `test_build_artifacts_falls_back_to_outcome_locked_count_for_zero_lock_windows()`) actually correct?**
   _`str` has 565 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 217 inferred relationships involving `ModelFeatures` (e.g. with `.test_predict_uses_explicit_bid_latest_bar_keys_for_barrier_lifecycle()` and `.test_predict_success()`) actually correct?**

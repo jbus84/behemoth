@@ -8116,7 +8116,7 @@
       "label": "test_validate_stage14_scope_rejects_non_bundle_scoped_outputs()",
       "file_type": "code",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/tests/test_run_monthly_recert.py",
-      "source_location": "L121",
+      "source_location": "L123",
       "id": "test_run_monthly_recert_test_validate_stage14_scope_rejects_non_bundle_scoped_outputs",
       "community": 15,
       "norm_label": "test_validate_stage14_scope_rejects_non_bundle_scoped_outputs()"
@@ -8125,7 +8125,7 @@
       "label": "test_main_requires_existing_month_bundle()",
       "file_type": "code",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/tests/test_run_monthly_recert.py",
-      "source_location": "L131",
+      "source_location": "L133",
       "id": "test_run_monthly_recert_test_main_requires_existing_month_bundle",
       "community": 15,
       "norm_label": "test_main_requires_existing_month_bundle()"
@@ -8134,7 +8134,7 @@
       "label": "test_main_rejects_incomplete_month_bundle()",
       "file_type": "code",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/tests/test_run_monthly_recert.py",
-      "source_location": "L154",
+      "source_location": "L156",
       "id": "test_run_monthly_recert_test_main_rejects_incomplete_month_bundle",
       "community": 15,
       "norm_label": "test_main_rejects_incomplete_month_bundle()"
@@ -8143,7 +8143,7 @@
       "label": "test_read_failures_ignores_expected_non_deployable_nogo()",
       "file_type": "code",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/tests/test_run_monthly_recert.py",
-      "source_location": "L181",
+      "source_location": "L183",
       "id": "test_run_monthly_recert_test_read_failures_ignores_expected_non_deployable_nogo",
       "community": 15,
       "norm_label": "test_read_failures_ignores_expected_non_deployable_nogo()"
@@ -8152,7 +8152,7 @@
       "label": "test_print_summary_keeps_go_when_only_expected_nogo_remains()",
       "file_type": "code",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/tests/test_run_monthly_recert.py",
-      "source_location": "L223",
+      "source_location": "L225",
       "id": "test_run_monthly_recert_test_print_summary_keeps_go_when_only_expected_nogo_remains",
       "community": 15,
       "norm_label": "test_print_summary_keeps_go_when_only_expected_nogo_remains()"
@@ -8161,7 +8161,7 @@
       "label": "_write_bundle_fixture()",
       "file_type": "code",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/tests/test_run_monthly_recert.py",
-      "source_location": "L243",
+      "source_location": "L245",
       "id": "test_run_monthly_recert_write_bundle_fixture",
       "community": 15,
       "norm_label": "_write_bundle_fixture()"
@@ -9332,27 +9332,27 @@
       "file_type": "rationale",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/scripts/run_monthly_recert.py",
       "source_location": "L47",
-      "id": "run_monthly_recert_rationale_47",
       "community": 15,
-      "norm_label": "return (model_month, start_ts, end_ts, eval_start, eval_end)."
+      "norm_label": "return (model_month, start_ts, end_ts, eval_start, eval_end).",
+      "id": "run_monthly_recert_rationale_47"
     },
     {
       "label": "Return {symbol: [failing critical check rows]}.",
       "file_type": "rationale",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/scripts/run_monthly_recert.py",
       "source_location": "L76",
-      "id": "run_monthly_recert_rationale_76",
       "community": 15,
-      "norm_label": "return {symbol: [failing critical check rows]}."
+      "norm_label": "return {symbol: [failing critical check rows]}.",
+      "id": "run_monthly_recert_rationale_76"
     },
     {
       "label": "Print per-symbol summary. Returns True if all critical checks pass.",
       "file_type": "rationale",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/scripts/run_monthly_recert.py",
       "source_location": "L279",
-      "id": "run_monthly_recert_rationale_279",
       "community": 15,
-      "norm_label": "print per-symbol summary. returns true if all critical checks pass."
+      "norm_label": "print per-symbol summary. returns true if all critical checks pass.",
+      "id": "run_monthly_recert_rationale_279"
     },
     {
       "label": "validate_local_jforex_surrogate.py",
@@ -12104,9 +12104,9 @@
       "file_type": "rationale",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/scripts/reconcile_jforex_outcomes.py",
       "source_location": "L375",
-      "id": "reconcile_jforex_outcomes_rationale_375",
       "community": 14,
-      "norm_label": "write one csv per symbol for consumption by validate_local_jforex_surrogate.py."
+      "norm_label": "write one csv per symbol for consumption by validate_local_jforex_surrogate.py.",
+      "id": "reconcile_jforex_outcomes_rationale_375"
     },
     {
       "label": "build_oco_threshold_sensitivity_report.py",
@@ -12383,18 +12383,18 @@
       "file_type": "rationale",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/scripts/run_promote_live.py",
       "source_location": "L44",
-      "id": "run_promote_live_rationale_44",
       "community": 9,
-      "norm_label": "raise systemexit if cert csv is missing, stale, or has critical failures."
+      "norm_label": "raise systemexit if cert csv is missing, stale, or has critical failures.",
+      "id": "run_promote_live_rationale_44"
     },
     {
       "label": "Copy model .cbm and .json files into models/oco_dukascopy_candidate/.      Reads",
       "file_type": "rationale",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/scripts/run_promote_live.py",
       "source_location": "L127",
-      "id": "run_promote_live_rationale_127",
       "community": 9,
-      "norm_label": "copy model .cbm and .json files into models/oco_dukascopy_candidate/.      reads"
+      "norm_label": "copy model .cbm and .json files into models/oco_dukascopy_candidate/.      reads",
+      "id": "run_promote_live_rationale_127"
     },
     {
       "label": "diagnose_live_replay.py",
@@ -62766,7 +62766,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/tests/test_run_monthly_recert.py",
-      "source_location": "L121",
+      "source_location": "L123",
       "weight": 1.0,
       "_src": "users_danielfisher_repositories_behemoth_worktrees_fix_monthly_recert_bundle_scope_tests_test_run_monthly_recert_py",
       "_tgt": "test_run_monthly_recert_test_validate_stage14_scope_rejects_non_bundle_scoped_outputs",
@@ -62778,7 +62778,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/tests/test_run_monthly_recert.py",
-      "source_location": "L131",
+      "source_location": "L133",
       "weight": 1.0,
       "_src": "users_danielfisher_repositories_behemoth_worktrees_fix_monthly_recert_bundle_scope_tests_test_run_monthly_recert_py",
       "_tgt": "test_run_monthly_recert_test_main_requires_existing_month_bundle",
@@ -62790,7 +62790,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/tests/test_run_monthly_recert.py",
-      "source_location": "L154",
+      "source_location": "L156",
       "weight": 1.0,
       "_src": "users_danielfisher_repositories_behemoth_worktrees_fix_monthly_recert_bundle_scope_tests_test_run_monthly_recert_py",
       "_tgt": "test_run_monthly_recert_test_main_rejects_incomplete_month_bundle",
@@ -62802,7 +62802,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/tests/test_run_monthly_recert.py",
-      "source_location": "L181",
+      "source_location": "L183",
       "weight": 1.0,
       "_src": "users_danielfisher_repositories_behemoth_worktrees_fix_monthly_recert_bundle_scope_tests_test_run_monthly_recert_py",
       "_tgt": "test_run_monthly_recert_test_read_failures_ignores_expected_non_deployable_nogo",
@@ -62814,7 +62814,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/tests/test_run_monthly_recert.py",
-      "source_location": "L223",
+      "source_location": "L225",
       "weight": 1.0,
       "_src": "users_danielfisher_repositories_behemoth_worktrees_fix_monthly_recert_bundle_scope_tests_test_run_monthly_recert_py",
       "_tgt": "test_run_monthly_recert_test_print_summary_keeps_go_when_only_expected_nogo_remains",
@@ -62826,7 +62826,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/tests/test_run_monthly_recert.py",
-      "source_location": "L243",
+      "source_location": "L245",
       "weight": 1.0,
       "_src": "users_danielfisher_repositories_behemoth_worktrees_fix_monthly_recert_bundle_scope_tests_test_run_monthly_recert_py",
       "_tgt": "test_run_monthly_recert_write_bundle_fixture",
@@ -66846,7 +66846,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/scripts/run_monthly_recert.py",
-      "source_location": "L390",
+      "source_location": "L392",
       "weight": 1.0,
       "_src": "run_monthly_recert_main",
       "_tgt": "run_monthly_recert_read_failures",
@@ -66894,7 +66894,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/scripts/run_monthly_recert.py",
-      "source_location": "L391",
+      "source_location": "L393",
       "weight": 1.0,
       "_src": "run_monthly_recert_main",
       "_tgt": "run_monthly_recert_read_acceptable_nogos",
@@ -66966,7 +66966,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/scripts/run_monthly_recert.py",
-      "source_location": "L378",
+      "source_location": "L380",
       "weight": 1.0,
       "_src": "run_monthly_recert_main",
       "_tgt": "run_monthly_recert_stage14_make_vars",
@@ -67014,7 +67014,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/scripts/run_monthly_recert.py",
-      "source_location": "L393",
+      "source_location": "L395",
       "weight": 1.0,
       "_src": "run_monthly_recert_main",
       "_tgt": "run_monthly_recert_write_recert_status",
@@ -67038,7 +67038,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "/Users/danielfisher/repositories/behemoth/.worktrees/fix-monthly-recert-bundle-scope/scripts/run_monthly_recert.py",
-      "source_location": "L392",
+      "source_location": "L394",
       "weight": 1.0,
       "_src": "run_monthly_recert_main",
       "_tgt": "run_monthly_recert_print_summary",
