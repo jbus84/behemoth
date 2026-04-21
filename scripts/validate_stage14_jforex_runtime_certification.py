@@ -197,6 +197,35 @@ def _non_deployable_nogo_details(row: dict[str, Any]) -> str:
     return f"accepted historical non-deployable NO_GO (historical_deployable=false{reason_suffix})"
 
 
+def _normalize_outcome(value: Any) -> str:
+    return str(value or "").strip().upper()
+
+
+def _normalize_go_decision(value: Any) -> str:
+    return str(value or "").strip().upper()
+
+
+def _normalized_month_tokens(value: str) -> set[str]:
+    txt = str(value or "").strip()
+    compact = txt.replace("-", "")
+    return {token for token in (txt, compact) if token}
+
+
+def _path_has_bundle_provenance(source_path: str, target_bundle_dir: Path, target_model_month: str) -> bool:
+    source_txt = str(source_path or "").strip()
+    if not source_txt:
+        return False
+    target_root = target_bundle_dir.resolve().as_posix().rstrip("/") + "/"
+    try:
+        resolved_source = Path(source_txt).resolve().as_posix()
+    except Exception:
+        resolved_source = source_txt.replace("\\", "/")
+    month_tokens = _normalized_month_tokens(target_model_month)
+    return resolved_source.startswith(target_root) and any(
+        token in resolved_source for token in month_tokens
+    )
+
+
 def _check_threshold_parity(
     symbol: str,
     history_dir: Path,
@@ -258,9 +287,17 @@ def build_stage14_artifacts(
     out_checks_csv: Path,
     report_out: Path,
     snapshot_out: Path,
+    target_bundle_dir: Path | None = None,
+    target_model_month: str | None = None,
+    require_provenance: bool = False,
     models_dir: Path | None = None,
     history_dir: Path | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    if require_provenance and (target_bundle_dir is None or not target_model_month):
+        raise ValueError(
+            "require_provenance=True requires both target_bundle_dir and target_model_month"
+        )
+
     sources = [
         InputSource(
             check_id="stage13_dukascopy_testclient_pass",
@@ -323,6 +360,7 @@ def build_stage14_artifacts(
     )
     summary_rows: list[dict[str, Any]] = []
     check_rows: list[dict[str, Any]] = []
+
     now_utc = _now_utc()
     for symbol in symbols:
         by_symbol = checks[checks["symbol"] == symbol].copy()
@@ -330,6 +368,11 @@ def build_stage14_artifacts(
         missing_inputs = 0
         historical_deployable: bool | None = None
         non_deployable_reason = ""
+        process_failures: list[str] = []
+
+        def _record_process_failure(reason: str) -> None:
+            process_failures.append(reason)
+
         if not by_symbol.empty:
             deployable_rows = by_symbol[by_symbol["historical_deployable"].notna()]
             if not deployable_rows.empty:
@@ -343,6 +386,45 @@ def build_stage14_artifacts(
                 ).strip()
         for src in sources:
             match = by_symbol[by_symbol["check_id"] == src.check_id].copy()
+            source_row = match.iloc[-1] if not match.empty else None
+            provenance_details = ""
+            failing_source_path = ""
+            if not match.empty and require_provenance and target_bundle_dir is not None:
+                invalid_source_paths = [
+                    str(candidate.get("source_path") or "")
+                    for _, candidate in match.iterrows()
+                    if not _path_has_bundle_provenance(
+                        str(candidate.get("source_path") or ""),
+                        target_bundle_dir,
+                        str(target_model_month),
+                    )
+                ]
+                if invalid_source_paths:
+                    failing_source_path = invalid_source_paths[0]
+                    provenance_details = (
+                        f"provenance mismatch for {symbol} {src.check_id}: {failing_source_path}"
+                    )
+                    _record_process_failure(provenance_details)
+            forbidden_fail_go = False
+            if not match.empty:
+                invalid_fail_go_paths = []
+                for _, candidate in match.iterrows():
+                    source_certification_outcome = _normalize_outcome(
+                        candidate.get("stage13_certification_outcome")
+                        or candidate.get("certification_outcome")
+                    )
+                    source_go_decision = _normalize_go_decision(
+                        candidate.get("stage13_go_decision") or candidate.get("go_decision")
+                    )
+                    if source_certification_outcome == "FAIL" and source_go_decision == "GO":
+                        invalid_fail_go_paths.append(str(candidate.get("source_path") or ""))
+                if invalid_fail_go_paths:
+                    forbidden_fail_go = True
+                    failing_source_path = failing_source_path or invalid_fail_go_paths[0]
+                    provenance_details = (
+                        f"forbidden FAIL/GO combination for {symbol} {src.check_id}: {failing_source_path}"
+                    )
+                    _record_process_failure(provenance_details)
             if src.check_id == "stage13_dukascopy_testclient_pass":
                 value, details, stage13_outcome, stage13_go = _evaluate_stage13_prerequisite(match)
                 row["stage13_certification_outcome"] = stage13_outcome or (
@@ -351,11 +433,15 @@ def build_stage14_artifacts(
                 row["stage13_go_decision"] = stage13_go or (
                     "NO_GO" if bool(value) is False else "GO" if value else ""
                 )
+                if forbidden_fail_go:
+                    details = provenance_details
             elif src.check_id == "local_jforex_surrogate_pass":
                 value, details = _evaluate_local_surrogate(match)
             else:
                 value = None if match.empty else match.iloc[-1].get("pass")
                 details = ""
+            if provenance_details and not details:
+                details = provenance_details
             if value is None or pd.isna(value):
                 missing_inputs += 1
                 row[src.check_id] = False
@@ -364,6 +450,9 @@ def build_stage14_artifacts(
             else:
                 row[src.check_id] = bool(value)
                 status = "pass" if bool(value) else "fail"
+            if provenance_details or forbidden_fail_go:
+                row[src.check_id] = False
+                status = "fail"
             if (
                 value is not None
                 and not pd.isna(value)
@@ -395,13 +484,17 @@ def build_stage14_artifacts(
                     "jforex_outcome_parity_pass",
                     "local_jforex_surrogate_pass",
                 }
+                and not provenance_details
+                and not forbidden_fail_go
                 and status != "pass"
             ):
                 status = "nogo"
                 details = _non_deployable_nogo_details(
                     {"non_deployable_reason": non_deployable_reason}
                 )
-            source_path = "" if match.empty else str(match.iloc[-1].get("source_path") or "")
+            source_path = failing_source_path or (
+                "" if match.empty else str(match.iloc[-1].get("source_path") or "")
+            )
             check_rows.append(
                 {
                     "symbol": symbol,
@@ -437,19 +530,23 @@ def build_stage14_artifacts(
                     "evaluated_at_utc": now_utc,
                 }
             )
+        process_status = "FAIL" if process_failures else "PASS"
         row["stage14_jforex_cert_pass"] = all(bool(row[src.check_id]) for src in sources)
         row["certification_outcome"] = "PASS" if row["stage14_jforex_cert_pass"] else "FAIL"
         row["go_decision"] = (
             "NO_GO"
-            if (historical_deployable is False or not row["stage14_jforex_cert_pass"])
+            if (process_status == "FAIL" or historical_deployable is False or not row["stage14_jforex_cert_pass"])
             else "GO"
         )
         # missing_inputs counts absent-file failures only; stale artifacts fail the cert but do not increment this counter
         row["missing_inputs"] = missing_inputs
-        if row["stage14_jforex_cert_pass"] and historical_deployable is False:
+        if process_status == "FAIL":
+            row["verdict"] = "red"
+        elif row["stage14_jforex_cert_pass"] and historical_deployable is False:
             row["verdict"] = "nogo"
         else:
             row["verdict"] = "green" if row["stage14_jforex_cert_pass"] else "red"
+        row["process_status"] = process_status
         row["evaluated_at_utc"] = now_utc
         summary_rows.append(row)
 
@@ -520,6 +617,9 @@ def main() -> None:
     parser.add_argument("--jforex-operational-summary-glob", default="")
     parser.add_argument("--jforex-outcome-summary-glob", default="")
     parser.add_argument("--local-surrogate-summary-glob", default="")
+    parser.add_argument("--target-bundle-dir", default="")
+    parser.add_argument("--target-model-month", default="")
+    parser.add_argument("--require-provenance", action="store_true")
     parser.add_argument("--models-dir", default="models/oco_dukascopy_candidate")
     parser.add_argument(
         "--history-dir", default="configs/research/governance/oco_history_dukascopy_candidate"
@@ -542,6 +642,10 @@ def main() -> None:
         default="docs/strategy_bible/generated/stage_14_snapshot.md",
     )
     args = parser.parse_args()
+    if args.require_provenance and (
+        not str(args.target_bundle_dir).strip() or not str(args.target_model_month).strip()
+    ):
+        parser.error("--require-provenance requires --target-bundle-dir and --target-model-month")
     build_stage14_artifacts(
         symbols=[s.strip().upper() for s in str(args.symbols).split(",") if s.strip()],
         stage13_summary_glob=str(args.stage13_summary_glob),
@@ -556,6 +660,9 @@ def main() -> None:
         out_checks_csv=Path(str(args.out_checks_csv)),
         report_out=Path(str(args.report_out)),
         snapshot_out=Path(str(args.snapshot_out)),
+        target_bundle_dir=Path(str(args.target_bundle_dir)) if str(args.target_bundle_dir).strip() else None,
+        target_model_month=str(args.target_model_month).strip() or None,
+        require_provenance=bool(args.require_provenance),
         models_dir=Path(str(args.models_dir)),
         history_dir=Path(str(args.history_dir)),
     )

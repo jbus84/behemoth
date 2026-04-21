@@ -1043,4 +1043,5 @@ def test_main_reports_non_deployable_month_without_locked_predictions(tmp_path, 
     assert row["symbol"] == "USDCAD"
     assert str(row["historical_deployable"]).lower() == "false"
     assert row["non_deployable_reason"] == "no_gate_states"
+    assert row["lock_dir"] == str(lock_dir)
     assert str(row["overall_pass"]).lower() == "false"

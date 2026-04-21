@@ -14,6 +14,10 @@ def test_main_runs_definitive_recert_chain(monkeypatch, tmp_path) -> None:
     build_bundle_dir = tmp_path / "configs/research/governance/oco_candidate_builds/2026-02"
     build_bundle_dir.mkdir(parents=True)
     _write_bundle_fixture(build_bundle_dir)
+    report_dir = "data/analysis/backtest_reconcile"
+    expected_run_dir = (
+        "data/analysis/backtest_reconcile/2026-02/monthly_recert"
+    )
 
     def fake_run(cmd, cwd=None):
         calls.append(cmd)
@@ -42,12 +46,19 @@ def test_main_runs_definitive_recert_chain(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(
         run_monthly_recert.sys,
         "argv",
-        ["run_monthly_recert.py", "--report-dir", "data/analysis/backtest_reconcile"],
+        ["run_monthly_recert.py", "--report-dir", report_dir],
     )
 
     run_monthly_recert.main()
 
-    assert calls == [
+    assert calls[:3] == [
+        [
+            "make",
+            "stage13-dukascopy-cert",
+            "LOCK_DIR=configs/research/governance/oco_candidate_builds/2026-02",
+            f"RECONCILE_DIR={expected_run_dir}",
+            f"OUT_DIR={expected_run_dir}",
+        ],
         [
             "make",
             "jforex-dukascopy-matrix",
@@ -57,12 +68,7 @@ def test_main_runs_definitive_recert_chain(monkeypatch, tmp_path) -> None:
             "START_TS=2026-02-04T00:00:00Z",
             "END_TS=2026-02-09T00:00:00Z",
             "TICK_BATCH_SIZE=1",
-        ],
-        [
-            "make",
-            "stage13-dukascopy-cert",
-            "LOCK_DIR=configs/research/governance/oco_candidate_builds/2026-02",
-            "RECONCILE_DIR=data/analysis/backtest_reconcile",
+            f"REPORT_DIR={expected_run_dir}",
         ],
         [
             "make",
@@ -73,15 +79,49 @@ def test_main_runs_definitive_recert_chain(monkeypatch, tmp_path) -> None:
             "START_TS=2026-02-07T00:00:00Z",
             "END_TS=2026-02-09T00:00:00Z",
             "TICK_BATCH_SIZE=1",
-        ],
-        [
-            "make",
-            "full-stage14-cert",
-            "LOCK_DIR=configs/research/governance/oco_candidate_builds/2026-02",
-            "EVAL_START=2026-02-07T00:00:00Z",
-            "EVAL_END=2026-02-09T00:00:00Z",
+            f"REPORT_DIR={expected_run_dir}",
         ],
     ]
+    assert calls[3][:2] == ["make", "full-stage14-cert"]
+    assert set(calls[3][2:]) == {
+        "LOCK_DIR=configs/research/governance/oco_candidate_builds/2026-02",
+        f"TARGET_BUNDLE_DIR={build_bundle_dir.resolve()}",
+        "TARGET_MODEL_MONTH=2026-02",
+        "REQUIRE_PROVENANCE=1",
+        f"RECONCILE_DIR={expected_run_dir}",
+        f"OUT_CSV={expected_run_dir}/jforex_outcome_parity_summary.csv",
+        f"LOCAL_SIGNAL_SUMMARY_GLOB={expected_run_dir}/*_local_jforex_signal_parity_summary.csv",
+        f"LOCAL_EXECUTION_SUMMARY_GLOB={expected_run_dir}/*_local_jforex_execution_parity_summary.csv",
+        f"LOCAL_LIFECYCLE_SUMMARY_GLOB={expected_run_dir}/*_local_jforex_execution_lifecycle_summary.csv",
+        f"LOCAL_OPERATIONAL_SUMMARY_GLOB={expected_run_dir}/*_local_jforex_operational_ready_summary.csv",
+        f"LOCAL_OUTCOME_SUMMARY_GLOB={expected_run_dir}/*_local_jforex_outcome_parity_summary.csv",
+        f"LOCAL_OUT_SUMMARY_CSV={expected_run_dir}/local_jforex_surrogate_summary.csv",
+        f"LOCAL_OUT_CHECKS_CSV={expected_run_dir}/local_jforex_surrogate_checks.csv",
+        f"LOCAL_SURROGATE_SUMMARY_GLOB={expected_run_dir}/local_jforex_surrogate_summary.csv",
+        f"STAGE13_SUMMARY_GLOB={expected_run_dir}/stage12_stage13_certification_summary.csv",
+        f"JFOREX_SIGNAL_SUMMARY_GLOB={expected_run_dir}/*_jforex_signal_parity_summary.csv",
+        f"JFOREX_EXECUTION_SUMMARY_GLOB={expected_run_dir}/*_jforex_execution_parity_summary.csv",
+        f"JFOREX_LIFECYCLE_SUMMARY_GLOB={expected_run_dir}/*_jforex_execution_lifecycle_summary.csv",
+        f"JFOREX_OPERATIONAL_SUMMARY_GLOB={expected_run_dir}/*_jforex_operational_ready_summary.csv",
+        f"JFOREX_OUTCOME_SUMMARY_GLOB={expected_run_dir}/jforex_outcome_parity_summary.csv",
+        f"STAGE14_OUT_SUMMARY_CSV={expected_run_dir}/stage14_jforex_runtime_certification_summary.csv",
+        f"STAGE14_OUT_CHECKS_CSV={expected_run_dir}/stage14_jforex_runtime_certification_checks.csv",
+        "EVAL_START=2026-02-07T00:00:00Z",
+        "EVAL_END=2026-02-09T00:00:00Z",
+    }
+
+    status_path = tmp_path / expected_run_dir / run_monthly_recert.MONTHLY_RECERT_STATUS_FILENAME
+    assert status_path.is_file()
+
+
+def test_validate_stage14_scope_rejects_non_bundle_scoped_outputs() -> None:
+    with pytest.raises(SystemExit, match=r"bundle-scoped"):
+        run_monthly_recert._validate_stage14_scope(
+            "data/analysis/backtest_reconcile/2026-02/monthly_recert",
+            {
+                "OUT_CHECKS_CSV": "data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_checks.csv",
+            },
+        )
 
 
 def test_main_requires_existing_month_bundle(monkeypatch, tmp_path) -> None:

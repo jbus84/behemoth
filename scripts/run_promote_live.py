@@ -20,8 +20,10 @@ from datetime import date
 from pathlib import Path
 
 CERT_CHECKS_FILENAME = "stage14_jforex_runtime_certification_checks.csv"
+CERT_SUMMARY_FILENAME = "stage14_jforex_runtime_certification_summary.csv"
 MONTHLY_BUILD_ROOT = "configs/research/governance/oco_candidate_builds"
 HISTORY_ROOT = "configs/research/governance/oco_history_dukascopy_candidate"
+ACTIVE_ROOT = "configs/research/governance/oco"
 MONTHLY_RECERT_STATUS_FILENAME = "monthly_recert_status.json"
 
 
@@ -94,6 +96,33 @@ def _verify_cert(report_dir: str, model_month: str, repo_root: Path | None = Non
         )
 
 
+def _load_go_symbols(report_dir: str, model_month: str, repo_root: Path | None = None) -> list[str]:
+    repo_root = repo_root or _repo_root()
+    summary_path = repo_root / report_dir / CERT_SUMMARY_FILENAME
+    if not summary_path.exists():
+        raise SystemExit(
+            f"[promote-live] no cert summary found at {summary_path}; run make monthly-recert first"
+        )
+    with summary_path.open() as f:
+        rows = list(csv.DictReader(f))
+    if not rows:
+        raise SystemExit(
+            f"[promote-live] empty cert summary at {summary_path}; rerun make monthly-recert"
+        )
+    process_statuses = {str(row.get("process_status", "")).strip().upper() for row in rows}
+    if process_statuses != {"PASS"}:
+        raise SystemExit(
+            f"[promote-live] process_status is not PASS for {model_month}; rerun make monthly-recert"
+        )
+    return sorted(
+        {
+            str(row.get("symbol", "")).strip().upper()
+            for row in rows
+            if str(row.get("go_decision", "")).strip().upper() == "GO"
+        }
+    )
+
+
 def _copy_candidate_models(model_month: str) -> None:
     """Copy model .cbm and .json files into models/oco_dukascopy_candidate/.
 
@@ -147,6 +176,29 @@ def _archive_build_bundle(model_month: str) -> None:
     _rewrite_promoted_lock_paths(source_dir, target_dir)
     _rebuild_promoted_index(target_root)
     _copy_candidate_models(model_month)
+
+
+def _update_active_governance(model_month: str, go_symbols: list[str]) -> None:
+    source_dir = _repo_root() / HISTORY_ROOT / model_month
+    active_dir = _repo_root() / ACTIVE_ROOT
+    active_dir.mkdir(parents=True, exist_ok=True)
+
+    for path in active_dir.glob("*_oco_live_lock.json"):
+        path.unlink()
+    for path in active_dir.glob("*_oco_allowed_states.csv"):
+        path.unlink()
+
+    for symbol in go_symbols:
+        lower = symbol.lower()
+        source_lock = source_dir / f"{lower}_oco_live_lock.json"
+        if not source_lock.exists():
+            raise SystemExit(
+                f"[promote-live] missing archived lock for GO symbol {symbol}: {source_lock}"
+            )
+        shutil.copy2(source_lock, active_dir / source_lock.name)
+        source_states = source_dir / f"{lower}_oco_allowed_states.csv"
+        if source_states.exists():
+            shutil.copy2(source_states, active_dir / source_states.name)
 
 
 def _rewrite_path_prefix(path_value: str, source_dir: Path, target_dir: Path) -> str:
@@ -238,6 +290,8 @@ def main() -> None:
 
     print(f"[promote-live] archiving build bundle for {model_month}", flush=True)
     _archive_build_bundle(model_month)
+    go_symbols = _load_go_symbols(args.report_dir, model_month)
+    _update_active_governance(model_month, go_symbols)
 
     print(f"[promote-live] locks archived for {model_month}")
     print("Next step: restart the live runner with:")

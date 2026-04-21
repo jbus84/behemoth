@@ -60,6 +60,7 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
         "_verify_cert",
         lambda report_dir, model_month: verify_calls.append(f"{report_dir}:{model_month}"),
     )
+    monkeypatch.setattr(run_promote_live, "_load_go_symbols", lambda report_dir, model_month: ["EURUSD"])
     monkeypatch.setattr(run_promote_live, "_last_complete_month", lambda override=None: "2026-02")
     monkeypatch.setattr(run_promote_live, "_repo_root", lambda: tmp_path)
     monkeypatch.setattr(
@@ -148,3 +149,121 @@ def test_verify_cert_requires_matching_month_status(tmp_path) -> None:
         run_promote_live._verify_cert(
             "data/analysis/backtest_reconcile", "2026-02", repo_root=tmp_path
         )
+
+
+def test_promote_live_requires_process_status_pass(tmp_path) -> None:
+    report_dir = tmp_path / "data/analysis/backtest_reconcile"
+    report_dir.mkdir(parents=True)
+    today = f"{date.today().isoformat()}T12:00:00Z"
+    (report_dir / run_promote_live.CERT_CHECKS_FILENAME).write_text(
+        f"symbol,check_id,status,severity,evaluated_at_utc\nEURUSD,C1,pass,critical,{today}\n"
+    )
+    (report_dir / run_promote_live.MONTHLY_RECERT_STATUS_FILENAME).write_text(
+        json.dumps(
+            {
+                "model_month": "2026-02",
+                "evaluated_at_utc": today,
+                "overall_pass": True,
+            }
+        )
+        + "\n"
+    )
+    (report_dir / run_promote_live.CERT_SUMMARY_FILENAME).write_text(
+        "symbol,process_status,go_decision\nEURUSD,FAIL,NO_GO\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit, match=r"process_status.*PASS"):
+        run_promote_live._load_go_symbols(
+            "data/analysis/backtest_reconcile", "2026-02", repo_root=tmp_path
+        )
+
+
+def test_promote_live_archives_full_bundle_but_updates_active_live_governance_only_for_go_symbols(
+    monkeypatch, tmp_path
+) -> None:
+    build_bundle_dir = tmp_path / "configs/research/governance/oco_candidate_builds/2026-02"
+    build_bundle_dir.mkdir(parents=True)
+    archive_dir = tmp_path / "configs/research/governance/oco_history_dukascopy_candidate"
+    active_dir = tmp_path / "configs/research/governance/oco"
+    archive_dir.mkdir(parents=True)
+    active_dir.mkdir(parents=True)
+    (active_dir / "audusd_oco_live_lock.json").write_text("stale\n", encoding="utf-8")
+
+    for symbol in ("EURUSD", "AUDUSD"):
+        lower = symbol.lower()
+        model_dir = build_bundle_dir / "models/oco"
+        model_dir.mkdir(parents=True, exist_ok=True)
+        model_cbm = model_dir / f"{symbol}_model_2026-02.cbm"
+        model_thr = model_dir / f"{symbol}_model_2026-02.json"
+        model_cbm.write_text("cbm\n", encoding="utf-8")
+        model_thr.write_text('{"threshold": 1.23}\n', encoding="utf-8")
+        allowed_states = build_bundle_dir / f"{lower}_oco_allowed_states.csv"
+        allowed_states.write_text("symbol,state_id\n", encoding="utf-8")
+        (build_bundle_dir / f"{lower}_oco_live_lock.json").write_text(
+            json.dumps(
+                {
+                    "symbol": symbol,
+                    "artifacts": {
+                        "model_cbm_path": str(model_cbm),
+                        "model_threshold_json_path": str(model_thr),
+                        "reduced_states_csv_path": str(allowed_states),
+                        "live_deployable": symbol == "EURUSD",
+                    },
+                    "state_universe": {"count": 1 if symbol == "EURUSD" else 0},
+                    "locked_runtime": {"production_cap_pips": 1.2},
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+    report_dir = tmp_path / "data/analysis/backtest_reconcile"
+    report_dir.mkdir(parents=True)
+    today = f"{date.today().isoformat()}T12:00:00Z"
+    (report_dir / run_promote_live.CERT_CHECKS_FILENAME).write_text(
+        "\n".join(
+            [
+                "symbol,check_id,status,severity,evaluated_at_utc",
+                f"EURUSD,C1,pass,critical,{today}",
+                f"AUDUSD,C1,nogo,critical,{today}",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (report_dir / run_promote_live.MONTHLY_RECERT_STATUS_FILENAME).write_text(
+        json.dumps(
+            {
+                "model_month": "2026-02",
+                "evaluated_at_utc": today,
+                "overall_pass": True,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (report_dir / run_promote_live.CERT_SUMMARY_FILENAME).write_text(
+        "\n".join(
+            [
+                "symbol,process_status,go_decision",
+                "EURUSD,PASS,GO",
+                "AUDUSD,PASS,NO_GO",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(run_promote_live, "_last_complete_month", lambda override=None: "2026-02")
+    monkeypatch.setattr(run_promote_live, "_repo_root", lambda: tmp_path)
+    monkeypatch.setattr(
+        sys, "argv", ["run_promote_live.py", "--report-dir", "data/analysis/backtest_reconcile"]
+    )
+
+    run_promote_live.main()
+
+    assert (archive_dir / "2026-02" / "eurusd_oco_live_lock.json").exists()
+    assert (archive_dir / "2026-02" / "audusd_oco_live_lock.json").exists()
+    assert (active_dir / "eurusd_oco_live_lock.json").exists()
+    assert not (active_dir / "audusd_oco_live_lock.json").exists()

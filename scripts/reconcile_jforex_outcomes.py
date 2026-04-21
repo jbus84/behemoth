@@ -367,6 +367,7 @@ def non_deployable_result(symbol: str, events: dict, reason: str) -> dict:
         "overall_pass": False,
         "historical_deployable": False,
         "non_deployable_reason": str(reason).strip(),
+        "lock_dir": "",
     }
 
 
@@ -448,6 +449,7 @@ def main() -> None:
                 events=events,
                 reason=str(lock_status["non_deployable_reason"]),
             )
+            result["lock_dir"] = str(lock_dir)
             result["evaluated_at_utc"] = now_utc
             results.append(result)
             continue
@@ -475,6 +477,9 @@ def main() -> None:
             signal_coverage_threshold=args.signal_coverage_threshold,
             jforex_submitted_group_count=events["submitted_group_close_ts_count"],
         )
+        result["historical_deployable"] = bool(lock_status["historical_deployable"])
+        result["non_deployable_reason"] = str(lock_status["non_deployable_reason"]).strip()
+        result["lock_dir"] = str(lock_dir)
         result["evaluated_at_utc"] = now_utc
         results.append(result)
 

@@ -30,6 +30,7 @@ CERT_TICK_BATCH_SIZE = "1"
 CERT_CHECKS_FILENAME = "stage14_jforex_runtime_certification_checks.csv"
 MONTHLY_RECERT_STATUS_FILENAME = "monthly_recert_status.json"
 BUNDLE_MODELS_SUBDIR = Path("models/oco_dukascopy_candidate")
+MONTHLY_RECERT_RUN_DIRNAME = "monthly_recert"
 
 
 def _repo_root() -> Path:
@@ -123,6 +124,73 @@ def _read_acceptable_nogos(report_dir: str) -> dict[str, list[dict[str, str]]]:
 
 def _bundle_models_dir(bundle_dir: Path) -> Path:
     return bundle_dir / BUNDLE_MODELS_SUBDIR
+
+
+def _run_report_dir(report_root: str, model_month: str) -> str:
+    run_dir = Path(report_root) / model_month / MONTHLY_RECERT_RUN_DIRNAME
+    (_repo_root() / run_dir).mkdir(parents=True, exist_ok=True)
+    return str(run_dir)
+
+
+def _validate_stage14_scope(run_report_dir: str, make_vars: dict[str, str]) -> None:
+    run_prefix = run_report_dir.rstrip("/")
+    allowed_exact = {"RECONCILE_DIR"}
+    for key, value in make_vars.items():
+        if key in {"LOCK_DIR", "EVAL_START", "EVAL_END"}:
+            continue
+        normalized = value.split("*", 1)[0].rstrip("/")
+        expected_prefix = run_prefix + "/"
+        is_valid = normalized == run_prefix or normalized.startswith(expected_prefix)
+        if key in allowed_exact:
+            is_valid = normalized == run_prefix
+        if not is_valid:
+            raise SystemExit(
+                f"[monthly-recert] Stage 14 inputs/outputs must be bundle-scoped under "
+                f"{run_report_dir}: {key}={value}"
+            )
+
+
+def _stage14_make_vars(run_report_dir: str, eval_start: str, eval_end: str) -> dict[str, str]:
+    vars_map = {
+        "RECONCILE_DIR": run_report_dir,
+        "OUT_CSV": f"{run_report_dir}/jforex_outcome_parity_summary.csv",
+        "LOCAL_SIGNAL_SUMMARY_GLOB": f"{run_report_dir}/*_local_jforex_signal_parity_summary.csv",
+        "LOCAL_EXECUTION_SUMMARY_GLOB": (
+            f"{run_report_dir}/*_local_jforex_execution_parity_summary.csv"
+        ),
+        "LOCAL_LIFECYCLE_SUMMARY_GLOB": (
+            f"{run_report_dir}/*_local_jforex_execution_lifecycle_summary.csv"
+        ),
+        "LOCAL_OPERATIONAL_SUMMARY_GLOB": (
+            f"{run_report_dir}/*_local_jforex_operational_ready_summary.csv"
+        ),
+        "LOCAL_OUTCOME_SUMMARY_GLOB": (
+            f"{run_report_dir}/*_local_jforex_outcome_parity_summary.csv"
+        ),
+        "LOCAL_OUT_SUMMARY_CSV": f"{run_report_dir}/local_jforex_surrogate_summary.csv",
+        "LOCAL_OUT_CHECKS_CSV": f"{run_report_dir}/local_jforex_surrogate_checks.csv",
+        "STAGE13_SUMMARY_GLOB": f"{run_report_dir}/stage12_stage13_certification_summary.csv",
+        "JFOREX_SIGNAL_SUMMARY_GLOB": f"{run_report_dir}/*_jforex_signal_parity_summary.csv",
+        "JFOREX_EXECUTION_SUMMARY_GLOB": f"{run_report_dir}/*_jforex_execution_parity_summary.csv",
+        "JFOREX_LIFECYCLE_SUMMARY_GLOB": (
+            f"{run_report_dir}/*_jforex_execution_lifecycle_summary.csv"
+        ),
+        "JFOREX_OPERATIONAL_SUMMARY_GLOB": (
+            f"{run_report_dir}/*_jforex_operational_ready_summary.csv"
+        ),
+        "JFOREX_OUTCOME_SUMMARY_GLOB": f"{run_report_dir}/jforex_outcome_parity_summary.csv",
+        "LOCAL_SURROGATE_SUMMARY_GLOB": f"{run_report_dir}/local_jforex_surrogate_summary.csv",
+        "STAGE14_OUT_SUMMARY_CSV": (
+            f"{run_report_dir}/stage14_jforex_runtime_certification_summary.csv"
+        ),
+        "STAGE14_OUT_CHECKS_CSV": (
+            f"{run_report_dir}/stage14_jforex_runtime_certification_checks.csv"
+        ),
+        "EVAL_START": eval_start,
+        "EVAL_END": eval_end,
+    }
+    _validate_stage14_scope(run_report_dir, vars_map)
+    return vars_map
 
 
 def _validate_month_bundle(bundle_dir: Path) -> None:
@@ -254,6 +322,7 @@ def main() -> None:
     )
     bundle_dir = _require_month_bundle(model_month)
     bundle_models_dir = _bundle_models_dir(_repo_root() / bundle_dir)
+    run_report_dir = _run_report_dir(args.report_dir, model_month)
 
     print(
         f"[monthly-recert] running for MODEL_MONTH={model_month} "
@@ -266,7 +335,8 @@ def main() -> None:
             "make",
             "stage13-dukascopy-cert",
             f"LOCK_DIR={bundle_dir}",
-            f"RECONCILE_DIR={args.report_dir}",
+            f"RECONCILE_DIR={run_report_dir}",
+            f"OUT_DIR={run_report_dir}",
         ],
         "step 1/4: stage13-dukascopy-cert",
     )
@@ -280,6 +350,7 @@ def main() -> None:
             f"START_TS={start_ts}",
             f"END_TS={end_ts}",
             f"TICK_BATCH_SIZE={CERT_TICK_BATCH_SIZE}",
+            f"REPORT_DIR={run_report_dir}",
         ],
         "step 2/4: jforex-dukascopy-matrix",
     )
@@ -293,24 +364,26 @@ def main() -> None:
             f"START_TS={eval_start}",
             f"END_TS={eval_end}",
             f"TICK_BATCH_SIZE={CERT_TICK_BATCH_SIZE}",
+            f"REPORT_DIR={run_report_dir}",
         ],
         "step 3/4: local-jforex-parity-matrix",
     )
+    stage14_vars = _stage14_make_vars(run_report_dir, eval_start, eval_end)
     _run_step(
-        [
-            "make",
-            "full-stage14-cert",
-            f"LOCK_DIR={bundle_dir}",
-            f"EVAL_START={eval_start}",
-            f"EVAL_END={eval_end}",
-        ],
+        ["make", "full-stage14-cert", f"LOCK_DIR={bundle_dir}"]
+        + [
+            f"TARGET_BUNDLE_DIR={(_repo_root() / bundle_dir).resolve()}",
+            f"TARGET_MODEL_MONTH={model_month}",
+            "REQUIRE_PROVENANCE=1",
+        ]
+        + [f"{key}={value}" for key, value in stage14_vars.items()],
         "step 4/4: full-stage14-cert",
     )
 
-    failures = _read_failures(args.report_dir)
-    acceptable_nogos = _read_acceptable_nogos(args.report_dir)
+    failures = _read_failures(run_report_dir)
+    acceptable_nogos = _read_acceptable_nogos(run_report_dir)
     all_pass = _print_summary(model_month, failures, acceptable_nogos)
-    _write_recert_status(model_month, args.report_dir, bundle_dir, all_pass)
+    _write_recert_status(model_month, run_report_dir, bundle_dir, all_pass)
     if not all_pass:
         raise SystemExit(1)
 

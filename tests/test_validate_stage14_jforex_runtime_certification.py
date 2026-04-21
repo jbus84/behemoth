@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from scripts.run_jforex_dukascopy_matrix import _stage14_artifact_paths
+import scripts.validate_stage14_jforex_runtime_certification as stage14_mod
 from scripts.validate_stage14_jforex_runtime_certification import build_stage14_artifacts
 
 
@@ -81,6 +84,68 @@ def _write_stage13_normalized_summary(
     return path
 
 
+def _write_stage14_bundle_inputs(
+    bundle_dir: Path,
+    symbol: str,
+    *,
+    stage13_certification_outcome: str = "PASS",
+    stage13_go_decision: str = "GO",
+    stage13_pass: bool = True,
+    jforex_signal_pass: bool = True,
+    jforex_execution_pass: bool = True,
+    execution_lifecycle_pass: bool = True,
+    operational_ready_pass: bool = True,
+    outcome_pass: bool = True,
+    local_surrogate_pass: bool | None = None,
+    historical_deployable: bool | None = None,
+    non_deployable_reason: str = "",
+    verdict: str | None = None,
+) -> None:
+    bundle_dir.mkdir(parents=True, exist_ok=True)
+    _write_csv(
+        bundle_dir / f"{symbol}_stage13.csv",
+        [
+            {
+                "symbol": symbol,
+                "stage13_dukascopy_testclient_pass": stage13_pass,
+                "certification_outcome": stage13_certification_outcome,
+                "go_decision": stage13_go_decision,
+            }
+        ],
+    )
+    _write_csv(
+        bundle_dir / f"{symbol}_jforex_signal.csv",
+        [{"symbol": symbol, "jforex_signal_parity_pass": jforex_signal_pass}],
+    )
+    _write_csv(
+        bundle_dir / f"{symbol}_jforex_execution.csv",
+        [{"symbol": symbol, "jforex_execution_parity_pass": jforex_execution_pass}],
+    )
+    _write_csv(
+        bundle_dir / f"{symbol}_jforex_execution_lifecycle.csv",
+        [{"symbol": symbol, "execution_lifecycle_pass": execution_lifecycle_pass}],
+    )
+    _write_csv(
+        bundle_dir / f"{symbol}_jforex_ops.csv",
+        [{"symbol": symbol, "operational_ready_pass": operational_ready_pass}],
+    )
+    _write_csv(
+        bundle_dir / f"{symbol}_outcome.csv",
+        [{"symbol": symbol, "jforex_outcome_parity_pass": outcome_pass}],
+    )
+    if local_surrogate_pass is not None or historical_deployable is not None or verdict is not None:
+        row: dict[str, object] = {"symbol": symbol}
+        if local_surrogate_pass is not None:
+            row["local_jforex_surrogate_pass"] = local_surrogate_pass
+        if historical_deployable is not None:
+            row["historical_deployable"] = historical_deployable
+        if non_deployable_reason:
+            row["non_deployable_reason"] = non_deployable_reason
+        if verdict is not None:
+            row["verdict"] = verdict
+        _write_csv(bundle_dir / f"{symbol}_local_jforex_surrogate.csv", [row])
+
+
 def test_build_stage14_artifacts_fails_when_jforex_inputs_missing(tmp_path: Path) -> None:
     _write_csv(
         tmp_path / "GBPUSD_stage13.csv",
@@ -108,6 +173,240 @@ def test_build_stage14_artifacts_fails_when_jforex_inputs_missing(tmp_path: Path
     assert int(summary.loc[0, "missing_inputs"]) == 6
     failed = checks[checks["status"] == "fail"]
     assert len(failed) == 6
+
+
+def test_stage14_emits_process_pass_and_symbol_go_for_green_inputs(tmp_path: Path) -> None:
+    bundle_dir = tmp_path / "bundle_202404"
+    _write_stage14_bundle_inputs(
+        bundle_dir,
+        "EURUSD",
+        local_surrogate_pass=True,
+        historical_deployable=True,
+        verdict="green",
+    )
+
+    summary, checks = build_stage14_artifacts(
+        symbols=["EURUSD"],
+        stage13_summary_glob=str(bundle_dir / "*_stage13.csv"),
+        jforex_signal_summary_glob=str(bundle_dir / "*_jforex_signal.csv"),
+        jforex_execution_summary_glob=str(bundle_dir / "*_jforex_execution.csv"),
+        jforex_lifecycle_summary_glob=str(bundle_dir / "*_jforex_execution_lifecycle.csv"),
+        jforex_operational_summary_glob=str(bundle_dir / "*_jforex_ops.csv"),
+        jforex_outcome_summary_glob=str(bundle_dir / "*_outcome.csv"),
+        local_surrogate_summary_glob=str(bundle_dir / "*_local_jforex_surrogate.csv"),
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+        target_bundle_dir=bundle_dir,
+        target_model_month="202404",
+        require_provenance=True,
+    )
+
+    assert summary.loc[0, "process_status"] == "PASS"
+    assert summary.loc[0, "certification_outcome"] == "PASS"
+    assert summary.loc[0, "go_decision"] == "GO"
+    assert not checks["details"].str.contains("provenance", case=False).any()
+
+
+def test_stage14_emits_process_pass_and_symbol_nogo_for_certified_non_deployable_symbol(
+    tmp_path: Path,
+) -> None:
+    bundle_dir = tmp_path / "bundle_202404"
+    _write_stage14_bundle_inputs(
+        bundle_dir,
+        "USDCAD",
+        local_surrogate_pass=True,
+        historical_deployable=False,
+        non_deployable_reason="no_gate_states",
+        verdict="NO_GO",
+    )
+
+    summary, checks = build_stage14_artifacts(
+        symbols=["USDCAD"],
+        stage13_summary_glob=str(bundle_dir / "*_stage13.csv"),
+        jforex_signal_summary_glob=str(bundle_dir / "*_jforex_signal.csv"),
+        jforex_execution_summary_glob=str(bundle_dir / "*_jforex_execution.csv"),
+        jforex_lifecycle_summary_glob=str(bundle_dir / "*_jforex_execution_lifecycle.csv"),
+        jforex_operational_summary_glob=str(bundle_dir / "*_jforex_ops.csv"),
+        jforex_outcome_summary_glob=str(bundle_dir / "*_outcome.csv"),
+        local_surrogate_summary_glob=str(bundle_dir / "*_local_jforex_surrogate.csv"),
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+        target_bundle_dir=bundle_dir,
+        target_model_month="202404",
+        require_provenance=True,
+    )
+
+    assert summary.loc[0, "process_status"] == "PASS"
+    assert summary.loc[0, "certification_outcome"] == "PASS"
+    assert summary.loc[0, "go_decision"] == "NO_GO"
+    assert summary.loc[0, "verdict"] == "nogo"
+    surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"].iloc[0]
+    assert "accepted non-deployable local surrogate no_go" in surrogate_check["details"].lower()
+
+
+def test_stage14_emits_process_fail_when_inputs_are_mixed_from_wrong_bundle(
+    tmp_path: Path,
+) -> None:
+    bundle_dir = tmp_path / "bundle_202404"
+    wrong_bundle_dir = tmp_path / "other_bundle_202404"
+    _write_stage14_bundle_inputs(bundle_dir, "EURUSD")
+    _write_csv(
+        wrong_bundle_dir / "EURUSD_jforex_execution.csv",
+        [{"symbol": "EURUSD", "jforex_execution_parity_pass": True}],
+    )
+
+    summary, checks = build_stage14_artifacts(
+        symbols=["EURUSD"],
+        stage13_summary_glob=str(bundle_dir / "*_stage13.csv"),
+        jforex_signal_summary_glob=str(bundle_dir / "*_jforex_signal.csv"),
+        jforex_execution_summary_glob=str(wrong_bundle_dir / "*_jforex_execution.csv"),
+        jforex_lifecycle_summary_glob=str(bundle_dir / "*_jforex_execution_lifecycle.csv"),
+        jforex_operational_summary_glob=str(bundle_dir / "*_jforex_ops.csv"),
+        jforex_outcome_summary_glob=str(bundle_dir / "*_outcome.csv"),
+        local_surrogate_summary_glob="",
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+        target_bundle_dir=bundle_dir,
+        target_model_month="202404",
+        require_provenance=True,
+    )
+
+    assert summary["process_status"].eq("FAIL").all()
+    assert checks["details"].str.contains("provenance", case=False).any()
+    execution_check = checks[checks["metric_name"] == "jforex_execution_parity_pass"].iloc[0]
+    assert execution_check["status"] == "fail"
+    assert execution_check["metric_value"] == 0
+
+
+def test_stage14_emits_process_fail_when_glob_matches_target_and_non_target_bundle(
+    tmp_path: Path,
+) -> None:
+    bundle_dir = tmp_path / "bundle_202404"
+    wrong_bundle_dir = tmp_path / "shadow_bundle_202404"
+    _write_stage14_bundle_inputs(bundle_dir, "EURUSD")
+    _write_csv(
+        wrong_bundle_dir / "EURUSD_jforex_execution.csv",
+        [{"symbol": "EURUSD", "jforex_execution_parity_pass": True}],
+    )
+
+    summary, checks = build_stage14_artifacts(
+        symbols=["EURUSD"],
+        stage13_summary_glob=str(bundle_dir / "*_stage13.csv"),
+        jforex_signal_summary_glob=str(bundle_dir / "*_jforex_signal.csv"),
+        jforex_execution_summary_glob=",".join(
+            [
+                str(bundle_dir / "*_jforex_execution.csv"),
+                str(wrong_bundle_dir / "*_jforex_execution.csv"),
+            ]
+        ),
+        jforex_lifecycle_summary_glob=str(bundle_dir / "*_jforex_execution_lifecycle.csv"),
+        jforex_operational_summary_glob=str(bundle_dir / "*_jforex_ops.csv"),
+        jforex_outcome_summary_glob=str(bundle_dir / "*_outcome.csv"),
+        local_surrogate_summary_glob="",
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+        target_bundle_dir=bundle_dir,
+        target_model_month="2024-04",
+        require_provenance=True,
+    )
+
+    assert summary["process_status"].eq("FAIL").all()
+    execution_check = checks[checks["metric_name"] == "jforex_execution_parity_pass"].iloc[0]
+    assert execution_check["status"] == "fail"
+    assert "provenance mismatch" in execution_check["details"].lower()
+
+
+def test_stage14_rejects_fail_go_combination(tmp_path: Path) -> None:
+    bundle_dir = tmp_path / "bundle_202404"
+    _write_stage14_bundle_inputs(
+        bundle_dir,
+        "EURUSD",
+        stage13_pass=False,
+        stage13_certification_outcome="FAIL",
+        stage13_go_decision="GO",
+    )
+
+    summary, checks = build_stage14_artifacts(
+        symbols=["EURUSD"],
+        stage13_summary_glob=str(bundle_dir / "*_stage13.csv"),
+        jforex_signal_summary_glob=str(bundle_dir / "*_jforex_signal.csv"),
+        jforex_execution_summary_glob=str(bundle_dir / "*_jforex_execution.csv"),
+        jforex_lifecycle_summary_glob=str(bundle_dir / "*_jforex_execution_lifecycle.csv"),
+        jforex_operational_summary_glob=str(bundle_dir / "*_jforex_ops.csv"),
+        jforex_outcome_summary_glob=str(bundle_dir / "*_outcome.csv"),
+        local_surrogate_summary_glob="",
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+        target_bundle_dir=bundle_dir,
+        target_model_month="202404",
+        require_provenance=True,
+    )
+
+    assert summary["process_status"].eq("FAIL").all()
+    assert summary.loc[0, "go_decision"] == "NO_GO"
+    assert checks["details"].str.contains("forbidden fail/go combination", case=False).any()
+    stage13_check = checks[checks["metric_name"] == "stage13_dukascopy_testclient_pass"].iloc[0]
+    assert stage13_check["status"] == "fail"
+    assert stage13_check["metric_value"] == 0
+
+
+def test_stage14_rejects_fail_go_from_any_matched_stage13_row(tmp_path: Path) -> None:
+    bundle_dir = tmp_path / "bundle_202404"
+    shadow_dir = tmp_path / "shadow_bundle_202404"
+    _write_stage14_bundle_inputs(bundle_dir, "EURUSD")
+    _write_csv(
+        shadow_dir / "EURUSD_stage13.csv",
+        [
+            {
+                "symbol": "EURUSD",
+                "stage13_dukascopy_testclient_pass": False,
+                "certification_outcome": "FAIL",
+                "go_decision": "GO",
+            }
+        ],
+    )
+
+    summary, checks = build_stage14_artifacts(
+        symbols=["EURUSD"],
+        stage13_summary_glob=",".join(
+            [str(bundle_dir / "*_stage13.csv"), str(shadow_dir / "*_stage13.csv")]
+        ),
+        jforex_signal_summary_glob=str(bundle_dir / "*_jforex_signal.csv"),
+        jforex_execution_summary_glob=str(bundle_dir / "*_jforex_execution.csv"),
+        jforex_lifecycle_summary_glob=str(bundle_dir / "*_jforex_execution_lifecycle.csv"),
+        jforex_operational_summary_glob=str(bundle_dir / "*_jforex_ops.csv"),
+        jforex_outcome_summary_glob=str(bundle_dir / "*_outcome.csv"),
+        local_surrogate_summary_glob="",
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+        target_bundle_dir=bundle_dir,
+        target_model_month="2024-04",
+        require_provenance=True,
+    )
+
+    assert summary["process_status"].eq("FAIL").all()
+    stage13_check = checks[checks["metric_name"] == "stage13_dukascopy_testclient_pass"].iloc[0]
+    assert stage13_check["status"] == "fail"
+    assert "forbidden fail/go combination" in stage13_check["details"].lower()
+    assert "shadow_bundle_202404" in stage13_check["source_path"]
 
 
 def test_build_stage14_artifacts_ignores_local_surrogate_matches(tmp_path: Path) -> None:
@@ -459,6 +758,50 @@ def test_stage14_makefile_default_points_to_normalized_stage13_summary() -> None
     stage14_block = makefile.read_text().split("stage14-jforex-cert:", 1)[1]
     assert "stage12_stage13_certification_summary.csv" in stage14_block
     assert "stage13_dukascopy_testclient_summary.csv" not in stage14_block
+
+
+def test_stage14_main_forwards_provenance_flags(monkeypatch, tmp_path: Path) -> None:
+    recorded: dict[str, object] = {}
+
+    def fake_build_stage14_artifacts(**kwargs: object) -> tuple[pd.DataFrame, pd.DataFrame]:
+        recorded.update(kwargs)
+        return pd.DataFrame(), pd.DataFrame()
+
+    monkeypatch.setattr(stage14_mod, "build_stage14_artifacts", fake_build_stage14_artifacts)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "validate_stage14_jforex_runtime_certification.py",
+            "--target-bundle-dir",
+            str(tmp_path / "bundle_202404"),
+            "--target-model-month",
+            "202404",
+            "--require-provenance",
+        ],
+    )
+
+    stage14_mod.main()
+
+    assert recorded["target_bundle_dir"] == tmp_path / "bundle_202404"
+    assert recorded["target_model_month"] == "202404"
+    assert recorded["require_provenance"] is True
+
+
+def test_stage14_main_rejects_incomplete_provenance_args(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "validate_stage14_jforex_runtime_certification.py",
+            "--target-bundle-dir",
+            str(tmp_path / "bundle_202404"),
+            "--require-provenance",
+        ],
+    )
+
+    with pytest.raises(SystemExit):
+        stage14_mod.main()
 
 
 def test_build_stage14_artifacts_marks_non_deployable_symbol_as_nogo(tmp_path: Path) -> None:
