@@ -460,6 +460,30 @@ def _active_bar_count_for_symbol(symbol: str) -> int:
     return _state.bar_count(symbol, active_ticks[0]) if active_ticks else 0
 
 
+def _runtime_state_db_path() -> Path:
+    if _state is not None:
+        stub_path = getattr(_state, "db_path", None)
+        if stub_path:
+            return Path(str(stub_path))
+    return Path(_env_str("BEHEMOTH_STATE_DB", default="data/db/behemoth_runtime.db"))
+
+
+def _restart_reconciliation_report_path() -> Path:
+    return _runtime_state_db_path().parent / "live_restart_reconciliation.json"
+
+
+def _load_restart_reconciliation_report() -> dict[str, Any] | None:
+    path = _restart_reconciliation_report_path()
+    if not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        logger.debug("Failed to parse restart reconciliation report: %s", path, exc_info=True)
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
 def _deployment_state_for_symbol(symbol: str) -> str:
     if _is_historical_mode():
         return "live_loaded" if _has_loaded_model_for_symbol(symbol) else "error"
@@ -2322,6 +2346,8 @@ class StatusSymbol(BaseModel):
     model_month: str | None = None
     has_threshold: bool
     deployment_state: str
+    restart_verdict: str | None = None
+    restart_reasons: list[str] = Field(default_factory=list)
 
 
 class FeedStatusSymbol(BaseModel):
@@ -3846,6 +3872,13 @@ async def status() -> list[StatusSymbol]:
     """Per-symbol detailed status."""
     out: list[StatusSymbol] = []
     governance_dir = _effective_governance_dir()
+    restart_report = _load_restart_reconciliation_report() or {}
+    restart_verdict = str(restart_report.get("verdict", "")).strip() or None
+    restart_reasons = [
+        str(reason)
+        for reason in restart_report.get("reasons", [])
+        if str(reason).strip()
+    ]
     for sym in _config.symbols:
         bar_ticks = _active_bar_ticks_for_symbol(sym)
         deployment_state = _deployment_state_for_symbol(sym)
@@ -3862,6 +3895,8 @@ async def status() -> list[StatusSymbol]:
             model_month=_latest_loaded_month_for_symbol(sym),
             has_threshold=has_threshold,
             deployment_state=deployment_state,
+            restart_verdict=restart_verdict,
+            restart_reasons=list(restart_reasons),
         ))
     return out
 

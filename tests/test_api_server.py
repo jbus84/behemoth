@@ -580,6 +580,54 @@ class TestStatusEndpoint:
         assert audusd["model_loaded"] is False
         assert audusd["model_month"] is None
         assert audusd["has_threshold"] is False
+        assert audusd["restart_verdict"] is None
+        assert audusd["restart_reasons"] == []
+
+    def test_status_surfaces_restart_reconciliation_failure(self, client, monkeypatch):
+        monkeypatch.setattr(server, "_effective_governance_dir", lambda: "configs/research/governance/oco")
+        monkeypatch.setattr(server, "_is_historical_mode", lambda: False)
+        monkeypatch.setattr(
+            server,
+            "_config",
+            type("Cfg", (), {"symbols": ["EURUSD", "GBPUSD"], "governance_mode": "live"})(),
+        )
+        monkeypatch.setattr(server, "_active_bar_ticks_for_symbol", lambda sym: [1000])
+        monkeypatch.setattr(
+            server,
+            "_state",
+            type(
+                "StateStub",
+                (),
+                {
+                    "bar_count": staticmethod(lambda sym, bt: 11),
+                    "db_path": "data/analysis/backtest_reconcile/runtime/live_state.db",
+                },
+            )(),
+        )
+        monkeypatch.setattr(server, "_has_loaded_model_for_symbol", lambda sym: True)
+        monkeypatch.setattr(server, "_latest_loaded_month_for_symbol", lambda sym: "2026-03")
+        monkeypatch.setattr(
+            server,
+            "_load_restart_reconciliation_report",
+            lambda: {
+                "verdict": "incompatible",
+                "reasons": [
+                    "broker-linked symbols do not match broker snapshot symbols",
+                    "broker-linked position ids do not match broker snapshot order ids",
+                ],
+            },
+        )
+
+        r = client.get("/status")
+
+        assert r.status_code == 200
+        body = r.json()
+        eurusd = next(row for row in body if row["symbol"] == "EURUSD")
+        assert eurusd["restart_verdict"] == "incompatible"
+        assert eurusd["restart_reasons"] == [
+            "broker-linked symbols do not match broker snapshot symbols",
+            "broker-linked position ids do not match broker snapshot order ids",
+        ]
 
     def test_active_bar_ticks_for_live_symbol_without_registry_candidates_is_empty(self, monkeypatch):
         monkeypatch.setattr(server, "_is_historical_mode", lambda: False)
