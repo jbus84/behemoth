@@ -457,3 +457,61 @@ def test_reconcile_startup_captures_broker_snapshot_on_resume(monkeypatch, tmp_p
     run_jforex_live._reconcile_startup(cfg, run_jforex_live._runtime_paths(cfg))
 
     assert captured == [str(tmp_path / "data/analysis/backtest_reconcile/runtime/live_broker_snapshot.json")]
+
+
+def test_main_resume_incompatible_prints_operator_summary(monkeypatch, tmp_path, capsys) -> None:
+    _ensure_governance_dir(tmp_path)
+    monkeypatch.setattr(run_jforex_live, "_repo_root", lambda: tmp_path)
+    monkeypatch.setenv("BEHEMOTH_JFOREX_JNLP_URI", "demo")
+    monkeypatch.setenv("BEHEMOTH_JFOREX_USERNAME", "user")
+    monkeypatch.setenv("BEHEMOTH_JFOREX_PASSWORD", "pass")
+    monkeypatch.setattr(
+        run_jforex_live,
+        "_reconcile_startup",
+        lambda cfg, paths: (
+            run_jforex_live.RuntimeSessionMetadata(
+                git_commit="abc123",
+                git_branch="main",
+                git_dirty=False,
+                repo_root=str(tmp_path),
+                model_month="2026-03",
+                governance_dir="configs/research/governance/oco",
+                lock_fingerprint="fp",
+                symbols=["EURUSD"],
+                started_at_utc="2026-04-22T00:00:00Z",
+                startup_mode="resume",
+            ),
+            None,
+            run_jforex_live.RuntimeContextComparison(
+                verdict=run_jforex_live.RestartVerdict.INCOMPATIBLE,
+                reasons=[
+                    "broker-linked symbols do not match broker snapshot symbols",
+                    "broker-linked position ids do not match broker snapshot order ids",
+                ],
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_jforex_live.py",
+            "--symbols",
+            "EURUSD",
+            "--report-dir",
+            "data/analysis/backtest_reconcile",
+            "--startup-mode",
+            "resume",
+        ],
+    )
+
+    with pytest.raises(SystemExit, match="1"):
+        run_jforex_live.main()
+
+    err = capsys.readouterr().err
+    assert "[jforex-live] incompatible live restart metadata; rerun with --startup-mode reset" in err
+    assert "[jforex-live] reconciliation report:" in err
+    assert "live_restart_reconciliation.json" in err
+    assert "[jforex-live] restart summary: startup_mode=resume verdict=incompatible reasons=2" in err
+    assert "[jforex-live]   1. broker-linked symbols do not match broker snapshot symbols" in err
+    assert "[jforex-live]   2. broker-linked position ids do not match broker snapshot order ids" in err
