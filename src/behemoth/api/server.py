@@ -3241,7 +3241,15 @@ def _build_predictions(
                 run_id=run_id,
             )
 
-        if d.selected_exec == 1 and _state is not None:
+        should_log_audit_event = (
+            _state is not None
+            and (
+                d.selected_exec == 1
+                or str(_config.governance_mode).strip().lower() == "live"
+            )
+        )
+
+        if should_log_audit_event:
             if allocator_enabled and d.risk_reserved and (d.risk_reserved_amount_ccy is not None):
                 reservation_id = _state.create_account_risk_reservation(
                     symbol=sym,
