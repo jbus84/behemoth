@@ -224,6 +224,33 @@ def _cleanup_runtime_state(paths: dict[str, Path]) -> None:
             wal.unlink(missing_ok=True)
 
 
+def _print_incompatible_restart_summary(
+    cfg: RunConfig,
+    paths: dict[str, Path],
+    comparison: RuntimeContextComparison,
+) -> None:
+    print(
+        "[jforex-live] incompatible live restart metadata; rerun with --startup-mode reset",
+        file=sys.stderr,
+        flush=True,
+    )
+    print(
+        f"[jforex-live] reconciliation report: {paths['reconciliation_report_path']}",
+        file=sys.stderr,
+        flush=True,
+    )
+    print(
+        "[jforex-live] restart summary: "
+        f"startup_mode={cfg.startup_mode} "
+        f"verdict={comparison.verdict.value} "
+        f"reasons={len(comparison.reasons)}",
+        file=sys.stderr,
+        flush=True,
+    )
+    for index, reason in enumerate(comparison.reasons, start=1):
+        print(f"[jforex-live]   {index}. {reason}", file=sys.stderr, flush=True)
+
+
 def _reconcile_startup(
     cfg: RunConfig,
     paths: dict[str, Path],
@@ -571,13 +598,7 @@ def main() -> None:
 
     current_metadata, _persisted_metadata, comparison = _reconcile_startup(cfg, paths)
     if cfg.startup_mode == "resume" and comparison.verdict is RestartVerdict.INCOMPATIBLE:
-        print(
-            "[jforex-live] incompatible live restart metadata; rerun with --startup-mode reset",
-            file=sys.stderr,
-            flush=True,
-        )
-        for reason in comparison.reasons:
-            print(f"[jforex-live]   {reason}", file=sys.stderr, flush=True)
+        _print_incompatible_restart_summary(cfg, paths, comparison)
         raise SystemExit(1)
 
     if comparison.verdict is RestartVerdict.RECONCILABLE:
