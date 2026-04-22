@@ -1,3 +1,14 @@
+## v0.12.0 (2026-04-22)
+
+### Feat
+
+- reconcile live restart state before launch (#80)
+
+### Fix
+
+- expose live deployment state in status (#81)
+- accept month-scoped stage14 recert report provenance (#79)
+
 ## v0.11.2 (2026-04-21)
 
 ### Fix
