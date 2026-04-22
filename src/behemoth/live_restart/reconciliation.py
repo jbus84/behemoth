@@ -62,6 +62,26 @@ class BrokerSnapshot:
         terminal_states = {"CANCELED", "CLOSED"}
         return any(order.state.upper() not in terminal_states for order in self.orders)
 
+    def active_symbols(self) -> list[str]:
+        terminal_states = {"CANCELED", "CLOSED"}
+        return sorted(
+            {
+                order.symbol.upper()
+                for order in self.orders
+                if order.state.upper() not in terminal_states and order.symbol.strip()
+            }
+        )
+
+    def active_order_ids(self) -> list[str]:
+        terminal_states = {"CANCELED", "CLOSED"}
+        return sorted(
+            {
+                order.order_id
+                for order in self.orders
+                if order.state.upper() not in terminal_states and order.order_id.strip()
+            }
+        )
+
 
 @dataclass(frozen=True)
 class LocalRuntimeStateSummary:
@@ -69,9 +89,15 @@ class LocalRuntimeStateSummary:
     active_scan_count: int
     active_reservation_ids: list[str] = field(default_factory=list)
     active_scan_ids: list[str] = field(default_factory=list)
+    active_symbols: list[str] = field(default_factory=list)
+    broker_link_symbols: list[str] = field(default_factory=list)
+    linked_broker_position_ids: list[str] = field(default_factory=list)
 
     def has_active_state(self) -> bool:
         return self.active_reservation_count > 0 or self.active_scan_count > 0
+
+    def has_broker_linked_state(self) -> bool:
+        return bool(self.broker_link_symbols or self.linked_broker_position_ids)
 
 
 @dataclass(frozen=True)
@@ -279,44 +305,65 @@ def inspect_local_runtime_state(state_db_path: Path) -> LocalRuntimeStateSummary
             active_scan_count=0,
             active_reservation_ids=[],
             active_scan_ids=[],
+            active_symbols=[],
+            broker_link_symbols=[],
+            linked_broker_position_ids=[],
         )
 
     con = duckdb.connect(str(state_db_path), read_only=True)
     try:
         active_reservation_ids: list[str] = []
         active_scan_ids: list[str] = []
+        active_symbols: set[str] = set()
+        broker_link_symbols: set[str] = set()
+        linked_broker_position_ids: set[str] = set()
 
         if _table_exists(con, "account_risk_reservations"):
-            active_reservation_ids = [
-                str(row[0])
-                for row in con.execute(
+            reservation_rows = con.execute(
                     """
-                    SELECT reservation_id
+                    SELECT reservation_id, symbol, broker_pos_id, status
                     FROM account_risk_reservations
                     WHERE status IN ('PENDING', 'OPEN')
                     ORDER BY created_ts ASC
                     """
                 ).fetchall()
-            ]
+            active_reservation_ids = [str(row[0]) for row in reservation_rows]
+            for _reservation_id, symbol, broker_pos_id, status in reservation_rows:
+                symbol_text = str(symbol).upper().strip()
+                if symbol_text:
+                    active_symbols.add(symbol_text)
+                    if str(status).upper() == "OPEN" or broker_pos_id is not None:
+                        broker_link_symbols.add(symbol_text)
+                if broker_pos_id is not None and str(broker_pos_id).strip():
+                    linked_broker_position_ids.add(str(broker_pos_id))
 
         if _table_exists(con, "barrier_scans"):
-            active_scan_ids = [
-                str(row[0])
-                for row in con.execute(
+            scan_rows = con.execute(
                     """
-                    SELECT scan_id
+                    SELECT scan_id, symbol, broker_pos_id, status
                     FROM barrier_scans
                     WHERE status IN ('SCANNING', 'HOLDING')
                     ORDER BY created_ts ASC
                     """
                 ).fetchall()
-            ]
+            active_scan_ids = [str(row[0]) for row in scan_rows]
+            for _scan_id, symbol, broker_pos_id, status in scan_rows:
+                symbol_text = str(symbol).upper().strip()
+                if symbol_text:
+                    active_symbols.add(symbol_text)
+                    if str(status).upper() == "HOLDING" or broker_pos_id is not None:
+                        broker_link_symbols.add(symbol_text)
+                if broker_pos_id is not None and str(broker_pos_id).strip():
+                    linked_broker_position_ids.add(str(broker_pos_id))
 
         return LocalRuntimeStateSummary(
             active_reservation_count=len(active_reservation_ids),
             active_scan_count=len(active_scan_ids),
             active_reservation_ids=active_reservation_ids,
             active_scan_ids=active_scan_ids,
+            active_symbols=sorted(active_symbols),
+            broker_link_symbols=sorted(broker_link_symbols),
+            linked_broker_position_ids=sorted(linked_broker_position_ids),
         )
     finally:
         con.close()
@@ -398,6 +445,13 @@ def compare_runtime_context(
         if local_runtime.has_active_state() and not broker_snapshot.has_active_orders():
             reasons.append("local runtime has active state but broker snapshot is empty")
             hard_fail = True
+        if broker_snapshot.has_active_orders() and local_runtime.has_broker_linked_state():
+            if broker_snapshot.active_symbols() != local_runtime.broker_link_symbols:
+                reasons.append("broker-linked symbols do not match broker snapshot symbols")
+                hard_fail = True
+            if broker_snapshot.active_order_ids() != local_runtime.linked_broker_position_ids:
+                reasons.append("broker-linked position ids do not match broker snapshot order ids")
+                hard_fail = True
 
     if hard_fail:
         verdict = RestartVerdict.INCOMPATIBLE

@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import duckdb
+
 from src.behemoth.live_restart.reconciliation import (
     BrokerSnapshot,
     BrokerSnapshotOrder,
@@ -13,6 +15,7 @@ from src.behemoth.live_restart.reconciliation import (
     RuntimeSessionMetadata,
     compare_runtime_context,
     compute_lock_fingerprint,
+    inspect_local_runtime_state,
     load_broker_snapshot,
     load_promoted_model_month,
     load_runtime_session_metadata,
@@ -205,6 +208,62 @@ def test_load_broker_snapshot_round_trips_orders(tmp_path: Path) -> None:
     )
 
 
+def test_inspect_local_runtime_state_tracks_symbols_and_broker_links(tmp_path: Path) -> None:
+    state_db = tmp_path / "live_state.db"
+    con = duckdb.connect(str(state_db))
+    try:
+        con.execute(
+            """
+            CREATE TABLE account_risk_reservations (
+                reservation_id VARCHAR,
+                created_ts TIMESTAMPTZ,
+                symbol VARCHAR,
+                broker_pos_id VARCHAR,
+                status VARCHAR
+            )
+            """
+        )
+        con.execute(
+            """
+            CREATE TABLE barrier_scans (
+                scan_id VARCHAR,
+                created_ts TIMESTAMPTZ,
+                symbol VARCHAR,
+                broker_pos_id VARCHAR,
+                status VARCHAR
+            )
+            """
+        )
+        con.execute(
+            """
+            INSERT INTO account_risk_reservations VALUES
+            ('res-pending', TIMESTAMPTZ '2026-04-22T00:00:00Z', 'EURUSD', NULL, 'PENDING'),
+            ('res-open', TIMESTAMPTZ '2026-04-22T00:01:00Z', 'GBPUSD', 'broker-1', 'OPEN')
+            """
+        )
+        con.execute(
+            """
+            INSERT INTO barrier_scans VALUES
+            ('scan-pending', TIMESTAMPTZ '2026-04-22T00:02:00Z', 'EURUSD', NULL, 'SCANNING'),
+            ('scan-holding', TIMESTAMPTZ '2026-04-22T00:03:00Z', 'USDJPY', 'broker-2', 'HOLDING')
+            """
+        )
+    finally:
+        con.close()
+
+    summary = inspect_local_runtime_state(state_db)
+
+    assert summary == LocalRuntimeStateSummary(
+        active_reservation_count=2,
+        active_scan_count=2,
+        active_reservation_ids=["res-pending", "res-open"],
+        active_scan_ids=["scan-pending", "scan-holding"],
+        active_symbols=["EURUSD", "GBPUSD", "USDJPY"],
+        broker_link_symbols=["GBPUSD", "USDJPY"],
+        linked_broker_position_ids=["broker-1", "broker-2"],
+    )
+
+
 def test_compare_runtime_context_blocks_when_broker_has_open_orders_but_local_state_is_empty() -> None:
     persisted = RuntimeSessionMetadata(
         git_commit="abc",
@@ -327,6 +386,147 @@ def test_compare_runtime_context_blocks_when_local_state_is_active_but_broker_is
 
     assert result.verdict is RestartVerdict.INCOMPATIBLE
     assert "local runtime has active state but broker snapshot is empty" in result.reasons
+
+
+def test_compare_runtime_context_blocks_symbol_level_broker_link_mismatch() -> None:
+    persisted = RuntimeSessionMetadata(
+        git_commit="abc",
+        git_branch="main",
+        git_dirty=False,
+        repo_root="/repo",
+        model_month="2026-03",
+        governance_dir="configs/research/governance/oco",
+        lock_fingerprint="fp",
+        symbols=["EURUSD", "GBPUSD"],
+        started_at_utc="2026-04-22T00:00:00Z",
+        startup_mode="resume",
+    )
+    current = RuntimeSessionMetadata(
+        git_commit="abc",
+        git_branch="main",
+        git_dirty=False,
+        repo_root="/repo",
+        model_month="2026-03",
+        governance_dir="configs/research/governance/oco",
+        lock_fingerprint="fp",
+        symbols=["EURUSD", "GBPUSD"],
+        started_at_utc="2026-04-22T00:10:00Z",
+        startup_mode="resume",
+    )
+    local_state = RuntimeFileSnapshot(
+        runtime_dir="/repo/runtime",
+        live_state_db_path="/repo/runtime/live_state.db",
+        active_oco_state_path="/repo/runtime/active_oco_state.json",
+        runtime_session_path="/repo/runtime/live_runtime_session.json",
+        live_state_exists=True,
+        live_state_readable=True,
+        active_oco_state_exists=True,
+        active_oco_state_parsed=True,
+        runtime_session_exists=True,
+        runtime_session_parsed=True,
+    )
+    local_runtime = LocalRuntimeStateSummary(
+        active_reservation_count=1,
+        active_scan_count=0,
+        active_reservation_ids=["res-1"],
+        active_scan_ids=[],
+        active_symbols=["EURUSD"],
+        broker_link_symbols=["EURUSD"],
+        linked_broker_position_ids=["broker-1"],
+    )
+    broker_snapshot = BrokerSnapshot(
+        captured_at_utc="2026-04-22T12:00:00Z",
+        orders=[
+            BrokerSnapshotOrder(
+                order_id="broker-1",
+                label="GBPUSD_BUY_1",
+                symbol="GBPUSD",
+                state="FILLED",
+                order_command="BUY",
+            )
+        ],
+    )
+
+    result = compare_runtime_context(
+        persisted,
+        current,
+        local_state=local_state,
+        broker_snapshot=broker_snapshot,
+        local_runtime=local_runtime,
+    )
+
+    assert result.verdict is RestartVerdict.INCOMPATIBLE
+    assert "broker-linked symbols do not match broker snapshot symbols" in result.reasons
+
+
+def test_compare_runtime_context_blocks_broker_position_id_mismatch() -> None:
+    persisted = RuntimeSessionMetadata(
+        git_commit="abc",
+        git_branch="main",
+        git_dirty=False,
+        repo_root="/repo",
+        model_month="2026-03",
+        governance_dir="configs/research/governance/oco",
+        lock_fingerprint="fp",
+        symbols=["EURUSD"],
+        started_at_utc="2026-04-22T00:00:00Z",
+        startup_mode="resume",
+    )
+    current = RuntimeSessionMetadata(
+        git_commit="abc",
+        git_branch="main",
+        git_dirty=False,
+        repo_root="/repo",
+        model_month="2026-03",
+        governance_dir="configs/research/governance/oco",
+        lock_fingerprint="fp",
+        symbols=["EURUSD"],
+        started_at_utc="2026-04-22T00:10:00Z",
+        startup_mode="resume",
+    )
+    local_state = RuntimeFileSnapshot(
+        runtime_dir="/repo/runtime",
+        live_state_db_path="/repo/runtime/live_state.db",
+        active_oco_state_path="/repo/runtime/active_oco_state.json",
+        runtime_session_path="/repo/runtime/live_runtime_session.json",
+        live_state_exists=True,
+        live_state_readable=True,
+        active_oco_state_exists=True,
+        active_oco_state_parsed=True,
+        runtime_session_exists=True,
+        runtime_session_parsed=True,
+    )
+    local_runtime = LocalRuntimeStateSummary(
+        active_reservation_count=1,
+        active_scan_count=0,
+        active_reservation_ids=["res-1"],
+        active_scan_ids=[],
+        active_symbols=["EURUSD"],
+        broker_link_symbols=["EURUSD"],
+        linked_broker_position_ids=["broker-1"],
+    )
+
+    result = compare_runtime_context(
+        persisted,
+        current,
+        local_state=local_state,
+        broker_snapshot=BrokerSnapshot(
+            captured_at_utc="2026-04-22T12:00:00Z",
+            orders=[
+                BrokerSnapshotOrder(
+                    order_id="broker-9",
+                    label="EURUSD_BUY_1",
+                    symbol="EURUSD",
+                    state="FILLED",
+                    order_command="BUY",
+                )
+            ],
+        ),
+        local_runtime=local_runtime,
+    )
+
+    assert result.verdict is RestartVerdict.INCOMPATIBLE
+    assert "broker-linked position ids do not match broker snapshot order ids" in result.reasons
 
 
 def test_compare_runtime_context_blocks_commit_drift() -> None:
