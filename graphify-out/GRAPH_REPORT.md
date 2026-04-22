@@ -1,7 +1,7 @@
-# Graph Report - /Users/danielfisher/repositories/behemoth/.worktrees/fix-restart-status-visibility  (2026-04-22)
+# Graph Report - /Users/danielfisher/repositories/behemoth/.worktrees/fix-symbol-aware-resume-hardening  (2026-04-22)
 
 ## Corpus Check
-- 275 files · ~903,971 words
+- 275 files · ~904,035 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -167,7 +167,7 @@
 - `test_symbols_from_registry_parses_and_normalizes()` --calls--> `_symbols_from_registry()`  [INFERRED]
   /Users/danielfisher/repositories/behemoth/.worktrees/fix-usdjpy-bridge-retry/tests/test_oco_live_governance.py → /Users/danielfisher/repositories/behemoth/.worktrees/fix-usdjpy-bridge-retry/scripts/freeze_oco_live_governance.py
 - `test_verify_cert_requires_matching_month_status()` --calls--> `_verify_cert()`  [INFERRED]
-  /Users/danielfisher/repositories/behemoth/.worktrees/fix-restart-status-visibility/tests/test_run_promote_live.py → /Users/danielfisher/repositories/behemoth/.worktrees/fix-restart-status-visibility/scripts/run_promote_live.py
+  /Users/danielfisher/repositories/behemoth/.worktrees/fix-symbol-aware-resume-hardening/tests/test_run_promote_live.py → /Users/danielfisher/repositories/behemoth/.worktrees/fix-symbol-aware-resume-hardening/scripts/run_promote_live.py
 
 ## Communities
 
@@ -866,12 +866,12 @@ Nodes (1): Compare threshold_schedule values against rolling computation from se
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `StateManager` connect `Community 0` to `Community 1`, `Community 3`, `Community 4`, `Community 38`, `Community 6`, `Community 12`?**
-  _High betweenness centrality (0.077) - this node is a cross-community bridge._
 - **Why does `BarrierActionType` connect `Community 0` to `Community 1`, `Community 4`, `Community 6`, `Community 17`?**
-  _High betweenness centrality (0.063) - this node is a cross-community bridge._
-- **Why does `next()` connect `Community 3` to `Community 2`, `Community 5`, `Community 6`, `Community 7`, `Community 8`, `Community 12`?**
-  _High betweenness centrality (0.062) - this node is a cross-community bridge._
+  _High betweenness centrality (0.064) - this node is a cross-community bridge._
+- **Why does `StateManager` connect `Community 0` to `Community 1`, `Community 3`, `Community 4`, `Community 38`, `Community 6`, `Community 12`?**
+  _High betweenness centrality (0.060) - this node is a cross-community bridge._
+- **Why does `run()` connect `Community 8` to `Community 1`, `Community 2`, `Community 4`, `Community 5`, `Community 7`, `Community 9`, `Community 11`, `Community 13`, `Community 16`, `Community 18`, `Community 19`, `Community 24`, `Community 29`?**
+  _High betweenness centrality (0.058) - this node is a cross-community bridge._
 - **Are the 578 inferred relationships involving `str` (e.g. with `test_build_artifacts_treats_zero_lock_idle_windows_as_execution_pass()` and `test_build_artifacts_falls_back_to_outcome_locked_count_for_zero_lock_windows()`) actually correct?**
   _`str` has 578 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 351 inferred relationships involving `ModelFeatures` (e.g. with `TestHealthEndpoint` and `TestMetricsEndpoint`) actually correct?**
