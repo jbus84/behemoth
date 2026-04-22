@@ -64,7 +64,13 @@ public final class LiveReadinessCoordinator implements AutoCloseable {
                 DEFAULT_TICK_ROOT,
                 snapshot -> new LiveReadinessStatusWriter(
                         sessionConfig.reportDir().resolve("runtime").resolve("live_symbol_readiness.json"),
-                        predictionClient.objectMapper()
+                        predictionClient.objectMapper(),
+                        LiveReadinessStatusWriter.deploymentStateResolverForGovernanceDir(
+                                Path.of(System.getenv().getOrDefault(
+                                        "BEHEMOTH_GOVERNANCE_DIR",
+                                        "configs/research/governance/oco"
+                                ))
+                        )
                 ).write(snapshot),
                 (symbol, bridgeAnchorTs) -> new HistoricalWarmupLoader().load(
                         sessionConfig,
