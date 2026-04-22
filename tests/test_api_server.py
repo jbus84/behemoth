@@ -547,6 +547,52 @@ class TestStatusEndpoint:
         assert eurusd["bar_ticks"] == [1000]
         assert eurusd["bar_count"] == 11
 
+    def test_status_reports_no_go_not_promoted_symbol(self, client, monkeypatch):
+        monkeypatch.setattr(server, "_effective_governance_dir", lambda: "configs/research/governance/oco")
+        monkeypatch.setattr(server, "_is_historical_mode", lambda: False)
+        monkeypatch.setattr(
+            server,
+            "_config",
+            type("Cfg", (), {"symbols": ["EURUSD", "AUDUSD"], "governance_mode": "live"})(),
+        )
+        monkeypatch.setattr(server, "_active_bar_ticks_for_symbol", lambda sym: [1000] if sym == "EURUSD" else [])
+        monkeypatch.setattr(
+            server,
+            "_state",
+            type(
+                "StateStub",
+                (),
+                {"bar_count": staticmethod(lambda sym, bt: 11 if (sym, bt) == ("EURUSD", 1000) else 0)},
+            )(),
+        )
+        monkeypatch.setattr(server, "_has_loaded_model_for_symbol", lambda sym: sym == "EURUSD")
+        monkeypatch.setattr(server, "_latest_loaded_month_for_symbol", lambda sym: "2026-03" if sym == "EURUSD" else None)
+        monkeypatch.setattr(server, "_thresholds", {"EURUSD": {"threshold": 0.9}})
+
+        r = client.get("/status")
+
+        assert r.status_code == 200
+        body = r.json()
+        audusd = next(row for row in body if row["symbol"] == "AUDUSD")
+        assert audusd["deployment_state"] == "no_go_not_promoted"
+        assert audusd["bar_ticks"] == []
+        assert audusd["bar_count"] == 0
+        assert audusd["model_loaded"] is False
+        assert audusd["model_month"] is None
+        assert audusd["has_threshold"] is False
+
+    def test_active_bar_ticks_for_live_symbol_without_registry_candidates_is_empty(self, monkeypatch):
+        monkeypatch.setattr(server, "_is_historical_mode", lambda: False)
+
+        class RegistryStub:
+            @staticmethod
+            def get_candidates(symbol: str):
+                return []
+
+        monkeypatch.setattr(server, "_registry", RegistryStub())
+
+        assert server._active_bar_ticks_for_symbol("AUDUSD") == []
+
     def test_runtime_feed_status_returns_symbols(self, client):
         r = client.get("/runtime/feed/status")
         assert r.status_code == 200
@@ -555,6 +601,15 @@ class TestStatusEndpoint:
         assert "symbols" in body
         listed = {row["symbol"] for row in body["symbols"]}
         assert {"EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"}.issubset(listed)
+
+
+class TestDashboard:
+    def test_dashboard_includes_deployment_state_label(self, client):
+        r = client.get("/dashboard/")
+        assert r.status_code == 200
+        html = r.text
+        assert "deployment_state" in html
+        assert "NO_GO / Not Promoted" in html
 
 
 class TestBarsEndpoint:

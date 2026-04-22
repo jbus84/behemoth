@@ -446,7 +446,11 @@ def _active_bar_ticks_for_symbol(symbol: str) -> list[int]:
         candidates = _registry.get_candidates(sym)
 
     ticks = sorted({int(c.bar_ticks) for c in candidates})
-    return ticks or [100]
+    if ticks:
+        return ticks
+    if _is_historical_mode():
+        return [100]
+    return []
 
 
 def _active_bar_count_for_symbol(symbol: str) -> int:
@@ -454,6 +458,18 @@ def _active_bar_count_for_symbol(symbol: str) -> int:
         return 0
     active_ticks = _active_bar_ticks_for_symbol(symbol)
     return _state.bar_count(symbol, active_ticks[0]) if active_ticks else 0
+
+
+def _deployment_state_for_symbol(symbol: str) -> str:
+    if _is_historical_mode():
+        return "live_loaded" if _has_loaded_model_for_symbol(symbol) else "error"
+
+    active_ticks = _active_bar_ticks_for_symbol(symbol)
+    if not active_ticks:
+        return "no_go_not_promoted"
+    if _has_loaded_model_for_symbol(symbol):
+        return "live_loaded"
+    return "error"
 
 
 def _run_historical_preflight(history_dir: Path) -> None:
@@ -2305,6 +2321,7 @@ class StatusSymbol(BaseModel):
     model_loaded: bool
     model_month: str | None = None
     has_threshold: bool
+    deployment_state: str
 
 
 class FeedStatusSymbol(BaseModel):
@@ -3830,18 +3847,21 @@ async def status() -> list[StatusSymbol]:
     out: list[StatusSymbol] = []
     governance_dir = _effective_governance_dir()
     for sym in _config.symbols:
+        bar_ticks = _active_bar_ticks_for_symbol(sym)
+        deployment_state = _deployment_state_for_symbol(sym)
         has_threshold = bool(_thresholds.get(sym))
         if (not has_threshold) and _is_historical_mode():
             pref = f"{sym}|"
             has_threshold = any(k.startswith(pref) for k in _thresholds)
         out.append(StatusSymbol(
             symbol=sym,
-            bar_ticks=_active_bar_ticks_for_symbol(sym),
-            bar_count=_active_bar_count_for_symbol(sym),
+            bar_ticks=bar_ticks,
+            bar_count=_active_bar_count_for_symbol(sym) if bar_ticks else 0,
             governance_dir=governance_dir,
             model_loaded=_has_loaded_model_for_symbol(sym),
             model_month=_latest_loaded_month_for_symbol(sym),
             has_threshold=has_threshold,
+            deployment_state=deployment_state,
         ))
     return out
 
