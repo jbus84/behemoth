@@ -480,6 +480,7 @@ jforex-live:
 	@$(LOAD_SHARED_ENV) env UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/run_jforex_live.py \
 		$(if $(SYMBOLS),--symbols "$(SYMBOLS)",) \
 		--report-dir $(or $(REPORT_DIR),data/analysis/backtest_reconcile) \
+		--startup-mode $(or $(STARTUP_MODE),resume) \
 		--models-dir $(or $(MODELS_DIR),models/oco_dukascopy_candidate) \
 		--history-dir $(or $(HISTORY_DIR),configs/research/governance/oco_history_dukascopy_candidate) \
 		--api-port $(or $(API_PORT),8000) \

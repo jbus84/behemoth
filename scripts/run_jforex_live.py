@@ -22,7 +22,23 @@ import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
+
+from src.behemoth.live_restart.reconciliation import (
+    ReconciliationReport,
+    RestartVerdict,
+    RuntimeContextComparison,
+    RuntimeSessionMetadata,
+    compare_runtime_context,
+    compute_lock_fingerprint,
+    inspect_runtime_files,
+    load_promoted_model_month,
+    load_promoted_symbols,
+    load_runtime_session_metadata,
+    write_reconciliation_report,
+    write_runtime_session_metadata,
+)
 
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 DEFAULT_MODELS_DIR = "models/oco"
@@ -36,6 +52,7 @@ class RunConfig:
     models_dir: str
     history_dir: str
     report_dir: str
+    startup_mode: str
     api_host: str
     api_port: int
     requested_volume_units: int
@@ -53,6 +70,7 @@ def _parse_args() -> RunConfig:
     parser.add_argument("--models-dir", default=DEFAULT_MODELS_DIR)
     parser.add_argument("--history-dir", default=DEFAULT_HISTORY_DIR)
     parser.add_argument("--report-dir", default="data/analysis/backtest_reconcile")
+    parser.add_argument("--startup-mode", choices=("resume", "reset"), default="resume")
     parser.add_argument("--api-host", default="127.0.0.1")
     parser.add_argument("--api-port", type=int, default=DEFAULT_API_PORT)
     parser.add_argument("--requested-volume-units", type=int, default=10000)
@@ -71,6 +89,7 @@ def _parse_args() -> RunConfig:
         models_dir=args.models_dir,
         history_dir=args.history_dir,
         report_dir=args.report_dir,
+        startup_mode=str(args.startup_mode),
         api_host=args.api_host,
         api_port=args.api_port,
         requested_volume_units=args.requested_volume_units,
@@ -85,6 +104,146 @@ def _parse_args() -> RunConfig:
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
+
+
+def _governance_dir_raw() -> str:
+    return str(os.environ.get("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco"))
+
+
+def _governance_dir_path(repo_root: Path) -> Path:
+    raw = Path(_governance_dir_raw())
+    return raw if raw.is_absolute() else repo_root / raw
+
+
+def _git_metadata(repo_root: Path) -> tuple[str, str, bool]:
+    commit = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    branch = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "--abbrev-ref", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    dirty = bool(
+        subprocess.run(
+            ["git", "-C", str(repo_root), "status", "--porcelain", "--untracked-files=no"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    )
+    return commit, branch, dirty
+
+
+def _has_resume_blocking_git_dirty(repo_root: Path) -> bool:
+    result = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repo_root),
+            "status",
+            "--porcelain",
+            "--untracked-files=no",
+            "--",
+            "scripts/run_jforex_live.py",
+            "src/behemoth/live_restart",
+            "Makefile",
+            "configs/research/governance/oco",
+            "data/analysis/backtest_reconcile/runtime",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return bool(result.stdout.strip())
+
+
+def _runtime_paths(cfg: RunConfig) -> dict[str, Path]:
+    runtime_dir = _repo_root() / cfg.report_dir / "runtime"
+    return {
+        "runtime_dir": runtime_dir,
+        "state_db_path": runtime_dir / "live_state.db",
+        "active_state_path": runtime_dir / "active_oco_state.json",
+        "session_metadata_path": runtime_dir / "live_runtime_session.json",
+        "reconciliation_report_path": runtime_dir / "live_restart_reconciliation.json",
+    }
+
+
+def _build_current_session_metadata(cfg: RunConfig) -> RuntimeSessionMetadata:
+    repo_root = _repo_root()
+    git_commit, git_branch, _git_dirty = _git_metadata(repo_root)
+    governance_dir_raw = _governance_dir_raw()
+    governance_dir = _governance_dir_path(repo_root)
+    promoted_symbols = load_promoted_symbols(governance_dir)
+    model_month = load_promoted_model_month(governance_dir) or _resolve_model_month(cfg) or ""
+    lock_fingerprint = compute_lock_fingerprint(governance_dir)
+    started_at_utc = datetime.now(tz=timezone.utc).isoformat().replace("+00:00", "Z")
+    return RuntimeSessionMetadata(
+        git_commit=git_commit,
+        git_branch=git_branch,
+        git_dirty=_has_resume_blocking_git_dirty(repo_root),
+        repo_root=str(repo_root),
+        model_month=model_month,
+        governance_dir=governance_dir_raw,
+        lock_fingerprint=lock_fingerprint,
+        symbols=promoted_symbols,
+        started_at_utc=started_at_utc,
+        startup_mode=cfg.startup_mode,
+    )
+
+
+def _cleanup_runtime_state(paths: dict[str, Path]) -> None:
+    active_state = paths["active_state_path"]
+    if active_state.exists():
+        active_state.unlink()
+    state_db = paths["state_db_path"]
+    if state_db.exists():
+        try:
+            _consolidate_to_archive(state_db)
+        except Exception as exc:
+            print(
+                f"[jforex-live] archive failed during reset; force-clearing runtime state: {exc}",
+                flush=True,
+            )
+            state_db.unlink(missing_ok=True)
+            wal = state_db.with_suffix(".db.wal")
+            wal.unlink(missing_ok=True)
+
+
+def _reconcile_startup(
+    cfg: RunConfig,
+    paths: dict[str, Path],
+) -> tuple[RuntimeSessionMetadata, RuntimeSessionMetadata | None, RuntimeContextComparison]:
+    current_metadata = _build_current_session_metadata(cfg)
+    session_path = paths["session_metadata_path"]
+    persisted_metadata = load_runtime_session_metadata(session_path) if session_path.exists() else None
+    local_state = inspect_runtime_files(
+        paths["runtime_dir"],
+        paths["state_db_path"],
+        paths["active_state_path"],
+        session_path,
+    )
+    comparison = compare_runtime_context(
+        persisted_metadata,
+        current_metadata,
+        local_state=local_state,
+    )
+    report = ReconciliationReport(
+        startup_mode=cfg.startup_mode,
+        verdict=comparison.verdict,
+        reasons=list(comparison.reasons),
+        repaired_items=[],
+        current=current_metadata,
+        persisted=persisted_metadata,
+        local_state=local_state,
+        promoted_symbols=load_promoted_symbols(_governance_dir_path(_repo_root())),
+    )
+    write_reconciliation_report(paths["reconciliation_report_path"], report)
+    return current_metadata, persisted_metadata, comparison
 
 
 def _poll_health(proc: subprocess.Popen[str], base_url: str, timeout_sec: float) -> None:
@@ -219,6 +378,7 @@ def _start_api(cfg: RunConfig) -> subprocess.Popen[str]:
         {
             "UV_CACHE_DIR": ".uv_cache",
             "BEHEMOTH_GOVERNANCE_MODE": "live",
+            "BEHEMOTH_GOVERNANCE_DIR": _governance_dir_raw(),
             "BEHEMOTH_GOVERNANCE_HISTORY_DIR": cfg.history_dir,
             "BEHEMOTH_MODELS_DIR": cfg.models_dir,
             "BEHEMOTH_STATE_DB": str(state_db_path),
@@ -256,6 +416,7 @@ def _start_live_runner(cfg: RunConfig) -> subprocess.Popen[str]:
             "BEHEMOTH_JFOREX_RISK_ENABLED": "true",
             "BEHEMOTH_JFOREX_NATIVE_OCO_ENABLED": "false",
             "BEHEMOTH_JFOREX_RUN_ID": "jforex_live",
+            "BEHEMOTH_JFOREX_LIVE_STARTUP_MODE": cfg.startup_mode,
             "BEHEMOTH_JFOREX_REPORT_DIR": cfg.report_dir,
             "BEHEMOTH_JFOREX_REQUESTED_VOLUME_UNITS": str(cfg.requested_volume_units),
             "BEHEMOTH_JFOREX_TICK_BATCH_SIZE": str(cfg.tick_batch_size),
@@ -362,18 +523,29 @@ def main() -> None:
         if not os.environ.get(required):
             raise SystemExit(f"Missing required env var: {required}")
 
-    # Delete shared OCO state file so the lifecycle registry starts clean
-    state_json = _repo_root() / cfg.report_dir / "runtime" / "active_oco_state.json"
-    if state_json.exists():
-        state_json.unlink()
+    paths = _runtime_paths(cfg)
+    paths["runtime_dir"].mkdir(parents=True, exist_ok=True)
 
-    # Consolidate previous live_state.db into the persistent archive and start
-    # fresh. audit_logs and tick tables are excluded — audit_logs are
-    # repopulated from seed parquets on API startup; tick_bars/raw_ticks are
-    # large and not needed for post-session analysis.
-    state_db_path = _repo_root() / cfg.report_dir / "runtime" / "live_state.db"
-    if state_db_path.exists():
-        _consolidate_to_archive(state_db_path)
+    current_metadata, _persisted_metadata, comparison = _reconcile_startup(cfg, paths)
+    if cfg.startup_mode == "resume" and comparison.verdict is RestartVerdict.INCOMPATIBLE:
+        print(
+            "[jforex-live] incompatible live restart metadata; rerun with --startup-mode reset",
+            file=sys.stderr,
+            flush=True,
+        )
+        for reason in comparison.reasons:
+            print(f"[jforex-live]   {reason}", file=sys.stderr, flush=True)
+        raise SystemExit(1)
+
+    if comparison.verdict is RestartVerdict.RECONCILABLE:
+        print(
+            "[jforex-live] startup reconciliation is reconcilable; continuing with startup",
+            flush=True,
+        )
+    if cfg.startup_mode == "reset":
+        _cleanup_runtime_state(paths)
+
+    write_runtime_session_metadata(paths["session_metadata_path"], current_metadata)
 
     # Run offline seed BEFORE starting the API
     print("[jforex-live] running offline threshold seed", flush=True)
