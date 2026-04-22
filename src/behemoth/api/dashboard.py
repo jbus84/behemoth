@@ -159,14 +159,26 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
                 for (const s of status) {
                     const card = document.createElement('div');
                     card.className = 'card';
+                    const deployment = s.deployment_state || 'error';
                     const modelStatus = s.model_loaded
                         ? `<span style="color:var(--green)">✓ ${s.model_month}</span>`
-                        : `<span style="color:var(--red)">✗ not loaded</span>`;
+                        : deployment === 'no_go_not_promoted'
+                            ? `<span style="color:var(--amber)">NO_GO / Not Promoted</span>`
+                            : `<span style="color:var(--red)">✗ not loaded</span>`;
+                    const deploymentLabel = deployment === 'live_loaded'
+                        ? '<span style="color:var(--green)">Live Loaded</span>'
+                        : deployment === 'no_go_not_promoted'
+                            ? '<span style="color:var(--amber)">NO_GO / Not Promoted</span>'
+                            : '<span style="color:var(--red)">Error</span>';
                     const warmup = health.bar_counts[s.symbol] || 0;
                     const warmupColor = warmup >= 289 ? 'var(--green)' : warmup > 0 ? 'var(--amber)' : 'var(--red)';
                     card.innerHTML = `
                         <div class="card-title">Symbol</div>
                         <div class="symbol-name">${s.symbol}</div>
+                        <div class="metric-row">
+                            <span class="metric-label">Deployment</span>
+                            <span class="metric-value">${deploymentLabel}</span>
+                        </div>
                         <div class="metric-row">
                             <span class="metric-label">Model</span>
                             <span class="metric-value">${modelStatus}</span>
