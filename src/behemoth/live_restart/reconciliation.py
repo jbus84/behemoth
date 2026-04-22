@@ -45,6 +45,36 @@ class RuntimeFileSnapshot:
 
 
 @dataclass(frozen=True)
+class BrokerSnapshotOrder:
+    order_id: str
+    label: str
+    symbol: str
+    state: str
+    order_command: str
+
+
+@dataclass(frozen=True)
+class BrokerSnapshot:
+    captured_at_utc: str
+    orders: list[BrokerSnapshotOrder] = field(default_factory=list)
+
+    def has_active_orders(self) -> bool:
+        terminal_states = {"CANCELED", "CLOSED"}
+        return any(order.state.upper() not in terminal_states for order in self.orders)
+
+
+@dataclass(frozen=True)
+class LocalRuntimeStateSummary:
+    active_reservation_count: int
+    active_scan_count: int
+    active_reservation_ids: list[str] = field(default_factory=list)
+    active_scan_ids: list[str] = field(default_factory=list)
+
+    def has_active_state(self) -> bool:
+        return self.active_reservation_count > 0 or self.active_scan_count > 0
+
+
+@dataclass(frozen=True)
 class RuntimeContextComparison:
     verdict: RestartVerdict
     reasons: list[str] = field(default_factory=list)
@@ -59,6 +89,8 @@ class ReconciliationReport:
     current: RuntimeSessionMetadata | None = None
     persisted: RuntimeSessionMetadata | None = None
     local_state: RuntimeFileSnapshot | None = None
+    local_runtime: LocalRuntimeStateSummary | None = None
+    broker_snapshot: BrokerSnapshot | None = None
     promoted_symbols: list[str] = field(default_factory=list)
 
 
@@ -160,6 +192,24 @@ def load_runtime_session_metadata(path: Path) -> RuntimeSessionMetadata:
     )
 
 
+def load_broker_snapshot(path: Path) -> BrokerSnapshot:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    orders = [
+        BrokerSnapshotOrder(
+            order_id=str(item["order_id"]),
+            label=str(item["label"]),
+            symbol=str(item["symbol"]),
+            state=str(item["state"]),
+            order_command=str(item["order_command"]),
+        )
+        for item in payload.get("orders", [])
+    ]
+    return BrokerSnapshot(
+        captured_at_utc=str(payload["captured_at_utc"]),
+        orders=orders,
+    )
+
+
 def write_runtime_session_metadata(path: Path, metadata: RuntimeSessionMetadata) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(_jsonable(metadata), indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -214,10 +264,70 @@ def inspect_runtime_files(
     )
 
 
+def _table_exists(con: duckdb.DuckDBPyConnection, table_name: str) -> bool:
+    row = con.execute(
+        "SELECT 1 FROM information_schema.tables WHERE table_name = ? LIMIT 1",
+        [table_name],
+    ).fetchone()
+    return row is not None
+
+
+def inspect_local_runtime_state(state_db_path: Path) -> LocalRuntimeStateSummary:
+    if not state_db_path.exists():
+        return LocalRuntimeStateSummary(
+            active_reservation_count=0,
+            active_scan_count=0,
+            active_reservation_ids=[],
+            active_scan_ids=[],
+        )
+
+    con = duckdb.connect(str(state_db_path), read_only=True)
+    try:
+        active_reservation_ids: list[str] = []
+        active_scan_ids: list[str] = []
+
+        if _table_exists(con, "account_risk_reservations"):
+            active_reservation_ids = [
+                str(row[0])
+                for row in con.execute(
+                    """
+                    SELECT reservation_id
+                    FROM account_risk_reservations
+                    WHERE status IN ('PENDING', 'OPEN')
+                    ORDER BY created_ts ASC
+                    """
+                ).fetchall()
+            ]
+
+        if _table_exists(con, "barrier_scans"):
+            active_scan_ids = [
+                str(row[0])
+                for row in con.execute(
+                    """
+                    SELECT scan_id
+                    FROM barrier_scans
+                    WHERE status IN ('SCANNING', 'HOLDING')
+                    ORDER BY created_ts ASC
+                    """
+                ).fetchall()
+            ]
+
+        return LocalRuntimeStateSummary(
+            active_reservation_count=len(active_reservation_ids),
+            active_scan_count=len(active_scan_ids),
+            active_reservation_ids=active_reservation_ids,
+            active_scan_ids=active_scan_ids,
+        )
+    finally:
+        con.close()
+
+
 def compare_runtime_context(
     persisted: RuntimeSessionMetadata | None,
     current: RuntimeSessionMetadata,
     local_state: RuntimeFileSnapshot | None = None,
+    broker_snapshot: BrokerSnapshot | None = None,
+    local_runtime: LocalRuntimeStateSummary | None = None,
 ) -> RuntimeContextComparison:
     reasons: list[str] = []
     hard_fail = False
@@ -280,6 +390,14 @@ def compare_runtime_context(
     if persisted.git_branch != current.git_branch:
         reasons.append("git_branch changed")
         hard_fail = True
+
+    if broker_snapshot is not None and local_runtime is not None:
+        if broker_snapshot.has_active_orders() and not local_runtime.has_active_state():
+            reasons.append("broker snapshot has open orders but local runtime has no active state")
+            hard_fail = True
+        if local_runtime.has_active_state() and not broker_snapshot.has_active_orders():
+            reasons.append("local runtime has active state but broker snapshot is empty")
+            hard_fail = True
 
     if hard_fail:
         verdict = RestartVerdict.INCOMPATIBLE

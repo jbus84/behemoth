@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 
@@ -349,3 +350,110 @@ def test_cleanup_runtime_state_force_clears_when_archive_fails(tmp_path, monkeyp
 
     assert not active_state.exists()
     assert not live_state.exists()
+
+
+def test_script_entrypoint_supports_direct_execution_without_pythonpath() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+
+    result = subprocess.run(
+        [sys.executable, "scripts/run_jforex_live.py", "--help"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert "--startup-mode" in result.stdout
+
+
+def test_reconcile_startup_captures_broker_snapshot_on_resume(monkeypatch, tmp_path) -> None:
+    _ensure_governance_dir(tmp_path)
+    monkeypatch.setattr(run_jforex_live, "_repo_root", lambda: tmp_path)
+    monkeypatch.setattr(
+        run_jforex_live,
+        "_build_current_session_metadata",
+        lambda cfg: run_jforex_live.RuntimeSessionMetadata(
+            git_commit="abc123",
+            git_branch="main",
+            git_dirty=False,
+            repo_root=str(tmp_path),
+            model_month="2026-03",
+            governance_dir="configs/research/governance/oco",
+            lock_fingerprint="fp",
+            symbols=["EURUSD"],
+            started_at_utc="2026-04-22T00:00:00Z",
+            startup_mode="resume",
+        ),
+    )
+    monkeypatch.setattr(
+        run_jforex_live,
+        "inspect_runtime_files",
+        lambda *args, **kwargs: run_jforex_live.RuntimeFileSnapshot(
+            runtime_dir=str(tmp_path / "runtime"),
+            live_state_db_path=str(tmp_path / "runtime/live_state.db"),
+            active_oco_state_path=str(tmp_path / "runtime/active_oco_state.json"),
+            runtime_session_path=str(tmp_path / "runtime/live_runtime_session.json"),
+            live_state_exists=False,
+            live_state_readable=False,
+            active_oco_state_exists=False,
+            active_oco_state_parsed=False,
+            runtime_session_exists=False,
+            runtime_session_parsed=False,
+        ),
+    )
+    monkeypatch.setattr(
+        run_jforex_live,
+        "inspect_local_runtime_state",
+        lambda *args, **kwargs: run_jforex_live.LocalRuntimeStateSummary(
+            active_reservation_count=0,
+            active_scan_count=0,
+            active_reservation_ids=[],
+            active_scan_ids=[],
+        ),
+    )
+    monkeypatch.setattr(
+        run_jforex_live,
+        "load_runtime_session_metadata",
+        lambda path: None,
+        raising=False,
+    )
+    captured: list[str] = []
+    monkeypatch.setattr(
+        run_jforex_live,
+        "_capture_broker_snapshot",
+        lambda cfg, paths: captured.append(str(paths["broker_snapshot_path"])),
+    )
+    monkeypatch.setattr(
+        run_jforex_live,
+        "load_broker_snapshot",
+        lambda path: run_jforex_live.BrokerSnapshot(captured_at_utc="2026-04-22T00:00:01Z", orders=[]),
+    )
+    monkeypatch.setattr(
+        run_jforex_live,
+        "compare_runtime_context",
+        lambda *args, **kwargs: run_jforex_live.RuntimeContextComparison(
+            verdict=run_jforex_live.RestartVerdict.CLEAN_RESUMABLE,
+            reasons=[],
+        ),
+    )
+    monkeypatch.setattr(run_jforex_live, "write_reconciliation_report", lambda *args, **kwargs: None)
+    cfg = run_jforex_live.RunConfig(
+        symbols=("EURUSD",),
+        models_dir="models/oco",
+        history_dir="configs/research/governance/oco_history_dukascopy_candidate",
+        report_dir="data/analysis/backtest_reconcile",
+        startup_mode="resume",
+        api_host="127.0.0.1",
+        api_port=8000,
+        requested_volume_units=10000,
+        tick_batch_size=200,
+        order_ttl_seconds=900,
+        api_timeout_seconds=60,
+        metrics_enabled=True,
+        metrics_host="127.0.0.1",
+        metrics_port=9464,
+    )
+
+    run_jforex_live._reconcile_startup(cfg, run_jforex_live._runtime_paths(cfg))
+
+    assert captured == [str(tmp_path / "data/analysis/backtest_reconcile/runtime/live_broker_snapshot.json")]
