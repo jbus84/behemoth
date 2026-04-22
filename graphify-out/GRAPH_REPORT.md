@@ -1,12 +1,12 @@
-# Graph Report - /Users/danielfisher/repositories/behemoth/.worktrees/fix-symbol-aware-resume-hardening  (2026-04-22)
+# Graph Report - /Users/danielfisher/repositories/behemoth/.worktrees/fix-live-threshold-history-recovery  (2026-04-22)
 
 ## Corpus Check
-- 275 files · ~904,035 words
+- 275 files · ~904,304 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3712 nodes · 12787 edges · 134 communities detected
-- Extraction: 49% EXTRACTED · 51% INFERRED · 0% AMBIGUOUS · INFERRED: 6466 edges (avg confidence: 0.61)
+- 3737 nodes · 13119 edges · 134 communities detected
+- Extraction: 48% EXTRACTED · 52% INFERRED · 0% AMBIGUOUS · INFERRED: 6797 edges (avg confidence: 0.61)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
@@ -146,16 +146,16 @@
 - [[_COMMUNITY_Community 133|Community 133]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `ModelFeatures` - 355 edges
-2. `StateManager` - 338 edges
-3. `IncomingTickBar` - 333 edges
-4. `IncomingTick` - 275 edges
-5. `OcoPrediction` - 253 edges
-6. `FeatureConfig` - 222 edges
-7. `BarrierManager` - 214 edges
-8. `TickAggregator` - 208 edges
-9. `BarrierAction` - 194 edges
-10. `PredictResponse` - 191 edges
+1. `ModelFeatures` - 380 edges
+2. `StateManager` - 362 edges
+3. `IncomingTickBar` - 357 edges
+4. `IncomingTick` - 290 edges
+5. `OcoPrediction` - 277 edges
+6. `FeatureConfig` - 237 edges
+7. `BarrierManager` - 229 edges
+8. `TickAggregator` - 223 edges
+9. `BarrierAction` - 209 edges
+10. `PredictResponse` - 206 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `TDD tests for the candidate registry.` --uses--> `CandidateRegistry`  [INFERRED]
@@ -164,20 +164,20 @@
   /Users/danielfisher/repositories/behemoth/.worktrees/fix-usdjpy-bridge-retry/tests/test_registry.py → /Users/danielfisher/repositories/behemoth/.worktrees/fix-usdjpy-bridge-retry/src/behemoth/core/registry.py
 - `Self-consistent registry with EURUSD and GBPUSD, no real artifacts needed.` --uses--> `CandidateRegistry`  [INFERRED]
   /Users/danielfisher/repositories/behemoth/.worktrees/fix-usdjpy-bridge-retry/tests/test_registry.py → /Users/danielfisher/repositories/behemoth/.worktrees/fix-usdjpy-bridge-retry/src/behemoth/core/registry.py
-- `test_symbols_from_registry_parses_and_normalizes()` --calls--> `_symbols_from_registry()`  [INFERRED]
-  /Users/danielfisher/repositories/behemoth/.worktrees/fix-usdjpy-bridge-retry/tests/test_oco_live_governance.py → /Users/danielfisher/repositories/behemoth/.worktrees/fix-usdjpy-bridge-retry/scripts/freeze_oco_live_governance.py
 - `test_verify_cert_requires_matching_month_status()` --calls--> `_verify_cert()`  [INFERRED]
-  /Users/danielfisher/repositories/behemoth/.worktrees/fix-symbol-aware-resume-hardening/tests/test_run_promote_live.py → /Users/danielfisher/repositories/behemoth/.worktrees/fix-symbol-aware-resume-hardening/scripts/run_promote_live.py
+  /Users/danielfisher/repositories/behemoth/.worktrees/fix-live-threshold-history-recovery/tests/test_run_promote_live.py → /Users/danielfisher/repositories/behemoth/.worktrees/fix-live-threshold-history-recovery/scripts/run_promote_live.py
+- `test_promote_live_requires_process_status_pass()` --calls--> `_load_go_symbols()`  [INFERRED]
+  /Users/danielfisher/repositories/behemoth/.worktrees/fix-live-threshold-history-recovery/tests/test_run_promote_live.py → /Users/danielfisher/repositories/behemoth/.worktrees/fix-live-threshold-history-recovery/scripts/run_promote_live.py
 
 ## Communities
 
 ### Community 0 - "Community 0"
 Cohesion: 0.04
-Nodes (365): AccountRiskProfile, BarrierManager, Bar-level barrier manager for completed-bar OCO touch confirmation.  Produces id, Manages pending barrier scans and active positions.      State lifecycle: SCANNI, BaseModel, FeatureConfig, Immutable configuration governing rolling window sizes.      Matches the default, Number of bars needed for full-precision feature computation. (+357 more)
+Nodes (390): AccountRiskProfile, BarrierManager, Bar-level barrier manager for completed-bar OCO touch confirmation.  Produces id, Manages pending barrier scans and active positions.      State lifecycle: SCANNI, BaseModel, FeatureConfig, Immutable configuration governing rolling window sizes.      Matches the default, Number of bars needed for full-precision feature computation. (+382 more)
 
 ### Community 1 - "Community 1"
 Cohesion: 0.01
-Nodes (358): _cap_sweep(), _first_cross_overshoot_month(), main(), _oco_touch_arrays(), _parse_barrier_from_state(), _parse_candidate_uid(), _pip_size(), _rebuild_touch_events() (+350 more)
+Nodes (354): _schema_check(), Find HOLDING scans for a candidate (to link broker_pos_id)., Return the active (SCANNING/HOLDING) scan for a reservation, or None if not foun, _band(), _dt_utc(), main(), _parse_symbols(), run() (+346 more)
 
 ### Community 2 - "Community 2"
 Cohesion: 0.01
@@ -189,71 +189,71 @@ Nodes (205): _(), a(), aa(), Ae(), ai(), an(), Ao(), ar() (+197 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.02
-Nodes (171): Enum, inject_data(), Live Data Injector for Behemoth Observability Verification.  Pumps real HTTP req, JForexConnectionTest, BrokerSnapshot, BrokerSnapshotOrder, compare_runtime_context(), compute_lock_fingerprint() (+163 more)
-
-### Community 5 - "Community 5"
-Cohesion: 0.02
 Nodes (139): build_all_1m_chunked(), main(), main(), _parse_args(), _tick_files(), _canonical_candidate_uid(), _default_paths(), _empty_state_universe() (+131 more)
 
+### Community 5 - "Community 5"
+Cohesion: 0.03
+Nodes (135): Enum, BrokerSnapshot, BrokerSnapshotOrder, compare_runtime_context(), compute_lock_fingerprint(), _iter_promoted_lock_payloads(), _jsonable(), load_broker_snapshot() (+127 more)
+
 ### Community 6 - "Community 6"
-Cohesion: 0.02
-Nodes (107): AccountRiskAllocator, AccountRiskBuffers, AccountRiskCostGate, evaluate_account_risk_limits(), evaluate_trade_guard(), evaluate_trade_risk_guard(), load_account_risk_profile(), _normalize_trade_cost_gate_mode() (+99 more)
+Cohesion: 0.03
+Nodes (140): _daily_threshold_triplet(), _default_paths(), _dt_utc(), _governance_window_coverage(), main(), _parse_float(), _parse_ints(), _parse_symbols() (+132 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.04
-Nodes (127): _daily_threshold_triplet(), _default_paths(), _dt_utc(), _governance_window_coverage(), main(), _parse_float(), _parse_ints(), _parse_symbols() (+119 more)
+Cohesion: 0.05
+Nodes (111): AuditRow, _load_history_months(), _load_registry_symbols(), main(), _parse_months(), _parse_symbols(), run(), _sha() (+103 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.05
-Nodes (109): AuditRow, _load_history_months(), _load_registry_symbols(), main(), _parse_months(), _parse_symbols(), run(), _sha() (+101 more)
-
-### Community 9 - "Community 9"
 Cohesion: 0.03
 Nodes (115): _build_directional_events(), _build_oco_events(), _ensure_quality_cols(), _feature_cols(), _load_candidate_csv(), _load_yaml(), main(), _merge_config() (+107 more)
 
-### Community 10 - "Community 10"
-Cohesion: 0.03
-Nodes (67): _apply_reduced_core_schedule_filter(), _bootstrap_lb95(), _build_state_key_from_candidate_uid(), main(), _max_survivable_cost_lb95_trade(), _normal_pvalue_mean_gt0(), _p_adjust_bonferroni(), _p_adjust_fdr_bh() (+59 more)
+### Community 9 - "Community 9"
+Cohesion: 0.04
+Nodes (103): _apply_reduced_core_schedule_filter(), _bootstrap_lb95(), _build_state_key_from_candidate_uid(), main(), _max_survivable_cost_lb95_trade(), _normal_pvalue_mean_gt0(), _p_adjust_bonferroni(), _p_adjust_fdr_bh() (+95 more)
 
-### Community 11 - "Community 11"
+### Community 10 - "Community 10"
 Cohesion: 0.03
 Nodes (100): audit_symbol(), _default_configs(), _dt_utc(), _load_artifacts(), main(), _month_to_int(), _parse_symbols(), run_audit() (+92 more)
 
+### Community 11 - "Community 11"
+Cohesion: 0.03
+Nodes (68): isConnected(), JForexBrokerSnapshotRunner, startStrategy(), JForexConnectionTest, isConnected(), JForexLiveRunner, LiveClient, Sleeper (+60 more)
+
 ### Community 12 - "Community 12"
 Cohesion: 0.04
-Nodes (56): HistoricalWarmupLoader, HistoricalWarmupLoaderTest, Return all valid candidate specs for a symbol., Return the locked production cap for a symbol., Return frozen model artifact binding for a symbol., Return all candidates across all symbols., _archive_build_bundle(), _copy_candidate_models() (+48 more)
+Nodes (51): _aggregate_from_base(), _bars_from_ticks(), _build_base_tick_bars(), _build_symbol(), _empty_bar_frame(), main(), _build_offset_bars(), _build_one() (+43 more)
 
 ### Community 13 - "Community 13"
-Cohesion: 0.05
-Nodes (68): _build_bars_from_ticks(), _build_report(), _build_report_with_skips(), _candidate_regime_name(), _latest_tick_files(), _load_model(), _load_states(), _load_thresholds() (+60 more)
+Cohesion: 0.04
+Nodes (83): _build_bars_from_ticks(), _build_report(), _build_report_with_skips(), _candidate_regime_name(), _candidate_uid(), _latest_tick_files(), _load_model(), _load_states() (+75 more)
 
 ### Community 14 - "Community 14"
-Cohesion: 0.06
-Nodes (56): _check(), failed_checks(), HistoricalGovernanceCheck, Validation helpers for month-scoped historical governance locks., _sha256(), _sha256_cached(), summarize_failures(), validate_historical_governance() (+48 more)
+Cohesion: 0.04
+Nodes (54): HistoricalWarmupLoader, Return all valid candidate specs for a symbol., Return frozen model artifact binding for a symbol., Return all candidates across all symbols., _archive_build_bundle(), _copy_candidate_models(), _last_complete_month(), _load_go_symbols() (+46 more)
 
 ### Community 15 - "Community 15"
-Cohesion: 0.06
-Nodes (57): canonical_runtime_events_path(), compare_outcomes(), _in_eval_window(), load_historical_lock_status(), load_runtime_events(), load_runtime_events_frame(), load_state_universe_uids(), main() (+49 more)
+Cohesion: 0.05
+Nodes (55): _check(), failed_checks(), HistoricalGovernanceCheck, Validation helpers for month-scoped historical governance locks., _sha256(), _sha256_cached(), summarize_failures(), validate_historical_governance() (+47 more)
 
 ### Community 16 - "Community 16"
+Cohesion: 0.06
+Nodes (56): canonical_runtime_events_path(), compare_outcomes(), _in_eval_window(), load_historical_lock_status(), load_runtime_events(), load_runtime_events_frame(), load_state_universe_uids(), main() (+48 more)
+
+### Community 17 - "Community 17"
 Cohesion: 0.08
 Nodes (47): find_first_market_gap(), _friday_close_for_week(), get_fetchable_end(), get_missing_months(), get_parquet_info(), get_session_bounds_utc(), _handle_existing_lock(), is_expected_weekend_gap() (+39 more)
 
-### Community 17 - "Community 17"
-Cohesion: 0.1
-Nodes (12): Check if candidate has an active (SCANNING or HOLDING) scan., Retrieve a scan record by ID. Used for testing and diagnostics., Evaluate a completed bar against all active scans for this symbol.          Call, Move a scan from SCANNING to HOLDING., Record the broker position ID after a fill is confirmed., Register a new barrier scan. Called when selected_exec=1 passes all gates., _oco_precompute_reference(), TestAskBarrierTrigger (+4 more)
-
 ### Community 18 - "Community 18"
+Cohesion: 0.09
+Nodes (14): Expire active scans that predate the side-aware signal close columns.          L, Check if candidate has an active (SCANNING or HOLDING) scan., Retrieve a scan record by ID. Used for testing and diagnostics., Evaluate a completed bar against all active scans for this symbol.          Call, Move a scan from SCANNING to HOLDING., Record the broker position ID after a fill is confirmed., Register a new barrier scan. Called when selected_exec=1 passes all gates., _oco_precompute_reference() (+6 more)
+
+### Community 19 - "Community 19"
 Cohesion: 0.09
 Nodes (42): _as_bool(), DukascopyTestClientArtifactOutputs, generate_dukascopy_testclient_artifacts(), _normalise_symbol(), _now_utc(), _pick_value(), _as_mapping(), _bool_from_summary() (+34 more)
 
-### Community 19 - "Community 19"
+### Community 20 - "Community 20"
 Cohesion: 0.12
 Nodes (34): _aggregate_overall(), analyze_symbol_month(), _apply_daily_lag(), _bar_summary(), _build_tick_bars(), _covered_days(), _dt_utc(), _duplicate_ratio() (+26 more)
-
-### Community 20 - "Community 20"
-Cohesion: 0.07
-Nodes (11): isConnected(), JForexBrokerSnapshotRunner, startStrategy(), isConnected(), JForexLiveRunner, LiveClient, Sleeper, startStrategy() (+3 more)
 
 ### Community 21 - "Community 21"
 Cohesion: 0.17
@@ -268,12 +268,12 @@ Cohesion: 0.28
 Nodes (30): _(), a(), b(), c(), d(), E(), er(), f() (+22 more)
 
 ### Community 24 - "Community 24"
-Cohesion: 0.15
-Nodes (25): _bundle_models_dir(), _derive_params(), _is_expected_critical_nogo(), main(), _print_summary(), Print per-symbol summary. Returns True if all critical checks pass., Return (model_month, start_ts, end_ts, eval_start, eval_end)., Return {symbol: [failing critical check rows]}. (+17 more)
+Cohesion: 0.14
+Nodes (24): _build_manifest(), _default_paths(), _git_cmd(), _git_info(), _latest_model_pair(), _load_yaml(), main(), _model_date_key() (+16 more)
 
 ### Community 25 - "Community 25"
 Cohesion: 0.16
-Nodes (22): _build_manifest(), _default_paths(), _git_cmd(), _git_info(), _latest_model_pair(), _load_yaml(), main(), _model_date_key() (+14 more)
+Nodes (18): AccountRiskAllocator, AccountRiskBuffers, AccountRiskCostGate, evaluate_account_risk_limits(), evaluate_trade_guard(), evaluate_trade_risk_guard(), load_account_risk_profile(), _normalize_trade_cost_gate_mode() (+10 more)
 
 ### Community 26 - "Community 26"
 Cohesion: 0.2
@@ -288,72 +288,72 @@ Cohesion: 0.24
 Nodes (14): _build_canonical_map(), ClassifiedDoc, _classify_doc(), _doc_link(), _human_title(), _infer_stage(), _infer_symbol(), main() (+6 more)
 
 ### Community 29 - "Community 29"
-Cohesion: 0.24
-Nodes (15): test_reduced_states_for_symbol_paths(), test_rule_universe_registry_flags_lock_mismatch(), test_rule_universe_registry_pass(), _write_lock(), _write_reduced_states(), _write_registry(), _add_check(), _canon_hash() (+7 more)
-
-### Community 30 - "Community 30"
 Cohesion: 0.23
 Nodes (14): _(), a(), c(), d(), f(), i(), l(), m() (+6 more)
 
-### Community 31 - "Community 31"
+### Community 30 - "Community 30"
 Cohesion: 0.21
 Nodes (13): _(), a(), c(), e(), f(), i(), k(), l() (+5 more)
 
-### Community 32 - "Community 32"
+### Community 31 - "Community 31"
 Cohesion: 0.21
 Nodes (13): a(), b(), c(), d(), e(), h(), i(), l() (+5 more)
 
-### Community 33 - "Community 33"
+### Community 32 - "Community 32"
 Cohesion: 0.19
 Nodes (14): a(), c(), d(), e(), f(), l(), m(), n() (+6 more)
 
-### Community 34 - "Community 34"
-Cohesion: 0.23
-Nodes (14): _convert_histdata_timestamps(), _download_zip(), DownloadForm, _extract_hidden_value(), _fetch_download_form(), _infer_csv_member(), main(), _parse_months() (+6 more)
-
-### Community 35 - "Community 35"
+### Community 33 - "Community 33"
 Cohesion: 0.28
 Nodes (13): a(), b(), c(), f(), i(), k(), l(), m() (+5 more)
 
-### Community 36 - "Community 36"
+### Community 34 - "Community 34"
 Cohesion: 0.29
 Nodes (12): _add_check(), _latest(), main(), _parse_symbols(), _pip_size(), _resolve_source_path(), _robust_extreme_rate(), run() (+4 more)
 
-### Community 37 - "Community 37"
+### Community 35 - "Community 35"
+Cohesion: 0.23
+Nodes (12): _candidate_audit_section(), _format_report(), _magnitude_analysis_section(), main(), Report live pnl_pips distribution per symbol.      OCO uses from_touch hold mode, Check which candidate_uids are actually firing in live.      All live trades sho, Run all diagnostic checks and return structured report dict., Win rate, expected win rate, and z-score per symbol. (+4 more)
+
+### Community 36 - "Community 36"
 Cohesion: 0.21
 Nodes (7): _(), i(), l(), n(), s(), t(), u()
 
-### Community 38 - "Community 38"
+### Community 37 - "Community 37"
 Cohesion: 0.17
 Nodes (1): TestIngestionEndpoints
 
-### Community 39 - "Community 39"
+### Community 38 - "Community 38"
 Cohesion: 0.33
 Nodes (11): _build_snapshot_tables(), _ensure_page_shell(), _fmt(), _generated_block(), _inject_block(), _latest_by_symbol(), main(), _read_csv() (+3 more)
 
-### Community 40 - "Community 40"
+### Community 39 - "Community 39"
 Cohesion: 0.33
 Nodes (10): a(), c(), f(), l(), m(), n(), o(), r() (+2 more)
 
-### Community 41 - "Community 41"
+### Community 40 - "Community 40"
 Cohesion: 0.33
 Nodes (10): a(), c(), d(), e(), l(), m(), n(), o() (+2 more)
 
-### Community 42 - "Community 42"
+### Community 41 - "Community 41"
 Cohesion: 0.18
 Nodes (2): NoopExecutionPort, RecordingExecutionPort
 
-### Community 43 - "Community 43"
+### Community 42 - "Community 42"
 Cohesion: 0.33
 Nodes (7): a(), c(), e(), i(), s(), t(), u()
 
+### Community 43 - "Community 43"
+Cohesion: 0.25
+Nodes (1): TestTradeEndpoints
+
 ### Community 44 - "Community 44"
 Cohesion: 0.29
-Nodes (6): When day_str <= model_valid_through, the threshold should not block., When model_valid_through is empty, no expiry check applies., When day_str > model_valid_through, the threshold should block., test_model_valid_through_allows_valid_day(), test_model_valid_through_blocks_expired_models(), test_model_valid_through_empty_does_not_block()
+Nodes (1): TestAccountRiskEndpoints
 
 ### Community 45 - "Community 45"
-Cohesion: 0.52
-Nodes (6): _copy_if_exists(), _dt_utc(), main(), _read_csv_safe(), run(), _table()
+Cohesion: 0.29
+Nodes (6): When day_str <= model_valid_through, the threshold should not block., When model_valid_through is empty, no expiry check applies., When day_str > model_valid_through, the threshold should block., test_model_valid_through_allows_valid_day(), test_model_valid_through_blocks_expired_models(), test_model_valid_through_empty_does_not_block()
 
 ### Community 46 - "Community 46"
 Cohesion: 0.29
@@ -866,17 +866,17 @@ Nodes (1): Compare threshold_schedule values against rolling computation from se
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `BarrierActionType` connect `Community 0` to `Community 1`, `Community 4`, `Community 6`, `Community 17`?**
-  _High betweenness centrality (0.064) - this node is a cross-community bridge._
-- **Why does `StateManager` connect `Community 0` to `Community 1`, `Community 3`, `Community 4`, `Community 38`, `Community 6`, `Community 12`?**
-  _High betweenness centrality (0.060) - this node is a cross-community bridge._
-- **Why does `run()` connect `Community 8` to `Community 1`, `Community 2`, `Community 4`, `Community 5`, `Community 7`, `Community 9`, `Community 11`, `Community 13`, `Community 16`, `Community 18`, `Community 19`, `Community 24`, `Community 29`?**
-  _High betweenness centrality (0.058) - this node is a cross-community bridge._
+- **Why does `next()` connect `Community 3` to `Community 1`, `Community 2`, `Community 4`, `Community 6`, `Community 7`, `Community 14`?**
+  _High betweenness centrality (0.061) - this node is a cross-community bridge._
+- **Why does `StateManager` connect `Community 0` to `Community 1`, `Community 3`, `Community 5`, `Community 37`, `Community 43`, `Community 44`, `Community 13`, `Community 14`?**
+  _High betweenness centrality (0.056) - this node is a cross-community bridge._
+- **Why does `ModelFeatures` connect `Community 0` to `Community 1`, `Community 3`, `Community 37`, `Community 43`, `Community 44`, `Community 13`, `Community 14`, `Community 49`, `Community 25`?**
+  _High betweenness centrality (0.054) - this node is a cross-community bridge._
 - **Are the 578 inferred relationships involving `str` (e.g. with `test_build_artifacts_treats_zero_lock_idle_windows_as_execution_pass()` and `test_build_artifacts_falls_back_to_outcome_locked_count_for_zero_lock_windows()`) actually correct?**
   _`str` has 578 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 351 inferred relationships involving `ModelFeatures` (e.g. with `TestHealthEndpoint` and `TestMetricsEndpoint`) actually correct?**
-  _`ModelFeatures` has 351 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 289 inferred relationships involving `StateManager` (e.g. with `TestHealthEndpoint` and `TestMetricsEndpoint`) actually correct?**
-  _`StateManager` has 289 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 330 inferred relationships involving `IncomingTickBar` (e.g. with `TestHealthEndpoint` and `TestMetricsEndpoint`) actually correct?**
-  _`IncomingTickBar` has 330 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 376 inferred relationships involving `ModelFeatures` (e.g. with `TestHealthEndpoint` and `TestMetricsEndpoint`) actually correct?**
+  _`ModelFeatures` has 376 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 313 inferred relationships involving `StateManager` (e.g. with `TestHealthEndpoint` and `TestMetricsEndpoint`) actually correct?**
+  _`StateManager` has 313 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 354 inferred relationships involving `IncomingTickBar` (e.g. with `TestHealthEndpoint` and `TestMetricsEndpoint`) actually correct?**
+  _`IncomingTickBar` has 354 INFERRED edges - model-reasoned connections that need verification._
