@@ -25,14 +25,23 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+_SCRIPT_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_SCRIPT_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_REPO_ROOT))
+
 from src.behemoth.live_restart.reconciliation import (
+    BrokerSnapshot,
+    LocalRuntimeStateSummary,
     ReconciliationReport,
     RestartVerdict,
     RuntimeContextComparison,
+    RuntimeFileSnapshot,
     RuntimeSessionMetadata,
     compare_runtime_context,
     compute_lock_fingerprint,
+    inspect_local_runtime_state,
     inspect_runtime_files,
+    load_broker_snapshot,
     load_promoted_model_month,
     load_promoted_symbols,
     load_runtime_session_metadata,
@@ -169,6 +178,7 @@ def _runtime_paths(cfg: RunConfig) -> dict[str, Path]:
         "state_db_path": runtime_dir / "live_state.db",
         "active_state_path": runtime_dir / "active_oco_state.json",
         "session_metadata_path": runtime_dir / "live_runtime_session.json",
+        "broker_snapshot_path": runtime_dir / "live_broker_snapshot.json",
         "reconciliation_report_path": runtime_dir / "live_restart_reconciliation.json",
     }
 
@@ -227,10 +237,18 @@ def _reconcile_startup(
         paths["active_state_path"],
         session_path,
     )
+    broker_snapshot: BrokerSnapshot | None = None
+    local_runtime: LocalRuntimeStateSummary | None = None
+    if cfg.startup_mode == "resume":
+        _capture_broker_snapshot(cfg, paths)
+        broker_snapshot = load_broker_snapshot(paths["broker_snapshot_path"])
+        local_runtime = inspect_local_runtime_state(paths["state_db_path"])
     comparison = compare_runtime_context(
         persisted_metadata,
         current_metadata,
         local_state=local_state,
+        broker_snapshot=broker_snapshot,
+        local_runtime=local_runtime,
     )
     report = ReconciliationReport(
         startup_mode=cfg.startup_mode,
@@ -240,6 +258,8 @@ def _reconcile_startup(
         current=current_metadata,
         persisted=persisted_metadata,
         local_state=local_state,
+        local_runtime=local_runtime,
+        broker_snapshot=broker_snapshot,
         promoted_symbols=load_promoted_symbols(_governance_dir_path(_repo_root())),
     )
     write_reconciliation_report(paths["reconciliation_report_path"], report)
@@ -433,6 +453,29 @@ def _start_live_runner(cfg: RunConfig) -> subprocess.Popen[str]:
         cwd=_repo_root(),
         env=env,
         start_new_session=True,
+    )
+
+
+def _capture_broker_snapshot(cfg: RunConfig, paths: dict[str, Path]) -> None:
+    snapshot_path = paths["broker_snapshot_path"]
+    snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+    if not snapshot_path.exists():
+        snapshot_path.write_text('{"captured_at_utc":"", "orders":[]}\n', encoding="utf-8")
+    env = os.environ.copy()
+    env.update(
+        {
+            "BEHEMOTH_JFOREX_INSTRUMENTS": ",".join(cfg.symbols),
+            "BEHEMOTH_JFOREX_REPORT_DIR": cfg.report_dir,
+            "BEHEMOTH_JFOREX_BROKER_SNAPSHOT_PATH": str(snapshot_path),
+            "BEHEMOTH_JFOREX_RUN_ID": "jforex_broker_snapshot",
+            "BEHEMOTH_JFOREX_METRICS_ENABLED": "false",
+        }
+    )
+    subprocess.run(
+        ["mise", "exec", "--", "gradle", ":jforex-adapter:runJForexBrokerSnapshot"],
+        cwd=_repo_root(),
+        env=env,
+        check=True,
     )
 
 

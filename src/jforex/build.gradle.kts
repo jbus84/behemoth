@@ -64,6 +64,15 @@ tasks.register<JavaExec>("runJForexLive") {
     jvmArgs = listOf("-Djava.awt.headless=true", "-Duser.timezone=UTC")
 }
 
+tasks.register<JavaExec>("runJForexBrokerSnapshot") {
+    group = "application"
+    description = "Capture current Dukascopy broker orders into a runtime snapshot"
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("com.behemoth.jforex.JForexBrokerSnapshotRunner")
+    workingDir = rootProject.projectDir
+    jvmArgs = listOf("-Djava.awt.headless=true", "-Duser.timezone=UTC")
+}
+
 tasks.register<JavaExec>("testJForexConnection") {
     group = "application"
     description = "Test the Dukascopy connection credentials from the environment variables"
