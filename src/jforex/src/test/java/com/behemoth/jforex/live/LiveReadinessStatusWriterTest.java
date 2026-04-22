@@ -51,13 +51,18 @@ class LiveReadinessStatusWriterTest {
                   "schema_version": 1,
                   "as_of_utc": "2026-03-22T12:34:56Z",
                   "run_id": "jforex_live",
+                  "session_bridge_ready_symbol_count": 0,
                   "session_tradable_symbol_count": 0,
+                  "session_execution_eligible_symbol_count": 0,
                   "session_total_symbol_count": 2,
                   "symbols": [
                     {
                       "symbol": "EURUSD",
                       "state": "STALE_PAUSED",
+                      "bridge_entries_allowed": false,
+                      "deployment_state": "live_loaded",
                       "entries_allowed": false,
+                      "execution_allowed": false,
                       "parquet_tail_ts_utc": "2026-03-21T23:59:59Z",
                       "bridge_start_ts_utc": "2026-03-22T12:00:00Z",
                       "bridge_end_ts_utc": "2026-03-22T12:34:24Z",
@@ -72,7 +77,10 @@ class LiveReadinessStatusWriterTest {
                     {
                       "symbol": "GBPUSD",
                       "state": "ERROR_PAUSED",
+                      "bridge_entries_allowed": false,
+                      "deployment_state": "live_loaded",
                       "entries_allowed": false,
+                      "execution_allowed": false,
                       "parquet_tail_ts_utc": "2026-03-21T23:59:49Z",
                       "bridge_start_ts_utc": "",
                       "bridge_end_ts_utc": "",
@@ -89,5 +97,82 @@ class LiveReadinessStatusWriterTest {
                 """);
 
         assertThat(json).isEqualTo(expected);
+    }
+
+    @Test
+    void statusWriterSeparatesBridgeReadinessFromGovernanceExecutionEligibility() throws Exception {
+        Instant asOf = Instant.parse("2026-04-22T16:20:15Z");
+        LiveReadinessSnapshot snapshot = new LiveReadinessSnapshot(
+                asOf,
+                "jforex_live",
+                2,
+                2,
+                java.util.List.of(
+                        new SymbolReadinessSnapshot(
+                                "EURUSD",
+                                SymbolReadinessState.READY,
+                                true,
+                                Instant.parse("2026-04-10T20:59:59Z"),
+                                Instant.parse("2026-04-22T16:11:13Z"),
+                                null,
+                                Instant.parse("2026-04-10T21:59:59Z"),
+                                Instant.parse("2026-04-22T16:20:15Z"),
+                                0,
+                                3000,
+                                false,
+                                "",
+                                Instant.parse("2026-04-22T16:11:14Z")
+                        ),
+                        new SymbolReadinessSnapshot(
+                                "AUDUSD",
+                                SymbolReadinessState.READY,
+                                true,
+                                Instant.parse("2026-04-10T20:59:59Z"),
+                                Instant.parse("2026-04-22T16:11:14Z"),
+                                null,
+                                Instant.parse("2026-04-10T21:59:59Z"),
+                                Instant.parse("2026-04-22T16:20:11Z"),
+                                3,
+                                3000,
+                                false,
+                                "",
+                                Instant.parse("2026-04-22T16:11:16Z")
+                        )
+                )
+        );
+        Path out = tempDir.resolve("data/analysis/backtest_reconcile/runtime/live_symbol_readiness.json");
+        LiveReadinessStatusWriter writer = new LiveReadinessStatusWriter(
+                out,
+                new ObjectMapper(),
+                symbol -> switch (symbol) {
+                    case "AUDUSD" -> "no_go_not_promoted";
+                    case "EURUSD" -> "live_loaded";
+                    default -> "error";
+                }
+        );
+
+        writer.write(snapshot);
+
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode json = mapper.readTree(Files.readString(out));
+
+        assertThat(json.get("session_bridge_ready_symbol_count").asInt()).isEqualTo(2);
+        assertThat(json.get("session_tradable_symbol_count").asInt()).isEqualTo(1);
+        assertThat(json.get("session_execution_eligible_symbol_count").asInt()).isEqualTo(1);
+        assertThat(json.get("session_total_symbol_count").asInt()).isEqualTo(2);
+
+        JsonNode eurusd = json.get("symbols").get(0);
+        assertThat(eurusd.get("state").asText()).isEqualTo("READY");
+        assertThat(eurusd.get("bridge_entries_allowed").asBoolean()).isTrue();
+        assertThat(eurusd.get("deployment_state").asText()).isEqualTo("live_loaded");
+        assertThat(eurusd.get("entries_allowed").asBoolean()).isTrue();
+        assertThat(eurusd.get("execution_allowed").asBoolean()).isTrue();
+
+        JsonNode audusd = json.get("symbols").get(1);
+        assertThat(audusd.get("state").asText()).isEqualTo("READY");
+        assertThat(audusd.get("bridge_entries_allowed").asBoolean()).isTrue();
+        assertThat(audusd.get("deployment_state").asText()).isEqualTo("no_go_not_promoted");
+        assertThat(audusd.get("entries_allowed").asBoolean()).isFalse();
+        assertThat(audusd.get("execution_allowed").asBoolean()).isFalse();
     }
 }
