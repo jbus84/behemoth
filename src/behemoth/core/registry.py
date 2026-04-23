@@ -136,12 +136,27 @@ class CandidateRegistry:
                 # Extract execution cap from locked_runtime
                 locked = data.get("locked_runtime", {})
                 reg._caps_by_symbol[sym] = float(locked.get("production_cap_pips", 1.2))
+                locked_runtime_overrides: dict[str, Any] = {}
+                if "threshold_mode" in locked:
+                    locked_runtime_overrides["threshold_source"] = str(
+                        locked.get("threshold_mode", "")
+                    ).strip()
+                for key in (
+                    "rolling_threshold_days",
+                    "rolling_threshold_min_history",
+                    "execution_quantile",
+                    "oco_hold_mode",
+                    "oco_include_no_touch",
+                ):
+                    if key in locked:
+                        locked_runtime_overrides[key] = locked.get(key)
                 reg._model_bindings_by_symbol[sym] = {
                     "model_cbm_path": str(cbm_path),
                     "model_cbm_sha256": cbm_sha,
                     "model_threshold_json_path": str(thr_path),
                     "model_threshold_json_sha256": thr_sha,
                     "model_month": model_month,
+                    "locked_runtime_overrides": locked_runtime_overrides,
                 }
             except Exception as e:
                 import logging

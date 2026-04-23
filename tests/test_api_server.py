@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -86,6 +87,61 @@ class TestHealthEndpoint:
             assert "Lifespan initialization in progress" in r.json()["detail"]
         finally:
             server._lifespan_ready = original
+
+
+class TestModelBindingThresholdOverrides:
+    def test_load_model_binding_prefers_locked_runtime_thresholds(self, tmp_path, monkeypatch):
+        model_path = tmp_path / "GBPUSD_model_2026-03.cbm"
+        threshold_path = tmp_path / "GBPUSD_model_2026-03.json"
+        model_path.write_bytes(b"fake-cbm")
+        threshold_path.write_text(
+            json.dumps(
+                {
+                    "symbol": "GBPUSD",
+                    "model_month": "2026-03",
+                    "threshold_exec": 0.66,
+                    "threshold_source": "rolling_days",
+                    "rolling_threshold_days": 20,
+                    "rolling_threshold_min_history": 1000,
+                    "execution_quantile": 0.9,
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        class FakeCatBoost:
+            def load_model(self, path: str) -> None:
+                self.loaded_path = path
+
+        monkeypatch.setattr(server, "_catboost_cls", lambda: FakeCatBoost)
+        monkeypatch.setattr(server, "_models", {}, raising=False)
+        monkeypatch.setattr(server, "_thresholds", {}, raising=False)
+        monkeypatch.setattr(server, "_model_months", {}, raising=False)
+
+        binding = {
+            "model_cbm_path": str(model_path),
+            "model_cbm_sha256": server._sha256(model_path),
+            "model_threshold_json_path": str(threshold_path),
+            "model_threshold_json_sha256": server._sha256(threshold_path),
+            "model_month": "2026-03",
+            "locked_runtime_overrides": {
+                "threshold_source": "rolling_days",
+                "rolling_threshold_days": 20,
+                "rolling_threshold_min_history": 300,
+                "execution_quantile": 0.9,
+            },
+        }
+
+        ok, month = server._load_model_binding_into_cache(
+            symbol="GBPUSD",
+            binding=binding,
+            cache_key="GBPUSD",
+            expected_month="2026-03",
+        )
+
+        assert ok is True
+        assert month == "2026-03"
+        assert server._thresholds["GBPUSD"]["rolling_threshold_min_history"] == 300
 
 
 class TestMetricsEndpoint:
