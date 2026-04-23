@@ -37,7 +37,7 @@
     "oco_include_no_touch": true,
     "production_cap_pips": 1.2,
     "rolling_threshold_days": 20,
-    "rolling_threshold_min_history": 1000,
+    "rolling_threshold_min_history": 300,
     "selection_mode": "auto",
     "threshold_mode": "rolling_days"
   },

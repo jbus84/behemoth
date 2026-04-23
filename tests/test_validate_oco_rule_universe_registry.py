@@ -21,7 +21,7 @@ def _write_registry(path: Path, *, allowed_barrier_keep: list[int]) -> None:
         "locked_runtime_contract": {
             "threshold_mode": "rolling_days",
             "rolling_threshold_days": 20,
-            "rolling_threshold_min_history": 1000,
+            "rolling_threshold_min_history": 300,
             "oco_hold_mode": "from_touch",
             "oco_include_no_touch": True,
             "execution_quantile": 0.9,
@@ -46,7 +46,7 @@ def _write_lock(path: Path) -> None:
             "selection_mode": "auto",
             "threshold_mode": "rolling_days",
             "rolling_threshold_days": 20,
-            "rolling_threshold_min_history": 1000,
+            "rolling_threshold_min_history": 300,
             "oco_hold_mode": "from_touch",
             "oco_include_no_touch": True,
             "execution_quantile": 0.9,
