@@ -70,7 +70,7 @@ DEFAULTS: dict[str, Any] = {
     "oco_include_no_touch": True,
     "threshold_mode": "rolling_days",  # rolling_days|train_quantile
     "rolling_threshold_days": 20,
-    "rolling_threshold_min_history": 1000,
+    "rolling_threshold_min_history": 300,
     "execution_quantile": 0.9,
     "oco_hold_mode": "from_touch",  # from_touch|from_start
     "seed": 42,

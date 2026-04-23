@@ -19,7 +19,7 @@ selection_mode_contract: auto
 locked_runtime_contract:
   threshold_mode: rolling_days
   rolling_threshold_days: 20
-  rolling_threshold_min_history: 1000
+  rolling_threshold_min_history: 300
   oco_hold_mode: from_touch
   oco_include_no_touch: true
   execution_quantile: 0.9
@@ -29,4 +29,4 @@ change_control:
   rationale: >
     Freeze rule-family universe used by reduced-core and governance lock so
     research selection cannot silently expand.
-hash_sha256: "e35b54548300437309a4a5937a83ddeeb7ef12eb0c1621177c8616a1869affbc"
+hash_sha256: "0034c98fdc9dfe18f2dcae5bedd05b3dc1b526103f3c9b4e6c8ff11fb9b46c63"

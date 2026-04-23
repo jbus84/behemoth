@@ -83,7 +83,7 @@ def test_validate_lock_deploy_and_retrain_window(tmp_path: Path) -> None:
             [
                 "threshold_mode: rolling_days",
                 "rolling_threshold_days: 20",
-                "rolling_threshold_min_history: 1000",
+                "rolling_threshold_min_history: 300",
                 "execution_quantile: 0.9",
                 "oco_hold_mode: from_touch",
                 "oco_include_no_touch: true",
@@ -166,7 +166,7 @@ def test_validate_lock_deploy_and_retrain_window(tmp_path: Path) -> None:
         "locked_runtime": {
             "threshold_mode": "rolling_days",
             "rolling_threshold_days": 20,
-            "rolling_threshold_min_history": 1000,
+            "rolling_threshold_min_history": 300,
             "execution_quantile": 0.9,
             "oco_hold_mode": "from_touch",
             "oco_include_no_touch": True,
@@ -233,7 +233,7 @@ def test_validate_lock_state_csv_defaults_to_lock_artifact_latest_month(tmp_path
             [
                 "threshold_mode: rolling_days",
                 "rolling_threshold_days: 20",
-                "rolling_threshold_min_history: 1000",
+                "rolling_threshold_min_history: 300",
                 "execution_quantile: 0.9",
                 "oco_hold_mode: from_touch",
                 "oco_include_no_touch: true",
@@ -338,7 +338,7 @@ def test_validate_lock_state_csv_defaults_to_lock_artifact_latest_month(tmp_path
         "locked_runtime": {
             "threshold_mode": "rolling_days",
             "rolling_threshold_days": 20,
-            "rolling_threshold_min_history": 1000,
+            "rolling_threshold_min_history": 300,
             "execution_quantile": 0.9,
             "oco_hold_mode": "from_touch",
             "oco_include_no_touch": True,
@@ -397,7 +397,7 @@ def test_validate_lock_blocks_on_high_data_reliability_fail(tmp_path: Path) -> N
             [
                 "threshold_mode: rolling_days",
                 "rolling_threshold_days: 20",
-                "rolling_threshold_min_history: 1000",
+                "rolling_threshold_min_history: 300",
                 "execution_quantile: 0.9",
                 "oco_hold_mode: from_touch",
                 "oco_include_no_touch: true",
@@ -500,7 +500,7 @@ def test_validate_lock_blocks_on_high_data_reliability_fail(tmp_path: Path) -> N
         "locked_runtime": {
             "threshold_mode": "rolling_days",
             "rolling_threshold_days": 20,
-            "rolling_threshold_min_history": 1000,
+            "rolling_threshold_min_history": 300,
             "execution_quantile": 0.9,
             "oco_hold_mode": "from_touch",
             "oco_include_no_touch": True,
@@ -560,7 +560,7 @@ def test_validate_lock_blocks_on_high_leakage_fail(tmp_path: Path) -> None:
             [
                 "threshold_mode: rolling_days",
                 "rolling_threshold_days: 20",
-                "rolling_threshold_min_history: 1000",
+                "rolling_threshold_min_history: 300",
                 "execution_quantile: 0.9",
                 "oco_hold_mode: from_touch",
                 "oco_include_no_touch: true",
@@ -656,7 +656,7 @@ def test_validate_lock_blocks_on_high_leakage_fail(tmp_path: Path) -> None:
         "locked_runtime": {
             "threshold_mode": "rolling_days",
             "rolling_threshold_days": 20,
-            "rolling_threshold_min_history": 1000,
+            "rolling_threshold_min_history": 300,
             "execution_quantile": 0.9,
             "oco_hold_mode": "from_touch",
             "oco_include_no_touch": True,
@@ -716,7 +716,7 @@ def test_validate_lock_blocks_on_high_execution_risk_fail(tmp_path: Path) -> Non
             [
                 "threshold_mode: rolling_days",
                 "rolling_threshold_days: 20",
-                "rolling_threshold_min_history: 1000",
+                "rolling_threshold_min_history: 300",
                 "execution_quantile: 0.9",
                 "oco_hold_mode: from_touch",
                 "oco_include_no_touch: true",
@@ -812,7 +812,7 @@ def test_validate_lock_blocks_on_high_execution_risk_fail(tmp_path: Path) -> Non
         "locked_runtime": {
             "threshold_mode": "rolling_days",
             "rolling_threshold_days": 20,
-            "rolling_threshold_min_history": 1000,
+            "rolling_threshold_min_history": 300,
             "execution_quantile": 0.9,
             "oco_hold_mode": "from_touch",
             "oco_include_no_touch": True,
