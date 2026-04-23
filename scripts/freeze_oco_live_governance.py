@@ -64,6 +64,28 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     return dict(obj)
 
 
+def _sync_threshold_json_runtime_fields(threshold_json_path: Path, wfo_cfg: dict[str, Any]) -> None:
+    data = json.loads(threshold_json_path.read_text(encoding="utf-8"))
+    updates = {
+        "threshold_source": str(wfo_cfg.get("threshold_mode", "")).strip(),
+        "rolling_threshold_days": int(wfo_cfg.get("rolling_threshold_days", 0)),
+        "rolling_threshold_min_history": int(wfo_cfg.get("rolling_threshold_min_history", 0)),
+        "execution_quantile": float(wfo_cfg.get("execution_quantile", 0.9)),
+        "oco_hold_mode": str(wfo_cfg.get("oco_hold_mode", "")),
+        "oco_include_no_touch": bool(wfo_cfg.get("oco_include_no_touch", True)),
+    }
+    changed = False
+    for key, value in updates.items():
+        if data.get(key) != value:
+            data[key] = value
+            changed = True
+    if changed:
+        threshold_json_path.write_text(
+            json.dumps(data, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+
 def _split_csv(raw: str) -> list[str]:
     return [x.strip().upper() for x in str(raw).split(",") if x.strip()]
 
@@ -258,6 +280,7 @@ def _build_manifest(
     wfo_cfg = _load_yaml(paths["wfo_config"])
     red_cfg = _load_yaml(paths["reduced_config"])
     model_cbm, model_thr = _latest_model_pair(s)
+    _sync_threshold_json_runtime_fields(model_thr, wfo_cfg)
     states, states_sha = _state_universe(paths["reduced_states"])
     now = datetime.now(timezone.utc)
     tick_ok = _read_tick_exact_ok(paths["tick_exact_summary"])
