@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -85,8 +86,9 @@ def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_pa
     config_dir.mkdir(parents=True)
 
     (config_dir / f"{sl}_tick_opportunity_monthly_wfo_oco_fullcap.yaml").write_text(
-        "threshold_mode: rolling_days\nproduction_cap_pips: 1.2\noco_hold_mode: from_touch\n"
-        "oco_include_no_touch: true\nexecution_quantile: 0.9\n",
+        "threshold_mode: rolling_days\nrolling_threshold_days: 20\n"
+        "rolling_threshold_min_history: 300\nproduction_cap_pips: 1.2\n"
+        "oco_hold_mode: from_touch\noco_include_no_touch: true\nexecution_quantile: 0.9\n",
         encoding="utf-8",
     )
     (config_dir / f"{sl}_oco_reduced_core_rolling.yaml").write_text(
@@ -157,7 +159,7 @@ def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_pa
     models_dir.mkdir(parents=True)
     (models_dir / f"{symbol}_model_2026-02.cbm").write_text("dummy model", encoding="utf-8")
     (models_dir / f"{symbol}_model_2026-02.json").write_text(
-        '{"model_month":"2026-02"}', encoding="utf-8"
+        '{"model_month":"2026-02","rolling_threshold_min_history":1000}', encoding="utf-8"
     )
 
     _, index_df = run(
@@ -185,12 +187,19 @@ def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_pa
     assert not preds_path.exists()
 
     lock = json.loads(lock_path.read_text(encoding="utf-8"))
+    threshold_json = json.loads(
+        (models_dir / f"{symbol}_model_2026-02.json").read_text(encoding="utf-8")
+    )
     assert lock["historical_backtest"]["deployable"] is False
     assert lock["historical_backtest"]["non_deployable_reason"] == "no_gate_states"
     assert lock["state_universe"]["count"] == 0
     assert lock["state_universe"]["rows"] == []
     assert lock["artifacts"]["predictions_path"] == ""
     assert lock["artifacts"]["predictions_sha256"] == ""
+    assert threshold_json["rolling_threshold_min_history"] == 300
+    assert lock["artifacts"]["model_threshold_json_sha256"] == hashlib.sha256(
+        (models_dir / f"{symbol}_model_2026-02.json").read_bytes()
+    ).hexdigest()
 
     states_df = pd.read_csv(states_path)
     assert states_df.empty

@@ -59,6 +59,28 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     return dict(obj)
 
 
+def _sync_threshold_json_runtime_fields(threshold_json_path: Path, wfo_cfg: dict[str, Any]) -> None:
+    data = json.loads(threshold_json_path.read_text(encoding="utf-8"))
+    updates = {
+        "threshold_source": str(wfo_cfg.get("threshold_mode", "")).strip(),
+        "rolling_threshold_days": int(wfo_cfg.get("rolling_threshold_days", 0)),
+        "rolling_threshold_min_history": int(wfo_cfg.get("rolling_threshold_min_history", 0)),
+        "execution_quantile": float(wfo_cfg.get("execution_quantile", 0.9)),
+        "oco_hold_mode": str(wfo_cfg.get("oco_hold_mode", "")),
+        "oco_include_no_touch": bool(wfo_cfg.get("oco_include_no_touch", True)),
+    }
+    changed = False
+    for key, value in updates.items():
+        if data.get(key) != value:
+            data[key] = value
+            changed = True
+    if changed:
+        threshold_json_path.write_text(
+            json.dumps(data, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+
 def _split_csv(raw: str) -> list[str]:
     return [x.strip().upper() for x in str(raw).split(",") if x.strip()]
 
@@ -383,6 +405,7 @@ def run(
 
         for month in month_list:
             model_cbm, model_thr = model_pairs[month]
+            _sync_threshold_json_runtime_fields(model_thr, wfo_cfg)
             model_export_dir = model_cbm.parent
             train_pred = model_export_dir / f"{str(sym).upper()}_train_predictions_{month}.parquet"
             month_status = (

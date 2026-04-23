@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 
 from scripts.freeze_oco_live_governance import (
+    _sync_threshold_json_runtime_fields,
     _state_universe,
     _subset_omissions,
     _symbols_from_registry,
@@ -72,6 +73,41 @@ def test_subset_omissions_reports_missing_registry_symbols() -> None:
         universe=["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"],
     )
     assert omitted == ["AUDUSD", "USDJPY"]
+
+
+def test_sync_threshold_json_runtime_fields_overwrites_stale_runtime_values(tmp_path: Path) -> None:
+    threshold_json = tmp_path / "EURUSD_model_2026-03.json"
+    threshold_json.write_text(
+        json.dumps(
+            {
+                "model_month": "2026-03",
+                "threshold_source": "rolling_days",
+                "rolling_threshold_days": 20,
+                "rolling_threshold_min_history": 1000,
+                "execution_quantile": 0.9,
+                "oco_hold_mode": "from_touch",
+                "oco_include_no_touch": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    _sync_threshold_json_runtime_fields(
+        threshold_json,
+        {
+            "threshold_mode": "rolling_days",
+            "rolling_threshold_days": 20,
+            "rolling_threshold_min_history": 300,
+            "execution_quantile": 0.9,
+            "oco_hold_mode": "from_touch",
+            "oco_include_no_touch": True,
+        },
+    )
+
+    updated = json.loads(threshold_json.read_text(encoding="utf-8"))
+    assert updated["rolling_threshold_min_history"] == 300
+    assert updated["rolling_threshold_days"] == 20
+    assert updated["threshold_source"] == "rolling_days"
 
 
 def test_validate_lock_deploy_and_retrain_window(tmp_path: Path) -> None:
