@@ -1009,6 +1009,15 @@ def _load_model_binding_into_cache(
     model = cb_cls()
     model.load_model(str(model_path))
     thr_cfg = json.loads(thr_path.read_text())
+    locked_runtime_overrides = binding.get("locked_runtime_overrides", {})
+    if isinstance(locked_runtime_overrides, dict) and locked_runtime_overrides:
+        thr_cfg.update(
+            {
+                str(k): v
+                for k, v in locked_runtime_overrides.items()
+                if str(k).strip() and v is not None
+            }
+        )
     thr_month = str(thr_cfg.get("model_month", "")).strip()
     if thr_month and thr_month != month:
         logger.error(

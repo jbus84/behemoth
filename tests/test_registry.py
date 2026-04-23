@@ -130,7 +130,13 @@ class TestRegistryLoading:
                 "model_threshold_json_sha256": _sha256(model_thr),
                 "model_month": "2026-02",
             },
-            "locked_runtime": {"production_cap_pips": 1.2},
+            "locked_runtime": {
+                "production_cap_pips": 1.2,
+                "threshold_mode": "rolling_days",
+                "rolling_threshold_days": 20,
+                "rolling_threshold_min_history": 300,
+                "execution_quantile": 0.9,
+            },
             "state_universe": {
                 "rows": [
                     {
@@ -153,6 +159,8 @@ class TestRegistryLoading:
         assert binding is not None
         assert Path(binding["model_cbm_path"]) == model_cbm
         assert Path(binding["model_threshold_json_path"]) == model_thr
+        assert binding["locked_runtime_overrides"]["threshold_source"] == "rolling_days"
+        assert binding["locked_runtime_overrides"]["rolling_threshold_min_history"] == 300
 
 
 class TestCandidateGeneration:
