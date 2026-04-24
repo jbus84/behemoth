@@ -1,3 +1,12 @@
+## v0.12.1 (2026-04-24)
+
+### Fix
+
+- fail fast on live artifact drift
+- freeze threshold json runtime fields (#92)
+- prefer lock runtime thresholds in live model load (#91)
+- lower rolling threshold min history to 300 (#90)
+
 ## v0.12.0 (2026-04-22)
 
 ### Feat
