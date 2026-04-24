@@ -3519,6 +3519,62 @@ class TestPredictWarmup:
         assert total_count == 1
 
 
+class TestRollingThresholdDrift:
+    def test_drift_helper_records_ok_when_within_band(self, client):
+        from src.behemoth.api import server
+
+        server._record_rolling_threshold_drift(
+            symbol="GBPUSD",
+            candidate_uid="oco|GBPUSD|100|h6|cand_ok",
+            rolling=0.72,
+            baseline=0.70,
+        )
+
+        metrics = client.get("/metrics")
+
+        assert metrics.status_code == 200
+        assert (
+            'behemoth_rolling_threshold_drift_total{candidate="oco|GBPUSD|100|h6|cand_ok",state="ok",symbol="GBPUSD"} 1.0'
+            in metrics.text
+        )
+
+    def test_drift_helper_records_drift_when_beyond_band_and_logs_warning(self, client, caplog):
+        from src.behemoth.api import server
+
+        with caplog.at_level("WARNING"):
+            server._record_rolling_threshold_drift(
+                symbol="USDJPY",
+                candidate_uid="oco|USDJPY|100|h6|cand_drift",
+                rolling=0.771,
+                baseline=0.686,
+            )
+
+        metrics = client.get("/metrics")
+
+        assert metrics.status_code == 200
+        assert (
+            'behemoth_rolling_threshold_drift_total{candidate="oco|USDJPY|100|h6|cand_drift",state="drift",symbol="USDJPY"} 1.0'
+            in metrics.text
+        )
+        assert "Rolling threshold drift" in caplog.text
+        assert "USDJPY" in caplog.text
+
+    def test_drift_helper_noop_when_baseline_missing(self, client):
+        from src.behemoth.api import server
+
+        server._record_rolling_threshold_drift(
+            symbol="EURUSD",
+            candidate_uid="oco|EURUSD|100|h6|cand_none",
+            rolling=0.72,
+            baseline=0.0,
+        )
+
+        metrics = client.get("/metrics")
+
+        assert metrics.status_code == 200
+        assert "cand_none" not in metrics.text
+
+
 class TestSeedAuditHistory:
     def test_config_has_dukascopy_ticks_dir(self):
         from src.behemoth.api import server

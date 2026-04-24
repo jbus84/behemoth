@@ -167,6 +167,35 @@ METRIC_RISK_BLOCKS_TOTAL = Counter(
     ["symbol", "reason"],
 )
 
+METRIC_ROLLING_THRESHOLD_DRIFT = Counter(
+    "behemoth_rolling_threshold_drift_total",
+    "Rolling threshold deviation vs static threshold_exec baseline",
+    ["symbol", "candidate", "state"],
+)
+
+THRESHOLD_DRIFT_WARN_PP = 0.05
+
+
+def _record_rolling_threshold_drift(
+    *,
+    symbol: str,
+    candidate_uid: str,
+    rolling: float,
+    baseline: float,
+) -> None:
+    if baseline <= 0.0:
+        return
+    drift_pp = abs(float(rolling) - float(baseline))
+    state = "drift" if drift_pp > THRESHOLD_DRIFT_WARN_PP else "ok"
+    METRIC_ROLLING_THRESHOLD_DRIFT.labels(
+        symbol=symbol.upper(), candidate=candidate_uid, state=state,
+    ).inc()
+    if state == "drift":
+        logger.warning(
+            "Rolling threshold drift for %s %s: rolling=%.4f baseline=%.4f drift=%.4f (band=%.2f)",
+            symbol, candidate_uid, float(rolling), float(baseline), drift_pp, THRESHOLD_DRIFT_WARN_PP,
+        )
+
 METRIC_ACCOUNT_RISK_DAILY_HEADROOM = Gauge(
     "behemoth_account_risk_daily_loss_headroom",
     "Remaining buffered daily loss headroom in account currency units",
@@ -3029,6 +3058,12 @@ def _build_predictions(
                 is_live = _config.governance_mode == "live"
 
                 if dynamic_thr is not None:
+                    _record_rolling_threshold_drift(
+                        symbol=sym,
+                        candidate_uid=canonical_uid,
+                        rolling=float(dynamic_thr),
+                        baseline=float(thr_cfg.get("threshold_exec", 0.0) or 0.0),
+                    )
                     curr_threshold = dynamic_thr
                     curr_source = f"{threshold_mode}:rolling_dynamic"
                 elif rolling_days > 0:
