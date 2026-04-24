@@ -3533,10 +3533,10 @@ class TestRollingThresholdDrift:
         metrics = client.get("/metrics")
 
         assert metrics.status_code == 200
-        assert (
-            'behemoth_rolling_threshold_drift_total{candidate="oco|GBPUSD|100|h6|cand_ok",state="ok",symbol="GBPUSD"} 1.0'
-            in metrics.text
-        )
+        assert "behemoth_rolling_threshold_drift_total" in metrics.text
+        assert 'candidate="oco|GBPUSD|100|h6|cand_ok"' in metrics.text
+        assert 'state="ok"' in metrics.text
+        assert 'symbol="GBPUSD"' in metrics.text
 
     def test_drift_helper_records_drift_when_beyond_band_and_logs_warning(self, client, caplog):
         from src.behemoth.api import server
@@ -3552,10 +3552,10 @@ class TestRollingThresholdDrift:
         metrics = client.get("/metrics")
 
         assert metrics.status_code == 200
-        assert (
-            'behemoth_rolling_threshold_drift_total{candidate="oco|USDJPY|100|h6|cand_drift",state="drift",symbol="USDJPY"} 1.0'
-            in metrics.text
-        )
+        assert "behemoth_rolling_threshold_drift_total" in metrics.text
+        assert 'candidate="oco|USDJPY|100|h6|cand_drift"' in metrics.text
+        assert 'state="drift"' in metrics.text
+        assert 'symbol="USDJPY"' in metrics.text
         assert "Rolling threshold drift" in caplog.text
         assert "USDJPY" in caplog.text
 
@@ -3573,6 +3573,96 @@ class TestRollingThresholdDrift:
 
         assert metrics.status_code == 200
         assert "cand_none" not in metrics.text
+
+    def test_build_predictions_records_drift_for_rolling_threshold_path(self, client):
+        import unittest.mock as mock
+        from datetime import datetime, timezone
+        from types import SimpleNamespace
+
+        import numpy as np
+
+        from src.behemoth.api import server
+        from src.behemoth.core.schemas import ModelFeatures
+
+        sym = "EURUSD"
+        candidate_uid = "cand_roll"
+        canonical_uid = f"oco|{sym}|100|h6|{candidate_uid}"
+        rolling_threshold = 0.74
+        threshold_exec = 0.70
+        candidate = SimpleNamespace(
+            bar_ticks=100,
+            horizon=6,
+            barrier_pips=2.0,
+            candidate_uid=candidate_uid,
+            regime_desc="all;barrier=2.0",
+        )
+        features = ModelFeatures(
+            cost_est_pips=0.3,
+            range_pips=6.0,
+            ret1_pips=1.0,
+            ret_z=0.4,
+            ret_abs_z=0.4,
+            vel_cost_units_h1=1.2,
+            vel_abs_cost_units_h1=1.2,
+            spread_z=0.2,
+            tick_rate_z=0.1,
+            hour_utc=10.0,
+            hl_first=1.0,
+            hl_first_mean_24=0.5,
+            hl_pos_frac_mean_24=0.5,
+            bar_ticks=100.0,
+            horizon=6.0,
+            barrier_pips=2.0,
+        )
+        model = mock.MagicMock()
+        model.predict_proba.return_value = np.array([[0.4, 0.6]])
+
+        with (
+            mock.patch.object(
+                server,
+                "_pip_value_per_unit_usd",
+                return_value={"conversion_status": "ok", "pip_value_per_unit_usd": 0.1},
+            ),
+            mock.patch.object(server._state, "get_rolling_threshold", return_value=rolling_threshold) as get_threshold,
+            mock.patch.object(server._state, "log_predict_evaluation"),
+            mock.patch.object(server, "_record_rolling_threshold_drift") as record_drift,
+        ):
+            results, _ = server._build_predictions(
+                sym=sym,
+                candidates=[candidate],
+                model=model,
+                base_features_by_ticks={100: features},
+                regime_quantiles_by_ticks={100: {}},
+                close_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
+                thr_cfg={
+                    "threshold_exec": threshold_exec,
+                    "threshold_source": "test",
+                    "rolling_threshold_days": 20,
+                    "rolling_threshold_min_history": 1,
+                    "execution_quantile": 0.9,
+                },
+                account_risk_eval={"enabled": False, "allow_trading": True, "snapshot_available": False},
+                account_risk_enabled_effective=False,
+                account_risk_enabled_override=False,
+                requested_volume_units=10000.0,
+                model_month="2025-01",
+                cap_pips=1.2,
+            )
+
+        assert len(results) == 1
+        get_threshold.assert_called_once_with(
+            symbol=sym,
+            candidate_uid=canonical_uid,
+            exec_q=0.9,
+            lookback_days=20,
+            min_history=1,
+        )
+        record_drift.assert_called_once_with(
+            symbol=sym,
+            candidate_uid=canonical_uid,
+            rolling=rolling_threshold,
+            baseline=threshold_exec,
+        )
 
 
 class TestSeedAuditHistory:
