@@ -3349,18 +3349,9 @@ def _build_predictions(
 
 @app.post("/predict/warmup", status_code=201)
 async def predict_warmup(req: WarmupRequest) -> dict:
-    """Score buffered bars through the model to seed audit_logs for rolling threshold.
-
-    Iterates all bars in the tick_bars buffer for the given symbol, computes
-    features at the CURRENT buffer state (not a historical replay), and writes
-    one audit_log entry per eligible bar using the bar's historical close_ts.
-    This seeds the rolling threshold history needed when the threshold schedule
-    has expired.
-
-    Called once per symbol after backfill completes on startup.
-    Idempotent: safe to call multiple times (appends to audit_logs).
-    """
+    """Replay buffered bars through the model and atomically snapshot warmup history."""
     import numpy as np
+    import pandas as pd
 
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
@@ -3377,51 +3368,160 @@ async def predict_warmup(req: WarmupRequest) -> dict:
     if model is None:
         raise HTTPException(status_code=422, detail=f"No model loaded for {sym}")
 
-    # Fetch all close_ts values from the bar buffer for this symbol
-    bar_ticks = int(contract.candidates[0].bar_ticks)
-    rows = _state._con.execute(
-        "SELECT close_ts FROM tick_bars WHERE symbol = ? AND bar_ticks = ? ORDER BY row_id",
-        [sym, bar_ticks],
-    ).fetchall()
-
     warmup_needed = _state._cfg.full_warmup_bars
-    if len(rows) < warmup_needed:
-        return {
-            "ok": True,
-            "symbol": sym,
-            "audit_events_written": 0,
-            "skipped_reason": f"insufficient_bars:{len(rows)}<{warmup_needed}",
-        }
-
-    # Compute features once from current buffer state
-    n_written = 0
+    bars_by_ticks: dict[int, pd.DataFrame] = {}
     for cand in contract.candidates:
-        feats = _state.compute_features(sym, bar_ticks, cand.horizon, cand.barrier_pips)
-        if feats is None:
+        bar_ticks = int(cand.bar_ticks)
+        if bar_ticks in bars_by_ticks:
             continue
-        arr = np.array([feats.to_array()], dtype=float)
+        bars_df = _state._con.execute(
+            """
+            SELECT
+                row_id,
+                ts,
+                close_ts,
+                open_bid,
+                high_bid,
+                low_bid,
+                close_bid,
+                spread,
+                tick_volume,
+                hl_first,
+                hl_pos_frac,
+                high_ask,
+                close_ask
+            FROM tick_bars
+            WHERE symbol = ? AND bar_ticks = ?
+            ORDER BY row_id
+            """,
+            [sym, bar_ticks],
+        ).fetchdf()
+        if len(bars_df) < warmup_needed:
+            return {
+                "ok": True,
+                "symbol": sym,
+                "audit_events_purged": 0,
+                "audit_events_written": 0,
+                "skipped_reason": f"insufficient_bars:{len(bars_df)}<{warmup_needed}",
+                "stats": {},
+            }
+        for col in ("ts", "close_ts"):
+            if col in bars_df.columns:
+                ts_series = pd.to_datetime(bars_df[col], utc=True)
+                bars_df[col] = ts_series
+        bars_by_ticks[bar_ticks] = bars_df
+
+    feature_columns = list(ModelFeatures.model_fields)
+    static_thr = float(thr_cfg.get("threshold_exec", 0.5))
+    stats: dict[str, dict[str, float | int]] = {}
+    events_batch: list[tuple] = []
+
+    for cand in contract.candidates:
+        bar_ticks = int(cand.bar_ticks)
+        bars_df = bars_by_ticks[bar_ticks]
+        features_df = compute_feature_matrix_from_bars(
+            bars_df,
+            symbol=sym,
+            bar_ticks=bar_ticks,
+            horizon=cand.horizon,
+            barrier_pips=cand.barrier_pips,
+            cfg=FeatureConfig(
+                vol_window=_config.vol_window,
+                cost_window=_config.cost_window,
+            ),
+        )
+        if features_df is None or features_df.empty:
+            logger.warning(
+                "predict_warmup: empty feature matrix for %s bar_ticks=%s horizon=%s barrier=%.4f",
+                sym,
+                cand.bar_ticks,
+                cand.horizon,
+                cand.barrier_pips,
+            )
+            continue
+
+        valid_mask = features_df.notna().all(axis=1)
+        valid_features = features_df.loc[valid_mask]
+        if valid_features.empty:
+            logger.warning(
+                "predict_warmup: no valid warmup rows for %s bar_ticks=%s horizon=%s barrier=%.4f",
+                sym,
+                cand.bar_ticks,
+                cand.horizon,
+                cand.barrier_pips,
+            )
+            continue
+
+        X = valid_features[feature_columns].values
         with METRIC_INFERENCE_LATENCY.labels(symbol=sym).time():
-            pred_prob = float(model.predict_proba(arr)[:, 1][0])
+            pred_probs = np.asarray(model.predict_proba(X)[:, 1], dtype=float)
+
         canonical_uid = f"oco|{sym}|{cand.bar_ticks}|h{cand.horizon}|{cand.candidate_uid}"
-        static_thr = float(thr_cfg.get("threshold_exec", 0.5))
-        for (close_ts_val,) in rows:
-            close_ts_bar = close_ts_val
+        unique_values = int(np.unique(np.round(pred_probs, 12)).size)
+        n_valid = int(len(pred_probs))
+        stats[canonical_uid] = {
+            "n": n_valid,
+            "unique_values": unique_values,
+            "p10": float(np.quantile(pred_probs, 0.10)),
+            "p50": float(np.quantile(pred_probs, 0.50)),
+            "p90": float(np.quantile(pred_probs, 0.90)),
+            "p100": float(np.max(pred_probs)),
+        }
+        if n_valid >= 30 and unique_values < 10:
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    f"predict_warmup: degenerate distribution for {canonical_uid} "
+                    f"(n={n_valid}, unique_values={unique_values})"
+                ),
+            )
+
+        valid_bars = bars_df.loc[valid_features.index].reset_index(drop=True)
+        valid_features = valid_features.reset_index(drop=True)
+        for i in range(len(valid_features)):
+            row_feat = valid_features.iloc[i]
+            feat_obj = ModelFeatures(**row_feat.to_dict())
+            close_ts_bar = valid_bars.iloc[i]["close_ts"]
+            if hasattr(close_ts_bar, "to_pydatetime"):
+                close_ts_bar = close_ts_bar.to_pydatetime()
             if hasattr(close_ts_bar, "tzinfo") and close_ts_bar.tzinfo is None:
                 close_ts_bar = close_ts_bar.replace(tzinfo=timezone.utc)
-            _state.log_audit_event(
-                symbol=sym,
-                candidate_uid=canonical_uid,
-                pred_prob=pred_prob,
-                threshold=static_thr,
-                features=feats,
-                model_month=contract.model_month,
-                close_ts=close_ts_bar,
-                run_id=run_id,
-            )
-            n_written += 1
+            events_batch.append((
+                close_ts_bar,
+                sym,
+                canonical_uid,
+                float(pred_probs[i]),
+                static_thr,
+                feat_obj.model_dump_json(),
+                contract.model_month,
+                run_id,
+            ))
 
-    logger.info("predict_warmup: wrote %d audit events for %s", n_written, sym)
-    return {"ok": True, "symbol": sym, "audit_events_written": n_written}
+    audit_events_purged = 0
+    try:
+        _state._con.execute("BEGIN TRANSACTION")
+        audit_events_purged = _state.purge_audit_events(symbol=sym, run_id=run_id)
+        _state.log_audit_event_batch(events_batch)
+        _state._con.execute("COMMIT")
+    except Exception:
+        with suppress(Exception):
+            _state._con.execute("ROLLBACK")
+        raise
+
+    logger.info(
+        "predict_warmup: purged %d rows and wrote %d audit events for %s",
+        audit_events_purged,
+        len(events_batch),
+        sym,
+    )
+    return {
+        "ok": True,
+        "symbol": sym,
+        "audit_events_purged": audit_events_purged,
+        "audit_events_written": len(events_batch),
+        "skipped_reason": None,
+        "stats": stats,
+    }
 
 
 @app.post("/trades/open")

@@ -3159,6 +3159,43 @@ class TestCheckpointEndpoint:
 
 
 class TestPredictWarmup:
+    def _seed_bars(self, sym: str, n: int, *, start_close: float = 1.30000) -> None:
+        """Populate _state.tick_bars with n varied bars for the given symbol.
+
+        Each bar has slightly different OHLC so the feature builder produces
+        a non-constant feature matrix. Writes bars with bar_ticks=100 to match
+        the dummy candidate used in these tests.
+        """
+        from datetime import datetime, timedelta, timezone
+
+        from src.behemoth.api import server
+
+        base_ts = datetime(2026, 4, 1, 0, 0, tzinfo=timezone.utc)
+        for i in range(n):
+            ts = base_ts + timedelta(minutes=i)
+            close_ts = ts + timedelta(seconds=30)
+            bid = start_close + 0.0001 * (i % 50) - 0.00005 * ((i * 7) % 11)
+            server._state._con.execute(
+                "INSERT INTO tick_bars VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                [
+                    i,
+                    sym.upper(),
+                    100,
+                    ts,
+                    close_ts,
+                    bid,
+                    bid + 0.0005,
+                    bid - 0.0005,
+                    bid + 0.0001,
+                    0.00015,
+                    100.0 + (i % 30),
+                    bid + 0.0002,
+                    0.55,
+                    bid + 0.00065,
+                    bid + 0.00025,
+                ],
+            )
+
     def test_warmup_returns_201_with_count(self, client):
         import unittest.mock as mock
         from types import SimpleNamespace
@@ -3206,6 +3243,197 @@ class TestPredictWarmup:
             assert r.status_code == 503
         finally:
             server._state = original
+
+    def test_warmup_writes_varied_pred_probs_per_bar(self, client):
+        import unittest.mock as mock
+        from types import SimpleNamespace
+
+        import numpy as np
+
+        from src.behemoth.api import server
+
+        sym = "GBPUSD"
+        run_id = "warmup-varied"
+        self._seed_bars(sym, 340)
+
+        dummy_cand = mock.MagicMock()
+        dummy_cand.bar_ticks = 100
+        dummy_cand.horizon = 24
+        dummy_cand.barrier_pips = 15.0
+        dummy_cand.candidate_uid = "cand1"
+
+        dummy_model = mock.MagicMock()
+        dummy_model.predict_proba.side_effect = lambda X: np.column_stack(
+            [1.0 - np.linspace(0.11, 0.91, len(X)), np.linspace(0.11, 0.91, len(X))]
+        )
+
+        with (
+            mock.patch.object(
+                server,
+                "_resolve_runtime_contract",
+                return_value=SimpleNamespace(
+                    candidates=[dummy_cand],
+                    model_month="2025-01",
+                    cap_pips=1.2,
+                ),
+            ),
+            mock.patch.object(
+                server,
+                "_ensure_model_and_threshold",
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+            ),
+        ):
+            r = client.post("/predict/warmup", json={"symbol": sym, "run_id": run_id})
+
+        assert r.status_code == 201
+        body = r.json()
+        canonical_uid = f"oco|{sym}|{dummy_cand.bar_ticks}|h{dummy_cand.horizon}|{dummy_cand.candidate_uid}"
+        assert body["audit_events_written"] >= 30
+        assert body["stats"][canonical_uid]["unique_values"] >= 10
+
+        rows = server._state._con.execute(
+            """
+            SELECT pred_prob
+            FROM audit_logs
+            WHERE symbol = ? AND run_id = ? AND candidate_uid = ?
+            ORDER BY close_ts
+            """,
+            [sym, run_id, canonical_uid],
+        ).fetchall()
+        unique_probs = {round(float(row[0]), 6) for row in rows}
+
+        assert len(rows) == body["audit_events_written"]
+        assert len(unique_probs) >= 10
+
+    def test_warmup_is_idempotent_and_purges_prior(self, client):
+        import unittest.mock as mock
+        from types import SimpleNamespace
+
+        import numpy as np
+
+        from src.behemoth.api import server
+
+        sym = "GBPUSD"
+        run_id = "warmup-idempotent"
+        self._seed_bars(sym, 340)
+
+        dummy_cand = mock.MagicMock()
+        dummy_cand.bar_ticks = 100
+        dummy_cand.horizon = 24
+        dummy_cand.barrier_pips = 15.0
+        dummy_cand.candidate_uid = "cand1"
+
+        dummy_model = mock.MagicMock()
+        dummy_model.predict_proba.side_effect = lambda X: np.column_stack(
+            [1.0 - np.linspace(0.2, 0.8, len(X)), np.linspace(0.2, 0.8, len(X))]
+        )
+
+        with (
+            mock.patch.object(
+                server,
+                "_resolve_runtime_contract",
+                return_value=SimpleNamespace(
+                    candidates=[dummy_cand],
+                    model_month="2025-01",
+                    cap_pips=1.2,
+                ),
+            ),
+            mock.patch.object(
+                server,
+                "_ensure_model_and_threshold",
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+            ),
+        ):
+            r1 = client.post("/predict/warmup", json={"symbol": sym, "run_id": run_id})
+            r2 = client.post("/predict/warmup", json={"symbol": sym, "run_id": run_id})
+
+        assert r1.status_code == 201
+        assert r2.status_code == 201
+
+        body1 = r1.json()
+        body2 = r2.json()
+        written1 = body1["audit_events_written"]
+
+        assert body1["audit_events_purged"] == 0
+        assert written1 >= 30
+        assert body2["audit_events_purged"] == written1
+        assert body2["audit_events_written"] == written1
+
+        final_count = server._state._con.execute(
+            "SELECT COUNT(*) FROM audit_logs WHERE symbol = ? AND run_id = ?",
+            [sym, run_id],
+        ).fetchone()[0]
+        assert final_count == written1
+
+    def test_warmup_refuses_degenerate_distribution(self, client):
+        import unittest.mock as mock
+        from datetime import datetime, timezone
+        from types import SimpleNamespace
+
+        import numpy as np
+
+        from src.behemoth.api import server
+
+        sym = "GBPUSD"
+        run_id = "warmup-degenerate"
+        self._seed_bars(sym, 340)
+
+        server._state._con.execute(
+            "INSERT INTO audit_logs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                datetime(2026, 4, 1, 0, 0, tzinfo=timezone.utc),
+                datetime(2026, 4, 1, 0, 0, tzinfo=timezone.utc),
+                sym,
+                "sentinel",
+                0.42,
+                0.5,
+                "{}",
+                "2025-01",
+                run_id,
+            ],
+        )
+
+        dummy_cand = mock.MagicMock()
+        dummy_cand.bar_ticks = 100
+        dummy_cand.horizon = 24
+        dummy_cand.barrier_pips = 15.0
+        dummy_cand.candidate_uid = "cand1"
+
+        dummy_model = mock.MagicMock()
+        dummy_model.predict_proba.side_effect = lambda X: np.column_stack(
+            [np.full(len(X), 0.33), np.full(len(X), 0.67)]
+        )
+
+        with (
+            mock.patch.object(
+                server,
+                "_resolve_runtime_contract",
+                return_value=SimpleNamespace(
+                    candidates=[dummy_cand],
+                    model_month="2025-01",
+                    cap_pips=1.2,
+                ),
+            ),
+            mock.patch.object(
+                server,
+                "_ensure_model_and_threshold",
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+            ),
+        ):
+            r = client.post("/predict/warmup", json={"symbol": sym, "run_id": run_id})
+
+        assert r.status_code == 500
+        assert "degenerate distribution" in r.json()["detail"]
+
+        sentinel_count = server._state._con.execute(
+            """
+            SELECT COUNT(*)
+            FROM audit_logs
+            WHERE symbol = ? AND run_id = ? AND candidate_uid = 'sentinel'
+            """,
+            [sym, run_id],
+        ).fetchone()[0]
+        assert sentinel_count == 1
 
 
 class TestSeedAuditHistory:
