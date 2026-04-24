@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -55,6 +57,10 @@ def _write_live_lock(governance_dir: Path, symbol: str, *, model_month: str, liv
         __import__("json").dumps(payload) + "\n",
         encoding="utf-8",
     )
+
+
+def _sha(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def test_main_starts_live_runner_before_warmup(monkeypatch, tmp_path, capsys) -> None:
@@ -277,10 +283,117 @@ def test_main_resume_preserves_runtime_state(monkeypatch, tmp_path) -> None:
     with pytest.raises(SystemExit, match="1"):
         run_jforex_live.main()
 
-    assert active_state.exists()
-    assert live_state.exists()
-    assert (runtime_dir / "live_runtime_session.json").exists()
-    assert (runtime_dir / "live_restart_reconciliation.json").exists()
+
+def test_main_fails_before_seed_when_runtime_threshold_json_drifts_from_promoted_lock(
+    monkeypatch, tmp_path
+) -> None:
+    monkeypatch.setattr(run_jforex_live, "_repo_root", lambda: tmp_path)
+
+    governance_dir = _ensure_governance_dir(tmp_path)
+    models_dir = tmp_path / "models/oco"
+    models_dir.mkdir(parents=True, exist_ok=True)
+    cbm_path = models_dir / "EURUSD_model_2026-03.cbm"
+    thr_path = models_dir / "EURUSD_model_2026-03.json"
+    cbm_path.write_bytes(b"cbm")
+    thr_path.write_text(
+        json.dumps(
+            {
+                "model_month": "2026-03",
+                "threshold_source": "rolling_days",
+                "rolling_threshold_days": 20,
+                "rolling_threshold_min_history": 1000,
+                "execution_quantile": 0.9,
+                "oco_hold_mode": "from_touch",
+                "oco_include_no_touch": True,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    lock_payload = {
+        "symbol": "EURUSD",
+        "artifacts": {
+            "live_deployable": True,
+            "model_month": "2026-03",
+            "model_cbm_path": "models/oco/EURUSD_model_2026-03.cbm",
+            "model_cbm_sha256": _sha(cbm_path),
+            "model_threshold_json_path": "models/oco/EURUSD_model_2026-03.json",
+            "model_threshold_json_sha256": _sha(thr_path),
+        },
+        "locked_runtime": {
+            "threshold_mode": "rolling_days",
+            "rolling_threshold_days": 20,
+            "rolling_threshold_min_history": 300,
+            "execution_quantile": 0.9,
+            "oco_hold_mode": "from_touch",
+            "oco_include_no_touch": True,
+        },
+    }
+    (governance_dir / "eurusd_oco_live_lock.json").write_text(
+        json.dumps(lock_payload) + "\n",
+        encoding="utf-8",
+    )
+
+    current_metadata = run_jforex_live.RuntimeSessionMetadata(
+        git_commit="abc123",
+        git_branch="main",
+        git_dirty=False,
+        repo_root=str(tmp_path),
+        model_month="2026-03",
+        governance_dir="configs/research/governance/oco",
+        lock_fingerprint="lockfp",
+        symbols=["EURUSD"],
+        started_at_utc="2026-04-23T00:00:00Z",
+        startup_mode="reset",
+    )
+    comparison = run_jforex_live.RuntimeContextComparison(
+        verdict=run_jforex_live.RestartVerdict.CLEAN_RESUMABLE,
+        reasons=[],
+    )
+    monkeypatch.setattr(
+        run_jforex_live,
+        "_reconcile_startup",
+        lambda cfg, paths: (current_metadata, None, comparison),
+    )
+    monkeypatch.setattr(run_jforex_live, "write_runtime_session_metadata", lambda *args, **kwargs: None)
+
+    called: list[str] = []
+
+    def fake_run(*args, **kwargs):
+        called.append("seed")
+        return type("Result", (), {"returncode": 0})()
+
+    monkeypatch.setattr(run_jforex_live.subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        run_jforex_live,
+        "_start_api",
+        lambda cfg: pytest.fail("API should not start when runtime artifacts drift"),
+    )
+    monkeypatch.setattr(run_jforex_live, "_stop_process", lambda proc: None)
+    monkeypatch.setattr(run_jforex_live.signal, "signal", lambda *args, **kwargs: None)
+    monkeypatch.setenv("BEHEMOTH_JFOREX_JNLP_URI", "demo")
+    monkeypatch.setenv("BEHEMOTH_JFOREX_USERNAME", "user")
+    monkeypatch.setenv("BEHEMOTH_JFOREX_PASSWORD", "pass")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_jforex_live.py",
+            "--symbols",
+            "EURUSD",
+            "--report-dir",
+            "data/analysis/backtest_reconcile",
+            "--startup-mode",
+            "reset",
+            "--models-dir",
+            "models/oco",
+        ],
+    )
+
+    with pytest.raises(SystemExit, match="rolling_threshold_min_history"):
+        run_jforex_live.main()
+
+    assert called == []
 
 
 def test_main_reset_runs_archive_cleanup(monkeypatch, tmp_path) -> None:
