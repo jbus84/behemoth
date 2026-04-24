@@ -397,7 +397,8 @@ def _format_report(report: dict[str, Any]) -> str:
         "",
         "## 5. Rolling Threshold Integrity",
         "",
-        "Flags `unique_values < 10` with `n >= 30` — the signature of a flat `/predict/warmup` replay regression.",
+        "Flags `unique_values < 10` with `n >= 30` as a low-cardinality audit population.",
+        "For `run_id == 'warmup'`, that pattern is the flat `/predict/warmup` replay-regression signature.",
         "",
         "| Symbol | Candidate | Run ID | N | Unique | Min | p50 | p90 | Max | Flag |",
         "|--------|-----------|--------|---|--------|-----|-----|-----|-----|------|",
@@ -484,7 +485,11 @@ def main() -> None:
 
     print("\n=== ROLLING THRESHOLD INTEGRITY ===")
     for r in report.get("rolling_threshold_integrity", []):
-        flag = " *** FLAT WARMUP REGRESSION" if r["flag"] else ""
+        flag = ""
+        if r["flag"]:
+            flag = " *** LOW-CARDINALITY AUDIT POPULATION"
+            if r["run_id"] == "warmup":
+                flag += " (warmup replay-regression signature)"
         print(
             f"  {r['symbol']} [{r['candidate_uid']}] run_id={r['run_id']}: "
             f"n={r['n']} unique={r['unique_values']} p90={r['p90']}{flag}"

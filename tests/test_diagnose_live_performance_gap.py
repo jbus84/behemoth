@@ -234,3 +234,33 @@ def test_rolling_threshold_integrity_section_detects_flat_warmup(tmp_path: Path)
     )
     assert seed_row["unique_values"] > 10
     assert seed_row["flag"] is False
+
+
+def test_run_and_format_report_include_integrity_section(tmp_path: Path) -> None:
+    db = tmp_path / "live_state.db"
+    _make_synthetic_db(db)
+
+    con = duckdb.connect(str(db))
+    now = datetime(2026, 3, 23, 14, 0, tzinfo=timezone.utc)
+    uid = "oco|GBPUSD|100|h6|oco_first_touch_clean__ny_overlap__k2"
+    for i in range(40):
+        con.execute(
+            "INSERT INTO audit_logs VALUES (?, ?, 'GBPUSD', ?, 0.6123, 0.595, '{}', '2026-02', 'warmup')",
+            [now, now, uid],
+        )
+    con.close()
+
+    from scripts.diagnose_live_performance_gap import _format_report, run
+
+    report = run(db_path=db, run_id="jforex_live")
+    assert "rolling_threshold_integrity" in report
+    warmup_row = next(
+        r for r in report["rolling_threshold_integrity"] if r["symbol"] == "GBPUSD" and r["run_id"] == "warmup"
+    )
+    assert warmup_row["flag"] is True
+
+    rendered = _format_report(report)
+    assert "## 5. Rolling Threshold Integrity" in rendered
+    assert "low-cardinality audit population" in rendered
+    assert "For `run_id == 'warmup'`" in rendered
+    assert f"| GBPUSD | {uid} | warmup | 40 | 1 |" in rendered
