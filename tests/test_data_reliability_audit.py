@@ -13,10 +13,13 @@ def _build_frame(n: int = 400) -> pd.DataFrame:
     d = pd.DataFrame(
         {
             "close_ts": ts,
-            "open": base,
-            "high": base + 0.0002,
-            "low": base - 0.0002,
-            "close": base + 0.0001,
+            "open_bid": base,
+            "high_bid": base + 0.0002,
+            "low_bid": base - 0.0002,
+            "close_bid": base + 0.0001,
+            "spread": 0.0001,
+            "high_ask": base + 0.0003,
+            "close_ask": base + 0.0002,
             "cost_est_pips": 0.8,
             "range_pips": 2.0,
             "hour_utc": ts.hour,

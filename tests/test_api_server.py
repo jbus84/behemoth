@@ -20,10 +20,15 @@ from src.behemoth.api.server import app
 
 
 @pytest.fixture
-def client():
-    """Create a test client with a fresh state manager."""
-    with TestClient(app) as c:
-        yield c
+def client(tmp_path):
+    """Create a test client with an isolated runtime DB per test."""
+    original_persist_db_path = server._config.persist_db_path
+    server._config.persist_db_path = str(tmp_path / "behemoth_runtime.duckdb")
+    try:
+        with TestClient(app) as c:
+            yield c
+    finally:
+        server._config.persist_db_path = original_persist_db_path
 
 
 class TestHealthEndpoint:
