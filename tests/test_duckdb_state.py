@@ -683,6 +683,7 @@ class TestPurgeAuditEvents:
             "SELECT COUNT(*) FROM audit_logs WHERE symbol='EURUSD' AND run_id='warmup'"
         ).fetchone()[0]
         assert n_eur_warmup == 2
+        sm.close()
 
     def test_purge_returns_zero_when_nothing_matches(self):
         from src.behemoth.runtime.state import StateManager
@@ -690,6 +691,7 @@ class TestPurgeAuditEvents:
         sm = StateManager()
         purged = sm.purge_audit_events(symbol="NOPE", run_id="warmup")
         assert purged == 0
+        sm.close()
 
 
 class TestTradeRicherRecording:

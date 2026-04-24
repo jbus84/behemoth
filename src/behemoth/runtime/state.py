@@ -491,18 +491,11 @@ class StateManager:
         Scoped purge only - does not affect other symbols or other run_ids
         (e.g. 'threshold_seed' or 'jforex_live' rows are untouched).
         """
-        before = self._con.execute(
-            "SELECT COUNT(*) FROM audit_logs WHERE symbol = ? AND run_id = ?",
+        deleted_rows = self._con.execute(
+            "DELETE FROM audit_logs WHERE symbol = ? AND run_id = ? RETURNING 1",
             [symbol.upper(), run_id],
-        ).fetchone()
-        before_count = int(before[0]) if before and before[0] is not None else 0
-        if before_count <= 0:
-            return 0
-        self._con.execute(
-            "DELETE FROM audit_logs WHERE symbol = ? AND run_id = ?",
-            [symbol.upper(), run_id],
-        )
-        return before_count
+        ).fetchall()
+        return len(deleted_rows)
 
     def seed_training_predictions(
         self,
