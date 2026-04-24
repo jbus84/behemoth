@@ -3497,6 +3497,26 @@ async def predict_warmup(req: WarmupRequest) -> dict:
                 run_id,
             ))
 
+    if not events_batch:
+        existing_rows = _state._con.execute(
+            "SELECT COUNT(*) FROM audit_logs WHERE symbol = ? AND run_id = ?",
+            [sym, run_id],
+        ).fetchone()[0]
+        logger.info(
+            "predict_warmup: produced no valid warmup events for %s run_id=%s; preserving %d existing rows",
+            sym,
+            run_id,
+            existing_rows,
+        )
+        return {
+            "ok": True,
+            "symbol": sym,
+            "audit_events_purged": 0,
+            "audit_events_written": 0,
+            "skipped_reason": "no_valid_warmup_events",
+            "stats": stats,
+        }
+
     audit_events_purged = 0
     try:
         _state._con.execute("BEGIN TRANSACTION")

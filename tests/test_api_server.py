@@ -3435,6 +3435,89 @@ class TestPredictWarmup:
         ).fetchone()[0]
         assert sentinel_count == 1
 
+    def test_warmup_preserves_prior_rows_when_no_valid_events_generated(self, client):
+        import unittest.mock as mock
+        from datetime import datetime, timezone
+        from types import SimpleNamespace
+
+        import pandas as pd
+
+        from src.behemoth.api import server
+        from src.behemoth.core.schemas import ModelFeatures
+
+        sym = "GBPUSD"
+        run_id = "warmup-empty-valid"
+        self._seed_bars(sym, 340)
+
+        server._state._con.execute(
+            "INSERT INTO audit_logs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                datetime(2026, 4, 1, 0, 0, tzinfo=timezone.utc),
+                datetime(2026, 4, 1, 0, 0, tzinfo=timezone.utc),
+                sym,
+                "sentinel",
+                0.42,
+                0.5,
+                "{}",
+                "2025-01",
+                run_id,
+            ],
+        )
+
+        dummy_cand = mock.MagicMock()
+        dummy_cand.bar_ticks = 100
+        dummy_cand.horizon = 24
+        dummy_cand.barrier_pips = 15.0
+        dummy_cand.candidate_uid = "cand1"
+
+        dummy_model = mock.MagicMock()
+
+        with (
+            mock.patch.object(
+                server,
+                "_resolve_runtime_contract",
+                return_value=SimpleNamespace(
+                    candidates=[dummy_cand],
+                    model_month="2025-01",
+                    cap_pips=1.2,
+                ),
+            ),
+            mock.patch.object(
+                server,
+                "_ensure_model_and_threshold",
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+            ),
+            mock.patch.object(
+                server,
+                "compute_feature_matrix_from_bars",
+                return_value=pd.DataFrame(columns=list(ModelFeatures.model_fields)),
+            ),
+        ):
+            r = client.post("/predict/warmup", json={"symbol": sym, "run_id": run_id})
+
+        assert r.status_code == 201
+        body = r.json()
+        assert body["audit_events_purged"] == 0
+        assert body["audit_events_written"] == 0
+        assert body["skipped_reason"] == "no_valid_warmup_events"
+        assert body["stats"] == {}
+        dummy_model.predict_proba.assert_not_called()
+
+        sentinel_count = server._state._con.execute(
+            """
+            SELECT COUNT(*)
+            FROM audit_logs
+            WHERE symbol = ? AND run_id = ? AND candidate_uid = 'sentinel'
+            """,
+            [sym, run_id],
+        ).fetchone()[0]
+        total_count = server._state._con.execute(
+            "SELECT COUNT(*) FROM audit_logs WHERE symbol = ? AND run_id = ?",
+            [sym, run_id],
+        ).fetchone()[0]
+        assert sentinel_count == 1
+        assert total_count == 1
+
 
 class TestSeedAuditHistory:
     def test_config_has_dukascopy_ticks_dir(self):
