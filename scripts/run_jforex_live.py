@@ -14,6 +14,8 @@ BEHEMOTH_JFOREX_PASSWORD in the environment (typically loaded from .env).
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import os
 import signal
 import subprocess
@@ -122,6 +124,87 @@ def _governance_dir_raw() -> str:
 def _governance_dir_path(repo_root: Path) -> Path:
     raw = Path(_governance_dir_raw())
     return raw if raw.is_absolute() else repo_root / raw
+
+
+def _sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _resolve_repo_path(path_txt: str, repo_root: Path) -> Path:
+    path = Path(path_txt)
+    return path if path.is_absolute() else repo_root / path
+
+
+def _expected_threshold_runtime(lock_payload: dict[str, object]) -> dict[str, object]:
+    locked_runtime = lock_payload.get("locked_runtime", {})
+    if not isinstance(locked_runtime, dict):
+        return {}
+    return {
+        "threshold_source": locked_runtime.get("threshold_mode"),
+        "rolling_threshold_days": locked_runtime.get("rolling_threshold_days"),
+        "rolling_threshold_min_history": locked_runtime.get("rolling_threshold_min_history"),
+        "execution_quantile": locked_runtime.get("execution_quantile"),
+        "oco_hold_mode": locked_runtime.get("oco_hold_mode"),
+        "oco_include_no_touch": locked_runtime.get("oco_include_no_touch"),
+    }
+
+
+def _validate_promoted_runtime_artifacts(cfg: RunConfig) -> None:
+    repo_root = _repo_root()
+    governance_dir = _governance_dir_path(repo_root)
+    models_dir = _resolve_repo_path(cfg.models_dir, repo_root)
+    requested_symbols = {symbol.upper() for symbol in cfg.symbols}
+    failures: list[str] = []
+
+    for lock_path in sorted(governance_dir.glob("*_oco_live_lock.json")):
+        payload = json.loads(lock_path.read_text(encoding="utf-8"))
+        symbol = str(payload.get("symbol", "")).upper().strip()
+        if not symbol or symbol not in requested_symbols:
+            continue
+        artifacts = payload.get("artifacts", {})
+        if not isinstance(artifacts, dict) or bool(artifacts.get("live_deployable", True)) is False:
+            continue
+
+        runtime_model_path = models_dir / Path(str(artifacts.get("model_cbm_path", "")).strip()).name
+        runtime_thr_path = models_dir / Path(
+            str(artifacts.get("model_threshold_json_path", "")).strip()
+        ).name
+        expected_model_sha = str(artifacts.get("model_cbm_sha256", "")).strip()
+        expected_thr_sha = str(artifacts.get("model_threshold_json_sha256", "")).strip()
+
+        if not runtime_model_path.exists():
+            failures.append(f"{symbol}: missing runtime model {runtime_model_path}")
+            continue
+        if not runtime_thr_path.exists():
+            failures.append(f"{symbol}: missing runtime threshold json {runtime_thr_path}")
+            continue
+        if _sha256(runtime_model_path) != expected_model_sha:
+            failures.append(f"{symbol}: runtime model sha mismatch for {runtime_model_path.name}")
+        if _sha256(runtime_thr_path) != expected_thr_sha:
+            failures.append(f"{symbol}: runtime threshold sha mismatch for {runtime_thr_path.name}")
+
+        thr_cfg = json.loads(runtime_thr_path.read_text(encoding="utf-8"))
+        expected_runtime = _expected_threshold_runtime(payload)
+        for key, expected_value in expected_runtime.items():
+            if thr_cfg.get(key) != expected_value:
+                failures.append(
+                    f"{symbol}: {key} drift runtime={thr_cfg.get(key)!r} lock={expected_value!r}"
+                )
+
+        expected_month = str(artifacts.get("model_month", "")).strip()
+        if expected_month and str(thr_cfg.get("model_month", "")).strip() != expected_month:
+            failures.append(
+                f"{symbol}: model_month drift runtime={thr_cfg.get('model_month')!r} lock={expected_month!r}"
+            )
+
+    if failures:
+        raise SystemExit(
+            "Promoted runtime artifact preflight failed:\n- " + "\n- ".join(failures)
+        )
 
 
 def _git_metadata(repo_root: Path) -> tuple[str, str, bool]:
@@ -592,6 +675,8 @@ def main() -> None:
     ):
         if not os.environ.get(required):
             raise SystemExit(f"Missing required env var: {required}")
+
+    _validate_promoted_runtime_artifacts(cfg)
 
     paths = _runtime_paths(cfg)
     paths["runtime_dir"].mkdir(parents=True, exist_ok=True)
