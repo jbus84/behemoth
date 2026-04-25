@@ -350,13 +350,13 @@ def main() -> None:
     model_month = _last_complete_month(args.model_month)
 
     print(f"[promote-live] verifying cert for {model_month}", flush=True)
-    _current_commit = subprocess.run(
+    current_commit = subprocess.run(
         ["git", "-C", str(_repo_root()), "rev-parse", "HEAD"],
         capture_output=True,
         text=True,
         check=True,
     ).stdout.strip()
-    _verify_cert(args.report_dir, model_month, current_commit=_current_commit)
+    _verify_cert(args.report_dir, model_month, current_commit=current_commit)
 
     print(f"[promote-live] archiving build bundle for {model_month}", flush=True)
     _archive_build_bundle(model_month)
