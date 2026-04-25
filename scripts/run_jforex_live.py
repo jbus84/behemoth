@@ -35,12 +35,14 @@ from src.behemoth.live_restart.reconciliation import (
     BrokerSnapshot,
     LocalRuntimeStateSummary,
     ReconciliationReport,
+    RestartEligibilityResult,
     RestartVerdict,
     RuntimeContextComparison,
     RuntimeFileSnapshot,
     RuntimeSessionMetadata,
     compare_runtime_context,
     compute_lock_fingerprint,
+    derive_restart_eligibility,
     inspect_local_runtime_state,
     inspect_runtime_files,
     load_broker_snapshot,
@@ -337,7 +339,12 @@ def _print_incompatible_restart_summary(
 def _reconcile_startup(
     cfg: RunConfig,
     paths: dict[str, Path],
-) -> tuple[RuntimeSessionMetadata, RuntimeSessionMetadata | None, RuntimeContextComparison]:
+) -> tuple[
+    RuntimeSessionMetadata,
+    RuntimeSessionMetadata | None,
+    RuntimeContextComparison,
+    RestartEligibilityResult,
+]:
     current_metadata = _build_current_session_metadata(cfg)
     session_path = paths["session_metadata_path"]
     persisted_metadata = load_runtime_session_metadata(session_path) if session_path.exists() else None
@@ -360,6 +367,7 @@ def _reconcile_startup(
         broker_snapshot=broker_snapshot,
         local_runtime=local_runtime,
     )
+    restart_eligibility = derive_restart_eligibility(comparison)
     report = ReconciliationReport(
         startup_mode=cfg.startup_mode,
         verdict=comparison.verdict,
@@ -371,9 +379,10 @@ def _reconcile_startup(
         local_runtime=local_runtime,
         broker_snapshot=broker_snapshot,
         promoted_symbols=load_promoted_symbols(_governance_dir_path(_repo_root())),
+        restart_eligibility=restart_eligibility,
     )
     write_reconciliation_report(paths["reconciliation_report_path"], report)
-    return current_metadata, persisted_metadata, comparison
+    return current_metadata, persisted_metadata, comparison, restart_eligibility
 
 
 def _poll_health(proc: subprocess.Popen[str], base_url: str, timeout_sec: float) -> None:
@@ -538,7 +547,7 @@ def _start_api(cfg: RunConfig) -> subprocess.Popen[str]:
     )
 
 
-def _start_live_runner(cfg: RunConfig) -> subprocess.Popen[str]:
+def _start_live_runner(cfg: RunConfig, *, allow_new_entries: bool = True) -> subprocess.Popen[str]:
     env = os.environ.copy()
     env.update(
         {
@@ -556,6 +565,7 @@ def _start_live_runner(cfg: RunConfig) -> subprocess.Popen[str]:
             "BEHEMOTH_JFOREX_METRICS_HOST": cfg.metrics_host,
             "BEHEMOTH_JFOREX_METRICS_PORT": str(cfg.metrics_port),
             "BEHEMOTH_API_BASE_URI": f"http://{cfg.api_host}:{cfg.api_port}",
+            "BEHEMOTH_JFOREX_NEW_ENTRIES_ENABLED": str(bool(allow_new_entries)).lower(),
         }
     )
     return subprocess.Popen(
@@ -681,10 +691,18 @@ def main() -> None:
     paths = _runtime_paths(cfg)
     paths["runtime_dir"].mkdir(parents=True, exist_ok=True)
 
-    current_metadata, _persisted_metadata, comparison = _reconcile_startup(cfg, paths)
-    if cfg.startup_mode == "resume" and comparison.verdict is RestartVerdict.INCOMPATIBLE:
-        _print_incompatible_restart_summary(cfg, paths, comparison)
-        raise SystemExit(1)
+    current_metadata, _persisted_metadata, comparison, restart_eligibility = _reconcile_startup(
+        cfg,
+        paths,
+    )
+    if cfg.startup_mode == "resume" and not restart_eligibility.allow_new_entries:
+        if restart_eligibility.eligibility.value == "RESTART_BLOCKED":
+            _print_incompatible_restart_summary(cfg, paths, comparison)
+            raise SystemExit(1)
+        print(
+            "[jforex-live] restart eligible in drain-only mode; new entries disabled",
+            flush=True,
+        )
 
     if comparison.verdict is RestartVerdict.RECONCILABLE:
         print(
@@ -731,7 +749,10 @@ def main() -> None:
         _poll_health(api_proc, f"http://{cfg.api_host}:{cfg.api_port}", timeout_sec=60.0)
         print("[jforex-live] API healthy", flush=True)
         print("[jforex-live] starting JForex runner", flush=True)
-        java_proc = _start_live_runner(cfg)
+        java_proc = _start_live_runner(
+            cfg,
+            allow_new_entries=restart_eligibility.allow_new_entries,
+        )
         print(f"[jforex-live] running (symbols={','.join(cfg.symbols)})", flush=True)
         print("[jforex-live] waiting for backfill + warming up threshold history", flush=True)
         # Give JForex time to complete initial backfill before warmup scoring
