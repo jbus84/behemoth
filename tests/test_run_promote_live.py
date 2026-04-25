@@ -2,12 +2,27 @@ from __future__ import annotations
 
 import csv
 import json
+import subprocess
 import sys
 from datetime import date
 
 import pytest
 
 import scripts.run_promote_live as run_promote_live
+
+
+def _make_valid_provenance_status(model_month: str) -> dict:
+    """Create a valid monthly recert status dict for testing."""
+    return {
+        "dag_node_id": "monthly_recert",
+        "model_month": model_month,
+        "process_verdict": "PASS",
+        "target_branch": "main",
+        "target_commit": "abc1234567890000000000000000000000000001",
+        "git_dirty": False,
+        "symbol_decisions": {"EURUSD": "GO"},
+        "lock_fingerprint": "fp-abc",
+    }
 
 
 def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
@@ -337,3 +352,86 @@ def test_verify_cert_rejects_wrong_branch_provenance(tmp_path) -> None:
             "2026-03",
             repo_root=tmp_path,
         )
+
+
+def test_verify_dag_provenance_passes_when_certified_commit_is_current(
+    tmp_path, monkeypatch
+) -> None:
+    """Promotion passes when current HEAD is exactly the certified commit."""
+    status = _make_valid_provenance_status("2026-03")
+    status["target_commit"] = "abc1234567890000000000000000000000000001"
+
+    fake_merge_base_result = type("R", (), {
+        "stdout": "abc1234567890000000000000000000000000001\n",
+        "returncode": 0,
+    })()
+    monkeypatch.setattr(
+        run_promote_live.subprocess, "run",
+        lambda *args, **kwargs: fake_merge_base_result
+    )
+
+    # Should not raise
+    run_promote_live._verify_dag_provenance(
+        status,
+        "2026-03",
+        repo_root=tmp_path,
+        current_commit="abc1234567890000000000000000000000000001",
+    )
+
+
+def test_verify_dag_provenance_passes_when_current_commit_is_descendant(
+    tmp_path, monkeypatch
+) -> None:
+    """Promotion passes when current HEAD is a descendant of the certified commit."""
+    certified = "abc1234567890000000000000000000000000001"
+    current = "def9999999999999999999999999999999999002"
+    status = _make_valid_provenance_status("2026-03")
+    status["target_commit"] = certified
+
+    # merge-base returns the certified commit, proving it's an ancestor
+    fake_merge_base_result = type("R", (), {
+        "stdout": certified + "\n",
+        "returncode": 0,
+    })()
+    monkeypatch.setattr(
+        run_promote_live.subprocess, "run",
+        lambda *args, **kwargs: fake_merge_base_result
+    )
+
+    # Should not raise
+    run_promote_live._verify_dag_provenance(
+        status,
+        "2026-03",
+        repo_root=tmp_path,
+        current_commit=current,
+    )
+
+
+def test_verify_dag_provenance_blocks_when_certified_commit_is_not_ancestor(
+    tmp_path, monkeypatch
+) -> None:
+    """Promotion is blocked when the certified commit is not an ancestor of HEAD."""
+    certified = "abc1234567890000000000000000000000000001"
+    current = "def9999999999999999999999999999999999002"
+    status = _make_valid_provenance_status("2026-03")
+    status["target_commit"] = certified
+
+    # merge-base returns something other than certified, proving divergence
+    fake_merge_base_result = type("R", (), {
+        "stdout": "0000000000000000000000000000000000000000\n",
+        "returncode": 0,
+    })()
+    monkeypatch.setattr(
+        run_promote_live.subprocess, "run",
+        lambda *args, **kwargs: fake_merge_base_result
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        run_promote_live._verify_dag_provenance(
+            status,
+            "2026-03",
+            repo_root=tmp_path,
+            current_commit=current,
+        )
+    assert "abc12345" in str(exc.value)
+    assert "def99999" in str(exc.value)

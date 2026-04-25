@@ -16,6 +16,7 @@ import argparse
 import csv
 import json
 import shutil
+import subprocess
 from datetime import date
 from pathlib import Path
 
@@ -40,7 +41,13 @@ def _last_complete_month(override: str | None = None) -> str:
     return f"{today.year:04d}-{today.month - 1:02d}"
 
 
-def _verify_dag_provenance(status: dict[str, object], model_month: str) -> None:
+def _verify_dag_provenance(
+    status: dict[str, object],
+    model_month: str,
+    repo_root: Path | None = None,
+    *,
+    current_commit: str | None = None,
+) -> None:
     required = {
         "dag_node_id",
         "model_month",
@@ -74,8 +81,29 @@ def _verify_dag_provenance(status: dict[str, object], model_month: str) -> None:
     if not isinstance(status["symbol_decisions"], dict) or not status["symbol_decisions"]:
         raise SystemExit("[promote-live] monthly recert symbol_decisions missing or empty")
 
+    certified = str(status["target_commit"]).strip()
+    if current_commit is not None:
+        repo_root_for_git = repo_root or _repo_root()
+        result = subprocess.run(
+            ["git", "-C", str(repo_root_for_git), "merge-base", certified, current_commit],
+            capture_output=True,
+            text=True,
+        )
+        merge_base = result.stdout.strip()
+        if merge_base != certified:
+            raise SystemExit(
+                f"[promote-live] certified commit {certified[:8]} is not an ancestor of "
+                f"current HEAD {current_commit[:8]}; re-run make monthly-recert"
+            )
 
-def _verify_cert(report_dir: str, model_month: str, repo_root: Path | None = None) -> None:
+
+def _verify_cert(
+    report_dir: str,
+    model_month: str,
+    repo_root: Path | None = None,
+    *,
+    current_commit: str | None = None,
+) -> None:
     """Raise SystemExit if cert CSV is missing, stale, or has critical failures."""
     repo_root = repo_root or _repo_root()
     csv_path = repo_root / report_dir / CERT_CHECKS_FILENAME
@@ -102,7 +130,7 @@ def _verify_cert(report_dir: str, model_month: str, repo_root: Path | None = Non
         raise SystemExit(
             f"[promote-live] cert status month mismatch: requested {model_month}, got {status_month or 'unknown'}"
         )
-    _verify_dag_provenance(status, model_month)
+    _verify_dag_provenance(status, model_month, repo_root, current_commit=current_commit)
     if not status_pass:
         raise SystemExit(
             f"[promote-live] monthly recert status for {model_month} is not passing; rerun make monthly-recert"
