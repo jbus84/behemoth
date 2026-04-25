@@ -749,9 +749,13 @@ def main() -> None:
         _poll_health(api_proc, f"http://{cfg.api_host}:{cfg.api_port}", timeout_sec=60.0)
         print("[jforex-live] API healthy", flush=True)
         print("[jforex-live] starting JForex runner", flush=True)
+        effective_allow_new_entries = (
+            True if cfg.startup_mode == "reset"
+            else restart_eligibility.allow_new_entries
+        )
         java_proc = _start_live_runner(
             cfg,
-            allow_new_entries=restart_eligibility.allow_new_entries,
+            allow_new_entries=effective_allow_new_entries,
         )
         print(f"[jforex-live] running (symbols={','.join(cfg.symbols)})", flush=True)
         print("[jforex-live] waiting for backfill + warming up threshold history", flush=True)
