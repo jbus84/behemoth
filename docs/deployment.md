@@ -3,11 +3,11 @@
 ## Current State
 The current OCO system is operated as a governed research pipeline. Live execution deployment is optional and must follow Stage 9 governance locks.
 
-Generated deployment summary tables below are supportive evidence, not standalone authority. If the rolling summary block is sparse, stale, or unavailable in a local docs rebuild, use the operator runbook, generated stage snapshots, and docs-contract outputs as the decision surface.
+Generated deployment summary tables below are supportive evidence, not standalone authority. If the rolling summary block is sparse, stale, or unavailable in a local docs rebuild, use the operator runbook, generated stage snapshots, and docs-contract outputs for deployment decisions.
 
 ## Authority Note
 - Authority label: `canonical`
-- Authoritative for: deployment posture, promotion checklist, and the boundary between active governance and optional runtime integration.
+- Authoritative for: deployment posture, promotion checklist, and the boundary between active governance and optional live runtime integration.
 - Not authoritative for: current symbol readiness or gate-pass truth when generated stage snapshots or docs-contract outputs disagree.
 - Depends on: [`docs/strategy_bible/operator_runbook.md`](./strategy_bible/operator_runbook.md), [`docs/strategy_bible/generated/pipeline_snapshot.md`](./strategy_bible/generated/pipeline_snapshot.md), [`docs/strategy_bible/generated/stage_09_snapshot.md`](./strategy_bible/generated/stage_09_snapshot.md), and [`docs/analysis/oco_docs_contract_report.md`](./analysis/oco_docs_contract_report.md).
 
@@ -18,14 +18,14 @@ Generated deployment summary tables below are supportive evidence, not standalon
 4. governance lock validation passes for target symbols.
 5. docs site rebuild passes.
 
-## Execution Integration (When Enabled)
-If deploying through API/broker bridge:
+## Live Runtime Integration (When Enabled)
+If enabling the live runtime through the API/broker bridge:
 - enforce stop-limit contract from Stage 4,
 - enforce state/threshold lock from Stage 9,
 - persist execution evidence required by remediation and monitoring.
 
 ## Legacy Docker/API Stack
-Compose/API deployment docs remain a `compatibility` surface for optional runtime services and are not required for core OCO research governance.
+Compose/API deployment docs remain a `compatibility` surface for optional live runtime services and are not required for core OCO research governance.
 
 ## Rolling Historical Evidence
 

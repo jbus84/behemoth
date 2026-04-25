@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build Stage 14 JForex runtime certification artifacts from broker/tester summaries."""
+"""Build Stage 14 JForex live runtime certification artifacts from broker/tester summaries."""
 
 from __future__ import annotations
 
@@ -245,28 +245,28 @@ def _check_threshold_parity(
     """
     import json
 
-    # Find the latest promoted month
+    # Find the latest promoted model month.
     if not history_dir.exists():
         return "skip", "no history dir found"
     month_dirs = sorted(
         d.name for d in history_dir.iterdir() if d.is_dir() and d.name != "__pycache__"
     )
     if not month_dirs:
-        return "skip", "no promoted month found"
+        return "skip", "no promoted model month found"
     month = month_dirs[-1]
 
-    # Load threshold JSON from models dir
+    # Load the threshold JSON for the promoted model month.
     thr_path = models_dir / f"{symbol}_model_{month}.json"
     if not thr_path.exists():
-        return "skip", f"no threshold JSON for {symbol} {month}"
+        return "skip", f"no threshold JSON for {symbol} model month {month}"
     thr_cfg = json.loads(thr_path.read_text(encoding="utf-8"))
     schedule = thr_cfg.get("threshold_schedule", {})
     if not schedule:
         return "skip", "no threshold_schedule in model JSON"
 
-    # Compare schedule values exist and are consistent
-    # (Full parity check requires seeded audit_logs which may not be available
-    # during cert — validate that the schedule is non-empty and internally consistent)
+    # Confirm the locked threshold schedule is present and internally consistent.
+    # Full runtime parity still requires seeded audit_logs, which may not be
+    # available during certification.
     values = [float(v) for v in schedule.values() if v is not None]
     if not values:
         return "skip", "threshold_schedule has no finite values"
@@ -276,7 +276,7 @@ def _check_threshold_parity(
     if out_of_range:
         return "fail", f"threshold_schedule values out of range: {'; '.join(out_of_range[:3])}"
 
-    return "pass", f"threshold_schedule has {len(values)} valid entries for {month}"
+    return "pass", f"threshold_schedule has {len(values)} valid entries for model month {month}"
 
 
 def build_stage14_artifacts(
@@ -583,8 +583,8 @@ def build_stage14_artifacts(
         "## Interpretation",
         "- Stage 14 is green only when the Stage 13 prerequisite is satisfied and all JForex-specific certification checks pass.",
         "- Stage 13 PASS / NO_GO is accepted as a valid prerequisite and does not fail Stage 14 by itself.",
-        "- Missing JForex tester/demo artifacts are treated as certification failures until the adapter path is exercised.",
-        "- jforex_outcome_parity_pass: reconciles JForex runtime signal counts against locked Python predictions (signal_coverage_ratio must be 1.0, zero execution failures, trades present).",
+        "- Missing JForex tester/live runtime artifacts are treated as certification failures until the adapter path is exercised.",
+        "- jforex_outcome_parity_pass: reconciles JForex live runtime signal counts against locked governance-side predictions (signal_coverage_ratio must be 1.0, zero execution failures, trades present).",
         "- execution_lifecycle_pass: validates the JForex execution lifecycle summary emitted by the adapter runtime.",
         "- local_jforex_surrogate_pass: the shared Java strategy core must pass the parquet-driven local surrogate harness; an explicit NO_GO is accepted only for historically non-deployable symbols.",
         "- order_coverage_ratio is expected to be low (<0.2): OCO mechanics block new orders while an existing position is live. This metric is informational; signal_coverage_pass is the gate.",
@@ -595,7 +595,7 @@ def build_stage14_artifacts(
         "### Auto Snapshot - Stage 14",
         "",
         f"- generated_at: `{now_utc}`",
-        "- Stage 14 is a hard gate for the Dukascopy JForex adapter.",
+        "- Stage 14 is a hard gate for the Dukascopy JForex live runtime adapter.",
         "- Stage 13 `PASS / NO_GO` is accepted as a valid prerequisite; JForex tester parity, execution lifecycle correctness, local JForex surrogate readiness, and operational readiness must all pass their gates.",
         "",
         "#### Key Results",

@@ -6,6 +6,7 @@
 3. Alert disposition and governance explainability checks.
 4. Docs contract checks (including freshness, metadata, and path portability).
 5. Strategy-level robustness and Monte Carlo checks.
+6. Live runtime certification evidence reviewed against Governance Runtime locks and reports.
 
 ## Core Commands
 ```bash
@@ -18,6 +19,8 @@ uv run mkdocs build
 - `data/analysis/tick_opportunity_mining/docs_contract_checks.csv`
 - `data/analysis/tick_opportunity_mining/oco_stage_integrity_checks.csv`
 - `docs/analysis/oco_docs_contract_report.md`
+
+Validation output is authoritative for governance gating only when the evidence root, governance artifacts, and live runtime certification inputs are aligned for the same model month and certification window.
 
 ## Rolling Historical Evidence
 
