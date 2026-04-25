@@ -695,6 +695,66 @@ class BehemothStrategyCoreTest {
         }
     }
 
+    @Test
+    void executeActionsSkipsMarketOrderWhenNewEntriesGloballyDisabled() throws Exception {
+        try (MockWebServer server = new MockWebServer()) {
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"as_of_utc":"2025-07-07T00:00:00Z","governance_mode":"live","record_raw_ticks":true,"symbols":[]}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {"ok":true,"symbol":"EURUSD","ticks_received":1,"accepted_count":1,"dropped_count":0,
+                            "bar_completed":true,"completed_bar_ticks":[100],"symbol_tick_seq":1,
+                            "last_tick_ts_utc":"2025-07-07T00:00:00Z","last_client_tick_seq":1,"bar_count":289}
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+            server.enqueue(new MockResponse()
+                    .setBody("""
+                            {
+                              "predictions": [],
+                              "actions": [{
+                                "type":"OPEN_MARKET",
+                                "symbol":"EURUSD",
+                                "candidate_uid":"oco|EURUSD|100|h6|cand1",
+                                "scan_id":"scan-drain-only",
+                                "side":"BUY",
+                                "reservation_id":"res-drain-only",
+                                "broker_pos_id":null,
+                                "horizon":6
+                              }]
+                            }
+                            """)
+                    .addHeader("Content-Type", "application/json"));
+
+            Path tempDir = Files.createTempDirectory("behemoth-new-entries-disabled-test");
+            JForexSessionConfig sessionConfig = new JForexSessionConfig(
+                    server.url("/").uri(), URI.create("http://example.test/jnlp"),
+                    "user", "pass", "", List.of("EURUSD"),
+                    Instant.parse("2025-07-07T00:00:00Z"), Instant.parse("2025-07-09T00:00:00Z"),
+                    tempDir, "run-1",
+                    false, 10_000.0, 1, 900L, false, 60, false, "", 0,
+                    false
+            );
+            PythonPredictionClient client = new PythonPredictionClient(
+                    HttpClient.newHttpClient(), server.url("/").uri(),
+                    Duration.ofSeconds(5), Duration.ofSeconds(5));
+            ExecutionStateStore stateStore = new ExecutionStateStore(
+                    tempDir.resolve("state.json"), client.objectMapper());
+            RecordingExecutionPort recordingPort = new RecordingExecutionPort();
+            BehemothStrategyCore core = new BehemothStrategyCore(
+                    sessionConfig, client, stateStore,
+                    new Stage14ArtifactWriter(tempDir, "test"),
+                    JForexMetrics.start(sessionConfig), recordingPort);
+
+            core.start(List.of(new RuntimeInstrument("EURUSD", 0.0001)));
+            core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:00:00Z"), 1.1000, 1.1002));
+
+            assertThat(recordingPort.marketOrders).isEmpty();
+        }
+    }
+
     private static final class RecordingExecutionPort implements ExecutionPort {
         final List<OrderRequest> submittedOrders = new ArrayList<>();
         final List<MarketOrderRequest> marketOrders = new ArrayList<>();
