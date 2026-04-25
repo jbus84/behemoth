@@ -22,9 +22,9 @@ Confirm that the production Python/API runtime, when driven by canonical parquet
   - only `(candidate_uid, close_ts)` rows present in the locked predictions parquet are eligible.
   - this prevents the API from evaluating bars the research pipeline never treated as candidate events.
 - In that locked historical path, the repo prediction-universe row is already regime-qualified, so Stage 12 does not apply a second runtime regime veto on top of the locked row.
-- Compare API-selected keys to reduced-core truth on `candidate_uid + close_ts`.
+- Compare API-selected keys to reduced-core truth on `candidate_uid + close_ts` for semantic parity.
 - Emit `*_stage12_api_parity_summary.csv` per symbol.
-- Allow Stage 13 replay generation only for Stage 12-passing symbols.
+- Allow Stage 13 replay generation only for Stage 12 `PASS` symbols.
 
 ## Exact Calculations
 - Signal parity passes only when:
@@ -33,7 +33,7 @@ Confirm that the production Python/API runtime, when driven by canonical parquet
 - Execution parity passes only when the execution validator has:
   - `overall_pass == true`
   - no high/critical failing checks
-- Stage 12 passes only when both signal parity and execution parity pass.
+- Stage 12 resolves to `PASS` only when both signal parity and execution parity pass.
 
 ## Causality / Leakage Controls
 - Canonical-feed replay is restricted to the requested validation window plus warmup.
@@ -47,14 +47,14 @@ Confirm that the production Python/API runtime, when driven by canonical parquet
 ## Failure Modes
 - API emits extra selected setups not present in reduced-core truth.
 - API misses reduced-core selected setups.
-- Execution lifecycle diverges after a nominally matched signal.
+- Execution lifecycle shows Material Drift after signal semantic parity.
 - Warmup or ingestion errors leave the API in a degraded state.
 - Stage 12 artifacts are missing or stale.
 
 ## Interpretation Guide
-- `signal_parity_pass=false` means the API decision stream is not research-equivalent.
-- `execution_parity_pass=false` means downstream lifecycle behavior diverges even if selection is close.
-- `stage12_api_parity_pass=false` is a deployment blocker.
+- `signal_parity_pass=false` means the API decision stream is not in semantic parity with research truth and should be treated as a Parity Breach.
+- `execution_parity_pass=false` means downstream lifecycle behavior shows Material Drift even if signal semantic parity is close.
+- `stage12_api_parity_pass=false` means Stage 12 resolves to FAIL and is a deployment blocker.
 - If `selected_extra_runtime > 0`, the API is admitting rows outside reduced-core truth and must be treated as over-trading.
 - If `selected_missing_expected > 0`, the API is suppressing repo-approved reduced-core rows and must be treated as under-trading.
 
@@ -62,11 +62,11 @@ Confirm that the production Python/API runtime, when driven by canonical parquet
 - Stage 12 is a hard gate.
 - If Check 2 fails, Stage 12 fails critically.
 - If Check 3 fails, Stage 12 fails critically.
-- If either Stage 12 artifacts or Stage 12 docs outputs are missing, treat the stage as failed.
+- If either Stage 12 artifacts or Stage 12 docs outputs are missing, treat the stage as `FAIL`.
 
 ## Operator Decision Tree
-- If signal parity fails: stop and reconcile the API decision path before any deployment work.
-- If execution parity fails: inspect trade lifecycle translation, timing, and runtime DB outputs.
+- If signal parity fails: stop and reconcile the API decision path before any deployment work; treat the outcome as FAIL caused by a Parity Breach.
+- If execution parity fails: inspect trade lifecycle translation, timing, and runtime DB outputs; treat the outcome as FAIL caused by Material Drift.
 - If both pass: Stage 12 may be treated as satisfied for the validated window only.
 
 ## Historical Replay Contract
@@ -76,8 +76,8 @@ Confirm that the production Python/API runtime, when driven by canonical parquet
 - Canonical warmup mode: `history_tail`
 - Canonical historical lock source: `configs/research/governance/oco_history_dukascopy_candidate/<YYYY-MM>/<symbol>_oco_live_lock.json`
 - Canonical expectations:
-  - exact signal parity on `candidate_uid + close_ts`
-  - green Stage 12 prerequisite summary
+  - exact signal semantic parity on `candidate_uid + close_ts`
+  - PASS Stage 12 prerequisite summary
   - any miss or extra row is a critical failure
 
 ## How To Run
@@ -92,14 +92,14 @@ make stage12-stage13-cert-artifacts \
 ```
 
 ## How To Interpret Outputs
-- Use the Stage 12 summary CSV for pass/fail status and counts.
+- Use the Stage 12 summary CSV for `PASS`/`FAIL` status and counts.
 - Use the Stage 12 checks CSV to isolate which parity gate failed.
 - Use the Stage 12 mismatches CSV and per-symbol report for concrete offending rows.
 
 ## What To Do If It Fails
 - Treat the failure as critical.
-- Do not infer deployability from Stage 04, Stage 06, or Stage 11 if Stage 12 is red.
-- Fix the API/replay/runtime behavior and rerun `make stage12-stage13-cert-artifacts` until the Stage 12 prerequisite is green.
+- Do not infer deployability from Stage 04, Stage 06, or Stage 11 if Stage 12 is FAIL.
+- Fix the API/replay/runtime behavior and rerun `make stage12-stage13-cert-artifacts` until the Stage 12 prerequisite is PASS.
 
 ## Canonical Analysis Reports
 - `docs/analysis/EURUSD_stage12_api_parity_report.md`
@@ -127,7 +127,7 @@ uv run python scripts/run_stage12_stage13_certification.py \
 ### Auto Snapshot - Stage 12
 
 - generated_at: `2026-04-12 17:21:09 UTC`
-- Stage 12 is a hard gate: strict signal parity and execution parity must both match reduced-core truth.
+- Stage 12 is a hard gate: signal semantic parity and execution semantic parity must both remain inside the reduced-core truth contract.
 - Any non-green Stage 12 symbol is a critical deployment blocker.
 
 #### Key Results
@@ -141,7 +141,7 @@ uv run python scripts/run_stage12_stage13_certification.py \
 | USDCAD   | False                | False                   | False             |                           1 |                        1 |                                       1 | red       | docs/analysis/USDCAD_stage12_api_parity_report.md |
 
 #### Interpretation Notes
-- Stage 12 is a hard gate: strict signal parity and execution parity must both match reduced-core truth.
+- Stage 12 is a hard gate: signal semantic parity and execution semantic parity must both remain inside the reduced-core truth contract.
 - Any non-green Stage 12 symbol is a critical deployment blocker.
 
 #### Action Trigger Summary

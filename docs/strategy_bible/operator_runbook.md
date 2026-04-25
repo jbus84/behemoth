@@ -3,12 +3,17 @@
 ## Objective
 Provide deterministic daily, weekly, and monthly operating actions for OCO pipeline governance and incident handling.
 
+## Terminology
+- `FAIL` means the validation or certification process is invalid or out of contract.
+- `NO_GO` means a symbol is not approved for deployment even if the underlying certification process completed correctly.
+- Use `Runtime Variance`, `Material Drift`, and `Parity Breach` as explanatory labels in stage-specific interpretation notes, not as replacement statuses.
+
 ## Operating Cadence
 | cadence | owner | purpose |
 | --- | --- | --- |
 | Daily | execution research | detect execution drift and active alert bands |
 | Weekly | research + risk | assess threshold drift, lock drift, and near-fail pressure |
-| Monthly | research lead | approve WFO roll-forward, reduced-core stability, and release readiness |
+| Monthly | research lead | approve Monthly WFO roll-forward, Reduced-Core Rolling stability, and promotion readiness |
 
 ## JForex Live Session
 
@@ -29,9 +34,9 @@ Provide deterministic daily, weekly, and monthly operating actions for OCO pipel
 8. Classify the run using the definitions below.
 
 ### Certification Outcome Definitions
-- `pass`: all 6 symbols reach `READY`, all 6 ingest live ticks, all 6 demonstrate live predict activity once bars advance, and no symbol remains `STALE_PAUSED` or `ERROR_PAUSED` during the observation window.
-- `conditional fail`: all 6 symbols reach `READY`, but one or more symbols later become stale or show missing or suspect predict-path activity.
-- `fail`: any symbol never reaches `READY`, lands in `ERROR_PAUSED`, remains `STALE_PAUSED`, or fails to demonstrate live predict activity during the certification window.
+- `PASS`: all 6 symbols reach `READY`, all 6 ingest live ticks, all 6 demonstrate live predict activity once bars advance, and no symbol remains `STALE_PAUSED` or `ERROR_PAUSED` during the observation window.
+- `NO_GO`: the certification process completes, but one or more symbols are intentionally held out of governed deployment scope by policy or lock state.
+- `FAIL`: any symbol never reaches `READY`, lands in `ERROR_PAUSED`, remains `STALE_PAUSED`, or fails to demonstrate live predict activity during the certification window.
 
 ## Daily Checks
 | trigger | threshold / signal | severity | owner | action | evidence artifact | SLA |
@@ -44,7 +49,7 @@ Provide deterministic daily, weekly, and monthly operating actions for OCO pipel
 | trigger | threshold / signal | severity | owner | action | evidence artifact | SLA |
 | --- | --- | --- | --- | --- | --- | --- |
 | Threshold fragility | `TS01_W13_THRESHOLD_FRAGILITY` in amber/red | medium/high | WFO research | retune lookback/cadence candidate set and rerun Stage 3 report | `docs/analysis/oco_threshold_sensitivity_report.md` | 2 business days |
-| Lock drift | `G03_lock_drift_flags > 0` | high | research lead | block deploy path and refresh lock from validated artifacts | `docs/analysis/run_delta_dashboard.md` | immediate |
+| Lock drift | `G03_lock_drift_flags > 0` | high | research lead | block promotion path and refresh lock from validated artifacts | `docs/analysis/run_delta_dashboard.md` | immediate |
 | Near-fail pressure | `G01_near_fail_count` rising for 3 runs | medium | risk | open MRM review task and tighten checks | `docs/analysis/operator_action_report.md` | 3 business days |
 
 ## Monthly Checks
@@ -52,7 +57,7 @@ Provide deterministic daily, weekly, and monthly operating actions for OCO pipel
 | --- | --- | --- | --- | --- | --- | --- |
 | Stage-3 model staleness | latest prediction month `<` current test month | high | research lead | block deployment; rerun Stage 3 monthly WFO and downstream Stage 5+ | `data/analysis/tick_opportunity_mining/wfo_*/<SYMBOL>_oco_monthly_predictions.parquet` | immediate |
 | Reduced-core capacity drop | `rows` below configured floor | high | research lead | hold release and rerun reduced-core selection | `docs/analysis/*_oco_reduced_core_rolling_report.md` | immediate |
-| Stage 12 API parity red | `gate_api_parity=false` for any active symbol | critical | research lead | block deployment; rerun historical API parity and resolve signal/execution drift before promotion | `data/analysis/backtest_reconcile/<SYMBOL>_stage12_api_parity_summary.csv` | immediate |
+| Stage 12 API parity FAIL | `gate_api_parity=false` for any active symbol | critical | research lead | block deployment; rerun historical API parity and resolve any Parity Breach or Material Drift before promotion | `data/analysis/backtest_reconcile/<SYMBOL>_stage12_api_parity_summary.csv` | immediate |
 | Registry drift | any `RU*` high/critical failure | high | research lead | enforce universe lock refresh before promotion | `docs/analysis/oco_rule_universe_registry_report.md` | immediate |
 | Robustness degradation | Stage 8 LB95 turns non-positive | high | risk + research | freeze promotion and re-evaluate assumptions | `docs/analysis/oco_edge_clarity_report.md` | immediate |
 
@@ -66,7 +71,7 @@ Provide deterministic daily, weekly, and monthly operating actions for OCO pipel
 
 ## Freshness and Staleness Rules
 - Default freshness limit for governed evidence artifacts: `168h` (7 days).
-- If any required artifact is stale, treat release readiness as `blocked` until regenerated.
+- If any required artifact is stale, treat promotion readiness as `blocked` until regenerated.
 - Primary freshness evidence:
 - `docs/analysis/oco_docs_contract_report.md` (`C6 generated_artifacts_recency`)
 - `docs/analysis/oco_alert_remediation_report.md`
@@ -106,15 +111,15 @@ flowchart TD
 - locked prediction-universe gating limits API evaluation to repo `(candidate_uid, close_ts)` rows for that model month.
 - execution parity is validated only after signal parity is measured against reduced-core truth.
 - Practical meaning:
-- if Stage 12 is red, do not rely on Stage 3, Stage 5, Stage 6, or cTrader-side sanity checks to infer deployability.
+- if Stage 12 is FAIL, do not rely on Stage 3, Stage 5, Stage 6, or cTrader-side sanity checks to infer deployability.
 - if `selected_extra_runtime > 0`, treat it as over-admission by the API.
 - if `selected_missing_expected > 0`, treat it as missed reduced-core truth.
-- if execution parity is red with signal parity green, treat it as lifecycle translation drift rather than model drift.
+- if execution parity is FAIL with signal parity passing, treat it as lifecycle Material Drift rather than model drift.
 
 ## Escalation Matrix
 | condition | escalation path |
 | --- | --- |
-| any high/critical gate fail | research lead -> risk owner -> deployment hold |
+| any high/critical gate resolves to `FAIL` | research lead -> risk owner -> deployment hold |
 | repeated amber on same metric for 3 runs | research lead -> model risk review |
 | expired accepted exception | research lead -> immediate re-approval or remediation closure |
 

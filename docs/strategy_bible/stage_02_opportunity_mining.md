@@ -1,7 +1,7 @@
 # Stage 2 - Opportunity Mining
 
 ## Objective
-Mine high-count, gross-positive OCO opportunity families as hypotheses before model filtering and robustness controls.
+Stage 2 Opportunity Mining mines high-count, gross-positive OCO opportunity families as hypotheses before Monthly WFO model filtering and robustness controls.
 
 ## Inputs
 - Candidate catalogs:
@@ -11,7 +11,7 @@ Mine high-count, gross-positive OCO opportunity families as hypotheses before mo
 
 ## Process
 - Enumerate OCO state families and horizons.
-- Keep broad candidate frontier (`selection_pass`) for downstream filtering.
+- Keep broad Opportunity Mining candidate frontier (`selection_pass`) for downstream filtering.
 - Compute concentration/smoothness diagnostics (`M01-M03`).
 - Constrain mining outputs to a pre-registered rule universe contract used by downstream reduced-core and live governance.
 
@@ -41,13 +41,13 @@ Mine high-count, gross-positive OCO opportunity families as hypotheses before mo
 
 ## Causality / Leakage Controls
 - Mining outputs are hypothesis-generation only.
-- No deployment gating at this stage without downstream WFO/robustness confirmation.
+- No governed deployment-scope gating at this stage without downstream Monthly WFO and robustness confirmation.
 - Rule universe is locked before reduced-core/live selection and checked against frozen governance locks (`RU06-RU09`).
 
 ## Failure Modes
 - Edge concentration in very few states (fragile alpha).
 - Non-smooth parameter surfaces indicating noisy search.
-- Post-hoc over-interpretation without Stage 3/8 controls.
+- Post-hoc over-interpretation without Stage 3 Monthly WFO and Stage 8 controls.
 
 ## Interpretation Guide
 - Lower `M01` is better diversification.
@@ -56,7 +56,7 @@ Mine high-count, gross-positive OCO opportunity families as hypotheses before mo
 
 ## Validation Gates
 - Informational at Stage 2.
-- Hard pass/fail occurs later via Stage 3, Stage 7, Stage 8.
+- Stage 2 itself does not issue `PASS`/`FAIL` or `GO`/`NO_GO` decisions; hard certification outcomes resolve later via Stage 3, Stage 7, and Stage 8.
 - Governance contract gate: registry checks must have zero high/critical failures (`C33` at docs-contract level).
 
 ## Canonical Analysis Reports
@@ -75,11 +75,11 @@ Mine high-count, gross-positive OCO opportunity families as hypotheses before mo
 - Confirm artifacts are refreshed and timestamps are current before interpreting outcomes.
 
 ## How To Interpret Outputs
-- Read `Key Results` first for pass/fail posture and core health metrics.
+- Read `Key Results` first for research posture and core health metrics.
 - Use `Interpretation Notes` and `Action Trigger Summary` to map observed values to operational actions.
 
 ## What To Do If It Fails
-- `critical/high`: halt deployment progression, remediate root cause, rerun stage and downstream dependent stages.
+- `critical/high`: halt promotion progression, remediate root cause, and rerun this stage plus downstream dependent stages.
 - `medium/low`: open tracked remediation with owner and ETA, monitor for recurrence in next cycle.
 
 ## Reproduction Commands
