@@ -1,6 +1,6 @@
 # Repo Structure (Production Baseline)
 
-The active system is a pure tick-based ML Opportunity Cost Optimization (OCO) research pipeline. The legacy stat-arb approach has been entirely removed.
+The active system is a tick-based ML Opportunity Cost Optimization (OCO) governance/runtime pipeline. The legacy stat-arb approach is no longer authoritative, though some compatibility surfaces still remain.
 
 ## Core layout
 
@@ -8,7 +8,8 @@ The active system is a pure tick-based ML Opportunity Cost Optimization (OCO) re
   - `docs/`: Configs for documentation generation.
   - `experiments/`: Parameter definitions for model testing.
   - `governance/`: Execution locks and allowed state constraints.
-- `scripts/`: The core python orchestration for the OCO pipeline. Contains feature generation, model training, documentation builders, and validation tests.
+- `scripts/`: The core Python orchestration for the Governance Runtime. Contains feature generation, model training, documentation builders, and validation tasks.
+- `src/jforex/`: The active JForex broker-adapter/runtime surface used by Stage 14 and live execution paths.
 - `docs/`: Markdown files for the MkDocs site containing the dynamically-generated "Strategy Bible" and System Reference.
 - `mkdocs.yml`: MkDocs configuration for deploying documentation.
 - `data/`: Local tick data, generated CSV/Parquet models, and configuration artifacts (gitignored).
@@ -16,7 +17,7 @@ The active system is a pure tick-based ML Opportunity Cost Optimization (OCO) re
 
 ## Pipeline Orchestration
 
-The daily/monthly research and execution pipeline is driven entirely through the `scripts/` directory.
+The daily/monthly Governance Runtime pipeline is driven through the `scripts/` directory, while the active broker-adapter/runtime surface lives under `src/jforex/`.
 
 **Key Scripts:**
 - **Onboarding**: `scripts/onboard_symbol.py` (Top-level orchestrator for taking a symbol from tick data to live configuration locks)
@@ -27,6 +28,6 @@ The daily/monthly research and execution pipeline is driven entirely through the
 
 ## Notes
 
-- The live strategy is heavily reliant on rolling offline artifacts defined by the ML models.
+- The Governance Runtime relies on rolling governance artifacts defined by the ML models.
 - Execution relies completely on the generated JSON and CSV configuration locks.
-- The pipeline architecture operates independently of any active realtime API or Database.
+- The pipeline architecture operates independently of any active always-on API service or database backend.
