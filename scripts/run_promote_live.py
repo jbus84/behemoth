@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 import shutil
 import subprocess
 from datetime import date
@@ -26,6 +27,7 @@ MONTHLY_BUILD_ROOT = "configs/research/governance/oco_candidate_builds"
 HISTORY_ROOT = "configs/research/governance/oco_history_dukascopy_candidate"
 ACTIVE_ROOT = "configs/research/governance/oco"
 MONTHLY_RECERT_STATUS_FILENAME = "monthly_recert_status.json"
+COMMIT_SHA_RE = re.compile(r"^[0-9a-fA-F]{40}$")
 
 
 def _repo_root() -> Path:
@@ -82,6 +84,12 @@ def _verify_dag_provenance(
         raise SystemExit("[promote-live] monthly recert symbol_decisions missing or empty")
 
     certified = str(status["target_commit"]).strip()
+    if not certified:
+        raise SystemExit("[promote-live] target_commit missing in monthly recert status")
+    if not COMMIT_SHA_RE.fullmatch(certified):
+        raise SystemExit(
+            f"[promote-live] target_commit must be a full 40-character git SHA, got {certified!r}"
+        )
     if current_commit is not None:
         repo_root_for_git = repo_root or _repo_root()
         result = subprocess.run(

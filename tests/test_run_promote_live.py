@@ -268,7 +268,7 @@ def test_promote_live_archives_full_bundle_but_updates_active_live_governance_on
                 "overall_pass": True,
                 "process_verdict": "PASS",
                 "target_branch": "main",
-                "target_commit": "abc123",
+                "target_commit": "abc1234567890000000000000000000000000001",
                 "git_dirty": False,
                 "symbol_decisions": {"EURUSD": "GO", "AUDUSD": "NO_GO"},
                 "lock_fingerprint": "fp-1",
@@ -291,9 +291,9 @@ def test_promote_live_archives_full_bundle_but_updates_active_live_governance_on
 
     def fake_subprocess_run(args, **kwargs):
         if "rev-parse" in args:
-            return type("R", (), {"stdout": "abc123\n", "returncode": 0})()
+            return type("R", (), {"stdout": "abc1234567890000000000000000000000000001\n", "returncode": 0})()
         if "merge-base" in args:
-            return type("R", (), {"stdout": "abc123\n", "returncode": 0})()
+            return type("R", (), {"stdout": "abc1234567890000000000000000000000000001\n", "returncode": 0})()
         return type("R", (), {"stdout": "", "returncode": 0})()
 
     monkeypatch.setattr(run_promote_live, "_last_complete_month", lambda override=None: "2026-02")
@@ -454,6 +454,19 @@ def test_verify_dag_provenance_blocks_when_certified_commit_is_not_ancestor(
         )
     assert "abc12345" in str(exc.value)
     assert "def99999" in str(exc.value)
+
+
+def test_verify_dag_provenance_blocks_empty_target_commit(tmp_path) -> None:
+    status = _make_valid_provenance_status("2026-03")
+    status["target_commit"] = ""
+
+    with pytest.raises(SystemExit, match=r"target_commit.*missing"):
+        run_promote_live._verify_dag_provenance(
+            status,
+            "2026-03",
+            repo_root=tmp_path,
+            current_commit="def9999999999999999999999999999999999002",
+        )
 
 
 def test_main_promote_live_blocks_when_certified_commit_diverged(
