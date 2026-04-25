@@ -34,6 +34,12 @@ def test_main_runs_definitive_recert_chain(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(run_monthly_recert, "_repo_root", lambda: tmp_path)
     monkeypatch.setattr(
         run_monthly_recert,
+        "_git_metadata",
+        lambda: ("abc123", "main", False),
+    )
+    monkeypatch.setattr(run_monthly_recert, "_lock_fingerprint", lambda path: "fp-1")
+    monkeypatch.setattr(
+        run_monthly_recert,
         "_derive_params",
         lambda **kwargs: (
             "2026-02",
@@ -297,3 +303,41 @@ def _write_bundle_fixture(build_bundle_dir) -> None:
         )
         writer.writeheader()
         writer.writerows(rows)
+
+
+def test_write_recert_status_records_dag_provenance(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(run_monthly_recert, "_repo_root", lambda: tmp_path)
+    monkeypatch.setattr(
+        run_monthly_recert,
+        "_git_metadata",
+        lambda: ("abc123", "main", False),
+    )
+    monkeypatch.setattr(run_monthly_recert, "_lock_fingerprint", lambda path: "fp-1")
+
+    report_dir = "data/analysis/backtest_reconcile/2026-03/monthly_recert"
+    summary_dir = tmp_path / report_dir
+    summary_dir.mkdir(parents=True)
+    (summary_dir / run_monthly_recert.CERT_SUMMARY_FILENAME).write_text(
+        "symbol,process_status,go_decision\nEURUSD,PASS,GO\nAUDUSD,PASS,NO_GO\n",
+        encoding="utf-8",
+    )
+
+    run_monthly_recert._write_recert_status(
+        "2026-03",
+        report_dir,
+        run_monthly_recert.Path("configs/research/governance/oco_candidate_builds/2026-03"),
+        True,
+    )
+
+    payload = json.loads(
+        (summary_dir / run_monthly_recert.MONTHLY_RECERT_STATUS_FILENAME).read_text(
+            encoding="utf-8"
+        )
+    )
+    assert payload["dag_node_id"] == "monthly_recert"
+    assert payload["target_branch"] == "main"
+    assert payload["target_commit"] == "abc123"
+    assert payload["git_dirty"] is False
+    assert payload["process_verdict"] == "PASS"
+    assert payload["symbol_decisions"] == {"AUDUSD": "NO_GO", "EURUSD": "GO"}
+    assert payload["lock_fingerprint"] == "fp-1"

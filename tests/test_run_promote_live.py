@@ -235,9 +235,16 @@ def test_promote_live_archives_full_bundle_but_updates_active_live_governance_on
     (report_dir / run_promote_live.MONTHLY_RECERT_STATUS_FILENAME).write_text(
         json.dumps(
             {
+                "dag_node_id": "monthly_recert",
                 "model_month": "2026-02",
                 "evaluated_at_utc": today,
                 "overall_pass": True,
+                "process_verdict": "PASS",
+                "target_branch": "main",
+                "target_commit": "abc123",
+                "git_dirty": False,
+                "symbol_decisions": {"EURUSD": "GO", "AUDUSD": "NO_GO"},
+                "lock_fingerprint": "fp-1",
             }
         )
         + "\n",
@@ -267,3 +274,66 @@ def test_promote_live_archives_full_bundle_but_updates_active_live_governance_on
     assert (archive_dir / "2026-02" / "audusd_oco_live_lock.json").exists()
     assert (active_dir / "eurusd_oco_live_lock.json").exists()
     assert not (active_dir / "audusd_oco_live_lock.json").exists()
+
+
+def test_verify_cert_requires_dag_provenance_fields(tmp_path) -> None:
+    report_dir = tmp_path / "data/analysis/backtest_reconcile"
+    report_dir.mkdir(parents=True)
+    today = f"{date.today().isoformat()}T12:00:00Z"
+    (report_dir / run_promote_live.CERT_CHECKS_FILENAME).write_text(
+        f"symbol,check_id,status,severity,evaluated_at_utc\nEURUSD,C1,pass,critical,{today}\n",
+        encoding="utf-8",
+    )
+    (report_dir / run_promote_live.MONTHLY_RECERT_STATUS_FILENAME).write_text(
+        json.dumps(
+            {
+                "model_month": "2026-03",
+                "evaluated_at_utc": today,
+                "overall_pass": True,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit, match=r"missing DAG provenance"):
+        run_promote_live._verify_cert(
+            "data/analysis/backtest_reconcile",
+            "2026-03",
+            repo_root=tmp_path,
+        )
+
+
+def test_verify_cert_rejects_wrong_branch_provenance(tmp_path) -> None:
+    report_dir = tmp_path / "data/analysis/backtest_reconcile"
+    report_dir.mkdir(parents=True)
+    today = f"{date.today().isoformat()}T12:00:00Z"
+    (report_dir / run_promote_live.CERT_CHECKS_FILENAME).write_text(
+        f"symbol,check_id,status,severity,evaluated_at_utc\nEURUSD,C1,pass,critical,{today}\n",
+        encoding="utf-8",
+    )
+    (report_dir / run_promote_live.MONTHLY_RECERT_STATUS_FILENAME).write_text(
+        json.dumps(
+            {
+                "dag_node_id": "monthly_recert",
+                "model_month": "2026-03",
+                "evaluated_at_utc": today,
+                "overall_pass": True,
+                "process_verdict": "PASS",
+                "target_branch": "feature",
+                "target_commit": "abc123",
+                "git_dirty": False,
+                "symbol_decisions": {"EURUSD": "GO"},
+                "lock_fingerprint": "fp-1",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit, match=r"target_branch.*main"):
+        run_promote_live._verify_cert(
+            "data/analysis/backtest_reconcile",
+            "2026-03",
+            repo_root=tmp_path,
+        )

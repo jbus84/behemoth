@@ -123,6 +123,7 @@ class HistoricalWarmupLoaderTest {
                 "",
                 0,
                 true,
+                true,
                 30_000,
                 31,
                 60,

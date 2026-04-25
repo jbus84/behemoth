@@ -40,6 +40,41 @@ def _last_complete_month(override: str | None = None) -> str:
     return f"{today.year:04d}-{today.month - 1:02d}"
 
 
+def _verify_dag_provenance(status: dict[str, object], model_month: str) -> None:
+    required = {
+        "dag_node_id",
+        "model_month",
+        "process_verdict",
+        "target_branch",
+        "target_commit",
+        "git_dirty",
+        "symbol_decisions",
+        "lock_fingerprint",
+    }
+    missing = sorted(key for key in required if key not in status)
+    if missing:
+        raise SystemExit(
+            "[promote-live] missing DAG provenance in monthly recert status: "
+            + ",".join(missing)
+        )
+    if str(status["dag_node_id"]) != "monthly_recert":
+        raise SystemExit(f"[promote-live] unexpected DAG node id: {status['dag_node_id']}")
+    if str(status["model_month"]) != model_month:
+        raise SystemExit(
+            f"[promote-live] cert status month mismatch: requested {model_month}, got {status['model_month']}"
+        )
+    if str(status["process_verdict"]).upper() != "PASS":
+        raise SystemExit("[promote-live] monthly recert process_verdict is not PASS")
+    if str(status["target_branch"]) != "main":
+        raise SystemExit(
+            f"[promote-live] target_branch must be main for promotion, got {status['target_branch']}"
+        )
+    if bool(status["git_dirty"]):
+        raise SystemExit("[promote-live] monthly recert was produced from dirty git state")
+    if not isinstance(status["symbol_decisions"], dict) or not status["symbol_decisions"]:
+        raise SystemExit("[promote-live] monthly recert symbol_decisions missing or empty")
+
+
 def _verify_cert(report_dir: str, model_month: str, repo_root: Path | None = None) -> None:
     """Raise SystemExit if cert CSV is missing, stale, or has critical failures."""
     repo_root = repo_root or _repo_root()
@@ -67,6 +102,7 @@ def _verify_cert(report_dir: str, model_month: str, repo_root: Path | None = Non
         raise SystemExit(
             f"[promote-live] cert status month mismatch: requested {model_month}, got {status_month or 'unknown'}"
         )
+    _verify_dag_provenance(status, model_month)
     if not status_pass:
         raise SystemExit(
             f"[promote-live] monthly recert status for {model_month} is not passing; rerun make monthly-recert"

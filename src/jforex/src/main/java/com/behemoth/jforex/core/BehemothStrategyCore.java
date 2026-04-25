@@ -282,13 +282,15 @@ public final class BehemothStrategyCore {
         Instant now = state.lastTick != null ? state.lastTick.timestamp() : Instant.now();
         for (BarrierActionPayload action : actions) {
             if (action.isOpenMarket()) {
-                if (!state.entriesAllowed) {
+                if (!sessionConfig.newEntriesEnabled() || !state.entriesAllowed) {
                     metrics.recordEntryBlocked(action.symbol());
                     artifactWriter.markOperationalStep(
                             action.symbol(),
                             "entry_blocked_not_ready",
                             false,
-                            "entries not allowed in current readiness state"
+                            sessionConfig.newEntriesEnabled()
+                                    ? "entries not allowed in current readiness state"
+                                    : "new entries disabled by restart eligibility"
                     );
                     continue;
                 }

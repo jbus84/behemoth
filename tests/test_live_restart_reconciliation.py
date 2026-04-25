@@ -13,6 +13,7 @@ from src.behemoth.live_restart.reconciliation import (
     RestartVerdict,
     RuntimeFileSnapshot,
     RuntimeSessionMetadata,
+    RuntimeContextComparison,
     compare_runtime_context,
     compute_lock_fingerprint,
     inspect_local_runtime_state,
@@ -22,6 +23,7 @@ from src.behemoth.live_restart.reconciliation import (
     write_reconciliation_report,
     write_runtime_session_metadata,
 )
+from src.behemoth.ops.verdicts import RestartEligibility
 
 
 def test_compute_lock_fingerprint_is_stable_for_same_files(tmp_path: Path) -> None:
@@ -596,3 +598,43 @@ def test_write_reconciliation_report_writes_expected_verdict(tmp_path: Path) -> 
 
     assert payload["verdict"] == "clean_resumable"
     assert payload["startup_mode"] == "resume"
+
+
+def test_derive_restart_eligibility_maps_clean_resume_to_eligible() -> None:
+    from src.behemoth.live_restart.reconciliation import derive_restart_eligibility
+
+    result = derive_restart_eligibility(
+        RuntimeContextComparison(verdict=RestartVerdict.CLEAN_RESUMABLE, reasons=[])
+    )
+
+    assert result.eligibility is RestartEligibility.RESTART_ELIGIBLE
+    assert result.allow_new_entries is True
+
+
+def test_derive_restart_eligibility_maps_reconcilable_to_drain_only() -> None:
+    from src.behemoth.live_restart.reconciliation import derive_restart_eligibility
+
+    result = derive_restart_eligibility(
+        RuntimeContextComparison(
+            verdict=RestartVerdict.RECONCILABLE,
+            reasons=["local runtime has recoverable active state"],
+        )
+    )
+
+    assert result.eligibility is RestartEligibility.RESTART_ELIGIBLE_DRAIN_ONLY
+    assert result.allow_new_entries is False
+    assert result.reasons == ["local runtime has recoverable active state"]
+
+
+def test_derive_restart_eligibility_maps_incompatible_to_blocked() -> None:
+    from src.behemoth.live_restart.reconciliation import derive_restart_eligibility
+
+    result = derive_restart_eligibility(
+        RuntimeContextComparison(
+            verdict=RestartVerdict.INCOMPATIBLE,
+            reasons=["lock_fingerprint mismatch"],
+        )
+    )
+
+    assert result.eligibility is RestartEligibility.RESTART_BLOCKED
+    assert result.allow_new_entries is False

@@ -477,6 +477,7 @@ class LiveReadinessCoordinatorTest {
                 false,
                 "",
                 0,
+                true,
                 liveReadinessEnabled,
                 30_000,
                 31,
@@ -565,5 +566,15 @@ class LiveReadinessCoordinatorTest {
         public void recordReadinessTimeout(String symbol) {
             timeouts.merge(symbol, 1, Integer::sum);
         }
+    }
+
+    @Test
+    void sessionConfigReadsNewEntriesEnabledFlag() {
+        Map<String, String> environment = new HashMap<>(testEnvironment());
+        environment.put("BEHEMOTH_JFOREX_NEW_ENTRIES_ENABLED", "false");
+
+        JForexSessionConfig config = JForexSessionConfig.fromEnvironment(false, environment);
+
+        assertThat(config.newEntriesEnabled()).isFalse();
     }
 }

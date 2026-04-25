@@ -9,6 +9,8 @@ from typing import Any
 
 import duckdb
 
+from src.behemoth.ops.verdicts import RestartEligibility
+
 
 class RestartVerdict(str, Enum):
     CLEAN_RESUMABLE = "clean_resumable"
@@ -107,6 +109,13 @@ class RuntimeContextComparison:
 
 
 @dataclass(frozen=True)
+class RestartEligibilityResult:
+    eligibility: RestartEligibility
+    allow_new_entries: bool
+    reasons: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class ReconciliationReport:
     startup_mode: str
     verdict: RestartVerdict
@@ -118,6 +127,7 @@ class ReconciliationReport:
     local_runtime: LocalRuntimeStateSummary | None = None
     broker_snapshot: BrokerSnapshot | None = None
     promoted_symbols: list[str] = field(default_factory=list)
+    restart_eligibility: RestartEligibilityResult | None = None
 
 
 def _jsonable(value: Any) -> Any:
@@ -460,6 +470,28 @@ def compare_runtime_context(
     else:
         verdict = RestartVerdict.CLEAN_RESUMABLE
     return RuntimeContextComparison(verdict=verdict, reasons=reasons)
+
+
+def derive_restart_eligibility(
+    comparison: RuntimeContextComparison,
+) -> RestartEligibilityResult:
+    if comparison.verdict is RestartVerdict.CLEAN_RESUMABLE:
+        return RestartEligibilityResult(
+            eligibility=RestartEligibility.RESTART_ELIGIBLE,
+            allow_new_entries=True,
+            reasons=list(comparison.reasons),
+        )
+    if comparison.verdict is RestartVerdict.RECONCILABLE:
+        return RestartEligibilityResult(
+            eligibility=RestartEligibility.RESTART_ELIGIBLE_DRAIN_ONLY,
+            allow_new_entries=False,
+            reasons=list(comparison.reasons),
+        )
+    return RestartEligibilityResult(
+        eligibility=RestartEligibility.RESTART_BLOCKED,
+        allow_new_entries=False,
+        reasons=list(comparison.reasons),
+    )
 
 
 def write_reconciliation_report(path: Path, report: ReconciliationReport) -> None:

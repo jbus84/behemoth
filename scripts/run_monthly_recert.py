@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import subprocess
 import sys
@@ -28,6 +29,7 @@ DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 MONTHLY_BUILD_ROOT = "configs/research/governance/oco_candidate_builds"
 CERT_TICK_BATCH_SIZE = "1"
 CERT_CHECKS_FILENAME = "stage14_jforex_runtime_certification_checks.csv"
+CERT_SUMMARY_FILENAME = "stage14_jforex_runtime_certification_summary.csv"
 MONTHLY_RECERT_STATUS_FILENAME = "monthly_recert_status.json"
 BUNDLE_MODELS_SUBDIR = Path("models/oco_dukascopy_candidate")
 MONTHLY_RECERT_RUN_DIRNAME = "monthly_recert"
@@ -35,6 +37,56 @@ MONTHLY_RECERT_RUN_DIRNAME = "monthly_recert"
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
+
+
+def _git_metadata() -> tuple[str, str, bool]:
+    repo_root = _repo_root()
+    commit = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    branch = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "--abbrev-ref", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    dirty = bool(
+        subprocess.run(
+            ["git", "-C", str(repo_root), "status", "--porcelain", "--untracked-files=no"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    )
+    return commit, branch, dirty
+
+
+def _lock_fingerprint(bundle_dir: Path) -> str:
+    root = bundle_dir if bundle_dir.is_absolute() else _repo_root() / bundle_dir
+    digest = hashlib.sha256()
+    for path in sorted(root.glob("*_oco_live_lock.json")):
+        digest.update(path.name.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def _read_symbol_decisions(report_dir: str) -> dict[str, str]:
+    summary_path = _repo_root() / report_dir / CERT_SUMMARY_FILENAME
+    if not summary_path.exists():
+        return {}
+    decisions: dict[str, str] = {}
+    with summary_path.open() as f:
+        for row in csv.DictReader(f):
+            symbol = str(row.get("symbol", "")).strip().upper()
+            decision = str(row.get("go_decision", "")).strip().upper().replace("-", "_")
+            if symbol:
+                decisions[symbol] = "NO_GO" if decision in {"NOGO", "NO_GO"} else decision
+    return dict(sorted(decisions.items()))
 
 
 def _derive_params(
@@ -253,14 +305,36 @@ def _require_month_bundle(model_month: str) -> Path:
 def _write_recert_status(
     model_month: str, report_dir: str, bundle_dir: Path, overall_pass: bool
 ) -> None:
+    commit, branch, dirty = _git_metadata()
     status_path = _repo_root() / report_dir / MONTHLY_RECERT_STATUS_FILENAME
     status_path.parent.mkdir(parents=True, exist_ok=True)
     status_path.write_text(
         json.dumps(
             {
+                "dag_node_id": "monthly_recert",
                 "model_month": model_month,
                 "bundle_dir": str((_repo_root() / bundle_dir).resolve()),
                 "overall_pass": bool(overall_pass),
+                "process_verdict": "PASS" if overall_pass else "FAIL",
+                "symbol_decisions": _read_symbol_decisions(report_dir),
+                "target_branch": branch,
+                "target_commit": commit,
+                "git_dirty": dirty,
+                "lock_fingerprint": _lock_fingerprint(_repo_root() / bundle_dir),
+                "inputs": {
+                    "bundle_dir": str((_repo_root() / bundle_dir).resolve()),
+                    "lock_dir": str((_repo_root() / bundle_dir).resolve()),
+                },
+                "outputs": {
+                    "checks_csv": str((_repo_root() / report_dir / CERT_CHECKS_FILENAME).resolve()),
+                    "summary_csv": str(
+                        (
+                            _repo_root()
+                            / report_dir
+                            / CERT_SUMMARY_FILENAME
+                        ).resolve()
+                    ),
+                },
                 "evaluated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             },
             indent=2,
