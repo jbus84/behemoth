@@ -463,6 +463,12 @@ promote-live:
 		$(if $(MODEL_MONTH),--model-month "$(MODEL_MONTH)",) \
 		--report-dir $(or $(REPORT_DIR),data/analysis/backtest_reconcile)
 
+.PHONY: validate-live-stage-dag
+validate-live-stage-dag:
+	uv run python scripts/validate_live_stage_dag.py \
+		--model-month $(or $(MODEL_MONTH),$(shell date -v-1m +%Y-%m 2>/dev/null || date -d "last month" +%Y-%m)) \
+		--out-json $(or $(OUT_JSON),data/analysis/backtest_reconcile/live_stage_dag_validation.json)
+
 # ==============================================================================
 # Operations
 # ==============================================================================

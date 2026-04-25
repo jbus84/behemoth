@@ -1,6 +1,6 @@
 # Live/Stage Commonality and DAG Process Design
 
-- **Status:** Approved for written spec; pending user review before implementation planning.
+- **Status:** Approved; implementation plan written.
 - **Date:** 2026-04-25
 - **Target branch:** `main`
 - **Target commit:** `b46ca0bfc9037c796d3cda918207dd8e28de5137`
