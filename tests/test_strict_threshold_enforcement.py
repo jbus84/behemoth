@@ -186,7 +186,7 @@ def test_predict_blocks_on_expired_schedule_in_live_mode(client):
         _config.governance_mode = orig_mode
 
 
-def test_predict_allows_static_fallback_in_research_mode(client):
+def test_predict_blocks_without_rolling_config_in_research_mode(client):
     # Setup mocks
     cand = mock.MagicMock()
     cand.bar_ticks = 100
@@ -259,8 +259,9 @@ def test_predict_allows_static_fallback_in_research_mode(client):
             )
             assert r.status_code == 200
             rows = r.json()["predictions"]
-            assert rows[0]["selected_exec"] == 1
-            assert rows[0]["threshold_blocked"] is False
-            assert rows[0]["threshold_exec"] == 0.5
+            assert rows[0]["selected_exec"] == 0
+            assert rows[0]["threshold_blocked"] is True
+            assert rows[0]["threshold_block_reason"] == "NO_ROLLING_CONFIG"
+            assert rows[0]["threshold_exec"] == 2.0
     finally:
         _config.governance_mode = orig_mode

@@ -41,6 +41,7 @@ REDUCED_CORE_EXPECTED_WIN_RATE = {
 # Governance lock paths for threshold schedule check
 LOCK_DIR = Path("configs/research/governance/oco")
 MODEL_DIR = Path("models/oco")
+MIN_UNIQUE_PROBS_FLAG = 10
 
 
 def _load_con(db_path: Path) -> duckdb.DuckDBPyConnection:
@@ -282,6 +283,54 @@ def _candidate_audit_section(con: duckdb.DuckDBPyConnection, run_id: str) -> lis
     return results
 
 
+def _rolling_threshold_integrity_section(
+    con: duckdb.DuckDBPyConnection,
+) -> list[dict[str, Any]]:
+    """Report per (symbol, candidate_uid, run_id) shape of audit_logs.
+
+    Surfaces the flat-distribution failure mode (unique_values == 1 for a
+    population >= 30) — the exact signature of the /predict/warmup
+    historical replay bug from April 2026. Rolling-vs-static drift is
+    covered live by METRIC_ROLLING_THRESHOLD_DRIFT at /predict time.
+    """
+    rows = con.execute(
+        """
+        SELECT
+            symbol,
+            candidate_uid,
+            run_id,
+            COUNT(*) AS n,
+            COUNT(DISTINCT ROUND(pred_prob, 8)) AS unique_values,
+            MIN(pred_prob) AS min_prob,
+            quantile(pred_prob, 0.5) AS p50,
+            quantile(pred_prob, 0.9) AS p90,
+            MAX(pred_prob) AS max_prob
+        FROM audit_logs
+        GROUP BY symbol, candidate_uid, run_id
+        ORDER BY symbol, candidate_uid, run_id
+        """,
+    ).fetchall()
+
+    results: list[dict[str, Any]] = []
+    for symbol, cand, run_id, n, unique, pmin, p50, p90, pmax in rows:
+        flagged = int(n) >= 30 and int(unique) < MIN_UNIQUE_PROBS_FLAG
+        results.append(
+            {
+                "symbol": symbol,
+                "candidate_uid": cand,
+                "run_id": run_id,
+                "n": int(n),
+                "unique_values": int(unique),
+                "min_prob": round(float(pmin), 6) if pmin is not None else None,
+                "p50": round(float(p50), 6) if p50 is not None else None,
+                "p90": round(float(p90), 6) if p90 is not None else None,
+                "max_prob": round(float(pmax), 6) if pmax is not None else None,
+                "flag": bool(flagged),
+            }
+        )
+    return results
+
+
 def _format_report(report: dict[str, Any]) -> str:
     lines = [
         "# Live Performance Gap Diagnostic Report",
@@ -344,6 +393,23 @@ def _format_report(report: dict[str, Any]) -> str:
             lines.append(f"  - **Unexpected:** {r['unexpected_candidates']}")
         if r["missing_candidates"]:
             lines.append(f"  - **Missing:** {r['missing_candidates']}")
+    lines += [
+        "",
+        "## 5. Rolling Threshold Integrity",
+        "",
+        "Flags `unique_values < 10` with `n >= 30` as a low-cardinality audit population.",
+        "For `run_id == 'warmup'`, that pattern is the flat `/predict/warmup` replay-regression signature.",
+        "",
+        "| Symbol | Candidate | Run ID | N | Unique | Min | p50 | p90 | Max | Flag |",
+        "|--------|-----------|--------|---|--------|-----|-----|-----|-----|------|",
+    ]
+    for r in report.get("rolling_threshold_integrity", []):
+        flag = "🚨" if r["flag"] else ""
+        lines.append(
+            f"| {r['symbol']} | {r['candidate_uid']} | {r['run_id']} | {r['n']} | "
+            f"{r['unique_values']} | {r['min_prob']} | {r['p50']} | {r['p90']} | "
+            f"{r['max_prob']} | {flag} |"
+        )
     return "\n".join(lines) + "\n"
 
 
@@ -359,6 +425,7 @@ def run(
         "threshold_analysis": _threshold_analysis_section(con, run_id),
         "magnitude_analysis": _magnitude_analysis_section(con, run_id),
         "candidate_audit": _candidate_audit_section(con, run_id),
+        "rolling_threshold_integrity": _rolling_threshold_integrity_section(con),
     }
     con.close()
     if out_path is not None:
@@ -414,6 +481,18 @@ def main() -> None:
             f"  {r['symbol']}: {r['distinct_candidate_uids']} uid(s), "
             f"unexpected={r['unexpected_candidates']}, "
             f"missing={r['missing_candidates']}{flag}"
+        )
+
+    print("\n=== ROLLING THRESHOLD INTEGRITY ===")
+    for r in report.get("rolling_threshold_integrity", []):
+        flag = ""
+        if r["flag"]:
+            flag = " *** LOW-CARDINALITY AUDIT POPULATION"
+            if r["run_id"] == "warmup":
+                flag += " (warmup replay-regression signature)"
+        print(
+            f"  {r['symbol']} [{r['candidate_uid']}] run_id={r['run_id']}: "
+            f"n={r['n']} unique={r['unique_values']} p90={r['p90']}{flag}"
         )
 
     print(f"\nReport written to {args.out}")

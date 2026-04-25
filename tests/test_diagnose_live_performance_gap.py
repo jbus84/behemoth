@@ -180,3 +180,87 @@ def test_candidate_audit_identifies_locked_state(tmp_path: Path) -> None:
     gbp = next(r for r in ca if r["symbol"] == "GBPUSD")
     assert gbp["distinct_candidate_uids"] == 1
     assert "ny_overlap" in gbp["candidate_uids"][0]
+
+
+def test_rolling_threshold_integrity_section_detects_flat_warmup(tmp_path: Path) -> None:
+    """The integrity section must flag a flat warmup distribution
+    (unique_values == 1) as a regression of the historical replay bug."""
+    import duckdb
+    from datetime import datetime, timedelta, timezone
+
+    db_path = tmp_path / "live_state.db"
+    con = duckdb.connect(str(db_path))
+    con.execute("""
+        CREATE TABLE audit_logs (
+            event_ts TIMESTAMP WITH TIME ZONE,
+            close_ts TIMESTAMP WITH TIME ZONE,
+            symbol VARCHAR,
+            candidate_uid VARCHAR,
+            pred_prob DOUBLE,
+            threshold DOUBLE,
+            features_json VARCHAR,
+            model_month VARCHAR,
+            run_id VARCHAR
+        )
+    """)
+    now = datetime.now(tz=timezone.utc)
+    uid = "oco|USDJPY|1000|h6|oco_first_touch_clean__all__k2"
+    for i in range(300):
+        con.execute(
+            "INSERT INTO audit_logs VALUES (?, ?, 'USDJPY', ?, 0.6988, 0.5, '{}', '2026-03', 'warmup')",
+            [now, now - timedelta(hours=i), uid],
+        )
+    for i in range(60):
+        con.execute(
+            "INSERT INTO audit_logs VALUES (?, ?, 'USDJPY', ?, ?, 0.5, '{}', '2026-03', 'threshold_seed')",
+            [now, now - timedelta(hours=i + 1), uid, 0.50 + 0.005 * i],
+        )
+    con.close()
+
+    from scripts.diagnose_live_performance_gap import _rolling_threshold_integrity_section
+
+    con = duckdb.connect(str(db_path), read_only=True)
+    try:
+        rows = _rolling_threshold_integrity_section(con)
+    finally:
+        con.close()
+
+    warmup_row = next(r for r in rows if r["symbol"] == "USDJPY" and r["run_id"] == "warmup")
+    assert warmup_row["unique_values"] == 1
+    assert warmup_row["flag"] is True
+
+    seed_row = next(
+        r for r in rows if r["symbol"] == "USDJPY" and r["run_id"] == "threshold_seed"
+    )
+    assert seed_row["unique_values"] > 10
+    assert seed_row["flag"] is False
+
+
+def test_run_and_format_report_include_integrity_section(tmp_path: Path) -> None:
+    db = tmp_path / "live_state.db"
+    _make_synthetic_db(db)
+
+    con = duckdb.connect(str(db))
+    now = datetime(2026, 3, 23, 14, 0, tzinfo=timezone.utc)
+    uid = "oco|GBPUSD|100|h6|oco_first_touch_clean__ny_overlap__k2"
+    for i in range(40):
+        con.execute(
+            "INSERT INTO audit_logs VALUES (?, ?, 'GBPUSD', ?, 0.6123, 0.595, '{}', '2026-02', 'warmup')",
+            [now, now, uid],
+        )
+    con.close()
+
+    from scripts.diagnose_live_performance_gap import _format_report, run
+
+    report = run(db_path=db, run_id="jforex_live")
+    assert "rolling_threshold_integrity" in report
+    warmup_row = next(
+        r for r in report["rolling_threshold_integrity"] if r["symbol"] == "GBPUSD" and r["run_id"] == "warmup"
+    )
+    assert warmup_row["flag"] is True
+
+    rendered = _format_report(report)
+    assert "## 5. Rolling Threshold Integrity" in rendered
+    assert "low-cardinality audit population" in rendered
+    assert "For `run_id == 'warmup'`" in rendered
+    assert f"| GBPUSD | {uid} | warmup | 40 | 1 |" in rendered

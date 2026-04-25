@@ -20,10 +20,15 @@ from src.behemoth.api.server import app
 
 
 @pytest.fixture
-def client():
-    """Create a test client with a fresh state manager."""
-    with TestClient(app) as c:
-        yield c
+def client(tmp_path):
+    """Create a test client with an isolated runtime DB per test."""
+    original_persist_db_path = server._config.persist_db_path
+    server._config.persist_db_path = str(tmp_path / "behemoth_runtime.duckdb")
+    try:
+        with TestClient(app) as c:
+            yield c
+    finally:
+        server._config.persist_db_path = original_persist_db_path
 
 
 class TestHealthEndpoint:
@@ -3159,6 +3164,43 @@ class TestCheckpointEndpoint:
 
 
 class TestPredictWarmup:
+    def _seed_bars(self, sym: str, n: int, *, start_close: float = 1.30000) -> None:
+        """Populate _state.tick_bars with n varied bars for the given symbol.
+
+        Each bar has slightly different OHLC so the feature builder produces
+        a non-constant feature matrix. Writes bars with bar_ticks=100 to match
+        the dummy candidate used in these tests.
+        """
+        from datetime import datetime, timedelta, timezone
+
+        from src.behemoth.api import server
+
+        base_ts = datetime(2026, 4, 1, 0, 0, tzinfo=timezone.utc)
+        for i in range(n):
+            ts = base_ts + timedelta(minutes=i)
+            close_ts = ts + timedelta(seconds=30)
+            bid = start_close + 0.0001 * (i % 50) - 0.00005 * ((i * 7) % 11)
+            server._state._con.execute(
+                "INSERT INTO tick_bars VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                [
+                    i,
+                    sym.upper(),
+                    100,
+                    ts,
+                    close_ts,
+                    bid,
+                    bid + 0.0005,
+                    bid - 0.0005,
+                    bid + 0.0001,
+                    0.00015,
+                    100.0 + (i % 30),
+                    bid + 0.0002,
+                    0.55,
+                    bid + 0.00065,
+                    bid + 0.00025,
+                ],
+            )
+
     def test_warmup_returns_201_with_count(self, client):
         import unittest.mock as mock
         from types import SimpleNamespace
@@ -3206,6 +3248,426 @@ class TestPredictWarmup:
             assert r.status_code == 503
         finally:
             server._state = original
+
+    def test_warmup_writes_varied_pred_probs_per_bar(self, client):
+        import unittest.mock as mock
+        from types import SimpleNamespace
+
+        import numpy as np
+
+        from src.behemoth.api import server
+
+        sym = "GBPUSD"
+        run_id = "warmup-varied"
+        self._seed_bars(sym, 340)
+
+        dummy_cand = mock.MagicMock()
+        dummy_cand.bar_ticks = 100
+        dummy_cand.horizon = 24
+        dummy_cand.barrier_pips = 15.0
+        dummy_cand.candidate_uid = "cand1"
+
+        dummy_model = mock.MagicMock()
+        dummy_model.predict_proba.side_effect = lambda X: np.column_stack(
+            [1.0 - np.linspace(0.11, 0.91, len(X)), np.linspace(0.11, 0.91, len(X))]
+        )
+
+        with (
+            mock.patch.object(
+                server,
+                "_resolve_runtime_contract",
+                return_value=SimpleNamespace(
+                    candidates=[dummy_cand],
+                    model_month="2025-01",
+                    cap_pips=1.2,
+                ),
+            ),
+            mock.patch.object(
+                server,
+                "_ensure_model_and_threshold",
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+            ),
+        ):
+            r = client.post("/predict/warmup", json={"symbol": sym, "run_id": run_id})
+
+        assert r.status_code == 201
+        body = r.json()
+        canonical_uid = f"oco|{sym}|{dummy_cand.bar_ticks}|h{dummy_cand.horizon}|{dummy_cand.candidate_uid}"
+        assert body["audit_events_written"] >= 30
+        assert body["stats"][canonical_uid]["unique_values"] >= 10
+
+        rows = server._state._con.execute(
+            """
+            SELECT pred_prob
+            FROM audit_logs
+            WHERE symbol = ? AND run_id = ? AND candidate_uid = ?
+            ORDER BY close_ts
+            """,
+            [sym, run_id, canonical_uid],
+        ).fetchall()
+        unique_probs = {round(float(row[0]), 6) for row in rows}
+
+        assert len(rows) == body["audit_events_written"]
+        assert len(unique_probs) >= 10
+
+    def test_warmup_is_idempotent_and_purges_prior(self, client):
+        import unittest.mock as mock
+        from types import SimpleNamespace
+
+        import numpy as np
+
+        from src.behemoth.api import server
+
+        sym = "GBPUSD"
+        run_id = "warmup-idempotent"
+        self._seed_bars(sym, 340)
+
+        dummy_cand = mock.MagicMock()
+        dummy_cand.bar_ticks = 100
+        dummy_cand.horizon = 24
+        dummy_cand.barrier_pips = 15.0
+        dummy_cand.candidate_uid = "cand1"
+
+        dummy_model = mock.MagicMock()
+        dummy_model.predict_proba.side_effect = lambda X: np.column_stack(
+            [1.0 - np.linspace(0.2, 0.8, len(X)), np.linspace(0.2, 0.8, len(X))]
+        )
+
+        with (
+            mock.patch.object(
+                server,
+                "_resolve_runtime_contract",
+                return_value=SimpleNamespace(
+                    candidates=[dummy_cand],
+                    model_month="2025-01",
+                    cap_pips=1.2,
+                ),
+            ),
+            mock.patch.object(
+                server,
+                "_ensure_model_and_threshold",
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+            ),
+        ):
+            r1 = client.post("/predict/warmup", json={"symbol": sym, "run_id": run_id})
+            r2 = client.post("/predict/warmup", json={"symbol": sym, "run_id": run_id})
+
+        assert r1.status_code == 201
+        assert r2.status_code == 201
+
+        body1 = r1.json()
+        body2 = r2.json()
+        written1 = body1["audit_events_written"]
+
+        assert body1["audit_events_purged"] == 0
+        assert written1 >= 30
+        assert body2["audit_events_purged"] == written1
+        assert body2["audit_events_written"] == written1
+
+        final_count = server._state._con.execute(
+            "SELECT COUNT(*) FROM audit_logs WHERE symbol = ? AND run_id = ?",
+            [sym, run_id],
+        ).fetchone()[0]
+        assert final_count == written1
+
+    def test_warmup_refuses_degenerate_distribution(self, client):
+        import unittest.mock as mock
+        from datetime import datetime, timezone
+        from types import SimpleNamespace
+
+        import numpy as np
+
+        from src.behemoth.api import server
+
+        sym = "GBPUSD"
+        run_id = "warmup-degenerate"
+        self._seed_bars(sym, 340)
+
+        server._state._con.execute(
+            "INSERT INTO audit_logs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                datetime(2026, 4, 1, 0, 0, tzinfo=timezone.utc),
+                datetime(2026, 4, 1, 0, 0, tzinfo=timezone.utc),
+                sym,
+                "sentinel",
+                0.42,
+                0.5,
+                "{}",
+                "2025-01",
+                run_id,
+            ],
+        )
+
+        dummy_cand = mock.MagicMock()
+        dummy_cand.bar_ticks = 100
+        dummy_cand.horizon = 24
+        dummy_cand.barrier_pips = 15.0
+        dummy_cand.candidate_uid = "cand1"
+
+        dummy_model = mock.MagicMock()
+        dummy_model.predict_proba.side_effect = lambda X: np.column_stack(
+            [np.full(len(X), 0.33), np.full(len(X), 0.67)]
+        )
+
+        with (
+            mock.patch.object(
+                server,
+                "_resolve_runtime_contract",
+                return_value=SimpleNamespace(
+                    candidates=[dummy_cand],
+                    model_month="2025-01",
+                    cap_pips=1.2,
+                ),
+            ),
+            mock.patch.object(
+                server,
+                "_ensure_model_and_threshold",
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+            ),
+        ):
+            r = client.post("/predict/warmup", json={"symbol": sym, "run_id": run_id})
+
+        assert r.status_code == 500
+        assert "degenerate distribution" in r.json()["detail"]
+
+        sentinel_count = server._state._con.execute(
+            """
+            SELECT COUNT(*)
+            FROM audit_logs
+            WHERE symbol = ? AND run_id = ? AND candidate_uid = 'sentinel'
+            """,
+            [sym, run_id],
+        ).fetchone()[0]
+        assert sentinel_count == 1
+
+    def test_warmup_preserves_prior_rows_when_no_valid_events_generated(self, client):
+        import unittest.mock as mock
+        from datetime import datetime, timezone
+        from types import SimpleNamespace
+
+        import pandas as pd
+
+        from src.behemoth.api import server
+        from src.behemoth.core.schemas import ModelFeatures
+
+        sym = "GBPUSD"
+        run_id = "warmup-empty-valid"
+        self._seed_bars(sym, 340)
+
+        server._state._con.execute(
+            "INSERT INTO audit_logs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                datetime(2026, 4, 1, 0, 0, tzinfo=timezone.utc),
+                datetime(2026, 4, 1, 0, 0, tzinfo=timezone.utc),
+                sym,
+                "sentinel",
+                0.42,
+                0.5,
+                "{}",
+                "2025-01",
+                run_id,
+            ],
+        )
+
+        dummy_cand = mock.MagicMock()
+        dummy_cand.bar_ticks = 100
+        dummy_cand.horizon = 24
+        dummy_cand.barrier_pips = 15.0
+        dummy_cand.candidate_uid = "cand1"
+
+        dummy_model = mock.MagicMock()
+
+        with (
+            mock.patch.object(
+                server,
+                "_resolve_runtime_contract",
+                return_value=SimpleNamespace(
+                    candidates=[dummy_cand],
+                    model_month="2025-01",
+                    cap_pips=1.2,
+                ),
+            ),
+            mock.patch.object(
+                server,
+                "_ensure_model_and_threshold",
+                return_value=(dummy_model, {"threshold_exec": 0.5, "threshold_source": "test"}),
+            ),
+            mock.patch.object(
+                server,
+                "compute_feature_matrix_from_bars",
+                return_value=pd.DataFrame(columns=list(ModelFeatures.model_fields)),
+            ),
+        ):
+            r = client.post("/predict/warmup", json={"symbol": sym, "run_id": run_id})
+
+        assert r.status_code == 201
+        body = r.json()
+        assert body["audit_events_purged"] == 0
+        assert body["audit_events_written"] == 0
+        assert body["skipped_reason"] == "no_valid_warmup_events"
+        assert body["stats"] == {}
+        dummy_model.predict_proba.assert_not_called()
+
+        sentinel_count = server._state._con.execute(
+            """
+            SELECT COUNT(*)
+            FROM audit_logs
+            WHERE symbol = ? AND run_id = ? AND candidate_uid = 'sentinel'
+            """,
+            [sym, run_id],
+        ).fetchone()[0]
+        total_count = server._state._con.execute(
+            "SELECT COUNT(*) FROM audit_logs WHERE symbol = ? AND run_id = ?",
+            [sym, run_id],
+        ).fetchone()[0]
+        assert sentinel_count == 1
+        assert total_count == 1
+
+
+class TestRollingThresholdDrift:
+    def test_drift_helper_records_ok_when_within_band(self, client):
+        from src.behemoth.api import server
+
+        server._record_rolling_threshold_drift(
+            symbol="GBPUSD",
+            candidate_uid="oco|GBPUSD|100|h6|cand_ok",
+            rolling=0.72,
+            baseline=0.70,
+        )
+
+        metrics = client.get("/metrics")
+
+        assert metrics.status_code == 200
+        assert "behemoth_rolling_threshold_drift_total" in metrics.text
+        assert 'candidate="oco|GBPUSD|100|h6|cand_ok"' in metrics.text
+        assert 'state="ok"' in metrics.text
+        assert 'symbol="GBPUSD"' in metrics.text
+
+    def test_drift_helper_records_drift_when_beyond_band_and_logs_warning(self, client, caplog):
+        from src.behemoth.api import server
+
+        with caplog.at_level("WARNING"):
+            server._record_rolling_threshold_drift(
+                symbol="USDJPY",
+                candidate_uid="oco|USDJPY|100|h6|cand_drift",
+                rolling=0.771,
+                baseline=0.686,
+            )
+
+        metrics = client.get("/metrics")
+
+        assert metrics.status_code == 200
+        assert "behemoth_rolling_threshold_drift_total" in metrics.text
+        assert 'candidate="oco|USDJPY|100|h6|cand_drift"' in metrics.text
+        assert 'state="drift"' in metrics.text
+        assert 'symbol="USDJPY"' in metrics.text
+        assert "Rolling threshold drift" in caplog.text
+        assert "USDJPY" in caplog.text
+
+    def test_drift_helper_noop_when_baseline_missing(self, client):
+        from src.behemoth.api import server
+
+        server._record_rolling_threshold_drift(
+            symbol="EURUSD",
+            candidate_uid="oco|EURUSD|100|h6|cand_none",
+            rolling=0.72,
+            baseline=0.0,
+        )
+
+        metrics = client.get("/metrics")
+
+        assert metrics.status_code == 200
+        assert "cand_none" not in metrics.text
+
+    def test_build_predictions_records_drift_for_rolling_threshold_path(self, client):
+        import unittest.mock as mock
+        from datetime import datetime, timezone
+        from types import SimpleNamespace
+
+        import numpy as np
+
+        from src.behemoth.api import server
+        from src.behemoth.core.schemas import ModelFeatures
+
+        sym = "EURUSD"
+        candidate_uid = "cand_roll"
+        canonical_uid = f"oco|{sym}|100|h6|{candidate_uid}"
+        rolling_threshold = 0.74
+        threshold_exec = 0.70
+        candidate = SimpleNamespace(
+            bar_ticks=100,
+            horizon=6,
+            barrier_pips=2.0,
+            candidate_uid=candidate_uid,
+            regime_desc="all;barrier=2.0",
+        )
+        features = ModelFeatures(
+            cost_est_pips=0.3,
+            range_pips=6.0,
+            ret1_pips=1.0,
+            ret_z=0.4,
+            ret_abs_z=0.4,
+            vel_cost_units_h1=1.2,
+            vel_abs_cost_units_h1=1.2,
+            spread_z=0.2,
+            tick_rate_z=0.1,
+            hour_utc=10.0,
+            hl_first=1.0,
+            hl_first_mean_24=0.5,
+            hl_pos_frac_mean_24=0.5,
+            bar_ticks=100.0,
+            horizon=6.0,
+            barrier_pips=2.0,
+        )
+        model = mock.MagicMock()
+        model.predict_proba.return_value = np.array([[0.4, 0.6]])
+
+        with (
+            mock.patch.object(
+                server,
+                "_pip_value_per_unit_usd",
+                return_value={"conversion_status": "ok", "pip_value_per_unit_usd": 0.1},
+            ),
+            mock.patch.object(server._state, "get_rolling_threshold", return_value=rolling_threshold) as get_threshold,
+            mock.patch.object(server._state, "log_predict_evaluation"),
+            mock.patch.object(server, "_record_rolling_threshold_drift") as record_drift,
+        ):
+            results, _ = server._build_predictions(
+                sym=sym,
+                candidates=[candidate],
+                model=model,
+                base_features_by_ticks={100: features},
+                regime_quantiles_by_ticks={100: {}},
+                close_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
+                thr_cfg={
+                    "threshold_exec": threshold_exec,
+                    "threshold_source": "test",
+                    "rolling_threshold_days": 20,
+                    "rolling_threshold_min_history": 1,
+                    "execution_quantile": 0.9,
+                },
+                account_risk_eval={"enabled": False, "allow_trading": True, "snapshot_available": False},
+                account_risk_enabled_effective=False,
+                account_risk_enabled_override=False,
+                requested_volume_units=10000.0,
+                model_month="2025-01",
+                cap_pips=1.2,
+            )
+
+        assert len(results) == 1
+        get_threshold.assert_called_once_with(
+            symbol=sym,
+            candidate_uid=canonical_uid,
+            exec_q=0.9,
+            lookback_days=20,
+            min_history=1,
+        )
+        record_drift.assert_called_once_with(
+            symbol=sym,
+            candidate_uid=canonical_uid,
+            rolling=rolling_threshold,
+            baseline=threshold_exec,
+        )
 
 
 class TestSeedAuditHistory:

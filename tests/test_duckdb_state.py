@@ -631,6 +631,69 @@ class TestRollingThreshold:
         assert result is None
 
 
+class TestPurgeAuditEvents:
+    def test_purge_removes_only_matching_symbol_and_run_id(self):
+        from datetime import datetime, timezone
+
+        from src.behemoth.runtime.state import StateManager
+
+        sm = StateManager()
+        now = datetime.now(tz=timezone.utc)
+        uid = "oco|GBPUSD|100|h6|oco_first_touch_clean__ny_overlap__k2"
+        # 5 warmup rows for GBPUSD
+        for i in range(5):
+            sm._con.execute(
+                "INSERT INTO audit_logs(event_ts, close_ts, symbol, candidate_uid, "
+                "pred_prob, threshold, features_json, model_month, run_id) "
+                "VALUES (?, ?, 'GBPUSD', ?, ?, 0.5, '{}', '2026-02', 'warmup')",
+                [now, now, uid, 0.60 + i * 0.01],
+            )
+        # 3 jforex_live rows for GBPUSD (must NOT be purged)
+        for i in range(3):
+            sm._con.execute(
+                "INSERT INTO audit_logs(event_ts, close_ts, symbol, candidate_uid, "
+                "pred_prob, threshold, features_json, model_month, run_id) "
+                "VALUES (?, ?, 'GBPUSD', ?, ?, 0.5, '{}', '2026-02', 'jforex_live')",
+                [now, now, uid, 0.70 + i * 0.01],
+            )
+        # 2 warmup rows for EURUSD (must NOT be purged — different symbol)
+        for i in range(2):
+            sm._con.execute(
+                "INSERT INTO audit_logs(event_ts, close_ts, symbol, candidate_uid, "
+                "pred_prob, threshold, features_json, model_month, run_id) "
+                "VALUES (?, ?, 'EURUSD', ?, ?, 0.5, '{}', '2026-02', 'warmup')",
+                [now, now, uid, 0.65 + i * 0.01],
+            )
+
+        purged = sm.purge_audit_events(symbol="GBPUSD", run_id="warmup")
+
+        assert purged == 5
+        # GBPUSD warmup gone
+        n_gbp_warmup = sm._con.execute(
+            "SELECT COUNT(*) FROM audit_logs WHERE symbol='GBPUSD' AND run_id='warmup'"
+        ).fetchone()[0]
+        assert n_gbp_warmup == 0
+        # GBPUSD jforex_live untouched
+        n_gbp_live = sm._con.execute(
+            "SELECT COUNT(*) FROM audit_logs WHERE symbol='GBPUSD' AND run_id='jforex_live'"
+        ).fetchone()[0]
+        assert n_gbp_live == 3
+        # EURUSD warmup untouched
+        n_eur_warmup = sm._con.execute(
+            "SELECT COUNT(*) FROM audit_logs WHERE symbol='EURUSD' AND run_id='warmup'"
+        ).fetchone()[0]
+        assert n_eur_warmup == 2
+        sm.close()
+
+    def test_purge_returns_zero_when_nothing_matches(self):
+        from src.behemoth.runtime.state import StateManager
+
+        sm = StateManager()
+        purged = sm.purge_audit_events(symbol="NOPE", run_id="warmup")
+        assert purged == 0
+        sm.close()
+
+
 class TestTradeRicherRecording:
     @pytest.fixture
     def sm(self):

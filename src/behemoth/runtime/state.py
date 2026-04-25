@@ -485,6 +485,18 @@ class StateManager:
             return
         self._con.executemany(_AUDIT_INSERT_SQL, events)
 
+    def purge_audit_events(self, *, symbol: str, run_id: str) -> int:
+        """Delete audit_logs rows matching (symbol, run_id). Returns rows deleted.
+
+        Scoped purge only - does not affect other symbols or other run_ids
+        (e.g. 'threshold_seed' or 'jforex_live' rows are untouched).
+        """
+        deleted_rows = self._con.execute(
+            "DELETE FROM audit_logs WHERE symbol = ? AND run_id = ? RETURNING 1",
+            [symbol.upper(), run_id],
+        ).fetchall()
+        return len(deleted_rows)
+
     def seed_training_predictions(
         self,
         *,
