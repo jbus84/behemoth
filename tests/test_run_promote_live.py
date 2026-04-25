@@ -2,12 +2,27 @@ from __future__ import annotations
 
 import csv
 import json
+import subprocess
 import sys
 from datetime import date
 
 import pytest
 
 import scripts.run_promote_live as run_promote_live
+
+
+def _make_valid_provenance_status(model_month: str) -> dict:
+    """Create a valid monthly recert status dict for testing."""
+    return {
+        "dag_node_id": "monthly_recert",
+        "model_month": model_month,
+        "process_verdict": "PASS",
+        "target_branch": "main",
+        "target_commit": "abc1234567890000000000000000000000000001",
+        "git_dirty": False,
+        "symbol_decisions": {"EURUSD": "GO"},
+        "lock_fingerprint": "fp-abc",
+    }
 
 
 def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
@@ -55,14 +70,20 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
     archive_dir.mkdir(parents=True)
     (archive_dir / "stale.txt").write_text("stale\n")
 
+    def fake_subprocess_run(args, **kwargs):
+        if "rev-parse" in args:
+            return type("R", (), {"stdout": "abc1234567890000000000000000000000000001\n", "returncode": 0})()
+        return type("R", (), {"stdout": "", "returncode": 0})()
+
     monkeypatch.setattr(
         run_promote_live,
         "_verify_cert",
-        lambda report_dir, model_month: verify_calls.append(f"{report_dir}:{model_month}"),
+        lambda report_dir, model_month, **kwargs: verify_calls.append(f"{report_dir}:{model_month}"),
     )
     monkeypatch.setattr(run_promote_live, "_load_go_symbols", lambda report_dir, model_month: ["EURUSD"])
     monkeypatch.setattr(run_promote_live, "_last_complete_month", lambda override=None: "2026-02")
     monkeypatch.setattr(run_promote_live, "_repo_root", lambda: tmp_path)
+    monkeypatch.setattr(run_promote_live.subprocess, "run", fake_subprocess_run)
     monkeypatch.setattr(
         sys, "argv", ["run_promote_live.py", "--report-dir", "data/analysis/backtest_reconcile"]
     )
@@ -112,9 +133,15 @@ def test_main_archives_candidate_build_bundle(monkeypatch, tmp_path) -> None:
 
 
 def test_main_requires_existing_build_bundle(monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr(run_promote_live, "_verify_cert", lambda report_dir, model_month: None)
+    def fake_subprocess_run(args, **kwargs):
+        if "rev-parse" in args:
+            return type("R", (), {"stdout": "abc1234567890000000000000000000000000001\n", "returncode": 0})()
+        return type("R", (), {"stdout": "", "returncode": 0})()
+
+    monkeypatch.setattr(run_promote_live, "_verify_cert", lambda report_dir, model_month, **kwargs: None)
     monkeypatch.setattr(run_promote_live, "_last_complete_month", lambda override=None: "2026-02")
     monkeypatch.setattr(run_promote_live, "_repo_root", lambda: tmp_path)
+    monkeypatch.setattr(run_promote_live.subprocess, "run", fake_subprocess_run)
     monkeypatch.setattr(
         sys, "argv", ["run_promote_live.py", "--report-dir", "data/analysis/backtest_reconcile"]
     )
@@ -241,7 +268,7 @@ def test_promote_live_archives_full_bundle_but_updates_active_live_governance_on
                 "overall_pass": True,
                 "process_verdict": "PASS",
                 "target_branch": "main",
-                "target_commit": "abc123",
+                "target_commit": "abc1234567890000000000000000000000000001",
                 "git_dirty": False,
                 "symbol_decisions": {"EURUSD": "GO", "AUDUSD": "NO_GO"},
                 "lock_fingerprint": "fp-1",
@@ -262,8 +289,16 @@ def test_promote_live_archives_full_bundle_but_updates_active_live_governance_on
         encoding="utf-8",
     )
 
+    def fake_subprocess_run(args, **kwargs):
+        if "rev-parse" in args:
+            return type("R", (), {"stdout": "abc1234567890000000000000000000000000001\n", "returncode": 0})()
+        if "merge-base" in args:
+            return type("R", (), {"stdout": "abc1234567890000000000000000000000000001\n", "returncode": 0})()
+        return type("R", (), {"stdout": "", "returncode": 0})()
+
     monkeypatch.setattr(run_promote_live, "_last_complete_month", lambda override=None: "2026-02")
     monkeypatch.setattr(run_promote_live, "_repo_root", lambda: tmp_path)
+    monkeypatch.setattr(run_promote_live.subprocess, "run", fake_subprocess_run)
     monkeypatch.setattr(
         sys, "argv", ["run_promote_live.py", "--report-dir", "data/analysis/backtest_reconcile"]
     )
@@ -337,3 +372,147 @@ def test_verify_cert_rejects_wrong_branch_provenance(tmp_path) -> None:
             "2026-03",
             repo_root=tmp_path,
         )
+
+
+def test_verify_dag_provenance_passes_when_certified_commit_is_current(
+    tmp_path, monkeypatch
+) -> None:
+    """Promotion passes when current HEAD is exactly the certified commit."""
+    status = _make_valid_provenance_status("2026-03")
+
+    fake_merge_base_result = type("R", (), {
+        "stdout": "abc1234567890000000000000000000000000001\n",
+        "returncode": 0,
+    })()
+    monkeypatch.setattr(
+        run_promote_live.subprocess, "run",
+        lambda *args, **kwargs: fake_merge_base_result
+    )
+
+    # Should not raise
+    run_promote_live._verify_dag_provenance(
+        status,
+        "2026-03",
+        repo_root=tmp_path,
+        current_commit="abc1234567890000000000000000000000000001",
+    )
+
+
+def test_verify_dag_provenance_passes_when_current_commit_is_descendant(
+    tmp_path, monkeypatch
+) -> None:
+    """Promotion passes when current HEAD is a descendant of the certified commit."""
+    certified = "abc1234567890000000000000000000000000001"
+    current = "def9999999999999999999999999999999999002"
+    status = _make_valid_provenance_status("2026-03")
+    status["target_commit"] = certified
+
+    # merge-base returns the certified commit, proving it's an ancestor
+    fake_merge_base_result = type("R", (), {
+        "stdout": certified + "\n",
+        "returncode": 0,
+    })()
+    monkeypatch.setattr(
+        run_promote_live.subprocess, "run",
+        lambda *args, **kwargs: fake_merge_base_result
+    )
+
+    # Should not raise
+    run_promote_live._verify_dag_provenance(
+        status,
+        "2026-03",
+        repo_root=tmp_path,
+        current_commit=current,
+    )
+
+
+def test_verify_dag_provenance_blocks_when_certified_commit_is_not_ancestor(
+    tmp_path, monkeypatch
+) -> None:
+    """Promotion is blocked when the certified commit is not an ancestor of HEAD."""
+    certified = "abc1234567890000000000000000000000000001"
+    current = "def9999999999999999999999999999999999002"
+    status = _make_valid_provenance_status("2026-03")
+    status["target_commit"] = certified
+
+    # merge-base returns something other than certified, proving divergence
+    fake_merge_base_result = type("R", (), {
+        "stdout": "0000000000000000000000000000000000000000\n",
+        "returncode": 0,
+    })()
+    monkeypatch.setattr(
+        run_promote_live.subprocess, "run",
+        lambda *args, **kwargs: fake_merge_base_result
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        run_promote_live._verify_dag_provenance(
+            status,
+            "2026-03",
+            repo_root=tmp_path,
+            current_commit=current,
+        )
+    assert "abc12345" in str(exc.value)
+    assert "def99999" in str(exc.value)
+
+
+def test_verify_dag_provenance_blocks_empty_target_commit(tmp_path) -> None:
+    status = _make_valid_provenance_status("2026-03")
+    status["target_commit"] = ""
+
+    with pytest.raises(SystemExit, match=r"target_commit.*missing"):
+        run_promote_live._verify_dag_provenance(
+            status,
+            "2026-03",
+            repo_root=tmp_path,
+            current_commit="def9999999999999999999999999999999999002",
+        )
+
+
+def test_main_promote_live_blocks_when_certified_commit_diverged(
+    tmp_path, monkeypatch
+) -> None:
+    """main() must enforce commit ancestry: if the certified commit is not an
+    ancestor of current HEAD, promotion raises SystemExit."""
+    import datetime
+
+    certified = "abc1234567890000000000000000000000000001"
+    current = "def9999999999999999999999999999999999002"
+
+    # Build minimal status + CSV on disk
+    status_dir = tmp_path / "data/analysis/backtest_reconcile"
+    status_dir.mkdir(parents=True)
+    status = _make_valid_provenance_status("2026-03")
+    status["target_commit"] = certified
+    status["overall_pass"] = True
+    status["evaluated_at_utc"] = datetime.date.today().isoformat()
+    (status_dir / "monthly_recert_status.json").write_text(json.dumps(status))
+    # Minimal passing CSV
+    import csv as _csv
+    csv_path = status_dir / "stage14_jforex_runtime_certification_checks.csv"
+    with csv_path.open("w", newline="") as f:
+        w = _csv.DictWriter(f, fieldnames=["symbol", "check", "result", "evaluated_at_utc"])
+        w.writeheader()
+        w.writerow({"symbol": "EURUSD", "check": "all", "result": "PASS", "evaluated_at_utc": datetime.date.today().isoformat()})
+
+    monkeypatch.setattr(run_promote_live, "_repo_root", lambda: tmp_path)
+
+    # git rev-parse HEAD → current (diverged from certified)
+    # git merge-base certified current → unrelated base
+    def fake_subprocess_run(args, **kwargs):
+        if "rev-parse" in args:
+            return type("R", (), {"stdout": current + "\n", "returncode": 0})()
+        if "merge-base" in args:
+            return type("R", (), {"stdout": "0000000000000000000000000000000000000000\n", "returncode": 1})()
+        return type("R", (), {"stdout": "", "returncode": 0})()
+
+    monkeypatch.setattr(run_promote_live.subprocess, "run", fake_subprocess_run)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["run_promote_live.py", "--report-dir", "data/analysis/backtest_reconcile", "--model-month", "2026-03"],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        run_promote_live.main()
+    assert "abc12345" in str(exc.value) or "not an ancestor" in str(exc.value)

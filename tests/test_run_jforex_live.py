@@ -10,6 +10,7 @@ import pytest
 
 import scripts.run_jforex_live as run_jforex_live
 from src.behemoth.live_restart.reconciliation import write_runtime_session_metadata
+from src.behemoth.ops.verdicts import RestartEligibility
 
 
 class _FakeProc:
@@ -95,7 +96,7 @@ def test_main_starts_live_runner_before_warmup(monkeypatch, tmp_path, capsys) ->
     def fake_poll_health(proc: _FakeProc, base_url: str, timeout_sec: float) -> None:
         order.append("poll_health")
 
-    def fake_start_live_runner(cfg: run_jforex_live.RunConfig) -> _FakeProc:
+    def fake_start_live_runner(cfg: run_jforex_live.RunConfig, *, allow_new_entries: bool = True) -> _FakeProc:
         order.append("start_live_runner")
         return java_proc
 
@@ -155,7 +156,7 @@ def test_main_defaults_seed_to_promoted_governance_dir(monkeypatch, tmp_path) ->
     monkeypatch.setattr(run_jforex_live, "_start_api", lambda cfg: _FakeProc(returncode=None, pid=20001))
     monkeypatch.setattr(run_jforex_live, "_poll_health", lambda *args, **kwargs: None)
     monkeypatch.setattr(
-        run_jforex_live, "_start_live_runner", lambda cfg: _FakeProc(returncode=0, pid=20002)
+        run_jforex_live, "_start_live_runner", lambda cfg, **kw: _FakeProc(returncode=0, pid=20002)
     )
     monkeypatch.setattr(run_jforex_live, "_warmup_symbols", lambda *args, **kwargs: None)
     monkeypatch.setattr(run_jforex_live, "_stop_process", lambda proc: None)
@@ -247,7 +248,7 @@ def test_main_resume_preserves_runtime_state(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(run_jforex_live, "_start_api", lambda cfg: _FakeProc(returncode=None, pid=20001))
     monkeypatch.setattr(run_jforex_live, "_poll_health", lambda *args, **kwargs: None)
     monkeypatch.setattr(
-        run_jforex_live, "_start_live_runner", lambda cfg: _FakeProc(returncode=0, pid=20002)
+        run_jforex_live, "_start_live_runner", lambda cfg, **kw: _FakeProc(returncode=0, pid=20002)
     )
     monkeypatch.setattr(run_jforex_live, "_warmup_symbols", lambda *args, **kwargs: None)
     monkeypatch.setattr(run_jforex_live, "_stop_process", lambda proc: None)
@@ -353,7 +354,16 @@ def test_main_fails_before_seed_when_runtime_threshold_json_drifts_from_promoted
     monkeypatch.setattr(
         run_jforex_live,
         "_reconcile_startup",
-        lambda cfg, paths: (current_metadata, None, comparison),
+        lambda cfg, paths: (
+            current_metadata,
+            None,
+            comparison,
+            run_jforex_live.RestartEligibilityResult(
+                eligibility=RestartEligibility.RESTART_ELIGIBLE,
+                allow_new_entries=True,
+                reasons=[],
+            ),
+        ),
     )
     monkeypatch.setattr(run_jforex_live, "write_runtime_session_metadata", lambda *args, **kwargs: None)
 
@@ -421,7 +431,7 @@ def test_main_reset_runs_archive_cleanup(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(run_jforex_live, "_start_api", lambda cfg: _FakeProc(returncode=None, pid=20001))
     monkeypatch.setattr(run_jforex_live, "_poll_health", lambda *args, **kwargs: None)
     monkeypatch.setattr(
-        run_jforex_live, "_start_live_runner", lambda cfg: _FakeProc(returncode=0, pid=20002)
+        run_jforex_live, "_start_live_runner", lambda cfg, **kw: _FakeProc(returncode=0, pid=20002)
     )
     monkeypatch.setattr(run_jforex_live, "_warmup_symbols", lambda *args, **kwargs: None)
     monkeypatch.setattr(run_jforex_live, "_stop_process", lambda proc: None)
@@ -602,6 +612,14 @@ def test_main_resume_incompatible_prints_operator_summary(monkeypatch, tmp_path,
                     "broker-linked position ids do not match broker snapshot order ids",
                 ],
             ),
+            run_jforex_live.RestartEligibilityResult(
+                eligibility=RestartEligibility.RESTART_BLOCKED,
+                allow_new_entries=False,
+                reasons=[
+                    "broker-linked symbols do not match broker snapshot symbols",
+                    "broker-linked position ids do not match broker snapshot order ids",
+                ],
+            ),
         ),
     )
     monkeypatch.setattr(
@@ -628,3 +646,83 @@ def test_main_resume_incompatible_prints_operator_summary(monkeypatch, tmp_path,
     assert "[jforex-live] restart summary: startup_mode=resume verdict=incompatible reasons=2" in err
     assert "[jforex-live]   1. broker-linked symbols do not match broker snapshot symbols" in err
     assert "[jforex-live]   2. broker-linked position ids do not match broker snapshot order ids" in err
+
+
+def test_main_reset_forces_new_entries_true_despite_stale_drain_only_eligibility(
+    monkeypatch, tmp_path
+) -> None:
+    """A reset startup must call _start_live_runner with allow_new_entries=True even
+    when the pre-reset eligibility result was DRAIN_ONLY."""
+    _write_runtime_files(tmp_path)
+    _ensure_governance_dir(tmp_path)
+    monkeypatch.setattr(run_jforex_live, "_repo_root", lambda: tmp_path)
+    monkeypatch.setattr(run_jforex_live, "_resolve_model_month", lambda cfg: "2026-03")
+    monkeypatch.setattr(
+        run_jforex_live,
+        "_git_metadata",
+        lambda repo_root: ("abc123", "main", False),
+    )
+    monkeypatch.setattr(run_jforex_live, "_has_resume_blocking_git_dirty", lambda repo_root: False)
+    monkeypatch.setenv("BEHEMOTH_JFOREX_JNLP_URI", "demo")
+    monkeypatch.setenv("BEHEMOTH_JFOREX_USERNAME", "user")
+    monkeypatch.setenv("BEHEMOTH_JFOREX_PASSWORD", "pass")
+
+    drain_only_eligibility = run_jforex_live.RestartEligibilityResult(
+        eligibility=RestartEligibility.RESTART_ELIGIBLE_DRAIN_ONLY,
+        allow_new_entries=False,
+        reasons=["stale prior state"],
+    )
+    current_metadata = run_jforex_live.RuntimeSessionMetadata(
+        git_commit="abc123",
+        git_branch="main",
+        git_dirty=False,
+        repo_root=str(tmp_path),
+        model_month="2026-03",
+        governance_dir="configs/research/governance/oco",
+        lock_fingerprint="lockfp",
+        symbols=["EURUSD"],
+        started_at_utc="2026-04-25T00:00:00Z",
+        startup_mode="reset",
+    )
+    comparison = run_jforex_live.RuntimeContextComparison(
+        verdict=run_jforex_live.RestartVerdict.CLEAN_RESUMABLE,
+        reasons=[],
+    )
+    monkeypatch.setattr(
+        run_jforex_live,
+        "_reconcile_startup",
+        lambda cfg, paths: (current_metadata, None, comparison, drain_only_eligibility),
+    )
+    monkeypatch.setattr(run_jforex_live, "write_runtime_session_metadata", lambda *args, **kwargs: None)
+
+    captured_allow_new_entries: list[bool] = []
+
+    def fake_start_live_runner(cfg, *, allow_new_entries: bool = True) -> _FakeProc:
+        captured_allow_new_entries.append(allow_new_entries)
+        return _FakeProc(returncode=0, pid=99999)
+
+    monkeypatch.setattr(run_jforex_live.subprocess, "run", lambda *a, **kw: type("R", (), {"returncode": 0})())
+    monkeypatch.setattr(run_jforex_live, "_start_api", lambda cfg: _FakeProc(returncode=None, pid=20001))
+    monkeypatch.setattr(run_jforex_live, "_poll_health", lambda *args, **kwargs: None)
+    monkeypatch.setattr(run_jforex_live, "_start_live_runner", fake_start_live_runner)
+    monkeypatch.setattr(run_jforex_live, "_warmup_symbols", lambda *args, **kwargs: None)
+    monkeypatch.setattr(run_jforex_live, "_stop_process", lambda proc: None)
+    monkeypatch.setattr(run_jforex_live.time, "sleep", lambda _: None)
+    monkeypatch.setattr(run_jforex_live.signal, "signal", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_jforex_live.py",
+            "--symbols", "EURUSD",
+            "--report-dir", "data/analysis/backtest_reconcile",
+            "--startup-mode", "reset",
+        ],
+    )
+
+    with pytest.raises(SystemExit, match="1"):
+        run_jforex_live.main()
+
+    assert captured_allow_new_entries == [True], (
+        f"expected allow_new_entries=True for reset startup, got {captured_allow_new_entries}"
+    )
