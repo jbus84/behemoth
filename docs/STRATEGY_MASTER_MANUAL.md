@@ -109,7 +109,7 @@ This is not a universal profitability claim for all retail brokers or all market
 
 ## 4. Stage Architecture
 
-The production research process is a stage-gated chain. Stages 1-3 are research/fitting, Stages 4-8 are hardening, Stages 12-14 are certification surfaces, and Promotion is the approval decision taken only after those governed outputs are current for the target Deployment Period:
+The production research process is a stage-gated chain. Stages 1-3 are research/fitting, Stages 4-8 are hardening, Stages 9-11 are governance review and risk control, Stages 12-14 are certification surfaces, and Promotion is the approval decision taken only after those governed outputs are current for the target Deployment Period:
 1. Stage 01: data foundation + reliability checks.
 2. Stage 02: opportunity mining.
 3. Stage 03: Monthly WFO fitting, scoring, and thresholding.
@@ -118,7 +118,7 @@ The production research process is a stage-gated chain. Stages 1-3 are research/
 6. Stage 06: tick-exact verification + portability.
 7. Stage 07: logical/statistical audit.
 8. Stage 08: robustness and stress tests.
-9. Stage 09: governance lock + Promotion eligibility.
+9. Stage 09: governance lock + promotion-eligible status.
 10. Stage 10: known risks + backlog controls.
 11. Stage 11: execution Monte Carlo degradation analysis.
 12. Stage 12: historical API parity against reduced-core truth.
@@ -215,7 +215,7 @@ Interpretation note:
 
 ## 8. Current Acceptance Gates
 
-A symbol is GO-eligible for Promotion only when governed gates pass (representative):
+A symbol is promotion-eligible only when governed gates pass (representative). Final **GO** or **NO_GO** remains the symbol outcome recorded in the promoted lock set after Promotion is approved:
 - Reduced-core monthly LB95 and capacity gates.
 - Tick-exact consistency gates.
 - Robustness LB95 and month-stability gates.

@@ -20,8 +20,6 @@
 | **Stage 12** | The API parity certification surface that checks Python runtime behavior against expected predictions. | API smoke, pre-stage |
 | **Stage 13** | The Dukascopy/TestClient certification surface that validates governed runtime behavior before JForex runtime certification. | Dukascopy cert, TestClient cert |
 | **Stage 14** | The JForex runtime certification surface that validates runtime parity and operational readiness. | JForex cert, runtime cert |
-| **Process Verdict** | The final `PASS` or `FAIL` outcome of a certification surface or aggregated certification run. | Status, green/red |
-| **Symbol Decision** | The final `GO` or `NO_GO` deployment decision for an individual symbol. | Deployable flag, symbol status |
 
 ## Data construction
 
@@ -62,7 +60,6 @@
 
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
-| **Candidate Build** | The monthly artifact bundle produced before promotion, containing lock inputs and governed outputs for a deployment period. | Promotion bundle, history dir |
 | **Certification Evidence** | The reports, summaries, and machine-readable status files that justify a process verdict. | Logs, outputs |
 | **Governance Lock** | The symbol-specific manifest that binds allowed states, model artifacts, and runtime assumptions for deployment. | Config file, model file |
 
@@ -98,8 +95,6 @@
 | --- | --- | --- |
 | **Rolling Threshold** | The current deployment threshold derived from recent governed prediction behavior. | Dynamic cutoff, warm threshold |
 | **Threshold Drift** | A live deviation between expected rolling-threshold behavior and observed runtime behavior. | Threshold bug, flat threshold |
-| **Barrier Lifecycle** | The governed progression from predicted setup to order placement, management, and closure. | Trade lifecycle, OCO flow |
-| **Prediction Activity** | The stream of live inference outputs produced after warmup and before execution decisions. | Signals, model traffic |
 | **Execution Adapter** | The broker-facing layer that turns Python governance decisions into JForex actions. | Bridge, broker shim |
 
 ## Parity tolerance
@@ -113,7 +108,7 @@
 
 ## Relationships
 
-- A **Certification Run** produces **Evidence Root** contents and a process verdict of **PASS** or **FAIL**.
+- A **Certification Run** produces **Evidence Root** contents and a final verdict of **PASS** or **FAIL**.
 - **Monthly Recert** is the official **Certification Run** used to justify **Promotion** for a **Deployment Period**.
 - **Governance Runtime** is the offline counterpart to **Live Runtime** and contains staged research, certification, and promotion-gating workflows.
 - **Stage 12**, **Stage 13**, and **Stage 14** are certification surfaces within the overall staged governance process.
@@ -122,14 +117,13 @@
 - **Monthly WFO** performs **Model Fit** and **Threshold Fit** to score the next **Test Month** under strict causal ordering.
 - **Reduced-Core Rolling** converts scored candidates into a monthly **Shortlist** of **Allowed State** entries.
 - **Stop-Limit Realism**, **Tick-Exact Verification**, and the **Robustness Filter** harden the shortlist before governance promotion decisions are made.
-- A **Candidate Build** packages the governed outputs for a **Deployment Period** before certification and promotion.
 - A **Promotion** is valid only when a **PASS** run has matching **Provenance** and a matching **Promoted Lock Set**.
 - A **Promoted Lock Set** determines **Symbol Universe** membership, **Deployment Period**, and each symbol's **GO** or **NO_GO** state.
 - A symbol may be **NO_GO** without the **Certification Run** being a **FAIL**.
 - **Restart Eligibility** evaluates whether the **Live Runtime** may resume using existing **Trade Tracking State**.
 - `RESTART_ELIGIBLE_DRAIN_ONLY` is a valid restart outcome when **Reconciliation** succeeds for monitoring but not for new entries.
-- **Warmup** must complete before stable **Prediction Activity** and **Rolling Threshold** behavior can be trusted.
-- The **Execution Adapter** consumes governed decisions from the **Barrier Lifecycle** and applies them in broker space.
+- **Warmup** must complete before stable **Rolling Threshold** behavior can be trusted.
+- The **Execution Adapter** applies governed decisions in broker space.
 
 ## Parity principle
 
@@ -140,6 +134,15 @@
 - A valid certification process is one that would catch material drift between **Governance Runtime** behavior and **Live Runtime** behavior before **Promotion**.
 - **Material Drift** means the variance is large enough that certification compatibility is in doubt.
 - A **Parity Breach** means the live behavior is outside the governed contract and requires investigation or blocking action.
+
+## Supporting concepts
+
+These phrases appear in supporting docs and implementation discussion, but they are not part of the tight canonical vocabulary above:
+
+- "final verdict" for the overall `PASS`/`FAIL` outcome of a certification run
+- "promotion bundle" or "artifact bundle" for the monthly collection of governed outputs reviewed before Promotion
+- "trade lifecycle" or "OCO flow" for the sequence from setup through execution management
+- "model traffic" or "signals" for the stream of live predictions after Warmup
 
 ## Example dialogue
 
@@ -177,5 +180,5 @@
 - Legacy restart labels such as `clean_resumable`, `reconcilable`, and `incompatible` conflict with the approved operator-facing vocabulary. Prefer `RESTART_ELIGIBLE`, `RESTART_ELIGIBLE_DRAIN_ONLY`, and `RESTART_BLOCKED`.
 - "training" has been used too broadly for mining, fitting, selection, and certification. Use **Opportunity Mining** for Stage 2 hypothesis generation, **Model Fit** and **Threshold Fit** for Stage 3 fitting, **Reduced-Core Rolling** for Stage 5 state selection, and **Certification Run** for Stage 12-14 validation.
 - "candidate", "shortlist", and "allowed state" have been used interchangeably. Keep them ordered: **Candidate State** before selection, **Shortlist** after reduced-core selection, **Allowed State** once written into governance artifacts.
-- "bundle", "evidence", and "lock" have been blurred together. Use **Candidate Build** for the monthly artifact bundle, **Certification Evidence** for the reports proving the run, and **Governance Lock** or **Promoted Lock Set** for deployment manifests.
+- "bundle", "evidence", and "lock" have been blurred together. Prefer **Certification Evidence** for the reports proving a run, and **Governance Lock** or **Promoted Lock Set** for deployment manifests.
 - "flexibility" is too vague for live-vs-governance differences. Use **Runtime Variance** for acceptable in-contract differences, **Material Drift** for concerning divergence, and **Parity Breach** for out-of-contract behavior.
