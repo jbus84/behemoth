@@ -62,8 +62,8 @@ def test_build_artifacts_marks_non_deployable_symbols_as_nogo(tmp_path: Path) ->
     assert bool(row["historical_deployable"]) is False
     assert row["non_deployable_reason"] == "no_gate_states"
     assert bool(row["local_jforex_surrogate_pass"]) is False
-    assert bool(row["local_jforex_surrogate_nogo"]) is True
-    assert row["verdict"] == "nogo"
+    assert bool(row["local_jforex_surrogate_no_go"]) is True
+    assert row["verdict"] == "NO_GO"
     assert "STAGE12_API_PARITY_PASS" not in set(checks["check_id"])
 
 
@@ -129,11 +129,11 @@ def test_build_artifacts_treats_zero_lock_idle_windows_as_execution_pass(tmp_pat
     assert row["non_deployable_reason"] == ""
     assert bool(row["local_execution_parity_pass"]) is True
     assert bool(row["local_jforex_surrogate_pass"]) is True
-    assert bool(row["local_jforex_surrogate_nogo"]) is False
+    assert bool(row["local_jforex_surrogate_no_go"]) is False
     assert row["verdict"] == "green"
 
     execution_check = checks[checks["metric_name"] == "local_execution_parity_pass"].iloc[0]
-    assert execution_check["status"] == "pass"
+    assert execution_check["status"] == "PASS"
 
 
 def test_build_artifacts_falls_back_to_outcome_locked_count_for_zero_lock_windows(
@@ -199,7 +199,7 @@ def test_build_artifacts_falls_back_to_outcome_locked_count_for_zero_lock_window
     assert bool(row["local_execution_parity_pass"]) is True
     assert bool(row["local_jforex_surrogate_pass"]) is True
     execution_check = checks[checks["metric_name"] == "local_execution_parity_pass"].iloc[0]
-    assert execution_check["status"] == "pass"
+    assert execution_check["status"] == "PASS"
     assert execution_check["details"] == "zero-lock idle window accepted"
 
 
@@ -243,7 +243,7 @@ def test_build_artifacts_ignores_stage12_summary_input(tmp_path: Path) -> None:
     assert "historical_deployable" in written_summary.columns
     assert "non_deployable_reason" in written_summary.columns
     assert "local_jforex_surrogate_pass" in written_summary.columns
-    assert "local_jforex_surrogate_nogo" in written_summary.columns
+    assert "local_jforex_surrogate_no_go" in written_summary.columns
     assert "verdict" in written_summary.columns
 
 
