@@ -110,13 +110,13 @@ with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as f:
     tmp_path = Path(f.name)
 # delete=False because NamedTemporaryFile with delete=True closes+deletes before the caller can read it
 try:
-    row_count = _state.export_warmup_bars(sym, bar_ticks, tmp_path)
-    bars_df = pl.read_parquet(tmp_path)
+    _state.export_warmup_bars(sym, bar_ticks, tmp_path)
+    bars_df = pd.read_parquet(tmp_path)
 finally:
     tmp_path.unlink(missing_ok=True)
 ```
 
-This is also where `server.py`'s warmup path migrates from pandas to Polars. Only this one path changes format; nothing else in `server.py` changes.
+The downstream warmup code (`compute_feature_matrix_from_bars`, `.loc`, `.iloc`) uses pandas throughout. The caller reads with `pd.read_parquet` for this branch. A full Polars migration of the warmup path is a separate future step — the seam benefit (SQL gone from server.py) is achieved regardless of which library reads the file.
 
 ---
 
