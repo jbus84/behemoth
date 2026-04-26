@@ -171,7 +171,7 @@ def test_build_stage14_artifacts_fails_when_jforex_inputs_missing(tmp_path: Path
     assert bool(summary.loc[0, "stage13_dukascopy_testclient_pass"]) is True
     assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
     assert int(summary.loc[0, "missing_inputs"]) == 6
-    failed = checks[checks["status"] == "fail"]
+    failed = checks[checks["status"] == "FAIL"]
     assert len(failed) == 6
 
 
@@ -245,7 +245,7 @@ def test_stage14_emits_process_pass_and_symbol_nogo_for_certified_non_deployable
     assert summary.loc[0, "process_status"] == "PASS"
     assert summary.loc[0, "certification_outcome"] == "PASS"
     assert summary.loc[0, "go_decision"] == "NO_GO"
-    assert summary.loc[0, "verdict"] == "nogo"
+    assert summary.loc[0, "verdict"] == "NO_GO"
     surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"].iloc[0]
     assert "accepted non-deployable local surrogate no_go" in surrogate_check["details"].lower()
 
@@ -283,7 +283,7 @@ def test_stage14_emits_process_fail_when_inputs_are_mixed_from_wrong_bundle(
     assert summary["process_status"].eq("FAIL").all()
     assert checks["details"].str.contains("provenance", case=False).any()
     execution_check = checks[checks["metric_name"] == "jforex_execution_parity_pass"].iloc[0]
-    assert execution_check["status"] == "fail"
+    assert execution_check["status"] == "FAIL"
     assert execution_check["metric_value"] == 0
 
 
@@ -412,7 +412,7 @@ def test_stage14_emits_process_fail_when_glob_matches_target_and_non_target_bund
 
     assert summary["process_status"].eq("FAIL").all()
     execution_check = checks[checks["metric_name"] == "jforex_execution_parity_pass"].iloc[0]
-    assert execution_check["status"] == "fail"
+    assert execution_check["status"] == "FAIL"
     assert "provenance mismatch" in execution_check["details"].lower()
 
 
@@ -449,7 +449,7 @@ def test_stage14_rejects_fail_go_combination(tmp_path: Path) -> None:
     assert summary.loc[0, "go_decision"] == "NO_GO"
     assert checks["details"].str.contains("forbidden fail/go combination", case=False).any()
     stage13_check = checks[checks["metric_name"] == "stage13_dukascopy_testclient_pass"].iloc[0]
-    assert stage13_check["status"] == "fail"
+    assert stage13_check["status"] == "FAIL"
     assert stage13_check["metric_value"] == 0
 
 
@@ -492,7 +492,7 @@ def test_stage14_rejects_fail_go_from_any_matched_stage13_row(tmp_path: Path) ->
 
     assert summary["process_status"].eq("FAIL").all()
     stage13_check = checks[checks["metric_name"] == "stage13_dukascopy_testclient_pass"].iloc[0]
-    assert stage13_check["status"] == "fail"
+    assert stage13_check["status"] == "FAIL"
     assert "forbidden fail/go combination" in stage13_check["details"].lower()
     assert "shadow_bundle_202404" in stage13_check["source_path"]
 
@@ -612,14 +612,14 @@ def test_build_stage14_artifacts_uses_normalized_stage13_summary(tmp_path: Path)
     )
 
     stage13_check = checks[checks["metric_name"] == "stage13_dukascopy_testclient_pass"].iloc[0]
-    assert stage13_check["status"] == "pass"
+    assert stage13_check["status"] == "PASS"
     assert summary.loc[0, "stage13_certification_outcome"] == "PASS"
     assert summary.loc[0, "stage13_go_decision"] == "NO_GO"
     assert summary.loc[0, "certification_outcome"] == "PASS"
     assert summary.loc[0, "go_decision"] == "NO_GO"
     assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is True
     assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is True
-    assert summary.loc[0, "verdict"] == "nogo"
+    assert summary.loc[0, "verdict"] == "NO_GO"
 
 
 def test_build_stage14_artifacts_keeps_requested_symbol_scope(tmp_path: Path) -> None:
@@ -725,7 +725,7 @@ def test_build_stage14_artifacts_includes_outcome_parity_check(tmp_path: Path) -
     assert int(summary.loc[0, "missing_inputs"]) >= 1
     outcome_check = checks[checks["metric_name"] == "jforex_outcome_parity_pass"]
     assert len(outcome_check) == 1
-    assert outcome_check.iloc[0]["status"] == "fail"
+    assert outcome_check.iloc[0]["status"] == "FAIL"
 
 
 def test_build_stage14_artifacts_includes_local_surrogate_check(tmp_path: Path) -> None:
@@ -771,7 +771,7 @@ def test_build_stage14_artifacts_includes_local_surrogate_check(tmp_path: Path) 
     assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
     surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"]
     assert len(surrogate_check) == 1
-    assert surrogate_check.iloc[0]["status"] == "fail"
+    assert surrogate_check.iloc[0]["status"] == "FAIL"
 
 
 def test_build_stage14_artifacts_accepts_local_surrogate_nogo_for_non_deployable_symbol(
@@ -822,18 +822,18 @@ def test_build_stage14_artifacts_accepts_local_surrogate_nogo_for_non_deployable
 
     surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"]
     assert len(surrogate_check) == 1
-    assert surrogate_check.iloc[0]["status"] == "pass"
+    assert surrogate_check.iloc[0]["status"] == "PASS"
     assert "no_go" in surrogate_check.iloc[0]["details"].lower()
     assert bool(surrogate_check.iloc[0]["metric_value"]) is True
     stage13_check = checks[checks["metric_name"] == "stage13_dukascopy_testclient_pass"].iloc[0]
-    assert stage13_check["status"] == "pass"
+    assert stage13_check["status"] == "PASS"
     assert "PASS / NO_GO" in stage13_check["details"]
     assert summary.loc[0, "stage13_certification_outcome"] == "PASS"
     assert summary.loc[0, "stage13_go_decision"] == "NO_GO"
     assert summary.loc[0, "certification_outcome"] == "PASS"
     assert summary.loc[0, "go_decision"] == "NO_GO"
     assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is True
-    assert summary.loc[0, "verdict"] == "nogo"
+    assert summary.loc[0, "verdict"] == "NO_GO"
     report_text = (tmp_path / "out" / "report.md").read_text()
     snapshot_text = (tmp_path / "out" / "snapshot.md").read_text()
     assert "PASS / NO_GO is accepted as a valid prerequisite" in report_text
@@ -955,14 +955,14 @@ def test_build_stage14_artifacts_marks_non_deployable_symbol_as_nogo(tmp_path: P
     ):
         check = checks[checks["metric_name"] == metric_name]
         assert len(check) == 1
-        assert check.iloc[0]["status"] == "nogo"
+        assert check.iloc[0]["status"] == "NO_GO"
         assert "historical non-deployable" in str(check.iloc[0]["details"]).lower()
     surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"]
     assert len(surrogate_check) == 1
-    assert surrogate_check.iloc[0]["status"] == "pass"
+    assert surrogate_check.iloc[0]["status"] == "PASS"
     assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is True
     stage13_check = checks[checks["metric_name"] == "stage13_dukascopy_testclient_pass"].iloc[0]
-    assert stage13_check["status"] == "pass"
+    assert stage13_check["status"] == "PASS"
     assert "PASS / NO_GO" in stage13_check["details"]
     assert summary.loc[0, "stage13_certification_outcome"] == "PASS"
     assert summary.loc[0, "stage13_go_decision"] == "NO_GO"
@@ -1025,7 +1025,7 @@ def test_build_stage14_artifacts_rejects_contradictory_stage13_inputs(tmp_path: 
     )
 
     stage13_check = checks[checks["metric_name"] == "stage13_dukascopy_testclient_pass"].iloc[0]
-    assert stage13_check["status"] == "fail"
+    assert stage13_check["status"] == "FAIL"
     assert "contradictory Stage 13 inputs" in stage13_check["details"]
     assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
     assert summary.loc[0, "certification_outcome"] == "FAIL"
@@ -1061,7 +1061,7 @@ def test_build_stage14_artifacts_rejects_deployable_symbol_with_local_surrogate_
 
     surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"]
     assert len(surrogate_check) == 1
-    assert surrogate_check.iloc[0]["status"] == "fail"
+    assert surrogate_check.iloc[0]["status"] == "FAIL"
     assert "historical_deployable" in surrogate_check.iloc[0]["details"].lower()
     assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is False
     assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
@@ -1102,7 +1102,7 @@ def test_build_stage14_artifacts_green_with_all_seven_checks(tmp_path: Path) -> 
     assert "oco_lifecycle_pass" not in summary.columns
     lifecycle_check = checks[checks["metric_name"] == "execution_lifecycle_pass"]
     assert len(lifecycle_check) == 1
-    assert lifecycle_check.iloc[0]["status"] == "pass"
+    assert lifecycle_check.iloc[0]["status"] == "PASS"
     assert "oco_lifecycle_pass" not in set(checks["metric_name"])
     report_text = (tmp_path / "out" / "report.md").read_text()
     snapshot_text = (tmp_path / "out" / "snapshot.md").read_text()
@@ -1157,7 +1157,7 @@ def test_build_stage14_artifacts_fails_when_input_artifact_is_stale(tmp_path: Pa
     )
     assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
     stage13_check = checks[checks["metric_name"] == "stage13_dukascopy_testclient_pass"]
-    assert stage13_check.iloc[0]["status"] == "fail"
+    assert stage13_check.iloc[0]["status"] == "FAIL"
     assert "stale" in stage13_check.iloc[0]["details"].lower()
 
 
@@ -1193,7 +1193,7 @@ def test_build_stage14_artifacts_passes_when_all_fresh(tmp_path: Path) -> None:
     )
     # outcome+surrogate both missing → cert fails overall, but stage13 check must be "pass" (fresh)
     stage13_check = checks[checks["metric_name"] == "stage13_dukascopy_testclient_pass"]
-    assert stage13_check.iloc[0]["status"] == "pass"
+    assert stage13_check.iloc[0]["status"] == "PASS"
     assert stage13_check.iloc[0]["details"] == ""
 
 
@@ -1238,12 +1238,12 @@ def test_build_stage14_artifacts_accepts_non_deployable_local_surrogate_nogo(
     )
 
     surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"].iloc[0]
-    assert surrogate_check["status"] == "pass"
+    assert surrogate_check["status"] == "PASS"
     assert "non-deployable" in surrogate_check["details"].lower()
     assert "historical_deployable=false" in surrogate_check["details"].lower()
     assert "no_gate_states" in surrogate_check["details"]
     assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is True
-    assert summary.loc[0, "verdict"] == "nogo"
+    assert summary.loc[0, "verdict"] == "NO_GO"
 
 
 def test_build_stage14_artifacts_rejects_deployable_local_surrogate_nogo(tmp_path: Path) -> None:
@@ -1280,7 +1280,7 @@ def test_build_stage14_artifacts_rejects_deployable_local_surrogate_nogo(tmp_pat
     assert bool(summary.loc[0, "local_jforex_surrogate_pass"]) is False
     assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
     surrogate_check = checks[checks["metric_name"] == "local_jforex_surrogate_pass"].iloc[0]
-    assert surrogate_check["status"] == "fail"
+    assert surrogate_check["status"] == "FAIL"
     assert "historical_deployable" in surrogate_check["details"].lower()
 
 
@@ -1337,7 +1337,7 @@ def test_build_stage14_artifacts_rejects_legacy_oco_lifecycle_only_inputs(tmp_pa
     assert int(summary.loc[0, "missing_inputs"]) >= 1
     execution_lifecycle_checks = checks[checks["metric_name"] == "execution_lifecycle_pass"]
     assert len(execution_lifecycle_checks) == 1
-    assert execution_lifecycle_checks.iloc[0]["status"] == "fail"
+    assert execution_lifecycle_checks.iloc[0]["status"] == "FAIL"
 
 
 def test_build_stage14_artifacts_rejects_lifecycle_pass_only_inputs(tmp_path: Path) -> None:
@@ -1388,7 +1388,7 @@ def test_build_stage14_artifacts_rejects_lifecycle_pass_only_inputs(tmp_path: Pa
 
     lifecycle_check = checks[checks["metric_name"] == "execution_lifecycle_pass"]
     assert len(lifecycle_check) == 1
-    assert lifecycle_check.iloc[0]["status"] == "fail"
+    assert lifecycle_check.iloc[0]["status"] == "FAIL"
     assert lifecycle_check.iloc[0]["source_path"].endswith("EURUSD_jforex_execution_lifecycle.csv")
     assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
     assert int(summary.loc[0, "missing_inputs"]) >= 1

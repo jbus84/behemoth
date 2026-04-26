@@ -452,14 +452,14 @@ def build_stage14_artifacts(
             if value is None or pd.isna(value):
                 missing_inputs += 1
                 row[src.check_id] = False
-                status = "fail"
+                status = "FAIL"
                 details = details or "missing input artifact"
             else:
                 row[src.check_id] = bool(value)
-                status = "pass" if bool(value) else "fail"
+                status = "PASS" if bool(value) else "FAIL"
             if provenance_details or forbidden_fail_go:
                 row[src.check_id] = False
-                status = "fail"
+                status = "FAIL"
             if (
                 value is not None
                 and not pd.isna(value)
@@ -475,7 +475,7 @@ def build_stage14_artifacts(
                         age_days = (datetime.now(timezone.utc) - eval_ts).days
                         if age_days > max_artifact_age_days:
                             value = False
-                            status = "fail"
+                            status = "FAIL"
                             details = (
                                 f"stale: artifact is {age_days}d old (max {max_artifact_age_days}d)"
                             )
@@ -493,9 +493,9 @@ def build_stage14_artifacts(
                 }
                 and not provenance_details
                 and not forbidden_fail_go
-                and status != "pass"
+                and status != "PASS"
             ):
-                status = "nogo"
+                status = "NO_GO"
                 details = _non_deployable_nogo_details(
                     {"non_deployable_reason": non_deployable_reason}
                 )
@@ -530,7 +530,7 @@ def build_stage14_artifacts(
                     "status": thr_status,
                     "severity": "critical",
                     "metric_name": "threshold_parity_pass",
-                    "metric_value": int(thr_status == "pass"),
+                    "metric_value": int(thr_status == "PASS"),
                     "expected": 1,
                     "details": thr_details,
                     "source_path": str(models_dir),
@@ -550,7 +550,7 @@ def build_stage14_artifacts(
         if process_status == "FAIL":
             row["verdict"] = "red"
         elif row["stage14_jforex_cert_pass"] and historical_deployable is False:
-            row["verdict"] = "nogo"
+            row["verdict"] = "NO_GO"
         else:
             row["verdict"] = "green" if row["stage14_jforex_cert_pass"] else "red"
         row["process_status"] = process_status
