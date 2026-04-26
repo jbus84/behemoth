@@ -93,3 +93,33 @@ def test_get_latest_bar_id_is_max_across_all_bar_ticks(sm):
     result = sm.get_latest_bar_id("EURUSD")
     # MAX(row_id) across all bar_ticks = 2 (from 100-tick bars), not 0 (from 200-tick)
     assert result == 2
+
+
+def _insert_audit_row(sm: StateManager, symbol: str, run_id: str) -> None:
+    """Insert a minimal audit_logs row via the public batch API."""
+    ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    sm.log_audit_event_batch([
+        (ts, symbol.upper(), "cand-001", 0.8, 0.5, "{}", "2026-01", run_id)
+    ])
+
+
+def test_count_audit_logs_returns_correct_count(sm):
+    _insert_audit_row(sm, "EURUSD", "run-a")
+    _insert_audit_row(sm, "EURUSD", "run-a")
+    _insert_audit_row(sm, "EURUSD", "run-b")
+    assert sm.count_audit_logs("EURUSD", "run-a") == 2
+    assert sm.count_audit_logs("EURUSD", "run-b") == 1
+    assert sm.count_audit_logs("EURUSD", "run-c") == 0
+
+
+def test_clear_audit_logs_by_run_id_removes_matching_rows(sm):
+    _insert_audit_row(sm, "EURUSD", "threshold_seed")
+    _insert_audit_row(sm, "EURUSD", "threshold_seed")
+    _insert_audit_row(sm, "EURUSD", "other_run")
+    sm.clear_audit_logs_by_run_id("threshold_seed")
+    assert sm.count_audit_logs("EURUSD", "threshold_seed") == 0
+    assert sm.count_audit_logs("EURUSD", "other_run") == 1
+
+
+def test_clear_audit_logs_by_run_id_no_op_when_nothing_matches(sm):
+    sm.clear_audit_logs_by_run_id("nonexistent")  # must not raise

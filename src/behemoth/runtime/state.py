@@ -1333,6 +1333,18 @@ class StateManager:
             )
         return float(row[0]), close_ts
 
+    def count_audit_logs(self, symbol: str, run_id: str) -> int:
+        """Return count of audit_logs rows matching (symbol, run_id)."""
+        row = self._con.execute(
+            "SELECT COUNT(*) FROM audit_logs WHERE symbol = ? AND run_id = ?",
+            [symbol.upper(), run_id],
+        ).fetchone()
+        return int(row[0]) if row else 0
+
+    def clear_audit_logs_by_run_id(self, run_id: str) -> None:
+        """Delete all audit_logs rows matching run_id (all symbols)."""
+        self._con.execute("DELETE FROM audit_logs WHERE run_id = ?", [run_id])
+
     def close(self) -> None:
         """Close the DuckDB connection."""
         self._con.close()
