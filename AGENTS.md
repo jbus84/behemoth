@@ -2,6 +2,18 @@
 
 This file is the fastest path to becoming productive in this repo.
 
+## 0) Ubiquitous Language
+
+This project has a canonical vocabulary defined in `UBIQUITOUS_LANGUAGE.md`.
+
+Before using any domain term, verdict value, column name, or operator-facing string — read `UBIQUITOUS_LANGUAGE.md`. Use only the canonical terms defined there. Do not invent synonyms or use the aliases listed in the "Aliases to avoid" column.
+
+Key deployment decision terms:
+- `PASS` — process completed correctly and produced valid evidence
+- `FAIL` — process or evidence is invalid and cannot justify promotion
+- `GO` — symbol is eligible for deployment
+- `NO_GO` — symbol intentionally not deployed; process did not fail
+
 ## 1) What Is Actually Active
 
 The active system is the tick-based OCO stop-limit research/governance pipeline documented in:
