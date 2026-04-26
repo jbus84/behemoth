@@ -36,7 +36,6 @@ from src.behemoth.live_restart.reconciliation import (
     LocalRuntimeStateSummary,
     ReconciliationReport,
     RestartEligibilityResult,
-    RestartVerdict,
     RuntimeContextComparison,
     RuntimeFileSnapshot,
     RuntimeSessionMetadata,
@@ -52,6 +51,7 @@ from src.behemoth.live_restart.reconciliation import (
     write_reconciliation_report,
     write_runtime_session_metadata,
 )
+from src.behemoth.ops.verdicts import RestartEligibility
 
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 DEFAULT_MODELS_DIR = "models/oco"
@@ -704,7 +704,7 @@ def main() -> None:
             flush=True,
         )
 
-    if comparison.verdict is RestartVerdict.RECONCILABLE:
+    if comparison.verdict is RestartEligibility.RESTART_ELIGIBLE_DRAIN_ONLY:
         print(
             "[jforex-live] startup reconciliation is reconcilable; continuing with startup",
             flush=True,
