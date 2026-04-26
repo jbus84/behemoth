@@ -56,7 +56,7 @@ Stage 2 Opportunity Mining mines high-count, gross-positive OCO opportunity fami
 
 ## Validation Gates
 - Informational at Stage 2.
-- Stage 2 itself does not issue `PASS`/`FAIL` or `GO`/`NO_GO` decisions; hard certification outcomes resolve later via Stage 3, Stage 7, and Stage 8.
+- Stage 2 itself does not issue `PASS`/`FAIL` or `GO`/`NO_GO` decisions; downstream hard gates appear later in the governance process, while formal certification is reserved for Stages 12-14.
 - Governance contract gate: registry checks must have zero high/critical failures (`C33` at docs-contract level).
 
 ## Canonical Analysis Reports

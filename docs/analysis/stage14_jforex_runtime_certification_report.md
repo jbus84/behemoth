@@ -69,8 +69,8 @@
 ## Interpretation
 - Stage 14 is `PASS` only when the Stage 13 prerequisite is satisfied and all JForex-specific certification checks pass.
 - A Stage 13 `process_status=PASS` with symbol-level `GO` or `NO_GO` is accepted as a valid prerequisite and does not fail Stage 14 by itself.
-- Missing JForex tester/demo artifacts are treated as certification `FAIL` states until the adapter path is exercised.
-- jforex_outcome_parity_pass: reconciles JForex runtime signal counts against locked Python predictions for semantic parity (signal_coverage_ratio must be 1.0, zero execution failures, trades present).
+- Missing JForex tester/live runtime artifacts are treated as certification `FAIL` states until the adapter path is exercised.
+- jforex_outcome_parity_pass: reconciles JForex live runtime signal counts against locked governance-side predictions (signal_coverage_ratio must be 1.0, zero execution failures, trades present).
 - execution_lifecycle_pass: validates the JForex execution lifecycle summary emitted by the adapter runtime.
 - local_jforex_surrogate_pass: the shared Java strategy core must pass the parquet-driven local surrogate harness; an explicit NO_GO is accepted only for historically non-deployable symbols.
 - Treat acceptable in-contract runtime differences as Runtime Variance. In interpretation, out-of-contract signal differences are a Parity Breach and lifecycle/outcome differences are Material Drift.

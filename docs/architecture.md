@@ -8,9 +8,9 @@ This repository currently runs as a governance-first OCO pipeline with a paired 
 flowchart TD
   A[Raw tick data] --> B[Stage 1: data foundation]
   B --> C[Stage 2: opportunity mining]
-  C --> D[Stage 3: monthly WFO]
+  C --> D[Stage 3: Monthly WFO]
   D --> E[Stage 4: stop-limit realism]
-  E --> F[Stage 5: reduced core]
+  E --> F[Stage 5: Reduced-Core Rolling]
   F --> G[Stage 6: tick-exact checks]
   G --> H[Stage 7: logical/statistical audit]
   H --> I[Stage 8: robustness and stress]
