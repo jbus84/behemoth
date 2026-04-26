@@ -1300,6 +1300,39 @@ class StateManager:
             row = self._con.execute("SELECT COUNT(*) FROM raw_ticks").fetchone()
         return int(row[0]) if row and row[0] is not None else 0
 
+    def get_open_trade_entry_price(self, reservation_id: str) -> float | None:
+        """Return entry_price of the OPEN trade for the given reservation, or None."""
+        row = self._con.execute(
+            "SELECT entry_price FROM trades WHERE reservation_id = ? AND status = 'OPEN'",
+            [reservation_id],
+        ).fetchone()
+        return float(row[0]) if row else None
+
+    def get_latest_bar_id(self, symbol: str) -> int:
+        """Return MAX(row_id) for tick_bars of this symbol, or 0 if no rows exist."""
+        row = self._con.execute(
+            "SELECT MAX(row_id) FROM tick_bars WHERE symbol = ?",
+            [symbol.upper()],
+        ).fetchone()
+        return int(row[0]) if row and row[0] is not None else 0
+
+    def get_latest_tick_snapshot(self, symbol: str) -> tuple[float, datetime] | None:
+        """Return (close_bid, close_ts) for the most recent bar across all bar_ticks, or None."""
+        row = self._con.execute(
+            "SELECT close_bid, close_ts FROM tick_bars WHERE symbol = ? ORDER BY close_ts DESC, row_id DESC LIMIT 1",
+            [symbol.upper()],
+        ).fetchone()
+        if not row or row[0] is None:
+            return None
+        close_ts = row[1]
+        if isinstance(close_ts, datetime):
+            close_ts = (
+                close_ts.replace(tzinfo=timezone.utc)
+                if close_ts.tzinfo is None
+                else close_ts.astimezone(timezone.utc)
+            )
+        return float(row[0]), close_ts
+
     def close(self) -> None:
         """Close the DuckDB connection."""
         self._con.close()
