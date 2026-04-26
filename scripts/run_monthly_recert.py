@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Run the definitive monthly Dukascopy-candidate recertification gate.
+"""Run the definitive Monthly Recert gate for the Dukascopy candidate runtime.
 
 Auto-derives the model month (last complete calendar month) and test window,
 runs the definitive matrix and parity checks, followed by
 `make full-stage14-cert`, then reads the stage14 certification checks CSV and
-prints a per-symbol go/no-go summary.
+prints a per-symbol GO/NO_GO summary.
 
 Prerequisites:
   1. make retrain-all                    — retrain models to models/oco/
@@ -248,11 +248,15 @@ def _stage14_make_vars(run_report_dir: str, eval_start: str, eval_end: str) -> d
 def _validate_month_bundle(bundle_dir: Path) -> None:
     index_path = bundle_dir.parent / "index.csv"
     if not index_path.is_file():
-        raise SystemExit(f"[monthly-recert] incomplete month build bundle: missing {index_path}")
+        raise SystemExit(
+            f"[monthly-recert] incomplete month build bundle: missing {index_path}"
+        )
 
     model_dir = _bundle_models_dir(bundle_dir)
     if not model_dir.is_dir():
-        raise SystemExit(f"[monthly-recert] incomplete month build bundle: missing {model_dir}")
+        raise SystemExit(
+            f"[monthly-recert] incomplete month build bundle: missing {model_dir}"
+        )
 
     expected_rows = {(symbol, bundle_dir.name) for symbol in DEFAULT_SYMBOLS}
     seen_rows: set[tuple[str, str]] = set()
@@ -273,7 +277,9 @@ def _validate_month_bundle(bundle_dir: Path) -> None:
     for symbol in DEFAULT_SYMBOLS:
         lock_path = bundle_dir / f"{symbol.lower()}_oco_live_lock.json"
         if not lock_path.is_file():
-            raise SystemExit(f"[monthly-recert] incomplete month build bundle: missing {lock_path}")
+            raise SystemExit(
+                f"[monthly-recert] incomplete month build bundle: missing {lock_path}"
+            )
         manifest = json.loads(lock_path.read_text(encoding="utf-8"))
         artifacts = manifest.get("artifacts", {})
         cbm_path = Path(str(artifacts.get("model_cbm_path", "")).strip())
@@ -350,8 +356,8 @@ def _print_summary(
     failures: dict[str, list[dict[str, str]]],
     acceptable_nogos: dict[str, list[dict[str, str]]] | None = None,
 ) -> bool:
-    """Print per-symbol summary. Returns True if all critical checks pass."""
-    print(f"\n[monthly-recert] {model_month} results")
+    """Print the Monthly Recert symbol summary. Returns True if all critical checks pass."""
+    print(f"\n[monthly-recert] model month {model_month} results")
     acceptable_nogos = acceptable_nogos or {}
     all_pass = True
     for symbol in DEFAULT_SYMBOLS:
@@ -369,16 +375,17 @@ def _print_summary(
         else:
             print(f"  {symbol:<8}PASS")
     if all_pass:
-        print("go/no-go: GO — run make promote-live to archive locks")
+        print("go/no-go: GO - run make promote-live to archive locks")
     else:
-        print(f"go/no-go: NO-GO — {len(failures)} symbol(s) failed")
+        print(f"go/no-go: NO-GO - {len(failures)} symbol(s) failed")
     return all_pass
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--model-month", help="Override model month YYYY-MM (default: last complete month)"
+        "--model-month",
+        help="Override model month YYYY-MM (default: last complete month)",
     )
     parser.add_argument("--start-ts", help="Override matrix start timestamp")
     parser.add_argument("--end-ts", help="Override matrix end timestamp")

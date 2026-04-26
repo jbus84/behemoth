@@ -15,7 +15,7 @@ Certify that canonical Dukascopy parquet ticks reproduce Stage 12-approved Pytho
   - `dukascopy_runtime_artifacts_complete_pass`
   - `dukascopy_testclient_signal_parity_pass`
   - `dukascopy_testclient_execution_parity_pass`
-- `stage13_dukascopy_testclient_pass` is true only when all four booleans are true for the symbol.
+- `stage13_dukascopy_testclient_pass` resolves to `PASS` only when all four booleans are true for the symbol.
 - The Stage 12 prerequisite is an explicit dependency, not a substitute for Dukascopy/TestClient evidence.
 
 ## Causality / Leakage Controls
@@ -26,18 +26,18 @@ Certify that canonical Dukascopy parquet ticks reproduce Stage 12-approved Pytho
 ## Failure Modes
 - `stage12_api_parity_pass=false` means the Python baseline prerequisite is not trusted for that symbol.
 - `dukascopy_runtime_artifacts_complete_pass=false` means the current Dukascopy replay runtime-events artifact is missing or empty; the file still uses the legacy `*_jforex_runtime_events.csv` name on disk.
-- `dukascopy_testclient_signal_parity_pass=false` means the Dukascopy replay did not reproduce governed signal timing or selection.
-- `dukascopy_testclient_execution_parity_pass=false` means the Python runtime diverged after the replayed signal state matched.
+- `dukascopy_testclient_signal_parity_pass=false` means the Dukascopy replay did not reach semantic parity for governed signal timing or selection.
+- `dukascopy_testclient_execution_parity_pass=false` means the Python runtime showed Material Drift after the replayed signal state reached semantic parity.
 - Local JForex surrogate artifacts are not a Stage 13 failure mode. They are not part of the hard-gate decision.
 
 ## Interpretation Guide
 - Stage 13 is the Dukascopy-source certification gate for the Python decision layer.
 - Read the four checks together:
-  - Stage 12 red invalidates the prerequisite baseline.
-  - Runtime-artifacts red means the certification bundle is incomplete.
-  - Signal-parity red means the Dukascopy replay did not reproduce the governed Python selection behavior.
-  - Execution-parity red means the Python-managed lifecycle diverged under Dukascopy replay.
-- Local JForex surrogate files can help explain a Java-side prerequisite problem, but they do not flip Stage 13 green or red.
+  - Stage 12 FAIL invalidates the prerequisite baseline.
+  - Runtime-artifacts FAIL means the certification bundle is incomplete.
+  - Signal-parity FAIL means the Dukascopy replay did not reproduce the governed Python selection behavior and should be treated as a Parity Breach.
+  - Execution-parity FAIL means the Python-managed lifecycle showed Material Drift under Dukascopy replay.
+- Local JForex surrogate files can help explain a Java-side prerequisite problem, but they do not flip Stage 13 PASS or FAIL.
 
 ## Validation Gates
 - `stage12_api_parity_pass=true`
@@ -45,14 +45,14 @@ Certify that canonical Dukascopy parquet ticks reproduce Stage 12-approved Pytho
 - `dukascopy_testclient_signal_parity_pass=true`
 - `dukascopy_testclient_execution_parity_pass=true`
 - `stage13_dukascopy_testclient_pass=true`
-- Stage 13 passes only when all four hard gates are true for the symbol.
+- Stage 13 resolves to `PASS` only when all four hard gates are true for the symbol.
 
 ## Operator Decision Tree
-- If Stage 12 is red, stop and repair the Python baseline before trusting any Dukascopy replay.
-- If runtime artifacts are red, regenerate or restore the missing Dukascopy evidence bundle.
-- If signal parity is red, inspect replay timing, governed selection, and the Dukascopy/TestClient signal trace.
-- If execution parity is red, inspect the lifecycle divergence after the signal trace matched.
-- If a local JForex surrogate artifact is missing or red, treat that as a separate diagnostic issue outside the Stage 13 pass/fail decision.
+- If Stage 12 is FAIL, stop and repair the Python baseline before trusting any Dukascopy replay.
+- If runtime artifacts are FAIL, regenerate or restore the missing Dukascopy evidence bundle.
+- If signal parity is FAIL, inspect replay timing, governed selection, and the Dukascopy/TestClient signal trace for a Parity Breach.
+- If execution parity is FAIL, inspect the lifecycle Material Drift after the signal trace reached semantic parity.
+- If a local JForex surrogate artifact is missing or red, treat that as a separate diagnostic issue outside the Stage 13 `PASS`/`FAIL` decision.
 
 ## How To Run
 - Run the unified Stage 12 -> Stage 13 certification target from the repo root:
@@ -87,13 +87,13 @@ uv run python scripts/validate_stage13_dukascopy_testclient.py \
 
 ## How To Interpret Outputs
 - Review the summary CSV for the per-symbol `stage13_dukascopy_testclient_pass` verdict and the four gate columns.
-- Review the checks CSV for the exact missing artifact or mismatch that drove each red check.
-- Review the report and snapshot to confirm the textual contract matches the validator output.
+- Review the checks CSV for the exact missing artifact or Parity Breach that drove each FAIL check.
+- Review the report and snapshot to confirm the textual contract remains in semantic parity with the validator output.
 
 ## What To Do If It Fails
 - Do not infer Stage 13 health from local JForex surrogate artifacts.
 - Fix the failing prerequisite or evidence family, rerun `make stage12-stage13-cert-artifacts`, and inspect the regenerated Stage 13 outputs.
-- Use the checks CSV to localize whether the issue is prerequisite, runtime-artifact completeness, signal parity, or execution parity.
+- Use the checks CSV to localize whether the issue is prerequisite `FAIL`, runtime-artifact completeness `FAIL`, a signal-side Parity Breach, or lifecycle Material Drift.
 
 ## Reproduction Commands
 - Same as `How To Run`. The authoritative entrypoint is `make stage12-stage13-cert-artifacts`, which regenerates Stage 12 prerequisites first, then Stage 13 replay artifacts, then the repaired Stage 13 summary, checks, report, and snapshot.
@@ -112,14 +112,14 @@ uv run python scripts/validate_stage13_dukascopy_testclient.py \
 - `dukascopy_testclient_signal_parity_pass=true`
 - `dukascopy_testclient_execution_parity_pass=true`
 
-Stage 13 passes only when all four are green.
+Stage 13 resolves to `PASS` only when all four hard gates are true.
 
 ## Failure Interpretation
-- If Stage 12 is red, do not trust any Dukascopy replay result.
-- If runtime artifacts are red, the replay bundle is incomplete and Stage 13 is not certifiable.
-- If Dukascopy TestClient signal parity is red, broker-source replay is not reproducing governed selection timing.
-- If Dukascopy TestClient execution parity is red, the Python runtime diverges after nominally matched signals.
-- If a local JForex surrogate artifact is red, treat that as a separate Java-side diagnostic and do not use it to decide Stage 13.
+- If Stage 12 is FAIL, do not trust any Dukascopy replay result.
+- If runtime artifacts are FAIL, the replay bundle is incomplete and Stage 13 is not certifiable.
+- If Dukascopy TestClient signal parity is FAIL, broker-source replay is not reproducing governed selection timing and should be treated as a Parity Breach.
+- If Dukascopy TestClient execution parity is FAIL, the Python runtime shows Material Drift after nominal signal semantic parity.
+- If a local JForex surrogate artifact is non-green, treat that as a separate Java-side diagnostic and do not use it to decide Stage 13.
 
 ## Canonical Commands
 ```bash

@@ -6,11 +6,20 @@
 
 ## Orientation
 
-This manual is the canonical synthesis for the active OCO research/governance system. It defines the system, the stage architecture, and the interpretation rules that apply across the active pipeline.
+This manual is the canonical synthesis for the active OCO research/governance system. The active system is a paired **Governance Runtime** and **Live Runtime**: the Governance Runtime performs research, hardening, certification, and promotion-gating workflows, while the Live Runtime trades only from the promoted lock/artifact set. This manual defines that paired system, the stage architecture, and the interpretation rules that apply across the active pipeline.
 
-Generated stage snapshots, governed analysis outputs, and contract checks are authoritative for current status, deployment readiness, and any conflict with this prose. When you need to decide whether the system is ready to move, start with the generated snapshots and the readiness reports listed below.
+Generated stage snapshots, governed analysis outputs, and contract checks are authoritative for current status, promotion readiness, and any conflict with this prose. When you need to decide whether the system is ready to move into a new Deployment Period, start with the generated snapshots and the readiness reports listed below.
 
-For deployment-readiness review, start here:
+Use the glossary in `UBIQUITOUS_LANGUAGE.md` as the canonical vocabulary source. In this manual:
+- **Promotion** means approval of the certified artifact set and lock set for live use; it is not the same thing as starting the Live Runtime.
+- **Monthly Recert** means the official promotion-gating certification run for a Deployment Period.
+- **Deployment Period** means the governed period the promoted artifacts apply to.
+- **Research/Fitting** covers Opportunity Mining and Monthly WFO model/threshold fitting.
+- **Hardening** covers Reduced-Core Rolling, Stop-Limit Realism, Tick-Exact Verification, and robustness filtering.
+- **Certification** covers the Stage 12-14 parity/runtime validation surfaces.
+- The parity objective is **semantic parity**, not exact trade-by-trade matching.
+
+For promotion-readiness review, start here:
 - [`docs/strategy_bible/generated/pipeline_snapshot.md`](./strategy_bible/generated/pipeline_snapshot.md)
 - [`docs/analysis/operator_action_report.md`](./analysis/operator_action_report.md)
 - [`docs/analysis/oco_alert_remediation_report.md`](./analysis/oco_alert_remediation_report.md)
@@ -22,8 +31,8 @@ For deployment-readiness review, start here:
 - Build tick-velocity bars from raw ticks.
 - Mine OCO opportunities parameterized by `barrier_pips` and `horizon`.
 - Evaluate first-touch behavior and realized gross pip outcomes.
-- Use monthly walk-forward filtering and rolling probability thresholding to keep only stable opportunities.
-- Enforce stop-limit execution realism (tick overshoot caps, no-touch handling) before promotion.
+- Use Monthly WFO fitting, scoring, and thresholding to keep only stable opportunities.
+- Enforce stop-limit execution realism (tick overshoot caps, no-touch handling) before promotion decisions.
 
 ### 1.2 Active Universe
 - `EURUSD`, `GBPUSD`, `USDJPY`, `USDCHF`, `AUDUSD`, `USDCAD`
@@ -42,7 +51,7 @@ For deployment-readiness review, start here:
 - Evidence: `docs/analysis/oco_edge_clarity_report.md`, `docs/strategy_bible/generated/pipeline_snapshot.md`.
 
 ### 2.2 Temporal Robustness (Why this is not static-fit)
-- Time ordering is enforced by monthly walk-forward evaluation and rolling-history threshold policy; decisions at time `t` use only data available by `t`.
+- Time ordering is enforced by Monthly WFO evaluation and rolling-history threshold policy; decisions at time `t` use only data available by `t`.
 - Threshold drift diagnostics remain in controlled ranges under current policy families:
   - `W13` fragility is moderate (about `0.42-0.60`),
   - `W14` brier drift is low (about `0.0026-0.0076`),
@@ -60,7 +69,7 @@ This system is suitable for retail FX traders using ECN-style execution only whe
 - Broker and platform support stop-limit semantics aligned with Stage-4 modeling (trigger + bounded fill logic).
 - Monthly realized `fill_rate` remains at or above `0.98`.
 - Monthly realized `overshoot_p95_pips` remains at or below `0.6` pips (symbol-specific), and no-touch remains near policy limits.
-- Effective spread/fee/slippage regime remains within monitored drift controls; red execution-drift breaches block promotion.
+- Effective spread/fee/slippage regime remains within monitored drift controls; red execution-drift breaches block Promotion for the affected Deployment Period.
 - End-to-end latency is low enough that observed overshoot/no-touch metrics stay within the same control bands.
 
 This is not a universal profitability claim for all retail brokers or all market regimes. It is a conditional operational claim tied to current governed evidence.
@@ -68,10 +77,10 @@ This is not a universal profitability claim for all retail brokers or all market
 ### 2.4 Invalidation and Action Triggers
 | Condition | Detection metric/artifact | Required action |
 | --- | --- | --- |
-| Execution tail degrades | `E_DRIFT_OVERSHOOT_P95` in `docs/analysis/oco_execution_drift_report.md` | Recalibrate cap/session policy and halt symbol promotion until green/acceptable amber posture |
+| Execution tail degrades | `E_DRIFT_OVERSHOOT_P95` in `docs/analysis/oco_execution_drift_report.md` | Recalibrate cap/session policy and halt symbol Promotion for the affected Deployment Period until green/acceptable amber posture |
 | Selection fragility increases | `TS01_W13_THRESHOLD_FRAGILITY` in `docs/analysis/oco_threshold_sensitivity_report.md` | Re-run threshold policy sweep and refresh active policy lock |
-| Governance lock drift | `G03_lock_drift_flags` in Stage-9 outputs / edge clarity report | Block deploy path, rebuild lock from latest valid artifacts |
-| Robustness deterioration | Stage-8/11 LB95 stress metrics in `docs/analysis/oco_edge_clarity_report.md` | Freeze promotion and re-evaluate assumptions/cost model before resuming |
+| Governance lock drift | `G03_lock_drift_flags` in Stage-9 outputs / edge clarity report | Block Promotion, rebuild lock from latest valid artifacts |
+| Robustness deterioration | Stage-8/11 LB95 stress metrics in `docs/analysis/oco_edge_clarity_report.md` | Freeze Promotion for the affected Deployment Period and re-evaluate assumptions/cost model before resuming |
 
 ### 2.5 How to Interpret This Section
 - Treat this section as a synthesis layer, not as standalone proof.
@@ -100,20 +109,20 @@ This is not a universal profitability claim for all retail brokers or all market
 
 ## 4. Stage Architecture
 
-The production research process is a stage-gated chain:
+The production research process is a stage-gated chain. Stages 1-3 are research/fitting, Stages 4-8 are hardening, Stages 9-11 are governance review and risk control, Stages 12-14 are certification surfaces, and Promotion is the approval decision taken only after those governed outputs are current for the target Deployment Period:
 1. Stage 01: data foundation + reliability checks.
 2. Stage 02: opportunity mining.
-3. Stage 03: monthly walk-forward selection + thresholding.
+3. Stage 03: Monthly WFO fitting, scoring, and thresholding.
 4. Stage 04: stop-limit execution realism and cap policy.
-5. Stage 05: reduced-core selection.
+5. Stage 05: Reduced-Core Rolling selection.
 6. Stage 06: tick-exact verification + portability.
 7. Stage 07: logical/statistical audit.
 8. Stage 08: robustness and stress tests.
-9. Stage 09: governance lock + deploy eligibility.
+9. Stage 09: governance lock + promotion-eligible status.
 10. Stage 10: known risks + backlog controls.
 11. Stage 11: execution Monte Carlo degradation analysis.
 12. Stage 12: historical API parity against reduced-core truth.
-12.5. Pre-Stage local JForex surrogate parity, using canonical Dukascopy parquet replay against the shared Java strategy core before real broker-runtime certification.
+12.5. Pre-Stage local JForex surrogate semantic parity, using canonical Dukascopy parquet replay against the shared Java strategy core before real broker-runtime certification.
 13. Stage 13: Dukascopy TestClient parity, using canonical Dukascopy parquet replay as the broker-source diagnostic gate on the Python side.
 14. Stage 14: JForex runtime certification for tester/demo execution, with `ITesterClient` as the official broker-runtime certification harness.
 
@@ -128,7 +137,7 @@ Generated status is published in `docs/strategy_bible/generated/pipeline_snapsho
 
 ### 5.2 Selection Discipline
 - Candidate mining is hypothesis generation only.
-- Promotion relies on downstream WFO, execution realism, and robustness gates.
+- Promotion decisions rely on downstream Monthly WFO, execution realism, hardening, and robustness gates.
 - Contract checks reject stale, missing, or inconsistent artifacts.
 
 ### 5.3 Governance Controls
@@ -158,7 +167,7 @@ Generated status is published in `docs/strategy_bible/generated/pipeline_snapsho
 - Train/test rule: strict rolling month order (`rolling_train_months` train -> next month test).
 - Model validity policy: **one-month validity** (predictions are valid only for the scored test month).
 - Retrain cadence policy: **monthly retrain** at each new test month boundary.
-- Staleness rule: if latest Stage-3 prediction month is older than current test month, deployment decisions are blocked.
+- Staleness rule: if latest Stage-3 prediction month is older than current test month, Promotion decisions are blocked.
 - Candidate filtering is train-window only:
 - `train_rows >= min_candidate_rows_in_train_window`
 - `train_mean_gross > 0`
@@ -187,7 +196,7 @@ Expected gross pips/trade proxy below is taken from reduced-core monthly outputs
 
 Interpretation note:
 - these are cycle-level expectancy estimates under the current selection policy, not guaranteed live outcomes;
-- execution-drift and governance gates (Sections 7-14) must still pass for deploy suitability.
+- execution-drift and governance gates (Sections 7-14) must still pass for Promotion suitability.
 
 ## 7. Execution Semantics (Stop-Limit)
 
@@ -206,7 +215,7 @@ Interpretation note:
 
 ## 8. Current Acceptance Gates
 
-A symbol is release-eligible only when governed gates pass (representative):
+A symbol is promotion-eligible only when governed gates pass (representative). Final **GO** or **NO_GO** remains the symbol outcome recorded in the promoted lock set after Promotion is approved:
 - Reduced-core monthly LB95 and capacity gates.
 - Tick-exact consistency gates.
 - Robustness LB95 and month-stability gates.

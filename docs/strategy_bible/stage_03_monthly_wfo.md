@@ -1,7 +1,7 @@
-# Stage 3 - Monthly Walk-Forward Modeling
+# Stage 3 - Monthly WFO
 
 ## Objective
-Evaluate model filtering with strict monthly walk-forward ordering and quantify threshold robustness.
+Evaluate Monthly WFO with strict train-month/test-month ordering, then quantify ranking, calibration, and threshold robustness.
 
 ## Inputs
 - WFO metrics:
@@ -12,15 +12,15 @@ Evaluate model filtering with strict monthly walk-forward ordering and quantify 
 - `data/analysis/tick_opportunity_mining/wfo_*/<SYMBOL>_monthly_predictions_all.parquet`
 
 ## Process
-- Train on prior months only and score next month.
+- Train on prior Train Months only and score the next Test Month.
 - Apply execution quantile filter (`q`, default 0.9).
-- Compute threshold/calibration/turnover diagnostics (`W13-W15`).
+- Compute ranking, calibration, and threshold diagnostics (`W13-W15`).
 
 ## CatBoost Model Specification (Critical)
 
 ### Model Purpose
 - Rank OCO event rows by conditional probability of positive gross outcome (`target_gross_pos=1`).
-- Selection is then performed by thresholding this probability stream, not by direct regression on pip magnitude.
+- This ranking stream is then converted into selection thresholds, not direct regression on pip magnitude.
 
 ### Model Validity and Retrain Cadence
 - **Validity window:** CatBoost predictions are valid for exactly one scored test month.
@@ -108,6 +108,8 @@ Source of truth: `scripts/run_tick_opportunity_monthly_wfo.py` (`_wfo_monthly`).
 - Coverage at each quantile
 - Mean/median gross pips for selected rows
 - W13/W14/W15 stability metrics
+- Terminology note:
+- In this stage, CatBoost handles ranking and calibration, while thresholding handles causal selection provenance and coverage.
 
 ### Prediction Output Schema (Per Row)
 | Column | Type | Meaning | Downstream use |
@@ -165,8 +167,8 @@ Band notes:
 - Feature importances and calibration curves are not yet part of mandatory Stage-3 outputs.
 
 ### Interaction with Reduced-Core Selection (Stage 5)
-- Stage 3 contributes model-layer filtering only (`selected_exec` from `pred_prob` vs `threshold_exec`).
-- Stage 5 contributes state-layer reduced-core filtering (`core_spec_match`) plus execution feasibility.
+- Stage 3 contributes ranking, calibration, and threshold selection only (`selected_exec` from `pred_prob` vs `threshold_exec`).
+- Stage 5 contributes Reduced-Core Rolling state filtering (`core_spec_match`) plus execution feasibility.
 - Final tradable rows are the strict intersection of these gates, not a Stage-3-only pass.
 - Reference: `docs/strategy_bible/stage_05_reduced_core.md` section `CatBoost x Core Spec Interaction`.
 
@@ -175,7 +177,7 @@ Band notes:
 - Computation is performed on strict out-of-sample month slices produced by the monthly WFO loop.
 
 ## Causality / Leakage Controls
-- Strict 3M train -> 1M test ordering.
+- Strict 3M train -> 1M test ordering within Monthly WFO chronology.
 - Selection thresholding uses historical window only (rolling causal threshold).
 
 ## Failure Modes
@@ -189,8 +191,9 @@ Band notes:
 - Lower `W15` indicates higher month-to-month continuity.
 
 ## Validation Gates
-- WFO gating and leakage contract checks are hard gates.
+- Monthly WFO gating and leakage contract checks are hard gates.
 - `W13-W15` remain informational until promoted.
+- Monthly WFO does not itself assign symbol-level `GO`/`NO_GO`; those decisions happen later in governed promotion artifacts.
 
 ## Canonical Analysis Reports
 - `docs/analysis/eurusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md`
@@ -207,11 +210,11 @@ Band notes:
 - Confirm artifacts are refreshed and timestamps are current before interpreting outcomes.
 
 ## How To Interpret Outputs
-- Read `Key Results` first for pass/fail posture and core health metrics.
+- Read `Key Results` first for ranking, threshold, and chronology health.
 - Use `Interpretation Notes` and `Action Trigger Summary` to map observed values to operational actions.
 
 ## What To Do If It Fails
-- `critical/high`: halt deployment progression, remediate root cause, rerun stage and downstream dependent stages.
+- `critical/high`: halt promotion progression, remediate root cause, and rerun this stage plus downstream dependent stages.
 - `medium/low`: open tracked remediation with owner and ETA, monitor for recurrence in next cycle.
 
 ## Reproduction Commands

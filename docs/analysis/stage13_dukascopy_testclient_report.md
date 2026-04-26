@@ -43,5 +43,6 @@
 | USDJPY   | DUKASCOPY_TESTCLIENT_EXECUTION_PARITY_PASS | fail     | critical   | dukascopy_testclient_execution_parity_pass |              0 |          1 | missing Dukascopy/TestClient execution parity summary: data/analysis/backtest_reconcile/USDJPY_dukascopy_testclient_replay_summary.csv                 | data/analysis/backtest_reconcile/USDJPY_dukascopy_testclient_replay_summary.csv | 2026-04-05T12:39:55Z |
 
 ## Interpretation
-- Stage 13 is green only when Stage 12 API parity, the current Dukascopy replay runtime-events artifact, Dukascopy/TestClient signal parity, and Dukascopy/TestClient execution parity are all green.
+- Stage 13 is `PASS` only when Stage 12 API parity, the current Dukascopy replay runtime-events artifact, Dukascopy/TestClient signal semantic parity, and Dukascopy/TestClient execution semantic parity are all `PASS`.
+- Any missing prerequisite or out-of-contract difference should be treated as certification `FAIL`. In interpretation, signal-side failures after replay should be treated as a `Parity Breach`, while lifecycle-side failures after signal semantic parity should be treated as `Material Drift`.
 - Local-surrogate artifacts are excluded from Stage 13 hard-gate consumption even when broad file globs are provided.

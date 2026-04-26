@@ -67,10 +67,11 @@
 | USDJPY   | THRESHOLD_PARITY_PASS             | pass     | critical   | threshold_parity_pass             |              1 |          1 | threshold_schedule has 27 valid entries for 2026-03                                                | models/oco_dukascopy_candidate                                                                        | 2026-04-21T18:03:12Z |
 
 ## Interpretation
-- Stage 14 is green only when the Stage 13 prerequisite is satisfied and all JForex-specific certification checks pass.
-- Stage 13 PASS / NO_GO is accepted as a valid prerequisite and does not fail Stage 14 by itself.
-- Missing JForex tester/demo artifacts are treated as certification failures until the adapter path is exercised.
-- jforex_outcome_parity_pass: reconciles JForex runtime signal counts against locked Python predictions (signal_coverage_ratio must be 1.0, zero execution failures, trades present).
+- Stage 14 is `PASS` only when the Stage 13 prerequisite is satisfied and all JForex-specific certification checks pass.
+- A Stage 13 `process_status=PASS` with symbol-level `GO` or `NO_GO` is accepted as a valid prerequisite and does not fail Stage 14 by itself.
+- Missing JForex tester/live runtime artifacts are treated as certification `FAIL` states until the adapter path is exercised.
+- jforex_outcome_parity_pass: reconciles JForex live runtime signal counts against locked governance-side predictions (signal_coverage_ratio must be 1.0, zero execution failures, trades present).
 - execution_lifecycle_pass: validates the JForex execution lifecycle summary emitted by the adapter runtime.
 - local_jforex_surrogate_pass: the shared Java strategy core must pass the parquet-driven local surrogate harness; an explicit NO_GO is accepted only for historically non-deployable symbols.
+- Treat acceptable in-contract runtime differences as Runtime Variance. In interpretation, out-of-contract signal differences are a Parity Breach and lifecycle/outcome differences are Material Drift.
 - order_coverage_ratio is expected to be low (<0.2): OCO mechanics block new orders while an existing position is live. This metric is informational; signal_coverage_pass is the gate.

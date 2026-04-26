@@ -1,6 +1,6 @@
 # Architecture
 
-This repository currently runs as a research-first OCO pipeline, not an always-on API service.
+This repository currently runs as a governance-first OCO pipeline with a paired Governance Runtime and Live Runtime, not as a single always-on API service.
 
 ## Current Runtime Model
 
@@ -8,15 +8,18 @@ This repository currently runs as a research-first OCO pipeline, not an always-o
 flowchart TD
   A[Raw tick data] --> B[Stage 1: data foundation]
   B --> C[Stage 2: opportunity mining]
-  C --> D[Stage 3: monthly WFO]
+  C --> D[Stage 3: Monthly WFO]
   D --> E[Stage 4: stop-limit realism]
-  E --> F[Stage 5: reduced core]
+  E --> F[Stage 5: Reduced-Core Rolling]
   F --> G[Stage 6: tick-exact checks]
   G --> H[Stage 7: logical/statistical audit]
   H --> I[Stage 8: robustness and stress]
   I --> J[Stage 9: governance lock + remediation]
   J --> K[Stage 10: risk backlog]
   K --> L[Stage 11: execution Monte Carlo]
+  L --> M[Stage 12: API parity]
+  M --> N[Stage 13: Dukascopy TestClient parity]
+  N --> O[Stage 14: JForex runtime certification]
 ```
 
 ## Source of Truth
@@ -26,12 +29,12 @@ flowchart TD
 - Contract checks: `data/analysis/tick_opportunity_mining/docs_contract_checks.csv`
 
 ## Architecture Boundary
-- Mandatory: offline/research pipeline and governance artifacts.
-- Outputs: Live execution locks and allowed state matrices.
-- Current production research scope: `EURUSD`, `GBPUSD`, `USDJPY`.
+- Mandatory: governance pipeline stages and governance artifacts.
+- Outputs: Governance Runtime locks, allowed state matrices, and certification evidence for the Live Runtime.
+- Current active symbol universe: `EURUSD`, `GBPUSD`, `USDJPY`, `USDCHF`, `AUDUSD`, `USDCAD`.
 
-## Next Integration Step
-When execution integration is enabled, treat it as a thin adapter over the Stage 9 lock and Stage 4 stop-limit contract, not as a separate strategy engine.
+## Runtime Integration
+The Live Runtime remains a thin adapter over the Stage 9 lock and Stage 4 stop-limit contract, with Stages 12-14 acting as the certification bridge between the Governance Runtime and live execution.
 
 ## Rolling Historical Evidence
 

@@ -1,7 +1,7 @@
-# Stage 5 - Reduced Core Selection
+# Stage 5 - Reduced-Core Rolling
 
 ## Objective
-Reduce candidate universe to a stable, capacity-valid core set with preserved expectancy.
+Run Reduced-Core Rolling to turn the Monthly WFO output into a stable, capacity-valid reduced-core state set with preserved expectancy.
 
 ## Inputs
 - Reduced summary:
@@ -12,31 +12,31 @@ Reduce candidate universe to a stable, capacity-valid core set with preserved ex
 - `data/analysis/tick_opportunity_mining/reduced_core_rolling*/<SYMBOL>_oco_reduced_state_churn.csv`
 
 ## Process
-- Select reduced states month-by-month using prior train window.
+- Select the reduced-core state set month-by-month using the prior train window.
 - Validate capacity floor and state churn constraints.
 - Compute reduction diagnostics (`R01-R03`).
-- Enforce that reduced states stay inside the pre-registered rule universe contract.
+- Enforce that the selected reduced-core states stay inside the pre-registered rule universe contract.
 
 ## Dependency on Stage 3 (CatBoost Outputs)
 - Stage 5 consumes Stage 3 prediction artifacts (`*_monthly_predictions.parquet`) and does not refit CatBoost.
 - Default reduced-core entry set is controlled by `selection_mode`:
 - `auto` / `exec_flag`: uses Stage 3 execution flag (`selected_exec == 1`).
 - `monthly_quantile`: recomputes monthwise quantile filter from `pred_prob` when explicitly configured.
-- Stage 3 is model-level row ranking; Stage 5 is state-level governance filtering:
+- Stage 3 provides ranking and threshold-selection outputs; Stage 5 applies Reduced-Core Rolling governance filtering:
 - model layer: probability thresholding (`pred_prob`, `threshold_exec`, `selected_exec`)
-- state layer: stability/capacity/risk gates across rolling train months
+- state layer: reduced-core state stability/capacity/risk gates across rolling train months
 - If Stage 3 predictions are stale for the current test month, Stage 5 outputs are operationally invalid.
 
 ## CatBoost x Core Spec Interaction
 - Final tradable rows are the strict intersection of three gates:
-- `core_spec_match == 1` (row is inside reduced-core state set)
+- `core_spec_match == 1` (row is inside the reduced-core state set)
 - `selected_exec == 1` (Stage 3 CatBoost passed execution threshold)
 - `execution_feasible == 1` (Stage 4 stop-limit realism/fill constraints passed)
 - Operational rule:
 - `trade_row = core_spec_match AND selected_exec AND execution_feasible`
 - Rejection logic:
 - CatBoost positive but outside core spec -> reject.
-- Core spec match but CatBoost below threshold -> reject.
+- Reduced-core state row but CatBoost below threshold -> reject.
 - Passes both but execution infeasible (for configured cap/fill policy) -> reject.
 
 ```mermaid
@@ -59,7 +59,7 @@ flowchart TD
 - `selected_exec=1`
 - `execution_feasible=1`
 - Outcome: admitted (`trade_row=1`).
-- If the same row had `core_spec_match=0`, it would be rejected even with `selected_exec=1`.
+- If the same row had `core_spec_match=0`, it would fall outside the reduced-core state set and be rejected even with `selected_exec=1`.
 
 ## Exact Calculations
 - `R01_post_pre_row_ratio = reduced_rows / prefilter_wfo_selected_rows`
@@ -81,13 +81,13 @@ flowchart TD
 - `docs/analysis/oco_rule_universe_registry_report.md`
 
 ## Causality / Leakage Controls
-- State schedule and selection produced from prior-month training only.
+- Reduced-Core Rolling state schedule and state selection are produced from prior-month training only.
 - Universe lock prevents post-hoc adding states/families discovered after out-of-sample review.
 
 ## Failure Modes
 - Over-pruning removes too much capacity.
 - Top-state dependency increases fragility.
-- High churn indicates unstable core.
+- High churn indicates an unstable reduced-core state set.
 
 ## Interpretation Guide
 - `R01` too low: likely over-pruned.
@@ -98,6 +98,7 @@ flowchart TD
 - Capacity and stability conditions are hard gates in reduced-core outputs.
 - `R01-R03` are monitoring diagnostics.
 - Hard governance condition: reduced states must pass registry scope checks (`RU09`, surfaced by `C33`).
+- Reduced-Core Rolling narrows the reduced-core state set; later governance artifacts translate that state set into deployment manifests and symbol-level `GO`/`NO_GO` decisions.
 
 ## Canonical Analysis Reports
 - `docs/analysis/eurusd_oco_reduced_core_rolling_report.md`
@@ -114,11 +115,11 @@ flowchart TD
 - Confirm artifacts are refreshed and timestamps are current before interpreting outcomes.
 
 ## How To Interpret Outputs
-- Read `Key Results` first for pass/fail posture and core health metrics.
+- Read `Key Results` first for reduced-core state stability, capacity, and concentration posture.
 - Use `Interpretation Notes` and `Action Trigger Summary` to map observed values to operational actions.
 
 ## What To Do If It Fails
-- `critical/high`: halt deployment progression, remediate root cause, rerun stage and downstream dependent stages.
+- `critical/high`: halt promotion progression, remediate root cause, and rerun this stage plus downstream dependent stages.
 - `medium/low`: open tracked remediation with owner and ETA, monitor for recurrence in next cycle.
 
 ## Reproduction Commands
