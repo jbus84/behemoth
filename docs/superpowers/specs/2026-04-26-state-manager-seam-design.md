@@ -110,8 +110,8 @@ with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as f:
     tmp_path = Path(f.name)
 # delete=False because NamedTemporaryFile with delete=True closes+deletes before the caller can read it
 try:
-    _state.export_warmup_bars(sym, bar_ticks, tmp_path)
-    bars_df = pd.read_parquet(tmp_path)
+    row_count = _state.export_warmup_bars(sym, bar_ticks, tmp_path)
+    bars_df = pl.read_parquet(tmp_path)
 finally:
     tmp_path.unlink(missing_ok=True)
 ```
