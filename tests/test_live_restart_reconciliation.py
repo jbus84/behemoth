@@ -10,7 +10,6 @@ from src.behemoth.live_restart.reconciliation import (
     BrokerSnapshotOrder,
     LocalRuntimeStateSummary,
     ReconciliationReport,
-    RestartVerdict,
     RuntimeFileSnapshot,
     RuntimeSessionMetadata,
     RuntimeContextComparison,
@@ -72,7 +71,7 @@ def test_compare_runtime_context_returns_incompatible_on_lock_fingerprint_mismat
 
     result = compare_runtime_context(persisted, current)
 
-    assert result.verdict is RestartVerdict.INCOMPATIBLE
+    assert result.verdict is RestartEligibility.RESTART_BLOCKED
     assert any("lock_fingerprint" in reason for reason in result.reasons)
 
 
@@ -104,7 +103,7 @@ def test_compare_runtime_context_blocks_live_sensitive_git_dirty() -> None:
 
     result = compare_runtime_context(persisted, current)
 
-    assert result.verdict is RestartVerdict.INCOMPATIBLE
+    assert result.verdict is RestartEligibility.RESTART_BLOCKED
     assert "git_dirty workspace" in result.reasons
 
 
@@ -169,7 +168,7 @@ def test_compare_runtime_context_blocks_orphaned_runtime_state_without_metadata(
 
     result = compare_runtime_context(None, current, local_state=local_state)
 
-    assert result.verdict is RestartVerdict.INCOMPATIBLE
+    assert result.verdict is RestartEligibility.RESTART_BLOCKED
     assert "persisted runtime session metadata missing" in result.reasons
 
 
@@ -330,7 +329,7 @@ def test_compare_runtime_context_blocks_when_broker_has_open_orders_but_local_st
         local_runtime=local_runtime,
     )
 
-    assert result.verdict is RestartVerdict.INCOMPATIBLE
+    assert result.verdict is RestartEligibility.RESTART_BLOCKED
     assert "broker snapshot has open orders but local runtime has no active state" in result.reasons
 
 
@@ -386,7 +385,7 @@ def test_compare_runtime_context_blocks_when_local_state_is_active_but_broker_is
         local_runtime=local_runtime,
     )
 
-    assert result.verdict is RestartVerdict.INCOMPATIBLE
+    assert result.verdict is RestartEligibility.RESTART_BLOCKED
     assert "local runtime has active state but broker snapshot is empty" in result.reasons
 
 
@@ -457,7 +456,7 @@ def test_compare_runtime_context_blocks_symbol_level_broker_link_mismatch() -> N
         local_runtime=local_runtime,
     )
 
-    assert result.verdict is RestartVerdict.INCOMPATIBLE
+    assert result.verdict is RestartEligibility.RESTART_BLOCKED
     assert "broker-linked symbols do not match broker snapshot symbols" in result.reasons
 
 
@@ -527,7 +526,7 @@ def test_compare_runtime_context_blocks_broker_position_id_mismatch() -> None:
         local_runtime=local_runtime,
     )
 
-    assert result.verdict is RestartVerdict.INCOMPATIBLE
+    assert result.verdict is RestartEligibility.RESTART_BLOCKED
     assert "broker-linked position ids do not match broker snapshot order ids" in result.reasons
 
 
@@ -559,7 +558,7 @@ def test_compare_runtime_context_blocks_commit_drift() -> None:
 
     result = compare_runtime_context(persisted, current)
 
-    assert result.verdict is RestartVerdict.INCOMPATIBLE
+    assert result.verdict is RestartEligibility.RESTART_BLOCKED
     assert "git_commit changed" in result.reasons
 
 
@@ -588,7 +587,7 @@ def test_write_reconciliation_report_writes_expected_verdict(tmp_path: Path) -> 
     path = tmp_path / "live_restart_reconciliation.json"
     report = ReconciliationReport(
         startup_mode="resume",
-        verdict=RestartVerdict.CLEAN_RESUMABLE,
+        verdict=RestartEligibility.RESTART_ELIGIBLE,
         reasons=[],
         repaired_items=[],
     )
@@ -596,7 +595,7 @@ def test_write_reconciliation_report_writes_expected_verdict(tmp_path: Path) -> 
     write_reconciliation_report(path, report)
     payload = json.loads(path.read_text(encoding="utf-8"))
 
-    assert payload["verdict"] == "clean_resumable"
+    assert payload["verdict"] == "RESTART_ELIGIBLE"
     assert payload["startup_mode"] == "resume"
 
 
@@ -604,7 +603,7 @@ def test_derive_restart_eligibility_maps_clean_resume_to_eligible() -> None:
     from src.behemoth.live_restart.reconciliation import derive_restart_eligibility
 
     result = derive_restart_eligibility(
-        RuntimeContextComparison(verdict=RestartVerdict.CLEAN_RESUMABLE, reasons=[])
+        RuntimeContextComparison(verdict=RestartEligibility.RESTART_ELIGIBLE, reasons=[])
     )
 
     assert result.eligibility is RestartEligibility.RESTART_ELIGIBLE
@@ -616,7 +615,7 @@ def test_derive_restart_eligibility_maps_reconcilable_to_drain_only() -> None:
 
     result = derive_restart_eligibility(
         RuntimeContextComparison(
-            verdict=RestartVerdict.RECONCILABLE,
+            verdict=RestartEligibility.RESTART_ELIGIBLE_DRAIN_ONLY,
             reasons=["local runtime has recoverable active state"],
         )
     )
@@ -631,7 +630,7 @@ def test_derive_restart_eligibility_maps_incompatible_to_blocked() -> None:
 
     result = derive_restart_eligibility(
         RuntimeContextComparison(
-            verdict=RestartVerdict.INCOMPATIBLE,
+            verdict=RestartEligibility.RESTART_BLOCKED,
             reasons=["lock_fingerprint mismatch"],
         )
     )

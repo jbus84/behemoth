@@ -12,12 +12,6 @@ import duckdb
 from src.behemoth.ops.verdicts import RestartEligibility
 
 
-class RestartVerdict(str, Enum):
-    CLEAN_RESUMABLE = "clean_resumable"
-    RECONCILABLE = "reconcilable"
-    INCOMPATIBLE = "incompatible"
-
-
 @dataclass(frozen=True)
 class RuntimeSessionMetadata:
     git_commit: str
@@ -104,7 +98,7 @@ class LocalRuntimeStateSummary:
 
 @dataclass(frozen=True)
 class RuntimeContextComparison:
-    verdict: RestartVerdict
+    verdict: RestartEligibility
     reasons: list[str] = field(default_factory=list)
 
 
@@ -118,7 +112,7 @@ class RestartEligibilityResult:
 @dataclass(frozen=True)
 class ReconciliationReport:
     startup_mode: str
-    verdict: RestartVerdict
+    verdict: RestartEligibility
     reasons: list[str]
     repaired_items: list[str]
     current: RuntimeSessionMetadata | None = None
@@ -404,7 +398,7 @@ def compare_runtime_context(
                 reasons.append("active_oco_state.json unreadable")
                 hard_fail = True
         return RuntimeContextComparison(
-            verdict=RestartVerdict.INCOMPATIBLE if hard_fail else RestartVerdict.CLEAN_RESUMABLE,
+            verdict=RestartEligibility.RESTART_BLOCKED if hard_fail else RestartEligibility.RESTART_ELIGIBLE,
             reasons=reasons,
         )
 
@@ -464,32 +458,20 @@ def compare_runtime_context(
                 hard_fail = True
 
     if hard_fail:
-        verdict = RestartVerdict.INCOMPATIBLE
+        verdict = RestartEligibility.RESTART_BLOCKED
     elif reasons:
-        verdict = RestartVerdict.RECONCILABLE
+        verdict = RestartEligibility.RESTART_ELIGIBLE_DRAIN_ONLY
     else:
-        verdict = RestartVerdict.CLEAN_RESUMABLE
+        verdict = RestartEligibility.RESTART_ELIGIBLE
     return RuntimeContextComparison(verdict=verdict, reasons=reasons)
 
 
 def derive_restart_eligibility(
     comparison: RuntimeContextComparison,
 ) -> RestartEligibilityResult:
-    if comparison.verdict is RestartVerdict.CLEAN_RESUMABLE:
-        return RestartEligibilityResult(
-            eligibility=RestartEligibility.RESTART_ELIGIBLE,
-            allow_new_entries=True,
-            reasons=list(comparison.reasons),
-        )
-    if comparison.verdict is RestartVerdict.RECONCILABLE:
-        return RestartEligibilityResult(
-            eligibility=RestartEligibility.RESTART_ELIGIBLE_DRAIN_ONLY,
-            allow_new_entries=False,
-            reasons=list(comparison.reasons),
-        )
     return RestartEligibilityResult(
-        eligibility=RestartEligibility.RESTART_BLOCKED,
-        allow_new_entries=False,
+        eligibility=comparison.verdict,
+        allow_new_entries=comparison.verdict is RestartEligibility.RESTART_ELIGIBLE,
         reasons=list(comparison.reasons),
     )
 

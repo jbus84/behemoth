@@ -348,7 +348,7 @@ def test_main_fails_before_seed_when_runtime_threshold_json_drifts_from_promoted
         startup_mode="reset",
     )
     comparison = run_jforex_live.RuntimeContextComparison(
-        verdict=run_jforex_live.RestartVerdict.CLEAN_RESUMABLE,
+        verdict=RestartEligibility.RESTART_ELIGIBLE,
         reasons=[],
     )
     monkeypatch.setattr(
@@ -555,7 +555,7 @@ def test_reconcile_startup_captures_broker_snapshot_on_resume(monkeypatch, tmp_p
         run_jforex_live,
         "compare_runtime_context",
         lambda *args, **kwargs: run_jforex_live.RuntimeContextComparison(
-            verdict=run_jforex_live.RestartVerdict.CLEAN_RESUMABLE,
+            verdict=RestartEligibility.RESTART_ELIGIBLE,
             reasons=[],
         ),
     )
@@ -606,7 +606,7 @@ def test_main_resume_incompatible_prints_operator_summary(monkeypatch, tmp_path,
             ),
             None,
             run_jforex_live.RuntimeContextComparison(
-                verdict=run_jforex_live.RestartVerdict.INCOMPATIBLE,
+                verdict=RestartEligibility.RESTART_BLOCKED,
                 reasons=[
                     "broker-linked symbols do not match broker snapshot symbols",
                     "broker-linked position ids do not match broker snapshot order ids",
@@ -643,7 +643,7 @@ def test_main_resume_incompatible_prints_operator_summary(monkeypatch, tmp_path,
     assert "[jforex-live] incompatible live restart metadata; rerun with --startup-mode reset" in err
     assert "[jforex-live] reconciliation report:" in err
     assert "live_restart_reconciliation.json" in err
-    assert "[jforex-live] restart summary: startup_mode=resume verdict=incompatible reasons=2" in err
+    assert "[jforex-live] restart summary: startup_mode=resume verdict=RESTART_BLOCKED reasons=2" in err
     assert "[jforex-live]   1. broker-linked symbols do not match broker snapshot symbols" in err
     assert "[jforex-live]   2. broker-linked position ids do not match broker snapshot order ids" in err
 
@@ -685,7 +685,7 @@ def test_main_reset_forces_new_entries_true_despite_stale_drain_only_eligibility
         startup_mode="reset",
     )
     comparison = run_jforex_live.RuntimeContextComparison(
-        verdict=run_jforex_live.RestartVerdict.CLEAN_RESUMABLE,
+        verdict=RestartEligibility.RESTART_ELIGIBLE,
         reasons=[],
     )
     monkeypatch.setattr(
