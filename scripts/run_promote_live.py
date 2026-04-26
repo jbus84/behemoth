@@ -153,7 +153,7 @@ def _verify_cert(
             evaluated = row.get("evaluated_at_utc", "")[:10]
             if evaluated and evaluated != today_str:
                 stale = True
-            if row["severity"] == "critical" and row["status"] not in ("pass", "nogo"):
+            if row["severity"] == "critical" and row["status"] not in ("PASS", "NO_GO"):
                 failures.append(f"  {row['symbol']}: {row['check_id']}")
 
     if stale:
