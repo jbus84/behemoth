@@ -123,3 +123,67 @@ def test_clear_audit_logs_by_run_id_removes_matching_rows(sm):
 
 def test_clear_audit_logs_by_run_id_no_op_when_nothing_matches(sm):
     sm.clear_audit_logs_by_run_id("nonexistent")  # must not raise
+
+
+def test_atomic_audit_replace_purges_and_writes(sm):
+    # Seed existing rows for (EURUSD, run-x)
+    _insert_audit_row(sm, "EURUSD", "run-x")
+    _insert_audit_row(sm, "EURUSD", "run-x")
+    assert sm.count_audit_logs("EURUSD", "run-x") == 2
+
+    ts = datetime(2026, 2, 1, tzinfo=timezone.utc)
+    new_events = [
+        (ts, "EURUSD", "cand-new", 0.9, 0.5, "{}", "2026-02", "run-x"),
+    ]
+    purged = sm.atomic_audit_replace("EURUSD", "run-x", new_events)
+    assert purged == 2
+    assert sm.count_audit_logs("EURUSD", "run-x") == 1
+
+
+def test_atomic_audit_replace_rolls_back_on_error(sm):
+    _insert_audit_row(sm, "EURUSD", "run-y")
+
+    # Pass a malformed event tuple (wrong column count) to trigger an error
+    bad_events = [("not", "enough")]
+    with pytest.raises(Exception):
+        sm.atomic_audit_replace("EURUSD", "run-y", bad_events)
+
+    # Original row must still be present — rollback happened
+    assert sm.count_audit_logs("EURUSD", "run-y") == 1
+
+
+def test_atomic_audit_replace_returns_zero_when_nothing_purged(sm):
+    ts = datetime(2026, 2, 1, tzinfo=timezone.utc)
+    events = [(ts, "EURUSD", "cand-001", 0.8, 0.5, "{}", "2026-02", "run-new")]
+    purged = sm.atomic_audit_replace("EURUSD", "run-new", events)
+    assert purged == 0
+    assert sm.count_audit_logs("EURUSD", "run-new") == 1
+
+
+def test_export_warmup_bars_writes_parquet_and_returns_row_count(sm, tmp_path):
+    import polars as pl
+
+    sm.append_bar(_make_bar("EURUSD", 100, 1, close_bid=1.1000))
+    sm.append_bar(_make_bar("EURUSD", 100, 2, close_bid=1.1010))
+    sm.append_bar(_make_bar("EURUSD", 200, 3, close_bid=1.2000))  # different bar_ticks, excluded
+
+    out_path = tmp_path / "warmup.parquet"
+    count = sm.export_warmup_bars("EURUSD", 100, out_path)
+
+    assert count == 2
+    assert out_path.exists()
+    df = pl.read_parquet(out_path)
+    assert len(df) == 2
+    assert "row_id" in df.columns
+    assert "close_bid" in df.columns
+
+
+def test_export_warmup_bars_returns_zero_when_no_rows(sm, tmp_path):
+    out_path = tmp_path / "empty.parquet"
+    count = sm.export_warmup_bars("NOSYMBOL", 100, out_path)
+    assert count == 0
+
+
+def test_checkpoint_does_not_raise(sm):
+    sm.append_bar(_make_bar("EURUSD", 100, 1))
+    sm.checkpoint()  # must not raise

@@ -1345,6 +1345,50 @@ class StateManager:
         """Delete all audit_logs rows matching run_id (all symbols)."""
         self._con.execute("DELETE FROM audit_logs WHERE run_id = ?", [run_id])
 
+    def atomic_audit_replace(
+        self, symbol: str, run_id: str, events_batch: list[tuple]
+    ) -> int:
+        """Delete existing audit rows for (symbol, run_id) and insert events_batch atomically."""
+        from contextlib import suppress
+
+        self._con.execute("BEGIN TRANSACTION")
+        try:
+            purged = self.purge_audit_events(symbol=symbol, run_id=run_id)
+            self.log_audit_event_batch(events_batch)
+            self._con.execute("COMMIT")
+            return purged
+        except Exception:
+            with suppress(Exception):
+                self._con.execute("ROLLBACK")
+            raise
+
+    def export_warmup_bars(self, symbol: str, bar_ticks: int, path: Path) -> int:
+        """Export tick_bars rows for (symbol, bar_ticks) to a parquet file. Returns row count."""
+        row = self._con.execute(
+            "SELECT COUNT(*) FROM tick_bars WHERE symbol = ? AND bar_ticks = ?",
+            [symbol.upper(), bar_ticks],
+        ).fetchone()
+        count = int(row[0]) if row else 0
+        if count == 0:
+            return 0
+        self._con.execute(
+            f"""
+            COPY (
+                SELECT row_id, ts, close_ts, open_bid, high_bid, low_bid, close_bid,
+                       spread, tick_volume, hl_first, hl_pos_frac, high_ask, close_ask
+                FROM tick_bars
+                WHERE symbol = ? AND bar_ticks = ?
+                ORDER BY row_id
+            ) TO '{path}' (FORMAT PARQUET)
+            """,
+            [symbol.upper(), bar_ticks],
+        )
+        return count
+
+    def checkpoint(self) -> None:
+        """Run a DuckDB CHECKPOINT to flush WAL to disk."""
+        self._con.execute("CHECKPOINT")
+
     def close(self) -> None:
         """Close the DuckDB connection."""
         self._con.close()
