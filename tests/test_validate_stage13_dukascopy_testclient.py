@@ -153,7 +153,7 @@ def test_build_stage13_artifacts_treats_execution_parity_as_direct_gate(tmp_path
 
     assert bool(summary.loc[0, "stage12_api_parity_pass"]) is True
     assert bool(summary.loc[0, "stage13_dukascopy_testclient_pass"]) is False
-    failed = checks[checks["status"] == "fail"]
+    failed = checks[checks["status"] == "FAIL"]
     assert len(failed) == 1
     assert failed.iloc[0]["metric_name"] == "dukascopy_testclient_execution_parity_pass"
 
@@ -381,7 +381,7 @@ def test_build_stage13_artifacts_rejects_header_only_runtime_events_artifact(tmp
 
     assert bool(summary.loc[0, "dukascopy_runtime_artifacts_complete_pass"]) is False
     runtime_check = checks[checks["metric_name"] == "dukascopy_runtime_artifacts_complete_pass"].iloc[0]
-    assert runtime_check["status"] == "fail"
+    assert runtime_check["status"] == "FAIL"
 
 
 def test_build_stage13_artifacts_limits_outputs_to_requested_symbols(tmp_path: Path) -> None:
@@ -472,7 +472,7 @@ def test_build_stage13_artifacts_keeps_primary_summary_contract_minimal(tmp_path
         "dukascopy_testclient_signal_parity_pass",
         "dukascopy_testclient_execution_parity_pass",
         "stage13_dukascopy_testclient_pass",
-        "stage13_dukascopy_testclient_nogo",
+        "stage13_dukascopy_testclient_no_go",
         "certification_outcome",
         "go_decision",
         "missing_inputs",
@@ -521,13 +521,13 @@ def test_build_stage13_artifacts_emits_nogo_for_non_deployable_symbols(
 
     assert bool(summary.loc[0, "historical_deployable"]) is False
     assert bool(summary.loc[0, "stage13_dukascopy_testclient_pass"]) is True
-    assert bool(summary.loc[0, "stage13_dukascopy_testclient_nogo"]) is True
+    assert bool(summary.loc[0, "stage13_dukascopy_testclient_no_go"]) is True
     assert summary.loc[0, "certification_outcome"] == "PASS"
     assert summary.loc[0, "go_decision"] == "NO_GO"
-    assert summary.loc[0, "verdict"] == "nogo"
+    assert summary.loc[0, "verdict"] == "NO_GO"
     signal_check = checks[checks["metric_name"] == "dukascopy_testclient_signal_parity_pass"].iloc[0]
     assert bool(signal_check["metric_value"]) is True
-    assert signal_check["status"] == "pass"
+    assert signal_check["status"] == "PASS"
     assert "historical non-deployable" in str(signal_check["details"]).lower()
     assert "historically non-deployable" in str(signal_check["details"])
 

@@ -354,7 +354,7 @@ def build_stage13_artifacts(
             {
                 "symbol": symbol,
                 "check_id": "DUKASCOPY_RUNTIME_ARTIFACTS_COMPLETE_PASS",
-                "status": "pass" if runtime_ok else "fail",
+                "status": "PASS" if runtime_ok else "FAIL",
                 "severity": "critical",
                 "metric_name": "dukascopy_runtime_artifacts_complete_pass",
                 "metric_value": int(runtime_ok),
@@ -387,16 +387,16 @@ def build_stage13_artifacts(
                 and bool(row.get("stage12_api_parity_pass", False))
             ):
                 row[src.check_id] = True
-                status_txt = "pass"
+                status_txt = "PASS"
                 details = _non_deployable_nogo_details(non_deployable_reason)
             elif value is None or pd.isna(value):
                 row[src.check_id] = False
                 missing_inputs += 1
-                status_txt = "fail"
+                status_txt = "FAIL"
                 details = _missing_details(src.check_id, expected_source_path)
             else:
                 row[src.check_id] = bool(value)
-                status_txt = "pass" if bool(value) else "fail"
+                status_txt = "PASS" if bool(value) else "FAIL"
             source_path = (
                 str(expected_source_path) if match.empty else str(match.iloc[-1].get("source_path") or "")
             )
@@ -412,7 +412,7 @@ def build_stage13_artifacts(
                 )
             ):
                 row[src.check_id] = False
-                status_txt = "fail"
+                status_txt = "FAIL"
                 details = f"provenance mismatch: {source_path}"
             check_rows.append(
                 {
@@ -438,17 +438,17 @@ def build_stage13_artifacts(
                 "dukascopy_testclient_execution_parity_pass",
             )
         )
-        row["stage13_dukascopy_testclient_nogo"] = (
+        row["stage13_dukascopy_testclient_no_go"] = (
             bool(row["stage13_dukascopy_testclient_pass"]) and not historical_deployable
         )
         row["certification_outcome"] = "PASS" if row["stage13_dukascopy_testclient_pass"] else "FAIL"
-        row["go_decision"] = "NO_GO" if row["stage13_dukascopy_testclient_nogo"] else (
+        row["go_decision"] = "NO_GO" if row["stage13_dukascopy_testclient_no_go"] else (
             "GO" if row["stage13_dukascopy_testclient_pass"] else "NO_GO"
         )
         row["missing_inputs"] = missing_inputs
         row["verdict"] = (
-            "nogo"
-            if row["stage13_dukascopy_testclient_nogo"]
+            "NO_GO"
+            if row["stage13_dukascopy_testclient_no_go"]
             else ("green" if row["stage13_dukascopy_testclient_pass"] else "red")
         )
         row["evaluated_at_utc"] = now_utc
@@ -479,7 +479,7 @@ def build_stage13_artifacts(
         "",
         "## Interpretation",
         "- Stage 13 is green only when Stage 12 API parity, the current Dukascopy replay runtime-events artifact, Dukascopy/TestClient signal parity, and Dukascopy/TestClient execution parity are all green.",
-        "- Symbols marked historically non-deployable are emitted as `verdict=nogo` when the runtime evidence is complete and the no-go condition is being enforced correctly.",
+        "- Symbols marked historically non-deployable are emitted as `verdict=NO_GO` when the runtime evidence is complete and the no-go condition is being enforced correctly.",
         "- Local-surrogate artifacts are excluded from Stage 13 hard-gate consumption even when broad file globs are provided.",
     ]
     report_out.write_text("\n".join(report_lines).strip() + "\n", encoding="utf-8")

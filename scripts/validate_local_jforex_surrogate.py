@@ -223,11 +223,11 @@ def build_artifacts(
             )
             if overridden_to_pass:
                 row[src.check_id] = True
-                status = "pass"
+                status = "PASS"
                 details = "zero-lock idle window accepted"
             elif not historical_deployable:
                 row[src.check_id] = False
-                status = "nogo"
+                status = "NO_GO"
                 details = (
                     f"historically non-deployable: {non_deployable_reason}"
                     if non_deployable_reason
@@ -236,11 +236,11 @@ def build_artifacts(
             elif value is None or pd.isna(value):
                 missing_inputs += 1
                 row[src.check_id] = False
-                status = "fail"
+                status = "FAIL"
                 details = "missing input artifact"
             else:
                 row[src.check_id] = bool(value)
-                status = "pass" if bool(value) else "fail"
+                status = "PASS" if bool(value) else "fail"
                 details = ""
             check_rows.append(
                 {
@@ -261,11 +261,11 @@ def build_artifacts(
         row["local_jforex_surrogate_pass"] = historical_deployable and all(
             bool(row[src.check_id]) for src in sources
         )
-        row["local_jforex_surrogate_nogo"] = not historical_deployable
+        row["local_jforex_surrogate_no_go"] = not historical_deployable
         row["missing_inputs"] = missing_inputs
         row["verdict"] = (
-            "nogo"
-            if row["local_jforex_surrogate_nogo"]
+            "NO_GO"
+            if row["local_jforex_surrogate_no_go"]
             else ("green" if row["local_jforex_surrogate_pass"] else "red")
         )
         row["evaluated_at_utc"] = now_utc
@@ -308,7 +308,7 @@ def build_artifacts(
         "",
         "## Interpretation",
         "- This is a pre-Stage diagnostic for the shared Java strategy core.",
-        "- Symbols with non-deployable historical locks are emitted as `verdict=nogo` instead of failing strict parity.",
+        "- Symbols with non-deployable historical locks are emitted as `verdict=NO_GO` instead of failing strict parity.",
         "- Green here does not replace real Dukascopy JForex tester certification.",
     ]
     report_out.write_text("\n".join(report_lines).strip() + "\n", encoding="utf-8")

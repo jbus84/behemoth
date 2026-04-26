@@ -1,7 +1,7 @@
-symbol,historical_deployable,non_deployable_reason,local_signal_parity_pass,local_execution_parity_pass,local_lifecycle_pass,local_operational_ready_pass,jforex_outcome_parity_pass,local_jforex_surrogate_pass,local_jforex_surrogate_nogo,missing_inputs,verdict,evaluated_at_utc
-AUDUSD,False,no_test_rows,False,False,False,False,False,False,True,0,nogo,2026-04-14T18:17:45Z
-EURUSD,False,no_test_rows,False,False,False,False,False,False,True,0,nogo,2026-04-14T18:17:45Z
-GBPUSD,False,no_test_rows,False,False,False,False,False,False,True,0,nogo,2026-04-14T18:17:45Z
-USDCAD,False,no_test_rows,False,False,False,False,False,False,True,0,nogo,2026-04-14T18:17:45Z
-USDCHF,False,no_gate_states,False,False,False,False,False,False,True,0,nogo,2026-04-14T18:17:45Z
-USDJPY,False,no_test_rows,False,False,False,False,False,False,True,0,nogo,2026-04-14T18:17:45Z
+symbol,historical_deployable,non_deployable_reason,local_signal_parity_pass,local_execution_parity_pass,local_lifecycle_pass,local_operational_ready_pass,jforex_outcome_parity_pass,local_jforex_surrogate_pass,local_jforex_surrogate_no_go,missing_inputs,verdict,evaluated_at_utc
+AUDUSD,False,no_test_rows,False,False,False,False,False,False,True,0,NO_GO,2026-04-14T18:17:45Z
+EURUSD,False,no_test_rows,False,False,False,False,False,False,True,0,NO_GO,2026-04-14T18:17:45Z
+GBPUSD,False,no_test_rows,False,False,False,False,False,False,True,0,NO_GO,2026-04-14T18:17:45Z
+USDCAD,False,no_test_rows,False,False,False,False,False,False,True,0,NO_GO,2026-04-14T18:17:45Z
+USDCHF,False,no_gate_states,False,False,False,False,False,False,True,0,NO_GO,2026-04-14T18:17:45Z
+USDJPY,False,no_test_rows,False,False,False,False,False,False,True,0,NO_GO,2026-04-14T18:17:45Z

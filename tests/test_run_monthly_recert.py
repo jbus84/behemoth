@@ -244,7 +244,7 @@ def test_print_summary_keeps_go_when_only_expected_nogo_remains(capsys) -> None:
 
     out = capsys.readouterr().out
     assert overall_pass is True
-    assert "USDCAD  NOGO" in out
+    assert "USDCAD  NO_GO" in out
     assert "go/no-go: GO" in out
 
 

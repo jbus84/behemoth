@@ -134,7 +134,7 @@ def _read_failures(report_dir: str) -> dict[str, list[dict[str, str]]]:
         for row in csv.DictReader(f):
             if (
                 row["severity"] == "critical"
-                and row["status"] != "pass"
+                and row["status"] != "PASS"
                 and not _is_expected_critical_nogo(row)
             ):
                 failures.setdefault(row["symbol"], []).append(row)
@@ -148,7 +148,7 @@ def _is_expected_critical_nogo(row: dict[str, str]) -> bool:
         "accepted historical non-deployable" in details
         or "accepted non-deployable" in details
         or (
-            status in {"nogo", "no_go", "no-go"}
+            status in {"NO_GO", "no_go", "no-go"}
             and (
                 "historical_deployable=false" in details
                 or "deployable=false" in details
@@ -167,7 +167,7 @@ def _read_acceptable_nogos(report_dir: str) -> dict[str, list[dict[str, str]]]:
         for row in csv.DictReader(f):
             if (
                 row["severity"] == "critical"
-                and row["status"] != "pass"
+                and row["status"] != "PASS"
                 and _is_expected_critical_nogo(row)
             ):
                 acceptable.setdefault(row["symbol"], []).append(row)
@@ -371,7 +371,7 @@ def _print_summary(
             for row in acceptable_nogos[symbol]:
                 detail = row.get("details", "").strip()
                 suffix = f": {detail}" if detail else ""
-                print(f"  {symbol:<8}NOGO  expected {row['check_id']}{suffix}")
+                print(f"  {symbol:<8}NO_GO  expected {row['check_id']}{suffix}")
         else:
             print(f"  {symbol:<8}PASS")
     if all_pass:

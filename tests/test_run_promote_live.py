@@ -252,8 +252,8 @@ def test_promote_live_archives_full_bundle_but_updates_active_live_governance_on
         "\n".join(
             [
                 "symbol,check_id,status,severity,evaluated_at_utc",
-                f"EURUSD,C1,pass,critical,{today}",
-                f"AUDUSD,C1,nogo,critical,{today}",
+                f"EURUSD,C1,PASS,critical,{today}",
+                f"AUDUSD,C1,NO_GO,critical,{today}",
             ]
         )
         + "\n",
