@@ -1,3 +1,9 @@
+## v0.13.1 (2026-04-27)
+
+### Fix
+
+- add 300s timeout to offline seed subprocess to prevent startup hang (#104)
+
 ## v0.13.0 (2026-04-27)
 
 ### Feat
