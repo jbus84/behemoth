@@ -1300,6 +1300,95 @@ class StateManager:
             row = self._con.execute("SELECT COUNT(*) FROM raw_ticks").fetchone()
         return int(row[0]) if row and row[0] is not None else 0
 
+    def get_open_trade_entry_price(self, reservation_id: str) -> float | None:
+        """Return entry_price of the OPEN trade for the given reservation, or None."""
+        row = self._con.execute(
+            "SELECT entry_price FROM trades WHERE reservation_id = ? AND status = 'OPEN'",
+            [reservation_id],
+        ).fetchone()
+        return float(row[0]) if row else None
+
+    def get_latest_bar_id(self, symbol: str) -> int:
+        """Return MAX(row_id) for tick_bars of this symbol, or 0 if no rows exist."""
+        row = self._con.execute(
+            "SELECT MAX(row_id) FROM tick_bars WHERE symbol = ?",
+            [symbol.upper()],
+        ).fetchone()
+        return int(row[0]) if row and row[0] is not None else 0
+
+    def get_latest_tick_snapshot(self, symbol: str) -> tuple[float, datetime] | None:
+        """Return (close_bid, close_ts) for the most recent bar across all bar_ticks, or None."""
+        row = self._con.execute(
+            "SELECT close_bid, close_ts FROM tick_bars WHERE symbol = ? ORDER BY close_ts DESC, row_id DESC LIMIT 1",
+            [symbol.upper()],
+        ).fetchone()
+        if not row or row[0] is None:
+            return None
+        close_ts = row[1]
+        if isinstance(close_ts, datetime):
+            close_ts = (
+                close_ts.replace(tzinfo=timezone.utc)
+                if close_ts.tzinfo is None
+                else close_ts.astimezone(timezone.utc)
+            )
+        return float(row[0]), close_ts
+
+    def count_audit_logs(self, symbol: str, run_id: str) -> int:
+        """Return count of audit_logs rows matching (symbol, run_id)."""
+        row = self._con.execute(
+            "SELECT COUNT(*) FROM audit_logs WHERE symbol = ? AND run_id = ?",
+            [symbol.upper(), run_id],
+        ).fetchone()
+        return int(row[0]) if row else 0
+
+    def clear_audit_logs_by_run_id(self, run_id: str) -> None:
+        """Delete all audit_logs rows matching run_id (all symbols)."""
+        self._con.execute("DELETE FROM audit_logs WHERE run_id = ?", [run_id])
+
+    def atomic_audit_replace(
+        self, symbol: str, run_id: str, events_batch: list[tuple]
+    ) -> int:
+        """Delete existing audit rows for (symbol, run_id) and insert events_batch atomically."""
+        from contextlib import suppress
+
+        self._con.execute("BEGIN TRANSACTION")
+        try:
+            purged = self.purge_audit_events(symbol=symbol, run_id=run_id)
+            self.log_audit_event_batch(events_batch)
+            self._con.execute("COMMIT")
+            return purged
+        except Exception:
+            with suppress(Exception):
+                self._con.execute("ROLLBACK")
+            raise
+
+    def export_warmup_bars(self, symbol: str, bar_ticks: int, path: Path) -> int:
+        """Export tick_bars rows for (symbol, bar_ticks) to a parquet file. Returns row count."""
+        row = self._con.execute(
+            "SELECT COUNT(*) FROM tick_bars WHERE symbol = ? AND bar_ticks = ?",
+            [symbol.upper(), bar_ticks],
+        ).fetchone()
+        count = int(row[0]) if row else 0
+        if count == 0:
+            return 0
+        self._con.execute(
+            f"""
+            COPY (
+                SELECT row_id, ts, close_ts, open_bid, high_bid, low_bid, close_bid,
+                       spread, tick_volume, hl_first, hl_pos_frac, high_ask, close_ask
+                FROM tick_bars
+                WHERE symbol = ? AND bar_ticks = ?
+                ORDER BY row_id
+            ) TO '{path}' (FORMAT PARQUET)
+            """,
+            [symbol.upper(), bar_ticks],
+        )
+        return count
+
+    def checkpoint(self) -> None:
+        """Run a DuckDB CHECKPOINT to flush WAL to disk."""
+        self._con.execute("CHECKPOINT")
+
     def close(self) -> None:
         """Close the DuckDB connection."""
         self._con.close()

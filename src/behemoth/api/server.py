@@ -21,6 +21,7 @@ import logging
 import math
 import os
 import re
+import tempfile
 from bisect import bisect_left
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
@@ -601,12 +602,7 @@ def _build_open_positions_summary(
         for r in sym_reservations:
             entry_price: float | None = None
             if r["broker_pos_id"]:
-                row = state._con.execute(
-                    "SELECT entry_price FROM trades WHERE reservation_id = ? AND status = 'OPEN'",
-                    [r["reservation_id"]],
-                ).fetchone()
-                if row:
-                    entry_price = float(row[0])
+                entry_price = state.get_open_trade_entry_price(r["reservation_id"])
 
             estimated_unrealized_pips: float | None = None
             if entry_price is not None and last_tick_price is not None:
@@ -659,10 +655,7 @@ def _build_open_positions_summary(
         # Bars elapsed / remaining for the oldest broker-confirmed (OPEN) trade on this symbol
         if active_trades:
             oldest_trade = min(active_trades, key=lambda t: t["entry_bar_id"])
-            current_row_id = state._con.execute(
-                "SELECT MAX(row_id) FROM tick_bars WHERE symbol = ?", [sym.upper()]
-            ).fetchone()
-            current_bar = int(current_row_id[0]) if current_row_id and current_row_id[0] else 0
+            current_bar = state.get_latest_bar_id(sym)
             bars_elapsed = max(0, current_bar - oldest_trade["entry_bar_id"])
             bars_remaining = max(0, oldest_trade["horizon"] - bars_elapsed)
             METRIC_OPEN_POSITION_AGE_BARS.labels(symbol=sym).set(bars_elapsed)
@@ -1114,7 +1107,7 @@ def _load_seed_files(seed_dir: Path | None = None) -> None:
         logger.info("No seed parquets found in %s", seed_dir)
         return
     # Clear any previously loaded seed rows to ensure idempotent restarts
-    _state._con.execute("DELETE FROM audit_logs WHERE run_id = 'threshold_seed'")
+    _state.clear_audit_logs_by_run_id("threshold_seed")
     total = 0
     for pq_path in parquets:
         try:
@@ -1162,29 +1155,11 @@ def _parse_fx_ccy(sym: str) -> tuple[str, str] | None:
 def _latest_tick_price_snapshot(sym: str) -> dict[str, Any] | None:
     if _state is None:
         return None
-    row = _state._con.execute(
-        """
-        SELECT close_bid, close_ts
-        FROM tick_bars
-        WHERE symbol = ?
-        ORDER BY row_id DESC
-        LIMIT 1
-        """,
-        [sym.upper()],
-    ).fetchone()
-    if not row or row[0] is None:
+    result = _state.get_latest_tick_snapshot(sym)
+    if result is None:
         return None
-    close_ts = row[1]
-    if isinstance(close_ts, datetime):
-        if close_ts.tzinfo is None:
-            close_ts = close_ts.replace(tzinfo=timezone.utc)
-        else:
-            close_ts = close_ts.astimezone(timezone.utc)
-    return {
-        "symbol": sym.upper(),
-        "price": float(row[0]),
-        "close_ts": close_ts,
-    }
+    price, close_ts = result
+    return {"symbol": sym.upper(), "price": price, "close_ts": close_ts}
 
 
 def _snapshot_age_sec(snapshot: dict[str, Any], *, now_utc: datetime) -> float | None:
@@ -3409,28 +3384,13 @@ async def predict_warmup(req: WarmupRequest) -> dict:
         bar_ticks = int(cand.bar_ticks)
         if bar_ticks in bars_by_ticks:
             continue
-        bars_df = _state._con.execute(
-            """
-            SELECT
-                row_id,
-                ts,
-                close_ts,
-                open_bid,
-                high_bid,
-                low_bid,
-                close_bid,
-                spread,
-                tick_volume,
-                hl_first,
-                hl_pos_frac,
-                high_ask,
-                close_ask
-            FROM tick_bars
-            WHERE symbol = ? AND bar_ticks = ?
-            ORDER BY row_id
-            """,
-            [sym, bar_ticks],
-        ).fetchdf()
+        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as f:
+            tmp_path = Path(f.name)
+        try:
+            bar_count = _state.export_warmup_bars(sym, bar_ticks, tmp_path)
+            bars_df = pd.read_parquet(tmp_path) if bar_count > 0 else pd.DataFrame()
+        finally:
+            tmp_path.unlink(missing_ok=True)
         if len(bars_df) < warmup_needed:
             return {
                 "ok": True,
@@ -3533,10 +3493,7 @@ async def predict_warmup(req: WarmupRequest) -> dict:
             ))
 
     if not events_batch:
-        existing_rows = _state._con.execute(
-            "SELECT COUNT(*) FROM audit_logs WHERE symbol = ? AND run_id = ?",
-            [sym, run_id],
-        ).fetchone()[0]
+        existing_rows = _state.count_audit_logs(sym, run_id)
         logger.info(
             "predict_warmup: produced no valid warmup events for %s run_id=%s; preserving %d existing rows",
             sym,
@@ -3552,16 +3509,7 @@ async def predict_warmup(req: WarmupRequest) -> dict:
             "stats": stats,
         }
 
-    audit_events_purged = 0
-    try:
-        _state._con.execute("BEGIN TRANSACTION")
-        audit_events_purged = _state.purge_audit_events(symbol=sym, run_id=run_id)
-        _state.log_audit_event_batch(events_batch)
-        _state._con.execute("COMMIT")
-    except Exception:
-        with suppress(Exception):
-            _state._con.execute("ROLLBACK")
-        raise
+    audit_events_purged = _state.atomic_audit_replace(sym, run_id, events_batch)
 
     logger.info(
         "predict_warmup: purged %d rows and wrote %d audit events for %s",
@@ -3661,7 +3609,7 @@ async def checkpoint_state():
     """Force DuckDB to flush WAL to the on-disk database file."""
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
-    _state._con.execute("CHECKPOINT")
+    _state.checkpoint()
     return {"status": "ok", "checkpointed_at": datetime.now(tz=timezone.utc).isoformat()}
 
 
@@ -3930,8 +3878,7 @@ async def touch_trade(req: TradeTouchRequest):
     )
 
     sym = req.symbol.upper()
-    res = _state._con.execute("SELECT MAX(row_id) FROM tick_bars WHERE symbol = ?", [sym]).fetchone()
-    touch_bar_id = res[0] if res and res[0] is not None else 0
+    touch_bar_id = _state.get_latest_bar_id(sym)
     _state.touch_trade(req.broker_pos_id, touch_bar_id)
     out = {"status": "ok"}
     _append_http_trace(
