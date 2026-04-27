@@ -715,21 +715,25 @@ def main() -> None:
     write_runtime_session_metadata(paths["session_metadata_path"], current_metadata)
 
     # Run offline seed BEFORE starting the API
-    print("[jforex-live] running offline threshold seed", flush=True)
-    seed_result = subprocess.run(
-        [
-            sys.executable,
-            "scripts/seed_rolling_threshold.py",
-            "--symbols", ",".join(cfg.symbols),
-            "--governance-dir", os.environ.get("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco"),
-            "--models-dir", cfg.models_dir,
-            "--ticks-dir", os.getenv("BEHEMOTH_DUKASCOPY_TICKS_DIR", "/Users/danielfisher/Desktop/dukascopy_ticks"),
-            "--seed-dir", str(_repo_root() / "data" / "runtime" / "seed"),
-        ],
-        cwd=_repo_root(),
-    )
-    if seed_result.returncode != 0:
-        print("[jforex-live] WARNING: offline seed failed — API will start without historical thresholds", flush=True)
+    print("[jforex-live] running offline threshold seed (timeout=300s)", flush=True)
+    try:
+        seed_result = subprocess.run(
+            [
+                sys.executable,
+                "scripts/seed_rolling_threshold.py",
+                "--symbols", ",".join(cfg.symbols),
+                "--governance-dir", os.environ.get("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco"),
+                "--models-dir", cfg.models_dir,
+                "--ticks-dir", os.getenv("BEHEMOTH_DUKASCOPY_TICKS_DIR", "/Users/danielfisher/Desktop/dukascopy_ticks"),
+                "--seed-dir", str(_repo_root() / "data" / "runtime" / "seed"),
+            ],
+            cwd=_repo_root(),
+            timeout=300,
+        )
+        if seed_result.returncode != 0:
+            print("[jforex-live] WARNING: offline seed failed — API will start without historical thresholds", flush=True)
+    except subprocess.TimeoutExpired:
+        print("[jforex-live] WARNING: offline seed timed out after 300s — API will start without historical thresholds", flush=True)
 
     print("[jforex-live] starting API", flush=True)
     api_proc = _start_api(cfg)
