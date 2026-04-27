@@ -1,3 +1,19 @@
+## v0.13.0 (2026-04-27)
+
+### Feat
+
+- parity audit harness — 9 runtime contract checks + CLI runner (#102)
+- backport Grafana dashboard improvements from parity branch (#101)
+- live stage DAG hardening — provenance, restart eligibility, drain-only gate (#95)
+
+### Fix
+
+- add --no-daemon to gradle invocations to prevent startup hang (#103)
+- close 11 raw _con.execute leaks — add StateManager seam methods (#100)
+- eliminate RestartVerdict in favour of canonical RestartEligibility (#99)
+- align certification verdict values with ubiquitous language (#98)
+- harden live stage DAG promotion and restart fixes (#96)
+
 ## v0.12.1 (2026-04-24)
 
 ### Fix
