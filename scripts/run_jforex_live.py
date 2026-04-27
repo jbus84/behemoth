@@ -569,7 +569,7 @@ def _start_live_runner(cfg: RunConfig, *, allow_new_entries: bool = True) -> sub
         }
     )
     return subprocess.Popen(
-        ["mise", "exec", "--", "gradle", ":jforex-adapter:runJForexLive"],
+        ["mise", "exec", "--", "gradle", "--no-daemon", ":jforex-adapter:runJForexLive"],
         cwd=_repo_root(),
         env=env,
         start_new_session=True,
@@ -592,7 +592,7 @@ def _capture_broker_snapshot(cfg: RunConfig, paths: dict[str, Path]) -> None:
         }
     )
     subprocess.run(
-        ["mise", "exec", "--", "gradle", ":jforex-adapter:runJForexBrokerSnapshot"],
+        ["mise", "exec", "--", "gradle", "--no-daemon", ":jforex-adapter:runJForexBrokerSnapshot"],
         cwd=_repo_root(),
         env=env,
         check=True,
