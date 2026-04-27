@@ -128,10 +128,45 @@ def _phase1_report() -> str:
     return "\n".join(sections)
 
 
+def _phase3_parity_audit(run_id: str, model_month: str) -> str:
+    """Run audit_runtime_parity.py as the session wrap-up's Phase 3."""
+    import subprocess
+    import sys as _sys
+
+    audit_dir = ROOT / "docs/analysis/runtime_parity_audit"
+    audit_dir.mkdir(parents=True, exist_ok=True)
+    out_md = audit_dir / f"{run_id}_audit.md"
+    out_csv = audit_dir / f"{run_id}_findings.csv"
+
+    cmd = [
+        _sys.executable, str(ROOT / "scripts" / "audit_runtime_parity.py"),
+        "--run-id", run_id,
+        "--model-month", model_month,
+        "--reconcile-dir", str(RECONCILE_DIR),
+        "--governance-lock-dir", str(ROOT / "configs/research/governance/oco"),
+        "--live-state-db", str(LIVE_STATE_DB),
+        "--out-report", str(out_md),
+        "--out-csv", str(out_csv),
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    status = "PASS" if result.returncode == 0 else f"FAIL (exit {result.returncode})"
+    snippet = out_md.read_text() if out_md.exists() else result.stderr
+    return (
+        "\n## Parity Audit (Phase 3)\n\n"
+        f"- Status: **{status}**\n"
+        f"- Report: `{out_md}`\n"
+        f"- Findings CSV: `{out_csv}`\n\n"
+        "### Report excerpt\n\n"
+        + "\n".join(snippet.splitlines()[:30])
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--phase", type=int, choices=[1, 2], default=1)
+    parser.add_argument("--phase", type=int, choices=[1, 2, 3], default=1)
+    parser.add_argument("--run-id", default="jforex_live")
+    parser.add_argument("--model-month", default="2026-04")
     args = parser.parse_args()
 
     if args.phase == 1:
@@ -143,6 +178,14 @@ def main() -> None:
             print("ERROR: run --phase 1 first", file=sys.stderr)
             sys.exit(1)
         _append_phase2(args.out)
+    elif args.phase == 3:
+        if not args.out.exists():
+            print("ERROR: run --phase 1 first", file=sys.stderr)
+            sys.exit(1)
+        section = _phase3_parity_audit(args.run_id, args.model_month)
+        with args.out.open("a") as f:
+            f.write(section + "\n")
+        print(f"Phase 3 parity audit appended to {args.out}")
 
 
 def _append_phase2(out: Path) -> None:
