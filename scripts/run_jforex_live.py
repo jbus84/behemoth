@@ -155,6 +155,46 @@ def _expected_threshold_runtime(lock_payload: dict[str, object]) -> dict[str, ob
     }
 
 
+_TICK_STALENESS_MAX_DAYS = 3
+
+
+def _validate_tick_data_freshness(cfg: RunConfig) -> None:
+    ticks_dir = Path(os.getenv("BEHEMOTH_DUKASCOPY_TICKS_DIR", "/Users/danielfisher/Desktop/dukascopy_ticks"))
+    max_age_days = _TICK_STALENESS_MAX_DAYS
+    now = datetime.now(tz=timezone.utc)
+    cutoff = now - __import__("datetime").timedelta(days=max_age_days)
+    stale: list[str] = []
+
+    for symbol in cfg.symbols:
+        sym_dir = ticks_dir / symbol
+        if not sym_dir.exists():
+            stale.append(f"{symbol}: tick directory not found ({sym_dir})")
+            continue
+        parquets = sorted(sym_dir.glob("*.parquet"))
+        if not parquets:
+            stale.append(f"{symbol}: no parquet files in {sym_dir}")
+            continue
+        latest_mtime = max(p.stat().st_mtime for p in parquets)
+        latest_dt = datetime.fromtimestamp(latest_mtime, tz=timezone.utc)
+        age_days = (now - latest_dt).days
+        if latest_dt < cutoff:
+            stale.append(f"{symbol}: tick data is {age_days} days old (last file: {parquets[-1].name})")
+
+    if stale:
+        print("[jforex-live] PREFLIGHT FAILED: tick data is stale", file=sys.stderr, flush=True)
+        for msg in stale:
+            print(f"[jforex-live]   {msg}", file=sys.stderr, flush=True)
+        print(
+            "[jforex-live] Update tick data first:\n"
+            "  uv run python scripts/download_tick_vault_data.py --help\n"
+            "Then re-seed the rolling threshold:\n"
+            "  make seed-threshold",
+            file=sys.stderr,
+            flush=True,
+        )
+        raise SystemExit(1)
+
+
 def _validate_promoted_runtime_artifacts(cfg: RunConfig) -> None:
     repo_root = _repo_root()
     governance_dir = _governance_dir_path(repo_root)
@@ -686,6 +726,7 @@ def main() -> None:
         if not os.environ.get(required):
             raise SystemExit(f"Missing required env var: {required}")
 
+    _validate_tick_data_freshness(cfg)
     _validate_promoted_runtime_artifacts(cfg)
 
     paths = _runtime_paths(cfg)

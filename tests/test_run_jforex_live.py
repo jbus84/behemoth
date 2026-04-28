@@ -726,3 +726,101 @@ def test_main_reset_forces_new_entries_true_despite_stale_drain_only_eligibility
     assert captured_allow_new_entries == [True], (
         f"expected allow_new_entries=True for reset startup, got {captured_allow_new_entries}"
     )
+
+
+# ---------------------------------------------------------------------------
+# _validate_tick_data_freshness
+# ---------------------------------------------------------------------------
+
+def _make_run_config(symbols=("EURUSD",)) -> run_jforex_live.RunConfig:
+    return run_jforex_live.RunConfig(
+        symbols=tuple(symbols),
+        models_dir="models/oco_dukascopy_candidate",
+        history_dir="configs/research/governance/oco_history_dukascopy_candidate",
+        report_dir="data/analysis/backtest_reconcile",
+        startup_mode="resume",
+        api_host="127.0.0.1",
+        api_port=8000,
+        requested_volume_units=10000,
+        tick_batch_size=200,
+        order_ttl_seconds=900,
+        api_timeout_seconds=60,
+        metrics_enabled=True,
+        metrics_host="127.0.0.1",
+        metrics_port=9464,
+    )
+
+
+def test_validate_tick_data_freshness_passes_with_fresh_data(tmp_path, monkeypatch) -> None:
+    import time as time_mod
+
+    sym_dir = tmp_path / "EURUSD"
+    sym_dir.mkdir()
+    fresh_file = sym_dir / "EURUSD_202604_ticks.parquet"
+    fresh_file.write_text("dummy")
+
+    monkeypatch.setenv("BEHEMOTH_DUKASCOPY_TICKS_DIR", str(tmp_path))
+    cfg = _make_run_config(symbols=("EURUSD",))
+    # Should not raise
+    run_jforex_live._validate_tick_data_freshness(cfg)
+
+
+def test_validate_tick_data_freshness_fails_when_stale(tmp_path, monkeypatch) -> None:
+    import os, time as time_mod
+    from datetime import datetime, timedelta, timezone
+
+    sym_dir = tmp_path / "EURUSD"
+    sym_dir.mkdir()
+    stale_file = sym_dir / "EURUSD_202601_ticks.parquet"
+    stale_file.write_text("dummy")
+    # backdate mtime to 20 days ago
+    old_ts = (datetime.now(timezone.utc) - timedelta(days=20)).timestamp()
+    os.utime(stale_file, (old_ts, old_ts))
+
+    monkeypatch.setenv("BEHEMOTH_DUKASCOPY_TICKS_DIR", str(tmp_path))
+    cfg = _make_run_config(symbols=("EURUSD",))
+
+    with pytest.raises(SystemExit):
+        run_jforex_live._validate_tick_data_freshness(cfg)
+
+
+def test_validate_tick_data_freshness_fails_when_dir_missing(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("BEHEMOTH_DUKASCOPY_TICKS_DIR", str(tmp_path))
+    cfg = _make_run_config(symbols=("EURUSD",))
+
+    with pytest.raises(SystemExit):
+        run_jforex_live._validate_tick_data_freshness(cfg)
+
+
+def test_validate_tick_data_freshness_fails_when_no_parquets(tmp_path, monkeypatch) -> None:
+    sym_dir = tmp_path / "EURUSD"
+    sym_dir.mkdir()
+    (sym_dir / "readme.txt").write_text("no parquet here")
+
+    monkeypatch.setenv("BEHEMOTH_DUKASCOPY_TICKS_DIR", str(tmp_path))
+    cfg = _make_run_config(symbols=("EURUSD",))
+
+    with pytest.raises(SystemExit):
+        run_jforex_live._validate_tick_data_freshness(cfg)
+
+
+def test_validate_tick_data_freshness_checks_all_symbols(tmp_path, monkeypatch) -> None:
+    import os
+    from datetime import datetime, timedelta, timezone
+
+    for sym in ("EURUSD", "GBPUSD"):
+        d = tmp_path / sym
+        d.mkdir()
+        f = d / f"{sym}_202604_ticks.parquet"
+        f.write_text("dummy")
+
+    # Make GBPUSD stale
+    stale_file = tmp_path / "GBPUSD" / "GBPUSD_202604_ticks.parquet"
+    old_ts = (datetime.now(timezone.utc) - timedelta(days=20)).timestamp()
+    os.utime(stale_file, (old_ts, old_ts))
+
+    monkeypatch.setenv("BEHEMOTH_DUKASCOPY_TICKS_DIR", str(tmp_path))
+    cfg = _make_run_config(symbols=("EURUSD", "GBPUSD"))
+
+    with pytest.raises(SystemExit):
+        run_jforex_live._validate_tick_data_freshness(cfg)
