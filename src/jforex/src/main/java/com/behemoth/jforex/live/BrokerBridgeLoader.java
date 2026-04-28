@@ -101,7 +101,7 @@ public final class BrokerBridgeLoader {
                     if (batchResponse == null) {
                         throw new PythonApiException(599, "empty tick batch response", "");
                     }
-                    latestBarCount = batchResponse.barCount();
+                    latestBarCount = Math.max(cfg.initialWarmupBarCount100(), batchResponse.barCount());
                     lastClientTickSeq = batchResponse.lastClientTickSeq();
                     lastBridgedTickTs = ticks.getLast().timestamp();
                     registry.recordBridgeProgress(symbol, effectiveRequestToInclusive, lastBridgedTickTs);
