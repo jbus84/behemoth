@@ -491,6 +491,64 @@ class BrokerBridgeLoaderTest {
         }
     }
 
+    @Test
+    void bridgeDoesNotDropInitialWarmupCountWhenApiBarCountIsLow() throws Exception {
+        // Regression: when the Python API uses 1000-tick bars but the bridge checks at 100-tick
+        // granularity, the first tick-batch response can return a lower bar_count than the
+        // parquet-seeded initialWarmupBarCount100. The bridge must use the initial count as a floor
+        // so the warmup threshold is preserved and the bridge can complete once the feed is fresh.
+        MutableClock clock = new MutableClock(Instant.parse("2026-03-22T12:00:20Z"), ZoneId.of("UTC"));
+        FakeBrokerHistoryPort historyPort = new FakeBrokerHistoryPort(
+                List.of(List.of(
+                        new RuntimeTick("EURUSD", Instant.parse("2026-03-22T12:00:00Z"), 1.0850, 1.0852)
+                )),
+                () -> {}
+        );
+        SymbolReadinessRegistry registry = SymbolReadinessRegistry.forSymbols(List.of("EURUSD"));
+
+        try (MockWebServer server = new MockWebServer()) {
+            // API returns a low bar_count (15) that is below the threshold (289) —
+            // simulates the case where the API only has 1000-tick bars and bar_count(100) is tiny.
+            server.enqueue(new MockResponse()
+                    .setHeader("Content-Type", "application/json")
+                    .setBody("""
+                            {
+                              "ok": true,
+                              "symbol": "EURUSD",
+                              "ticks_received": 1,
+                              "accepted_count": 1,
+                              "dropped_count": 0,
+                              "bar_completed": false,
+                              "completed_bar_ticks": [],
+                              "symbol_tick_seq": 1,
+                              "last_tick_ts_utc": "2026-03-22T12:00:00Z",
+                              "last_client_tick_seq": 1,
+                              "bar_count": 15
+                            }
+                            """));
+            // Feed is fresh — bridge should complete because initialWarmupBarCount100 (300) >= threshold (289).
+            server.enqueue(feedStatusResponse("EURUSD", "2026-03-22T12:00:20Z"));
+
+            PythonPredictionClient predictionClient = new PythonPredictionClient(
+                    HttpClient.newHttpClient(), server.url("/").uri());
+            BrokerBridgeLoader loader = new BrokerBridgeLoader(historyPort, predictionClient, registry, clock);
+
+            BrokerBridgeLoader.BridgeResult result = loader.bridge(new BrokerBridgeLoader.BridgeConfig(
+                    "EURUSD",
+                    Instant.parse("2026-03-22T11:59:59Z"),
+                    "run-1",
+                    Duration.ofMinutes(60),
+                    Duration.ofSeconds(30),
+                    Duration.ofMinutes(20),
+                    289,
+                    300
+            ));
+
+            assertThat(result.ready()).isTrue();
+            assertThat(registry.snapshot("EURUSD").state()).isEqualTo(SymbolReadinessState.READY);
+        }
+    }
+
     private static MockResponse feedStatusResponse(String symbol, String lastTickTsUtc) {
         return new MockResponse()
                 .setHeader("Content-Type", "application/json")
