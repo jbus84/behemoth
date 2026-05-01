@@ -1,9 +1,71 @@
 from __future__ import annotations
 
 import socket
+import subprocess
+import sys
 from pathlib import Path
 
-from scripts.run_local_jforex_surrogate_matrix import RunConfig, _pick_free_port, _prediction_path
+from scripts.run_local_jforex_surrogate_matrix import (
+    RunConfig,
+    _parse_args,
+    _pick_free_port,
+    _prediction_path,
+)
+
+
+def test_cli_help_runs_when_executed_as_script() -> None:
+    repo = Path(__file__).resolve().parents[1]
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(repo / "scripts" / "run_local_jforex_surrogate_matrix.py"),
+            "--help",
+        ],
+        cwd=repo,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "--warmup-ticks" in result.stdout
+
+
+def test_parse_args_auto_computes_warmup_ticks_from_flat_lock_dir(
+    monkeypatch, tmp_path: Path
+) -> None:
+    calls: dict[str, object] = {}
+    lock_dir = tmp_path / "locked"
+
+    def fake_compute_required_warmup_ticks(**kwargs: object) -> int:
+        calls.update(kwargs)
+        return 346800
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_local_jforex_surrogate_matrix.py",
+            "--symbols",
+            "EURUSD,USDJPY",
+            "--locked-predictions-dir",
+            str(lock_dir),
+        ],
+    )
+    monkeypatch.setattr(
+        "scripts.run_local_jforex_surrogate_matrix.compute_required_warmup_ticks",
+        fake_compute_required_warmup_ticks,
+    )
+
+    cfg = _parse_args()
+
+    assert cfg.warmup_ticks == 346800
+    assert calls == {
+        "symbols": ("EURUSD", "USDJPY"),
+        "locked_predictions_dir": lock_dir,
+        "model_month": "",
+    }
 
 
 def _cfg(tmp_path: Path) -> RunConfig:

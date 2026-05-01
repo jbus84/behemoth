@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -14,12 +15,65 @@ from scripts.run_jforex_dukascopy_matrix import (
     _load_phase_aligned_warmup_ticks,
     main,
     _next_available_port,
+    _parse_args,
     _prediction_path,
     _run_jforex_tester,
     _stage14_artifact_paths,
     _wait_for_artifacts_then_kill,
     _with_mise_trusted_paths,
 )
+
+
+def test_cli_help_runs_when_executed_as_script() -> None:
+    repo = Path(__file__).resolve().parents[1]
+
+    result = subprocess.run(
+        [sys.executable, str(repo / "scripts" / "run_jforex_dukascopy_matrix.py"), "--help"],
+        cwd=repo,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "--warmup-ticks" in result.stdout
+
+
+def test_parse_args_auto_computes_warmup_ticks(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_compute_required_warmup_ticks(**kwargs: object) -> int:
+        calls.update(kwargs)
+        return 346800
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_jforex_dukascopy_matrix.py",
+            "--symbols",
+            "EURUSD,USDJPY",
+            "--model-month",
+            "2026-04",
+            "--history-dir",
+            str(tmp_path),
+        ],
+    )
+    monkeypatch.setattr(
+        "scripts.run_jforex_dukascopy_matrix.compute_required_warmup_ticks",
+        fake_compute_required_warmup_ticks,
+    )
+
+    cfg = _parse_args()
+
+    assert cfg.warmup_ticks == 346800
+    assert calls == {
+        "symbols": ("EURUSD", "USDJPY"),
+        "locked_predictions_dir": tmp_path,
+        "model_month": "2026-04",
+    }
 
 
 def _make_proc(returncode: int | None = None) -> MagicMock:

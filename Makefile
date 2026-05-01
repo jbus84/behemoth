@@ -320,7 +320,7 @@ local-jforex-parity-matrix:
 		$(JFOREX_MATRIX_ARGS) \
 		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks) \
 		--tick-batch-size $(or $(TICK_BATCH_SIZE),200) \
-		--warmup-ticks $(or $(WARMUP_TICKS),30000) \
+		--warmup-ticks $(or $(WARMUP_TICKS),0) \
 		--lookback-days $(or $(LOOKBACK_DAYS),31) \
 		--phase-bar-ticks $(or $(PHASE_BAR_TICKS),100) \
 		--starting-balance $(or $(STARTING_BALANCE),100000)
@@ -332,7 +332,7 @@ local-jforex-parity-ordinal:
 		$(JFOREX_MATRIX_ARGS) \
 		--tick-root $(or $(TICK_ROOT),/Users/danielfisher/Desktop/dukascopy_ticks) \
 		--tick-batch-size $(or $(TICK_BATCH_SIZE),200) \
-		--warmup-ticks $(or $(WARMUP_TICKS),30000) \
+		--warmup-ticks $(or $(WARMUP_TICKS),0) \
 		--lookback-days $(or $(LOOKBACK_DAYS),31) \
 		--phase-bar-ticks $(or $(PHASE_BAR_TICKS),100) \
 		--starting-balance $(or $(STARTING_BALANCE),100000) \

@@ -27,6 +27,15 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+_SCRIPT_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_SCRIPT_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_REPO_ROOT))
+
+from scripts._matrix_warmup import (
+    WARMUP_TICKS_AUTO,
+    compute_required_warmup_ticks,
+)
+
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 DEFAULT_START = "2025-07-04T00:00:00Z"
 DEFAULT_END = "2025-07-09T00:00:00Z"
@@ -93,7 +102,16 @@ def _parse_args() -> RunConfig:
         "--universe-mode", choices=["tolerant", "nearest", "ordinal"], default="tolerant"
     )
     parser.add_argument("--ordinal-tolerance", type=int, default=0)
-    parser.add_argument("--warmup-ticks", type=int, default=30000)
+    parser.add_argument(
+        "--warmup-ticks",
+        type=int,
+        default=WARMUP_TICKS_AUTO,
+        help=(
+            "Warmup ticks to pre-load before matrix start. Default 0 = "
+            "auto-compute as full_warmup_bars * max(candidate bar_ticks) * 1.2 "
+            "from the locked predictions for --model-month."
+        ),
+    )
     parser.add_argument("--lookback-days", type=int, default=31)
     parser.add_argument("--phase-bar-ticks", type=int, default=100)
     parser.add_argument(
@@ -106,6 +124,18 @@ def _parse_args() -> RunConfig:
     symbols = tuple(s.strip().upper() for s in str(args.symbols).split(",") if s.strip())
     if not symbols:
         raise SystemExit("No symbols provided")
+    warmup_ticks = int(args.warmup_ticks)
+    if warmup_ticks <= WARMUP_TICKS_AUTO:
+        warmup_ticks = compute_required_warmup_ticks(
+            symbols=symbols,
+            locked_predictions_dir=Path(args.history_dir),
+            model_month=str(args.model_month),
+        )
+        print(
+            f"[matrix] auto-computed --warmup-ticks={warmup_ticks} "
+            f"(model_month={args.model_month})",
+            flush=True,
+        )
     return RunConfig(
         symbols=symbols,
         start_ts=args.start_ts,
@@ -128,7 +158,7 @@ def _parse_args() -> RunConfig:
         risk_enabled=bool(args.risk_enabled),
         universe_mode=args.universe_mode,
         ordinal_tolerance=int(args.ordinal_tolerance),
-        warmup_ticks=int(args.warmup_ticks),
+        warmup_ticks=warmup_ticks,
         lookback_days=int(args.lookback_days),
         phase_bar_ticks=int(args.phase_bar_ticks),
         tester_completion_timeout_seconds=args.tester_completion_timeout_seconds,
