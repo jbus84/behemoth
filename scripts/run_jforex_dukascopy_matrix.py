@@ -318,6 +318,13 @@ def _load_aligned_warmup_ticks(cfg: RunConfig, symbol: str) -> list[dict[str, ob
             """,
             [lookback_start, start_ts, keep],
         ).fetchall()
+        if len(rows) < keep:
+            raise RuntimeError(
+                f"Insufficient aligned warmup ticks for {symbol.upper().strip()}: "
+                f"requested keep={keep}, actual rows={len(rows)}, "
+                f"lookback_start={lookback_start.isoformat()}, "
+                f"start_ts={start_ts.isoformat()}"
+            )
     finally:
         con.close()
 
