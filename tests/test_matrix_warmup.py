@@ -167,6 +167,51 @@ class TestComputeRequiredWarmupTicks:
         assert WARMUP_TICKS_AUTO <= 0
 
 
+class TestComputeBarAlignTicks:
+    def test_returns_max_bar_ticks_when_candidates_present(self, tmp_path: Path) -> None:
+        from scripts._matrix_warmup import compute_bar_align_ticks
+        _write_locked(
+            tmp_path / "2026-04" / "eurusd_oco_locked_predictions.parquet",
+            ["oco|EURUSD|1000|h6|s1"],
+        )
+        assert (
+            compute_bar_align_ticks(
+                symbols=["EURUSD"],
+                locked_predictions_dir=tmp_path,
+                model_month="2026-04",
+            )
+            == 1000
+        )
+
+    def test_returns_zero_when_no_candidates(self, tmp_path: Path) -> None:
+        from scripts._matrix_warmup import compute_bar_align_ticks
+
+        # Sentinel return; the runner is expected to fail fast on this.
+        assert (
+            compute_bar_align_ticks(
+                symbols=["EURUSD"],
+                locked_predictions_dir=tmp_path,
+                model_month="2026-04",
+            )
+            == 0
+        )
+
+    def test_flat_layout_when_model_month_empty(self, tmp_path: Path) -> None:
+        from scripts._matrix_warmup import compute_bar_align_ticks
+        _write_locked(
+            tmp_path / "audusd_oco_locked_predictions.parquet",
+            ["oco|AUDUSD|1500|h6|s1"],
+        )
+        assert (
+            compute_bar_align_ticks(
+                symbols=["AUDUSD"],
+                locked_predictions_dir=tmp_path,
+                model_month="",
+            )
+            == 1500
+        )
+
+
 def test_makefile_local_matrix_targets_request_auto_warmup() -> None:
     makefile = Path(__file__).resolve().parents[1] / "Makefile"
     text = makefile.read_text()

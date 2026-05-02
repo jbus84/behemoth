@@ -88,3 +88,23 @@ def compute_required_warmup_ticks(
     if max_bt <= 0:
         return FALLBACK_WARMUP_TICKS
     return int(cfg.full_warmup_bars * max_bt * margin)
+
+
+def compute_bar_align_ticks(
+    *,
+    symbols: Iterable[str],
+    locked_predictions_dir: Path,
+    model_month: str = "",
+) -> int:
+    """Auto-derive the alignment modulus for warmup tick loading.
+
+    Returns the largest candidate ``bar_ticks`` across the locked set.
+    Returns 0 when no locked predictions are discoverable; the matrix
+    runner is expected to fail fast in that case rather than fall back
+    to a default that re-introduces the alignment bug.
+    """
+    return max_bar_ticks_for_symbols(
+        symbols=symbols,
+        locked_predictions_dir=locked_predictions_dir,
+        model_month=model_month,
+    )
