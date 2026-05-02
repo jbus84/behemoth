@@ -212,6 +212,40 @@ class TestComputeBarAlignTicks:
         )
 
 
+class TestAlignKeepFormula:
+    def test_property_keep_mod_align_equals_pre_count_mod_align(self) -> None:
+        from scripts._matrix_warmup import align_keep
+        # The formula's invariant: keep % align == full_pre_count % align,
+        # so the runtime open-bar accumulator at end-of-warmup matches what
+        # governance had at the same tick position.
+        for warmup_ticks, align, pre_count in [
+            (346800, 1000, 0),
+            (346800, 1000, 47),
+            (346800, 1000, 832),
+            (346800, 1000, 999),
+            (346800, 1000, 2547832),
+            (30000, 100, 12345),
+        ]:
+            keep = align_keep(warmup_ticks, align, pre_count)
+            assert keep % align == pre_count % align, (
+                f"warmup_ticks={warmup_ticks} align={align} pre_count={pre_count} "
+                f"keep={keep}"
+            )
+            assert keep <= warmup_ticks + align
+
+    def test_validates_inputs(self) -> None:
+        from scripts._matrix_warmup import align_keep
+
+        with pytest.raises(ValueError, match="align must be > 0"):
+            align_keep(346800, 0, 2547832)
+
+        with pytest.raises(ValueError, match="must be >= 0"):
+            align_keep(-1, 1000, 2547832)
+
+        with pytest.raises(ValueError, match="must be >= 0"):
+            align_keep(346800, 1000, -1)
+
+
 def test_makefile_local_matrix_targets_request_auto_warmup() -> None:
     makefile = Path(__file__).resolve().parents[1] / "Makefile"
     text = makefile.read_text()

@@ -108,3 +108,18 @@ def compute_bar_align_ticks(
         locked_predictions_dir=locked_predictions_dir,
         model_month=model_month,
     )
+
+
+def align_keep(warmup_ticks: int, align: int, full_pre_count: int) -> int:
+    """Size the warmup-tick keep window so its modulo matches governance.
+
+    Property: ``align_keep(w, a, p) % a == p % a`` for any non-negative
+    ``w``, positive ``a``, non-negative ``p``. This makes the runtime's
+    open-bar accumulator at end-of-warmup equal to what governance had
+    at the same absolute tick position.
+    """
+    if align <= 0:
+        raise ValueError(f"align must be > 0, got {align}")
+    if warmup_ticks < 0 or full_pre_count < 0:
+        raise ValueError("warmup_ticks and full_pre_count must be >= 0")
+    return (warmup_ticks // align) * align + (full_pre_count % align)
