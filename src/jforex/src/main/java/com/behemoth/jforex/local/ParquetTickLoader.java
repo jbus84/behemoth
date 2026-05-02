@@ -28,7 +28,8 @@ public final class ParquetTickLoader {
         Instant lookbackStart = config.startUtc().minus(config.lookbackDays(), ChronoUnit.DAYS);
         try (Connection connection = DriverManager.getConnection("jdbc:duckdb:")) {
             int fullPreCount = countBeforeStart(connection, parquetExpr, null, config.startUtc());
-            int keep = config.warmupTicks() + (fullPreCount % config.phaseBarTicks());
+            int align = config.barAlignTicks();
+            int keep = (config.warmupTicks() / align) * align + (fullPreCount % align);
             List<RuntimeTick> warmup = loadRowsDescending(connection, parquetExpr, lookbackStart, config.startUtc(), keep, sym);
             warmup.sort(Comparator.comparing(RuntimeTick::timestamp));
             List<RuntimeTick> stream = loadRowsAscending(connection, parquetExpr, config.startUtc(), config.endUtc(), sym);
