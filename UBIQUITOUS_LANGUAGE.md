@@ -85,7 +85,8 @@
 | **RESTART_ELIGIBLE** | The restart result that allows preserved-state live resumption with normal entry behavior. | Clean resumable, normal restart |
 | **RESTART_ELIGIBLE_DRAIN_ONLY** | The restart result that allows reconciliation and exposure management but blocks new entries. | Drain only, reconcilable |
 | **RESTART_BLOCKED** | The restart result that forbids live startup until state, artifacts, or broker context are proven safe. | Incompatible, blocked restart |
-| **Warmup** | The historical feature replay used to seed live inference state before current predictions begin. | Backfill, preload |
+| **Warmup** | The historical feature replay used to seed live inference state before current predictions begin. | Backfill, preload, phase warmup |
+| **Bar Alignment Ticks** | The tick-count modulus used when sizing **Warmup** loads so the runtime's open-bar accumulator at start matches what governance had at the same moment. Equals the largest candidate `bar_ticks` in the active universe. | Phase bar ticks, alignment window |
 | **Reconciliation** | The process of matching broker state, local state, and promoted runtime state after restart or drift. | Resync, state repair |
 | **Trade Tracking State** | The persisted local record of live orders, barriers, and lifecycle progress. | Local cache, live DB |
 
