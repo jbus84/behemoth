@@ -36,7 +36,8 @@ public record JForexSessionConfig(
         int liveLookbackDays,
         int liveBridgeWindowMinutes,
         int liveFreshnessSeconds,
-        int liveStartupBridgeTimeoutMinutes
+        int liveStartupBridgeTimeoutMinutes,
+        int liveBarAlignTicks
 ) {
     private static final boolean DEFAULT_LIVE_READINESS_ENABLED = true;
     private static final int DEFAULT_LIVE_WARMUP_TICKS = 30_000;
@@ -44,6 +45,7 @@ public record JForexSessionConfig(
     private static final int DEFAULT_LIVE_BRIDGE_WINDOW_MINUTES = 60;
     private static final int DEFAULT_LIVE_FRESHNESS_SECONDS = 30;
     private static final int DEFAULT_LIVE_STARTUP_BRIDGE_TIMEOUT_MINUTES = 20;
+    private static final int DEFAULT_LIVE_BAR_ALIGN_TICKS = 1000;
 
     public JForexSessionConfig {
         apiBaseUri = Objects.requireNonNull(apiBaseUri, "apiBaseUri");
@@ -90,6 +92,9 @@ public record JForexSessionConfig(
                 || liveFreshnessSeconds < 0
                 || liveStartupBridgeTimeoutMinutes < 0) {
             throw new IllegalArgumentException("live readiness tuning values must be >= 0");
+        }
+        if (liveBarAlignTicks <= 0) {
+            throw new IllegalArgumentException("liveBarAlignTicks must be > 0");
         }
     }
 
@@ -186,7 +191,8 @@ public record JForexSessionConfig(
                 DEFAULT_LIVE_LOOKBACK_DAYS,
                 DEFAULT_LIVE_BRIDGE_WINDOW_MINUTES,
                 DEFAULT_LIVE_FRESHNESS_SECONDS,
-                DEFAULT_LIVE_STARTUP_BRIDGE_TIMEOUT_MINUTES
+                DEFAULT_LIVE_STARTUP_BRIDGE_TIMEOUT_MINUTES,
+                DEFAULT_LIVE_BAR_ALIGN_TICKS
         );
     }
 
@@ -258,6 +264,11 @@ public record JForexSessionConfig(
                         environment,
                         "BEHEMOTH_JFOREX_LIVE_STARTUP_BRIDGE_TIMEOUT_MINUTES",
                         Integer.toString(DEFAULT_LIVE_STARTUP_BRIDGE_TIMEOUT_MINUTES)
+                )),
+                Integer.parseInt(setting(
+                        environment,
+                        "BEHEMOTH_JFOREX_LIVE_BAR_ALIGN_TICKS",
+                        Integer.toString(DEFAULT_LIVE_BAR_ALIGN_TICKS)
                 ))
         );
     }
