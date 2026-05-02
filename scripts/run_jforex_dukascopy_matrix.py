@@ -287,8 +287,12 @@ def _tick_files(cfg: RunConfig, symbol: str) -> list[Path]:
 
 def _load_aligned_warmup_ticks(cfg: RunConfig, symbol: str) -> list[dict[str, object]]:
     files = _tick_files(cfg, symbol)
-    if not files or cfg.bar_align_ticks <= 0:
+    if cfg.bar_align_ticks <= 0:
         return []
+    if not files:
+        raise RuntimeError(
+            f"No tick parquet files found for {symbol.upper().strip()} under {cfg.tick_root}"
+        )
     try:
         import duckdb
     except Exception as exc:  # pragma: no cover - exercised in real runtime
