@@ -27,6 +27,17 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+_SCRIPT_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_SCRIPT_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_REPO_ROOT))
+
+from scripts._matrix_warmup import (
+    WARMUP_TICKS_AUTO,
+    align_keep,
+    compute_bar_align_ticks,
+    compute_required_warmup_ticks,
+)
+
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 DEFAULT_START = "2025-07-04T00:00:00Z"
 DEFAULT_END = "2025-07-09T00:00:00Z"
@@ -64,7 +75,7 @@ class RunConfig:
     ordinal_tolerance: int
     warmup_ticks: int
     lookback_days: int
-    phase_bar_ticks: int
+    bar_align_ticks: int
     tester_completion_timeout_seconds: int
 
 
@@ -93,9 +104,26 @@ def _parse_args() -> RunConfig:
         "--universe-mode", choices=["tolerant", "nearest", "ordinal"], default="tolerant"
     )
     parser.add_argument("--ordinal-tolerance", type=int, default=0)
-    parser.add_argument("--warmup-ticks", type=int, default=30000)
+    parser.add_argument(
+        "--warmup-ticks",
+        type=int,
+        default=WARMUP_TICKS_AUTO,
+        help=(
+            "Warmup ticks to pre-load before matrix start. Default 0 = "
+            "auto-compute as full_warmup_bars * max(candidate bar_ticks) * 1.2 "
+            "from the locked predictions for --model-month."
+        ),
+    )
     parser.add_argument("--lookback-days", type=int, default=31)
-    parser.add_argument("--phase-bar-ticks", type=int, default=100)
+    parser.add_argument(
+        "--bar-align-ticks",
+        type=int,
+        default=0,
+        help=(
+            "Tick-count modulus for warmup load alignment. Default 0 = auto-derive "
+            "from max(candidate bar_ticks) in --model-month locked predictions."
+        ),
+    )
     parser.add_argument(
         "--tester-completion-timeout-seconds",
         type=int,
@@ -106,6 +134,36 @@ def _parse_args() -> RunConfig:
     symbols = tuple(s.strip().upper() for s in str(args.symbols).split(",") if s.strip())
     if not symbols:
         raise SystemExit("No symbols provided")
+    warmup_ticks = int(args.warmup_ticks)
+    if warmup_ticks <= WARMUP_TICKS_AUTO:
+        warmup_ticks = compute_required_warmup_ticks(
+            symbols=symbols,
+            locked_predictions_dir=Path(args.history_dir),
+            model_month=str(args.model_month),
+        )
+        print(
+            f"[matrix] auto-computed --warmup-ticks={warmup_ticks} "
+            f"(model_month={args.model_month})",
+            flush=True,
+        )
+    bar_align_ticks = int(args.bar_align_ticks)
+    if bar_align_ticks <= 0:
+        bar_align_ticks = compute_bar_align_ticks(
+            symbols=symbols,
+            locked_predictions_dir=Path(args.history_dir),
+            model_month=str(args.model_month),
+        )
+        if bar_align_ticks <= 0:
+            raise SystemExit(
+                f"bar_align_ticks could not be auto-derived from "
+                f"{args.history_dir}/{args.model_month} locked predictions; "
+                f"pass --bar-align-ticks explicitly."
+            )
+        print(
+            f"[matrix] auto-computed --bar-align-ticks={bar_align_ticks} "
+            f"(model_month={args.model_month})",
+            flush=True,
+        )
     return RunConfig(
         symbols=symbols,
         start_ts=args.start_ts,
@@ -128,9 +186,9 @@ def _parse_args() -> RunConfig:
         risk_enabled=bool(args.risk_enabled),
         universe_mode=args.universe_mode,
         ordinal_tolerance=int(args.ordinal_tolerance),
-        warmup_ticks=int(args.warmup_ticks),
+        warmup_ticks=warmup_ticks,
         lookback_days=int(args.lookback_days),
-        phase_bar_ticks=int(args.phase_bar_ticks),
+        bar_align_ticks=bar_align_ticks,
         tester_completion_timeout_seconds=args.tester_completion_timeout_seconds,
     )
 
@@ -227,10 +285,14 @@ def _tick_files(cfg: RunConfig, symbol: str) -> list[Path]:
     return sorted(path for path in symbol_dir.iterdir() if path.suffix == ".parquet")
 
 
-def _load_phase_aligned_warmup_ticks(cfg: RunConfig, symbol: str) -> list[dict[str, object]]:
+def _load_aligned_warmup_ticks(cfg: RunConfig, symbol: str) -> list[dict[str, object]]:
     files = _tick_files(cfg, symbol)
-    if not files or cfg.phase_bar_ticks <= 0:
+    if cfg.bar_align_ticks <= 0:
         return []
+    if not files:
+        raise RuntimeError(
+            f"No tick parquet files found for {symbol.upper().strip()} under {cfg.tick_root}"
+        )
     try:
         import duckdb
     except Exception as exc:  # pragma: no cover - exercised in real runtime
@@ -247,7 +309,7 @@ def _load_phase_aligned_warmup_ticks(cfg: RunConfig, symbol: str) -> list[dict[s
                 [start_ts],
             ).fetchone()[0]
         )
-        keep = int(cfg.warmup_ticks) + (full_pre_count % int(cfg.phase_bar_ticks))
+        keep = align_keep(int(cfg.warmup_ticks), int(cfg.bar_align_ticks), full_pre_count)
         if keep <= 0:
             return []
         rows = con.execute(
@@ -260,6 +322,13 @@ def _load_phase_aligned_warmup_ticks(cfg: RunConfig, symbol: str) -> list[dict[s
             """,
             [lookback_start, start_ts, keep],
         ).fetchall()
+        if len(rows) < keep:
+            raise RuntimeError(
+                f"Insufficient aligned warmup ticks for {symbol.upper().strip()}: "
+                f"requested keep={keep}, actual rows={len(rows)}, "
+                f"lookback_start={lookback_start.isoformat()}, "
+                f"start_ts={start_ts.isoformat()}"
+            )
     finally:
         con.close()
 
@@ -279,12 +348,12 @@ def _load_phase_aligned_warmup_ticks(cfg: RunConfig, symbol: str) -> list[dict[s
 
 
 def _prime_api_with_warmup(cfg: RunConfig, symbol: str, api_port: int) -> None:
-    ticks = _load_phase_aligned_warmup_ticks(cfg, symbol)
+    ticks = _load_aligned_warmup_ticks(cfg, symbol)
     if not ticks:
         return
     payload = {
         "symbol": symbol.upper().strip(),
-        "bar_ticks": int(cfg.phase_bar_ticks),
+        "bar_ticks": int(cfg.bar_align_ticks),
         "ticks": ticks,
         "run_id": f"jforex_dukascopy_{symbol.lower()}_warmup",
     }

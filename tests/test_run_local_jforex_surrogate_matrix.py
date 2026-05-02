@@ -1,9 +1,83 @@
 from __future__ import annotations
 
 import socket
+import subprocess
+import sys
 from pathlib import Path
 
-from scripts.run_local_jforex_surrogate_matrix import RunConfig, _pick_free_port, _prediction_path
+from scripts.run_local_jforex_surrogate_matrix import (
+    RunConfig,
+    _parse_args,
+    _pick_free_port,
+    _prediction_path,
+)
+
+
+def test_cli_help_runs_when_executed_as_script() -> None:
+    repo = Path(__file__).resolve().parents[1]
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(repo / "scripts" / "run_local_jforex_surrogate_matrix.py"),
+            "--help",
+        ],
+        cwd=repo,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "--warmup-ticks" in result.stdout
+
+
+def test_parse_args_auto_computes_warmup_ticks_from_flat_lock_dir(
+    monkeypatch, tmp_path: Path
+) -> None:
+    warmup_calls: dict[str, object] = {}
+    align_calls: dict[str, object] = {}
+    lock_dir = tmp_path / "locked"
+
+    def fake_compute_required_warmup_ticks(**kwargs: object) -> int:
+        warmup_calls.update(kwargs)
+        return 346800
+
+    def fake_compute_bar_align_ticks(**kwargs: object) -> int:
+        align_calls.update(kwargs)
+        return 1000
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_local_jforex_surrogate_matrix.py",
+            "--symbols",
+            "EURUSD,USDJPY",
+            "--locked-predictions-dir",
+            str(lock_dir),
+        ],
+    )
+    monkeypatch.setattr(
+        "scripts.run_local_jforex_surrogate_matrix.compute_required_warmup_ticks",
+        fake_compute_required_warmup_ticks,
+    )
+    monkeypatch.setattr(
+        "scripts.run_local_jforex_surrogate_matrix.compute_bar_align_ticks",
+        fake_compute_bar_align_ticks,
+    )
+
+    cfg = _parse_args()
+
+    assert cfg.warmup_ticks == 346800
+    assert cfg.bar_align_ticks == 1000
+    expected_calls = {
+        "symbols": ("EURUSD", "USDJPY"),
+        "locked_predictions_dir": lock_dir,
+        "model_month": "",
+    }
+    assert warmup_calls == expected_calls
+    assert align_calls == expected_calls
 
 
 def _cfg(tmp_path: Path) -> RunConfig:
@@ -28,7 +102,7 @@ def _cfg(tmp_path: Path) -> RunConfig:
         metrics_port_base=9465,
         warmup_ticks=30000,
         lookback_days=31,
-        phase_bar_ticks=100,
+        bar_align_ticks=1000,
         starting_balance=100000,
         risk_enabled=False,
         universe_mode="tolerant",

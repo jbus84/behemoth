@@ -116,6 +116,12 @@ flowchart TD
 - if `selected_missing_expected > 0`, treat it as missed reduced-core truth.
 - if execution parity is FAIL with signal parity passing, treat it as lifecycle Material Drift rather than model drift.
 
+### Bar Alignment Ticks
+
+The live runtime requires `BEHEMOTH_JFOREX_LIVE_BAR_ALIGN_TICKS` to be set to the largest candidate `bar_ticks` in the active universe. The default (`1000`) tracks the current 2026-04 universe; bump this if the universe ever uses a larger `bar_ticks`. A startup assertion compares the configured value to the loaded candidate set and fails fast if they disagree.
+
+Matrix runners (`make monthly-recert`, `make local-jforex-parity-matrix`) auto-derive the alignment from the locked candidate set when `BAR_ALIGN_TICKS` (and `--bar-align-ticks`) is `0` (the default). To override, pass `BAR_ALIGN_TICKS=2000` to make.
+
 ## Escalation Matrix
 | condition | escalation path |
 | --- | --- |

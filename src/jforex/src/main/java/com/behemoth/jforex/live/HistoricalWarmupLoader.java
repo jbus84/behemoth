@@ -19,7 +19,6 @@ import java.util.TimeZone;
 
 public final class HistoricalWarmupLoader {
     private static final TimeZone UTC_TZ = TimeZone.getTimeZone("UTC");
-    private static final int PHASE_BAR_TICKS = 100;
 
     public WarmupSlice load(JForexSessionConfig config, Path tickRoot, String symbol, Instant bridgeAnchorTs) {
         Objects.requireNonNull(config, "config");
@@ -36,7 +35,9 @@ public final class HistoricalWarmupLoader {
         Instant lookbackStart = bridgeAnchorTs.minus(config.liveLookbackDays(), ChronoUnit.DAYS);
         try (Connection connection = DriverManager.getConnection("jdbc:duckdb:")) {
             int preCount = countBeforeAnchor(connection, parquetExpr, lookbackStart, bridgeAnchorTs);
-            int keep = config.liveWarmupTicks() + (preCount % PHASE_BAR_TICKS);
+            int align = config.liveBarAlignTicks();
+            int remainder = Math.floorMod(preCount - config.liveWarmupTicks(), align);
+            int keep = config.liveWarmupTicks() + remainder;
             List<RuntimeTick> ticks = loadRowsDescending(connection, parquetExpr, lookbackStart, bridgeAnchorTs, keep, sym);
             ticks.sort(Comparator.comparing(RuntimeTick::timestamp));
             if (ticks.isEmpty()) {

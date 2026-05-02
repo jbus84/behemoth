@@ -483,7 +483,8 @@ class LiveReadinessCoordinatorTest {
                 31,
                 60,
                 30,
-                20
+                20,
+                1_000
         );
     }
 

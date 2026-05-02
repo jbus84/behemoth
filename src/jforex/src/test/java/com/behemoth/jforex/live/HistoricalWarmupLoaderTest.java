@@ -25,18 +25,19 @@ class HistoricalWarmupLoaderTest {
     Path tempDir;
 
     @Test
-    void loaderKeepsWarmupTicksPlusPhaseRemainder() throws Exception {
+    void loaderAlignsKeepToBarBoundary() throws Exception {
         Path eurUsdDir = tempDir.resolve("EURUSD");
         Files.createDirectories(eurUsdDir);
         Path parquetFile = eurUsdDir.resolve("ticks.parquet");
         Instant bridgeAnchorTs = Instant.parse("2025-07-07T08:21:15Z");
-        writeParquetTicks(parquetFile, bridgeAnchorTs, 30_075, false);
+        writeParquetTicks(parquetFile, bridgeAnchorTs, 31_080, false);
 
         HistoricalWarmupLoader loader = new HistoricalWarmupLoader();
 
         WarmupSlice slice = loader.load(config(), tempDir, "EURUSD", bridgeAnchorTs);
 
-        assertThat(slice.ticks()).hasSize(30_075);
+        assertThat(slice.ticks()).hasSize(31_080);
+        assertThat(slice.ticks().size() % 1_000).isEqualTo(30_080 % 1_000);
         assertThat(slice.bridgeAnchorTs()).isEqualTo(bridgeAnchorTs.minusSeconds(1));
         assertThat(slice.ticks()).extracting(RuntimeTick::timestamp).last().isEqualTo(slice.bridgeAnchorTs());
     }
@@ -124,11 +125,12 @@ class HistoricalWarmupLoaderTest {
                 0,
                 true,
                 true,
-                30_000,
+                30_500,
                 31,
                 60,
                 30,
-                20
+                20,
+                1_000
         );
     }
 }

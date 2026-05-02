@@ -17,6 +17,16 @@ from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 
+_SCRIPT_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_SCRIPT_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_REPO_ROOT))
+
+from scripts._matrix_warmup import (
+    WARMUP_TICKS_AUTO,
+    compute_bar_align_ticks,
+    compute_required_warmup_ticks,
+)
+
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 DEFAULT_START = "2025-07-07T00:00:00Z"
 DEFAULT_END = "2025-07-09T00:00:00Z"
@@ -51,7 +61,7 @@ class RunConfig:
     metrics_port_base: int
     warmup_ticks: int
     lookback_days: int
-    phase_bar_ticks: int
+    bar_align_ticks: int
     starting_balance: int
     risk_enabled: bool
     universe_mode: str
@@ -80,9 +90,27 @@ def _parse_args() -> RunConfig:
     parser.add_argument("--metrics-enabled", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--metrics-host", default="127.0.0.1")
     parser.add_argument("--metrics-port-base", type=int, default=9465)
-    parser.add_argument("--warmup-ticks", type=int, default=30000)
+    parser.add_argument(
+        "--warmup-ticks",
+        type=int,
+        default=WARMUP_TICKS_AUTO,
+        help=(
+            "Warmup ticks to pre-load before matrix start. Default 0 = "
+            "auto-compute as full_warmup_bars * max(candidate bar_ticks) * 1.2 "
+            "from the locked predictions for --model-month or "
+            "--locked-predictions-dir."
+        ),
+    )
     parser.add_argument("--lookback-days", type=int, default=31)
-    parser.add_argument("--phase-bar-ticks", type=int, default=100)
+    parser.add_argument(
+        "--bar-align-ticks",
+        type=int,
+        default=0,
+        help=(
+            "Tick-count modulus for warmup load alignment. Default 0 = auto-derive "
+            "from max(candidate bar_ticks) in --model-month locked predictions."
+        ),
+    )
     parser.add_argument("--starting-balance", type=int, default=100000)
     parser.add_argument("--risk-enabled", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument(
@@ -95,6 +123,53 @@ def _parse_args() -> RunConfig:
     symbols = tuple(s.strip().upper() for s in str(args.symbols).split(",") if s.strip())
     if not symbols:
         raise SystemExit("No symbols provided")
+    warmup_ticks = int(args.warmup_ticks)
+    if warmup_ticks <= WARMUP_TICKS_AUTO:
+        flat_dir = str(args.locked_predictions_dir).strip()
+        if flat_dir:
+            warmup_ticks = compute_required_warmup_ticks(
+                symbols=symbols,
+                locked_predictions_dir=Path(flat_dir),
+                model_month="",
+            )
+        else:
+            warmup_ticks = compute_required_warmup_ticks(
+                symbols=symbols,
+                locked_predictions_dir=Path(args.history_dir),
+                model_month=str(args.model_month),
+            )
+        print(
+            f"[surrogate] auto-computed --warmup-ticks={warmup_ticks} "
+            f"(model_month={args.model_month})",
+            flush=True,
+        )
+    bar_align_ticks = int(args.bar_align_ticks)
+    if bar_align_ticks <= 0:
+        flat_dir = str(args.locked_predictions_dir).strip()
+        if flat_dir:
+            bar_align_model_month = ""
+            bar_align_ticks = compute_bar_align_ticks(
+                symbols=symbols,
+                locked_predictions_dir=Path(flat_dir),
+                model_month=bar_align_model_month,
+            )
+        else:
+            bar_align_model_month = str(args.model_month)
+            bar_align_ticks = compute_bar_align_ticks(
+                symbols=symbols,
+                locked_predictions_dir=Path(args.history_dir),
+                model_month=bar_align_model_month,
+            )
+        if bar_align_ticks <= 0:
+            raise SystemExit(
+                "bar_align_ticks could not be auto-derived from locked predictions; "
+                "pass --bar-align-ticks explicitly."
+            )
+        print(
+            f"[surrogate] auto-computed --bar-align-ticks={bar_align_ticks} "
+            f"(model_month={bar_align_model_month})",
+            flush=True,
+        )
     return RunConfig(
         symbols=symbols,
         start_ts=args.start_ts,
@@ -114,9 +189,9 @@ def _parse_args() -> RunConfig:
         metrics_enabled=bool(args.metrics_enabled),
         metrics_host=args.metrics_host,
         metrics_port_base=args.metrics_port_base,
-        warmup_ticks=args.warmup_ticks,
+        warmup_ticks=warmup_ticks,
         lookback_days=args.lookback_days,
-        phase_bar_ticks=args.phase_bar_ticks,
+        bar_align_ticks=bar_align_ticks,
         starting_balance=args.starting_balance,
         risk_enabled=bool(args.risk_enabled),
         universe_mode=args.universe_mode,
@@ -276,7 +351,7 @@ def _run_surrogate(cfg: RunConfig, symbol: str, metrics_port: int, api_port: int
             "BEHEMOTH_LOCAL_JFOREX_METRICS_PORT": str(metrics_port),
             "BEHEMOTH_LOCAL_JFOREX_WARMUP_TICKS": str(cfg.warmup_ticks),
             "BEHEMOTH_LOCAL_JFOREX_LOOKBACK_DAYS": str(cfg.lookback_days),
-            "BEHEMOTH_LOCAL_JFOREX_PHASE_BAR_TICKS": str(cfg.phase_bar_ticks),
+            "BEHEMOTH_LOCAL_JFOREX_BAR_ALIGN_TICKS": str(cfg.bar_align_ticks),
             "BEHEMOTH_LOCAL_JFOREX_STARTING_BALANCE": str(cfg.starting_balance),
             "BEHEMOTH_API_BASE_URI": f"http://{cfg.api_host}:{api_port}",
         }

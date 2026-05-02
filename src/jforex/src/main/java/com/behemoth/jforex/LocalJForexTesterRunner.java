@@ -71,7 +71,7 @@ public final class LocalJForexTesterRunner {
 
         try {
             for (Map.Entry<String, ParquetTickLoader.TickWindow> entry : windows.entrySet()) {
-                backfillWarmup(predictionClient, sessionConfig, harnessConfig.phaseBarTicks(), entry.getKey(), entry.getValue().warmup());
+                backfillWarmup(predictionClient, sessionConfig, harnessConfig.barAlignTicks(), entry.getKey(), entry.getValue().warmup());
             }
             core.start(instruments);
             core.onAccountSnapshot(harnessConfig.startingBalance(), harnessConfig.startingBalance(), harnessConfig.startUtc());

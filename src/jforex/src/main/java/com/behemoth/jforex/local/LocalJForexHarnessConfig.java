@@ -25,7 +25,7 @@ public record LocalJForexHarnessConfig(
         Path tickRoot,
         int warmupTicks,
         int lookbackDays,
-        int phaseBarTicks,
+        int barAlignTicks,
         double startingBalance
 ) {
     public LocalJForexHarnessConfig {
@@ -46,8 +46,8 @@ public record LocalJForexHarnessConfig(
         if (requestedVolumeUnits <= 0.0) {
             throw new IllegalArgumentException("requestedVolumeUnits must be > 0");
         }
-        if (tickBatchSize <= 0 || warmupTicks < 0 || lookbackDays < 0 || phaseBarTicks <= 0) {
-            throw new IllegalArgumentException("tickBatchSize/phaseBarTicks must be > 0; warmupTicks/lookbackDays must be >= 0");
+        if (tickBatchSize <= 0 || warmupTicks < 0 || lookbackDays < 0 || barAlignTicks <= 0) {
+            throw new IllegalArgumentException("tickBatchSize/barAlignTicks must be > 0; warmupTicks/lookbackDays must be >= 0");
         }
         if (orderTtlSeconds <= 0L) {
             throw new IllegalArgumentException("orderTtlSeconds must be > 0");
@@ -88,7 +88,7 @@ public record LocalJForexHarnessConfig(
                 )),
                 Integer.parseInt(System.getenv().getOrDefault("BEHEMOTH_LOCAL_JFOREX_WARMUP_TICKS", "30000")),
                 Integer.parseInt(System.getenv().getOrDefault("BEHEMOTH_LOCAL_JFOREX_LOOKBACK_DAYS", "31")),
-                Integer.parseInt(System.getenv().getOrDefault("BEHEMOTH_LOCAL_JFOREX_PHASE_BAR_TICKS", "100")),
+                Integer.parseInt(System.getenv().getOrDefault("BEHEMOTH_LOCAL_JFOREX_BAR_ALIGN_TICKS", "1000")),
                 Double.parseDouble(System.getenv().getOrDefault("BEHEMOTH_LOCAL_JFOREX_STARTING_BALANCE", "100000"))
         );
     }
