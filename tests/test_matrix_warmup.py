@@ -225,12 +225,14 @@ class TestAlignKeepFormula:
             (346800, 1000, 999),
             (346800, 1000, 2547832),
             (30000, 100, 12345),
+            (1001, 1000, 0),
         ]:
             keep = align_keep(warmup_ticks, align, pre_count)
             assert keep % align == pre_count % align, (
                 f"warmup_ticks={warmup_ticks} align={align} pre_count={pre_count} "
                 f"keep={keep}"
             )
+            assert keep >= warmup_ticks
             assert keep <= warmup_ticks + align
 
     def test_validates_inputs(self) -> None:
