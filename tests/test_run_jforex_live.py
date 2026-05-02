@@ -13,6 +13,15 @@ from src.behemoth.live_restart.reconciliation import write_runtime_session_metad
 from src.behemoth.ops.verdicts import RestartEligibility
 
 
+@pytest.fixture
+def skip_tick_freshness_preflight(monkeypatch):
+    """No-op the dukascopy-ticks freshness preflight for tests that drive
+    run_jforex_live.main() but don't care about that gate."""
+    monkeypatch.setattr(
+        run_jforex_live, "_validate_tick_data_freshness", lambda cfg: None
+    )
+
+
 class _FakeProc:
     def __init__(self, returncode: int | None = None, pid: int = 12345) -> None:
         self._returncode = returncode
@@ -64,7 +73,9 @@ def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def test_main_starts_live_runner_before_warmup(monkeypatch, tmp_path, capsys) -> None:
+def test_main_starts_live_runner_before_warmup(
+    skip_tick_freshness_preflight, monkeypatch, tmp_path, capsys
+) -> None:
     order: list[str] = []
 
     monkeypatch.setattr(run_jforex_live, "_repo_root", lambda: tmp_path)
@@ -132,7 +143,9 @@ def test_main_starts_live_runner_before_warmup(monkeypatch, tmp_path, capsys) ->
     assert "live runner exited unexpectedly" in capsys.readouterr().err
 
 
-def test_main_defaults_seed_to_promoted_governance_dir(monkeypatch, tmp_path) -> None:
+def test_main_defaults_seed_to_promoted_governance_dir(
+    skip_tick_freshness_preflight, monkeypatch, tmp_path
+) -> None:
     monkeypatch.setattr(run_jforex_live, "_repo_root", lambda: tmp_path)
     _ensure_governance_dir(tmp_path)
     monkeypatch.setattr(
@@ -286,7 +299,7 @@ def test_main_resume_preserves_runtime_state(monkeypatch, tmp_path) -> None:
 
 
 def test_main_fails_before_seed_when_runtime_threshold_json_drifts_from_promoted_lock(
-    monkeypatch, tmp_path
+    skip_tick_freshness_preflight, monkeypatch, tmp_path
 ) -> None:
     monkeypatch.setattr(run_jforex_live, "_repo_root", lambda: tmp_path)
 
@@ -406,7 +419,9 @@ def test_main_fails_before_seed_when_runtime_threshold_json_drifts_from_promoted
     assert called == []
 
 
-def test_main_reset_runs_archive_cleanup(monkeypatch, tmp_path) -> None:
+def test_main_reset_runs_archive_cleanup(
+    skip_tick_freshness_preflight, monkeypatch, tmp_path
+) -> None:
     _write_runtime_files(tmp_path)
     _ensure_governance_dir(tmp_path)
     calls: list[str] = []
@@ -582,7 +597,9 @@ def test_reconcile_startup_captures_broker_snapshot_on_resume(monkeypatch, tmp_p
     assert captured == [str(tmp_path / "data/analysis/backtest_reconcile/runtime/live_broker_snapshot.json")]
 
 
-def test_main_resume_incompatible_prints_operator_summary(monkeypatch, tmp_path, capsys) -> None:
+def test_main_resume_incompatible_prints_operator_summary(
+    skip_tick_freshness_preflight, monkeypatch, tmp_path, capsys
+) -> None:
     _ensure_governance_dir(tmp_path)
     monkeypatch.setattr(run_jforex_live, "_repo_root", lambda: tmp_path)
     monkeypatch.setenv("BEHEMOTH_JFOREX_JNLP_URI", "demo")
@@ -649,7 +666,7 @@ def test_main_resume_incompatible_prints_operator_summary(monkeypatch, tmp_path,
 
 
 def test_main_reset_forces_new_entries_true_despite_stale_drain_only_eligibility(
-    monkeypatch, tmp_path
+    skip_tick_freshness_preflight, monkeypatch, tmp_path
 ) -> None:
     """A reset startup must call _start_live_runner with allow_new_entries=True even
     when the pre-reset eligibility result was DRAIN_ONLY."""
