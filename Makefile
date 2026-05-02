@@ -308,7 +308,7 @@ local-jforex-parity:
 	BEHEMOTH_LOCAL_JFOREX_METRICS_PORT=$(or $(METRICS_PORT),9465) \
 	BEHEMOTH_LOCAL_JFOREX_WARMUP_TICKS=$(or $(WARMUP_TICKS),30000) \
 	BEHEMOTH_LOCAL_JFOREX_LOOKBACK_DAYS=$(or $(LOOKBACK_DAYS),31) \
-	BEHEMOTH_LOCAL_JFOREX_PHASE_BAR_TICKS=$(or $(PHASE_BAR_TICKS),100) \
+	BEHEMOTH_LOCAL_JFOREX_BAR_ALIGN_TICKS=$(or $(BAR_ALIGN_TICKS),0) \
 	BEHEMOTH_LOCAL_JFOREX_STARTING_BALANCE=$(or $(STARTING_BALANCE),100000) \
 	BEHEMOTH_API_BASE_URI=$(or $(API_BASE_URI),http://127.0.0.1:8000) \
 	mise exec -- gradle :jforex-adapter:runLocalJForexTester
@@ -322,7 +322,7 @@ local-jforex-parity-matrix:
 		--tick-batch-size $(or $(TICK_BATCH_SIZE),200) \
 		--warmup-ticks $(or $(WARMUP_TICKS),0) \
 		--lookback-days $(or $(LOOKBACK_DAYS),31) \
-		--phase-bar-ticks $(or $(PHASE_BAR_TICKS),100) \
+		--bar-align-ticks $(or $(BAR_ALIGN_TICKS),0) \
 		--starting-balance $(or $(STARTING_BALANCE),100000)
 
 local-jforex-parity-ordinal:
@@ -334,7 +334,7 @@ local-jforex-parity-ordinal:
 		--tick-batch-size $(or $(TICK_BATCH_SIZE),200) \
 		--warmup-ticks $(or $(WARMUP_TICKS),0) \
 		--lookback-days $(or $(LOOKBACK_DAYS),31) \
-		--phase-bar-ticks $(or $(PHASE_BAR_TICKS),100) \
+		--bar-align-ticks $(or $(BAR_ALIGN_TICKS),0) \
 		--starting-balance $(or $(STARTING_BALANCE),100000) \
 		--universe-mode ordinal \
 		--ordinal-tolerance $(or $(ORDINAL_TOLERANCE),1)
@@ -357,7 +357,7 @@ local-jforex-parity-spotlight:
 		--tick-batch-size $(or $(TICK_BATCH_SIZE),100) \
 		--warmup-ticks 0 \
 		--lookback-days 0 \
-		--phase-bar-ticks $(or $(PHASE_BAR_TICKS),100) \
+		--bar-align-ticks $(or $(BAR_ALIGN_TICKS),0) \
 		--starting-balance $(or $(STARTING_BALANCE),100000) \
 		--universe-mode $(or $(UNIVERSE_MODE),tolerant) \
 		--prediction-tolerance-sec $(or $(PREDICTION_TOLERANCE_SEC),1) \
