@@ -35,12 +35,17 @@ def test_cli_help_runs_when_executed_as_script() -> None:
 def test_parse_args_auto_computes_warmup_ticks_from_flat_lock_dir(
     monkeypatch, tmp_path: Path
 ) -> None:
-    calls: dict[str, object] = {}
+    warmup_calls: dict[str, object] = {}
+    align_calls: dict[str, object] = {}
     lock_dir = tmp_path / "locked"
 
     def fake_compute_required_warmup_ticks(**kwargs: object) -> int:
-        calls.update(kwargs)
+        warmup_calls.update(kwargs)
         return 346800
+
+    def fake_compute_bar_align_ticks(**kwargs: object) -> int:
+        align_calls.update(kwargs)
+        return 1000
 
     monkeypatch.setattr(
         sys,
@@ -57,15 +62,22 @@ def test_parse_args_auto_computes_warmup_ticks_from_flat_lock_dir(
         "scripts.run_local_jforex_surrogate_matrix.compute_required_warmup_ticks",
         fake_compute_required_warmup_ticks,
     )
+    monkeypatch.setattr(
+        "scripts.run_local_jforex_surrogate_matrix.compute_bar_align_ticks",
+        fake_compute_bar_align_ticks,
+    )
 
     cfg = _parse_args()
 
     assert cfg.warmup_ticks == 346800
-    assert calls == {
+    assert cfg.bar_align_ticks == 1000
+    expected_calls = {
         "symbols": ("EURUSD", "USDJPY"),
         "locked_predictions_dir": lock_dir,
         "model_month": "",
     }
+    assert warmup_calls == expected_calls
+    assert align_calls == expected_calls
 
 
 def _cfg(tmp_path: Path) -> RunConfig:
@@ -90,7 +102,7 @@ def _cfg(tmp_path: Path) -> RunConfig:
         metrics_port_base=9465,
         warmup_ticks=30000,
         lookback_days=31,
-        phase_bar_ticks=100,
+        bar_align_ticks=1000,
         starting_balance=100000,
         risk_enabled=False,
         universe_mode="tolerant",

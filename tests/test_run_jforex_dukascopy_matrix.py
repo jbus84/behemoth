@@ -12,7 +12,7 @@ import pytest
 
 from scripts.run_jforex_dukascopy_matrix import (
     RunConfig,
-    _load_phase_aligned_warmup_ticks,
+    _load_aligned_warmup_ticks,
     main,
     _next_available_port,
     _parse_args,
@@ -42,11 +42,16 @@ def test_cli_help_runs_when_executed_as_script() -> None:
 def test_parse_args_auto_computes_warmup_ticks(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    calls: dict[str, object] = {}
+    warmup_calls: dict[str, object] = {}
+    align_calls: dict[str, object] = {}
 
     def fake_compute_required_warmup_ticks(**kwargs: object) -> int:
-        calls.update(kwargs)
+        warmup_calls.update(kwargs)
         return 346800
+
+    def fake_compute_bar_align_ticks(**kwargs: object) -> int:
+        align_calls.update(kwargs)
+        return 1000
 
     monkeypatch.setattr(
         sys,
@@ -65,15 +70,22 @@ def test_parse_args_auto_computes_warmup_ticks(
         "scripts.run_jforex_dukascopy_matrix.compute_required_warmup_ticks",
         fake_compute_required_warmup_ticks,
     )
+    monkeypatch.setattr(
+        "scripts.run_jforex_dukascopy_matrix.compute_bar_align_ticks",
+        fake_compute_bar_align_ticks,
+    )
 
     cfg = _parse_args()
 
     assert cfg.warmup_ticks == 346800
-    assert calls == {
+    assert cfg.bar_align_ticks == 1000
+    expected_calls = {
         "symbols": ("EURUSD", "USDJPY"),
         "locked_predictions_dir": tmp_path,
         "model_month": "2026-04",
     }
+    assert warmup_calls == expected_calls
+    assert align_calls == expected_calls
 
 
 def _make_proc(returncode: int | None = None) -> MagicMock:
@@ -110,7 +122,7 @@ def _cfg(tmp_path: Path) -> RunConfig:
         ordinal_tolerance=0,
         warmup_ticks=30000,
         lookback_days=31,
-        phase_bar_ticks=100,
+        bar_align_ticks=1000,
         tester_completion_timeout_seconds=14400,
     )
 
@@ -305,7 +317,7 @@ def test_main_uses_available_api_port_per_symbol(monkeypatch: pytest.MonkeyPatch
         ordinal_tolerance=0,
         warmup_ticks=30000,
         lookback_days=31,
-        phase_bar_ticks=100,
+        bar_align_ticks=1000,
         tester_completion_timeout_seconds=14400,
     )
     proc = _make_proc(returncode=None)
@@ -359,7 +371,7 @@ def test_main_uses_available_api_port_per_symbol(monkeypatch: pytest.MonkeyPatch
     assert "starting API on port 8001" in capsys.readouterr().out
 
 
-def test_load_phase_aligned_warmup_ticks_uses_full_history_modulo(tmp_path: Path) -> None:
+def test_load_aligned_warmup_ticks_uses_full_history_modulo(tmp_path: Path) -> None:
     cfg = _cfg(tmp_path)
     cfg = RunConfig(
         **{
@@ -367,14 +379,14 @@ def test_load_phase_aligned_warmup_ticks_uses_full_history_modulo(tmp_path: Path
             "start_ts": "2025-07-07T00:00:00Z",
             "end_ts": "2025-07-08T00:00:00Z",
             "tick_root": str(tmp_path / "ticks"),
-            "warmup_ticks": 0,
+            "warmup_ticks": 5,
             "lookback_days": 1,
-            "phase_bar_ticks": 4,
+            "bar_align_ticks": 4,
         }
     )
     symbol_dir = Path(cfg.tick_root) / "EURUSD"
     symbol_dir.mkdir(parents=True, exist_ok=True)
-    parquet_path = symbol_dir / "phase.parquet"
+    parquet_path = symbol_dir / "aligned.parquet"
 
     con = duckdb.connect()
     con.execute(
@@ -404,10 +416,16 @@ def test_load_phase_aligned_warmup_ticks_uses_full_history_modulo(tmp_path: Path
     )
     con.close()
 
-    ticks = _load_phase_aligned_warmup_ticks(cfg, "EURUSD")
+    ticks = _load_aligned_warmup_ticks(cfg, "EURUSD")
 
     assert [tick["timestamp"] for tick in ticks] == [
+        "2025-07-06T00:00:04Z",
+        "2025-07-06T00:00:05Z",
+        "2025-07-06T00:00:06Z",
+        "2025-07-06T00:00:07Z",
         "2025-07-06T00:00:08Z",
         "2025-07-06T00:00:09Z",
         "2025-07-06T00:00:10Z",
     ]
+    assert len(ticks) % cfg.bar_align_ticks == 15 % cfg.bar_align_ticks
+    assert len(ticks) >= cfg.warmup_ticks
