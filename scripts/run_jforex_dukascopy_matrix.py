@@ -33,6 +33,8 @@ if str(_SCRIPT_REPO_ROOT) not in sys.path:
 
 from scripts._matrix_warmup import (
     WARMUP_TICKS_AUTO,
+    align_keep,
+    compute_bar_align_ticks,
     compute_required_warmup_ticks,
 )
 
@@ -73,7 +75,7 @@ class RunConfig:
     ordinal_tolerance: int
     warmup_ticks: int
     lookback_days: int
-    phase_bar_ticks: int
+    bar_align_ticks: int
     tester_completion_timeout_seconds: int
 
 
@@ -113,7 +115,15 @@ def _parse_args() -> RunConfig:
         ),
     )
     parser.add_argument("--lookback-days", type=int, default=31)
-    parser.add_argument("--phase-bar-ticks", type=int, default=100)
+    parser.add_argument(
+        "--bar-align-ticks",
+        type=int,
+        default=0,
+        help=(
+            "Tick-count modulus for warmup load alignment. Default 0 = auto-derive "
+            "from max(candidate bar_ticks) in --model-month locked predictions."
+        ),
+    )
     parser.add_argument(
         "--tester-completion-timeout-seconds",
         type=int,
@@ -133,6 +143,24 @@ def _parse_args() -> RunConfig:
         )
         print(
             f"[matrix] auto-computed --warmup-ticks={warmup_ticks} "
+            f"(model_month={args.model_month})",
+            flush=True,
+        )
+    bar_align_ticks = int(args.bar_align_ticks)
+    if bar_align_ticks <= 0:
+        bar_align_ticks = compute_bar_align_ticks(
+            symbols=symbols,
+            locked_predictions_dir=Path(args.history_dir),
+            model_month=str(args.model_month),
+        )
+        if bar_align_ticks <= 0:
+            raise SystemExit(
+                f"bar_align_ticks could not be auto-derived from "
+                f"{args.history_dir}/{args.model_month} locked predictions; "
+                f"pass --bar-align-ticks explicitly."
+            )
+        print(
+            f"[matrix] auto-computed --bar-align-ticks={bar_align_ticks} "
             f"(model_month={args.model_month})",
             flush=True,
         )
@@ -160,7 +188,7 @@ def _parse_args() -> RunConfig:
         ordinal_tolerance=int(args.ordinal_tolerance),
         warmup_ticks=warmup_ticks,
         lookback_days=int(args.lookback_days),
-        phase_bar_ticks=int(args.phase_bar_ticks),
+        bar_align_ticks=bar_align_ticks,
         tester_completion_timeout_seconds=args.tester_completion_timeout_seconds,
     )
 
@@ -257,9 +285,9 @@ def _tick_files(cfg: RunConfig, symbol: str) -> list[Path]:
     return sorted(path for path in symbol_dir.iterdir() if path.suffix == ".parquet")
 
 
-def _load_phase_aligned_warmup_ticks(cfg: RunConfig, symbol: str) -> list[dict[str, object]]:
+def _load_aligned_warmup_ticks(cfg: RunConfig, symbol: str) -> list[dict[str, object]]:
     files = _tick_files(cfg, symbol)
-    if not files or cfg.phase_bar_ticks <= 0:
+    if not files or cfg.bar_align_ticks <= 0:
         return []
     try:
         import duckdb
@@ -277,7 +305,7 @@ def _load_phase_aligned_warmup_ticks(cfg: RunConfig, symbol: str) -> list[dict[s
                 [start_ts],
             ).fetchone()[0]
         )
-        keep = int(cfg.warmup_ticks) + (full_pre_count % int(cfg.phase_bar_ticks))
+        keep = align_keep(int(cfg.warmup_ticks), int(cfg.bar_align_ticks), full_pre_count)
         if keep <= 0:
             return []
         rows = con.execute(
@@ -309,12 +337,12 @@ def _load_phase_aligned_warmup_ticks(cfg: RunConfig, symbol: str) -> list[dict[s
 
 
 def _prime_api_with_warmup(cfg: RunConfig, symbol: str, api_port: int) -> None:
-    ticks = _load_phase_aligned_warmup_ticks(cfg, symbol)
+    ticks = _load_aligned_warmup_ticks(cfg, symbol)
     if not ticks:
         return
     payload = {
         "symbol": symbol.upper().strip(),
-        "bar_ticks": int(cfg.phase_bar_ticks),
+        "bar_ticks": int(cfg.bar_align_ticks),
         "ticks": ticks,
         "run_id": f"jforex_dukascopy_{symbol.lower()}_warmup",
     }
