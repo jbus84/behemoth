@@ -164,6 +164,22 @@ nav:
   - Repository Notes:
       - Data Sources: DATA_SOURCES.md
       - Repo Structure: REPO_STRUCTURE.md
+      - Process Stages:
+          - Overview: generated/process/index.md
+          - Stage 01 Data Foundation: generated/process/stage01.md
+          - Stage 02 Opportunity Mining: generated/process/stage02.md
+          - Stage 03 Monthly WFO: generated/process/stage03.md
+          - Stage 04 Stop-Limit Realism: generated/process/stage04.md
+          - Stage 05 Reduced-Core Rolling: generated/process/stage05.md
+          - Stage 06 Tick-Exact Verification: generated/process/stage06.md
+          - Stage 07 Logical And Statistical Audit: generated/process/stage07.md
+          - Stage 08 Robustness And Stress: generated/process/stage08.md
+          - Stage 09 Live Governance And Deployment: generated/process/stage09.md
+          - Stage 10 Known Risks And Backlog: generated/process/stage10.md
+          - Stage 11 Execution Monte Carlo: generated/process/stage11.md
+          - Stage 12 API Parity: generated/process/stage12.md
+          - Stage 13 Dukascopy TestClient: generated/process/stage13.md
+          - Stage 14 JForex Runtime Certification: generated/process/stage14.md
       - Walkthrough: walkthrough.md
   - Architecture: architecture.md
   - API: api.md
