@@ -68,31 +68,33 @@ def test_load_audit_log_timestamps_empty_db(tmp_path: Path) -> None:
 
 
 def test_warmup_gap_count_counts_predictions_before_cutoff() -> None:
-    locked = [
+    governance_selected = [
         datetime(2025, 7, 7, 0, 0, tzinfo=timezone.utc),
         datetime(2025, 7, 7, 5, 0, tzinfo=timezone.utc),
         datetime(2025, 7, 7, 9, 0, tzinfo=timezone.utc),
     ]
     cutoff = datetime(2025, 7, 7, 8, 30, tzinfo=timezone.utc)
-    assert warmup_gap_count(locked, cutoff) == 2
+    assert warmup_gap_count(governance_selected, cutoff) == 2
 
 
 def test_warmup_gap_count_zero_when_all_after_cutoff() -> None:
-    locked = [datetime(2025, 7, 7, 10, 0, tzinfo=timezone.utc)]
+    governance_selected = [datetime(2025, 7, 7, 10, 0, tzinfo=timezone.utc)]
     cutoff = datetime(2025, 7, 7, 8, 30, tzinfo=timezone.utc)
-    assert warmup_gap_count(locked, cutoff) == 0
+    assert warmup_gap_count(governance_selected, cutoff) == 0
 
 
 def test_post_warmup_coverage_exact_match() -> None:
-    assert post_warmup_coverage(jforex_selected_total=79, locked_after_cutoff=79) == pytest.approx(
-        1.0
-    )
+    assert post_warmup_coverage(
+        runtime_selected_signal_count=79, governance_selected_after_cutoff=79
+    ) == pytest.approx(1.0)
 
 
 def test_post_warmup_coverage_ratio_above_one_is_valid() -> None:
-    ratio = post_warmup_coverage(jforex_selected_total=79, locked_after_cutoff=69)
+    ratio = post_warmup_coverage(
+        runtime_selected_signal_count=79, governance_selected_after_cutoff=69
+    )
     assert ratio > 1.0
 
 
-def test_post_warmup_coverage_zero_locked_returns_zero() -> None:
-    assert post_warmup_coverage(jforex_selected_total=5, locked_after_cutoff=0) == 0.0
+def test_post_warmup_coverage_zero_governance_selected_returns_zero() -> None:
+    assert post_warmup_coverage(runtime_selected_signal_count=5, governance_selected_after_cutoff=0) == 0.0

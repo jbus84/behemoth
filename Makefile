@@ -413,7 +413,7 @@ audit-runtime-parity:
 		--out-report $(or $(AUDIT_OUT_REPORT),docs/analysis/runtime_parity_audit/$(or $(RUN_ID),jforex_live)_audit.md) \
 		--out-csv $(or $(AUDIT_OUT_CSV),docs/analysis/runtime_parity_audit/$(or $(RUN_ID),jforex_live)_findings.csv)
 
-stage14-jforex-cert: audit-runtime-parity
+stage14-jforex-cert: $(if $(SKIP_RUNTIME_PARITY_AUDIT),,audit-runtime-parity)
 	uv run python scripts/validate_stage14_jforex_runtime_certification.py \
 		--stage13-summary-glob '$(or $(STAGE13_SUMMARY_GLOB),data/analysis/backtest_reconcile/stage12_stage13_certification_summary.csv)' \
 		--jforex-signal-summary-glob '$(or $(JFOREX_SIGNAL_SUMMARY_GLOB),data/analysis/backtest_reconcile/*_jforex_signal_parity_summary.csv)' \

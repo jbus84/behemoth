@@ -16,6 +16,13 @@ import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SRC_ROOT = REPO_ROOT / "src"
+for _path in (REPO_ROOT, SRC_ROOT):
+    _path_str = str(_path)
+    if _path_str not in sys.path:
+        sys.path.insert(0, _path_str)
+
 from behemoth.parity import checks as _checks  # noqa: F401 — triggers registration
 from behemoth.parity import registry
 from behemoth.parity.types import CheckContext, CheckResult

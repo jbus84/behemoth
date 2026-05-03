@@ -8,6 +8,21 @@ from behemoth.parity.types import CheckContext, CheckResult
 _SYMBOLS = ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"]
 
 
+def _lock_model_month(lock: dict) -> str | None:
+    artifacts = lock.get("artifacts") if isinstance(lock.get("artifacts"), dict) else {}
+    historical = (
+        lock.get("historical_backtest")
+        if isinstance(lock.get("historical_backtest"), dict)
+        else {}
+    )
+    month = (
+        lock.get("model_month")
+        or artifacts.get("model_month")
+        or historical.get("target_month")
+    )
+    return str(month).strip() if month else None
+
+
 @register_check(surface_id="risk_gov.governance_lock_pin", severity="critical")
 def check(ctx: CheckContext) -> CheckResult:
     if ctx.governance_lock_dir is None:
@@ -26,9 +41,10 @@ def check(ctx: CheckContext) -> CheckResult:
         if not lock:
             missing.append(symbol)
             continue
-        if lock.get("model_month") != ctx.model_month:
+        lock_model_month = _lock_model_month(lock)
+        if lock_model_month != ctx.model_month:
             mismatches.append(
-                f"{symbol}: lock={lock.get('model_month')!r} ctx={ctx.model_month!r}"
+                f"{symbol}: lock={lock_model_month!r} ctx={ctx.model_month!r}"
             )
     if missing or mismatches:
         parts = []

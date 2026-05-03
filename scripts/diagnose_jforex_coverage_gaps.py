@@ -51,23 +51,25 @@ def load_audit_log_timestamps(db_path: Path, eval_end: str) -> list[datetime]:
     ]
 
 
-def warmup_gap_count(locked_close_ts: list[datetime], warmup_cutoff: datetime) -> int:
-    """Count locked predictions with close_ts strictly before warmup_cutoff."""
-    return sum(1 for ts in locked_close_ts if ts < warmup_cutoff)
+def warmup_gap_count(governance_selected_close_ts: list[datetime], warmup_cutoff: datetime) -> int:
+    """Count governance selected signals with close_ts strictly before warmup_cutoff."""
+    return sum(1 for ts in governance_selected_close_ts if ts < warmup_cutoff)
 
 
-def post_warmup_coverage(jforex_selected_total: int, locked_after_cutoff: int) -> float:
-    """signal_coverage_ratio = jforex_selected_total / locked_after_cutoff.
+def post_warmup_coverage(
+    runtime_selected_signal_count: int, governance_selected_after_cutoff: int
+) -> float:
+    """signal_coverage_ratio = runtime_selected_signal_count / governance_selected_after_cutoff.
 
-    May exceed 1.0 when jforex_selected_total includes warmup-period selections
-    that are excluded from locked_after_cutoff (not a bug — just reported as-is).
+    May exceed 1.0 when runtime_selected_signal_count includes warmup-period selections
+    that are excluded from governance_selected_after_cutoff (not a bug — just reported as-is).
     """
-    if locked_after_cutoff == 0:
+    if governance_selected_after_cutoff == 0:
         return 0.0
-    return jforex_selected_total / locked_after_cutoff
+    return runtime_selected_signal_count / governance_selected_after_cutoff
 
 
-def _load_locked_close_ts(
+def _load_governance_selected_close_ts(
     lock_dir: Path, symbol: str, eval_start: str, eval_end: str
 ) -> list[datetime]:
     path = lock_dir / f"{symbol.lower()}_oco_locked_predictions.parquet"
@@ -98,29 +100,36 @@ def main() -> None:
         db_path = DEFAULT_STATE_DB_DIR / f"{symbol.lower()}_jforex_dukascopy_state.db"
         audit_ts = load_audit_log_timestamps(db_path, DEFAULT_EVAL_END)
         first_seen = min(audit_ts) if audit_ts else None
-        # len(audit_ts) matches jforex_selected_total from the runtime CSV because each
+        # len(audit_ts) matches runtime_selected_signal_count from the runtime CSV because each
         # audit_log row corresponds to exactly one selected_exec=1 API call. Verified
         # against the runtime CSV counts for all 6 symbols in the 2026-03-20 run.
-        jforex_selected = len(audit_ts)
+        runtime_selected = len(audit_ts)
 
-        locked_full = _load_locked_close_ts(
+        governance_selected_full = _load_governance_selected_close_ts(
             DEFAULT_LOCK_DIR, symbol, DEFAULT_EVAL_START, DEFAULT_EVAL_END
         )
-        gap = warmup_gap_count(locked_full, first_seen) if first_seen else len(locked_full)
+        gap = (
+            warmup_gap_count(governance_selected_full, first_seen)
+            if first_seen
+            else len(governance_selected_full)
+        )
 
         first_seen_str = first_seen.strftime("%Y-%m-%d %H:%M") if first_seen else "N/A"
         print(f"{symbol:<8} {first_seen_str:<22} {gap:>5}", end="")
 
         for es in CANDIDATE_EVAL_STARTS:
-            locked_after = _load_locked_close_ts(DEFAULT_LOCK_DIR, symbol, es, DEFAULT_EVAL_END)
-            ratio = post_warmup_coverage(jforex_selected, len(locked_after))
+            governance_selected_after = _load_governance_selected_close_ts(
+                DEFAULT_LOCK_DIR, symbol, es, DEFAULT_EVAL_END
+            )
+            ratio = post_warmup_coverage(runtime_selected, len(governance_selected_after))
             print(f"  {ratio:>9.1%}", end="")
         print()
 
     print(
-        "\nNote: cov@HH:MM = jforex_selected / locked_count with eval_start=HH:MM UTC on 2025-07-07"
+        "\nNote: cov@HH:MM = runtime_selected / governance_selected_signal_count "
+        "with eval_start=HH:MM UTC on 2025-07-07"
     )
-    print("      ratio > 1.0 is expected when jforex_selected includes warmup-period selections")
+    print("      ratio > 1.0 is expected when runtime_selected includes warmup-period selections")
     print("      After the start_ts fix: gap=0 and cov@00:00=100% for all symbols")
 
 

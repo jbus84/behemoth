@@ -81,12 +81,12 @@ def test_build_artifacts_treats_zero_lock_idle_windows_as_execution_pass(tmp_pat
     )
     _write_csv(
         tmp_path / "EURUSD_local_jforex_execution_parity_summary.csv",
-        ["symbol", "jforex_execution_parity_pass", "locked_selected_total", "submitted_orders"],
+        ["symbol", "jforex_execution_parity_pass", "governance_selected_signal_count", "submitted_orders"],
         [
             {
                 "symbol": "EURUSD",
                 "jforex_execution_parity_pass": False,
-                "locked_selected_total": 0,
+                "governance_selected_signal_count": 0,
                 "submitted_orders": 0,
             }
         ],
@@ -136,7 +136,7 @@ def test_build_artifacts_treats_zero_lock_idle_windows_as_execution_pass(tmp_pat
     assert execution_check["status"] == "PASS"
 
 
-def test_build_artifacts_falls_back_to_outcome_locked_count_for_zero_lock_windows(
+def test_build_artifacts_falls_back_to_outcome_governance_count_for_zero_signal_windows(
     tmp_path: Path,
 ) -> None:
     from scripts.validate_local_jforex_surrogate import build_artifacts
@@ -174,8 +174,8 @@ def test_build_artifacts_falls_back_to_outcome_locked_count_for_zero_lock_window
     )
     _write_csv(
         tmp_path / "USDCHF_local_jforex_outcome_parity_summary.csv",
-        ["symbol", "jforex_outcome_parity_pass", "locked_selected_count"],
-        [{"symbol": "USDCHF", "jforex_outcome_parity_pass": True, "locked_selected_count": 0}],
+        ["symbol", "jforex_outcome_parity_pass", "governance_selected_signal_count"],
+        [{"symbol": "USDCHF", "jforex_outcome_parity_pass": True, "governance_selected_signal_count": 0}],
     )
 
     summary, checks = build_artifacts(

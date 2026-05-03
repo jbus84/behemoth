@@ -106,6 +106,11 @@
 | **Tolerance Band** | The explicit allowed range of live-versus-governance difference for a given metric or behavior. | Wiggle room, soft tolerance |
 | **Material Drift** | A live-versus-governance difference large enough to call certification compatibility into doubt. | Big mismatch, serious variance |
 | **Parity Breach** | A confirmed live behavior difference that falls outside the governed runtime contract and requires investigation or blocking action. | Failure, broken parity |
+| **Governance Selected Signal Count** | The count of selected signal rows from the month-scoped Governance Lock predictions in the evaluated window. | locked selected count, locked_sel |
+| **Independent Label P&L** | The sum of per-row label outcomes evaluated independently for each selected governance signal. | locked pips, expected pips, governance pips |
+| **Runtime Trade Count** | The count of trades actually opened by the stateful runtime lifecycle. | JForex trades, broker count |
+| **Runtime Realized P&L** | The realized pip result from closed runtime trades. | broker pips, JForex P&L |
+| **Stateful Lifecycle Expected P&L** | The expected pip result from replaying governance signals through the same scan, touch, open, hold, and close constraints as the runtime. | label pips, locked pips, target pips |
 
 ## Relationships
 
@@ -118,6 +123,8 @@
 - **Monthly WFO** performs **Model Fit** and **Threshold Fit** to score the next **Test Month** under strict causal ordering.
 - **Reduced-Core Rolling** converts scored candidates into a monthly **Shortlist** of **Allowed State** entries.
 - **Stop-Limit Realism**, **Tick-Exact Verification**, and the **Robustness Filter** harden the shortlist before governance promotion decisions are made.
+- **Independent Label P&L** is not **Stateful Lifecycle Expected P&L** and must not be used as a direct parity target for **Runtime Realized P&L**.
+- **Governance Selected Signal Count** is a signal-layer measure; **Runtime Trade Count** is a lifecycle-layer measure.
 - A **Promotion** is valid only when a **PASS** run has matching **Provenance** and a matching **Promoted Lock Set**.
 - A **Promoted Lock Set** determines **Symbol Universe** membership, **Deployment Period**, and each symbol's **GO** or **NO_GO** state.
 - A symbol may be **NO_GO** without the **Certification Run** being a **FAIL**.
@@ -163,6 +170,10 @@ These phrases appear in supporting docs and implementation discussion, but they 
 >
 > **Domain expert:** "No. If the difference stays inside the approved **Tolerance Band**, it is **Runtime Variance**. It becomes **Material Drift** or a **Parity Breach** only when it falls outside the governed contract."
 >
+> **Dev:** "Can I compare **Independent Label P&L** directly with **Runtime Realized P&L**?"
+>
+> **Domain expert:** "No. **Independent Label P&L** scores each selected signal independently. Runtime P&L parity needs **Stateful Lifecycle Expected P&L** because the runtime applies scan, touch, open, hold, and close constraints."
+>
 > **Dev:** "Where does training stop and certification begin?"
 >
 > **Domain expert:** "**Opportunity Mining** and **Monthly WFO** are research and fitting. **Reduced-Core Rolling** and **Stop-Limit Realism** are selection hardening. **Stage 12-14** are certification surfaces, not training."
@@ -183,3 +194,4 @@ These phrases appear in supporting docs and implementation discussion, but they 
 - "candidate", "shortlist", and "allowed state" have been used interchangeably. Keep them ordered: **Candidate State** before selection, **Shortlist** after reduced-core selection, **Allowed State** once written into governance artifacts.
 - "bundle", "evidence", and "lock" have been blurred together. Prefer **Certification Evidence** for the reports proving a run, and **Governance Lock** or **Promoted Lock Set** for deployment manifests.
 - "flexibility" is too vague for live-vs-governance differences. Use **Runtime Variance** for acceptable in-contract differences, **Material Drift** for concerning divergence, and **Parity Breach** for out-of-contract behavior.
+- "locked pips" and "locked selected" obscure the semantic layer being measured. Use **Independent Label P&L** for per-row label outcomes and **Governance Selected Signal Count** for selected signal counts.

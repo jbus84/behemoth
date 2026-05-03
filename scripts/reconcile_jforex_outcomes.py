@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Reconcile JForex runtime outcomes against locked Python backtest predictions.
+"""Reconcile runtime outcomes against governance selected signals.
 
-Joins the governance-locked predictions (ground truth) with JForex runtime events
-to compute aggregate outcome metrics per symbol and produce a pass/fail verdict.
+Joins the month-scoped Governance Lock predictions with runtime events to
+compute signal-coverage and outcome evidence per symbol. Independent label P&L
+is reported as governance label evidence only; it is not expected runtime P&L.
 """
 
 from __future__ import annotations
@@ -136,7 +137,7 @@ def load_locked_predictions(
     *,
     candidate_uids: list[str] | None = None,
 ) -> pd.DataFrame:
-    """Load locked predictions for a symbol, filtered to selected_exec=1.
+    """Load Governance Lock predictions for a symbol, filtered to selected_exec=1.
 
     Args:
         eval_start: Only include events with close_ts >= this UTC ISO-8601 timestamp (empty = all).
@@ -265,23 +266,24 @@ def load_runtime_events(
 
 def compare_outcomes(
     symbol: str,
-    locked_count: int,
-    locked_gross_pips_total: float,
-    locked_win_rate: float,
-    jforex_predict_cycles: int,
-    jforex_selected_total: int,
-    jforex_orders_submitted: int,
+    governance_selected_signal_count: int,
+    governance_independent_label_gross_pips_total: float,
+    governance_independent_label_win_rate: float,
+    runtime_predict_cycle_count: int,
+    runtime_selected_signal_count: int,
+    runtime_order_submitted_count: int,
     jforex_execution_failures: int,
     jforex_lifecycle_failures: int,
     signal_coverage_threshold: float = 0.8,
-    jforex_submitted_group_count: int = 0,
+    runtime_submitted_group_count: int = 0,
 ) -> dict:
-    """Compare JForex outcomes against locked Python backtest predictions.
+    """Compare runtime signal coverage against governance selected signals.
 
     Args:
-        signal_coverage_threshold: minimum ratio of jforex_selected_total / locked_count
-            to consider signal coverage acceptable. Default 0.8 (80%).
-        jforex_submitted_group_count: number of unique prediction bar close_ts values seen
+        signal_coverage_threshold: minimum ratio of runtime_selected_signal_count /
+            governance_selected_signal_count to consider signal coverage acceptable.
+            Default 0.8 (80%).
+        runtime_submitted_group_count: number of unique prediction bar close_ts values seen
             in order_submitted events (per-event order coverage).
 
     Returns:
@@ -291,31 +293,41 @@ def compare_outcomes(
         order_coverage_ratio is expected to be materially below 1.0 in live/tester runs.
         The OCO strategy allows only one open position at a time.  Once an order group is
         submitted, subsequent predict cycles that select candidates are counted in
-        jforex_selected_total (signal_coverage) but do NOT submit new orders while the
+        runtime_selected_signal_count (signal_coverage) but do NOT submit new orders while the
         position is live.  order_coverage_pass is therefore informational and is intentionally
         excluded from overall_pass.  signal_coverage_pass is the actionable gate.
     """
     # Order labels use BM_scan_... format which lacks parseable timestamps, so
-    # jforex_orders_submitted cannot be reliably scoped to the eval window.
-    # jforex_selected_total=0 is the authoritative idle signal (no predictions fired).
-    zero_lock_clean_noop = locked_count == 0 and jforex_selected_total == 0
-    signal_coverage_ratio = jforex_selected_total / locked_count if locked_count > 0 else 0.0
+    # runtime_order_submitted_count cannot be reliably scoped to the eval window.
+    # runtime_selected_signal_count=0 is the authoritative idle signal (no predictions fired).
+    zero_lock_clean_noop = (
+        governance_selected_signal_count == 0 and runtime_selected_signal_count == 0
+    )
+    signal_coverage_ratio = (
+        runtime_selected_signal_count / governance_selected_signal_count
+        if governance_selected_signal_count > 0
+        else 0.0
+    )
     # Zero-lock windows are valid no-op windows if runtime also stayed idle.
     signal_coverage_pass = (
         zero_lock_clean_noop
-        if locked_count == 0
+        if governance_selected_signal_count == 0
         else signal_coverage_ratio >= signal_coverage_threshold
     )
 
     execution_clean_pass = jforex_execution_failures == 0 and jforex_lifecycle_failures == 0
 
-    has_trades = jforex_orders_submitted > 0
+    has_trades = runtime_order_submitted_count > 0
 
-    # Per-event order coverage: unique group submissions vs distinct locked events
-    order_coverage_ratio = jforex_submitted_group_count / locked_count if locked_count > 0 else 0.0
+    # Per-event order coverage: unique group submissions vs distinct governance signals.
+    order_coverage_ratio = (
+        runtime_submitted_group_count / governance_selected_signal_count
+        if governance_selected_signal_count > 0
+        else 0.0
+    )
     order_coverage_pass = (
         zero_lock_clean_noop
-        if locked_count == 0
+        if governance_selected_signal_count == 0
         else order_coverage_ratio >= signal_coverage_threshold
     )
 
@@ -327,13 +339,15 @@ def compare_outcomes(
 
     return {
         "symbol": symbol,
-        "locked_selected_count": locked_count,
-        "locked_gross_pips_total": round(locked_gross_pips_total, 2),
-        "locked_win_rate": round(locked_win_rate, 4),
-        "jforex_predict_cycles": jforex_predict_cycles,
-        "jforex_selected_total": jforex_selected_total,
-        "jforex_orders_submitted": jforex_orders_submitted,
-        "jforex_submitted_group_count": jforex_submitted_group_count,
+        "governance_selected_signal_count": governance_selected_signal_count,
+        "governance_independent_label_gross_pips_total": round(
+            governance_independent_label_gross_pips_total, 2
+        ),
+        "governance_independent_label_win_rate": round(governance_independent_label_win_rate, 4),
+        "runtime_predict_cycle_count": runtime_predict_cycle_count,
+        "runtime_selected_signal_count": runtime_selected_signal_count,
+        "runtime_order_submitted_count": runtime_order_submitted_count,
+        "runtime_submitted_group_count": runtime_submitted_group_count,
         "signal_coverage_ratio": round(signal_coverage_ratio, 4),
         "signal_coverage_pass": signal_coverage_pass,
         "execution_clean_pass": execution_clean_pass,
@@ -349,13 +363,13 @@ def compare_outcomes(
 def non_deployable_result(symbol: str, events: dict, reason: str) -> dict:
     return {
         "symbol": symbol,
-        "locked_selected_count": 0,
-        "locked_gross_pips_total": 0.0,
-        "locked_win_rate": 0.0,
-        "jforex_predict_cycles": int(events["predict_cycles"]),
-        "jforex_selected_total": int(events["selected_count_total"]),
-        "jforex_orders_submitted": int(events["orders_submitted"]),
-        "jforex_submitted_group_count": int(events["submitted_group_close_ts_count"]),
+        "governance_selected_signal_count": 0,
+        "governance_independent_label_gross_pips_total": 0.0,
+        "governance_independent_label_win_rate": 0.0,
+        "runtime_predict_cycle_count": int(events["predict_cycles"]),
+        "runtime_selected_signal_count": int(events["selected_count_total"]),
+        "runtime_order_submitted_count": int(events["orders_submitted"]),
+        "runtime_submitted_group_count": int(events["submitted_group_close_ts_count"]),
         "signal_coverage_ratio": 0.0,
         "signal_coverage_pass": False,
         "execution_clean_pass": bool(
@@ -404,7 +418,10 @@ def _parse_args() -> argparse.Namespace:
         "--signal-coverage-threshold",
         type=float,
         default=0.8,
-        help="Min ratio of JForex selected predictions / locked predictions (default: 0.8)",
+        help=(
+            "Min ratio of runtime selected signals / governance selected signals "
+            "(default: 0.8)"
+        ),
     )
     parser.add_argument(
         "--out-csv",
@@ -463,27 +480,33 @@ def main() -> None:
             continue
 
         universe_uids = load_state_universe_uids(lock_dir, symbol)
-        locked = load_locked_predictions(
+        governance_selected = load_locked_predictions(
             lock_dir, symbol, eval_start=args.eval_start, eval_end=args.eval_end,
             candidate_uids=universe_uids or None,
         )
 
-        locked_count = len(locked)
-        locked_gross_total = float(locked["target_gross_pips"].sum())
-        locked_win_rate = float(locked["target_gross_pos"].mean()) if locked_count > 0 else 0.0
+        governance_selected_signal_count = len(governance_selected)
+        governance_independent_label_gross_pips_total = float(
+            governance_selected["target_gross_pips"].sum()
+        )
+        governance_independent_label_win_rate = (
+            float(governance_selected["target_gross_pos"].mean())
+            if governance_selected_signal_count > 0
+            else 0.0
+        )
 
         result = compare_outcomes(
             symbol=symbol,
-            locked_count=locked_count,
-            locked_gross_pips_total=locked_gross_total,
-            locked_win_rate=locked_win_rate,
-            jforex_predict_cycles=events["predict_cycles"],
-            jforex_selected_total=events["selected_count_total"],
-            jforex_orders_submitted=events["orders_submitted"],
+            governance_selected_signal_count=governance_selected_signal_count,
+            governance_independent_label_gross_pips_total=governance_independent_label_gross_pips_total,
+            governance_independent_label_win_rate=governance_independent_label_win_rate,
+            runtime_predict_cycle_count=events["predict_cycles"],
+            runtime_selected_signal_count=events["selected_count_total"],
+            runtime_order_submitted_count=events["orders_submitted"],
             jforex_execution_failures=events["execution_failures"],
             jforex_lifecycle_failures=events["lifecycle_failures"],
             signal_coverage_threshold=args.signal_coverage_threshold,
-            jforex_submitted_group_count=events["submitted_group_close_ts_count"],
+            runtime_submitted_group_count=events["submitted_group_close_ts_count"],
         )
         result["historical_deployable"] = bool(lock_status["historical_deployable"])
         result["non_deployable_reason"] = str(lock_status["non_deployable_reason"]).strip()
@@ -493,7 +516,7 @@ def main() -> None:
 
     # Print summary table
     print(
-        f"\n{'Symbol':<8} {'Locked':>7} {'JFX Sel':>8} {'Coverage':>9} "
+        f"\n{'Symbol':<8} {'GovSig':>7} {'RunSig':>8} {'Coverage':>9} "
         f"{'Orders':>7} {'ExecOK':>7} {'Verdict':>8}"
     )
     print("-" * 62)
@@ -509,9 +532,9 @@ def main() -> None:
             else f"{r['signal_coverage_ratio']:>8.1%}"
         )
         print(
-            f"{r['symbol']:<8} {r['locked_selected_count']:>7} "
-            f"{r['jforex_selected_total']:>8} {coverage_txt:>9} "
-            f"{r['jforex_orders_submitted']:>7} "
+            f"{r['symbol']:<8} {r['governance_selected_signal_count']:>7} "
+            f"{r['runtime_selected_signal_count']:>8} {coverage_txt:>9} "
+            f"{r['runtime_order_submitted_count']:>7} "
             f"{'yes' if r['execution_clean_pass'] else 'NO':>7} "
             f"{verdict:>8}"
         )
