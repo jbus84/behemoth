@@ -101,7 +101,7 @@ def _parse_args() -> RunConfig:
     parser.add_argument("--metrics-port-base", type=int, default=9464)
     parser.add_argument("--risk-enabled", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument(
-        "--universe-mode", choices=["tolerant", "nearest", "ordinal"], default="tolerant"
+        "--universe-mode", choices=["exact", "tolerant", "nearest", "ordinal"], default="exact"
     )
     parser.add_argument("--ordinal-tolerance", type=int, default=0)
     parser.add_argument(

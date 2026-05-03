@@ -114,7 +114,7 @@ def _parse_args() -> RunConfig:
     parser.add_argument("--starting-balance", type=int, default=100000)
     parser.add_argument("--risk-enabled", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument(
-        "--universe-mode", choices=["tolerant", "nearest", "ordinal", "exact"], default="tolerant"
+        "--universe-mode", choices=["exact", "tolerant", "nearest", "ordinal"], default="exact"
     )
     parser.add_argument("--ordinal-tolerance", type=int, default=0)
     parser.add_argument("--prediction-tolerance-sec", type=int, default=120)

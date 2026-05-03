@@ -188,7 +188,7 @@ def _validate_stage14_scope(run_report_dir: str, make_vars: dict[str, str]) -> N
     run_prefix = run_report_dir.rstrip("/")
     allowed_exact = {"RECONCILE_DIR"}
     for key, value in make_vars.items():
-        if key in {"LOCK_DIR", "EVAL_START", "EVAL_END"}:
+        if key in {"LOCK_DIR", "EVAL_START", "EVAL_END", "JFOREX_OUTCOME_MONITOR_ONLY"}:
             continue
         normalized = value.split("*", 1)[0].rstrip("/")
         expected_prefix = run_prefix + "/"
@@ -231,6 +231,7 @@ def _stage14_make_vars(run_report_dir: str, eval_start: str, eval_end: str) -> d
             f"{run_report_dir}/*_jforex_operational_ready_summary.csv"
         ),
         "JFOREX_OUTCOME_SUMMARY_GLOB": f"{run_report_dir}/jforex_outcome_parity_summary.csv",
+        "JFOREX_OUTCOME_MONITOR_ONLY": "1",
         "LOCAL_SURROGATE_SUMMARY_GLOB": f"{run_report_dir}/local_jforex_surrogate_summary.csv",
         "STAGE14_OUT_SUMMARY_CSV": (
             f"{run_report_dir}/stage14_jforex_runtime_certification_summary.csv"
@@ -309,9 +310,16 @@ def _require_month_bundle(model_month: str) -> Path:
 
 
 def _write_recert_status(
-    model_month: str, report_dir: str, bundle_dir: Path, overall_pass: bool
+    model_month: str,
+    report_dir: str,
+    bundle_dir: Path,
+    *,
+    process_pass: bool,
+    release_go: bool,
+    release_blockers: dict[str, str] | None = None,
 ) -> None:
     commit, branch, dirty = _git_metadata()
+    symbol_decisions = _read_symbol_decisions(report_dir)
     status_path = _repo_root() / report_dir / MONTHLY_RECERT_STATUS_FILENAME
     status_path.parent.mkdir(parents=True, exist_ok=True)
     status_path.write_text(
@@ -320,9 +328,12 @@ def _write_recert_status(
                 "dag_node_id": "monthly_recert",
                 "model_month": model_month,
                 "bundle_dir": str((_repo_root() / bundle_dir).resolve()),
-                "overall_pass": bool(overall_pass),
-                "process_verdict": "PASS" if overall_pass else "FAIL",
-                "symbol_decisions": _read_symbol_decisions(report_dir),
+                "overall_pass": bool(release_go),
+                "process_verdict": "PASS" if process_pass else "FAIL",
+                "release_decision": "GO" if release_go else "NO_GO",
+                "required_go_symbols": list(DEFAULT_SYMBOLS),
+                "release_blockers": dict(sorted((release_blockers or {}).items())),
+                "symbol_decisions": symbol_decisions,
                 "target_branch": branch,
                 "target_commit": commit,
                 "git_dirty": dirty,
@@ -351,18 +362,42 @@ def _write_recert_status(
     )
 
 
+def _release_blockers(
+    *,
+    failures: dict[str, list[dict[str, str]]],
+    acceptable_nogos: dict[str, list[dict[str, str]]],
+    symbol_decisions: dict[str, str] | None = None,
+    required_symbols: tuple[str, ...] = DEFAULT_SYMBOLS,
+) -> dict[str, str]:
+    blockers: dict[str, str] = {}
+    for symbol in required_symbols:
+        if symbol in failures:
+            blockers[symbol] = "critical certification failure"
+        elif symbol in acceptable_nogos:
+            blockers[symbol] = "accepted NO_GO evidence"
+        elif symbol_decisions is not None:
+            decision = str(symbol_decisions.get(symbol, "")).strip().upper()
+            if decision != "GO":
+                blockers[symbol] = f"symbol_decision={decision or 'missing'}"
+    return blockers
+
+
 def _print_summary(
     model_month: str,
     failures: dict[str, list[dict[str, str]]],
     acceptable_nogos: dict[str, list[dict[str, str]]] | None = None,
+    symbol_decisions: dict[str, str] | None = None,
 ) -> bool:
-    """Print the Monthly Recert symbol summary. Returns True if all critical checks pass."""
+    """Print the Monthly Recert summary. Returns True only when required symbols are GO."""
     print(f"\n[monthly-recert] model month {model_month} results")
     acceptable_nogos = acceptable_nogos or {}
-    all_pass = True
+    blockers = _release_blockers(
+        failures=failures,
+        acceptable_nogos=acceptable_nogos,
+        symbol_decisions=symbol_decisions,
+    )
     for symbol in DEFAULT_SYMBOLS:
         if symbol in failures:
-            all_pass = False
             for row in failures[symbol]:
                 detail = row.get("details", "").strip()
                 suffix = f": {detail}" if detail else ""
@@ -374,11 +409,11 @@ def _print_summary(
                 print(f"  {symbol:<8}NO_GO  expected {row['check_id']}{suffix}")
         else:
             print(f"  {symbol:<8}PASS")
-    if all_pass:
+    if not blockers:
         print("go/no-go: GO - run make promote-live to archive locks")
     else:
-        print(f"go/no-go: NO-GO - {len(failures)} symbol(s) failed")
-    return all_pass
+        print(f"go/no-go: NO-GO - {len(blockers)} required symbol(s) not GO")
+    return not blockers
 
 
 def main() -> None:
@@ -472,9 +507,23 @@ def main() -> None:
 
     failures = _read_failures(run_report_dir)
     acceptable_nogos = _read_acceptable_nogos(run_report_dir)
-    all_pass = _print_summary(model_month, failures, acceptable_nogos)
-    _write_recert_status(model_month, run_report_dir, bundle_dir, all_pass)
-    if not all_pass:
+    symbol_decisions = _read_symbol_decisions(run_report_dir)
+    release_blockers = _release_blockers(
+        failures=failures,
+        acceptable_nogos=acceptable_nogos,
+        symbol_decisions=symbol_decisions,
+    )
+    release_go = _print_summary(model_month, failures, acceptable_nogos, symbol_decisions)
+    process_pass = not failures
+    _write_recert_status(
+        model_month,
+        run_report_dir,
+        bundle_dir,
+        process_pass=process_pass,
+        release_go=release_go,
+        release_blockers=release_blockers,
+    )
+    if not release_go:
         raise SystemExit(1)
 
 

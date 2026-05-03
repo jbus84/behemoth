@@ -28,6 +28,7 @@ HISTORY_ROOT = "configs/research/governance/oco_history_dukascopy_candidate"
 ACTIVE_ROOT = "configs/research/governance/oco"
 MONTHLY_RECERT_STATUS_FILENAME = "monthly_recert_status.json"
 COMMIT_SHA_RE = re.compile(r"^[0-9a-fA-F]{40}$")
+DEFAULT_REQUIRED_GO_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 
 
 def _repo_root() -> Path:
@@ -53,7 +54,10 @@ def _verify_dag_provenance(
     required = {
         "dag_node_id",
         "model_month",
+        "overall_pass",
         "process_verdict",
+        "release_decision",
+        "required_go_symbols",
         "target_branch",
         "target_commit",
         "git_dirty",
@@ -74,6 +78,8 @@ def _verify_dag_provenance(
         )
     if str(status["process_verdict"]).upper() != "PASS":
         raise SystemExit("[promote-live] monthly recert process_verdict is not PASS")
+    if str(status["release_decision"]).upper() != "GO":
+        raise SystemExit("[promote-live] monthly recert release_decision is not GO")
     if str(status["target_branch"]) != "main":
         raise SystemExit(
             f"[promote-live] target_branch must be main for promotion, got {status['target_branch']}"
@@ -82,6 +88,7 @@ def _verify_dag_provenance(
         raise SystemExit("[promote-live] monthly recert was produced from dirty git state")
     if not isinstance(status["symbol_decisions"], dict) or not status["symbol_decisions"]:
         raise SystemExit("[promote-live] monthly recert symbol_decisions missing or empty")
+    _verify_required_go_symbols(status)
 
     certified = str(status["target_commit"]).strip()
     if not certified:
@@ -103,6 +110,32 @@ def _verify_dag_provenance(
                 f"[promote-live] certified commit {certified[:8]} is not an ancestor of "
                 f"current HEAD {current_commit[:8]}; re-run make monthly-recert"
             )
+
+
+def _required_go_symbols(status: dict[str, object]) -> tuple[str, ...]:
+    raw = status.get("required_go_symbols", DEFAULT_REQUIRED_GO_SYMBOLS)
+    if not isinstance(raw, list) or not raw:
+        raise SystemExit("[promote-live] monthly recert required_go_symbols missing or empty")
+    symbols = tuple(str(item).strip().upper() for item in raw if str(item).strip())
+    if not symbols:
+        raise SystemExit("[promote-live] monthly recert required_go_symbols missing or empty")
+    return symbols
+
+
+def _verify_required_go_symbols(status: dict[str, object]) -> None:
+    decisions = status.get("symbol_decisions", {})
+    if not isinstance(decisions, dict):
+        raise SystemExit("[promote-live] monthly recert symbol_decisions missing or invalid")
+    required = _required_go_symbols(status)
+    missing_or_no_go = [
+        symbol
+        for symbol in required
+        if str(decisions.get(symbol, "")).strip().upper() != "GO"
+    ]
+    if missing_or_no_go:
+        raise SystemExit(
+            "[promote-live] required GO symbols are not GO: " + ",".join(missing_or_no_go)
+        )
 
 
 def _verify_cert(

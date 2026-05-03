@@ -756,7 +756,7 @@ def test_reconcile_writes_per_symbol_csv(tmp_path):
             "has_trades": True,
         },
     ]
-    write_per_symbol_summaries(results, out_dir=tmp_path)
+    write_per_symbol_summaries(results, out_dir=tmp_path, events_prefix="local_jforex")
 
     eurusd_csv = tmp_path / "EURUSD_local_jforex_outcome_parity_summary.csv"
     assert eurusd_csv.exists(), f"Expected {eurusd_csv} to exist"
@@ -781,13 +781,29 @@ def test_reconcile_per_symbol_csv_includes_evaluated_at_utc(tmp_path):
     results = [
         {"symbol": "EURUSD", "overall_pass": True, "evaluated_at_utc": "2026-03-19T12:00:00Z"},
     ]
-    write_per_symbol_summaries(results, out_dir=tmp_path)
+    write_per_symbol_summaries(results, out_dir=tmp_path, events_prefix="local_jforex")
 
     df = pd.read_csv(tmp_path / "EURUSD_local_jforex_outcome_parity_summary.csv")
     assert "evaluated_at_utc" in df.columns, "Per-symbol CSV missing evaluated_at_utc"
     ts = df["evaluated_at_utc"].iloc[0]
     parsed = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
     assert parsed.tzinfo is not None
+
+
+def test_reconcile_writes_per_symbol_csv_with_events_prefix(tmp_path):
+    import pandas as pd
+
+    from scripts.reconcile_jforex_outcomes import write_per_symbol_summaries
+
+    results = [{"symbol": "EURUSD", "overall_pass": False}]
+
+    write_per_symbol_summaries(results, out_dir=tmp_path, events_prefix="jforex")
+
+    jforex_csv = tmp_path / "EURUSD_jforex_outcome_parity_summary.csv"
+    assert jforex_csv.exists(), f"Expected {jforex_csv} to exist"
+    assert not (tmp_path / "EURUSD_local_jforex_outcome_parity_summary.csv").exists()
+    df = pd.read_csv(jforex_csv)
+    assert "jforex_outcome_parity_pass" in df.columns
 
 
 def test_reconcile_aggregate_csv_includes_evaluated_at_utc(tmp_path, monkeypatch):
@@ -871,6 +887,71 @@ def test_reconcile_aggregate_csv_includes_evaluated_at_utc(tmp_path, monkeypatch
 
     parsed = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
     assert parsed.tzinfo is not None
+
+
+def test_reconcile_monitor_only_writes_failing_evidence_without_exiting(
+    tmp_path, monkeypatch
+):
+    import csv as csv_mod
+    import sys
+
+    import duckdb
+    import pandas as pd
+
+    lock_dir = tmp_path / "lock"
+    lock_dir.mkdir()
+    reconcile_dir = tmp_path / "reconcile"
+    reconcile_dir.mkdir()
+    out_csv = tmp_path / "out.csv"
+
+    con = duckdb.connect()
+    con.execute(
+        f"COPY (SELECT '2025-07-07T12:00:00Z'::TIMESTAMPTZ AS close_ts, "
+        "'uid_a' AS candidate_uid, 0.65 AS pred_prob, 3.5 AS target_gross_pips, "
+        "1 AS target_gross_pos, 1 AS selected_exec, 0 AS event_ordinal) "
+        f"TO '{lock_dir / 'eurusd_oco_locked_predictions.parquet'}' (FORMAT PARQUET)"
+    )
+    con.close()
+
+    with open(reconcile_dir / "EURUSD_jforex_runtime_events.csv", "w", newline="") as f:
+        writer = csv_mod.DictWriter(
+            f,
+            fieldnames=["event_ts_utc", "symbol", "category", "event_name", "pass", "detail"],
+        )
+        writer.writeheader()
+        writer.writerow(
+            {
+                "event_ts_utc": "2025-07-07T12:00:00Z",
+                "symbol": "EURUSD",
+                "category": "signal",
+                "event_name": "predict_cycle",
+                "pass": "true",
+                "detail": "selected_count=0",
+            }
+        )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "reconcile_jforex_outcomes.py",
+            "--symbols",
+            "EURUSD",
+            "--lock-dir",
+            str(lock_dir),
+            "--reconcile-dir",
+            str(reconcile_dir),
+            "--out-csv",
+            str(out_csv),
+            "--monitor-only",
+        ],
+    )
+    from scripts.reconcile_jforex_outcomes import main
+
+    main()
+
+    df = pd.read_csv(out_csv)
+    assert str(df.loc[0, "overall_pass"]).lower() == "false"
 
 
 def test_load_runtime_events_prefers_real_over_local(tmp_path):

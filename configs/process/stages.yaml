@@ -1,0 +1,624 @@
+stages:
+  - stage_id: stage01
+    title: Stage 01 Data Foundation
+    summary: >
+      Builds and audits Raw Tick Data, Tick Bars, and the Velocity Dataset used
+      by downstream research and fitting stages.
+    canonical_commands:
+      - make rebuild-all
+    required_inputs:
+      - /Users/danielfisher/Desktop/dukascopy_ticks/${SYMBOL}/${SYMBOL}_${YYYYMM}_ticks.parquet
+      - /Users/danielfisher/Desktop/tick/${SYMBOL}/${SYMBOL}_${YYYYMM}_ticks.parquet
+    produced_evidence:
+      - data/global_tickbars/${SYMBOL}_{100,1000,2000}tick.parquet
+      - data/analysis/tick_velocity/${SYMBOL}_{100,1000,2000}tick_velocity.parquet
+      - docs/analysis/data_reliability_report.md
+    gates:
+      - check_id: data_foundation_available
+        verdict_effect: PASS_FAIL
+        severity: critical
+        description: Canonical tick-derived inputs must exist before research stages run.
+      - check_id: data_reliability_audit_pass
+        verdict_effect: PASS_FAIL
+        severity: high
+        description: Data reliability evidence must not show blocking gaps.
+    owning_files:
+      - scripts/download_tick_vault_data.py
+      - scripts/download_histdata_ticks.py
+      - scripts/build_global_tick_bars.py
+      - scripts/build_tick_velocity_dataset.py
+      - scripts/audit_data_reliability.py
+      - scripts/onboard_symbol.py
+      - Makefile
+    tests:
+      - tests/test_download_tick_vault_data.py
+      - tests/test_download_histdata_ticks.py
+      - tests/test_build_tick_velocity_dataset.py
+      - tests/test_data_reliability_audit.py
+    graphify: &default_stage_graphify
+      seeds:
+        - scripts/download_tick_vault_data.py
+        - scripts/download_histdata_ticks.py
+        - scripts/build_global_tick_bars.py
+        - scripts/build_tick_velocity_dataset.py
+        - scripts/audit_data_reliability.py
+        - scripts/onboard_symbol.py
+        - Makefile
+      max_depth: 2
+      max_nodes: 300
+      max_edges: 1500
+      allow:
+        - scripts/**
+        - src/behemoth/**
+        - src/jforex/**
+        - tests/**
+        - Makefile
+      deny:
+        - data/**
+        - .venv/**
+        - .uv_cache/**
+        - .worktrees/**
+        - graphify-out/**
+        - docs/analysis/**
+      edge_types:
+        - imports
+        - calls
+        - reads_artifact
+        - writes_artifact
+        - make_depends_on
+
+  - stage_id: stage02
+    title: Stage 02 Opportunity Mining
+    summary: >
+      Runs Opportunity Mining over the Velocity Dataset to create broad
+      train-only Candidate State evidence.
+    canonical_commands:
+      - make onboard-symbol
+    required_inputs:
+      - data/analysis/tick_velocity/${SYMBOL}_{100,1000,2000}tick_velocity.parquet
+      - configs/research/experiments/${symbol}_tick_opportunity_mining.yaml
+    produced_evidence:
+      - data/analysis/tick_opportunity_mining/${SYMBOL}_tick_opportunity_mining_summary.csv
+      - docs/analysis/${symbol}_tick_opportunity_mining_report.md
+    gates:
+      - check_id: opportunity_mining_pass
+        verdict_effect: PASS_FAIL
+        severity: critical
+        description: Stage 2 must produce causal Candidate State evidence.
+    owning_files:
+      - scripts/run_tick_opportunity_mining.py
+      - scripts/onboard_symbol.py
+      - configs/research/experiments/${symbol}_tick_opportunity_mining.yaml
+      - Makefile
+    tests:
+      - tests/test_tick_opportunity_mining.py
+    graphify:
+      <<: *default_stage_graphify
+      seeds:
+        - scripts/run_tick_opportunity_mining.py
+        - scripts/onboard_symbol.py
+        - Makefile
+
+  - stage_id: stage03
+    title: Stage 03 Monthly WFO
+    summary: >
+      Performs Monthly WFO Model Fit and Threshold Fit, producing causally
+      scored predictions for each Test Month.
+    canonical_commands:
+      - make onboard-symbol
+    required_inputs:
+      - data/analysis/tick_opportunity_mining/${SYMBOL}_oco_candidate_universe.csv
+      - configs/research/experiments/${symbol}_tick_opportunity_monthly_wfo_oco_fullcap.yaml
+    produced_evidence:
+      - data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap_${symbol}/${SYMBOL}_oco_monthly_predictions.parquet
+      - data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap_${symbol}/${SYMBOL}_oco_monthly_metrics.csv
+      - docs/analysis/${symbol}_tick_opportunity_monthly_wfo_oco_fullcap_report.md
+    gates:
+      - check_id: monthly_wfo_pass
+        verdict_effect: PASS_FAIL
+        severity: critical
+        description: Monthly WFO predictions must be produced under causal ordering.
+      - check_id: threshold_causality_pass
+        verdict_effect: PASS_FAIL
+        severity: critical
+        description: Threshold Fit must use only permitted historical information.
+    owning_files:
+      - scripts/run_tick_opportunity_monthly_wfo.py
+      - scripts/onboard_symbol.py
+      - configs/research/experiments/${symbol}_tick_opportunity_monthly_wfo_oco_fullcap.yaml
+      - Makefile
+    tests:
+      - tests/test_monthly_wfo_threshold_causality.py
+    graphify:
+      <<: *default_stage_graphify
+      seeds:
+        - scripts/run_tick_opportunity_monthly_wfo.py
+        - scripts/onboard_symbol.py
+        - Makefile
+
+  - stage_id: stage04
+    title: Stage 04 Stop-Limit Realism
+    summary: >
+      Applies Stop-Limit Realism analysis to scored opportunities using
+      overshoot, fill, cost, and no-touch execution semantics.
+    canonical_commands:
+      - make onboard-symbol
+    required_inputs:
+      - data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap_${symbol}/${SYMBOL}_oco_monthly_predictions.parquet
+      - data/analysis/tick_velocity/${SYMBOL}_{100,1000,2000}tick_velocity.parquet
+    produced_evidence:
+      - data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/${SYMBOL}_oco_stop_limit_tickfill_summary.csv
+      - docs/analysis/oco_stop_limit_tickfill_fullcap_report.md
+    gates:
+      - check_id: stop_limit_realism_pass
+        verdict_effect: PASS_FAIL
+        severity: critical
+        description: Stop-Limit Realism evidence must exist before reduced selection.
+    owning_files:
+      - scripts/analyze_oco_stop_limit_tickfill.py
+      - scripts/onboard_symbol.py
+      - Makefile
+    tests:
+      - tests/test_oco_precompute_spread.py
+    graphify:
+      <<: *default_stage_graphify
+      seeds:
+        - scripts/analyze_oco_stop_limit_tickfill.py
+        - scripts/onboard_symbol.py
+        - Makefile
+
+  - stage_id: stage05
+    title: Stage 05 Reduced-Core Rolling
+    summary: >
+      Converts Candidate State evidence into a leakage-safe rolling Shortlist
+      and monthly Allowed State schedule.
+    canonical_commands:
+      - make onboard-symbol
+    required_inputs:
+      - data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap_${symbol}/${SYMBOL}_oco_monthly_predictions.parquet
+      - data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/${SYMBOL}_oco_stop_limit_tickfill_detail.csv
+      - configs/research/experiments/${symbol}_oco_reduced_core_rolling.yaml
+    produced_evidence:
+      - data/analysis/tick_opportunity_mining/reduced_core_rolling/${SYMBOL}_oco_reduced_core_rolling_summary.csv
+      - data/analysis/tick_opportunity_mining/reduced_core_rolling/${SYMBOL}_oco_reduced_state_schedule.csv
+      - docs/analysis/${symbol}_oco_reduced_core_rolling_report.md
+    gates:
+      - check_id: reduced_core_rolling_pass
+        verdict_effect: PASS_FAIL
+        severity: critical
+        description: Reduced-Core Rolling must produce a valid monthly Shortlist.
+    owning_files:
+      - scripts/select_oco_reduced_core_rolling.py
+      - scripts/onboard_symbol.py
+      - configs/research/experiments/${symbol}_oco_reduced_core_rolling.yaml
+      - Makefile
+    tests:
+      - tests/test_oco_reduced_core_rolling.py
+    graphify:
+      <<: *default_stage_graphify
+      seeds:
+        - scripts/select_oco_reduced_core_rolling.py
+        - scripts/onboard_symbol.py
+        - Makefile
+
+  - stage_id: stage06
+    title: Stage 06 Tick-Exact Verification
+    summary: >
+      Replays the Shortlist at exact tick granularity to verify selected
+      opportunities and portability assumptions before robustness checks.
+    canonical_commands:
+      - make onboard-symbol
+    required_inputs:
+      - data/analysis/tick_opportunity_mining/reduced_core_rolling/${SYMBOL}_oco_reduced_state_schedule.csv
+      - data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap_${symbol}/${SYMBOL}_oco_monthly_predictions.parquet
+    produced_evidence:
+      - data/analysis/tick_opportunity_mining/tick_exact/${SYMBOL}_oco_tick_exact_summary.csv
+      - docs/analysis/${symbol}_oco_tick_exact_rolling_report.md
+    gates:
+      - check_id: tick_exact_verification_pass
+        verdict_effect: PASS_FAIL
+        severity: critical
+        description: Tick-Exact Verification must confirm the Shortlist under exact replay.
+    owning_files:
+      - scripts/verify_oco_tick_exact_shortlist.py
+      - scripts/onboard_symbol.py
+      - Makefile
+    tests:
+      - tests/test_oco_leakage_label_integrity.py
+    graphify:
+      <<: *default_stage_graphify
+      seeds:
+        - scripts/verify_oco_tick_exact_shortlist.py
+        - scripts/onboard_symbol.py
+        - Makefile
+
+  - stage_id: stage07
+    title: Stage 07 Logical And Statistical Audit
+    summary: >
+      Runs logical, leakage, label-integrity, and execution-risk audits across
+      the OCO research evidence.
+    canonical_commands:
+      - make audit-all
+    required_inputs:
+      - data/analysis/tick_opportunity_mining/
+      - configs/research/governance/oco_rule_universe_registry.yaml
+    produced_evidence:
+      - data/analysis/tick_opportunity_mining/oco_logical_audit_checks.csv
+      - data/analysis/tick_opportunity_mining/oco_leakage_integrity_checks.csv
+      - docs/analysis/oco_logical_audit_report.md
+      - docs/analysis/oco_leakage_integrity_report.md
+      - docs/analysis/oco_execution_risk_prelive_report.md
+    gates:
+      - check_id: logical_audit_pass
+        verdict_effect: PASS_FAIL
+        severity: critical
+        description: Logical and statistical audits must not show blocking evidence issues.
+    owning_files:
+      - scripts/audit_oco_pipeline_logical_issues.py
+      - scripts/audit_oco_leakage_label_integrity.py
+      - scripts/audit_oco_execution_risk_prelive.py
+      - Makefile
+    tests:
+      - tests/test_oco_pipeline_logical_audit.py
+      - tests/test_oco_leakage_label_integrity.py
+      - tests/test_oco_execution_risk_prelive.py
+    graphify:
+      <<: *default_stage_graphify
+      seeds:
+        - scripts/audit_oco_pipeline_logical_issues.py
+        - scripts/audit_oco_leakage_label_integrity.py
+        - scripts/audit_oco_execution_risk_prelive.py
+        - Makefile
+
+  - stage_id: stage08
+    title: Stage 08 Robustness And Stress
+    summary: >
+      Applies the Robustness Filter and stress checks to Monthly WFO evidence
+      before governance locking.
+    canonical_commands:
+      - make onboard-symbol
+    required_inputs:
+      - data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap_${symbol}/${SYMBOL}_oco_monthly_predictions.parquet
+      - data/analysis/tick_opportunity_mining/reduced_core_rolling/${SYMBOL}_oco_reduced_state_schedule.csv
+    produced_evidence:
+      - data/analysis/tick_opportunity_mining/robustness/${SYMBOL}_oco_monthly_wfo_robustness_summary.csv
+      - docs/analysis/${symbol}_oco_monthly_wfo_robustness_fullcap_report.md
+    gates:
+      - check_id: robustness_filter_pass
+        verdict_effect: PASS_FAIL
+        severity: critical
+        description: Robustness Filter evidence must support the governed Shortlist.
+    owning_files:
+      - scripts/analyze_oco_monthly_wfo_robustness.py
+      - scripts/onboard_symbol.py
+      - Makefile
+    tests:
+      - tests/test_oco_monthly_wfo_robustness.py
+    graphify:
+      <<: *default_stage_graphify
+      seeds:
+        - scripts/analyze_oco_monthly_wfo_robustness.py
+        - scripts/onboard_symbol.py
+        - Makefile
+
+  - stage_id: stage09
+    title: Stage 09 Live Governance And Deployment
+    summary: >
+      Freezes Governance Locks, validates rule-universe coverage, and builds
+      operator-facing Promotion evidence.
+    canonical_commands:
+      - make freeze-oco
+    required_inputs:
+      - data/analysis/tick_opportunity_mining/reduced_core_rolling/
+      - models/oco/
+      - configs/research/governance/oco_rule_universe_registry.yaml
+    produced_evidence:
+      - configs/research/governance/oco/${symbol}_oco_live_lock.json
+      - docs/strategy_bible/generated/stage_09_snapshot.md
+      - docs/analysis/operator_action_report.md
+      - docs/analysis/oco_alert_remediation_report.md
+    gates:
+      - check_id: governance_lock_freeze_pass
+        verdict_effect: PASS_FAIL
+        severity: critical
+        description: Governance Locks must be frozen from current evidence.
+      - check_id: rule_universe_registry_pass
+        verdict_effect: PASS_FAIL
+        severity: critical
+        description: Rule-universe coverage must be complete for active symbols.
+    owning_files:
+      - scripts/freeze_oco_live_governance.py
+      - scripts/validate_oco_rule_universe_registry.py
+      - scripts/build_operator_action_report.py
+      - scripts/remediate_oco_monitoring_alerts.py
+      - scripts/build_oco_governance_explainability_report.py
+      - Makefile
+    tests:
+      - tests/test_oco_live_governance.py
+      - tests/test_validate_oco_rule_universe_registry.py
+      - tests/test_build_operator_action_report.py
+    graphify:
+      <<: *default_stage_graphify
+      seeds:
+        - scripts/freeze_oco_live_governance.py
+        - scripts/validate_oco_rule_universe_registry.py
+        - scripts/build_operator_action_report.py
+        - scripts/remediate_oco_monitoring_alerts.py
+        - scripts/build_oco_governance_explainability_report.py
+        - Makefile
+
+  - stage_id: stage10
+    title: Stage 10 Known Risks And Backlog
+    summary: >
+      Maintains documentation and risk-tracking evidence that explains known
+      blockers, monitored risks, and unresolved governance concerns.
+    canonical_commands:
+      - make docs-contract-ci
+    required_inputs:
+      - docs/strategy_bible/stage_10_known_risks_and_backlog.md
+      - data/analysis/tick_opportunity_mining/
+    produced_evidence:
+      - docs/strategy_bible/generated/stage_10_snapshot.md
+      - docs/analysis/oco_docs_contract_report.md
+      - data/analysis/tick_opportunity_mining/docs_contract_checks.csv
+    gates:
+      - check_id: docs_contract_pass
+        verdict_effect: PASS_FAIL
+        severity: critical
+        description: Documentation contracts must match generated governance evidence.
+    owning_files:
+      - scripts/build_oco_strategy_bible.py
+      - scripts/build_oco_system_reference_docs.py
+      - scripts/check_oco_docs_stage_integrity.py
+      - scripts/validate_oco_docs_contract.py
+      - configs/research/docs/oco_bible_manifest.yaml
+      - Makefile
+    tests:
+      - tests/test_oco_docs_contract.py
+      - tests/test_build_oco_system_reference_docs.py
+    graphify:
+      <<: *default_stage_graphify
+      seeds:
+        - scripts/build_oco_strategy_bible.py
+        - scripts/build_oco_system_reference_docs.py
+        - scripts/check_oco_docs_stage_integrity.py
+        - scripts/validate_oco_docs_contract.py
+        - Makefile
+
+  - stage_id: stage11
+    title: Stage 11 Execution Monte Carlo
+    summary: >
+      Runs Execution Monte Carlo and validation checks over governed execution
+      evidence to quantify account-level and session-level risk.
+    canonical_commands:
+      - make onboard-symbol
+    required_inputs:
+      - data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/
+      - data/analysis/tick_opportunity_mining/reduced_core_rolling/
+    produced_evidence:
+      - data/analysis/tick_opportunity_mining/execution_mc_checks.csv
+      - data/analysis/tick_opportunity_mining/execution_mc_issues.csv
+      - docs/analysis/oco_execution_monte_carlo_report.md
+      - docs/analysis/oco_execution_monte_carlo_validation_report.md
+    gates:
+      - check_id: execution_monte_carlo_pass
+        verdict_effect: PASS_FAIL
+        severity: high
+        description: Execution Monte Carlo validation must not show blocking risk evidence.
+    owning_files:
+      - scripts/run_execution_monte_carlo.py
+      - scripts/validate_execution_monte_carlo.py
+      - scripts/onboard_symbol.py
+      - Makefile
+    tests:
+      - tests/test_execution_monte_carlo.py
+    graphify:
+      <<: *default_stage_graphify
+      seeds:
+        - scripts/run_execution_monte_carlo.py
+        - scripts/validate_execution_monte_carlo.py
+        - scripts/onboard_symbol.py
+        - Makefile
+
+  - stage_id: stage12
+    title: Stage 12 API Parity
+    summary: >
+      Certifies that the authoritative Python API reproduces locked governance
+      predictions for each active symbol over the certification window.
+    canonical_commands:
+      - make stage12-stage13-cert-artifacts
+    required_inputs:
+      - data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/${SYMBOL}_oco_monthly_predictions.parquet
+      - models/oco/${SYMBOL}_model_${MODEL_MONTH}.json
+    produced_evidence:
+      - data/analysis/backtest_reconcile/${SYMBOL}_stage12_api_parity_summary.csv
+      - data/analysis/backtest_reconcile/stage12_stage13_certification_summary.csv
+    gates:
+      - check_id: stage12_api_parity_pass
+        verdict_effect: PASS_FAIL
+        severity: critical
+        description: Python API predictions must match locked governance evidence.
+    owning_files:
+      - scripts/run_stage12_stage13_certification.py
+      - scripts/validate_api_parity.py
+      - src/behemoth/api/server.py
+    tests:
+      - tests/test_api_server.py
+      - tests/test_api_server_historical.py
+    graphify:
+      seeds:
+        - scripts/run_stage12_stage13_certification.py
+        - scripts/validate_api_parity.py
+        - src/behemoth/api/server.py
+      max_depth: 2
+      max_nodes: 300
+      max_edges: 1500
+      allow:
+        - scripts/**
+        - src/behemoth/**
+        - tests/**
+        - Makefile
+      deny:
+        - data/**
+        - .venv/**
+        - .uv_cache/**
+        - .worktrees/**
+        - graphify-out/**
+        - docs/analysis/**
+      edge_types:
+        - imports
+        - calls
+        - reads_artifact
+        - writes_artifact
+        - make_depends_on
+
+  - stage_id: stage13
+    title: Stage 13 Dukascopy TestClient Certification
+    summary: >
+      Certifies that Dukascopy-source TestClient evidence is available and
+      agrees with the Stage 12 API parity outputs for deployment decisions.
+    canonical_commands:
+      - make stage13-dukascopy-cert
+    required_inputs:
+      - data/analysis/backtest_reconcile/${SYMBOL}_stage12_api_parity_summary.csv
+      - data/analysis/backtest_reconcile/stage13_dukascopy_testclient_summary.csv
+    produced_evidence:
+      - data/analysis/backtest_reconcile/stage12_stage13_certification_summary.csv
+      - docs/analysis/stage13_dukascopy_testclient_report.md
+    gates:
+      - check_id: stage13_dukascopy_testclient_pass
+        verdict_effect: PASS_FAIL
+        severity: critical
+        description: Dukascopy TestClient evidence must certify the symbol process.
+    owning_files:
+      - scripts/run_stage12_stage13_certification.py
+      - scripts/generate_dukascopy_testclient_artifacts.py
+      - scripts/validate_stage13_dukascopy_testclient.py
+    tests:
+      - tests/test_generate_dukascopy_testclient_artifacts.py
+    graphify:
+      seeds:
+        - scripts/run_stage12_stage13_certification.py
+        - scripts/generate_dukascopy_testclient_artifacts.py
+        - scripts/validate_stage13_dukascopy_testclient.py
+      max_depth: 2
+      max_nodes: 300
+      max_edges: 1500
+      allow:
+        - scripts/**
+        - src/behemoth/**
+        - tests/**
+        - Makefile
+      deny:
+        - data/**
+        - .venv/**
+        - .uv_cache/**
+        - .worktrees/**
+        - graphify-out/**
+        - docs/analysis/**
+      edge_types:
+        - imports
+        - calls
+        - reads_artifact
+        - writes_artifact
+        - make_depends_on
+
+  - stage_id: stage14
+    title: Stage 14 JForex Runtime Certification
+    summary: >
+      Certifies runtime parity for the JForex adapter. Local JForex surrogate
+      outcome parity is the hard runtime gate; real JForex historical outcome
+      parity is broker-feed drift monitor evidence.
+    canonical_commands:
+      - make full-stage14-cert
+      - make stage14-jforex-cert
+    required_inputs:
+      - data/analysis/backtest_reconcile/stage12_stage13_certification_summary.csv
+      - data/analysis/backtest_reconcile/local_jforex_outcome_parity_summary.csv
+      - data/analysis/backtest_reconcile/local_jforex_surrogate_summary.csv
+      - data/analysis/backtest_reconcile/jforex_outcome_parity_summary.csv
+    produced_evidence:
+      - data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_checks.csv
+      - data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_summary.csv
+      - docs/analysis/stage14_jforex_runtime_certification_report.md
+      - docs/strategy_bible/generated/stage_14_snapshot.md
+    gates:
+      - check_id: stage13_dukascopy_testclient_pass
+        verdict_effect: PASS_FAIL
+        severity: critical
+        description: Stage 14 requires Stage 13 certified input evidence.
+      - check_id: local_jforex_surrogate_pass
+        verdict_effect: PASS_FAIL
+        severity: critical
+        description: Local JForex surrogate must match authoritative Python governance.
+      - check_id: jforex_signal_parity_pass
+        verdict_effect: PASS_FAIL
+        severity: critical
+        description: JForex signal parity evidence must pass when present.
+      - check_id: jforex_execution_parity_pass
+        verdict_effect: PASS_FAIL
+        severity: critical
+        description: JForex execution parity evidence must pass when present.
+      - check_id: jforex_execution_lifecycle_pass
+        verdict_effect: PASS_FAIL
+        severity: critical
+        description: JForex execution lifecycle evidence must pass when present.
+      - check_id: jforex_operational_ready_pass
+        verdict_effect: PASS_FAIL
+        severity: critical
+        description: JForex operational readiness evidence must pass when present.
+      - check_id: jforex_outcome_parity_pass
+        verdict_effect: MONITOR_ONLY
+        severity: monitor
+        description: Real JForex historical tester outcome parity is drift monitor evidence only.
+    owning_files:
+      - scripts/reconcile_jforex_outcomes.py
+      - scripts/validate_local_jforex_surrogate.py
+      - scripts/validate_stage14_jforex_runtime_certification.py
+      - scripts/audit_runtime_parity.py
+      - scripts/run_jforex_dukascopy_matrix.py
+      - scripts/run_local_jforex_surrogate_matrix.py
+      - src/jforex/src/main/java/com/behemoth/jforex/BehemothJForexStrategy.java
+      - src/jforex/src/main/java/com/behemoth/jforex/JForexTesterRunner.java
+      - src/jforex/src/main/java/com/behemoth/jforex/LocalJForexTesterRunner.java
+      - Makefile
+    tests:
+      - tests/test_reconcile_jforex_outcomes.py
+      - tests/test_validate_local_jforex_surrogate.py
+      - tests/test_validate_stage14_jforex_runtime_certification.py
+      - tests/test_run_jforex_dukascopy_matrix.py
+      - tests/test_run_local_jforex_surrogate_matrix.py
+    graphify:
+      seeds:
+        - scripts/reconcile_jforex_outcomes.py
+        - scripts/validate_local_jforex_surrogate.py
+        - scripts/validate_stage14_jforex_runtime_certification.py
+        - scripts/audit_runtime_parity.py
+        - scripts/run_jforex_dukascopy_matrix.py
+        - scripts/run_local_jforex_surrogate_matrix.py
+        - src/jforex/src/main/java/com/behemoth/jforex/BehemothJForexStrategy.java
+        - src/jforex/src/main/java/com/behemoth/jforex/JForexTesterRunner.java
+        - src/jforex/src/main/java/com/behemoth/jforex/LocalJForexTesterRunner.java
+        - Makefile
+      max_depth: 2
+      max_nodes: 300
+      max_edges: 1500
+      allow:
+        - scripts/**
+        - src/behemoth/**
+        - src/jforex/**
+        - tests/**
+        - Makefile
+      deny:
+        - data/**
+        - .venv/**
+        - .uv_cache/**
+        - .worktrees/**
+        - graphify-out/**
+        - docs/analysis/**
+      edge_types:
+        - imports
+        - calls
+        - reads_artifact
+        - writes_artifact
+        - make_depends_on

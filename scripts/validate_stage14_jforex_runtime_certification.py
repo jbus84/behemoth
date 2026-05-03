@@ -19,6 +19,8 @@ class InputSource:
     summary_glob: str
     candidate_columns: tuple[str, ...]
     required: bool = True
+    certification_gate: bool = True
+    severity: str = "critical"
     excluded_path_substrings: tuple[str, ...] = ()
 
 
@@ -348,6 +350,9 @@ def build_stage14_artifacts(
             check_id="jforex_outcome_parity_pass",
             summary_glob=jforex_outcome_summary_glob,
             candidate_columns=("jforex_outcome_parity_pass", "overall_pass"),
+            required=False,
+            certification_gate=False,
+            severity="monitor",
         ),
         InputSource(
             check_id="local_jforex_surrogate_pass",
@@ -450,9 +455,10 @@ def build_stage14_artifacts(
             if provenance_details and not details:
                 details = provenance_details
             if value is None or pd.isna(value):
-                missing_inputs += 1
+                if src.required:
+                    missing_inputs += 1
                 row[src.check_id] = False
-                status = "FAIL"
+                status = "FAIL" if src.required else "SKIP"
                 details = details or "missing input artifact"
             else:
                 row[src.check_id] = bool(value)
@@ -507,7 +513,9 @@ def build_stage14_artifacts(
                     "symbol": symbol,
                     "check_id": src.check_id.upper(),
                     "status": status,
-                    "severity": "critical" if src.check_id != "operational_ready_pass" else "high",
+                    "severity": src.severity
+                    if src.check_id != "operational_ready_pass"
+                    else "high",
                     "metric_name": src.check_id,
                     "metric_value": int(bool(row[src.check_id])),
                     "expected": 1,
@@ -538,7 +546,10 @@ def build_stage14_artifacts(
                 }
             )
         process_status = "FAIL" if process_failures else "PASS"
-        row["stage14_jforex_cert_pass"] = all(bool(row[src.check_id]) for src in sources)
+        certification_sources = [src for src in sources if src.certification_gate]
+        row["stage14_jforex_cert_pass"] = all(
+            bool(row[src.check_id]) for src in certification_sources
+        )
         row["certification_outcome"] = "PASS" if row["stage14_jforex_cert_pass"] else "FAIL"
         row["go_decision"] = (
             "NO_GO"
@@ -581,12 +592,12 @@ def build_stage14_artifacts(
         _table(checks_out),
         "",
         "## Interpretation",
-        "- Stage 14 is green only when the Stage 13 prerequisite is satisfied and all JForex-specific certification checks pass.",
+        "- Stage 14 is green when Stage 13 is satisfied, local Java surrogate parity passes, and the JForex adapter smoke/lifecycle checks pass.",
         "- Stage 13 PASS / NO_GO is accepted as a valid prerequisite and does not fail Stage 14 by itself.",
         "- Missing JForex tester/live runtime artifacts are treated as certification failures until the adapter path is exercised.",
-        "- jforex_outcome_parity_pass: reconciles JForex live runtime signal counts against locked governance-side predictions (signal_coverage_ratio must be 1.0, zero execution failures, trades present).",
+        "- jforex_outcome_parity_pass: monitor evidence for real JForex tester feed drift against locked governance-side predictions; failures are reported but do not block GO.",
         "- execution_lifecycle_pass: validates the JForex execution lifecycle summary emitted by the adapter runtime.",
-        "- local_jforex_surrogate_pass: the shared Java strategy core must pass the parquet-driven local surrogate harness; an explicit NO_GO is accepted only for historically non-deployable symbols.",
+        "- local_jforex_surrogate_pass: the shared Java strategy core must pass the parquet-driven local surrogate harness; this is the hard runtime parity gate. An explicit NO_GO is accepted only for historically non-deployable symbols.",
         "- order_coverage_ratio is expected to be low (<0.2): OCO mechanics block new orders while an existing position is live. This metric is informational; signal_coverage_pass is the gate.",
     ]
     report_out.write_text("\n".join(report_lines).strip() + "\n", encoding="utf-8")
@@ -595,8 +606,8 @@ def build_stage14_artifacts(
         "### Auto Snapshot - Stage 14",
         "",
         f"- generated_at: `{now_utc}`",
-        "- Stage 14 is a hard gate for the Dukascopy JForex live runtime adapter.",
-        "- Stage 13 `PASS / NO_GO` is accepted as a valid prerequisite; JForex tester parity, execution lifecycle correctness, local JForex surrogate readiness, and operational readiness must all pass their gates.",
+        "- Stage 14 is a hard gate for the Dukascopy JForex adapter using local surrogate parity as the authoritative runtime parity check.",
+        "- Stage 13 `PASS / NO_GO` is accepted as a valid prerequisite; local JForex surrogate parity, adapter signal/execution checks, execution lifecycle correctness, and operational readiness must all pass their gates. Real JForex tester outcome parity is monitor evidence for broker-feed drift.",
         "",
         "#### Key Results",
         _table(summary),

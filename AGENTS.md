@@ -24,6 +24,16 @@ The active system is the tick-based OCO stop-limit research/governance pipeline 
 
 Do not treat `README.md` as authoritative for detailed strategy behavior. Read the strategy bible and master manual instead.
 
+Process discovery:
+
+- `configs/process/stages.yaml` is the executable source of truth for Stage 01 through Stage 14 process shape.
+- Generated LLM-readable stage capsules live under `docs/generated/process/`.
+- Scoped Graphify/process graph artifacts live under `data/analysis/process_graph/`.
+- `data/analysis/process_graph/` is ignored generated output; regenerate it instead of assuming the graph JSON is versioned.
+- Regenerate and validate registry-only capsules/graphs with `make process-graph-contract`.
+- To project an exploratory Graphify export through the registry scopes, run `make process-graph-contract GRAPHIFY_JSON=graphify-out/graph.json`.
+- Do not treat repo-wide `graphify-out/` as authoritative; it is exploratory input only and must be scoped through the stage registry first.
+
 Execution runtime direction:
 
 - Python remains the authoritative inference/governance runtime.

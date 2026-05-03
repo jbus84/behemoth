@@ -66,7 +66,7 @@ endef
         stage12-api-parity stage12-stage13-cert-artifacts local-jforex-parity local-jforex-parity-matrix \
         local-jforex-parity-ordinal local-jforex-parity-spotlight local-jforex-cert \
         jforex-dukascopy-matrix stage13-dukascopy-cert stage14-jforex-cert \
-        full-stage14-cert jforex-outcome-parity audit-runtime-parity \
+        full-stage14-cert local-jforex-outcome-parity jforex-outcome-parity audit-runtime-parity \
         deploy-cbot deploy-ctrader reconcile-ctrader-run \
         export-ctrader-custom-data ctrader-debug-up ctrader-debug-down \
         ctrader-debug-status ctrader-ab-parity-report ctrader-parity \
@@ -81,7 +81,7 @@ endef
         reconcile-historical-predictions summarize-runtime-db-run \
         account-risk-monitoring-report reconcile-account-risk-reservations
 
-.PHONY: docs docs-build docs-contract docs-contract-ci docs-clean
+.PHONY: docs docs-build docs-contract docs-contract-ci docs-clean process-stage-docs process-graph-contract
 
 .PHONY: help
 
@@ -359,7 +359,7 @@ local-jforex-parity-spotlight:
 		--lookback-days 0 \
 		--bar-align-ticks $(or $(BAR_ALIGN_TICKS),0) \
 		--starting-balance $(or $(STARTING_BALANCE),100000) \
-		--universe-mode $(or $(UNIVERSE_MODE),tolerant) \
+		--universe-mode $(or $(UNIVERSE_MODE),exact) \
 		--prediction-tolerance-sec $(or $(PREDICTION_TOLERANCE_SEC),1) \
 		--locked-predictions-dir $(or $(LOCKED_PREDICTIONS_DIR),configs/research/governance/oco_history_dukascopy_candidate/2025-07)
 	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/reconcile_jforex_outcomes.py \
@@ -369,7 +369,8 @@ local-jforex-parity-spotlight:
 		--eval-start $(or $(EVAL_START),2025-07-07T00:00:00Z) \
 		--eval-end $(or $(EVAL_END),2025-07-09T00:00:00Z) \
 		--signal-coverage-threshold $(or $(SIGNAL_COVERAGE_THRESHOLD),1.0) \
-		--out-csv $(or $(REPORT_DIR),data/analysis/backtest_reconcile)/jforex_outcome_parity_summary.csv
+		--events-prefix local_jforex \
+		--out-csv $(or $(REPORT_DIR),data/analysis/backtest_reconcile)/local_jforex_outcome_parity_summary.csv
 
 local-jforex-cert:
 	uv run python scripts/validate_local_jforex_surrogate.py \
@@ -430,7 +431,18 @@ stage14-jforex-cert: audit-runtime-parity
 		--report-out $(or $(STAGE14_REPORT_OUT),$(REPORT_OUT),docs/analysis/stage14_jforex_runtime_certification_report.md) \
 		--snapshot-out $(or $(STAGE14_SNAPSHOT_OUT),$(SNAPSHOT_OUT),docs/strategy_bible/generated/stage_14_snapshot.md)
 
-full-stage14-cert: jforex-outcome-parity local-jforex-cert stage14-jforex-cert
+full-stage14-cert: local-jforex-outcome-parity jforex-outcome-parity local-jforex-cert stage14-jforex-cert
+
+local-jforex-outcome-parity:
+	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/reconcile_jforex_outcomes.py \
+		--symbols $(SYMBOLS) \
+		--lock-dir $(or $(LOCK_DIR),configs/research/governance/oco_history_dukascopy_candidate/2025-07) \
+		--reconcile-dir $(or $(RECONCILE_DIR),data/analysis/backtest_reconcile) \
+		--eval-start $(or $(EVAL_START),2025-07-07T00:00:00Z) \
+		--eval-end $(or $(EVAL_END),2025-07-09T00:00:00Z) \
+		--signal-coverage-threshold $(or $(SIGNAL_COVERAGE_THRESHOLD),1.0) \
+		--events-prefix local_jforex \
+		--out-csv $(or $(LOCAL_OUTCOME_OUT_CSV),$(or $(RECONCILE_DIR),data/analysis/backtest_reconcile)/local_jforex_outcome_parity_summary.csv)
 
 jforex-outcome-parity:
 	UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/reconcile_jforex_outcomes.py \
@@ -441,7 +453,8 @@ jforex-outcome-parity:
 		--eval-end $(or $(EVAL_END),2025-07-09T00:00:00Z) \
 		--signal-coverage-threshold $(or $(SIGNAL_COVERAGE_THRESHOLD),1.0) \
 		--events-prefix $(or $(EVENTS_PREFIX),jforex) \
-		--out-csv $(or $(OUT_CSV),data/analysis/backtest_reconcile/jforex_outcome_parity_summary.csv)
+		$(if $(JFOREX_OUTCOME_MONITOR_ONLY),--monitor-only) \
+		--out-csv $(or $(OUT_CSV),$(or $(RECONCILE_DIR),data/analysis/backtest_reconcile)/jforex_outcome_parity_summary.csv)
 
 # -- Legacy stubs (no-op, retained for compatibility) -----------------------
 
@@ -612,7 +625,15 @@ docs:
 docs-build:
 	uv run mkdocs build
 
+process-stage-docs:
+	uv run python scripts/build_process_stage_docs.py \
+		$(if $(GRAPHIFY_JSON),--graphify-json $(GRAPHIFY_JSON))
+
+process-graph-contract: process-stage-docs
+	uv run python scripts/validate_process_graph_contract.py
+
 docs-contract:
+	$(MAKE) process-graph-contract
 	uv run python scripts/build_docs_catalog.py
 	uv run python scripts/build_oco_execution_drift_report.py
 	uv run python scripts/build_oco_threshold_sensitivity_report.py
@@ -629,6 +650,7 @@ docs-contract:
 	uv run python scripts/validate_oco_docs_contract.py
 
 docs-contract-ci:
+	$(MAKE) process-graph-contract
 	uv run python scripts/build_docs_catalog.py
 	uv run python scripts/build_account_risk_monitoring_report.py
 	uv run python scripts/reconcile_account_risk_reservations.py
@@ -697,8 +719,9 @@ help:
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "jforex-dukascopy-matrix" "Run JForex Dukascopy matrix (uses metrics-port-base 9464)"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage13-dukascopy-cert" "Alias for stage12-stage13-cert-artifacts"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage14-jforex-cert" "Build Stage 14 JForex certification summary, checks, report, and snapshot"
-	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "full-stage14-cert" "Run outcome-parity → local-jforex-cert → stage14-jforex-cert in order"
-	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "jforex-outcome-parity" "Reconcile JForex outcome parity across symbols"
+	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "full-stage14-cert" "Run local outcome parity → JForex monitor → local-jforex-cert → stage14-jforex-cert"
+	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "local-jforex-outcome-parity" "Reconcile local surrogate outcome parity across symbols"
+	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "jforex-outcome-parity" "Reconcile real JForex outcome parity monitor across symbols"
 	@printf "\n$(COLOR_SECTION)== Release Lifecycle ==$(COLOR_RESET)\n"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "monthly-build" "Freeze a month-scoped candidate certification bundle for later recert"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "monthly-recert" "Run definitive certification against an existing month-scoped candidate build bundle"
@@ -718,6 +741,8 @@ help:
 	@printf "\n$(COLOR_SECTION)== Documentation ==$(COLOR_RESET)\n"
 	@printf "  $(COLOR_DOC)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "docs" "Serve docs locally"
 	@printf "  $(COLOR_DOC)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "docs-build" "Build docs"
+	@printf "  $(COLOR_DOC)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "process-stage-docs" "Generate LLM-readable stage capsules and scoped process graphs"
+	@printf "  $(COLOR_DOC)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "process-graph-contract" "Validate generated process graphs against the stage registry"
 	@printf "  $(COLOR_DOC)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "docs-contract" "Run docs contracts and OCO docs governance checks"
 	@printf "  $(COLOR_DOC)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "docs-contract-ci" "Run CI-safe docs contracts without heavy recomputation"
 	@printf "  $(COLOR_DOC)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "docs-clean" "Remove built site/"

@@ -16,7 +16,10 @@ def _make_valid_provenance_status(model_month: str) -> dict:
     return {
         "dag_node_id": "monthly_recert",
         "model_month": model_month,
+        "overall_pass": True,
         "process_verdict": "PASS",
+        "release_decision": "GO",
+        "required_go_symbols": ["EURUSD"],
         "target_branch": "main",
         "target_commit": "abc1234567890000000000000000000000000001",
         "git_dirty": False,
@@ -206,7 +209,7 @@ def test_promote_live_requires_process_status_pass(tmp_path) -> None:
         )
 
 
-def test_promote_live_archives_full_bundle_but_updates_active_live_governance_only_for_go_symbols(
+def test_promote_live_blocks_when_required_symbol_is_no_go(
     monkeypatch, tmp_path
 ) -> None:
     build_bundle_dir = tmp_path / "configs/research/governance/oco_candidate_builds/2026-02"
@@ -267,6 +270,8 @@ def test_promote_live_archives_full_bundle_but_updates_active_live_governance_on
                 "evaluated_at_utc": today,
                 "overall_pass": True,
                 "process_verdict": "PASS",
+                "release_decision": "GO",
+                "required_go_symbols": ["EURUSD", "AUDUSD"],
                 "target_branch": "main",
                 "target_commit": "abc1234567890000000000000000000000000001",
                 "git_dirty": False,
@@ -303,12 +308,11 @@ def test_promote_live_archives_full_bundle_but_updates_active_live_governance_on
         sys, "argv", ["run_promote_live.py", "--report-dir", "data/analysis/backtest_reconcile"]
     )
 
-    run_promote_live.main()
+    with pytest.raises(SystemExit, match=r"required GO symbols are not GO"):
+        run_promote_live.main()
 
-    assert (archive_dir / "2026-02" / "eurusd_oco_live_lock.json").exists()
-    assert (archive_dir / "2026-02" / "audusd_oco_live_lock.json").exists()
-    assert (active_dir / "eurusd_oco_live_lock.json").exists()
-    assert not (active_dir / "audusd_oco_live_lock.json").exists()
+    assert not (archive_dir / "2026-02" / "eurusd_oco_live_lock.json").exists()
+    assert (active_dir / "audusd_oco_live_lock.json").read_text(encoding="utf-8") == "stale\n"
 
 
 def test_verify_cert_requires_dag_provenance_fields(tmp_path) -> None:
@@ -355,6 +359,8 @@ def test_verify_cert_rejects_wrong_branch_provenance(tmp_path) -> None:
                 "evaluated_at_utc": today,
                 "overall_pass": True,
                 "process_verdict": "PASS",
+                "release_decision": "GO",
+                "required_go_symbols": ["EURUSD"],
                 "target_branch": "feature",
                 "target_commit": "abc123",
                 "git_dirty": False,

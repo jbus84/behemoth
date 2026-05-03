@@ -28,8 +28,13 @@ def test_main_runs_definitive_recert_chain(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(run_monthly_recert, "_read_acceptable_nogos", lambda report_dir: {})
     monkeypatch.setattr(
         run_monthly_recert,
+        "_read_symbol_decisions",
+        lambda report_dir: {symbol: "GO" for symbol in run_monthly_recert.DEFAULT_SYMBOLS},
+    )
+    monkeypatch.setattr(
+        run_monthly_recert,
         "_print_summary",
-        lambda model_month, failures, acceptable_nogos=None: True,
+        lambda model_month, failures, acceptable_nogos=None, symbol_decisions=None: True,
     )
     monkeypatch.setattr(run_monthly_recert, "_repo_root", lambda: tmp_path)
     monkeypatch.setattr(
@@ -116,6 +121,7 @@ def test_main_runs_definitive_recert_chain(monkeypatch, tmp_path) -> None:
         f"JFOREX_LIFECYCLE_SUMMARY_GLOB={expected_run_dir}/*_jforex_execution_lifecycle_summary.csv",
         f"JFOREX_OPERATIONAL_SUMMARY_GLOB={expected_run_dir}/*_jforex_operational_ready_summary.csv",
         f"JFOREX_OUTCOME_SUMMARY_GLOB={expected_run_dir}/jforex_outcome_parity_summary.csv",
+        "JFOREX_OUTCOME_MONITOR_ONLY=1",
         f"STAGE14_OUT_SUMMARY_CSV={expected_run_dir}/stage14_jforex_runtime_certification_summary.csv",
         f"STAGE14_OUT_CHECKS_CSV={expected_run_dir}/stage14_jforex_runtime_certification_checks.csv",
         "EVAL_START=2026-02-07T00:00:00Z",
@@ -228,7 +234,7 @@ def test_read_failures_ignores_expected_non_deployable_nogo(tmp_path, monkeypatc
     }
 
 
-def test_print_summary_keeps_go_when_only_expected_nogo_remains(capsys) -> None:
+def test_print_summary_blocks_release_when_required_symbol_is_expected_nogo(capsys) -> None:
     overall_pass = run_monthly_recert._print_summary(
         "2026-02",
         {},
@@ -243,9 +249,17 @@ def test_print_summary_keeps_go_when_only_expected_nogo_remains(capsys) -> None:
     )
 
     out = capsys.readouterr().out
-    assert overall_pass is True
+    assert overall_pass is False
     assert "USDCAD  NO_GO" in out
-    assert "go/no-go: GO" in out
+    assert "go/no-go: NO-GO" in out
+
+
+def test_print_summary_blocks_release_when_required_go_decisions_are_missing(capsys) -> None:
+    overall_pass = run_monthly_recert._print_summary("2026-02", {}, {}, {})
+
+    out = capsys.readouterr().out
+    assert overall_pass is False
+    assert "go/no-go: NO-GO" in out
 
 
 def _write_bundle_fixture(build_bundle_dir) -> None:
@@ -326,7 +340,9 @@ def test_write_recert_status_records_dag_provenance(monkeypatch, tmp_path) -> No
         "2026-03",
         report_dir,
         run_monthly_recert.Path("configs/research/governance/oco_candidate_builds/2026-03"),
-        True,
+        process_pass=True,
+        release_go=False,
+        release_blockers={"AUDUSD": "symbol_decision=NO_GO"},
     )
 
     payload = json.loads(
@@ -339,5 +355,8 @@ def test_write_recert_status_records_dag_provenance(monkeypatch, tmp_path) -> No
     assert payload["target_commit"] == "abc123"
     assert payload["git_dirty"] is False
     assert payload["process_verdict"] == "PASS"
+    assert payload["release_decision"] == "NO_GO"
+    assert payload["overall_pass"] is False
+    assert payload["release_blockers"] == {"AUDUSD": "symbol_decision=NO_GO"}
     assert payload["symbol_decisions"] == {"AUDUSD": "NO_GO", "EURUSD": "GO"}
     assert payload["lock_fingerprint"] == "fp-1"

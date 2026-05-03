@@ -77,13 +77,13 @@ def test_app_config_honors_behemoth_symbols_env(monkeypatch) -> None:
     assert cfg.symbols == ["GBPUSD", "USDJPY"]
 
 
-def test_app_config_historical_defaults_use_tolerant_locked(monkeypatch) -> None:
+def test_app_config_historical_defaults_use_exact_locked(monkeypatch) -> None:
     monkeypatch.setenv("BEHEMOTH_GOVERNANCE_MODE", "historical_auto")
     monkeypatch.delenv("BEHEMOTH_HISTORICAL_PREDICTION_UNIVERSE_MODE", raising=False)
     monkeypatch.delenv("BEHEMOTH_HISTORICAL_PREDICTION_PAYLOAD_MODE", raising=False)
     monkeypatch.delenv("BEHEMOTH_HISTORICAL_PREDICTION_TOLERANCE_SEC", raising=False)
     cfg = server.AppConfig()
-    assert cfg.historical_prediction_universe_mode == "tolerant"
+    assert cfg.historical_prediction_universe_mode == "exact"
     assert cfg.historical_prediction_payload_mode == "locked"
     assert cfg.historical_prediction_tolerance_sec == pytest.approx(120.0)
 
