@@ -71,6 +71,7 @@ def test_parse_args_auto_computes_warmup_ticks_from_flat_lock_dir(
 
     assert cfg.warmup_ticks == 346800
     assert cfg.bar_align_ticks == 1000
+    assert cfg.universe_mode == "exact"
     expected_calls = {
         "symbols": ("EURUSD", "USDJPY"),
         "locked_predictions_dir": lock_dir,
@@ -105,7 +106,7 @@ def _cfg(tmp_path: Path) -> RunConfig:
         bar_align_ticks=1000,
         starting_balance=100000,
         risk_enabled=False,
-        universe_mode="tolerant",
+        universe_mode="exact",
         ordinal_tolerance=0,
         prediction_tolerance_sec=120,
         locked_predictions_dir="",

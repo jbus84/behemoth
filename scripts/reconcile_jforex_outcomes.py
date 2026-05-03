@@ -371,7 +371,9 @@ def non_deployable_result(symbol: str, events: dict, reason: str) -> dict:
     }
 
 
-def write_per_symbol_summaries(results: list[dict], out_dir: Path) -> None:
+def write_per_symbol_summaries(
+    results: list[dict], out_dir: Path, *, events_prefix: str = "local_jforex"
+) -> None:
     """Write one CSV per symbol for consumption by validate_local_jforex_surrogate.py.
 
     Adds an explicit 'jforex_outcome_parity_pass' column aliasing 'overall_pass'
@@ -381,7 +383,8 @@ def write_per_symbol_summaries(results: list[dict], out_dir: Path) -> None:
         symbol = r["symbol"]
         row = dict(r)
         row["jforex_outcome_parity_pass"] = row["overall_pass"]
-        path = out_dir / f"{symbol}_local_jforex_outcome_parity_summary.csv"
+        prefix = str(events_prefix).strip() or "local_jforex"
+        path = out_dir / f"{symbol}_{prefix}_outcome_parity_summary.csv"
         with open(path, "w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=list(row.keys()))
             writer.writeheader()
@@ -422,6 +425,11 @@ def _parse_args() -> argparse.Namespace:
         "--events-prefix",
         default="jforex",
         help="Runtime events file prefix (default: jforex → {SYMBOL}_jforex_runtime_events.csv)",
+    )
+    parser.add_argument(
+        "--monitor-only",
+        action="store_true",
+        help="Write outcome evidence but exit 0 even when outcome parity fails.",
     )
     return parser.parse_args()
 
@@ -512,7 +520,7 @@ def main() -> None:
             if reason:
                 print(f"{'':<44} reason={reason}")
 
-    write_per_symbol_summaries(results, out_dir=reconcile_dir)
+    write_per_symbol_summaries(results, out_dir=reconcile_dir, events_prefix=args.events_prefix)
 
     # Write CSV
     out_path = Path(args.out_csv)
@@ -530,7 +538,8 @@ def main() -> None:
     if not all_pass:
         failing = [r["symbol"] for r in deployable_results if not r["overall_pass"]]
         print(f"\nFAILED symbols: {', '.join(failing)}")
-        sys.exit(1)
+        if not bool(args.monitor_only):
+            sys.exit(1)
     elif deployable_results:
         print("\nAll symbols PASSED outcome parity.")
     else:

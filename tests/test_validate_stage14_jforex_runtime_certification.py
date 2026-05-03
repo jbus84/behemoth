@@ -170,9 +170,11 @@ def test_build_stage14_artifacts_fails_when_jforex_inputs_missing(tmp_path: Path
 
     assert bool(summary.loc[0, "stage13_dukascopy_testclient_pass"]) is True
     assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
-    assert int(summary.loc[0, "missing_inputs"]) == 6
+    assert int(summary.loc[0, "missing_inputs"]) == 5
     failed = checks[checks["status"] == "FAIL"]
-    assert len(failed) == 6
+    assert len(failed) == 5
+    skipped = checks[checks["status"] == "SKIP"]
+    assert skipped["metric_name"].tolist() == ["jforex_outcome_parity_pass"]
 
 
 def test_stage14_emits_process_pass_and_symbol_go_for_green_inputs(tmp_path: Path) -> None:
@@ -685,7 +687,7 @@ def test_build_stage14_artifacts_keeps_requested_symbol_scope(tmp_path: Path) ->
 
 
 def test_build_stage14_artifacts_includes_outcome_parity_check(tmp_path: Path) -> None:
-    """Stage 14 must include jforex_outcome_parity_pass as a check."""
+    """Stage 14 reports jforex_outcome_parity_pass as monitor evidence."""
     _write_csv(
         tmp_path / "EURUSD_stage13.csv",
         [{"symbol": "EURUSD", "stage13_dukascopy_testclient_pass": True}],
@@ -705,7 +707,11 @@ def test_build_stage14_artifacts_includes_outcome_parity_check(tmp_path: Path) -
     _write_csv(
         tmp_path / "EURUSD_jforex_ops.csv", [{"symbol": "EURUSD", "operational_ready_pass": True}]
     )
-    # outcome parity missing — stage14 must fail and show outcome_parity check as missing
+    _write_csv(
+        tmp_path / "EURUSD_local_jforex_surrogate.csv",
+        [{"symbol": "EURUSD", "local_jforex_surrogate_pass": True}],
+    )
+    # outcome parity missing — stage14 stays green but shows the monitor check as missing
     summary, checks = build_stage14_artifacts(
         symbols=["EURUSD"],
         stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
@@ -714,18 +720,53 @@ def test_build_stage14_artifacts_includes_outcome_parity_check(tmp_path: Path) -
         jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_execution_lifecycle.csv"),
         jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
         jforex_outcome_summary_glob="",
-        local_surrogate_summary_glob="",
+        local_surrogate_summary_glob=str(tmp_path / "*_local_jforex_surrogate.csv"),
         max_artifact_age_days=0,
         out_summary_csv=tmp_path / "out" / "summary.csv",
         out_checks_csv=tmp_path / "out" / "checks.csv",
         report_out=tmp_path / "out" / "report.md",
         snapshot_out=tmp_path / "out" / "snapshot.md",
     )
-    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
-    assert int(summary.loc[0, "missing_inputs"]) >= 1
+    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is True
+    assert int(summary.loc[0, "missing_inputs"]) == 0
     outcome_check = checks[checks["metric_name"] == "jforex_outcome_parity_pass"]
     assert len(outcome_check) == 1
-    assert outcome_check.iloc[0]["status"] == "FAIL"
+    assert outcome_check.iloc[0]["status"] == "SKIP"
+    assert outcome_check.iloc[0]["severity"] == "monitor"
+
+
+def test_build_stage14_artifacts_goes_when_only_jforex_outcome_monitor_fails(
+    tmp_path: Path,
+) -> None:
+    _write_stage14_bundle_inputs(
+        tmp_path,
+        "EURUSD",
+        outcome_pass=False,
+        local_surrogate_pass=True,
+    )
+
+    summary, checks = build_stage14_artifacts(
+        symbols=["EURUSD"],
+        stage13_summary_glob=str(tmp_path / "*_stage13.csv"),
+        jforex_signal_summary_glob=str(tmp_path / "*_jforex_signal.csv"),
+        jforex_execution_summary_glob=str(tmp_path / "*_jforex_execution.csv"),
+        jforex_lifecycle_summary_glob=str(tmp_path / "*_jforex_execution_lifecycle.csv"),
+        jforex_operational_summary_glob=str(tmp_path / "*_jforex_ops.csv"),
+        jforex_outcome_summary_glob=str(tmp_path / "*_outcome.csv"),
+        local_surrogate_summary_glob=str(tmp_path / "*_local_jforex_surrogate.csv"),
+        max_artifact_age_days=0,
+        out_summary_csv=tmp_path / "out" / "summary.csv",
+        out_checks_csv=tmp_path / "out" / "checks.csv",
+        report_out=tmp_path / "out" / "report.md",
+        snapshot_out=tmp_path / "out" / "snapshot.md",
+    )
+
+    outcome_check = checks[checks["metric_name"] == "jforex_outcome_parity_pass"].iloc[0]
+    assert outcome_check["status"] == "FAIL"
+    assert outcome_check["severity"] == "monitor"
+    assert bool(summary.loc[0, "jforex_outcome_parity_pass"]) is False
+    assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is True
+    assert summary.loc[0, "go_decision"] == "GO"
 
 
 def test_build_stage14_artifacts_includes_local_surrogate_check(tmp_path: Path) -> None:
@@ -1067,8 +1108,8 @@ def test_build_stage14_artifacts_rejects_deployable_symbol_with_local_surrogate_
     assert bool(summary.loc[0, "stage14_jforex_cert_pass"]) is False
 
 
-def test_build_stage14_artifacts_green_with_all_seven_checks(tmp_path: Path) -> None:
-    """Stage 14 is green only when all 7 checks pass."""
+def test_build_stage14_artifacts_green_with_all_required_checks(tmp_path: Path) -> None:
+    """Stage 14 is green when all required checks pass; outcome parity is monitor evidence."""
     for name, col in [
         ("stage13", "stage13_dukascopy_testclient_pass"),
         ("jforex_signal", "jforex_signal_parity_pass"),
@@ -1108,7 +1149,8 @@ def test_build_stage14_artifacts_green_with_all_seven_checks(tmp_path: Path) -> 
     snapshot_text = (tmp_path / "out" / "snapshot.md").read_text()
     assert "execution_lifecycle_pass" in report_text
     assert "execution lifecycle correctness" in snapshot_text
-    assert "local JForex surrogate readiness" in snapshot_text
+    assert "local JForex surrogate parity" in snapshot_text
+    assert "Real JForex tester outcome parity is monitor evidence" in snapshot_text
     assert summary.loc[0, "verdict"] == "green"
     assert int(summary.loc[0, "missing_inputs"]) == 0
     assert len(checks) == 7

@@ -79,6 +79,7 @@ def test_parse_args_auto_computes_warmup_ticks(
 
     assert cfg.warmup_ticks == 346800
     assert cfg.bar_align_ticks == 1000
+    assert cfg.universe_mode == "exact"
     expected_calls = {
         "symbols": ("EURUSD", "USDJPY"),
         "locked_predictions_dir": tmp_path,
@@ -118,7 +119,7 @@ def _cfg(tmp_path: Path) -> RunConfig:
         metrics_host="127.0.0.1",
         metrics_port_base=9464,
         risk_enabled=False,
-        universe_mode="tolerant",
+        universe_mode="exact",
         ordinal_tolerance=0,
         warmup_ticks=30000,
         lookback_days=31,
@@ -313,7 +314,7 @@ def test_main_uses_available_api_port_per_symbol(monkeypatch: pytest.MonkeyPatch
         metrics_host="127.0.0.1",
         metrics_port_base=9464,
         risk_enabled=False,
-        universe_mode="tolerant",
+        universe_mode="exact",
         ordinal_tolerance=0,
         warmup_ticks=30000,
         lookback_days=31,

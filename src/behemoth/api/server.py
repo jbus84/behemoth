@@ -360,12 +360,7 @@ class AppConfig(BaseModel):
         default_factory=lambda: str(
             os.getenv(
                 "BEHEMOTH_HISTORICAL_PREDICTION_UNIVERSE_MODE",
-                (
-                    "tolerant"
-                    if str(os.getenv("BEHEMOTH_GOVERNANCE_MODE", "live")).strip().lower()
-                    in {"historical", "historical_auto"}
-                    else "exact"
-                ),
+                "exact",
             )
         )
         .strip()
@@ -1982,7 +1977,7 @@ def _resolve_historical_prediction_payload_overrides(
     close_ts: datetime,
     candidates: list[Any],
 ) -> dict[str, dict[str, Any]]:
-    """Resolve nearest locked prediction payload rows for the current close timestamp."""
+    """Resolve exact locked prediction payload rows for the current close timestamp."""
     if not _is_historical_mode():
         return {}
     mode = str(_config.historical_prediction_payload_mode).strip().lower()
@@ -1994,7 +1989,6 @@ def _resolve_historical_prediction_payload_overrides(
         return {}
 
     close_ts_utc = _as_utc_ts(close_ts)
-    tolerance = timedelta(seconds=float(_config.historical_prediction_tolerance_sec))
     cursor_by_uid = _historical_prediction_payload_cursor.setdefault(contract.cache_key, {})
     out: dict[str, dict[str, Any]] = {}
     for cand in candidates:
@@ -2005,33 +1999,18 @@ def _resolve_historical_prediction_payload_overrides(
         if not rows:
             continue
         cursor = int(cursor_by_uid.get(canonical_uid, 0))
-        while cursor < len(rows):
-            row_ts = _as_utc_ts(rows[cursor]["close_ts"])
-            if row_ts >= close_ts_utc - tolerance:
-                break
+        while cursor < len(rows) and _as_utc_ts(rows[cursor]["close_ts"]) < close_ts_utc:
             cursor += 1
-        choices: list[tuple[timedelta, datetime, int, dict[str, Any]]] = []
-        for idx in range(cursor, len(rows)):
-            row = rows[idx]
-            row_ts = _as_utc_ts(row["close_ts"])
-            if row_ts > close_ts_utc + tolerance:
-                break
-            delta = abs(close_ts_utc - row_ts)
-            if delta <= tolerance:
-                choices.append((delta, row_ts, idx, row))
-        if not choices:
+        if cursor >= len(rows):
             cursor_by_uid[canonical_uid] = cursor
             continue
-        selected_choices = [item for item in choices if int(item[3].get("selected_exec") or 0) == 1]
-        if selected_choices:
-            choices = selected_choices
-        choices.sort(key=lambda item: (item[0], item[1], item[2]))
-        best_delta = choices[0][0]
-        if sum(1 for delta, _, _, _ in choices if delta == best_delta) > 1:
+        row = rows[cursor]
+        row_ts = _as_utc_ts(row["close_ts"])
+        if row_ts != close_ts_utc:
+            cursor_by_uid[canonical_uid] = cursor
             continue
-        best = choices[0]
-        out[canonical_uid] = dict(best[3])
-        cursor_by_uid[canonical_uid] = int(best[2]) + 1
+        out[canonical_uid] = dict(row)
+        cursor_by_uid[canonical_uid] = cursor + 1
     return out
 
 
@@ -2087,11 +2066,6 @@ def _apply_historical_prediction_universe_gate(
             return candidates
         candidate_cursor = _historical_prediction_candidate_cursor.setdefault(contract.cache_key, {})
         tolerance = timedelta(seconds=float(_config.historical_prediction_tolerance_sec))
-        allow_locked_late_release = str(_config.historical_prediction_payload_mode).strip().lower() in {
-            "locked",
-            "parquet",
-            "override",
-        }
         filtered: list[Any] = []
         for cand in candidates:
             canonical_uid = (
@@ -2117,15 +2091,6 @@ def _apply_historical_prediction_universe_gate(
             choices.sort(key=lambda item: (item[0], item[1], item[2]))
             best_delta = choices[0][0]
             if best_delta > tolerance:
-                # In locked-payload replay mode, allow the next unseen locked row
-                # to be released shortly after its timestamp, but never hours later.
-                if allow_locked_late_release and idx > lo:
-                    late_idx = idx - 1
-                    late_ts = ts_rows[late_idx]
-                    late_delta = close_ts_utc - late_ts
-                    if timedelta(0) <= late_delta <= (tolerance * 2):
-                        candidate_cursor[canonical_uid] = int(late_idx)
-                        filtered.append(cand)
                 continue
             best_count = sum(1 for delta, _, _ in choices if delta == best_delta)
             if best_count > 1:

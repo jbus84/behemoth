@@ -1024,7 +1024,7 @@ class TestPredictEndpoint:
             server._historical_prediction_candidate_index = {}
             server._historical_prediction_candidate_cursor = {}
 
-    def test_historical_prediction_payload_override_resolves_nearest_row(self, tmp_path):
+    def test_historical_prediction_payload_override_requires_exact_row(self, tmp_path):
         from types import SimpleNamespace
 
         import duckdb
@@ -1067,16 +1067,13 @@ class TestPredictEndpoint:
                 close_ts=datetime(2025, 7, 7, 0, 0, 0, tzinfo=timezone.utc),
                 candidates=[cand],
             )
-            row = out["oco|EURUSD|100|h6|state_a"]
-            assert row["selected_exec"] == 1
-            assert row["threshold_exec"] == pytest.approx(0.61)
-            assert row["pred_prob"] == pytest.approx(0.71)
+            assert out == {}
         finally:
             server._config.governance_mode = orig_mode
             server._config.historical_prediction_payload_mode = orig_payload_mode
             server._historical_prediction_payload_rows = {}
 
-    def test_historical_prediction_payload_override_prefers_selected_row_within_tolerance(
+    def test_historical_prediction_payload_override_does_not_prefer_nearby_selected_row(
         self, tmp_path
     ):
         from types import SimpleNamespace
@@ -1093,7 +1090,7 @@ class TestPredictEndpoint:
                 CREATE TABLE pred AS
                 SELECT * FROM (
                     VALUES
-                        (TIMESTAMPTZ '2025-07-07 00:00:05+00:00', '2025-07', 'oco|EURUSD|100|h6|state_a', 0.52, 0.61, 0),
+                        (TIMESTAMPTZ '2025-07-07 00:00:10+00:00', '2025-07', 'oco|EURUSD|100|h6|state_a', 0.52, 0.61, 0),
                         (TIMESTAMPTZ '2025-07-07 00:00:20+00:00', '2025-07', 'oco|EURUSD|100|h6|state_a', 0.72, 0.61, 1)
                 ) AS t(close_ts, test_month, candidate_uid, pred_prob, threshold_exec, selected_exec)
                 """
@@ -1124,8 +1121,8 @@ class TestPredictEndpoint:
                 candidates=[cand],
             )
             row = out["oco|EURUSD|100|h6|state_a"]
-            assert row["selected_exec"] == 1
-            assert row["pred_prob"] == pytest.approx(0.72)
+            assert row["selected_exec"] == 0
+            assert row["pred_prob"] == pytest.approx(0.52)
         finally:
             server._config.governance_mode = orig_mode
             server._config.historical_prediction_payload_mode = orig_payload_mode
@@ -1179,11 +1176,11 @@ class TestPredictEndpoint:
             )
             second = server._resolve_historical_prediction_payload_overrides(
                 contract=contract,
-                close_ts=datetime(2025, 7, 8, 4, 30, 56, 332000, tzinfo=timezone.utc),
+                close_ts=datetime(2025, 7, 8, 4, 30, 34, 649000, tzinfo=timezone.utc),
                 candidates=[cand],
             )
-            assert first["oco|AUDUSD|100|h6|state_a"]["selected_exec"] == 1
-            assert second == {}
+            assert first == {}
+            assert second["oco|AUDUSD|100|h6|state_a"]["selected_exec"] == 1
         finally:
             server._config.governance_mode = orig_mode
             server._config.historical_prediction_payload_mode = orig_payload_mode
@@ -1191,7 +1188,7 @@ class TestPredictEndpoint:
             server._historical_prediction_payload_rows = {}
             server._historical_prediction_payload_cursor = {}
 
-    def test_historical_prediction_universe_tolerant_mode_late_release_with_locked_payload(
+    def test_historical_prediction_universe_tolerant_mode_does_not_late_release_locked_payload(
         self, tmp_path
     ):
         from types import SimpleNamespace
@@ -1239,7 +1236,7 @@ class TestPredictEndpoint:
                 close_ts=datetime(2025, 7, 7, 0, 1, 15, tzinfo=timezone.utc),
                 candidates=[cand],
             )
-            assert len(out) == 1
+            assert out == []
         finally:
             server._config.governance_mode = orig_mode
             server._config.historical_prediction_universe_mode = orig_gate_mode
