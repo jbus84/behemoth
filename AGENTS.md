@@ -55,7 +55,7 @@ Runtime truth:
   - local model/governance inputs used by the target stage
   - machine-local runtime credentials or broker prerequisites
 - If that equivalence is not explicit and verified, final stage verdicts must be run from the root checkout or another explicitly designated authoritative runtime worktree.
-- Treat “code/tests pass in worktree” and “stage certification is green” as different claims. Do not collapse them.
+- Treat “code/tests pass in worktree” and “stage certification is **PASS**” as different claims. Do not collapse them.
 - JForex-dependent human or agent commands should ensure the shared root `.env` is sourced before execution. Do not commit `.envrc`; prefer command wrappers or an already-loaded shell.
 
 ## 2) Active Symbol Universe
@@ -332,9 +332,9 @@ Java conventions:
   - If running with `--symbols` subset, verify you are not unintentionally leaving symbols stale.
 - Tiered strictness policy:
   - fail hard on missing predeploy/governance coverage gaps,
-  - treat non-green strategy gates as monitored blockers unless user explicitly requests strict all-symbol enforcement.
+  - treat non-**PASS** strategy gates as monitored blockers unless user explicitly requests strict all-symbol enforcement.
 
-Quick go/no-go checklist:
+Quick **GO** / **NO_GO** checklist:
 1. No `missing_predeploy_json` rows for active symbols in Stage 9.
 2. No `A9_DATA_GAP` caused by missing governance diagnostics (`G01/G03`).
 3. No unresolved high/critical blockers in operator/remediation reports.
