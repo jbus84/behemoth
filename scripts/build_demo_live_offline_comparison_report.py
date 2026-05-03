@@ -104,9 +104,9 @@ def _phase1_report() -> str:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     sections = [
         f"# Demo-Live vs Offline Model Comparison — {now[:10]}",
-        f"",
+        "",
         f"_Generated: {now} UTC_",
-        f"",
+        "",
         _session_summary(generated_at=now),
         "",
         _signal_parity_section(),
@@ -274,7 +274,7 @@ def _outcome_parity_section(run_id: str) -> str:
     lines += [
         "### Per-Symbol Overall Pass/Fail",
         "",
-        "| Symbol | Pass | Locked Selected | Gross Pips | Win Rate | JForex Predict Cycles | Signal Coverage | Order Coverage |",
+        "| Symbol | Pass | Governance Selected Signals | Independent Label P&L | Independent Label Win Rate | Runtime Predict Cycles | Signal Coverage | Order Coverage |",
         "|--------|------|----------------|-----------|---------|----------------------|----------------|---------------|",
     ]
     for sym in SYMBOLS:
@@ -286,17 +286,17 @@ def _outcome_parity_section(run_id: str) -> str:
         icon = "✅" if passed else "❌"
         lines.append(
             f"| {sym} | {icon}"
-            f" | {row.get('locked_selected_count', '?')}"
-            f" | {row.get('locked_gross_pips_total', '?')}"
-            f" | {row.get('locked_win_rate', '?')}%"
-            f" | {row.get('jforex_predict_cycles', '?')}"
+            f" | {row.get('governance_selected_signal_count', '?')}"
+            f" | {row.get('governance_independent_label_gross_pips_total', '?')}"
+            f" | {row.get('governance_independent_label_win_rate', '?')}%"
+            f" | {row.get('runtime_predict_cycle_count', '?')}"
             f" | {row.get('signal_coverage_ratio', '?')}"
             f" | {row.get('order_coverage_ratio', '?')} |"
         )
 
     lines += [
         "",
-        f"### Performance Gap Detail",
+        "### Performance Gap Detail",
         "",
         f"_See full report: `{perf_gap_out}`_",
     ]

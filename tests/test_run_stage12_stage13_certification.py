@@ -114,6 +114,50 @@ def test_stage13_matrix_replay_forwards_models_dir(monkeypatch, tmp_path: Path) 
     assert result["execution_pass"] is True
 
 
+def test_stage13_matrix_replay_forwards_port_overrides(monkeypatch, tmp_path: Path) -> None:
+    captured: dict[str, object] = {}
+    monkeypatch.setenv("BEHEMOTH_JFOREX_JNLP_URI", "jnlp://example")
+    monkeypatch.setenv("BEHEMOTH_JFOREX_USERNAME", "user")
+    monkeypatch.setenv("BEHEMOTH_JFOREX_PASSWORD", "pass")
+    monkeypatch.setenv("API_PORT", "8012")
+    monkeypatch.setenv("METRICS_PORT_BASE", "9480")
+
+    class _Completed:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    def _fake_run(cmd, check, capture_output, text):
+        captured["cmd"] = cmd
+        pd.DataFrame([{"symbol": "EURUSD", "jforex_signal_parity_pass": True}]).to_csv(
+            tmp_path / "EURUSD_jforex_signal_parity_summary.csv", index=False
+        )
+        pd.DataFrame([{"symbol": "EURUSD", "jforex_execution_parity_pass": True}]).to_csv(
+            tmp_path / "EURUSD_jforex_execution_parity_summary.csv", index=False
+        )
+        pd.DataFrame([{"event_name": "predict_cycle", "pass": True}]).to_csv(
+            tmp_path / "EURUSD_jforex_runtime_events.csv", index=False
+        )
+        return _Completed()
+
+    monkeypatch.setattr("scripts.run_stage12_stage13_certification.subprocess.run", _fake_run)
+
+    _run_stage13_matrix_replay(
+        symbol="EURUSD",
+        start_ts="2025-07-07T00:00:00Z",
+        end_ts="2025-07-09T00:00:00Z",
+        model_month="2025-08",
+        models_dir=Path("models/custom"),
+        history_dir=Path("history"),
+        predictions_dir=Path("predictions"),
+        tick_root=Path("ticks"),
+        report_dir=tmp_path,
+    )
+
+    assert captured["cmd"][captured["cmd"].index("--api-port") + 1] == "8012"
+    assert captured["cmd"][captured["cmd"].index("--metrics-port-base") + 1] == "9480"
+
+
 def test_resolve_model_json_prefers_requested_model_month(tmp_path: Path) -> None:
     models_dir = tmp_path / "models"
     models_dir.mkdir()

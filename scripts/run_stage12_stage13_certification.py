@@ -318,6 +318,12 @@ def _run_stage13_matrix_replay(
         "--report-dir",
         str(report_dir),
     ]
+    api_port = str(os.environ.get("API_PORT", "")).strip()
+    if api_port:
+        cmd.extend(["--api-port", api_port])
+    metrics_port_base = str(os.environ.get("METRICS_PORT_BASE", "")).strip()
+    if metrics_port_base:
+        cmd.extend(["--metrics-port-base", metrics_port_base])
     completed = subprocess.run(cmd, check=False, capture_output=True, text=True)
     signal_summary = report_dir / f"{symbol}_jforex_signal_parity_summary.csv"
     execution_summary = report_dir / f"{symbol}_jforex_execution_parity_summary.csv"

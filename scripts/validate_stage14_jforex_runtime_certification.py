@@ -398,7 +398,6 @@ def build_stage14_artifacts(
                 ).strip()
         for src in sources:
             match = by_symbol[by_symbol["check_id"] == src.check_id].copy()
-            source_row = match.iloc[-1] if not match.empty else None
             provenance_details = ""
             failing_source_path = ""
             if not match.empty and require_provenance and target_bundle_dir is not None:
@@ -595,7 +594,8 @@ def build_stage14_artifacts(
         "- Stage 14 is green when Stage 13 is satisfied, local Java surrogate parity passes, and the JForex adapter smoke/lifecycle checks pass.",
         "- Stage 13 PASS / NO_GO is accepted as a valid prerequisite and does not fail Stage 14 by itself.",
         "- Missing JForex tester/live runtime artifacts are treated as certification failures until the adapter path is exercised.",
-        "- jforex_outcome_parity_pass: monitor evidence for real JForex tester feed drift against locked governance-side predictions; failures are reported but do not block GO.",
+        "- jforex_outcome_parity_pass: monitor evidence for real JForex tester feed drift against governance selected signals; failures are reported but do not block GO.",
+        "- governance_independent_label_gross_pips_total is Independent Label P&L, not expected runtime P&L; direct P&L parity requires Stateful Lifecycle Expected P&L.",
         "- execution_lifecycle_pass: validates the JForex execution lifecycle summary emitted by the adapter runtime.",
         "- local_jforex_surrogate_pass: the shared Java strategy core must pass the parquet-driven local surrogate harness; this is the hard runtime parity gate. An explicit NO_GO is accepted only for historically non-deployable symbols.",
         "- order_coverage_ratio is expected to be low (<0.2): OCO mechanics block new orders while an existing position is live. This metric is informational; signal_coverage_pass is the gate.",

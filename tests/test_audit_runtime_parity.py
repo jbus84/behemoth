@@ -27,7 +27,8 @@ def test_harness_runs_and_writes_artifacts(tmp_path: Path) -> None:
     (tmp_path / "reconcile" / "runtime").mkdir()
 
     repo_root = Path(__file__).resolve().parents[1]
-    env = {**os.environ, "PYTHONPATH": str(repo_root / "src")}
+    env = dict(os.environ)
+    env.pop("PYTHONPATH", None)
     result = subprocess.run(
         [
             sys.executable, "scripts/audit_runtime_parity.py",
@@ -40,11 +41,13 @@ def test_harness_runs_and_writes_artifacts(tmp_path: Path) -> None:
             "--out-csv", str(out_csv),
         ],
         capture_output=True, text=True,
+        cwd=repo_root,
         env=env,
     )
 
     assert out_md.exists(), result.stderr
     assert out_csv.exists(), result.stderr
+    assert "ModuleNotFoundError: No module named 'behemoth'" not in result.stderr
     report_text = out_md.read_text()
     assert "core.predict_cycles_per_bar" in report_text
     assert "risk_gov.governance_lock_pin" in report_text

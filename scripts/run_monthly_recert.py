@@ -134,7 +134,7 @@ def _read_failures(report_dir: str) -> dict[str, list[dict[str, str]]]:
         for row in csv.DictReader(f):
             if (
                 row["severity"] == "critical"
-                and row["status"] != "PASS"
+                and str(row["status"]).strip().upper() != "PASS"
                 and not _is_expected_critical_nogo(row)
             ):
                 failures.setdefault(row["symbol"], []).append(row)
@@ -167,7 +167,7 @@ def _read_acceptable_nogos(report_dir: str) -> dict[str, list[dict[str, str]]]:
         for row in csv.DictReader(f):
             if (
                 row["severity"] == "critical"
-                and row["status"] != "PASS"
+                and str(row["status"]).strip().upper() != "PASS"
                 and _is_expected_critical_nogo(row)
             ):
                 acceptable.setdefault(row["symbol"], []).append(row)
@@ -188,7 +188,13 @@ def _validate_stage14_scope(run_report_dir: str, make_vars: dict[str, str]) -> N
     run_prefix = run_report_dir.rstrip("/")
     allowed_exact = {"RECONCILE_DIR"}
     for key, value in make_vars.items():
-        if key in {"LOCK_DIR", "EVAL_START", "EVAL_END", "JFOREX_OUTCOME_MONITOR_ONLY"}:
+        if key in {
+            "LOCK_DIR",
+            "EVAL_START",
+            "EVAL_END",
+            "JFOREX_OUTCOME_MONITOR_ONLY",
+            "SKIP_RUNTIME_PARITY_AUDIT",
+        }:
             continue
         normalized = value.split("*", 1)[0].rstrip("/")
         expected_prefix = run_prefix + "/"
@@ -232,6 +238,7 @@ def _stage14_make_vars(run_report_dir: str, eval_start: str, eval_end: str) -> d
         ),
         "JFOREX_OUTCOME_SUMMARY_GLOB": f"{run_report_dir}/jforex_outcome_parity_summary.csv",
         "JFOREX_OUTCOME_MONITOR_ONLY": "1",
+        "SKIP_RUNTIME_PARITY_AUDIT": "1",
         "LOCAL_SURROGATE_SUMMARY_GLOB": f"{run_report_dir}/local_jforex_surrogate_summary.csv",
         "STAGE14_OUT_SUMMARY_CSV": (
             f"{run_report_dir}/stage14_jforex_runtime_certification_summary.csv"

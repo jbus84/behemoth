@@ -122,6 +122,7 @@ def test_main_runs_definitive_recert_chain(monkeypatch, tmp_path) -> None:
         f"JFOREX_OPERATIONAL_SUMMARY_GLOB={expected_run_dir}/*_jforex_operational_ready_summary.csv",
         f"JFOREX_OUTCOME_SUMMARY_GLOB={expected_run_dir}/jforex_outcome_parity_summary.csv",
         "JFOREX_OUTCOME_MONITOR_ONLY=1",
+        "SKIP_RUNTIME_PARITY_AUDIT=1",
         f"STAGE14_OUT_SUMMARY_CSV={expected_run_dir}/stage14_jforex_runtime_certification_summary.csv",
         f"STAGE14_OUT_CHECKS_CSV={expected_run_dir}/stage14_jforex_runtime_certification_checks.csv",
         "EVAL_START=2026-02-07T00:00:00Z",
@@ -232,6 +233,31 @@ def test_read_failures_ignores_expected_non_deployable_nogo(tmp_path, monkeypatc
         "LOCAL_JFOREX_SURROGATE_PASS",
         "JFOREX_OUTCOME_PARITY_PASS",
     }
+
+
+def test_read_failures_treats_lowercase_pass_as_pass(tmp_path, monkeypatch) -> None:
+    report_dir = tmp_path / "reports"
+    report_dir.mkdir()
+    with (report_dir / run_monthly_recert.CERT_CHECKS_FILENAME).open("w", newline="") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=["symbol", "check_id", "status", "severity", "metric_name", "details"],
+        )
+        writer.writeheader()
+        writer.writerow(
+            {
+                "symbol": "EURUSD",
+                "check_id": "THRESHOLD_PARITY_PASS",
+                "status": "pass",
+                "severity": "critical",
+                "metric_name": "threshold_parity_pass",
+                "details": "threshold_schedule has valid entries",
+            }
+        )
+    monkeypatch.setattr(run_monthly_recert, "_repo_root", lambda: tmp_path)
+
+    assert run_monthly_recert._read_failures("reports") == {}
+    assert run_monthly_recert._read_acceptable_nogos("reports") == {}
 
 
 def test_print_summary_blocks_release_when_required_symbol_is_expected_nogo(capsys) -> None:

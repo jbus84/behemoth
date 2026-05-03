@@ -134,20 +134,20 @@ def _execution_noop_override(execution_match: pd.DataFrame, outcome_match: pd.Da
     if execution_row is None:
         return False
     outcome_row = _row_data_series(outcome_match)
-    locked_selected_total = _pick_int(
+    governance_selected_signal_count = _pick_int(
         execution_row,
-        ("locked_selected_total", "locked_selected_count"),
+        ("governance_selected_signal_count",),
     )
-    if locked_selected_total is None and outcome_row is not None:
-        locked_selected_total = _pick_int(
+    if governance_selected_signal_count is None and outcome_row is not None:
+        governance_selected_signal_count = _pick_int(
             outcome_row,
-            ("locked_selected_total", "locked_selected_count"),
+            ("governance_selected_signal_count",),
         )
     submitted_orders = _pick_int(
         execution_row,
-        ("submitted_orders", "jforex_orders_submitted", "orders_submitted"),
+        ("submitted_orders", "runtime_order_submitted_count", "orders_submitted"),
     )
-    return locked_selected_total == 0 and submitted_orders == 0
+    return governance_selected_signal_count == 0 and submitted_orders == 0
 
 
 def build_artifacts(

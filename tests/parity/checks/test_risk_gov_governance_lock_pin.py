@@ -12,12 +12,34 @@ def _write_lock(path, model_month: str, lock_hash: str) -> None:
     )
 
 
+def _write_bundle_lock(path, model_month: str) -> None:
+    path.write_text(
+        '{"artifacts":{"model_month":"'
+        + model_month
+        + '"},"historical_backtest":{"target_month":"'
+        + model_month
+        + '"}}\n'
+    )
+
+
 def test_matching_month_passes(parity_ctx_factory):
     ctx = parity_ctx_factory(model_month="2026-04")
     for symbol in _SYMBOLS:
         _write_lock(
             ctx.governance_lock_dir / f"{symbol.lower()}_oco_live_lock.json",
             "2026-04", f"hash-{symbol.lower()}",
+        )
+
+    result = registry.call("risk_gov.governance_lock_pin", ctx)
+    assert result.passed is True
+
+
+def test_bundle_schema_month_passes(parity_ctx_factory):
+    ctx = parity_ctx_factory(model_month="2026-04")
+    for symbol in _SYMBOLS:
+        _write_bundle_lock(
+            ctx.governance_lock_dir / f"{symbol.lower()}_oco_live_lock.json",
+            "2026-04",
         )
 
     result = registry.call("risk_gov.governance_lock_pin", ctx)

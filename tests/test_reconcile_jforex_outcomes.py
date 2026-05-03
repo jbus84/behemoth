@@ -13,7 +13,7 @@ import pytest
 
 
 def _write_locked_predictions(tmp: Path, symbol: str, rows: list[dict]) -> Path:
-    """Write a minimal locked predictions parquet for testing."""
+    """Write a minimal Governance Lock predictions parquet for testing."""
     con = duckdb.connect()
     cols = ", ".join(f"'{k}'" for k in rows[0])
     vals = ", ".join(
@@ -90,7 +90,7 @@ def test_load_runtime_events_counts_categories():
                     "category": "signal",
                     "event_name": "predict_cycle",
                     "pass": "true",
-                    "detail": "prediction_count=5;selected_count=2;blocked_count=0;completed_bar_ticks=[100]",
+                    "detail": "prediction_count=5;selected_count=2;bgovernance_selected_signal_count=0;completed_bar_ticks=[100]",
                 },
                 {
                     "event_ts_utc": "2025-07-01T00:01:00Z",
@@ -176,15 +176,15 @@ def test_compare_outcomes_pass():
 
     result = compare_outcomes(
         symbol="EURUSD",
-        locked_count=217,
-        locked_gross_pips_total=752.9,
-        locked_win_rate=0.742,
-        jforex_predict_cycles=200,
-        jforex_selected_total=210,
-        jforex_orders_submitted=4,
+        governance_selected_signal_count=217,
+        governance_independent_label_gross_pips_total=752.9,
+        governance_independent_label_win_rate=0.742,
+        runtime_predict_cycle_count=200,
+        runtime_selected_signal_count=210,
+        runtime_order_submitted_count=4,
         jforex_execution_failures=0,
         jforex_lifecycle_failures=0,
-        jforex_submitted_group_count=200,  # 200/217 ≈ 92% > 80% → order_coverage_pass
+        runtime_submitted_group_count=200,  # 200/217 ≈ 92% > 80% → order_coverage_pass
     )
     assert result["signal_coverage_pass"] is True
     assert result["execution_clean_pass"] is True
@@ -249,12 +249,12 @@ def test_compare_outcomes_fail_low_coverage():
 
     result = compare_outcomes(
         symbol="EURUSD",
-        locked_count=217,
-        locked_gross_pips_total=752.9,
-        locked_win_rate=0.742,
-        jforex_predict_cycles=50,
-        jforex_selected_total=40,
-        jforex_orders_submitted=0,
+        governance_selected_signal_count=217,
+        governance_independent_label_gross_pips_total=752.9,
+        governance_independent_label_win_rate=0.742,
+        runtime_predict_cycle_count=50,
+        runtime_selected_signal_count=40,
+        runtime_order_submitted_count=0,
         jforex_execution_failures=0,
         jforex_lifecycle_failures=0,
     )
@@ -267,15 +267,15 @@ def test_compare_outcomes_zero_lock_passes_when_runtime_is_clean_noop():
 
     result = compare_outcomes(
         symbol="EURUSD",
-        locked_count=0,
-        locked_gross_pips_total=0.0,
-        locked_win_rate=0.0,
-        jforex_predict_cycles=34,
-        jforex_selected_total=0,
-        jforex_orders_submitted=0,
+        governance_selected_signal_count=0,
+        governance_independent_label_gross_pips_total=0.0,
+        governance_independent_label_win_rate=0.0,
+        runtime_predict_cycle_count=34,
+        runtime_selected_signal_count=0,
+        runtime_order_submitted_count=0,
         jforex_execution_failures=0,
         jforex_lifecycle_failures=0,
-        jforex_submitted_group_count=0,
+        runtime_submitted_group_count=0,
     )
     assert result["signal_coverage_pass"] is True
     assert result["has_trades"] is False
@@ -287,15 +287,15 @@ def test_compare_outcomes_zero_lock_fails_on_unexpected_runtime_activity():
 
     result = compare_outcomes(
         symbol="EURUSD",
-        locked_count=0,
-        locked_gross_pips_total=0.0,
-        locked_win_rate=0.0,
-        jforex_predict_cycles=34,
-        jforex_selected_total=1,
-        jforex_orders_submitted=0,
+        governance_selected_signal_count=0,
+        governance_independent_label_gross_pips_total=0.0,
+        governance_independent_label_win_rate=0.0,
+        runtime_predict_cycle_count=34,
+        runtime_selected_signal_count=1,
+        runtime_order_submitted_count=0,
         jforex_execution_failures=0,
         jforex_lifecycle_failures=0,
-        jforex_submitted_group_count=0,
+        runtime_submitted_group_count=0,
     )
     assert result["signal_coverage_pass"] is False
     assert result["overall_pass"] is False
@@ -319,7 +319,7 @@ def test_parse_predict_cycle_close_ts():
     from scripts.reconcile_jforex_outcomes import parse_predict_cycle_close_ts
 
     ts = parse_predict_cycle_close_ts(
-        "prediction_count=5;selected_count=2;blocked_count=0;"
+        "prediction_count=5;selected_count=2;bgovernance_selected_signal_count=0;"
         "close_ts=2025-07-07T12:00:00Z;completed_bar_ticks=[100]"
     )
     assert ts == datetime(2025, 7, 7, 12, 0, 0, tzinfo=timezone.utc)
@@ -340,7 +340,7 @@ def test_load_runtime_events_ignores_extra_predict_cycle_diagnostics(tmp_path):
                 "event_name": "predict_cycle",
                 "pass": "true",
                 "detail": (
-                    "prediction_count=4;selected_count=3;executable_selected_count=1;blocked_count=2;"
+                    "prediction_count=4;selected_count=3;executable_selected_count=1;bgovernance_selected_signal_count=2;"
                     "blocked_reasons=entries_paused,active_candidate_lifecycle,risk_blocked;"
                     "close_ts=2026-02-07T12:00:00Z;completed_bar_ticks=[100]"
                 ),
@@ -368,7 +368,7 @@ def test_load_runtime_events_ignores_malformed_local_surrogate_file(tmp_path):
                 "event_name": "predict_cycle",
                 "pass": "true",
                 "detail": (
-                    "prediction_count=4;selected_count=1;blocked_count=3;"
+                    "prediction_count=4;selected_count=1;bgovernance_selected_signal_count=3;"
                     "blocked_reasons=entries_paused,active_candidate_lifecycle,risk_blocked;"
                     "close_ts=2026-02-07T12:00:00Z;completed_bar_ticks=[100]"
                 ),
@@ -401,7 +401,7 @@ def test_load_runtime_events_accepts_specific_block_reasons(tmp_path):
                 "event_name": "predict_cycle",
                 "pass": "true",
                 "detail": (
-                    "prediction_count=2;selected_count=0;blocked_count=2;"
+                    "prediction_count=2;selected_count=0;bgovernance_selected_signal_count=2;"
                     "blocked_reasons=risk_budget_exhausted,active_candidate_lifecycle;"
                     "close_ts=2026-02-07T12:00:00Z;completed_bar_ticks=[100]"
                 ),
@@ -444,7 +444,7 @@ def test_load_runtime_events_fails_when_canonical_file_is_missing_minimal_requir
         "category": "predict",
         "event_name": "predict_cycle",
         "pass": "true",
-        "detail": "selected_count=1;blocked_count=0",
+        "detail": "selected_count=1;bgovernance_selected_signal_count=0",
     }
     with open(path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=present_fieldnames)
@@ -544,7 +544,7 @@ def test_load_runtime_events_filters_eval_window_using_replay_close_ts(tmp_path)
                 "event_name": "predict_cycle",
                 "pass": "true",
                 "detail": (
-                    "prediction_count=4;selected_count=2;blocked_count=0;"
+                    "prediction_count=4;selected_count=2;bgovernance_selected_signal_count=0;"
                     "close_ts=2026-02-07T12:00:00Z;completed_bar_ticks=[100]"
                 ),
             },
@@ -555,7 +555,7 @@ def test_load_runtime_events_filters_eval_window_using_replay_close_ts(tmp_path)
                 "event_name": "predict_cycle",
                 "pass": "true",
                 "detail": (
-                    "prediction_count=3;selected_count=1;blocked_count=0;"
+                    "prediction_count=3;selected_count=1;bgovernance_selected_signal_count=0;"
                     "close_ts=2026-02-10T12:00:00Z;completed_bar_ticks=[100]"
                 ),
             },
@@ -645,7 +645,7 @@ def test_load_runtime_events_keeps_order_submitted_schema_when_no_orders_exist(t
                 "category": "signal",
                 "event_name": "predict_cycle",
                 "pass": "true",
-                "detail": "prediction_count=4;selected_count=3;blocked_count=1;close_ts=2026-02-08T12:00:00Z;completed_bar_ticks=[100]",
+                "detail": "prediction_count=4;selected_count=3;bgovernance_selected_signal_count=1;close_ts=2026-02-08T12:00:00Z;completed_bar_ticks=[100]",
             },
         ],
     )
@@ -669,15 +669,15 @@ def test_compare_outcomes_per_event_coverage():
 
     result = compare_outcomes(
         symbol="EURUSD",
-        locked_count=100,
-        locked_gross_pips_total=350.0,
-        locked_win_rate=0.7,
-        jforex_predict_cycles=200,
-        jforex_selected_total=10,  # low signal coverage: 10/100 = 10%
-        jforex_orders_submitted=200,
+        governance_selected_signal_count=100,
+        governance_independent_label_gross_pips_total=350.0,
+        governance_independent_label_win_rate=0.7,
+        runtime_predict_cycle_count=200,
+        runtime_selected_signal_count=10,  # low signal coverage: 10/100 = 10%
+        runtime_order_submitted_count=200,
         jforex_execution_failures=0,
         jforex_lifecycle_failures=0,
-        jforex_submitted_group_count=95,  # per-event: 95/100 = 95% > 80%
+        runtime_submitted_group_count=95,  # per-event: 95/100 = 95% > 80%
     )
     # order_coverage_pass is still computed correctly
     assert result["order_coverage_pass"] is True
@@ -693,15 +693,15 @@ def test_compare_outcomes_signal_coverage_gates_not_order_coverage():
 
     result = compare_outcomes(
         symbol="EURUSD",
-        locked_count=100,
-        locked_gross_pips_total=350.0,
-        locked_win_rate=0.7,
-        jforex_predict_cycles=100,
-        jforex_selected_total=90,  # 90% signal coverage → signal_coverage_pass=True
-        jforex_orders_submitted=3,  # has_trades=True (OCO-blocked but some orders placed)
+        governance_selected_signal_count=100,
+        governance_independent_label_gross_pips_total=350.0,
+        governance_independent_label_win_rate=0.7,
+        runtime_predict_cycle_count=100,
+        runtime_selected_signal_count=90,  # 90% signal coverage → signal_coverage_pass=True
+        runtime_order_submitted_count=3,  # has_trades=True (OCO-blocked but some orders placed)
         jforex_execution_failures=0,
         jforex_lifecycle_failures=0,
-        jforex_submitted_group_count=0,  # 0/100 = 0% order_coverage → order_coverage_pass=False
+        runtime_submitted_group_count=0,  # 0/100 = 0% order_coverage → order_coverage_pass=False
     )
     # order_coverage_ratio = 0/100 = 0.0 < 0.8 → order_coverage_pass = False (informational)
     assert result["order_coverage_pass"] is False
@@ -717,15 +717,15 @@ def test_overall_pass_uses_signal_coverage_not_order_coverage():
     # High signal coverage (95%), zero orders placed (blocked by open positions)
     result = compare_outcomes(
         symbol="GBPUSD",
-        locked_count=100,
-        locked_gross_pips_total=300.0,
-        locked_win_rate=0.72,
-        jforex_predict_cycles=500,
-        jforex_selected_total=95,
-        jforex_orders_submitted=2,
+        governance_selected_signal_count=100,
+        governance_independent_label_gross_pips_total=300.0,
+        governance_independent_label_win_rate=0.72,
+        runtime_predict_cycle_count=500,
+        runtime_selected_signal_count=95,
+        runtime_order_submitted_count=2,
         jforex_execution_failures=0,
         jforex_lifecycle_failures=0,
-        jforex_submitted_group_count=2,  # only 2 orders placed (blocked) → order_coverage=2%
+        runtime_submitted_group_count=2,  # only 2 orders placed (blocked) → order_coverage=2%
     )
     assert result["signal_coverage_ratio"] == pytest.approx(0.95)
     assert result["signal_coverage_pass"] is True
@@ -814,7 +814,7 @@ def test_reconcile_aggregate_csv_includes_evaluated_at_utc(tmp_path, monkeypatch
     import duckdb
     import pandas as pd
 
-    # Write minimal locked predictions and runtime events
+    # Write minimal Governance Lock predictions and runtime events
     lock_dir = tmp_path / "lock"
     lock_dir.mkdir()
     reconcile_dir = tmp_path / "reconcile"
@@ -1027,7 +1027,7 @@ def test_load_runtime_events_prefers_canonical_jforex_file_when_both_exist_and_a
                 "category": "signal",
                 "event_name": "predict_cycle",
                 "pass": "true",
-                "detail": "prediction_count=3;selected_count=2;blocked_count=1;completed_bar_ticks=[100]",
+                "detail": "prediction_count=3;selected_count=2;bgovernance_selected_signal_count=1;completed_bar_ticks=[100]",
             }
         )
 
@@ -1045,7 +1045,7 @@ def test_load_runtime_events_prefers_canonical_jforex_file_when_both_exist_and_a
                 "category": "signal",
                 "event_name": "predict_cycle",
                 "pass": "true",
-                "detail": "prediction_count=3;selected_count=99;blocked_count=0;completed_bar_ticks=[100]",
+                "detail": "prediction_count=3;selected_count=99;bgovernance_selected_signal_count=0;completed_bar_ticks=[100]",
             }
         )
 
