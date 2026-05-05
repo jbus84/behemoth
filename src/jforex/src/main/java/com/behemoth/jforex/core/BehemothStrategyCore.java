@@ -106,6 +106,13 @@ public final class BehemothStrategyCore {
         }
     }
 
+    public void drainWorker(String symbol) {
+        SymbolWorker worker = symbolWorkers.get(normalizeSymbol(symbol));
+        if (worker != null) {
+            worker.drain();
+        }
+    }
+
     private void processTicksFromWorker(String symbol, List<RuntimeTick> ticks) {
         SymbolRuntimeState state = symbolStates.get(normalizeSymbol(symbol));
         if (state == null) {
