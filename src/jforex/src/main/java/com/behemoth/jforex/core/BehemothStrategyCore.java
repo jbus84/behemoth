@@ -18,6 +18,7 @@ import com.behemoth.jforex.runtime.dto.TradeOpenRequestPayload;
 import com.behemoth.jforex.runtime.dto.TradeUpdateRequestPayload;
 import com.behemoth.jforex.state.ExecutionStateStore;
 import com.behemoth.jforex.state.OcoGroupState;
+import com.behemoth.jforex.worker.SymbolWorker;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -39,6 +40,8 @@ public final class BehemothStrategyCore {
     private final JForexMetrics metrics;
     private final ExecutionPort executionPort;
     private final Map<String, SymbolRuntimeState> symbolStates = new LinkedHashMap<>();
+    private final Map<String, SymbolWorker> symbolWorkers = new LinkedHashMap<>();
+    private final boolean useAsyncWorker = false;
     /** Maps order label → fill context so handleFill can pass real values to /trades/open. */
     private final Map<String, PendingFillContext> pendingFills = new LinkedHashMap<>();
     /** Maps scan_id → order label so CLOSE_MARKET can look up the JForex order by label. */
@@ -64,6 +67,9 @@ public final class BehemothStrategyCore {
         Set<String> subscribed = new LinkedHashSet<>();
         for (RuntimeInstrument instrument : instruments) {
             symbolStates.put(instrument.symbol(), new SymbolRuntimeState(instrument));
+            SymbolWorker worker = new SymbolWorker(instrument.symbol(), this::processTicksFromWorker);
+            symbolWorkers.put(instrument.symbol(), worker);
+            worker.start();
             subscribed.add(instrument.symbol());
             artifactWriter.markOperationalStep(instrument.symbol(), "strategy_started", true, sessionConfig.runId());
             artifactWriter.markOperationalStep(instrument.symbol(), "subscribed", true, "instrument subscribed");
@@ -90,23 +96,36 @@ public final class BehemothStrategyCore {
     }
 
     public void onTick(RuntimeTick tick) {
-        SymbolRuntimeState state = symbolStates.get(normalizeSymbol(tick.symbol()));
+        SymbolWorker worker = symbolWorkers.get(normalizeSymbol(tick.symbol()));
+        if (worker == null) {
+            return;
+        }
+        worker.enqueue(tick);
+        if (!useAsyncWorker) {
+            worker.drain();
+        }
+    }
+
+    private void processTicksFromWorker(String symbol, List<RuntimeTick> ticks) {
+        SymbolRuntimeState state = symbolStates.get(normalizeSymbol(symbol));
         if (state == null) {
             return;
         }
-        state.pendingTicks.add(new IncomingTickPayload(
-                state.instrument.symbol(),
-                tick.timestamp(),
-                tick.bid(),
-                tick.ask(),
-                1.0,
-                state.nextClientTickSeq++,
-                sessionConfig.runId()
-        ));
-        state.lastTick = tick;
-        metrics.recordTicksReceived(state.instrument.symbol(), 1);
-        if (state.pendingTicks.size() >= sessionConfig.tickBatchSize()) {
-            flushSymbol(state.instrument.symbol());
+        for (RuntimeTick tick : ticks) {
+            state.pendingTicks.add(new IncomingTickPayload(
+                    state.instrument.symbol(),
+                    tick.timestamp(),
+                    tick.bid(),
+                    tick.ask(),
+                    1.0,
+                    state.nextClientTickSeq++,
+                    sessionConfig.runId()
+            ));
+            state.lastTick = tick;
+            metrics.recordTicksReceived(state.instrument.symbol(), 1);
+            if (state.pendingTicks.size() >= sessionConfig.tickBatchSize()) {
+                flushSymbol(state.instrument.symbol());
+            }
         }
     }
 
@@ -217,6 +236,9 @@ public final class BehemothStrategyCore {
     }
 
     public void stop() {
+        for (SymbolWorker worker : symbolWorkers.values()) {
+            worker.stop();
+        }
         for (String symbol : List.copyOf(symbolStates.keySet())) {
             flushSymbol(symbol);
         }
