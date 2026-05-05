@@ -83,9 +83,10 @@ public final class LocalJForexTesterRunner {
             for (com.behemoth.jforex.core.RuntimeTick tick : merged) {
                 executionPort.onTick(tick);
                 core.onTick(tick);
+                core.drainWorker(tick.symbol());
             }
             for (String symbol : windows.keySet()) {
-                core.flushSymbol(symbol);
+                core.drainWorker(symbol);
             }
             executionPort.closeOpenOrdersAtEnd();
             core.onAccountSnapshot(harnessConfig.startingBalance(), harnessConfig.startingBalance(), harnessConfig.endUtc());

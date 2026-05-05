@@ -3,35 +3,23 @@ package com.behemoth.jforex.core;
 import com.behemoth.jforex.config.JForexSessionConfig;
 import com.behemoth.jforex.observability.JForexMetrics;
 import com.behemoth.jforex.reporting.Stage14ArtifactWriter;
-import com.behemoth.jforex.runtime.PythonApiException;
 import com.behemoth.jforex.runtime.PythonPredictionClient;
 import com.behemoth.jforex.runtime.dto.AccountSnapshotRequestPayload;
-import com.behemoth.jforex.runtime.dto.BarrierActionPayload;
-import com.behemoth.jforex.runtime.dto.IncomingTickPayload;
-import com.behemoth.jforex.runtime.dto.PredictRequestPayload;
-import com.behemoth.jforex.runtime.dto.PredictResponsePayload;
-import com.behemoth.jforex.runtime.dto.PredictionResponseItem;
-import com.behemoth.jforex.runtime.dto.TickBatchRequestPayload;
-import com.behemoth.jforex.runtime.dto.TickBatchResponsePayload;
-import com.behemoth.jforex.runtime.dto.TickIngestResponsePayload;
 import com.behemoth.jforex.runtime.dto.TradeOpenRequestPayload;
 import com.behemoth.jforex.runtime.dto.TradeUpdateRequestPayload;
 import com.behemoth.jforex.state.ExecutionStateStore;
 import com.behemoth.jforex.state.OcoGroupState;
+import com.behemoth.jforex.worker.SymbolWorker;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class BehemothStrategyCore {
-    private static final double FX_UNITS_PER_MILLION = 1_000_000.0;
-    private static final int MAX_TICK_BATCH_TIMEOUT_RETRIES = 2;
-    private static final long TICK_BATCH_RETRY_BACKOFF_MS = 250L;
-
     private final JForexSessionConfig sessionConfig;
     private final PythonPredictionClient predictionClient;
     private final ExecutionStateStore stateStore;
@@ -39,10 +27,11 @@ public final class BehemothStrategyCore {
     private final JForexMetrics metrics;
     private final ExecutionPort executionPort;
     private final Map<String, SymbolRuntimeState> symbolStates = new LinkedHashMap<>();
+    private final Map<String, SymbolWorker> symbolWorkers = new LinkedHashMap<>();
     /** Maps order label → fill context so handleFill can pass real values to /trades/open. */
-    private final Map<String, PendingFillContext> pendingFills = new LinkedHashMap<>();
+    private final Map<String, PendingFillContext> pendingFills = new ConcurrentHashMap<>();
     /** Maps scan_id → order label so CLOSE_MARKET can look up the JForex order by label. */
-    private final Map<String, String> scanToOrderLabel = new LinkedHashMap<>();
+    private final Map<String, String> scanToOrderLabel = new ConcurrentHashMap<>();
 
     public BehemothStrategyCore(
             JForexSessionConfig sessionConfig,
@@ -64,6 +53,16 @@ public final class BehemothStrategyCore {
         Set<String> subscribed = new LinkedHashSet<>();
         for (RuntimeInstrument instrument : instruments) {
             symbolStates.put(instrument.symbol(), new SymbolRuntimeState(instrument));
+            SymbolWorker worker = new SymbolWorker(
+                    instrument.symbol(),
+                    sessionConfig,
+                    predictionClient,
+                    metrics,
+                    artifactWriter,
+                    actionCallbacks
+            );
+            symbolWorkers.put(instrument.symbol(), worker);
+            worker.start();
             subscribed.add(instrument.symbol());
             artifactWriter.markOperationalStep(instrument.symbol(), "strategy_started", true, sessionConfig.runId());
             artifactWriter.markOperationalStep(instrument.symbol(), "subscribed", true, "instrument subscribed");
@@ -83,84 +82,24 @@ public final class BehemothStrategyCore {
     }
 
     public void seedClientTickSeq(String symbol, long lastClientTickSeq) {
-        SymbolRuntimeState state = symbolStates.get(normalizeSymbol(symbol));
-        if (state != null) {
-            state.nextClientTickSeq = lastClientTickSeq + 1L;
+        SymbolWorker worker = symbolWorkers.get(normalizeSymbol(symbol));
+        if (worker != null) {
+            worker.seedClientTickSeq(lastClientTickSeq);
         }
     }
 
     public void onTick(RuntimeTick tick) {
-        SymbolRuntimeState state = symbolStates.get(normalizeSymbol(tick.symbol()));
-        if (state == null) {
+        SymbolWorker worker = symbolWorkers.get(normalizeSymbol(tick.symbol()));
+        if (worker == null) {
             return;
         }
-        state.pendingTicks.add(new IncomingTickPayload(
-                state.instrument.symbol(),
-                tick.timestamp(),
-                tick.bid(),
-                tick.ask(),
-                1.0,
-                state.nextClientTickSeq++,
-                sessionConfig.runId()
-        ));
-        state.lastTick = tick;
-        metrics.recordTicksReceived(state.instrument.symbol(), 1);
-        if (state.pendingTicks.size() >= sessionConfig.tickBatchSize()) {
-            flushSymbol(state.instrument.symbol());
-        }
+        worker.enqueue(tick);
     }
 
-    public void flushSymbol(String symbol) {
-        SymbolRuntimeState state = symbolStates.get(normalizeSymbol(symbol));
-        if (state == null || state.pendingTicks.isEmpty()) {
-            return;
-        }
-        List<IncomingTickPayload> payload = List.copyOf(state.pendingTicks);
-        state.pendingTicks.clear();
-        TickBatchRequestPayload request = new TickBatchRequestPayload(
-                state.instrument.symbol(),
-                payload,
-                sessionConfig.runId()
-        );
-        int attempt = 0;
-        while (true) {
-            try {
-                TickBatchResponsePayload response = predictionClient.tickBatch(request);
-                metrics.recordTickBatch(state.instrument.symbol(), response.acceptedCount(), response.droppedCount());
-                artifactWriter.markOperationalStep(
-                        state.instrument.symbol(),
-                        "feed_status",
-                        true,
-                        "accepted=" + response.acceptedCount() + ";attempt=" + (attempt + 1)
-                );
-                if (response.barCompleted() && response.completedBarTicks() != null && !response.completedBarTicks().isEmpty()) {
-                    triggerPrediction(state, response.completedBarTicks());
-                }
-                return;
-            } catch (RuntimeException exc) {
-                if (isRetriableTickBatchFailure(exc) && attempt < MAX_TICK_BATCH_TIMEOUT_RETRIES) {
-                    attempt += 1;
-                    sleepBeforeRetry();
-                    continue;
-                }
-                if (isRetriableTickBatchFailure(exc)) {
-                    TickIngestAggregate aggregate = ingestTicksIndividually(state, payload);
-                    metrics.recordTickBatch(state.instrument.symbol(), aggregate.acceptedCount(), aggregate.droppedCount());
-                    artifactWriter.markOperationalStep(
-                            state.instrument.symbol(),
-                            "feed_status",
-                            true,
-                            "accepted=" + aggregate.acceptedCount() + ";mode=single_tick_fallback"
-                    );
-                    if (!aggregate.completedBarTicks().isEmpty()) {
-                        triggerPrediction(state, aggregate.completedBarTicks());
-                    }
-                    return;
-                }
-                state.pendingTicks.addAll(0, payload);
-                artifactWriter.markOperationalStep(state.instrument.symbol(), "feed_status", false, exc.getMessage());
-                throw exc;
-            }
+    public void drainWorker(String symbol) {
+        SymbolWorker worker = symbolWorkers.get(normalizeSymbol(symbol));
+        if (worker != null) {
+            worker.drain();
         }
     }
 
@@ -217,8 +156,8 @@ public final class BehemothStrategyCore {
     }
 
     public void stop() {
-        for (String symbol : List.copyOf(symbolStates.keySet())) {
-            flushSymbol(symbol);
+        for (SymbolWorker worker : symbolWorkers.values()) {
+            worker.stop();
         }
         stateStore.persist();
         artifactWriter.writeReports(symbolStates.keySet(), stateStore.groups());
@@ -226,112 +165,6 @@ public final class BehemothStrategyCore {
 
     public Set<String> symbols() {
         return Set.copyOf(symbolStates.keySet());
-    }
-
-    private void triggerPrediction(SymbolRuntimeState state, List<Integer> completedBarTicks) {
-        for (int barTick : completedBarTicks) {
-            state.barOrdinalsByBarTicks.compute(barTick, (k, v) -> v == null ? 0L : v + 1L);
-        }
-        Map<Integer, Long> barOrdinals = Map.copyOf(state.barOrdinalsByBarTicks);
-        try (JForexMetrics.TimerContext ignored = metrics.startPredictTimer(state.instrument.symbol())) {
-            PredictResponsePayload response = predictionClient.predict(new PredictRequestPayload(
-                    state.instrument.symbol(),
-                    sessionConfig.riskEnabled(),
-                    sessionConfig.requestedVolumeUnits(),
-                    completedBarTicks,
-                    sessionConfig.runId(),
-                    barOrdinals
-            ));
-            List<PredictionResponseItem> predictions = response.predictions();
-
-            int pythonSelected = 0;
-            for (PredictionResponseItem p : predictions) {
-                if (p.isSelected()) pythonSelected++;
-            }
-            Instant predictCloseTs = predictions.stream()
-                    .map(PredictionResponseItem::closeTs)
-                    .filter(Objects::nonNull)
-                    .findFirst()
-                    .orElseGet(() -> state.lastTick != null ? state.lastTick.timestamp() : Instant.now());
-            metrics.recordSelectedPredictions(state.instrument.symbol(), pythonSelected, 0);
-            artifactWriter.recordPredictCycle(
-                    state.instrument.symbol(),
-                    predictCloseTs,
-                    predictions.size(),
-                    pythonSelected,
-                    response.actions().size(),
-                    0,
-                    List.of(),
-                    completedBarTicks
-            );
-
-            executeActions(state, response.actions());
-        } catch (PythonApiException exc) {
-            if (exc.statusCode() == 422 && exc.detail().contains("Insufficient warmup bars")) {
-                metrics.recordPredictWarmup(state.instrument.symbol());
-                return;
-            }
-            metrics.recordPredictFailure(state.instrument.symbol());
-            artifactWriter.recordPredictFailure(state.instrument.symbol(), exc.detail());
-            return;
-        }
-    }
-
-    private void executeActions(SymbolRuntimeState state, List<BarrierActionPayload> actions) {
-        double amountMillions = sessionConfig.requestedVolumeUnits() / FX_UNITS_PER_MILLION;
-        Instant now = state.lastTick != null ? state.lastTick.timestamp() : Instant.now();
-        for (BarrierActionPayload action : actions) {
-            if (action.isOpenMarket()) {
-                if (!sessionConfig.newEntriesEnabled() || !state.entriesAllowed) {
-                    metrics.recordEntryBlocked(action.symbol());
-                    artifactWriter.markOperationalStep(
-                            action.symbol(),
-                            "entry_blocked_not_ready",
-                            false,
-                            sessionConfig.newEntriesEnabled()
-                                    ? "entries not allowed in current readiness state"
-                                    : "new entries disabled by restart eligibility"
-                    );
-                    continue;
-                }
-                String label = "BM_" + action.scanId() + "_" + action.side();
-                scanToOrderLabel.put(action.scanId(), label);
-                pendingFills.put(label, new PendingFillContext(
-                        action.candidateUid() != null ? action.candidateUid() : "",
-                        action.reservationId() != null ? action.reservationId() : "",
-                        action.horizon()
-                ));
-                try {
-                    executionPort.submitMarketOrder(new MarketOrderRequest(
-                            action.symbol(),
-                            label,
-                            action.side(),
-                            amountMillions,
-                            "barrier_scan:" + action.scanId(),
-                            now
-                    ));
-                    metrics.recordOrderSubmitted(action.symbol(), action.side());
-                    artifactWriter.markOperationalStep(action.symbol(), "market_order_submitted", true, label);
-                } catch (RuntimeException exc) {
-                    pendingFills.remove(label);
-                    metrics.recordOrderSubmitFailure(action.symbol(), action.side());
-                    artifactWriter.markOperationalStep(action.symbol(), "market_order_submit_failure", false, exc.getMessage());
-                }
-            } else if (action.isCloseMarket()) {
-                String orderLabel = scanToOrderLabel.remove(action.scanId());
-                if (orderLabel != null) {
-                    try {
-                        executionPort.closePosition(action.symbol(), orderLabel);
-                        artifactWriter.markOperationalStep(action.symbol(), "barrier_close_submitted", true, orderLabel);
-                    } catch (RuntimeException exc) {
-                        artifactWriter.markOperationalStep(action.symbol(), "barrier_close_failure", false, exc.getMessage());
-                    }
-                } else {
-                    artifactWriter.markOperationalStep(action.symbol(), "barrier_close_skipped_no_label", false,
-                            "scan_id=" + action.scanId() + " broker_pos_id=" + action.brokerPosId());
-                }
-            }
-        }
     }
 
     private void handleFill(OrderEvent event) {
@@ -400,69 +233,62 @@ public final class BehemothStrategyCore {
         return raw == null ? "" : raw.trim().replace("/", "").toUpperCase();
     }
 
-    private static boolean isRetriableTickBatchFailure(RuntimeException exc) {
-        if (!(exc instanceof PythonApiException apiException)) {
-            return false;
+    private final SymbolWorker.ActionCallbacks actionCallbacks = new SymbolWorker.ActionCallbacks() {
+        @Override public boolean entriesAllowed(String symbol) {
+            SymbolRuntimeState state = symbolStates.get(normalizeSymbol(symbol));
+            return state != null && state.entriesAllowed;
         }
-        if (apiException.statusCode() != 599) {
-            return false;
-        }
-        String detail = String.valueOf(apiException.detail()).toLowerCase();
-        return detail.contains("timed out") || detail.contains("timeout");
-    }
 
-    private static void sleepBeforeRetry() {
-        try {
-            Thread.sleep(TICK_BATCH_RETRY_BACKOFF_MS);
-        } catch (InterruptedException exc) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted while retrying tick batch", exc);
-        }
-    }
-
-    private TickIngestAggregate ingestTicksIndividually(SymbolRuntimeState state, List<IncomingTickPayload> payload) {
-        int accepted = 0;
-        int dropped = 0;
-        Set<Integer> completedBarTicks = new LinkedHashSet<>();
-        for (int i = 0; i < payload.size(); i++) {
-            IncomingTickPayload tick = payload.get(i);
+        @Override public void submitMarketOrder(String symbol, String label, String side, double amountMillions,
+                                                 String scanId, String candidateUid, String reservationId, int horizon,
+                                                 Instant now) {
+            scanToOrderLabel.put(scanId, label);
+            pendingFills.put(label, new PendingFillContext(
+                    candidateUid != null ? candidateUid : "",
+                    reservationId != null ? reservationId : "",
+                    horizon
+            ));
             try {
-                TickIngestResponsePayload response = predictionClient.tick(tick);
-                if (response.tickAccepted()) {
-                    accepted += 1;
-                } else {
-                    dropped += 1;
+                try (JForexMetrics.TimerContext ignored = metrics.startOrderSubmitTimer(symbol, side)) {
+                    executionPort.submitMarketOrder(new MarketOrderRequest(
+                            symbol, label, side, amountMillions, "barrier_scan:" + scanId, now
+                    ));
                 }
-                if (response.barCompleted() && response.completedBarTicks() != null) {
-                    completedBarTicks.addAll(response.completedBarTicks());
-                }
+                metrics.recordOrderSubmitted(symbol, side);
+                artifactWriter.markOperationalStep(symbol, "market_order_submitted", true, label);
             } catch (RuntimeException exc) {
-                state.pendingTicks.addAll(0, payload.subList(i, payload.size()));
-                artifactWriter.markOperationalStep(state.instrument.symbol(), "feed_status", false, exc.getMessage());
-                throw exc;
+                pendingFills.remove(label);
+                scanToOrderLabel.remove(scanId);
+                metrics.recordOrderSubmitFailure(symbol, side);
+                artifactWriter.markOperationalStep(symbol, "market_order_submit_failure", false, exc.getMessage());
             }
         }
-        return new TickIngestAggregate(accepted, dropped, List.copyOf(completedBarTicks));
-    }
+
+        @Override public void closePositionByScanId(String symbol, String scanId, Instant now) {
+            String orderLabel = scanToOrderLabel.remove(scanId);
+            if (orderLabel != null) {
+                try {
+                    try (JForexMetrics.TimerContext ignored = metrics.startOrderSubmitTimer(symbol, "CLOSE")) {
+                        executionPort.closePosition(symbol, orderLabel);
+                    }
+                    artifactWriter.markOperationalStep(symbol, "barrier_close_submitted", true, orderLabel);
+                } catch (RuntimeException exc) {
+                    artifactWriter.markOperationalStep(symbol, "barrier_close_failure", false, exc.getMessage());
+                }
+            } else {
+                artifactWriter.markOperationalStep(symbol, "barrier_close_skipped_no_label", false,
+                        "scan_id=" + scanId);
+            }
+        }
+    };
 
     private static final class SymbolRuntimeState {
         private final RuntimeInstrument instrument;
-        private final List<IncomingTickPayload> pendingTicks = new ArrayList<>();
-        private long nextClientTickSeq = 1L;
         private boolean entriesAllowed = true;
-        private RuntimeTick lastTick;
-        private final Map<Integer, Long> barOrdinalsByBarTicks = new LinkedHashMap<>();
 
         private SymbolRuntimeState(RuntimeInstrument instrument) {
             this.instrument = instrument;
         }
-    }
-
-    private record TickIngestAggregate(
-            int acceptedCount,
-            int droppedCount,
-            List<Integer> completedBarTicks
-    ) {
     }
 
     private record PendingFillContext(
@@ -471,5 +297,4 @@ public final class BehemothStrategyCore {
             int horizon
     ) {
     }
-
 }

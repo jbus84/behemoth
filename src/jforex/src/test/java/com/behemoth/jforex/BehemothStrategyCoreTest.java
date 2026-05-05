@@ -100,6 +100,7 @@ class BehemothStrategyCoreTest {
                     0.6550,
                     0.6552
             ))).doesNotThrowAnyException();
+            core.drainWorker("AUDUSD");
 
             assertThat(server.getRequestCount()).isEqualTo(3);
             assertThat(server.takeRequest(1, TimeUnit.SECONDS)).isNotNull();
@@ -179,6 +180,7 @@ class BehemothStrategyCoreTest {
                     0.6550,
                     0.6552
             ))).doesNotThrowAnyException();
+            core.drainWorker("AUDUSD");
 
             assertThat(server.getRequestCount()).isEqualTo(5);
         }
@@ -231,6 +233,7 @@ class BehemothStrategyCoreTest {
                     1.1000,
                     1.1002
             ))).doesNotThrowAnyException();
+            core.drainWorker("EURUSD");
 
             assertThat(port.marketOrders).isEmpty();
             assertThat(server.getRequestCount()).isEqualTo(3);
@@ -302,6 +305,7 @@ class BehemothStrategyCoreTest {
 
             core.start(List.of(new RuntimeInstrument("EURUSD", 0.0001)));
             core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:00:00Z"), 1.1000, 1.1002));
+            core.drainWorker("EURUSD");
 
             assertThat(port.marketOrders).hasSize(1);
             MarketOrderRequest order = port.marketOrders.get(0);
@@ -367,6 +371,7 @@ class BehemothStrategyCoreTest {
             core.start(List.of(new RuntimeInstrument("EURUSD", 0.0001)));
             core.setEntriesAllowed("EURUSD", false);
             core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:00:00Z"), 1.1000, 1.1002));
+            core.drainWorker("EURUSD");
 
             assertThat(recordingPort.marketOrders).isEmpty();
         }
@@ -427,6 +432,7 @@ class BehemothStrategyCoreTest {
 
             core.start(List.of(new RuntimeInstrument("EURUSD", 0.0001)));
             core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:00:00Z"), 1.1000, 1.1002));
+            core.drainWorker("EURUSD");
 
             assertThat(recordingPort.marketOrders).hasSize(1);
             assertThat(recordingPort.marketOrders.get(0).label()).isEqualTo("BM_scan-allowed_BUY");
@@ -494,6 +500,7 @@ class BehemothStrategyCoreTest {
             core.start(List.of(new RuntimeInstrument("EURUSD", 0.0001)));
             // Trigger tick -> predict -> OPEN_MARKET action cached internally
             core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:00:00Z"), 1.1000, 1.1002));
+            core.drainWorker("EURUSD");
 
             // Simulate broker fill on the label produced by executeActions
             core.onOrderEvent(new OrderEvent(
@@ -605,8 +612,10 @@ class BehemothStrategyCoreTest {
             core.start(List.of(new RuntimeInstrument("EURUSD", 0.0001)));
             // bar 1: OPEN_MARKET
             core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:00:00Z"), 1.1000, 1.1002));
+            core.drainWorker("EURUSD");
             // bar 2: CLOSE_MARKET
             core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:01:00Z"), 1.1010, 1.1012));
+            core.drainWorker("EURUSD");
 
             // Must use the JForex order label, NOT the numeric broker_pos_id "272947788"
             assertThat(port.closePositionCalls).containsExactly("BM_scan-001_BUY");
@@ -669,6 +678,7 @@ class BehemothStrategyCoreTest {
 
             core.start(List.of(new RuntimeInstrument("EURUSD", 0.0001)));
             core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:00:00Z"), 1.1000, 1.1002));
+            core.drainWorker("EURUSD");
 
             assertThat(port.marketOrders).isEmpty();
             assertThat(port.closePositionCalls).isEmpty();
@@ -750,6 +760,7 @@ class BehemothStrategyCoreTest {
 
             core.start(List.of(new RuntimeInstrument("EURUSD", 0.0001)));
             core.onTick(new RuntimeTick("EURUSD", Instant.parse("2025-07-07T00:00:00Z"), 1.1000, 1.1002));
+            core.drainWorker("EURUSD");
 
             assertThat(recordingPort.marketOrders).isEmpty();
         }

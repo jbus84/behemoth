@@ -24,6 +24,6 @@ public final class JForexTesterRunner {
                 config.startUtc().toEpochMilli(),
                 config.endUtc().toEpochMilli()
         );
-        client.startStrategy(new BehemothJForexStrategy(config, metrics));
+        client.startStrategy(new BehemothJForexStrategy(config, metrics, true));
     }
 }

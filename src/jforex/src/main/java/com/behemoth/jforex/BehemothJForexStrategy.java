@@ -45,20 +45,17 @@ public final class BehemothJForexStrategy implements IStrategy {
     private BehemothStrategyCore core;
     private LiveReadinessCoordinator liveReadinessCoordinator;
     private IContext context;
+    private final boolean synchronousDrain;
 
     public BehemothJForexStrategy(JForexSessionConfig sessionConfig) {
-        this(
-                sessionConfig,
-                new PythonPredictionClient(
-                        HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build(),
-                        sessionConfig.apiBaseUri(),
-                        Duration.ofSeconds(sessionConfig.apiTimeoutSeconds())
-                ),
-                JForexMetrics.start(sessionConfig)
-        );
+        this(sessionConfig, JForexMetrics.start(sessionConfig), false);
     }
 
     public BehemothJForexStrategy(JForexSessionConfig sessionConfig, JForexMetrics metrics) {
+        this(sessionConfig, metrics, false);
+    }
+
+    public BehemothJForexStrategy(JForexSessionConfig sessionConfig, JForexMetrics metrics, boolean synchronousDrain) {
         this(
                 sessionConfig,
                 new PythonPredictionClient(
@@ -66,18 +63,21 @@ public final class BehemothJForexStrategy implements IStrategy {
                         sessionConfig.apiBaseUri(),
                         Duration.ofSeconds(sessionConfig.apiTimeoutSeconds())
                 ),
-                metrics
+                metrics,
+                synchronousDrain
         );
     }
 
     BehemothJForexStrategy(
             JForexSessionConfig sessionConfig,
             PythonPredictionClient predictionClient,
-            JForexMetrics metrics
+            JForexMetrics metrics,
+            boolean synchronousDrain
     ) {
         this.sessionConfig = Objects.requireNonNull(sessionConfig, "sessionConfig");
         this.predictionClient = Objects.requireNonNull(predictionClient, "predictionClient");
         this.metrics = Objects.requireNonNull(metrics, "metrics");
+        this.synchronousDrain = synchronousDrain;
         Path statePath = sessionConfig.reportDir().resolve("runtime").resolve("active_oco_state.json");
         this.stateStore = new ExecutionStateStore(statePath, predictionClient.objectMapper());
         this.artifactWriter = new Stage14ArtifactWriter(sessionConfig.reportDir(), "jforex");
@@ -116,6 +116,7 @@ public final class BehemothJForexStrategy implements IStrategy {
         if (instrument == null || tick == null || core == null) {
             return;
         }
+        long startNs = System.nanoTime();
         try {
             Instant tickTs = Instant.ofEpochMilli(tick.getTime());
             String symbol = normalizeSymbol(instrument.name());
@@ -129,8 +130,14 @@ public final class BehemothJForexStrategy implements IStrategy {
                     tick.getBid(),
                     tick.getAsk()
             ));
+            if (synchronousDrain) {
+                core.drainWorker(symbol);
+            }
         } catch (RuntimeException exc) {
             throw new JFException(exc.getMessage());
+        } finally {
+            long durationNs = System.nanoTime() - startNs;
+            metrics.recordStrategyThreadOnTickNs(normalizeSymbol(instrument.name()), durationNs);
         }
     }
 
@@ -140,7 +147,7 @@ public final class BehemothJForexStrategy implements IStrategy {
             return;
         }
         try {
-            core.flushSymbol(normalizeSymbol(instrument.name()));
+            core.drainWorker(normalizeSymbol(instrument.name()));
             if (liveReadinessCoordinator != null) {
                 Instant heartbeatTs = bidBar != null
                         ? Instant.ofEpochMilli(bidBar.getTime())
