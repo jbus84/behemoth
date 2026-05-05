@@ -131,6 +131,10 @@ public class SymbolWorker {
         this.nextClientTickSeq = lastClientTickSeq + 1L;
     }
 
+    public long pendingCount() {
+        return pendingCount.get();
+    }
+
     private void runLoop() {
         while (running.get()) {
             List<TickEvent> batch = new ArrayList<>(MAX_BATCH);
