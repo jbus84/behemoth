@@ -48,6 +48,16 @@ public final class JForexMetrics implements AutoCloseable, LiveReadinessMetrics 
     private final Gauge liveTickStalenessSeconds;
     private final Counter liveReadinessTransitions;
     private final Counter liveReadinessTimeouts;
+    private final Gauge workerQueueDepth;
+    private final Gauge workerQueueAgeMs;
+    private final Histogram workerBatchSize;
+    private final Histogram workerDrainDurationMs;
+    private final Histogram workerHttpPredictDurationMs;
+    private final Histogram workerHttpTicksDurationMs;
+    private final Histogram workerTickToPredictMs;
+    private final Counter workerFatalTotal;
+    private final Histogram orderSubmitDurationMs;
+    private final Gauge strategyThreadOnTickNs;
 
     private JForexMetrics() {
         this.enabled = false;
@@ -80,6 +90,16 @@ public final class JForexMetrics implements AutoCloseable, LiveReadinessMetrics 
         this.liveTickStalenessSeconds = null;
         this.liveReadinessTransitions = null;
         this.liveReadinessTimeouts = null;
+        this.workerQueueDepth = null;
+        this.workerQueueAgeMs = null;
+        this.workerBatchSize = null;
+        this.workerDrainDurationMs = null;
+        this.workerHttpPredictDurationMs = null;
+        this.workerHttpTicksDurationMs = null;
+        this.workerTickToPredictMs = null;
+        this.workerFatalTotal = null;
+        this.orderSubmitDurationMs = null;
+        this.strategyThreadOnTickNs = null;
     }
 
     private JForexMetrics(JForexSessionConfig config) throws IOException {
@@ -144,6 +164,58 @@ public final class JForexMetrics implements AutoCloseable, LiveReadinessMetrics 
                 "Startup readiness timeouts tracked by the coordinator",
                 "symbol"
         );
+        this.workerQueueDepth = Gauge.build()
+                .name("behemoth_worker_queue_depth")
+                .help("Current depth of the symbol worker queue")
+                .labelNames("symbol")
+                .register(registry);
+        this.workerQueueAgeMs = Gauge.build()
+                .name("behemoth_worker_queue_age_ms")
+                .help("Age in ms of the oldest tick in the worker queue at drain time")
+                .labelNames("symbol")
+                .register(registry);
+        this.workerBatchSize = Histogram.build()
+                .name("behemoth_worker_batch_size")
+                .help("Number of ticks per worker drain batch")
+                .labelNames("symbol")
+                .buckets(1.0, 4.0, 8.0, 16.0, 32.0, 64.0, 128.0, 256.0, 512.0, 1024.0, 2048.0)
+                .register(registry);
+        this.workerDrainDurationMs = Histogram.build()
+                .name("behemoth_worker_drain_duration_ms")
+                .help("Time from take() to batch completion in the worker")
+                .labelNames("symbol")
+                .buckets(1.0, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 5000.0)
+                .register(registry);
+        this.workerHttpPredictDurationMs = Histogram.build()
+                .name("behemoth_worker_http_predict_duration_ms")
+                .help("Wall time for /predict HTTP call from the worker thread")
+                .labelNames("symbol")
+                .buckets(10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2000.0, 5000.0)
+                .register(registry);
+        this.workerHttpTicksDurationMs = Histogram.build()
+                .name("behemoth_worker_http_ticks_duration_ms")
+                .help("Wall time for /ticks HTTP call from the worker thread")
+                .labelNames("symbol")
+                .buckets(10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2000.0, 5000.0)
+                .register(registry);
+        this.workerTickToPredictMs = Histogram.build()
+                .name("behemoth_worker_tick_to_predict_ms")
+                .help("Time from bar-completing tick epochMs to first byte of /predict response")
+                .labelNames("symbol")
+                .buckets(10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2000.0, 5000.0, 10000.0)
+                .register(registry);
+        this.workerFatalTotal = counter("behemoth_worker_fatal_total", "Uncaught exceptions on worker thread", "symbol");
+        this.orderSubmitDurationMs = Histogram.build()
+                .name("behemoth_order_submit_duration_ms")
+                .help("Wall time for IEngine.submitOrder")
+                .labelNames("symbol", "action")
+                .buckets(1.0, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2000.0)
+                .register(registry);
+        this.strategyThreadOnTickNs = Gauge.build()
+                .name("behemoth_strategy_thread_onTick_ns")
+                .help("Nanoseconds spent inside onTick on the strategy thread")
+                .labelNames("symbol")
+                .register(registry);
     }
 
     public static JForexMetrics start(JForexSessionConfig config) {
@@ -322,6 +394,69 @@ public final class JForexMetrics implements AutoCloseable, LiveReadinessMetrics 
     public void recordReadinessTimeout(String symbol) {
         if (enabled) {
             liveReadinessTimeouts.labels(symbol).inc();
+        }
+    }
+
+    public void recordWorkerQueueDepth(String symbol, int depth) {
+        if (enabled) {
+            workerQueueDepth.labels(symbol).set(depth);
+        }
+    }
+
+    public void recordWorkerQueueAgeMs(String symbol, long ageMs) {
+        if (enabled) {
+            workerQueueAgeMs.labels(symbol).set(ageMs);
+        }
+    }
+
+    public void recordWorkerBatchSize(String symbol, int size) {
+        if (enabled) {
+            workerBatchSize.labels(symbol).observe(size);
+        }
+    }
+
+    public void recordWorkerDrainDurationMs(String symbol, long durationMs) {
+        if (enabled) {
+            workerDrainDurationMs.labels(symbol).observe(durationMs);
+        }
+    }
+
+    public TimerContext startWorkerHttpPredictTimer(String symbol) {
+        if (!enabled) {
+            return TimerContext.disabled();
+        }
+        return new TimerContext(workerHttpPredictDurationMs.labels(symbol).startTimer());
+    }
+
+    public TimerContext startWorkerHttpTicksTimer(String symbol) {
+        if (!enabled) {
+            return TimerContext.disabled();
+        }
+        return new TimerContext(workerHttpTicksDurationMs.labels(symbol).startTimer());
+    }
+
+    public void recordWorkerTickToPredictMs(String symbol, long durationMs) {
+        if (enabled) {
+            workerTickToPredictMs.labels(symbol).observe(durationMs);
+        }
+    }
+
+    public void recordWorkerFatal(String symbol) {
+        if (enabled) {
+            workerFatalTotal.labels(symbol).inc();
+        }
+    }
+
+    public TimerContext startOrderSubmitTimer(String symbol, String action) {
+        if (!enabled) {
+            return TimerContext.disabled();
+        }
+        return new TimerContext(orderSubmitDurationMs.labels(symbol, action).startTimer());
+    }
+
+    public void recordStrategyThreadOnTickNs(String symbol, long nanos) {
+        if (enabled) {
+            strategyThreadOnTickNs.labels(symbol).set(nanos);
         }
     }
 
