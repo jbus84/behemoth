@@ -112,6 +112,13 @@ Java/JForex runtime:
 - JForex Prometheus endpoint: `127.0.0.1:9464/metrics`
 - Local surrogate Prometheus endpoint default: `127.0.0.1:9465/metrics`
 
+### Thread Model
+
+- **Strategy thread** (Dukascopy callback): enqueues `TickEvent` to `SymbolWorker` and returns immediately. `onTick` duration target: < 1 µs.
+- **Worker thread** (one per symbol, `behemoth-worker-<SYMBOL>`): drains queue, builds bars, calls `/ticks` and `/predict`, executes orders inline.
+- **Tester determinism**: `LocalJForexTesterRunner` and `JForexTesterRunner` call `symbolWorker.drain()` after each tick injection.
+- **No disk-backed queue**: `LinkedTransferQueue` is unbounded in-memory. Queue-age alert fires if worker falls behind.
+
 ## 5) Config Entry Points
 
 Experiment configs:
@@ -298,6 +305,7 @@ Java conventions:
 - Put JUnit 5 tests under `src/jforex/src/test/java/`
 - Keep JForex-specific code thin; Python remains the decision engine
 - Shared Java strategy logic should live below the runtime shim so real JForex and local surrogate runs exercise the same core
+- `SymbolWorker` owns per-symbol tick batching and HTTP I/O. Cross-symbol shared state lives in `BehemothStrategyCore` and is accessed via `SymbolWorker.ActionCallbacks`.
 
 ## 11) Governance/Docs Integration Notes
 
