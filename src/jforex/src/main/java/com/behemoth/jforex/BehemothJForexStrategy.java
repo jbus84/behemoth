@@ -140,7 +140,7 @@ public final class BehemothJForexStrategy implements IStrategy {
             return;
         }
         try {
-            core.flushSymbol(normalizeSymbol(instrument.name()));
+            core.drainWorker(normalizeSymbol(instrument.name()));
             if (liveReadinessCoordinator != null) {
                 Instant heartbeatTs = bidBar != null
                         ? Instant.ofEpochMilli(bidBar.getTime())

@@ -86,7 +86,7 @@ public final class LocalJForexTesterRunner {
                 core.drainWorker(tick.symbol());
             }
             for (String symbol : windows.keySet()) {
-                core.flushSymbol(symbol);
+                core.drainWorker(symbol);
             }
             executionPort.closeOpenOrdersAtEnd();
             core.onAccountSnapshot(harnessConfig.startingBalance(), harnessConfig.startingBalance(), harnessConfig.endUtc());
