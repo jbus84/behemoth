@@ -35,6 +35,7 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    systemProperty("behemoth.runAsyncParity", System.getProperty("behemoth.runAsyncParity"))
 }
 
 tasks.register<JavaExec>("runLocalJForexTester") {
