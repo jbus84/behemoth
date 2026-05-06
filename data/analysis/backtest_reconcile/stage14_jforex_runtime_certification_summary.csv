@@ -1,7 +1,7 @@
-symbol,stage13_certification_outcome,stage13_go_decision,stage13_dukascopy_testclient_pass,jforex_signal_parity_pass,jforex_execution_parity_pass,execution_lifecycle_pass,operational_ready_pass,jforex_outcome_parity_pass,local_jforex_surrogate_pass,stage14_jforex_cert_pass,certification_outcome,go_decision,missing_inputs,verdict,evaluated_at_utc
-AUDUSD,PASS,NO_GO,True,True,True,True,True,False,True,False,FAIL,NO_GO,0,red,2026-04-14T18:17:45Z
-EURUSD,PASS,NO_GO,True,True,True,True,True,False,True,False,FAIL,NO_GO,0,red,2026-04-14T18:17:45Z
-GBPUSD,PASS,NO_GO,True,True,True,True,True,False,True,False,FAIL,NO_GO,0,red,2026-04-14T18:17:45Z
-USDCAD,PASS,NO_GO,True,True,True,True,True,False,True,False,FAIL,NO_GO,0,red,2026-04-14T18:17:45Z
-USDCHF,PASS,NO_GO,True,True,True,True,True,False,True,False,FAIL,NO_GO,0,red,2026-04-14T18:17:45Z
-USDJPY,PASS,NO_GO,True,True,True,True,True,False,True,False,FAIL,NO_GO,0,red,2026-04-14T18:17:45Z
+symbol,stage13_certification_outcome,stage13_go_decision,stage13_dukascopy_testclient_pass,jforex_signal_parity_pass,jforex_execution_parity_pass,execution_lifecycle_pass,operational_ready_pass,jforex_outcome_parity_pass,local_jforex_surrogate_pass,stage14_jforex_cert_pass,certification_outcome,go_decision,missing_inputs,verdict,process_status,evaluated_at_utc
+AUDUSD,PASS,GO,True,True,True,True,True,False,True,True,PASS,GO,0,green,PASS,2026-05-06T12:24:20Z
+EURUSD,PASS,GO,True,True,True,True,True,False,True,True,PASS,GO,0,green,PASS,2026-05-06T12:24:20Z
+GBPUSD,PASS,GO,True,True,True,True,True,False,True,True,PASS,GO,0,green,PASS,2026-05-06T12:24:20Z
+USDCAD,PASS,GO,True,True,True,True,True,False,True,True,PASS,GO,0,green,PASS,2026-05-06T12:24:20Z
+USDCHF,PASS,GO,True,True,True,True,True,False,True,True,PASS,GO,0,green,PASS,2026-05-06T12:24:20Z
+USDJPY,PASS,GO,True,True,True,True,True,False,True,True,PASS,GO,0,green,PASS,2026-05-06T12:24:20Z

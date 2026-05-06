@@ -530,6 +530,7 @@ def build_stage14_artifacts(
                 history_dir=history_dir,
                 models_dir=models_dir,
             )
+            thr_status = thr_status.upper()
             check_rows.append(
                 {
                     "symbol": symbol,
