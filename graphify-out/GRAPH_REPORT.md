@@ -1,962 +1,439 @@
-# Graph Report - /Users/danielfisher/repositories/behemoth/.worktrees/fix-warmup-historical-replay  (2026-04-24)
+# Graph Report - .  (2026-05-06)
 
 ## Corpus Check
-- 275 files · ~915,664 words
+- 116 files · ~0 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3956 nodes · 15250 edges · 144 communities detected
-- Extraction: 42% EXTRACTED · 58% INFERRED · 0% AMBIGUOUS · INFERRED: 8870 edges (avg confidence: 0.58)
+- 1166 nodes · 3965 edges · 61 communities detected
+- Extraction: 41% EXTRACTED · 59% INFERRED · 0% AMBIGUOUS · INFERRED: 2322 edges (avg confidence: 0.59)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
-- [[_COMMUNITY_Community 0|Community 0]]
-- [[_COMMUNITY_Community 1|Community 1]]
-- [[_COMMUNITY_Community 2|Community 2]]
-- [[_COMMUNITY_Community 3|Community 3]]
-- [[_COMMUNITY_Community 4|Community 4]]
-- [[_COMMUNITY_Community 5|Community 5]]
-- [[_COMMUNITY_Community 6|Community 6]]
-- [[_COMMUNITY_Community 7|Community 7]]
-- [[_COMMUNITY_Community 8|Community 8]]
-- [[_COMMUNITY_Community 9|Community 9]]
-- [[_COMMUNITY_Community 10|Community 10]]
-- [[_COMMUNITY_Community 11|Community 11]]
-- [[_COMMUNITY_Community 12|Community 12]]
-- [[_COMMUNITY_Community 13|Community 13]]
-- [[_COMMUNITY_Community 14|Community 14]]
-- [[_COMMUNITY_Community 15|Community 15]]
-- [[_COMMUNITY_Community 16|Community 16]]
-- [[_COMMUNITY_Community 17|Community 17]]
-- [[_COMMUNITY_Community 18|Community 18]]
+- [[_COMMUNITY_Risk and Barrier Management|Risk and Barrier Management]]
+- [[_COMMUNITY_Scan Reservation and Holding|Scan Reservation and Holding]]
+- [[_COMMUNITY_JForex Strategy Bridge|JForex Strategy Bridge]]
+- [[_COMMUNITY_Strategy Core and Metrics|Strategy Core and Metrics]]
+- [[_COMMUNITY_Local Test Runner|Local Test Runner]]
+- [[_COMMUNITY_Barrier Scan Registration|Barrier Scan Registration]]
+- [[_COMMUNITY_Seed Checks and Gates|Seed Checks and Gates]]
+- [[_COMMUNITY_Broker Snapshot Runner|Broker Snapshot Runner]]
+- [[_COMMUNITY_Execution State Store|Execution State Store]]
+- [[_COMMUNITY_Feature Computation|Feature Computation]]
+- [[_COMMUNITY_Python Prediction Client|Python Prediction Client]]
+- [[_COMMUNITY_Historical Warmup Loader|Historical Warmup Loader]]
+- [[_COMMUNITY_Account Risk Allocator|Account Risk Allocator]]
+- [[_COMMUNITY_Execution Ports|Execution Ports]]
+- [[_COMMUNITY_Broker Snapshot Strategy|Broker Snapshot Strategy]]
+- [[_COMMUNITY_ParquetTickLoader|ParquetTickLoader]]
+- [[_COMMUNITY_JForexExecutionPort|JForexExecutionPort]]
+- [[_COMMUNITY_LiveReadinessMetrics|LiveReadinessMetrics]]
+- [[_COMMUNITY_ExecutionPort|ExecutionPort]]
 - [[_COMMUNITY_Community 19|Community 19]]
-- [[_COMMUNITY_Community 20|Community 20]]
-- [[_COMMUNITY_Community 21|Community 21]]
-- [[_COMMUNITY_Community 22|Community 22]]
-- [[_COMMUNITY_Community 23|Community 23]]
-- [[_COMMUNITY_Community 24|Community 24]]
-- [[_COMMUNITY_Community 25|Community 25]]
-- [[_COMMUNITY_Community 26|Community 26]]
-- [[_COMMUNITY_Community 27|Community 27]]
+- [[_COMMUNITY_BrokerOrderSnapshotWriter|BrokerOrderSnapshotWriter]]
+- [[_COMMUNITY_Evaluate Call|Evaluate Call]]
+- [[_COMMUNITY_Lightweight Behemoth|Lightweight Behemoth]]
+- [[_COMMUNITY_BrokerHistoryPort|BrokerHistoryPort]]
+- [[_COMMUNITY_Bar-level Produces|Bar-level Produces]]
+- [[_COMMUNITY_Retrieve Used|Retrieve Used]]
+- [[_COMMUNITY_RuntimeInstrument|RuntimeInstrument]]
+- [[_COMMUNITY_SymbolReadinessSnapshot|SymbolReadinessSnapshot]]
 - [[_COMMUNITY_Community 28|Community 28]]
-- [[_COMMUNITY_Community 29|Community 29]]
-- [[_COMMUNITY_Community 30|Community 30]]
-- [[_COMMUNITY_Community 31|Community 31]]
+- [[_COMMUNITY_Build JSON|Build JSON]]
+- [[_COMMUNITY_Load|Load]]
+- [[_COMMUNITY_Symbols|Symbols]]
 - [[_COMMUNITY_Community 32|Community 32]]
 - [[_COMMUNITY_Community 33|Community 33]]
 - [[_COMMUNITY_Community 34|Community 34]]
 - [[_COMMUNITY_Community 35|Community 35]]
 - [[_COMMUNITY_Community 36|Community 36]]
-- [[_COMMUNITY_Community 37|Community 37]]
-- [[_COMMUNITY_Community 38|Community 38]]
-- [[_COMMUNITY_Community 39|Community 39]]
-- [[_COMMUNITY_Community 40|Community 40]]
-- [[_COMMUNITY_Community 41|Community 41]]
-- [[_COMMUNITY_Community 42|Community 42]]
-- [[_COMMUNITY_Community 43|Community 43]]
-- [[_COMMUNITY_Community 44|Community 44]]
-- [[_COMMUNITY_Community 45|Community 45]]
-- [[_COMMUNITY_Community 46|Community 46]]
-- [[_COMMUNITY_Community 47|Community 47]]
-- [[_COMMUNITY_Community 48|Community 48]]
-- [[_COMMUNITY_Community 49|Community 49]]
-- [[_COMMUNITY_Community 50|Community 50]]
-- [[_COMMUNITY_Community 51|Community 51]]
-- [[_COMMUNITY_Community 52|Community 52]]
-- [[_COMMUNITY_Community 53|Community 53]]
-- [[_COMMUNITY_Community 54|Community 54]]
-- [[_COMMUNITY_Community 55|Community 55]]
-- [[_COMMUNITY_Community 56|Community 56]]
-- [[_COMMUNITY_Community 57|Community 57]]
-- [[_COMMUNITY_Community 58|Community 58]]
-- [[_COMMUNITY_Community 59|Community 59]]
-- [[_COMMUNITY_Community 60|Community 60]]
-- [[_COMMUNITY_Community 61|Community 61]]
-- [[_COMMUNITY_Community 62|Community 62]]
-- [[_COMMUNITY_Community 63|Community 63]]
-- [[_COMMUNITY_Community 64|Community 64]]
-- [[_COMMUNITY_Community 65|Community 65]]
-- [[_COMMUNITY_Community 66|Community 66]]
-- [[_COMMUNITY_Community 67|Community 67]]
-- [[_COMMUNITY_Community 68|Community 68]]
-- [[_COMMUNITY_Community 69|Community 69]]
-- [[_COMMUNITY_Community 70|Community 70]]
-- [[_COMMUNITY_Community 71|Community 71]]
-- [[_COMMUNITY_Community 72|Community 72]]
-- [[_COMMUNITY_Community 73|Community 73]]
-- [[_COMMUNITY_Community 74|Community 74]]
-- [[_COMMUNITY_Community 75|Community 75]]
-- [[_COMMUNITY_Community 76|Community 76]]
-- [[_COMMUNITY_Community 77|Community 77]]
-- [[_COMMUNITY_Community 78|Community 78]]
-- [[_COMMUNITY_Community 79|Community 79]]
-- [[_COMMUNITY_Community 80|Community 80]]
-- [[_COMMUNITY_Community 81|Community 81]]
-- [[_COMMUNITY_Community 82|Community 82]]
-- [[_COMMUNITY_Community 83|Community 83]]
-- [[_COMMUNITY_Community 84|Community 84]]
-- [[_COMMUNITY_Community 85|Community 85]]
-- [[_COMMUNITY_Community 86|Community 86]]
-- [[_COMMUNITY_Community 87|Community 87]]
-- [[_COMMUNITY_Community 88|Community 88]]
-- [[_COMMUNITY_Community 89|Community 89]]
-- [[_COMMUNITY_Community 90|Community 90]]
-- [[_COMMUNITY_Community 91|Community 91]]
-- [[_COMMUNITY_Community 92|Community 92]]
-- [[_COMMUNITY_Community 93|Community 93]]
-- [[_COMMUNITY_Community 94|Community 94]]
-- [[_COMMUNITY_Community 95|Community 95]]
-- [[_COMMUNITY_Community 96|Community 96]]
-- [[_COMMUNITY_Community 97|Community 97]]
-- [[_COMMUNITY_Community 98|Community 98]]
-- [[_COMMUNITY_Community 99|Community 99]]
-- [[_COMMUNITY_Community 100|Community 100]]
-- [[_COMMUNITY_Community 101|Community 101]]
-- [[_COMMUNITY_Community 102|Community 102]]
-- [[_COMMUNITY_Community 103|Community 103]]
-- [[_COMMUNITY_Community 104|Community 104]]
-- [[_COMMUNITY_Community 105|Community 105]]
-- [[_COMMUNITY_Community 106|Community 106]]
-- [[_COMMUNITY_Community 107|Community 107]]
-- [[_COMMUNITY_Community 108|Community 108]]
-- [[_COMMUNITY_Community 109|Community 109]]
-- [[_COMMUNITY_Community 110|Community 110]]
-- [[_COMMUNITY_Community 111|Community 111]]
-- [[_COMMUNITY_Community 112|Community 112]]
-- [[_COMMUNITY_Community 113|Community 113]]
-- [[_COMMUNITY_Community 114|Community 114]]
-- [[_COMMUNITY_Community 115|Community 115]]
-- [[_COMMUNITY_Community 116|Community 116]]
-- [[_COMMUNITY_Community 117|Community 117]]
-- [[_COMMUNITY_Community 118|Community 118]]
-- [[_COMMUNITY_Community 119|Community 119]]
-- [[_COMMUNITY_Community 120|Community 120]]
-- [[_COMMUNITY_Community 121|Community 121]]
-- [[_COMMUNITY_Community 122|Community 122]]
-- [[_COMMUNITY_Community 123|Community 123]]
-- [[_COMMUNITY_Community 124|Community 124]]
-- [[_COMMUNITY_Community 125|Community 125]]
-- [[_COMMUNITY_Community 126|Community 126]]
-- [[_COMMUNITY_Community 127|Community 127]]
-- [[_COMMUNITY_Community 128|Community 128]]
-- [[_COMMUNITY_Community 129|Community 129]]
-- [[_COMMUNITY_Community 130|Community 130]]
-- [[_COMMUNITY_Community 131|Community 131]]
-- [[_COMMUNITY_Community 132|Community 132]]
-- [[_COMMUNITY_Community 133|Community 133]]
-- [[_COMMUNITY_Community 134|Community 134]]
-- [[_COMMUNITY_Community 135|Community 135]]
-- [[_COMMUNITY_Community 136|Community 136]]
-- [[_COMMUNITY_Community 137|Community 137]]
-- [[_COMMUNITY_Community 138|Community 138]]
-- [[_COMMUNITY_Community 139|Community 139]]
-- [[_COMMUNITY_Community 140|Community 140]]
-- [[_COMMUNITY_Community 141|Community 141]]
-- [[_COMMUNITY_Community 142|Community 142]]
-- [[_COMMUNITY_Community 143|Community 143]]
+- [[_COMMUNITY_MarketOrderRequest|MarketOrderRequest]]
+- [[_COMMUNITY_OrderEvent|OrderEvent]]
+- [[_COMMUNITY_OrderHandle|OrderHandle]]
+- [[_COMMUNITY_OrderEventType|OrderEventType]]
+- [[_COMMUNITY_RuntimeTick|RuntimeTick]]
+- [[_COMMUNITY_OrderRequest|OrderRequest]]
+- [[_COMMUNITY_TradeOpenRequestPayload|TradeOpenRequestPayload]]
+- [[_COMMUNITY_BackfillRequestPayload|BackfillRequestPayload]]
+- [[_COMMUNITY_ActiveTradePayload|ActiveTradePayload]]
+- [[_COMMUNITY_PredictRequestPayload|PredictRequestPayload]]
+- [[_COMMUNITY_AccountSnapshotRequestPayload|AccountSnapshotRequestPayload]]
+- [[_COMMUNITY_PredictResponsePayload|PredictResponsePayload]]
+- [[_COMMUNITY_TradeTouchRequestPayload|TradeTouchRequestPayload]]
+- [[_COMMUNITY_TickIngestResponsePayload|TickIngestResponsePayload]]
+- [[_COMMUNITY_TickBatchResponsePayload|TickBatchResponsePayload]]
+- [[_COMMUNITY_ApiAckResponse|ApiAckResponse]]
+- [[_COMMUNITY_FeedStatusSymbolPayload|FeedStatusSymbolPayload]]
+- [[_COMMUNITY_TickBatchRequestPayload|TickBatchRequestPayload]]
+- [[_COMMUNITY_IncomingTickPayload|IncomingTickPayload]]
+- [[_COMMUNITY_FeedStatusResponsePayload|FeedStatusResponsePayload]]
+- [[_COMMUNITY_TradeUpdateRequestPayload|TradeUpdateRequestPayload]]
+- [[_COMMUNITY_SymbolReadinessState|SymbolReadinessState]]
+- [[_COMMUNITY_LiveReadinessSnapshot|LiveReadinessSnapshot]]
+- [[_COMMUNITY_PredictionDecision|PredictionDecision]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `ModelFeatures` - 546 edges
-2. `IncomingTickBar` - 521 edges
-3. `StateManager` - 496 edges
-4. `IncomingTick` - 409 edges
-5. `OcoPrediction` - 406 edges
-6. `FeatureConfig` - 355 edges
-7. `BarrierManager` - 313 edges
-8. `TickAggregator` - 307 edges
-9. `BarrierAction` - 293 edges
-10. `PredictResponse` - 290 edges
+1. `ModelFeatures` - 145 edges
+2. `IncomingTick` - 137 edges
+3. `IncomingTickBar` - 137 edges
+4. `StateManager` - 132 edges
+5. `FeatureConfig` - 130 edges
+6. `BarrierManager` - 82 edges
+7. `HistoricalCandidateRegistry` - 78 edges
+8. `TickAggregator` - 78 edges
+9. `CandidateRegistry` - 74 edges
+10. `OcoPrediction` - 72 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `TDD tests for the candidate registry.` --uses--> `CandidateRegistry`  [INFERRED]
-  /Users/danielfisher/repositories/behemoth/.worktrees/fix-usdjpy-bridge-retry/tests/test_registry.py → /Users/danielfisher/repositories/behemoth/.worktrees/fix-warmup-historical-replay/src/behemoth/core/registry.py
-- `Write a self-consistent lock file + fake model artifacts for one symbol.` --uses--> `CandidateRegistry`  [INFERRED]
-  /Users/danielfisher/repositories/behemoth/.worktrees/fix-usdjpy-bridge-retry/tests/test_registry.py → /Users/danielfisher/repositories/behemoth/.worktrees/fix-warmup-historical-replay/src/behemoth/core/registry.py
-- `Self-consistent registry with EURUSD and GBPUSD, no real artifacts needed.` --uses--> `CandidateRegistry`  [INFERRED]
-  /Users/danielfisher/repositories/behemoth/.worktrees/fix-usdjpy-bridge-retry/tests/test_registry.py → /Users/danielfisher/repositories/behemoth/.worktrees/fix-warmup-historical-replay/src/behemoth/core/registry.py
-- `test_verify_cert_requires_matching_month_status()` --calls--> `_verify_cert()`  [INFERRED]
-  /Users/danielfisher/repositories/behemoth/.worktrees/fix-warmup-historical-replay/tests/test_run_promote_live.py → /Users/danielfisher/repositories/behemoth/.worktrees/fix-warmup-historical-replay/scripts/run_promote_live.py
-- `test_promote_live_requires_process_status_pass()` --calls--> `_load_go_symbols()`  [INFERRED]
-  /Users/danielfisher/repositories/behemoth/.worktrees/fix-warmup-historical-replay/tests/test_run_promote_live.py → /Users/danielfisher/repositories/behemoth/.worktrees/fix-warmup-historical-replay/scripts/run_promote_live.py
+- `Canonical feature builder for the OCO CatBoost model.  This is the SINGLE SOURCE` --uses--> `ModelFeatures`  [INFERRED]
+  src/behemoth/core/features.py → src/behemoth/core/schemas.py
+- `Hardcoded physical constants and thresholds for feature computation.` --uses--> `ModelFeatures`  [INFERRED]
+  src/behemoth/core/features.py → src/behemoth/core/schemas.py
+- `Return the pip unit for a given FX symbol.` --uses--> `ModelFeatures`  [INFERRED]
+  src/behemoth/core/features.py → src/behemoth/core/schemas.py
+- `Compute the 16-feature vector from a DataFrame of tick bars.      Returns the fe` --uses--> `ModelFeatures`  [INFERRED]
+  src/behemoth/core/features.py → src/behemoth/core/schemas.py
+- `Compute the 16-feature matrix for all bars in the DataFrame.      Returns a Data` --uses--> `ModelFeatures`  [INFERRED]
+  src/behemoth/core/features.py → src/behemoth/core/schemas.py
 
 ## Communities
 
-### Community 0 - "Community 0"
-Cohesion: 0.03
-Nodes (544): AccountRiskProfile, BarrierManager, Manages pending barrier scans and active positions.      State lifecycle: SCANNI, BaseModel, FeatureConfig, Immutable configuration governing rolling window sizes.      Matches the default, Number of bars needed for full-precision feature computation., HistoricalCandidateRegistry (+536 more)
-
-### Community 1 - "Community 1"
-Cohesion: 0.01
-Nodes (427): _cap_sweep(), _first_cross_overshoot_month(), main(), _oco_touch_arrays(), _parse_barrier_from_state(), _parse_candidate_uid(), _pip_size(), _rebuild_touch_events() (+419 more)
-
-### Community 2 - "Community 2"
-Cohesion: 0.01
-Nodes (65): isCloseMarket(), isOpenMarket(), BehemothJForexStrategy, BehemothStrategyCore, SymbolRuntimeState, BehemothStrategyCoreTest, NoopExecutionPort, RecordingExecutionPort (+57 more)
-
-### Community 3 - "Community 3"
-Cohesion: 0.04
-Nodes (206): _(), a(), aa(), Ae(), ai(), an(), Ao(), ar() (+198 more)
-
-### Community 4 - "Community 4"
-Cohesion: 0.02
-Nodes (116): AccountRiskAllocator, AccountRiskBuffers, AccountRiskCostGate, evaluate_account_risk_limits(), evaluate_trade_guard(), evaluate_trade_risk_guard(), load_account_risk_profile(), _normalize_trade_cost_gate_mode() (+108 more)
-
-### Community 5 - "Community 5"
-Cohesion: 0.03
-Nodes (168): Enum, inject_data(), Live Data Injector for Behemoth Observability Verification.  Pumps real HTTP req, JForexConnectionTest, isConnected(), LiveClient, Sleeper, BrokerSnapshot (+160 more)
-
-### Community 6 - "Community 6"
-Cohesion: 0.02
-Nodes (137): build_all_1m_chunked(), main(), _canonical_candidate_uid(), _default_paths(), _empty_state_universe(), _filter_months(), _freeze_month_predictions(), _git_cmd() (+129 more)
-
-### Community 7 - "Community 7"
-Cohesion: 0.03
-Nodes (147): AuditRow, _load_history_months(), _load_registry_symbols(), main(), _parse_months(), _parse_symbols(), run(), _build_manifest() (+139 more)
-
-### Community 8 - "Community 8"
-Cohesion: 0.03
-Nodes (135): _daily_threshold_triplet(), _default_paths(), _dt_utc(), _governance_window_coverage(), main(), _parse_float(), _parse_ints(), _parse_symbols() (+127 more)
-
-### Community 9 - "Community 9"
-Cohesion: 0.03
-Nodes (127): _add_check(), _latest(), main(), _parse_symbols(), _pip_size(), _resolve_source_path(), _robust_extreme_rate(), run() (+119 more)
-
-### Community 10 - "Community 10"
-Cohesion: 0.03
-Nodes (90): HistoricalLockEntry, load(), Historical governance lock registry for month-aligned backtest inference.  Loads, Month-aware candidate/model registry for historical replay., HistoricalWarmupLoader, ParquetTickLoaderPhaseAlignmentTest, ParquetTickLoaderTimezoneTest, CandidateSpec (+82 more)
-
-### Community 11 - "Community 11"
-Cohesion: 0.03
-Nodes (68): _apply_reduced_core_schedule_filter(), _bootstrap_lb95(), _build_state_key_from_candidate_uid(), main(), _max_survivable_cost_lb95_trade(), _normal_pvalue_mean_gt0(), _p_adjust_bonferroni(), _p_adjust_fdr_bh() (+60 more)
-
-### Community 12 - "Community 12"
-Cohesion: 0.03
-Nodes (99): audit_symbol(), _default_configs(), _dt_utc(), _load_artifacts(), main(), _month_to_int(), _parse_symbols(), run_audit() (+91 more)
-
-### Community 13 - "Community 13"
-Cohesion: 0.05
-Nodes (67): _build_bars_from_ticks(), _build_report(), _build_report_with_skips(), _candidate_regime_name(), _latest_tick_files(), _load_model(), _load_states(), _load_thresholds() (+59 more)
-
-### Community 14 - "Community 14"
-Cohesion: 0.06
-Nodes (57): canonical_runtime_events_path(), compare_outcomes(), _in_eval_window(), load_historical_lock_status(), load_runtime_events(), load_runtime_events_frame(), load_state_universe_uids(), main() (+49 more)
-
-### Community 15 - "Community 15"
-Cohesion: 0.08
-Nodes (47): find_first_market_gap(), _friday_close_for_week(), get_fetchable_end(), get_missing_months(), get_parquet_info(), get_session_bounds_utc(), _handle_existing_lock(), is_expected_weekend_gap() (+39 more)
-
-### Community 16 - "Community 16"
-Cohesion: 0.1
-Nodes (12): Check if candidate has an active (SCANNING or HOLDING) scan., Retrieve a scan record by ID. Used for testing and diagnostics., Evaluate a completed bar against all active scans for this symbol.          Call, Move a scan from SCANNING to HOLDING., Record the broker position ID after a fill is confirmed., Register a new barrier scan. Called when selected_exec=1 passes all gates., _oco_precompute_reference(), TestAskBarrierTrigger (+4 more)
-
-### Community 17 - "Community 17"
+### Community 0 - "Risk and Barrier Management"
 Cohesion: 0.09
-Nodes (42): _as_bool(), DukascopyTestClientArtifactOutputs, generate_dukascopy_testclient_artifacts(), _normalise_symbol(), _now_utc(), _pick_value(), _as_mapping(), _bool_from_summary() (+34 more)
+Nodes (161): AccountRiskProfile, BarrierManager, Manages pending barrier scans and active positions.      State lifecycle: SCANNI, BaseModel, FeatureConfig, Immutable configuration governing rolling window sizes.      Matches the default, Number of bars needed for full-precision feature computation., HistoricalCandidateRegistry (+153 more)
 
-### Community 18 - "Community 18"
-Cohesion: 0.17
-Nodes (33): test_build_stage13_artifacts_emits_nogo_for_non_deployable_symbols(), test_build_stage13_artifacts_ignores_local_surrogate_summaries(), test_build_stage13_artifacts_keeps_primary_summary_contract_minimal(), test_build_stage13_artifacts_limits_outputs_to_requested_symbols(), test_build_stage13_artifacts_prefers_explicit_replay_over_fallback_summaries(), test_build_stage13_artifacts_rejects_header_only_runtime_events_artifact(), test_build_stage13_artifacts_rejects_summary_rows_without_target_bundle_provenance(), test_build_stage13_artifacts_reports_missing_inputs_with_expected_source_paths() (+25 more)
+### Community 1 - "Scan Reservation and Holding"
+Cohesion: 0.03
+Nodes (116): Expire active scans that predate the side-aware signal close columns.          L, Check if candidate has an active (SCANNING or HOLDING) scan., Record the broker position ID after a fill is confirmed., Find HOLDING scans for a candidate (to link broker_pos_id)., Return the active (SCANNING/HOLDING) scan for a reservation, or None if not foun, _check(), failed_checks(), HistoricalGovernanceCheck (+108 more)
 
-### Community 19 - "Community 19"
-Cohesion: 0.12
-Nodes (33): _aggregate_overall(), analyze_symbol_month(), _bar_summary(), _build_tick_bars(), _covered_days(), _dt_utc(), _duplicate_ratio(), _headline_lines() (+25 more)
+### Community 2 - "JForex Strategy Bridge"
+Cohesion: 0.03
+Nodes (20): BehemothJForexStrategy, BrokerBridgeLoader, BrokerBridgeLoaderTest, FakeBrokerHistoryPort, MutableClock, JForexBrokerHistoryPort, BridgeRuntime, BridgeRuntimeFactory (+12 more)
 
-### Community 20 - "Community 20"
-Cohesion: 0.13
-Nodes (27): audit_symbol(), _bootstrap_lb95(), _default_configs(), _dt_utc(), _load_detail(), _load_selected_predictions(), main(), _parse_symbols() (+19 more)
+### Community 3 - "Strategy Core and Metrics"
+Cohesion: 0.03
+Nodes (18): isCloseMarket(), isOpenMarket(), BehemothStrategyCore, closePositionByScanId(), entriesAllowed(), submitMarketOrder(), SymbolRuntimeState, JForexMetrics (+10 more)
 
-### Community 21 - "Community 21"
-Cohesion: 0.28
-Nodes (30): _(), a(), b(), c(), d(), E(), er(), f() (+22 more)
+### Community 4 - "Local Test Runner"
+Cohesion: 0.05
+Nodes (19): BehemothStrategyCoreTest, JForexConnectionTest, fromEnvironment(), requiredSetting(), setting(), LocalExecutionPort, SimulatedOrder, LocalExecutionPortTest (+11 more)
 
-### Community 22 - "Community 22"
+### Community 5 - "Barrier Scan Registration"
+Cohesion: 0.05
+Nodes (61): Register a new barrier scan. Called when selected_exec=1 passes all gates., Enum, _as_posix(), build_stage_graph(), _graphify_links(), _graphify_nodes_by_id(), GraphScopeError, _is_allowed() (+53 more)
+
+### Community 6 - "Seed Checks and Gates"
+Cohesion: 0.05
+Nodes (39): check(), Seed check: entry_blocked_not_ready events must correlate with non-READY readine, check(), Seed check: every symbol with bar events must have at least one predict cycle., check(), Seed check: client_tick_seq is strictly monotonic per symbol within a session., check(), Seed check: every predict failure is either warmup-skip or classified critically (+31 more)
+
+### Community 7 - "Broker Snapshot Runner"
+Cohesion: 0.06
+Nodes (13): isConnected(), JForexBrokerSnapshotRunner, startStrategy(), connect(), isConnected(), JForexLiveRunner, LiveClient, Sleeper (+5 more)
+
+### Community 8 - "Execution State Store"
+Cohesion: 0.1
+Nodes (10): ExecutionStateStore, OcoGroupState, OcoLegState, _build_bar(), _compute_microstructure(), _compute_price_stats(), Real-time tick-to-bar aggregator.  Converts raw ``IncomingTick`` objects into ``, Compute the microstructural sequence makers for a bar. (+2 more)
+
+### Community 9 - "Feature Computation"
+Cohesion: 0.11
+Nodes (20): _build_model_features(), _compute_cost_features(), compute_feature_matrix_from_bars(), compute_features_from_bars(), _compute_micro_features(), compute_regime_quantiles_from_bars(), _compute_structural_features(), _compute_velocity_features() (+12 more)
+
+### Community 10 - "Python Prediction Client"
+Cohesion: 0.14
+Nodes (2): PythonPredictionClient, PythonPredictionClientTest
+
+### Community 11 - "Historical Warmup Loader"
 Cohesion: 0.15
-Nodes (25): _bundle_models_dir(), _derive_params(), _is_expected_critical_nogo(), main(), _print_summary(), Print per-symbol summary. Returns True if all critical checks pass., Return (model_month, start_ts, end_ts, eval_start, eval_end)., Return {symbol: [failing critical check rows]}. (+17 more)
+Nodes (4): HistoricalWarmupLoader, HistoricalWarmupLoaderTest, ParquetTickLoaderPhaseAlignmentTest, ParquetTickLoaderTimezoneTest
 
-### Community 23 - "Community 23"
-Cohesion: 0.17
-Nodes (23): _check(), failed_checks(), HistoricalGovernanceCheck, Validation helpers for month-scoped historical governance locks., _sha256(), _sha256_cached(), summarize_failures(), validate_historical_governance() (+15 more)
+### Community 12 - "Account Risk Allocator"
+Cohesion: 0.18
+Nodes (12): AccountRiskAllocator, AccountRiskBuffers, AccountRiskCostGate, evaluate_account_risk_limits(), evaluate_trade_guard(), evaluate_trade_risk_guard(), load_account_risk_profile(), _normalize_trade_cost_gate_mode() (+4 more)
 
-### Community 24 - "Community 24"
-Cohesion: 0.24
-Nodes (14): _build_canonical_map(), ClassifiedDoc, _classify_doc(), _doc_link(), _human_title(), _infer_stage(), _infer_symbol(), main() (+6 more)
+### Community 13 - "Execution Ports"
+Cohesion: 0.18
+Nodes (2): NoopExecutionPort, RecordingExecutionPort
 
-### Community 25 - "Community 25"
-Cohesion: 0.23
-Nodes (14): _(), a(), c(), d(), f(), i(), l(), m() (+6 more)
+### Community 14 - "Broker Snapshot Strategy"
+Cohesion: 0.22
+Nodes (1): BrokerSnapshotStrategy
 
-### Community 26 - "Community 26"
-Cohesion: 0.21
-Nodes (13): _(), a(), c(), e(), f(), i(), k(), l() (+5 more)
+### Community 15 - "ParquetTickLoader"
+Cohesion: 0.38
+Nodes (1): ParquetTickLoader
 
-### Community 27 - "Community 27"
-Cohesion: 0.21
-Nodes (13): a(), b(), c(), d(), e(), h(), i(), l() (+5 more)
-
-### Community 28 - "Community 28"
-Cohesion: 0.19
-Nodes (14): a(), c(), d(), e(), f(), l(), m(), n() (+6 more)
-
-### Community 29 - "Community 29"
-Cohesion: 0.28
-Nodes (13): a(), b(), c(), f(), i(), k(), l(), m() (+5 more)
-
-### Community 30 - "Community 30"
-Cohesion: 0.21
-Nodes (7): _(), i(), l(), n(), s(), t(), u()
-
-### Community 31 - "Community 31"
-Cohesion: 0.15
-Nodes (2): FakeClient, NoOpStrategy
-
-### Community 32 - "Community 32"
-Cohesion: 0.33
-Nodes (11): _build_snapshot_tables(), _ensure_page_shell(), _fmt(), _generated_block(), _inject_block(), _latest_by_symbol(), main(), _read_csv() (+3 more)
-
-### Community 33 - "Community 33"
-Cohesion: 0.33
-Nodes (10): a(), c(), f(), l(), m(), n(), o(), r() (+2 more)
-
-### Community 34 - "Community 34"
-Cohesion: 0.33
-Nodes (10): a(), c(), d(), e(), l(), m(), n(), o() (+2 more)
-
-### Community 35 - "Community 35"
-Cohesion: 0.33
-Nodes (7): a(), c(), e(), i(), s(), t(), u()
-
-### Community 36 - "Community 36"
-Cohesion: 0.25
-Nodes (1): TestTradeEndpoints
-
-### Community 37 - "Community 37"
+### Community 16 - "JForexExecutionPort"
 Cohesion: 0.39
-Nodes (1): TestPredictWarmup
+Nodes (1): JForexExecutionPort
 
-### Community 38 - "Community 38"
-Cohesion: 0.29
-Nodes (1): TestAccountRiskEndpoints
-
-### Community 39 - "Community 39"
-Cohesion: 0.29
-Nodes (6): When day_str <= model_valid_through, the threshold should not block., When model_valid_through is empty, no expiry check applies., When day_str > model_valid_through, the threshold should block., test_model_valid_through_allows_valid_day(), test_model_valid_through_blocks_expired_models(), test_model_valid_through_empty_does_not_block()
-
-### Community 40 - "Community 40"
-Cohesion: 0.52
-Nodes (6): _copy_if_exists(), _dt_utc(), main(), _read_csv_safe(), run(), _table()
-
-### Community 41 - "Community 41"
+### Community 17 - "LiveReadinessMetrics"
 Cohesion: 0.29
 Nodes (1): LiveReadinessMetrics
 
-### Community 42 - "Community 42"
-Cohesion: 0.4
-Nodes (2): s(), t()
-
-### Community 43 - "Community 43"
+### Community 18 - "ExecutionPort"
 Cohesion: 0.33
 Nodes (1): ExecutionPort
 
-### Community 44 - "Community 44"
-Cohesion: 0.4
-Nodes (3): test_predict_blocks_on_expired_schedule_in_live_mode(), test_predict_blocks_on_rolling_threshold_gap_in_live_mode(), test_predict_blocks_without_rolling_config_in_research_mode()
-
-### Community 45 - "Community 45"
-Cohesion: 0.7
-Nodes (4): e(), n(), r(), t()
-
-### Community 46 - "Community 46"
-Cohesion: 0.4
+### Community 19 - "Community 19"
+Cohesion: 0.6
 Nodes (0): 
 
-### Community 47 - "Community 47"
-Cohesion: 0.4
-Nodes (0): 
-
-### Community 48 - "Community 48"
+### Community 20 - "BrokerOrderSnapshotWriter"
 Cohesion: 0.5
 Nodes (1): BrokerOrderSnapshotWriter
 
-### Community 49 - "Community 49"
-Cohesion: 0.83
-Nodes (3): generate_configs(), main(), _rewrite_content()
+### Community 21 - "Evaluate Call"
+Cohesion: 0.5
+Nodes (2): Evaluate a completed bar against all active scans for this symbol.          Call, Move a scan from SCANNING to HOLDING.
 
-### Community 50 - "Community 50"
+### Community 22 - "Lightweight Behemoth"
 Cohesion: 0.5
 Nodes (3): dashboard(), Lightweight monitoring dashboard for the Behemoth OCO strategy.  Served as a Fas, Serve the single-page monitoring dashboard.
 
-### Community 51 - "Community 51"
+### Community 23 - "BrokerHistoryPort"
 Cohesion: 0.5
 Nodes (1): BrokerHistoryPort
 
-### Community 52 - "Community 52"
-Cohesion: 0.67
-Nodes (0): 
-
-### Community 53 - "Community 53"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 54 - "Community 54"
+### Community 24 - "Bar-level Produces"
 Cohesion: 1.0
 Nodes (1): Bar-level barrier manager for completed-bar OCO touch confirmation.  Produces id
 
-### Community 55 - "Community 55"
+### Community 25 - "Retrieve Used"
+Cohesion: 1.0
+Nodes (1): Retrieve a scan record by ID. Used for testing and diagnostics.
+
+### Community 26 - "RuntimeInstrument"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 56 - "Community 56"
+### Community 27 - "SymbolReadinessSnapshot"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 57 - "Community 57"
+### Community 28 - "Community 28"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 58 - "Community 58"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 59 - "Community 59"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 60 - "Community 60"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 61 - "Community 61"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 62 - "Community 62"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 63 - "Community 63"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 64 - "Community 64"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 65 - "Community 65"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 66 - "Community 66"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 67 - "Community 67"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 68 - "Community 68"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 69 - "Community 69"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 70 - "Community 70"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 71 - "Community 71"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 72 - "Community 72"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 73 - "Community 73"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 74 - "Community 74"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 75 - "Community 75"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 76 - "Community 76"
+### Community 29 - "Build JSON"
 Cohesion: 1.0
 Nodes (1): Build from a state_universe row in the live lock JSON.
 
-### Community 77 - "Community 77"
+### Community 30 - "Load"
 Cohesion: 1.0
 Nodes (1): Load exactly from per-symbol *_oco_live_lock.json files.
 
-### Community 78 - "Community 78"
+### Community 31 - "Symbols"
 Cohesion: 1.0
 Nodes (1): Symbols that have at least one registered candidate.
 
-### Community 79 - "Community 79"
+### Community 32 - "Community 32"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 80 - "Community 80"
+### Community 33 - "Community 33"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 81 - "Community 81"
+### Community 34 - "Community 34"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 82 - "Community 82"
+### Community 35 - "Community 35"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 83 - "Community 83"
+### Community 36 - "Community 36"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 84 - "Community 84"
+### Community 37 - "MarketOrderRequest"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 85 - "Community 85"
+### Community 38 - "OrderEvent"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 86 - "Community 86"
+### Community 39 - "OrderHandle"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 87 - "Community 87"
+### Community 40 - "OrderEventType"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 88 - "Community 88"
+### Community 41 - "RuntimeTick"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 89 - "Community 89"
+### Community 42 - "OrderRequest"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 90 - "Community 90"
+### Community 43 - "TradeOpenRequestPayload"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 91 - "Community 91"
+### Community 44 - "BackfillRequestPayload"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 92 - "Community 92"
+### Community 45 - "ActiveTradePayload"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 93 - "Community 93"
+### Community 46 - "PredictRequestPayload"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 94 - "Community 94"
+### Community 47 - "AccountSnapshotRequestPayload"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 95 - "Community 95"
+### Community 48 - "PredictResponsePayload"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 96 - "Community 96"
+### Community 49 - "TradeTouchRequestPayload"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 97 - "Community 97"
+### Community 50 - "TickIngestResponsePayload"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 98 - "Community 98"
+### Community 51 - "TickBatchResponsePayload"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 99 - "Community 99"
+### Community 52 - "ApiAckResponse"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 100 - "Community 100"
+### Community 53 - "FeedStatusSymbolPayload"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 101 - "Community 101"
+### Community 54 - "TickBatchRequestPayload"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 102 - "Community 102"
+### Community 55 - "IncomingTickPayload"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 103 - "Community 103"
+### Community 56 - "FeedStatusResponsePayload"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 104 - "Community 104"
+### Community 57 - "TradeUpdateRequestPayload"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 105 - "Community 105"
+### Community 58 - "SymbolReadinessState"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 106 - "Community 106"
+### Community 59 - "LiveReadinessSnapshot"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 107 - "Community 107"
+### Community 60 - "PredictionDecision"
 Cohesion: 1.0
 Nodes (0): 
-
-### Community 108 - "Community 108"
-Cohesion: 1.0
-Nodes (1): Win rate, expected win rate, and z-score per symbol.
-
-### Community 109 - "Community 109"
-Cohesion: 1.0
-Nodes (1): Check whether today's predictions used a rolling threshold or static fallback.
-
-### Community 110 - "Community 110"
-Cohesion: 1.0
-Nodes (1): Report live pnl_pips distribution per symbol.      OCO uses from_touch hold mode
-
-### Community 111 - "Community 111"
-Cohesion: 1.0
-Nodes (1): Check which candidate_uids are actually firing in live.      All live trades sho
-
-### Community 112 - "Community 112"
-Cohesion: 1.0
-Nodes (1): Run all diagnostic checks and return structured report dict.
-
-### Community 113 - "Community 113"
-Cohesion: 1.0
-Nodes (1): Remove stale month lock/state files for a symbol no longer in available month se
-
-### Community 114 - "Community 114"
-Cohesion: 1.0
-Nodes (1): Parse YYYY-MM suffix from a model filename for robust date-order sorting.
-
-### Community 115 - "Community 115"
-Cohesion: 1.0
-Nodes (1): Return latest exported model binary and paired threshold JSON for symbol.
-
-### Community 116 - "Community 116"
-Cohesion: 1.0
-Nodes (1): Pick cap that maximizes mean_per_signal_full_overshoot within hard_limit.
-
-### Community 117 - "Community 117"
-Cohesion: 1.0
-Nodes (1): Symbols that have at least one registered candidate.
-
-### Community 118 - "Community 118"
-Cohesion: 1.0
-Nodes (1): Return all valid candidate specs for a symbol.
-
-### Community 119 - "Community 119"
-Cohesion: 1.0
-Nodes (1): Return the locked production cap for a symbol.
-
-### Community 120 - "Community 120"
-Cohesion: 1.0
-Nodes (1): Return frozen model artifact binding for a symbol.
-
-### Community 121 - "Community 121"
-Cohesion: 1.0
-Nodes (1): Return all candidates across all symbols.
-
-### Community 122 - "Community 122"
-Cohesion: 1.0
-Nodes (1): Resolve the model month from the promoted history directory.
-
-### Community 123 - "Community 123"
-Cohesion: 1.0
-Nodes (1): Call /state/seed_audit_history to populate audit_logs.      Phase 1: Load export
-
-### Community 124 - "Community 124"
-Cohesion: 1.0
-Nodes (1): Call /predict/warmup for each symbol to seed audit_logs.      Retries until all
-
-### Community 125 - "Community 125"
-Cohesion: 1.0
-Nodes (1): Append live_state.db into a single consolidated archive DB, then delete it.
-
-### Community 126 - "Community 126"
-Cohesion: 1.0
-Nodes (1): Serve the single-page monitoring dashboard.
-
-### Community 127 - "Community 127"
-Cohesion: 1.0
-Nodes (1): Stage 14 must include jforex_outcome_parity_pass as a check.
-
-### Community 128 - "Community 128"
-Cohesion: 1.0
-Nodes (1): Stage 14 must include local_jforex_surrogate_pass as a prerequisite check.
-
-### Community 129 - "Community 129"
-Cohesion: 1.0
-Nodes (1): Stage 14 is green only when all 7 checks pass.
-
-### Community 130 - "Community 130"
-Cohesion: 1.0
-Nodes (1): A Stage 14 input CSV with evaluated_at_utc older than max_artifact_age_days must
-
-### Community 131 - "Community 131"
-Cohesion: 1.0
-Nodes (1): Staleness check must not fire when all inputs are recent.
-
-### Community 132 - "Community 132"
-Cohesion: 1.0
-Nodes (1): Compare threshold_schedule values against rolling computation from seeded audit_
-
-### Community 133 - "Community 133"
-Cohesion: 1.0
-Nodes (1): Return (model_month, start_ts, end_ts, eval_start, eval_end).
-
-### Community 134 - "Community 134"
-Cohesion: 1.0
-Nodes (1): Return {symbol: [failing critical check rows]}.
-
-### Community 135 - "Community 135"
-Cohesion: 1.0
-Nodes (1): Print per-symbol summary. Returns True if all critical checks pass.
-
-### Community 136 - "Community 136"
-Cohesion: 1.0
-Nodes (1): Write one CSV per symbol for consumption by validate_local_jforex_surrogate.py.
-
-### Community 137 - "Community 137"
-Cohesion: 1.0
-Nodes (1): Raise SystemExit if cert CSV is missing, stale, or has critical failures.
-
-### Community 138 - "Community 138"
-Cohesion: 1.0
-Nodes (1): Copy model .cbm and .json files into models/oco_dukascopy_candidate/.      Reads
-
-### Community 139 - "Community 139"
-Cohesion: 1.0
-Nodes (1): Stage 14 must include jforex_outcome_parity_pass as a check.
-
-### Community 140 - "Community 140"
-Cohesion: 1.0
-Nodes (1): Stage 14 must include local_jforex_surrogate_pass as a prerequisite check.
-
-### Community 141 - "Community 141"
-Cohesion: 1.0
-Nodes (1): Stage 14 is green only when all 7 checks pass.
-
-### Community 142 - "Community 142"
-Cohesion: 1.0
-Nodes (1): Staleness check must not fire when all inputs are recent.
-
-### Community 143 - "Community 143"
-Cohesion: 1.0
-Nodes (1): Compare threshold_schedule values against rolling computation from seeded audit_
 
 ## Knowledge Gaps
-- **178 isolated node(s):** `Write lock files and index for multiple symbols.      If *break_symbol* is set,`, `When required_symbols is set, broken locks for other symbols are ignored.`, `A Stage 14 input CSV with evaluated_at_utc older than max_artifact_age_days must`, `Stage 14 must include local_jforex_surrogate_pass as a prerequisite check.`, `Stage 14 is green only when all 7 checks pass.` (+173 more)
+- **40 isolated node(s):** `Validation helpers for month-scoped historical governance locks.`, `A single prediction candidate to evaluate.`, `Build from a state_universe row in the live lock JSON.`, `Registry of valid candidate specifications loaded from live lock JSONs.`, `Load exactly from per-symbol *_oco_live_lock.json files.` (+35 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **Thin community `Community 53`** (2 nodes): `TinySegmenter()`, `tinyseg.js`
+- **Thin community `Bar-level Produces`** (2 nodes): `Bar-level barrier manager for completed-bar OCO touch confirmation.  Produces id`, `barrier_manager.py`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 54`** (2 nodes): `Bar-level barrier manager for completed-bar OCO touch confirmation.  Produces id`, `barrier_manager.py`
+- **Thin community `Retrieve Used`** (2 nodes): `.get_scan()`, `Retrieve a scan record by ID. Used for testing and diagnostics.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 55`** (1 nodes): `settings.gradle.kts`
+- **Thin community `RuntimeInstrument`** (2 nodes): `normalizeSymbol()`, `RuntimeInstrument.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 56`** (1 nodes): `conftest.py`
+- **Thin community `SymbolReadinessSnapshot`** (2 nodes): `SymbolReadinessSnapshot.java`, `normalizeSymbol()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 57`** (1 nodes): `check_cols_parquet.py`
+- **Thin community `Community 28`** (1 nodes): `__init__.py`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 58`** (1 nodes): `build_repro_manifest.py`
+- **Thin community `Build JSON`** (1 nodes): `Build from a state_universe row in the live lock JSON.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 59`** (1 nodes): `lunr.he.min.js`
+- **Thin community `Load`** (1 nodes): `Load exactly from per-symbol *_oco_live_lock.json files.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 60`** (1 nodes): `lunr.hi.min.js`
+- **Thin community `Symbols`** (1 nodes): `Symbols that have at least one registered candidate.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 61`** (1 nodes): `lunr.zh.min.js`
+- **Thin community `Community 32`** (1 nodes): `__init__.py`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 62`** (1 nodes): `lunr.ko.min.js`
+- **Thin community `Community 33`** (1 nodes): `__init__.py`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 63`** (1 nodes): `lunr.ja.min.js`
+- **Thin community `Community 34`** (1 nodes): `__init__.py`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 64`** (1 nodes): `lunr.te.min.js`
+- **Thin community `Community 35`** (1 nodes): `__init__.py`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 65`** (1 nodes): `lunr.stemmer.support.min.js`
+- **Thin community `Community 36`** (1 nodes): `build.gradle.kts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 66`** (1 nodes): `lunr.hy.min.js`
+- **Thin community `MarketOrderRequest`** (1 nodes): `MarketOrderRequest.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 67`** (1 nodes): `lunr.vi.min.js`
+- **Thin community `OrderEvent`** (1 nodes): `OrderEvent.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 68`** (1 nodes): `lunr.ta.min.js`
+- **Thin community `OrderHandle`** (1 nodes): `OrderHandle.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 69`** (1 nodes): `lunr.ar.min.js`
+- **Thin community `OrderEventType`** (1 nodes): `OrderEventType.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 70`** (1 nodes): `lunr.th.min.js`
+- **Thin community `RuntimeTick`** (1 nodes): `RuntimeTick.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 71`** (1 nodes): `lunr.kn.min.js`
+- **Thin community `OrderRequest`** (1 nodes): `OrderRequest.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 72`** (1 nodes): `lunr.sa.min.js`
+- **Thin community `TradeOpenRequestPayload`** (1 nodes): `TradeOpenRequestPayload.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 73`** (1 nodes): `lunr.multi.min.js`
+- **Thin community `BackfillRequestPayload`** (1 nodes): `BackfillRequestPayload.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 74`** (1 nodes): `lunr.jp.min.js`
+- **Thin community `ActiveTradePayload`** (1 nodes): `ActiveTradePayload.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 75`** (1 nodes): `__init__.py`
+- **Thin community `PredictRequestPayload`** (1 nodes): `PredictRequestPayload.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 76`** (1 nodes): `Build from a state_universe row in the live lock JSON.`
+- **Thin community `AccountSnapshotRequestPayload`** (1 nodes): `AccountSnapshotRequestPayload.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 77`** (1 nodes): `Load exactly from per-symbol *_oco_live_lock.json files.`
+- **Thin community `PredictResponsePayload`** (1 nodes): `PredictResponsePayload.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 78`** (1 nodes): `Symbols that have at least one registered candidate.`
+- **Thin community `TradeTouchRequestPayload`** (1 nodes): `TradeTouchRequestPayload.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 79`** (1 nodes): `__init__.py`
+- **Thin community `TickIngestResponsePayload`** (1 nodes): `TickIngestResponsePayload.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 80`** (1 nodes): `__init__.py`
+- **Thin community `TickBatchResponsePayload`** (1 nodes): `TickBatchResponsePayload.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 81`** (1 nodes): `__init__.py`
+- **Thin community `ApiAckResponse`** (1 nodes): `ApiAckResponse.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 82`** (1 nodes): `__init__.py`
+- **Thin community `FeedStatusSymbolPayload`** (1 nodes): `FeedStatusSymbolPayload.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 83`** (1 nodes): `build.gradle.kts`
+- **Thin community `TickBatchRequestPayload`** (1 nodes): `TickBatchRequestPayload.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 84`** (1 nodes): `MarketOrderRequest.java`
+- **Thin community `IncomingTickPayload`** (1 nodes): `IncomingTickPayload.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 85`** (1 nodes): `OrderEvent.java`
+- **Thin community `FeedStatusResponsePayload`** (1 nodes): `FeedStatusResponsePayload.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 86`** (1 nodes): `OrderHandle.java`
+- **Thin community `TradeUpdateRequestPayload`** (1 nodes): `TradeUpdateRequestPayload.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 87`** (1 nodes): `OrderEventType.java`
+- **Thin community `SymbolReadinessState`** (1 nodes): `SymbolReadinessState.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 88`** (1 nodes): `RuntimeTick.java`
+- **Thin community `LiveReadinessSnapshot`** (1 nodes): `LiveReadinessSnapshot.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 89`** (1 nodes): `OrderRequest.java`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 90`** (1 nodes): `TradeOpenRequestPayload.java`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 91`** (1 nodes): `BackfillRequestPayload.java`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 92`** (1 nodes): `ActiveTradePayload.java`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 93`** (1 nodes): `PredictRequestPayload.java`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 94`** (1 nodes): `AccountSnapshotRequestPayload.java`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 95`** (1 nodes): `PredictResponsePayload.java`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 96`** (1 nodes): `TradeTouchRequestPayload.java`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 97`** (1 nodes): `TickIngestResponsePayload.java`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 98`** (1 nodes): `TickBatchResponsePayload.java`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 99`** (1 nodes): `ApiAckResponse.java`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 100`** (1 nodes): `FeedStatusSymbolPayload.java`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 101`** (1 nodes): `TickBatchRequestPayload.java`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 102`** (1 nodes): `IncomingTickPayload.java`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 103`** (1 nodes): `FeedStatusResponsePayload.java`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 104`** (1 nodes): `TradeUpdateRequestPayload.java`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 105`** (1 nodes): `SymbolReadinessState.java`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 106`** (1 nodes): `LiveReadinessSnapshot.java`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 107`** (1 nodes): `PredictionDecision.java`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 108`** (1 nodes): `Win rate, expected win rate, and z-score per symbol.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 109`** (1 nodes): `Check whether today's predictions used a rolling threshold or static fallback.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 110`** (1 nodes): `Report live pnl_pips distribution per symbol.      OCO uses from_touch hold mode`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 111`** (1 nodes): `Check which candidate_uids are actually firing in live.      All live trades sho`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 112`** (1 nodes): `Run all diagnostic checks and return structured report dict.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 113`** (1 nodes): `Remove stale month lock/state files for a symbol no longer in available month se`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 114`** (1 nodes): `Parse YYYY-MM suffix from a model filename for robust date-order sorting.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 115`** (1 nodes): `Return latest exported model binary and paired threshold JSON for symbol.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 116`** (1 nodes): `Pick cap that maximizes mean_per_signal_full_overshoot within hard_limit.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 117`** (1 nodes): `Symbols that have at least one registered candidate.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 118`** (1 nodes): `Return all valid candidate specs for a symbol.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 119`** (1 nodes): `Return the locked production cap for a symbol.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 120`** (1 nodes): `Return frozen model artifact binding for a symbol.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 121`** (1 nodes): `Return all candidates across all symbols.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 122`** (1 nodes): `Resolve the model month from the promoted history directory.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 123`** (1 nodes): `Call /state/seed_audit_history to populate audit_logs.      Phase 1: Load export`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 124`** (1 nodes): `Call /predict/warmup for each symbol to seed audit_logs.      Retries until all`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 125`** (1 nodes): `Append live_state.db into a single consolidated archive DB, then delete it.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 126`** (1 nodes): `Serve the single-page monitoring dashboard.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 127`** (1 nodes): `Stage 14 must include jforex_outcome_parity_pass as a check.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 128`** (1 nodes): `Stage 14 must include local_jforex_surrogate_pass as a prerequisite check.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 129`** (1 nodes): `Stage 14 is green only when all 7 checks pass.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 130`** (1 nodes): `A Stage 14 input CSV with evaluated_at_utc older than max_artifact_age_days must`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 131`** (1 nodes): `Staleness check must not fire when all inputs are recent.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 132`** (1 nodes): `Compare threshold_schedule values against rolling computation from seeded audit_`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 133`** (1 nodes): `Return (model_month, start_ts, end_ts, eval_start, eval_end).`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 134`** (1 nodes): `Return {symbol: [failing critical check rows]}.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 135`** (1 nodes): `Print per-symbol summary. Returns True if all critical checks pass.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 136`** (1 nodes): `Write one CSV per symbol for consumption by validate_local_jforex_surrogate.py.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 137`** (1 nodes): `Raise SystemExit if cert CSV is missing, stale, or has critical failures.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 138`** (1 nodes): `Copy model .cbm and .json files into models/oco_dukascopy_candidate/.      Reads`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 139`** (1 nodes): `Stage 14 must include jforex_outcome_parity_pass as a check.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 140`** (1 nodes): `Stage 14 must include local_jforex_surrogate_pass as a prerequisite check.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 141`** (1 nodes): `Stage 14 is green only when all 7 checks pass.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 142`** (1 nodes): `Staleness check must not fire when all inputs are recent.`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 143`** (1 nodes): `Compare threshold_schedule values against rolling computation from seeded audit_`
+- **Thin community `PredictionDecision`** (1 nodes): `PredictionDecision.java`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `StateManager` connect `Community 0` to `Community 1`, `Community 3`, `Community 4`, `Community 5`, `Community 38`, `Community 36`, `Community 37`, `Community 10`?**
-  _High betweenness centrality (0.084) - this node is a cross-community bridge._
-- **Why does `next()` connect `Community 3` to `Community 1`, `Community 2`, `Community 4`, `Community 6`, `Community 8`, `Community 10`?**
-  _High betweenness centrality (0.074) - this node is a cross-community bridge._
-- **Why does `BarrierActionType` connect `Community 0` to `Community 16`, `Community 1`, `Community 4`, `Community 5`?**
-  _High betweenness centrality (0.063) - this node is a cross-community bridge._
-- **Are the 587 inferred relationships involving `str` (e.g. with `test_build_artifacts_treats_zero_lock_idle_windows_as_execution_pass()` and `test_build_artifacts_falls_back_to_outcome_locked_count_for_zero_lock_windows()`) actually correct?**
-  _`str` has 587 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 542 inferred relationships involving `ModelFeatures` (e.g. with `TestHealthEndpoint` and `TestModelBindingThresholdOverrides`) actually correct?**
-  _`ModelFeatures` has 542 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 518 inferred relationships involving `IncomingTickBar` (e.g. with `TestHealthEndpoint` and `TestModelBindingThresholdOverrides`) actually correct?**
-  _`IncomingTickBar` has 518 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 446 inferred relationships involving `StateManager` (e.g. with `TestHealthEndpoint` and `TestModelBindingThresholdOverrides`) actually correct?**
-  _`StateManager` has 446 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `timestamp()` connect `Local Test Runner` to `Risk and Barrier Management`, `Strategy Core and Metrics`, `JForex Strategy Bridge`, `Historical Warmup Loader`?**
+  _High betweenness centrality (0.127) - this node is a cross-community bridge._
+- **Why does `StateManager` connect `Risk and Barrier Management` to `Scan Reservation and Holding`, `Community 19`, `Feature Computation`?**
+  _High betweenness centrality (0.097) - this node is a cross-community bridge._
+- **Why does `lifespan()` connect `Scan Reservation and Holding` to `Risk and Barrier Management`, `Historical Warmup Loader`, `Account Risk Allocator`?**
+  _High betweenness centrality (0.081) - this node is a cross-community bridge._
+- **Are the 141 inferred relationships involving `ModelFeatures` (e.g. with `FeatureConstants` and `FeatureConfig`) actually correct?**
+  _`ModelFeatures` has 141 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 134 inferred relationships involving `IncomingTick` (e.g. with `TickAggregator` and `Real-time tick-to-bar aggregator.  Converts raw ``IncomingTick`` objects into ```) actually correct?**
+  _`IncomingTick` has 134 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 134 inferred relationships involving `IncomingTickBar` (e.g. with `TickAggregator` and `Real-time tick-to-bar aggregator.  Converts raw ``IncomingTick`` objects into ```) actually correct?**
+  _`IncomingTickBar` has 134 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 74 inferred relationships involving `StateManager` (e.g. with `FeatureConfig` and `IncomingTick`) actually correct?**
+  _`StateManager` has 74 INFERRED edges - model-reasoned connections that need verification._
