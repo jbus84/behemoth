@@ -1,3 +1,21 @@
+## v0.14.0 (2026-05-06)
+
+### Feat
+
+- JForex live health monitor for async tick decoupling demo (#114)
+- async tick decoupling — move HTTP I/O to per-symbol worker thread (#112)
+
+### Fix
+
+- force JVM exit after broker snapshot to prevent Gradle daemon hang (#115)
+- align matrix and live warmup load to candidate bar_ticks (#107)
+- floor bridge bar count at parquet warmup initial value (#106)
+- hard-stop startup if tick data is stale (> 3 days) (#105)
+
+### Refactor
+
+- rename outcome-parity columns to canonical governance / runtime vocab (#111)
+
 ## v0.13.1 (2026-04-27)
 
 ### Fix
