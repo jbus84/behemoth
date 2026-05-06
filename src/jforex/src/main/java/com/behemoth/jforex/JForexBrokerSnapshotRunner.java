@@ -46,6 +46,7 @@ public final class JForexBrokerSnapshotRunner {
                 client.disconnect();
             }
         }
+        System.exit(0);
     }
 
     private static Path resolveSnapshotPath(JForexSessionConfig config) {
