@@ -17,6 +17,7 @@ import java.util.Objects;
 public final class JForexMetrics implements AutoCloseable, LiveReadinessMetrics {
 
     private static final JForexMetrics DISABLED = new JForexMetrics();
+    private static volatile JForexMetrics LIVE_INSTANCE = null;
 
     private final boolean enabled;
     private final HTTPServer server;
@@ -104,6 +105,7 @@ public final class JForexMetrics implements AutoCloseable, LiveReadinessMetrics 
 
     private JForexMetrics(JForexSessionConfig config) throws IOException {
         this.enabled = true;
+        LIVE_INSTANCE = this;
         this.registry = new CollectorRegistry();
         this.server = new HTTPServer(new InetSocketAddress(config.metricsHost(), config.metricsPort()), registry, true);
         this.tickReceived = counter("behemoth_jforex_ticks_received_total", "JForex ticks received by the adapter", "symbol");
@@ -216,6 +218,8 @@ public final class JForexMetrics implements AutoCloseable, LiveReadinessMetrics 
                 .help("Nanoseconds spent inside onTick on the strategy thread")
                 .labelNames("symbol")
                 .register(registry);
+        int count = java.util.Collections.list(registry.metricFamilySamples()).size();
+        System.out.println("[JForexMetrics] Registered " + count + " metric families");
     }
 
     public static JForexMetrics start(JForexSessionConfig config) {
