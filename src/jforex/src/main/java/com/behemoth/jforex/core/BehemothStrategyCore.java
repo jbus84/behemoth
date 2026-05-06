@@ -103,6 +103,11 @@ public final class BehemothStrategyCore {
         }
     }
 
+    public long pendingCount(String symbol) {
+        SymbolWorker worker = symbolWorkers.get(normalizeSymbol(symbol));
+        return worker == null ? 0L : worker.pendingCount();
+    }
+
     public void setEntriesAllowed(String symbol, boolean allowed) {
         SymbolRuntimeState state = symbolStates.get(normalizeSymbol(symbol));
         if (state == null) {
