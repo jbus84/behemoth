@@ -1,3 +1,14 @@
+## v0.15.0 (2026-05-06)
+
+### Feat
+
+- add LIVE_INSTANCE tracking and constructor registration log to JForexMetrics (#119)
+
+### Fix
+
+- wire JForex predict metrics timer in SymbolWorker (#118)
+- uppercase threshold-parity status in Stage 14 certification (#116)
+
 ## v0.14.0 (2026-05-06)
 
 ### Feat
