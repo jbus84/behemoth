@@ -636,6 +636,7 @@ def _capture_broker_snapshot(cfg: RunConfig, paths: dict[str, Path]) -> None:
         cwd=_repo_root(),
         env=env,
         check=True,
+        timeout=120,
     )
 
 
