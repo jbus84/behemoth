@@ -26,7 +26,7 @@ Certifies that the authoritative Python API reproduces locked governance predict
 
 - `scripts/run_stage12_stage13_certification.py` (registry)
 - `scripts/validate_api_parity.py` (registry)
-- `src/behemoth/api/server.py` (registry)
+- `src/behemoth/api/server.py` (graphify)
 
 ## Tests
 

@@ -253,7 +253,8 @@ public class SymbolWorker {
         }
         Map<Integer, Long> barOrdinals = Map.copyOf(barOrdinalsByBarTicks);
 
-        try (JForexMetrics.TimerContext ignored = metrics.startWorkerHttpPredictTimer(symbol)) {
+        try (JForexMetrics.TimerContext predictTimer = metrics.startPredictTimer(symbol);
+             JForexMetrics.TimerContext workerTimer = metrics.startWorkerHttpPredictTimer(symbol)) {
             PredictResponsePayload response = predictionClient.predict(new PredictRequestPayload(
                     symbol,
                     sessionConfig.riskEnabled(),

@@ -42,9 +42,9 @@ Certifies runtime parity for the JForex adapter. Local JForex surrogate outcome 
 - `scripts/run_local_jforex_surrogate_matrix.py` (registry)
 - `scripts/validate_local_jforex_surrogate.py` (registry)
 - `scripts/validate_stage14_jforex_runtime_certification.py` (registry)
-- `src/jforex/src/main/java/com/behemoth/jforex/BehemothJForexStrategy.java` (registry)
-- `src/jforex/src/main/java/com/behemoth/jforex/JForexTesterRunner.java` (registry)
-- `src/jforex/src/main/java/com/behemoth/jforex/LocalJForexTesterRunner.java` (registry)
+- `src/jforex/src/main/java/com/behemoth/jforex/BehemothJForexStrategy.java` (graphify)
+- `src/jforex/src/main/java/com/behemoth/jforex/JForexTesterRunner.java` (graphify)
+- `src/jforex/src/main/java/com/behemoth/jforex/LocalJForexTesterRunner.java` (graphify)
 
 ## Tests
 
