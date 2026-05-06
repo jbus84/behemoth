@@ -526,6 +526,20 @@ demo-cert-monitor: observability-up
 	@printf "[demo-cert] Runtime readiness: %s/runtime/live_symbol_readiness.json\n" "$(or $(REPORT_DIR),data/analysis/backtest_reconcile)"
 	@printf "[demo-cert] Monitoring stack: started via make observability-up\n"
 	@printf "[demo-cert] Start demo runner with: make jforex-live\n"
+	@printf "[demo-cert] Health monitor: scripts/monitor_jforex_health.py\n"
+	@(env UV_CACHE_DIR=$(or $(UV_CACHE_DIR),.uv_cache) uv run python scripts/monitor_jforex_health.py \
+		--metrics-url http://127.0.0.1:$(or $(METRICS_PORT),9464)/metrics \
+		--poll-interval 5 \
+		--log-file $(or $(REPORT_DIR),data/analysis/backtest_reconcile)/health_log.jsonl \
+		&)
+	@echo $$! > $(or $(REPORT_DIR),data/analysis/backtest_reconcile)/monitor.pid
+
+demo-cert-monitor-stop:
+	@if [ -f $(or $(REPORT_DIR),data/analysis/backtest_reconcile)/monitor.pid ]; then \
+		kill $$(cat $(or $(REPORT_DIR),data/analysis/backtest_reconcile)/monitor.pid) 2>/dev/null || true; \
+		rm -f $(or $(REPORT_DIR),data/analysis/backtest_reconcile)/monitor.pid; \
+		printf "[demo-cert] Health monitor stopped\n"; \
+	fi
 
 pr:
 	@BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
