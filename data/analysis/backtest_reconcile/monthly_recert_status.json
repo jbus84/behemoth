@@ -1,6 +1,38 @@
 {
-  "bundle_dir": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_candidate_builds/2026-03",
-  "evaluated_at_utc": "2026-04-14T18:17:45Z",
-  "model_month": "2026-03",
-  "overall_pass": true
+  "bundle_dir": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_candidate_builds/2026-04",
+  "dag_node_id": "monthly_recert",
+  "evaluated_at_utc": "2026-05-06T12:24:20Z",
+  "git_dirty": false,
+  "inputs": {
+    "bundle_dir": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_candidate_builds/2026-04",
+    "lock_dir": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_candidate_builds/2026-04"
+  },
+  "lock_fingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "model_month": "2026-04",
+  "outputs": {
+    "checks_csv": "/Users/danielfisher/repositories/behemoth/data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_checks.csv",
+    "summary_csv": "/Users/danielfisher/repositories/behemoth/data/analysis/backtest_reconcile/stage14_jforex_runtime_certification_summary.csv"
+  },
+  "overall_pass": true,
+  "process_verdict": "PASS",
+  "release_blockers": {},
+  "release_decision": "GO",
+  "required_go_symbols": [
+    "EURUSD",
+    "GBPUSD",
+    "USDJPY",
+    "USDCHF",
+    "AUDUSD",
+    "USDCAD"
+  ],
+  "symbol_decisions": {
+    "AUDUSD": "GO",
+    "EURUSD": "GO",
+    "GBPUSD": "GO",
+    "USDCAD": "GO",
+    "USDCHF": "GO",
+    "USDJPY": "GO"
+  },
+  "target_branch": "main",
+  "target_commit": "5f16677acf6b153a3d725704197bf7b6fb5fb12e"
 }
