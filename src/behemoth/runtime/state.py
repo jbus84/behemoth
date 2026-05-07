@@ -22,6 +22,7 @@ import duckdb
 
 from src.behemoth.core.features import (
     CURRENT_FEATURE_SCHEMA,
+    CURRENT_MODEL_FEATURE_CONTRACT,
     FeatureConfig,
     compute_features_from_bars,
     compute_regime_quantiles_from_bars,
@@ -34,6 +35,7 @@ from src.behemoth.core.schemas import (
     ModelFeatures,
 )
 from src.behemoth.risk.account import ReservationState, ReservationStateMachine
+from src.behemoth.runtime.state_queries import StateQueryView
 
 _CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS tick_bars (
@@ -257,6 +259,8 @@ class StateManager:
         if cost_window is None:
             cost_window = CURRENT_FEATURE_SCHEMA.rolling_windows["cost_window"]
         self._cfg = FeatureConfig(vol_window=int(vol_window), cost_window=int(cost_window))
+        self._feature_contract = CURRENT_MODEL_FEATURE_CONTRACT
+        self._feature_contract.validate_feature_names(tuple(ModelFeatures.model_fields))
 
         if persist_path:
             self._con = duckdb.connect(persist_path)
@@ -274,6 +278,10 @@ class StateManager:
         for r in res:
             if r[2] is not None:
                 self._row_counters[f"{r[0].upper()}_{r[1]}"] = int(r[2]) + 1
+
+    def query_view(self) -> StateQueryView:
+        """Return the read-only state query interface for business modules."""
+        return StateQueryView(self)
 
     def _ensure_runtime_schema(self) -> None:
         """Ensure persisted runtime tables match the canonical explicit-bid schema."""

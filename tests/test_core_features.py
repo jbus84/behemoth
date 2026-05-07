@@ -4,11 +4,14 @@ from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from src.behemoth.core.features import (
     CURRENT_FEATURE_SCHEMA,
+    CURRENT_MODEL_FEATURE_CONTRACT,
     FeatureConfig,
     FeatureDefinition,
+    ModelFeatureContract,
     compute_feature_matrix_from_bars,
 )
 from src.behemoth.core.schemas import ModelFeatures
@@ -85,3 +88,15 @@ def test_feature_schema_exposes_registry_metadata() -> None:
         CURRENT_FEATURE_SCHEMA.definition_for(name).compute_group
         for name in CURRENT_FEATURE_SCHEMA.feature_names
     )
+
+
+def test_model_feature_contract_enforces_schema_names() -> None:
+    contract = ModelFeatureContract.from_schema(CURRENT_FEATURE_SCHEMA)
+
+    assert contract == CURRENT_MODEL_FEATURE_CONTRACT
+    assert contract.warmup_bars == ModelFeatures.WARMUP_BARS
+    contract.validate_feature_names(tuple(ModelFeatures.model_fields))
+
+    bad_names = tuple(ModelFeatures.model_fields)[:-1] + ("unexpected_feature",)
+    with pytest.raises(ValueError, match="Feature Set contract mismatch"):
+        contract.validate_feature_names(bad_names)

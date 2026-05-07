@@ -38,6 +38,14 @@ class ModelRegistry:
         pref = f"{sym}|"
         return any(k.startswith(pref) for k in self._models)
 
+    def has_threshold(self, symbol: str) -> bool:
+        """Check if any threshold config is loaded for symbol (live or any month)."""
+        sym = str(symbol).upper().strip()
+        if sym in self._thresholds:
+            return True
+        pref = f"{sym}|"
+        return any(k.startswith(pref) for k in self._thresholds)
+
     def get_latest_month(self, symbol: str) -> str | None:
         """Get latest loaded month for symbol, or None if no models loaded."""
         sym = str(symbol).upper().strip()

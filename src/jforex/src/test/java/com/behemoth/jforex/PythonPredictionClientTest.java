@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.behemoth.jforex.runtime.PythonApiException;
+import com.behemoth.jforex.runtime.PythonApiEndpoint;
 import com.behemoth.jforex.runtime.PythonPredictionClient;
 import com.behemoth.jforex.runtime.dto.BackfillRequestPayload;
 import com.behemoth.jforex.runtime.dto.IncomingTickPayload;
@@ -17,6 +18,16 @@ import okhttp3.mockwebserver.MockWebServer;
 import org.junit.jupiter.api.Test;
 
 class PythonPredictionClientTest {
+    @Test
+    void apiEndpointsExposeCanonicalPathsAndTimeoutProfiles() {
+        assertThat(PythonApiEndpoint.PREDICT.path()).isEqualTo("/predict");
+        assertThat(PythonApiEndpoint.TICK_BATCH.path()).isEqualTo("/ticks/batch");
+        assertThat(PythonApiEndpoint.TICK_BATCH.timeout(
+                java.time.Duration.ofSeconds(60),
+                java.time.Duration.ofMinutes(10)
+        )).isEqualTo(java.time.Duration.ofMinutes(10));
+    }
+
     @Test
     void predictUsesCanonicalRiskOverrideFieldAndParsesResponse() throws Exception {
         try (MockWebServer server = new MockWebServer()) {

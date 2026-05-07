@@ -24,9 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class SymbolWorker {
     private static final int MAX_BATCH = 2000;
@@ -40,9 +38,8 @@ public class SymbolWorker {
     private final JForexMetrics metrics;
     private final Stage14ArtifactWriter artifactWriter;
     private final ActionCallbacks callbacks;
-    private final LinkedTransferQueue<TickEvent> queue = new LinkedTransferQueue<>();
+    private final WorkerTickQueue queue = new WorkerTickQueue();
     private final AtomicBoolean running = new AtomicBoolean(false);
-    private final AtomicLong pendingCount = new AtomicLong(0);
     private Thread thread;
 
     private final List<IncomingTickPayload> pendingTicks = new ArrayList<>();
@@ -107,8 +104,7 @@ public class SymbolWorker {
                 Thread.currentThread().interrupt();
             }
         }
-        List<TickEvent> batch = new ArrayList<>();
-        queue.drainTo(batch);
+        List<TickEvent> batch = queue.drainAll();
         if (!batch.isEmpty()) {
             try {
                 processBatch(batch);
@@ -116,7 +112,7 @@ public class SymbolWorker {
                 metrics.recordWorkerFatal(symbol);
                 artifactWriter.markOperationalStep(symbol, "worker_fatal", false, e.getMessage());
             } finally {
-                pendingCount.addAndGet(-batch.size());
+                queue.markProcessed(batch.size());
             }
         }
         if (!pendingTicks.isEmpty()) {
@@ -130,19 +126,11 @@ public class SymbolWorker {
     }
 
     public void enqueue(RuntimeTick tick) {
-        pendingCount.incrementAndGet();
         queue.put(new TickEvent(tick.timestamp().toEpochMilli(), tick.bid(), tick.ask(), System.nanoTime()));
     }
 
     public void drain() {
-        while (pendingCount.get() > 0) {
-            try {
-                Thread.sleep(1L);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
-        }
+        queue.awaitDrained();
     }
 
     public void seedClientTickSeq(long lastClientTickSeq) {
@@ -150,7 +138,7 @@ public class SymbolWorker {
     }
 
     public long pendingCount() {
-        return pendingCount.get();
+        return queue.pendingCount();
     }
 
     private void runLoop() {
@@ -185,7 +173,7 @@ public class SymbolWorker {
                 artifactWriter.markOperationalStep(symbol, "worker_fatal", false, e.getMessage());
             } finally {
                 if (!batch.isEmpty()) {
-                    pendingCount.addAndGet(-batch.size());
+                    queue.markProcessed(batch.size());
                 }
             }
         }

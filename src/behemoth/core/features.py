@@ -100,6 +100,38 @@ class FeatureSchema:
     def definition_for(self, name: str) -> FeatureDefinition:
         return self.feature_definitions[name]
 
+    @property
+    def warmup_bars(self) -> int:
+        return max(
+            int(self.rolling_windows["vol_window"]),
+            int(self.rolling_windows["cost_window"]),
+        ) + int(self.lag_config.get("feature_lag_bars", 1))
+
+
+@dataclass(frozen=True)
+class ModelFeatureContract:
+    """Runtime-enforceable Feature Set contract for model and data parity."""
+
+    schema_version: str
+    feature_names: tuple[str, ...]
+    warmup_bars: int
+
+    @classmethod
+    def from_schema(cls, schema: FeatureSchema) -> ModelFeatureContract:
+        return cls(
+            schema_version=schema.version,
+            feature_names=tuple(schema.feature_names),
+            warmup_bars=schema.warmup_bars,
+        )
+
+    def validate_feature_names(self, feature_names: tuple[str, ...] | list[str]) -> None:
+        observed = tuple(feature_names)
+        if observed != self.feature_names:
+            raise ValueError(
+                "Feature Set contract mismatch: "
+                f"expected={self.feature_names} observed={observed}"
+            )
+
 
 CURRENT_FEATURE_SCHEMA = FeatureSchema(
     version="oco_features_v1",
@@ -114,6 +146,8 @@ CURRENT_FEATURE_SCHEMA = FeatureSchema(
     feature_definitions=MappingProxyType({definition.name: definition for definition in _FEATURE_DEFINITIONS_V1}),
     lag_config=MappingProxyType({"feature_lag_bars": 1}),
 )
+
+CURRENT_MODEL_FEATURE_CONTRACT = ModelFeatureContract.from_schema(CURRENT_FEATURE_SCHEMA)
 
 class FeatureConstants:
     """Hardcoded physical constants and thresholds for feature computation."""

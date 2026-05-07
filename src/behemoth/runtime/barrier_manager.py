@@ -8,6 +8,7 @@ market order immediately after confirmation.
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import duckdb
@@ -41,6 +42,24 @@ CREATE TABLE IF NOT EXISTS barrier_scans (
     created_ts TIMESTAMPTZ NOT NULL
 );
 """
+
+
+@dataclass(frozen=True)
+class BarrierStateMutation:
+    """Explicit side-effect performed while evaluating a completed bar."""
+
+    scan_id: str
+    from_status: str
+    to_status: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class BarrierEvaluationResult:
+    """Completed-bar evaluation output including actions and state mutations."""
+
+    actions: list[BarrierAction]
+    mutations: list[BarrierStateMutation]
 
 
 class BarrierManager:
@@ -176,6 +195,10 @@ class BarrierManager:
         return dict(zip(cols, res))
 
     def evaluate_bar(self, bar_context: BarContext) -> list[BarrierAction]:
+        """Evaluate a completed bar and return broker-facing actions."""
+        return self.evaluate_bar_with_result(bar_context).actions
+
+    def evaluate_bar_with_result(self, bar_context: BarContext) -> BarrierEvaluationResult:
         """Evaluate a completed bar against all active scans for this symbol.
 
         Called on every bar completion. Mirrors _oco_precompute barrier detection:
@@ -186,14 +209,13 @@ class BarrierManager:
           market order immediately after touch confirmation
         """
         symbol = bar_context.symbol
-        bar_ticks = bar_context.bar_ticks
-        bar_high_bid = bar_context.bid.high
         bar_low_bid = bar_context.bid.low
         bar_hl_first = bar_context.hl_first
         current_bar_idx = bar_context.bar_idx
         bar_high_ask = bar_context.ask.high
         sym = symbol.upper()
         actions: list[BarrierAction] = []
+        mutations: list[BarrierStateMutation] = []
 
         # Process SCANNING scans
         scanning = self._con.execute(
@@ -226,6 +248,12 @@ class BarrierManager:
                         "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",
                         [scan_id],
                     )
+                    mutations.append(BarrierStateMutation(
+                        scan_id=scan_id,
+                        from_status="SCANNING",
+                        to_status="EXPIRED",
+                        reason="simultaneous_touch_no_hl_first",
+                    ))
                     if reservation_id is not None:
                         actions.append(self._release_reservation_action(
                             symbol=sym,
@@ -235,6 +263,12 @@ class BarrierManager:
                         ))
                     continue
                 self._transition_to_holding(scan_id, touch_step, side, horizon)
+                mutations.append(BarrierStateMutation(
+                    scan_id=scan_id,
+                    from_status="SCANNING",
+                    to_status="HOLDING",
+                    reason=f"{side.lower()}_touch",
+                ))
                 actions.append(self._open_market_action(
                     symbol=sym,
                     candidate_uid=candidate_uid,
@@ -245,6 +279,12 @@ class BarrierManager:
                 ))
             elif up_touch:
                 self._transition_to_holding(scan_id, touch_step, "BUY", horizon)
+                mutations.append(BarrierStateMutation(
+                    scan_id=scan_id,
+                    from_status="SCANNING",
+                    to_status="HOLDING",
+                    reason="buy_touch",
+                ))
                 actions.append(self._open_market_action(
                     symbol=sym,
                     candidate_uid=candidate_uid,
@@ -255,6 +295,12 @@ class BarrierManager:
                 ))
             elif dn_touch:
                 self._transition_to_holding(scan_id, touch_step, "SELL", horizon)
+                mutations.append(BarrierStateMutation(
+                    scan_id=scan_id,
+                    from_status="SCANNING",
+                    to_status="HOLDING",
+                    reason="sell_touch",
+                ))
                 actions.append(self._open_market_action(
                     symbol=sym,
                     candidate_uid=candidate_uid,
@@ -268,6 +314,12 @@ class BarrierManager:
                     "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",
                     [scan_id],
                 )
+                mutations.append(BarrierStateMutation(
+                    scan_id=scan_id,
+                    from_status="SCANNING",
+                    to_status="EXPIRED",
+                    reason="horizon_expired",
+                ))
                 if reservation_id is not None:
                     actions.append(self._release_reservation_action(
                         symbol=sym,
@@ -280,6 +332,12 @@ class BarrierManager:
                     "UPDATE barrier_scans SET scan_bars_remaining = ? WHERE scan_id = ?",
                     [bars_rem, scan_id],
                 )
+                mutations.append(BarrierStateMutation(
+                    scan_id=scan_id,
+                    from_status="SCANNING",
+                    to_status="SCANNING",
+                    reason="scan_decrement",
+                ))
 
         # Process HOLDING scans (only those already in HOLDING before this bar, not newly transitioned)
         newly_transitioned = {a.scan_id for a in actions if a.type == BarrierActionType.OPEN_MARKET}
@@ -297,6 +355,12 @@ class BarrierManager:
                     "UPDATE barrier_scans SET hold_bars_remaining = 0, status = 'COMPLETED' WHERE scan_id = ?",
                     [scan_id],
                 )
+                mutations.append(BarrierStateMutation(
+                    scan_id=scan_id,
+                    from_status="HOLDING",
+                    to_status="COMPLETED",
+                    reason="hold_completed",
+                ))
                 actions.append(BarrierAction(
                     type=BarrierActionType.CLOSE_MARKET,
                     symbol=sym,
@@ -309,8 +373,14 @@ class BarrierManager:
                     "UPDATE barrier_scans SET hold_bars_remaining = ? WHERE scan_id = ?",
                     [hold_rem, scan_id],
                 )
+                mutations.append(BarrierStateMutation(
+                    scan_id=scan_id,
+                    from_status="HOLDING",
+                    to_status="HOLDING",
+                    reason="hold_decrement",
+                ))
 
-        return actions
+        return BarrierEvaluationResult(actions=actions, mutations=mutations)
 
     @staticmethod
     def _open_market_action(

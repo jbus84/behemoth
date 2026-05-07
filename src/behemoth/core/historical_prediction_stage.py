@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import os
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -20,6 +21,22 @@ logger = logging.getLogger(__name__)
 _HISTORICAL_PREDICTION_TOLERANCE_SEC = 30.0
 
 
+class HistoricalPredictionLoadError(RuntimeError):
+    """Raised when historical prediction staging cannot satisfy its load contract."""
+
+
+class MissingHistoricalPredictionArtifact(HistoricalPredictionLoadError):
+    """Raised when a locked predictions parquet artifact is missing."""
+
+
+@dataclass(frozen=True)
+class HistoricalPredictionLoadStatus:
+    cache_key: str
+    predictions_path: str
+    status: str
+    detail: str = ""
+
+
 class HistoricalPredictionStage:
     """Manages lazy-loaded historical prediction artifacts for backtesting.
 
@@ -27,13 +44,15 @@ class HistoricalPredictionStage:
     Caches results to avoid repeated disk I/O during bar evaluation.
     """
 
-    def __init__(self):
+    def __init__(self, *, strict_missing: bool = False):
+        self._strict_missing = bool(strict_missing)
         self._universes: dict[str, dict[datetime, set[str]]] = {}
         self._candidate_index: dict[str, dict[str, list[datetime]]] = {}
         self._candidate_ordinal_index: dict[str, dict[str, list[int]]] = {}
         self._candidate_cursor: dict[str, dict[str, int]] = {}
         self._payload_rows: dict[str, dict[str, list[dict[str, Any]]]] = {}
         self._payload_cursor: dict[str, dict[str, int]] = {}
+        self._load_status: dict[str, HistoricalPredictionLoadStatus] = {}
 
     def clear(self) -> None:
         """Reset all caches. Called on startup."""
@@ -43,6 +62,11 @@ class HistoricalPredictionStage:
         self._candidate_cursor.clear()
         self._payload_rows.clear()
         self._payload_cursor.clear()
+        self._load_status.clear()
+
+    def load_status(self, cache_key: str) -> HistoricalPredictionLoadStatus | None:
+        """Return the most recent load status for a cache key."""
+        return self._load_status.get(cache_key)
 
     def load_universe(
         self,
@@ -56,19 +80,15 @@ class HistoricalPredictionStage:
         if cached is not None:
             return cached
 
-        override_path = str(os.getenv("BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE", "")).strip()
-        pred_path = (
-            Path(override_path)
-            if override_path
-            else Path(str(model_binding.get("predictions_path", "")).strip())
-        )
-        if not pred_path.exists():
+        pred_path = self._prediction_path(cache_key, model_binding)
+        if pred_path is None:
             self._universes[cache_key] = {}
             return {}
 
         try:
             import duckdb
         except Exception:
+            self._record_status(cache_key, pred_path, "dependency_unavailable", "duckdb import failed")
             self._universes[cache_key] = {}
             return {}
 
@@ -104,6 +124,7 @@ class HistoricalPredictionStage:
             bucket = out.setdefault(ts_utc, set())
             bucket.add(uid)
         self._universes[cache_key] = out
+        self._record_status(cache_key, pred_path, "loaded", f"rows={len(rows)}")
         return out
 
     def load_candidate_index(
@@ -118,19 +139,15 @@ class HistoricalPredictionStage:
         if cached is not None:
             return cached
 
-        override_path = str(os.getenv("BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE", "")).strip()
-        pred_path = (
-            Path(override_path)
-            if override_path
-            else Path(str(model_binding.get("predictions_path", "")).strip())
-        )
-        if not pred_path.exists():
+        pred_path = self._prediction_path(cache_key, model_binding)
+        if pred_path is None:
             self._candidate_index[cache_key] = {}
             return {}
 
         try:
             import duckdb
         except Exception:
+            self._record_status(cache_key, pred_path, "dependency_unavailable", "duckdb import failed")
             self._candidate_index[cache_key] = {}
             return {}
 
@@ -167,6 +184,7 @@ class HistoricalPredictionStage:
                 out[uid] = []
             out[uid].append(ts_utc)
         self._candidate_index[cache_key] = out
+        self._record_status(cache_key, pred_path, "loaded", f"rows={len(rows)}")
         return out
 
     def load_candidate_ordinal_index(
@@ -181,19 +199,15 @@ class HistoricalPredictionStage:
         if cached is not None:
             return cached
 
-        override_path = str(os.getenv("BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE", "")).strip()
-        pred_path = (
-            Path(override_path)
-            if override_path
-            else Path(str(model_binding.get("predictions_path", "")).strip())
-        )
-        if not pred_path.exists():
+        pred_path = self._prediction_path(cache_key, model_binding)
+        if pred_path is None:
             self._candidate_ordinal_index[cache_key] = {}
             return {}
 
         try:
             import duckdb
         except Exception:
+            self._record_status(cache_key, pred_path, "dependency_unavailable", "duckdb import failed")
             self._candidate_ordinal_index[cache_key] = {}
             return {}
 
@@ -227,6 +241,7 @@ class HistoricalPredictionStage:
                 out[uid] = []
             out[uid].append(bar_ordinal)
         self._candidate_ordinal_index[cache_key] = out
+        self._record_status(cache_key, pred_path, "loaded", f"rows={len(rows)}")
         return out
 
     def load_payload_rows(
@@ -241,19 +256,15 @@ class HistoricalPredictionStage:
         if cached is not None:
             return cached
 
-        override_path = str(os.getenv("BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE", "")).strip()
-        pred_path = (
-            Path(override_path)
-            if override_path
-            else Path(str(model_binding.get("predictions_path", "")).strip())
-        )
-        if not pred_path.exists():
+        pred_path = self._prediction_path(cache_key, model_binding)
+        if pred_path is None:
             self._payload_rows[cache_key] = {}
             return {}
 
         try:
             import duckdb
         except Exception:
+            self._record_status(cache_key, pred_path, "dependency_unavailable", "duckdb import failed")
             self._payload_rows[cache_key] = {}
             return {}
 
@@ -297,6 +308,7 @@ class HistoricalPredictionStage:
                 "close_ts": close_ts,
             })
         self._payload_rows[cache_key] = out
+        self._record_status(cache_key, pred_path, "loaded", f"rows={len(rows)}")
         return out
 
     def get_cursor(self, cache_key: str, candidate_uid: str) -> int:
@@ -318,6 +330,36 @@ class HistoricalPredictionStage:
         if cache_key not in self._payload_cursor:
             self._payload_cursor[cache_key] = {}
         self._payload_cursor[cache_key][candidate_uid] = cursor
+
+    def _prediction_path(self, cache_key: str, model_binding: dict[str, Any]) -> Path | None:
+        override_path = str(os.getenv("BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE", "")).strip()
+        pred_path = (
+            Path(override_path)
+            if override_path
+            else Path(str(model_binding.get("predictions_path", "")).strip())
+        )
+        if pred_path.exists():
+            return pred_path
+
+        detail = f"predictions_path={pred_path}"
+        self._record_status(cache_key, pred_path, "missing_artifact", detail)
+        if self._strict_missing:
+            raise MissingHistoricalPredictionArtifact(detail)
+        return None
+
+    def _record_status(
+        self,
+        cache_key: str,
+        pred_path: Path,
+        status: str,
+        detail: str = "",
+    ) -> None:
+        self._load_status[cache_key] = HistoricalPredictionLoadStatus(
+            cache_key=cache_key,
+            predictions_path=str(pred_path),
+            status=status,
+            detail=detail,
+        )
 
     @staticmethod
     def _as_utc_ts(ts: Any) -> datetime:
