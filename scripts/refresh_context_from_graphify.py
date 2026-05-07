@@ -8,8 +8,41 @@ from pathlib import Path
 
 def extract_god_nodes(graph_report: dict) -> list[tuple[str, int]]:
     """Extract god nodes (most connected) from graphify report."""
+    # Try to get god_nodes field first (legacy format)
     god_nodes = graph_report.get("god_nodes", [])
-    return [(node["name"], node["edges"]) for node in god_nodes[:9]]
+    if god_nodes:
+        return [(node["name"], node["edges"]) for node in god_nodes[:9]]
+
+    # Compute from graph structure: find nodes with highest degree
+    if "nodes" not in graph_report or "links" not in graph_report:
+        return []
+
+    nodes = graph_report["nodes"]
+    links = graph_report["links"]
+
+    # Count edges per node (skip obvious non-core nodes like JS libraries)
+    degree = {}
+    for node in nodes:
+        node_id = node["id"]
+        # Skip JS files and other noise
+        if node_id.endswith(".min.js") or node_id.startswith("lunr"):
+            continue
+        degree[node_id] = 0
+
+    for link in links:
+        src, tgt = link.get("source"), link.get("target")
+        if src in degree:
+            degree[src] += 1
+        if tgt in degree:
+            degree[tgt] += 1
+
+    # Sort by degree and get node labels
+    sorted_nodes = sorted(degree.items(), key=lambda x: x[1], reverse=True)[:9]
+
+    # Map node IDs back to labels
+    id_to_label = {n["id"]: n.get("label", n["id"]) for n in nodes}
+
+    return [(id_to_label.get(node_id, node_id), edges) for node_id, edges in sorted_nodes]
 
 
 def extract_communities(graph_report: dict) -> list[dict]:

@@ -19,63 +19,15 @@ Architecture and design context for this repository. Used by `/improve-codebase-
 
 **God Nodes** (most-connected, touch many modules):
 
-1. **`ModelFeatures`** (145 edges) — canonical 16-feature vector for CatBoost OCO classifier
-2. **`IncomingTick`** (137 edges) — raw broker tick payload (bid, ask, timestamp, spread)
-3. **`IncomingTickBar`** (137 edges) — aggregated tick bar (close_bid, close_ask, high_ask, spreads)
-4. **`StateManager`** (132 edges) — DuckDB-backed execution state (trades, OCO groups, tick bars, predictions)
-5. **`FeatureConfig`** (130 edges) — rolling window + regime config (feature computation parameter)
-6. **`BarrierManager`** (82 edges) — OCO barrier touch detection + position lifecycle
-7. **`TickAggregator`** (78 edges) — real-time tick-to-bar aggregation (100, 1000, 2000 tick bars)
-8. **`CandidateRegistry`** (74 edges) — deployed OCO family catalog (with selection logic)
-9. **`OcoPrediction`** (72 edges) — per-bar model output (entry probability, horizon, direction)
-
-These 9 nodes are highly interconnected. Consolidation opportunities exist if several are used together in a specific context.
-
----
-
-## Architectural Communities (Major Domains)
-
-| Community | Role | God Nodes Involved | Concern |
-|-----------|------|-------------------|---------|
-| **Risk & Barrier Management** | Position lifecycle, touch detection, equity gates | `BarrierManager`, `StateManager`, `AccountRiskProfile` | Entry validation, horizon completion, order submission |
-| **Feature Computation** | CatBoost input pipeline | `ModelFeatures`, `FeatureConfig`, `IncomingTickBar` | 16-feature matrix from tick bars |
-| **Execution State Store** | DuckDB state (trades, OCO groups, ticks) | `StateManager`, `IncomingTick`, `IncomingTickBar` | Persistence, event log, bar caching |
-| **JForex Strategy Bridge** | Live broker integration | `BehemothJForexStrategy`, `BrokerBridgeLoader`, `JForexMetrics` | Async tick decoupling, order submission |
-| **Strategy Core & Metrics** | Per-symbol runtime, metrics | `BehemothStrategyCore`, `SymbolWorker`, `SymbolRuntimeState` | Worker thread model, Prometheus emission |
-| **Account Risk Allocator** | Equity reservation + cost gates | `AccountRiskAllocator`, `AccountRiskProfile`, `AccountRiskBuffers` | Per-symbol allocation, guard thresholds |
-| **Historical Warmup & Replay** | Parquet load + bar alignment | `HistoricalWarmupLoader`, `ParquetTickLoader`, `TickAggregator` | Initial state load, alignment verification |
-| **Live Readiness** | Per-symbol warmup & broker bridge | `SymbolReadinessState`, `LiveReadinessMetrics`, `BrokerBridgeLoader` | Readiness status, startup gates |
-| **Execution Ports** | Broker order I/O abstraction | `ExecutionPort`, `JForexExecutionPort`, `LocalExecutionPort` | Order submission, testing stubs |
-
----
-
-## Thread Model (Async Tick Decoupling)
-
-**Three execution contexts:**
-
-1. **Strategy Thread** (Dukascopy callback)
-   - Entry: `onTick(RuntimeTick)`
-   - Action: Enqueue `TickEvent` to `SymbolWorker`
-   - Return: Immediately (target < 1 µs)
-   - **Constraint**: No blocking I/O, no `/predict` calls, no order submissions
-
-2. **Worker Thread** (one per symbol, named `behemoth-worker-<SYMBOL>`)
-   - Drain tick queue (from strategy thread)
-   - Aggregate ticks → bars (via `TickAggregator`)
-   - Call `/predict` (HTTP to Python API)
-   - Call `/orders` (HTTP to order engine)
-   - Submit orders inline (via `ExecutionPort`)
-   - Update state (via `StateManager`)
-
-3. **Test Thread** (determinism)
-   - `LocalJForexTesterRunner` calls `symbolWorker.drain()` after each tick injection
-   - No background thread leakage between ticks
-
-**God node involvement**: `IncomingTick` → `TickAggregator` → `IncomingTickBar` → state persistence + `/predict` calls.
-
----
-
-## Design Decisions
+1. **`str`** (669 edges)
+2. **`.get()`** (339 edges)
+3. **`ModelFeatures`** (235 edges)
+4. **`StateManager`** (228 edges)
+5. **`IncomingTickBar`** (221 edges)
+6. **`bundle.79ae519e.min.js`** (208 edges)
+7. **`IncomingTick`** (191 edges)
+8. **`FeatureConfig`** (153 edges)
+9. **`BarContext`** (142 edges)
 
 ### 1. Docs-Driven Governance (Artifact-First Truth)
 

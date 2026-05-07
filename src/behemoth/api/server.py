@@ -67,7 +67,6 @@ from src.behemoth.risk.account import (
     trading_day_id,
 )
 from src.behemoth.runtime.barrier_manager import BarrierManager
-from src.behemoth.runtime.order_submission import prepare_predict_actions
 from src.behemoth.runtime.state import StateManager
 from src.behemoth.runtime.tick_aggregator import TickAggregator
 
@@ -2808,14 +2807,15 @@ async def predict(req: PredictRequest) -> PredictResponse:
             if bar_context is None:
                 continue
             raw_actions = _barrier_manager.evaluate_bar(bar_context)
-            barrier_actions.extend(prepare_predict_actions(
-                raw_actions,
-                account_risk_enabled=bool(_config.account_risk_enabled),
-                release_reservation=lambda reservation_id, reason: _state.release_account_risk_reservation(
-                    reservation_id=reservation_id,
-                    reason=reason,
-                ),
-            ))
+            for action in raw_actions:
+                if action.type == BarrierActionType.RELEASE_RESERVATION:
+                    if _config.account_risk_enabled and action.reservation_id:
+                        _state.release_account_risk_reservation(
+                            reservation_id=action.reservation_id,
+                            reason="barrier_expired",
+                        )
+                else:
+                    barrier_actions.append(action)
 
         # Register new scans for selected predictions (lifecycle blocking in Python now)
         pip = _pip_size_for_symbol(sym)
