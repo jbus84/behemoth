@@ -4,11 +4,84 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from enum import Enum
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
 import yaml
+
+
+class ReservationState(str, Enum):
+    PENDING = "PENDING"
+    OPEN = "OPEN"
+    CLOSED = "CLOSED"
+    RELEASED = "RELEASED"
+    EXPIRED = "EXPIRED"
+
+
+@dataclass(frozen=True)
+class ReservationResult:
+    reservation_id: str
+    state: ReservationState
+    reason: str | None = None
+
+
+@dataclass(frozen=True)
+class EntryGateDecision:
+    allowed: bool
+    reason: str | None
+    global_utilization: float | None = None
+
+
+class ReservationStateMachine:
+    """Validates account-risk reservation lifecycle transitions."""
+
+    VALID_TRANSITIONS: dict[ReservationState, set[ReservationState]] = {
+        ReservationState.PENDING: {
+            ReservationState.OPEN,
+            ReservationState.RELEASED,
+            ReservationState.EXPIRED,
+        },
+        ReservationState.OPEN: {
+            ReservationState.CLOSED,
+            ReservationState.RELEASED,
+        },
+        ReservationState.CLOSED: set(),
+        ReservationState.RELEASED: set(),
+        ReservationState.EXPIRED: set(),
+    }
+    VALID_INITIAL_STATES = {ReservationState.PENDING, ReservationState.OPEN}
+
+    @classmethod
+    def normalize(cls, raw: str | ReservationState) -> ReservationState:
+        if isinstance(raw, ReservationState):
+            return raw
+        try:
+            return ReservationState(str(raw).upper())
+        except ValueError as exc:
+            raise ValueError(f"unknown reservation state: {raw}") from exc
+
+    @classmethod
+    def validate_initial(cls, state: str | ReservationState) -> ReservationState:
+        normalized = cls.normalize(state)
+        if normalized not in cls.VALID_INITIAL_STATES:
+            raise ValueError(f"invalid initial reservation state: {normalized.value}")
+        return normalized
+
+    @classmethod
+    def validate_transition(
+        cls,
+        current: str | ReservationState,
+        target: str | ReservationState,
+    ) -> ReservationState:
+        current_state = cls.normalize(current)
+        target_state = cls.normalize(target)
+        if target_state not in cls.VALID_TRANSITIONS[current_state]:
+            raise ValueError(
+                f"invalid reservation transition {current_state.value} -> {target_state.value}"
+            )
+        return target_state
 
 
 @dataclass(frozen=True)

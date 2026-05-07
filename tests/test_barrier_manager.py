@@ -6,6 +6,7 @@ import pandas as pd
 import duckdb
 import pytest
 
+from src.behemoth.core.schemas import BarContext, BarPrices
 from src.behemoth.runtime.barrier_manager import BarrierManager
 
 
@@ -93,6 +94,47 @@ class TestRegisterScan:
         assert scan["lower_barrier"] == pytest.approx(1.29500 - 2.0 * 0.0001)
         assert scan["status"] == "SCANNING"
         assert scan["scan_bars_remaining"] == 6
+
+    def test_evaluate_bar_accepts_minimal_bar_context(self):
+        mgr = BarrierManager()
+        mgr.register_scan(
+            symbol="GBPUSD",
+            candidate_uid="oco|GBPUSD|100|h6|abc",
+            signal_bar_idx=10,
+            signal_close_ask=1.29520,
+            signal_close_bid=1.29510,
+            barrier_pips=2.0,
+            horizon=6,
+            pip_size=0.0001,
+            pred_prob=0.625,
+            threshold=0.599,
+            model_month="2026-02",
+            reservation_id="res-001",
+            run_id="test",
+        )
+
+        actions = mgr.evaluate_bar(
+            BarContext(
+                symbol="GBPUSD",
+                bar_ticks=100,
+                bar_idx=11,
+                bid=BarPrices(high=1.29530, low=1.29490, close=1.29500),
+                ask=BarPrices(high=1.29541, low=1.29501, close=1.29511),
+                hl_first=1.0,
+            )
+        )
+
+        assert actions == [
+            {
+                "type": "OPEN_MARKET",
+                "symbol": "GBPUSD",
+                "side": "BUY",
+                "candidate_uid": "oco|GBPUSD|100|h6|abc",
+                "reservation_id": "res-001",
+                "scan_id": actions[0]["scan_id"],
+                "horizon": 6,
+            }
+        ]
 
     def test_reject_legacy_active_scans_expires_rows_with_missing_signal_closes(self):
         con = duckdb.connect()

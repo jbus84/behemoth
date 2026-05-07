@@ -70,6 +70,27 @@ def _make_synthetic_bars(
     return bars
 
 
+def test_state_manager_builds_bar_context_from_internal_tick_bar_schema() -> None:
+    from src.behemoth.runtime.state import StateManager
+
+    state = StateManager()
+    bar = _make_synthetic_bars(symbol="EURUSD", bar_ticks=100, n=1)[0]
+    state.append_bar(bar)
+
+    ctx = state.get_latest_bar_context("EURUSD", 100)
+
+    assert ctx is not None
+    assert ctx.symbol == "EURUSD"
+    assert ctx.bar_ticks == 100
+    assert ctx.bar_idx == 0
+    assert ctx.bid.high == pytest.approx(bar.high_bid)
+    assert ctx.bid.low == pytest.approx(bar.low_bid)
+    assert ctx.bid.close == pytest.approx(bar.close_bid)
+    assert ctx.ask.high == pytest.approx(bar.high_ask)
+    assert ctx.ask.close == pytest.approx(bar.close_ask)
+    assert ctx.hl_first == pytest.approx(float(bar.hl_first))
+
+
 def _pandas_velocity_features(
     bars: list[IncomingTickBar],
     vol_window: int = 96,
@@ -523,6 +544,21 @@ class TestAccountRiskReservationLedger:
             sm.sum_active_account_risk_reserved_loss_ccy(include_pending=True, include_open=True)
             == 0.0
         )
+
+    def test_reservation_state_machine_rejects_invalid_transition(self, sm):
+        rid = sm.create_account_risk_reservation(
+            symbol="EURUSD",
+            candidate_uid="oco|EURUSD|100|h5|cand_a",
+            reserved_loss_ccy=90.0,
+            barrier_pips=2.0,
+            cap_pips=1.2,
+            cost_est_pips=0.8,
+            volume_units=10000.0,
+        )
+        sm.promote_account_risk_reservation(reservation_id=rid, broker_pos_id="bp_1")
+
+        with pytest.raises(ValueError, match="invalid reservation transition OPEN -> PENDING"):
+            sm.transition_account_risk_reservation(rid, "PENDING")
 
     def test_expire_stale_pending_reservations(self, sm):
         rid = sm.create_account_risk_reservation(

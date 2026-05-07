@@ -2,6 +2,8 @@ package com.behemoth.jforex.worker;
 
 import com.behemoth.jforex.config.JForexSessionConfig;
 import com.behemoth.jforex.core.RuntimeTick;
+import com.behemoth.jforex.core.OrderResult;
+import com.behemoth.jforex.core.OrderSubmissionRequest;
 import com.behemoth.jforex.observability.JForexMetrics;
 import com.behemoth.jforex.reporting.Stage14ArtifactWriter;
 import com.behemoth.jforex.runtime.PythonApiException;
@@ -66,9 +68,25 @@ public class SymbolWorker {
 
     public interface ActionCallbacks {
         boolean entriesAllowed(String symbol);
-        void submitMarketOrder(String symbol, String label, String side, double amountMillions,
-                               String scanId, String candidateUid, String reservationId, int horizon,
-                               Instant now);
+        default OrderResult submitMarketOrder(OrderSubmissionRequest request) {
+            submitMarketOrder(
+                    request.symbol(),
+                    request.label(),
+                    request.side(),
+                    request.amountMillions(),
+                    request.scanId(),
+                    request.candidateUid(),
+                    request.reservationId(),
+                    request.horizon(),
+                    request.submittedAtUtc()
+            );
+            return new OrderResult("", "", request.reservationId());
+        }
+        default void submitMarketOrder(String symbol, String label, String side, double amountMillions,
+                                       String scanId, String candidateUid, String reservationId, int horizon,
+                                       Instant now) {
+            throw new UnsupportedOperationException("submitMarketOrder not implemented");
+        }
         void closePositionByScanId(String symbol, String scanId, Instant now);
     }
 
@@ -321,17 +339,19 @@ public class SymbolWorker {
                     continue;
                 }
                 String label = "BM_" + action.scanId() + "_" + action.side();
-                callbacks.submitMarketOrder(
+                callbacks.submitMarketOrder(new OrderSubmissionRequest(
                         action.symbol(),
                         label,
-                        action.side(),
-                        amountMillions,
                         action.scanId(),
                         action.candidateUid(),
-                        action.reservationId(),
+                        action.side(),
+                        amountMillions,
                         action.horizon(),
+                        action.reservationId(),
+                        0.0,
+                        0.0,
                         now
-                );
+                ));
             } else if (action.isCloseMarket()) {
                 callbacks.closePositionByScanId(action.symbol(), action.scanId(), now);
             }

@@ -27,7 +27,9 @@ to guarantee full-precision rolling statistics and avoid partial-window noise.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from types import MappingProxyType
+from typing import Mapping
 
 import numpy as np
 import pandas as pd
@@ -35,6 +37,49 @@ import pandas as pd
 from src.behemoth.core.schemas import ModelFeatures
 
 # ── Constants ─────────────────────────────────────────────────────────
+
+_FEATURE_NAMES_V1 = (
+    "cost_est_pips",
+    "range_pips",
+    "ret1_pips",
+    "ret_z",
+    "ret_abs_z",
+    "vel_cost_units_h1",
+    "vel_abs_cost_units_h1",
+    "spread_z",
+    "tick_rate_z",
+    "hour_utc",
+    "hl_first",
+    "hl_first_mean_24",
+    "hl_pos_frac_mean_24",
+    "bar_ticks",
+    "horizon",
+    "barrier_pips",
+)
+
+
+@dataclass(frozen=True)
+class FeatureSchema:
+    """Versioned feature manifest shared by research and runtime code."""
+
+    version: str
+    feature_names: tuple[str, ...]
+    rolling_windows: Mapping[str, int]
+    lag_config: Mapping[str, int] = field(default_factory=dict)
+
+
+CURRENT_FEATURE_SCHEMA = FeatureSchema(
+    version="oco_features_v1",
+    feature_names=_FEATURE_NAMES_V1,
+    rolling_windows=MappingProxyType(
+        {
+            "vol_window": 96,
+            "cost_window": 288,
+            "structural_window": 24,
+        }
+    ),
+    lag_config=MappingProxyType({"feature_lag_bars": 1}),
+)
 
 class FeatureConstants:
     """Hardcoded physical constants and thresholds for feature computation."""
@@ -65,11 +110,18 @@ class FeatureConfig:
     Matches the defaults in ``scripts/build_tick_velocity_dataset.py``.
     """
 
-    vol_window: int = 96
+    schema: FeatureSchema = CURRENT_FEATURE_SCHEMA
+    """Versioned feature manifest this config is bound to."""
+
+    vol_window: int = CURRENT_FEATURE_SCHEMA.rolling_windows["vol_window"]
     """Window for tick-rate, spread, and velocity std normalizers (bars)."""
 
-    cost_window: int = 288
+    cost_window: int = CURRENT_FEATURE_SCHEMA.rolling_windows["cost_window"]
     """Window for spread-median and slippage-proxy estimation (bars)."""
+
+    @property
+    def schema_version(self) -> str:
+        return self.schema.version
 
     @property
     def min_periods_vol(self) -> int:
@@ -189,6 +241,7 @@ def compute_feature_matrix_from_bars(
         "horizon": float(horizon),
         "barrier_pips": float(barrier_pips),
     })
+    out = out.loc[:, list(cfg.schema.feature_names)]
 
     # Mask rows with insufficient warmup (n < cfg.full_warmup_bars)
     # We keep the rows but they will have NaNs from the rolling operations anyway.

@@ -19,6 +19,8 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import okhttp3.mockwebserver.Dispatcher;
@@ -91,12 +93,18 @@ class SymbolWorkerStressTest {
     void enqueueOneMillionTicks() throws Exception {
         try (MockWebServer server = new MockWebServer()) {
             AtomicInteger total = new AtomicInteger(0);
+            Set<Long> seenClientTickSeq = ConcurrentHashMap.newKeySet();
             server.setDispatcher(new Dispatcher() {
                 @Override public MockResponse dispatch(RecordedRequest request) {
                     try {
                         String body = request.getBody().readUtf8();
                         TickBatchRequestPayload payload = MAPPER.readValue(body, TickBatchRequestPayload.class);
-                        int count = payload.ticks().size();
+                        int count = 0;
+                        for (var tick : payload.ticks()) {
+                            if (tick.clientTickSeq() != null && seenClientTickSeq.add(tick.clientTickSeq())) {
+                                count++;
+                            }
+                        }
                         total.addAndGet(count);
                         return new MockResponse()
                                 .setBody("""
@@ -132,12 +140,18 @@ class SymbolWorkerStressTest {
     void queueAgeStaysLowUnderNormalLoad() throws Exception {
         try (MockWebServer server = new MockWebServer()) {
             AtomicInteger total = new AtomicInteger(0);
+            Set<Long> seenClientTickSeq = ConcurrentHashMap.newKeySet();
             server.setDispatcher(new Dispatcher() {
                 @Override public MockResponse dispatch(RecordedRequest request) {
                     try {
                         String body = request.getBody().readUtf8();
                         TickBatchRequestPayload payload = MAPPER.readValue(body, TickBatchRequestPayload.class);
-                        int count = payload.ticks().size();
+                        int count = 0;
+                        for (var tick : payload.ticks()) {
+                            if (tick.clientTickSeq() != null && seenClientTickSeq.add(tick.clientTickSeq())) {
+                                count++;
+                            }
+                        }
                         total.addAndGet(count);
                         Thread.sleep(1L);
                         return new MockResponse()

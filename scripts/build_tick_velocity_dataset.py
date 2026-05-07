@@ -23,9 +23,15 @@ except ModuleNotFoundError:
     from canonical_tick_feed import DEFAULT_CANONICAL_ROOT
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from src.behemoth.core.features import FeatureConfig
+
 DEFAULT_TICK_ROOT = str(DEFAULT_CANONICAL_ROOT)
 DEFAULT_TICKBAR_DIR = "data/global_tickbars"
 DEFAULT_OUT_DIR = "data/analysis/tick_velocity"
+DEFAULT_FEATURE_CONFIG = FeatureConfig()
 
 
 def _is_utc_tz(tz: Any) -> bool:
@@ -359,10 +365,16 @@ def main() -> None:
     )
     p.add_argument("--target-horizons", default="1,2,3", help="Forward targets in bars")
     p.add_argument(
-        "--vol-window", type=int, default=96, help="Rolling window for velocity std normalizer"
+        "--vol-window",
+        type=int,
+        default=DEFAULT_FEATURE_CONFIG.vol_window,
+        help="Rolling window for velocity std normalizer",
     )
     p.add_argument(
-        "--cost-window", type=int, default=288, help="Rolling window for spread/slippage context"
+        "--cost-window",
+        type=int,
+        default=DEFAULT_FEATURE_CONFIG.cost_window,
+        help="Rolling window for spread/slippage context",
     )
     p.add_argument(
         "--price-source", choices=["bid", "mid"], default="bid", help="Used when auto-building bars"

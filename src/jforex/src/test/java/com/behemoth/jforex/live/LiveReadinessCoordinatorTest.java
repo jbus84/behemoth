@@ -257,7 +257,7 @@ class LiveReadinessCoordinatorTest {
             }
             assertThat(initializeFuture.isDone()).isTrue();
 
-            for (int i = 0; i < 50 && coordinator.snapshot("GBPUSD").state() == SymbolReadinessState.COLD; i++) {
+            for (int i = 0; i < 50 && coordinator.snapshot("GBPUSD").state() != SymbolReadinessState.READY; i++) {
                 Thread.sleep(10L);
             }
             assertThat(coordinator.snapshot("EURUSD").state()).isEqualTo(SymbolReadinessState.BRIDGING);

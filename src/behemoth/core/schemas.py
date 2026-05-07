@@ -50,6 +50,28 @@ class IncomingTickBar(BaseModel):
     close_ask: float = Field(..., gt=0, description="Last ASK price of the bar")
 
 
+class BarPrices(BaseModel):
+    """Narrow high/low/close price view used by runtime lifecycle logic."""
+    high: float = Field(..., gt=0)
+    low: float = Field(..., gt=0)
+    close: float = Field(..., gt=0)
+
+
+class BarContext(BaseModel):
+    """Completed tick-bar context consumed outside StateManager.
+
+    StateManager owns the persisted tick-bar schema. Runtime consumers should
+    depend on this narrow view instead of raw DuckDB rows or IncomingTickBar.
+    """
+    symbol: str
+    bar_ticks: int = Field(..., gt=0)
+    bar_idx: int = Field(..., ge=0)
+    bid: BarPrices
+    ask: BarPrices
+    hl_first: float = 0.0
+    hl_pos_frac: float | None = None
+
+
 class ModelFeatures(BaseModel):
     """The exact 16-parameter feature vector expected by the Stage-03 CatBoost model.
 
@@ -337,4 +359,3 @@ class AccountRiskSnapshotRequest(BaseModel):
     equity: float = Field(..., gt=0.0)
     snapshot_ts: datetime | None = None
     run_id: str | None = None
-

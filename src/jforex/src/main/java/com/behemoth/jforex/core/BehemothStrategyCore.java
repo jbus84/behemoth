@@ -244,28 +244,30 @@ public final class BehemothStrategyCore {
             return state != null && state.entriesAllowed;
         }
 
-        @Override public void submitMarketOrder(String symbol, String label, String side, double amountMillions,
-                                                 String scanId, String candidateUid, String reservationId, int horizon,
-                                                 Instant now) {
+        @Override public OrderResult submitMarketOrder(OrderSubmissionRequest request) {
+            String symbol = request.symbol();
+            String side = request.side();
+            String label = request.label();
+            String scanId = request.scanId();
             scanToOrderLabel.put(scanId, label);
             pendingFills.put(label, new PendingFillContext(
-                    candidateUid != null ? candidateUid : "",
-                    reservationId != null ? reservationId : "",
-                    horizon
+                    request.candidateUid(),
+                    request.reservationId(),
+                    request.horizon()
             ));
             try {
                 try (JForexMetrics.TimerContext ignored = metrics.startOrderSubmitTimer(symbol, side)) {
-                    executionPort.submitMarketOrder(new MarketOrderRequest(
-                            symbol, label, side, amountMillions, "barrier_scan:" + scanId, now
-                    ));
+                    OrderResult result = executionPort.submitMarketOrder(request);
+                    metrics.recordOrderSubmitted(symbol, side);
+                    artifactWriter.markOperationalStep(symbol, "market_order_submitted", true, label);
+                    return result;
                 }
-                metrics.recordOrderSubmitted(symbol, side);
-                artifactWriter.markOperationalStep(symbol, "market_order_submitted", true, label);
             } catch (RuntimeException exc) {
                 pendingFills.remove(label);
                 scanToOrderLabel.remove(scanId);
                 metrics.recordOrderSubmitFailure(symbol, side);
                 artifactWriter.markOperationalStep(symbol, "market_order_submit_failure", false, exc.getMessage());
+                return new OrderResult("", "", request.reservationId());
             }
         }
 

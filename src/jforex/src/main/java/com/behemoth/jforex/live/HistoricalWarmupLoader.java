@@ -19,6 +19,7 @@ import java.util.TimeZone;
 
 public final class HistoricalWarmupLoader {
     private static final TimeZone UTC_TZ = TimeZone.getTimeZone("UTC");
+    private final BarAlignmentService barAlignmentService = new BarAlignmentService();
 
     public WarmupSlice load(JForexSessionConfig config, Path tickRoot, String symbol, Instant bridgeAnchorTs) {
         Objects.requireNonNull(config, "config");
@@ -35,9 +36,11 @@ public final class HistoricalWarmupLoader {
         Instant lookbackStart = bridgeAnchorTs.minus(config.liveLookbackDays(), ChronoUnit.DAYS);
         try (Connection connection = DriverManager.getConnection("jdbc:duckdb:")) {
             int preCount = countBeforeAnchor(connection, parquetExpr, lookbackStart, bridgeAnchorTs);
-            int align = config.liveBarAlignTicks();
-            int remainder = Math.floorMod(preCount - config.liveWarmupTicks(), align);
-            int keep = config.liveWarmupTicks() + remainder;
+            int keep = barAlignmentService.warmupKeepTickCount(
+                    preCount,
+                    config.liveWarmupTicks(),
+                    config.liveBarAlignTicks()
+            );
             List<RuntimeTick> ticks = loadRowsDescending(connection, parquetExpr, lookbackStart, bridgeAnchorTs, keep, sym);
             ticks.sort(Comparator.comparing(RuntimeTick::timestamp));
             if (ticks.isEmpty()) {
