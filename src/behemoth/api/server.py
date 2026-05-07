@@ -15,7 +15,6 @@ Model loading:
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import json
 import logging
 import math
@@ -45,6 +44,7 @@ from src.behemoth.core.historical_governance_validation import (
     validate_historical_governance,
 )
 from src.behemoth.core.historical_registry import HistoricalCandidateRegistry
+from src.behemoth.core.model_registry import ModelRegistry
 from src.behemoth.core.registry import CandidateRegistry
 from src.behemoth.core.schemas import (
     AccountRiskSnapshotRequest,
@@ -84,9 +84,7 @@ _barrier_manager: BarrierManager | None = None
 _aggregators: dict[int, TickAggregator] = {}
 _registry: CandidateRegistry | None = None
 _historical_registry: HistoricalCandidateRegistry | None = None
-_models: dict[str, object] = {}          # cache key -> loaded CatBoostClassifier
-_thresholds: dict[str, dict] = {}        # cache key -> threshold config
-_model_months: dict[str, str] = {}       # cache key -> "2025-12"
+_model_registry: ModelRegistry = ModelRegistry()
 _historical_prediction_universes: dict[str, dict[datetime, set[str]]] = {}
 _historical_prediction_candidate_index: dict[str, dict[str, list[datetime]]] = {}
 _historical_prediction_candidate_ordinal_index: dict[str, dict[str, list[int]]] = {}
@@ -121,13 +119,6 @@ def _env_bool(*keys: str, default: str = "false") -> bool:
 def _env_int(*keys: str, default: str) -> int:
     return int(_env_str(*keys, default=default))
 
-
-def _sha256(path: Path) -> str:
-    h = hashlib.sha256()
-    with path.open("rb") as f:
-        for chunk in iter(lambda: f.read(1024 * 1024), b""):
-            h.update(chunk)
-    return h.hexdigest()
 
 # ── Prometheus Metrics ────────────────────────────────────────────────
 METRIC_INFERENCE_LATENCY = Histogram(
@@ -442,22 +433,11 @@ def _cache_key(symbol: str, model_month: str | None = None) -> str:
 
 
 def _has_loaded_model_for_symbol(symbol: str) -> bool:
-    sym = str(symbol).upper().strip()
-    if sym in _models:
-        return True
-    pref = f"{sym}|"
-    return any(k.startswith(pref) for k in _models)
+    return _model_registry.has_model(symbol)
 
 
 def _latest_loaded_month_for_symbol(symbol: str) -> str | None:
-    sym = str(symbol).upper().strip()
-    if sym in _model_months:
-        return _model_months.get(sym)
-    pref = f"{sym}|"
-    months = [m for k, m in _model_months.items() if k.startswith(pref)]
-    if not months:
-        return None
-    return sorted(months)[-1]
+    return _model_registry.get_latest_month(symbol)
 
 
 def _effective_governance_dir() -> str:
@@ -995,90 +975,9 @@ def _catboost_cls() -> Any | None:
     return CatBoostClassifier
 
 
-def _load_model_binding_into_cache(
-    *,
-    symbol: str,
-    binding: dict[str, Any],
-    cache_key: str,
-    expected_month: str | None,
-) -> tuple[bool, str]:
-    cb_cls = _catboost_cls()
-    if cb_cls is None:
-        return False, "catboost_unavailable"
-
-    model_path = Path(str(binding.get("model_cbm_path", "")))
-    thr_path = Path(str(binding.get("model_threshold_json_path", "")))
-    exp_model_sha = str(binding.get("model_cbm_sha256", "")).strip()
-    exp_thr_sha = str(binding.get("model_threshold_json_sha256", "")).strip()
-    lock_month = str(binding.get("model_month", "")).strip()
-
-    if (not model_path.exists()) or (not thr_path.exists()):
-        logger.error(
-            "Locked artifacts missing for %s: model=%s threshold=%s",
-            symbol,
-            model_path,
-            thr_path,
-        )
-        return False, "artifact_missing"
-
-    got_model_sha = _sha256(model_path)
-    got_thr_sha = _sha256(thr_path)
-    if (got_model_sha != exp_model_sha) or (got_thr_sha != exp_thr_sha):
-        logger.error("Locked artifact hash mismatch for %s — refusing model load.", symbol)
-        return False, "artifact_hash_mismatch"
-
-    month = model_path.stem.split("_")[-1]
-    if lock_month and (month != lock_month):
-        logger.error(
-            "Locked model month mismatch for %s: lock=%s file=%s",
-            symbol,
-            lock_month,
-            month,
-        )
-        return False, "lock_month_mismatch"
-    if expected_month and month != expected_month:
-        logger.error(
-            "Expected model month mismatch for %s: expected=%s file=%s",
-            symbol,
-            expected_month,
-            month,
-        )
-        return False, "expected_month_mismatch"
-
-    model = cb_cls()
-    model.load_model(str(model_path))
-    thr_cfg = json.loads(thr_path.read_text())
-    locked_runtime_overrides = binding.get("locked_runtime_overrides", {})
-    if isinstance(locked_runtime_overrides, dict) and locked_runtime_overrides:
-        thr_cfg.update(
-            {
-                str(k): v
-                for k, v in locked_runtime_overrides.items()
-                if str(k).strip() and v is not None
-            }
-        )
-    thr_month = str(thr_cfg.get("model_month", "")).strip()
-    if thr_month and thr_month != month:
-        logger.error(
-            "Threshold JSON model month mismatch for %s: model=%s threshold=%s",
-            symbol,
-            month,
-            thr_month,
-        )
-        return False, "threshold_month_mismatch"
-    _models[cache_key] = model
-    _model_months[cache_key] = month
-    _thresholds[cache_key] = thr_cfg
-    logger.info("Loaded lock-bound model for %s (month %s): %s", symbol, month, model_path.name)
-    return True, month
-
-
 def _load_models() -> None:
     """Load model cache according to governance mode."""
-    global _models, _thresholds, _model_months
-    _models = {}
-    _thresholds = {}
-    _model_months = {}
+    _model_registry.clear()
     if not _models_dir.exists():
         logger.warning("Models directory %s does not exist yet.", _models_dir)
         return
@@ -1100,11 +999,12 @@ def _load_models() -> None:
             logger.error("No governance model binding for %s — skipping model load.", sym)
             continue
         cache_key = _cache_key(sym)
-        _load_model_binding_into_cache(
+        _model_registry.load_model_binding(
             symbol=sym,
             binding=binding,
             cache_key=cache_key,
             expected_month=str(binding.get("model_month", "")).strip() or None,
+            catboost_cls=_catboost_cls(),
         )
 
 def _load_seed_files(seed_dir: Path | None = None) -> None:
@@ -1688,24 +1588,23 @@ def _resolve_runtime_contract(sym: str, close_ts: datetime) -> _ResolvedRuntimeC
 
 
 def _ensure_model_and_threshold(contract: _ResolvedRuntimeContract) -> tuple[Any, dict[str, Any]]:
-    model = _models.get(contract.cache_key)
-    thr_cfg = _thresholds.get(contract.cache_key)
+    model, thr_cfg = _model_registry.get_model_and_threshold(contract.cache_key)
     if model is not None and isinstance(thr_cfg, dict):
         return model, thr_cfg
 
-    ok, reason = _load_model_binding_into_cache(
+    ok, reason = _model_registry.load_model_binding(
         symbol=contract.symbol,
         binding=contract.model_binding,
         cache_key=contract.cache_key,
         expected_month=(contract.model_month if contract.model_month != "unknown" else None),
+        catboost_cls=_catboost_cls(),
     )
     if not ok:
         raise HTTPException(
             status_code=503,
             detail=f"Unable to load lock-bound model for {contract.symbol}: {reason}",
         )
-    model = _models.get(contract.cache_key)
-    thr_cfg = _thresholds.get(contract.cache_key)
+    model, thr_cfg = _model_registry.get_model_and_threshold(contract.cache_key)
     if model is None:
         raise HTTPException(
             status_code=503,
@@ -3918,18 +3817,18 @@ async def health() -> HealthResponse:
         bar_counts[sym] = _active_bar_count_for_symbol(sym)
 
     mode = str(_config.governance_mode).strip().lower()
-    has_runtime_contracts = bool(_models)
+    has_runtime_contracts = bool(_model_registry.cache_size() > 0)
     if _is_historical_mode():
         has_runtime_contracts = has_runtime_contracts or (_historical_entries_loaded > 0)
 
     return HealthResponse(
         status="ok" if has_runtime_contracts else "no_models",
         utc_now=datetime.now(tz=timezone.utc),
-        models_loaded=dict(_model_months),
+        models_loaded=_model_registry.models_loaded(),
         bar_ticks=bar_ticks,
         bar_counts=bar_counts,
         governance_dir=_effective_governance_dir(),
-        model_cache_entries=len(_models),
+        model_cache_entries=_model_registry.cache_size(),
         governance_mode=mode,
         governance_missing_month_policy=(
             str(_config.governance_missing_month_policy).strip().lower()
