@@ -27,9 +27,9 @@ to guarantee full-precision rolling statistics and avoid partial-window noise.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Mapping
 
 import numpy as np
 import pandas as pd
@@ -59,13 +59,46 @@ _FEATURE_NAMES_V1 = (
 
 
 @dataclass(frozen=True)
+class FeatureDefinition:
+    """Registry entry describing one canonical model feature."""
+
+    name: str
+    compute_group: str
+    dependencies: tuple[str, ...] = ()
+
+
+_FEATURE_DEFINITIONS_V1 = (
+    FeatureDefinition("cost_est_pips", "cost", ("spread", "range_pips")),
+    FeatureDefinition("range_pips", "range", ("high_bid", "low_bid")),
+    FeatureDefinition("ret1_pips", "velocity", ("close_bid",)),
+    FeatureDefinition("ret_z", "velocity", ("ret1_pips",)),
+    FeatureDefinition("ret_abs_z", "velocity", ("ret_z",)),
+    FeatureDefinition("vel_cost_units_h1", "velocity", ("ret1_pips", "cost_est_pips")),
+    FeatureDefinition("vel_abs_cost_units_h1", "velocity", ("vel_cost_units_h1",)),
+    FeatureDefinition("spread_z", "microstructure", ("spread",)),
+    FeatureDefinition("tick_rate_z", "microstructure", ("timestamp", "close_ts", "tick_volume")),
+    FeatureDefinition("hour_utc", "time", ("close_ts",)),
+    FeatureDefinition("hl_first", "structure", ("hl_first",)),
+    FeatureDefinition("hl_first_mean_24", "structure", ("hl_first",)),
+    FeatureDefinition("hl_pos_frac_mean_24", "structure", ("hl_pos_frac",)),
+    FeatureDefinition("bar_ticks", "structural_parameter"),
+    FeatureDefinition("horizon", "structural_parameter"),
+    FeatureDefinition("barrier_pips", "structural_parameter"),
+)
+
+
+@dataclass(frozen=True)
 class FeatureSchema:
     """Versioned feature manifest shared by research and runtime code."""
 
     version: str
     feature_names: tuple[str, ...]
     rolling_windows: Mapping[str, int]
+    feature_definitions: Mapping[str, FeatureDefinition]
     lag_config: Mapping[str, int] = field(default_factory=dict)
+
+    def definition_for(self, name: str) -> FeatureDefinition:
+        return self.feature_definitions[name]
 
 
 CURRENT_FEATURE_SCHEMA = FeatureSchema(
@@ -78,6 +111,7 @@ CURRENT_FEATURE_SCHEMA = FeatureSchema(
             "structural_window": 24,
         }
     ),
+    feature_definitions=MappingProxyType({definition.name: definition for definition in _FEATURE_DEFINITIONS_V1}),
     lag_config=MappingProxyType({"feature_lag_bars": 1}),
 )
 

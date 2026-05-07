@@ -106,6 +106,18 @@ class TestTickAggregatorBarCount:
         for previous, current in zip(all_bars, all_bars[1:], strict=False):
             assert previous.close_ts <= current.close_ts
 
+    def test_bar_alignment_service_uses_tick_count_boundary_contract(self):
+        from src.behemoth.runtime.bar_alignment import BarAlignmentService, TickCountBarBoundary
+
+        ticks = _make_ticks(12)
+        service = BarAlignmentService(boundary=TickCountBarBoundary())
+        aligned = service.align_ticks(ticks, symbol="EURUSD", bar_ticks=5)
+
+        assert len(aligned.bars) == 2
+        assert len(aligned.remainder) == 2
+        assert aligned.bars[0].timestamp == ticks[0].timestamp
+        assert aligned.bars[1].timestamp == ticks[5].timestamp
+
 
 class TestTickAggregatorOHLC:
     """Verify OHLC values are correct."""

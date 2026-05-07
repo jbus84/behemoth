@@ -394,34 +394,71 @@ class StateManager:
 
     def get_latest_bar(self, symbol: str, bar_ticks: int) -> dict | None:
         """Get the most recent completed bar for a symbol/bar_ticks pair."""
+        return self._get_bar_row(symbol=symbol, bar_ticks=bar_ticks, bar_number=None)
+
+    def _get_bar_row(
+        self,
+        *,
+        symbol: str,
+        bar_ticks: int,
+        bar_number: int | None,
+    ) -> dict | None:
+        """Get a completed bar row by number, or latest when bar_number is None."""
+        row_filter = ""
+        params: list[Any] = [symbol.upper(), bar_ticks]
+        if bar_number is not None:
+            row_filter = "AND row_id = ?"
+            params.append(int(bar_number))
         res = self._con.execute(
-            "SELECT row_id, open_bid, high_bid, low_bid, close_bid, hl_first, high_ask, close_ask "
+            "SELECT row_id, ts, close_ts, open_bid, high_bid, low_bid, close_bid, "
+            "spread, hl_first, hl_pos_frac, high_ask, close_ask "
             "FROM tick_bars WHERE symbol = ? AND bar_ticks = ? "
+            f"{row_filter} "
             "ORDER BY row_id DESC LIMIT 1",
-            [symbol.upper(), bar_ticks],
+            params,
         ).fetchone()
         if res is None:
             return None
         return {
             "row_id": res[0],
-            "open_bid": res[1],
-            "high_bid": res[2],
-            "low_bid": res[3],
-            "close_bid": res[4],
-            "hl_first": res[5] if res[5] is not None else 0.0,
-            "high_ask": res[6] if res[6] is not None else 0.0,
-            "close_ask": res[7] if res[7] is not None else 0.0,
+            "timestamp": res[1],
+            "close_ts": res[2],
+            "open_bid": res[3],
+            "high_bid": res[4],
+            "low_bid": res[5],
+            "close_bid": res[6],
+            "spread": res[7],
+            "hl_first": res[8] if res[8] is not None else 0.0,
+            "hl_pos_frac": res[9],
+            "high_ask": res[10] if res[10] is not None else 0.0,
+            "close_ask": res[11] if res[11] is not None else 0.0,
         }
 
     def get_latest_bar_context(self, symbol: str, bar_ticks: int) -> BarContext | None:
         """Build the public completed-bar context for runtime lifecycle consumers."""
-        latest = self.get_latest_bar(symbol, bar_ticks)
+        return self.get_bar_context(symbol, bar_ticks)
+
+    def get_bar_context(
+        self,
+        symbol: str,
+        bar_ticks: int,
+        *,
+        bar_number: int | None = None,
+        side: str | None = None,
+    ) -> BarContext | None:
+        """Build the public completed-bar context for runtime lifecycle consumers."""
+        latest = self._get_bar_row(symbol=symbol, bar_ticks=bar_ticks, bar_number=bar_number)
         if latest is None:
             return None
+        normalized_side = None if side is None else str(side).strip().upper()
         return BarContext(
             symbol=symbol.upper(),
             bar_ticks=int(bar_ticks),
             bar_idx=int(latest["row_id"]),
+            timestamp=latest["timestamp"],
+            close_ts=latest["close_ts"],
+            spread=float(latest["spread"]) if latest["spread"] is not None else None,
+            side=normalized_side,
             bid=BarPrices(
                 high=float(latest["high_bid"]),
                 low=float(latest["low_bid"]),
@@ -433,7 +470,11 @@ class StateManager:
                 close=float(latest["close_ask"]),
             ),
             hl_first=float(latest.get("hl_first", 0.0) or 0.0),
-            hl_pos_frac=None,
+            hl_pos_frac=(
+                float(latest["hl_pos_frac"])
+                if latest.get("hl_pos_frac") is not None
+                else None
+            ),
         )
 
     def get_latest_close_ts(self, symbol: str) -> datetime | None:

@@ -50,7 +50,6 @@ from src.behemoth.core.schemas import (
     AccountRiskSnapshotRequest,
     ActiveTrade,
     BarrierAction,
-    BarrierActionType,
     IncomingTick,
     IncomingTickBar,
     ModelFeatures,
@@ -68,6 +67,7 @@ from src.behemoth.risk.account import (
     trading_day_id,
 )
 from src.behemoth.runtime.barrier_manager import BarrierManager
+from src.behemoth.runtime.order_submission import prepare_predict_actions
 from src.behemoth.runtime.state import StateManager
 from src.behemoth.runtime.tick_aggregator import TickAggregator
 
@@ -2808,26 +2808,14 @@ async def predict(req: PredictRequest) -> PredictResponse:
             if bar_context is None:
                 continue
             raw_actions = _barrier_manager.evaluate_bar(bar_context)
-            for a in raw_actions:
-                if a["type"] == "RELEASE_RESERVATION":
-                    # Expired barrier — release the risk reservation directly; JForex
-                    # never opened a position so the release is Python-side only.
-                    if _config.account_risk_enabled and a.get("reservation_id"):
-                        _state.release_account_risk_reservation(
-                            reservation_id=a["reservation_id"],
-                            reason="barrier_expired",
-                        )
-                    continue
-                barrier_actions.append(BarrierAction(
-                    type=BarrierActionType(a["type"]),
-                    symbol=a["symbol"],
-                    candidate_uid=a["candidate_uid"],
-                    scan_id=a["scan_id"],
-                    side=a.get("side"),
-                    reservation_id=a.get("reservation_id"),
-                    broker_pos_id=a.get("broker_pos_id"),
-                    horizon=a.get("horizon"),
-                ))
+            barrier_actions.extend(prepare_predict_actions(
+                raw_actions,
+                account_risk_enabled=bool(_config.account_risk_enabled),
+                release_reservation=lambda reservation_id, reason: _state.release_account_risk_reservation(
+                    reservation_id=reservation_id,
+                    reason=reason,
+                ),
+            ))
 
         # Register new scans for selected predictions (lifecycle blocking in Python now)
         pip = _pip_size_for_symbol(sym)

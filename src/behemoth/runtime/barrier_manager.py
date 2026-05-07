@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 
 import duckdb
 
-from src.behemoth.core.schemas import BarContext
+from src.behemoth.core.schemas import BarContext, BarrierAction, BarrierActionType
 
 _CREATE_BARRIER_SCANS_SQL = """
 CREATE TABLE IF NOT EXISTS barrier_scans (
@@ -186,7 +186,7 @@ class BarrierManager:
         bar_hl_first: float | None = None,
         current_bar_idx: int | None = None,
         bar_high_ask: float | None = None,
-    ) -> list[dict]:
+    ) -> list[BarrierAction]:
         """Evaluate a completed bar against all active scans for this symbol.
 
         Called on every bar completion. Mirrors _oco_precompute barrier detection:
@@ -233,7 +233,7 @@ class BarrierManager:
         if bar_high_ask is None:
             bar_high_ask = 0.0
         sym = symbol.upper()
-        actions: list[dict] = []
+        actions: list[BarrierAction] = []
 
         # Process SCANNING scans
         scanning = self._con.execute(
@@ -267,59 +267,54 @@ class BarrierManager:
                         [scan_id],
                     )
                     if reservation_id is not None:
-                        actions.append({
-                            "type": "RELEASE_RESERVATION",
-                            "symbol": sym,
-                            "candidate_uid": candidate_uid,
-                            "scan_id": scan_id,
-                            "reservation_id": reservation_id,
-                        })
+                        actions.append(self._release_reservation_action(
+                            symbol=sym,
+                            candidate_uid=candidate_uid,
+                            scan_id=scan_id,
+                            reservation_id=reservation_id,
+                        ))
                     continue
                 self._transition_to_holding(scan_id, touch_step, side, horizon)
-                actions.append({
-                    "type": "OPEN_MARKET",
-                    "symbol": sym,
-                    "side": side,
-                    "candidate_uid": candidate_uid,
-                    "reservation_id": reservation_id,
-                    "scan_id": scan_id,
-                    "horizon": horizon,
-                })
+                actions.append(self._open_market_action(
+                    symbol=sym,
+                    candidate_uid=candidate_uid,
+                    scan_id=scan_id,
+                    side=side,
+                    reservation_id=reservation_id,
+                    horizon=horizon,
+                ))
             elif up_touch:
                 self._transition_to_holding(scan_id, touch_step, "BUY", horizon)
-                actions.append({
-                    "type": "OPEN_MARKET",
-                    "symbol": sym,
-                    "side": "BUY",
-                    "candidate_uid": candidate_uid,
-                    "reservation_id": reservation_id,
-                    "scan_id": scan_id,
-                    "horizon": horizon,
-                })
+                actions.append(self._open_market_action(
+                    symbol=sym,
+                    candidate_uid=candidate_uid,
+                    scan_id=scan_id,
+                    side="BUY",
+                    reservation_id=reservation_id,
+                    horizon=horizon,
+                ))
             elif dn_touch:
                 self._transition_to_holding(scan_id, touch_step, "SELL", horizon)
-                actions.append({
-                    "type": "OPEN_MARKET",
-                    "symbol": sym,
-                    "side": "SELL",
-                    "candidate_uid": candidate_uid,
-                    "reservation_id": reservation_id,
-                    "scan_id": scan_id,
-                    "horizon": horizon,
-                })
+                actions.append(self._open_market_action(
+                    symbol=sym,
+                    candidate_uid=candidate_uid,
+                    scan_id=scan_id,
+                    side="SELL",
+                    reservation_id=reservation_id,
+                    horizon=horizon,
+                ))
             elif bars_rem <= 0:
                 self._con.execute(
                     "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",
                     [scan_id],
                 )
                 if reservation_id is not None:
-                    actions.append({
-                        "type": "RELEASE_RESERVATION",
-                        "symbol": sym,
-                        "candidate_uid": candidate_uid,
-                        "scan_id": scan_id,
-                        "reservation_id": reservation_id,
-                    })
+                    actions.append(self._release_reservation_action(
+                        symbol=sym,
+                        candidate_uid=candidate_uid,
+                        scan_id=scan_id,
+                        reservation_id=reservation_id,
+                    ))
             else:
                 self._con.execute(
                     "UPDATE barrier_scans SET scan_bars_remaining = ? WHERE scan_id = ?",
@@ -327,7 +322,7 @@ class BarrierManager:
                 )
 
         # Process HOLDING scans (only those already in HOLDING before this bar, not newly transitioned)
-        newly_transitioned = {a["scan_id"] for a in actions if a["type"] == "OPEN_MARKET"}
+        newly_transitioned = {a.scan_id for a in actions if a.type == BarrierActionType.OPEN_MARKET}
         holding = self._con.execute(
             "SELECT scan_id, candidate_uid, broker_pos_id, hold_bars_remaining "
             "FROM barrier_scans WHERE symbol = ? AND status = 'HOLDING'",
@@ -342,13 +337,13 @@ class BarrierManager:
                     "UPDATE barrier_scans SET hold_bars_remaining = 0, status = 'COMPLETED' WHERE scan_id = ?",
                     [scan_id],
                 )
-                actions.append({
-                    "type": "CLOSE_MARKET",
-                    "symbol": sym,
-                    "candidate_uid": candidate_uid,
-                    "broker_pos_id": broker_pos_id,
-                    "scan_id": scan_id,
-                })
+                actions.append(BarrierAction(
+                    type=BarrierActionType.CLOSE_MARKET,
+                    symbol=sym,
+                    candidate_uid=candidate_uid,
+                    broker_pos_id=broker_pos_id,
+                    scan_id=scan_id,
+                ))
             else:
                 self._con.execute(
                     "UPDATE barrier_scans SET hold_bars_remaining = ? WHERE scan_id = ?",
@@ -356,6 +351,42 @@ class BarrierManager:
                 )
 
         return actions
+
+    @staticmethod
+    def _open_market_action(
+        *,
+        symbol: str,
+        candidate_uid: str,
+        scan_id: str,
+        side: str,
+        reservation_id: str | None,
+        horizon: int,
+    ) -> BarrierAction:
+        return BarrierAction(
+            type=BarrierActionType.OPEN_MARKET,
+            symbol=symbol,
+            candidate_uid=candidate_uid,
+            scan_id=scan_id,
+            side=side,
+            reservation_id=reservation_id,
+            horizon=horizon,
+        )
+
+    @staticmethod
+    def _release_reservation_action(
+        *,
+        symbol: str,
+        candidate_uid: str,
+        scan_id: str,
+        reservation_id: str | None,
+    ) -> BarrierAction:
+        return BarrierAction(
+            type=BarrierActionType.RELEASE_RESERVATION,
+            symbol=symbol,
+            candidate_uid=candidate_uid,
+            scan_id=scan_id,
+            reservation_id=reservation_id,
+        )
 
     def _transition_to_holding(self, scan_id: str, touch_step: int, side: str, horizon: int) -> None:
         """Move a scan from SCANNING to HOLDING."""

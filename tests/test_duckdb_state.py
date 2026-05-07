@@ -91,6 +91,31 @@ def test_state_manager_builds_bar_context_from_internal_tick_bar_schema() -> Non
     assert ctx.hl_first == pytest.approx(float(bar.hl_first))
 
 
+def test_state_manager_builds_side_aware_bar_context_by_bar_number() -> None:
+    from src.behemoth.runtime.state import StateManager
+
+    state = StateManager()
+    bars = _make_synthetic_bars(symbol="EURUSD", bar_ticks=100, n=3)
+    for bar in bars:
+        state.append_bar(bar)
+
+    buy_ctx = state.get_bar_context("EURUSD", 100, bar_number=1, side="BUY")
+    sell_ctx = state.get_bar_context("EURUSD", 100, bar_number=1, side="SELL")
+
+    assert buy_ctx is not None
+    assert sell_ctx is not None
+    assert buy_ctx.bar_number == 1
+    assert buy_ctx.timestamp == bars[1].timestamp
+    assert buy_ctx.close_ts == bars[1].close_ts
+    assert buy_ctx.spread == pytest.approx(bars[1].spread)
+    assert buy_ctx.side == "BUY"
+    assert sell_ctx.side == "SELL"
+    assert buy_ctx.touch_high == pytest.approx(bars[1].high_ask)
+    assert buy_ctx.touch_low == pytest.approx(bars[1].low_bid)
+    assert sell_ctx.touch_high == pytest.approx(bars[1].high_ask)
+    assert sell_ctx.touch_low == pytest.approx(bars[1].low_bid)
+
+
 def _pandas_velocity_features(
     bars: list[IncomingTickBar],
     vol_window: int = 96,
