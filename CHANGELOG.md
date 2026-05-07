@@ -1,3 +1,10 @@
+## v0.15.1 (2026-05-07)
+
+### Refactor
+
+- deepen runtime execution boundaries - seam implementation (#122)
+- deepen runtime execution boundaries (#121)
+
 ## v0.15.0 (2026-05-06)
 
 ### Feat
