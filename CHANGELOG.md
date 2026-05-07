@@ -1,3 +1,9 @@
+## v0.16.1 (2026-05-07)
+
+### Refactor
+
+- extract runtime architecture seams
+
 ## v0.16.0 (2026-05-07)
 
 ### Feat
