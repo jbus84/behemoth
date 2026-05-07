@@ -81,7 +81,7 @@ endef
         reconcile-historical-predictions summarize-runtime-db-run \
         account-risk-monitoring-report reconcile-account-risk-reservations
 
-.PHONY: docs docs-build docs-contract docs-contract-ci docs-clean process-stage-docs process-graph-contract
+.PHONY: docs docs-build docs-contract docs-contract-ci docs-clean process-stage-docs process-graph-contract context-refresh
 
 .PHONY: help
 
@@ -646,6 +646,14 @@ process-stage-docs:
 process-graph-contract: process-stage-docs
 	uv run python scripts/validate_process_graph_contract.py
 
+context-refresh:
+	@if [ -f graphify-out/graph.json ]; then \
+		uv run python scripts/refresh_context_from_graphify.py; \
+	else \
+		echo "graphify-out/graph.json not found. Run /graphify first."; \
+		exit 1; \
+	fi
+
 docs-contract:
 	$(MAKE) process-graph-contract
 	uv run python scripts/build_docs_catalog.py
@@ -757,6 +765,7 @@ help:
 	@printf "  $(COLOR_DOC)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "docs-build" "Build docs"
 	@printf "  $(COLOR_DOC)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "process-stage-docs" "Generate LLM-readable stage capsules and scoped process graphs"
 	@printf "  $(COLOR_DOC)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "process-graph-contract" "Validate generated process graphs against the stage registry"
+	@printf "  $(COLOR_DOC)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "context-refresh" "Regenerate CONTEXT.md god nodes from graphify output (auto-runs after /graphify)"
 	@printf "  $(COLOR_DOC)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "docs-contract" "Run docs contracts and OCO docs governance checks"
 	@printf "  $(COLOR_DOC)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "docs-contract-ci" "Run CI-safe docs contracts without heavy recomputation"
 	@printf "  $(COLOR_DOC)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "docs-clean" "Remove built site/"
