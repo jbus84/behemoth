@@ -1,3 +1,9 @@
+## v0.15.2 (2026-05-07)
+
+### Fix
+
+- route JForex engine operations through strategy thread via executeTask (#123)
+
 ## v0.15.1 (2026-05-07)
 
 ### Refactor
