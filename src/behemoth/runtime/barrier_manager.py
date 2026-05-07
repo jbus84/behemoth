@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 
 import duckdb
 
+from src.behemoth.core.schemas import BarContext
+
 _CREATE_BARRIER_SCANS_SQL = """
 CREATE TABLE IF NOT EXISTS barrier_scans (
     scan_id VARCHAR PRIMARY KEY,
@@ -175,13 +177,15 @@ class BarrierManager:
 
     def evaluate_bar(
         self,
-        symbol: str,
-        bar_ticks: int,
-        bar_high_bid: float,
-        bar_low_bid: float,
-        bar_hl_first: float,
-        current_bar_idx: int,
-        bar_high_ask: float = 0.0,
+        bar_context: BarContext | None = None,
+        *legacy_args,
+        symbol: str | None = None,
+        bar_ticks: int | None = None,
+        bar_high_bid: float | None = None,
+        bar_low_bid: float | None = None,
+        bar_hl_first: float | None = None,
+        current_bar_idx: int | None = None,
+        bar_high_ask: float | None = None,
     ) -> list[dict]:
         """Evaluate a completed bar against all active scans for this symbol.
 
@@ -192,6 +196,42 @@ class BarrierManager:
         - Touch confirmation is completed-bar based; the live adapter submits a
           market order immediately after touch confirmation
         """
+        if bar_context is not None and not isinstance(bar_context, BarContext):
+            legacy_args = (bar_context, *legacy_args)
+            bar_context = None
+        if legacy_args:
+            if len(legacy_args) != 6:
+                raise TypeError(
+                    "legacy evaluate_bar positional form requires "
+                    "(symbol, bar_ticks, bar_high_bid, bar_low_bid, bar_hl_first, current_bar_idx)"
+                )
+            (
+                symbol,
+                bar_ticks,
+                bar_high_bid,
+                bar_low_bid,
+                bar_hl_first,
+                current_bar_idx,
+            ) = legacy_args
+        if bar_context is not None:
+            symbol = bar_context.symbol
+            bar_ticks = bar_context.bar_ticks
+            bar_high_bid = bar_context.bid.high
+            bar_low_bid = bar_context.bid.low
+            bar_hl_first = bar_context.hl_first
+            current_bar_idx = bar_context.bar_idx
+            bar_high_ask = bar_context.ask.high
+        if (
+            symbol is None
+            or bar_ticks is None
+            or bar_high_bid is None
+            or bar_low_bid is None
+            or bar_hl_first is None
+            or current_bar_idx is None
+        ):
+            raise ValueError("evaluate_bar requires BarContext or complete bar keyword inputs")
+        if bar_high_ask is None:
+            bar_high_ask = 0.0
         sym = symbol.upper()
         actions: list[dict] = []
 

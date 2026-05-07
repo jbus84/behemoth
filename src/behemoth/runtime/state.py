@@ -25,7 +25,14 @@ from src.behemoth.core.features import (
     compute_features_from_bars,
     compute_regime_quantiles_from_bars,
 )
-from src.behemoth.core.schemas import IncomingTick, IncomingTickBar, ModelFeatures
+from src.behemoth.core.schemas import (
+    BarContext,
+    BarPrices,
+    IncomingTick,
+    IncomingTickBar,
+    ModelFeatures,
+)
+from src.behemoth.risk.account import ReservationState, ReservationStateMachine
 
 _CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS tick_bars (
@@ -405,6 +412,29 @@ class StateManager:
             "high_ask": res[6] if res[6] is not None else 0.0,
             "close_ask": res[7] if res[7] is not None else 0.0,
         }
+
+    def get_latest_bar_context(self, symbol: str, bar_ticks: int) -> BarContext | None:
+        """Build the public completed-bar context for runtime lifecycle consumers."""
+        latest = self.get_latest_bar(symbol, bar_ticks)
+        if latest is None:
+            return None
+        return BarContext(
+            symbol=symbol.upper(),
+            bar_ticks=int(bar_ticks),
+            bar_idx=int(latest["row_id"]),
+            bid=BarPrices(
+                high=float(latest["high_bid"]),
+                low=float(latest["low_bid"]),
+                close=float(latest["close_bid"]),
+            ),
+            ask=BarPrices(
+                high=float(latest["high_ask"]),
+                low=float(min(latest["high_ask"], latest["close_ask"])),
+                close=float(latest["close_ask"]),
+            ),
+            hl_first=float(latest.get("hl_first", 0.0) or 0.0),
+            hl_pos_frac=None,
+        )
 
     def get_latest_close_ts(self, symbol: str) -> datetime | None:
         """Return the close_ts of the most recent bar."""
@@ -896,6 +926,7 @@ class StateManager:
         """Create an account risk reservation row and return reservation id."""
         import uuid
 
+        initial_state = ReservationStateMachine.validate_initial(status)
         rid = str(uuid.uuid4())
         now_utc = datetime.now(tz=timezone.utc)
         self._con.execute(
@@ -907,7 +938,7 @@ class StateManager:
                 symbol.upper(),
                 candidate_uid,
                 None,
-                status.upper(),
+                initial_state.value,
                 float(reserved_loss_ccy),
                 float(barrier_pips),
                 float(cap_pips),
@@ -918,6 +949,50 @@ class StateManager:
             ],
         )
         return rid
+
+    def transition_account_risk_reservation(
+        self,
+        reservation_id: str,
+        target_status: str | ReservationState,
+        *,
+        broker_pos_id: str | None = None,
+        reason: str | None = None,
+    ) -> str:
+        """Transition one reservation through the formal lifecycle."""
+        row = self._con.execute(
+            """
+            SELECT status
+            FROM account_risk_reservations
+            WHERE reservation_id = ?
+            LIMIT 1
+            """,
+            [reservation_id],
+        ).fetchone()
+        if row is None:
+            raise KeyError(f"reservation not found: {reservation_id}")
+        target = ReservationStateMachine.validate_transition(str(row[0]), target_status)
+        now_utc = datetime.now(tz=timezone.utc)
+        safe_reason = str(reason or "").replace("|", "_").replace("'", "_")
+        if safe_reason:
+            self._con.execute(
+                """
+                UPDATE account_risk_reservations
+                SET status = ?, broker_pos_id = COALESCE(?, broker_pos_id),
+                    updated_ts = ?, source = source || ?
+                WHERE reservation_id = ?
+                """,
+                [target.value, broker_pos_id, now_utc, f"|{safe_reason}", reservation_id],
+            )
+        else:
+            self._con.execute(
+                """
+                UPDATE account_risk_reservations
+                SET status = ?, broker_pos_id = COALESCE(?, broker_pos_id), updated_ts = ?
+                WHERE reservation_id = ?
+                """,
+                [target.value, broker_pos_id, now_utc, reservation_id],
+            )
+        return target.value
 
     def create_risk_reservation(
         self,
@@ -956,7 +1031,6 @@ class StateManager:
         symbol: str | None = None,
     ) -> str | None:
         """Promote a pending reservation to OPEN after broker fill."""
-        now_utc = datetime.now(tz=timezone.utc)
         if reservation_id:
             row = self._con.execute(
                 """
@@ -969,13 +1043,10 @@ class StateManager:
             ).fetchone()
             if not row:
                 return None
-            self._con.execute(
-                """
-                UPDATE account_risk_reservations
-                SET status = 'OPEN', broker_pos_id = ?, updated_ts = ?
-                WHERE reservation_id = ?
-                """,
-                [broker_pos_id, now_utc, reservation_id],
+            self.transition_account_risk_reservation(
+                str(reservation_id),
+                ReservationState.OPEN,
+                broker_pos_id=broker_pos_id,
             )
             return str(reservation_id)
 
@@ -996,13 +1067,10 @@ class StateManager:
         if not row:
             return None
         rid = str(row[0])
-        self._con.execute(
-            """
-            UPDATE account_risk_reservations
-            SET status = 'OPEN', broker_pos_id = ?, updated_ts = ?
-            WHERE reservation_id = ?
-            """,
-            [broker_pos_id, now_utc, rid],
+        self.transition_account_risk_reservation(
+            rid,
+            ReservationState.OPEN,
+            broker_pos_id=broker_pos_id,
         )
         return rid
 
@@ -1032,9 +1100,7 @@ class StateManager:
         reason: str = "released",
     ) -> int:
         """Release active reservation rows and return affected row count."""
-        now_utc = datetime.now(tz=timezone.utc)
-        safe_reason = str(reason).replace("|", "_").replace("'", "_")
-        params: list = [now_utc]
+        params: list = []
         where = ["status IN ('PENDING', 'OPEN')"]
         if reservation_id:
             where.append("reservation_id = ?")
@@ -1051,22 +1117,19 @@ class StateManager:
         if len(where) == 1:
             return 0
         where_sql = " AND ".join(where)
-        before = self._con.execute(
-            f"SELECT COUNT(*) FROM account_risk_reservations WHERE {where_sql}",
-            params[1:],
-        ).fetchone()
-        before_count = int(before[0]) if before and before[0] is not None else 0
-        if before_count <= 0:
-            return 0
-        self._con.execute(
-            f"""
-            UPDATE account_risk_reservations
-            SET status = 'RELEASED', updated_ts = ?, source = source || '|{safe_reason}'
-            WHERE {where_sql}
-            """,
+        rows = self._con.execute(
+            f"SELECT reservation_id FROM account_risk_reservations WHERE {where_sql}",
             params,
-        )
-        return before_count
+        ).fetchall()
+        if not rows:
+            return 0
+        for row in rows:
+            self.transition_account_risk_reservation(
+                str(row[0]),
+                ReservationState.RELEASED,
+                reason=reason,
+            )
+        return len(rows)
 
     def release_risk_reservation(
         self,
@@ -1091,27 +1154,23 @@ class StateManager:
         now_utc = datetime.now(tz=timezone.utc)
         cutoff = now_utc.timestamp() - float(max_age_seconds)
         cutoff_ts = datetime.fromtimestamp(cutoff, tz=timezone.utc)
-        before = self._con.execute(
+        rows = self._con.execute(
             """
-            SELECT COUNT(*)
+            SELECT reservation_id
             FROM account_risk_reservations
             WHERE status = 'PENDING' AND created_ts < ?
             """,
             [cutoff_ts],
-        ).fetchone()
-        before_count = int(before[0]) if before and before[0] is not None else 0
-        if before_count <= 0:
+        ).fetchall()
+        if not rows:
             return 0
-        self._con.execute(
-            """
-            UPDATE account_risk_reservations
-            SET status = 'EXPIRED', updated_ts = ?
-            WHERE status = 'PENDING'
-              AND created_ts < ?
-            """,
-            [now_utc, cutoff_ts],
-        )
-        return before_count
+        for row in rows:
+            self.transition_account_risk_reservation(
+                str(row[0]),
+                ReservationState.EXPIRED,
+                reason="stale_pending",
+            )
+        return len(rows)
 
     def expire_stale_pending_reservations(self, *, max_age_seconds: int) -> int:
         """Broker-neutral alias for expiring stale pending reservations."""

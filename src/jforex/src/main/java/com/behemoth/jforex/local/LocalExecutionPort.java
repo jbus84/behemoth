@@ -5,7 +5,9 @@ import com.behemoth.jforex.core.MarketOrderRequest;
 import com.behemoth.jforex.core.OrderEvent;
 import com.behemoth.jforex.core.OrderEventType;
 import com.behemoth.jforex.core.OrderHandle;
+import com.behemoth.jforex.core.OrderResult;
 import com.behemoth.jforex.core.OrderRequest;
+import com.behemoth.jforex.core.OrderSubmissionRequest;
 import com.behemoth.jforex.core.RuntimeTick;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -50,7 +52,8 @@ public final class LocalExecutionPort implements ExecutionPort {
     }
 
     @Override
-    public OrderHandle submitMarketOrder(MarketOrderRequest request) {
+    public OrderResult submitMarketOrder(OrderSubmissionRequest submission) {
+        MarketOrderRequest request = submission.toMarketOrderRequest();
         String orderId = "LOCAL-MKT-" + ids.getAndIncrement();
         RuntimeTick tick = lastTickBySymbol.get(normalizeSymbol(request.symbol()));
         Instant fillTs = tick != null ? tick.timestamp() : request.submittedAtUtc();
@@ -83,7 +86,7 @@ public final class LocalExecutionPort implements ExecutionPort {
                 "local_market_fill_ok",
                 null
         ));
-        return new OrderHandle(request.label(), orderId);
+        return new OrderResult(orderId, orderId, submission.reservationId());
     }
 
     @Override

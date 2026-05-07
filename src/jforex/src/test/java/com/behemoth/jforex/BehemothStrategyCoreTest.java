@@ -11,6 +11,8 @@ import com.behemoth.jforex.core.ExecutionPort;
 import com.behemoth.jforex.core.MarketOrderRequest;
 import com.behemoth.jforex.core.OrderHandle;
 import com.behemoth.jforex.core.OrderRequest;
+import com.behemoth.jforex.core.OrderResult;
+import com.behemoth.jforex.core.OrderSubmissionRequest;
 import com.behemoth.jforex.core.RuntimeInstrument;
 import com.behemoth.jforex.core.RuntimeTick;
 import com.behemoth.jforex.observability.JForexMetrics;
@@ -308,6 +310,12 @@ class BehemothStrategyCoreTest {
             core.drainWorker("EURUSD");
 
             assertThat(port.marketOrders).hasSize(1);
+            assertThat(port.orderSubmissionRequests).hasSize(1);
+            OrderSubmissionRequest submission = port.orderSubmissionRequests.get(0);
+            assertThat(submission.scanId()).isEqualTo("scan-001");
+            assertThat(submission.candidateUid()).isEqualTo("oco|EURUSD|100|h6|cand1");
+            assertThat(submission.reservationId()).isEqualTo("rid-1");
+            assertThat(submission.horizon()).isEqualTo(6);
             MarketOrderRequest order = port.marketOrders.get(0);
             assertThat(order.symbol()).isEqualTo("EURUSD");
             assertThat(order.side()).isEqualTo("BUY");
@@ -768,6 +776,7 @@ class BehemothStrategyCoreTest {
 
     private static final class RecordingExecutionPort implements ExecutionPort {
         final List<OrderRequest> submittedOrders = new ArrayList<>();
+        final List<OrderSubmissionRequest> orderSubmissionRequests = new ArrayList<>();
         final List<MarketOrderRequest> marketOrders = new ArrayList<>();
         final List<String> closePositionCalls = new ArrayList<>();
 
@@ -781,6 +790,13 @@ class BehemothStrategyCoreTest {
         public OrderHandle submitMarketOrder(MarketOrderRequest request) {
             marketOrders.add(request);
             return new OrderHandle(request.label(), request.label());
+        }
+
+        @Override
+        public OrderResult submitMarketOrder(OrderSubmissionRequest request) {
+            orderSubmissionRequests.add(request);
+            marketOrders.add(request.toMarketOrderRequest());
+            return new OrderResult(request.label(), request.label(), request.reservationId());
         }
 
         @Override

@@ -23,6 +23,8 @@ from scripts.build_tick_velocity_dataset import _build_symbol_dataset  # noqa: E
 from scripts.canonical_tick_feed import DEFAULT_CANONICAL_ROOT  # noqa: E402
 from src.behemoth.core.features import FeatureConfig  # noqa: E402
 
+FEATURE_CONFIG = FeatureConfig()
+
 ACTIVE_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 DEFAULT_TICK_ROOT = str(DEFAULT_CANONICAL_ROOT)
 DEFAULT_OFFSET_BAR_DIR = "data/global_tickbars_offset"
@@ -31,8 +33,8 @@ DEFAULT_API_CONFIRM_OFFSETS = (0, 25, 50, 75)
 DEFAULT_WARMUP_BARS_GRID = (73, 145, 217, 289, 400)
 DEFAULT_OFFSETS = tuple(range(100))
 DEFAULT_COARSE_OFFSETS = tuple(range(0, 100, 10))
-MIN_FEATURE_BARS = FeatureConfig().min_periods_cost + 1
-FULL_FEATURE_BARS = FeatureConfig().full_warmup_bars
+MIN_FEATURE_BARS = FEATURE_CONFIG.min_periods_cost + 1
+FULL_FEATURE_BARS = FEATURE_CONFIG.full_warmup_bars
 DEFAULT_STOP_LIMIT_CAPS = "0.5,0.8,1.0,1.2,1.5,2.0"
 DEFAULT_STRESS_COST_GRID = "0.1,0.2,0.3,0.5,0.75,1.0,1.25,1.5,1.75,2.0"
 
@@ -193,8 +195,8 @@ def _build_velocity_for_offset(
         bar_ticks=100,
         vel_horizons=[1, 2, 5, 10],
         target_horizons=[1, 2, 3, 4, 5, 6],
-        vol_window=96,
-        cost_window=288,
+        vol_window=FEATURE_CONFIG.vol_window,
+        cost_window=FEATURE_CONFIG.cost_window,
     )
     if ds.empty:
         raise RuntimeError(f"empty velocity dataset for {symbol} offset={offset}")

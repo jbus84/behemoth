@@ -88,6 +88,24 @@ class TestTickAggregatorBarCount:
         assert len(bars2) == 1
         assert agg.remainder_count("EURUSD") == 20
 
+    def test_arbitrary_bar_ticks_keeps_live_sequence_gap_free(self):
+        from src.behemoth.runtime.tick_aggregator import TickAggregator
+
+        agg = TickAggregator(bar_ticks=50)
+        warmup_ticks = _make_ticks(5000, seed=11)
+        live_ticks = _make_ticks(1000, seed=12)
+        offset = warmup_ticks[-1].timestamp - live_ticks[0].timestamp + timedelta(milliseconds=1)
+        live_ticks = [t.model_copy(update={"timestamp": t.timestamp + offset}) for t in live_ticks]
+        warmup_bars = agg.add_ticks(warmup_ticks)
+        live_bars = agg.add_ticks(live_ticks)
+
+        assert len(warmup_bars) == 100
+        assert len(live_bars) == 20
+        assert agg.remainder_count("EURUSD") == 0
+        all_bars = warmup_bars + live_bars
+        for previous, current in zip(all_bars, all_bars[1:], strict=False):
+            assert previous.close_ts <= current.close_ts
+
 
 class TestTickAggregatorOHLC:
     """Verify OHLC values are correct."""

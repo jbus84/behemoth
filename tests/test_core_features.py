@@ -5,7 +5,12 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 import pandas as pd
 
-from src.behemoth.core.features import FeatureConfig, compute_feature_matrix_from_bars
+from src.behemoth.core.features import (
+    CURRENT_FEATURE_SCHEMA,
+    FeatureConfig,
+    compute_feature_matrix_from_bars,
+)
+from src.behemoth.core.schemas import ModelFeatures
 
 
 def _make_bars(n_rows: int) -> pd.DataFrame:
@@ -48,3 +53,21 @@ def test_compute_feature_matrix_keeps_prewarmup_rows_invalid() -> None:
     assert valid_mask.sum() == len(bars) - cfg.full_warmup_bars + 1
     assert valid_mask.idxmax() == cfg.full_warmup_bars - 1
     assert not valid_mask.iloc[cfg.full_warmup_bars - 2]
+
+
+def test_current_feature_schema_matches_model_features_contract() -> None:
+    assert CURRENT_FEATURE_SCHEMA.version == "oco_features_v1"
+    assert CURRENT_FEATURE_SCHEMA.feature_names == tuple(ModelFeatures.model_fields)
+    assert CURRENT_FEATURE_SCHEMA.rolling_windows == {
+        "vol_window": 96,
+        "cost_window": 288,
+        "structural_window": 24,
+    }
+
+
+def test_feature_config_defaults_come_from_schema_manifest() -> None:
+    cfg = FeatureConfig()
+
+    assert cfg.schema_version == CURRENT_FEATURE_SCHEMA.version
+    assert cfg.vol_window == CURRENT_FEATURE_SCHEMA.rolling_windows["vol_window"]
+    assert cfg.cost_window == CURRENT_FEATURE_SCHEMA.rolling_windows["cost_window"]

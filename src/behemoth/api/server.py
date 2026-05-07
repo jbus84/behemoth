@@ -104,6 +104,7 @@ _feed_state: dict[str, dict[str, Any]] = {}
 _lifespan_ready: bool = False
 _MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 _HISTORICAL_PREDICTION_TOLERANCE_SEC = 30.0
+_DEFAULT_FEATURE_CONFIG = FeatureConfig()
 
 
 def _env_str(*keys: str, default: str = "") -> str:
@@ -272,8 +273,8 @@ METRIC_OPEN_POSITION_BARS_REMAINING = Gauge(
 
 class AppConfig(BaseModel):
     """Runtime configuration for the inference server."""
-    vol_window: int = 96
-    cost_window: int = 288
+    vol_window: int = _DEFAULT_FEATURE_CONFIG.vol_window
+    cost_window: int = _DEFAULT_FEATURE_CONFIG.cost_window
     models_dir: str = Field(default_factory=lambda: os.getenv("BEHEMOTH_MODELS_DIR", "models/oco"))
     registry_path: str = Field(default_factory=lambda: os.getenv("BEHEMOTH_REGISTRY_PATH", "configs/research/governance/oco_rule_universe_registry.yaml"))
     symbols: list[str] = Field(
@@ -2803,26 +2804,10 @@ async def predict(req: PredictRequest) -> PredictResponse:
     if _barrier_manager is not None:
         completed_ticks_set = set(completed_ticks) if completed_ticks else set()
         for bt in (completed_ticks_set or {int(c.bar_ticks) for c in candidates}):
-            latest_bar = _state.get_latest_bar(sym, bt)
-            if latest_bar is None:
+            bar_context = _state.get_latest_bar_context(sym, bt)
+            if bar_context is None:
                 continue
-            latest_bar = _require_explicit_latest_bar_schema(
-                latest_bar,
-                symbol=sym,
-                bar_ticks=bt,
-            )
-            bar_high_bid = latest_bar["high_bid"]
-            bar_low_bid = latest_bar["low_bid"]
-            bar_high_ask = latest_bar["high_ask"]
-            raw_actions = _barrier_manager.evaluate_bar(
-                symbol=sym,
-                bar_ticks=bt,
-                bar_high_bid=bar_high_bid,
-                bar_low_bid=bar_low_bid,
-                bar_hl_first=latest_bar.get("hl_first", 0.0),
-                current_bar_idx=latest_bar["row_id"],
-                bar_high_ask=bar_high_ask,
-            )
+            raw_actions = _barrier_manager.evaluate_bar(bar_context)
             for a in raw_actions:
                 if a["type"] == "RELEASE_RESERVATION":
                     # Expired barrier — release the risk reservation directly; JForex

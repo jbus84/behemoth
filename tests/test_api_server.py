@@ -366,7 +366,7 @@ class TestPredictLatestBarSchema:
         import numpy as np
 
         from src.behemoth.api import server
-        from src.behemoth.core.schemas import ModelFeatures, OcoPrediction
+        from src.behemoth.core.schemas import BarContext, ModelFeatures, OcoPrediction
 
         dummy_cand = mock.MagicMock()
         dummy_cand.bar_ticks = 100
@@ -468,15 +468,18 @@ class TestPredictLatestBarSchema:
                 )
 
             assert response.status_code == 200
-            barrier_manager.evaluate_bar.assert_called_once_with(
-                symbol="EURUSD",
-                bar_ticks=100,
-                bar_high_bid=latest_bar["high_bid"],
-                bar_low_bid=latest_bar["low_bid"],
-                bar_hl_first=latest_bar["hl_first"],
-                current_bar_idx=latest_bar["row_id"],
-                bar_high_ask=latest_bar["high_ask"],
-            )
+            barrier_manager.evaluate_bar.assert_called_once()
+            bar_context = barrier_manager.evaluate_bar.call_args.args[0]
+            assert isinstance(bar_context, BarContext)
+            assert bar_context.symbol == "EURUSD"
+            assert bar_context.bar_ticks == 100
+            assert bar_context.bar_idx == latest_bar["row_id"]
+            assert bar_context.bid.high == latest_bar["high_bid"]
+            assert bar_context.bid.low == latest_bar["low_bid"]
+            assert bar_context.bid.close == latest_bar["close_bid"]
+            assert bar_context.ask.high == latest_bar["high_ask"]
+            assert bar_context.ask.close == latest_bar["close_ask"]
+            assert bar_context.hl_first == latest_bar["hl_first"]
             barrier_manager.register_scan.assert_called_once_with(
                 symbol="EURUSD",
                 candidate_uid="cand1",
