@@ -116,13 +116,15 @@ final class JForexExecutionPort implements ExecutionPort {
     private <T> T executeOnStrategyThread(Task<T> task) {
         IContext ctx = contextSupplier.get();
         if (ctx == null) {
-            return task.run();
+            throw new IllegalStateException(
+                    "JForex context not available — strategy stopped or not yet started"
+            );
         }
         CompletableFuture<T> future = new CompletableFuture<>();
         ctx.executeTask(() -> {
             try {
                 future.complete(task.run());
-            } catch (RuntimeException exc) {
+            } catch (Throwable exc) {
                 future.completeExceptionally(exc);
             }
             return null;
