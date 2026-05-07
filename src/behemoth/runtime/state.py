@@ -21,6 +21,7 @@ from typing import Any
 import duckdb
 
 from src.behemoth.core.features import (
+    CURRENT_FEATURE_SCHEMA,
     FeatureConfig,
     compute_features_from_bars,
     compute_regime_quantiles_from_bars,
@@ -246,11 +247,15 @@ class StateManager:
 
     def __init__(
         self,
-        vol_window: int = 96,
-        cost_window: int = 288,
+        vol_window: int | None = None,
+        cost_window: int | None = None,
         *,
         persist_path: str | None = None,
     ) -> None:
+        if vol_window is None:
+            vol_window = CURRENT_FEATURE_SCHEMA.rolling_windows["vol_window"]
+        if cost_window is None:
+            cost_window = CURRENT_FEATURE_SCHEMA.rolling_windows["cost_window"]
         self._cfg = FeatureConfig(vol_window=int(vol_window), cost_window=int(cost_window))
 
         if persist_path:
