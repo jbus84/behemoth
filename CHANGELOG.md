@@ -1,3 +1,14 @@
+## v0.16.0 (2026-05-07)
+
+### Feat
+
+- extract GovernanceValidator module from procedural validation logic
+- extract HistoricalPredictionStage module from prediction payload caching
+
+### Refactor
+
+- enforce BarContext-only interface in BarrierManager
+
 ## v0.15.3 (2026-05-07)
 
 ### Fix
