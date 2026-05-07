@@ -366,7 +366,7 @@ class TestPredictLatestBarSchema:
         import numpy as np
 
         from src.behemoth.api import server
-        from src.behemoth.core.schemas import BarContext, ModelFeatures, OcoPrediction
+        from src.behemoth.core.schemas import BarContext, BarPrices, ModelFeatures, OcoPrediction
 
         dummy_cand = mock.MagicMock()
         dummy_cand.bar_ticks = 100
@@ -419,6 +419,22 @@ class TestPredictLatestBarSchema:
             "high_ask": 1.1027,
             "close_ask": 1.1017,
         }
+        latest_context = BarContext(
+            symbol="EURUSD",
+            bar_ticks=100,
+            bar_idx=latest_bar["row_id"],
+            bid=BarPrices(
+                high=latest_bar["high_bid"],
+                low=latest_bar["low_bid"],
+                close=latest_bar["close_bid"],
+            ),
+            ask=BarPrices(
+                high=latest_bar["high_ask"],
+                low=latest_bar["close_ask"],
+                close=latest_bar["close_ask"],
+            ),
+            hl_first=latest_bar["hl_first"],
+        )
 
         original_barrier_manager = server._barrier_manager
         server._barrier_manager = barrier_manager
@@ -456,6 +472,7 @@ class TestPredictLatestBarSchema:
                 ),
                 mock.patch.object(server._state, "get_rolling_threshold", return_value=0.5),
                 mock.patch.object(server._state, "get_latest_bar", return_value=latest_bar),
+                mock.patch.object(server._state, "get_latest_bar_context", return_value=latest_context),
                 mock.patch.object(server, "_build_predictions", return_value=([prediction], [])),
             ):
                 response = client.post(

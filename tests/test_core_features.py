@@ -8,6 +8,7 @@ import pandas as pd
 from src.behemoth.core.features import (
     CURRENT_FEATURE_SCHEMA,
     FeatureConfig,
+    FeatureDefinition,
     compute_feature_matrix_from_bars,
 )
 from src.behemoth.core.schemas import ModelFeatures
@@ -58,6 +59,7 @@ def test_compute_feature_matrix_keeps_prewarmup_rows_invalid() -> None:
 def test_current_feature_schema_matches_model_features_contract() -> None:
     assert CURRENT_FEATURE_SCHEMA.version == "oco_features_v1"
     assert CURRENT_FEATURE_SCHEMA.feature_names == tuple(ModelFeatures.model_fields)
+    assert tuple(CURRENT_FEATURE_SCHEMA.feature_definitions) == CURRENT_FEATURE_SCHEMA.feature_names
     assert CURRENT_FEATURE_SCHEMA.rolling_windows == {
         "vol_window": 96,
         "cost_window": 288,
@@ -71,3 +73,15 @@ def test_feature_config_defaults_come_from_schema_manifest() -> None:
     assert cfg.schema_version == CURRENT_FEATURE_SCHEMA.version
     assert cfg.vol_window == CURRENT_FEATURE_SCHEMA.rolling_windows["vol_window"]
     assert cfg.cost_window == CURRENT_FEATURE_SCHEMA.rolling_windows["cost_window"]
+
+
+def test_feature_schema_exposes_registry_metadata() -> None:
+    definition = CURRENT_FEATURE_SCHEMA.definition_for("cost_est_pips")
+
+    assert isinstance(definition, FeatureDefinition)
+    assert definition.compute_group == "cost"
+    assert definition.dependencies == ("spread", "range_pips")
+    assert all(
+        CURRENT_FEATURE_SCHEMA.definition_for(name).compute_group
+        for name in CURRENT_FEATURE_SCHEMA.feature_names
+    )

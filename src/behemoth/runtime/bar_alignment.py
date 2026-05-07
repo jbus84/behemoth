@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Protocol
 
 from src.behemoth.core.schemas import IncomingTick, IncomingTickBar
 
@@ -13,10 +14,23 @@ class BarAlignmentResult:
     remainder: list[IncomingTick]
 
 
-class BarAlignmentService:
-    """Build completed fixed-tick bars and return unconsumed remainder ticks."""
+class BarBoundaryContract(Protocol):
+    """Contract for turning ordered ticks into completed bars and remainder."""
 
-    def align_ticks(
+    def align(
+        self,
+        ticks: list[IncomingTick],
+        *,
+        symbol: str,
+        bar_ticks: int,
+    ) -> BarAlignmentResult:
+        ...
+
+
+class TickCountBarBoundary:
+    """Fixed tick-count bar boundary adapter."""
+
+    def align(
         self,
         ticks: list[IncomingTick],
         *,
@@ -33,6 +47,22 @@ class BarAlignmentService:
             completed.append(_build_bar(chunk, symbol=symbol.upper(), bar_ticks=size))
             cursor += size
         return BarAlignmentResult(bars=completed, remainder=ticks[cursor:])
+
+
+class BarAlignmentService:
+    """Build completed fixed-tick bars and return unconsumed remainder ticks."""
+
+    def __init__(self, boundary: BarBoundaryContract | None = None) -> None:
+        self._boundary = boundary or TickCountBarBoundary()
+
+    def align_ticks(
+        self,
+        ticks: list[IncomingTick],
+        *,
+        symbol: str,
+        bar_ticks: int,
+    ) -> BarAlignmentResult:
+        return self._boundary.align(ticks, symbol=symbol, bar_ticks=bar_ticks)
 
 
 def _build_bar(

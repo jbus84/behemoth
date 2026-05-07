@@ -66,10 +66,26 @@ class BarContext(BaseModel):
     symbol: str
     bar_ticks: int = Field(..., gt=0)
     bar_idx: int = Field(..., ge=0)
+    timestamp: datetime | None = None
+    close_ts: datetime | None = None
+    spread: float | None = Field(default=None, ge=0)
+    side: str | None = None
     bid: BarPrices
     ask: BarPrices
     hl_first: float = 0.0
     hl_pos_frac: float | None = None
+
+    @property
+    def bar_number(self) -> int:
+        return self.bar_idx
+
+    @property
+    def touch_high(self) -> float:
+        return self.ask.high
+
+    @property
+    def touch_low(self) -> float:
+        return self.bid.low
 
 
 class ModelFeatures(BaseModel):
@@ -297,6 +313,12 @@ class BarrierAction(BaseModel):
     reservation_id: str | None = None  # present for OPEN_MARKET
     broker_pos_id: str | None = None  # present for CLOSE_MARKET
     horizon: int | None = None  # present for OPEN_MARKET
+
+    def __getitem__(self, key: str) -> Any:
+        return getattr(self, key)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return getattr(self, key, default)
 
 
 class PredictResponse(BaseModel):

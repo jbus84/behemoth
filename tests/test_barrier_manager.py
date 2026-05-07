@@ -96,6 +96,8 @@ class TestRegisterScan:
         assert scan["scan_bars_remaining"] == 6
 
     def test_evaluate_bar_accepts_minimal_bar_context(self):
+        from src.behemoth.core.schemas import BarrierAction, BarrierActionType
+
         mgr = BarrierManager()
         mgr.register_scan(
             symbol="GBPUSD",
@@ -124,17 +126,14 @@ class TestRegisterScan:
             )
         )
 
-        assert actions == [
-            {
-                "type": "OPEN_MARKET",
-                "symbol": "GBPUSD",
-                "side": "BUY",
-                "candidate_uid": "oco|GBPUSD|100|h6|abc",
-                "reservation_id": "res-001",
-                "scan_id": actions[0]["scan_id"],
-                "horizon": 6,
-            }
-        ]
+        assert len(actions) == 1
+        assert isinstance(actions[0], BarrierAction)
+        assert actions[0].type == BarrierActionType.OPEN_MARKET
+        assert actions[0].symbol == "GBPUSD"
+        assert actions[0].side == "BUY"
+        assert actions[0].candidate_uid == "oco|GBPUSD|100|h6|abc"
+        assert actions[0].reservation_id == "res-001"
+        assert actions[0].horizon == 6
 
     def test_reject_legacy_active_scans_expires_rows_with_missing_signal_closes(self):
         con = duckdb.connect()
