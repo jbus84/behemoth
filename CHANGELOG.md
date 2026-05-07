@@ -1,3 +1,9 @@
+## v0.15.3 (2026-05-07)
+
+### Fix
+
+- harden JForexExecutionPort against shutdown race and error leaks (#124)
+
 ## v0.15.2 (2026-05-07)
 
 ### Fix
