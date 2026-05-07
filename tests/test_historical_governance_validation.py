@@ -5,8 +5,11 @@ import hashlib
 import json
 from pathlib import Path
 
+from src.behemoth.core.governance_validator import Check, GovernanceValidator
 from src.behemoth.core.historical_governance_validation import (
+    HistoricalGovernanceCheck,
     failed_checks,
+    summarize_failures,
     validate_historical_governance,
 )
 
@@ -136,6 +139,15 @@ def test_validate_historical_governance_passes_on_valid_fixture(tmp_path: Path) 
         required_months=["2025-08"],
     )
     assert failed_checks(checks) == []
+
+
+def test_historical_governance_check_is_validator_check_alias() -> None:
+    check = HistoricalGovernanceCheck("artifact_hash", False, "bad hash", symbol="EURUSD")
+    validator = GovernanceValidator()
+
+    assert isinstance(check, Check)
+    assert validator.failed_checks([check]) == [check]
+    assert summarize_failures([check]) == "artifact_hash [EURUSD ]: bad hash"
 
 
 def test_validate_historical_governance_flags_model_month_mismatch(tmp_path: Path) -> None:

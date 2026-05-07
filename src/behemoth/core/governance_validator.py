@@ -40,6 +40,30 @@ class Check:
     lock_path: str = ""
 
 
+def failed_checks(checks: list[Check]) -> list[Check]:
+    """Return failed governance validation checks."""
+    return [c for c in checks if not bool(c.ok)]
+
+
+def summarize_failures(checks: list[Check], limit: int = 12) -> str:
+    """Summarize failed governance validation checks for operator surfaces."""
+    bad = failed_checks(checks)
+    if not bad:
+        return ""
+    head = bad[: max(1, int(limit))]
+    chunks = [
+        (
+            f"{c.name}"
+            + (f" [{c.symbol} {c.month}]" if c.symbol or c.month else "")
+            + f": {c.detail}"
+        )
+        for c in head
+    ]
+    if len(bad) > len(head):
+        chunks.append(f"... and {len(bad) - len(head)} more failures")
+    return " | ".join(chunks)
+
+
 class GovernanceValidator:
     """Validates historical governance locks and index consistency.
 
@@ -76,6 +100,14 @@ class GovernanceValidator:
         self._validate_required_coverage(req_sym_set, required_months, lock_keys, checks)
 
         return checks
+
+    def failed_checks(self, checks: list[Check]) -> list[Check]:
+        """Return failed checks produced by this validator."""
+        return failed_checks(checks)
+
+    def summarize_failures(self, checks: list[Check], limit: int = 12) -> str:
+        """Summarize failed checks produced by this validator."""
+        return summarize_failures(checks, limit=limit)
 
     def _validate_locks(
         self,
@@ -147,6 +179,11 @@ class GovernanceValidator:
         ))
 
         if not index_path.exists():
+            checks.append(Check(
+                name="index_covers_exact_lock_set",
+                ok=(set() == lock_keys),
+                detail=f"index_only=[] lock_only={sorted(lock_keys)}",
+            ))
             return
 
         index_keys: set[tuple[str, str]] = set()

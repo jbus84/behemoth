@@ -116,6 +116,23 @@ def test_state_manager_builds_side_aware_bar_context_by_bar_number() -> None:
     assert sell_ctx.touch_low == pytest.approx(bars[1].low_bid)
 
 
+def test_state_manager_exposes_read_only_query_view() -> None:
+    from src.behemoth.runtime.state import StateManager
+    from src.behemoth.runtime.state_queries import StateQueryView
+
+    state = StateManager()
+    bar = _make_synthetic_bars(symbol="EURUSD", bar_ticks=100, n=1)[0]
+    state.append_bar(bar)
+
+    view = state.query_view()
+    ctx = view.get_bar_context("EURUSD", 100)
+
+    assert isinstance(view, StateQueryView)
+    assert view.bar_count("EURUSD", 100) == 1
+    assert ctx is not None
+    assert ctx.touch_high == pytest.approx(bar.high_ask)
+
+
 def _pandas_velocity_features(
     bars: list[IncomingTickBar],
     vol_window: int = 96,

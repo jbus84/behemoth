@@ -1,9 +1,9 @@
 """Tests for BarrierManager barrier detection parity with _oco_precompute."""
 from __future__ import annotations
 
+import duckdb
 import numpy as np
 import pandas as pd
-import duckdb
 import pytest
 
 from src.behemoth.core.schemas import BarContext, BarPrices
@@ -134,6 +134,41 @@ class TestRegisterScan:
         assert actions[0].candidate_uid == "oco|GBPUSD|100|h6|abc"
         assert actions[0].reservation_id == "res-001"
         assert actions[0].horizon == 6
+
+    def test_evaluate_bar_with_result_exposes_state_mutations(self):
+        mgr = BarrierManager()
+        scan_id = mgr.register_scan(
+            symbol="GBPUSD",
+            candidate_uid="oco|GBPUSD|100|h6|abc",
+            signal_bar_idx=10,
+            signal_close_ask=1.29520,
+            signal_close_bid=1.29510,
+            barrier_pips=2.0,
+            horizon=6,
+            pip_size=0.0001,
+            pred_prob=0.625,
+            threshold=0.599,
+            model_month="2026-02",
+            reservation_id="res-001",
+            run_id="test",
+        )
+
+        result = mgr.evaluate_bar_with_result(
+            BarContext(
+                symbol="GBPUSD",
+                bar_ticks=100,
+                bar_idx=11,
+                bid=BarPrices(high=1.29530, low=1.29490, close=1.29500),
+                ask=BarPrices(high=1.29541, low=1.29501, close=1.29511),
+                hl_first=1.0,
+            )
+        )
+
+        assert result.actions[0].scan_id == scan_id
+        assert result.mutations[0].scan_id == scan_id
+        assert result.mutations[0].from_status == "SCANNING"
+        assert result.mutations[0].to_status == "HOLDING"
+        assert result.mutations[0].reason == "buy_touch"
 
     def test_reject_legacy_active_scans_expires_rows_with_missing_signal_closes(self):
         con = duckdb.connect()

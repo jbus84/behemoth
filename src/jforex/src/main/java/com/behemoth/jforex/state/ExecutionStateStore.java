@@ -53,6 +53,7 @@ public final class ExecutionStateStore {
 
     public synchronized FillAction markFilled(String label, String orderId, double fillPrice, Instant fillTs) {
         OcoLegRef ref = requireLeg(label);
+        String fromStatus = ref.leg.status;
         ref.leg.orderId = orderId;
         ref.leg.fillPrice = fillPrice;
         ref.leg.fillEpochMs = fillTs.toEpochMilli();
@@ -70,11 +71,19 @@ public final class ExecutionStateStore {
         }
         boolean shouldNotifyTradeOpen = !ref.leg.openNotified;
         persist();
-        return new FillAction(ref.group, ref.leg, siblingLabelToCancel, shouldNotifyTradeOpen, ref.group.lifecycleViolation);
+        return new FillAction(
+                ref.group,
+                ref.leg,
+                siblingLabelToCancel,
+                shouldNotifyTradeOpen,
+                ref.group.lifecycleViolation,
+                new StateTransition(label, fromStatus, ref.leg.status, "FILL_OK")
+        );
     }
 
     public synchronized CloseAction markClosed(String label, double closePrice, Instant closeTs, Double pnlPips) {
         OcoLegRef ref = requireLeg(label);
+        String fromStatus = ref.leg.status;
         ref.leg.closePrice = closePrice;
         ref.leg.closeEpochMs = closeTs.toEpochMilli();
         ref.leg.pnlPips = pnlPips;
@@ -83,7 +92,14 @@ public final class ExecutionStateStore {
         boolean shouldTouch = ref.leg.wasFilled() && !ref.leg.touchNotified;
         boolean shouldUpdate = !ref.leg.updateNotified;
         persist();
-        return new CloseAction(ref.group, ref.leg, shouldTouch, shouldUpdate, tradeStatus);
+        return new CloseAction(
+                ref.group,
+                ref.leg,
+                shouldTouch,
+                shouldUpdate,
+                tradeStatus,
+                new StateTransition(label, fromStatus, ref.leg.status, "CLOSE_OK")
+        );
     }
 
     public synchronized void markCancelRequested(String label) {
@@ -173,12 +189,21 @@ public final class ExecutionStateStore {
     public record OcoLegRef(OcoGroupState group, OcoGroupState.OcoLegState leg) {
     }
 
+    public record StateTransition(
+            String label,
+            String fromStatus,
+            String toStatus,
+            String event
+    ) {
+    }
+
     public record FillAction(
             OcoGroupState group,
             OcoGroupState.OcoLegState leg,
             String siblingLabelToCancel,
             boolean shouldNotifyTradeOpen,
-            boolean lifecycleViolation
+            boolean lifecycleViolation,
+            StateTransition transition
     ) {
     }
 
@@ -187,7 +212,8 @@ public final class ExecutionStateStore {
             OcoGroupState.OcoLegState leg,
             boolean shouldNotifyTouch,
             boolean shouldNotifyTradeUpdate,
-            String tradeStatus
+            String tradeStatus,
+            StateTransition transition
     ) {
     }
 }

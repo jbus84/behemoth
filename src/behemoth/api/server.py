@@ -34,6 +34,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, ge
 from pydantic import BaseModel, Field, model_validator
 
 from src.behemoth.api.dashboard import router as dashboard_router
+from src.behemoth.core.candidate_catalog import CandidateCatalog
 from src.behemoth.core.features import (
     FeatureConfig,
     compute_feature_matrix_from_bars,
@@ -65,9 +66,10 @@ from src.behemoth.risk.account import (
     evaluate_account_risk_limits,
     evaluate_trade_risk_guard,
     load_account_risk_profile,
-    trading_day_id,
 )
+from src.behemoth.risk.decision_engine import AccountRiskDecisionEngine
 from src.behemoth.runtime.barrier_manager import BarrierManager
+from src.behemoth.runtime.order_submission import prepare_predict_actions
 from src.behemoth.runtime.state import StateManager
 from src.behemoth.runtime.tick_aggregator import TickAggregator
 
@@ -422,10 +424,7 @@ def _is_historical_mode() -> bool:
 
 
 def _cache_key(symbol: str, model_month: str | None = None) -> str:
-    sym = str(symbol).upper().strip()
-    if _is_historical_mode() and model_month:
-        return f"{sym}|{str(model_month).strip()}"
-    return sym
+    return _candidate_catalog().cache_key(symbol, model_month)
 
 
 def _has_loaded_model_for_symbol(symbol: str) -> bool:
@@ -443,21 +442,18 @@ def _effective_governance_dir() -> str:
 
 
 def _active_bar_ticks_for_symbol(symbol: str) -> list[int]:
-    sym = str(symbol).upper().strip()
-    candidates = []
-    if _is_historical_mode():
-        month = _latest_loaded_month_for_symbol(sym)
-        if month and _historical_registry is not None:
-            candidates = _historical_registry.get_candidates(sym, month)
-    elif _registry is not None:
-        candidates = _registry.get_candidates(sym)
+    return _candidate_catalog().active_bar_ticks(symbol)
 
-    ticks = sorted({int(c.bar_ticks) for c in candidates})
-    if ticks:
-        return ticks
-    if _is_historical_mode():
-        return [100]
-    return []
+
+def _candidate_catalog() -> CandidateCatalog:
+    return CandidateCatalog(
+        live_registry=_registry,
+        historical_registry=_historical_registry,
+        historical_mode=_is_historical_mode(),
+        missing_month_policy=_config.governance_missing_month_policy,
+        force_model_month=_config.force_model_month,
+        latest_loaded_month=_latest_loaded_month_for_symbol,
+    )
 
 
 def _active_bar_count_for_symbol(symbol: str) -> int:
@@ -1508,69 +1504,28 @@ def _resolve_missing_historical_month(symbol: str, requested_month: str) -> str 
 
 def _resolve_runtime_contract(sym: str, close_ts: datetime) -> _ResolvedRuntimeContract:
     symbol = str(sym).upper().strip()
-
-    if _is_historical_mode():
-        if _historical_registry is None:
-            raise HTTPException(status_code=503, detail="Historical governance registry not loaded")
-
+    if _config.force_model_month and _is_historical_mode():
         forced_month = _normalize_model_month(_config.force_model_month)
-        if _config.force_model_month and forced_month is None:
+        if forced_month is None:
             raise HTTPException(
                 status_code=422,
                 detail=f"Invalid BEHEMOTH_FORCE_MODEL_MONTH={_config.force_model_month!r}; expected YYYY-MM",
             )
-        requested_month = forced_month or _month_from_close_ts(close_ts)
-        entry = _historical_registry.get_entry(symbol, requested_month)
-        resolved_month = requested_month
-        if entry is None:
-            fallback_month = _resolve_missing_historical_month(symbol, requested_month)
-            if fallback_month is not None:
-                entry = _historical_registry.get_entry(symbol, fallback_month)
-                resolved_month = fallback_month
-
-        if entry is None:
-            available = _historical_registry.months_for_symbol(symbol)
-            avail_txt = ",".join(available) if available else "<none>"
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    f"No historical lock for {symbol} month {requested_month} "
-                    f"(policy={_config.governance_missing_month_policy}). "
-                    f"available_months={avail_txt}"
-                ),
-            )
-
-        model_binding = dict(entry.model_binding)
-        return _ResolvedRuntimeContract(
-            symbol=symbol,
-            model_month=resolved_month,
-            cache_key=_cache_key(symbol, resolved_month),
-            candidates=list(entry.candidates),
-            model_binding=model_binding,
-            cap_pips=float(entry.cap_pips),
-            source="historical",
-            lock_path=str(entry.lock_path),
-        )
-
-    if _registry is None:
-        raise HTTPException(status_code=503, detail="Candidate registry not loaded")
-
-    model_binding = _registry.get_model_binding(symbol)
-    if not model_binding:
-        raise HTTPException(status_code=503, detail=f"No model binding registered for {symbol}")
-    model_month = (
-        _normalize_model_month(str(model_binding.get("model_month", "")).strip())
-        or "unknown"
-    )
+    try:
+        contract = _candidate_catalog().resolve_contract(symbol, close_ts)
+    except LookupError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=422, detail=str(exc).strip("'")) from exc
     return _ResolvedRuntimeContract(
-        symbol=symbol,
-        model_month=model_month,
-        cache_key=_cache_key(symbol),
-        candidates=_registry.get_candidates(symbol),
-        model_binding=dict(model_binding),
-        cap_pips=float(_registry.get_cap_pips(symbol)),
-        source="live",
-        lock_path=None,
+        symbol=contract.symbol,
+        model_month=contract.model_month,
+        cache_key=contract.cache_key,
+        candidates=list(contract.candidates),
+        model_binding=dict(contract.model_binding),
+        cap_pips=float(contract.cap_pips),
+        source=contract.source,
+        lock_path=contract.lock_path,
     )
 
 
@@ -1801,78 +1756,12 @@ def _resolve_account_risk_eval(
     *,
     account_risk_enabled_effective: bool,
 ) -> dict[str, Any]:
-    if (not account_risk_enabled_effective) or (_account_risk_profile is None) or (_state is None):
-        return {
-            "enabled": False,
-            "profile_id": None,
-            "allow_trading": True,
-            "block_reason": None,
-            "snapshot_available": False,
-            "trading_day_id": None,
-        }
-
-    prof = _account_risk_profile
-    latest = _state.get_latest_account_risk_snapshot(sym)
-    if latest is None:
-        latest = _state.get_latest_account_risk_snapshot(None)
-
-    if latest is None:
-        eval_out = evaluate_account_risk_limits(
-            prof,
-            balance=None,
-            equity=None,
-            day_start_balance=None,
-        )
-        eval_out["enabled"] = True
-        eval_out["profile_id"] = prof.profile_id
-        eval_out["trading_day_id"] = trading_day_id(
-            now_utc,
-            timezone_name=prof.daily_reset_timezone,
-            reset_hour=prof.daily_reset_hour,
-            reset_minute=prof.daily_reset_minute,
-        )
-        return eval_out
-
-    since = now_utc
-    if since.tzinfo is None:
-        since = since.replace(tzinfo=timezone.utc)
-    else:
-        since = since.astimezone(timezone.utc)
-    since = since - timedelta(days=3)
-
-    snaps = _state.get_account_risk_snapshots_since(since_ts=since, symbol=sym)
-    if not snaps:
-        snaps = _state.get_account_risk_snapshots_since(since_ts=since, symbol=None)
-
-    day_id = trading_day_id(
-        now_utc,
-        timezone_name=prof.daily_reset_timezone,
-        reset_hour=prof.daily_reset_hour,
-        reset_minute=prof.daily_reset_minute,
-    )
-    day_start_balance: float | None = None
-    for row in snaps:
-        row_day = trading_day_id(
-            row["snapshot_ts"],
-            timezone_name=prof.daily_reset_timezone,
-            reset_hour=prof.daily_reset_hour,
-            reset_minute=prof.daily_reset_minute,
-        )
-        if row_day == day_id:
-            day_start_balance = float(row["balance"])
-            break
-    if day_start_balance is None:
-        day_start_balance = float(latest["balance"])
-
-    eval_out = evaluate_account_risk_limits(
-        prof,
-        balance=float(latest["balance"]),
-        equity=float(latest["equity"]),
-        day_start_balance=day_start_balance,
-    )
-    eval_out["enabled"] = True
-    eval_out["profile_id"] = prof.profile_id
-    eval_out["trading_day_id"] = day_id
+    state_reader = _state.query_view() if _state is not None else None
+    eval_out = AccountRiskDecisionEngine(
+        profile=_account_risk_profile,
+        state=state_reader,
+        enabled=account_risk_enabled_effective,
+    ).evaluate(sym, now_utc)
 
     daily_headroom = eval_out.get("daily_loss_headroom")
     max_headroom = eval_out.get("max_loss_headroom")
@@ -2487,15 +2376,14 @@ async def predict(req: PredictRequest) -> PredictResponse:
             if bar_context is None:
                 continue
             raw_actions = _barrier_manager.evaluate_bar(bar_context)
-            for action in raw_actions:
-                if action.type == BarrierActionType.RELEASE_RESERVATION:
-                    if _config.account_risk_enabled and action.reservation_id:
-                        _state.release_account_risk_reservation(
-                            reservation_id=action.reservation_id,
-                            reason="barrier_expired",
-                        )
-                else:
-                    barrier_actions.append(action)
+            barrier_actions.extend(prepare_predict_actions(
+                raw_actions,
+                account_risk_enabled=bool(_config.account_risk_enabled),
+                release_reservation=lambda reservation_id, reason: _state.release_account_risk_reservation(
+                    reservation_id=reservation_id,
+                    reason=reason,
+                ),
+            ))
 
         # Register new scans for selected predictions (lifecycle blocking in Python now)
         pip = _pip_size_for_symbol(sym)
@@ -3641,10 +3529,7 @@ async def status() -> list[StatusSymbol]:
     for sym in _config.symbols:
         bar_ticks = _active_bar_ticks_for_symbol(sym)
         deployment_state = _deployment_state_for_symbol(sym)
-        has_threshold = bool(_thresholds.get(sym))
-        if (not has_threshold) and _is_historical_mode():
-            pref = f"{sym}|"
-            has_threshold = any(k.startswith(pref) for k in _thresholds)
+        has_threshold = _model_registry.has_threshold(sym)
         out.append(StatusSymbol(
             symbol=sym,
             bar_ticks=bar_ticks,

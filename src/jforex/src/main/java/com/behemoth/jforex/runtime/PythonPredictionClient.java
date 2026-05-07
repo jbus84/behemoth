@@ -85,44 +85,44 @@ public final class PythonPredictionClient {
     }
 
     public ApiAckResponse accountSnapshot(AccountSnapshotRequestPayload request) {
-        return sendJson("POST", "/risk/account/snapshot", request, ApiAckResponse.class);
+        return sendJson(PythonApiEndpoint.ACCOUNT_SNAPSHOT, request, ApiAckResponse.class);
     }
 
     public ApiAckResponse backfill(BackfillRequestPayload request) {
-        return sendJson("POST", "/backfill", request, ApiAckResponse.class);
+        return sendJson(PythonApiEndpoint.BACKFILL, request, ApiAckResponse.class);
     }
 
     public TickBatchResponsePayload tickBatch(TickBatchRequestPayload request) {
-        return sendJson("POST", "/ticks/batch", request, TickBatchResponsePayload.class, tickBatchTimeout);
+        return sendJson(PythonApiEndpoint.TICK_BATCH, request, TickBatchResponsePayload.class);
     }
 
     public TickIngestResponsePayload tick(IncomingTickPayload request) {
-        return sendJson("POST", "/ticks", request, TickIngestResponsePayload.class, tickBatchTimeout);
+        return sendJson(PythonApiEndpoint.TICK, request, TickIngestResponsePayload.class);
     }
 
     public PredictResponsePayload predict(PredictRequestPayload request) {
-        return sendJson("POST", "/predict", request, PredictResponsePayload.class);
+        return sendJson(PythonApiEndpoint.PREDICT, request, PredictResponsePayload.class);
     }
 
     public ApiAckResponse openTrade(TradeOpenRequestPayload request) {
-        return sendJson("POST", "/trades/open", request, ApiAckResponse.class);
+        return sendJson(PythonApiEndpoint.TRADE_OPEN, request, ApiAckResponse.class);
     }
 
     public ApiAckResponse touchTrade(TradeTouchRequestPayload request) {
-        return sendJson("POST", "/trades/touch", request, ApiAckResponse.class);
+        return sendJson(PythonApiEndpoint.TRADE_TOUCH, request, ApiAckResponse.class);
     }
 
     public ApiAckResponse updateTrade(TradeUpdateRequestPayload request) {
-        return sendJson("POST", "/trades/update", request, ApiAckResponse.class);
+        return sendJson(PythonApiEndpoint.TRADE_UPDATE, request, ApiAckResponse.class);
     }
 
     public FeedStatusResponsePayload feedStatus() {
-        return sendJson("GET", "/runtime/feed/status", null, FeedStatusResponsePayload.class);
+        return sendJson(PythonApiEndpoint.FEED_STATUS, null, FeedStatusResponsePayload.class);
     }
 
     public List<ActiveTradePayload> activeTrades(String symbol) {
         String encoded = URLEncoder.encode(symbol, StandardCharsets.UTF_8);
-        return sendJsonList("GET", "/trades/active?symbol=" + encoded, null, new TypeReference<>() {
+        return sendJsonList(PythonApiEndpoint.ACTIVE_TRADES, "?symbol=" + encoded, null, new TypeReference<>() {
         });
     }
 
@@ -130,11 +130,10 @@ public final class PythonPredictionClient {
         return objectMapper;
     }
 
-    private <T> T sendJson(String method, String path, Object payload, Class<T> responseType) {
-        return sendJson(method, path, payload, responseType, requestTimeout);
-    }
-
-    private <T> T sendJson(String method, String path, Object payload, Class<T> responseType, Duration timeout) {
+    private <T> T sendJson(PythonApiEndpoint endpoint, Object payload, Class<T> responseType) {
+        Duration timeout = endpoint.timeout(requestTimeout, tickBatchTimeout);
+        String path = endpoint.path();
+        String method = endpoint.method();
         HttpRequest request = buildRequest(method, path, payload, timeout);
         try {
             HttpResponse<String> response = selectHttpClient(path, timeout).send(request, HttpResponse.BodyHandlers.ofString());
@@ -151,10 +150,12 @@ public final class PythonPredictionClient {
         }
     }
 
-    private <T> T sendJsonList(String method, String path, Object payload, TypeReference<T> typeReference) {
-        HttpRequest request = buildRequest(method, path, payload, requestTimeout);
+    private <T> T sendJsonList(PythonApiEndpoint endpoint, String query, Object payload, TypeReference<T> typeReference) {
+        String path = endpoint.path() + query;
+        Duration timeout = endpoint.timeout(requestTimeout, tickBatchTimeout);
+        HttpRequest request = buildRequest(endpoint.method(), path, payload, timeout);
         try {
-            HttpResponse<String> response = selectHttpClient(path, requestTimeout).send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = selectHttpClient(endpoint.path(), timeout).send(request, HttpResponse.BodyHandlers.ofString());
             ensureSuccess(response);
             return objectMapper.readValue(response.body(), typeReference);
         } catch (InterruptedException exc) {
