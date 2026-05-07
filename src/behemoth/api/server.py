@@ -15,7 +15,6 @@ Model loading:
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import json
 import logging
 import math
@@ -44,7 +43,9 @@ from src.behemoth.core.historical_governance_validation import (
     summarize_failures,
     validate_historical_governance,
 )
+from src.behemoth.core.historical_prediction_stage import HistoricalPredictionStage
 from src.behemoth.core.historical_registry import HistoricalCandidateRegistry
+from src.behemoth.core.model_registry import ModelRegistry
 from src.behemoth.core.registry import CandidateRegistry
 from src.behemoth.core.schemas import (
     AccountRiskSnapshotRequest,
@@ -67,7 +68,6 @@ from src.behemoth.risk.account import (
     trading_day_id,
 )
 from src.behemoth.runtime.barrier_manager import BarrierManager
-from src.behemoth.runtime.order_submission import prepare_predict_actions
 from src.behemoth.runtime.state import StateManager
 from src.behemoth.runtime.tick_aggregator import TickAggregator
 
@@ -85,15 +85,8 @@ _barrier_manager: BarrierManager | None = None
 _aggregators: dict[int, TickAggregator] = {}
 _registry: CandidateRegistry | None = None
 _historical_registry: HistoricalCandidateRegistry | None = None
-_models: dict[str, object] = {}          # cache key -> loaded CatBoostClassifier
-_thresholds: dict[str, dict] = {}        # cache key -> threshold config
-_model_months: dict[str, str] = {}       # cache key -> "2025-12"
-_historical_prediction_universes: dict[str, dict[datetime, set[str]]] = {}
-_historical_prediction_candidate_index: dict[str, dict[str, list[datetime]]] = {}
-_historical_prediction_candidate_ordinal_index: dict[str, dict[str, list[int]]] = {}
-_historical_prediction_candidate_cursor: dict[str, dict[str, int]] = {}
-_historical_prediction_payload_rows: dict[str, dict[str, list[dict[str, Any]]]] = {}
-_historical_prediction_payload_cursor: dict[str, dict[str, int]] = {}
+_model_registry: ModelRegistry = ModelRegistry()
+_historical_prediction_stage: HistoricalPredictionStage = HistoricalPredictionStage()
 _models_dir: Path = Path("models/oco")
 _account_risk_rules_path: Path = Path("configs/research/governance/account_risk/account_risk_rules.yaml")
 _account_risk_profile: AccountRiskProfile | None = None
@@ -122,13 +115,6 @@ def _env_bool(*keys: str, default: str = "false") -> bool:
 def _env_int(*keys: str, default: str) -> int:
     return int(_env_str(*keys, default=default))
 
-
-def _sha256(path: Path) -> str:
-    h = hashlib.sha256()
-    with path.open("rb") as f:
-        for chunk in iter(lambda: f.read(1024 * 1024), b""):
-            h.update(chunk)
-    return h.hexdigest()
 
 # ── Prometheus Metrics ────────────────────────────────────────────────
 METRIC_INFERENCE_LATENCY = Histogram(
@@ -443,22 +429,11 @@ def _cache_key(symbol: str, model_month: str | None = None) -> str:
 
 
 def _has_loaded_model_for_symbol(symbol: str) -> bool:
-    sym = str(symbol).upper().strip()
-    if sym in _models:
-        return True
-    pref = f"{sym}|"
-    return any(k.startswith(pref) for k in _models)
+    return _model_registry.has_model(symbol)
 
 
 def _latest_loaded_month_for_symbol(symbol: str) -> str | None:
-    sym = str(symbol).upper().strip()
-    if sym in _model_months:
-        return _model_months.get(sym)
-    pref = f"{sym}|"
-    months = [m for k, m in _model_months.items() if k.startswith(pref)]
-    if not months:
-        return None
-    return sorted(months)[-1]
+    return _model_registry.get_latest_month(symbol)
 
 
 def _effective_governance_dir() -> str:
@@ -750,10 +725,6 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     global _state, _barrier_manager, _aggregators, _registry, _historical_registry, _feed_state, _lifespan_ready
     global _models_dir, _account_risk_rules_path, _account_risk_profile
     global _historical_entries_loaded, _historical_preflight_failed_checks, _historical_preflight_summary
-    global _historical_prediction_universes, _historical_prediction_candidate_index
-    global _historical_prediction_candidate_ordinal_index
-    global _historical_prediction_candidate_cursor, _historical_prediction_payload_rows
-    global _historical_prediction_payload_cursor
 
     # Start background monitor
     monitor_task = asyncio.create_task(_monitor_ledger())
@@ -792,12 +763,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     _feed_state = {}
     try:
         _aggregators = {}
-        _historical_prediction_universes = {}
-        _historical_prediction_candidate_index = {}
-        _historical_prediction_candidate_ordinal_index = {}
-        _historical_prediction_candidate_cursor = {}
-        _historical_prediction_payload_rows = {}
-        _historical_prediction_payload_cursor = {}
+        _historical_prediction_stage.clear()
         if _is_historical_mode():
             hist_dir = Path(str(_config.governance_history_dir))
             _historical_registry = HistoricalCandidateRegistry.load(hist_dir)
@@ -996,90 +962,9 @@ def _catboost_cls() -> Any | None:
     return CatBoostClassifier
 
 
-def _load_model_binding_into_cache(
-    *,
-    symbol: str,
-    binding: dict[str, Any],
-    cache_key: str,
-    expected_month: str | None,
-) -> tuple[bool, str]:
-    cb_cls = _catboost_cls()
-    if cb_cls is None:
-        return False, "catboost_unavailable"
-
-    model_path = Path(str(binding.get("model_cbm_path", "")))
-    thr_path = Path(str(binding.get("model_threshold_json_path", "")))
-    exp_model_sha = str(binding.get("model_cbm_sha256", "")).strip()
-    exp_thr_sha = str(binding.get("model_threshold_json_sha256", "")).strip()
-    lock_month = str(binding.get("model_month", "")).strip()
-
-    if (not model_path.exists()) or (not thr_path.exists()):
-        logger.error(
-            "Locked artifacts missing for %s: model=%s threshold=%s",
-            symbol,
-            model_path,
-            thr_path,
-        )
-        return False, "artifact_missing"
-
-    got_model_sha = _sha256(model_path)
-    got_thr_sha = _sha256(thr_path)
-    if (got_model_sha != exp_model_sha) or (got_thr_sha != exp_thr_sha):
-        logger.error("Locked artifact hash mismatch for %s — refusing model load.", symbol)
-        return False, "artifact_hash_mismatch"
-
-    month = model_path.stem.split("_")[-1]
-    if lock_month and (month != lock_month):
-        logger.error(
-            "Locked model month mismatch for %s: lock=%s file=%s",
-            symbol,
-            lock_month,
-            month,
-        )
-        return False, "lock_month_mismatch"
-    if expected_month and month != expected_month:
-        logger.error(
-            "Expected model month mismatch for %s: expected=%s file=%s",
-            symbol,
-            expected_month,
-            month,
-        )
-        return False, "expected_month_mismatch"
-
-    model = cb_cls()
-    model.load_model(str(model_path))
-    thr_cfg = json.loads(thr_path.read_text())
-    locked_runtime_overrides = binding.get("locked_runtime_overrides", {})
-    if isinstance(locked_runtime_overrides, dict) and locked_runtime_overrides:
-        thr_cfg.update(
-            {
-                str(k): v
-                for k, v in locked_runtime_overrides.items()
-                if str(k).strip() and v is not None
-            }
-        )
-    thr_month = str(thr_cfg.get("model_month", "")).strip()
-    if thr_month and thr_month != month:
-        logger.error(
-            "Threshold JSON model month mismatch for %s: model=%s threshold=%s",
-            symbol,
-            month,
-            thr_month,
-        )
-        return False, "threshold_month_mismatch"
-    _models[cache_key] = model
-    _model_months[cache_key] = month
-    _thresholds[cache_key] = thr_cfg
-    logger.info("Loaded lock-bound model for %s (month %s): %s", symbol, month, model_path.name)
-    return True, month
-
-
 def _load_models() -> None:
     """Load model cache according to governance mode."""
-    global _models, _thresholds, _model_months
-    _models = {}
-    _thresholds = {}
-    _model_months = {}
+    _model_registry.clear()
     if not _models_dir.exists():
         logger.warning("Models directory %s does not exist yet.", _models_dir)
         return
@@ -1101,11 +986,12 @@ def _load_models() -> None:
             logger.error("No governance model binding for %s — skipping model load.", sym)
             continue
         cache_key = _cache_key(sym)
-        _load_model_binding_into_cache(
+        _model_registry.load_model_binding(
             symbol=sym,
             binding=binding,
             cache_key=cache_key,
             expected_month=str(binding.get("model_month", "")).strip() or None,
+            catboost_cls=_catboost_cls(),
         )
 
 def _load_seed_files(seed_dir: Path | None = None) -> None:
@@ -1689,24 +1575,23 @@ def _resolve_runtime_contract(sym: str, close_ts: datetime) -> _ResolvedRuntimeC
 
 
 def _ensure_model_and_threshold(contract: _ResolvedRuntimeContract) -> tuple[Any, dict[str, Any]]:
-    model = _models.get(contract.cache_key)
-    thr_cfg = _thresholds.get(contract.cache_key)
+    model, thr_cfg = _model_registry.get_model_and_threshold(contract.cache_key)
     if model is not None and isinstance(thr_cfg, dict):
         return model, thr_cfg
 
-    ok, reason = _load_model_binding_into_cache(
+    ok, reason = _model_registry.load_model_binding(
         symbol=contract.symbol,
         binding=contract.model_binding,
         cache_key=contract.cache_key,
         expected_month=(contract.model_month if contract.model_month != "unknown" else None),
+        catboost_cls=_catboost_cls(),
     )
     if not ok:
         raise HTTPException(
             status_code=503,
             detail=f"Unable to load lock-bound model for {contract.symbol}: {reason}",
         )
-    model = _models.get(contract.cache_key)
-    thr_cfg = _thresholds.get(contract.cache_key)
+    model, thr_cfg = _model_registry.get_model_and_threshold(contract.cache_key)
     if model is None:
         raise HTTPException(
             status_code=503,
@@ -1719,59 +1604,12 @@ def _load_historical_prediction_universe(contract: _ResolvedRuntimeContract) -> 
     """Load the locked historical prediction row-universe for exact replay parity."""
     if not _is_historical_mode():
         return {}
-    cached = _historical_prediction_universes.get(contract.cache_key)
-    if cached is not None:
-        return cached
-
-    override_path = str(os.getenv("BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE", "")).strip()
-    pred_path = (
-        Path(override_path)
-        if override_path
-        else Path(str(contract.model_binding.get("predictions_path", "")).strip())
+    return _historical_prediction_stage.load_universe(
+        cache_key=contract.cache_key,
+        symbol=contract.symbol,
+        model_month=contract.model_month,
+        model_binding=contract.model_binding,
     )
-    if not pred_path.exists():
-        _historical_prediction_universes[contract.cache_key] = {}
-        return {}
-
-    try:
-        import duckdb
-    except Exception:
-        _historical_prediction_universes[contract.cache_key] = {}
-        return {}
-
-    con = duckdb.connect()
-    try:
-        rows = con.execute(
-            """
-            SELECT
-                try_cast(close_ts AS TIMESTAMP WITH TIME ZONE) AS close_ts,
-                candidate_uid
-            FROM read_parquet(?)
-            WHERE test_month = ?
-              AND upper(split_part(candidate_uid, '|', 2)) = ?
-            ORDER BY close_ts
-            """,
-            [
-                str(pred_path),
-                str(contract.model_month),
-                str(contract.symbol).upper().strip(),
-            ],
-        ).fetchall()
-    finally:
-        con.close()
-
-    out: dict[datetime, set[str]] = {}
-    for close_ts, candidate_uid in rows:
-        if close_ts is None:
-            continue
-        ts_utc = _as_utc_ts(close_ts)
-        uid = str(candidate_uid or "").strip()
-        if not uid:
-            continue
-        bucket = out.setdefault(ts_utc, set())
-        bucket.add(uid)
-    _historical_prediction_universes[contract.cache_key] = out
-    return out
 
 
 def _load_historical_prediction_candidate_index(
@@ -1780,127 +1618,26 @@ def _load_historical_prediction_candidate_index(
     """Load per-candidate locked prediction timestamps for tolerant replay gating."""
     if not _is_historical_mode():
         return {}
-    cached = _historical_prediction_candidate_index.get(contract.cache_key)
-    if cached is not None:
-        return cached
-
-    override_path = str(os.getenv("BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE", "")).strip()
-    pred_path = (
-        Path(override_path)
-        if override_path
-        else Path(str(contract.model_binding.get("predictions_path", "")).strip())
+    return _historical_prediction_stage.load_candidate_index(
+        cache_key=contract.cache_key,
+        symbol=contract.symbol,
+        model_month=contract.model_month,
+        model_binding=contract.model_binding,
     )
-    if not pred_path.exists():
-        _historical_prediction_candidate_index[contract.cache_key] = {}
-        return {}
-
-    try:
-        import duckdb
-    except Exception:
-        _historical_prediction_candidate_index[contract.cache_key] = {}
-        return {}
-
-    con = duckdb.connect()
-    try:
-        rows = con.execute(
-            """
-            SELECT
-                try_cast(close_ts AS TIMESTAMP WITH TIME ZONE) AS close_ts,
-                candidate_uid
-            FROM read_parquet(?)
-            WHERE test_month = ?
-              AND upper(split_part(candidate_uid, '|', 2)) = ?
-            ORDER BY candidate_uid, close_ts
-            """,
-            [
-                str(pred_path),
-                str(contract.model_month),
-                str(contract.symbol).upper().strip(),
-            ],
-        ).fetchall()
-    finally:
-        con.close()
-
-    out: dict[str, list[datetime]] = {}
-    for close_ts, candidate_uid in rows:
-        if close_ts is None:
-            continue
-        uid = str(candidate_uid or "").strip()
-        if not uid:
-            continue
-        out.setdefault(uid, []).append(_as_utc_ts(close_ts))
-    _historical_prediction_candidate_index[contract.cache_key] = out
-    return out
 
 
 def _load_historical_prediction_candidate_ordinal_index(
     contract: _ResolvedRuntimeContract,
 ) -> dict[str, list[int]]:
-    """Load per-candidate 0-indexed bar ordinals for ordinal-mode replay gating.
-
-    Ordinals are computed with DENSE_RANK() over all distinct close_ts values
-    for each bar_ticks granularity within the test_month.  Bar ordinal 0 is the
-    first bar close that appears in the parquet for that (symbol, bar_ticks) pair.
-
-    Both the server and the JForex adapter count from 0 at session start, so
-    candidate N fires when the adapter has closed its Nth bar (±ordinal tolerance).
-    """
+    """Load per-candidate 0-indexed bar ordinals for ordinal-mode replay gating."""
     if not _is_historical_mode():
         return {}
-    cached = _historical_prediction_candidate_ordinal_index.get(contract.cache_key)
-    if cached is not None:
-        return cached
-
-    override_path = str(os.getenv("BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE", "")).strip()
-    pred_path = (
-        Path(override_path)
-        if override_path
-        else Path(str(contract.model_binding.get("predictions_path", "")).strip())
+    return _historical_prediction_stage.load_candidate_ordinal_index(
+        cache_key=contract.cache_key,
+        symbol=contract.symbol,
+        model_month=contract.model_month,
+        model_binding=contract.model_binding,
     )
-    if not pred_path.exists():
-        _historical_prediction_candidate_ordinal_index[contract.cache_key] = {}
-        return {}
-
-    try:
-        import duckdb
-    except Exception:
-        _historical_prediction_candidate_ordinal_index[contract.cache_key] = {}
-        return {}
-
-    con = duckdb.connect()
-    try:
-        rows = con.execute(
-            """
-            SELECT
-                (DENSE_RANK() OVER (
-                    PARTITION BY try_cast(split_part(candidate_uid, '|', 3) AS INTEGER)
-                    ORDER BY try_cast(close_ts AS TIMESTAMP WITH TIME ZONE)
-                ) - 1)::INTEGER AS bar_ordinal,
-                candidate_uid
-            FROM read_parquet(?)
-            WHERE test_month = ?
-              AND upper(split_part(candidate_uid, '|', 2)) = ?
-            ORDER BY candidate_uid, bar_ordinal
-            """,
-            [
-                str(pred_path),
-                str(contract.model_month),
-                str(contract.symbol).upper().strip(),
-            ],
-        ).fetchall()
-    finally:
-        con.close()
-
-    out: dict[str, list[int]] = {}
-    for bar_ordinal, candidate_uid in rows:
-        if bar_ordinal is None:
-            continue
-        uid = str(candidate_uid or "").strip()
-        if not uid:
-            continue
-        out.setdefault(uid, []).append(int(bar_ordinal))
-    _historical_prediction_candidate_ordinal_index[contract.cache_key] = out
-    return out
 
 
 def _load_historical_prediction_payload_rows(
@@ -1909,67 +1646,12 @@ def _load_historical_prediction_payload_rows(
     """Load locked historical prediction payload rows for replay parity."""
     if not _is_historical_mode():
         return {}
-    cached = _historical_prediction_payload_rows.get(contract.cache_key)
-    if cached is not None:
-        return cached
-
-    override_path = str(os.getenv("BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE", "")).strip()
-    pred_path = (
-        Path(override_path)
-        if override_path
-        else Path(str(contract.model_binding.get("predictions_path", "")).strip())
+    return _historical_prediction_stage.load_payload_rows(
+        cache_key=contract.cache_key,
+        symbol=contract.symbol,
+        model_month=contract.model_month,
+        model_binding=contract.model_binding,
     )
-    if not pred_path.exists():
-        _historical_prediction_payload_rows[contract.cache_key] = {}
-        return {}
-
-    try:
-        import duckdb
-    except Exception:
-        _historical_prediction_payload_rows[contract.cache_key] = {}
-        return {}
-
-    con = duckdb.connect()
-    try:
-        rows = con.execute(
-            """
-            SELECT
-                try_cast(close_ts AS TIMESTAMP WITH TIME ZONE) AS close_ts,
-                candidate_uid,
-                try_cast(pred_prob AS DOUBLE) AS pred_prob,
-                try_cast(threshold_exec AS DOUBLE) AS threshold_exec,
-                try_cast(selected_exec AS INTEGER) AS selected_exec
-            FROM read_parquet(?)
-            WHERE test_month = ?
-              AND upper(split_part(candidate_uid, '|', 2)) = ?
-            ORDER BY candidate_uid, close_ts
-            """,
-            [
-                str(pred_path),
-                str(contract.model_month),
-                str(contract.symbol).upper().strip(),
-            ],
-        ).fetchall()
-    finally:
-        con.close()
-
-    out: dict[str, list[dict[str, Any]]] = {}
-    for close_ts, candidate_uid, pred_prob, threshold_exec, selected_exec in rows:
-        if close_ts is None:
-            continue
-        uid = str(candidate_uid or "").strip()
-        if not uid:
-            continue
-        out.setdefault(uid, []).append(
-            {
-                "close_ts": _as_utc_ts(close_ts),
-                "pred_prob": float(pred_prob) if pred_prob is not None else None,
-                "threshold_exec": float(threshold_exec) if threshold_exec is not None else None,
-                "selected_exec": int(selected_exec or 0),
-            }
-        )
-    _historical_prediction_payload_rows[contract.cache_key] = out
-    return out
 
 
 def _resolve_historical_prediction_payload_overrides(
@@ -1990,7 +1672,6 @@ def _resolve_historical_prediction_payload_overrides(
         return {}
 
     close_ts_utc = _as_utc_ts(close_ts)
-    cursor_by_uid = _historical_prediction_payload_cursor.setdefault(contract.cache_key, {})
     out: dict[str, dict[str, Any]] = {}
     for cand in candidates:
         canonical_uid = (
@@ -1999,19 +1680,19 @@ def _resolve_historical_prediction_payload_overrides(
         rows = rows_by_uid.get(canonical_uid, [])
         if not rows:
             continue
-        cursor = int(cursor_by_uid.get(canonical_uid, 0))
+        cursor = _historical_prediction_stage.get_payload_cursor(contract.cache_key, canonical_uid)
         while cursor < len(rows) and _as_utc_ts(rows[cursor]["close_ts"]) < close_ts_utc:
             cursor += 1
         if cursor >= len(rows):
-            cursor_by_uid[canonical_uid] = cursor
+            _historical_prediction_stage.set_payload_cursor(contract.cache_key, canonical_uid, cursor)
             continue
         row = rows[cursor]
         row_ts = _as_utc_ts(row["close_ts"])
         if row_ts != close_ts_utc:
-            cursor_by_uid[canonical_uid] = cursor
+            _historical_prediction_stage.set_payload_cursor(contract.cache_key, canonical_uid, cursor)
             continue
         out[canonical_uid] = dict(row)
-        cursor_by_uid[canonical_uid] = cursor + 1
+        _historical_prediction_stage.set_payload_cursor(contract.cache_key, canonical_uid, cursor + 1)
     return out
 
 
@@ -2036,7 +1717,6 @@ def _apply_historical_prediction_universe_gate(
             return candidates
         if not bar_ordinals:
             return []
-        ordinal_cursor = _historical_prediction_candidate_cursor.setdefault(contract.cache_key, {})
         tolerance = int(_config.historical_prediction_ordinal_tolerance)
         filtered: list[Any] = []
         for cand in candidates:
@@ -2049,7 +1729,7 @@ def _apply_historical_prediction_universe_gate(
             current_ordinal = bar_ordinals.get(str(cand.bar_ticks))
             if current_ordinal is None:
                 continue
-            last_idx = int(ordinal_cursor.get(canonical_uid, -1))
+            last_idx = int(_historical_prediction_stage.get_cursor(contract.cache_key, canonical_uid))
             lo = max(0, last_idx + 1)
             lo_search = current_ordinal - tolerance
             idx = bisect_left(ordinal_list, lo_search, lo=lo)
@@ -2057,7 +1737,7 @@ def _apply_historical_prediction_universe_gate(
                 continue
             if ordinal_list[idx] > current_ordinal + tolerance:
                 continue
-            ordinal_cursor[canonical_uid] = idx
+            _historical_prediction_stage.set_cursor(contract.cache_key, canonical_uid, idx)
             filtered.append(cand)
         return filtered
 
@@ -2065,7 +1745,6 @@ def _apply_historical_prediction_universe_gate(
         candidate_index = _load_historical_prediction_candidate_index(contract)
         if not candidate_index:
             return candidates
-        candidate_cursor = _historical_prediction_candidate_cursor.setdefault(contract.cache_key, {})
         tolerance = timedelta(seconds=float(_config.historical_prediction_tolerance_sec))
         filtered: list[Any] = []
         for cand in candidates:
@@ -2075,7 +1754,7 @@ def _apply_historical_prediction_universe_gate(
             ts_rows = candidate_index.get(canonical_uid, [])
             if not ts_rows:
                 continue
-            last_idx = int(candidate_cursor.get(canonical_uid, -1))
+            last_idx = int(_historical_prediction_stage.get_cursor(contract.cache_key, canonical_uid))
             lo = max(0, last_idx + 1)
             idx = bisect_left(ts_rows, close_ts_utc, lo=lo)
             choices: list[tuple[timedelta, datetime, int]] = []
@@ -2096,7 +1775,7 @@ def _apply_historical_prediction_universe_gate(
             best_count = sum(1 for delta, _, _ in choices if delta == best_delta)
             if best_count > 1:
                 continue
-            candidate_cursor[canonical_uid] = int(choices[0][2])
+            _historical_prediction_stage.set_cursor(contract.cache_key, canonical_uid, int(choices[0][2]))
             filtered.append(cand)
         return filtered
 
@@ -2808,14 +2487,15 @@ async def predict(req: PredictRequest) -> PredictResponse:
             if bar_context is None:
                 continue
             raw_actions = _barrier_manager.evaluate_bar(bar_context)
-            barrier_actions.extend(prepare_predict_actions(
-                raw_actions,
-                account_risk_enabled=bool(_config.account_risk_enabled),
-                release_reservation=lambda reservation_id, reason: _state.release_account_risk_reservation(
-                    reservation_id=reservation_id,
-                    reason=reason,
-                ),
-            ))
+            for action in raw_actions:
+                if action.type == BarrierActionType.RELEASE_RESERVATION:
+                    if _config.account_risk_enabled and action.reservation_id:
+                        _state.release_account_risk_reservation(
+                            reservation_id=action.reservation_id,
+                            reason="barrier_expired",
+                        )
+                else:
+                    barrier_actions.append(action)
 
         # Register new scans for selected predictions (lifecycle blocking in Python now)
         pip = _pip_size_for_symbol(sym)
@@ -3918,18 +3598,18 @@ async def health() -> HealthResponse:
         bar_counts[sym] = _active_bar_count_for_symbol(sym)
 
     mode = str(_config.governance_mode).strip().lower()
-    has_runtime_contracts = bool(_models)
+    has_runtime_contracts = bool(_model_registry.cache_size() > 0)
     if _is_historical_mode():
         has_runtime_contracts = has_runtime_contracts or (_historical_entries_loaded > 0)
 
     return HealthResponse(
         status="ok" if has_runtime_contracts else "no_models",
         utc_now=datetime.now(tz=timezone.utc),
-        models_loaded=dict(_model_months),
+        models_loaded=_model_registry.models_loaded(),
         bar_ticks=bar_ticks,
         bar_counts=bar_counts,
         governance_dir=_effective_governance_dir(),
-        model_cache_entries=len(_models),
+        model_cache_entries=_model_registry.cache_size(),
         governance_mode=mode,
         governance_missing_month_policy=(
             str(_config.governance_missing_month_policy).strip().lower()
@@ -4022,10 +3702,6 @@ async def reload_models() -> dict:
     """Hot-reload models from disk without restarting the server."""
     global _registry, _historical_registry, _historical_entries_loaded
     global _historical_preflight_failed_checks, _historical_preflight_summary
-    global _historical_prediction_universes, _historical_prediction_candidate_index
-    global _historical_prediction_candidate_ordinal_index
-    global _historical_prediction_candidate_cursor, _historical_prediction_payload_rows
-    global _historical_prediction_payload_cursor
 
     if _is_historical_mode():
         hist_dir = Path(str(_config.governance_history_dir))
@@ -4043,16 +3719,11 @@ async def reload_models() -> dict:
         _historical_preflight_summary = ""
 
     _load_models()
-    _historical_prediction_universes = {}
-    _historical_prediction_candidate_index = {}
-    _historical_prediction_candidate_ordinal_index = {}
-    _historical_prediction_candidate_cursor = {}
-    _historical_prediction_payload_rows = {}
-    _historical_prediction_payload_cursor = {}
+    _historical_prediction_stage.clear()
     return {
         "ok": True,
-        "models_loaded": dict(_model_months),
-        "model_cache_entries": len(_models),
+        "models_loaded": _model_registry.models_loaded(),
+        "model_cache_entries": _model_registry.cache_size(),
         "governance_mode": str(_config.governance_mode).strip().lower(),
         "historical_locks_loaded": _historical_entries_loaded if _is_historical_mode() else None,
         "historical_preflight_failed_checks": (

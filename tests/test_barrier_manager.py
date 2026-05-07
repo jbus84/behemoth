@@ -243,15 +243,14 @@ class TestEvaluateBar:
         """Bar high >= upper_barrier -> BUY action."""
         mgr, scan_id = self._make_manager_with_scan()
         # upper = 1.29500 + 2.0 * 0.0001 = 1.29520
-        actions = mgr.evaluate_bar(
+        actions = mgr.evaluate_bar(BarContext(
             symbol="GBPUSD",
             bar_ticks=100,
-            bar_high_bid=1.29525,
-            bar_low_bid=1.29490,   # > lower (1.29480)
-            bar_hl_first=1.0,
-            current_bar_idx=11,
-            bar_high_ask=1.29525,
-        )
+            bid=BarPrices(high=1.29525, low=1.29490, close=1.29490),
+            ask=BarPrices(high=1.29525, low=1.29490, close=1.29525),
+            hl_first=1.0,
+            bar_idx=11,
+        ))
         assert len(actions) == 1
         assert actions[0]["type"] == "OPEN_MARKET"
         assert actions[0]["side"] == "BUY"
@@ -263,15 +262,14 @@ class TestEvaluateBar:
     def test_open_market_action_includes_horizon(self):
         """OPEN_MARKET action must carry horizon so the Java adapter can pass it to /trades/open."""
         mgr, scan_id = self._make_manager_with_scan(horizon=6)
-        actions = mgr.evaluate_bar(
+        actions = mgr.evaluate_bar(BarContext(
             symbol="GBPUSD",
             bar_ticks=100,
-            bar_high_bid=1.29525,
-            bar_low_bid=1.29490,
-            bar_hl_first=1.0,
-            current_bar_idx=11,
-            bar_high_ask=1.29525,
-        )
+            bid=BarPrices(high=1.29525, low=1.29490, close=1.29490),
+            ask=BarPrices(high=1.29525, low=1.29490, close=1.29525),
+            hl_first=1.0,
+            bar_idx=11,
+        ))
         assert len(actions) == 1
         assert actions[0]["type"] == "OPEN_MARKET"
         assert actions[0]["horizon"] == 6
@@ -279,29 +277,28 @@ class TestEvaluateBar:
     def test_open_market_action_includes_candidate_uid_and_reservation_id(self):
         """OPEN_MARKET action must carry candidateUid and reservationId."""
         mgr, scan_id = self._make_manager_with_scan()
-        actions = mgr.evaluate_bar(
+        actions = mgr.evaluate_bar(BarContext(
             symbol="GBPUSD",
             bar_ticks=100,
-            bar_high_bid=1.29525,
-            bar_low_bid=1.29490,
-            bar_hl_first=1.0,
-            current_bar_idx=11,
-            bar_high_ask=1.29525,
-        )
+            bid=BarPrices(high=1.29525, low=1.29490, close=1.29490),
+            ask=BarPrices(high=1.29525, low=1.29490, close=1.29525),
+            hl_first=1.0,
+            bar_idx=11,
+        ))
         assert actions[0]["candidate_uid"] == "oco|GBPUSD|100|h6|abc"
         assert actions[0]["reservation_id"] == "res-001"
 
     def test_lower_barrier_touch_produces_sell(self):
         """Bar low <= lower_barrier -> SELL action."""
         mgr, scan_id = self._make_manager_with_scan()
-        actions = mgr.evaluate_bar(
+        actions = mgr.evaluate_bar(BarContext(
             symbol="GBPUSD",
             bar_ticks=100,
-            bar_high_bid=1.29510,
-            bar_low_bid=1.29475,   # <= 1.29480
-            bar_hl_first=-1.0,
-            current_bar_idx=11,
-        )
+            bid=BarPrices(high=1.29510, low=1.29475, close=1.29475),
+            ask=BarPrices(high=1.29510, low=1.29475, close=1.29510),
+            hl_first=-1.0,
+            bar_idx=11,
+        ))
         assert len(actions) == 1
         assert actions[0]["type"] == "OPEN_MARKET"
         assert actions[0]["side"] == "SELL"
@@ -310,14 +307,14 @@ class TestEvaluateBar:
     def test_no_touch_decrements_scan_bars(self):
         """No barrier touched -> no actions, scan_bars_remaining decremented."""
         mgr, scan_id = self._make_manager_with_scan()
-        actions = mgr.evaluate_bar(
+        actions = mgr.evaluate_bar(BarContext(
             symbol="GBPUSD",
             bar_ticks=100,
-            bar_high_bid=1.29510,
-            bar_low_bid=1.29490,
-            bar_hl_first=0.0,
-            current_bar_idx=11,
-        )
+            bid=BarPrices(high=1.29510, low=1.29490, close=1.29490),
+            ask=BarPrices(high=1.29510, low=1.29490, close=1.29510),
+            hl_first=0.0,
+            bar_idx=11,
+        ))
         assert len(actions) == 0
         scan = mgr.get_scan(scan_id)
         assert scan["status"] == "SCANNING"
@@ -326,8 +323,8 @@ class TestEvaluateBar:
     def test_scan_expires_after_horizon_bars_no_touch(self):
         """After horizon bars with no touch -> EXPIRED + RELEASE_RESERVATION."""
         mgr, scan_id = self._make_manager_with_scan(horizon=2)
-        mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 11)
-        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 12)
+        mgr.evaluate_bar(BarContext(symbol="GBPUSD", bar_ticks=100, bid=BarPrices(high=1.29510, low=1.29490, close=1.29490), ask=BarPrices(high=1.29510, low=1.29490, close=1.29490), hl_first=0.0, bar_idx=11))
+        actions = mgr.evaluate_bar(BarContext(symbol="GBPUSD", bar_ticks=100, bid=BarPrices(high=1.29510, low=1.29490, close=1.29490), ask=BarPrices(high=1.29510, low=1.29490, close=1.29490), hl_first=0.0, bar_idx=12))
         assert len(actions) == 1
         assert actions[0]["type"] == "RELEASE_RESERVATION"
         scan = mgr.get_scan(scan_id)
@@ -338,8 +335,8 @@ class TestEvaluateBar:
         """Expired scan with reservation_id -> RELEASE_RESERVATION action."""
         mgr, scan_id = self._make_manager_with_scan(horizon=2)
         # reservation_id="res-001" from _make_manager_with_scan
-        mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 11)
-        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 12)
+        mgr.evaluate_bar(BarContext(symbol="GBPUSD", bar_ticks=100, bid=BarPrices(high=1.29510, low=1.29490, close=1.29490), ask=BarPrices(high=1.29510, low=1.29490, close=1.29490), hl_first=0.0, bar_idx=11))
+        actions = mgr.evaluate_bar(BarContext(symbol="GBPUSD", bar_ticks=100, bid=BarPrices(high=1.29510, low=1.29490, close=1.29490), ask=BarPrices(high=1.29510, low=1.29490, close=1.29490), hl_first=0.0, bar_idx=12))
         assert len(actions) == 1
         assert actions[0]["type"] == "RELEASE_RESERVATION"
         assert actions[0]["reservation_id"] == "res-001"
@@ -363,8 +360,8 @@ class TestEvaluateBar:
             reservation_id=None,
             run_id="test",
         )
-        mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 11)
-        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 12)
+        mgr.evaluate_bar(BarContext(symbol="GBPUSD", bar_ticks=100, bid=BarPrices(high=1.29510, low=1.29490, close=1.29490), ask=BarPrices(high=1.29510, low=1.29490, close=1.29490), hl_first=0.0, bar_idx=11))
+        actions = mgr.evaluate_bar(BarContext(symbol="GBPUSD", bar_ticks=100, bid=BarPrices(high=1.29510, low=1.29490, close=1.29490), ask=BarPrices(high=1.29510, low=1.29490, close=1.29490), hl_first=0.0, bar_idx=12))
         assert len(actions) == 0
         scan = mgr.get_scan(scan_id)
         assert scan["status"] == "EXPIRED"
@@ -379,15 +376,14 @@ class TestEvaluateBar:
             "close_ask": 1.10025,
         }
 
-        actions = mgr.evaluate_bar(
+        actions = mgr.evaluate_bar(BarContext(
             symbol="GBPUSD",
             bar_ticks=100,
-            bar_high_bid=latest_bar["high_bid"],
-            bar_low_bid=latest_bar["low_bid"],
-            bar_hl_first=1.0,
-            current_bar_idx=11,
-            bar_high_ask=latest_bar["high_ask"],
-        )
+            bid=BarPrices(high=latest_bar["high_bid"], low=latest_bar["low_bid"], close=latest_bar["close_bid"]),
+            ask=BarPrices(high=latest_bar["high_ask"], low=latest_bar["low_bid"], close=latest_bar["close_ask"]),
+            hl_first=1.0,
+            bar_idx=11,
+        ))
 
         assert len(actions) == 1
         assert actions[0]["type"] == "OPEN_MARKET"
@@ -410,15 +406,14 @@ class TestEvaluateBar:
             signal_close_ask=1.29520,
             signal_close_bid=1.29510,
         )
-        actions = mgr.evaluate_bar(
+        actions = mgr.evaluate_bar(BarContext(
             symbol="GBPUSD",
             bar_ticks=100,
-            bar_high_bid=1.29518,
-            bar_low_bid=1.29500,
-            bar_hl_first=1.0,
-            current_bar_idx=11,
-            bar_high_ask=1.29541,
-        )
+            bid=BarPrices(high=1.29518, low=1.29500, close=1.29500),
+            ask=BarPrices(high=1.29541, low=1.29500, close=1.29541),
+            hl_first=1.0,
+            bar_idx=11,
+        ))
         assert len(actions) == 1
         assert actions[0]["type"] == "OPEN_MARKET"
         scan = mgr.get_scan(scan_id)
@@ -447,13 +442,13 @@ class TestTieBreaking:
 
     def test_both_touched_hl_first_positive_is_buy(self):
         mgr, scan_id = self._make_manager_with_scan()
-        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29470, 1.0, 11, bar_high_ask=1.29530)
+        actions = mgr.evaluate_bar(BarContext(symbol="GBPUSD", bar_ticks=100, bid=BarPrices(high=1.29530, low=1.29470, close=1.29470), ask=BarPrices(high=1.29530, low=1.2952, close=1.29530), hl_first=1.0, bar_idx=11))
         assert len(actions) == 1
         assert actions[0]["side"] == "BUY"
 
     def test_both_touched_hl_first_negative_is_sell(self):
         mgr, scan_id = self._make_manager_with_scan()
-        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29470, -1.0, 11, bar_high_ask=1.29530)
+        actions = mgr.evaluate_bar(BarContext(symbol="GBPUSD", bar_ticks=100, bid=BarPrices(high=1.29530, low=1.29470, close=1.29470), ask=BarPrices(high=1.29530, low=1.2952, close=1.29530), hl_first=-1.0, bar_idx=11))
         assert len(actions) == 1
         assert actions[0]["side"] == "SELL"
 
@@ -462,7 +457,7 @@ class TestTieBreaking:
         # is immediately expired — mirrors _oco_precompute which locks in side=0
         # on the first simultaneous touch and does not evaluate later bars.
         mgr, scan_id = self._make_manager_with_scan()
-        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29470, 0.0, 11, bar_high_ask=1.29530)
+        actions = mgr.evaluate_bar(BarContext(symbol="GBPUSD", bar_ticks=100, bid=BarPrices(high=1.29530, low=1.29470, close=1.29470), ask=BarPrices(high=1.29530, low=1.2952, close=1.29530), hl_first=0.0, bar_idx=11))
         assert len(actions) == 1
         assert actions[0]["type"] == "RELEASE_RESERVATION"
         scan = mgr.get_scan(scan_id)
@@ -473,7 +468,7 @@ class TestTieBreaking:
         """Both barriers hit with hl_first=0 -> EXPIRED + RELEASE_RESERVATION."""
         mgr, scan_id = self._make_manager_with_scan()
         # reservation_id="res-001" from _make_manager_with_scan
-        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29470, 0.0, 11, bar_high_ask=1.29530)
+        actions = mgr.evaluate_bar(BarContext(symbol="GBPUSD", bar_ticks=100, bid=BarPrices(high=1.29530, low=1.29470, close=1.29470), ask=BarPrices(high=1.29530, low=1.2952, close=1.29530), hl_first=0.0, bar_idx=11))
         assert len(actions) == 1
         assert actions[0]["type"] == "RELEASE_RESERVATION"
         assert actions[0]["reservation_id"] == "res-001"
@@ -498,15 +493,15 @@ class TestHoldCompletion:
             run_id="test",
         )
         mgr.set_broker_pos_id(scan_id, "broker-123")
-        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29490, 1.0, 11, bar_high_ask=1.29530)
+        actions = mgr.evaluate_bar(BarContext(symbol="GBPUSD", bar_ticks=100, bid=BarPrices(high=1.29530, low=1.29490, close=1.29490), ask=BarPrices(high=1.29530, low=1.2952, close=1.29530), hl_first=1.0, bar_idx=11))
         assert len(actions) == 1
         assert actions[0]["type"] == "OPEN_MARKET"
 
-        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 12)
+        actions = mgr.evaluate_bar(BarContext(symbol="GBPUSD", bar_ticks=100, bid=BarPrices(high=1.29510, low=1.29490, close=1.29490), ask=BarPrices(high=1.29510, low=1.29490, close=1.29490), hl_first=0.0, bar_idx=12))
         assert len(actions) == 0
-        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 13)
+        actions = mgr.evaluate_bar(BarContext(symbol="GBPUSD", bar_ticks=100, bid=BarPrices(high=1.29510, low=1.29490, close=1.29490), ask=BarPrices(high=1.29510, low=1.29490, close=1.29490), hl_first=0.0, bar_idx=13))
         assert len(actions) == 0
-        actions = mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 14)
+        actions = mgr.evaluate_bar(BarContext(symbol="GBPUSD", bar_ticks=100, bid=BarPrices(high=1.29510, low=1.29490, close=1.29490), ask=BarPrices(high=1.29510, low=1.29490, close=1.29490), hl_first=0.0, bar_idx=14))
         assert len(actions) == 1
         assert actions[0]["type"] == "CLOSE_MARKET"
         assert actions[0]["broker_pos_id"] == "broker-123"
@@ -531,11 +526,11 @@ class TestHoldCompletion:
             run_id="test",
         )
         assert mgr.has_active_scan("GBPUSD", "oco|GBPUSD|100|h6|abc")
-        mgr.evaluate_bar("GBPUSD", 100, 1.29530, 1.29490, 1.0, 11, bar_high_ask=1.29530)
+        mgr.evaluate_bar(BarContext(symbol="GBPUSD", bar_ticks=100, bid=BarPrices(high=1.29530, low=1.29490, close=1.29490), ask=BarPrices(high=1.29530, low=1.2952, close=1.29530), hl_first=1.0, bar_idx=11))
         assert mgr.has_active_scan("GBPUSD", "oco|GBPUSD|100|h6|abc")
-        mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 12, bar_high_ask=1.29510)
+        mgr.evaluate_bar(BarContext(symbol="GBPUSD", bar_ticks=100, bid=BarPrices(high=1.29510, low=1.29490, close=1.29490), ask=BarPrices(high=1.29510, low=1.295, close=1.29510), hl_first=0.0, bar_idx=12))
         assert mgr.has_active_scan("GBPUSD", "oco|GBPUSD|100|h6|abc")
-        mgr.evaluate_bar("GBPUSD", 100, 1.29510, 1.29490, 0.0, 13, bar_high_ask=1.29510)
+        mgr.evaluate_bar(BarContext(symbol="GBPUSD", bar_ticks=100, bid=BarPrices(high=1.29510, low=1.29490, close=1.29490), ask=BarPrices(high=1.29510, low=1.295, close=1.29510), hl_first=0.0, bar_idx=13))
         assert not mgr.has_active_scan("GBPUSD", "oco|GBPUSD|100|h6|abc")
 
 
@@ -658,15 +653,14 @@ class TestParityWithOcoPrecompute:
                 bar_idx = signal_bar + s
                 if bar_idx >= n_bars:
                     break
-                actions = mgr.evaluate_bar(
+                actions = mgr.evaluate_bar(BarContext(
                     symbol="GBPUSD",
                     bar_ticks=100,
-                    bar_high_bid=float(highs[bar_idx]),
-                    bar_low_bid=float(lows[bar_idx]),
-                    bar_hl_first=float(hl_firsts[bar_idx]),
-                    current_bar_idx=bar_idx,
-                    bar_high_ask=float(highs[bar_idx]),
-                )
+                    bid=BarPrices(high=float(highs[bar_idx]), low=float(lows[bar_idx]), close=float(prices[bar_idx])),
+                    ask=BarPrices(high=float(highs[bar_idx]), low=float(lows[bar_idx]), close=float(prices[bar_idx])),
+                    hl_first=float(hl_firsts[bar_idx]),
+                    bar_idx=bar_idx,
+                ))
                 if actions and actions[0]["type"] == "OPEN_MARKET":
                     actual_side = 1 if actions[0]["side"] == "BUY" else -1
                     actual_touch_step = float(s)
@@ -779,15 +773,14 @@ class TestAskBarrierTrigger:
         """BUY fires when bar_high_ask >= upper even if bar_high (BID) < upper."""
         # upper = 1.29500 + 2.0 * 0.0001 = 1.29520
         mgr = self._make_manager_with_scan()
-        actions = mgr.evaluate_bar(
+        actions = mgr.evaluate_bar(BarContext(
             symbol="GBPUSD",
             bar_ticks=100,
-            bar_high_bid=1.29515,       # BID high — misses barrier
-            bar_low_bid=1.29490,
-            bar_hl_first=1.0,
-            current_bar_idx=11,
-            bar_high_ask=1.29525,   # ASK high — touches barrier
-        )
+            bid=BarPrices(high=1.29515, low=1.29490, close=1.29490),
+            ask=BarPrices(high=1.29525, low=1.29490, close=1.29525),
+            hl_first=1.0,
+            bar_idx=11,
+        ))
         assert len(actions) == 1
         assert actions[0]["type"] == "OPEN_MARKET"
         assert actions[0]["side"] == "BUY"
@@ -796,15 +789,14 @@ class TestAskBarrierTrigger:
         """SELL still fires when bar_low <= lower_barrier regardless of bar_high_ask."""
         # lower = 1.29500 - 2.0 * 0.0001 = 1.29480
         mgr = self._make_manager_with_scan()
-        actions = mgr.evaluate_bar(
+        actions = mgr.evaluate_bar(BarContext(
             symbol="GBPUSD",
             bar_ticks=100,
-            bar_high_bid=1.29510,
-            bar_low_bid=1.29475,        # BID low — touches lower barrier
-            bar_hl_first=-1.0,
-            current_bar_idx=11,
-            bar_high_ask=1.29512,   # ASK < upper; should NOT trigger BUY
-        )
+            bid=BarPrices(high=1.29510, low=1.29475, close=1.29475),
+            ask=BarPrices(high=1.29512, low=1.29475, close=1.29512),
+            hl_first=-1.0,
+            bar_idx=11,
+        ))
         assert len(actions) == 1
         assert actions[0]["type"] == "OPEN_MARKET"
         assert actions[0]["side"] == "SELL"

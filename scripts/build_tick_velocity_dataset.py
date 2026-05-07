@@ -228,8 +228,6 @@ def _build_symbol_dataset(
 
     out["year"] = out["close_ts"].dt.year.astype(int)
     out["hour_utc"] = out["close_ts"].dt.hour.astype(int)
-    out["hour_utc_sin"] = np.sin(2.0 * np.pi * out["hour_utc"] / 24.0)
-    out["hour_utc_cos"] = np.cos(2.0 * np.pi * out["hour_utc"] / 24.0)
 
     out["duration_sec"] = (out["close_ts"] - out["timestamp"]).dt.total_seconds().clip(lower=1e-6)
     out["tick_rate_hz"] = out["tick_volume"] / out["duration_sec"]

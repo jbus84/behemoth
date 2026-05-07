@@ -101,7 +101,11 @@ public final class BehemothJForexStrategy implements IStrategy {
                     stateStore,
                     artifactWriter,
                     metrics,
-                    new JForexExecutionPort(() -> this.context == null ? null : this.context.getEngine(), instrumentsBySymbol)
+                    new JForexExecutionPort(
+                            () -> this.context == null ? null : this.context.getEngine(),
+                            () -> this.context,
+                            instrumentsBySymbol
+                    )
             );
             core.start(runtimeInstruments);
             this.liveReadinessCoordinator = new LiveReadinessCoordinator(sessionConfig, predictionClient, metrics);
