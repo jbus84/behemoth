@@ -285,6 +285,73 @@ def test_feature_parity_reports_mismatched_feature_value() -> None:
     assert result.loc[0, "abs_diff"] == pytest.approx(1.0)
 
 
+def test_feature_parity_reports_missing_when_live_is_empty() -> None:
+    from src.behemoth.diagnostics.live_threshold import compare_feature_parity
+
+    recomputed = pd.DataFrame(
+        [
+            {
+                "close_ts": pd.Timestamp("2026-05-08T00:00:00Z"),
+                "candidate_uid": "oco|EURUSD|100|h6|2",
+                "range_pips": 9.0,
+            }
+        ]
+    )
+
+    result = compare_feature_parity(
+        pd.DataFrame(columns=["close_ts", "candidate_uid", "features_json"]),
+        recomputed,
+        feature_columns=["range_pips"],
+        tolerance=1e-9,
+    )
+
+    assert result.loc[0, "feature"] == "range_pips"
+    assert result.loc[0, "status"] == "MISSING"
+    assert pd.isna(result.loc[0, "live_value"])
+    assert result.loc[0, "recomputed_value"] == pytest.approx(9.0)
+
+
+def test_feature_parity_returns_expected_columns_when_all_values_pass() -> None:
+    from src.behemoth.diagnostics.live_threshold import compare_feature_parity
+
+    live = pd.DataFrame(
+        [
+            {
+                "close_ts": pd.Timestamp("2026-05-08T00:00:00Z"),
+                "candidate_uid": "oco|EURUSD|100|h6|2",
+                "features_json": json.dumps({"range_pips": 9.0}),
+            }
+        ]
+    )
+    recomputed = pd.DataFrame(
+        [
+            {
+                "close_ts": pd.Timestamp("2026-05-08T00:00:00Z"),
+                "candidate_uid": "oco|EURUSD|100|h6|2",
+                "range_pips": 9.0,
+            }
+        ]
+    )
+
+    result = compare_feature_parity(
+        live,
+        recomputed,
+        feature_columns=["range_pips"],
+        tolerance=1e-9,
+    )
+
+    assert list(result.columns) == [
+        "close_ts",
+        "candidate_uid",
+        "feature",
+        "live_value",
+        "recomputed_value",
+        "abs_diff",
+        "status",
+    ]
+    assert result.empty
+
+
 def test_recompute_features_from_runtime_bars_uses_candidate_uid_fields(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -327,3 +394,45 @@ def test_recompute_features_from_runtime_bars_uses_candidate_uid_fields(
 
     assert list(out["candidate_uid"].unique()) == ["oco|EURUSD|100|h6|2"]
     assert float(out.iloc[-1]["range_pips"]) == pytest.approx(9.0)
+
+
+@pytest.mark.parametrize(
+    "candidate_uid",
+    [
+        "library|EURUSD|100|h6|b2",
+        "oco|EURUSD|100|h6|oco_first_touch_clean__high_abs_vel_q80__k2",
+    ],
+)
+def test_recompute_features_from_runtime_bars_parses_encoded_barrier(
+    monkeypatch: pytest.MonkeyPatch,
+    candidate_uid: str,
+) -> None:
+    from src.behemoth.diagnostics import live_threshold as module
+
+    bars = pd.DataFrame(
+        {
+            "ts": pd.date_range("2026-05-08T00:00:00Z", periods=1, freq="100s", tz="UTC"),
+            "close_ts": pd.date_range(
+                "2026-05-08T00:01:39Z", periods=1, freq="100s", tz="UTC"
+            ),
+        }
+    )
+
+    def fake_compute(df: pd.DataFrame, **kwargs):
+        assert kwargs["symbol"] == "EURUSD"
+        assert kwargs["bar_ticks"] == 100
+        assert kwargs["horizon"] == 6
+        assert kwargs["barrier_pips"] == 2.0
+        return pd.DataFrame({"range_pips": [8.0]})
+
+    monkeypatch.setattr(module, "compute_feature_matrix_from_bars", fake_compute)
+
+    out = module.recompute_features_from_runtime_bars(
+        bars,
+        symbol="EURUSD",
+        candidate_uid=candidate_uid,
+        feature_columns=["range_pips"],
+    )
+
+    assert list(out["candidate_uid"].unique()) == [candidate_uid]
+    assert float(out.iloc[0]["range_pips"]) == pytest.approx(8.0)

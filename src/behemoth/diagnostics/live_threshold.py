@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -16,6 +17,16 @@ DiagnosticClassification = Literal[
     "RUNTIME_VARIANCE",
     "MODEL_VALIDITY_CONCERN",
     "INCONCLUSIVE",
+]
+
+FEATURE_PARITY_COLUMNS = [
+    "close_ts",
+    "candidate_uid",
+    "feature",
+    "live_value",
+    "recomputed_value",
+    "abs_diff",
+    "status",
 ]
 
 
@@ -86,26 +97,21 @@ def compare_feature_parity(
     tolerance: float,
 ) -> pd.DataFrame:
     rows: list[dict[str, object]] = []
-    if live_features.empty:
-        return pd.DataFrame(
-            columns=[
-                "close_ts",
-                "candidate_uid",
-                "feature",
-                "live_value",
-                "recomputed_value",
-                "abs_diff",
-                "status",
-            ]
-        )
 
     live_rows = live_features.copy()
+    if "features_json" not in live_rows.columns:
+        live_rows["features_json"] = pd.Series(dtype="object")
     parsed = live_rows["features_json"].map(_parse_features_json)
     for feature in feature_columns:
         live_rows[feature] = parsed.map(lambda payload: payload.get(feature, np.nan))
 
+    recomputed_rows = recomputed_features.copy()
+    for column in ["close_ts", "candidate_uid", *feature_columns]:
+        if column not in recomputed_rows.columns:
+            recomputed_rows[column] = pd.Series(dtype="object")
+
     merged = live_rows.merge(
-        recomputed_features[["close_ts", "candidate_uid", *feature_columns]],
+        recomputed_rows[["close_ts", "candidate_uid", *feature_columns]],
         on=["close_ts", "candidate_uid"],
         how="outer",
         suffixes=("_live", "_recomputed"),
@@ -133,7 +139,25 @@ def compare_feature_parity(
                         "status": status,
                     }
                 )
-    return pd.DataFrame(rows)
+    return pd.DataFrame(rows, columns=FEATURE_PARITY_COLUMNS)
+
+
+def _parse_barrier_pips(value: object) -> float:
+    text = str(value).strip()
+    try:
+        return float(text)
+    except ValueError:
+        pass
+
+    leading_b = re.fullmatch(r"b([+-]?\d+(?:\.\d+)?)", text)
+    if leading_b:
+        return float(leading_b.group(1))
+
+    trailing_k = re.search(r"(?:^|_)k([+-]?\d+(?:\.\d+)?)$", text)
+    if trailing_k:
+        return float(trailing_k.group(1))
+
+    raise ValueError(f"barrier_pips cannot be resolved from candidate_uid segment: {value}")
 
 
 def _parse_canonical_uid(candidate_uid: str) -> tuple[int, int, float]:
@@ -142,7 +166,7 @@ def _parse_canonical_uid(candidate_uid: str) -> tuple[int, int, float]:
         raise ValueError(f"candidate_uid is not canonical: {candidate_uid}")
     bar_ticks = int(parts[2])
     horizon = int(parts[3].removeprefix("h"))
-    barrier_pips = float(parts[4])
+    barrier_pips = _parse_barrier_pips(parts[4])
     return bar_ticks, horizon, barrier_pips
 
 
