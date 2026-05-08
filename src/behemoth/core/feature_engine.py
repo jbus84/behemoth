@@ -77,7 +77,14 @@ class FeatureComputationEngine:
 
         Returns:
             16-feature ModelFeatures or None if insufficient warmup
+
+        Note: Warmup checking is the caller's responsibility (e.g., StateManager.compute_features).
+        This method assumes the DataFrame has already been validated for sufficient history.
         """
+        assert len(df) >= self.warmup_bars, (
+            f"FeatureComputationEngine.compute() requires {self.warmup_bars} bars "
+            f"but received {len(df)} — warmup check must be done by caller"
+        )
         features = compute_features_from_bars(
             df,
             symbol=symbol,

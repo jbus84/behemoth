@@ -36,12 +36,12 @@ class TestFeatureComputationEngine:
         # (This passes implicitly if no error is raised)
         assert engine is not None
 
-    def test_compute_returns_none_without_data(self) -> None:
-        """compute() returns None on empty DataFrame."""
+    def test_compute_requires_warmup(self) -> None:
+        """compute() asserts that warmup check is done by caller (StateManager)."""
         engine = FeatureComputationEngine()
         empty_df = pd.DataFrame()
-        result = engine.compute(empty_df, "EURUSD", 100, 30, 3.0)
-        assert result is None
+        with pytest.raises(AssertionError, match="requires 289 bars"):
+            engine.compute(empty_df, "EURUSD", 100, 30, 3.0)
 
     def test_compute_regime_quantiles_returns_dict(self) -> None:
         """compute_regime_quantiles() returns dict on valid input."""
