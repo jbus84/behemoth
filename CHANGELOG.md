@@ -1,3 +1,9 @@
+## v0.20.1 (2026-05-08)
+
+### Fix
+
+- complete PredictionOrchestrator step 5/7 — restore /predict correctness (#143)
+
 ## v0.20.0 (2026-05-08)
 
 ### Feat

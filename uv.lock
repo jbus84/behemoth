@@ -98,7 +98,7 @@ wheels = [
 
 [[package]]
 name = "behemoth"
-version = "0.19.2"
+version = "0.20.0"
 source = { virtual = "." }
 dependencies = [
     { name = "catboost" },
