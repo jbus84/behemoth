@@ -55,6 +55,9 @@ class LiveReadinessStatusWriterTest {
                   "session_tradable_symbol_count": 0,
                   "session_execution_eligible_symbol_count": 0,
                   "session_total_symbol_count": 2,
+                  "restart_verdict": "UNKNOWN",
+                  "restart_reasons": [],
+                  "restart_allow_new_entries": false,
                   "symbols": [
                     {
                       "symbol": "EURUSD",
@@ -148,7 +151,8 @@ class LiveReadinessStatusWriterTest {
                     case "AUDUSD" -> "no_go_not_promoted";
                     case "EURUSD" -> "live_loaded";
                     default -> "error";
-                }
+                },
+                () -> new RestartReconciliation("ALLOW", java.util.List.of(), true)
         );
 
         writer.write(snapshot);
@@ -160,6 +164,8 @@ class LiveReadinessStatusWriterTest {
         assertThat(json.get("session_tradable_symbol_count").asInt()).isEqualTo(1);
         assertThat(json.get("session_execution_eligible_symbol_count").asInt()).isEqualTo(1);
         assertThat(json.get("session_total_symbol_count").asInt()).isEqualTo(2);
+        assertThat(json.get("restart_verdict").asText()).isEqualTo("ALLOW");
+        assertThat(json.get("restart_allow_new_entries").asBoolean()).isTrue();
 
         JsonNode eurusd = json.get("symbols").get(0);
         assertThat(eurusd.get("state").asText()).isEqualTo("READY");
@@ -174,5 +180,124 @@ class LiveReadinessStatusWriterTest {
         assertThat(audusd.get("deployment_state").asText()).isEqualTo("no_go_not_promoted");
         assertThat(audusd.get("entries_allowed").asBoolean()).isFalse();
         assertThat(audusd.get("execution_allowed").asBoolean()).isFalse();
+    }
+
+    @Test
+    void statusWriterMarksAllSymbolsExecutionForbiddenWhenRestartBlocked() throws Exception {
+        Instant asOf = Instant.parse("2026-05-08T14:18:05Z");
+        LiveReadinessSnapshot snapshot = new LiveReadinessSnapshot(
+                asOf,
+                "jforex_live",
+                1,
+                1,
+                java.util.List.of(
+                        new SymbolReadinessSnapshot(
+                                "EURUSD",
+                                SymbolReadinessState.READY,
+                                true,
+                                Instant.parse("2026-05-06T08:59:59Z"),
+                                Instant.parse("2026-05-07T21:01:33Z"),
+                                null,
+                                Instant.parse("2026-05-07T21:03:09Z"),
+                                Instant.parse("2026-05-08T14:18:04Z"),
+                                1,
+                                3008,
+                                false,
+                                "",
+                                Instant.parse("2026-05-08T05:42:55Z")
+                        )
+                )
+        );
+
+        Path out = tempDir.resolve("data/analysis/backtest_reconcile/runtime/live_symbol_readiness.json");
+        LiveReadinessStatusWriter writer = new LiveReadinessStatusWriter(
+                out,
+                new ObjectMapper(),
+                symbol -> "live_loaded",
+                () -> new RestartReconciliation(
+                        "RESTART_BLOCKED",
+                        java.util.List.of("active_oco_state.json missing"),
+                        false
+                )
+        );
+
+        writer.write(snapshot);
+
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode json = mapper.readTree(Files.readString(out));
+
+        assertThat(json.get("restart_verdict").asText()).isEqualTo("RESTART_BLOCKED");
+        assertThat(json.get("restart_allow_new_entries").asBoolean()).isFalse();
+        assertThat(json.get("restart_reasons").get(0).asText())
+                .isEqualTo("active_oco_state.json missing");
+
+        // session counts must reflect zero execution-eligible symbols even though
+        // bridge readiness and governance both said yes.
+        assertThat(json.get("session_bridge_ready_symbol_count").asInt()).isEqualTo(1);
+        assertThat(json.get("session_execution_eligible_symbol_count").asInt()).isZero();
+
+        JsonNode eurusd = json.get("symbols").get(0);
+        assertThat(eurusd.get("bridge_entries_allowed").asBoolean()).isTrue();
+        assertThat(eurusd.get("deployment_state").asText()).isEqualTo("live_loaded");
+        assertThat(eurusd.get("entries_allowed").asBoolean()).isFalse();
+        assertThat(eurusd.get("execution_allowed").asBoolean()).isFalse();
+    }
+
+    @Test
+    void resolverReadsReconciliationFileFromRuntimeDir() throws Exception {
+        Path runtimeDir = tempDir.resolve("runtime");
+        Files.createDirectories(runtimeDir);
+        Files.writeString(runtimeDir.resolve("live_restart_reconciliation.json"), """
+                {
+                  "verdict": "RESTART_BLOCKED",
+                  "reasons": ["active_oco_state.json missing"],
+                  "restart_eligibility": {
+                    "allow_new_entries": false,
+                    "eligibility": "RESTART_BLOCKED"
+                  }
+                }
+                """);
+
+        ObjectMapper mapper = new ObjectMapper();
+        RestartReconciliation r = RestartReconciliation
+                .resolverForRuntimeDir(runtimeDir, mapper)
+                .get();
+
+        assertThat(r.verdict()).isEqualTo("RESTART_BLOCKED");
+        assertThat(r.allowNewEntries()).isFalse();
+        assertThat(r.reasons()).containsExactly("active_oco_state.json missing");
+    }
+
+    @Test
+    void resolverFailsSafeWhenReconciliationFileIsMissing() {
+        Path runtimeDir = tempDir.resolve("runtime");
+        // file deliberately not created
+
+        ObjectMapper mapper = new ObjectMapper();
+        RestartReconciliation r = RestartReconciliation
+                .resolverForRuntimeDir(runtimeDir, mapper)
+                .get();
+
+        assertThat(r.verdict()).isEqualTo("UNKNOWN");
+        assertThat(r.allowNewEntries()).isFalse();
+        assertThat(r.reasons()).isEmpty();
+    }
+
+    @Test
+    void resolverFailsSafeWhenReconciliationFileIsUnparseable() throws Exception {
+        Path runtimeDir = tempDir.resolve("runtime");
+        Files.createDirectories(runtimeDir);
+        Files.writeString(
+                runtimeDir.resolve("live_restart_reconciliation.json"),
+                "{not-valid-json"
+        );
+
+        ObjectMapper mapper = new ObjectMapper();
+        RestartReconciliation r = RestartReconciliation
+                .resolverForRuntimeDir(runtimeDir, mapper)
+                .get();
+
+        assertThat(r.verdict()).isEqualTo("UNKNOWN");
+        assertThat(r.allowNewEntries()).isFalse();
     }
 }

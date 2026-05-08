@@ -70,6 +70,10 @@ public final class LiveReadinessCoordinator implements AutoCloseable {
                                         "BEHEMOTH_GOVERNANCE_DIR",
                                         "configs/research/governance/oco"
                                 ))
+                        ),
+                        RestartReconciliation.resolverForRuntimeDir(
+                                sessionConfig.reportDir().resolve("runtime"),
+                                predictionClient.objectMapper()
                         )
                 ).write(snapshot),
                 (symbol, bridgeAnchorTs) -> new HistoricalWarmupLoader().load(
