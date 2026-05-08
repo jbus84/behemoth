@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public final class LiveReadinessStatusWriter {
     private static final int SCHEMA_VERSION = 1;
@@ -20,9 +21,10 @@ public final class LiveReadinessStatusWriter {
     private final Path target;
     private final ObjectMapper objectMapper;
     private final Function<String, String> deploymentStateResolver;
+    private final Supplier<RestartReconciliation> restartResolver;
 
     public LiveReadinessStatusWriter(Path target, ObjectMapper objectMapper) {
-        this(target, objectMapper, symbol -> LIVE_LOADED);
+        this(target, objectMapper, symbol -> LIVE_LOADED, RestartReconciliation::unknown);
     }
 
     public LiveReadinessStatusWriter(
@@ -30,9 +32,19 @@ public final class LiveReadinessStatusWriter {
             ObjectMapper objectMapper,
             Function<String, String> deploymentStateResolver
     ) {
+        this(target, objectMapper, deploymentStateResolver, RestartReconciliation::unknown);
+    }
+
+    public LiveReadinessStatusWriter(
+            Path target,
+            ObjectMapper objectMapper,
+            Function<String, String> deploymentStateResolver,
+            Supplier<RestartReconciliation> restartResolver
+    ) {
         this.target = Objects.requireNonNull(target, "target");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
         this.deploymentStateResolver = Objects.requireNonNull(deploymentStateResolver, "deploymentStateResolver");
+        this.restartResolver = Objects.requireNonNull(restartResolver, "restartResolver");
     }
 
     public synchronized void write(LiveReadinessSnapshot snapshot) {
@@ -57,7 +69,14 @@ public final class LiveReadinessStatusWriter {
     }
 
     private Map<String, Object> toJson(LiveReadinessSnapshot snapshot) {
-        var symbolRows = snapshot.symbols().stream().map(this::toJson).toList();
+        RestartReconciliation restart = restartResolver.get();
+        if (restart == null) {
+            restart = RestartReconciliation.unknown();
+        }
+        boolean allowNewEntries = restart.allowNewEntries();
+        var symbolRows = snapshot.symbols().stream()
+                .map(s -> toJson(s, allowNewEntries))
+                .toList();
         long bridgeReadyCount = symbolRows.stream()
                 .filter(row -> Boolean.TRUE.equals(row.get("bridge_entries_allowed")))
                 .count();
@@ -72,14 +91,19 @@ public final class LiveReadinessStatusWriter {
         root.put("session_tradable_symbol_count", executionEligibleCount);
         root.put("session_execution_eligible_symbol_count", executionEligibleCount);
         root.put("session_total_symbol_count", snapshot.sessionTotalSymbolCount());
+        root.put("restart_verdict", restart.verdict());
+        root.put("restart_reasons", restart.reasons());
+        root.put("restart_allow_new_entries", allowNewEntries);
         root.put("symbols", symbolRows);
         return root;
     }
 
-    private Map<String, Object> toJson(SymbolReadinessSnapshot snapshot) {
+    private Map<String, Object> toJson(SymbolReadinessSnapshot snapshot, boolean restartAllowsNewEntries) {
         String deploymentState = normalizeDeploymentState(deploymentStateResolver.apply(snapshot.symbol()));
         boolean bridgeEntriesAllowed = snapshot.entriesAllowed();
-        boolean executionAllowed = bridgeEntriesAllowed && LIVE_LOADED.equals(deploymentState);
+        boolean executionAllowed = bridgeEntriesAllowed
+                && LIVE_LOADED.equals(deploymentState)
+                && restartAllowsNewEntries;
         Map<String, Object> symbol = new LinkedHashMap<>();
         symbol.put("symbol", snapshot.symbol());
         symbol.put("state", snapshot.state().name());
