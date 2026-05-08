@@ -75,6 +75,19 @@ def _source_period(run_id: object, live_run_id: str) -> str:
     return "other"
 
 
+def _duckdb_quantile(
+    con: duckdb.DuckDBPyConnection, values: pd.Series, quantile: float
+) -> float:
+    row = con.execute(
+        """
+        SELECT quantile(pred_prob, ?)
+        FROM (SELECT unnest(?::DOUBLE[]) AS pred_prob)
+        """,
+        [float(quantile), values.tolist()],
+    ).fetchone()
+    return float(row[0])
+
+
 def audit_threshold_pool(
     con: duckdb.DuckDBPyConnection,
     *,
@@ -149,7 +162,7 @@ def audit_threshold_pool(
                 "p75": float(probs.quantile(0.75)) if len(probs) else np.nan,
                 "p90": float(probs.quantile(0.90)) if len(probs) else np.nan,
                 "p95": float(probs.quantile(0.95)) if len(probs) else np.nan,
-                "replayed_threshold": float(probs.quantile(float(execution_quantile)))
+                "replayed_threshold": _duckdb_quantile(con, probs, execution_quantile)
                 if len(probs)
                 else np.nan,
                 "min_history_met": bool(len(probs) >= int(min_history)),

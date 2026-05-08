@@ -244,4 +244,5 @@ def test_threshold_pool_audit_reconstructs_quantile_and_sources() -> None:
     assert set(detail["source_period"]) == {"seed", "warmup", "live"}
     assert summary.loc[0, "pool_rows"] == 3
     assert summary.loc[0, "live_rows"] == 1
-    assert summary.loc[0, "replayed_threshold"] == pytest.approx(0.78)
+    assert summary.loc[0, "p90"] == pytest.approx(0.78)
+    assert summary.loc[0, "replayed_threshold"] == pytest.approx(0.80)
