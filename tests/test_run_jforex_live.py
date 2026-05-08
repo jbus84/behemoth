@@ -665,6 +665,96 @@ def test_main_resume_incompatible_prints_operator_summary(
     assert "[jforex-live]   2. broker-linked position ids do not match broker snapshot order ids" in err
 
 
+def test_main_reset_overwrites_stale_reconciliation_report_with_eligible_verdict(
+    skip_tick_freshness_preflight, monkeypatch, tmp_path
+) -> None:
+    """Reset cleanup leaves the system fresh — but if we don't re-reconcile after
+    cleanup, the reconciliation report on disk still reflects the pre-reset
+    (often RESTART_BLOCKED) state. That stale verdict propagates to the
+    readiness JSON via PR #139's wiring. Verify the post-reset report shows
+    RESTART_ELIGIBLE instead."""
+    active_state, live_state = _write_runtime_files(tmp_path)
+    runtime_dir = active_state.parent
+    governance_dir = _ensure_governance_dir(tmp_path)
+
+    # Persist a stale session metadata with a mismatching git_commit so that
+    # the INITIAL reconciliation will mark this RESTART_BLOCKED. This is the
+    # bug-trigger condition.
+    write_runtime_session_metadata(
+        runtime_dir / "live_runtime_session.json",
+        run_jforex_live.RuntimeSessionMetadata(
+            git_commit="STALE_COMMIT",
+            git_branch="main",
+            git_dirty=False,
+            repo_root=str(tmp_path),
+            model_month="2026-03",
+            governance_dir="configs/research/governance/oco",
+            lock_fingerprint=run_jforex_live.compute_lock_fingerprint(governance_dir),
+            symbols=["EURUSD", "GBPUSD"],
+            started_at_utc="2026-04-22T00:00:00Z",
+            startup_mode="reset",
+        ),
+    )
+
+    monkeypatch.setattr(run_jforex_live, "_repo_root", lambda: tmp_path)
+    monkeypatch.setattr(run_jforex_live, "_resolve_model_month", lambda cfg: "2026-03")
+    monkeypatch.setattr(
+        run_jforex_live,
+        "_git_metadata",
+        lambda repo_root: ("CURRENT_COMMIT", "main", False),
+    )
+    monkeypatch.setattr(run_jforex_live, "_has_resume_blocking_git_dirty", lambda repo_root: False)
+    monkeypatch.setenv("BEHEMOTH_JFOREX_JNLP_URI", "demo")
+    monkeypatch.setenv("BEHEMOTH_JFOREX_USERNAME", "user")
+    monkeypatch.setenv("BEHEMOTH_JFOREX_PASSWORD", "pass")
+    monkeypatch.setattr(
+        run_jforex_live.subprocess,
+        "run",
+        lambda *args, **kwargs: type("Result", (), {"returncode": 0})(),
+    )
+    # Use the real _consolidate_to_archive — but make it a no-op so the test
+    # doesn't depend on duckdb archive behavior; the only thing that matters
+    # for the assertion is that live_state.db gets removed.
+    monkeypatch.setattr(run_jforex_live, "_consolidate_to_archive", lambda path: path.unlink())
+    monkeypatch.setattr(run_jforex_live, "_start_api", lambda cfg: _FakeProc(returncode=None, pid=20001))
+    monkeypatch.setattr(run_jforex_live, "_poll_health", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        run_jforex_live, "_start_live_runner", lambda cfg, **kw: _FakeProc(returncode=0, pid=20002)
+    )
+    monkeypatch.setattr(run_jforex_live, "_warmup_symbols", lambda *args, **kwargs: None)
+    monkeypatch.setattr(run_jforex_live, "_stop_process", lambda proc: None)
+    monkeypatch.setattr(run_jforex_live.time, "sleep", lambda _: None)
+    monkeypatch.setattr(run_jforex_live.signal, "signal", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_jforex_live.py",
+            "--symbols",
+            "EURUSD,GBPUSD",
+            "--report-dir",
+            "data/analysis/backtest_reconcile",
+            "--startup-mode",
+            "reset",
+        ],
+    )
+
+    with pytest.raises(SystemExit, match="1"):
+        run_jforex_live.main()
+
+    report_path = runtime_dir / "live_restart_reconciliation.json"
+    assert report_path.exists(), "reconciliation report must be written"
+    report = json.loads(report_path.read_text())
+    assert report["verdict"] == RestartEligibility.RESTART_ELIGIBLE.value, (
+        f"expected RESTART_ELIGIBLE after reset cleanup + re-reconciliation, got "
+        f"{report['verdict']!r} with reasons={report['reasons']!r}"
+    )
+    assert report["reasons"] == [], (
+        f"expected no blocking reasons after reset, got {report['reasons']!r}"
+    )
+    assert report["restart_eligibility"]["allow_new_entries"] is True
+
+
 def test_main_reset_forces_new_entries_true_despite_stale_drain_only_eligibility(
     skip_tick_freshness_preflight, monkeypatch, tmp_path
 ) -> None:
