@@ -6,6 +6,7 @@ and supporting future persistence layers (PostgreSQL, SQLite, etc).
 
 from __future__ import annotations
 
+import threading
 from typing import Any, Protocol
 
 
@@ -16,9 +17,11 @@ class StateStoreResult:
         self,
         rows: list[tuple[Any, ...]] | None = None,
         duckdb_result: Any = None,
+        df: Any = None,
     ) -> None:
         self._rows = rows or []
         self._duckdb_result = duckdb_result
+        self._df = df
 
     def fetchall(self) -> list[tuple[Any, ...]]:
         """Return all rows from query result."""
@@ -31,11 +34,14 @@ class StateStoreResult:
     def fetchdf(self) -> Any:
         """Return result as DataFrame (DuckDB only).
 
-        Requires that the result was created with a DuckDB result object.
+        Requires that the result was created with a DuckDB result object
+        or that the DataFrame was cached at construction time.
 
         Returns:
             pandas DataFrame
         """
+        if self._df is not None:
+            return self._df
         if self._duckdb_result is None:
             raise RuntimeError("fetchdf() not available for this result")
         return self._duckdb_result.fetchdf()
@@ -84,6 +90,7 @@ class DuckDBStateStore:
             persist_path: Path to persist database to disk. None = in-memory.
             con: Optional existing DuckDB connection. If provided, persist_path is ignored.
         """
+        self._lock = threading.Lock()
         if con is not None:
             self._con = con
             self._owns_connection = False
@@ -98,25 +105,31 @@ class DuckDBStateStore:
 
     def execute(self, sql: str, params: list[Any] | None = None) -> StateStoreResult:
         """Execute SQL statement using DuckDB."""
-        result = self._con.execute(sql, params or [])
-        rows = result.fetchall()
-        return StateStoreResult(rows, duckdb_result=result)
+        with self._lock:
+            result = self._con.execute(sql, params or [])
+            rows = result.fetchall()
+            df = result.fetchdf()
+            return StateStoreResult(rows, duckdb_result=result, df=df)
 
     def executemany(self, sql: str, params: list[list[Any]]) -> None:
         """Execute SQL statement multiple times with different parameters."""
-        self._con.executemany(sql, params)
+        with self._lock:
+            self._con.executemany(sql, params)
 
     def begin(self) -> None:
         """Begin DuckDB transaction."""
-        self._con.begin()
+        with self._lock:
+            self._con.begin()
 
     def commit(self) -> None:
         """Commit DuckDB transaction."""
-        self._con.commit()
+        with self._lock:
+            self._con.commit()
 
     def rollback(self) -> None:
         """Rollback DuckDB transaction."""
-        self._con.rollback()
+        with self._lock:
+            self._con.rollback()
 
     def raw_connection(self) -> Any:
         """Access raw DuckDB connection for direct API calls (DDL, etc)."""
@@ -124,8 +137,9 @@ class DuckDBStateStore:
 
     def close(self) -> None:
         """Close DuckDB connection (only if we own it)."""
-        if self._owns_connection:
-            self._con.close()
+        with self._lock:
+            if self._owns_connection:
+                self._con.close()
 
 
 class InMemoryStateStore:
