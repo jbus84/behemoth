@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 
 def test_classifies_parity_breach_before_threshold_drift() -> None:
     from src.behemoth.diagnostics.live_threshold import DiagnosticInputs, classify_diagnostic
@@ -94,6 +96,54 @@ def test_classifies_runtime_variance_when_no_concern_is_detected() -> None:
     )
 
     assert result == "RUNTIME_VARIANCE"
+
+
+def test_classifies_runtime_variance_when_live_distribution_is_unusual() -> None:
+    from src.behemoth.diagnostics.live_threshold import DiagnosticInputs, classify_diagnostic
+
+    result = classify_diagnostic(
+        DiagnosticInputs(
+            threshold_pool_complete=True,
+            threshold_replay_matches=True,
+            feature_parity_passed=True,
+            feature_parity_checked=True,
+            current_pool_lag_detected=False,
+            live_distribution_unusual=True,
+            model_validity_concern=False,
+            evidence_missing=False,
+        )
+    )
+
+    assert result == "RUNTIME_VARIANCE"
+
+
+@pytest.mark.parametrize(
+    ("threshold_pool_complete", "feature_parity_checked"),
+    [
+        (False, True),
+        (True, False),
+    ],
+)
+def test_classifies_inconclusive_when_threshold_pool_or_parity_check_is_missing(
+    threshold_pool_complete: bool,
+    feature_parity_checked: bool,
+) -> None:
+    from src.behemoth.diagnostics.live_threshold import DiagnosticInputs, classify_diagnostic
+
+    result = classify_diagnostic(
+        DiagnosticInputs(
+            threshold_pool_complete=threshold_pool_complete,
+            threshold_replay_matches=True,
+            feature_parity_passed=True,
+            feature_parity_checked=feature_parity_checked,
+            current_pool_lag_detected=False,
+            live_distribution_unusual=False,
+            model_validity_concern=False,
+            evidence_missing=False,
+        )
+    )
+
+    assert result == "INCONCLUSIVE"
 
 
 def test_classifies_inconclusive_when_required_evidence_is_missing() -> None:
