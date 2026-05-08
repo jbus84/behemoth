@@ -11,15 +11,14 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import TypeVar
-
-import duckdb
+from typing import Any, TypeVar
 
 from src.behemoth.core.schemas import BarContext, BarrierAction, BarrierActionType
 from src.behemoth.runtime.barrier_context import (
     BarContextAdapter,
     BarrierEvaluationContext,
 )
+from src.behemoth.runtime.state_store import StateStore, DuckDBStateStore
 
 T = TypeVar("T")
 
@@ -77,38 +76,50 @@ class BarrierManager:
                      SCANNING -> EXPIRED (no touch within horizon)
     """
 
-    def __init__(self, *, con: duckdb.DuckDBPyConnection | None = None) -> None:
-        if con is not None:
-            self._con = con
-            self._owns_con = False
+    def __init__(self, *, store: StateStore | None = None) -> None:
+        if store is not None:
+            self._store = store
+            self._owns_store = False
         else:
-            self._con = duckdb.connect()
-            self._owns_con = True
-        self._con.execute(_CREATE_BARRIER_SCANS_SQL)
-        self._con.execute(
-            "ALTER TABLE barrier_scans ADD COLUMN IF NOT EXISTS signal_close_ask DOUBLE"
-        )
-        self._con.execute(
-            "ALTER TABLE barrier_scans ADD COLUMN IF NOT EXISTS signal_close_bid DOUBLE"
-        )
+            self._store = DuckDBStateStore()
+            self._owns_store = True
+        # Execute DDL via the underlying connection (DuckDBStateStore provides raw_connection)
+        if hasattr(self._store, 'raw_connection'):
+            con = self._store.raw_connection()  # type: ignore
+            con.execute(_CREATE_BARRIER_SCANS_SQL)
+            con.execute(
+                "ALTER TABLE barrier_scans ADD COLUMN IF NOT EXISTS signal_close_ask DOUBLE"
+            )
+            con.execute(
+                "ALTER TABLE barrier_scans ADD COLUMN IF NOT EXISTS signal_close_bid DOUBLE"
+            )
+        else:
+            # For stores that don't support raw DDL, execute via execute() method
+            self._store.execute(_CREATE_BARRIER_SCANS_SQL)
+            self._store.execute(
+                "ALTER TABLE barrier_scans ADD COLUMN IF NOT EXISTS signal_close_ask DOUBLE"
+            )
+            self._store.execute(
+                "ALTER TABLE barrier_scans ADD COLUMN IF NOT EXISTS signal_close_bid DOUBLE"
+            )
 
     def close(self) -> None:
-        if self._owns_con:
-            self._con.close()
+        if self._owns_store:
+            self._store.close()
 
     def _with_transaction(self, fn: Callable[[], T]) -> T:
-        """Execute fn within a DuckDB transaction.
+        """Execute fn within a state store transaction.
 
         On exception, rolls back and re-raises. Ensures atomicity of multi-statement
         operations without caller-side transaction management.
         """
         try:
-            self._con.begin()
+            self._store.begin()
             result = fn()
-            self._con.commit()
+            self._store.commit()
             return result
         except Exception:
-            self._con.rollback()
+            self._store.rollback()
             raise
 
     def register_scan(
@@ -150,7 +161,7 @@ class BarrierManager:
             scan_id = f"scan_{uuid.uuid4().hex[:12]}"
             upper = signal_close_ask + barrier_pips * pip_size
             lower = signal_close_bid - barrier_pips * pip_size
-            self._con.execute(
+            self._store.execute(
                 """INSERT INTO barrier_scans (
                     scan_id, symbol, candidate_uid, signal_bar_idx,
                     ref_price, signal_close_ask, signal_close_bid,
@@ -177,7 +188,7 @@ class BarrierManager:
         or close_bid. Rejecting them on startup prevents stale barriers from
         surviving a restart on a persistent DB.
         """
-        rows = self._con.execute(
+        rows = self._store.execute(
             "SELECT scan_id, symbol, candidate_uid, reservation_id "
             "FROM barrier_scans "
             "WHERE status IN ('SCANNING', 'HOLDING') "
@@ -194,7 +205,7 @@ class BarrierManager:
         ]
         if not rejected:
             return []
-        self._con.execute(
+        self._store.execute(
             "UPDATE barrier_scans "
             "SET scan_bars_remaining = 0, hold_bars_remaining = 0, status = 'EXPIRED' "
             "WHERE status IN ('SCANNING', 'HOLDING') "
@@ -204,7 +215,7 @@ class BarrierManager:
 
     def has_active_scan(self, symbol: str, candidate_uid: str) -> bool:
         """Check if candidate has an active (SCANNING or HOLDING) scan."""
-        res = self._con.execute(
+        res = self._store.execute(
             "SELECT COUNT(*) FROM barrier_scans WHERE symbol = ? AND candidate_uid = ? AND status IN ('SCANNING', 'HOLDING')",
             [symbol.upper(), candidate_uid],
         ).fetchone()
@@ -212,13 +223,33 @@ class BarrierManager:
 
     def get_scan(self, scan_id: str) -> dict | None:
         """Retrieve a scan record by ID. Used for testing and diagnostics."""
-        res = self._con.execute(
-            "SELECT * FROM barrier_scans WHERE scan_id = ?", [scan_id]
-        ).fetchone()
-        if res is None:
-            return None
-        cols = [desc[0] for desc in self._con.description]
-        return dict(zip(cols, res))
+        # Use raw connection if available to get column names
+        if hasattr(self._store, 'raw_connection'):
+            con = self._store.raw_connection()  # type: ignore
+            result = con.execute(
+                "SELECT * FROM barrier_scans WHERE scan_id = ?", [scan_id]
+            )
+            res = result.fetchone()
+            if res is None:
+                return None
+            cols = [desc[0] for desc in result.description]
+            return dict(zip(cols, res))
+        else:
+            # Fallback for stores without raw connection access
+            res = self._store.execute(
+                "SELECT * FROM barrier_scans WHERE scan_id = ?", [scan_id]
+            ).fetchone()
+            if res is None:
+                return None
+            # Column order from CREATE TABLE statement (may not match if columns are missing in test)
+            cols = [
+                "scan_id", "symbol", "candidate_uid", "signal_bar_idx", "ref_price",
+                "signal_close_ask", "signal_close_bid", "upper_barrier", "lower_barrier",
+                "barrier_pips", "horizon", "scan_bars_remaining", "touch_step", "touch_side",
+                "hold_bars_remaining", "status", "broker_pos_id", "pred_prob", "threshold",
+                "model_month", "reservation_id", "run_id", "created_ts"
+            ]
+            return dict(zip(cols, res))
 
     def evaluate_bar(self, bar_context: BarContext) -> list[BarrierAction]:
         """Evaluate a completed bar and return broker-facing actions."""
@@ -261,7 +292,7 @@ class BarrierManager:
         actions: list[BarrierAction] = []
         mutations: list[BarrierStateMutation] = []
 
-        scanning = self._con.execute(
+        scanning = self._store.execute(
             "SELECT scan_id, candidate_uid, upper_barrier, lower_barrier, "
             "scan_bars_remaining, signal_bar_idx, reservation_id, horizon "
             "FROM barrier_scans WHERE symbol = ? AND status = 'SCANNING'",
@@ -285,7 +316,7 @@ class BarrierManager:
                     side = "SELL"
                 else:
                     # hl_first == 0: undecided, expire immediately
-                    self._con.execute(
+                    self._store.execute(
                         "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",
                         [scan_id],
                     )
@@ -330,7 +361,7 @@ class BarrierManager:
                     reservation_id=reservation_id, horizon=horizon,
                 ))
             elif bars_rem <= 0:
-                self._con.execute(
+                self._store.execute(
                     "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",
                     [scan_id],
                 )
@@ -344,7 +375,7 @@ class BarrierManager:
                         reservation_id=reservation_id,
                     ))
             else:
-                self._con.execute(
+                self._store.execute(
                     "UPDATE barrier_scans SET scan_bars_remaining = ? WHERE scan_id = ?",
                     [bars_rem, scan_id],
                 )
@@ -369,7 +400,7 @@ class BarrierManager:
 
         # Exclude scans that were just transitioned to HOLDING in this evaluation
         newly_transitioned = {a.scan_id for a in newly_opened_actions if a.type == BarrierActionType.OPEN_MARKET}
-        holding = self._con.execute(
+        holding = self._store.execute(
             "SELECT scan_id, candidate_uid, broker_pos_id, hold_bars_remaining "
             "FROM barrier_scans WHERE symbol = ? AND status = 'HOLDING'",
             [sym],
@@ -379,7 +410,7 @@ class BarrierManager:
         for scan_id, candidate_uid, broker_pos_id, hold_rem in holding:
             hold_rem -= 1
             if hold_rem <= 0:
-                self._con.execute(
+                self._store.execute(
                     "UPDATE barrier_scans SET hold_bars_remaining = 0, status = 'COMPLETED' WHERE scan_id = ?",
                     [scan_id],
                 )
@@ -395,7 +426,7 @@ class BarrierManager:
                     scan_id=scan_id,
                 ))
             else:
-                self._con.execute(
+                self._store.execute(
                     "UPDATE barrier_scans SET hold_bars_remaining = ? WHERE scan_id = ?",
                     [hold_rem, scan_id],
                 )
@@ -445,7 +476,7 @@ class BarrierManager:
     def _transition_to_holding(self, scan_id: str, touch_step: int, side: str, horizon: int) -> None:
         """Move a scan from SCANNING to HOLDING. Atomic transition ensures consistency."""
         def _do_transition() -> None:
-            self._con.execute(
+            self._store.execute(
                 "UPDATE barrier_scans SET touch_step = ?, touch_side = ?, "
                 "hold_bars_remaining = ?, status = 'HOLDING' WHERE scan_id = ?",
                 [touch_step, side, horizon, scan_id],
@@ -455,7 +486,7 @@ class BarrierManager:
     def set_broker_pos_id(self, scan_id: str, broker_pos_id: str) -> None:
         """Record the broker position ID after a fill is confirmed."""
         def _do_set() -> None:
-            self._con.execute(
+            self._store.execute(
                 "UPDATE barrier_scans SET broker_pos_id = ? WHERE scan_id = ?",
                 [broker_pos_id, scan_id],
             )
@@ -463,7 +494,7 @@ class BarrierManager:
 
     def find_holding_scans(self, symbol: str, candidate_uid: str) -> list[dict]:
         """Find HOLDING scans for a candidate (to link broker_pos_id)."""
-        res = self._con.execute(
+        res = self._store.execute(
             "SELECT scan_id, broker_pos_id FROM barrier_scans "
             "WHERE symbol = ? AND candidate_uid = ? AND status = 'HOLDING' "
             "ORDER BY created_ts DESC",
@@ -473,7 +504,7 @@ class BarrierManager:
 
     def get_scan_by_reservation_id(self, reservation_id: str) -> dict | None:
         """Return the active (SCANNING/HOLDING) scan for a reservation, or None if not found."""
-        row = self._con.execute(
+        row = self._store.execute(
             "SELECT scan_id, status FROM barrier_scans "
             "WHERE reservation_id = ? AND status IN ('SCANNING', 'HOLDING') LIMIT 1",
             [reservation_id],

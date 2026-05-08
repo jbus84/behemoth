@@ -77,18 +77,24 @@ class StateStore(Protocol):
 class DuckDBStateStore:
     """DuckDB implementation of StateStore."""
 
-    def __init__(self, persist_path: str | None = None) -> None:
+    def __init__(self, persist_path: str | None = None, con: Any = None) -> None:
         """Initialize DuckDB connection.
 
         Args:
             persist_path: Path to persist database to disk. None = in-memory.
+            con: Optional existing DuckDB connection. If provided, persist_path is ignored.
         """
-        import duckdb
-
-        if persist_path:
-            self._con = duckdb.connect(persist_path)
+        if con is not None:
+            self._con = con
+            self._owns_connection = False
         else:
-            self._con = duckdb.connect()
+            import duckdb
+
+            if persist_path:
+                self._con = duckdb.connect(persist_path)
+            else:
+                self._con = duckdb.connect()
+            self._owns_connection = True
 
     def execute(self, sql: str, params: list[Any] | None = None) -> StateStoreResult:
         """Execute SQL statement using DuckDB."""
@@ -117,8 +123,9 @@ class DuckDBStateStore:
         return self._con
 
     def close(self) -> None:
-        """Close DuckDB connection."""
-        self._con.close()
+        """Close DuckDB connection (only if we own it)."""
+        if self._owns_connection:
+            self._con.close()
 
 
 class InMemoryStateStore:
