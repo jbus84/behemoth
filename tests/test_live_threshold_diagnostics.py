@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import duckdb
 import pandas as pd
@@ -683,3 +684,36 @@ def test_estimator_bakeoff_defaults_missing_source_period_to_other() -> None:
         out["estimator"] == "seed_decay_25pct", "threshold"
     ].iloc[0]
     assert seed_decay_threshold == pytest.approx(0.8)
+
+
+def test_run_diagnostic_writes_summary_and_report(tmp_path: Path) -> None:
+    from src.behemoth.diagnostics.live_threshold import (
+        LiveThresholdConfig,
+        run_live_threshold_diagnostic,
+    )
+
+    con = _audit_db()
+    try:
+        config = LiveThresholdConfig(
+            symbol="EURUSD",
+            run_id="unit_test_run",
+            live_run_id="jforex_live",
+            lookback_days=20,
+            execution_quantile=0.9,
+            min_history=1,
+            start_ts=pd.Timestamp("2026-05-01T00:00:00Z"),
+            end_ts=pd.Timestamp("2026-05-09T00:00:00Z"),
+            out_dir=tmp_path,
+        )
+        result = run_live_threshold_diagnostic(con, config)
+    finally:
+        con.close()
+
+    assert result["classification"] in {
+        "THRESHOLD_DRIFT",
+        "RUNTIME_VARIANCE",
+        "INCONCLUSIVE",
+    }
+    assert (tmp_path / "unit_test_run_summary.json").exists()
+    assert (tmp_path / "unit_test_run_report.md").exists()
+    assert (tmp_path / "unit_test_run_threshold_pool.csv").exists()

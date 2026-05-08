@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -30,6 +31,7 @@ FEATURE_PARITY_COLUMNS = [
 ]
 LIVE_FEATURE_COLUMNS = ["close_ts", "symbol", "candidate_uid", "features_json"]
 RUNTIME_BAR_COLUMNS = ["ts", "close_ts", "symbol", "bar_ticks"]
+THRESHOLD_ESTIMATOR_COLUMNS = ["candidate_uid", "estimator", "threshold", "rows"]
 
 
 @dataclass(frozen=True)
@@ -74,8 +76,6 @@ def classify_diagnostic(inputs: DiagnosticInputs) -> DiagnosticClassification:
 
 
 def _parse_features_json(value: object) -> dict[str, float]:
-    import json
-
     if value is None or pd.isna(value):
         return {}
     try:
@@ -97,6 +97,37 @@ def _ensure_columns(frame: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
         if column not in out.columns:
             out[column] = pd.Series(dtype="object")
     return out
+
+
+def _markdown_table(df: pd.DataFrame) -> str:
+    if df.empty:
+        return "_empty_"
+    try:
+        return df.to_markdown(index=False)
+    except Exception:
+        return "```\n" + df.to_string(index=False) + "\n```"
+
+
+def _write_csv(path: Path, df: pd.DataFrame) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(path, index=False)
+
+
+def _write_json(path: Path, payload: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _feature_columns_from_live_rows(live_features: pd.DataFrame) -> list[str]:
+    if live_features.empty or "features_json" not in live_features.columns:
+        return []
+    columns: set[str] = set()
+    for value in live_features["features_json"]:
+        columns.update(_parse_features_json(value))
+    return sorted(columns)
 
 
 def compare_feature_parity(
@@ -531,3 +562,238 @@ def audit_threshold_pool(
     return detail, pd.DataFrame(rows).sort_values(
         ["symbol", "candidate_uid"]
     ).reset_index(drop=True)
+
+
+def _latest_threshold_lag_detected(
+    threshold_pool: pd.DataFrame, threshold_summary: pd.DataFrame
+) -> bool:
+    if threshold_summary.empty or "replayed_threshold" not in threshold_summary.columns:
+        return False
+    if threshold_pool.empty or "threshold" not in threshold_pool.columns:
+        return False
+
+    pool = threshold_pool.copy()
+    if "source_period" not in pool.columns or "close_ts" not in pool.columns:
+        return False
+    live_pool = pool[pool["source_period"].astype(str).eq("live")].copy()
+    if live_pool.empty:
+        return False
+    live_pool["close_ts"] = pd.to_datetime(live_pool["close_ts"], utc=True)
+    latest_live_thresholds = (
+        live_pool.sort_values("close_ts")
+        .groupby("candidate_uid", dropna=False)["threshold"]
+        .last()
+        .rename("latest_live_threshold")
+    )
+    merged = threshold_summary.merge(
+        latest_live_thresholds,
+        on="candidate_uid",
+        how="left",
+    )
+    replayed = pd.to_numeric(merged["replayed_threshold"], errors="coerce")
+    live_threshold = pd.to_numeric(merged["latest_live_threshold"], errors="coerce")
+    delta = (live_threshold - replayed).abs()
+    return bool(delta.dropna().gt(1e-12).any())
+
+
+def _build_recomputed_feature_rows(
+    con: duckdb.DuckDBPyConnection,
+    live_features: pd.DataFrame,
+    *,
+    symbol: str,
+    start_ts: pd.Timestamp,
+    end_ts: pd.Timestamp,
+    feature_columns: list[str],
+) -> tuple[pd.DataFrame, int]:
+    if live_features.empty or not feature_columns:
+        return pd.DataFrame(columns=["close_ts", "candidate_uid", *feature_columns]), 0
+
+    rows: list[pd.DataFrame] = []
+    runtime_bar_rows = 0
+    for candidate_uid in live_features["candidate_uid"].dropna().astype(str).unique():
+        try:
+            bar_ticks, _, _ = _parse_canonical_uid(candidate_uid)
+        except ValueError:
+            continue
+        bars = load_runtime_bars(
+            con,
+            symbol=symbol,
+            bar_ticks=bar_ticks,
+            start_ts=start_ts,
+            end_ts=end_ts,
+        )
+        runtime_bar_rows += int(len(bars))
+        if bars.empty:
+            continue
+        try:
+            rows.append(
+                recompute_features_from_runtime_bars(
+                    bars,
+                    symbol=symbol,
+                    candidate_uid=candidate_uid,
+                    feature_columns=feature_columns,
+                )
+            )
+        except (KeyError, ValueError, TypeError):
+            continue
+
+    if not rows:
+        return (
+            pd.DataFrame(columns=["close_ts", "candidate_uid", *feature_columns]),
+            runtime_bar_rows,
+        )
+    return pd.concat(rows, ignore_index=True), runtime_bar_rows
+
+
+def _build_report(
+    *,
+    config: LiveThresholdConfig,
+    summary: dict[str, object],
+    threshold_summary: pd.DataFrame,
+    feature_parity: pd.DataFrame,
+    threshold_estimators: pd.DataFrame,
+) -> str:
+    return "\n".join(
+        [
+            f"# Live Threshold Diagnostic: {config.run_id}",
+            "",
+            f"- symbol: {summary['symbol']}",
+            f"- classification: {summary['classification']}",
+            f"- threshold_pool_complete: {summary['threshold_pool_complete']}",
+            f"- feature_parity_checked: {summary['feature_parity_checked']}",
+            f"- feature_parity_passed: {summary['feature_parity_passed']}",
+            f"- current_pool_lag_detected: {summary['current_pool_lag_detected']}",
+            "",
+            "## Threshold Pool",
+            "",
+            _markdown_table(threshold_summary),
+            "",
+            "## Feature Parity",
+            "",
+            _markdown_table(feature_parity),
+            "",
+            "## Threshold Estimators",
+            "",
+            _markdown_table(threshold_estimators),
+            "",
+        ]
+    )
+
+
+def run_live_threshold_diagnostic(
+    con: duckdb.DuckDBPyConnection, config: LiveThresholdConfig
+) -> dict[str, object]:
+    threshold_pool, threshold_summary = audit_threshold_pool(
+        con,
+        symbol=config.symbol,
+        execution_quantile=config.execution_quantile,
+        lookback_days=config.lookback_days,
+        min_history=config.min_history,
+        as_of=config.end_ts,
+        live_run_id=config.live_run_id,
+    )
+    threshold_pool_complete = bool(
+        not threshold_summary.empty
+        and threshold_summary["min_history_met"].astype(bool).all()
+        and threshold_summary["live_rows"].sum() > 0
+    )
+    current_pool_lag_detected = _latest_threshold_lag_detected(
+        threshold_pool, threshold_summary
+    )
+
+    live_features = load_live_feature_rows(
+        con,
+        symbol=config.symbol,
+        start_ts=config.start_ts,
+        end_ts=config.end_ts,
+        live_run_id=config.live_run_id,
+    )
+    feature_columns = _feature_columns_from_live_rows(live_features)
+    recomputed_features, runtime_bar_rows = _build_recomputed_feature_rows(
+        con,
+        live_features,
+        symbol=config.symbol,
+        start_ts=config.start_ts,
+        end_ts=config.end_ts,
+        feature_columns=feature_columns,
+    )
+    feature_parity = compare_feature_parity(
+        live_features,
+        recomputed_features,
+        feature_columns=feature_columns,
+        tolerance=1e-9,
+    )
+    feature_parity_checked = bool(
+        not live_features.empty and not recomputed_features.empty and bool(feature_columns)
+    )
+    feature_parity_passed = bool(feature_parity_checked and feature_parity.empty)
+
+    if threshold_pool_complete and feature_parity_passed:
+        threshold_estimators = run_threshold_estimator_bakeoff(
+            threshold_pool,
+            execution_quantile=config.execution_quantile,
+            as_of=config.end_ts,
+        )
+    else:
+        threshold_estimators = pd.DataFrame(columns=THRESHOLD_ESTIMATOR_COLUMNS)
+
+    evidence_missing = bool(
+        threshold_pool.empty
+        or live_features.empty
+        or runtime_bar_rows == 0
+        or not feature_parity_checked
+    )
+    classification = classify_diagnostic(
+        DiagnosticInputs(
+            threshold_pool_complete=threshold_pool_complete,
+            threshold_replay_matches=True,
+            feature_parity_passed=feature_parity_passed,
+            feature_parity_checked=feature_parity_checked,
+            current_pool_lag_detected=current_pool_lag_detected,
+            live_distribution_unusual=False,
+            model_validity_concern=False,
+            evidence_missing=evidence_missing,
+        )
+    )
+
+    summary: dict[str, object] = {
+        "classification": classification,
+        "symbol": config.symbol.upper(),
+        "run_id": config.run_id,
+        "pool_rows": int(len(threshold_pool)),
+        "live_rows": int(threshold_summary["live_rows"].sum())
+        if "live_rows" in threshold_summary.columns
+        else 0,
+        "seed_warmup_rows": int(
+            threshold_summary.get("seed_rows", pd.Series(dtype=int)).sum()
+            + threshold_summary.get("warmup_rows", pd.Series(dtype=int)).sum()
+        ),
+        "threshold_pool_complete": threshold_pool_complete,
+        "feature_parity_checked": feature_parity_checked,
+        "feature_parity_passed": feature_parity_passed,
+        "current_pool_lag_detected": current_pool_lag_detected,
+    }
+
+    out_dir = Path(config.out_dir)
+    prefix = out_dir / config.run_id
+    _write_csv(prefix.with_name(f"{config.run_id}_threshold_pool.csv"), threshold_pool)
+    _write_csv(
+        prefix.with_name(f"{config.run_id}_threshold_summary.csv"), threshold_summary
+    )
+    _write_csv(prefix.with_name(f"{config.run_id}_feature_parity.csv"), feature_parity)
+    _write_csv(
+        prefix.with_name(f"{config.run_id}_threshold_estimators.csv"),
+        threshold_estimators,
+    )
+    _write_json(prefix.with_name(f"{config.run_id}_summary.json"), summary)
+    prefix.with_name(f"{config.run_id}_report.md").write_text(
+        _build_report(
+            config=config,
+            summary=summary,
+            threshold_summary=threshold_summary,
+            feature_parity=feature_parity,
+            threshold_estimators=threshold_estimators,
+        ),
+        encoding="utf-8",
+    )
+    return summary
