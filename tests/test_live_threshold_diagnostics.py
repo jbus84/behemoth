@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import duckdb
 import pandas as pd
 import pytest
@@ -246,3 +248,82 @@ def test_threshold_pool_audit_reconstructs_quantile_and_sources() -> None:
     assert summary.loc[0, "live_rows"] == 1
     assert summary.loc[0, "p90"] == pytest.approx(0.78)
     assert summary.loc[0, "replayed_threshold"] == pytest.approx(0.80)
+
+
+def test_feature_parity_reports_mismatched_feature_value() -> None:
+    from src.behemoth.diagnostics.live_threshold import compare_feature_parity
+
+    live = pd.DataFrame(
+        [
+            {
+                "close_ts": pd.Timestamp("2026-05-08T00:00:00Z"),
+                "candidate_uid": "oco|EURUSD|100|h6|s1",
+                "features_json": json.dumps({"range_pips": 8.0, "cost_est_pips": 1.0}),
+            }
+        ]
+    )
+    recomputed = pd.DataFrame(
+        [
+            {
+                "close_ts": pd.Timestamp("2026-05-08T00:00:00Z"),
+                "candidate_uid": "oco|EURUSD|100|h6|s1",
+                "range_pips": 9.0,
+                "cost_est_pips": 1.0,
+            }
+        ]
+    )
+
+    result = compare_feature_parity(
+        live,
+        recomputed,
+        feature_columns=["range_pips", "cost_est_pips"],
+        tolerance=1e-9,
+    )
+
+    assert result.loc[0, "feature"] == "range_pips"
+    assert result.loc[0, "status"] == "MISMATCH"
+    assert result.loc[0, "abs_diff"] == pytest.approx(1.0)
+
+
+def test_recompute_features_from_runtime_bars_uses_candidate_uid_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.behemoth.diagnostics import live_threshold as module
+
+    bars = pd.DataFrame(
+        {
+            "ts": pd.date_range("2026-05-08T00:00:00Z", periods=2, freq="100s", tz="UTC"),
+            "close_ts": pd.date_range(
+                "2026-05-08T00:01:39Z", periods=2, freq="100s", tz="UTC"
+            ),
+            "open_bid": [1.0, 1.1],
+            "high_bid": [1.2, 1.3],
+            "low_bid": [0.9, 1.0],
+            "close_bid": [1.15, 1.25],
+            "spread": [0.0002, 0.0002],
+            "tick_volume": [100, 100],
+            "hl_first": [1.0, -1.0],
+            "hl_pos_frac": [0.4, 0.6],
+            "high_ask": [1.2002, 1.3002],
+            "close_ask": [1.1502, 1.2502],
+        }
+    )
+
+    def fake_compute(df: pd.DataFrame, **kwargs):
+        assert kwargs["symbol"] == "EURUSD"
+        assert kwargs["bar_ticks"] == 100
+        assert kwargs["horizon"] == 6
+        assert kwargs["barrier_pips"] == 2.0
+        return pd.DataFrame({"range_pips": [8.0, 9.0], "cost_est_pips": [1.0, 1.1]})
+
+    monkeypatch.setattr(module, "compute_feature_matrix_from_bars", fake_compute)
+
+    out = module.recompute_features_from_runtime_bars(
+        bars,
+        symbol="EURUSD",
+        candidate_uid="oco|EURUSD|100|h6|2",
+        feature_columns=["range_pips", "cost_est_pips"],
+    )
+
+    assert list(out["candidate_uid"].unique()) == ["oco|EURUSD|100|h6|2"]
+    assert float(out.iloc[-1]["range_pips"]) == pytest.approx(9.0)
