@@ -262,6 +262,11 @@ METRIC_OPEN_POSITION_BARS_REMAINING = Gauge(
     ["symbol"],
 )
 
+METRIC_RESTART_VERDICT_ALLOWED = Gauge(
+    "behemoth_restart_verdict_allowed",
+    "1 if restart reconciliation verdict is ALLOW, 0 otherwise (UNKNOWN, RESTART_BLOCKED, etc)",
+)
+
 
 class AppConfig(BaseModel):
     """Runtime configuration for the inference server."""
@@ -3564,6 +3569,7 @@ async def status() -> list[StatusSymbol]:
         for reason in restart_report.get("reasons", [])
         if str(reason).strip()
     ]
+    METRIC_RESTART_VERDICT_ALLOWED.set(1.0 if restart_verdict == "ALLOW" else 0.0)
     for sym in _config.symbols:
         bar_ticks = _active_bar_ticks_for_symbol(sym)
         deployment_state = _deployment_state_for_symbol(sym)
