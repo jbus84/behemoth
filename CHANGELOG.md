@@ -1,3 +1,15 @@
+## v0.18.0 (2026-05-08)
+
+### Feat
+
+- wire PredictionOrchestrator into /predict endpoint (Wave 5 Integration) (#135)
+- make state protocols runtime-checkable for structural verification (#134)
+
+### Refactor
+
+- decouple BarrierManager from DuckDB with StateStore abstraction (#132)
+- type AccountRiskDecision with full evaluation context (#131)
+
 ## v0.17.2 (2026-05-08)
 
 ### Refactor
