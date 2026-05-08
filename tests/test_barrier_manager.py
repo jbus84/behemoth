@@ -8,6 +8,7 @@ import pytest
 
 from src.behemoth.core.schemas import BarContext, BarPrices
 from src.behemoth.runtime.barrier_manager import BarrierManager
+from src.behemoth.runtime.state_store import DuckDBStateStore
 
 
 class TestRegisterScan:
@@ -234,7 +235,8 @@ class TestRegisterScan:
             ],
         )
 
-        mgr = BarrierManager(con=con)
+        store = DuckDBStateStore(con=con)
+        mgr = BarrierManager(store=store)
         rejected = mgr.reject_legacy_active_scans()
         scan = mgr.get_scan("legacy-scan")
 
