@@ -34,6 +34,33 @@ class EntryGateDecision:
     global_utilization: float | None = None
 
 
+@dataclass(frozen=True)
+class AccountRiskDecision:
+    """Typed result of account risk evaluation.
+
+    Replaces the raw dict previously used in predict endpoint.
+    """
+
+    enabled: bool
+    allow_trading: bool
+    block_reason: str | None
+    trading_day_id: str | None
+    day_start_balance: float | None
+    current_equity: float | None
+    profile_id: str | None = None
+    snapshot_available: bool = False
+    balance: float | None = None
+    equity: float | None = None
+    daily_loss_used: float | None = None
+    max_loss_used: float | None = None
+    daily_loss_headroom: float | None = None
+    max_loss_headroom: float | None = None
+    daily_loss_limit_internal: float | None = None
+    max_loss_limit_internal: float | None = None
+    daily_loss_limit_hard: float | None = None
+    max_loss_limit_hard: float | None = None
+
+
 class ReservationStateMachine:
     """Validates account-risk reservation lifecycle transitions."""
 
@@ -382,6 +409,18 @@ _DISABLED_ACCOUNT_RISK_EVAL: dict[str, Any] = {
     "block_reason": None,
     "snapshot_available": False,
     "trading_day_id": None,
+    "day_start_balance": None,
+    "current_equity": None,
+    "balance": None,
+    "equity": None,
+    "daily_loss_used": None,
+    "max_loss_used": None,
+    "daily_loss_headroom": None,
+    "max_loss_headroom": None,
+    "daily_loss_limit_internal": None,
+    "max_loss_limit_internal": None,
+    "daily_loss_limit_hard": None,
+    "max_loss_limit_hard": None,
 }
 
 
@@ -391,7 +430,7 @@ def evaluate_account_risk_decision(
     symbol: str,
     now_utc: datetime,
     enabled: bool = True,
-) -> dict[str, Any]:
+) -> AccountRiskDecision:
     """Evaluate account-level risk limits from read-only runtime state.
 
     This consolidates the AccountRiskDecisionEngine.evaluate() logic.
@@ -404,10 +443,10 @@ def evaluate_account_risk_decision(
         enabled: Whether account risk evaluation is active
 
     Returns:
-        Dict with account risk evaluation results
+        AccountRiskDecision with account risk evaluation results
     """
     if (not enabled) or profile is None or state_reader is None:
-        return dict(_DISABLED_ACCOUNT_RISK_EVAL)
+        return AccountRiskDecision(**_DISABLED_ACCOUNT_RISK_EVAL)
 
     sym = str(symbol).upper().strip()
     latest = state_reader.get_latest_account_risk_snapshot(sym)
@@ -427,10 +466,26 @@ def evaluate_account_risk_decision(
             equity=None,
             day_start_balance=None,
         )
-        eval_out["enabled"] = True
-        eval_out["profile_id"] = profile.profile_id
-        eval_out["trading_day_id"] = day_id
-        return eval_out
+        return AccountRiskDecision(
+            enabled=True,
+            allow_trading=eval_out["allow_trading"],
+            block_reason=eval_out.get("block_reason"),
+            trading_day_id=day_id,
+            day_start_balance=None,
+            current_equity=None,
+            profile_id=profile.profile_id,
+            snapshot_available=eval_out.get("snapshot_available", False),
+            balance=None,
+            equity=None,
+            daily_loss_used=eval_out.get("daily_loss_used"),
+            max_loss_used=eval_out.get("max_loss_used"),
+            daily_loss_headroom=eval_out.get("daily_loss_headroom"),
+            max_loss_headroom=eval_out.get("max_loss_headroom"),
+            daily_loss_limit_internal=eval_out.get("daily_loss_limit_internal"),
+            max_loss_limit_internal=eval_out.get("max_loss_limit_internal"),
+            daily_loss_limit_hard=eval_out.get("daily_loss_limit_hard"),
+            max_loss_limit_hard=eval_out.get("max_loss_limit_hard"),
+        )
 
     since = _as_utc(now_utc) - timedelta(days=3)
     snaps = state_reader.get_account_risk_snapshots_since(since_ts=since, symbol=sym)
@@ -444,10 +499,26 @@ def evaluate_account_risk_decision(
         equity=float(latest["equity"]),
         day_start_balance=day_start_balance,
     )
-    eval_out["enabled"] = True
-    eval_out["profile_id"] = profile.profile_id
-    eval_out["trading_day_id"] = day_id
-    return eval_out
+    return AccountRiskDecision(
+        enabled=True,
+        allow_trading=eval_out["allow_trading"],
+        block_reason=eval_out.get("block_reason"),
+        trading_day_id=day_id,
+        day_start_balance=day_start_balance,
+        current_equity=float(latest.get("equity", 0.0)),
+        profile_id=profile.profile_id,
+        snapshot_available=eval_out.get("snapshot_available", False),
+        balance=float(latest.get("balance", 0.0)),
+        equity=float(latest.get("equity", 0.0)),
+        daily_loss_used=eval_out.get("daily_loss_used"),
+        max_loss_used=eval_out.get("max_loss_used"),
+        daily_loss_headroom=eval_out.get("daily_loss_headroom"),
+        max_loss_headroom=eval_out.get("max_loss_headroom"),
+        daily_loss_limit_internal=eval_out.get("daily_loss_limit_internal"),
+        max_loss_limit_internal=eval_out.get("max_loss_limit_internal"),
+        daily_loss_limit_hard=eval_out.get("daily_loss_limit_hard"),
+        max_loss_limit_hard=eval_out.get("max_loss_limit_hard"),
+    )
 
 
 def _get_day_start_balance(
