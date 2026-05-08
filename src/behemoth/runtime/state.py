@@ -21,6 +21,7 @@ from typing import Any
 import duckdb
 
 from src.behemoth.runtime.state_store import DuckDBStateStore
+from src.behemoth.core.feature_validator import FeatureSchemaValidator
 from src.behemoth.core.features import (
     CURRENT_FEATURE_SCHEMA,
     CURRENT_MODEL_FEATURE_CONTRACT,
@@ -261,6 +262,8 @@ class StateManager:
         self._cfg = FeatureConfig(vol_window=int(vol_window), cost_window=int(cost_window))
         self._feature_contract = CURRENT_MODEL_FEATURE_CONTRACT
         self._feature_contract.validate_feature_names(tuple(ModelFeatures.model_fields))
+        self._feature_validator = FeatureSchemaValidator()
+        self._feature_validator.validate_startup()
 
         self._store = DuckDBStateStore(persist_path)
         self._store.execute(_CREATE_SQL)
@@ -511,7 +514,7 @@ class StateManager:
 
         df = self._store.execute(_SELECT_SQL, [sym, bar_ticks]).fetchdf()
 
-        return compute_features_from_bars(
+        features = compute_features_from_bars(
             df,
             symbol=sym,
             bar_ticks=bar_ticks,
@@ -519,6 +522,12 @@ class StateManager:
             barrier_pips=barrier_pips,
             cfg=self._cfg,
         )
+
+        # Validate feature count and vector to detect schema drift
+        self._feature_validator.validate_feature_count(len(features.model_fields))
+        self._feature_validator.validate_feature_vector(features)
+
+        return features
 
     def compute_regime_quantiles(self, symbol: str, bar_ticks: int) -> dict[str, float]:
         """Compute runtime regime quantiles from the recent bar buffer."""
