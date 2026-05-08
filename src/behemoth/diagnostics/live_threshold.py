@@ -373,64 +373,76 @@ def run_threshold_estimator_bakeoff(
     pool = threshold_pool.copy()
     pool["close_ts"] = pd.to_datetime(pool["close_ts"], utc=True)
     pool["pred_prob"] = pd.to_numeric(pool["pred_prob"], errors="coerce")
+    if "source_period" not in pool.columns:
+        pool["source_period"] = "other"
+    else:
+        pool["source_period"] = pool["source_period"].fillna("other")
     rows: list[dict[str, object]] = []
-    for candidate_uid, group in pool.groupby("candidate_uid", dropna=False):
-        values = group["pred_prob"].dropna()
-        rows.append(
-            {
-                "candidate_uid": candidate_uid,
-                "estimator": "current_equal_weight",
-                "threshold": float(values.quantile(float(execution_quantile)))
-                if len(values)
-                else np.nan,
-                "rows": int(len(values)),
-            }
-        )
-        short = group[group["close_ts"] >= as_of_utc - pd.Timedelta(days=7)][
-            "pred_prob"
-        ].dropna()
-        rows.append(
-            {
-                "candidate_uid": candidate_uid,
-                "estimator": "short_7d_equal_weight",
-                "threshold": float(short.quantile(float(execution_quantile)))
-                if len(short)
-                else np.nan,
-                "rows": int(len(short)),
-            }
-        )
-        age_days = (
-            (as_of_utc - group["close_ts"]).dt.total_seconds().to_numpy(dtype=float)
-            / 86400.0
-        )
-        weights = np.power(0.5, age_days / 3.0)
-        rows.append(
-            {
-                "candidate_uid": candidate_uid,
-                "estimator": "recency_weighted_half_life_3d",
-                "threshold": _weighted_quantile(
-                    group["pred_prob"].to_numpy(dtype=float),
-                    weights,
-                    float(execution_quantile),
-                ),
-                "rows": int(group["pred_prob"].notna().sum()),
-            }
-        )
-        seed_decay_weights = np.where(
-            group["source_period"].astype(str).eq("seed"), 0.25, 1.0
-        )
-        rows.append(
-            {
-                "candidate_uid": candidate_uid,
-                "estimator": "seed_decay_25pct",
-                "threshold": _weighted_quantile(
-                    group["pred_prob"].to_numpy(dtype=float),
-                    seed_decay_weights.astype(float),
-                    float(execution_quantile),
-                ),
-                "rows": int(group["pred_prob"].notna().sum()),
-            }
-        )
+    quantile_con = duckdb.connect(":memory:")
+    try:
+        for candidate_uid, group in pool.groupby("candidate_uid", dropna=False):
+            values = group["pred_prob"].dropna()
+            rows.append(
+                {
+                    "candidate_uid": candidate_uid,
+                    "estimator": "current_equal_weight",
+                    "threshold": _duckdb_quantile(
+                        quantile_con, values, execution_quantile
+                    )
+                    if len(values)
+                    else np.nan,
+                    "rows": int(len(values)),
+                }
+            )
+            short = group[group["close_ts"] >= as_of_utc - pd.Timedelta(days=7)][
+                "pred_prob"
+            ].dropna()
+            rows.append(
+                {
+                    "candidate_uid": candidate_uid,
+                    "estimator": "short_7d_equal_weight",
+                    "threshold": _duckdb_quantile(
+                        quantile_con, short, execution_quantile
+                    )
+                    if len(short)
+                    else np.nan,
+                    "rows": int(len(short)),
+                }
+            )
+            age_days = (
+                (as_of_utc - group["close_ts"]).dt.total_seconds().to_numpy(dtype=float)
+                / 86400.0
+            )
+            weights = np.power(0.5, age_days / 3.0)
+            rows.append(
+                {
+                    "candidate_uid": candidate_uid,
+                    "estimator": "recency_weighted_half_life_3d",
+                    "threshold": _weighted_quantile(
+                        group["pred_prob"].to_numpy(dtype=float),
+                        weights,
+                        float(execution_quantile),
+                    ),
+                    "rows": int(group["pred_prob"].notna().sum()),
+                }
+            )
+            seed_decay_weights = np.where(
+                group["source_period"].astype(str).eq("seed"), 0.25, 1.0
+            )
+            rows.append(
+                {
+                    "candidate_uid": candidate_uid,
+                    "estimator": "seed_decay_25pct",
+                    "threshold": _weighted_quantile(
+                        group["pred_prob"].to_numpy(dtype=float),
+                        seed_decay_weights.astype(float),
+                        float(execution_quantile),
+                    ),
+                    "rows": int(group["pred_prob"].notna().sum()),
+                }
+            )
+    finally:
+        quantile_con.close()
     return pd.DataFrame(rows)
 
 

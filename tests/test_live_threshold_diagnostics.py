@@ -655,4 +655,31 @@ def test_estimator_bakeoff_keeps_current_and_weighted_quantiles() -> None:
         "recency_weighted_half_life_3d",
         "seed_decay_25pct",
     }
+    current_threshold = out.loc[
+        out["estimator"] == "current_equal_weight", "threshold"
+    ].iloc[0]
+    assert current_threshold == pytest.approx(0.9)
     assert out.loc[out["estimator"] == "seed_decay_25pct", "threshold"].notna().all()
+
+
+def test_estimator_bakeoff_defaults_missing_source_period_to_other() -> None:
+    from src.behemoth.diagnostics.live_threshold import run_threshold_estimator_bakeoff
+
+    pool = pd.DataFrame(
+        {
+            "close_ts": pd.date_range("2026-05-01", periods=3, freq="D", tz="UTC"),
+            "candidate_uid": ["s1"] * 3,
+            "pred_prob": [0.80, 0.70, 0.60],
+        }
+    )
+
+    out = run_threshold_estimator_bakeoff(
+        pool,
+        execution_quantile=0.9,
+        as_of=pd.Timestamp("2026-05-08T00:00:00Z"),
+    )
+
+    seed_decay_threshold = out.loc[
+        out["estimator"] == "seed_decay_25pct", "threshold"
+    ].iloc[0]
+    assert seed_decay_threshold == pytest.approx(0.8)
