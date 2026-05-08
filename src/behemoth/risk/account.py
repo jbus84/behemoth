@@ -371,3 +371,124 @@ def evaluate_trade_risk_guard(
         barrier_pips=barrier_pips,
         cost_est_pips=cost_est_pips,
     )
+
+
+# ─── Account Risk Decision Engine (from decision_engine.py consolidation) ───
+
+_DISABLED_ACCOUNT_RISK_EVAL: dict[str, Any] = {
+    "enabled": False,
+    "profile_id": None,
+    "allow_trading": True,
+    "block_reason": None,
+    "snapshot_available": False,
+    "trading_day_id": None,
+}
+
+
+def evaluate_account_risk_decision(
+    profile: AccountRiskProfile | None,
+    state_reader: Any | None,  # AccountRiskStateReader Protocol
+    symbol: str,
+    now_utc: datetime,
+    enabled: bool = True,
+) -> dict[str, Any]:
+    """Evaluate account-level risk limits from read-only runtime state.
+
+    This consolidates the AccountRiskDecisionEngine.evaluate() logic.
+
+    Args:
+        profile: AccountRiskProfile or None
+        state_reader: Object implementing AccountRiskStateReader Protocol
+        symbol: Trading symbol
+        now_utc: Current UTC time
+        enabled: Whether account risk evaluation is active
+
+    Returns:
+        Dict with account risk evaluation results
+    """
+    if (not enabled) or profile is None or state_reader is None:
+        return dict(_DISABLED_ACCOUNT_RISK_EVAL)
+
+    sym = str(symbol).upper().strip()
+    latest = state_reader.get_latest_account_risk_snapshot(sym)
+    if latest is None:
+        latest = state_reader.get_latest_account_risk_snapshot(None)
+
+    day_id = trading_day_id(
+        now_utc,
+        timezone_name=profile.daily_reset_timezone,
+        reset_hour=profile.daily_reset_hour,
+        reset_minute=profile.daily_reset_minute,
+    )
+    if latest is None:
+        eval_out = evaluate_account_risk_limits(
+            profile,
+            balance=None,
+            equity=None,
+            day_start_balance=None,
+        )
+        eval_out["enabled"] = True
+        eval_out["profile_id"] = profile.profile_id
+        eval_out["trading_day_id"] = day_id
+        return eval_out
+
+    since = _as_utc(now_utc) - timedelta(days=3)
+    snaps = state_reader.get_account_risk_snapshots_since(since_ts=since, symbol=sym)
+    if not snaps:
+        snaps = state_reader.get_account_risk_snapshots_since(since_ts=since, symbol=None)
+
+    day_start_balance = _get_day_start_balance(snaps, latest, profile, now_utc)
+    eval_out = evaluate_account_risk_limits(
+        profile,
+        balance=float(latest["balance"]),
+        equity=float(latest["equity"]),
+        day_start_balance=day_start_balance,
+    )
+    eval_out["enabled"] = True
+    eval_out["profile_id"] = profile.profile_id
+    eval_out["trading_day_id"] = day_id
+    return eval_out
+
+
+def _get_day_start_balance(
+    snapshots: list[dict[str, Any]],
+    latest: dict[str, Any],
+    profile: AccountRiskProfile,
+    now_utc: datetime,
+) -> float:
+    """Get the account balance at the start of the current trading day.
+
+    Looks through recent snapshots to find the first one on the current trading day.
+
+    Args:
+        snapshots: List of account risk snapshots
+        latest: Most recent snapshot
+        profile: Account risk profile (for timezone/reset time)
+        now_utc: Current UTC time
+
+    Returns:
+        Balance at start of current trading day, or latest balance if not found
+    """
+    day_id = trading_day_id(
+        now_utc,
+        timezone_name=profile.daily_reset_timezone,
+        reset_hour=profile.daily_reset_hour,
+        reset_minute=profile.daily_reset_minute,
+    )
+    for row in snapshots:
+        row_day = trading_day_id(
+            row["snapshot_ts"],
+            timezone_name=profile.daily_reset_timezone,
+            reset_hour=profile.daily_reset_hour,
+            reset_minute=profile.daily_reset_minute,
+        )
+        if row_day == day_id:
+            return float(row["balance"])
+    return float(latest["balance"])
+
+
+def _as_utc(ts: datetime) -> datetime:
+    """Ensure datetime is in UTC timezone."""
+    if ts.tzinfo is None:
+        return ts.replace(tzinfo=timezone.utc)
+    return ts.astimezone(timezone.utc)

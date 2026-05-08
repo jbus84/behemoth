@@ -68,7 +68,7 @@ from src.behemoth.risk.account import (
     evaluate_trade_risk_guard,
     load_account_risk_profile,
 )
-from src.behemoth.risk.decision_engine import AccountRiskDecisionEngine
+from src.behemoth.risk.account import evaluate_account_risk_decision
 from src.behemoth.runtime.barrier_manager import BarrierManager
 from src.behemoth.runtime.order_submission import prepare_predict_actions
 from src.behemoth.runtime.state import StateManager
@@ -1766,11 +1766,13 @@ def _resolve_account_risk_eval(
     *,
     account_risk_enabled_effective: bool,
 ) -> dict[str, Any]:
-    eval_out = AccountRiskDecisionEngine(
+    eval_out = evaluate_account_risk_decision(
         profile=_account_risk_profile,
-        state=_state,
+        state_reader=_state,
+        symbol=sym,
+        now_utc=now_utc,
         enabled=account_risk_enabled_effective,
-    ).evaluate(sym, now_utc)
+    )
 
     daily_headroom = eval_out.get("daily_loss_headroom")
     max_headroom = eval_out.get("max_loss_headroom")
