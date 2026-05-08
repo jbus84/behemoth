@@ -718,12 +718,26 @@ def test_run_diagnostic_writes_summary_and_report(tmp_path: Path) -> None:
     assert (tmp_path / "unit_test_run_report.md").exists()
     assert (tmp_path / "unit_test_run_threshold_pool.csv").exists()
     assert (tmp_path / "unit_test_run_distribution_decomposition.csv").exists()
+    distribution = pd.read_csv(tmp_path / "unit_test_run_distribution_decomposition.csv")
+    pred_prob_row = distribution.loc[distribution["metric"] == "pred_prob"].iloc[0]
+    assert pred_prob_row["symbol"] == "EURUSD"
+    assert pred_prob_row["candidate_uid"] == "oco|EURUSD|100|h6|s1"
+    assert pd.notna(pred_prob_row["q90_delta_live_minus_history"])
 
     report = (tmp_path / "unit_test_run_report.md").read_text(encoding="utf-8")
     assert "classification" in report
     assert "Explanation" in report
     assert "Evidence Completeness" in report
     assert "Recommended Next Action" in report
+    assert any(
+        action in report
+        for action in {
+            "no change",
+            "fix parity bug",
+            "adjust Rolling Threshold design",
+            "escalate Model Validity review",
+        }
+    )
 
 
 def test_run_diagnostic_writes_inconclusive_artifacts_when_audit_logs_missing(

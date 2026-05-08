@@ -71,6 +71,14 @@ DISTRIBUTION_DECOMPOSITION_COLUMNS = [
     "live_q90",
     "q90_delta_live_minus_history",
 ]
+DIAGNOSTIC_FEATURE_METRICS = [
+    "range_pips",
+    "cost_est_pips",
+    "spread_z",
+    "tick_rate_z",
+    "ret_abs_z",
+    "vel_abs_cost_units_h1",
+]
 
 
 @dataclass(frozen=True)
@@ -178,6 +186,62 @@ def _empty_threshold_audit_frames() -> tuple[pd.DataFrame, pd.DataFrame]:
 
 def _empty_distribution_decomposition() -> pd.DataFrame:
     return pd.DataFrame(columns=DISTRIBUTION_DECOMPOSITION_COLUMNS)
+
+
+def _distribution_observations(
+    threshold_pool: pd.DataFrame, live_features: pd.DataFrame
+) -> tuple[pd.DataFrame, list[str]]:
+    if threshold_pool.empty:
+        return pd.DataFrame(), []
+
+    observations = threshold_pool.copy()
+    observations = _ensure_columns(
+        observations, ["close_ts", "symbol", "candidate_uid", "pred_prob", "source_period"]
+    )
+    observations["period"] = np.where(
+        observations["source_period"].astype(str).eq("live"), "live", "history"
+    )
+    observations["pred_prob"] = pd.to_numeric(observations["pred_prob"], errors="coerce")
+    value_columns = ["pred_prob"]
+
+    if not live_features.empty and "features_json" in live_features.columns:
+        feature_rows = live_features.copy()
+        feature_rows = _ensure_columns(
+            feature_rows, ["close_ts", "symbol", "candidate_uid", "features_json"]
+        )
+        feature_rows["close_ts"] = pd.to_datetime(feature_rows["close_ts"], utc=True)
+        observations["close_ts"] = pd.to_datetime(observations["close_ts"], utc=True)
+        parsed = feature_rows["features_json"].map(_parse_features_json)
+        feature_metrics: list[str] = []
+        for metric in DIAGNOSTIC_FEATURE_METRICS:
+            feature_rows[metric] = parsed.map(lambda payload: payload.get(metric, np.nan))
+            if feature_rows[metric].notna().any():
+                feature_metrics.append(metric)
+        if feature_metrics:
+            observations = observations.merge(
+                feature_rows[["close_ts", "candidate_uid", *feature_metrics]],
+                on=["close_ts", "candidate_uid"],
+                how="left",
+            )
+            value_columns.extend(feature_metrics)
+
+    return observations, value_columns
+
+
+def _build_distribution_decomposition(
+    threshold_pool: pd.DataFrame, live_features: pd.DataFrame
+) -> pd.DataFrame:
+    observations, value_columns = _distribution_observations(
+        threshold_pool, live_features
+    )
+    if observations.empty or not value_columns:
+        return _empty_distribution_decomposition()
+    summary = summarize_distribution_shift(observations, value_columns=value_columns)
+    if summary.empty:
+        return _empty_distribution_decomposition()
+    return _ensure_columns(summary, DISTRIBUTION_DECOMPOSITION_COLUMNS)[
+        DISTRIBUTION_DECOMPOSITION_COLUMNS
+    ]
 
 
 def compare_feature_parity(
@@ -765,13 +829,13 @@ def _evidence_completeness(summary: dict[str, object]) -> str:
 
 def _recommended_next_action(classification: str) -> str:
     actions = {
-        "PARITY_BREACH": "Replay Feature Set and threshold parity inputs before using live threshold evidence.",
-        "THRESHOLD_DRIFT": "Inspect the audited threshold pool and latest live threshold source for lag or stale state.",
-        "RUNTIME_VARIANCE": "Review runtime distribution decomposition and live execution conditions.",
-        "MODEL_VALIDITY_CONCERN": "Review model validity diagnostics before promoting the symbol.",
-        "INCONCLUSIVE": "Collect missing audit_logs Feature Set rows and runtime bars, then rerun the diagnostic.",
+        "PARITY_BREACH": "fix parity bug",
+        "THRESHOLD_DRIFT": "adjust Rolling Threshold design",
+        "RUNTIME_VARIANCE": "no change",
+        "MODEL_VALIDITY_CONCERN": "escalate Model Validity review",
+        "INCONCLUSIVE": "fix parity bug",
     }
-    return actions.get(classification, "Review diagnostic inputs and rerun with complete evidence.")
+    return actions.get(classification, "no change")
 
 
 def run_live_threshold_diagnostic(
@@ -833,7 +897,9 @@ def run_live_threshold_diagnostic(
         )
     else:
         threshold_estimators = pd.DataFrame(columns=THRESHOLD_ESTIMATOR_COLUMNS)
-    distribution_decomposition = _empty_distribution_decomposition()
+    distribution_decomposition = _build_distribution_decomposition(
+        threshold_pool, live_features
+    )
 
     evidence_missing = bool(
         threshold_pool.empty
