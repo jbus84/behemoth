@@ -4,8 +4,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-import duckdb
-import numpy as np
 import pandas as pd
 
 DiagnosticClassification = Literal[
