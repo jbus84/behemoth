@@ -1,3 +1,9 @@
+## v0.17.1 (2026-05-08)
+
+### Refactor
+
+- align state_readers protocols with actual StateManager interface (#129)
+
 ## v0.17.0 (2026-05-08)
 
 ### Feat
