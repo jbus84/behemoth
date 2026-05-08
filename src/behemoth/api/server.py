@@ -741,7 +741,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
             vol_window=_config.vol_window,
             cost_window=_config.cost_window,
         )
-    _barrier_manager = BarrierManager(con=_state._con)
+    _barrier_manager = BarrierManager()
     legacy_rejected_scans = _barrier_manager.reject_legacy_active_scans()
     if legacy_rejected_scans:
         logger.warning(
