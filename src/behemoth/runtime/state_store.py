@@ -12,8 +12,13 @@ from typing import Any, Protocol
 class StateStoreResult:
     """Minimal result wrapper for query execution."""
 
-    def __init__(self, rows: list[tuple[Any, ...]] | None = None) -> None:
+    def __init__(
+        self,
+        rows: list[tuple[Any, ...]] | None = None,
+        duckdb_result: Any = None,
+    ) -> None:
         self._rows = rows or []
+        self._duckdb_result = duckdb_result
 
     def fetchall(self) -> list[tuple[Any, ...]]:
         """Return all rows from query result."""
@@ -22,6 +27,18 @@ class StateStoreResult:
     def fetchone(self) -> tuple[Any, ...] | None:
         """Return first row from query result, or None if empty."""
         return self._rows[0] if self._rows else None
+
+    def fetchdf(self) -> Any:
+        """Return result as DataFrame (DuckDB only).
+
+        Requires that the result was created with a DuckDB result object.
+
+        Returns:
+            pandas DataFrame
+        """
+        if self._duckdb_result is None:
+            raise RuntimeError("fetchdf() not available for this result")
+        return self._duckdb_result.fetchdf()
 
 
 class StateStore(Protocol):
@@ -36,6 +53,10 @@ class StateStore(Protocol):
         """Execute SQL statement, return result."""
         ...
 
+    def executemany(self, sql: str, params: list[list[Any]]) -> None:
+        """Execute SQL statement multiple times with different parameters."""
+        ...
+
     def begin(self) -> None:
         """Begin a transaction."""
         ...
@@ -46,6 +67,10 @@ class StateStore(Protocol):
 
     def rollback(self) -> None:
         """Rollback current transaction."""
+        ...
+
+    def close(self) -> None:
+        """Close the store connection."""
         ...
 
 
@@ -69,7 +94,11 @@ class DuckDBStateStore:
         """Execute SQL statement using DuckDB."""
         result = self._con.execute(sql, params or [])
         rows = result.fetchall()
-        return StateStoreResult(rows)
+        return StateStoreResult(rows, duckdb_result=result)
+
+    def executemany(self, sql: str, params: list[list[Any]]) -> None:
+        """Execute SQL statement multiple times with different parameters."""
+        self._con.executemany(sql, params)
 
     def begin(self) -> None:
         """Begin DuckDB transaction."""
@@ -86,6 +115,10 @@ class DuckDBStateStore:
     def raw_connection(self) -> Any:
         """Access raw DuckDB connection for direct API calls (DDL, etc)."""
         return self._con
+
+    def close(self) -> None:
+        """Close DuckDB connection."""
+        self._con.close()
 
 
 class InMemoryStateStore:
@@ -106,6 +139,10 @@ class InMemoryStateStore:
         # For now, return empty result - intended for tests that mock StateStore.
         return StateStoreResult([])
 
+    def executemany(self, sql: str, params: list[list[Any]]) -> None:
+        """Execute SQL statement multiple times (no-op for in-memory store)."""
+        pass
+
     def begin(self) -> None:
         """Begin transaction (no-op in in-memory store)."""
         self._in_transaction = True
@@ -117,3 +154,7 @@ class InMemoryStateStore:
     def rollback(self) -> None:
         """Rollback transaction (no-op in in-memory store)."""
         self._in_transaction = False
+
+    def close(self) -> None:
+        """Close store (no-op for in-memory store)."""
+        pass

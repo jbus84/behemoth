@@ -16,6 +16,10 @@ from typing import TypeVar
 import duckdb
 
 from src.behemoth.core.schemas import BarContext, BarrierAction, BarrierActionType
+from src.behemoth.runtime.barrier_context import (
+    BarContextAdapter,
+    BarrierEvaluationContext,
+)
 
 T = TypeVar("T")
 
@@ -229,31 +233,30 @@ class BarrierManager:
 
         Returns list of actions (OPEN_MARKET, CLOSE_MARKET, RELEASE_RESERVATION) and state mutations.
         """
+        context = BarContextAdapter(bar_context)
         actions: list[BarrierAction] = []
         mutations: list[BarrierStateMutation] = []
 
         # Phase 1: Process SCANNING scans (check for touches, transition to HOLDING or EXPIRED)
-        scanning_actions, scanning_mutations = self._process_scanning_scans(bar_context)
+        scanning_actions, scanning_mutations = self._process_scanning_scans(context)
         actions.extend(scanning_actions)
         mutations.extend(scanning_mutations)
 
         # Phase 2: Process HOLDING scans (check for expiration, transition to COMPLETED)
-        holding_actions, holding_mutations = self._process_holding_scans(bar_context, scanning_actions)
+        holding_actions, holding_mutations = self._process_holding_scans(context, scanning_actions)
         actions.extend(holding_actions)
         mutations.extend(holding_mutations)
 
         return BarrierEvaluationResult(actions=actions, mutations=mutations)
 
-    def _process_scanning_scans(self, bar_context: BarContext) -> tuple[list[BarrierAction], list[BarrierStateMutation]]:
+    def _process_scanning_scans(self, context: BarrierEvaluationContext) -> tuple[list[BarrierAction], list[BarrierStateMutation]]:
         """Process SCANNING scans: check for barrier touches, transition to HOLDING or EXPIRED.
 
         Returns: (actions, mutations) for all SCANNING scans evaluated against the bar.
         """
-        symbol = bar_context.symbol
-        bar_low_bid = bar_context.bid.low
-        bar_hl_first = bar_context.hl_first
-        current_bar_idx = bar_context.bar_idx
-        bar_high_ask = bar_context.ask.high
+        symbol = context.symbol
+        bar_hl_first = context.hl_first
+        current_bar_idx = context.bar_idx
         sym = symbol.upper()
         actions: list[BarrierAction] = []
         mutations: list[BarrierStateMutation] = []
@@ -270,8 +273,8 @@ class BarrierManager:
              bars_rem, signal_bar_idx, reservation_id, horizon) = row
 
             bars_rem -= 1
-            up_touch = bar_high_ask >= upper
-            dn_touch = bar_low_bid <= lower
+            up_touch = context.check_upper_touch(upper)
+            dn_touch = context.check_lower_touch(lower)
             touch_step = current_bar_idx - signal_bar_idx
 
             if up_touch and dn_touch:
@@ -352,14 +355,14 @@ class BarrierManager:
 
         return actions, mutations
 
-    def _process_holding_scans(self, bar_context: BarContext, newly_opened_actions: list[BarrierAction]) -> tuple[list[BarrierAction], list[BarrierStateMutation]]:
+    def _process_holding_scans(self, context: BarrierEvaluationContext, newly_opened_actions: list[BarrierAction]) -> tuple[list[BarrierAction], list[BarrierStateMutation]]:
         """Process HOLDING scans: check for expiration, transition to COMPLETED.
 
         Skips scans that were just transitioned to HOLDING in this bar (given in newly_opened_actions).
 
         Returns: (actions, mutations) for all HOLDING scans evaluated against the bar.
         """
-        symbol = bar_context.symbol
+        symbol = context.symbol
         sym = symbol.upper()
         actions: list[BarrierAction] = []
         mutations: list[BarrierStateMutation] = []

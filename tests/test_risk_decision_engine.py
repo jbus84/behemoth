@@ -3,8 +3,10 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from src.behemoth.risk.account import load_account_risk_profile
-from src.behemoth.risk.decision_engine import AccountRiskDecisionEngine
+from src.behemoth.risk.account import (
+    evaluate_account_risk_decision,
+    load_account_risk_profile,
+)
 
 
 class FakeRiskState:
@@ -46,13 +48,14 @@ def test_account_risk_decision_engine_evaluates_from_state_reader() -> None:
     profile = load_account_risk_profile(
         Path("configs/research/governance/account_risk/account_risk_rules.yaml")
     )
-    engine = AccountRiskDecisionEngine(
+
+    out = evaluate_account_risk_decision(
         profile=profile,
-        state=FakeRiskState(),
+        state_reader=FakeRiskState(),
+        symbol="EURUSD",
+        now_utc=datetime(2026, 3, 6, 12, 0, tzinfo=timezone.utc),
         enabled=True,
     )
-
-    out = engine.evaluate("EURUSD", datetime(2026, 3, 6, 12, 0, tzinfo=timezone.utc))
 
     assert out["enabled"] is True
     assert out["allow_trading"] is False
@@ -64,9 +67,14 @@ def test_account_risk_decision_engine_disabled_allows_trading() -> None:
     profile = load_account_risk_profile(
         Path("configs/research/governance/account_risk/account_risk_rules.yaml")
     )
-    engine = AccountRiskDecisionEngine(profile=profile, state=FakeRiskState(), enabled=False)
 
-    out = engine.evaluate("EURUSD", datetime.now(tz=timezone.utc) + timedelta(seconds=1))
+    out = evaluate_account_risk_decision(
+        profile=profile,
+        state_reader=FakeRiskState(),
+        symbol="EURUSD",
+        now_utc=datetime.now(tz=timezone.utc) + timedelta(seconds=1),
+        enabled=False,
+    )
 
     assert out["enabled"] is False
     assert out["allow_trading"] is True
