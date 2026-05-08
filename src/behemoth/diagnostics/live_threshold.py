@@ -28,6 +28,8 @@ FEATURE_PARITY_COLUMNS = [
     "abs_diff",
     "status",
 ]
+LIVE_FEATURE_COLUMNS = ["close_ts", "symbol", "candidate_uid", "features_json"]
+RUNTIME_BAR_COLUMNS = ["ts", "close_ts", "symbol", "bar_ticks"]
 
 
 @dataclass(frozen=True)
@@ -89,6 +91,14 @@ def _parse_features_json(value: object) -> dict[str, float]:
     return out
 
 
+def _ensure_columns(frame: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+    out = frame.copy()
+    for column in columns:
+        if column not in out.columns:
+            out[column] = pd.Series(dtype="object")
+    return out
+
+
 def compare_feature_parity(
     live_features: pd.DataFrame,
     recomputed_features: pd.DataFrame,
@@ -98,17 +108,16 @@ def compare_feature_parity(
 ) -> pd.DataFrame:
     rows: list[dict[str, object]] = []
 
-    live_rows = live_features.copy()
-    if "features_json" not in live_rows.columns:
-        live_rows["features_json"] = pd.Series(dtype="object")
+    live_rows = _ensure_columns(
+        live_features, ["close_ts", "candidate_uid", "features_json", *feature_columns]
+    )
     parsed = live_rows["features_json"].map(_parse_features_json)
     for feature in feature_columns:
         live_rows[feature] = parsed.map(lambda payload: payload.get(feature, np.nan))
 
-    recomputed_rows = recomputed_features.copy()
-    for column in ["close_ts", "candidate_uid", *feature_columns]:
-        if column not in recomputed_rows.columns:
-            recomputed_rows[column] = pd.Series(dtype="object")
+    recomputed_rows = _ensure_columns(
+        recomputed_features, ["close_ts", "candidate_uid", *feature_columns]
+    )
 
     merged = live_rows.merge(
         recomputed_rows[["close_ts", "candidate_uid", *feature_columns]],
@@ -140,6 +149,74 @@ def compare_feature_parity(
                     }
                 )
     return pd.DataFrame(rows, columns=FEATURE_PARITY_COLUMNS)
+
+
+def _as_utc_pydatetime(value: pd.Timestamp) -> object:
+    ts = pd.Timestamp(value)
+    ts = ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
+    return ts.to_pydatetime()
+
+
+def load_live_feature_rows(
+    con: duckdb.DuckDBPyConnection,
+    *,
+    symbol: str,
+    start_ts: pd.Timestamp,
+    end_ts: pd.Timestamp,
+    live_run_id: str,
+) -> pd.DataFrame:
+    try:
+        return con.execute(
+            """
+            SELECT close_ts, upper(symbol) AS symbol, candidate_uid, features_json
+            FROM audit_logs
+            WHERE upper(symbol) = upper(?)
+              AND close_ts >= ?
+              AND close_ts <= ?
+              AND lower(run_id) = lower(?)
+              AND features_json IS NOT NULL
+              AND trim(features_json) <> ''
+            ORDER BY close_ts, candidate_uid
+            """,
+            [
+                symbol.upper(),
+                _as_utc_pydatetime(start_ts),
+                _as_utc_pydatetime(end_ts),
+                live_run_id,
+            ],
+        ).fetchdf()
+    except duckdb.Error:
+        return pd.DataFrame(columns=LIVE_FEATURE_COLUMNS)
+
+
+def load_runtime_bars(
+    con: duckdb.DuckDBPyConnection,
+    *,
+    symbol: str,
+    bar_ticks: int,
+    start_ts: pd.Timestamp,
+    end_ts: pd.Timestamp,
+) -> pd.DataFrame:
+    try:
+        return con.execute(
+            """
+            SELECT *
+            FROM tick_bars
+            WHERE upper(symbol) = upper(?)
+              AND bar_ticks = ?
+              AND close_ts >= ?
+              AND close_ts <= ?
+            ORDER BY close_ts
+            """,
+            [
+                symbol.upper(),
+                int(bar_ticks),
+                _as_utc_pydatetime(start_ts),
+                _as_utc_pydatetime(end_ts),
+            ],
+        ).fetchdf()
+    except duckdb.Error:
+        return pd.DataFrame(columns=RUNTIME_BAR_COLUMNS)
 
 
 def _parse_barrier_pips(value: object) -> float:

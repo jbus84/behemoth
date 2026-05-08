@@ -311,6 +311,32 @@ def test_feature_parity_reports_missing_when_live_is_empty() -> None:
     assert result.loc[0, "recomputed_value"] == pytest.approx(9.0)
 
 
+def test_feature_parity_reports_missing_when_live_frame_has_no_columns() -> None:
+    from src.behemoth.diagnostics.live_threshold import compare_feature_parity
+
+    recomputed = pd.DataFrame(
+        [
+            {
+                "close_ts": pd.Timestamp("2026-05-08T00:00:00Z"),
+                "candidate_uid": "oco|EURUSD|100|h6|2",
+                "range_pips": 9.0,
+                "cost_est_pips": 1.1,
+            }
+        ]
+    )
+
+    result = compare_feature_parity(
+        pd.DataFrame(),
+        recomputed,
+        feature_columns=["range_pips", "cost_est_pips"],
+        tolerance=1e-9,
+    )
+
+    assert list(result["feature"]) == ["range_pips", "cost_est_pips"]
+    assert set(result["status"]) == {"MISSING"}
+    assert result["live_value"].isna().all()
+
+
 def test_feature_parity_returns_expected_columns_when_all_values_pass() -> None:
     from src.behemoth.diagnostics.live_threshold import compare_feature_parity
 
@@ -436,3 +462,148 @@ def test_recompute_features_from_runtime_bars_parses_encoded_barrier(
 
     assert list(out["candidate_uid"].unique()) == [candidate_uid]
     assert float(out.iloc[0]["range_pips"]) == pytest.approx(8.0)
+
+
+def test_load_live_feature_rows_filters_live_audit_rows() -> None:
+    from src.behemoth.diagnostics.live_threshold import load_live_feature_rows
+
+    con = duckdb.connect(":memory:")
+    try:
+        con.execute(
+            """
+            CREATE TABLE audit_logs (
+                close_ts TIMESTAMP WITH TIME ZONE,
+                symbol VARCHAR,
+                candidate_uid VARCHAR,
+                features_json VARCHAR,
+                run_id VARCHAR
+            )
+            """
+        )
+        con.executemany(
+            "INSERT INTO audit_logs VALUES (?, ?, ?, ?, ?)",
+            [
+                (
+                    "2026-05-08T00:02:00Z",
+                    "EURUSD",
+                    "oco|EURUSD|100|h6|2",
+                    '{"range_pips": 9.0}',
+                    "jforex_live",
+                ),
+                (
+                    "2026-05-08T00:01:00Z",
+                    "EURUSD",
+                    "library|EURUSD|100|h6|b2",
+                    '{"range_pips": 8.0}',
+                    "jforex_live",
+                ),
+                (
+                    "2026-05-08T00:01:00Z",
+                    "GBPUSD",
+                    "oco|GBPUSD|100|h6|2",
+                    '{"range_pips": 7.0}',
+                    "jforex_live",
+                ),
+                (
+                    "2026-05-08T00:03:00Z",
+                    "EURUSD",
+                    "oco|EURUSD|100|h6|2",
+                    '{"range_pips": 10.0}',
+                    "warmup",
+                ),
+                (
+                    "2026-05-08T00:04:00Z",
+                    "EURUSD",
+                    "oco|EURUSD|100|h6|2",
+                    "",
+                    "jforex_live",
+                ),
+            ],
+        )
+
+        out = load_live_feature_rows(
+            con,
+            symbol="eurusd",
+            start_ts=pd.Timestamp("2026-05-08T00:00:00Z"),
+            end_ts=pd.Timestamp("2026-05-08T00:03:00Z"),
+            live_run_id="jforex_live",
+        )
+    finally:
+        con.close()
+
+    assert list(out["candidate_uid"]) == [
+        "library|EURUSD|100|h6|b2",
+        "oco|EURUSD|100|h6|2",
+    ]
+    assert list(out["symbol"].unique()) == ["EURUSD"]
+    assert set(out["features_json"]) == {'{"range_pips": 8.0}', '{"range_pips": 9.0}'}
+
+
+def test_load_runtime_bars_filters_tick_bars() -> None:
+    from src.behemoth.diagnostics.live_threshold import load_runtime_bars
+
+    con = duckdb.connect(":memory:")
+    try:
+        con.execute(
+            """
+            CREATE TABLE tick_bars (
+                close_ts TIMESTAMP WITH TIME ZONE,
+                ts TIMESTAMP WITH TIME ZONE,
+                symbol VARCHAR,
+                bar_ticks INTEGER,
+                close_bid DOUBLE,
+                spread DOUBLE
+            )
+            """
+        )
+        con.executemany(
+            "INSERT INTO tick_bars VALUES (?, ?, ?, ?, ?, ?)",
+            [
+                (
+                    "2026-05-08T00:02:00Z",
+                    "2026-05-08T00:00:21Z",
+                    "EURUSD",
+                    100,
+                    1.2,
+                    0.0002,
+                ),
+                (
+                    "2026-05-08T00:01:00Z",
+                    "2026-05-07T23:59:21Z",
+                    "EURUSD",
+                    100,
+                    1.1,
+                    0.0002,
+                ),
+                (
+                    "2026-05-08T00:01:30Z",
+                    "2026-05-07T23:59:51Z",
+                    "EURUSD",
+                    1000,
+                    1.3,
+                    0.0002,
+                ),
+                (
+                    "2026-05-08T00:01:30Z",
+                    "2026-05-07T23:59:51Z",
+                    "GBPUSD",
+                    100,
+                    1.4,
+                    0.0002,
+                ),
+            ],
+        )
+
+        out = load_runtime_bars(
+            con,
+            symbol="eurusd",
+            bar_ticks=100,
+            start_ts=pd.Timestamp("2026-05-08T00:00:30Z"),
+            end_ts=pd.Timestamp("2026-05-08T00:02:00Z"),
+        )
+    finally:
+        con.close()
+
+    assert list(out["close_bid"]) == [1.1, 1.2]
+    assert list(out["symbol"].unique()) == ["EURUSD"]
+    assert list(out["bar_ticks"].unique()) == [100]
