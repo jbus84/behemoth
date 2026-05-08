@@ -1,3 +1,9 @@
+## v0.17.2 (2026-05-08)
+
+### Refactor
+
+- extract FeatureComputationEngine from StateManager (#130)
+
 ## v0.17.1 (2026-05-08)
 
 ### Refactor
