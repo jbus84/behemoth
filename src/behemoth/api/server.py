@@ -39,10 +39,10 @@ from src.behemoth.core.features import (
     FeatureConfig,
     compute_feature_matrix_from_bars,
 )
-from src.behemoth.core.historical_governance_validation import (
+from src.behemoth.core.governance_validator import (
+    GovernanceValidator,
     failed_checks,
     summarize_failures,
-    validate_historical_governance,
 )
 from src.behemoth.core.historical_prediction_stage import HistoricalPredictionStage
 from src.behemoth.core.historical_registry import HistoricalCandidateRegistry
@@ -501,7 +501,8 @@ def _deployment_state_for_symbol(symbol: str) -> str:
 
 def _run_historical_preflight(history_dir: Path) -> None:
     global _historical_preflight_failed_checks, _historical_preflight_summary
-    checks = validate_historical_governance(
+    validator = GovernanceValidator()
+    checks = validator.validate(
         history_dir,
         required_symbols=[str(s).upper().strip() for s in _config.symbols],
     )

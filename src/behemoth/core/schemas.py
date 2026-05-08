@@ -62,6 +62,14 @@ class BarContext(BaseModel):
 
     StateManager owns the persisted tick-bar schema. Runtime consumers should
     depend on this narrow view instead of raw DuckDB rows or IncomingTickBar.
+
+    Contract:
+    ---------
+    - bid and ask fields represent bid-side and ask-side prices respectively
+    - bid.low = state.py line 482 approximation: min(high_bid, close_bid)
+    - ask.high and ask.low are extracted directly from IncomingTickBar
+    - touch_high = ask.high, touch_low = bid.low (used by barrier detection)
+    - hl_first and hl_pos_frac: structural metrics from intra-bar tick ordering
     """
     symbol: str
     bar_ticks: int = Field(..., gt=0)
@@ -74,6 +82,18 @@ class BarContext(BaseModel):
     ask: BarPrices
     hl_first: float = 0.0
     hl_pos_frac: float | None = None
+
+    def validate_invariants(self) -> None:
+        """Validate that BarContext maintains contractual invariants.
+
+        Raises ValueError if any invariant is violated.
+        """
+        if self.bid.low <= 0 or self.ask.high <= 0:
+            raise ValueError(f"Invalid prices in {self.symbol}: bid={self.bid}, ask={self.ask}")
+        if self.bid.low > self.bid.high or self.ask.low > self.ask.high:
+            raise ValueError(f"Inverted high/low in {self.symbol}: bid={self.bid}, ask={self.ask}")
+        if self.hl_pos_frac is not None and not (0.0 <= self.hl_pos_frac <= 1.0):
+            raise ValueError(f"Invalid hl_pos_frac {self.hl_pos_frac} (expected 0.0-1.0)")
 
     @property
     def bar_number(self) -> int:
