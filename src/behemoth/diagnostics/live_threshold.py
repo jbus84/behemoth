@@ -59,6 +59,18 @@ THRESHOLD_SUMMARY_COLUMNS = [
     "first_close_ts",
     "last_close_ts",
 ]
+DISTRIBUTION_DECOMPOSITION_COLUMNS = [
+    "symbol",
+    "candidate_uid",
+    "metric",
+    "history_rows",
+    "live_rows",
+    "history_q50",
+    "history_q90",
+    "live_q50",
+    "live_q90",
+    "q90_delta_live_minus_history",
+]
 
 
 @dataclass(frozen=True)
@@ -162,6 +174,10 @@ def _empty_threshold_audit_frames() -> tuple[pd.DataFrame, pd.DataFrame]:
         pd.DataFrame(columns=THRESHOLD_POOL_COLUMNS),
         pd.DataFrame(columns=THRESHOLD_SUMMARY_COLUMNS),
     )
+
+
+def _empty_distribution_decomposition() -> pd.DataFrame:
+    return pd.DataFrame(columns=DISTRIBUTION_DECOMPOSITION_COLUMNS)
 
 
 def compare_feature_parity(
@@ -671,16 +687,29 @@ def _build_report(
     feature_parity: pd.DataFrame,
     threshold_estimators: pd.DataFrame,
 ) -> str:
+    classification = str(summary["classification"])
     return "\n".join(
         [
             f"# Live Threshold Diagnostic: {config.run_id}",
             "",
             f"- symbol: {summary['symbol']}",
-            f"- classification: {summary['classification']}",
+            f"- classification: {classification}",
             f"- threshold_pool_complete: {summary['threshold_pool_complete']}",
             f"- feature_parity_checked: {summary['feature_parity_checked']}",
             f"- feature_parity_passed: {summary['feature_parity_passed']}",
             f"- current_pool_lag_detected: {summary['current_pool_lag_detected']}",
+            "",
+            "## Explanation",
+            "",
+            _classification_explanation(classification),
+            "",
+            "## Evidence Completeness",
+            "",
+            _evidence_completeness(summary),
+            "",
+            "## Recommended Next Action",
+            "",
+            _recommended_next_action(classification),
             "",
             "## Threshold Pool",
             "",
@@ -696,6 +725,53 @@ def _build_report(
             "",
         ]
     )
+
+
+def _classification_explanation(classification: str) -> str:
+    explanations = {
+        "PARITY_BREACH": (
+            "Feature Set or threshold replay parity did not match, so the live "
+            "Rolling Threshold behavior cannot be trusted until parity evidence is fixed."
+        ),
+        "THRESHOLD_DRIFT": (
+            "The threshold pool is complete and Feature Set parity passed, but the "
+            "current live threshold differs from the replayed pool threshold."
+        ),
+        "RUNTIME_VARIANCE": (
+            "Required evidence is present and no threshold drift or parity breach was "
+            "identified; remaining variance is attributed to live Runtime State behavior."
+        ),
+        "MODEL_VALIDITY_CONCERN": (
+            "Required evidence is present, but model validity diagnostics indicate the "
+            "live behavior may not be explained by runtime variance alone."
+        ),
+        "INCONCLUSIVE": (
+            "Required threshold, Feature Set, or runtime bar evidence is incomplete, "
+            "so the diagnostic cannot assign drift or runtime variance."
+        ),
+    }
+    return explanations.get(classification, "Diagnostic classification is unavailable.")
+
+
+def _evidence_completeness(summary: dict[str, object]) -> str:
+    return (
+        f"Threshold pool complete: {summary['threshold_pool_complete']}. "
+        f"Feature parity checked: {summary['feature_parity_checked']}. "
+        f"Feature parity passed: {summary['feature_parity_passed']}. "
+        f"Pool rows: {summary['pool_rows']}. Live rows: {summary['live_rows']}. "
+        f"Seed/warmup rows: {summary['seed_warmup_rows']}."
+    )
+
+
+def _recommended_next_action(classification: str) -> str:
+    actions = {
+        "PARITY_BREACH": "Replay Feature Set and threshold parity inputs before using live threshold evidence.",
+        "THRESHOLD_DRIFT": "Inspect the audited threshold pool and latest live threshold source for lag or stale state.",
+        "RUNTIME_VARIANCE": "Review runtime distribution decomposition and live execution conditions.",
+        "MODEL_VALIDITY_CONCERN": "Review model validity diagnostics before promoting the symbol.",
+        "INCONCLUSIVE": "Collect missing audit_logs Feature Set rows and runtime bars, then rerun the diagnostic.",
+    }
+    return actions.get(classification, "Review diagnostic inputs and rerun with complete evidence.")
 
 
 def run_live_threshold_diagnostic(
@@ -735,15 +811,18 @@ def run_live_threshold_diagnostic(
         end_ts=config.end_ts,
         feature_columns=feature_columns,
     )
-    feature_parity = compare_feature_parity(
-        live_features,
-        recomputed_features,
-        feature_columns=feature_columns,
-        tolerance=1e-9,
-    )
     feature_parity_checked = bool(
         not live_features.empty and not recomputed_features.empty and bool(feature_columns)
     )
+    if feature_parity_checked:
+        feature_parity = compare_feature_parity(
+            live_features,
+            recomputed_features,
+            feature_columns=feature_columns,
+            tolerance=1e-9,
+        )
+    else:
+        feature_parity = pd.DataFrame(columns=FEATURE_PARITY_COLUMNS)
     feature_parity_passed = bool(feature_parity_checked and feature_parity.empty)
 
     if threshold_pool_complete and feature_parity_passed:
@@ -754,6 +833,7 @@ def run_live_threshold_diagnostic(
         )
     else:
         threshold_estimators = pd.DataFrame(columns=THRESHOLD_ESTIMATOR_COLUMNS)
+    distribution_decomposition = _empty_distribution_decomposition()
 
     evidence_missing = bool(
         threshold_pool.empty
@@ -802,6 +882,10 @@ def run_live_threshold_diagnostic(
     _write_csv(
         prefix.with_name(f"{config.run_id}_threshold_estimators.csv"),
         threshold_estimators,
+    )
+    _write_csv(
+        prefix.with_name(f"{config.run_id}_distribution_decomposition.csv"),
+        distribution_decomposition,
     )
     _write_json(prefix.with_name(f"{config.run_id}_summary.json"), summary)
     prefix.with_name(f"{config.run_id}_report.md").write_text(
