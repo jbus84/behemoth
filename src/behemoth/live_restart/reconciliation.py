@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field, is_dataclass
 from enum import Enum
 from hashlib import sha256
@@ -479,3 +480,176 @@ def derive_restart_eligibility(
 def write_reconciliation_report(path: Path, report: ReconciliationReport) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(_jsonable(report), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# ReconciliationCycle: snapshot → optional mutation → finalize
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ReconciliationSnapshot:
+    """Frozen view of the state used to compute a single reconciliation verdict."""
+
+    current_metadata: RuntimeSessionMetadata
+    persisted_metadata: RuntimeSessionMetadata | None
+    local_state: RuntimeFileSnapshot
+    broker_snapshot: "BrokerSnapshot | None"
+    local_runtime: "LocalRuntimeStateSummary | None"
+    comparison: RuntimeContextComparison
+    restart_eligibility: RestartEligibilityResult
+
+
+class ReconciliationCycle:
+    """Manage startup reconciliation as snapshot → optional mutation → finalize.
+
+    Solves the compare-then-mutate footgun: previously, ``_reconcile_startup``
+    wrote a report based on a snapshot, the caller mutated state (e.g. reset
+    cleanup), but the report on disk never updated. Consumers (readiness JSON,
+    Grafana, operators) saw the stale verdict.
+
+    Usage::
+
+        cycle = ReconciliationCycle(paths=..., build_current=..., ...)
+        cycle.snapshot()
+        if cycle.current.restart_eligibility.eligibility == RESTART_BLOCKED and resume:
+            ... fail ...
+        if startup_mode == "reset":
+            do_cleanup()
+            cycle.invalidate_after_mutation()  # re-snapshots, must call before finalize
+        cycle.finalize()  # writes report + persisted session metadata
+
+    A finalized cycle cannot be mutated again. ``invalidate_after_mutation``
+    after ``finalize`` raises ``RuntimeError``.
+    """
+
+    def __init__(
+        self,
+        *,
+        runtime_dir: Path,
+        state_db_path: Path,
+        active_state_path: Path,
+        session_metadata_path: Path,
+        reconciliation_report_path: Path,
+        broker_snapshot_path: Path,
+        startup_mode: str,
+        build_current_metadata: "Callable[[], RuntimeSessionMetadata]",
+        load_promoted_symbols: "Callable[[], list[str]]",
+        capture_broker_snapshot: "Callable[[], None] | None" = None,
+    ) -> None:
+        self._runtime_dir = runtime_dir
+        self._state_db_path = state_db_path
+        self._active_state_path = active_state_path
+        self._session_metadata_path = session_metadata_path
+        self._reconciliation_report_path = reconciliation_report_path
+        self._broker_snapshot_path = broker_snapshot_path
+        self._startup_mode = startup_mode
+        self._build_current_metadata = build_current_metadata
+        self._load_promoted_symbols = load_promoted_symbols
+        self._capture_broker_snapshot = capture_broker_snapshot
+        self._snapshot: ReconciliationSnapshot | None = None
+        self._finalized = False
+
+    @property
+    def current(self) -> ReconciliationSnapshot:
+        if self._snapshot is None:
+            raise RuntimeError(
+                "ReconciliationCycle.current accessed before snapshot() — call cycle.snapshot() first."
+            )
+        return self._snapshot
+
+    def snapshot(self) -> ReconciliationSnapshot:
+        """Capture current state. Idempotent — overwrites prior snapshot.
+
+        On resume mode, also captures the broker snapshot (which represents an
+        external observation, not a mutation of local state).
+        """
+        if self._finalized:
+            raise RuntimeError("cannot snapshot a finalized ReconciliationCycle")
+        current_metadata = self._build_current_metadata()
+        persisted = (
+            load_runtime_session_metadata(self._session_metadata_path)
+            if self._session_metadata_path.exists()
+            else None
+        )
+        local_state = inspect_runtime_files(
+            self._runtime_dir,
+            self._state_db_path,
+            self._active_state_path,
+            self._session_metadata_path,
+        )
+        broker_snapshot: BrokerSnapshot | None = None
+        local_runtime: LocalRuntimeStateSummary | None = None
+        if self._startup_mode == "resume":
+            if self._capture_broker_snapshot is not None:
+                self._capture_broker_snapshot()
+            broker_snapshot = load_broker_snapshot(self._broker_snapshot_path)
+            local_runtime = inspect_local_runtime_state(self._state_db_path)
+        comparison = compare_runtime_context(
+            persisted,
+            current_metadata,
+            local_state=local_state,
+            broker_snapshot=broker_snapshot,
+            local_runtime=local_runtime,
+        )
+        restart_eligibility = derive_restart_eligibility(comparison)
+        self._snapshot = ReconciliationSnapshot(
+            current_metadata=current_metadata,
+            persisted_metadata=persisted,
+            local_state=local_state,
+            broker_snapshot=broker_snapshot,
+            local_runtime=local_runtime,
+            comparison=comparison,
+            restart_eligibility=restart_eligibility,
+        )
+        return self._snapshot
+
+    def invalidate_after_mutation(self) -> ReconciliationSnapshot:
+        """Signal that local state has changed since the last snapshot.
+
+        Wipes the prior session metadata and the on-disk reconciliation report
+        (so a re-snapshot sees genuinely-fresh state — without this, a stale
+        ``persisted`` would force the comparison through the persisted-match
+        path even though the caller just wiped local files), then re-snapshots.
+        Must be called whenever a script step mutates anything inspected by the
+        reconciliation: ``state_db_path``, ``active_state_path``, or
+        ``session_metadata_path``.
+        """
+        if self._finalized:
+            raise RuntimeError(
+                "cannot invalidate a finalized ReconciliationCycle — finalize is terminal"
+            )
+        self._session_metadata_path.unlink(missing_ok=True)
+        self._reconciliation_report_path.unlink(missing_ok=True)
+        return self.snapshot()
+
+    def finalize(self) -> ReconciliationSnapshot:
+        """Write reconciliation report + new persisted session metadata.
+
+        Always uses the most recent snapshot — so if the caller called
+        ``invalidate_after_mutation`` after a reset cleanup, the report
+        reflects post-cleanup state, not pre-cleanup state.
+        """
+        if self._finalized:
+            raise RuntimeError("ReconciliationCycle.finalize called twice")
+        if self._snapshot is None:
+            self.snapshot()
+        snap = self._snapshot
+        assert snap is not None
+        report = ReconciliationReport(
+            startup_mode=self._startup_mode,
+            verdict=snap.comparison.verdict,
+            reasons=list(snap.comparison.reasons),
+            repaired_items=[],
+            current=snap.current_metadata,
+            persisted=snap.persisted_metadata,
+            local_state=snap.local_state,
+            local_runtime=snap.local_runtime,
+            broker_snapshot=snap.broker_snapshot,
+            promoted_symbols=self._load_promoted_symbols(),
+            restart_eligibility=snap.restart_eligibility,
+        )
+        write_reconciliation_report(self._reconciliation_report_path, report)
+        write_runtime_session_metadata(self._session_metadata_path, snap.current_metadata)
+        self._finalized = True
+        return snap

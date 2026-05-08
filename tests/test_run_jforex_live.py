@@ -605,40 +605,61 @@ def test_main_resume_incompatible_prints_operator_summary(
     monkeypatch.setenv("BEHEMOTH_JFOREX_JNLP_URI", "demo")
     monkeypatch.setenv("BEHEMOTH_JFOREX_USERNAME", "user")
     monkeypatch.setenv("BEHEMOTH_JFOREX_PASSWORD", "pass")
-    monkeypatch.setattr(
-        run_jforex_live,
-        "_reconcile_startup",
-        lambda cfg, paths: (
-            run_jforex_live.RuntimeSessionMetadata(
-                git_commit="abc123",
-                git_branch="main",
-                git_dirty=False,
-                repo_root=str(tmp_path),
-                model_month="2026-03",
-                governance_dir="configs/research/governance/oco",
-                lock_fingerprint="fp",
-                symbols=["EURUSD"],
-                started_at_utc="2026-04-22T00:00:00Z",
-                startup_mode="resume",
-            ),
-            None,
-            run_jforex_live.RuntimeContextComparison(
-                verdict=RestartEligibility.RESTART_BLOCKED,
-                reasons=[
-                    "broker-linked symbols do not match broker snapshot symbols",
-                    "broker-linked position ids do not match broker snapshot order ids",
-                ],
-            ),
-            run_jforex_live.RestartEligibilityResult(
-                eligibility=RestartEligibility.RESTART_BLOCKED,
-                allow_new_entries=False,
-                reasons=[
-                    "broker-linked symbols do not match broker snapshot symbols",
-                    "broker-linked position ids do not match broker snapshot order ids",
-                ],
-            ),
+
+    fake_metadata = run_jforex_live.RuntimeSessionMetadata(
+        git_commit="abc123",
+        git_branch="main",
+        git_dirty=False,
+        repo_root=str(tmp_path),
+        model_month="2026-03",
+        governance_dir="configs/research/governance/oco",
+        lock_fingerprint="fp",
+        symbols=["EURUSD"],
+        started_at_utc="2026-04-22T00:00:00Z",
+        startup_mode="resume",
+    )
+    blocked_reasons = [
+        "broker-linked symbols do not match broker snapshot symbols",
+        "broker-linked position ids do not match broker snapshot order ids",
+    ]
+    fake_snapshot = run_jforex_live.ReconciliationSnapshot(
+        current_metadata=fake_metadata,
+        persisted_metadata=None,
+        local_state=run_jforex_live.RuntimeFileSnapshot(
+            runtime_dir="", live_state_db_path="", active_oco_state_path="",
+            runtime_session_path="", live_state_exists=False, live_state_readable=False,
+            active_oco_state_exists=False, active_oco_state_parsed=False,
+            runtime_session_exists=False, runtime_session_parsed=False,
+        ),
+        broker_snapshot=None,
+        local_runtime=None,
+        comparison=run_jforex_live.RuntimeContextComparison(
+            verdict=RestartEligibility.RESTART_BLOCKED,
+            reasons=blocked_reasons,
+        ),
+        restart_eligibility=run_jforex_live.RestartEligibilityResult(
+            eligibility=RestartEligibility.RESTART_BLOCKED,
+            allow_new_entries=False,
+            reasons=blocked_reasons,
         ),
     )
+
+    class FakeCycle:
+        def __init__(self, *_, **__):
+            self.current = fake_snapshot
+            self.finalized = False
+
+        def snapshot(self):
+            return fake_snapshot
+
+        def invalidate_after_mutation(self):
+            return fake_snapshot
+
+        def finalize(self):
+            self.finalized = True
+            return fake_snapshot
+
+    monkeypatch.setattr(run_jforex_live, "ReconciliationCycle", FakeCycle)
     monkeypatch.setattr(
         sys,
         "argv",
