@@ -410,7 +410,8 @@ def test_recompute_features_from_runtime_bars_uses_candidate_uid_fields(
         assert kwargs["barrier_pips"] == 2.0
         return pd.DataFrame({"range_pips": [8.0, 9.0], "cost_est_pips": [1.0, 1.1]})
 
-    monkeypatch.setattr(module, "compute_feature_matrix_from_bars", fake_compute)
+    from src.behemoth.diagnostics import feature_parity as fp_module
+    monkeypatch.setattr(fp_module, "compute_feature_matrix_from_bars", fake_compute)
 
     out = module.recompute_features_from_runtime_bars(
         bars,
@@ -452,7 +453,8 @@ def test_recompute_features_from_runtime_bars_parses_encoded_barrier(
         assert kwargs["barrier_pips"] == 2.0
         return pd.DataFrame({"range_pips": [8.0]})
 
-    monkeypatch.setattr(module, "compute_feature_matrix_from_bars", fake_compute)
+    from src.behemoth.diagnostics import feature_parity as fp_module
+    monkeypatch.setattr(fp_module, "compute_feature_matrix_from_bars", fake_compute)
 
     out = module.recompute_features_from_runtime_bars(
         bars,
