@@ -753,6 +753,17 @@ def main() -> None:
         )
     if cfg.startup_mode == "reset":
         _cleanup_runtime_state(paths)
+        # The pre-reset reconciliation report reflects the now-stale state
+        # (likely RESTART_BLOCKED if live_state.db existed or persisted didn't
+        # match). After cleanup the system is fresh, so wipe the persisted
+        # session metadata and re-reconcile: this overwrites the report with
+        # a verdict that matches what the freshly-launched stack will see.
+        paths["session_metadata_path"].unlink(missing_ok=True)
+        paths["reconciliation_report_path"].unlink(missing_ok=True)
+        current_metadata, _persisted_metadata, comparison, restart_eligibility = _reconcile_startup(
+            cfg,
+            paths,
+        )
 
     write_runtime_session_metadata(paths["session_metadata_path"], current_metadata)
 
