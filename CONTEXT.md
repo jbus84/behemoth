@@ -19,15 +19,15 @@ Architecture and design context for this repository. Used by `/improve-codebase-
 
 **God Nodes** (most-connected, touch many modules):
 
-1. **`ModelFeatures`** (165 edges)
-2. **`IncomingTick`** (150 edges)
-3. **`IncomingTickBar`** (150 edges)
-4. **`StateManager`** (142 edges)
-5. **`FeatureConfig`** (135 edges)
-6. **`.get()`** (120 edges)
-7. **`str`** (117 edges)
-8. **`server.py`** (109 edges)
-9. **`BarrierAction`** (95 edges)
+1. **`ModelFeatures`** (277 edges)
+2. **`IncomingTick`** (258 edges)
+3. **`IncomingTickBar`** (258 edges)
+4. **`StateManager`** (193 edges)
+5. **`BarContext`** (166 edges)
+6. **`BarrierAction`** (162 edges)
+7. **`HistoricalCandidateRegistry`** (145 edges)
+8. **`BarrierManager`** (138 edges)
+9. **`FeatureConfig`** (135 edges)
 
 ### 1. Docs-Driven Governance (Artifact-First Truth)
 
