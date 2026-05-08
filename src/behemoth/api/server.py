@@ -33,8 +33,9 @@ from fastapi import FastAPI, HTTPException, Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 from pydantic import BaseModel, Field, model_validator
 
+from src.behemoth.api.cache_manager import CacheManager
 from src.behemoth.api.dashboard import router as dashboard_router
-from src.behemoth.core.candidate_catalog import CandidateCatalog
+from src.behemoth.core.candidate_catalog import CandidateCatalog, CatalogContext
 from src.behemoth.core.features import (
     FeatureConfig,
     compute_feature_matrix_from_bars,
@@ -89,6 +90,7 @@ _registry: CandidateRegistry | None = None
 _historical_registry: HistoricalCandidateRegistry | None = None
 _model_registry: ModelRegistry = ModelRegistry()
 _historical_prediction_stage: HistoricalPredictionStage = HistoricalPredictionStage()
+_cache_manager: CacheManager = CacheManager([_model_registry, _historical_prediction_stage])
 _models_dir: Path = Path("models/oco")
 _account_risk_rules_path: Path = Path("configs/research/governance/account_risk/account_risk_rules.yaml")
 _account_risk_profile: AccountRiskProfile | None = None
@@ -445,14 +447,21 @@ def _active_bar_ticks_for_symbol(symbol: str) -> list[int]:
     return _candidate_catalog().active_bar_ticks(symbol)
 
 
-def _candidate_catalog() -> CandidateCatalog:
-    return CandidateCatalog(
+def _get_catalog_context() -> CatalogContext:
+    """Get current catalog context from global state."""
+    return CatalogContext(
         live_registry=_registry,
         historical_registry=_historical_registry,
-        historical_mode=_is_historical_mode(),
+        is_historical_mode=_is_historical_mode(),
         missing_month_policy=_config.governance_missing_month_policy,
+        get_latest_month=_latest_loaded_month_for_symbol,
+    )
+
+
+def _candidate_catalog() -> CandidateCatalog:
+    return CandidateCatalog(
+        context=_get_catalog_context(),
         force_model_month=_config.force_model_month,
-        latest_loaded_month=_latest_loaded_month_for_symbol,
     )
 
 
@@ -760,7 +769,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     _feed_state = {}
     try:
         _aggregators = {}
-        _historical_prediction_stage.clear()
+        _cache_manager.reset_all()
         if _is_historical_mode():
             hist_dir = Path(str(_config.governance_history_dir))
             _historical_registry = HistoricalCandidateRegistry.load(hist_dir)
@@ -961,7 +970,7 @@ def _catboost_cls() -> Any | None:
 
 def _load_models() -> None:
     """Load model cache according to governance mode."""
-    _model_registry.clear()
+    _cache_manager.reset_all()
     if not _models_dir.exists():
         logger.warning("Models directory %s does not exist yet.", _models_dir)
         return
@@ -3604,7 +3613,6 @@ async def reload_models() -> dict:
         _historical_preflight_summary = ""
 
     _load_models()
-    _historical_prediction_stage.clear()
     return {
         "ok": True,
         "models_loaded": _model_registry.models_loaded(),

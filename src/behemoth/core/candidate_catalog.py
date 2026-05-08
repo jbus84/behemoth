@@ -15,6 +15,31 @@ _MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 
 
 @dataclass(frozen=True)
+class CatalogContext:
+    """Encapsulates catalog dependencies to reduce closure-based coupling.
+
+    Instead of passing individual parameters or closing over globals,
+    callers construct a context once and pass it to CandidateCatalog.
+
+    This makes testing easier (can construct context directly) and makes
+    dependencies explicit and named.
+    """
+
+    live_registry: CandidateRegistry | None
+    historical_registry: HistoricalCandidateRegistry | None
+    is_historical_mode: bool
+    missing_month_policy: str = "error"
+    get_latest_month: Callable[[str], str | None] | None = None
+
+    def __post_init__(self):
+        """Validate context consistency."""
+        if self.is_historical_mode and self.historical_registry is None:
+            raise ValueError("Historical mode requires historical_registry to be provided")
+        if not self.is_historical_mode and self.live_registry is None:
+            raise ValueError("Live mode requires live_registry to be provided")
+
+
+@dataclass(frozen=True)
 class RuntimeCandidateContract:
     """Resolved Candidate State and model artifact contract for one symbol/month."""
 
@@ -34,24 +59,37 @@ class CandidateCatalog:
     The API server should use this module to resolve Candidate State, cap, and
     model-binding data instead of switching directly between live and historical
     registries at each call site.
+
+    Can be constructed from a CatalogContext (preferred, reduces coupling) or
+    from individual parameters (backward-compatible).
     """
 
     def __init__(
         self,
         *,
-        live_registry: CandidateRegistry | None,
-        historical_registry: HistoricalCandidateRegistry | None,
-        historical_mode: bool,
+        context: CatalogContext | None = None,
+        live_registry: CandidateRegistry | None = None,
+        historical_registry: HistoricalCandidateRegistry | None = None,
+        historical_mode: bool = False,
         missing_month_policy: str = "error",
         force_model_month: str | None = None,
         latest_loaded_month: Callable[[str], str | None] | None = None,
     ) -> None:
-        self._live_registry = live_registry
-        self._historical_registry = historical_registry
-        self._historical_mode = bool(historical_mode)
-        self._missing_month_policy = str(missing_month_policy).strip().lower()
+        # Accept either context (preferred) or individual parameters
+        if context is not None:
+            self._live_registry = context.live_registry
+            self._historical_registry = context.historical_registry
+            self._historical_mode = context.is_historical_mode
+            self._missing_month_policy = context.missing_month_policy
+            self._latest_loaded_month = context.get_latest_month or (lambda _symbol: None)
+        else:
+            self._live_registry = live_registry
+            self._historical_registry = historical_registry
+            self._historical_mode = bool(historical_mode)
+            self._missing_month_policy = str(missing_month_policy).strip().lower()
+            self._latest_loaded_month = latest_loaded_month or (lambda _symbol: None)
+
         self._force_model_month = _normalize_model_month(force_model_month)
-        self._latest_loaded_month = latest_loaded_month or (lambda _symbol: None)
 
     @property
     def historical_mode(self) -> bool:

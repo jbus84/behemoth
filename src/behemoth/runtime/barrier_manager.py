@@ -8,12 +8,16 @@ market order immediately after confirmation.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from typing import TypeVar
 
 import duckdb
 
 from src.behemoth.core.schemas import BarContext, BarrierAction, BarrierActionType
+
+T = TypeVar("T")
 
 _CREATE_BARRIER_SCANS_SQL = """
 CREATE TABLE IF NOT EXISTS barrier_scans (
@@ -88,6 +92,21 @@ class BarrierManager:
         if self._owns_con:
             self._con.close()
 
+    def _with_transaction(self, fn: Callable[[], T]) -> T:
+        """Execute fn within a DuckDB transaction.
+
+        On exception, rolls back and re-raises. Ensures atomicity of multi-statement
+        operations without caller-side transaction management.
+        """
+        try:
+            self._con.begin()
+            result = fn()
+            self._con.commit()
+            return result
+        except Exception:
+            self._con.rollback()
+            raise
+
     def register_scan(
         self,
         symbol: str,
@@ -106,7 +125,6 @@ class BarrierManager:
         signal_close_bid: float | None = None,
     ) -> str:
         """Register a new barrier scan. Called when selected_exec=1 passes all gates."""
-        scan_id = f"scan_{uuid.uuid4().hex[:12]}"
         explicit_mode = signal_close_ask is not None or signal_close_bid is not None
         if explicit_mode:
             if signal_close_ask is None or signal_close_bid is None:
@@ -123,25 +141,29 @@ class BarrierManager:
                 )
             signal_close_ask = ref_price
             signal_close_bid = ref_price
-        upper = signal_close_ask + barrier_pips * pip_size
-        lower = signal_close_bid - barrier_pips * pip_size
-        self._con.execute(
-            """INSERT INTO barrier_scans (
-                scan_id, symbol, candidate_uid, signal_bar_idx,
-                ref_price, signal_close_ask, signal_close_bid,
-                upper_barrier, lower_barrier, barrier_pips, horizon,
-                scan_bars_remaining, status, pred_prob, threshold,
-                model_month, reservation_id, run_id, created_ts
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SCANNING', ?, ?, ?, ?, ?, ?)""",
-            [
-                scan_id, symbol.upper(), candidate_uid, signal_bar_idx,
-                ref_price, signal_close_ask, signal_close_bid, upper, lower, barrier_pips, horizon,
-                horizon, pred_prob, threshold,
-                model_month, reservation_id, run_id,
-                datetime.now(tz=timezone.utc),
-            ],
-        )
-        return scan_id
+
+        def _do_register() -> str:
+            scan_id = f"scan_{uuid.uuid4().hex[:12]}"
+            upper = signal_close_ask + barrier_pips * pip_size
+            lower = signal_close_bid - barrier_pips * pip_size
+            self._con.execute(
+                """INSERT INTO barrier_scans (
+                    scan_id, symbol, candidate_uid, signal_bar_idx,
+                    ref_price, signal_close_ask, signal_close_bid,
+                    upper_barrier, lower_barrier, barrier_pips, horizon,
+                    scan_bars_remaining, status, pred_prob, threshold,
+                    model_month, reservation_id, run_id, created_ts
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SCANNING', ?, ?, ?, ?, ?, ?)""",
+                [
+                    scan_id, symbol.upper(), candidate_uid, signal_bar_idx,
+                    ref_price, signal_close_ask, signal_close_bid, upper, lower, barrier_pips, horizon,
+                    horizon, pred_prob, threshold,
+                    model_month, reservation_id, run_id,
+                    datetime.now(tz=timezone.utc),
+                ],
+            )
+            return scan_id
+        return self._with_transaction(_do_register)
 
     def reject_legacy_active_scans(self) -> list[dict[str, str | None]]:
         """Expire active scans that predate the side-aware signal close columns.
@@ -419,19 +441,23 @@ class BarrierManager:
         )
 
     def _transition_to_holding(self, scan_id: str, touch_step: int, side: str, horizon: int) -> None:
-        """Move a scan from SCANNING to HOLDING."""
-        self._con.execute(
-            "UPDATE barrier_scans SET touch_step = ?, touch_side = ?, "
-            "hold_bars_remaining = ?, status = 'HOLDING' WHERE scan_id = ?",
-            [touch_step, side, horizon, scan_id],
-        )
+        """Move a scan from SCANNING to HOLDING. Atomic transition ensures consistency."""
+        def _do_transition() -> None:
+            self._con.execute(
+                "UPDATE barrier_scans SET touch_step = ?, touch_side = ?, "
+                "hold_bars_remaining = ?, status = 'HOLDING' WHERE scan_id = ?",
+                [touch_step, side, horizon, scan_id],
+            )
+        self._with_transaction(_do_transition)
 
     def set_broker_pos_id(self, scan_id: str, broker_pos_id: str) -> None:
         """Record the broker position ID after a fill is confirmed."""
-        self._con.execute(
-            "UPDATE barrier_scans SET broker_pos_id = ? WHERE scan_id = ?",
-            [broker_pos_id, scan_id],
-        )
+        def _do_set() -> None:
+            self._con.execute(
+                "UPDATE barrier_scans SET broker_pos_id = ? WHERE scan_id = ?",
+                [broker_pos_id, scan_id],
+            )
+        self._with_transaction(_do_set)
 
     def find_holding_scans(self, symbol: str, candidate_uid: str) -> list[dict]:
         """Find HOLDING scans for a candidate (to link broker_pos_id)."""
