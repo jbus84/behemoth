@@ -1,3 +1,13 @@
+## v0.19.0 (2026-05-08)
+
+### Feat
+
+- live threshold diagnostics (#137)
+
+### Refactor
+
+- complete opportunities #2-#7 for predict pipeline deepening (#136)
+
 ## v0.18.0 (2026-05-08)
 
 ### Feat
