@@ -35,6 +35,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from src.behemoth.api.cache_manager import CacheManager
 from src.behemoth.api.dashboard import router as dashboard_router
+from src.behemoth.api.predict_orchestrator import PredictionOrchestrator
 from src.behemoth.core.candidate_catalog import CandidateCatalog, CatalogContext
 from src.behemoth.core.features import (
     FeatureConfig,
@@ -85,6 +86,7 @@ logger = logging.getLogger("behemoth.api")
 
 _state: StateManager | None = None
 _barrier_manager: BarrierManager | None = None
+_orchestrator: PredictionOrchestrator | None = None
 _aggregators: dict[int, TickAggregator] = {}
 _registry: CandidateRegistry | None = None
 _historical_registry: HistoricalCandidateRegistry | None = None
@@ -728,7 +730,7 @@ def _require_explicit_latest_bar_schema(
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Modern lifespan handler replacing deprecated on_event."""
-    global _state, _barrier_manager, _aggregators, _registry, _historical_registry, _feed_state, _lifespan_ready
+    global _state, _barrier_manager, _orchestrator, _aggregators, _registry, _historical_registry, _feed_state, _lifespan_ready
     global _models_dir, _account_risk_rules_path, _account_risk_profile
     global _historical_entries_loaded, _historical_preflight_failed_checks, _historical_preflight_summary
 
@@ -835,6 +837,21 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         )
     except Exception as exc:
         logger.error("Failed to load account risk rules: %s", exc)
+
+    # Initialize PredictionOrchestrator
+    _orchestrator = PredictionOrchestrator(
+        state=_state,
+        barrier_manager=_barrier_manager,
+        model_registry=_model_registry,
+        candidate_registry=_registry,
+        historical_registry=_historical_registry,
+        account_risk_profile=_account_risk_profile,
+        config=_config,
+        is_historical_mode=_is_historical_mode(),
+        get_latest_month=_latest_loaded_month_for_symbol,
+    )
+    logger.info("PredictionOrchestrator initialized")
+
     logger.info("Behemoth API started. Models dir: %s", _models_dir)
     _lifespan_ready = True
     yield
@@ -2248,21 +2265,33 @@ async def ingest_bar(bar: IncomingTickBar) -> dict:
 async def predict(req: PredictRequest) -> PredictResponse:
     """Evaluate all registry candidates for a symbol and return predictions.
 
-    Computes rolling features once, then runs CatBoost inference for each
-    candidate (different horizon/barrier_pips). Returns results sorted by
-    pred_prob descending.
+    Delegates to PredictionOrchestrator for explicit 7-step ordering.
+    """
+    if _orchestrator is None:
+        raise HTTPException(status_code=503, detail="Prediction orchestrator not initialized")
+
+    run_id = _effective_run_id(req.run_id)
+    _append_http_trace(
+        endpoint="/predict",
+        phase="request",
+        run_id=run_id,
+        symbol=req.symbol.upper(),
+        request_payload=req,
+    )
+    return _orchestrator.execute(req, run_id)
+
+
+async def _UNUSED_predict_original_implementation_replaced(req: PredictRequest) -> PredictResponse:
+    """Original predict implementation - replaced by orchestrator.
+
+    This function is kept for reference only. The predict endpoint now uses
+    the explicit 7-step PredictionOrchestrator instead of this monolithic
+    implementation.
     """
     sym = req.symbol.upper()
     run_id = _effective_run_id(req.run_id)
     account_risk_enabled_effective = req.effective_risk_enabled_override()
     requested_volume_units = _resolve_requested_volume_units(req)
-    _append_http_trace(
-        endpoint="/predict",
-        phase="request",
-        run_id=run_id,
-        symbol=sym,
-        request_payload=req,
-    )
 
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
