@@ -1,3 +1,10 @@
+## v0.20.2 (2026-05-08)
+
+### Refactor
+
+- extract feature_parity diagnostic module + fix tz-merge bug (#145)
+- introduce ReconciliationCycle to enforce snapshot→mutate→finalize ordering (#144)
+
 ## v0.20.1 (2026-05-08)
 
 ### Fix
