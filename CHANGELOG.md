@@ -1,3 +1,9 @@
+## v0.19.1 (2026-05-08)
+
+### Fix
+
+- default BEHEMOTH_RECORD_RAW_TICKS to true (#138)
+
 ## v0.19.0 (2026-05-08)
 
 ### Feat
