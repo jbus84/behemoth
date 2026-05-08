@@ -10,11 +10,12 @@ needing to know implementation details (DuckDB schema, connection pool, etc).
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Protocol
+from typing import Any, Protocol, runtime_checkable
 
 from src.behemoth.core.schemas import BarContext, ModelFeatures
 
 
+@runtime_checkable
 class BarStateReader(Protocol):
     """Read-only interface for bar and feature state.
 
@@ -127,6 +128,7 @@ class BarStateReader(Protocol):
         ...
 
 
+@runtime_checkable
 class AccountRiskStateReader(Protocol):
     """Read-only interface for account risk and reservation state.
 
@@ -193,6 +195,7 @@ class AccountRiskStateReader(Protocol):
         ...
 
 
+@runtime_checkable
 class ReservationWriter(Protocol):
     """Write interface for reservation state machine.
 
