@@ -188,3 +188,22 @@ Add targeted tests around the future diagnostic implementation:
 - Do not use external market data.
 - Do not recertify a model or promote a new Model Fit.
 - Do not collapse `THRESHOLD_DRIFT`, `RUNTIME_VARIANCE`, and `MODEL_VALIDITY_CONCERN` into a single verdict.
+
+## Usage
+
+Example local run:
+
+```bash
+uv run python scripts/diagnose_live_thresholds.py \
+  --db data/live_state.db \
+  --symbol EURUSD \
+  --run-id eurusd_20260508 \
+  --start-ts 2026-05-01T00:00:00Z \
+  --end-ts 2026-05-08T23:59:59Z \
+  --lookback-days 20 \
+  --execution-quantile 0.9 \
+  --min-history 300 \
+  --out-dir data/analysis/live_threshold_diagnostics
+```
+
+The script writes a Markdown report and CSV/JSON artifacts under the output directory. The classification is evidence-only and does not change production Rolling Threshold behavior.
