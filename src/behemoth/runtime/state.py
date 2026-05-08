@@ -20,6 +20,7 @@ from typing import Any
 
 import duckdb
 
+from src.behemoth.runtime.state_store import DuckDBStateStore
 from src.behemoth.core.features import (
     CURRENT_FEATURE_SCHEMA,
     CURRENT_MODEL_FEATURE_CONTRACT,
@@ -261,17 +262,13 @@ class StateManager:
         self._feature_contract = CURRENT_MODEL_FEATURE_CONTRACT
         self._feature_contract.validate_feature_names(tuple(ModelFeatures.model_fields))
 
-        if persist_path:
-            self._con = duckdb.connect(persist_path)
-        else:
-            self._con = duckdb.connect()
-
-        self._con.execute(_CREATE_SQL)
+        self._store = DuckDBStateStore(persist_path)
+        self._store.execute(_CREATE_SQL)
         self._ensure_runtime_schema()
         self._row_counters: dict[str, int] = {}
 
         # Hydrate counters from persistent store to survive restarts
-        res = self._con.execute(
+        res = self._store.execute(
             "SELECT symbol, bar_ticks, MAX(row_id) FROM tick_bars GROUP BY symbol, bar_ticks"
         ).fetchall()
         for r in res:
@@ -310,12 +307,12 @@ class StateManager:
     def _ensure_table_column(self, *, table_name: str, column_name: str, column_sql: str) -> None:
         colset = self._get_table_columns(table_name)
         if str(column_name).lower() not in colset:
-            self._con.execute(
+            self._store.execute(
                 f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_sql}"
             )
 
     def _get_table_columns(self, table_name: str) -> set[str]:
-        cols = self._con.execute(
+        cols = self._store.execute(
             """
             SELECT lower(column_name)
             FROM information_schema.columns
@@ -338,7 +335,7 @@ class StateManager:
             if canonical_name in columns:
                 continue
             if legacy_name in columns:
-                self._con.execute(
+                self._store.execute(
                     f"ALTER TABLE tick_bars RENAME COLUMN {legacy_name} TO {canonical_name}"
                 )
                 columns.remove(legacy_name)
@@ -360,7 +357,7 @@ class StateManager:
         sym = bar.symbol.upper()
         key = f"{sym}_{bar.bar_ticks}"
         idx = self._row_counters.get(key, 0)
-        self._con.execute(
+        self._store.execute(
             _INSERT_SQL,
             [
                 idx,
@@ -387,14 +384,14 @@ class StateManager:
 
     def _prune(self, symbol: str, bar_ticks: int, current_idx: int) -> None:
         """Delete old rows to prevent unbounded growth."""
-        self._con.execute(
+        self._store.execute(
             "DELETE FROM tick_bars WHERE symbol = ? AND bar_ticks = ? AND row_id < ?",
             [symbol, bar_ticks, current_idx - 600],
         )
 
     def bar_count(self, symbol: str, bar_ticks: int) -> int:
         """Return the number of bars currently stored for a symbol + horizon."""
-        r = self._con.execute(
+        r = self._store.execute(
             "SELECT COUNT(*) FROM tick_bars WHERE symbol = ? AND bar_ticks = ?",
             [symbol.upper(), bar_ticks],
         ).fetchone()
@@ -417,7 +414,7 @@ class StateManager:
         if bar_number is not None:
             row_filter = "AND row_id = ?"
             params.append(int(bar_number))
-        res = self._con.execute(
+        res = self._store.execute(
             "SELECT row_id, ts, close_ts, open_bid, high_bid, low_bid, close_bid, "
             "spread, hl_first, hl_pos_frac, high_ask, close_ask "
             "FROM tick_bars WHERE symbol = ? AND bar_ticks = ? "
@@ -487,7 +484,7 @@ class StateManager:
 
     def get_latest_close_ts(self, symbol: str) -> datetime | None:
         """Return the close_ts of the most recent bar."""
-        r = self._con.execute(
+        r = self._store.execute(
             "SELECT close_ts FROM tick_bars WHERE symbol = ? ORDER BY row_id DESC LIMIT 1",
             [symbol.upper()],
         ).fetchone()
@@ -512,7 +509,7 @@ class StateManager:
         if n < self._cfg.full_warmup_bars:
             return None
 
-        df = self._con.execute(_SELECT_SQL, [sym, bar_ticks]).fetchdf()
+        df = self._store.execute(_SELECT_SQL, [sym, bar_ticks]).fetchdf()
 
         return compute_features_from_bars(
             df,
@@ -529,7 +526,7 @@ class StateManager:
         n = self.bar_count(sym, bar_ticks)
         if n < self._cfg.full_warmup_bars:
             return {}
-        df = self._con.execute(_SELECT_SQL, [sym, bar_ticks]).fetchdf()
+        df = self._store.execute(_SELECT_SQL, [sym, bar_ticks]).fetchdf()
         return compute_regime_quantiles_from_bars(df, symbol=sym, cfg=self._cfg)
 
     def log_audit_event(
@@ -544,7 +541,7 @@ class StateManager:
         run_id: str | None = None,
     ) -> None:
         """Record an execution decision snapshot into the persistent audit trail."""
-        self._con.execute(
+        self._store.execute(
             _AUDIT_INSERT_SQL,
             [
                 close_ts,
@@ -562,7 +559,7 @@ class StateManager:
         """Record a batch of execution decisions into the persistent audit trail."""
         if not events:
             return
-        self._con.executemany(_AUDIT_INSERT_SQL, events)
+        self._store.executemany(_AUDIT_INSERT_SQL, events)
 
     def purge_audit_events(self, *, symbol: str, run_id: str) -> int:
         """Delete audit_logs rows matching (symbol, run_id). Returns rows deleted.
@@ -570,7 +567,7 @@ class StateManager:
         Scoped purge only - does not affect other symbols or other run_ids
         (e.g. 'threshold_seed' or 'jforex_live' rows are untouched).
         """
-        deleted_rows = self._con.execute(
+        deleted_rows = self._store.execute(
             "DELETE FROM audit_logs WHERE symbol = ? AND run_id = ? RETURNING 1",
             [symbol.upper(), run_id],
         ).fetchall()
@@ -632,7 +629,7 @@ class StateManager:
         run_id: str | None,
     ) -> None:
         """Record a prediction evaluation snapshot regardless of gate outcome."""
-        self._con.execute(
+        self._store.execute(
             _PREDICT_EVAL_INSERT_SQL,
             [
                 close_ts,
@@ -667,12 +664,12 @@ class StateManager:
         import uuid
         internal_id = str(uuid.uuid4())
 
-        res = self._con.execute(
+        res = self._store.execute(
             "SELECT MAX(row_id) FROM tick_bars WHERE symbol = ?", [symbol.upper()]
         ).fetchone()
         entry_bar_id = res[0] if res and res[0] is not None else 0
 
-        audit_res = self._con.execute(
+        audit_res = self._store.execute(
             "SELECT pred_prob, threshold, model_month FROM audit_logs "
             "WHERE candidate_uid = ? AND symbol = ? ORDER BY event_ts DESC LIMIT 1",
             [candidate_uid, symbol.upper()],
@@ -687,7 +684,7 @@ class StateManager:
             )
             entry_pred_prob, entry_threshold, entry_model_month = None, None, None
 
-        self._con.execute(
+        self._store.execute(
             """INSERT INTO trades (
                 internal_trade_id, broker_pos_id, symbol, candidate_uid, side,
                 entry_price, entry_ts, entry_bar_id, horizon_bars, status, run_id,
@@ -701,7 +698,7 @@ class StateManager:
 
     def get_active_trades(self, symbol: str) -> list[dict]:
         """Fetch all currently OPEN trades for state recovery."""
-        res = self._con.execute(
+        res = self._store.execute(
             "SELECT broker_pos_id, entry_bar_id, horizon_bars, touch_bar_id FROM trades WHERE symbol = ? AND status = 'OPEN'",
             [symbol.upper()],
         ).fetchall()
@@ -714,7 +711,7 @@ class StateManager:
         self, symbol: str, bar_ticks: int = 100
     ) -> tuple[float, datetime] | None:
         """Return (close_bid, close_ts) for the most recent bar, or None if no data."""
-        res = self._con.execute(
+        res = self._store.execute(
             "SELECT close_bid, close_ts FROM tick_bars "
             "WHERE symbol = ? AND bar_ticks = ? ORDER BY row_id DESC LIMIT 1",
             [symbol.upper(), bar_ticks],
@@ -731,7 +728,7 @@ class StateManager:
 
     def touch_trade(self, broker_pos_id: str, touch_bar_id: int) -> None:
         """Record the bar id when a position's barrier was touched."""
-        self._con.execute(
+        self._store.execute(
             "UPDATE trades SET touch_bar_id = ? WHERE broker_pos_id = ?",
             [touch_bar_id, broker_pos_id],
         )
@@ -751,13 +748,13 @@ class StateManager:
         """Update a trade status and exit data (CLOSED/CANCELLED)."""
         exit_bar_id = None
         if symbol:
-            res = self._con.execute(
+            res = self._store.execute(
                 "SELECT MAX(row_id) FROM tick_bars WHERE symbol = ?", [symbol.upper()]
             ).fetchone()
             exit_bar_id = res[0] if res and res[0] is not None else None
 
         if run_id:
-            self._con.execute(
+            self._store.execute(
                 "UPDATE trades SET status = ?, exit_price = ?, exit_ts = ?, pnl_pips = ?, "
                 "run_id = COALESCE(run_id, ?), exit_bar_id = ?, close_reason = ?, commission_ccy = ? "
                 "WHERE broker_pos_id = ?",
@@ -765,7 +762,7 @@ class StateManager:
                  exit_bar_id, close_reason, commission_ccy, broker_pos_id],
             )
             return
-        self._con.execute(
+        self._store.execute(
             "UPDATE trades SET status = ?, exit_price = ?, exit_ts = ?, pnl_pips = ?, "
             "exit_bar_id = ?, close_reason = ?, commission_ccy = ? "
             "WHERE broker_pos_id = ?",
@@ -775,7 +772,7 @@ class StateManager:
 
     def get_ledger_stats(self) -> list[dict]:
         """Aggregate trade statistics for Prometheus gauges."""
-        res = self._con.execute("""
+        res = self._store.execute("""
             SELECT
                 symbol,
                 SUM(CASE WHEN status = 'CLOSED' THEN pnl_pips ELSE 0 END) as total_pnl,
@@ -810,7 +807,7 @@ class StateManager:
         """
         from datetime import timedelta
         cutoff = datetime.now(tz=timezone.utc) - timedelta(days=lookback_days)
-        row = self._con.execute(
+        row = self._store.execute(
             """
             SELECT COUNT(*), quantile(pred_prob, ?)
             FROM audit_logs
@@ -826,7 +823,7 @@ class StateManager:
 
     def get_all_symbols(self) -> list[str]:
         """Return all unique symbols in the tick_bars table."""
-        res = self._con.execute("SELECT DISTINCT symbol FROM tick_bars").fetchall()
+        res = self._store.execute("SELECT DISTINCT symbol FROM tick_bars").fetchall()
         return [r[0] for r in res]
 
     def record_account_risk_snapshot(
@@ -840,7 +837,7 @@ class StateManager:
         """Persist an account-level account risk snapshot emitted by cBot."""
         ts = snapshot_ts
         ts = ts.replace(tzinfo=timezone.utc) if ts.tzinfo is None else ts.astimezone(timezone.utc)
-        self._con.execute(
+        self._store.execute(
             _ACCOUNT_RISK_SNAPSHOT_INSERT_SQL,
             [ts, symbol.upper(), float(balance), float(equity)],
         )
@@ -864,7 +861,7 @@ class StateManager:
     def get_latest_account_risk_snapshot(self, symbol: str | None = None) -> dict | None:
         """Return the latest account snapshot, optionally filtered by symbol."""
         if symbol:
-            row = self._con.execute(
+            row = self._store.execute(
                 """
                 SELECT snapshot_ts, symbol, balance, equity
                 FROM account_risk_snapshots
@@ -875,7 +872,7 @@ class StateManager:
                 [symbol.upper()],
             ).fetchone()
         else:
-            row = self._con.execute(
+            row = self._store.execute(
                 """
                 SELECT snapshot_ts, symbol, balance, equity
                 FROM account_risk_snapshots
@@ -912,7 +909,7 @@ class StateManager:
         s = since_ts
         s = s.replace(tzinfo=timezone.utc) if s.tzinfo is None else s.astimezone(timezone.utc)
         if symbol:
-            rows = self._con.execute(
+            rows = self._store.execute(
                 """
                 SELECT snapshot_ts, symbol, balance, equity
                 FROM account_risk_snapshots
@@ -922,7 +919,7 @@ class StateManager:
                 [s, symbol.upper()],
             ).fetchall()
         else:
-            rows = self._con.execute(
+            rows = self._store.execute(
                 """
                 SELECT snapshot_ts, symbol, balance, equity
                 FROM account_risk_snapshots
@@ -978,7 +975,7 @@ class StateManager:
         initial_state = ReservationStateMachine.validate_initial(status)
         rid = str(uuid.uuid4())
         now_utc = datetime.now(tz=timezone.utc)
-        self._con.execute(
+        self._store.execute(
             _ACCOUNT_RISK_RES_INSERT_SQL,
             [
                 rid,
@@ -1008,7 +1005,7 @@ class StateManager:
         reason: str | None = None,
     ) -> str:
         """Transition one reservation through the formal lifecycle."""
-        row = self._con.execute(
+        row = self._store.execute(
             """
             SELECT status
             FROM account_risk_reservations
@@ -1023,7 +1020,7 @@ class StateManager:
         now_utc = datetime.now(tz=timezone.utc)
         safe_reason = str(reason or "").replace("|", "_").replace("'", "_")
         if safe_reason:
-            self._con.execute(
+            self._store.execute(
                 """
                 UPDATE account_risk_reservations
                 SET status = ?, broker_pos_id = COALESCE(?, broker_pos_id),
@@ -1033,7 +1030,7 @@ class StateManager:
                 [target.value, broker_pos_id, now_utc, f"|{safe_reason}", reservation_id],
             )
         else:
-            self._con.execute(
+            self._store.execute(
                 """
                 UPDATE account_risk_reservations
                 SET status = ?, broker_pos_id = COALESCE(?, broker_pos_id), updated_ts = ?
@@ -1081,7 +1078,7 @@ class StateManager:
     ) -> str | None:
         """Promote a pending reservation to OPEN after broker fill."""
         if reservation_id:
-            row = self._con.execute(
+            row = self._store.execute(
                 """
                 SELECT reservation_id
                 FROM account_risk_reservations
@@ -1112,7 +1109,7 @@ class StateManager:
             query += " AND symbol = ?"
             params.append(symbol.upper())
         query += " ORDER BY created_ts ASC LIMIT 1"
-        row = self._con.execute(query, params).fetchone()
+        row = self._store.execute(query, params).fetchone()
         if not row:
             return None
         rid = str(row[0])
@@ -1166,7 +1163,7 @@ class StateManager:
         if len(where) == 1:
             return 0
         where_sql = " AND ".join(where)
-        rows = self._con.execute(
+        rows = self._store.execute(
             f"SELECT reservation_id FROM account_risk_reservations WHERE {where_sql}",
             params,
         ).fetchall()
@@ -1203,7 +1200,7 @@ class StateManager:
         now_utc = datetime.now(tz=timezone.utc)
         cutoff = now_utc.timestamp() - float(max_age_seconds)
         cutoff_ts = datetime.fromtimestamp(cutoff, tz=timezone.utc)
-        rows = self._con.execute(
+        rows = self._store.execute(
             """
             SELECT reservation_id
             FROM account_risk_reservations
@@ -1250,7 +1247,7 @@ class StateManager:
         if symbol:
             query += " AND symbol = ?"
             params.append(symbol.upper())
-        row = self._con.execute(query, params).fetchone()
+        row = self._store.execute(query, params).fetchone()
         if not row or row[0] is None:
             return 0.0
         return float(row[0])
@@ -1283,7 +1280,7 @@ class StateManager:
             query += " AND symbol = ?"
             params.append(symbol.upper())
         query += " ORDER BY created_ts ASC"
-        rows = self._con.execute(query, params).fetchall()
+        rows = self._store.execute(query, params).fetchall()
         out: list[dict] = []
         for r in rows:
             created_ts = r[1]
@@ -1332,7 +1329,7 @@ class StateManager:
     ) -> None:
         """Persist allocator decision events for monitoring and reconciliation."""
         now_utc = datetime.now(tz=timezone.utc)
-        self._con.execute(
+        self._store.execute(
             _ACCOUNT_RISK_ALLOC_EVENT_INSERT_SQL,
             [
                 now_utc,
@@ -1381,7 +1378,7 @@ class StateManager:
         """Persist a single raw tick for replay/reconciliation workflows."""
         ts = tick.timestamp
         ts = ts.replace(tzinfo=timezone.utc) if ts.tzinfo is None else ts.astimezone(timezone.utc)
-        self._con.execute(
+        self._store.execute(
             _RAW_TICK_INSERT_SQL,
             [
                 ts,
@@ -1400,17 +1397,17 @@ class StateManager:
     def raw_tick_count(self, symbol: str | None = None) -> int:
         """Return stored raw tick rows, optionally filtered by symbol."""
         if symbol:
-            row = self._con.execute(
+            row = self._store.execute(
                 "SELECT COUNT(*) FROM raw_ticks WHERE symbol = ?",
                 [symbol.upper()],
             ).fetchone()
         else:
-            row = self._con.execute("SELECT COUNT(*) FROM raw_ticks").fetchone()
+            row = self._store.execute("SELECT COUNT(*) FROM raw_ticks").fetchone()
         return int(row[0]) if row and row[0] is not None else 0
 
     def get_open_trade_entry_price(self, reservation_id: str) -> float | None:
         """Return entry_price of the OPEN trade for the given reservation, or None."""
-        row = self._con.execute(
+        row = self._store.execute(
             "SELECT entry_price FROM trades WHERE reservation_id = ? AND status = 'OPEN'",
             [reservation_id],
         ).fetchone()
@@ -1418,7 +1415,7 @@ class StateManager:
 
     def get_latest_bar_id(self, symbol: str) -> int:
         """Return MAX(row_id) for tick_bars of this symbol, or 0 if no rows exist."""
-        row = self._con.execute(
+        row = self._store.execute(
             "SELECT MAX(row_id) FROM tick_bars WHERE symbol = ?",
             [symbol.upper()],
         ).fetchone()
@@ -1426,7 +1423,7 @@ class StateManager:
 
     def get_latest_tick_snapshot(self, symbol: str) -> tuple[float, datetime] | None:
         """Return (close_bid, close_ts) for the most recent bar across all bar_ticks, or None."""
-        row = self._con.execute(
+        row = self._store.execute(
             "SELECT close_bid, close_ts FROM tick_bars WHERE symbol = ? ORDER BY close_ts DESC, row_id DESC LIMIT 1",
             [symbol.upper()],
         ).fetchone()
@@ -1443,7 +1440,7 @@ class StateManager:
 
     def count_audit_logs(self, symbol: str, run_id: str) -> int:
         """Return count of audit_logs rows matching (symbol, run_id)."""
-        row = self._con.execute(
+        row = self._store.execute(
             "SELECT COUNT(*) FROM audit_logs WHERE symbol = ? AND run_id = ?",
             [symbol.upper(), run_id],
         ).fetchone()
@@ -1451,7 +1448,7 @@ class StateManager:
 
     def clear_audit_logs_by_run_id(self, run_id: str) -> None:
         """Delete all audit_logs rows matching run_id (all symbols)."""
-        self._con.execute("DELETE FROM audit_logs WHERE run_id = ?", [run_id])
+        self._store.execute("DELETE FROM audit_logs WHERE run_id = ?", [run_id])
 
     def atomic_audit_replace(
         self, symbol: str, run_id: str, events_batch: list[tuple]
@@ -1459,27 +1456,27 @@ class StateManager:
         """Delete existing audit rows for (symbol, run_id) and insert events_batch atomically."""
         from contextlib import suppress
 
-        self._con.execute("BEGIN TRANSACTION")
+        self._store.execute("BEGIN TRANSACTION")
         try:
             purged = self.purge_audit_events(symbol=symbol, run_id=run_id)
             self.log_audit_event_batch(events_batch)
-            self._con.execute("COMMIT")
+            self._store.execute("COMMIT")
             return purged
         except Exception:
             with suppress(Exception):
-                self._con.execute("ROLLBACK")
+                self._store.execute("ROLLBACK")
             raise
 
     def export_warmup_bars(self, symbol: str, bar_ticks: int, path: Path) -> int:
         """Export tick_bars rows for (symbol, bar_ticks) to a parquet file. Returns row count."""
-        row = self._con.execute(
+        row = self._store.execute(
             "SELECT COUNT(*) FROM tick_bars WHERE symbol = ? AND bar_ticks = ?",
             [symbol.upper(), bar_ticks],
         ).fetchone()
         count = int(row[0]) if row else 0
         if count == 0:
             return 0
-        self._con.execute(
+        self._store.execute(
             f"""
             COPY (
                 SELECT row_id, ts, close_ts, open_bid, high_bid, low_bid, close_bid,
@@ -1495,8 +1492,8 @@ class StateManager:
 
     def checkpoint(self) -> None:
         """Run a DuckDB CHECKPOINT to flush WAL to disk."""
-        self._con.execute("CHECKPOINT")
+        self._store.execute("CHECKPOINT")
 
     def close(self) -> None:
         """Close the DuckDB connection."""
-        self._con.close()
+        self._store.close()
