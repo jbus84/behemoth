@@ -11,6 +11,16 @@ import numpy as np
 import pandas as pd
 
 from src.behemoth.core.features import compute_feature_matrix_from_bars
+from src.behemoth.diagnostics.feature_parity import (
+    FEATURE_PARITY_COLUMNS,
+    LIVE_FEATURE_COLUMNS,
+    RUNTIME_BAR_COLUMNS,
+    compare_feature_parity,
+    feature_columns_from_live_rows as _feature_columns_from_live_rows,
+    parse_canonical_uid as _parse_canonical_uid,
+    parse_features_json as _parse_features_json,
+    recompute_features_from_runtime_bars,
+)
 
 DiagnosticClassification = Literal[
     "PARITY_BREACH",
@@ -19,18 +29,6 @@ DiagnosticClassification = Literal[
     "MODEL_VALIDITY_CONCERN",
     "INCONCLUSIVE",
 ]
-
-FEATURE_PARITY_COLUMNS = [
-    "close_ts",
-    "candidate_uid",
-    "feature",
-    "live_value",
-    "recomputed_value",
-    "abs_diff",
-    "status",
-]
-LIVE_FEATURE_COLUMNS = ["close_ts", "symbol", "candidate_uid", "features_json"]
-RUNTIME_BAR_COLUMNS = ["ts", "close_ts", "symbol", "bar_ticks"]
 THRESHOLD_ESTIMATOR_COLUMNS = ["candidate_uid", "estimator", "threshold", "rows"]
 THRESHOLD_POOL_COLUMNS = [
     "close_ts",
@@ -122,22 +120,6 @@ def classify_diagnostic(inputs: DiagnosticInputs) -> DiagnosticClassification:
     return "RUNTIME_VARIANCE"
 
 
-def _parse_features_json(value: object) -> dict[str, float]:
-    if value is None or pd.isna(value):
-        return {}
-    try:
-        raw = json.loads(str(value))
-    except json.JSONDecodeError:
-        return {}
-    out: dict[str, float] = {}
-    for key, item in raw.items():
-        try:
-            out[str(key)] = float(item)
-        except (TypeError, ValueError):
-            continue
-    return out
-
-
 def _ensure_columns(frame: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     out = frame.copy()
     for column in columns:
@@ -166,15 +148,6 @@ def _write_json(path: Path, payload: dict[str, object]) -> None:
         json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
         encoding="utf-8",
     )
-
-
-def _feature_columns_from_live_rows(live_features: pd.DataFrame) -> list[str]:
-    if live_features.empty or "features_json" not in live_features.columns:
-        return []
-    columns: set[str] = set()
-    for value in live_features["features_json"]:
-        columns.update(_parse_features_json(value))
-    return sorted(columns)
 
 
 def _empty_threshold_audit_frames() -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -260,58 +233,6 @@ def _build_distribution_decomposition(
     ]
 
 
-def compare_feature_parity(
-    live_features: pd.DataFrame,
-    recomputed_features: pd.DataFrame,
-    *,
-    feature_columns: list[str],
-    tolerance: float,
-) -> pd.DataFrame:
-    rows: list[dict[str, object]] = []
-
-    live_rows = _ensure_columns(
-        live_features, ["close_ts", "candidate_uid", "features_json", *feature_columns]
-    )
-    parsed = live_rows["features_json"].map(_parse_features_json)
-    for feature in feature_columns:
-        live_rows[feature] = parsed.map(lambda payload: payload.get(feature, np.nan))
-
-    recomputed_rows = _ensure_columns(
-        recomputed_features, ["close_ts", "candidate_uid", *feature_columns]
-    )
-
-    merged = live_rows.merge(
-        recomputed_rows[["close_ts", "candidate_uid", *feature_columns]],
-        on=["close_ts", "candidate_uid"],
-        how="outer",
-        suffixes=("_live", "_recomputed"),
-        indicator=True,
-    )
-    for _, row in merged.iterrows():
-        for feature in feature_columns:
-            live_value = row.get(f"{feature}_live", np.nan)
-            recomputed_value = row.get(f"{feature}_recomputed", np.nan)
-            if pd.isna(live_value) or pd.isna(recomputed_value):
-                status = "MISSING"
-                abs_diff = np.nan
-            else:
-                abs_diff = abs(float(live_value) - float(recomputed_value))
-                status = "PASS" if abs_diff <= float(tolerance) else "MISMATCH"
-            if status != "PASS":
-                rows.append(
-                    {
-                        "close_ts": row.get("close_ts"),
-                        "candidate_uid": row.get("candidate_uid"),
-                        "feature": feature,
-                        "live_value": live_value,
-                        "recomputed_value": recomputed_value,
-                        "abs_diff": abs_diff,
-                        "status": status,
-                    }
-                )
-    return pd.DataFrame(rows, columns=FEATURE_PARITY_COLUMNS)
-
-
 def _as_utc_pydatetime(value: pd.Timestamp) -> object:
     ts = pd.Timestamp(value)
     ts = ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
@@ -378,58 +299,6 @@ def load_runtime_bars(
         ).fetchdf()
     except duckdb.Error:
         return pd.DataFrame(columns=RUNTIME_BAR_COLUMNS)
-
-
-def _parse_barrier_pips(value: object) -> float:
-    text = str(value).strip()
-    try:
-        return float(text)
-    except ValueError:
-        pass
-
-    leading_b = re.fullmatch(r"b([+-]?\d+(?:\.\d+)?)", text)
-    if leading_b:
-        return float(leading_b.group(1))
-
-    trailing_k = re.search(r"(?:^|_)k([+-]?\d+(?:\.\d+)?)$", text)
-    if trailing_k:
-        return float(trailing_k.group(1))
-
-    raise ValueError(f"barrier_pips cannot be resolved from candidate_uid segment: {value}")
-
-
-def _parse_canonical_uid(candidate_uid: str) -> tuple[int, int, float]:
-    parts = str(candidate_uid).split("|")
-    if len(parts) < 5:
-        raise ValueError(f"candidate_uid is not canonical: {candidate_uid}")
-    bar_ticks = int(parts[2])
-    horizon = int(parts[3].removeprefix("h"))
-    barrier_pips = _parse_barrier_pips(parts[4])
-    return bar_ticks, horizon, barrier_pips
-
-
-def recompute_features_from_runtime_bars(
-    bars: pd.DataFrame,
-    *,
-    symbol: str,
-    candidate_uid: str,
-    feature_columns: list[str],
-) -> pd.DataFrame:
-    bar_ticks, horizon, barrier_pips = _parse_canonical_uid(candidate_uid)
-    frame = bars.rename(columns={"ts": "timestamp"}).copy()
-    matrix = compute_feature_matrix_from_bars(
-        frame,
-        symbol=symbol.upper(),
-        bar_ticks=bar_ticks,
-        horizon=horizon,
-        barrier_pips=barrier_pips,
-    )
-    if matrix is None or matrix.empty:
-        return pd.DataFrame(columns=["close_ts", "candidate_uid", *feature_columns])
-    out = matrix.loc[:, feature_columns].copy()
-    out["close_ts"] = pd.to_datetime(frame.loc[matrix.index, "close_ts"], utc=True).to_numpy()
-    out["candidate_uid"] = candidate_uid
-    return out[["close_ts", "candidate_uid", *feature_columns]]
 
 
 def _source_period(run_id: object, live_run_id: str) -> str:
