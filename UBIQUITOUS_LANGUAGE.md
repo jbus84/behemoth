@@ -89,6 +89,60 @@
 | **Bar Alignment Ticks** | The tick-count modulus used when sizing **Warmup** loads so the runtime's open-bar accumulator at start matches what governance had at the same moment. Equals the largest candidate `bar_ticks` in the active universe. | Phase bar ticks, alignment window |
 | **Reconciliation** | The process of matching broker state, local state, and promoted runtime state after restart or drift. | Resync, state repair |
 | **Trade Tracking State** | The persisted local record of live orders, barriers, and lifecycle progress. | Local cache, live DB |
+| **Runtime State** | The in-process and persisted state used by the Live Runtime to hold Tick Bars, Feature Set readiness, trades, and account risk reservations. | DB, cache, state manager |
+| **State Query View** | A read-only view of Runtime State used by business logic that must not depend on table layout or persistence details. | Raw DB access, direct SQL, state helper |
+
+## Runtime candidate resolution
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Candidate Catalog** | The runtime source of Candidate State definitions, model bindings, and production caps across live and historical modes. | Registry switch, candidate registry, historical registry |
+| **Runtime Candidate Contract** | The resolved Candidate State, model artifact binding, cap, cache key, and source month used for one prediction cycle. | Runtime contract, model contract, candidate bundle |
+| **Model Binding** | The locked model and threshold artifact paths and hashes required to score a Candidate State. | Model config, model path, artifact binding |
+| **Production Cap** | The governed maximum execution cap in pips applied to runtime scoring for a symbol. | Cap, live cap, production limit |
+| **Cache Key** | The symbol or symbol-month identifier used to bind runtime model, threshold, and historical prediction caches. | Model key, registry key |
+
+## Runtime Feature Set contract
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Feature Schema** | The versioned manifest that names the Feature Set, rolling windows, lag rules, and feature definitions. | Feature list, columns tuple |
+| **Feature Definition** | A single governed feature name with its computation group and source dependencies. | Feature metadata, feature row |
+| **Model Feature Contract** | The enforceable runtime contract that pins Feature Schema version, Feature Set order, and Warmup bar count. | Feature check, model schema |
+| **Feature Computation** | The causal transformation from Tick Bars into the Feature Set used by the Stage-3 model. | Feature engineering, dataframe logic |
+
+## Barrier and order lifecycle
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Barrier Scan** | A pending runtime watch created from a selected Candidate State that waits for an upper or lower barrier touch. | Pending signal, scan row, setup |
+| **Barrier Evaluation** | The completed-bar decision step that advances Barrier Scans and emits Barrier Actions. | Barrier check, scan update |
+| **Barrier Action** | A runtime instruction emitted by Barrier Evaluation to open, close, or release a reservation. | Action dict, order signal, event |
+| **Barrier State Mutation** | The explicit state transition made to a Barrier Scan during Barrier Evaluation. | Side effect, SQL update |
+| **Order Lifecycle** | The Java-side progression from order submission through fill, Python sync, close, and final trade update. | Order flow, trade lifecycle |
+| **Order Lifecycle Event** | A broker or local execution event that advances the Order Lifecycle. | Order callback, order message |
+| **Worker Queue** | The per-symbol in-memory queue that buffers ticks before Tick Batch submission to Python. | Tick queue, pending queue |
+| **Tick Batch** | A per-symbol group of ticks submitted from JForex to the Python runtime for ingestion and bar completion. | Batch, tick payload |
+| **Python API Contract** | The set of Python runtime endpoints, payloads, response shapes, and timeout profiles consumed by JForex. | Bridge protocol, HTTP API |
+
+## Account risk lifecycle
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Account Risk Decision** | The current account-level decision that allows or blocks new trading based on account snapshots and governed limits. | Risk eval, risk check, gate result |
+| **Trade Guard Decision** | The per-candidate decision that allows or blocks a selected Candidate State based on cost, edge, and reservation capacity. | Trade risk, cost gate |
+| **Reservation** | A runtime account-risk allocation held for a selected Candidate State until the order opens, closes, expires, or is released. | Risk hold, allocation, pending risk |
+| **Reservation Lifecycle** | The allowed progression of a Reservation through pending, open, closed, released, or expired states. | Reservation state machine, risk lifecycle |
+| **Entry Gate** | The combined runtime decision that determines whether a selected Candidate State may become a Barrier Scan or broker order. | Entry check, allow trading flag |
+
+## Historical replay
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Historical Mode** | The runtime mode that scores by symbol-month Governance Locks and locked historical prediction artifacts. | Backtest mode, historical auto |
+| **Historical Prediction Artifact** | The locked prediction parquet used to replay the governed prediction universe for a symbol-month. | Prediction file, historical predictions |
+| **Historical Prediction Load Status** | The explicit result of attempting to load a Historical Prediction Artifact. | Empty predictions, cache status |
+| **Missing Historical Prediction Artifact** | A load status that means the locked historical prediction parquet was not found. | No predictions, empty universe |
 
 ## Thresholds and execution
 
@@ -132,6 +186,17 @@
 - `RESTART_ELIGIBLE_DRAIN_ONLY` is a valid restart outcome when **Reconciliation** succeeds for monitoring but not for new entries.
 - **Warmup** must complete before stable **Rolling Threshold** behavior can be trusted.
 - The **Execution Adapter** applies governed decisions in broker space.
+- A **Candidate Catalog** resolves a **Runtime Candidate Contract** before the Live Runtime computes the **Feature Set**.
+- A **Runtime Candidate Contract** contains Candidate States, a **Model Binding**, a **Production Cap**, and a **Cache Key**.
+- A **Feature Schema** defines the **Feature Set**, and the **Model Feature Contract** enforces its order and Warmup requirements.
+- **Feature Computation** consumes **Tick Bars** and emits the **Feature Set** for a **Candidate State**.
+- A selected **Candidate State** may create a **Reservation** and a **Barrier Scan** only after the **Entry Gate** allows it.
+- **Barrier Evaluation** consumes a **State Query View** of the latest Tick Bar and produces **Barrier Actions** plus **Barrier State Mutations**.
+- An `OPEN_MARKET` **Barrier Action** enters the Java **Order Lifecycle** through the **Execution Adapter**.
+- The **Worker Queue** forms a **Tick Batch**, and a Tick Batch may complete one or more Tick Bars.
+- In **Historical Mode**, the **Historical Prediction Artifact** constrains which Candidate States are eligible for replay at a given timestamp.
+- **Missing Historical Prediction Artifact** is a load failure state, not proof that there were no selected predictions.
+- **Account Risk Decision**, **Trade Guard Decision**, and **Reservation Lifecycle** are separate decisions and must not be collapsed into a single boolean.
 
 ## Parity principle
 
@@ -151,36 +216,35 @@ These phrases appear in supporting docs and implementation discussion, but they 
 - "promotion bundle" or "artifact bundle" for the monthly collection of governed outputs reviewed before Promotion
 - "trade lifecycle" or "OCO flow" for the sequence from setup through execution management
 - "model traffic" or "signals" for the stream of live predictions after Warmup
+- "contract" should be qualified as **Runtime Candidate Contract**, **Model Feature Contract**, or **Python API Contract**
+- "state" should be qualified as **Runtime State**, **Trade Tracking State**, **Barrier Scan**, or **Reservation**
+- "action" should be qualified as **Barrier Action**, **Order Lifecycle Event**, or operator action
 
 ## Example dialogue
 
-> **Dev:** "If AUDUSD is quarantined for this deployment period, does that mean Monthly Recert failed?"
+> **Dev:** "If AUDUSD is quarantined for this Deployment Period, does that mean Monthly Recert failed?"
 >
 > **Domain expert:** "No. **Monthly Recert** can still be a **PASS** while AUDUSD is **NO_GO** inside the **Promoted Lock Set**."
 >
-> **Dev:** "So a restart after a crash should still bring live up?"
+> **Dev:** "When the Live Runtime receives a selected Candidate State, can it submit an order immediately?"
 >
-> **Domain expert:** "Only if **Restart Eligibility** passes. If state reconciles but new entries are unsafe, live comes up as `RESTART_ELIGIBLE_DRAIN_ONLY`."
+> **Domain expert:** "No. The **Candidate Catalog** first resolves a **Runtime Candidate Contract**, then the **Entry Gate** applies the **Account Risk Decision** and **Trade Guard Decision** before a **Barrier Scan** can be registered."
 >
-> **Dev:** "What is the common name for the offline side of this system?"
+> **Dev:** "And the order happens when the Barrier Scan touches?"
 >
-> **Domain expert:** "Use **Governance Runtime**. It is the authoritative offline process that produces the evidence and artifacts the **Live Runtime** is allowed to use."
+> **Domain expert:** "Yes. **Barrier Evaluation** turns a touch into a **Barrier Action** and records a **Barrier State Mutation**. The **Execution Adapter** then starts the Java **Order Lifecycle**."
 >
-> **Dev:** "If live doesn’t line up perfectly with governance, is that automatically a problem?"
+> **Dev:** "In Historical Mode, if the prediction parquet is missing, should I treat that as no selected predictions?"
 >
-> **Domain expert:** "No. If the difference stays inside the approved **Tolerance Band**, it is **Runtime Variance**. It becomes **Material Drift** or a **Parity Breach** only when it falls outside the governed contract."
+> **Domain expert:** "No. That is a **Missing Historical Prediction Artifact** load status, not an empty prediction universe."
 >
 > **Dev:** "Can I compare **Independent Label P&L** directly with **Runtime Realized P&L**?"
 >
 > **Domain expert:** "No. **Independent Label P&L** scores each selected signal independently. Runtime P&L parity needs **Stateful Lifecycle Expected P&L** because the runtime applies scan, touch, open, hold, and close constraints."
 >
-> **Dev:** "Where does training stop and certification begin?"
+> **Dev:** "So if live doesn’t line up perfectly with governance, is that automatically a problem?"
 >
-> **Domain expert:** "**Opportunity Mining** and **Monthly WFO** are research and fitting. **Reduced-Core Rolling** and **Stop-Limit Realism** are selection hardening. **Stage 12-14** are certification surfaces, not training."
->
-> **Dev:** "And promotion should only happen when the provenance matches the exact certified commit?"
->
-> **Domain expert:** "Exactly. **Promotion** depends on exact **Provenance** in the **Authoritative Runtime**, not just being on `main`."
+> **Domain expert:** "No. If the difference stays inside the approved **Tolerance Band**, it is **Runtime Variance**. It becomes **Material Drift** or a **Parity Breach** only when it falls outside the governed contract."
 
 ## Flagged ambiguities
 
@@ -195,3 +259,9 @@ These phrases appear in supporting docs and implementation discussion, but they 
 - "bundle", "evidence", and "lock" have been blurred together. Prefer **Certification Evidence** for the reports proving a run, and **Governance Lock** or **Promoted Lock Set** for deployment manifests.
 - "flexibility" is too vague for live-vs-governance differences. Use **Runtime Variance** for acceptable in-contract differences, **Material Drift** for concerning divergence, and **Parity Breach** for out-of-contract behavior.
 - "locked pips" and "locked selected" obscure the semantic layer being measured. Use **Independent Label P&L** for per-row label outcomes and **Governance Selected Signal Count** for selected signal counts.
+- "contract" is now overloaded after the refactor. Use **Runtime Candidate Contract** for candidate/model/cap resolution, **Model Feature Contract** for Feature Set schema enforcement, and **Python API Contract** for Java-to-Python endpoint semantics.
+- "registry" is ambiguous between live and historical candidate sources. Use **Candidate Catalog** for runtime resolution across modes.
+- "action" is ambiguous between broker commands, barrier outputs, and operator work. Use **Barrier Action** for runtime lifecycle outputs and **Order Lifecycle Event** for broker/order callbacks.
+- "state" is too broad for runtime discussions. Use **Runtime State** for the stored runtime surface, **Trade Tracking State** for persisted broker lifecycle records, **Barrier Scan** for OCO scan rows, and **Reservation** for account-risk allocations.
+- "empty predictions" must not be used for missing files in Historical Mode. Use **Missing Historical Prediction Artifact** when the locked artifact cannot be loaded.
+- "risk gate" has blurred account-level and trade-level decisions. Use **Account Risk Decision** for account limits and **Trade Guard Decision** for per-candidate checks.
