@@ -396,7 +396,7 @@ class AppConfig(BaseModel):
         default_factory=lambda: str(os.getenv("BEHEMOTH_FORCE_MODEL_MONTH", "")).strip()
     )
     record_raw_ticks: bool = Field(
-        default_factory=lambda: str(os.getenv("BEHEMOTH_RECORD_RAW_TICKS", "false")).strip().lower()
+        default_factory=lambda: str(os.getenv("BEHEMOTH_RECORD_RAW_TICKS", "true")).strip().lower()
         in {"1", "true", "yes", "y"}
     )
     debug_run_id: str = Field(
