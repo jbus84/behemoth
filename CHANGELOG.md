@@ -1,3 +1,9 @@
+## v0.19.2 (2026-05-08)
+
+### Fix
+
+- surface RESTART_BLOCKED verdict in live_symbol_readiness.json (#139)
+
 ## v0.19.1 (2026-05-08)
 
 ### Fix
