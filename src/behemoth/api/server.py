@@ -844,6 +844,9 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         logger.error("Failed to load account risk rules: %s", exc)
 
     # Initialize PredictionOrchestrator
+    # The orchestrator is HTTP-agnostic; we inject closures over server-module
+    # helpers to perform the inference (step 5) and scan registration (step 7).
+    # Without these, /predict would silently return empty predictions.
     _orchestrator = PredictionOrchestrator(
         state=_state,
         barrier_manager=_barrier_manager,
@@ -854,6 +857,8 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         config=_config,
         is_historical_mode=_is_historical_mode(),
         get_latest_month=_latest_loaded_month_for_symbol,
+        build_predictions_fn=_orchestrator_build_predictions_fn,
+        register_scans_fn=_orchestrator_register_scans_fn,
     )
     logger.info("PredictionOrchestrator initialized")
 
@@ -2286,106 +2291,36 @@ async def predict(req: PredictRequest) -> PredictResponse:
     return _orchestrator.execute(req, run_id)
 
 
-async def _UNUSED_predict_original_implementation_replaced(req: PredictRequest) -> PredictResponse:
-    """Original predict implementation - replaced by orchestrator.
+def _orchestrator_build_predictions_fn(
+    *,
+    sym: str,
+    candidates: list[Any],
+    base_features_by_ticks: dict[int, ModelFeatures],
+    regime_quantiles_by_ticks: dict[int, dict[str, float]],
+    close_ts: datetime,
+    account_risk_eval: AccountRiskDecision,
+    account_risk_enabled_effective: bool,
+    account_risk_enabled_override: bool,
+    run_id: str,
+    req: PredictRequest,
+) -> list[OcoPrediction]:
+    """Inject step-5 logic (inference + threshold + allocator) into the orchestrator.
 
-    This function is kept for reference only. The predict endpoint now uses
-    the explicit 7-step PredictionOrchestrator instead of this monolithic
-    implementation.
+    The orchestrator is HTTP/contract-agnostic, so this closure resolves the
+    runtime contract, model, threshold config, and historical-prediction
+    overrides from server-module state, then delegates to ``_build_predictions``.
+    Results are sorted by ``pred_prob`` descending (highest first), matching
+    the original predict pipeline.
     """
-    sym = req.symbol.upper()
-    run_id = _effective_run_id(req.run_id)
-    account_risk_enabled_effective = req.effective_risk_enabled_override()
-    requested_volume_units = _resolve_requested_volume_units(req)
-
     if _state is None:
         raise HTTPException(status_code=503, detail="State manager not initialized")
-
-    close_ts = _state.get_latest_close_ts(sym) or datetime.now(tz=timezone.utc)
-    if close_ts.tzinfo is None:
-        close_ts = close_ts.replace(tzinfo=timezone.utc)
-    else:
-        close_ts = close_ts.astimezone(timezone.utc)
-
     contract = _resolve_runtime_contract(sym, close_ts)
-    candidates = contract.candidates
-    candidate_count_before_gate = len(candidates)
-    if not candidates:
-        raise HTTPException(status_code=422, detail=f"No candidates registered for {sym}")
-    completed_ticks = _normalize_completed_bar_ticks(req.completed_bar_ticks)
-    if completed_ticks:
-        candidates = [c for c in candidates if int(getattr(c, "bar_ticks", 0)) in completed_ticks]
-        if not candidates:
-            _trace_predict_response(
-                req=req,
-                sym=sym,
-                run_id=run_id,
-                results=[],
-                reason="completed_bar_ticks_filtered_all_candidates",
-                close_ts=close_ts,
-                completed_ticks=completed_ticks,
-                candidate_count_before_gate=candidate_count_before_gate,
-                candidate_count_after_completed_ticks=0,
-                candidate_count_after_universe_gate=0,
-            )
-            return PredictResponse(predictions=[], actions=[])
-    candidate_count_after_completed_ticks = len(candidates)
-    candidates = _apply_historical_prediction_universe_gate(
-        contract=contract,
-        close_ts=close_ts,
-        candidates=candidates,
-        bar_ordinals=req.bar_ordinals,
-    )
-    if not candidates:
-        _trace_predict_response(
-            req=req,
-            sym=sym,
-            run_id=run_id,
-            results=[],
-            reason="historical_prediction_universe_gate_filtered_all_candidates",
-            close_ts=close_ts,
-            completed_ticks=completed_ticks,
-            candidate_count_before_gate=candidate_count_before_gate,
-            candidate_count_after_completed_ticks=candidate_count_after_completed_ticks,
-            candidate_count_after_universe_gate=0,
-        )
-        return PredictResponse(predictions=[], actions=[])
-
-    _check_warmup(sym, candidates)
-
     model, thr_cfg = _ensure_model_and_threshold(contract)
+    requested_volume_units = _resolve_requested_volume_units(req)
     historical_prediction_universe_gated = bool(
         _is_historical_mode() and str(contract.model_binding.get("predictions_path", "")).strip()
     )
-
-    # Compute base rolling features per bar_ticks group
-    base_features_by_ticks: dict[int, ModelFeatures] = {}
-    regime_quantiles_by_ticks: dict[int, dict[str, float]] = {}
-
-    for cand in candidates:
-        bt = int(cand.bar_ticks)
-        if bt not in base_features_by_ticks:
-            feats = _state.compute_features(
-                symbol=sym,
-                bar_ticks=bt,
-                horizon=cand.horizon,
-                barrier_pips=cand.barrier_pips,
-            )
-            if feats is None:
-                raise HTTPException(status_code=422, detail=f"Feature computation failed for {sym}")
-            base_features_by_ticks[bt] = feats
-            regime_quantiles_by_ticks[bt] = _state.compute_regime_quantiles(sym, bt)
-
-    account_risk_eval = _resolve_account_risk_eval(
-        sym,
-        close_ts,
-        account_risk_enabled_effective=account_risk_enabled_effective,
-    )
-    _state.expire_stale_account_risk_pending_reservations(
-        max_age_seconds=max(60, int(_config.account_risk_pending_reservation_ttl_sec)),
-    )
-
-    results, candidate_trace_rows = _build_predictions(
+    results, _candidate_trace_rows = _build_predictions(
         sym=sym,
         candidates=candidates,
         model=model,
@@ -2395,7 +2330,7 @@ async def _UNUSED_predict_original_implementation_replaced(req: PredictRequest) 
         thr_cfg=thr_cfg,
         account_risk_eval=account_risk_eval,
         account_risk_enabled_effective=account_risk_enabled_effective,
-        account_risk_enabled_override=req.effective_risk_enabled_override(),
+        account_risk_enabled_override=account_risk_enabled_override,
         requested_volume_units=requested_volume_units,
         model_month=contract.model_month,
         cap_pips=contract.cap_pips,
@@ -2407,75 +2342,53 @@ async def _UNUSED_predict_original_implementation_replaced(req: PredictRequest) 
             candidates=candidates,
         ),
     )
-
-    # Sort by pred_prob descending
     results.sort(key=lambda p: p.pred_prob, reverse=True)
-    # ── Barrier Manager: evaluate existing scans and register new ones ──
-    barrier_actions: list[BarrierAction] = []
-    if _barrier_manager is not None:
-        completed_ticks_set = set(completed_ticks) if completed_ticks else set()
-        for bt in (completed_ticks_set or {int(c.bar_ticks) for c in candidates}):
-            bar_context = _state.get_latest_bar_context(sym, bt)
-            if bar_context is None:
-                continue
-            raw_actions = _barrier_manager.evaluate_bar(bar_context)
-            barrier_actions.extend(prepare_predict_actions(
-                raw_actions,
-                account_risk_enabled=bool(_config.account_risk_enabled),
-                release_reservation=lambda reservation_id, reason: _state.release_account_risk_reservation(
-                    reservation_id=reservation_id,
-                    reason=reason,
-                ),
-            ))
+    return results
 
-        # Register new scans for selected predictions (lifecycle blocking in Python now)
-        pip = _pip_size_for_symbol(sym)
-        for pred in results:
-            if pred.selected_exec != 1:
-                continue
-            if _barrier_manager.has_active_scan(sym, pred.candidate_uid):
-                continue
-            latest_bar = _state.get_latest_bar(sym, pred.bar_ticks)
-            if latest_bar is None:
-                continue
-            latest_bar = _require_explicit_latest_bar_schema(
-                latest_bar,
-                symbol=sym,
-                bar_ticks=pred.bar_ticks,
-            )
-            signal_close_ask = latest_bar["close_ask"]
-            signal_close_bid = latest_bar["close_bid"]
-            _barrier_manager.register_scan(
-                symbol=sym,
-                candidate_uid=pred.candidate_uid,
-                signal_bar_idx=latest_bar["row_id"],
-                ref_price=signal_close_bid,
-                signal_close_ask=signal_close_ask,
-                signal_close_bid=signal_close_bid,
-                barrier_pips=pred.barrier_pips,
-                horizon=pred.horizon,
-                pip_size=pip,
-                pred_prob=pred.pred_prob,
-                threshold=pred.threshold_exec,
-                model_month=pred.model_month,
-                reservation_id=pred.risk_reservation_id,
-                run_id=run_id,
-            )
 
-    _trace_predict_response(
-        req=req,
-        sym=sym,
-        run_id=run_id,
-        results=results,
-        reason="ok",
-        close_ts=close_ts,
-        completed_ticks=completed_ticks,
-        candidate_count_before_gate=candidate_count_before_gate,
-        candidate_count_after_completed_ticks=candidate_count_after_completed_ticks,
-        candidate_count_after_universe_gate=len(candidates),
-        candidate_trace_rows=candidate_trace_rows,
-    )
-    return PredictResponse(predictions=results, actions=barrier_actions)
+def _orchestrator_register_scans_fn(
+    *,
+    sym: str,
+    results: list[OcoPrediction],
+    run_id: str,
+) -> None:
+    """Inject step-7 logic (register new barrier scans) into the orchestrator.
+
+    For each ``selected_exec=1`` prediction without an existing active scan,
+    register a fresh barrier scan anchored to the latest bar's bid/ask close.
+    """
+    if _barrier_manager is None or _state is None:
+        return
+    pip = _pip_size_for_symbol(sym)
+    for pred in results:
+        if pred.selected_exec != 1:
+            continue
+        if _barrier_manager.has_active_scan(sym, pred.candidate_uid):
+            continue
+        latest_bar = _state.get_latest_bar(sym, pred.bar_ticks)
+        if latest_bar is None:
+            continue
+        latest_bar = _require_explicit_latest_bar_schema(
+            latest_bar,
+            symbol=sym,
+            bar_ticks=pred.bar_ticks,
+        )
+        _barrier_manager.register_scan(
+            symbol=sym,
+            candidate_uid=pred.candidate_uid,
+            signal_bar_idx=latest_bar["row_id"],
+            ref_price=latest_bar["close_bid"],
+            signal_close_ask=latest_bar["close_ask"],
+            signal_close_bid=latest_bar["close_bid"],
+            barrier_pips=pred.barrier_pips,
+            horizon=pred.horizon,
+            pip_size=pip,
+            pred_prob=pred.pred_prob,
+            threshold=pred.threshold_exec,
+            model_month=pred.model_month,
+            reservation_id=pred.risk_reservation_id,
+            run_id=run_id,
+        )
 
 
 def _check_warmup(sym: str, candidates: list[Any]) -> None:

@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Callable
 
 from fastapi import HTTPException
 
@@ -123,8 +123,18 @@ class PredictionOrchestrator:
         config: Any,
         is_historical_mode: bool = False,
         get_latest_month: callable | None = None,
+        build_predictions_fn: Callable[..., list[Any]] | None = None,
+        register_scans_fn: Callable[..., None] | None = None,
     ) -> None:
-        """Initialize orchestrator with all dependencies."""
+        """Initialize orchestrator with all dependencies.
+
+        ``build_predictions_fn`` and ``register_scans_fn`` are injected callables
+        that perform the inference + threshold gating (step 5) and barrier-scan
+        registration (step 7). When ``None``, the corresponding step degrades to
+        a logging-only stub — useful for tests that exercise other steps in
+        isolation, **not** appropriate for production. The live wiring in
+        ``server.py`` always provides both callables.
+        """
         self._state = state
         self._barrier_manager = barrier_manager
         self._model_registry = model_registry
@@ -134,6 +144,8 @@ class PredictionOrchestrator:
         self._pipeline_config = PredictPipelineConfig.from_config(config)
         self._is_historical_mode = is_historical_mode
         self._get_latest_month = get_latest_month or (lambda _: None)
+        self._build_predictions_fn = build_predictions_fn
+        self._register_scans_fn = register_scans_fn
 
         # Create catalog for resolving candidates
         self._catalog = CandidateCatalog(
@@ -343,10 +355,32 @@ class PredictionOrchestrator:
         run_id: str,
         req: Any,
     ) -> list[Any]:
-        """Step 5: Run inference and apply thresholds."""
+        """Step 5: Run inference and apply thresholds.
+
+        Delegates to the injected ``build_predictions_fn`` so the orchestrator
+        stays HTTP-agnostic but still produces real predictions in production.
+        Without an injection, returns an empty list (test-only fallback).
+        """
         logger.debug("Step 5: building predictions for %s (account_risk_enabled=%s)", sym, account_risk_enabled_effective)
         logger.debug("Step 5: running inference on %d candidates", len(candidates))
-        results = []
+        if self._build_predictions_fn is None:
+            logger.warning(
+                "Step 5: no build_predictions_fn injected — returning empty predictions. "
+                "This is a test-only fallback; production wiring in server.py must provide one."
+            )
+            return []
+        results = self._build_predictions_fn(
+            sym=sym,
+            candidates=candidates,
+            base_features_by_ticks=base_features_by_ticks,
+            regime_quantiles_by_ticks=regime_quantiles_by_ticks,
+            close_ts=close_ts,
+            account_risk_eval=account_risk_eval,
+            account_risk_enabled_effective=account_risk_enabled_effective,
+            account_risk_enabled_override=account_risk_enabled_override,
+            run_id=run_id,
+            req=req,
+        )
         logger.info("Step 5: built %d predictions for %s", len(results), sym)
         return results
 
@@ -396,10 +430,21 @@ class PredictionOrchestrator:
         return result
 
     def _step_register_scans(self, sym: str, results: list[Any], run_id: str) -> None:
-        """Step 7: Register new barrier scans for selected predictions."""
+        """Step 7: Register new barrier scans for selected predictions.
+
+        Delegates to the injected ``register_scans_fn`` so the orchestrator
+        doesn't depend on broker pip-size lookups, latest-bar schema details,
+        or the BarrierManager.register_scan signature directly.
+        """
         logger.debug("Step 7: registering scans for %s (run_id=%s)", sym, run_id)
         if self._barrier_manager is None:
             logger.debug("Step 7: barrier manager is None, skipping scan registration")
             return
-        logger.debug("Step 7: registering %d barrier scans for %s", len(results), sym)
+        if self._register_scans_fn is None:
+            logger.warning(
+                "Step 7: no register_scans_fn injected — skipping scan registration. "
+                "This is a test-only fallback; production wiring in server.py must provide one."
+            )
+            return
+        self._register_scans_fn(sym=sym, results=results, run_id=run_id)
         logger.info("Step 7: registered scans for %s", sym)

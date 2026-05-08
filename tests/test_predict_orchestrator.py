@@ -154,3 +154,98 @@ class TestPredictionOrchestrator:
             account_risk_enabled_effective=False,
         )
         assert isinstance(decision, AccountRiskDecision)
+
+    def test_step_build_predictions_calls_injected_fn(self):
+        """When build_predictions_fn is injected, step 5 returns its output.
+
+        This is the regression that mattered: before this fix, step 5 returned
+        an empty list regardless of the injected callable, so /predict silently
+        returned no predictions in production for ~5 days.
+        """
+        state = MockBarStateReader()
+        sentinel_predictions = [mock.MagicMock(name="pred1"), mock.MagicMock(name="pred2")]
+        captured_kwargs = {}
+
+        def fake_build(**kwargs):
+            captured_kwargs.update(kwargs)
+            return sentinel_predictions
+
+        orch = PredictionOrchestrator(
+            state=state,  # type: ignore
+            barrier_manager=None,
+            model_registry=mock.MagicMock(),
+            candidate_registry=mock.MagicMock(),
+            historical_registry=mock.MagicMock(),
+            account_risk_profile=None,
+            config=mock.MagicMock(),
+            build_predictions_fn=fake_build,
+        )
+
+        results = orch._step_build_predictions(
+            sym="EURUSD",
+            candidates=[mock.MagicMock(bar_ticks=1000)],
+            base_features_by_ticks={1000: mock.MagicMock()},
+            regime_quantiles_by_ticks={1000: {}},
+            close_ts=datetime(2026, 5, 8, 12, 0, tzinfo=timezone.utc),
+            account_risk_eval=mock.MagicMock(spec=AccountRiskDecision),
+            account_risk_enabled_effective=False,
+            account_risk_enabled_override=False,
+            run_id="run-123",
+            req=mock.MagicMock(),
+        )
+        assert results is sentinel_predictions
+        assert captured_kwargs["sym"] == "EURUSD"
+        assert captured_kwargs["run_id"] == "run-123"
+
+    def test_step_build_predictions_falls_back_to_empty_without_injection(self):
+        """Without an injection, step 5 logs a warning and returns []. This
+        keeps test fixtures simple while making the production gap explicit."""
+        state = MockBarStateReader()
+        orch = PredictionOrchestrator(
+            state=state,  # type: ignore
+            barrier_manager=None,
+            model_registry=mock.MagicMock(),
+            candidate_registry=mock.MagicMock(),
+            historical_registry=mock.MagicMock(),
+            account_risk_profile=None,
+            config=mock.MagicMock(),
+            # build_predictions_fn deliberately omitted
+        )
+        results = orch._step_build_predictions(
+            sym="EURUSD",
+            candidates=[mock.MagicMock(bar_ticks=1000)],
+            base_features_by_ticks={1000: mock.MagicMock()},
+            regime_quantiles_by_ticks={1000: {}},
+            close_ts=datetime(2026, 5, 8, 12, 0, tzinfo=timezone.utc),
+            account_risk_eval=mock.MagicMock(spec=AccountRiskDecision),
+            account_risk_enabled_effective=False,
+            account_risk_enabled_override=False,
+            run_id="run-123",
+            req=mock.MagicMock(),
+        )
+        assert results == []
+
+    def test_step_register_scans_calls_injected_fn(self):
+        """Step 7 delegates to register_scans_fn when wired."""
+        state = MockBarStateReader()
+        captured = {}
+
+        def fake_register(**kwargs):
+            captured.update(kwargs)
+
+        orch = PredictionOrchestrator(
+            state=state,  # type: ignore
+            barrier_manager=mock.MagicMock(),
+            model_registry=mock.MagicMock(),
+            candidate_registry=mock.MagicMock(),
+            historical_registry=mock.MagicMock(),
+            account_risk_profile=None,
+            config=mock.MagicMock(),
+            register_scans_fn=fake_register,
+        )
+
+        results_in = [mock.MagicMock(name="p")]
+        orch._step_register_scans("EURUSD", results_in, "run-456")
+        assert captured["sym"] == "EURUSD"
+        assert captured["results"] is results_in
+        assert captured["run_id"] == "run-456"
