@@ -34,7 +34,9 @@ if str(_SCRIPT_REPO_ROOT) not in sys.path:
 from src.behemoth.live_restart.reconciliation import (
     BrokerSnapshot,
     LocalRuntimeStateSummary,
+    ReconciliationCycle,
     ReconciliationReport,
+    ReconciliationSnapshot,
     RestartEligibilityResult,
     RuntimeContextComparison,
     RuntimeFileSnapshot,
@@ -733,39 +735,48 @@ def main() -> None:
     paths = _runtime_paths(cfg)
     paths["runtime_dir"].mkdir(parents=True, exist_ok=True)
 
-    current_metadata, _persisted_metadata, comparison, restart_eligibility = _reconcile_startup(
-        cfg,
-        paths,
+    cycle = ReconciliationCycle(
+        runtime_dir=paths["runtime_dir"],
+        state_db_path=paths["state_db_path"],
+        active_state_path=paths["active_state_path"],
+        session_metadata_path=paths["session_metadata_path"],
+        reconciliation_report_path=paths["reconciliation_report_path"],
+        broker_snapshot_path=paths["broker_snapshot_path"],
+        startup_mode=cfg.startup_mode,
+        build_current_metadata=lambda: _build_current_session_metadata(cfg),
+        load_promoted_symbols=lambda: load_promoted_symbols(_governance_dir_path(_repo_root())),
+        capture_broker_snapshot=lambda: _capture_broker_snapshot(cfg, paths),
     )
-    if cfg.startup_mode == "resume" and not restart_eligibility.allow_new_entries:
-        if restart_eligibility.eligibility.value == "RESTART_BLOCKED":
-            _print_incompatible_restart_summary(cfg, paths, comparison)
+    cycle.snapshot()
+
+    # Resume requires positive eligibility. RESTART_BLOCKED → finalize the
+    # report so operators see why we exited, then bail. DRAIN_ONLY → continue
+    # with new-entries disabled.
+    if cfg.startup_mode == "resume" and not cycle.current.restart_eligibility.allow_new_entries:
+        if cycle.current.restart_eligibility.eligibility.value == "RESTART_BLOCKED":
+            cycle.finalize()
+            _print_incompatible_restart_summary(cfg, paths, cycle.current.comparison)
             raise SystemExit(1)
         print(
             "[jforex-live] restart eligible in drain-only mode; new entries disabled",
             flush=True,
         )
 
-    if comparison.verdict is RestartEligibility.RESTART_ELIGIBLE_DRAIN_ONLY:
+    # Reset mode: cleanup mutates local state, cycle must re-snapshot so the
+    # finalized report reflects post-cleanup eligibility, not the pre-reset
+    # (often RESTART_BLOCKED) state.
+    if cfg.startup_mode == "reset":
+        _cleanup_runtime_state(paths)
+        cycle.invalidate_after_mutation()
+
+    if cycle.current.comparison.verdict is RestartEligibility.RESTART_ELIGIBLE_DRAIN_ONLY:
         print(
             "[jforex-live] startup reconciliation is reconcilable; continuing with startup",
             flush=True,
         )
-    if cfg.startup_mode == "reset":
-        _cleanup_runtime_state(paths)
-        # The pre-reset reconciliation report reflects the now-stale state
-        # (likely RESTART_BLOCKED if live_state.db existed or persisted didn't
-        # match). After cleanup the system is fresh, so wipe the persisted
-        # session metadata and re-reconcile: this overwrites the report with
-        # a verdict that matches what the freshly-launched stack will see.
-        paths["session_metadata_path"].unlink(missing_ok=True)
-        paths["reconciliation_report_path"].unlink(missing_ok=True)
-        current_metadata, _persisted_metadata, comparison, restart_eligibility = _reconcile_startup(
-            cfg,
-            paths,
-        )
 
-    write_runtime_session_metadata(paths["session_metadata_path"], current_metadata)
+    cycle.finalize()
+    current_metadata = cycle.current.current_metadata
 
     # Run offline seed BEFORE starting the API
     print("[jforex-live] running offline threshold seed (timeout=300s)", flush=True)
@@ -808,7 +819,7 @@ def main() -> None:
         print("[jforex-live] starting JForex runner", flush=True)
         effective_allow_new_entries = (
             True if cfg.startup_mode == "reset"
-            else restart_eligibility.allow_new_entries
+            else cycle.current.restart_eligibility.allow_new_entries
         )
         java_proc = _start_live_runner(
             cfg,

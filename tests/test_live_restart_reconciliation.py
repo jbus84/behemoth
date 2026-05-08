@@ -637,3 +637,133 @@ def test_derive_restart_eligibility_maps_incompatible_to_blocked() -> None:
 
     assert result.eligibility is RestartEligibility.RESTART_BLOCKED
     assert result.allow_new_entries is False
+
+
+# ---------------------------------------------------------------------------
+# ReconciliationCycle
+# ---------------------------------------------------------------------------
+
+
+def _make_metadata(**overrides):
+    from src.behemoth.live_restart.reconciliation import RuntimeSessionMetadata
+
+    base = dict(
+        git_commit="commit-abc",
+        git_branch="main",
+        git_dirty=False,
+        repo_root="/repo",
+        model_month="2026-04",
+        governance_dir="configs/research/governance/oco",
+        lock_fingerprint="fp-1",
+        symbols=["EURUSD"],
+        started_at_utc="2026-05-08T10:00:00Z",
+        startup_mode="reset",
+    )
+    base.update(overrides)
+    return RuntimeSessionMetadata(**base)
+
+
+def test_cycle_finalize_writes_report_and_persisted_metadata(tmp_path) -> None:
+    from src.behemoth.live_restart.reconciliation import (
+        ReconciliationCycle,
+        load_runtime_session_metadata,
+    )
+
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    cycle = ReconciliationCycle(
+        runtime_dir=runtime,
+        state_db_path=runtime / "state.db",
+        active_state_path=runtime / "active.json",
+        session_metadata_path=runtime / "session.json",
+        reconciliation_report_path=runtime / "report.json",
+        broker_snapshot_path=runtime / "broker.json",
+        startup_mode="reset",
+        build_current_metadata=_make_metadata,
+        load_promoted_symbols=lambda: ["EURUSD"],
+    )
+    cycle.snapshot()
+    cycle.finalize()
+
+    assert (runtime / "report.json").exists()
+    assert (runtime / "session.json").exists()
+    persisted = load_runtime_session_metadata(runtime / "session.json")
+    assert persisted is not None
+    assert persisted.git_commit == "commit-abc"
+
+
+def test_cycle_invalidate_after_mutation_re_snapshots_with_clean_state(tmp_path) -> None:
+    """Reset cleanup wipes local files; cycle must reflect post-cleanup state
+    in the finalized report — not the pre-cleanup snapshot."""
+    import json
+
+    from src.behemoth.live_restart.reconciliation import ReconciliationCycle
+    from src.behemoth.ops.verdicts import RestartEligibility
+
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    state_db = runtime / "state.db"
+    active = runtime / "active.json"
+    session = runtime / "session.json"
+    # Pre-existing stale state — would normally trigger RESTART_BLOCKED
+    state_db.write_bytes(b"")
+    active.write_text("{}")
+    # Stale persisted with mismatched git
+    stale = _make_metadata(git_commit="STALE", startup_mode="resume")
+    from src.behemoth.live_restart.reconciliation import write_runtime_session_metadata
+    write_runtime_session_metadata(session, stale)
+
+    cycle = ReconciliationCycle(
+        runtime_dir=runtime,
+        state_db_path=state_db,
+        active_state_path=active,
+        session_metadata_path=session,
+        reconciliation_report_path=runtime / "report.json",
+        broker_snapshot_path=runtime / "broker.json",
+        startup_mode="reset",
+        build_current_metadata=lambda: _make_metadata(git_commit="CURRENT"),
+        load_promoted_symbols=lambda: ["EURUSD"],
+    )
+    cycle.snapshot()
+    # Initial snapshot should be RESTART_BLOCKED (git_commit changed)
+    assert cycle.current.comparison.verdict is RestartEligibility.RESTART_BLOCKED
+
+    # Simulate reset cleanup: wipe local state files
+    state_db.unlink()
+    active.unlink()
+    cycle.invalidate_after_mutation()
+
+    # Post-cleanup snapshot: persisted=None (cycle wiped it), local state empty
+    assert cycle.current.persisted_metadata is None
+    assert cycle.current.comparison.verdict is RestartEligibility.RESTART_ELIGIBLE
+    assert cycle.current.comparison.reasons == []
+
+    cycle.finalize()
+    # Finalized report reflects the POST-mutation snapshot, not the pre-mutation one
+    report = json.loads((runtime / "report.json").read_text())
+    assert report["verdict"] == "RESTART_ELIGIBLE"
+    assert report["reasons"] == []
+
+
+def test_cycle_finalize_is_terminal(tmp_path) -> None:
+    from src.behemoth.live_restart.reconciliation import ReconciliationCycle
+    import pytest
+
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    cycle = ReconciliationCycle(
+        runtime_dir=runtime,
+        state_db_path=runtime / "state.db",
+        active_state_path=runtime / "active.json",
+        session_metadata_path=runtime / "session.json",
+        reconciliation_report_path=runtime / "report.json",
+        broker_snapshot_path=runtime / "broker.json",
+        startup_mode="reset",
+        build_current_metadata=_make_metadata,
+        load_promoted_symbols=lambda: ["EURUSD"],
+    )
+    cycle.finalize()
+    with pytest.raises(RuntimeError, match="finalize called twice"):
+        cycle.finalize()
+    with pytest.raises(RuntimeError, match="cannot invalidate a finalized"):
+        cycle.invalidate_after_mutation()
