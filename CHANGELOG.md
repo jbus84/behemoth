@@ -1,3 +1,13 @@
+## v0.17.0 (2026-05-08)
+
+### Feat
+
+- wire ReservationLifecycle into StateManager for audit trail (#128)
+
+### Refactor
+
+- integrate architectural deepening opportunities 2,3,5,6,8 (#127)
+
 ## v0.16.2 (2026-05-08)
 
 ### Refactor
