@@ -37,6 +37,7 @@ from src.behemoth.core.schemas import (
     ModelFeatures,
 )
 from src.behemoth.risk.account import ReservationState, ReservationStateMachine
+from src.behemoth.risk.reservation_lifecycle import ReservationLifecycle
 
 _CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS tick_bars (
@@ -277,6 +278,8 @@ class StateManager:
         for r in res:
             if r[2] is not None:
                 self._row_counters[f"{r[0].upper()}_{r[1]}"] = int(r[2]) + 1
+
+        self._lifecycle_cache: dict[str, ReservationLifecycle] = {}
 
     def _ensure_runtime_schema(self) -> None:
         """Ensure persisted runtime tables match the canonical explicit-bid schema."""
@@ -1003,6 +1006,11 @@ class StateManager:
                 source,
             ],
         )
+        self._lifecycle_cache[rid] = ReservationLifecycle(
+            reservation_id=rid,
+            initial_state=initial_state,
+            loss_ccy=reserved_loss_ccy,
+        )
         return rid
 
     def transition_account_risk_reservation(
@@ -1047,7 +1055,32 @@ class StateManager:
                 """,
                 [target.value, broker_pos_id, now_utc, reservation_id],
             )
+        lifecycle = self._lifecycle_cache.get(reservation_id)
+        if lifecycle is not None:
+            if target == ReservationState.OPEN:
+                lifecycle.open_position(broker_pos_id=broker_pos_id)
+            elif target == ReservationState.CLOSED:
+                lifecycle.close_position()
+            elif target == ReservationState.RELEASED:
+                lifecycle.release(reason=reason or "released")
+            elif target == ReservationState.EXPIRED:
+                lifecycle.expire()
         return target.value
+
+    def get_reservation_audit_trail(
+        self, reservation_id: str
+    ) -> list[dict] | None:
+        """Return immutable audit trail for a reservation, or None if not tracked.
+
+        The audit trail includes all state transitions with timestamps and reasons.
+        Returns None if the reservation is not in the lifecycle cache (e.g., loaded
+        from a previous session's database).
+        """
+        lifecycle = self._lifecycle_cache.get(reservation_id)
+        if lifecycle is None:
+            return None
+        audit = lifecycle.to_dict()
+        return audit.get("transitions", [])
 
     def create_risk_reservation(
         self,
