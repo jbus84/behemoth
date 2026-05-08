@@ -68,7 +68,7 @@ from src.behemoth.risk.account import (
     evaluate_trade_risk_guard,
     load_account_risk_profile,
 )
-from src.behemoth.risk.account import evaluate_account_risk_decision
+from src.behemoth.risk.account import AccountRiskDecision, evaluate_account_risk_decision
 from src.behemoth.runtime.barrier_manager import BarrierManager
 from src.behemoth.runtime.order_submission import prepare_predict_actions
 from src.behemoth.runtime.state import StateManager
@@ -1765,7 +1765,7 @@ def _resolve_account_risk_eval(
     now_utc: datetime,
     *,
     account_risk_enabled_effective: bool,
-) -> dict[str, Any]:
+) -> AccountRiskDecision:
     eval_out = evaluate_account_risk_decision(
         profile=_account_risk_profile,
         state_reader=_state,
@@ -1774,12 +1774,10 @@ def _resolve_account_risk_eval(
         enabled=account_risk_enabled_effective,
     )
 
-    daily_headroom = eval_out.get("daily_loss_headroom")
-    max_headroom = eval_out.get("max_loss_headroom")
-    if daily_headroom is not None:
-        METRIC_ACCOUNT_RISK_DAILY_HEADROOM.labels(symbol=sym).set(float(daily_headroom))
-    if max_headroom is not None:
-        METRIC_ACCOUNT_RISK_MAX_HEADROOM.labels(symbol=sym).set(float(max_headroom))
+    if eval_out.daily_loss_headroom is not None:
+        METRIC_ACCOUNT_RISK_DAILY_HEADROOM.labels(symbol=sym).set(float(eval_out.daily_loss_headroom))
+    if eval_out.max_loss_headroom is not None:
+        METRIC_ACCOUNT_RISK_MAX_HEADROOM.labels(symbol=sym).set(float(eval_out.max_loss_headroom))
     return eval_out
 
 
@@ -2131,21 +2129,21 @@ async def get_account_risk_status(symbol: str | None = None) -> AccountRiskStatu
         account_risk_enabled_effective=bool(_config.account_risk_enabled),
     )
     return AccountRiskStatusResponse(
-        enabled=bool(eval_out.get("enabled", False)),
+        enabled=bool(eval_out.enabled),
         symbol=sym,
-        profile_id=eval_out.get("profile_id"),
+        profile_id=eval_out.profile_id,
         as_of_utc=now_utc,
-        trading_day_id=eval_out.get("trading_day_id"),
-        allow_trading=bool(eval_out.get("allow_trading", True)),
-        block_reason=eval_out.get("block_reason"),
-        snapshot_available=bool(eval_out.get("snapshot_available", False)),
-        balance=eval_out.get("balance"),
-        equity=eval_out.get("equity"),
-        day_start_balance=eval_out.get("day_start_balance"),
-        daily_loss_used=eval_out.get("daily_loss_used"),
-        max_loss_used=eval_out.get("max_loss_used"),
-        daily_loss_headroom=eval_out.get("daily_loss_headroom"),
-        max_loss_headroom=eval_out.get("max_loss_headroom"),
+        trading_day_id=eval_out.trading_day_id,
+        allow_trading=bool(eval_out.allow_trading),
+        block_reason=eval_out.block_reason,
+        snapshot_available=bool(eval_out.snapshot_available),
+        balance=eval_out.balance,
+        equity=eval_out.equity,
+        day_start_balance=eval_out.day_start_balance,
+        daily_loss_used=eval_out.daily_loss_used,
+        max_loss_used=eval_out.max_loss_used,
+        daily_loss_headroom=eval_out.daily_loss_headroom,
+        max_loss_headroom=eval_out.max_loss_headroom,
     )
 
 
@@ -2603,22 +2601,22 @@ def _build_predictions(
 
             preselected_exec = 1 if (regime_active and pred_prob >= curr_threshold) else 0
         risk_metrics_snapshot: dict[str, Any] = {
-            "account_risk_enabled": bool(account_risk_eval.get("enabled", False)),
+            "account_risk_enabled": bool(account_risk_eval.enabled),
             "account_risk_enabled_effective": bool(account_risk_enabled_effective),
             "account_risk_enabled_override": bool(account_risk_enabled_override),
             "account_risk_mode_source": "request_override",
-            "account_risk_profile_id": account_risk_eval.get("profile_id"),
+            "account_risk_profile_id": account_risk_eval.profile_id,
             "account_risk_trade_cost_gate_mode": (
                 _account_risk_profile.cost_gate.trade_cost_gate_mode if _account_risk_profile is not None else ""
             ),
-            "account_risk_allow_trading": bool(account_risk_eval.get("allow_trading", True)),
-            "account_risk_account_block_reason": account_risk_eval.get("block_reason"),
-            "snapshot_available": bool(account_risk_eval.get("snapshot_available", False)),
-            "daily_loss_headroom": account_risk_eval.get("daily_loss_headroom"),
-            "max_loss_headroom": account_risk_eval.get("max_loss_headroom"),
-            "daily_loss_used": account_risk_eval.get("daily_loss_used"),
-            "max_loss_used": account_risk_eval.get("max_loss_used"),
-            "trading_day_id": account_risk_eval.get("trading_day_id"),
+            "account_risk_allow_trading": bool(account_risk_eval.allow_trading),
+            "account_risk_account_block_reason": account_risk_eval.block_reason,
+            "snapshot_available": bool(account_risk_eval.snapshot_available),
+            "daily_loss_headroom": account_risk_eval.daily_loss_headroom,
+            "max_loss_headroom": account_risk_eval.max_loss_headroom,
+            "daily_loss_used": account_risk_eval.daily_loss_used,
+            "max_loss_used": account_risk_eval.max_loss_used,
+            "trading_day_id": account_risk_eval.trading_day_id,
             "requested_volume_units": float(requested_volume_units),
             "allocator_pip_value_per_unit_usd": pip_value_per_unit,
             "allocator_fx_conversion_status": fx_status,
@@ -2706,8 +2704,8 @@ def _build_predictions(
             include_pending=include_pending,
             include_open=include_open,
         )
-        daily_headroom = account_risk_eval.get("daily_loss_headroom")
-        max_headroom = account_risk_eval.get("max_loss_headroom")
+        daily_headroom = account_risk_eval.daily_loss_headroom
+        max_headroom = account_risk_eval.max_loss_headroom
         daily_budget = None if daily_headroom is None else float(daily_headroom) * float(_account_risk_profile.allocator.allocator_budget_fraction_daily)
         max_budget = None if max_headroom is None else float(max_headroom) * float(_account_risk_profile.allocator.allocator_budget_fraction_max)
         if daily_budget is None and max_budget is None:

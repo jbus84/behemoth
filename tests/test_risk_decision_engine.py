@@ -57,10 +57,10 @@ def test_account_risk_decision_engine_evaluates_from_state_reader() -> None:
         enabled=True,
     )
 
-    assert out["enabled"] is True
-    assert out["allow_trading"] is False
-    assert out["block_reason"] == "ACCOUNT_RISK_DAILY_LOSS_BUFFER_BREACH"
-    assert out["trading_day_id"] == "2026-03-06"
+    assert out.enabled is True
+    assert out.allow_trading is False
+    assert out.block_reason == "ACCOUNT_RISK_DAILY_LOSS_BUFFER_BREACH"
+    assert out.trading_day_id == "2026-03-06"
 
 
 def test_account_risk_decision_engine_disabled_allows_trading() -> None:
@@ -76,5 +76,5 @@ def test_account_risk_decision_engine_disabled_allows_trading() -> None:
         enabled=False,
     )
 
-    assert out["enabled"] is False
-    assert out["allow_trading"] is True
+    assert out.enabled is False
+    assert out.allow_trading is True
