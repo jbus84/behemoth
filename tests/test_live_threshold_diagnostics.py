@@ -821,3 +821,75 @@ def test_run_diagnostic_writes_inconclusive_artifacts_when_audit_logs_empty(
         "report.md",
     ]:
         assert (tmp_path / f"empty_audit_logs_{suffix}").exists()
+
+
+def test_run_diagnostic_omits_one_sided_feature_distribution_rows(
+    tmp_path: Path,
+) -> None:
+    from src.behemoth.diagnostics.live_threshold import (
+        LiveThresholdConfig,
+        run_live_threshold_diagnostic,
+    )
+
+    con = duckdb.connect(":memory:")
+    try:
+        con.execute(
+            """
+            CREATE TABLE audit_logs (
+                event_ts TIMESTAMP WITH TIME ZONE,
+                close_ts TIMESTAMP WITH TIME ZONE,
+                symbol VARCHAR,
+                candidate_uid VARCHAR,
+                pred_prob DOUBLE,
+                threshold DOUBLE,
+                features_json VARCHAR,
+                model_month VARCHAR,
+                run_id VARCHAR
+            )
+            """
+        )
+        rows = [
+            (
+                "2026-05-01T00:00:00Z",
+                "2026-05-01T00:00:00Z",
+                "EURUSD",
+                "oco|EURUSD|100|h6|s1",
+                0.70,
+                0.60,
+                None,
+                "2026-04",
+                "threshold_seed",
+            ),
+            (
+                "2026-05-08T00:00:00Z",
+                "2026-05-08T00:00:00Z",
+                "EURUSD",
+                "oco|EURUSD|100|h6|s1",
+                0.50,
+                0.60,
+                json.dumps({"range_pips": 8.0}),
+                "2026-04",
+                "jforex_live",
+            ),
+        ]
+        con.executemany("INSERT INTO audit_logs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", rows)
+        config = LiveThresholdConfig(
+            symbol="EURUSD",
+            run_id="one_sided_features",
+            live_run_id="jforex_live",
+            lookback_days=20,
+            execution_quantile=0.9,
+            min_history=1,
+            start_ts=pd.Timestamp("2026-05-01T00:00:00Z"),
+            end_ts=pd.Timestamp("2026-05-09T00:00:00Z"),
+            out_dir=tmp_path,
+        )
+        run_live_threshold_diagnostic(con, config)
+    finally:
+        con.close()
+
+    distribution = pd.read_csv(
+        tmp_path / "one_sided_features_distribution_decomposition.csv"
+    )
+    assert "pred_prob" in set(distribution["metric"])
+    assert "range_pips" not in set(distribution["metric"])

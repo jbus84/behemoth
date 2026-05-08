@@ -239,6 +239,12 @@ def _build_distribution_decomposition(
     summary = summarize_distribution_shift(observations, value_columns=value_columns)
     if summary.empty:
         return _empty_distribution_decomposition()
+    summary = summary[
+        (pd.to_numeric(summary["history_rows"], errors="coerce") > 0)
+        & (pd.to_numeric(summary["live_rows"], errors="coerce") > 0)
+    ]
+    if summary.empty:
+        return _empty_distribution_decomposition()
     return _ensure_columns(summary, DISTRIBUTION_DECOMPOSITION_COLUMNS)[
         DISTRIBUTION_DECOMPOSITION_COLUMNS
     ]
