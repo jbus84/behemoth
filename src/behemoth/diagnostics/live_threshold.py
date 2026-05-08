@@ -206,8 +206,18 @@ def _distribution_observations(
 
     if not live_features.empty and "features_json" in live_features.columns:
         feature_rows = live_features.copy()
+        if "period" in feature_rows.columns:
+            feature_rows["period"] = np.where(
+                feature_rows["period"].astype(str).eq("live"), "live", "history"
+            )
+        elif "source_period" in feature_rows.columns:
+            feature_rows["period"] = np.where(
+                feature_rows["source_period"].astype(str).eq("live"), "live", "history"
+            )
+        else:
+            feature_rows["period"] = "live"
         feature_rows = _ensure_columns(
-            feature_rows, ["close_ts", "symbol", "candidate_uid", "features_json"]
+            feature_rows, ["close_ts", "symbol", "candidate_uid", "period", "features_json"]
         )
         feature_rows["close_ts"] = pd.to_datetime(feature_rows["close_ts"], utc=True)
         observations["close_ts"] = pd.to_datetime(observations["close_ts"], utc=True)
@@ -219,8 +229,8 @@ def _distribution_observations(
                 feature_metrics.append(metric)
         if feature_metrics:
             observations = observations.merge(
-                feature_rows[["close_ts", "candidate_uid", *feature_metrics]],
-                on=["close_ts", "candidate_uid"],
+                feature_rows[["close_ts", "candidate_uid", "period", *feature_metrics]],
+                on=["close_ts", "candidate_uid", "period"],
                 how="left",
             )
             value_columns.extend(feature_metrics)
