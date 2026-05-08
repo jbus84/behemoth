@@ -607,3 +607,52 @@ def test_load_runtime_bars_filters_tick_bars() -> None:
     assert list(out["close_bid"]) == [1.1, 1.2]
     assert list(out["symbol"].unique()) == ["EURUSD"]
     assert list(out["bar_ticks"].unique()) == [100]
+
+
+def test_distribution_decomposition_flags_live_q90_drop() -> None:
+    from src.behemoth.diagnostics.live_threshold import summarize_distribution_shift
+
+    df = pd.DataFrame(
+        {
+            "period": ["history"] * 5 + ["live"] * 5,
+            "symbol": ["EURUSD"] * 10,
+            "candidate_uid": ["s1"] * 10,
+            "pred_prob": [0.70, 0.72, 0.75, 0.80, 0.82, 0.50, 0.55, 0.58, 0.60, 0.62],
+            "range_pips": [9.0, 9.5, 10.0, 10.5, 11.0, 7.5, 7.7, 8.0, 8.2, 8.3],
+        }
+    )
+
+    summary = summarize_distribution_shift(df, value_columns=["pred_prob", "range_pips"])
+
+    pred_row = summary[
+        (summary["symbol"] == "EURUSD") & (summary["metric"] == "pred_prob")
+    ].iloc[0]
+    assert pred_row["history_q90"] > pred_row["live_q90"]
+    assert pred_row["q90_delta_live_minus_history"] < 0
+
+
+def test_estimator_bakeoff_keeps_current_and_weighted_quantiles() -> None:
+    from src.behemoth.diagnostics.live_threshold import run_threshold_estimator_bakeoff
+
+    pool = pd.DataFrame(
+        {
+            "close_ts": pd.date_range("2026-05-01", periods=6, freq="D", tz="UTC"),
+            "candidate_uid": ["s1"] * 6,
+            "pred_prob": [0.90, 0.85, 0.80, 0.70, 0.60, 0.50],
+            "source_period": ["seed", "seed", "warmup", "warmup", "live", "live"],
+        }
+    )
+
+    out = run_threshold_estimator_bakeoff(
+        pool,
+        execution_quantile=0.9,
+        as_of=pd.Timestamp("2026-05-08T00:00:00Z"),
+    )
+
+    assert set(out["estimator"]) == {
+        "current_equal_weight",
+        "short_7d_equal_weight",
+        "recency_weighted_half_life_3d",
+        "seed_decay_25pct",
+    }
+    assert out.loc[out["estimator"] == "seed_decay_25pct", "threshold"].notna().all()

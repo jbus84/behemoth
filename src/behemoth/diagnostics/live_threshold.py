@@ -301,6 +301,139 @@ def _duckdb_quantile(
     return float(row[0])
 
 
+def summarize_distribution_shift(
+    observations: pd.DataFrame,
+    *,
+    value_columns: list[str],
+) -> pd.DataFrame:
+    rows: list[dict[str, object]] = []
+    for (symbol, candidate_uid), group in observations.groupby(
+        ["symbol", "candidate_uid"], dropna=False
+    ):
+        history = group[group["period"] == "history"]
+        live = group[group["period"] == "live"]
+        for metric in value_columns:
+            hist_values = pd.to_numeric(history[metric], errors="coerce").dropna()
+            live_values = pd.to_numeric(live[metric], errors="coerce").dropna()
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "candidate_uid": candidate_uid,
+                    "metric": metric,
+                    "history_rows": int(len(hist_values)),
+                    "live_rows": int(len(live_values)),
+                    "history_q50": float(hist_values.quantile(0.50))
+                    if len(hist_values)
+                    else np.nan,
+                    "history_q90": float(hist_values.quantile(0.90))
+                    if len(hist_values)
+                    else np.nan,
+                    "live_q50": float(live_values.quantile(0.50))
+                    if len(live_values)
+                    else np.nan,
+                    "live_q90": float(live_values.quantile(0.90))
+                    if len(live_values)
+                    else np.nan,
+                    "q90_delta_live_minus_history": (
+                        float(live_values.quantile(0.90) - hist_values.quantile(0.90))
+                        if len(hist_values) and len(live_values)
+                        else np.nan
+                    ),
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def _weighted_quantile(values: np.ndarray, weights: np.ndarray, q: float) -> float:
+    mask = np.isfinite(values) & np.isfinite(weights) & (weights > 0)
+    values = values[mask]
+    weights = weights[mask]
+    if len(values) == 0:
+        return np.nan
+    order = np.argsort(values)
+    sorted_values = values[order]
+    sorted_weights = weights[order]
+    cumulative = np.cumsum(sorted_weights)
+    cutoff = float(q) * cumulative[-1]
+    return float(sorted_values[np.searchsorted(cumulative, cutoff, side="left")])
+
+
+def run_threshold_estimator_bakeoff(
+    threshold_pool: pd.DataFrame,
+    *,
+    execution_quantile: float,
+    as_of: pd.Timestamp,
+) -> pd.DataFrame:
+    if threshold_pool.empty:
+        return pd.DataFrame(columns=["candidate_uid", "estimator", "threshold", "rows"])
+    as_of_ts = pd.Timestamp(as_of)
+    as_of_utc = (
+        as_of_ts.tz_convert("UTC") if as_of_ts.tzinfo else as_of_ts.tz_localize("UTC")
+    )
+    pool = threshold_pool.copy()
+    pool["close_ts"] = pd.to_datetime(pool["close_ts"], utc=True)
+    pool["pred_prob"] = pd.to_numeric(pool["pred_prob"], errors="coerce")
+    rows: list[dict[str, object]] = []
+    for candidate_uid, group in pool.groupby("candidate_uid", dropna=False):
+        values = group["pred_prob"].dropna()
+        rows.append(
+            {
+                "candidate_uid": candidate_uid,
+                "estimator": "current_equal_weight",
+                "threshold": float(values.quantile(float(execution_quantile)))
+                if len(values)
+                else np.nan,
+                "rows": int(len(values)),
+            }
+        )
+        short = group[group["close_ts"] >= as_of_utc - pd.Timedelta(days=7)][
+            "pred_prob"
+        ].dropna()
+        rows.append(
+            {
+                "candidate_uid": candidate_uid,
+                "estimator": "short_7d_equal_weight",
+                "threshold": float(short.quantile(float(execution_quantile)))
+                if len(short)
+                else np.nan,
+                "rows": int(len(short)),
+            }
+        )
+        age_days = (
+            (as_of_utc - group["close_ts"]).dt.total_seconds().to_numpy(dtype=float)
+            / 86400.0
+        )
+        weights = np.power(0.5, age_days / 3.0)
+        rows.append(
+            {
+                "candidate_uid": candidate_uid,
+                "estimator": "recency_weighted_half_life_3d",
+                "threshold": _weighted_quantile(
+                    group["pred_prob"].to_numpy(dtype=float),
+                    weights,
+                    float(execution_quantile),
+                ),
+                "rows": int(group["pred_prob"].notna().sum()),
+            }
+        )
+        seed_decay_weights = np.where(
+            group["source_period"].astype(str).eq("seed"), 0.25, 1.0
+        )
+        rows.append(
+            {
+                "candidate_uid": candidate_uid,
+                "estimator": "seed_decay_25pct",
+                "threshold": _weighted_quantile(
+                    group["pred_prob"].to_numpy(dtype=float),
+                    seed_decay_weights.astype(float),
+                    float(execution_quantile),
+                ),
+                "rows": int(group["pred_prob"].notna().sum()),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def audit_threshold_pool(
     con: duckdb.DuckDBPyConnection,
     *,
