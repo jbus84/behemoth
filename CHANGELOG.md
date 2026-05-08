@@ -1,3 +1,16 @@
+## v0.16.2 (2026-05-08)
+
+### Refactor
+
+- implement opportunities #7 (OrderSubmissionPort) and #8 (state_readers consolidation)
+- implement opportunity #6 (FeatureConfig schema validation)
+- implement opportunities #2 (BarrierEvaluationContext) and #4 (ReservationLifecycle)
+- implement architectural deepening opportunities (#1, #5)
+- implement opportunities #10 (cache lifecycle) and #12 (transaction boundaries)
+- consolidate shallow modules and deepen seams (7-8 of 12)
+- deepen boundaries and formalize protocols (5-6 of 12)
+- deepen architectural seams (1-4 of 12 opportunities)
+
 ## v0.16.1 (2026-05-07)
 
 ### Refactor
