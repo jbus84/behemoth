@@ -32,6 +32,33 @@ FEATURE_PARITY_COLUMNS = [
 LIVE_FEATURE_COLUMNS = ["close_ts", "symbol", "candidate_uid", "features_json"]
 RUNTIME_BAR_COLUMNS = ["ts", "close_ts", "symbol", "bar_ticks"]
 THRESHOLD_ESTIMATOR_COLUMNS = ["candidate_uid", "estimator", "threshold", "rows"]
+THRESHOLD_POOL_COLUMNS = [
+    "close_ts",
+    "symbol",
+    "candidate_uid",
+    "pred_prob",
+    "threshold",
+    "model_month",
+    "run_id",
+    "source_period",
+]
+THRESHOLD_SUMMARY_COLUMNS = [
+    "symbol",
+    "candidate_uid",
+    "pool_rows",
+    "seed_rows",
+    "warmup_rows",
+    "live_rows",
+    "other_rows",
+    "p50",
+    "p75",
+    "p90",
+    "p95",
+    "replayed_threshold",
+    "min_history_met",
+    "first_close_ts",
+    "last_close_ts",
+]
 
 
 @dataclass(frozen=True)
@@ -128,6 +155,13 @@ def _feature_columns_from_live_rows(live_features: pd.DataFrame) -> list[str]:
     for value in live_features["features_json"]:
         columns.update(_parse_features_json(value))
     return sorted(columns)
+
+
+def _empty_threshold_audit_frames() -> tuple[pd.DataFrame, pd.DataFrame]:
+    return (
+        pd.DataFrame(columns=THRESHOLD_POOL_COLUMNS),
+        pd.DataFrame(columns=THRESHOLD_SUMMARY_COLUMNS),
+    )
 
 
 def compare_feature_parity(
@@ -494,39 +528,23 @@ def audit_threshold_pool(
         else as_of_ts.tz_localize("UTC")
     )
     cutoff = as_of_utc - pd.Timedelta(days=int(lookback_days))
-    detail = con.execute(
-        """
-        SELECT close_ts, upper(symbol) AS symbol, candidate_uid, pred_prob, threshold, model_month, run_id
-        FROM audit_logs
-        WHERE upper(symbol) = upper(?)
-          AND close_ts >= ?
-          AND close_ts <= ?
-          AND pred_prob IS NOT NULL
-        ORDER BY candidate_uid, close_ts, run_id
-        """,
-        [symbol.upper(), cutoff.to_pydatetime(), as_of_utc.to_pydatetime()],
-    ).fetchdf()
+    try:
+        detail = con.execute(
+            """
+            SELECT close_ts, upper(symbol) AS symbol, candidate_uid, pred_prob, threshold, model_month, run_id
+            FROM audit_logs
+            WHERE upper(symbol) = upper(?)
+              AND close_ts >= ?
+              AND close_ts <= ?
+              AND pred_prob IS NOT NULL
+            ORDER BY candidate_uid, close_ts, run_id
+            """,
+            [symbol.upper(), cutoff.to_pydatetime(), as_of_utc.to_pydatetime()],
+        ).fetchdf()
+    except duckdb.Error:
+        return _empty_threshold_audit_frames()
     if detail.empty:
-        columns = [
-            "symbol",
-            "candidate_uid",
-            "pool_rows",
-            "seed_rows",
-            "warmup_rows",
-            "live_rows",
-            "other_rows",
-            "p50",
-            "p75",
-            "p90",
-            "p95",
-            "replayed_threshold",
-            "min_history_met",
-            "first_close_ts",
-            "last_close_ts",
-        ]
-        return detail.assign(source_period=pd.Series(dtype="object")), pd.DataFrame(
-            columns=columns
-        )
+        return _empty_threshold_audit_frames()
 
     detail["source_period"] = detail["run_id"].map(
         lambda value: _source_period(value, live_run_id)

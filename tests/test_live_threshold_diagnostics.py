@@ -717,3 +717,33 @@ def test_run_diagnostic_writes_summary_and_report(tmp_path: Path) -> None:
     assert (tmp_path / "unit_test_run_summary.json").exists()
     assert (tmp_path / "unit_test_run_report.md").exists()
     assert (tmp_path / "unit_test_run_threshold_pool.csv").exists()
+
+
+def test_run_diagnostic_writes_inconclusive_artifacts_when_audit_logs_missing(
+    tmp_path: Path,
+) -> None:
+    from src.behemoth.diagnostics.live_threshold import (
+        LiveThresholdConfig,
+        run_live_threshold_diagnostic,
+    )
+
+    con = duckdb.connect(":memory:")
+    try:
+        config = LiveThresholdConfig(
+            symbol="EURUSD",
+            run_id="missing_audit_logs",
+            live_run_id="jforex_live",
+            lookback_days=20,
+            execution_quantile=0.9,
+            min_history=1,
+            start_ts=pd.Timestamp("2026-05-01T00:00:00Z"),
+            end_ts=pd.Timestamp("2026-05-09T00:00:00Z"),
+            out_dir=tmp_path,
+        )
+        result = run_live_threshold_diagnostic(con, config)
+    finally:
+        con.close()
+
+    assert result["classification"] == "INCONCLUSIVE"
+    assert (tmp_path / "missing_audit_logs_summary.json").exists()
+    assert (tmp_path / "missing_audit_logs_report.md").exists()
