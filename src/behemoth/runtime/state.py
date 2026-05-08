@@ -1539,3 +1539,17 @@ class StateManager:
     def close(self) -> None:
         """Close the DuckDB connection."""
         self._store.close()
+
+
+# Structural subtype verification (for type checkers)
+# These prove StateManager implements the narrow protocols.
+if False:  # pragma: no cover
+    from src.behemoth.runtime.state_readers import (
+        BarStateReader,
+        AccountRiskStateReader,
+        ReservationWriter,
+    )
+
+    _bar_reader: BarStateReader = StateManager()  # type: ignore[assignment]
+    _risk_reader: AccountRiskStateReader = StateManager()  # type: ignore[assignment]
+    _reservation_writer: ReservationWriter = StateManager()  # type: ignore[assignment]
