@@ -35,7 +35,6 @@ from src.behemoth.core.schemas import (
     ModelFeatures,
 )
 from src.behemoth.risk.account import ReservationState, ReservationStateMachine
-from src.behemoth.runtime.state_queries import StateQueryView
 
 _CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS tick_bars (
@@ -278,10 +277,6 @@ class StateManager:
         for r in res:
             if r[2] is not None:
                 self._row_counters[f"{r[0].upper()}_{r[1]}"] = int(r[2]) + 1
-
-    def query_view(self) -> StateQueryView:
-        """Return the read-only state query interface for business modules."""
-        return StateQueryView(self)
 
     def _ensure_runtime_schema(self) -> None:
         """Ensure persisted runtime tables match the canonical explicit-bid schema."""

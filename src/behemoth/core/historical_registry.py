@@ -139,3 +139,7 @@ class HistoricalCandidateRegistry:
         for e in self._entries.values():
             out.extend(e.candidates)
         return out
+
+    def entry_count(self) -> int:
+        """Return the total number of loaded historical lock entries."""
+        return len(self._entries)

@@ -312,11 +312,21 @@ class HistoricalPredictionStage:
         return out
 
     def get_cursor(self, cache_key: str, candidate_uid: str) -> int:
-        """Get current row cursor for candidate. Defaults to 0 if not set."""
+        """Get current ordinal index cursor for candidate. Defaults to 0 if not set."""
         return self._candidate_cursor.get(cache_key, {}).get(candidate_uid, 0)
 
     def set_cursor(self, cache_key: str, candidate_uid: str, cursor: int) -> None:
-        """Set current row cursor for candidate."""
+        """Set current ordinal index cursor for candidate.
+
+        Validates that cursor does not exceed the size of the loaded ordinal index.
+        """
+        ordinal_index = self._candidate_ordinal_index.get(cache_key, {})
+        ordinals = ordinal_index.get(candidate_uid, [])
+        if cursor < 0 or cursor > len(ordinals):
+            raise ValueError(
+                f"Cursor {cursor} out of bounds for {candidate_uid} "
+                f"(ordinal index size: {len(ordinals)})"
+            )
         if cache_key not in self._candidate_cursor:
             self._candidate_cursor[cache_key] = {}
         self._candidate_cursor[cache_key][candidate_uid] = cursor
@@ -326,10 +336,30 @@ class HistoricalPredictionStage:
         return self._payload_cursor.get(cache_key, {}).get(candidate_uid, 0)
 
     def set_payload_cursor(self, cache_key: str, candidate_uid: str, cursor: int) -> None:
-        """Set current payload row cursor for candidate."""
+        """Set current payload row cursor for candidate.
+
+        Validates that cursor does not exceed the size of the loaded payload rows.
+        """
+        payload_rows = self._payload_rows.get(cache_key, {})
+        rows = payload_rows.get(candidate_uid, [])
+        if cursor < 0 or cursor > len(rows):
+            raise ValueError(
+                f"Payload cursor {cursor} out of bounds for {candidate_uid} "
+                f"(payload rows size: {len(rows)})"
+            )
         if cache_key not in self._payload_cursor:
             self._payload_cursor[cache_key] = {}
         self._payload_cursor[cache_key][candidate_uid] = cursor
+
+    def reset_cursors(self, cache_key: str, candidate_uid: str) -> None:
+        """Reset both ordinal and payload cursors to 0 for a candidate.
+
+        Ensures atomic reset of synchronized cursor state.
+        """
+        if cache_key in self._candidate_cursor:
+            self._candidate_cursor[cache_key][candidate_uid] = 0
+        if cache_key in self._payload_cursor:
+            self._payload_cursor[cache_key][candidate_uid] = 0
 
     def _prediction_path(self, cache_key: str, model_binding: dict[str, Any]) -> Path | None:
         override_path = str(os.getenv("BEHEMOTH_HISTORICAL_PREDICTIONS_PATH_OVERRIDE", "")).strip()

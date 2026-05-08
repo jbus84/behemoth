@@ -152,6 +152,26 @@ class ModelRegistry:
         model = catboost_cls()
         model.load_model(str(model_path))
         thr_cfg = json.loads(thr_path.read_text())
+
+        # Validate feature schema version
+        feature_schema_version = str(thr_cfg.get("feature_schema_version", "")).strip()
+        if not feature_schema_version:
+            logger.warning(
+                "Threshold JSON missing feature_schema_version for %s — "
+                "this artifact may be incompatible with current feature contract",
+                symbol
+            )
+        else:
+            # Expected version should be documented in governance locks
+            # Current version: 1.0 (16-feature set per CURRENT_FEATURE_SCHEMA)
+            if feature_schema_version != "1.0":
+                logger.error(
+                    "Feature schema version mismatch for %s: threshold=%s expected=1.0",
+                    symbol,
+                    feature_schema_version,
+                )
+                return False, "feature_schema_version_mismatch"
+
         locked_runtime_overrides = binding.get("locked_runtime_overrides", {})
         if isinstance(locked_runtime_overrides, dict) and locked_runtime_overrides:
             thr_cfg.update(

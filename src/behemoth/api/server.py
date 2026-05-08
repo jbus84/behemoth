@@ -765,7 +765,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
             _historical_registry = HistoricalCandidateRegistry.load(hist_dir)
             _run_historical_preflight(hist_dir)
             _registry = None
-            _historical_entries_loaded = len(_historical_registry._entries)
+            _historical_entries_loaded = _historical_registry.entry_count()
             logger.info(
                 "Loaded %d month-scoped historical lock entries from %s",
                 _historical_entries_loaded,
@@ -1756,10 +1756,9 @@ def _resolve_account_risk_eval(
     *,
     account_risk_enabled_effective: bool,
 ) -> dict[str, Any]:
-    state_reader = _state.query_view() if _state is not None else None
     eval_out = AccountRiskDecisionEngine(
         profile=_account_risk_profile,
-        state=state_reader,
+        state=_state,
         enabled=account_risk_enabled_effective,
     ).evaluate(sym, now_utc)
 
@@ -3593,7 +3592,7 @@ async def reload_models() -> dict:
         _historical_registry = HistoricalCandidateRegistry.load(hist_dir)
         _run_historical_preflight(hist_dir)
         _registry = None
-        _historical_entries_loaded = len(_historical_registry._entries)
+        _historical_entries_loaded = _historical_registry.entry_count()
     else:
         _registry = CandidateRegistry.load(
             os.getenv("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco")
