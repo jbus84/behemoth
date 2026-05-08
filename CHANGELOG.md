@@ -1,3 +1,14 @@
+## v0.20.0 (2026-05-08)
+
+### Feat
+
+- Grafana panel + Prometheus metric for restart_verdict (#141)
+
+### Fix
+
+- re-reconcile after reset cleanup so report reflects post-reset state (#142)
+- thread-safe DuckDB store and warmup_bars delegation after FeatureEngine refactor (#140)
+
 ## v0.19.2 (2026-05-08)
 
 ### Fix
