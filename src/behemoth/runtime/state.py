@@ -21,14 +21,8 @@ from typing import Any
 import duckdb
 
 from src.behemoth.runtime.state_store import DuckDBStateStore
-from src.behemoth.core.feature_validator import FeatureSchemaValidator
-from src.behemoth.core.features import (
-    CURRENT_FEATURE_SCHEMA,
-    CURRENT_MODEL_FEATURE_CONTRACT,
-    FeatureConfig,
-    compute_features_from_bars,
-    compute_regime_quantiles_from_bars,
-)
+from src.behemoth.core.feature_engine import FeatureComputationEngine
+from src.behemoth.core.features import CURRENT_MODEL_FEATURE_CONTRACT
 from src.behemoth.core.schemas import (
     BarContext,
     BarPrices,
@@ -256,15 +250,9 @@ class StateManager:
         *,
         persist_path: str | None = None,
     ) -> None:
-        if vol_window is None:
-            vol_window = CURRENT_FEATURE_SCHEMA.rolling_windows["vol_window"]
-        if cost_window is None:
-            cost_window = CURRENT_FEATURE_SCHEMA.rolling_windows["cost_window"]
-        self._cfg = FeatureConfig(vol_window=int(vol_window), cost_window=int(cost_window))
+        self._feature_engine = FeatureComputationEngine(vol_window, cost_window)
         self._feature_contract = CURRENT_MODEL_FEATURE_CONTRACT
         self._feature_contract.validate_feature_names(tuple(ModelFeatures.model_fields))
-        self._feature_validator = FeatureSchemaValidator()
-        self._feature_validator.validate_startup()
 
         self._store = DuckDBStateStore(persist_path)
         self._store.execute(_CREATE_SQL)
@@ -505,41 +493,26 @@ class StateManager:
     ) -> ModelFeatures | None:
         """Compute the 16-parameter feature vector for the latest bar.
 
-        Delegates all rolling-window math to the canonical builder in
-        ``src.behemoth.core.features.compute_features_from_bars()``.
+        Delegates to FeatureComputationEngine which owns the rolling-window math.
 
         Returns None if the buffer has insufficient warmup history.
         """
         sym = symbol.upper()
         n = self.bar_count(sym, bar_ticks)
-        if n < self._cfg.full_warmup_bars:
+        if n < self._feature_engine.warmup_bars:
             return None
 
         df = self._store.execute(_SELECT_SQL, [sym, bar_ticks]).fetchdf()
-
-        features = compute_features_from_bars(
-            df,
-            symbol=sym,
-            bar_ticks=bar_ticks,
-            horizon=horizon,
-            barrier_pips=barrier_pips,
-            cfg=self._cfg,
-        )
-
-        # Validate feature count and vector to detect schema drift
-        self._feature_validator.validate_feature_count(len(features.model_fields))
-        self._feature_validator.validate_feature_vector(features)
-
-        return features
+        return self._feature_engine.compute(df, sym, bar_ticks, horizon, barrier_pips)
 
     def compute_regime_quantiles(self, symbol: str, bar_ticks: int) -> dict[str, float]:
         """Compute runtime regime quantiles from the recent bar buffer."""
         sym = symbol.upper()
         n = self.bar_count(sym, bar_ticks)
-        if n < self._cfg.full_warmup_bars:
+        if n < self._feature_engine.warmup_bars:
             return {}
         df = self._store.execute(_SELECT_SQL, [sym, bar_ticks]).fetchdf()
-        return compute_regime_quantiles_from_bars(df, symbol=sym, cfg=self._cfg)
+        return self._feature_engine.compute_regime_quantiles(df, sym)
 
     def log_audit_event(
         self,
