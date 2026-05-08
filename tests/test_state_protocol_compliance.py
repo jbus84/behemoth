@@ -153,6 +153,42 @@ class TestReservationWriterCompliance:
         mgr.close()
 
 
+class TestRuntimeProtocolCompliance:
+    """Verify StateManager is a runtime structural subtype of all protocols."""
+
+    def test_isinstance_bar_state_reader(self) -> None:
+        """StateManager is an instance of BarStateReader at runtime."""
+        mgr = StateManager()
+        assert isinstance(mgr, BarStateReader), (
+            "StateManager must be a runtime structural subtype of BarStateReader"
+        )
+        mgr.close()
+
+    def test_isinstance_account_risk_state_reader(self) -> None:
+        """StateManager is an instance of AccountRiskStateReader at runtime."""
+        mgr = StateManager()
+        assert isinstance(mgr, AccountRiskStateReader), (
+            "StateManager must be a runtime structural subtype of AccountRiskStateReader"
+        )
+        mgr.close()
+
+    def test_isinstance_reservation_writer(self) -> None:
+        """StateManager is an instance of ReservationWriter at runtime."""
+        mgr = StateManager()
+        assert isinstance(mgr, ReservationWriter), (
+            "StateManager must be a runtime structural subtype of ReservationWriter"
+        )
+        mgr.close()
+
+    def test_all_protocols_satisfied_together(self) -> None:
+        """StateManager satisfies all three protocols at once."""
+        mgr = StateManager()
+        assert isinstance(mgr, BarStateReader)
+        assert isinstance(mgr, AccountRiskStateReader)
+        assert isinstance(mgr, ReservationWriter)
+        mgr.close()
+
+
 class TestProtocolIntegration:
     """Verify protocols work end-to-end."""
 
