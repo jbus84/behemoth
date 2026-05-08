@@ -2944,7 +2944,7 @@ async def predict_warmup(req: WarmupRequest) -> dict:
     if model is None:
         raise HTTPException(status_code=422, detail=f"No model loaded for {sym}")
 
-    warmup_needed = _state._cfg.full_warmup_bars
+    warmup_needed = _state.warmup_bars
     bars_by_ticks: dict[int, pd.DataFrame] = {}
     for cand in contract.candidates:
         bar_ticks = int(cand.bar_ticks)

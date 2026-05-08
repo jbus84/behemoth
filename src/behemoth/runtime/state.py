@@ -269,6 +269,11 @@ class StateManager:
 
         self._lifecycle_cache: dict[str, ReservationLifecycle] = {}
 
+    @property
+    def warmup_bars(self) -> int:
+        """Number of bars required before features can be computed."""
+        return self._feature_engine.warmup_bars
+
     def _ensure_runtime_schema(self) -> None:
         """Ensure persisted runtime tables match the canonical explicit-bid schema."""
         self._migrate_tick_bars_table()
