@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -182,6 +183,39 @@ def _normalise_ts_column(df: pd.DataFrame, column: str) -> pd.DataFrame:
 
 def _skip_frame(rows: list[dict[str, object]]) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=SKIP_COLUMNS)
+
+
+def _run_dir(out_dir: Path) -> Path:
+    return Path(out_dir) / utc_now().strftime("%Y%m%dT%H%M%SZ")
+
+
+def _window_summary_frame(windows: list[SymbolWindow]) -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "symbol": window.symbol,
+                "start_ts": window.start_ts.isoformat(),
+                "end_ts": window.end_ts.isoformat(),
+                "raw_tick_count": window.raw_tick_count,
+                "bar_count": window.bar_count,
+                "bar_ticks": window.bar_ticks,
+            }
+            for window in windows
+        ],
+        columns=[
+            "symbol",
+            "start_ts",
+            "end_ts",
+            "raw_tick_count",
+            "bar_count",
+            "bar_ticks",
+        ],
+    )
+
+
+def _write_df(path: Path, df: pd.DataFrame) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(path, index=False)
 
 
 def _query_bar_summary(
@@ -864,3 +898,169 @@ def render_report(
         "",
     ]
     return "\n".join(sections)
+
+
+def _concat_frames(frames: list[pd.DataFrame]) -> pd.DataFrame:
+    non_empty = [frame for frame in frames if not frame.empty]
+    if not non_empty:
+        return pd.DataFrame()
+    return pd.concat(non_empty, ignore_index=True)
+
+
+def _write_parquet(path: Path, df: pd.DataFrame) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(path, index=False)
+
+
+def _json_default(value: object) -> object:
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, pd.Timestamp):
+        return value.isoformat()
+    if isinstance(value, datetime):
+        return pd.Timestamp(value).isoformat()
+    return str(value)
+
+
+def _governance_selected_count(signal_deviation: pd.DataFrame) -> int:
+    if signal_deviation.empty:
+        return 0
+    row = signal_deviation.iloc[0]
+    if "governance_selected_signal_count" in signal_deviation.columns:
+        value = row.get("governance_selected_signal_count", 0)
+    else:
+        value = row.get("Governance Selected Signal Count", 0)
+    if pd.isna(value):
+        return 0
+    return int(value)
+
+
+def run_analysis(cfg: DeviationConfig) -> dict[str, Path]:
+    run_dir = _run_dir(cfg.out_dir)
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    tick_coverage_frames: list[pd.DataFrame] = []
+    bar_deviation_frames: list[pd.DataFrame] = []
+    signal_deviation_frames: list[pd.DataFrame] = []
+    outcome_deviation_frames: list[pd.DataFrame] = []
+    incomplete_rows: list[dict[str, object]] = []
+
+    con = duckdb.connect(str(cfg.runtime_db), read_only=True)
+    try:
+        windows, skips = discover_symbol_windows(con, cfg)
+        window_summary = _window_summary_frame(windows)
+
+        for window in windows:
+            evidence = extract_live_evidence(con, window, run_id=cfg.run_id)
+            canonical_ticks = load_canonical_ticks_for_window(
+                cfg.tick_root,
+                window.symbol,
+                window.start_ts,
+                window.end_ts,
+            )
+            governance_bars = build_governance_bars_for_window(
+                canonical_ticks, window.bar_ticks
+            )
+
+            symbol_dir = run_dir / window.symbol
+            _write_parquet(symbol_dir / "live_raw_ticks.parquet", evidence.raw_ticks)
+            _write_parquet(symbol_dir / "live_tick_bars.parquet", evidence.tick_bars)
+            _write_parquet(
+                symbol_dir / "governance_raw_ticks.parquet", canonical_ticks
+            )
+            _write_parquet(symbol_dir / "governance_tick_bars.parquet", governance_bars)
+
+            if canonical_ticks.empty:
+                incomplete_rows.append(
+                    {
+                        "symbol": window.symbol,
+                        "reason": "missing_canonical_ticks",
+                    }
+                )
+
+            tick_coverage_frames.append(
+                compute_tick_coverage(
+                    window.symbol, evidence.raw_ticks, canonical_ticks
+                )
+            )
+            bar_deviation_frames.append(
+                compute_bar_deviation(
+                    window.symbol, evidence.tick_bars, governance_bars
+                )
+            )
+            signal_deviation = compute_signal_deviation(
+                window.symbol,
+                evidence.predictions,
+                pd.DataFrame(),
+                live_source=evidence.prediction_source,
+            )
+            signal_deviation_frames.append(signal_deviation)
+            outcome_deviation_frames.append(
+                compute_outcome_deviation(
+                    window.symbol,
+                    evidence.trades,
+                    governance_selected_signal_count=_governance_selected_count(
+                        signal_deviation
+                    ),
+                )
+            )
+    finally:
+        con.close()
+
+    tick_coverage = _concat_frames(tick_coverage_frames)
+    bar_deviation = _concat_frames(bar_deviation_frames)
+    signal_deviation = _concat_frames(signal_deviation_frames)
+    outcome_deviation = _concat_frames(outcome_deviation_frames)
+    incomplete = pd.DataFrame(incomplete_rows, columns=SKIP_COLUMNS)
+    findings = build_findings(bar_deviation, signal_deviation, incomplete)
+
+    manifest = {
+        "generated_at_utc": utc_now().isoformat(),
+        "run_id": cfg.run_id,
+        "runtime_db": cfg.runtime_db,
+        "tick_root": cfg.tick_root,
+        "symbols": list(cfg.symbols),
+        "lookback_days": cfg.lookback_days,
+        "min_bars": cfg.min_bars,
+        "run_dir": run_dir,
+        "window_count": len(window_summary),
+        "skip_count": len(skips),
+        "incomplete_evidence_count": len(incomplete),
+    }
+
+    manifest_path = run_dir / "run_manifest.json"
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, default=_json_default) + "\n",
+        encoding="utf-8",
+    )
+    _write_df(run_dir / "window_summary.csv", window_summary)
+    _write_df(run_dir / "symbol_skips.csv", skips)
+    _write_df(run_dir / "tick_coverage_deviation.csv", tick_coverage)
+    _write_df(run_dir / "bar_deviation.csv", bar_deviation)
+    _write_df(run_dir / "signal_deviation.csv", signal_deviation)
+    _write_df(run_dir / "outcome_deviation.csv", outcome_deviation)
+    _write_df(run_dir / "findings.csv", findings)
+
+    report = render_report(
+        manifest=manifest,
+        window_summary=window_summary,
+        findings=findings,
+        tick_coverage=tick_coverage,
+        bar_deviation=bar_deviation,
+        signal_deviation=signal_deviation,
+        outcome_deviation=outcome_deviation,
+        skips=skips,
+    )
+    report_path = run_dir / "live_governance_deviation_report.md"
+    report_path.write_text(report, encoding="utf-8")
+
+    if cfg.copy_report_to_docs:
+        docs_report_path = Path("docs/analysis/live_governance_deviation_report.md")
+        docs_report_path.parent.mkdir(parents=True, exist_ok=True)
+        docs_report_path.write_text(report, encoding="utf-8")
+
+    return {
+        "run_dir": run_dir,
+        "manifest_path": manifest_path,
+        "report_path": report_path,
+    }

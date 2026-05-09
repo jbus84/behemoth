@@ -544,3 +544,47 @@ def test_outcome_deviation_preserves_unknown_missing_runtime_evidence() -> None:
     assert missing_pnl.loc[0, "runtime_closed_trade_count"] == 1
     assert pd.isna(missing_pnl.loc[0, "Runtime Realized P&L"])
     assert pd.isna(missing_pnl.loc[0, "runtime_realized_pnl_pips"])
+
+
+from src.behemoth.diagnostics.live_governance_deviation import run_analysis
+
+
+def test_run_analysis_writes_required_outputs(tmp_path: Path) -> None:
+    db_path = tmp_path / "runtime.db"
+    _create_runtime_db(db_path)
+    tick_root = tmp_path / "dukascopy_ticks"
+    sym_dir = tick_root / "EURUSD"
+    sym_dir.mkdir(parents=True)
+    canonical = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2026-05-02T00:00:00Z", periods=300, freq="s"),
+            "bid": [1.1] * 300,
+            "ask": [1.1002] * 300,
+            "mid": [1.1001] * 300,
+            "spread": [0.0002] * 300,
+            "log_return": [0.0] * 300,
+        }
+    )
+    canonical.to_parquet(sym_dir / "EURUSD_202605_ticks.parquet", index=False)
+    out_dir = tmp_path / "out"
+
+    result = run_analysis(
+        DeviationConfig(
+            runtime_db=db_path,
+            tick_root=tick_root,
+            symbols=("EURUSD",),
+            lookback_days=7,
+            min_bars=2,
+            run_id="jforex_live",
+            out_dir=out_dir,
+        )
+    )
+
+    assert result["manifest_path"].exists()
+    assert (result["run_dir"] / "window_summary.csv").exists()
+    assert (result["run_dir"] / "tick_coverage_deviation.csv").exists()
+    assert (result["run_dir"] / "bar_deviation.csv").exists()
+    assert (result["run_dir"] / "signal_deviation.csv").exists()
+    assert (result["run_dir"] / "outcome_deviation.csv").exists()
+    assert (result["run_dir"] / "findings.csv").exists()
+    assert (result["run_dir"] / "live_governance_deviation_report.md").exists()
