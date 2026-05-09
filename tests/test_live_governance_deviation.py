@@ -460,6 +460,7 @@ def test_signal_outcome_findings_and_report() -> None:
     trades = pd.DataFrame({"status": ["CLOSED", "OPEN"], "pnl_pips": [3.0, 0.0]})
     outcome = compute_outcome_deviation("EURUSD", trades, governance_selected_signal_count=2)
     assert outcome.loc[0, "Runtime Trade Count"] == 2
+    assert outcome.loc[0, "Runtime Closed Trade Count"] == 1
     assert outcome.loc[0, "Runtime Realized P&L"] == 3.0
     assert outcome.loc[0, "runtime_trade_count"] == 2
     assert outcome.loc[0, "runtime_realized_pnl_pips"] == 3.0
@@ -491,3 +492,55 @@ def test_signal_outcome_findings_and_report() -> None:
     )
     assert "# Live Governance Deviation Report" in report
     assert "not a Promotion gate" in report
+
+
+def test_signal_deviation_counts_common_truthy_selected_values() -> None:
+    live_predictions = pd.DataFrame(
+        {
+            "selected_exec": [
+                "true",
+                "TRUE",
+                "yes",
+                "t",
+                "y",
+                "1",
+                True,
+                1,
+                "false",
+                "0",
+                None,
+            ]
+        }
+    )
+    governance_predictions = pd.DataFrame(
+        {"selected": ["true", "yes", "1", "no", False, 0, None]}
+    )
+
+    signal = compute_signal_deviation(
+        "EURUSD", live_predictions, governance_predictions, live_source="unit"
+    )
+
+    assert signal.loc[0, "live_selected_signal_count"] == 8
+    assert signal.loc[0, "governance_selected_signal_count"] == 3
+
+
+def test_outcome_deviation_preserves_unknown_missing_runtime_evidence() -> None:
+    missing_status = compute_outcome_deviation(
+        "EURUSD",
+        pd.DataFrame({"pnl_pips": [3.0]}),
+        governance_selected_signal_count=1,
+    )
+    assert pd.isna(missing_status.loc[0, "Runtime Closed Trade Count"])
+    assert pd.isna(missing_status.loc[0, "runtime_closed_trade_count"])
+    assert pd.isna(missing_status.loc[0, "Runtime Realized P&L"])
+    assert pd.isna(missing_status.loc[0, "runtime_realized_pnl_pips"])
+
+    missing_pnl = compute_outcome_deviation(
+        "EURUSD",
+        pd.DataFrame({"status": ["CLOSED"]}),
+        governance_selected_signal_count=1,
+    )
+    assert missing_pnl.loc[0, "Runtime Closed Trade Count"] == 1
+    assert missing_pnl.loc[0, "runtime_closed_trade_count"] == 1
+    assert pd.isna(missing_pnl.loc[0, "Runtime Realized P&L"])
+    assert pd.isna(missing_pnl.loc[0, "runtime_realized_pnl_pips"])

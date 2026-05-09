@@ -600,13 +600,29 @@ def compute_bar_deviation(
     )
 
 
+TRUTHY_SELECTED_VALUES = {"true", "t", "yes", "y", "1"}
+
+
+def _is_selected_value(value: object) -> bool:
+    if pd.isna(value):
+        return False
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in TRUTHY_SELECTED_VALUES
+    numeric_value = pd.to_numeric(pd.Series([value]), errors="coerce").iloc[0]
+    if pd.isna(numeric_value):
+        return False
+    return bool(numeric_value != 0)
+
+
 def _selected_count(df: pd.DataFrame) -> int:
     if df.empty:
         return 0
     if "selected_exec" in df.columns:
-        return int(pd.to_numeric(df["selected_exec"], errors="coerce").fillna(0).sum())
+        return int(df["selected_exec"].map(_is_selected_value).sum())
     if "selected" in df.columns:
-        return int(pd.to_numeric(df["selected"], errors="coerce").fillna(0).sum())
+        return int(df["selected"].map(_is_selected_value).sum())
     return int(len(df))
 
 
@@ -658,19 +674,29 @@ def compute_outcome_deviation(
     symbol: str, trades: pd.DataFrame, *, governance_selected_signal_count: int
 ) -> pd.DataFrame:
     runtime_trade_count = int(len(trades))
-    if trades.empty or "status" not in trades.columns:
+    status_missing = runtime_trade_count > 0 and "status" not in trades.columns
+    pnl_missing = runtime_trade_count > 0 and "pnl_pips" not in trades.columns
+    if trades.empty:
         closed_trades = trades.iloc[0:0]
+        runtime_closed_trade_count: float = 0.0
+        runtime_realized_pnl_pips = 0.0
+    elif status_missing:
+        closed_trades = trades.iloc[0:0]
+        runtime_closed_trade_count = float("nan")
+        runtime_realized_pnl_pips = float("nan")
     else:
         closed_trades = trades[
             trades["status"].astype("string").str.upper().fillna("") == "CLOSED"
         ]
-    runtime_closed_trade_count = int(len(closed_trades))
-    if "pnl_pips" in closed_trades.columns:
-        runtime_realized_pnl_pips = float(
-            pd.to_numeric(closed_trades["pnl_pips"], errors="coerce").fillna(0).sum()
-        )
-    else:
-        runtime_realized_pnl_pips = 0.0
+        runtime_closed_trade_count = float(len(closed_trades))
+        if pnl_missing:
+            runtime_realized_pnl_pips = float("nan")
+        else:
+            runtime_realized_pnl_pips = float(
+                pd.to_numeric(closed_trades["pnl_pips"], errors="coerce")
+                .fillna(0)
+                .sum()
+            )
 
     return pd.DataFrame(
         [
@@ -681,6 +707,7 @@ def compute_outcome_deviation(
                 ),
                 "Runtime Trade Count": runtime_trade_count,
                 "Runtime closed trade count": runtime_closed_trade_count,
+                "Runtime Closed Trade Count": runtime_closed_trade_count,
                 "Runtime Realized P&L": runtime_realized_pnl_pips,
                 "governance_selected_signal_count": int(
                     governance_selected_signal_count
