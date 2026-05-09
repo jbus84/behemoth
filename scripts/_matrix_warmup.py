@@ -77,7 +77,7 @@ def compute_required_warmup_ticks(
     """Compute warmup-tick budget so the runtime's full_warmup_bars gate
     is satisfied at the largest candidate bar_ticks, with a safety margin.
 
-    Falls back to FALLBACK_WARMUP_TICKS if no locked candidates can be read.
+    Raises RuntimeError if no locked candidates can be found.
     """
     cfg = feature_cfg or FeatureConfig()
     max_bt = max_bar_ticks_for_symbols(
@@ -86,7 +86,10 @@ def compute_required_warmup_ticks(
         model_month=model_month,
     )
     if max_bt <= 0:
-        return FALLBACK_WARMUP_TICKS
+        raise RuntimeError(
+            f"No locked candidates found in {locked_predictions_dir}"
+            f"{f'/{model_month}' if model_month else ''} — cannot compute warmup ticks"
+        )
     return int(cfg.full_warmup_bars * max_bt * margin)
 
 

@@ -14,6 +14,7 @@ Design:
   and calls the shared builder for mathematical correctness.
 """
 
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,7 @@ from typing import Any
 import duckdb
 
 from src.behemoth.runtime.state_store import DuckDBStateStore
+from src.behemoth.runtime.warmup_verifier import WarmupBoundaryVerifier
 from src.behemoth.core.feature_engine import FeatureComputationEngine
 from src.behemoth.core.features import CURRENT_MODEL_FEATURE_CONTRACT
 from src.behemoth.core.schemas import (
@@ -32,6 +34,8 @@ from src.behemoth.core.schemas import (
 )
 from src.behemoth.risk.account import ReservationState, ReservationStateMachine
 from src.behemoth.risk.reservation_lifecycle import ReservationLifecycle
+
+logger = logging.getLogger("behemoth.runtime.state")
 
 _CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS tick_bars (
@@ -253,6 +257,8 @@ class StateManager:
         self._feature_engine = FeatureComputationEngine(vol_window, cost_window)
         self._feature_contract = CURRENT_MODEL_FEATURE_CONTRACT
         self._feature_contract.validate_feature_names(tuple(ModelFeatures.model_fields))
+
+        self._warmup_verifier = WarmupBoundaryVerifier(self._feature_engine.warmup_bars)
 
         self._store = DuckDBStateStore(persist_path)
         self._store.execute(_CREATE_SQL)
@@ -504,7 +510,16 @@ class StateManager:
         """
         sym = symbol.upper()
         n = self.bar_count(sym, bar_ticks)
-        if n < self._feature_engine.warmup_bars:
+        status = self._warmup_verifier.check(n)
+        if not status.ok:
+            logger.debug(
+                "Warmup gate: %s bar_ticks=%d has %d bars, need %d (deficit=%d)",
+                sym,
+                bar_ticks,
+                status.bar_count,
+                status.required,
+                status.deficit,
+            )
             return None
 
         df = self._store.execute(_SELECT_SQL, [sym, bar_ticks]).fetchdf()
@@ -514,7 +529,16 @@ class StateManager:
         """Compute runtime regime quantiles from the recent bar buffer."""
         sym = symbol.upper()
         n = self.bar_count(sym, bar_ticks)
-        if n < self._feature_engine.warmup_bars:
+        status = self._warmup_verifier.check(n)
+        if not status.ok:
+            logger.debug(
+                "Warmup gate: %s bar_ticks=%d has %d bars, need %d (deficit=%d)",
+                sym,
+                bar_ticks,
+                status.bar_count,
+                status.required,
+                status.deficit,
+            )
             return {}
         df = self._store.execute(_SELECT_SQL, [sym, bar_ticks]).fetchdf()
         return self._feature_engine.compute_regime_quantiles(df, sym)
