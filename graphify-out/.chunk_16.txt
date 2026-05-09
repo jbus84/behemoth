@@ -1,3 +1,4 @@
+docs/superpowers/audits/2026-03-20-documentation-audit-findings.md
 docs/superpowers/audits/2026-03-22-governance-hash-mismatch-fix.md
 docs/superpowers/audits/2026-03-20-documentation-audit-recommendations.md
 docs/superpowers/audits/2026-03-21-monthly-recert-manual-verification.md
@@ -19,4 +20,3 @@ docs/superpowers/specs/2026-05-01-week-long-live-capture-readiness-design.md
 docs/superpowers/specs/2026-03-27-tick-vault-weekend-gap-handling-design.md
 docs/superpowers/specs/2026-03-24-ctrader-cbot-deletion-design.md
 docs/superpowers/specs/2026-04-01-bar-level-barrier-manager-design.md
-docs/superpowers/specs/2026-04-24-warmup-historical-replay-design.md

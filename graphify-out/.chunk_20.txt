@@ -1,3 +1,6 @@
+data/analysis/tick_opportunity_mining/offset_robustness_smoke/runs/EURUSD/offset_000/warmup_sensitivity/offset_000/warmup_289/execution_report.md
+data/analysis/tick_opportunity_mining/offset_robustness_smoke/runs/EURUSD/offset_000/tmp_reports/eurusd_offset_000_tick_exact.md
+data/analysis/tick_opportunity_mining/offset_robustness_smoke/runs/EURUSD/offset_000/tmp_reports/eurusd_offset_000_reduced.md
 data/analysis/tick_opportunity_mining/offset_robustness_smoke/runs/EURUSD/offset_000/tmp_reports/eurusd_offset_000_robustness.md
 data/analysis/tick_opportunity_mining/offset_robustness_smoke/runs/EURUSD/offset_000/tmp_reports/eurusd_offset_000_wfo.md
 data/analysis/tick_opportunity_mining/offset_robustness_smoke/runs/EURUSD/offset_000/tmp_reports/eurusd_offset_000_mining.md
@@ -17,6 +20,3 @@ data/analysis/tick_opportunity_mining/offset_robustness/runs/EURUSD/offset_030/t
 data/analysis/tick_opportunity_mining/offset_robustness/runs/EURUSD/offset_030/tmp_reports/eurusd_offset_030_mining.md
 data/analysis/tick_opportunity_mining/offset_robustness/runs/EURUSD/offset_030/tmp_reports/eurusd_offset_030_wfo.md
 data/analysis/tick_opportunity_mining/offset_robustness/runs/EURUSD/offset_030/tmp_reports/eurusd_offset_030_reduced.md
-data/analysis/tick_opportunity_mining/offset_robustness/runs/EURUSD/offset_030/tmp_reports/eurusd_offset_030_robustness.md
-data/analysis/tick_opportunity_mining/offset_robustness/runs/EURUSD/offset_090/tmp_reports/eurusd_offset_090_mining.md
-data/analysis/tick_opportunity_mining/offset_robustness/runs/EURUSD/offset_090/tmp_reports/eurusd_offset_090_tick_exact.md

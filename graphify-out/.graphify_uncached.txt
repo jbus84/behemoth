@@ -296,6 +296,7 @@ docs/superpowers/plans/2026-03-22-api-parity-failure-fix.md
 docs/superpowers/plans/2026-03-25-live-diagnostic-scripts.md
 docs/superpowers/plans/2026-03-17-jforex-outcome-parity.md
 docs/superpowers/plans/2026-03-20-usdjpy-usdchf-coverage-gap-investigation.md
+docs/superpowers/plans/2026-05-08-live-threshold-diagnostics.md
 docs/superpowers/plans/2026-03-22-dukascopy-demo-certification.md
 docs/superpowers/plans/2026-04-25-pr95-bug-fixes-implementation.md
 docs/superpowers/plans/2026-03-26-stage14-canonical-runtime-events.md
@@ -376,6 +377,7 @@ docs/superpowers/specs/2026-03-28-stage0-dukascopy-migration-design.md
 docs/superpowers/specs/2026-04-25-pr95-bug-fixes-design.md
 docs/superpowers/specs/2026-04-25-ubiquitous-language-propagation-design.md
 docs/superpowers/specs/2026-03-26-jforex-executable-selection-parity-design.md
+docs/superpowers/specs/2026-05-09-live-governance-deviation-analytics-design.md
 docs/superpowers/specs/2026-03-31-offline-threshold-seed-design.md
 docs/superpowers/specs/2026-04-07-live-position-observability-design.md
 docs/superpowers/specs/2026-04-26-verdict-value-alignment-design.md
@@ -410,6 +412,7 @@ docs/superpowers/specs/2026-04-17-demo-live-vs-offline-model-comparison-design.m
 docs/superpowers/specs/2026-03-26-monthly-build-recert-split-design.md
 graphify-out/GRAPH_REPORT.md
 data/analysis/live_perf_gap_report.md
+data/analysis/live_threshold_diagnostics/eurusd_first_run/eurusd_diag_20260508_report.md
 data/analysis/live_replay_parity_20260428_20260429/report.md
 data/analysis/backtest_reconcile/live_data_audit_2026-05-01.md
 data/analysis/backtest_reconcile/stage13_dukascopy_testclient_report.md

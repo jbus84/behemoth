@@ -268,6 +268,7 @@ class StateManager:
         self._feature_contract.validate_feature_names(tuple(ModelFeatures.model_fields))
 
         self._warmup_verifier = WarmupBoundaryVerifier(self._feature_engine.warmup_bars)
+        self._warmup_verifier.validate_warmup_parity(self._feature_engine.config)
 
         self._store = DuckDBStateStore(persist_path)
         self._store.execute(_CREATE_SQL)
