@@ -14,6 +14,82 @@ ACTIVE_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 
 SKIP_COLUMNS = ["symbol", "reason"]
 CANONICAL_TICK_COLUMNS = ["timestamp", "bid", "ask", "mid", "spread", "log_return"]
+WINDOW_SUMMARY_COLUMNS = [
+    "symbol",
+    "start_ts",
+    "end_ts",
+    "raw_tick_count",
+    "bar_count",
+    "bar_ticks",
+]
+TICK_COVERAGE_COLUMNS = [
+    "symbol",
+    "live_rows",
+    "governance_rows",
+    "live_first_ts",
+    "live_last_ts",
+    "governance_first_ts",
+    "governance_last_ts",
+    "live_duplicate_ts_ratio",
+    "governance_duplicate_ts_ratio",
+    "live_spread_p50",
+    "live_spread_p95",
+    "governance_spread_p50",
+    "governance_spread_p95",
+    "row_delta",
+]
+BAR_DEVIATION_COLUMNS = [
+    "symbol",
+    "live_bar_count",
+    "governance_bar_count",
+    "matched_bars",
+    "missing_live_bars",
+    "extra_live_bars",
+    "live_duplicate_close_ts",
+    "governance_duplicate_close_ts",
+    "max_abs_close_delta_pips",
+    "max_abs_spread_delta_pips",
+]
+SIGNAL_DEVIATION_COLUMNS = [
+    "symbol",
+    "live_source",
+    "live_prediction_rows",
+    "governance_prediction_rows",
+    "prediction_row_delta",
+    "live_selected_signal_count",
+    "governance_selected_signal_count",
+    "selected_signal_delta",
+    "live_pred_prob_p50",
+    "governance_pred_prob_p50",
+    "live_threshold_p50",
+    "governance_threshold_p50",
+]
+OUTCOME_DEVIATION_COLUMNS = [
+    "symbol",
+    "Governance Selected Signal Count",
+    "Runtime Trade Count",
+    "Runtime closed trade count",
+    "Runtime Closed Trade Count",
+    "Runtime Realized P&L",
+    "governance_selected_signal_count",
+    "runtime_trade_count",
+    "runtime_closed_trade_count",
+    "runtime_realized_pnl_pips",
+]
+FINDINGS_COLUMNS = ["symbol", "classification", "code", "severity", "summary"]
+GOVERNANCE_TICK_BAR_COLUMNS = [
+    "close_ts",
+    "open_bid",
+    "high_bid",
+    "low_bid",
+    "close_bid",
+    "spread",
+    "tick_volume",
+    "hl_first",
+    "hl_pos_frac",
+    "high_ask",
+    "close_ask",
+]
 
 
 @dataclass(frozen=True)
@@ -79,6 +155,10 @@ def _empty_canonical_ticks() -> pd.DataFrame:
     return pd.DataFrame(columns=CANONICAL_TICK_COLUMNS)
 
 
+def _empty_governance_bars() -> pd.DataFrame:
+    return pd.DataFrame(columns=GOVERNANCE_TICK_BAR_COLUMNS)
+
+
 def _parse_timestamp_series(values: pd.Series) -> pd.Series:
     source_has_values = values.notna().any()
     try:
@@ -133,7 +213,7 @@ def build_governance_bars_for_window(
     canonical_ticks: pd.DataFrame, bar_ticks: int
 ) -> pd.DataFrame:
     if canonical_ticks.empty or int(bar_ticks) != 100:
-        return pd.DataFrame()
+        return _empty_governance_bars()
 
     from scripts.diagnose_live_replay import _build_bars_from_ticks
 
@@ -141,7 +221,7 @@ def build_governance_bars_for_window(
     ticks["timestamp"] = _parse_timestamp_series(ticks["timestamp"])
     ticks = ticks[ticks["timestamp"].notna()]
     if ticks.empty:
-        return pd.DataFrame()
+        return _empty_governance_bars()
 
     return _build_bars_from_ticks(pl.from_pandas(ticks)).to_pandas()
 
@@ -186,7 +266,15 @@ def _skip_frame(rows: list[dict[str, object]]) -> pd.DataFrame:
 
 
 def _run_dir(out_dir: Path) -> Path:
-    return Path(out_dir) / utc_now().strftime("%Y%m%dT%H%M%SZ")
+    base = Path(out_dir) / utc_now().strftime("%Y%m%dT%H%M%S%fZ")
+    if not base.exists():
+        return base
+    suffix = 1
+    while True:
+        candidate = base.with_name(f"{base.name}-{suffix}")
+        if not candidate.exists():
+            return candidate
+        suffix += 1
 
 
 def _window_summary_frame(windows: list[SymbolWindow]) -> pd.DataFrame:
@@ -202,14 +290,7 @@ def _window_summary_frame(windows: list[SymbolWindow]) -> pd.DataFrame:
             }
             for window in windows
         ],
-        columns=[
-            "symbol",
-            "start_ts",
-            "end_ts",
-            "raw_tick_count",
-            "bar_count",
-            "bar_ticks",
-        ],
+        columns=WINDOW_SUMMARY_COLUMNS,
     )
 
 
@@ -825,9 +906,7 @@ def build_findings(
             }
         )
 
-    return pd.DataFrame(
-        rows, columns=["symbol", "classification", "code", "severity", "summary"]
-    )
+    return pd.DataFrame(rows, columns=FINDINGS_COLUMNS)
 
 
 def _markdown_table(df: pd.DataFrame) -> str:
@@ -900,11 +979,11 @@ def render_report(
     return "\n".join(sections)
 
 
-def _concat_frames(frames: list[pd.DataFrame]) -> pd.DataFrame:
+def _concat_frames(frames: list[pd.DataFrame], columns: list[str]) -> pd.DataFrame:
     non_empty = [frame for frame in frames if not frame.empty]
     if not non_empty:
-        return pd.DataFrame()
-    return pd.concat(non_empty, ignore_index=True)
+        return pd.DataFrame(columns=columns)
+    return pd.concat(non_empty, ignore_index=True).reindex(columns=columns)
 
 
 def _write_parquet(path: Path, df: pd.DataFrame) -> None:
@@ -937,7 +1016,7 @@ def _governance_selected_count(signal_deviation: pd.DataFrame) -> int:
 
 def run_analysis(cfg: DeviationConfig) -> dict[str, Path]:
     run_dir = _run_dir(cfg.out_dir)
-    run_dir.mkdir(parents=True, exist_ok=True)
+    run_dir.mkdir(parents=True, exist_ok=False)
 
     tick_coverage_frames: list[pd.DataFrame] = []
     bar_deviation_frames: list[pd.DataFrame] = []
@@ -1017,10 +1096,12 @@ def run_analysis(cfg: DeviationConfig) -> dict[str, Path]:
     finally:
         con.close()
 
-    tick_coverage = _concat_frames(tick_coverage_frames)
-    bar_deviation = _concat_frames(bar_deviation_frames)
-    signal_deviation = _concat_frames(signal_deviation_frames)
-    outcome_deviation = _concat_frames(outcome_deviation_frames)
+    tick_coverage = _concat_frames(tick_coverage_frames, TICK_COVERAGE_COLUMNS)
+    bar_deviation = _concat_frames(bar_deviation_frames, BAR_DEVIATION_COLUMNS)
+    signal_deviation = _concat_frames(signal_deviation_frames, SIGNAL_DEVIATION_COLUMNS)
+    outcome_deviation = _concat_frames(
+        outcome_deviation_frames, OUTCOME_DEVIATION_COLUMNS
+    )
     incomplete = pd.DataFrame(incomplete_rows, columns=SKIP_COLUMNS)
     findings = build_findings(bar_deviation, signal_deviation, incomplete)
 

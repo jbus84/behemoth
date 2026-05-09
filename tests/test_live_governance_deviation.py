@@ -546,6 +546,7 @@ def test_outcome_deviation_preserves_unknown_missing_runtime_evidence() -> None:
     assert pd.isna(missing_pnl.loc[0, "runtime_realized_pnl_pips"])
 
 
+import src.behemoth.diagnostics.live_governance_deviation as live_governance_deviation
 from src.behemoth.diagnostics.live_governance_deviation import run_analysis
 
 
@@ -593,3 +594,156 @@ def test_run_analysis_writes_required_outputs(tmp_path: Path) -> None:
     assert (result["run_dir"] / "EURUSD_live_tick_bars.parquet").exists()
     assert (result["run_dir"] / "EURUSD_governance_raw_ticks.parquet").exists()
     assert (result["run_dir"] / "EURUSD_governance_tick_bars.parquet").exists()
+
+
+def test_run_analysis_creates_distinct_run_dirs_for_immediate_runs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    db_path = tmp_path / "runtime.db"
+    _create_runtime_db(db_path)
+    out_dir = tmp_path / "out"
+    fixed_now = pd.Timestamp("2026-05-09T16:30:00Z")
+    monkeypatch.setattr(live_governance_deviation, "utc_now", lambda: fixed_now)
+    cfg = DeviationConfig(
+        runtime_db=db_path,
+        tick_root=tmp_path / "missing_ticks",
+        symbols=("EURUSD",),
+        lookback_days=7,
+        min_bars=2,
+        run_id="jforex_live",
+        out_dir=out_dir,
+    )
+
+    first = run_analysis(cfg)
+    stale_marker = first["run_dir"] / "stale_artifact.txt"
+    stale_marker.write_text("stale", encoding="utf-8")
+    second = run_analysis(cfg)
+
+    assert first["run_dir"] != second["run_dir"]
+    assert stale_marker.exists()
+    assert not (second["run_dir"] / "stale_artifact.txt").exists()
+
+
+def test_run_analysis_all_skipped_writes_parseable_required_csvs(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "runtime.db"
+    _create_runtime_db(db_path)
+    result = run_analysis(
+        DeviationConfig(
+            runtime_db=db_path,
+            tick_root=tmp_path / "missing_ticks",
+            symbols=("GBPUSD",),
+            lookback_days=7,
+            min_bars=2,
+            run_id="jforex_live",
+            out_dir=tmp_path / "out",
+        )
+    )
+
+    expected_columns = {
+        "window_summary.csv": [
+            "symbol",
+            "start_ts",
+            "end_ts",
+            "raw_tick_count",
+            "bar_count",
+            "bar_ticks",
+        ],
+        "symbol_skips.csv": ["symbol", "reason"],
+        "tick_coverage_deviation.csv": [
+            "symbol",
+            "live_rows",
+            "governance_rows",
+            "live_first_ts",
+            "live_last_ts",
+            "governance_first_ts",
+            "governance_last_ts",
+            "live_duplicate_ts_ratio",
+            "governance_duplicate_ts_ratio",
+            "live_spread_p50",
+            "live_spread_p95",
+            "governance_spread_p50",
+            "governance_spread_p95",
+            "row_delta",
+        ],
+        "bar_deviation.csv": [
+            "symbol",
+            "live_bar_count",
+            "governance_bar_count",
+            "matched_bars",
+            "missing_live_bars",
+            "extra_live_bars",
+            "live_duplicate_close_ts",
+            "governance_duplicate_close_ts",
+            "max_abs_close_delta_pips",
+            "max_abs_spread_delta_pips",
+        ],
+        "signal_deviation.csv": [
+            "symbol",
+            "live_source",
+            "live_prediction_rows",
+            "governance_prediction_rows",
+            "prediction_row_delta",
+            "live_selected_signal_count",
+            "governance_selected_signal_count",
+            "selected_signal_delta",
+            "live_pred_prob_p50",
+            "governance_pred_prob_p50",
+            "live_threshold_p50",
+            "governance_threshold_p50",
+        ],
+        "outcome_deviation.csv": [
+            "symbol",
+            "Governance Selected Signal Count",
+            "Runtime Trade Count",
+            "Runtime closed trade count",
+            "Runtime Closed Trade Count",
+            "Runtime Realized P&L",
+            "governance_selected_signal_count",
+            "runtime_trade_count",
+            "runtime_closed_trade_count",
+            "runtime_realized_pnl_pips",
+        ],
+        "findings.csv": ["symbol", "classification", "code", "severity", "summary"],
+    }
+    for filename, columns in expected_columns.items():
+        frame = pd.read_csv(result["run_dir"] / filename)
+        assert list(frame.columns) == columns
+
+
+def test_run_analysis_missing_canonical_ticks_writes_schemaful_governance_bars(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "runtime.db"
+    _create_runtime_db(db_path)
+
+    result = run_analysis(
+        DeviationConfig(
+            runtime_db=db_path,
+            tick_root=tmp_path / "missing_ticks",
+            symbols=("EURUSD",),
+            lookback_days=7,
+            min_bars=2,
+            run_id="jforex_live",
+            out_dir=tmp_path / "out",
+        )
+    )
+
+    governance_bars = pd.read_parquet(
+        result["run_dir"] / "EURUSD_governance_tick_bars.parquet"
+    )
+    assert len(governance_bars) == 0
+    assert {
+        "close_ts",
+        "open_bid",
+        "high_bid",
+        "low_bid",
+        "close_bid",
+        "spread",
+        "tick_volume",
+        "hl_first",
+        "hl_pos_frac",
+        "high_ask",
+        "close_ask",
+    }.issubset(governance_bars.columns)
