@@ -163,11 +163,12 @@ class InMemoryStateStore:
             rows = cur.fetchall()
             tuples = [tuple(r) for r in rows]
             if cur.description is not None:
-                df = pd.DataFrame(rows, columns=[d[0] for d in cur.description]) if cur.description else pd.DataFrame()
+                df = pd.DataFrame(tuples, columns=[d[0] for d in cur.description])
                 return StateStoreResult(rows=tuples, df=df)
             return StateStoreResult(rows=tuples)
         except sqlite3.OperationalError as e:
-            if "no such table" in str(e).lower() or "no such column" in str(e).lower():
+            msg = str(e).lower()
+            if "no such table" in msg or "no such column" in msg:
                 return StateStoreResult([])
             raise
 

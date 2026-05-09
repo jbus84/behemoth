@@ -64,3 +64,18 @@ class TestInMemoryStateStore:
         store.executemany("INSERT INTO t VALUES (?)", [])
         result = store.execute("SELECT COUNT(*) FROM t")
         assert result.fetchone()[0] == 0
+
+    def test_transaction_commit(self) -> None:
+        store = InMemoryStateStore()
+        store.execute("CREATE TABLE t (a INTEGER)")
+        store.begin()
+        store.execute("INSERT INTO t VALUES (1)")
+        store.commit()
+        result = store.execute("SELECT COUNT(*) FROM t")
+        assert result.fetchone()[0] == 1
+
+    def test_no_such_column_returns_empty(self) -> None:
+        store = InMemoryStateStore()
+        store.execute("CREATE TABLE t (a INTEGER)")
+        result = store.execute("SELECT b FROM t")
+        assert result.fetchall() == []
