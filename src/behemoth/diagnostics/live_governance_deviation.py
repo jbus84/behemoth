@@ -676,6 +676,12 @@ def compute_outcome_deviation(
         [
             {
                 "symbol": symbol.upper(),
+                "Governance Selected Signal Count": int(
+                    governance_selected_signal_count
+                ),
+                "Runtime Trade Count": runtime_trade_count,
+                "Runtime closed trade count": runtime_closed_trade_count,
+                "Runtime Realized P&L": runtime_realized_pnl_pips,
                 "governance_selected_signal_count": int(
                     governance_selected_signal_count
                 ),

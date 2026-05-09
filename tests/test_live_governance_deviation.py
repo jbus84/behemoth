@@ -459,6 +459,8 @@ def test_signal_outcome_findings_and_report() -> None:
 
     trades = pd.DataFrame({"status": ["CLOSED", "OPEN"], "pnl_pips": [3.0, 0.0]})
     outcome = compute_outcome_deviation("EURUSD", trades, governance_selected_signal_count=2)
+    assert outcome.loc[0, "Runtime Trade Count"] == 2
+    assert outcome.loc[0, "Runtime Realized P&L"] == 3.0
     assert outcome.loc[0, "runtime_trade_count"] == 2
     assert outcome.loc[0, "runtime_realized_pnl_pips"] == 3.0
 
