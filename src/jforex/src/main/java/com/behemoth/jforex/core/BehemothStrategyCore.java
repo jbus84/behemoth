@@ -24,13 +24,10 @@ public final class BehemothStrategyCore {
     private final Stage14ArtifactWriter artifactWriter;
     private final JForexMetrics metrics;
     private final ExecutionPort executionPort;
+    private final OrderBookingService orderBookingService;
     private final OrderLifecycleHandler orderLifecycleHandler;
     private final Map<String, SymbolRuntimeState> symbolStates = new LinkedHashMap<>();
     private final Map<String, SymbolWorker> symbolWorkers = new LinkedHashMap<>();
-    /** Maps order label → fill context so handleFill can pass real values to /trades/open. */
-    private final Map<String, OrderLifecycleHandler.PendingFillContext> pendingFills = new ConcurrentHashMap<>();
-    /** Maps scan_id → order label so CLOSE_MARKET can look up the JForex order by label. */
-    private final Map<String, String> scanToOrderLabel = new ConcurrentHashMap<>();
 
     public BehemothStrategyCore(
             JForexSessionConfig sessionConfig,
@@ -46,12 +43,13 @@ public final class BehemothStrategyCore {
         this.artifactWriter = Objects.requireNonNull(artifactWriter, "artifactWriter");
         this.metrics = Objects.requireNonNull(metrics, "metrics");
         this.executionPort = Objects.requireNonNull(executionPort, "executionPort");
+        this.orderBookingService = new OrderBookingService(executionPort, metrics, artifactWriter);
         this.orderLifecycleHandler = new OrderLifecycleHandler(
                 this.sessionConfig,
                 this.predictionClient,
                 this.artifactWriter,
                 this.metrics,
-                pendingFills
+                orderBookingService.pendingFills()
         );
     }
 
@@ -179,47 +177,21 @@ public final class BehemothStrategyCore {
         }
 
         @Override public OrderResult submitMarketOrder(OrderSubmissionRequest request) {
-            String symbol = request.symbol();
-            String side = request.side();
-            String label = request.label();
-            String scanId = request.scanId();
-            scanToOrderLabel.put(scanId, label);
-            pendingFills.put(label, new OrderLifecycleHandler.PendingFillContext(
+            OrderIntent intent = new OrderIntent(
+                    request.symbol(),
+                    request.scanId(),
+                    request.side(),
+                    request.amountMillions(),
                     request.candidateUid(),
                     request.reservationId(),
-                    request.horizon()
-            ));
-            try {
-                try (JForexMetrics.TimerContext ignored = metrics.startOrderSubmitTimer(symbol, side)) {
-                    OrderResult result = executionPort.submitMarketOrder(request);
-                    metrics.recordOrderSubmitted(symbol, side);
-                    artifactWriter.markOperationalStep(symbol, "market_order_submitted", true, label);
-                    return result;
-                }
-            } catch (RuntimeException exc) {
-                pendingFills.remove(label);
-                scanToOrderLabel.remove(scanId);
-                metrics.recordOrderSubmitFailure(symbol, side);
-                artifactWriter.markOperationalStep(symbol, "market_order_submit_failure", false, exc.getMessage());
-                return new OrderResult("", "", request.reservationId());
-            }
+                    request.horizon(),
+                    request.submittedAtUtc()
+            );
+            return orderBookingService.submitMarketOrder(intent);
         }
 
         @Override public void closePositionByScanId(String symbol, String scanId, Instant now) {
-            String orderLabel = scanToOrderLabel.remove(scanId);
-            if (orderLabel != null) {
-                try {
-                    try (JForexMetrics.TimerContext ignored = metrics.startOrderSubmitTimer(symbol, "CLOSE")) {
-                        executionPort.closePosition(symbol, orderLabel);
-                    }
-                    artifactWriter.markOperationalStep(symbol, "barrier_close_submitted", true, orderLabel);
-                } catch (RuntimeException exc) {
-                    artifactWriter.markOperationalStep(symbol, "barrier_close_failure", false, exc.getMessage());
-                }
-            } else {
-                artifactWriter.markOperationalStep(symbol, "barrier_close_skipped_no_label", false,
-                        "scan_id=" + scanId);
-            }
+            orderBookingService.closePositionByScanId(symbol, scanId, now);
         }
     };
 
