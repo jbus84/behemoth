@@ -962,13 +962,23 @@ def run_analysis(cfg: DeviationConfig) -> dict[str, Path]:
                 canonical_ticks, window.bar_ticks
             )
 
-            symbol_dir = run_dir / window.symbol
-            _write_parquet(symbol_dir / "live_raw_ticks.parquet", evidence.raw_ticks)
-            _write_parquet(symbol_dir / "live_tick_bars.parquet", evidence.tick_bars)
+            symbol_prefix = window.symbol.upper()
             _write_parquet(
-                symbol_dir / "governance_raw_ticks.parquet", canonical_ticks
+                run_dir / f"{symbol_prefix}_live_raw_ticks.parquet",
+                evidence.raw_ticks,
             )
-            _write_parquet(symbol_dir / "governance_tick_bars.parquet", governance_bars)
+            _write_parquet(
+                run_dir / f"{symbol_prefix}_live_tick_bars.parquet",
+                evidence.tick_bars,
+            )
+            _write_parquet(
+                run_dir / f"{symbol_prefix}_governance_raw_ticks.parquet",
+                canonical_ticks,
+            )
+            _write_parquet(
+                run_dir / f"{symbol_prefix}_governance_tick_bars.parquet",
+                governance_bars,
+            )
 
             if canonical_ticks.empty:
                 incomplete_rows.append(
