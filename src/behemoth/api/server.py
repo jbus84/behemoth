@@ -95,6 +95,12 @@ from src.behemoth.api.runtime_app_state import RuntimeAppState
 
 _app_state: RuntimeAppState = RuntimeAppState()
 
+
+def _get_app_state() -> RuntimeAppState:
+    """FastAPI dependency that returns the canonical runtime app state."""
+    return _app_state
+
+
 _state: StateManager | None = None
 _barrier_manager: BarrierManager | None = None
 _orchestrator: PredictionOrchestrator | None = None
