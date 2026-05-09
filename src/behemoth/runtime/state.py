@@ -148,6 +148,15 @@ CREATE TABLE IF NOT EXISTS account_risk_allocator_events (
     reservation_id VARCHAR
 );
 
+CREATE TABLE IF NOT EXISTS account_risk_reservation_audit (
+    reservation_id VARCHAR NOT NULL,
+    event_ts TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    from_status VARCHAR,
+    to_status VARCHAR NOT NULL,
+    reason VARCHAR,
+    broker_pos_id VARCHAR
+);
+
 CREATE TABLE IF NOT EXISTS raw_ticks (
     tick_ts TIMESTAMP WITH TIME ZONE,
     ingest_ts TIMESTAMP WITH TIME ZONE,
