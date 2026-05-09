@@ -1,3 +1,9 @@
+## v0.28.0 (2026-05-09)
+
+### Feat
+
+- Wave 6.6 - Horizon-Aware Feature Config (#157)
+
 ## v0.27.0 (2026-05-09)
 
 ### Feat
