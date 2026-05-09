@@ -7,6 +7,8 @@ and supporting future persistence layers (PostgreSQL, SQLite, etc).
 from __future__ import annotations
 
 import threading
+
+import pandas as pd
 from typing import Any, Protocol
 
 
@@ -158,13 +160,12 @@ class InMemoryStateStore:
         import sqlite3
         try:
             cur = self._con.execute(sql, params or [])
-            if sql.strip().upper().startswith("SELECT"):
-                rows = cur.fetchall()
-                import pandas as pd
-                df = pd.DataFrame(rows, columns=[d[0] for d in cur.description]) if cur.description else pd.DataFrame()
-                return StateStoreResult(rows=[tuple(r) for r in rows], df=df)
             rows = cur.fetchall()
-            return StateStoreResult(rows=[tuple(r) for r in rows])
+            tuples = [tuple(r) for r in rows]
+            if cur.description is not None:
+                df = pd.DataFrame(rows, columns=[d[0] for d in cur.description]) if cur.description else pd.DataFrame()
+                return StateStoreResult(rows=tuples, df=df)
+            return StateStoreResult(rows=tuples)
         except sqlite3.OperationalError as e:
             if "no such table" in str(e).lower() or "no such column" in str(e).lower():
                 return StateStoreResult([])
