@@ -600,6 +600,7 @@ def build_stage14_artifacts(
         "- execution_lifecycle_pass: validates the JForex execution lifecycle summary emitted by the adapter runtime.",
         "- local_jforex_surrogate_pass: the shared Java strategy core must pass the parquet-driven local surrogate harness; this is the hard runtime parity gate. An explicit NO_GO is accepted only for historically non-deployable symbols.",
         "- order_coverage_ratio is expected to be low (<0.2): OCO mechanics block new orders while an existing position is live. This metric is informational; signal_coverage_pass is the gate.",
+        "- When reconcile_jforex_outcomes.py is run with --findings, a report bundle (findings.csv + reconcile_report.md + run_manifest.json) is written to {RECONCILE_DIR}/outcome_parity_report/ for diagnostic reference.",
     ]
     report_out.write_text("\n".join(report_lines).strip() + "\n", encoding="utf-8")
 

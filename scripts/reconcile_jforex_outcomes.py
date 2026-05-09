@@ -19,6 +19,18 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from src.behemoth.diagnostics.findings import build_findings  # noqa: E402
+from src.behemoth.diagnostics.report import (  # noqa: E402
+    markdown_table,
+    render_reconcile_report,
+    write_csv_bundle,
+    write_manifest,
+)
+
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 
 
@@ -63,6 +75,41 @@ def _in_eval_window(
     if eval_start is not None and ts < eval_start:
         return False
     return not (eval_end is not None and ts >= eval_end)
+
+
+def discover_eval_window(runtime_db: Path, symbol: str, lookback_days: int = 7) -> tuple[str, str] | None:
+    """Discover eval window by querying MAX(close_ts) from tick_bars in runtime DB.
+
+    Returns (eval_start_iso, eval_end_iso) or None if discovery fails.
+    """
+    if not runtime_db.exists():
+        return None
+    try:
+        con = duckdb.connect(str(runtime_db), read_only=True)
+    except Exception:
+        return None
+    try:
+        tables = con.execute(
+            "SELECT table_name FROM information_schema.tables WHERE table_name = 'tick_bars'"
+        ).fetchdf()
+        if tables.empty:
+            return None
+        latest = con.execute(
+            "SELECT MAX(close_ts) AS latest FROM tick_bars WHERE symbol = ?",
+            [symbol.upper()],
+        ).fetchone()
+        if latest is None or latest[0] is None:
+            return None
+        latest_ts = pd.Timestamp(latest[0]).tz_convert("UTC")
+        start_ts = latest_ts - pd.Timedelta(days=lookback_days)
+        return (
+            start_ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            latest_ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        )
+    except Exception:
+        return None
+    finally:
+        con.close()
 
 
 DEFAULT_LOCK_DIR = "configs/research/governance/oco_history_dukascopy_candidate/2025-07"
@@ -448,6 +495,23 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Write outcome evidence but exit 0 even when outcome parity fails.",
     )
+    parser.add_argument(
+        "--runtime-db",
+        type=Path,
+        default=None,
+        help="Path to runtime DuckDB for auto window discovery when --eval-start/--eval-end are omitted.",
+    )
+    parser.add_argument(
+        "--out-report-dir",
+        type=Path,
+        default=None,
+        help="Emit Markdown + JSON manifest + CSV bundle to this directory.",
+    )
+    parser.add_argument(
+        "--findings",
+        action="store_true",
+        help="Emit findings classification alongside standard CSV output.",
+    )
     return parser.parse_args()
 
 
@@ -458,13 +522,28 @@ def main() -> None:
     reconcile_dir = Path(args.reconcile_dir)
     now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
+    eval_start = args.eval_start
+    eval_end = args.eval_end
+
+    # Auto-discover eval window from runtime DB when not explicitly provided
+    if not eval_start and not eval_end and args.runtime_db is not None:
+        discovered_any = False
+        for symbol in symbols:
+            window = discover_eval_window(args.runtime_db, symbol)
+            if window is not None:
+                eval_start, eval_end = window
+                discovered_any = True
+                break
+        if not discovered_any:
+            print("Warning: could not auto-discover eval window from runtime DB; using all events.")
+
     results = []
     for symbol in symbols:
         events = load_runtime_events(
             reconcile_dir,
             symbol,
-            eval_start=args.eval_start,
-            eval_end=args.eval_end,
+            eval_start=eval_start,
+            eval_end=eval_end,
             events_prefix=args.events_prefix,
         )
         lock_status = load_historical_lock_status(lock_dir, symbol)
@@ -481,7 +560,7 @@ def main() -> None:
 
         universe_uids = load_state_universe_uids(lock_dir, symbol)
         governance_selected = load_locked_predictions(
-            lock_dir, symbol, eval_start=args.eval_start, eval_end=args.eval_end,
+            lock_dir, symbol, eval_start=eval_start, eval_end=eval_end,
             candidate_uids=universe_uids or None,
         )
 
@@ -513,6 +592,16 @@ def main() -> None:
         result["lock_dir"] = str(lock_dir)
         result["evaluated_at_utc"] = now_utc
         results.append(result)
+
+    # Build findings if requested
+    findings = pd.DataFrame()
+    if args.findings:
+        findings = build_findings(
+            results=results,
+            signal_coverage_threshold=args.signal_coverage_threshold,
+        )
+        print("\nFindings:")
+        print(markdown_table(findings))
 
     # Print summary table
     print(
@@ -550,10 +639,42 @@ def main() -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     keys = results[0].keys() if results else []
     with open(out_path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=keys)
+        writer = csv.DictWriter(f, fieldnames=list(keys))
         writer.writeheader()
         writer.writerows(results)
     print(f"\nResults written to {out_path}")
+
+    # Write report bundle if requested
+    report_dir = args.out_report_dir
+    if report_dir is None and args.findings:
+        report_dir = reconcile_dir / "outcome_parity_report"
+    if report_dir is not None:
+        report_dir.mkdir(parents=True, exist_ok=True)
+        results_df = pd.DataFrame(results)
+        frames = {
+            "reconciliation_summary": results_df,
+        }
+        if not findings.empty:
+            frames["findings"] = findings
+        write_csv_bundle(report_dir, frames)
+        manifest = {
+            "generated_at_utc": now_utc,
+            "run_id": "reconcile_jforex_outcomes",
+            "symbols": symbols,
+            "eval_start": eval_start,
+            "eval_end": eval_end,
+            "lock_dir": str(lock_dir),
+            "reconcile_dir": str(reconcile_dir),
+            "artifact_paths": {name: str(report_dir / f"{name}.csv") for name in frames},
+        }
+        write_manifest(report_dir / "run_manifest.json", manifest)
+        report_md = render_reconcile_report(
+            manifest=manifest,
+            findings=findings if not findings.empty else pd.DataFrame(columns=["symbol", "classification", "code", "severity", "summary"]),
+            results=results_df,
+        )
+        (report_dir / "reconcile_report.md").write_text(report_md, encoding="utf-8")
+        print(f"Report bundle written to {report_dir}")
 
     # Exit code
     deployable_results = [r for r in results if bool(r.get("historical_deployable", True))]
