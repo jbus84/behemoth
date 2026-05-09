@@ -1,3 +1,9 @@
+## v0.23.0 (2026-05-09)
+
+### Feat
+
+- ReservationStateMachine — dedicated module with explicit transitions (#152)
+
 ## v0.22.0 (2026-05-09)
 
 ### Feat
