@@ -37,7 +37,12 @@ def _parse_symbols(raw: str | None) -> tuple[str, ...]:
 def _parse_ts(raw: str | None) -> pd.Timestamp | None:
     if raw is None or not raw.strip():
         return None
-    ts = pd.Timestamp(raw)
+    try:
+        ts = pd.Timestamp(raw)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError(
+            f"invalid timestamp {raw!r}: {exc}"
+        ) from exc
     if ts.tzinfo is None:
         return ts.tz_localize("UTC")
     return ts.tz_convert("UTC")
@@ -66,8 +71,8 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=Path,
         default=Path("data/analysis/live_governance_deviation"),
     )
-    parser.add_argument("--start-ts", default="")
-    parser.add_argument("--end-ts", default="")
+    parser.add_argument("--start-ts", type=_parse_ts, default=None)
+    parser.add_argument("--end-ts", type=_parse_ts, default=None)
     parser.add_argument(
         "--governance-dir",
         type=Path,
@@ -76,7 +81,10 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--models-dir", type=Path, default=Path("models/oco"))
     parser.add_argument("--api", default="")
     parser.add_argument("--copy-report-to-docs", action="store_true")
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if (args.start_ts is None) != (args.end_ts is None):
+        parser.error("--start-ts and --end-ts must be supplied together")
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -89,8 +97,8 @@ def main(argv: list[str] | None = None) -> int:
         min_bars=args.min_bars,
         run_id=args.run_id,
         out_dir=args.out_dir,
-        start_ts=_parse_ts(args.start_ts),
-        end_ts=_parse_ts(args.end_ts),
+        start_ts=args.start_ts,
+        end_ts=args.end_ts,
         governance_dir=args.governance_dir,
         models_dir=args.models_dir,
         api=args.api or None,

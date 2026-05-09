@@ -8,6 +8,7 @@ import duckdb
 import pandas as pd
 import pytest
 
+import scripts.analyze_live_governance_deviation as cli
 from src.behemoth.diagnostics.live_governance_deviation import (
     DeviationConfig,
     compute_bar_deviation,
@@ -262,6 +263,70 @@ def test_compute_bar_deviation_returns_nan_when_delta_columns_missing() -> None:
     assert pd.isna(metrics.loc[0, "max_abs_spread_delta_pips"])
 
 
+def test_parse_symbols_deduplicates_and_ignores_blank_tokens() -> None:
+    assert cli._parse_symbols(" eurusd, ,GBPUSD,eurusd,, gbpusd ") == (
+        "EURUSD",
+        "GBPUSD",
+    )
+    assert cli._parse_symbols(None) == cli.ACTIVE_SYMBOLS
+    assert cli._parse_symbols(" , ") == cli.ACTIVE_SYMBOLS
+
+
+def test_cli_rejects_invalid_timestamp_without_pandas_traceback(tmp_path: Path) -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/analyze_live_governance_deviation.py",
+            "--runtime-db",
+            str(tmp_path / "missing.db"),
+            "--tick-root",
+            str(tmp_path / "ticks"),
+            "--symbols",
+            "EURUSD",
+            "--start-ts",
+            "not-a-date",
+            "--end-ts",
+            "2026-05-02T00:00:00Z",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode != 0
+    assert "invalid timestamp" in result.stderr
+    assert "not-a-date" in result.stderr
+    assert "Traceback" not in result.stderr
+    assert "pandas" not in result.stderr
+
+
+@pytest.mark.parametrize("partial_arg", ["--start-ts", "--end-ts"])
+def test_cli_rejects_partial_explicit_window(
+    tmp_path: Path, partial_arg: str
+) -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/analyze_live_governance_deviation.py",
+            "--runtime-db",
+            str(tmp_path / "missing.db"),
+            "--tick-root",
+            str(tmp_path / "ticks"),
+            "--symbols",
+            "EURUSD",
+            partial_arg,
+            "2026-05-02T00:00:00Z",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode != 0
+    assert "--start-ts and --end-ts must be supplied together" in result.stderr
+    assert "Traceback" not in result.stderr
+
+
 def test_cli_smoke_writes_report(tmp_path: Path) -> None:
     db_path = tmp_path / "runtime.db"
     _create_runtime_db(db_path)
@@ -303,6 +368,58 @@ def test_cli_smoke_writes_report(tmp_path: Path) -> None:
         text=True,
         capture_output=True,
     )
+    assert result.returncode == 0, result.stderr
+    assert "report=" in result.stdout
+    assert list(out_dir.glob("*/live_governance_deviation_report.md"))
+
+
+def test_cli_accepts_complete_explicit_window(tmp_path: Path) -> None:
+    db_path = tmp_path / "runtime.db"
+    _create_runtime_db(db_path)
+    tick_root = tmp_path / "dukascopy_ticks"
+    sym_dir = tick_root / "EURUSD"
+    sym_dir.mkdir(parents=True)
+    canonical = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2026-05-02T00:00:00Z", periods=300, freq="s"),
+            "bid": [1.1] * 300,
+            "ask": [1.1002] * 300,
+            "mid": [1.1001] * 300,
+            "spread": [0.0002] * 300,
+            "log_return": [0.0] * 300,
+        }
+    )
+    canonical.to_parquet(sym_dir / "EURUSD_202605_ticks.parquet", index=False)
+    out_dir = tmp_path / "out"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/analyze_live_governance_deviation.py",
+            "--runtime-db",
+            str(db_path),
+            "--tick-root",
+            str(tick_root),
+            "--symbols",
+            "EURUSD",
+            "--lookback-days",
+            "7",
+            "--min-bars",
+            "2",
+            "--run-id",
+            "jforex_live",
+            "--out-dir",
+            str(out_dir),
+            "--start-ts",
+            "2026-05-02T00:00:00Z",
+            "--end-ts",
+            "2026-05-02T00:04:59Z",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
     assert result.returncode == 0, result.stderr
     assert "report=" in result.stdout
     assert list(out_dir.glob("*/live_governance_deviation_report.md"))
