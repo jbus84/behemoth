@@ -1,3 +1,9 @@
+## v0.21.0 (2026-05-09)
+
+### Feat
+
+- WarmupBoundaryVerifier — observable warmup gate status (#148)
+
 ## v0.20.3 (2026-05-09)
 
 ### Refactor
