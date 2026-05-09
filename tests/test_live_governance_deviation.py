@@ -131,3 +131,43 @@ def test_discover_symbol_windows_uses_latest_completed_tick_bars(tmp_path: Path)
     assert windows[0].end_ts.isoformat() == "2026-05-02T00:04:59+00:00"
     assert skips.iloc[0]["symbol"] == "GBPUSD"
     assert skips.iloc[0]["reason"] == "missing_recent_tick_bars"
+
+
+from src.behemoth.diagnostics.live_governance_deviation import (
+    compute_bar_deviation,
+    compute_tick_coverage,
+    extract_live_evidence,
+)
+
+
+def test_extract_live_evidence_and_compute_live_metrics(tmp_path: Path) -> None:
+    db_path = tmp_path / "runtime.db"
+    _create_runtime_db(db_path)
+    con = duckdb.connect(str(db_path), read_only=True)
+    try:
+        window = discover_symbol_windows(
+            con,
+            DeviationConfig(
+                runtime_db=db_path,
+                tick_root=tmp_path / "ticks",
+                symbols=("EURUSD",),
+                lookback_days=7,
+                min_bars=2,
+                run_id="jforex_live",
+                out_dir=tmp_path / "out",
+            ),
+        )[0][0]
+        evidence = extract_live_evidence(con, window, run_id="jforex_live")
+    finally:
+        con.close()
+
+    assert len(evidence.raw_ticks) == 300
+    assert len(evidence.tick_bars) == 3
+    tick_metrics = compute_tick_coverage("EURUSD", evidence.raw_ticks, evidence.raw_ticks)
+    assert tick_metrics.loc[0, "live_rows"] == 300
+    assert tick_metrics.loc[0, "governance_rows"] == 300
+    bar_metrics = compute_bar_deviation("EURUSD", evidence.tick_bars, evidence.tick_bars)
+    assert bar_metrics.loc[0, "live_bar_count"] == 3
+    assert bar_metrics.loc[0, "missing_live_bars"] == 0
+    assert bar_metrics.loc[0, "extra_live_bars"] == 0
+    assert bar_metrics.loc[0, "max_abs_close_delta_pips"] == 0.0

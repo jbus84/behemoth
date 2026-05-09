@@ -40,6 +40,15 @@ class SymbolWindow:
     bar_ticks: int
 
 
+@dataclass(frozen=True)
+class LiveEvidence:
+    raw_ticks: pd.DataFrame
+    tick_bars: pd.DataFrame
+    predictions: pd.DataFrame
+    prediction_source: str
+    trades: pd.DataFrame
+
+
 def utc_now() -> pd.Timestamp:
     return pd.Timestamp(datetime.now(timezone.utc))
 
@@ -60,6 +69,21 @@ def _table_exists(con: duckdb.DuckDBPyConnection, table_name: str) -> bool:
         [table_name],
     ).fetchone()
     return bool(result and int(result[0]) > 0)
+
+
+def _read_df(
+    con: duckdb.DuckDBPyConnection, sql: str, params: list[Any]
+) -> pd.DataFrame:
+    try:
+        return con.execute(sql, params).fetchdf()
+    except Exception:
+        return pd.DataFrame()
+
+
+def _normalise_ts_column(df: pd.DataFrame, column: str) -> pd.DataFrame:
+    if column in df.columns:
+        df[column] = pd.to_datetime(df[column], utc=True, errors="coerce")
+    return df
 
 
 def _skip_frame(rows: list[dict[str, object]]) -> pd.DataFrame:
@@ -213,3 +237,228 @@ def discover_symbol_windows(
         )
 
     return windows, _skip_frame(skip_rows)
+
+
+def extract_live_evidence(
+    con: duckdb.DuckDBPyConnection, window: SymbolWindow, *, run_id: str
+) -> LiveEvidence:
+    symbol = window.symbol.upper()
+    start_ts = window.start_ts.to_pydatetime()
+    end_ts = window.end_ts.to_pydatetime()
+
+    raw_ticks = _read_df(
+        con,
+        """
+        SELECT tick_ts, ingest_ts, symbol, bid, ask, spread, tick_volume, source,
+               client_tick_seq, run_id
+        FROM raw_ticks
+        WHERE upper(symbol) = ?
+          AND tick_ts BETWEEN ? AND ?
+        ORDER BY tick_ts, client_tick_seq
+        """,
+        [symbol, start_ts, end_ts],
+    )
+    raw_ticks = _normalise_ts_column(raw_ticks, "tick_ts")
+    raw_ticks = _normalise_ts_column(raw_ticks, "ingest_ts")
+
+    tick_bars = _read_df(
+        con,
+        """
+        SELECT row_id, ts, close_ts, symbol, bar_ticks, open_bid, high_bid, low_bid,
+               close_bid, spread, tick_volume, hl_first, hl_pos_frac, high_ask, close_ask
+        FROM tick_bars
+        WHERE upper(symbol) = ?
+          AND close_ts BETWEEN ? AND ?
+        ORDER BY close_ts, row_id
+        """,
+        [symbol, start_ts, end_ts],
+    )
+    tick_bars = _normalise_ts_column(tick_bars, "ts")
+    tick_bars = _normalise_ts_column(tick_bars, "close_ts")
+
+    prediction_source = "none"
+    predictions = pd.DataFrame()
+    if _table_exists(con, "predict_evaluations"):
+        predictions = _read_df(
+            con,
+            """
+            SELECT *
+            FROM predict_evaluations
+            WHERE upper(symbol) = ?
+              AND lower(coalesce(run_id, '')) = lower(?)
+              AND close_ts BETWEEN ? AND ?
+            ORDER BY close_ts, candidate_uid
+            """,
+            [symbol, run_id, start_ts, end_ts],
+        )
+        if not predictions.empty:
+            prediction_source = "predict_evaluations"
+
+    if predictions.empty and _table_exists(con, "audit_logs"):
+        predictions = _read_df(
+            con,
+            """
+            SELECT *
+            FROM audit_logs
+            WHERE upper(symbol) = ?
+              AND lower(coalesce(run_id, '')) = lower(?)
+              AND close_ts BETWEEN ? AND ?
+            ORDER BY close_ts, candidate_uid
+            """,
+            [symbol, run_id, start_ts, end_ts],
+        )
+        if not predictions.empty:
+            prediction_source = "audit_logs"
+    predictions = _normalise_ts_column(predictions, "event_ts")
+    predictions = _normalise_ts_column(predictions, "close_ts")
+
+    trades = pd.DataFrame()
+    if _table_exists(con, "trades"):
+        trades = _read_df(
+            con,
+            """
+            SELECT *
+            FROM trades
+            WHERE upper(symbol) = ?
+              AND lower(coalesce(run_id, '')) = lower(?)
+            """,
+            [symbol, run_id],
+        )
+    trades = _normalise_ts_column(trades, "entry_ts")
+    trades = _normalise_ts_column(trades, "exit_ts")
+
+    return LiveEvidence(
+        raw_ticks=raw_ticks,
+        tick_bars=tick_bars,
+        predictions=predictions,
+        prediction_source=prediction_source,
+        trades=trades,
+    )
+
+
+def _pip_size(symbol: str) -> float:
+    return 0.01 if symbol.upper().endswith("JPY") else 0.0001
+
+
+def _series_quantile(series: pd.Series, q: float) -> float:
+    values = pd.to_numeric(series, errors="coerce").dropna()
+    if values.empty:
+        return float("nan")
+    return float(values.quantile(q))
+
+
+def _timestamp_bounds(df: pd.DataFrame, column: str) -> tuple[str, str]:
+    if column not in df.columns:
+        return "", ""
+    timestamps = pd.to_datetime(df[column], utc=True, errors="coerce")
+    if not timestamps.notna().any():
+        return "", ""
+    return timestamps.min().isoformat(), timestamps.max().isoformat()
+
+
+def _duplicate_ratio(df: pd.DataFrame, column: str) -> float:
+    if df.empty or column not in df.columns:
+        return float("nan")
+    timestamps = pd.to_datetime(df[column], utc=True, errors="coerce")
+    if timestamps.empty:
+        return float("nan")
+    return float(timestamps.duplicated().mean())
+
+
+def _spread_quantiles(df: pd.DataFrame) -> tuple[float, float]:
+    if "spread" not in df.columns:
+        return float("nan"), float("nan")
+    spread = pd.to_numeric(df["spread"], errors="coerce")
+    return _series_quantile(spread, 0.50), _series_quantile(spread, 0.95)
+
+
+def compute_tick_coverage(
+    symbol: str, live_ticks: pd.DataFrame, governance_ticks: pd.DataFrame
+) -> pd.DataFrame:
+    live_first_ts, live_last_ts = _timestamp_bounds(live_ticks, "tick_ts")
+    governance_ts_col = "tick_ts" if "tick_ts" in governance_ticks.columns else "timestamp"
+    governance_first_ts, governance_last_ts = _timestamp_bounds(
+        governance_ticks, governance_ts_col
+    )
+    live_spread_p50, live_spread_p95 = _spread_quantiles(live_ticks)
+    governance_spread_p50, governance_spread_p95 = _spread_quantiles(governance_ticks)
+
+    live_rows = int(len(live_ticks))
+    governance_rows = int(len(governance_ticks))
+    return pd.DataFrame(
+        [
+            {
+                "symbol": symbol.upper(),
+                "live_rows": live_rows,
+                "governance_rows": governance_rows,
+                "live_first_ts": live_first_ts,
+                "live_last_ts": live_last_ts,
+                "governance_first_ts": governance_first_ts,
+                "governance_last_ts": governance_last_ts,
+                "live_duplicate_ts_ratio": _duplicate_ratio(live_ticks, "tick_ts"),
+                "governance_duplicate_ts_ratio": _duplicate_ratio(
+                    governance_ticks, governance_ts_col
+                ),
+                "live_spread_p50": live_spread_p50,
+                "live_spread_p95": live_spread_p95,
+                "governance_spread_p50": governance_spread_p50,
+                "governance_spread_p95": governance_spread_p95,
+                "row_delta": live_rows - governance_rows,
+            }
+        ]
+    )
+
+
+def compute_bar_deviation(
+    symbol: str, live_bars: pd.DataFrame, governance_bars: pd.DataFrame
+) -> pd.DataFrame:
+    live = live_bars.copy()
+    governance = governance_bars.copy()
+    live = _normalise_ts_column(live, "close_ts")
+    governance = _normalise_ts_column(governance, "close_ts")
+
+    if "close_ts" not in live.columns:
+        live["close_ts"] = pd.Series(dtype="datetime64[ns, UTC]")
+    if "close_ts" not in governance.columns:
+        governance["close_ts"] = pd.Series(dtype="datetime64[ns, UTC]")
+
+    merged = live.merge(
+        governance,
+        on="close_ts",
+        how="outer",
+        suffixes=("_live", "_governance"),
+        indicator=True,
+    )
+    matched = merged[merged["_merge"] == "both"]
+    if matched.empty:
+        max_abs_close_delta_pips = float("nan")
+        max_abs_spread_delta_pips = float("nan")
+    else:
+        pip_size = _pip_size(symbol)
+        live_close = pd.to_numeric(matched["close_bid_live"], errors="coerce")
+        governance_close = pd.to_numeric(
+            matched["close_bid_governance"], errors="coerce"
+        )
+        live_spread = pd.to_numeric(matched["spread_live"], errors="coerce")
+        governance_spread = pd.to_numeric(matched["spread_governance"], errors="coerce")
+        max_abs_close_delta_pips = float(
+            ((live_close - governance_close) / pip_size).abs().max()
+        )
+        max_abs_spread_delta_pips = float(
+            ((live_spread - governance_spread) / pip_size).abs().max()
+        )
+
+    return pd.DataFrame(
+        [
+            {
+                "symbol": symbol.upper(),
+                "live_bar_count": int(len(live)),
+                "governance_bar_count": int(len(governance)),
+                "matched_bars": int((merged["_merge"] == "both").sum()),
+                "missing_live_bars": int((merged["_merge"] == "right_only").sum()),
+                "extra_live_bars": int((merged["_merge"] == "left_only").sum()),
+                "max_abs_close_delta_pips": max_abs_close_delta_pips,
+                "max_abs_spread_delta_pips": max_abs_spread_delta_pips,
+            }
+        ]
+    )
