@@ -90,6 +90,28 @@ GOVERNANCE_TICK_BAR_COLUMNS = [
     "high_ask",
     "close_ask",
 ]
+GOVERNANCE_PREDICTION_COLUMNS = [
+    "close_ts",
+    "state_id",
+    "candidate_uid",
+    "bar_ticks",
+    "horizon",
+    "barrier_pips",
+    "regime_name",
+    "regime_active",
+    "pred_prob",
+    "threshold",
+    "selected",
+    "gap",
+    "symbol",
+]
+INCOMPLETE_EVIDENCE_COLUMNS = [
+    "symbol",
+    "layer",
+    "finding_id",
+    "reason",
+    "source_path",
+]
 
 
 @dataclass(frozen=True)
@@ -159,6 +181,10 @@ def _empty_governance_bars() -> pd.DataFrame:
     return pd.DataFrame(columns=GOVERNANCE_TICK_BAR_COLUMNS)
 
 
+def _empty_governance_predictions() -> pd.DataFrame:
+    return pd.DataFrame(columns=GOVERNANCE_PREDICTION_COLUMNS)
+
+
 def _parse_timestamp_series(values: pd.Series) -> pd.Series:
     source_has_values = values.notna().any()
     try:
@@ -224,6 +250,152 @@ def build_governance_bars_for_window(
         return _empty_governance_bars()
 
     return _build_bars_from_ticks(pl.from_pandas(ticks)).to_pandas()
+
+
+def _add_incomplete_evidence(
+    incomplete_rows: list[dict[str, object]] | None,
+    *,
+    symbol: str,
+    layer: str,
+    finding_id: str,
+    reason: str,
+    source_path: Path | str,
+) -> None:
+    if incomplete_rows is None:
+        return
+    incomplete_rows.append(
+        {
+            "symbol": symbol.upper(),
+            "layer": layer,
+            "finding_id": finding_id,
+            "reason": reason,
+            "source_path": str(source_path),
+        }
+    )
+
+
+def score_governance_predictions_for_window(
+    bars: pd.DataFrame,
+    symbol: str,
+    governance_dir: Path,
+    models_dir: Path,
+    model_month: str | None = None,
+    *,
+    incomplete_rows: list[dict[str, object]] | None = None,
+) -> pd.DataFrame:
+    symbol_upper = symbol.upper()
+    if bars.empty:
+        return _empty_governance_predictions()
+    if model_month is None or not str(model_month).strip():
+        _add_incomplete_evidence(
+            incomplete_rows,
+            symbol=symbol_upper,
+            layer="governance_predictions",
+            finding_id="missing_model_month",
+            reason="live evidence did not include a model_month; governance scoring skipped",
+            source_path="runtime_db.predict_evaluations",
+        )
+        return _empty_governance_predictions()
+
+    from scripts.diagnose_live_replay import (
+        _load_model,
+        _load_states,
+        _load_thresholds,
+        _score_bars,
+    )
+
+    governance_dir = Path(governance_dir)
+    models_dir = Path(models_dir)
+    model_month_token = str(model_month).strip()
+
+    try:
+        states = _load_states(symbol_upper, str(governance_dir))
+    except Exception as exc:
+        _add_incomplete_evidence(
+            incomplete_rows,
+            symbol=symbol_upper,
+            layer="governance_predictions",
+            finding_id="missing_governance_states",
+            reason=f"governance states unavailable: {exc}",
+            source_path=governance_dir / f"{symbol_upper.lower()}_oco_live_lock.json",
+        )
+        return _empty_governance_predictions()
+
+    try:
+        thresholds, threshold_exec = _load_thresholds(
+            symbol_upper, str(models_dir), model_month_token
+        )
+    except Exception as exc:
+        _add_incomplete_evidence(
+            incomplete_rows,
+            symbol=symbol_upper,
+            layer="governance_predictions",
+            finding_id="missing_governance_thresholds",
+            reason=f"governance thresholds unavailable: {exc}",
+            source_path=models_dir / f"{symbol_upper}_model_{model_month_token}.json",
+        )
+        return _empty_governance_predictions()
+
+    try:
+        model = _load_model(symbol_upper, str(models_dir), model_month_token)
+    except Exception as exc:
+        _add_incomplete_evidence(
+            incomplete_rows,
+            symbol=symbol_upper,
+            layer="governance_predictions",
+            finding_id="missing_governance_model",
+            reason=f"governance model unavailable: {exc}",
+            source_path=models_dir / f"{symbol_upper}_model_{model_month_token}.cbm",
+        )
+        return _empty_governance_predictions()
+
+    scored_parts: list[pl.DataFrame] = []
+    polars_bars = pl.from_pandas(bars)
+    for state in states:
+        if int(state.get("bar_ticks", 100)) != 100:
+            _add_incomplete_evidence(
+                incomplete_rows,
+                symbol=symbol_upper,
+                layer="governance_predictions",
+                finding_id="unsupported_governance_state",
+                reason=(
+                    "governance replay scoring supports 100-tick bars only; "
+                    f"state_id={state.get('state_id', '')} "
+                    f"bar_ticks={state.get('bar_ticks', '')}"
+                ),
+                source_path=governance_dir / f"{symbol_upper.lower()}_oco_live_lock.json",
+            )
+            continue
+        try:
+            scored = _score_bars(
+                bars=polars_bars,
+                symbol=symbol_upper,
+                state=state,
+                model=model,
+                thresholds=thresholds,
+                threshold_exec=threshold_exec,
+            )
+        except Exception as exc:
+            _add_incomplete_evidence(
+                incomplete_rows,
+                symbol=symbol_upper,
+                layer="governance_predictions",
+                finding_id="governance_state_scoring_failed",
+                reason=f"governance state scoring failed: {exc}",
+                source_path=governance_dir
+                / f"{symbol_upper.lower()}_oco_live_lock.json",
+            )
+            continue
+        if not scored.is_empty():
+            scored_parts.append(scored.with_columns(pl.lit(symbol_upper).alias("symbol")))
+
+    if not scored_parts:
+        return _empty_governance_predictions()
+    return (
+        pl.concat(scored_parts, how="vertical")
+        .to_pandas()
+        .reindex(columns=GOVERNANCE_PREDICTION_COLUMNS)
+    )
 
 
 def _table_exists(con: duckdb.DuckDBPyConnection, table_name: str) -> bool:
@@ -885,11 +1057,12 @@ def build_findings(
     for _, row in incomplete_rows.iterrows():
         symbol = str(row.get("symbol", "")).upper()
         reason = str(row.get("reason", "incomplete_evidence"))
+        finding_id = str(row.get("finding_id", "incomplete_evidence"))
         rows.append(
             {
                 "symbol": symbol,
                 "classification": "Incomplete Evidence",
-                "code": "incomplete_evidence",
+                "code": finding_id,
                 "severity": "medium",
                 "summary": reason,
             }
@@ -1034,6 +1207,16 @@ def _governance_selected_count(signal_deviation: pd.DataFrame) -> int:
     return int(value)
 
 
+def _first_model_month(predictions: pd.DataFrame) -> str | None:
+    if predictions.empty or "model_month" not in predictions.columns:
+        return None
+    model_months = predictions["model_month"].dropna().astype("string").str.strip()
+    model_months = model_months[model_months != ""]
+    if model_months.empty:
+        return None
+    return str(model_months.iloc[0])
+
+
 def run_analysis(cfg: DeviationConfig) -> dict[str, Path]:
     run_dir = _run_dir(cfg.out_dir)
     run_dir.mkdir(parents=True, exist_ok=False)
@@ -1060,6 +1243,14 @@ def run_analysis(cfg: DeviationConfig) -> dict[str, Path]:
             governance_bars = build_governance_bars_for_window(
                 canonical_ticks, window.bar_ticks
             )
+            governance_predictions = score_governance_predictions_for_window(
+                governance_bars,
+                window.symbol,
+                cfg.governance_dir or Path("configs/research/governance/oco"),
+                cfg.models_dir or Path("models/oco"),
+                model_month=_first_model_month(evidence.predictions),
+                incomplete_rows=incomplete_rows,
+            )
 
             symbol_prefix = window.symbol.upper()
             _write_parquet(
@@ -1078,12 +1269,19 @@ def run_analysis(cfg: DeviationConfig) -> dict[str, Path]:
                 run_dir / f"{symbol_prefix}_governance_tick_bars.parquet",
                 governance_bars,
             )
+            _write_parquet(
+                run_dir / f"{symbol_prefix}_governance_predictions.parquet",
+                governance_predictions,
+            )
 
             if canonical_ticks.empty:
                 incomplete_rows.append(
                     {
                         "symbol": window.symbol,
+                        "layer": "canonical_ticks",
+                        "finding_id": "missing_canonical_ticks",
                         "reason": "missing_canonical_ticks",
+                        "source_path": cfg.tick_root / window.symbol.upper(),
                     }
                 )
 
@@ -1100,7 +1298,7 @@ def run_analysis(cfg: DeviationConfig) -> dict[str, Path]:
             signal_deviation = compute_signal_deviation(
                 window.symbol,
                 evidence.predictions,
-                pd.DataFrame(),
+                governance_predictions,
                 live_source=evidence.prediction_source,
             )
             signal_deviation_frames.append(signal_deviation)
@@ -1122,7 +1320,7 @@ def run_analysis(cfg: DeviationConfig) -> dict[str, Path]:
     outcome_deviation = _concat_frames(
         outcome_deviation_frames, OUTCOME_DEVIATION_COLUMNS
     )
-    incomplete = pd.DataFrame(incomplete_rows, columns=SKIP_COLUMNS)
+    incomplete = pd.DataFrame(incomplete_rows, columns=INCOMPLETE_EVIDENCE_COLUMNS)
     findings = build_findings(bar_deviation, signal_deviation, incomplete)
 
     manifest = {

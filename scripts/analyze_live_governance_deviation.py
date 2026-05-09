@@ -84,6 +84,8 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     args = parser.parse_args(argv)
     if (args.start_ts is None) != (args.end_ts is None):
         parser.error("--start-ts and --end-ts must be supplied together")
+    if not args.runtime_db.exists():
+        parser.error(f"runtime DB does not exist: {args.runtime_db}")
     return args
 
 

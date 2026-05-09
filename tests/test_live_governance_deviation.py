@@ -336,6 +336,31 @@ def test_cli_rejects_partial_explicit_window(
     assert "Traceback" not in result.stderr
 
 
+def test_cli_rejects_missing_runtime_db_without_traceback(tmp_path: Path) -> None:
+    missing_db = tmp_path / "missing.db"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/analyze_live_governance_deviation.py",
+            "--runtime-db",
+            str(missing_db),
+            "--tick-root",
+            str(tmp_path / "ticks"),
+            "--symbols",
+            "EURUSD",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode != 0
+    assert f"runtime DB does not exist: {missing_db}" in result.stderr
+    assert "Traceback" not in result.stderr
+    assert "duckdb" not in result.stderr.lower()
+
+
 def test_cli_smoke_writes_report(tmp_path: Path) -> None:
     db_path = tmp_path / "runtime.db"
     _create_runtime_db(db_path)
@@ -787,6 +812,118 @@ def test_run_analysis_writes_required_outputs(tmp_path: Path) -> None:
     }
     assert Path(manifest["subreports"]["runtime_summary"]).exists()
     assert (result["run_dir"] / "EURUSD_governance_tick_bars.parquet").exists()
+    governance_predictions = pd.read_parquet(
+        result["run_dir"] / "EURUSD_governance_predictions.parquet"
+    )
+    assert len(governance_predictions) == 0
+    assert {
+        "close_ts",
+        "candidate_uid",
+        "pred_prob",
+        "threshold",
+        "selected",
+        "symbol",
+    }.issubset(governance_predictions.columns)
+
+
+def test_run_analysis_scores_governance_predictions_for_signal_deviation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    db_path = tmp_path / "runtime.db"
+    _create_runtime_db(db_path)
+    con = duckdb.connect(str(db_path))
+    try:
+        con.execute(
+            """
+            CREATE TABLE predict_evaluations (
+                close_ts TIMESTAMP WITH TIME ZONE,
+                symbol VARCHAR,
+                run_id VARCHAR,
+                candidate_uid VARCHAR,
+                pred_prob DOUBLE,
+                threshold DOUBLE,
+                selected_exec BIGINT,
+                model_month VARCHAR
+            )
+            """
+        )
+        con.execute(
+            """
+            INSERT INTO predict_evaluations VALUES
+                (TIMESTAMPTZ '2026-05-02T00:01:39Z', 'EURUSD', 'jforex_live',
+                 'oco|EURUSD|100|h6|unit', 0.8, 0.75, 1, '202605')
+            """
+        )
+    finally:
+        con.close()
+
+    tick_root = tmp_path / "dukascopy_ticks"
+    sym_dir = tick_root / "EURUSD"
+    sym_dir.mkdir(parents=True)
+    pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2026-05-02T00:00:00Z", periods=300, freq="s"),
+            "bid": [1.1] * 300,
+            "ask": [1.1002] * 300,
+            "mid": [1.1001] * 300,
+            "spread": [0.0002] * 300,
+            "log_return": [0.0] * 300,
+        }
+    ).to_parquet(sym_dir / "EURUSD_202605_ticks.parquet", index=False)
+
+    def fake_score_governance_predictions_for_window(
+        bars: pd.DataFrame,
+        symbol: str,
+        governance_dir: Path,
+        models_dir: Path,
+        model_month: str | None = None,
+        *,
+        incomplete_rows: list[dict[str, object]] | None = None,
+    ) -> pd.DataFrame:
+        assert not bars.empty
+        assert symbol == "EURUSD"
+        assert model_month == "202605"
+        return pd.DataFrame(
+            {
+                "close_ts": pd.to_datetime(["2026-05-02T00:01:39Z"], utc=True),
+                "symbol": ["EURUSD"],
+                "candidate_uid": ["oco|EURUSD|100|h6|unit"],
+                "pred_prob": [0.81],
+                "threshold": [0.75],
+                "selected": [1],
+            }
+        )
+
+    monkeypatch.setattr(
+        live_governance_deviation,
+        "score_governance_predictions_for_window",
+        fake_score_governance_predictions_for_window,
+    )
+
+    result = run_analysis(
+        DeviationConfig(
+            runtime_db=db_path,
+            tick_root=tick_root,
+            symbols=("EURUSD",),
+            lookback_days=7,
+            min_bars=2,
+            run_id="jforex_live",
+            out_dir=tmp_path / "out",
+            governance_dir=tmp_path / "governance",
+            models_dir=tmp_path / "models",
+        )
+    )
+
+    signal = pd.read_csv(result["run_dir"] / "signal_deviation.csv")
+    assert signal.loc[0, "governance_prediction_rows"] == 1
+    assert signal.loc[0, "governance_selected_signal_count"] == 1
+
+    governance_predictions_path = (
+        result["run_dir"] / "EURUSD_governance_predictions.parquet"
+    )
+    assert governance_predictions_path.exists()
+    governance_predictions = pd.read_parquet(governance_predictions_path)
+    assert len(governance_predictions) == 1
 
 
 def test_run_analysis_writes_manifest_after_referenced_runtime_summary(
