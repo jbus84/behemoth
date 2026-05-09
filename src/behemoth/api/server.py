@@ -83,6 +83,16 @@ logger = logging.getLogger("behemoth.api")
 # ── App ───────────────────────────────────────────────────────────────
 
 # ── Global State ──────────────────────────────────────────────────────
+#
+# Historically these dependencies were spread across many module-level
+# globals. ``_app_state`` (a typed RuntimeAppState) is the canonical home
+# for them now; the individual globals below are kept as aliases for
+# backward compat with the long tail of route handlers in this module
+# that still read them directly. New code should prefer ``_app_state``.
+
+from src.behemoth.api.runtime_app_state import RuntimeAppState
+
+_app_state: RuntimeAppState = RuntimeAppState()
 
 _state: StateManager | None = None
 _barrier_manager: BarrierManager | None = None
@@ -862,10 +872,27 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     )
     logger.info("PredictionOrchestrator initialized")
 
+    # Sync the typed RuntimeAppState container with the freshly-built globals.
+    # New code should prefer ``_app_state``; existing routes still use the
+    # individual globals above. Both views point at the same instances.
+    _app_state.state = _state
+    _app_state.barrier_manager = _barrier_manager
+    _app_state.orchestrator = _orchestrator
+    _app_state.registry = _registry
+    _app_state.historical_registry = _historical_registry
+    _app_state.account_risk_profile = _account_risk_profile
+    _app_state.aggregators = _aggregators
+    _app_state.feed_state = _feed_state
+    _app_state.models_dir = _models_dir
+    _app_state.account_risk_rules_path = _account_risk_rules_path
+    _app_state.historical_entries_loaded = _historical_entries_loaded
+
     logger.info("Behemoth API started. Models dir: %s", _models_dir)
     _lifespan_ready = True
+    _app_state.lifespan_ready = True
     yield
     _lifespan_ready = False
+    _app_state.lifespan_ready = False
     monitor_task.cancel()
     position_summary_task.cancel()
     with suppress(asyncio.CancelledError):
