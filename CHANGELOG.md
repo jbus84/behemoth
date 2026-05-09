@@ -1,3 +1,9 @@
+## v0.25.0 (2026-05-09)
+
+### Feat
+
+- Wave 6.3 - Regime Quantiles Contract (#154)
+
 ## v0.24.0 (2026-05-09)
 
 ### Feat
