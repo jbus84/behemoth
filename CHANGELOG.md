@@ -1,3 +1,9 @@
+## v0.24.0 (2026-05-09)
+
+### Feat
+
+- Waves 6.1-6.2 - Warmup parity validation and audit trail persistence (#153)
+
 ## v0.23.0 (2026-05-09)
 
 ### Feat
