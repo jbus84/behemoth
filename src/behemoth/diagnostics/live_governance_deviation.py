@@ -17,11 +17,11 @@ SKIP_COLUMNS = ["symbol", "reason"]
 class DeviationConfig:
     runtime_db: Path
     tick_root: Path
-    symbols: tuple[str, ...] = ACTIVE_SYMBOLS
-    lookback_days: int = 7
-    min_bars: int = 1
-    run_id: str | None = None
-    out_dir: Path | None = None
+    symbols: tuple[str, ...]
+    lookback_days: int
+    min_bars: int
+    run_id: str
+    out_dir: Path
     start_ts: pd.Timestamp | datetime | str | None = None
     end_ts: pd.Timestamp | datetime | str | None = None
     governance_dir: Path | None = None
