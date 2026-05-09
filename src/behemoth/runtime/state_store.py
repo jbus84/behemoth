@@ -161,7 +161,7 @@ class InMemoryStateStore:
             if sql.strip().upper().startswith("SELECT"):
                 rows = cur.fetchall()
                 import pandas as pd
-                df = pd.DataFrame(rows, columns=[d[0] for d in cur.description]) if rows else pd.DataFrame()
+                df = pd.DataFrame(rows, columns=[d[0] for d in cur.description]) if cur.description else pd.DataFrame()
                 return StateStoreResult(rows=[tuple(r) for r in rows], df=df)
             rows = cur.fetchall()
             return StateStoreResult(rows=[tuple(r) for r in rows])
