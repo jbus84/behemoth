@@ -1,3 +1,10 @@
+## v0.20.3 (2026-05-09)
+
+### Refactor
+
+- introduce RuntimeAppState container as the seam for future server.py extractions (#147)
+- introduce RuntimeArtifact registry for the live runtime/ directory (#146)
+
 ## v0.20.2 (2026-05-08)
 
 ### Refactor
