@@ -187,6 +187,9 @@ class FeatureConfig:
     cost_window: int = CURRENT_FEATURE_SCHEMA.rolling_windows["cost_window"]
     """Window for spread-median and slippage-proxy estimation (bars)."""
 
+    lag_bars: int = CURRENT_FEATURE_SCHEMA.lag_config.get("feature_lag_bars", 1)
+    """Number of lag bars (typically 1) — controls warmup requirement precision."""
+
     @property
     def schema_version(self) -> str:
         return self.schema.version
@@ -205,8 +208,12 @@ class FeatureConfig:
 
     @property
     def full_warmup_bars(self) -> int:
-        """Number of bars needed for full-precision feature computation."""
-        return max(self.vol_window, self.cost_window) + 1
+        """Number of bars needed for full-precision feature computation.
+
+        Computed consistently with FeatureSchema.warmup_bars to eliminate
+        dual-formula divergence risk.
+        """
+        return max(self.vol_window, self.cost_window) + self.lag_bars
 
 
 # ── Pip Size ──────────────────────────────────────────────────────────
