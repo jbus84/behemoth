@@ -143,39 +143,47 @@ class DuckDBStateStore:
 
 
 class InMemoryStateStore:
-    """In-memory implementation of StateStore for testing.
+    """SQLite-backed in-memory implementation of StateStore for testing.
 
-    Stores tables as dicts of row lists. Suitable for unit tests that don't
-    require full SQL semantics, but need state isolation.
+    Provides real SQL semantics without DuckDB connection contention.
     """
 
     def __init__(self) -> None:
-        """Initialize empty in-memory store."""
-        self._tables: dict[str, list[dict[str, Any]]] = {}
+        import sqlite3
+        self._con = sqlite3.connect(":memory:")
+        self._con.row_factory = sqlite3.Row
         self._in_transaction = False
 
     def execute(self, sql: str, params: list[Any] | None = None) -> StateStoreResult:
-        """Execute SQL statement (minimal implementation for testing)."""
-        # This is a stub. Real implementation would parse SQL and delegate to _tables.
-        # For now, return empty result - intended for tests that mock StateStore.
-        return StateStoreResult([])
+        import sqlite3
+        try:
+            cur = self._con.execute(sql, params or [])
+            if sql.strip().upper().startswith("SELECT"):
+                rows = cur.fetchall()
+                import pandas as pd
+                df = pd.DataFrame(rows, columns=[d[0] for d in cur.description]) if rows else pd.DataFrame()
+                return StateStoreResult(rows=[tuple(r) for r in rows], df=df)
+            rows = cur.fetchall()
+            return StateStoreResult(rows=[tuple(r) for r in rows])
+        except sqlite3.OperationalError as e:
+            if "no such table" in str(e).lower() or "no such column" in str(e).lower():
+                return StateStoreResult([])
+            raise
 
     def executemany(self, sql: str, params: list[list[Any]]) -> None:
-        """Execute SQL statement multiple times (no-op for in-memory store)."""
-        pass
+        self._con.executemany(sql, params)
 
     def begin(self) -> None:
-        """Begin transaction (no-op in in-memory store)."""
+        self._con.execute("BEGIN")
         self._in_transaction = True
 
     def commit(self) -> None:
-        """Commit transaction (no-op in in-memory store)."""
+        self._con.execute("COMMIT")
         self._in_transaction = False
 
     def rollback(self) -> None:
-        """Rollback transaction (no-op in in-memory store)."""
+        self._con.execute("ROLLBACK")
         self._in_transaction = False
 
     def close(self) -> None:
-        """Close store (no-op for in-memory store)."""
-        pass
+        self._con.close()
