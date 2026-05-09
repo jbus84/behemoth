@@ -15,6 +15,7 @@ from typing import Any, TypeVar
 
 from src.behemoth.core.schemas import BarContext, BarrierAction, BarrierActionType
 from src.behemoth.runtime.bar_touch_semantics import BarTouchSemantics
+from src.behemoth.runtime.scan_state_machine import ScanState, ScanStateMachine
 from src.behemoth.runtime.barrier_context import (
     BarContextAdapter,
     BarrierEvaluationContext,
@@ -312,6 +313,8 @@ class BarrierManager:
             touch = BarTouchSemantics.evaluate(up_touch, dn_touch, bar_hl_first)
 
             if touch.decided_side is not None:
+                # Validate state transition via state machine
+                ScanStateMachine.validate_transition(ScanState.SCANNING, ScanState.HOLDING)
                 self._transition_to_holding(scan_id, touch_step, touch.decided_side, horizon)
                 mutations.append(BarrierStateMutation(
                     scan_id=scan_id, from_status="SCANNING", to_status="HOLDING",
@@ -322,6 +325,8 @@ class BarrierManager:
                     reservation_id=reservation_id, horizon=horizon,
                 ))
             elif touch.expiry_reason is not None:
+                # Validate state transition via state machine
+                ScanStateMachine.validate_transition(ScanState.SCANNING, ScanState.EXPIRED)
                 self._store.execute(
                     "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",
                     [scan_id],
@@ -336,6 +341,8 @@ class BarrierManager:
                         reservation_id=reservation_id,
                     ))
             elif bars_rem <= 0:
+                # Validate state transition via state machine
+                ScanStateMachine.validate_transition(ScanState.SCANNING, ScanState.EXPIRED)
                 self._store.execute(
                     "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",
                     [scan_id],
