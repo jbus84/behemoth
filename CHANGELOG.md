@@ -1,3 +1,12 @@
+## v0.21.0 (2026-05-09)
+
+### Feat
+
+- Add account_risk_reservation_audit table to schema
+- Add account_risk_reservation_audit table to schema (#150)
+- Dedup warmup formula in FeatureConfig (#149)
+- WarmupBoundaryVerifier — observable warmup gate status (#148)
+
 ## v0.20.3 (2026-05-09)
 
 ### Refactor
