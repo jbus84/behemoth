@@ -7,10 +7,12 @@ from typing import Any
 
 import duckdb
 import pandas as pd
+import polars as pl
 
 ACTIVE_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 
 SKIP_COLUMNS = ["symbol", "reason"]
+CANONICAL_TICK_COLUMNS = ["timestamp", "bid", "ask", "mid", "spread", "log_return"]
 
 
 @dataclass(frozen=True)
@@ -57,6 +59,75 @@ def _to_timestamp(value: pd.Timestamp | datetime | str | None) -> pd.Timestamp |
     if value is None:
         return None
     return pd.to_datetime(value, utc=True)
+
+
+def _month_tokens(start_ts: pd.Timestamp, end_ts: pd.Timestamp) -> list[str]:
+    start = pd.to_datetime(start_ts, utc=True)
+    end = pd.to_datetime(end_ts, utc=True)
+    if end < start:
+        return []
+    start_period = pd.Period(f"{start.year:04d}-{start.month:02d}", freq="M")
+    end_period = pd.Period(f"{end.year:04d}-{end.month:02d}", freq="M")
+    return [
+        period.strftime("%Y%m")
+        for period in pd.period_range(start_period, end_period, freq="M")
+    ]
+
+
+def _empty_canonical_ticks() -> pd.DataFrame:
+    return pd.DataFrame(columns=CANONICAL_TICK_COLUMNS)
+
+
+def load_canonical_ticks_for_window(
+    *,
+    tick_root: Path,
+    symbol: str,
+    start_ts: pd.Timestamp | datetime | str,
+    end_ts: pd.Timestamp | datetime | str,
+) -> pd.DataFrame:
+    symbol_upper = symbol.upper()
+    window_start = pd.to_datetime(start_ts, utc=True)
+    window_end = pd.to_datetime(end_ts, utc=True)
+    tick_dir = Path(tick_root) / symbol_upper
+
+    frames: list[pd.DataFrame] = []
+    for month_token in _month_tokens(window_start, window_end):
+        tick_path = tick_dir / f"{symbol_upper}_{month_token}_ticks.parquet"
+        if tick_path.exists():
+            frames.append(pd.read_parquet(tick_path))
+
+    if not frames:
+        return _empty_canonical_ticks()
+
+    ticks = pd.concat(frames, ignore_index=True)
+    for column in CANONICAL_TICK_COLUMNS:
+        if column not in ticks.columns:
+            ticks[column] = pd.NA
+    ticks = ticks[CANONICAL_TICK_COLUMNS].copy()
+    ticks["timestamp"] = pd.to_datetime(ticks["timestamp"], utc=True, errors="coerce")
+    ticks = ticks[
+        ticks["timestamp"].notna()
+        & (ticks["timestamp"] >= window_start)
+        & (ticks["timestamp"] <= window_end)
+    ]
+    return ticks.sort_values("timestamp", kind="mergesort").reset_index(drop=True)
+
+
+def build_governance_bars_for_window(
+    canonical_ticks: pd.DataFrame, bar_ticks: int
+) -> pd.DataFrame:
+    if canonical_ticks.empty or int(bar_ticks) != 100:
+        return pd.DataFrame()
+
+    from scripts.diagnose_live_replay import _build_bars_from_ticks
+
+    ticks = canonical_ticks.copy()
+    ticks["timestamp"] = pd.to_datetime(ticks["timestamp"], utc=True, errors="coerce")
+    ticks = ticks[ticks["timestamp"].notna()]
+    if ticks.empty:
+        return pd.DataFrame()
+
+    return _build_bars_from_ticks(pl.from_pandas(ticks)).to_pandas()
 
 
 def _table_exists(con: duckdb.DuckDBPyConnection, table_name: str) -> bool:

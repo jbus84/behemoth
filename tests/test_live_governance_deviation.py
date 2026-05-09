@@ -294,3 +294,46 @@ def test_compute_bar_deviation_deduplicates_close_ts_before_matching() -> None:
     assert metrics.loc[0, "live_duplicate_close_ts"] == 1
     assert metrics.loc[0, "governance_duplicate_close_ts"] == 1
     assert metrics.loc[0, "max_abs_close_delta_pips"] == pytest.approx(1.0)
+
+
+from src.behemoth.diagnostics.live_governance_deviation import (
+    build_governance_bars_for_window,
+    load_canonical_ticks_for_window,
+)
+
+
+def test_load_canonical_ticks_and_build_governance_bars(tmp_path: Path) -> None:
+    tick_root = tmp_path / "dukascopy_ticks"
+    sym_dir = tick_root / "EURUSD"
+    sym_dir.mkdir(parents=True)
+    ticks = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2026-05-02T00:00:00Z", periods=250, freq="s"),
+            "bid": [1.1 + i * 0.000001 for i in range(250)],
+            "ask": [1.1002 + i * 0.000001 for i in range(250)],
+            "mid": [1.1001 + i * 0.000001 for i in range(250)],
+            "spread": [0.0002] * 250,
+            "log_return": [0.0] * 250,
+        }
+    )
+    ticks.to_parquet(sym_dir / "EURUSD_202605_ticks.parquet", index=False)
+
+    loaded = load_canonical_ticks_for_window(
+        tick_root=tick_root,
+        symbol="EURUSD",
+        start_ts=pd.Timestamp("2026-05-02T00:00:00Z"),
+        end_ts=pd.Timestamp("2026-05-02T00:04:10Z"),
+    )
+    bars = build_governance_bars_for_window(loaded, bar_ticks=100)
+
+    assert len(loaded) == 250
+    assert len(bars) == 2
+    assert {
+        "close_ts",
+        "open_bid",
+        "high_bid",
+        "low_bid",
+        "close_bid",
+        "high_ask",
+        "close_ask",
+    }.issubset(bars.columns)
