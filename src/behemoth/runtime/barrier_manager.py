@@ -309,56 +309,32 @@ class BarrierManager:
             dn_touch = context.check_lower_touch(lower)
             touch_step = current_bar_idx - signal_bar_idx
 
-            # Evaluate touches and determine side/expiry decision
-            touch_result = BarTouchSemantics.evaluate(up_touch, dn_touch, bar_hl_first)
+            touch = BarTouchSemantics.evaluate(up_touch, dn_touch, bar_hl_first)
 
-            if touch_result.decided_side:
-                # Touch decision made (BUY or SELL)
-                self._transition_to_holding(scan_id, touch_step, touch_result.decided_side, horizon)
+            if touch.decided_side is not None:
+                self._transition_to_holding(scan_id, touch_step, touch.decided_side, horizon)
                 mutations.append(BarrierStateMutation(
                     scan_id=scan_id, from_status="SCANNING", to_status="HOLDING",
-                    reason=f"{touch_result.decided_side.lower()}_touch",
+                    reason=f"{touch.decided_side.lower()}_touch",
                 ))
-            elif touch_result.expiry_reason:
-                # Both touched but hl_first == 0: expire immediately
+                actions.append(self._open_market_action(
+                    symbol=sym, candidate_uid=candidate_uid, scan_id=scan_id, side=touch.decided_side,
+                    reservation_id=reservation_id, horizon=horizon,
+                ))
+            elif touch.expiry_reason is not None:
                 self._store.execute(
                     "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",
                     [scan_id],
                 )
                 mutations.append(BarrierStateMutation(
                     scan_id=scan_id, from_status="SCANNING", to_status="EXPIRED",
-                    reason=touch_result.expiry_reason,
+                    reason=touch.expiry_reason,
                 ))
                 if reservation_id is not None:
                     actions.append(self._release_reservation_action(
                         symbol=sym, candidate_uid=candidate_uid, scan_id=scan_id,
                         reservation_id=reservation_id,
                     ))
-                continue
-                actions.append(self._open_market_action(
-                    symbol=sym, candidate_uid=candidate_uid, scan_id=scan_id, side=side,
-                    reservation_id=reservation_id, horizon=horizon,
-                ))
-            elif up_touch:
-                self._transition_to_holding(scan_id, touch_step, "BUY", horizon)
-                mutations.append(BarrierStateMutation(
-                    scan_id=scan_id, from_status="SCANNING", to_status="HOLDING",
-                    reason="buy_touch",
-                ))
-                actions.append(self._open_market_action(
-                    symbol=sym, candidate_uid=candidate_uid, scan_id=scan_id, side="BUY",
-                    reservation_id=reservation_id, horizon=horizon,
-                ))
-            elif dn_touch:
-                self._transition_to_holding(scan_id, touch_step, "SELL", horizon)
-                mutations.append(BarrierStateMutation(
-                    scan_id=scan_id, from_status="SCANNING", to_status="HOLDING",
-                    reason="sell_touch",
-                ))
-                actions.append(self._open_market_action(
-                    symbol=sym, candidate_uid=candidate_uid, scan_id=scan_id, side="SELL",
-                    reservation_id=reservation_id, horizon=horizon,
-                ))
             elif bars_rem <= 0:
                 self._store.execute(
                     "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",

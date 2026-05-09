@@ -1,13 +1,9 @@
-"""Barrier touch semantics: encodes hl_first tie-breaking logic.
+"""BarTouchSemantics — explicit tie-breaking logic for barrier touches.
 
-Owns the exact semantics of how hl_first (high/low ordering) determines which
-side (BUY/SELL) is triggered when both upper and lower barriers touch in the
-same bar. Makes barrier evaluation logic explicit and testable.
-
-Convention:
-  hl_first > 0  → high came first → BUY side
-  hl_first < 0  → low came first → SELL side
-  hl_first == 0 → simultaneous or unknown → expire immediately
+Owns the interpretation of hl_first (high-low sequence) for barrier touch decisions:
+- hl_first > 0: high touched first → BUY
+- hl_first < 0: low touched first → SELL
+- hl_first = 0: simultaneous touch → expire with no decision
 """
 
 from __future__ import annotations
@@ -17,44 +13,44 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class BarTouchResult:
-    """Result of evaluating barrier touches for a bar."""
+    """Result of evaluating barrier touches and tie-breaking logic."""
 
     upper_touched: bool
-    """Whether the upper (ask) barrier was touched."""
+    """True if upper barrier was touched."""
 
     lower_touched: bool
-    """Whether the lower (bid) barrier was touched."""
+    """True if lower barrier was touched."""
 
     decided_side: str | None
-    """Which side was decided: 'BUY', 'SELL', or None if no touch or expired."""
+    """'BUY' (upper touched or hl_first > 0), 'SELL' (lower touched or hl_first < 0), or None."""
 
     expiry_reason: str | None
-    """Reason for expiry if applicable (e.g., 'simultaneous_touch_no_hl_first')."""
+    """Reason for expiry if no decision (e.g., 'simultaneous_touch_no_hl_first')."""
 
 
 class BarTouchSemantics:
-    """Owns hl_first interpretation for barrier touch decisions.
-
-    Static methods that evaluate barrier touches and return explicit BarTouchResult
-    objects instead of implicit state transitions. This makes the tie-breaking logic
-    testable and reusable across different barrier evaluation contexts.
-    """
+    """Evaluates barrier touches using explicit hl_first tie-breaking semantics."""
 
     @staticmethod
-    def evaluate(
-        upper_touched: bool,
-        lower_touched: bool,
-        hl_first: float,
-    ) -> BarTouchResult:
-        """Evaluate barrier touches and determine side/expiry decision.
+    def evaluate(upper_touched: bool, lower_touched: bool, hl_first: float) -> BarTouchResult:
+        """Evaluate which barriers touched and apply tie-breaking logic.
 
         Args:
-            upper_touched: Whether upper (ask) barrier touched.
-            lower_touched: Whether lower (bid) barrier touched.
-            hl_first: Sign indicates which touched first (>0: high, <0: low, 0: unknown).
+            upper_touched: Whether upper barrier was touched.
+            lower_touched: Whether lower barrier was touched.
+            hl_first: Signed value indicating which barrier touched first.
+                     Positive = high first, negative = low first, zero = simultaneous.
 
         Returns:
-            BarTouchResult with decided_side and optional expiry_reason.
+            BarTouchResult with decided_side and expiry_reason.
+
+        Rules:
+            - No touch: return no decision
+            - Upper only: BUY
+            - Lower only: SELL
+            - Both + hl_first > 0 (high first): BUY
+            - Both + hl_first < 0 (low first): SELL
+            - Both + hl_first == 0 (simultaneous): expire
         """
         if not upper_touched and not lower_touched:
             return BarTouchResult(False, False, None, None)
@@ -65,16 +61,9 @@ class BarTouchSemantics:
         if lower_touched and not upper_touched:
             return BarTouchResult(False, True, "SELL", None)
 
-        # Both touched — use hl_first to break tie
+        # Both touched — tie-break on hl_first
         if hl_first > 0:
             return BarTouchResult(True, True, "BUY", None)
         if hl_first < 0:
             return BarTouchResult(True, True, "SELL", None)
-
-        # Simultaneous touch with no ordering information
-        return BarTouchResult(
-            True,
-            True,
-            None,
-            "simultaneous_touch_no_hl_first",
-        )
+        return BarTouchResult(True, True, None, "simultaneous_touch_no_hl_first")
