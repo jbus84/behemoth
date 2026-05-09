@@ -1,3 +1,9 @@
+## v0.27.0 (2026-05-09)
+
+### Feat
+
+- Wave 6.5 - Account Risk Allocator Port (#156)
+
 ## v0.26.0 (2026-05-09)
 
 ### Feat
