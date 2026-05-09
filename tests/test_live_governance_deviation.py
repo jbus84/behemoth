@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -711,6 +712,30 @@ def test_outcome_deviation_preserves_unknown_missing_runtime_evidence() -> None:
     assert pd.isna(missing_pnl.loc[0, "runtime_realized_pnl_pips"])
 
 
+def test_report_mentions_existing_diagnostic_subreports() -> None:
+    report = render_report(
+        manifest={
+            "run_id": "unit",
+            "generated_at_utc": "2026-05-09T00:00:00Z",
+            "subreports": {
+                "live_audit": "live_audit.md",
+                "performance_gap": "performance_gap.md",
+                "runtime_summary": "runtime_summary.csv",
+            },
+        },
+        window_summary=pd.DataFrame(),
+        findings=pd.DataFrame(),
+        tick_coverage=pd.DataFrame(),
+        bar_deviation=pd.DataFrame(),
+        signal_deviation=pd.DataFrame(),
+        outcome_deviation=pd.DataFrame(),
+        skips=pd.DataFrame(),
+    )
+    assert "Existing Diagnostic Subreports" in report
+    assert "live_audit.md" in report
+    assert "performance_gap.md" in report
+
+
 import src.behemoth.diagnostics.live_governance_deviation as live_governance_deviation
 from src.behemoth.diagnostics.live_governance_deviation import run_analysis
 
@@ -758,6 +783,12 @@ def test_run_analysis_writes_required_outputs(tmp_path: Path) -> None:
     assert (result["run_dir"] / "EURUSD_live_raw_ticks.parquet").exists()
     assert (result["run_dir"] / "EURUSD_live_tick_bars.parquet").exists()
     assert (result["run_dir"] / "EURUSD_governance_raw_ticks.parquet").exists()
+    manifest = json.loads(result["manifest_path"].read_text(encoding="utf-8"))
+    assert manifest["subreports"] == {
+        "runtime_summary": str(result["run_dir"] / "window_summary.csv"),
+        "live_audit": str(result["run_dir"] / "live_audit_report.md"),
+        "performance_gap": str(result["run_dir"] / "live_performance_gap_report.md"),
+    }
     assert (result["run_dir"] / "EURUSD_governance_tick_bars.parquet").exists()
 
 

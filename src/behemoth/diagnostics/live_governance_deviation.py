@@ -931,6 +931,18 @@ def render_report(
 ) -> str:
     generated_at_utc = manifest.get("generated_at_utc", "")
     run_id = manifest.get("run_id", "")
+    subreports = manifest.get("subreports")
+    subreport_section: list[str] = []
+    if isinstance(subreports, dict) and subreports:
+        subreport_section = [
+            "## Existing Diagnostic Subreports",
+            "",
+            *[
+                f"- {name}: `{path}`"
+                for name, path in sorted(subreports.items(), key=lambda item: item[0])
+            ],
+            "",
+        ]
     sections = [
         "# Live Governance Deviation Report",
         "",
@@ -947,6 +959,7 @@ def render_report(
             "Label P&L."
         ),
         "",
+        *subreport_section,
         "## Findings",
         "",
         _markdown_table(findings),
@@ -1117,6 +1130,11 @@ def run_analysis(cfg: DeviationConfig) -> dict[str, Path]:
         "window_count": len(window_summary),
         "skip_count": len(skips),
         "incomplete_evidence_count": len(incomplete),
+    }
+    manifest["subreports"] = {
+        "runtime_summary": str(run_dir / "window_summary.csv"),
+        "live_audit": str(run_dir / "live_audit_report.md"),
+        "performance_gap": str(run_dir / "live_performance_gap_report.md"),
     }
 
     manifest_path = run_dir / "run_manifest.json"
