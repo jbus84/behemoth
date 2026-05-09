@@ -31,6 +31,12 @@ _SCRIPT_REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_SCRIPT_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_REPO_ROOT))
 
+from src.behemoth.live_restart.runtime_artifacts import (
+    RUNTIME_ARTIFACTS,
+    RuntimeArtifact,
+    artifact,
+    artifact_path,
+)
 from src.behemoth.live_restart.reconciliation import (
     BrokerSnapshot,
     LocalRuntimeStateSummary,
@@ -302,11 +308,11 @@ def _runtime_paths(cfg: RunConfig) -> dict[str, Path]:
     runtime_dir = _repo_root() / cfg.report_dir / "runtime"
     return {
         "runtime_dir": runtime_dir,
-        "state_db_path": runtime_dir / "live_state.db",
-        "active_state_path": runtime_dir / "active_oco_state.json",
-        "session_metadata_path": runtime_dir / "live_runtime_session.json",
-        "broker_snapshot_path": runtime_dir / "live_broker_snapshot.json",
-        "reconciliation_report_path": runtime_dir / "live_restart_reconciliation.json",
+        "state_db_path": artifact_path("live_state_db", runtime_dir),
+        "active_state_path": artifact_path("active_oco_state", runtime_dir),
+        "session_metadata_path": artifact_path("live_runtime_session", runtime_dir),
+        "broker_snapshot_path": artifact_path("live_broker_snapshot", runtime_dir),
+        "reconciliation_report_path": artifact_path("live_restart_reconciliation", runtime_dir),
     }
 
 
