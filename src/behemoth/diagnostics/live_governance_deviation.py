@@ -71,6 +71,14 @@ def _table_exists(con: duckdb.DuckDBPyConnection, table_name: str) -> bool:
     return bool(result and int(result[0]) > 0)
 
 
+def _table_columns(con: duckdb.DuckDBPyConnection, table_name: str) -> set[str]:
+    try:
+        rows = con.execute(f"DESCRIBE {table_name}").fetchall()
+    except Exception:
+        return set()
+    return {str(row[0]) for row in rows}
+
+
 def _read_df(
     con: duckdb.DuckDBPyConnection, sql: str, params: list[Any]
 ) -> pd.DataFrame:
@@ -253,10 +261,11 @@ def extract_live_evidence(
                client_tick_seq, run_id
         FROM raw_ticks
         WHERE upper(symbol) = ?
+          AND lower(coalesce(run_id, '')) = lower(?)
           AND tick_ts BETWEEN ? AND ?
         ORDER BY tick_ts, client_tick_seq
         """,
-        [symbol, start_ts, end_ts],
+        [symbol, run_id, start_ts, end_ts],
     )
     raw_ticks = _normalise_ts_column(raw_ticks, "tick_ts")
     raw_ticks = _normalise_ts_column(raw_ticks, "ingest_ts")
@@ -314,15 +323,23 @@ def extract_live_evidence(
 
     trades = pd.DataFrame()
     if _table_exists(con, "trades"):
+        trade_columns = _table_columns(con, "trades")
+        entry_ts_filter = (
+            "AND entry_ts BETWEEN ? AND ?" if "entry_ts" in trade_columns else ""
+        )
+        trade_params: list[object] = [symbol, run_id]
+        if entry_ts_filter:
+            trade_params.extend([start_ts, end_ts])
         trades = _read_df(
             con,
-            """
+            f"""
             SELECT *
             FROM trades
             WHERE upper(symbol) = ?
               AND lower(coalesce(run_id, '')) = lower(?)
+              {entry_ts_filter}
             """,
-            [symbol, run_id],
+            trade_params,
         )
     trades = _normalise_ts_column(trades, "entry_ts")
     trades = _normalise_ts_column(trades, "exit_ts")
@@ -372,6 +389,36 @@ def _spread_quantiles(df: pd.DataFrame) -> tuple[float, float]:
     return _series_quantile(spread, 0.50), _series_quantile(spread, 0.95)
 
 
+def _deduplicate_bars_for_close_ts(df: pd.DataFrame) -> tuple[pd.DataFrame, int]:
+    if "close_ts" not in df.columns:
+        df = df.copy()
+        df["close_ts"] = pd.Series(dtype="datetime64[ns, UTC]")
+    sort_columns = ["close_ts"]
+    if "row_id" in df.columns:
+        sort_columns.append("row_id")
+    sorted_df = df.sort_values(sort_columns, kind="mergesort")
+    duplicate_count = int(sorted_df["close_ts"].duplicated(keep="last").sum())
+    return (
+        sorted_df.drop_duplicates(subset=["close_ts"], keep="last").reset_index(
+            drop=True
+        ),
+        duplicate_count,
+    )
+
+
+def _max_abs_delta_pips(
+    df: pd.DataFrame, live_column: str, governance_column: str, pip_size: float
+) -> float:
+    if live_column not in df.columns or governance_column not in df.columns:
+        return float("nan")
+    live_values = pd.to_numeric(df[live_column], errors="coerce")
+    governance_values = pd.to_numeric(df[governance_column], errors="coerce")
+    deltas = ((live_values - governance_values) / pip_size).abs().dropna()
+    if deltas.empty:
+        return float("nan")
+    return float(deltas.max())
+
+
 def compute_tick_coverage(
     symbol: str, live_ticks: pd.DataFrame, governance_ticks: pd.DataFrame
 ) -> pd.DataFrame:
@@ -416,11 +463,18 @@ def compute_bar_deviation(
     governance = governance_bars.copy()
     live = _normalise_ts_column(live, "close_ts")
     governance = _normalise_ts_column(governance, "close_ts")
+    live_bar_count = int(len(live))
+    governance_bar_count = int(len(governance))
 
     if "close_ts" not in live.columns:
         live["close_ts"] = pd.Series(dtype="datetime64[ns, UTC]")
     if "close_ts" not in governance.columns:
         governance["close_ts"] = pd.Series(dtype="datetime64[ns, UTC]")
+
+    live, live_duplicate_close_ts = _deduplicate_bars_for_close_ts(live)
+    governance, governance_duplicate_close_ts = _deduplicate_bars_for_close_ts(
+        governance
+    )
 
     merged = live.merge(
         governance,
@@ -435,28 +489,24 @@ def compute_bar_deviation(
         max_abs_spread_delta_pips = float("nan")
     else:
         pip_size = _pip_size(symbol)
-        live_close = pd.to_numeric(matched["close_bid_live"], errors="coerce")
-        governance_close = pd.to_numeric(
-            matched["close_bid_governance"], errors="coerce"
+        max_abs_close_delta_pips = _max_abs_delta_pips(
+            matched, "close_bid_live", "close_bid_governance", pip_size
         )
-        live_spread = pd.to_numeric(matched["spread_live"], errors="coerce")
-        governance_spread = pd.to_numeric(matched["spread_governance"], errors="coerce")
-        max_abs_close_delta_pips = float(
-            ((live_close - governance_close) / pip_size).abs().max()
-        )
-        max_abs_spread_delta_pips = float(
-            ((live_spread - governance_spread) / pip_size).abs().max()
+        max_abs_spread_delta_pips = _max_abs_delta_pips(
+            matched, "spread_live", "spread_governance", pip_size
         )
 
     return pd.DataFrame(
         [
             {
                 "symbol": symbol.upper(),
-                "live_bar_count": int(len(live)),
-                "governance_bar_count": int(len(governance)),
+                "live_bar_count": live_bar_count,
+                "governance_bar_count": governance_bar_count,
                 "matched_bars": int((merged["_merge"] == "both").sum()),
                 "missing_live_bars": int((merged["_merge"] == "right_only").sum()),
                 "extra_live_bars": int((merged["_merge"] == "left_only").sum()),
+                "live_duplicate_close_ts": live_duplicate_close_ts,
+                "governance_duplicate_close_ts": governance_duplicate_close_ts,
                 "max_abs_close_delta_pips": max_abs_close_delta_pips,
                 "max_abs_spread_delta_pips": max_abs_spread_delta_pips,
             }
