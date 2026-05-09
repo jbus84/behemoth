@@ -1,3 +1,11 @@
+## v0.30.0 (2026-05-09)
+
+### Feat
+
+- merge live governance deviation into reconcile_jforex_outcomes
+- merge live governance deviation into reconcile_jforex_outcomes (#160)
+- live governance deviation analytics (#159)
+
 ## v0.29.0 (2026-05-09)
 
 ### Feat
