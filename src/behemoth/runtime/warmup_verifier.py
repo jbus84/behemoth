@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from src.behemoth.core.features import FeatureConfig
+
 
 @dataclass(frozen=True)
 class WarmupStatus:
@@ -39,3 +41,20 @@ class WarmupBoundaryVerifier:
             required=self._required,
             deficit=deficit,
         )
+
+    def validate_warmup_parity(self, feature_config: FeatureConfig) -> None:
+        """Assert that verifier requirement matches FeatureConfig computation.
+
+        Args:
+            feature_config: Feature configuration to validate against.
+
+        Raises:
+            ValueError: If verifier's required bars != config's full_warmup_bars.
+        """
+        expected = feature_config.full_warmup_bars
+        if self._required != expected:
+            raise ValueError(
+                f"Warmup parity violation: WarmupBoundaryVerifier requires {self._required} bars, "
+                f"but FeatureConfig.full_warmup_bars computes {expected}. "
+                f"Check FeatureComputationEngine initialization and FeatureConfig.lag_bars."
+            )

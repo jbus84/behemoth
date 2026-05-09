@@ -1,7 +1,9 @@
+docs/superpowers/specs/2026-04-24-warmup-historical-replay-design.md
 docs/superpowers/specs/2026-03-28-stage0-dukascopy-migration-design.md
 docs/superpowers/specs/2026-04-25-pr95-bug-fixes-design.md
 docs/superpowers/specs/2026-04-25-ubiquitous-language-propagation-design.md
 docs/superpowers/specs/2026-03-26-jforex-executable-selection-parity-design.md
+docs/superpowers/specs/2026-05-09-live-governance-deviation-analytics-design.md
 docs/superpowers/specs/2026-03-31-offline-threshold-seed-design.md
 docs/superpowers/specs/2026-04-07-live-position-observability-design.md
 docs/superpowers/specs/2026-04-26-verdict-value-alignment-design.md
@@ -18,5 +20,3 @@ docs/superpowers/specs/2026-03-20-full-documentation-audit-design.md
 docs/superpowers/specs/2026-03-20-documentation-enhancement-roadmap-design.md
 docs/superpowers/specs/2026-03-20-jforex-live-harness-design.md
 docs/superpowers/specs/2026-04-26-state-manager-seam-design.md
-docs/superpowers/specs/2026-03-20-jforex-horizon-exit-design.md
-docs/superpowers/specs/2026-04-17-open-trade-grafana-visualization-design.md

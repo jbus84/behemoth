@@ -5,6 +5,7 @@ from tempfile import TemporaryDirectory
 
 import pytest
 
+from src.behemoth.core.features import FeatureConfig
 from src.behemoth.runtime.warmup_verifier import WarmupBoundaryVerifier, WarmupStatus
 from scripts._matrix_warmup import compute_required_warmup_ticks
 
@@ -56,6 +57,22 @@ class TestWarmupBoundaryVerifier:
         status = WarmupStatus(ok=True, bar_count=100, required=100, deficit=0)
         with pytest.raises(AttributeError):
             status.ok = False
+
+    def test_validate_warmup_parity_passes_when_matched(self) -> None:
+        """Parity validation passes when verifier requirement matches config."""
+        config = FeatureConfig(vol_window=96, cost_window=288, lag_bars=1)
+        expected_warmup = config.full_warmup_bars  # 288 + 1 = 289
+        verifier = WarmupBoundaryVerifier(warmup_bars=expected_warmup)
+        # Should not raise
+        verifier.validate_warmup_parity(config)
+
+    def test_validate_warmup_parity_raises_when_mismatched(self) -> None:
+        """Parity validation raises when verifier requirement != config."""
+        config = FeatureConfig(vol_window=96, cost_window=288, lag_bars=1)
+        # Create verifier with wrong warmup value (200 instead of 289)
+        verifier = WarmupBoundaryVerifier(warmup_bars=200)
+        with pytest.raises(ValueError, match="Warmup parity violation"):
+            verifier.validate_warmup_parity(config)
 
 
 class TestMatrixWarmupFixedFallback:

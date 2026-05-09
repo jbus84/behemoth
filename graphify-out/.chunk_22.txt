@@ -1,3 +1,6 @@
+data/analysis/tick_opportunity_mining/offset_robustness/runs/EURUSD/offset_080/tmp_reports/eurusd_offset_080_tick_exact.md
+data/analysis/tick_opportunity_mining/offset_robustness/runs/EURUSD/offset_080/tmp_reports/eurusd_offset_080_robustness.md
+data/analysis/tick_opportunity_mining/offset_robustness/runs/EURUSD/offset_080/tmp_reports/eurusd_offset_080_wfo.md
 data/analysis/tick_opportunity_mining/offset_robustness/runs/EURUSD/offset_080/tmp_reports/eurusd_offset_080_mining.md
 data/analysis/tick_opportunity_mining/offset_robustness/runs/EURUSD/offset_060/tmp_reports/eurusd_offset_060_mining.md
 data/analysis/tick_opportunity_mining/offset_robustness/runs/EURUSD/offset_060/tmp_reports/eurusd_offset_060_tick_exact.md
@@ -17,6 +20,3 @@ docs/figures/oco_bible/stage_06_tick_exact_monthly.png
 docs/figures/oco_bible/stage_11_mc_lb95_by_scenario.png
 docs/figures/oco_bible/fig01_symbol_gross_vs_lb95.png
 docs/figures/oco_bible/stage_09_gate_matrix.png
-docs/figures/oco_bible/stage_12_api_parity_gate_matrix.png
-docs/figures/oco_bible/stage_08_overfit_symbol_panel.png
-docs/figures/oco_bible/stage_04_execution_policy_bands.png

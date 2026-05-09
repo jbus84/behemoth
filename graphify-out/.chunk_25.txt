@@ -1,3 +1,6 @@
+site/figures/oco_bible/stage_05_reduced_monthly_gross.png
+site/figures/oco_bible/stage_01_contract_health.png
+site/figures/oco_bible/stage_10_risk_matrix.png
 site/figures/oco_bible/stage_09_predeploy_checks.png
 site/figures/oco_bible_dukascopy_candidate/stage_02_selected_scatter.png
 site/figures/oco_bible_dukascopy_candidate/stage_07_audit_failures.png
@@ -17,4 +20,3 @@ site/figures/oco_bible_dukascopy_candidate/stage_05_reduced_monthly_gross.png
 site/figures/oco_bible_dukascopy_candidate/stage_01_contract_health.png
 site/figures/oco_bible_dukascopy_candidate/stage_10_risk_matrix.png
 site/figures/oco_bible_dukascopy_candidate/stage_09_predeploy_checks.png
-site/assets/images/favicon.png
