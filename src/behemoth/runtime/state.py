@@ -1018,6 +1018,15 @@ class StateManager:
                 source,
             ],
         )
+        # Write audit event to DuckDB (authoritative)
+        self._write_reservation_audit_event(
+            reservation_id=rid,
+            from_status=None,
+            to_status=initial_state.value,
+            reason=f"created_from_{source}",
+            broker_pos_id=None,
+        )
+        # Update cache (write-through)
         self._lifecycle_cache[rid] = ReservationLifecycle(
             reservation_id=rid,
             initial_state=initial_state,
@@ -1045,7 +1054,19 @@ class StateManager:
         ).fetchone()
         if row is None:
             raise KeyError(f"reservation not found: {reservation_id}")
-        target = ReservationStateMachine.validate_transition(str(row[0]), target_status)
+        current_status = str(row[0])
+        target = ReservationStateMachine.validate_transition(current_status, target_status)
+
+        # Write audit event to DuckDB FIRST (authoritative)
+        self._write_reservation_audit_event(
+            reservation_id=reservation_id,
+            from_status=current_status,
+            to_status=target.value,
+            reason=reason,
+            broker_pos_id=broker_pos_id,
+        )
+
+        # Then update persistent state (write-through)
         now_utc = datetime.now(tz=timezone.utc)
         safe_reason = str(reason or "").replace("|", "_").replace("'", "_")
         if safe_reason:
@@ -1067,6 +1088,8 @@ class StateManager:
                 """,
                 [target.value, broker_pos_id, now_utc, reservation_id],
             )
+
+        # Finally update cache (write-through)
         lifecycle = self._lifecycle_cache.get(reservation_id)
         if lifecycle is not None:
             if target == ReservationState.OPEN:
@@ -1079,20 +1102,76 @@ class StateManager:
                 lifecycle.expire()
         return target.value
 
+    def _write_reservation_audit_event(
+        self,
+        *,
+        reservation_id: str,
+        from_status: str | None,
+        to_status: str,
+        reason: str | None = None,
+        broker_pos_id: str | None = None,
+    ) -> None:
+        """Write a single audit event to the DuckDB audit table (authoritative source)."""
+        self._store.execute(
+            """
+            INSERT INTO account_risk_reservation_audit
+            (reservation_id, event_ts, from_status, to_status, reason, broker_pos_id)
+            VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?)
+            """,
+            [reservation_id, from_status, to_status, reason, broker_pos_id],
+        )
+
     def get_reservation_audit_trail(
         self, reservation_id: str
     ) -> list[dict] | None:
         """Return immutable audit trail for a reservation, or None if not tracked.
 
         The audit trail includes all state transitions with timestamps and reasons.
-        Returns None if the reservation is not in the lifecycle cache (e.g., loaded
-        from a previous session's database).
+        Reads from DuckDB (authoritative source) with migration recovery for any
+        cache-only data from prior sessions.
         """
+        # Check DuckDB first (authoritative source)
+        db_rows = self._store.execute(
+            """
+            SELECT from_status, to_status, event_ts, reason, broker_pos_id
+            FROM account_risk_reservation_audit
+            WHERE reservation_id = ?
+            ORDER BY event_ts ASC
+            """,
+            [reservation_id],
+        ).fetchall()
+
+        if db_rows:
+            # Data exists in DB — return it formatted
+            return [
+                {
+                    "from_status": row[0],
+                    "to_status": row[1],
+                    "event_ts": row[2],
+                    "reason": row[3],
+                    "broker_pos_id": row[4],
+                }
+                for row in db_rows
+            ]
+
+        # Migration recovery: if cache has data but DB doesn't, migrate it
         lifecycle = self._lifecycle_cache.get(reservation_id)
-        if lifecycle is None:
-            return None
-        audit = lifecycle.to_dict()
-        return audit.get("transitions", [])
+        if lifecycle is not None:
+            audit = lifecycle.to_dict()
+            transitions = audit.get("transitions", [])
+            # Migrate cache data to DB for future sessions
+            for transition in transitions:
+                self._write_reservation_audit_event(
+                    reservation_id=reservation_id,
+                    from_status=transition.get("from_status"),
+                    to_status=transition.get("to_status"),
+                    reason=transition.get("reason"),
+                    broker_pos_id=transition.get("broker_pos_id"),
+                )
+            return transitions
+
+        # Unknown reservation
+        return None
 
     def create_risk_reservation(
         self,
