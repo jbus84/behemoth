@@ -43,7 +43,12 @@ class FeatureComputationEngine:
         if cost_window is None:
             cost_window = CURRENT_FEATURE_SCHEMA.rolling_windows["cost_window"]
 
-        self._cfg = FeatureConfig(vol_window=int(vol_window), cost_window=int(cost_window))
+        lag_bars = CURRENT_FEATURE_SCHEMA.lag_config.get("feature_lag_bars", 1)
+        self._cfg = FeatureConfig(
+            vol_window=int(vol_window),
+            cost_window=int(cost_window),
+            lag_bars=lag_bars,
+        )
         self._validator = FeatureSchemaValidator()
         self._validator.validate_startup()
 

@@ -71,6 +71,22 @@ class TestFeatureComputationEngine:
         assert "schema_version" in state
         assert "warmup_bars" in state
 
+    def test_feature_config_warmup_matches_schema_warmup(self) -> None:
+        """FeatureConfig.full_warmup_bars matches FeatureSchema.warmup_bars."""
+        from src.behemoth.core.features import CURRENT_FEATURE_SCHEMA, FeatureConfig
+
+        config = FeatureConfig(
+            vol_window=96,
+            cost_window=288,
+            lag_bars=1,
+        )
+        schema_warmup = CURRENT_FEATURE_SCHEMA.warmup_bars
+        config_warmup = config.full_warmup_bars
+        assert config_warmup == schema_warmup, (
+            f"FeatureConfig.full_warmup_bars ({config_warmup}) must match "
+            f"FeatureSchema.warmup_bars ({schema_warmup})"
+        )
+
 
 class TestFeatureEngineIntegration:
     """Verify engine works end-to-end with StateManager."""
