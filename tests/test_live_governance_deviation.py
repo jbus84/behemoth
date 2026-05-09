@@ -420,3 +420,72 @@ def test_build_governance_bars_returns_empty_for_unsupported_bar_ticks() -> None
     bars = build_governance_bars_for_window(ticks, bar_ticks=1000)
 
     assert bars.empty
+
+
+from src.behemoth.diagnostics.live_governance_deviation import (
+    build_findings,
+    compute_outcome_deviation,
+    compute_signal_deviation,
+    render_report,
+)
+
+
+def test_signal_outcome_findings_and_report() -> None:
+    live_predictions = pd.DataFrame(
+        {
+            "symbol": ["EURUSD", "EURUSD"],
+            "candidate_uid": ["oco|EURUSD|100|h6|a", "oco|EURUSD|100|h6|a"],
+            "pred_prob": [0.7, 0.8],
+            "threshold": [0.75, 0.75],
+            "selected_exec": [0, 1],
+        }
+    )
+    governance_predictions = pd.DataFrame(
+        {
+            "symbol": ["EURUSD", "EURUSD", "EURUSD"],
+            "candidate_uid": ["oco|EURUSD|100|h6|a"] * 3,
+            "pred_prob": [0.7, 0.8, 0.9],
+            "threshold": [0.75, 0.75, 0.75],
+            "selected": [0, 1, 1],
+        }
+    )
+    signal = compute_signal_deviation(
+        "EURUSD", live_predictions, governance_predictions, live_source="predict_evaluations"
+    )
+    assert signal.loc[0, "live_prediction_rows"] == 2
+    assert signal.loc[0, "governance_prediction_rows"] == 3
+    assert signal.loc[0, "live_selected_signal_count"] == 1
+    assert signal.loc[0, "governance_selected_signal_count"] == 2
+
+    trades = pd.DataFrame({"status": ["CLOSED", "OPEN"], "pnl_pips": [3.0, 0.0]})
+    outcome = compute_outcome_deviation("EURUSD", trades, governance_selected_signal_count=2)
+    assert outcome.loc[0, "runtime_trade_count"] == 2
+    assert outcome.loc[0, "runtime_realized_pnl_pips"] == 3.0
+
+    findings = build_findings(
+        bar_deviation=pd.DataFrame(
+            [
+                {
+                    "symbol": "EURUSD",
+                    "missing_live_bars": 1,
+                    "extra_live_bars": 0,
+                    "max_abs_close_delta_pips": 0.0,
+                }
+            ]
+        ),
+        signal_deviation=signal,
+        incomplete_rows=pd.DataFrame(),
+    )
+    assert "Material Drift" in set(findings["classification"])
+    report = render_report(
+        manifest={"run_id": "unit", "generated_at_utc": "2026-05-09T00:00:00Z"},
+        window_summary=pd.DataFrame([{"symbol": "EURUSD", "bar_count": 2}]),
+        findings=findings,
+        tick_coverage=pd.DataFrame(),
+        bar_deviation=pd.DataFrame(),
+        signal_deviation=signal,
+        outcome_deviation=outcome,
+        skips=pd.DataFrame(),
+    )
+    assert "# Live Governance Deviation Report" in report
+    assert "not a Promotion gate" in report

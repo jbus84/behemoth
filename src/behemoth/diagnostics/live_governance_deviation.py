@@ -598,3 +598,236 @@ def compute_bar_deviation(
             }
         ]
     )
+
+
+def _selected_count(df: pd.DataFrame) -> int:
+    if df.empty:
+        return 0
+    if "selected_exec" in df.columns:
+        return int(pd.to_numeric(df["selected_exec"], errors="coerce").fillna(0).sum())
+    if "selected" in df.columns:
+        return int(pd.to_numeric(df["selected"], errors="coerce").fillna(0).sum())
+    return int(len(df))
+
+
+def _column_p50(df: pd.DataFrame, column: str) -> float:
+    if column not in df.columns:
+        return float("nan")
+    return _series_quantile(df[column], 0.50)
+
+
+def compute_signal_deviation(
+    symbol: str,
+    live_predictions: pd.DataFrame,
+    governance_predictions: pd.DataFrame,
+    *,
+    live_source: str,
+) -> pd.DataFrame:
+    live_prediction_rows = int(len(live_predictions))
+    governance_prediction_rows = int(len(governance_predictions))
+    live_selected_signal_count = _selected_count(live_predictions)
+    governance_selected_signal_count = _selected_count(governance_predictions)
+
+    return pd.DataFrame(
+        [
+            {
+                "symbol": symbol.upper(),
+                "live_source": live_source,
+                "live_prediction_rows": live_prediction_rows,
+                "governance_prediction_rows": governance_prediction_rows,
+                "prediction_row_delta": live_prediction_rows
+                - governance_prediction_rows,
+                "live_selected_signal_count": live_selected_signal_count,
+                "governance_selected_signal_count": governance_selected_signal_count,
+                "selected_signal_delta": live_selected_signal_count
+                - governance_selected_signal_count,
+                "live_pred_prob_p50": _column_p50(live_predictions, "pred_prob"),
+                "governance_pred_prob_p50": _column_p50(
+                    governance_predictions, "pred_prob"
+                ),
+                "live_threshold_p50": _column_p50(live_predictions, "threshold"),
+                "governance_threshold_p50": _column_p50(
+                    governance_predictions, "threshold"
+                ),
+            }
+        ]
+    )
+
+
+def compute_outcome_deviation(
+    symbol: str, trades: pd.DataFrame, *, governance_selected_signal_count: int
+) -> pd.DataFrame:
+    runtime_trade_count = int(len(trades))
+    if trades.empty or "status" not in trades.columns:
+        closed_trades = trades.iloc[0:0]
+    else:
+        closed_trades = trades[
+            trades["status"].astype("string").str.upper().fillna("") == "CLOSED"
+        ]
+    runtime_closed_trade_count = int(len(closed_trades))
+    if "pnl_pips" in closed_trades.columns:
+        runtime_realized_pnl_pips = float(
+            pd.to_numeric(closed_trades["pnl_pips"], errors="coerce").fillna(0).sum()
+        )
+    else:
+        runtime_realized_pnl_pips = 0.0
+
+    return pd.DataFrame(
+        [
+            {
+                "symbol": symbol.upper(),
+                "governance_selected_signal_count": int(
+                    governance_selected_signal_count
+                ),
+                "runtime_trade_count": runtime_trade_count,
+                "runtime_closed_trade_count": runtime_closed_trade_count,
+                "runtime_realized_pnl_pips": runtime_realized_pnl_pips,
+            }
+        ]
+    )
+
+
+def _numeric_row_value(row: pd.Series, column: str, default: float = 0.0) -> float:
+    value = row.get(column, default)
+    if pd.isna(value):
+        return default
+    return float(value)
+
+
+def build_findings(
+    bar_deviation: pd.DataFrame,
+    signal_deviation: pd.DataFrame,
+    incomplete_rows: pd.DataFrame,
+) -> pd.DataFrame:
+    rows: list[dict[str, object]] = []
+
+    for _, row in bar_deviation.iterrows():
+        missing_live_bars = int(_numeric_row_value(row, "missing_live_bars"))
+        extra_live_bars = int(_numeric_row_value(row, "extra_live_bars"))
+        if missing_live_bars or extra_live_bars:
+            rows.append(
+                {
+                    "symbol": str(row.get("symbol", "")).upper(),
+                    "classification": "Material Drift",
+                    "code": "BAR_COUNT_DEVIATION",
+                    "severity": "high",
+                    "summary": (
+                        f"Missing live bars: {missing_live_bars}; "
+                        f"extra live bars: {extra_live_bars}."
+                    ),
+                }
+            )
+
+    for _, row in signal_deviation.iterrows():
+        selected_signal_delta = int(_numeric_row_value(row, "selected_signal_delta"))
+        if selected_signal_delta:
+            rows.append(
+                {
+                    "symbol": str(row.get("symbol", "")).upper(),
+                    "classification": "Runtime Variance",
+                    "code": "SELECTED_SIGNAL_DELTA",
+                    "severity": "medium",
+                    "summary": (
+                        "Live selected signal count differs from governance by "
+                        f"{selected_signal_delta}."
+                    ),
+                }
+            )
+
+    for _, row in incomplete_rows.iterrows():
+        symbol = str(row.get("symbol", "")).upper()
+        reason = str(row.get("reason", "incomplete_evidence"))
+        rows.append(
+            {
+                "symbol": symbol,
+                "classification": "Incomplete Evidence",
+                "code": "incomplete_evidence",
+                "severity": "medium",
+                "summary": reason,
+            }
+        )
+
+    if not rows:
+        rows.append(
+            {
+                "symbol": "",
+                "classification": "Info",
+                "code": "NO_MATERIAL_FINDINGS",
+                "severity": "info",
+                "summary": "No material live governance deviation findings.",
+            }
+        )
+
+    return pd.DataFrame(
+        rows, columns=["symbol", "classification", "code", "severity", "summary"]
+    )
+
+
+def _markdown_table(df: pd.DataFrame) -> str:
+    if df.empty:
+        return "_empty_"
+    try:
+        return df.to_markdown(index=False)
+    except Exception:
+        return df.to_string(index=False)
+
+
+def render_report(
+    *,
+    manifest: dict[str, object],
+    window_summary: pd.DataFrame,
+    findings: pd.DataFrame,
+    tick_coverage: pd.DataFrame,
+    bar_deviation: pd.DataFrame,
+    signal_deviation: pd.DataFrame,
+    outcome_deviation: pd.DataFrame,
+    skips: pd.DataFrame,
+) -> str:
+    generated_at_utc = manifest.get("generated_at_utc", "")
+    run_id = manifest.get("run_id", "")
+    sections = [
+        "# Live Governance Deviation Report",
+        "",
+        f"- generated_at_utc: {generated_at_utc}",
+        f"- run_id: {run_id}",
+        "",
+        (
+            "This report is diagnostic evidence only and is not a Promotion gate; "
+            "Promotion authority remains with the stage certification process."
+        ),
+        "",
+        (
+            "Runtime Realized P&L is not treated as equivalent to Independent "
+            "Label P&L."
+        ),
+        "",
+        "## Findings",
+        "",
+        _markdown_table(findings),
+        "",
+        "## Window Summary",
+        "",
+        _markdown_table(window_summary),
+        "",
+        "## Tick Coverage Deviation",
+        "",
+        _markdown_table(tick_coverage),
+        "",
+        "## Bar Deviation",
+        "",
+        _markdown_table(bar_deviation),
+        "",
+        "## Signal Deviation",
+        "",
+        _markdown_table(signal_deviation),
+        "",
+        "## Outcome Context",
+        "",
+        _markdown_table(outcome_deviation),
+        "",
+        "## Skipped Symbols",
+        "",
+        _markdown_table(skips),
+        "",
+    ]
+    return "\n".join(sections)
