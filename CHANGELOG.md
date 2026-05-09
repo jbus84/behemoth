@@ -1,3 +1,12 @@
+## v0.22.0 (2026-05-09)
+
+### Feat
+
+- BarTouchSemantics — extract hl_first tie-breaking logic (#151)
+- Add account_risk_reservation_audit table to schema
+- Add account_risk_reservation_audit table to schema (#150)
+- Dedup warmup formula in FeatureConfig (#149)
+
 ## v0.21.0 (2026-05-09)
 
 ### Feat
