@@ -7,6 +7,7 @@ and supporting future persistence layers (PostgreSQL, SQLite, etc).
 from __future__ import annotations
 
 import threading
+from datetime import datetime
 
 import pandas as pd
 from typing import Any, Protocol
@@ -152,8 +153,11 @@ class InMemoryStateStore:
 
     def __init__(self) -> None:
         import sqlite3
+
         self._con = sqlite3.connect(":memory:")
         self._con.row_factory = sqlite3.Row
+        sqlite3.register_adapter(datetime, lambda d: d.isoformat())
+        sqlite3.register_converter("timestamp", lambda v: datetime.fromisoformat(v.decode()))
         self._in_transaction = False
 
     def execute(self, sql: str, params: list[Any] | None = None) -> StateStoreResult:
