@@ -337,3 +337,86 @@ def test_load_canonical_ticks_and_build_governance_bars(tmp_path: Path) -> None:
         "high_ask",
         "close_ask",
     }.issubset(bars.columns)
+
+
+def test_load_canonical_ticks_retains_mixed_timestamp_formats_across_months(
+    tmp_path: Path,
+) -> None:
+    tick_root = tmp_path / "dukascopy_ticks"
+    sym_dir = tick_root / "EURUSD"
+    sym_dir.mkdir(parents=True)
+    pd.DataFrame(
+        {
+            "timestamp": ["2026-04-30 23:59:59+00:00"],
+            "bid": [1.1],
+            "ask": [1.1002],
+            "mid": [1.1001],
+            "spread": [0.0002],
+            "log_return": [0.0],
+        }
+    ).to_parquet(sym_dir / "EURUSD_202604_ticks.parquet", index=False)
+    pd.DataFrame(
+        {
+            "timestamp": ["2026-05-01T00:00:00Z"],
+            "bid": [1.1001],
+            "ask": [1.1003],
+            "mid": [1.1002],
+            "spread": [0.0002],
+            "log_return": [0.0],
+        }
+    ).to_parquet(sym_dir / "EURUSD_202605_ticks.parquet", index=False)
+
+    loaded = load_canonical_ticks_for_window(
+        tick_root,
+        "EURUSD",
+        pd.Timestamp("2026-04-30T23:59:58Z"),
+        pd.Timestamp("2026-05-01T00:00:01Z"),
+    )
+
+    assert loaded["timestamp"].dt.strftime("%Y-%m-%dT%H:%M:%SZ").tolist() == [
+        "2026-04-30T23:59:59Z",
+        "2026-05-01T00:00:00Z",
+    ]
+
+
+def test_mid_only_canonical_ticks_build_governance_bars(tmp_path: Path) -> None:
+    tick_root = tmp_path / "dukascopy_ticks"
+    sym_dir = tick_root / "EURUSD"
+    sym_dir.mkdir(parents=True)
+    pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2026-05-02T00:00:00Z", periods=100, freq="s"),
+            "mid": [1.1001 + i * 0.000001 for i in range(100)],
+            "spread": [0.0002] * 100,
+            "log_return": [0.0] * 100,
+        }
+    ).to_parquet(sym_dir / "EURUSD_202605_ticks.parquet", index=False)
+
+    loaded = load_canonical_ticks_for_window(
+        tick_root,
+        "EURUSD",
+        pd.Timestamp("2026-05-02T00:00:00Z"),
+        pd.Timestamp("2026-05-02T00:01:39Z"),
+    )
+    bars = build_governance_bars_for_window(loaded, bar_ticks=100)
+
+    assert "bid" not in loaded.columns
+    assert len(bars) == 1
+    assert bars.loc[0, "open_bid"] == pytest.approx(1.1001)
+
+
+def test_build_governance_bars_returns_empty_for_unsupported_bar_ticks() -> None:
+    ticks = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2026-05-02T00:00:00Z", periods=100, freq="s"),
+            "bid": [1.1] * 100,
+            "ask": [1.1002] * 100,
+            "mid": [1.1001] * 100,
+            "spread": [0.0002] * 100,
+            "log_return": [0.0] * 100,
+        }
+    )
+
+    bars = build_governance_bars_for_window(ticks, bar_ticks=1000)
+
+    assert bars.empty

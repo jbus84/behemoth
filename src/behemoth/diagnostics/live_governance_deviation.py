@@ -78,6 +78,20 @@ def _empty_canonical_ticks() -> pd.DataFrame:
     return pd.DataFrame(columns=CANONICAL_TICK_COLUMNS)
 
 
+def _parse_timestamp_series(values: pd.Series) -> pd.Series:
+    source_has_values = values.notna().any()
+    try:
+        parsed = pd.to_datetime(values, utc=True, errors="coerce", format="mixed")
+        if not source_has_values or parsed.notna().any():
+            return parsed
+    except (TypeError, ValueError):
+        pass
+    try:
+        return pd.to_datetime(values, utc=True, errors="coerce")
+    except TypeError:
+        return pd.to_datetime(values, utc=True)
+
+
 def load_canonical_ticks_for_window(
     tick_root: Path,
     symbol: str,
@@ -99,11 +113,13 @@ def load_canonical_ticks_for_window(
         return _empty_canonical_ticks()
 
     ticks = pd.concat(frames, ignore_index=True)
-    for column in CANONICAL_TICK_COLUMNS:
-        if column not in ticks.columns:
-            ticks[column] = pd.NA
-    ticks = ticks[CANONICAL_TICK_COLUMNS].copy()
-    ticks["timestamp"] = pd.to_datetime(ticks["timestamp"], utc=True, errors="coerce")
+    existing_columns = [
+        column for column in CANONICAL_TICK_COLUMNS if column in ticks.columns
+    ]
+    ticks = ticks[existing_columns].copy()
+    if "timestamp" not in ticks.columns:
+        return pd.DataFrame(columns=existing_columns)
+    ticks["timestamp"] = _parse_timestamp_series(ticks["timestamp"])
     ticks = ticks[
         ticks["timestamp"].notna()
         & (ticks["timestamp"] >= window_start)
@@ -121,7 +137,7 @@ def build_governance_bars_for_window(
     from scripts.diagnose_live_replay import _build_bars_from_ticks
 
     ticks = canonical_ticks.copy()
-    ticks["timestamp"] = pd.to_datetime(ticks["timestamp"], utc=True, errors="coerce")
+    ticks["timestamp"] = _parse_timestamp_series(ticks["timestamp"])
     ticks = ticks[ticks["timestamp"].notna()]
     if ticks.empty:
         return pd.DataFrame()
