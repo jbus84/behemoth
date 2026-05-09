@@ -41,6 +41,7 @@ from src.behemoth.core.features import (
     FeatureConfig,
     compute_feature_matrix_from_bars,
 )
+from src.behemoth.core.regime_quantile_contract import RegimeQuantileContract
 from src.behemoth.core.governance_validator import (
     GovernanceValidator,
     failed_checks,
@@ -1327,6 +1328,15 @@ def _regime_is_active(
             for sub in r.split("_and_")
         )
 
+    # Validate regime name against contract
+    if not RegimeQuantileContract.is_valid_regime(r):
+        logger.warning(
+            "Unknown regime name: %s. Valid regimes: %s. Defaulting to True (forward-compatibility mode).",
+            r,
+            list(RegimeQuantileContract.quantiles().keys()),
+        )
+        return True
+
     h = int(close_ts_utc.hour)
     if r == "london":
         return h in {7, 8, 9, 10, 11}
@@ -1354,7 +1364,7 @@ def _regime_is_active(
             float(q.get("vel_q80", float("nan"))),
             op=">=",
         )
-    # Unknown regime token: keep permissive for forward compatibility.
+    # Should not reach here if is_valid_regime() passed
     return True
 
 

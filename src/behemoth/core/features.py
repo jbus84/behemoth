@@ -34,6 +34,7 @@ from types import MappingProxyType
 import numpy as np
 import pandas as pd
 
+from src.behemoth.core.regime_quantile_contract import RegimeQuantileContract
 from src.behemoth.core.schemas import ModelFeatures
 
 # ── Constants ─────────────────────────────────────────────────────────
@@ -368,7 +369,7 @@ def compute_regime_quantiles_from_bars(
             return float("nan")
         return float(s.quantile(float(quantile)))
 
-    return {
+    result = {
         "cost_q30": _q(cost_est, 0.30),
         "cost_q50": _q(cost_est, 0.50),
         "rng_q70": _q(range_pips, 0.70),
@@ -381,6 +382,9 @@ def compute_regime_quantiles_from_bars(
         "spread_q70": _q(spread_z, 0.70),
         "tick_q30": _q(tick_rate_z, 0.30),
     }
+    # Validate against the regime quantile contract
+    RegimeQuantileContract.validate_quantile_dict(result)
+    return result
 
 
 def _extract_core_series(df: pd.DataFrame) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series, pd.Series, pd.Series]:
