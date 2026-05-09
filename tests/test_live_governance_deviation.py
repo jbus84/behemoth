@@ -319,10 +319,10 @@ def test_load_canonical_ticks_and_build_governance_bars(tmp_path: Path) -> None:
     ticks.to_parquet(sym_dir / "EURUSD_202605_ticks.parquet", index=False)
 
     loaded = load_canonical_ticks_for_window(
-        tick_root=tick_root,
-        symbol="EURUSD",
-        start_ts=pd.Timestamp("2026-05-02T00:00:00Z"),
-        end_ts=pd.Timestamp("2026-05-02T00:04:10Z"),
+        tick_root,
+        "EURUSD",
+        pd.Timestamp("2026-05-02T00:00:00Z"),
+        pd.Timestamp("2026-05-02T00:04:10Z"),
     )
     bars = build_governance_bars_for_window(loaded, bar_ticks=100)
 

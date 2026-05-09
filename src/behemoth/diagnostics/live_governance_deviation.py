@@ -79,11 +79,10 @@ def _empty_canonical_ticks() -> pd.DataFrame:
 
 
 def load_canonical_ticks_for_window(
-    *,
     tick_root: Path,
     symbol: str,
-    start_ts: pd.Timestamp | datetime | str,
-    end_ts: pd.Timestamp | datetime | str,
+    start_ts: pd.Timestamp,
+    end_ts: pd.Timestamp,
 ) -> pd.DataFrame:
     symbol_upper = symbol.upper()
     window_start = pd.to_datetime(start_ts, utc=True)
