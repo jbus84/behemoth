@@ -1126,3 +1126,155 @@ def test_main_reports_non_deployable_month_without_locked_predictions(tmp_path, 
     assert row["non_deployable_reason"] == "no_gate_states"
     assert row["lock_dir"] == str(lock_dir)
     assert str(row["overall_pass"]).lower() == "false"
+
+
+def test_discover_eval_window_from_duckdb(tmp_path: Path) -> None:
+    """Auto-discover eval window from tick_bars in a runtime DuckDB."""
+    from scripts.reconcile_jforex_outcomes import discover_eval_window
+
+    db_path = tmp_path / "test.db"
+    con = duckdb.connect(str(db_path))
+    con.execute("CREATE TABLE tick_bars (symbol TEXT, close_ts TIMESTAMPTZ)")
+    con.execute(
+        "INSERT INTO tick_bars VALUES ('EURUSD', '2025-07-10T12:00:00Z'), ('EURUSD', '2025-07-10T13:00:00Z')"
+    )
+    con.close()
+
+    result = discover_eval_window(db_path, "EURUSD", lookback_days=7)
+    assert result is not None
+    eval_start, eval_end = result
+    assert eval_end == "2025-07-10T13:00:00Z"
+    assert eval_start == "2025-07-03T13:00:00Z"
+
+
+def test_discover_eval_window_returns_none_for_missing_db() -> None:
+    from scripts.reconcile_jforex_outcomes import discover_eval_window
+
+    assert discover_eval_window(Path("/nonexistent/db.db"), "EURUSD") is None
+
+
+def test_findings_classify_low_coverage_as_runtime_variance() -> None:
+    from src.behemoth.diagnostics.findings import build_findings
+
+    results = [
+        {
+            "symbol": "EURUSD",
+            "signal_coverage_ratio": 0.5,
+            "signal_coverage_pass": False,
+            "has_trades": True,
+            "historical_deployable": True,
+            "non_deployable_reason": "",
+        }
+    ]
+    df = build_findings(results=results, signal_coverage_threshold=0.8)
+    assert len(df) == 1
+    assert df.iloc[0]["classification"] == "Runtime Variance"
+    assert df.iloc[0]["code"] == "SIGNAL_COVERAGE_LOW"
+    assert df.iloc[0]["severity"] == "medium"
+
+
+def test_findings_classify_missing_events_as_incomplete_evidence() -> None:
+    from src.behemoth.diagnostics.findings import build_findings
+
+    results = [
+        {
+            "symbol": "EURUSD",
+            "signal_coverage_ratio": 0.0,
+            "signal_coverage_pass": False,
+            "has_trades": False,
+            "historical_deployable": True,
+            "non_deployable_reason": "",
+        }
+    ]
+    df = build_findings(results=results, signal_coverage_threshold=0.8)
+    assert len(df) == 1
+    assert df.iloc[0]["classification"] == "Incomplete Evidence"
+    assert df.iloc[0]["code"] == "MISSING_RUNTIME_SIGNALS"
+
+
+def test_findings_classify_clean_pass_as_info() -> None:
+    from src.behemoth.diagnostics.findings import build_findings
+
+    results = [
+        {
+            "symbol": "EURUSD",
+            "signal_coverage_ratio": 0.95,
+            "signal_coverage_pass": True,
+            "has_trades": True,
+            "historical_deployable": True,
+            "non_deployable_reason": "",
+        }
+    ]
+    df = build_findings(results=results, signal_coverage_threshold=0.8)
+    assert len(df) == 1
+    assert df.iloc[0]["classification"] == "Info"
+    assert df.iloc[0]["code"] == "NO_MATERIAL_FINDINGS"
+    assert df.iloc[0]["severity"] == "info"
+
+
+def test_findings_classify_non_deployable_as_incomplete_evidence() -> None:
+    from src.behemoth.diagnostics.findings import build_findings
+
+    results = [
+        {
+            "symbol": "EURUSD",
+            "signal_coverage_ratio": 0.0,
+            "signal_coverage_pass": False,
+            "has_trades": False,
+            "historical_deployable": False,
+            "non_deployable_reason": "no_gate_states",
+        }
+    ]
+    df = build_findings(results=results, signal_coverage_threshold=0.8)
+    assert len(df) == 1
+    assert df.iloc[0]["classification"] == "Incomplete Evidence"
+    assert df.iloc[0]["code"] == "NON_DEPLOYABLE_LOCK"
+
+
+def test_report_bundle_writes_markdown_json_and_csvs(tmp_path: Path) -> None:
+    from src.behemoth.diagnostics.report import (
+        render_reconcile_report,
+        write_csv_bundle,
+        write_manifest,
+    )
+
+    import pandas as pd
+
+    report_dir = tmp_path / "report"
+    findings = pd.DataFrame(
+        [
+            {
+                "symbol": "EURUSD",
+                "classification": "Info",
+                "code": "NO_MATERIAL_FINDINGS",
+                "severity": "info",
+                "summary": "All good.",
+            }
+        ]
+    )
+    results = pd.DataFrame(
+        [{"symbol": "EURUSD", "overall_pass": True, "signal_coverage_ratio": 0.95}]
+    )
+
+    write_csv_bundle(report_dir, {"findings": findings, "reconciliation_summary": results})
+    assert (report_dir / "findings.csv").exists()
+    assert (report_dir / "reconciliation_summary.csv").exists()
+
+    manifest = {
+        "generated_at_utc": "2025-07-10T12:00:00Z",
+        "run_id": "test",
+    }
+    write_manifest(report_dir / "run_manifest.json", manifest)
+    assert (report_dir / "run_manifest.json").exists()
+
+    report_md = render_reconcile_report(
+        manifest=manifest,
+        findings=findings,
+        results=results,
+    )
+    assert "JForex Outcome Reconciliation Report" in report_md
+    assert "NO_MATERIAL_FINDINGS" in report_md
+    assert "EURUSD" in report_md
+
+    (report_dir / "reconcile_report.md").write_text(report_md, encoding="utf-8")
+    assert (report_dir / "reconcile_report.md").exists()
