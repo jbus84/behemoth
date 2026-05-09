@@ -1,3 +1,9 @@
+## v0.26.0 (2026-05-09)
+
+### Feat
+
+- Wave 6.4 - Scan State Machine extraction (#155)
+
 ## v0.25.0 (2026-05-09)
 
 ### Feat
