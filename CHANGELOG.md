@@ -1,3 +1,13 @@
+## v0.29.0 (2026-05-09)
+
+### Feat
+
+- deepen architecture — 10 refactoring candidates (#158)
+
+### Fix
+
+- add missing OrderIntent.java from architecture deepening
+
 ## v0.28.0 (2026-05-09)
 
 ### Feat
