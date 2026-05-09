@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from typing import Any, TypeVar
 
 from src.behemoth.core.schemas import BarContext, BarrierAction, BarrierActionType
+from src.behemoth.runtime.bar_touch_semantics import BarTouchSemantics
 from src.behemoth.runtime.barrier_context import (
     BarContextAdapter,
     BarrierEvaluationContext,
@@ -308,34 +309,32 @@ class BarrierManager:
             dn_touch = context.check_lower_touch(lower)
             touch_step = current_bar_idx - signal_bar_idx
 
-            if up_touch and dn_touch:
-                # Both touched — use hl_first to break tie
-                if bar_hl_first > 0:
-                    side = "BUY"
-                elif bar_hl_first < 0:
-                    side = "SELL"
-                else:
-                    # hl_first == 0: undecided, expire immediately
-                    self._store.execute(
-                        "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",
-                        [scan_id],
-                    )
-                    mutations.append(BarrierStateMutation(
-                        scan_id=scan_id, from_status="SCANNING", to_status="EXPIRED",
-                        reason="simultaneous_touch_no_hl_first",
-                    ))
-                    if reservation_id is not None:
-                        actions.append(self._release_reservation_action(
-                            symbol=sym, candidate_uid=candidate_uid, scan_id=scan_id,
-                            reservation_id=reservation_id,
-                        ))
-                    continue
+            # Evaluate touches and determine side/expiry decision
+            touch_result = BarTouchSemantics.evaluate(up_touch, dn_touch, bar_hl_first)
 
-                self._transition_to_holding(scan_id, touch_step, side, horizon)
+            if touch_result.decided_side:
+                # Touch decision made (BUY or SELL)
+                self._transition_to_holding(scan_id, touch_step, touch_result.decided_side, horizon)
                 mutations.append(BarrierStateMutation(
                     scan_id=scan_id, from_status="SCANNING", to_status="HOLDING",
-                    reason=f"{side.lower()}_touch",
+                    reason=f"{touch_result.decided_side.lower()}_touch",
                 ))
+            elif touch_result.expiry_reason:
+                # Both touched but hl_first == 0: expire immediately
+                self._store.execute(
+                    "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",
+                    [scan_id],
+                )
+                mutations.append(BarrierStateMutation(
+                    scan_id=scan_id, from_status="SCANNING", to_status="EXPIRED",
+                    reason=touch_result.expiry_reason,
+                ))
+                if reservation_id is not None:
+                    actions.append(self._release_reservation_action(
+                        symbol=sym, candidate_uid=candidate_uid, scan_id=scan_id,
+                        reservation_id=reservation_id,
+                    ))
+                continue
                 actions.append(self._open_market_action(
                     symbol=sym, candidate_uid=candidate_uid, scan_id=scan_id, side=side,
                     reservation_id=reservation_id, horizon=horizon,
