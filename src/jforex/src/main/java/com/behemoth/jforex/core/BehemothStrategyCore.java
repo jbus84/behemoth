@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 public final class BehemothStrategyCore {
     private final JForexSessionConfig sessionConfig;
@@ -63,7 +62,8 @@ public final class BehemothStrategyCore {
                     predictionClient,
                     metrics,
                     artifactWriter,
-                    actionCallbacks
+                    new CoreStateReader(),
+                    new CoreBookingPort()
             );
             symbolWorkers.put(instrument.symbol(), worker);
             worker.start();
@@ -170,30 +170,21 @@ public final class BehemothStrategyCore {
         return raw == null ? "" : raw.trim().replace("/", "").toUpperCase();
     }
 
-    private final SymbolWorker.ActionCallbacks actionCallbacks = new SymbolWorker.ActionCallbacks() {
+    private final class CoreStateReader implements SymbolWorker.SymbolStateReader {
         @Override public boolean entriesAllowed(String symbol) {
             SymbolRuntimeState state = symbolStates.get(normalizeSymbol(symbol));
             return state != null && state.entriesAllowed;
         }
+    }
 
-        @Override public OrderResult submitMarketOrder(OrderSubmissionRequest request) {
-            OrderIntent intent = new OrderIntent(
-                    request.symbol(),
-                    request.scanId(),
-                    request.side(),
-                    request.amountMillions(),
-                    request.candidateUid(),
-                    request.reservationId(),
-                    request.horizon(),
-                    request.submittedAtUtc()
-            );
+    private final class CoreBookingPort implements SymbolWorker.OrderBookingPort {
+        @Override public OrderResult submitMarketOrder(OrderIntent intent) {
             return orderBookingService.submitMarketOrder(intent);
         }
-
         @Override public void closePositionByScanId(String symbol, String scanId, Instant now) {
             orderBookingService.closePositionByScanId(symbol, scanId, now);
         }
-    };
+    }
 
     private static final class SymbolRuntimeState {
         private final RuntimeInstrument instrument;

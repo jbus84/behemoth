@@ -1,9 +1,9 @@
 package com.behemoth.jforex.worker;
 
 import com.behemoth.jforex.config.JForexSessionConfig;
-import com.behemoth.jforex.core.RuntimeTick;
+import com.behemoth.jforex.core.OrderIntent;
 import com.behemoth.jforex.core.OrderResult;
-import com.behemoth.jforex.core.OrderSubmissionRequest;
+import com.behemoth.jforex.core.RuntimeTick;
 import com.behemoth.jforex.observability.JForexMetrics;
 import com.behemoth.jforex.reporting.Stage14ArtifactWriter;
 import com.behemoth.jforex.runtime.PythonApiException;
@@ -37,7 +37,8 @@ public class SymbolWorker {
     private final PythonPredictionClient predictionClient;
     private final JForexMetrics metrics;
     private final Stage14ArtifactWriter artifactWriter;
-    private final ActionCallbacks callbacks;
+    private final SymbolStateReader stateReader;
+    private final OrderBookingPort bookingPort;
     private final WorkerTickQueue queue = new WorkerTickQueue();
     private final AtomicBoolean running = new AtomicBoolean(false);
     private Thread thread;
@@ -53,37 +54,24 @@ public class SymbolWorker {
             PythonPredictionClient predictionClient,
             JForexMetrics metrics,
             Stage14ArtifactWriter artifactWriter,
-            ActionCallbacks callbacks
+            SymbolStateReader stateReader,
+            OrderBookingPort bookingPort
     ) {
         this.symbol = symbol;
         this.sessionConfig = sessionConfig;
         this.predictionClient = predictionClient;
         this.metrics = metrics;
         this.artifactWriter = artifactWriter;
-        this.callbacks = callbacks;
+        this.stateReader = stateReader;
+        this.bookingPort = bookingPort;
     }
 
-    public interface ActionCallbacks {
+    public interface SymbolStateReader {
         boolean entriesAllowed(String symbol);
-        default OrderResult submitMarketOrder(OrderSubmissionRequest request) {
-            submitMarketOrder(
-                    request.symbol(),
-                    request.label(),
-                    request.side(),
-                    request.amountMillions(),
-                    request.scanId(),
-                    request.candidateUid(),
-                    request.reservationId(),
-                    request.horizon(),
-                    request.submittedAtUtc()
-            );
-            return new OrderResult("", "", request.reservationId());
-        }
-        default void submitMarketOrder(String symbol, String label, String side, double amountMillions,
-                                       String scanId, String candidateUid, String reservationId, int horizon,
-                                       Instant now) {
-            throw new UnsupportedOperationException("submitMarketOrder not implemented");
-        }
+    }
+
+    public interface OrderBookingPort {
+        OrderResult submitMarketOrder(OrderIntent intent);
         void closePositionByScanId(String symbol, String scanId, Instant now);
     }
 
@@ -314,7 +302,7 @@ public class SymbolWorker {
         Instant now = lastTick != null ? lastTick.timestamp() : Instant.now();
         for (BarrierActionPayload action : actions) {
             if (action.isOpenMarket()) {
-                if (!sessionConfig.newEntriesEnabled() || !callbacks.entriesAllowed(symbol)) {
+                if (!sessionConfig.newEntriesEnabled() || !stateReader.entriesAllowed(symbol)) {
                     metrics.recordEntryBlocked(symbol);
                     artifactWriter.markOperationalStep(
                             action.symbol(),
@@ -326,22 +314,19 @@ public class SymbolWorker {
                     );
                     continue;
                 }
-                String label = "BM_" + action.scanId() + "_" + action.side();
-                callbacks.submitMarketOrder(new OrderSubmissionRequest(
+                OrderIntent intent = new OrderIntent(
                         action.symbol(),
-                        label,
                         action.scanId(),
-                        action.candidateUid(),
                         action.side(),
                         amountMillions,
-                        action.horizon(),
+                        action.candidateUid(),
                         action.reservationId(),
-                        0.0,
-                        0.0,
+                        action.horizon(),
                         now
-                ));
+                );
+                bookingPort.submitMarketOrder(intent);
             } else if (action.isCloseMarket()) {
-                callbacks.closePositionByScanId(action.symbol(), action.scanId(), now);
+                bookingPort.closePositionByScanId(action.symbol(), action.scanId(), now);
             }
         }
     }
