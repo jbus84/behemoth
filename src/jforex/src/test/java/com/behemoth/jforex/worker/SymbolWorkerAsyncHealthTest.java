@@ -3,6 +3,8 @@ package com.behemoth.jforex.worker;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.behemoth.jforex.config.JForexSessionConfig;
+import com.behemoth.jforex.core.OrderIntent;
+import com.behemoth.jforex.core.OrderResult;
 import com.behemoth.jforex.core.RuntimeTick;
 import com.behemoth.jforex.observability.JForexMetrics;
 import com.behemoth.jforex.reporting.Stage14ArtifactWriter;
@@ -73,18 +75,15 @@ class SymbolWorkerAsyncHealthTest {
         );
         JForexMetrics metrics = JForexMetrics.start(sessionConfig);
         Stage14ArtifactWriter artifactWriter = new Stage14ArtifactWriter(tempDir, "test");
-        SymbolWorker.ActionCallbacks callbacks = new SymbolWorker.ActionCallbacks() {
-            @Override public boolean entriesAllowed(String symbol) {
-                return true;
-            }
-            @Override public void submitMarketOrder(String symbol, String label, String side, double amountMillions,
-                                                     String scanId, String candidateUid, String reservationId, int horizon,
-                                                     Instant now) {
+        SymbolWorker.SymbolStateReader stateReader = sym -> true;
+        SymbolWorker.OrderBookingPort bookingPort = new SymbolWorker.OrderBookingPort() {
+            @Override public OrderResult submitMarketOrder(OrderIntent intent) {
+                return new OrderResult("", "", intent.reservationId());
             }
             @Override public void closePositionByScanId(String symbol, String scanId, Instant now) {
             }
         };
-        return new SymbolWorker(symbol, sessionConfig, client, metrics, artifactWriter, callbacks);
+        return new SymbolWorker(symbol, sessionConfig, client, metrics, artifactWriter, stateReader, bookingPort);
     }
 
     @Test

@@ -7,6 +7,9 @@ and supporting future persistence layers (PostgreSQL, SQLite, etc).
 from __future__ import annotations
 
 import threading
+from datetime import datetime
+
+import pandas as pd
 from typing import Any, Protocol
 
 
@@ -143,39 +146,50 @@ class DuckDBStateStore:
 
 
 class InMemoryStateStore:
-    """In-memory implementation of StateStore for testing.
+    """SQLite-backed in-memory implementation of StateStore for testing.
 
-    Stores tables as dicts of row lists. Suitable for unit tests that don't
-    require full SQL semantics, but need state isolation.
+    Provides real SQL semantics without DuckDB connection contention.
     """
 
     def __init__(self) -> None:
-        """Initialize empty in-memory store."""
-        self._tables: dict[str, list[dict[str, Any]]] = {}
+        import sqlite3
+
+        self._con = sqlite3.connect(":memory:")
+        self._con.row_factory = sqlite3.Row
+        sqlite3.register_adapter(datetime, lambda d: d.isoformat())
+        sqlite3.register_converter("timestamp", lambda v: datetime.fromisoformat(v.decode()))
         self._in_transaction = False
 
     def execute(self, sql: str, params: list[Any] | None = None) -> StateStoreResult:
-        """Execute SQL statement (minimal implementation for testing)."""
-        # This is a stub. Real implementation would parse SQL and delegate to _tables.
-        # For now, return empty result - intended for tests that mock StateStore.
-        return StateStoreResult([])
+        import sqlite3
+        try:
+            cur = self._con.execute(sql, params or [])
+            rows = cur.fetchall()
+            tuples = [tuple(r) for r in rows]
+            if cur.description is not None:
+                df = pd.DataFrame(tuples, columns=[d[0] for d in cur.description])
+                return StateStoreResult(rows=tuples, df=df)
+            return StateStoreResult(rows=tuples)
+        except sqlite3.OperationalError as e:
+            msg = str(e).lower()
+            if "no such table" in msg or "no such column" in msg:
+                return StateStoreResult([])
+            raise
 
     def executemany(self, sql: str, params: list[list[Any]]) -> None:
-        """Execute SQL statement multiple times (no-op for in-memory store)."""
-        pass
+        self._con.executemany(sql, params)
 
     def begin(self) -> None:
-        """Begin transaction (no-op in in-memory store)."""
+        self._con.execute("BEGIN")
         self._in_transaction = True
 
     def commit(self) -> None:
-        """Commit transaction (no-op in in-memory store)."""
+        self._con.execute("COMMIT")
         self._in_transaction = False
 
     def rollback(self) -> None:
-        """Rollback transaction (no-op in in-memory store)."""
+        self._con.execute("ROLLBACK")
         self._in_transaction = False
 
     def close(self) -> None:
-        """Close store (no-op for in-memory store)."""
-        pass
+        self._con.close()

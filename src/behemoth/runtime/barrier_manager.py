@@ -98,12 +98,15 @@ class BarrierManager:
         else:
             # For stores that don't support raw DDL, execute via execute() method
             self._store.execute(_CREATE_BARRIER_SCANS_SQL)
-            self._store.execute(
-                "ALTER TABLE barrier_scans ADD COLUMN IF NOT EXISTS signal_close_ask DOUBLE"
-            )
-            self._store.execute(
-                "ALTER TABLE barrier_scans ADD COLUMN IF NOT EXISTS signal_close_bid DOUBLE"
-            )
+            for ddl in [
+                "ALTER TABLE barrier_scans ADD COLUMN IF NOT EXISTS signal_close_ask DOUBLE",
+                "ALTER TABLE barrier_scans ADD COLUMN IF NOT EXISTS signal_close_bid DOUBLE",
+            ]:
+                try:
+                    self._store.execute(ddl)
+                except Exception:
+                    # SQLite and other stores may not support IF NOT EXISTS on ALTER TABLE
+                    pass
 
     def close(self) -> None:
         if self._owns_store:
@@ -285,6 +288,8 @@ class BarrierManager:
     def _process_scanning_scans(self, context: BarrierEvaluationContext) -> tuple[list[BarrierAction], list[BarrierStateMutation]]:
         """Process SCANNING scans: check for barrier touches, transition to HOLDING or EXPIRED.
 
+        All updates for this phase are collected into a SQL batch and executed atomically.
+
         Returns: (actions, mutations) for all SCANNING scans evaluated against the bar.
         """
         symbol = context.symbol
@@ -293,6 +298,7 @@ class BarrierManager:
         sym = symbol.upper()
         actions: list[BarrierAction] = []
         mutations: list[BarrierStateMutation] = []
+        sql_batch: list[tuple[str, list[Any]]] = []
 
         scanning = self._store.execute(
             "SELECT scan_id, candidate_uid, upper_barrier, lower_barrier, "
@@ -315,7 +321,11 @@ class BarrierManager:
             if touch.decided_side is not None:
                 # Validate state transition via state machine
                 ScanStateMachine.validate_transition(ScanState.SCANNING, ScanState.HOLDING)
-                self._transition_to_holding(scan_id, touch_step, touch.decided_side, horizon)
+                sql_batch.append((
+                    "UPDATE barrier_scans SET touch_step = ?, touch_side = ?, "
+                    "hold_bars_remaining = ?, status = 'HOLDING' WHERE scan_id = ?",
+                    [touch_step, touch.decided_side, horizon, scan_id],
+                ))
                 mutations.append(BarrierStateMutation(
                     scan_id=scan_id, from_status="SCANNING", to_status="HOLDING",
                     reason=f"{touch.decided_side.lower()}_touch",
@@ -327,10 +337,10 @@ class BarrierManager:
             elif touch.expiry_reason is not None:
                 # Validate state transition via state machine
                 ScanStateMachine.validate_transition(ScanState.SCANNING, ScanState.EXPIRED)
-                self._store.execute(
+                sql_batch.append((
                     "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",
                     [scan_id],
-                )
+                ))
                 mutations.append(BarrierStateMutation(
                     scan_id=scan_id, from_status="SCANNING", to_status="EXPIRED",
                     reason=touch.expiry_reason,
@@ -343,10 +353,10 @@ class BarrierManager:
             elif bars_rem <= 0:
                 # Validate state transition via state machine
                 ScanStateMachine.validate_transition(ScanState.SCANNING, ScanState.EXPIRED)
-                self._store.execute(
+                sql_batch.append((
                     "UPDATE barrier_scans SET scan_bars_remaining = 0, status = 'EXPIRED' WHERE scan_id = ?",
                     [scan_id],
-                )
+                ))
                 mutations.append(BarrierStateMutation(
                     scan_id=scan_id, from_status="SCANNING", to_status="EXPIRED",
                     reason="horizon_expired",
@@ -357,14 +367,18 @@ class BarrierManager:
                         reservation_id=reservation_id,
                     ))
             else:
-                self._store.execute(
+                sql_batch.append((
                     "UPDATE barrier_scans SET scan_bars_remaining = ? WHERE scan_id = ?",
                     [bars_rem, scan_id],
-                )
+                ))
                 mutations.append(BarrierStateMutation(
                     scan_id=scan_id, from_status="SCANNING", to_status="SCANNING",
                     reason="scan_decrement",
                 ))
+
+        # Execute all scanning-phase updates atomically
+        if sql_batch:
+            self._with_transaction(lambda: self._execute_batch(sql_batch))
 
         return actions, mutations
 
@@ -372,6 +386,7 @@ class BarrierManager:
         """Process HOLDING scans: check for expiration, transition to COMPLETED.
 
         Skips scans that were just transitioned to HOLDING in this bar (given in newly_opened_actions).
+        All updates for this phase are collected into a SQL batch and executed atomically.
 
         Returns: (actions, mutations) for all HOLDING scans evaluated against the bar.
         """
@@ -379,6 +394,7 @@ class BarrierManager:
         sym = symbol.upper()
         actions: list[BarrierAction] = []
         mutations: list[BarrierStateMutation] = []
+        sql_batch: list[tuple[str, list[Any]]] = []
 
         # Exclude scans that were just transitioned to HOLDING in this evaluation
         newly_transitioned = {a.scan_id for a in newly_opened_actions if a.type == BarrierActionType.OPEN_MARKET}
@@ -392,10 +408,10 @@ class BarrierManager:
         for scan_id, candidate_uid, broker_pos_id, hold_rem in holding:
             hold_rem -= 1
             if hold_rem <= 0:
-                self._store.execute(
+                sql_batch.append((
                     "UPDATE barrier_scans SET hold_bars_remaining = 0, status = 'COMPLETED' WHERE scan_id = ?",
                     [scan_id],
-                )
+                ))
                 mutations.append(BarrierStateMutation(
                     scan_id=scan_id, from_status="HOLDING", to_status="COMPLETED",
                     reason="hold_completed",
@@ -408,16 +424,25 @@ class BarrierManager:
                     scan_id=scan_id,
                 ))
             else:
-                self._store.execute(
+                sql_batch.append((
                     "UPDATE barrier_scans SET hold_bars_remaining = ? WHERE scan_id = ?",
                     [hold_rem, scan_id],
-                )
+                ))
                 mutations.append(BarrierStateMutation(
                     scan_id=scan_id, from_status="HOLDING", to_status="HOLDING",
                     reason="hold_decrement",
                 ))
 
+        # Execute all holding-phase updates atomically
+        if sql_batch:
+            self._with_transaction(lambda: self._execute_batch(sql_batch))
+
         return actions, mutations
+
+    def _execute_batch(self, batch: list[tuple[str, list[Any]]]) -> None:
+        """Execute a list of (sql, params) tuples."""
+        for sql, params in batch:
+            self._store.execute(sql, params)
 
     @staticmethod
     def _open_market_action(
