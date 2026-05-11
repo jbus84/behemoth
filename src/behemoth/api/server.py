@@ -3782,8 +3782,9 @@ def _ingest_tick_internal(tick: IncomingTick, *, endpoint: str = "/ticks") -> di
                 endpoint=endpoint,
             )
 
-    if _config.record_raw_ticks and _is_historical_mode():
-        _state.record_raw_tick(tick, source="historical_backtest")
+    if _config.record_raw_ticks:
+        source = "historical_backtest" if _is_historical_mode() else "live"
+        _state.record_raw_tick(tick, source=source)
 
     completed_bar_ticks = []
     bars = []

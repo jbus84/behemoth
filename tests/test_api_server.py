@@ -2998,7 +2998,7 @@ class TestIngestionEndpoints:
             assert body["symbol_tick_seq"] == 2
             assert dummy_agg.add_ticks.call_count == 2
 
-    def test_ingest_tick_records_raw_tick_historical_only(self, client):
+    def test_ingest_tick_records_raw_tick_when_enabled(self, client):
         import unittest.mock as mock
 
         from src.behemoth.api import server
@@ -3006,6 +3006,7 @@ class TestIngestionEndpoints:
         orig_mode = server._config.governance_mode
         orig_record = server._config.record_raw_ticks
         try:
+            # Historical mode
             server._config.governance_mode = "historical"
             server._config.record_raw_ticks = True
             with (
@@ -3028,6 +3029,32 @@ class TestIngestionEndpoints:
                 )
                 assert r.status_code == 201
                 mock_raw.assert_called_once()
+                assert mock_raw.call_args.kwargs.get("source") == "historical_backtest"
+
+            # Live mode
+            server._config.governance_mode = "live"
+            server._config.record_raw_ticks = True
+            with (
+                mock.patch.object(server._state, "record_raw_tick") as mock_raw,
+                mock.patch.object(server._state, "bar_count", return_value=0),
+                mock.patch.dict(
+                    server._aggregators,
+                    {100: mock.MagicMock(add_ticks=mock.MagicMock(return_value=[]))},
+                    clear=True,
+                ),
+            ):
+                r = client.post(
+                    "/ticks",
+                    json={
+                        "symbol": "EURUSD",
+                        "timestamp": "2025-01-02T00:00:00Z",
+                        "bid": 1.1,
+                        "ask": 1.1001,
+                    },
+                )
+                assert r.status_code == 201
+                mock_raw.assert_called_once()
+                assert mock_raw.call_args.kwargs.get("source") == "live"
         finally:
             server._config.governance_mode = orig_mode
             server._config.record_raw_ticks = orig_record
