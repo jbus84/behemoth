@@ -14,7 +14,14 @@ from typing import Any, Protocol
 
 
 class StateStoreResult:
-    """Minimal result wrapper for query execution."""
+    """Minimal result wrapper for query execution.
+
+    Holds either an already-materialised ``rows`` list (SQLite path), a
+    cached DataFrame (also SQLite), or a raw DuckDB result object whose
+    rows/DataFrame are fetched lazily. DuckDB cursors are exhausted by
+    *either* fetchall *or* fetchdf — never both — so we defer the fetch
+    until the caller picks one.
+    """
 
     def __init__(
         self,
@@ -22,32 +29,36 @@ class StateStoreResult:
         duckdb_result: Any = None,
         df: Any = None,
     ) -> None:
-        self._rows = rows or []
+        self._rows = rows
         self._duckdb_result = duckdb_result
         self._df = df
 
     def fetchall(self) -> list[tuple[Any, ...]]:
         """Return all rows from query result."""
-        return self._rows
+        if self._rows is not None:
+            return self._rows
+        if self._duckdb_result is not None:
+            self._rows = self._duckdb_result.fetchall()
+            return self._rows
+        return []
 
     def fetchone(self) -> tuple[Any, ...] | None:
         """Return first row from query result, or None if empty."""
-        return self._rows[0] if self._rows else None
+        rows = self.fetchall()
+        return rows[0] if rows else None
 
     def fetchdf(self) -> Any:
-        """Return result as DataFrame (DuckDB only).
-
-        Requires that the result was created with a DuckDB result object
-        or that the DataFrame was cached at construction time.
+        """Return result as a pandas DataFrame.
 
         Returns:
-            pandas DataFrame
+            pandas DataFrame, or an empty DataFrame if no rows.
         """
         if self._df is not None:
             return self._df
-        if self._duckdb_result is None:
-            raise RuntimeError("fetchdf() not available for this result")
-        return self._duckdb_result.fetchdf()
+        if self._duckdb_result is not None:
+            self._df = self._duckdb_result.fetchdf()
+            return self._df
+        return pd.DataFrame()
 
 
 class StateStore(Protocol):
@@ -107,12 +118,15 @@ class DuckDBStateStore:
             self._owns_connection = True
 
     def execute(self, sql: str, params: list[Any] | None = None) -> StateStoreResult:
-        """Execute SQL statement using DuckDB."""
+        """Execute SQL statement using DuckDB.
+
+        Fetching is deferred to the returned ``StateStoreResult`` because a
+        DuckDB cursor is exhausted by either ``fetchall`` *or* ``fetchdf`` —
+        calling both on the same cursor returns ``None`` from the second.
+        """
         with self._lock:
             result = self._con.execute(sql, params or [])
-            rows = result.fetchall()
-            df = result.fetchdf()
-            return StateStoreResult(rows, duckdb_result=result, df=df)
+            return StateStoreResult(duckdb_result=result)
 
     def executemany(self, sql: str, params: list[list[Any]]) -> None:
         """Execute SQL statement multiple times with different parameters."""
