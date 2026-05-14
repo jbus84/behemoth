@@ -367,6 +367,8 @@ def _score_bars(
     model: Any,
     thresholds: dict,
     threshold_exec: float,
+    *,
+    seed_history: list[tuple[pd.Timestamp, float]] | None = None,
 ) -> pl.DataFrame:
     if bars.is_empty():
         return pl.DataFrame(schema=_SCORED_BARS_SCHEMA)
@@ -409,7 +411,14 @@ def _score_bars(
     threshold_values: list[float] = []
     threshold_block_reasons: list[str | None] = []
     regime_active_values: list[bool] = []
-    history: list[tuple[pd.Timestamp, float]] = []
+    # Seed the rolling history from prior audit_logs (mirrors live serving's
+    # use of audit_logs as the authoritative pred_prob backlog). Without
+    # seeding, a fresh diagnostic run reports ROLLING_HISTORY_GAP for every
+    # row until enough probs accumulate in-process, even when live's actual
+    # audit history has plenty.
+    history: list[tuple[pd.Timestamp, float]] = (
+        list(seed_history) if seed_history else []
+    )
     # Mirrors the live serving policy in src/behemoth/api/server.py: rolling
     # threshold from audit history when available, else fail-closed with a
     # named reason. Schedule-based thresholds are intentionally NOT modelled
