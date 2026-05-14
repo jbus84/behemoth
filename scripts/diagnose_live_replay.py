@@ -85,8 +85,10 @@ def _tick_price_frame(ticks: pl.DataFrame) -> pl.DataFrame:
     )
 
 
-def _build_bars_from_ticks(ticks: pl.DataFrame) -> pl.DataFrame:
-    """Aggregate ticks into 100-tick bars and drop the final partial bar."""
+def _build_bars_from_ticks(ticks: pl.DataFrame, *, bar_ticks: int) -> pl.DataFrame:
+    """Aggregate ticks into fixed-size bars and drop the final partial bar."""
+    if bar_ticks <= 0:
+        raise ValueError(f"bar_ticks must be > 0, got {bar_ticks}")
     _empty_schema = {
         "timestamp": pl.Datetime(time_zone="UTC"),
         "close_ts": pl.Datetime(time_zone="UTC"),
@@ -106,14 +108,14 @@ def _build_bars_from_ticks(ticks: pl.DataFrame) -> pl.DataFrame:
 
     # Extract ask prices before _tick_price_frame discards them.
     has_ask = "ask" in ticks.columns
-    n_complete = (ticks.height // 100) * 100
+    n_complete = (ticks.height // bar_ticks) * bar_ticks
     if n_complete <= 0:
         return pl.DataFrame(schema=_empty_schema)
 
     df = _tick_price_frame(ticks)
     if df.height < n_complete:
         # _tick_price_frame may drop nulls; recompute n_complete from cleaned frame
-        n_complete = (df.height // 100) * 100
+        n_complete = (df.height // bar_ticks) * bar_ticks
     if n_complete <= 0:
         return pl.DataFrame(schema=_empty_schema)
 
@@ -121,8 +123,8 @@ def _build_bars_from_ticks(ticks: pl.DataFrame) -> pl.DataFrame:
         df.slice(0, n_complete)
         .with_row_index("row_idx")
         .with_columns(
-            (pl.col("row_idx") // 100).cast(pl.Int64).alias("bar_id"),
-            (pl.col("row_idx") % 100).cast(pl.Int32).alias("bar_pos_tick"),
+            (pl.col("row_idx") // bar_ticks).cast(pl.Int64).alias("bar_id"),
+            (pl.col("row_idx") % bar_ticks).cast(pl.Int32).alias("bar_pos_tick"),
         )
     )
     complete = complete.with_columns(
@@ -160,9 +162,10 @@ def _build_bars_from_ticks(ticks: pl.DataFrame) -> pl.DataFrame:
             .then(pl.lit(-1, dtype=pl.Int8))
             .otherwise(pl.lit(0, dtype=pl.Int8))
             .alias("hl_first"),
-            ((pl.col("low_pos_tick") - pl.col("high_pos_tick")).cast(pl.Float64) / 99.0).alias(
-                "hl_pos_frac"
-            ),
+            (
+                (pl.col("low_pos_tick") - pl.col("high_pos_tick")).cast(pl.Float64)
+                / float(bar_ticks - 1)
+            ).alias("hl_pos_frac"),
         )
         .select(
             "timestamp",
@@ -204,7 +207,7 @@ def _build_bars_from_ticks(ticks: pl.DataFrame) -> pl.DataFrame:
         ask_with_bar = (
             pl.DataFrame({"ask": ask_aligned})
             .with_row_index("row_idx")
-            .with_columns((pl.col("row_idx") // 100).cast(pl.Int64).alias("bar_id"))
+            .with_columns((pl.col("row_idx") // bar_ticks).cast(pl.Int64).alias("bar_id"))
         )
         ask_bars = (
             ask_with_bar.group_by("bar_id", maintain_order=True)
@@ -367,31 +370,13 @@ def _score_bars(
         )
 
     bar_ticks = int(state.get("bar_ticks", 100))
-    if bar_ticks != 100:
-        return pl.DataFrame(
-            schema={
-                "close_ts": pl.Datetime(time_zone="UTC"),
-                "state_id": pl.Utf8,
-                "candidate_uid": pl.Utf8,
-                "bar_ticks": pl.Int64,
-                "horizon": pl.Int64,
-                "barrier_pips": pl.Float64,
-                "regime_name": pl.Utf8,
-                "regime_active": pl.Boolean,
-                "pred_prob": pl.Float64,
-                "threshold": pl.Float64,
-                "selected": pl.Int64,
-                "gap": pl.Float64,
-            }
-        )
-
     horizon = int(state.get("horizon", 0))
     barrier_pips = float(state.get("barrier_pips", 0.0))
 
     feats = compute_feature_matrix_from_bars(
         bars.to_pandas(),
         symbol=symbol,
-        bar_ticks=100,
+        bar_ticks=bar_ticks,
         horizon=horizon,
         barrier_pips=barrier_pips,
     )
@@ -701,24 +686,20 @@ def main() -> int:
         if not tick_paths:
             continue
         ticks = _load_ticks(tick_paths)
-        bars = _build_bars_from_ticks(ticks)
-        if bars.is_empty():
-            continue
         states = _load_states(symbol, str(governance_dir))
         thresholds, threshold_exec = _load_thresholds(
             symbol, str(models_dir), str(args.model_month)
         )
         model = _load_model(symbol, str(models_dir), str(args.model_month))
+        bars_by_bar_ticks: dict[int, pl.DataFrame] = {}
         for state in states:
-            if int(state.get("bar_ticks", 100)) != 100:
-                skipped_states.append(
-                    {
-                        "symbol": symbol,
-                        "state_id": str(state.get("state_id", "")),
-                        "bar_ticks": int(state.get("bar_ticks", 0)),
-                        "reason": "replay script rebuilds 100-tick bars only",
-                    }
+            bar_ticks = int(state.get("bar_ticks", 100))
+            if bar_ticks not in bars_by_bar_ticks:
+                bars_by_bar_ticks[bar_ticks] = _build_bars_from_ticks(
+                    ticks, bar_ticks=bar_ticks
                 )
+            bars = bars_by_bar_ticks[bar_ticks]
+            if bars.is_empty():
                 continue
             scored = _score_bars(
                 bars=bars,

@@ -27,7 +27,7 @@ def _tick_frame(n: int) -> pl.DataFrame:
 def test_build_bars_from_ticks_aggregates_1000_ticks_into_10_bars() -> None:
     from scripts.diagnose_live_replay import _build_bars_from_ticks
 
-    bars = _build_bars_from_ticks(_tick_frame(1000))
+    bars = _build_bars_from_ticks(_tick_frame(1000), bar_ticks=100)
 
     assert bars.height == 10
     assert {
@@ -52,7 +52,7 @@ def test_build_bars_from_ticks_aggregates_1000_ticks_into_10_bars() -> None:
 def test_build_bars_from_ticks_drops_partial_final_bar() -> None:
     from scripts.diagnose_live_replay import _build_bars_from_ticks
 
-    bars = _build_bars_from_ticks(_tick_frame(150))
+    bars = _build_bars_from_ticks(_tick_frame(150), bar_ticks=100)
 
     assert bars.height == 1
     assert int(bars[0, "tick_volume"]) == 100
@@ -511,23 +511,24 @@ def test_score_bars_preserves_source_indices_for_causal_quantiles(
     assert results.height == 3
 
 
-def test_score_bars_skips_non_100_tick_states(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_score_bars_scores_1000_tick_states(monkeypatch: pytest.MonkeyPatch) -> None:
     from scripts import diagnose_live_replay as module
 
     bars = pl.DataFrame(
         {
             "timestamp": pd.date_range(
-                "2026-03-01T00:00:00Z", periods=3, freq="100s", tz="UTC"
+                "2026-03-01T00:00:00Z", periods=3, freq="1000s", tz="UTC"
             ).to_list(),
             "close_ts": pd.to_datetime(
-                ["2026-03-01T00:01:39Z", "2026-03-02T00:01:39Z", "2026-03-03T00:01:39Z"], utc=True
+                ["2026-03-01T00:16:39Z", "2026-03-02T00:16:39Z", "2026-03-03T00:16:39Z"],
+                utc=True,
             ).to_list(),
             "open_bid": [1.0, 1.1, 1.2],
             "high_bid": [1.2, 1.3, 1.4],
             "low_bid": [0.9, 1.0, 1.1],
             "close_bid": [1.15, 1.25, 1.35],
             "spread": [0.0002, 0.0002, 0.0002],
-            "tick_volume": [100, 100, 100],
+            "tick_volume": [1000, 1000, 1000],
             "hl_first": [1, -1, 1],
             "hl_pos_frac": [0.4, 0.6, 0.5],
             "high_ask": [1.2002, 1.3002, 1.4002],
@@ -535,25 +536,30 @@ def test_score_bars_skips_non_100_tick_states(monkeypatch: pytest.MonkeyPatch) -
         }
     )
 
-    def fake_features(*args, **kwargs):
+    captured_bar_ticks: list[int] = []
+
+    def fake_features(*args, bar_ticks: int, **kwargs):
+        captured_bar_ticks.append(bar_ticks)
         return pd.DataFrame({"feat_1": [1.0, 2.0, 3.0], "feat_2": [3.0, 4.0, 5.0]})
 
     class DummyModel:
         def predict_proba(self, matrix):
-            pytest.fail("non-100 bar_ticks states should not score")
+            return np.column_stack([np.full(len(matrix), 0.4), np.full(len(matrix), 0.6)])
 
     monkeypatch.setattr(module, "compute_feature_matrix_from_bars", fake_features)
 
     results = module._score_bars(
         bars=bars,
         symbol="EURUSD",
-        state={"state_id": "s1", "bar_ticks": 200},
+        state={"state_id": "s1", "bar_ticks": 1000, "horizon": 6, "barrier_pips": 2.0},
         model=DummyModel(),
         thresholds={"threshold_exec": 0.55},
         threshold_exec=0.55,
     )
 
-    assert results.is_empty()
+    assert captured_bar_ticks == [1000]
+    assert not results.is_empty()
+    assert results.height == 3
 
 
 def test_section_near_miss_orders_by_gap_ascending() -> None:
@@ -636,7 +642,7 @@ def test_section_sensitivity_sweep_includes_expected_thresholds() -> None:
 def test_build_bars_from_ticks_emits_high_ask_and_close_ask() -> None:
     from scripts.diagnose_live_replay import _build_bars_from_ticks
 
-    bars = _build_bars_from_ticks(_tick_frame(200))
+    bars = _build_bars_from_ticks(_tick_frame(200), bar_ticks=100)
 
     assert bars.height == 2
     assert "high_ask" in bars.columns

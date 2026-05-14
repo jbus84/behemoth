@@ -238,7 +238,7 @@ def load_canonical_ticks_for_window(
 def build_governance_bars_for_window(
     canonical_ticks: pd.DataFrame, bar_ticks: int
 ) -> pd.DataFrame:
-    if canonical_ticks.empty or int(bar_ticks) != 100:
+    if canonical_ticks.empty or int(bar_ticks) <= 0:
         return _empty_governance_bars()
 
     from scripts.diagnose_live_replay import _build_bars_from_ticks
@@ -249,7 +249,7 @@ def build_governance_bars_for_window(
     if ticks.empty:
         return _empty_governance_bars()
 
-    return _build_bars_from_ticks(pl.from_pandas(ticks)).to_pandas()
+    return _build_bars_from_ticks(pl.from_pandas(ticks), bar_ticks=int(bar_ticks)).to_pandas()
 
 
 def _add_incomplete_evidence(
@@ -352,20 +352,6 @@ def score_governance_predictions_for_window(
     scored_parts: list[pl.DataFrame] = []
     polars_bars = pl.from_pandas(bars)
     for state in states:
-        if int(state.get("bar_ticks", 100)) != 100:
-            _add_incomplete_evidence(
-                incomplete_rows,
-                symbol=symbol_upper,
-                layer="governance_predictions",
-                finding_id="unsupported_governance_state",
-                reason=(
-                    "governance replay scoring supports 100-tick bars only; "
-                    f"state_id={state.get('state_id', '')} "
-                    f"bar_ticks={state.get('bar_ticks', '')}"
-                ),
-                source_path=governance_dir / f"{symbol_upper.lower()}_oco_live_lock.json",
-            )
-            continue
         try:
             scored = _score_bars(
                 bars=polars_bars,
