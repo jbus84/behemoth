@@ -27,6 +27,12 @@ dependencies = [
 
 
 
+[tool.pytest.ini_options]
+markers = [
+    "requires_models: test requires models/oco/*.cbm artifacts on disk; auto-skipped in environments without them (e.g. CI, where models/ is gitignored)",
+]
+
+
 [tool.uv]
 dev-dependencies = [
     "ipykernel>=6.0.0",

@@ -10,6 +10,8 @@ from src.behemoth.api import server
 from src.behemoth.api.server import _config, app
 from src.behemoth.core.schemas import ModelFeatures
 
+pytestmark = pytest.mark.requires_models
+
 
 @pytest.fixture
 def client():
