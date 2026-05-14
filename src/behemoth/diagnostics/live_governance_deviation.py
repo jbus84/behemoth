@@ -101,6 +101,7 @@ GOVERNANCE_PREDICTION_COLUMNS = [
     "regime_active",
     "pred_prob",
     "threshold",
+    "threshold_block_reason",
     "selected",
     "gap",
     "symbol",

@@ -204,9 +204,17 @@ def test_score_bars_filters_invalid_feature_rows_before_inference(
     assert results[0, "close_ts"] == pd.Timestamp("2026-03-01T08:01:39Z")
 
 
-def test_score_bars_applies_threshold_schedule_per_row_date_and_blocks_expired(
+def test_score_bars_flags_rolling_history_gap_with_nan_threshold_and_reason(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Rows lacking sufficient prior probs in the rolling window emit
+    threshold=NaN with threshold_block_reason='ROLLING_HISTORY_GAP'.
+
+    Replaces the prior schedule-based test: live serving no longer consults
+    threshold_schedule, so the diagnostic doesn't model that path either.
+    The expected contract: rolling mode is the only path; if history is
+    insufficient the row is fail-closed and the reason is recorded.
+    """
     from scripts import diagnose_live_replay as module
 
     bars = pl.DataFrame(
@@ -246,7 +254,6 @@ def test_score_bars_applies_threshold_schedule_per_row_date_and_blocks_expired(
         model=DummyModel(),
         thresholds={
             "threshold_exec": 0.55,
-            "threshold_schedule": {"2026-03-01": 0.60},
             "rolling_threshold_days": 20,
             "rolling_threshold_min_history": 2,
             "execution_quantile": 0.5,
@@ -255,11 +262,18 @@ def test_score_bars_applies_threshold_schedule_per_row_date_and_blocks_expired(
     )
 
     assert results.height == 3
-    assert float(results[0, "threshold"]) == pytest.approx(0.60)
-    assert float(results[1, "threshold"]) == pytest.approx(2.0)
-    assert float(results[2, "threshold"]) == pytest.approx(0.575)
+    # Row 0: zero prior probs -> blocked. Polars coerces NaN floats to null;
+    # the row is identifiable as blocked via threshold IS NULL + the reason column.
+    assert results[0, "threshold"] is None
+    assert results[0, "threshold_block_reason"] == "ROLLING_HISTORY_GAP"
     assert int(results[0, "selected"]) == 0
+    # Row 1: one prior prob, still below min_history=2 -> blocked
+    assert results[1, "threshold"] is None
+    assert results[1, "threshold_block_reason"] == "ROLLING_HISTORY_GAP"
     assert int(results[1, "selected"]) == 0
+    # Row 2: two prior probs (0.58, 0.57) clears min_history -> quantile 0.5 = 0.575
+    assert float(results[2, "threshold"]) == pytest.approx(0.575)
+    assert results[2, "threshold_block_reason"] is None
     assert int(results[2, "selected"]) == 1
 
 
