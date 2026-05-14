@@ -598,7 +598,7 @@ def test_mid_only_canonical_ticks_build_governance_bars(tmp_path: Path) -> None:
     assert bars.loc[0, "open_bid"] == pytest.approx(1.1001)
 
 
-def test_build_governance_bars_returns_empty_for_unsupported_bar_ticks() -> None:
+def test_build_governance_bars_returns_empty_when_ticks_below_bar_size() -> None:
     ticks = pd.DataFrame(
         {
             "timestamp": pd.date_range("2026-05-02T00:00:00Z", periods=100, freq="s"),
@@ -613,6 +613,30 @@ def test_build_governance_bars_returns_empty_for_unsupported_bar_ticks() -> None
     bars = build_governance_bars_for_window(ticks, bar_ticks=1000)
 
     assert bars.empty
+
+
+def test_build_governance_bars_supports_1000_tick_bars() -> None:
+    n = 2500
+    ticks = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2026-05-02T00:00:00Z", periods=n, freq="s"),
+            "bid": [1.1 + i * 1e-6 for i in range(n)],
+            "ask": [1.1002 + i * 1e-6 for i in range(n)],
+            "mid": [1.1001 + i * 1e-6 for i in range(n)],
+            "spread": [0.0002] * n,
+            "log_return": [0.0] * n,
+        }
+    )
+
+    bars = build_governance_bars_for_window(ticks, bar_ticks=1000)
+
+    # 2500 ticks / 1000 per bar = 2 complete bars; partial bar dropped.
+    assert len(bars) == 2
+    assert bars.loc[0, "tick_volume"] == 1000
+    assert bars.loc[0, "open_bid"] == pytest.approx(1.1)
+    assert bars.loc[1, "open_bid"] == pytest.approx(1.1 + 1000 * 1e-6)
+    # hl_pos_frac must remain in [-1, 1] for any bar size.
+    assert bars["hl_pos_frac"].abs().max() <= 1.0 + 1e-9
 
 
 def test_signal_outcome_findings_and_report() -> None:
