@@ -321,7 +321,18 @@ def score_governance_predictions_for_window(
     model_month: str | None = None,
     *,
     incomplete_rows: list[dict[str, object]] | None = None,
+    audit_history: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
+    """Score governance predictions for a window of bars.
+
+    ``audit_history`` (optional) is a DataFrame with columns
+    ``[close_ts, candidate_uid, pred_prob]`` from the runtime DB's
+    ``audit_logs`` table. When provided, each state's rolling-threshold
+    history is seeded from the matching candidate_uid's prior probs,
+    matching the live serving path's threshold contract. Without it,
+    every row in a freshly-started replay reports ``ROLLING_HISTORY_GAP``
+    until enough probs accumulate in-process.
+    """
     symbol_upper = symbol.upper()
     if bars.empty:
         return _empty_governance_predictions()
@@ -403,9 +414,21 @@ def score_governance_predictions_for_window(
         )
         return _empty_governance_predictions()
 
+    from scripts.diagnose_live_replay import _candidate_uid
+
     scored_parts: list[pl.DataFrame] = []
     polars_bars = pl.from_pandas(bars)
     for state in states:
+        seed_history: list[tuple[pd.Timestamp, float]] | None = None
+        if audit_history is not None and not audit_history.empty:
+            cand_uid = _candidate_uid(symbol_upper, state)
+            uid_rows = audit_history[audit_history["candidate_uid"] == cand_uid]
+            if not uid_rows.empty:
+                seed_history = [
+                    (ts, float(prob))
+                    for ts, prob in zip(uid_rows["close_ts"], uid_rows["pred_prob"])
+                    if pd.notna(ts) and pd.notna(prob)
+                ]
         try:
             scored = _score_bars(
                 bars=polars_bars,
@@ -414,6 +437,7 @@ def score_governance_predictions_for_window(
                 model=model,
                 thresholds=thresholds,
                 threshold_exec=threshold_exec,
+                seed_history=seed_history,
             )
         except Exception as exc:
             _add_incomplete_evidence(
@@ -1256,6 +1280,35 @@ def _governance_selected_count(signal_deviation: pd.DataFrame) -> int:
     return int(value)
 
 
+def _load_audit_history_for_symbol(
+    con: duckdb.DuckDBPyConnection, symbol: str
+) -> pd.DataFrame:
+    """Return audit_logs rows for a symbol as ``[close_ts, candidate_uid, pred_prob]``.
+
+    Used to seed each governance state's rolling-threshold history so the
+    diagnostic sees the same backlog the live serving path uses. Returns an
+    empty DataFrame when the table is absent or has no rows for the symbol.
+    """
+    try:
+        df = con.execute(
+            """
+            SELECT close_ts, candidate_uid, pred_prob
+            FROM audit_logs
+            WHERE symbol = ?
+              AND close_ts IS NOT NULL
+              AND pred_prob IS NOT NULL
+            """,
+            [symbol.upper()],
+        ).fetchdf()
+    except Exception:
+        return pd.DataFrame(columns=["close_ts", "candidate_uid", "pred_prob"])
+    if df.empty:
+        return df
+    df["close_ts"] = pd.to_datetime(df["close_ts"], utc=True, errors="coerce")
+    df = df.dropna(subset=["close_ts", "pred_prob"])
+    return df
+
+
 def _first_model_month(predictions: pd.DataFrame) -> str | None:
     if predictions.empty or "model_month" not in predictions.columns:
         return None
@@ -1292,6 +1345,7 @@ def run_analysis(cfg: DeviationConfig) -> dict[str, Path]:
             governance_bars = build_governance_bars_for_window(
                 canonical_ticks, window.bar_ticks
             )
+            audit_history = _load_audit_history_for_symbol(con, window.symbol)
             governance_predictions = score_governance_predictions_for_window(
                 governance_bars,
                 window.symbol,
@@ -1299,6 +1353,7 @@ def run_analysis(cfg: DeviationConfig) -> dict[str, Path]:
                 cfg.models_dir or Path("models/oco"),
                 model_month=_first_model_month(evidence.predictions),
                 incomplete_rows=incomplete_rows,
+                audit_history=audit_history,
             )
 
             symbol_prefix = window.symbol.upper()

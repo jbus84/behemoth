@@ -903,6 +903,7 @@ def test_run_analysis_scores_governance_predictions_for_signal_deviation(
         model_month: str | None = None,
         *,
         incomplete_rows: list[dict[str, object]] | None = None,
+        audit_history: pd.DataFrame | None = None,
     ) -> pd.DataFrame:
         assert not bars.empty
         assert symbol == "EURUSD"
