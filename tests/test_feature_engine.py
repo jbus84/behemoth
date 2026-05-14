@@ -3,12 +3,12 @@
 Verify feature computation logic works independently of StateManager.
 """
 
-import pandas as pd
-import pytest
 from datetime import datetime, timezone
 
+import pandas as pd
+import pytest
+
 from src.behemoth.core.feature_engine import FeatureComputationEngine
-from src.behemoth.core.schemas import ModelFeatures
 
 
 class TestFeatureComputationEngine:

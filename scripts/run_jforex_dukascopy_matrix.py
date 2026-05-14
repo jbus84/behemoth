@@ -31,7 +31,7 @@ _SCRIPT_REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_SCRIPT_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_REPO_ROOT))
 
-from scripts._matrix_warmup import (
+from scripts._matrix_warmup import (  # noqa: E402 — sys.path setup above
     WARMUP_TICKS_AUTO,
     align_keep,
     compute_bar_align_ticks,

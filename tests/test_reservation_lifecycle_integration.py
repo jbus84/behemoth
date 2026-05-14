@@ -1,6 +1,6 @@
 """Integration tests for ReservationLifecycle in StateManager."""
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from src.behemoth.risk.account import ReservationState
 from src.behemoth.runtime.state import StateManager

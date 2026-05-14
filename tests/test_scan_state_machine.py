@@ -102,7 +102,7 @@ class TestScanStateMachine:
 
     def test_all_valid_transitions_exist(self) -> None:
         """All states in VALID_TRANSITIONS are real states."""
-        for state in ScanStateMachine.VALID_TRANSITIONS.keys():
+        for state in ScanStateMachine.VALID_TRANSITIONS:
             assert isinstance(state, ScanState)
 
     def test_transition_graph_is_acyclic(self) -> None:
@@ -115,7 +115,7 @@ class TestScanStateMachine:
             current = frontier.pop()
             if current in visited:
                 # Would indicate a cycle
-                assert False, f"Cycle detected: revisited {current}"
+                raise AssertionError(f"Cycle detected: revisited {current}")
             visited.add(current)
             for target in ScanStateMachine.VALID_TRANSITIONS.get(current, frozenset()):
                 if target not in visited:
@@ -150,7 +150,7 @@ class TestScanStateMachine:
         """Error messages list valid transitions."""
         try:
             ScanStateMachine.validate_transition(ScanState.COMPLETED, ScanState.HOLDING)
-            assert False, "Should have raised"
+            raise AssertionError("Should have raised")
         except ValueError as e:
             # Error should mention that COMPLETED has no valid transitions
             assert "COMPLETED" in str(e)

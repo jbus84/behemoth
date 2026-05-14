@@ -3,10 +3,8 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-import pytest
-
-from src.behemoth.runtime.state import StateManager
 from src.behemoth.risk.account import ReservationState
+from src.behemoth.runtime.state import StateManager
 
 
 class TestAuditTrailPersistence:

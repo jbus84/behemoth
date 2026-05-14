@@ -23,9 +23,9 @@ for _path in (REPO_ROOT, SRC_ROOT):
     if _path_str not in sys.path:
         sys.path.insert(0, _path_str)
 
-from behemoth.parity import checks as _checks  # noqa: F401 — triggers registration
-from behemoth.parity import registry
-from behemoth.parity.types import CheckContext, CheckResult
+from behemoth.parity import checks as _checks  # noqa: E402, F401 — sys.path setup above; triggers registration  # isort:skip
+from behemoth.parity import registry  # noqa: E402  # isort:skip
+from behemoth.parity.types import CheckContext, CheckResult  # noqa: E402  # isort:skip
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("audit_runtime_parity")

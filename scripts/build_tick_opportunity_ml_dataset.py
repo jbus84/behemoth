@@ -346,7 +346,7 @@ def _oco_precompute(
         raise ValueError(f"legacy ambiguous bar schema unsupported: {detail}")
 
     close_bid = pd.to_numeric(df["close_bid"], errors="coerce").to_numpy(dtype=float)
-    high_bid = pd.to_numeric(df["high_bid"], errors="coerce").to_numpy(dtype=float)
+    pd.to_numeric(df["high_bid"], errors="coerce").to_numpy(dtype=float)
     low_bid = pd.to_numeric(df["low_bid"], errors="coerce").to_numpy(dtype=float)
     hlf = pd.to_numeric(df["hl_first"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
     high_ask = pd.to_numeric(df["high_ask"], errors="coerce").to_numpy(dtype=float)

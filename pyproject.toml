@@ -99,7 +99,7 @@ ignore = [
 [tool.vulture]
 exclude = ["*schema*"]
 ignore_decorators = ["@validator", "@root_validator", "@computed_field"]
-ignore_names = ["*schema*", "test_*", "OPEN", "CLOSED", "CANCELLED"]
+ignore_names = ["*schema*", "test_*", "OPEN", "CLOSED", "CANCELLED", "max_drawdown_pct"]
 min_confidence = 80
 
 [tool.commitizen]

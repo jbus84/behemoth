@@ -7,10 +7,10 @@ from pathlib import Path
 import pandas as pd
 
 from scripts.freeze_oco_live_governance import (
-    _sync_threshold_json_runtime_fields,
     _state_universe,
     _subset_omissions,
     _symbols_from_registry,
+    _sync_threshold_json_runtime_fields,
 )
 from scripts.validate_oco_live_governance import run
 

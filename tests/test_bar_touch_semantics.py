@@ -86,6 +86,6 @@ class TestBarTouchSemantics:
         result = BarTouchResult(True, False, "BUY", None)
         try:
             result.decided_side = "SELL"
-            assert False, "Should not be able to modify frozen dataclass"
+            raise AssertionError("Should not be able to modify frozen dataclass")
         except AttributeError:
             pass  # Expected

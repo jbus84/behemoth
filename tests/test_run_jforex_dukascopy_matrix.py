@@ -13,7 +13,6 @@ import pytest
 from scripts.run_jforex_dukascopy_matrix import (
     RunConfig,
     _load_aligned_warmup_ticks,
-    main,
     _next_available_port,
     _parse_args,
     _prediction_path,
@@ -21,6 +20,7 @@ from scripts.run_jforex_dukascopy_matrix import (
     _stage14_artifact_paths,
     _wait_for_artifacts_then_kill,
     _with_mise_trusted_paths,
+    main,
 )
 
 
@@ -30,8 +30,7 @@ def test_cli_help_runs_when_executed_as_script() -> None:
     result = subprocess.run(
         [sys.executable, str(repo / "scripts" / "run_jforex_dukascopy_matrix.py"), "--help"],
         cwd=repo,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
     )
 

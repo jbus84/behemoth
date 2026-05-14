@@ -7,8 +7,8 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from src.behemoth.runtime.state import StateManager
 from scripts.seed_rolling_threshold import _is_fresh
+from src.behemoth.runtime.state import StateManager
 
 
 def test_seed_training_predictions_populates_audit_logs(tmp_path) -> None:

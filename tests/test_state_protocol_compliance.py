@@ -4,13 +4,11 @@ These tests ensure the protocol definitions match StateManager's actual interfac
 (method names, argument signatures, and return types).
 """
 
-import pytest
-from typing import get_type_hints
 
 from src.behemoth.runtime.state import StateManager
 from src.behemoth.runtime.state_readers import (
-    BarStateReader,
     AccountRiskStateReader,
+    BarStateReader,
     ReservationWriter,
 )
 

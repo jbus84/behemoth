@@ -1232,13 +1232,13 @@ def test_findings_classify_non_deployable_as_incomplete_evidence() -> None:
 
 
 def test_report_bundle_writes_markdown_json_and_csvs(tmp_path: Path) -> None:
+    import pandas as pd
+
     from src.behemoth.diagnostics.report import (
         render_reconcile_report,
         write_csv_bundle,
         write_manifest,
     )
-
-    import pandas as pd
 
     report_dir = tmp_path / "report"
     findings = pd.DataFrame(

@@ -13,8 +13,8 @@ import numpy as np
 import polars as pl
 import pytest
 
-from src.behemoth.core.schemas import IncomingTick
 from scripts.build_global_tick_bars import _bars_from_ticks, _build_symbol
+from src.behemoth.core.schemas import IncomingTick
 
 # ── Helpers ───────────────────────────────────────────────────────────
 

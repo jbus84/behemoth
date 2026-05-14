@@ -1634,10 +1634,12 @@ class StateManager:
 
 # Structural subtype verification (for type checkers)
 # These prove StateManager implements the narrow protocols.
-if False:  # pragma: no cover
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover
     from src.behemoth.runtime.state_readers import (
-        BarStateReader,
         AccountRiskStateReader,
+        BarStateReader,
         ReservationWriter,
     )
 

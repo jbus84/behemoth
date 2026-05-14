@@ -2194,7 +2194,6 @@ class TestPredictEndpoint:
         import unittest.mock as mock
         from dataclasses import replace
         from datetime import datetime, timezone
-        from pathlib import Path
         from types import SimpleNamespace
 
         import numpy as np
@@ -2321,7 +2320,6 @@ class TestPredictEndpoint:
         import unittest.mock as mock
         from dataclasses import replace
         from datetime import datetime, timezone
-        from pathlib import Path
         from types import SimpleNamespace
 
         import numpy as np
@@ -4044,7 +4042,8 @@ class TestOpenSummaryEndpoint:
     def test_build_summary_with_pending_reservation(self, client):
         """PENDING reservation with no broker_pos_id → entry_price null, unrealized null."""
         import unittest.mock as mock
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
+
         from src.behemoth.api import server
 
         now = datetime(2026, 4, 7, 14, 15, 0, tzinfo=timezone.utc)
@@ -4091,7 +4090,8 @@ class TestOpenSummaryEndpoint:
     def test_open_summary_with_pending_reservation(self, client):
         """Endpoint returns one PENDING position with correct shape."""
         import unittest.mock as mock
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
+
         from src.behemoth.api import server
 
         now_fixed = datetime(2026, 4, 7, 14, 15, 0, tzinfo=timezone.utc)
@@ -4151,7 +4151,7 @@ class TestOpenSummaryEndpoint:
         """Writer loop body does not write when persist_db_path is falsy."""
         import asyncio
         import unittest.mock as mock
-        from pathlib import Path
+
         from src.behemoth.api import server
 
         original_path = server._config.persist_db_path

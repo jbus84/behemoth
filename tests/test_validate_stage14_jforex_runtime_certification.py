@@ -7,8 +7,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from scripts.run_jforex_dukascopy_matrix import _stage14_artifact_paths
 import scripts.validate_stage14_jforex_runtime_certification as stage14_mod
+from scripts.run_jforex_dukascopy_matrix import _stage14_artifact_paths
 from scripts.validate_stage14_jforex_runtime_certification import build_stage14_artifacts
 
 

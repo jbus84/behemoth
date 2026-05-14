@@ -185,8 +185,9 @@ def test_candidate_audit_identifies_locked_state(tmp_path: Path) -> None:
 def test_rolling_threshold_integrity_section_detects_flat_warmup(tmp_path: Path) -> None:
     """The integrity section must flag a flat warmup distribution
     (unique_values == 1) as a regression of the historical replay bug."""
-    import duckdb
     from datetime import datetime, timedelta, timezone
+
+    import duckdb
 
     db_path = tmp_path / "live_state.db"
     con = duckdb.connect(str(db_path))
@@ -243,7 +244,7 @@ def test_run_and_format_report_include_integrity_section(tmp_path: Path) -> None
     con = duckdb.connect(str(db))
     now = datetime(2026, 3, 23, 14, 0, tzinfo=timezone.utc)
     uid = "oco|GBPUSD|100|h6|oco_first_touch_clean__ny_overlap__k2"
-    for i in range(40):
+    for _i in range(40):
         con.execute(
             "INSERT INTO audit_logs VALUES (?, ?, 'GBPUSD', ?, 0.6123, 0.595, '{}', '2026-02', 'warmup')",
             [now, now, uid],

@@ -10,7 +10,10 @@ _SCRIPT_REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_SCRIPT_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_REPO_ROOT))
 
-from src.behemoth.ops.stage_dag import load_dag_contract, validate_contract
+from src.behemoth.ops.stage_dag import (  # noqa: E402 — sys.path setup above
+    load_dag_contract,
+    validate_contract,
+)
 
 
 def _repo_root() -> Path:
