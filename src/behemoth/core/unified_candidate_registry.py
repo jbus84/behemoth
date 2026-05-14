@@ -6,6 +6,8 @@ logic is encapsulated here, reducing 15+ conditionals in server.py.
 
 from __future__ import annotations
 
+from typing import Callable
+
 from src.behemoth.core.historical_registry import HistoricalCandidateRegistry
 from src.behemoth.core.registry import CandidateRegistry, CandidateSpec
 
@@ -22,7 +24,7 @@ class UnifiedCandidateRegistry:
         live_registry: CandidateRegistry | None,
         historical_registry: HistoricalCandidateRegistry | None,
         is_historical_mode: bool,
-        get_latest_month: callable | None = None,
+        get_latest_month: Callable[[str], str | None] | None = None,
     ) -> None:
         """Initialize with both registries and mode flag.
 

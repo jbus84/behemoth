@@ -26,7 +26,26 @@ from src.behemoth.core.schemas import ModelFeatures, PredictResponse
 from src.behemoth.risk.account import AccountRiskDecision, evaluate_account_risk_decision
 from src.behemoth.runtime.barrier_manager import BarrierManager
 from src.behemoth.runtime.order_submission import prepare_predict_actions
-from src.behemoth.runtime.state_readers import BarStateReader, AccountRiskStateReader, ReservationWriter
+from src.behemoth.runtime.state_readers import (
+    AccountRiskStateReader,
+    BarStateReader,
+    ReservationWriter,
+)
+
+from typing import Protocol, runtime_checkable
+
+
+@runtime_checkable
+class PredictOrchestratorState(
+    BarStateReader, AccountRiskStateReader, ReservationWriter, Protocol
+):
+    """Composite protocol for the StateManager surface PredictOrchestrator uses.
+
+    Python has no native intersection-type syntax; this Protocol re-exports the
+    union of the three constituent protocols so static type checkers (``ty``,
+    ``mypy``) can express the orchestrator's full state-side requirement.
+    """
+
 
 logger = logging.getLogger("behemoth.api.orchestrator")
 
@@ -114,7 +133,7 @@ class PredictionOrchestrator:
 
     def __init__(
         self,
-        state: BarStateReader & AccountRiskStateReader & ReservationWriter,
+        state: PredictOrchestratorState,
         barrier_manager: BarrierManager | None,
         model_registry: Any,
         candidate_registry: Any,
@@ -122,7 +141,7 @@ class PredictionOrchestrator:
         account_risk_profile: Any,
         config: Any,
         is_historical_mode: bool = False,
-        get_latest_month: callable | None = None,
+        get_latest_month: Callable[[str], str | None] | None = None,
         build_predictions_fn: Callable[..., list[Any]] | None = None,
         register_scans_fn: Callable[..., None] | None = None,
     ) -> None:
