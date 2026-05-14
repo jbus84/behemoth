@@ -457,7 +457,7 @@ class TestDuckDBTradeTracking:
             barrier_pips=15.0,
         )
         sm.log_audit_event("EURUSD", "cand1", 0.9, 0.5, dummy_features, "2025-01")
-        res = sm._con.execute("SELECT COUNT(*) FROM audit_logs").fetchone()
+        res = sm._store.execute("SELECT COUNT(*) FROM audit_logs").fetchone()
         assert res[0] == 1
 
     def test_get_all_symbols(self, sm):
@@ -499,7 +499,7 @@ class TestDuckDBTradeTracking:
         )
         sm.record_raw_tick(tick, source="historical_backtest")
         assert sm.raw_tick_count("EURUSD") == 1
-        row = sm._con.execute("SELECT symbol, bid, ask, spread, source FROM raw_ticks").fetchone()
+        row = sm._store.execute("SELECT symbol, bid, ask, spread, source FROM raw_ticks").fetchone()
         assert row[0] == "EURUSD"
         assert row[1] == pytest.approx(1.1)
         assert row[2] == pytest.approx(1.1002)
@@ -595,7 +595,7 @@ class TestAccountRiskReservationLedger:
             cost_est_pips=0.8,
             volume_units=10000.0,
         )
-        sm._con.execute(
+        sm._store.execute(
             "UPDATE account_risk_reservations SET created_ts = ? WHERE reservation_id = ?",
             [datetime(2020, 1, 1, tzinfo=timezone.utc), rid],
         )
@@ -617,7 +617,7 @@ class TestAccountRiskReservationLedger:
             risk_rank_score=0.2,
             reservation_id="r1",
         )
-        rows = sm._con.execute(
+        rows = sm._store.execute(
             "SELECT symbol, status, reservation_id FROM account_risk_allocator_events"
         ).fetchall()
         assert len(rows) == 1
@@ -650,7 +650,7 @@ class TestRollingThreshold:
         uid = "oco|GBPUSD|100|h6|oco_first_touch_clean__ny_overlap__k2"
         # Insert 20 pred_probs ranging from 0.50 to 0.69
         for i in range(20):
-            sm._con.execute(
+            sm._store.execute(
                 "INSERT INTO audit_logs(event_ts, close_ts, symbol, candidate_uid, "
                 "pred_prob, threshold, features_json, model_month, run_id) "
                 "VALUES (?, ?, 'GBPUSD', ?, ?, 0.5, '{}', '2026-02', 'warmup')",
@@ -676,7 +676,7 @@ class TestRollingThreshold:
         uid = "oco|GBPUSD|100|h6|oco_first_touch_clean__ny_overlap__k2"
         # Only 5 events, min_history=10
         for i in range(5):
-            sm._con.execute(
+            sm._store.execute(
                 "INSERT INTO audit_logs(event_ts, close_ts, symbol, candidate_uid, "
                 "pred_prob, threshold, features_json, model_month, run_id) "
                 "VALUES (?, ?, 'GBPUSD', ?, 0.60, 0.5, '{}', '2026-02', 'warmup')",
@@ -703,7 +703,7 @@ class TestPurgeAuditEvents:
         uid = "oco|GBPUSD|100|h6|oco_first_touch_clean__ny_overlap__k2"
         # 5 warmup rows for GBPUSD
         for i in range(5):
-            sm._con.execute(
+            sm._store.execute(
                 "INSERT INTO audit_logs(event_ts, close_ts, symbol, candidate_uid, "
                 "pred_prob, threshold, features_json, model_month, run_id) "
                 "VALUES (?, ?, 'GBPUSD', ?, ?, 0.5, '{}', '2026-02', 'warmup')",
@@ -711,7 +711,7 @@ class TestPurgeAuditEvents:
             )
         # 3 jforex_live rows for GBPUSD (must NOT be purged)
         for i in range(3):
-            sm._con.execute(
+            sm._store.execute(
                 "INSERT INTO audit_logs(event_ts, close_ts, symbol, candidate_uid, "
                 "pred_prob, threshold, features_json, model_month, run_id) "
                 "VALUES (?, ?, 'GBPUSD', ?, ?, 0.5, '{}', '2026-02', 'jforex_live')",
@@ -719,7 +719,7 @@ class TestPurgeAuditEvents:
             )
         # 2 warmup rows for EURUSD (must NOT be purged — different symbol)
         for i in range(2):
-            sm._con.execute(
+            sm._store.execute(
                 "INSERT INTO audit_logs(event_ts, close_ts, symbol, candidate_uid, "
                 "pred_prob, threshold, features_json, model_month, run_id) "
                 "VALUES (?, ?, 'EURUSD', ?, ?, 0.5, '{}', '2026-02', 'warmup')",
@@ -730,17 +730,17 @@ class TestPurgeAuditEvents:
 
         assert purged == 5
         # GBPUSD warmup gone
-        n_gbp_warmup = sm._con.execute(
+        n_gbp_warmup = sm._store.execute(
             "SELECT COUNT(*) FROM audit_logs WHERE symbol='GBPUSD' AND run_id='warmup'"
         ).fetchone()[0]
         assert n_gbp_warmup == 0
         # GBPUSD jforex_live untouched
-        n_gbp_live = sm._con.execute(
+        n_gbp_live = sm._store.execute(
             "SELECT COUNT(*) FROM audit_logs WHERE symbol='GBPUSD' AND run_id='jforex_live'"
         ).fetchone()[0]
         assert n_gbp_live == 3
         # EURUSD warmup untouched
-        n_eur_warmup = sm._con.execute(
+        n_eur_warmup = sm._store.execute(
             "SELECT COUNT(*) FROM audit_logs WHERE symbol='EURUSD' AND run_id='warmup'"
         ).fetchone()[0]
         assert n_eur_warmup == 2
@@ -778,13 +778,13 @@ class TestTradeRicherRecording:
             horizon=6,
             reservation_id="res-abc-123",
         )
-        row = sm._con.execute(
+        row = sm._store.execute(
             "SELECT reservation_id FROM trades WHERE broker_pos_id = 'bp_1'"
         ).fetchone()
         assert row[0] == "res-abc-123"
 
     def test_open_trade_populates_model_context_from_audit_logs(self, sm):
-        sm._con.execute(
+        sm._store.execute(
             "INSERT INTO audit_logs (event_ts, close_ts, symbol, candidate_uid, pred_prob, "
             "threshold, features_json, model_month, run_id) "
             "VALUES (CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, '{}', ?, ?)",
@@ -807,7 +807,7 @@ class TestTradeRicherRecording:
             entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
             horizon=6,
         )
-        row = sm._con.execute(
+        row = sm._store.execute(
             "SELECT entry_pred_prob, entry_threshold, entry_model_month FROM trades WHERE broker_pos_id = 'bp_2'"
         ).fetchone()
         assert abs(row[0] - 0.85) < 1e-9
@@ -824,7 +824,7 @@ class TestTradeRicherRecording:
             entry_ts=datetime(2025, 1, 1, tzinfo=timezone.utc),
             horizon=6,
         )
-        row = sm._con.execute(
+        row = sm._store.execute(
             "SELECT entry_pred_prob, entry_threshold, entry_model_month FROM trades WHERE broker_pos_id = 'bp_3'"
         ).fetchone()
         assert row[0] is None
@@ -851,7 +851,7 @@ class TestTradeRicherRecording:
             close_reason="HORIZON_COMPLETED",
             commission_ccy=-0.46,
         )
-        row = sm._con.execute(
+        row = sm._store.execute(
             "SELECT exit_bar_id, close_reason, commission_ccy FROM trades WHERE broker_pos_id = 'bp_4'"
         ).fetchone()
         assert row[0] is not None
@@ -879,7 +879,7 @@ class TestTradeRicherRecording:
             symbol="EURUSD",
             close_reason="HORIZON_COMPLETED",
         )
-        row = sm._con.execute(
+        row = sm._store.execute(
             "SELECT entry_bar_id, exit_bar_id FROM trades WHERE broker_pos_id = 'bp_5'"
         ).fetchone()
         assert row[1] > row[0]
@@ -959,7 +959,7 @@ class TestTickBarSchemaMigration:
         mgr = StateManager(persist_path=str(db_path))
         columns = {
             row[0]
-            for row in mgr._con.execute(
+            for row in mgr._store.execute(
                 """
                 SELECT column_name
                 FROM information_schema.columns

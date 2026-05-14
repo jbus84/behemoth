@@ -34,7 +34,7 @@ def test_log_predict_evaluation_writes_expected_row(sm):
         run_id=None,
     )
 
-    row = sm._con.execute(
+    row = sm._store.execute(
         """
         SELECT event_ts, close_ts, symbol, candidate_uid, pred_prob, threshold,
                preselected_exec, selected_exec, threshold_blocked, threshold_block_reason,
@@ -76,8 +76,8 @@ def test_log_predict_evaluation_does_not_touch_audit_logs(sm):
         run_id="run-123",
     )
 
-    audit_rows = sm._con.execute("SELECT COUNT(*) FROM audit_logs").fetchone()
-    predict_rows = sm._con.execute("SELECT COUNT(*) FROM predict_evaluations").fetchone()
+    audit_rows = sm._store.execute("SELECT COUNT(*) FROM audit_logs").fetchone()
+    predict_rows = sm._store.execute("SELECT COUNT(*) FROM predict_evaluations").fetchone()
 
     assert audit_rows[0] == 0
     assert predict_rows[0] == 1
@@ -108,7 +108,7 @@ def test_log_predict_evaluation_orders_all_gate_outcomes_by_event_ts(sm):
         )
         time.sleep(0.001)
 
-    got = sm._con.execute(
+    got = sm._store.execute(
         """
         SELECT preselected_exec, selected_exec
         FROM predict_evaluations

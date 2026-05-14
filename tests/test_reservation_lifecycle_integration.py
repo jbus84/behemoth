@@ -24,7 +24,7 @@ class TestReservationLifecycleIntegration:
         trail = mgr.get_reservation_audit_trail(rid)
         assert trail is not None
         assert len(trail) >= 1
-        assert trail[0]["to_state"] == ReservationState.PENDING.value
+        assert trail[0]["to_status"] == ReservationState.PENDING.value
         mgr.close()
 
     def test_promote_adds_open_transition(self) -> None:
@@ -45,7 +45,7 @@ class TestReservationLifecycleIntegration:
         trail = mgr.get_reservation_audit_trail(rid)
         assert trail is not None
         assert len(trail) >= 2
-        open_transitions = [t for t in trail if t["to_state"] == ReservationState.OPEN.value]
+        open_transitions = [t for t in trail if t["to_status"] == ReservationState.OPEN.value]
         assert len(open_transitions) == 1
         mgr.close()
 
@@ -64,7 +64,7 @@ class TestReservationLifecycleIntegration:
         mgr.release_account_risk_reservation(reservation_id=rid, reason="manual")
         trail = mgr.get_reservation_audit_trail(rid)
         assert trail is not None
-        assert trail[-1]["to_state"] == ReservationState.RELEASED.value
+        assert trail[-1]["to_status"] == ReservationState.RELEASED.value
         assert "reason" in trail[-1]
         mgr.close()
 
@@ -83,11 +83,11 @@ class TestReservationLifecycleIntegration:
         mgr.expire_stale_account_risk_pending_reservations(max_age_seconds=0)
         trail = mgr.get_reservation_audit_trail(rid)
         assert trail is not None
-        assert trail[-1]["to_state"] == ReservationState.EXPIRED.value
+        assert trail[-1]["to_status"] == ReservationState.EXPIRED.value
         mgr.close()
 
     def test_audit_trail_has_timestamps(self) -> None:
-        """Audit trail transitions should have ISO timestamps."""
+        """Audit trail transitions should have datetime event timestamps."""
         mgr = StateManager()
         rid = mgr.create_account_risk_reservation(
             symbol="EURUSD",
@@ -102,9 +102,8 @@ class TestReservationLifecycleIntegration:
         trail = mgr.get_reservation_audit_trail(rid)
         assert trail is not None
         for transition in trail:
-            assert "timestamp" in transition
-            assert isinstance(transition["timestamp"], str)
-            datetime.fromisoformat(transition["timestamp"])
+            assert "event_ts" in transition
+            assert isinstance(transition["event_ts"], datetime)
         mgr.close()
 
     def test_unretracked_reservation_returns_none(self) -> None:
@@ -114,22 +113,23 @@ class TestReservationLifecycleIntegration:
         assert trail is None
         mgr.close()
 
-    def test_lifecycle_context_preservation(self) -> None:
-        """Lifecycle context (loss_ccy, broker_pos_id) should be captured."""
+    def test_lifecycle_records_broker_pos_id_on_promote(self) -> None:
+        """The audit trail entry for a promotion should record the broker_pos_id."""
         mgr = StateManager()
-        loss = 250.0
         rid = mgr.create_account_risk_reservation(
             symbol="EURUSD",
             candidate_uid="cand_ctx",
-            reserved_loss_ccy=loss,
+            reserved_loss_ccy=250.0,
             barrier_pips=80.0,
             cap_pips=120.0,
             cost_est_pips=25.0,
             volume_units=2500.0,
         )
+        mgr.promote_account_risk_reservation(broker_pos_id="bp_ctx", reservation_id=rid)
         trail = mgr.get_reservation_audit_trail(rid)
         assert trail is not None
-        init_transition = trail[0]
-        assert "context" in init_transition
-        assert init_transition["context"].get("loss_ccy") == loss
+        promote_transition = next(
+            t for t in trail if t["to_status"] == ReservationState.OPEN.value
+        )
+        assert promote_transition["broker_pos_id"] == "bp_ctx"
         mgr.close()

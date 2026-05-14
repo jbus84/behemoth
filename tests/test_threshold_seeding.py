@@ -34,7 +34,7 @@ def test_seed_training_predictions_populates_audit_logs(tmp_path) -> None:
         )
 
         # Verify audit_logs was populated
-        row = sm._con.execute(
+        row = sm._store.execute(
             "SELECT COUNT(*), quantile_cont(pred_prob, 0.9) FROM audit_logs WHERE symbol = 'EURUSD'"
         ).fetchone()
         assert row[0] == 3
@@ -65,7 +65,7 @@ def test_seed_training_predictions_sets_close_ts_from_day(tmp_path) -> None:
             run_id="seed_test",
         )
 
-        rows = sm._con.execute("SELECT close_ts FROM audit_logs ORDER BY close_ts").fetchall()
+        rows = sm._store.execute("SELECT close_ts FROM audit_logs ORDER BY close_ts").fetchall()
         assert len(rows) == 2
         # close_ts should be midnight UTC of the day
         assert rows[0][0].date().isoformat() == "2025-01-15"
