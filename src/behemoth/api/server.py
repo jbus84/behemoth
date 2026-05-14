@@ -2529,7 +2529,6 @@ def _build_predictions(
             else:
                 pred_prob = 0.0
 
-            schedule = thr_cfg.get("threshold_schedule", {})
             day_str = close_ts.strftime("%Y-%m-%d")
 
             # Model expiry check: block immediately if past valid-through date.

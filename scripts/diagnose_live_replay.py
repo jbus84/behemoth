@@ -343,6 +343,23 @@ def _load_model(symbol: str, models_dir: str, model_month: str) -> Any:
     return model
 
 
+_SCORED_BARS_SCHEMA: dict[str, Any] = {
+    "close_ts": pl.Datetime(time_zone="UTC"),
+    "state_id": pl.Utf8,
+    "candidate_uid": pl.Utf8,
+    "bar_ticks": pl.Int64,
+    "horizon": pl.Int64,
+    "barrier_pips": pl.Float64,
+    "regime_name": pl.Utf8,
+    "regime_active": pl.Boolean,
+    "pred_prob": pl.Float64,
+    "threshold": pl.Float64,
+    "threshold_block_reason": pl.Utf8,
+    "selected": pl.Int64,
+    "gap": pl.Float64,
+}
+
+
 def _score_bars(
     bars: pl.DataFrame,
     symbol: str,
@@ -352,22 +369,7 @@ def _score_bars(
     threshold_exec: float,
 ) -> pl.DataFrame:
     if bars.is_empty():
-        return pl.DataFrame(
-            schema={
-                "close_ts": pl.Datetime(time_zone="UTC"),
-                "state_id": pl.Utf8,
-                "candidate_uid": pl.Utf8,
-                "bar_ticks": pl.Int64,
-                "horizon": pl.Int64,
-                "barrier_pips": pl.Float64,
-                "regime_name": pl.Utf8,
-                "regime_active": pl.Boolean,
-                "pred_prob": pl.Float64,
-                "threshold": pl.Float64,
-                "selected": pl.Int64,
-                "gap": pl.Float64,
-            }
-        )
+        return pl.DataFrame(schema=_SCORED_BARS_SCHEMA)
 
     bar_ticks = int(state.get("bar_ticks", 100))
     horizon = int(state.get("horizon", 0))
@@ -381,49 +383,18 @@ def _score_bars(
         barrier_pips=barrier_pips,
     )
     if feats is None or feats.empty:
-        return pl.DataFrame(
-            schema={
-                "close_ts": pl.Datetime(time_zone="UTC"),
-                "state_id": pl.Utf8,
-                "candidate_uid": pl.Utf8,
-                "bar_ticks": pl.Int64,
-                "horizon": pl.Int64,
-                "barrier_pips": pl.Float64,
-                "regime_name": pl.Utf8,
-                "regime_active": pl.Boolean,
-                "pred_prob": pl.Float64,
-                "threshold": pl.Float64,
-                "selected": pl.Int64,
-                "gap": pl.Float64,
-            }
-        )
+        return pl.DataFrame(schema=_SCORED_BARS_SCHEMA)
 
     features_df = feats.copy()
     valid_mask = features_df.notna().all(axis=1)
     valid_features = features_df.loc[valid_mask].copy()
     if valid_features.empty:
-        return pl.DataFrame(
-            schema={
-                "close_ts": pl.Datetime(time_zone="UTC"),
-                "state_id": pl.Utf8,
-                "candidate_uid": pl.Utf8,
-                "bar_ticks": pl.Int64,
-                "horizon": pl.Int64,
-                "barrier_pips": pl.Float64,
-                "regime_name": pl.Utf8,
-                "regime_active": pl.Boolean,
-                "pred_prob": pl.Float64,
-                "threshold": pl.Float64,
-                "selected": pl.Int64,
-                "gap": pl.Float64,
-            }
-        )
+        return pl.DataFrame(schema=_SCORED_BARS_SCHEMA)
 
     feature_cols = [c for c in valid_features.columns if c not in {"close_ts"}]
     matrix = valid_features[feature_cols].to_numpy(dtype=float)
     probs = np.asarray(model.predict_proba(matrix))[:, 1].astype(float)
 
-    threshold_schedule = thresholds.get("threshold_schedule", {}) or {}
     rolling_days = int(thresholds.get("rolling_threshold_days", 0) or 0)
     rolling_min_history = max(1, int(thresholds.get("rolling_threshold_min_history", 0) or 0))
     execution_quantile = float(thresholds.get("execution_quantile", 0.9))
@@ -436,16 +407,18 @@ def _score_bars(
     source_indices = list(valid_features.index)
     valid_rows = valid_features.copy()
     threshold_values: list[float] = []
+    threshold_block_reasons: list[str | None] = []
     regime_active_values: list[bool] = []
     history: list[tuple[pd.Timestamp, float]] = []
+    # Mirrors the live serving policy in src/behemoth/api/server.py: rolling
+    # threshold from audit history when available, else fail-closed with a
+    # named reason. Schedule-based thresholds are intentionally NOT modelled
+    # here because the live serving path no longer consults them.
     for idx, ts in enumerate(close_ts):
         source_idx = int(source_indices[idx])
         prefix_bars = bars.slice(0, source_idx + 1)
         regime_q = compute_regime_quantiles_from_bars(prefix_bars.to_pandas(), symbol=symbol)
-        day = ts.strftime("%Y-%m-%d") if pd.notna(ts) else ""
-        if day in threshold_schedule:
-            threshold = float(threshold_schedule[day])
-        elif rolling_days > 0:
+        if rolling_days > 0:
             cutoff = ts - pd.Timedelta(days=max(1, rolling_days or 1)) if pd.notna(ts) else None
             prior_probs = [
                 prob
@@ -454,17 +427,19 @@ def _score_bars(
             ]
             if len(prior_probs) >= rolling_min_history:
                 threshold = float(np.quantile(prior_probs, execution_quantile))
+                threshold_block_reason: str | None = None
             else:
-                threshold = 2.0
-        elif threshold_schedule:
-            threshold = 2.0
+                threshold = float("nan")
+                threshold_block_reason = "ROLLING_HISTORY_GAP"
         else:
             threshold = float(
                 threshold_exec
                 if threshold_exec is not None
                 else thresholds.get("threshold_exec", 0.5)
             )
+            threshold_block_reason = None
         threshold_values.append(threshold)
+        threshold_block_reasons.append(threshold_block_reason)
 
         feature_row = valid_rows.iloc[idx]
         model_features = SimpleNamespace(**feature_row.to_dict())
@@ -482,6 +457,7 @@ def _score_bars(
 
     threshold_arr = np.asarray(threshold_values, dtype=float)
     regime_arr = np.asarray(regime_active_values, dtype=bool)
+    # NaN thresholds compare False under >=, so blocked rows naturally yield selected=0.
     selected = np.logical_and(regime_arr, probs >= threshold_arr).astype(int)
     out = pd.DataFrame(
         {
@@ -495,6 +471,7 @@ def _score_bars(
             "regime_active": regime_arr,
             "pred_prob": probs,
             "threshold": threshold_arr,
+            "threshold_block_reason": threshold_block_reasons,
             "selected": selected,
             "gap": threshold_arr - probs,
         }
