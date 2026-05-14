@@ -357,6 +357,7 @@ class TestMetricsEndpoint:
         assert 'behemoth_open_position_age_seconds{symbol="EURUSD"} 300.0' in metrics.text
 
 
+@pytest.mark.requires_models
 class TestPredictLatestBarSchema:
     def test_predict_uses_explicit_bid_latest_bar_keys_for_barrier_lifecycle(self, client):
         import unittest.mock as mock
@@ -699,6 +700,7 @@ class TestStatusEndpoint:
         assert eurusd["bar_ticks"] == [1000]
         assert eurusd["bar_count"] == 11
 
+    @pytest.mark.requires_models
     def test_status_reports_no_go_not_promoted_symbol(self, client, monkeypatch):
         monkeypatch.setattr(server, "_effective_governance_dir", lambda: "configs/research/governance/oco")
         monkeypatch.setattr(server, "_is_historical_mode", lambda: False)
@@ -881,6 +883,7 @@ class TestBarsEndpoint:
             server._state = original_state
 
 
+@pytest.mark.requires_models
 class TestPredictEndpoint:
     def test_historical_prediction_universe_tolerant_mode_accepts_nearby_row(self, tmp_path):
         from types import SimpleNamespace
@@ -2679,6 +2682,7 @@ class TestTradeEndpoints:
             assert r.status_code == 200
             assert r.json()["internal_trade_id"] == 123
 
+    @pytest.mark.requires_models
     def test_touch_trade_success(self, client):
         import unittest.mock as mock
 
@@ -3278,6 +3282,7 @@ class TestCheckpointEndpoint:
             server._state = original
 
 
+@pytest.mark.requires_models
 class TestPredictWarmup:
     def _seed_bars(self, sym: str, n: int, *, start_close: float = 1.30000) -> None:
         """Populate _state.tick_bars with n varied bars for the given symbol.
@@ -3694,6 +3699,7 @@ class TestRollingThresholdDrift:
         assert metrics.status_code == 200
         assert "cand_none" not in metrics.text
 
+    @pytest.mark.requires_models
     def test_build_predictions_records_drift_for_rolling_threshold_path(self, client):
         import unittest.mock as mock
         from datetime import datetime, timezone
@@ -3941,6 +3947,7 @@ class TestSeedAuditHistory:
 
 
 class TestSeedFileLoading:
+    @pytest.mark.requires_models
     def test_seed_parquet_loaded_into_audit_logs(self, client, tmp_path):
         """Seed parquets in BEHEMOTH_SEED_DIR are loaded into audit_logs on startup."""
         from src.behemoth.api import server

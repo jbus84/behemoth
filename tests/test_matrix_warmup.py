@@ -149,6 +149,7 @@ class TestComputeRequiredWarmupTicks:
         )
         assert ticks == int(cfg.full_warmup_bars * 1000 * 1.5)
 
+    @pytest.mark.requires_models
     def test_falls_back_when_no_candidates_found(self, tmp_path: Path) -> None:
         # No parquet files written
         assert (
