@@ -275,6 +275,44 @@ def _add_incomplete_evidence(
     )
 
 
+def _read_live_deployment_verdict(
+    governance_dir: Path, symbol_upper: str
+) -> tuple[bool, str, Path]:
+    """Return (live_deployable, reason, lock_path) for a symbol's governance lock.
+
+    ``live_deployable`` is False either because the lock JSON declares it so
+    or because the lock file is missing/unreadable. ``reason`` carries a
+    human-readable summary suitable for inclusion in a deviation finding.
+    """
+    lock_path = Path(governance_dir) / f"{symbol_upper.lower()}_oco_live_lock.json"
+    try:
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return False, f"governance lock not found: {lock_path}", lock_path
+    except Exception as exc:
+        return False, f"governance lock unreadable: {exc}", lock_path
+
+    artifacts = lock.get("artifacts", {}) or {}
+    live_deployable = bool(artifacts.get("live_deployable", False))
+    if live_deployable:
+        return True, "", lock_path
+
+    capacity_pass = artifacts.get("capacity_overall_pass")
+    historical = lock.get("historical_backtest", {}) or {}
+    non_deployable_reason = (
+        historical.get("non_deployable_reason", "")
+        or artifacts.get("non_deployable_reason", "")
+        or ""
+    )
+    summary = (
+        f"governance verdict: live_deployable=false, "
+        f"capacity_overall_pass={capacity_pass}"
+    )
+    if non_deployable_reason:
+        summary += f", non_deployable_reason={non_deployable_reason!r}"
+    return False, summary, lock_path
+
+
 def score_governance_predictions_for_window(
     bars: pd.DataFrame,
     symbol: str,
@@ -287,6 +325,22 @@ def score_governance_predictions_for_window(
     symbol_upper = symbol.upper()
     if bars.empty:
         return _empty_governance_predictions()
+
+    governance_dir = Path(governance_dir)
+    live_deployable, deployment_reason, lock_path = _read_live_deployment_verdict(
+        governance_dir, symbol_upper
+    )
+    if not live_deployable:
+        _add_incomplete_evidence(
+            incomplete_rows,
+            symbol=symbol_upper,
+            layer="governance_predictions",
+            finding_id="symbol_not_live_deployable",
+            reason=deployment_reason,
+            source_path=lock_path,
+        )
+        return _empty_governance_predictions()
+
     if model_month is None or not str(model_month).strip():
         _add_incomplete_evidence(
             incomplete_rows,
@@ -305,7 +359,6 @@ def score_governance_predictions_for_window(
         _score_bars,
     )
 
-    governance_dir = Path(governance_dir)
     models_dir = Path(models_dir)
     model_month_token = str(model_month).strip()
 
@@ -1045,12 +1098,21 @@ def build_findings(
         symbol = str(row.get("symbol", "")).upper()
         reason = str(row.get("reason", "incomplete_evidence"))
         finding_id = str(row.get("finding_id", "incomplete_evidence"))
+        # symbol_not_live_deployable is an explanation, not a data gap — the
+        # symbol is correctly absent from live evidence because governance
+        # ruled it not deployable. Classify and rank accordingly.
+        if finding_id == "symbol_not_live_deployable":
+            classification = "Info"
+            severity = "info"
+        else:
+            classification = "Incomplete Evidence"
+            severity = "medium"
         rows.append(
             {
                 "symbol": symbol,
-                "classification": "Incomplete Evidence",
+                "classification": classification,
                 "code": finding_id,
-                "severity": "medium",
+                "severity": severity,
                 "summary": reason,
             }
         )
