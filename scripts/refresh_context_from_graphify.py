@@ -2,7 +2,6 @@
 """Regenerate CONTEXT.md god nodes and communities sections from graphify output."""
 
 import json
-import re
 from pathlib import Path
 
 
@@ -70,7 +69,7 @@ def load_graph_report() -> dict:
         raise FileNotFoundError(f"{report_path} not found")
 
     with open(report_path) as f:
-        content = f.read()
+        f.read()
 
     # Try to find JSON in the report (graphify embeds metadata)
     graph_json_path = Path("graphify-out/graph.json")
@@ -118,7 +117,7 @@ def update_context_md(god_nodes_section: str) -> None:
     with open(context_path, "w") as f:
         f.write(new_content)
 
-    print(f"✓ Updated CONTEXT.md: God Nodes section regenerated")
+    print("✓ Updated CONTEXT.md: God Nodes section regenerated")
 
 
 def main() -> None:

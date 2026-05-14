@@ -9,7 +9,6 @@ Never kills the JForex process.
 import argparse
 import json
 import signal
-import sys
 import time
 import urllib.request
 from collections import defaultdict, deque

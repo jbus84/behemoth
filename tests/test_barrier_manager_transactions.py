@@ -1,4 +1,3 @@
-import pytest
 from datetime import datetime, timezone
 
 from src.behemoth.core.schemas import BarContext, BarPrices
@@ -71,7 +70,7 @@ class TestBarrierManagerTransactions:
 
         # Second bar: no touch, decrement hold_bars_remaining
         bar2 = _make_bar_context(bar_idx=3, ask_high=1.1003, ask_close=1.1003)
-        result = bm.evaluate_bar_with_result(bar2)
+        bm.evaluate_bar_with_result(bar2)
         scan = bm.get_scan(scan_id)
         assert scan["status"] == "HOLDING"
         assert scan["hold_bars_remaining"] == 5

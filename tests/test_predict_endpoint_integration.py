@@ -13,9 +13,9 @@ the predict endpoint's contract.
 from __future__ import annotations
 
 import numpy as np
-import pytest
-from unittest.mock import MagicMock, patch
+import pandas as pd
 
+from src.behemoth.core.features import FeatureConfig, compute_features_from_bars
 from src.behemoth.core.schemas import (
     BarContext,
     BarPrices,
@@ -24,9 +24,6 @@ from src.behemoth.core.schemas import (
     ModelFeatures,
 )
 from src.behemoth.runtime.barrier_manager import BarrierManager
-from src.behemoth.core.features import compute_features_from_bars, FeatureConfig
-from src.behemoth.runtime.state import StateManager
-import pandas as pd
 
 
 class TestPredictEndpointIntegration:
@@ -52,7 +49,7 @@ class TestPredictEndpointIntegration:
 
         # Seam 2: Feature computation should work with barrier detection
         barrier_mgr = BarrierManager()
-        scan_id = barrier_mgr.register_scan(
+        barrier_mgr.register_scan(
             symbol="GBPUSD",
             candidate_uid="test_candidate",
             signal_bar_idx=40,
@@ -253,7 +250,7 @@ class TestPredictEndpointIntegration:
         mgr_jpy = BarrierManager()
 
         # Register scans for different symbols
-        scan_gbp = mgr_gbp.register_scan(
+        mgr_gbp.register_scan(
             symbol="GBPUSD",
             candidate_uid="gbp_test",
             signal_bar_idx=10,
@@ -268,7 +265,7 @@ class TestPredictEndpointIntegration:
             run_id="integration_test",
         )
 
-        scan_jpy = mgr_jpy.register_scan(
+        mgr_jpy.register_scan(
             symbol="USDJPY",
             candidate_uid="jpy_test",
             signal_bar_idx=10,

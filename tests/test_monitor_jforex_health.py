@@ -1,5 +1,4 @@
-import pytest
-from scripts.monitor_jforex_health import parse_metrics, evaluate_symbol, summarize_window
+from scripts.monitor_jforex_health import evaluate_symbol, parse_metrics, summarize_window
 
 PROMETHEUS_SAMPLE = """
 # HELP behemoth_worker_queue_depth Current queue depth per symbol

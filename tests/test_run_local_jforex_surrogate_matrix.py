@@ -23,8 +23,7 @@ def test_cli_help_runs_when_executed_as_script() -> None:
             "--help",
         ],
         cwd=repo,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
     )
 

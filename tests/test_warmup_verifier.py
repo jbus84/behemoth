@@ -5,9 +5,9 @@ from tempfile import TemporaryDirectory
 
 import pytest
 
+from scripts._matrix_warmup import compute_required_warmup_ticks
 from src.behemoth.core.features import FeatureConfig
 from src.behemoth.runtime.warmup_verifier import WarmupBoundaryVerifier, WarmupStatus
-from scripts._matrix_warmup import compute_required_warmup_ticks
 
 
 class TestWarmupBoundaryVerifier:

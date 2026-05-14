@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from pathlib import Path
 
 import pytest
 
-from src.behemoth.runtime.state import StateManager
 from src.behemoth.core.schemas import IncomingTickBar
+from src.behemoth.runtime.state import StateManager
 
 
 @pytest.fixture

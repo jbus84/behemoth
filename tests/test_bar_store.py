@@ -1,5 +1,6 @@
-import pytest
 from datetime import datetime, timezone
+
+import pytest
 
 from src.behemoth.core.schemas import IncomingTickBar
 from src.behemoth.runtime.bar_store import BarStore

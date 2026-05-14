@@ -31,13 +31,7 @@ _SCRIPT_REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_SCRIPT_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_REPO_ROOT))
 
-from src.behemoth.live_restart.runtime_artifacts import (
-    RUNTIME_ARTIFACTS,
-    RuntimeArtifact,
-    artifact,
-    artifact_path,
-)
-from src.behemoth.live_restart.reconciliation import (
+from src.behemoth.live_restart.reconciliation import (  # noqa: E402, F401 — sys.path setup above; symbols re-exported for monkeypatching in tests
     BrokerSnapshot,
     LocalRuntimeStateSummary,
     ReconciliationCycle,
@@ -59,7 +53,13 @@ from src.behemoth.live_restart.reconciliation import (
     write_reconciliation_report,
     write_runtime_session_metadata,
 )
-from src.behemoth.ops.verdicts import RestartEligibility
+from src.behemoth.live_restart.runtime_artifacts import (  # noqa: E402, F401 — sys.path setup above; symbols re-exported for monkeypatching in tests
+    RUNTIME_ARTIFACTS,
+    RuntimeArtifact,
+    artifact,
+    artifact_path,
+)
+from src.behemoth.ops.verdicts import RestartEligibility  # noqa: E402
 
 DEFAULT_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 DEFAULT_MODELS_DIR = "models/oco"
@@ -782,7 +782,6 @@ def main() -> None:
         )
 
     cycle.finalize()
-    current_metadata = cycle.current.current_metadata
 
     # Run offline seed BEFORE starting the API
     print("[jforex-live] running offline threshold seed (timeout=300s)", flush=True)

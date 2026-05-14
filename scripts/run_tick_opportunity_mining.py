@@ -352,7 +352,7 @@ def _oco_precompute_candidates(
         required=["close_bid", "high_bid", "low_bid", "high_ask", "close_ask"],
     )
     close_bid = pd.to_numeric(frame["close_bid"], errors="coerce").to_numpy(dtype=float)
-    high_bid = pd.to_numeric(frame["high_bid"], errors="coerce").to_numpy(dtype=float)
+    pd.to_numeric(frame["high_bid"], errors="coerce").to_numpy(dtype=float)
     low_bid = pd.to_numeric(frame["low_bid"], errors="coerce").to_numpy(dtype=float)
     high_ask = pd.to_numeric(frame["high_ask"], errors="coerce").to_numpy(dtype=float)
     close_ask = pd.to_numeric(frame["close_ask"], errors="coerce").to_numpy(dtype=float)
@@ -596,7 +596,7 @@ def _oco_candidates(
     train_regimes = _regime_masks(train, train_q)
     {k: np.asarray(v, dtype=bool) for k, v in train_regimes}
 
-    pip = float(_pip_size(symbol))
+    float(_pip_size(symbol))
     ts_test = pd.to_datetime(test["close_ts"], utc=True, errors="coerce")
     ts_train = pd.to_datetime(train["close_ts"], utc=True, errors="coerce")
 

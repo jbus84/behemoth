@@ -10,9 +10,9 @@ from src.behemoth.live_restart.reconciliation import (
     BrokerSnapshotOrder,
     LocalRuntimeStateSummary,
     ReconciliationReport,
+    RuntimeContextComparison,
     RuntimeFileSnapshot,
     RuntimeSessionMetadata,
-    RuntimeContextComparison,
     compare_runtime_context,
     compute_lock_fingerprint,
     inspect_local_runtime_state,
@@ -746,8 +746,9 @@ def test_cycle_invalidate_after_mutation_re_snapshots_with_clean_state(tmp_path)
 
 
 def test_cycle_finalize_is_terminal(tmp_path) -> None:
-    from src.behemoth.live_restart.reconciliation import ReconciliationCycle
     import pytest
+
+    from src.behemoth.live_restart.reconciliation import ReconciliationCycle
 
     runtime = tmp_path / "runtime"
     runtime.mkdir()

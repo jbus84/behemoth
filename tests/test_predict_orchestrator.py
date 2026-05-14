@@ -4,8 +4,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from unittest import mock
 
-import pytest
-
 from src.behemoth.api.predict_orchestrator import PredictionOrchestrator
 from src.behemoth.api.server import PredictRequest
 from src.behemoth.core.schemas import PredictResponse
@@ -79,14 +77,14 @@ class TestPredictionOrchestrator:
         state = MockBarStateReader()
         mock_catalog = mock.MagicMock()
         mock_contract = mock.MagicMock()
-        
+
         # Create a mock candidate
         mock_candidate = mock.MagicMock()
         mock_candidate.bar_ticks = 100
         mock_candidate.horizon = 10
         mock_candidate.barrier_pips = 20.0
         mock_contract.candidates = [mock_candidate]
-        
+
         mock_catalog.resolve_contract.return_value = mock_contract
 
         orch = PredictionOrchestrator(

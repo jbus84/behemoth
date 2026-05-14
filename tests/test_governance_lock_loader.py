@@ -1,8 +1,12 @@
 import json
-import pytest
 from pathlib import Path
 
-from src.behemoth.core.governance_lock_loader import GovernanceLockLoader, LockSource, CandidateContract
+import pytest
+
+from src.behemoth.core.governance_lock_loader import (
+    GovernanceLockLoader,
+    LockSource,
+)
 
 
 class FakeLiveSource(LockSource):

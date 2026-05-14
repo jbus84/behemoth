@@ -880,7 +880,6 @@ def _make_run_config(symbols=("EURUSD",)) -> run_jforex_live.RunConfig:
 
 
 def test_validate_tick_data_freshness_passes_with_fresh_data(tmp_path, monkeypatch) -> None:
-    import time as time_mod
 
     sym_dir = tmp_path / "EURUSD"
     sym_dir.mkdir()
@@ -894,7 +893,7 @@ def test_validate_tick_data_freshness_passes_with_fresh_data(tmp_path, monkeypat
 
 
 def test_validate_tick_data_freshness_fails_when_stale(tmp_path, monkeypatch) -> None:
-    import os, time as time_mod
+    import os
     from datetime import datetime, timedelta, timezone
 
     sym_dir = tmp_path / "EURUSD"

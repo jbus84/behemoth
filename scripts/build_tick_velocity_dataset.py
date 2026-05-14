@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.behemoth.core.features import FeatureConfig
+from src.behemoth.core.features import FeatureConfig  # noqa: E402 — sys.path setup above
 
 DEFAULT_TICK_ROOT = str(DEFAULT_CANONICAL_ROOT)
 DEFAULT_TICKBAR_DIR = "data/global_tickbars"

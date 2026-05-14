@@ -4,8 +4,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import shutil
 import re
+import shutil
 from dataclasses import dataclass
 from json import JSONDecodeError
 from pathlib import Path
