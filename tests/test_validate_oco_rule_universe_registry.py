@@ -14,7 +14,7 @@ def _write_registry(path: Path, *, allowed_barrier_keep: list[int]) -> None:
         "registry_version": 1,
         "effective_from_utc": "2026-02-27T00:00:00Z",
         "symbols": ["EURUSD"],
-        "allowed_families": ["oco_first_touch_clean"],
+        "allowed_families": ["oco_first_touch"],
         "allowed_barrier_keep": allowed_barrier_keep,
         "allowed_horizon_keep": [5, 6],
         "selection_mode_contract": "auto",
@@ -40,7 +40,7 @@ def _write_lock(path: Path) -> None:
     lock = {
         "symbol": "EURUSD",
         "locked_runtime": {
-            "family_keep": "oco_first_touch_clean",
+            "family_keep": "oco_first_touch",
             "barrier_keep": "2,3",
             "horizon_keep": "5,6",
             "selection_mode": "auto",
@@ -58,8 +58,8 @@ def _write_lock(path: Path) -> None:
 def _write_reduced_states(path: Path) -> None:
     pd.DataFrame(
         [
-            {"family": "oco_first_touch_clean", "barrier_pips": 2, "horizon": 5},
-            {"family": "oco_first_touch_clean", "barrier_pips": 3, "horizon": 6},
+            {"family": "oco_first_touch", "barrier_pips": 2, "horizon": 5},
+            {"family": "oco_first_touch", "barrier_pips": 3, "horizon": 6},
         ]
     ).to_csv(path, index=False)
 

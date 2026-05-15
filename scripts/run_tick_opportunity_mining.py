@@ -426,18 +426,29 @@ def _oco_precompute_candidates(
             gross[use] = side[use].astype(float) * (
                 (exit_price_use[num_ok] - entry_price_use[num_ok]) / pip
             )
+    # Return fields are partitioned by when they become knowable:
+    #   decision-time (safe to filter the candidate universe on):
+    #     i0       — signal bar index
+    #     decided  — a barrier was touched within the horizon (live expires
+    #                un-touched scans, so the traded population matches)
+    #     side     — first-touch direction (live enters the side that touches)
+    #   labelling-only (require forward information — outcome/metrics ONLY,
+    #   MUST NOT be used to filter the candidate universe):
+    #     gross                 — enter-at-touch, hold-h-bars P&L
+    #     both_touched_lookahead — both barriers touched within the horizon
+    #     touch_step            — bars from signal to first touch
     return {
         "i0": i0,
         "gross": gross,
         "side": side,
-        "both": both,
+        "both_touched_lookahead": both,
         "decided": decided,
         "touch_step": touch_step,
     }
 
 
 def _assign_quality_tier(df: pd.DataFrame, *, library: str) -> pd.DataFrame:
-    """Assign quality tiers (A/B/C/D) using train-only metrics.
+    """Assign quality tiers (A/B/C/D) from look-ahead-free train metrics only.
 
     This avoids test-metric leakage into quality_score, which downstream
     consumers (e.g. build_tick_opportunity_ml_dataset) use for ranking.
@@ -448,18 +459,14 @@ def _assign_quality_tier(df: pd.DataFrame, *, library: str) -> pd.DataFrame:
     mean_g = pd.to_numeric(out["mean_gross_pips_train"], errors="coerce").fillna(-np.inf)
     med_g = pd.to_numeric(out["median_gross_pips_train"], errors="coerce").fillna(-np.inf)
     tc = pd.to_numeric(out["train_count"], errors="coerce").fillna(0.0)
-    if "both_window_rate_train" in out.columns:
-        both = pd.to_numeric(out["both_window_rate_train"], errors="coerce").fillna(1.0)
-    else:
-        both = pd.Series(1.0, index=out.index)
     sel = out["selection_pass"].astype(bool)
 
     if str(library).lower() == "directional":
         a = (mean_g >= 0.25) & (med_g >= 0.05) & (tc >= 40000)
         b = (mean_g >= 0.10) & (med_g >= 0.0) & (tc >= 20000)
     else:
-        a = (mean_g >= 1.0) & (med_g >= 0.3) & (both <= 0.55) & (tc >= 40000)
-        b = (mean_g >= 0.40) & (med_g >= 0.1) & (both <= 0.70) & (tc >= 20000)
+        a = (mean_g >= 1.0) & (med_g >= 0.3) & (tc >= 40000)
+        b = (mean_g >= 0.40) & (med_g >= 0.1) & (tc >= 20000)
     tier = np.where(a, "A", np.where(b, "B", np.where(sel, "C", "D")))
     out["quality_tier"] = tier
     out["quality_score"] = np.where(
@@ -622,7 +629,7 @@ def _oco_candidates(
                     continue
                 i0 = prep["i0"]
                 decided = prep["decided"]
-                both = prep["both"]
+                both = prep["both_touched_lookahead"]
                 side = prep["side"]
                 gross_all = prep["gross"]
                 reg_masks_i0 = [(name, mask[i0]) for name, mask in reg_masks]
@@ -631,7 +638,6 @@ def _oco_candidates(
                 for reg_name, reg_mask in reg_masks_i0:
                     for fam, fam_mask in [
                         ("first_touch", decided & reg_mask),
-                        ("first_touch_clean", decided & reg_mask & (~both)),
                     ]:
                         if stage == "test":
                             n = int(np.sum(fam_mask))

@@ -66,7 +66,7 @@ def hermetic_registry(tmp_path: Path) -> CandidateRegistry:
                 "bar_ticks": 100,
                 "horizon": 5,
                 "barrier_pips": 2.0,
-                "state_id": "oco_first_touch_clean__high_range_q70__k1",
+                "state_id": "oco_first_touch__high_range_q70__k1",
                 "regime_desc": "high_range_q70",
             }
         ],
@@ -81,7 +81,7 @@ def hermetic_registry(tmp_path: Path) -> CandidateRegistry:
                 "bar_ticks": 100,
                 "horizon": 5,
                 "barrier_pips": 2.0,
-                "state_id": "oco_first_touch_clean__high_range_q70__k2",
+                "state_id": "oco_first_touch__high_range_q70__k2",
                 "regime_desc": "high_range_q70",
             },
             {
@@ -89,7 +89,7 @@ def hermetic_registry(tmp_path: Path) -> CandidateRegistry:
                 "bar_ticks": 100,
                 "horizon": 6,
                 "barrier_pips": 3.0,
-                "state_id": "oco_first_touch_clean__med_range_q50__k1",
+                "state_id": "oco_first_touch__med_range_q50__k1",
                 "regime_desc": "med_range_q50",
             },
         ],
@@ -144,7 +144,7 @@ class TestRegistryLoading:
                         "bar_ticks": 100,
                         "horizon": 5,
                         "barrier_pips": 2.0,
-                        "state_id": "oco_first_touch_clean__high_range_q70__k2",
+                        "state_id": "oco_first_touch__high_range_q70__k2",
                         "regime_desc": "high_range_q70",
                     }
                 ]
@@ -188,13 +188,13 @@ class TestCandidateGeneration:
         assert c.horizon in (5, 6)
         assert c.barrier_pips in (2.0, 3.0)
         assert c.regime_desc != ""
-        assert "oco_first_touch_clean" in c.candidate_uid
+        assert "oco_first_touch" in c.candidate_uid
 
     def test_candidate_uid_format(self, hermetic_registry: CandidateRegistry):
         cands = hermetic_registry.get_candidates("GBPUSD")
         for c in cands:
             assert "__" in c.candidate_uid
-            assert c.candidate_uid.startswith("oco_first_touch_clean")
+            assert c.candidate_uid.startswith("oco_first_touch")
 
     def test_all_candidates_count(self, hermetic_registry: CandidateRegistry):
         all_cands = hermetic_registry.all_candidates()
@@ -204,3 +204,32 @@ class TestCandidateGeneration:
         )
         assert len(all_cands) == expected
         assert len(all_cands) > 0
+
+
+def test_candidate_spec_rejects_lookahead_clean_family():
+    """A lock that deploys a first_touch_clean candidate must be rejected
+    at load time — its win rate is look-ahead-biased and not live-achievable.
+    See docs/superpowers/specs/2026-05-15-oco-lookahead-bias-removal-design.md.
+    """
+    from src.behemoth.core.registry import CandidateSpec
+
+    row = {
+        "symbol": "EURUSD", "bar_ticks": 1000, "horizon": 6,
+        "barrier_pips": 2.0,
+        "state_id": "oco_first_touch_clean__all__k2",
+        "regime_desc": "all;barrier=2.0",
+    }
+    with pytest.raises(ValueError, match="first_touch_clean"):
+        CandidateSpec.from_row(row)
+
+
+def test_candidate_spec_accepts_first_touch_family():
+    from src.behemoth.core.registry import CandidateSpec
+    row = {
+        "symbol": "EURUSD", "bar_ticks": 1000, "horizon": 6,
+        "barrier_pips": 2.0,
+        "state_id": "oco_first_touch__all__k2",
+        "regime_desc": "all;barrier=2.0",
+    }
+    spec = CandidateSpec.from_row(row)
+    assert spec.candidate_uid == "oco_first_touch__all__k2"

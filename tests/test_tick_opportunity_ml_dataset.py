@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from behemoth.core.features import _extract_core_series
-from scripts.build_tick_opportunity_ml_dataset import _build_oco_events, run
+from scripts.build_tick_opportunity_ml_dataset import run
 from scripts.run_tick_opportunity_mining import (
     CANDIDATE_SCHEMA_VERSION,
     QUALITY_TIER_BASIS,
@@ -200,90 +200,6 @@ def test_build_tick_opportunity_ml_dataset_rejects_stale_candidate_schema(tmp_pa
     }
     with pytest.raises(ValueError, match="candidate_schema_version"):
         run(cfg)
-
-
-def test_build_oco_events_excludes_both_windows_from_first_touch_clean_negatives() -> None:
-    rows = 140
-    ts = pd.date_range("2025-01-01", periods=rows, freq="15min", tz="UTC")
-    close_bid = np.full(rows, 1.1000)
-    close_ask = close_bid + 0.0001
-    high_bid = np.full(rows, 1.10005)
-    low_bid = np.full(rows, 1.09995)
-    high_ask = np.full(rows, 1.10015)
-    hl_first = np.ones(rows)
-    high_ask[1] = 1.10035
-    low_bid[1] = 1.09975
-
-    df = pd.DataFrame(
-        {
-            "symbol": "EURUSD",
-            "bar_ticks": 1000,
-            "timestamp": ts - pd.to_timedelta(15, unit="m"),
-            "close_ts": ts,
-            "open_bid": close_bid,
-            "high_bid": high_bid,
-            "low_bid": low_bid,
-            "close_bid": close_bid,
-            "high_ask": high_ask,
-            "close_ask": close_ask,
-            "spread": 0.0001,
-            "cost_est_pips": 0.3,
-            "range_pips": (high_bid - low_bid) / 0.0001,
-            "hour_utc": 8,
-            "spread_z": 0.0,
-            "tick_rate_z": 0.0,
-            "vel_cost_units_h1": 1.0,
-            "vel_abs_cost_units_h1": 1.0,
-            "ret1_pips": 0.0,
-            "ret_z": 0.0,
-            "ret_abs_z": 0.0,
-            "hl_first": hl_first,
-            "hl_first_mean_24": 0.0,
-            "hl_pos_frac_mean_24": 0.0,
-        }
-    )
-    cands = pd.DataFrame(
-        [
-            {
-                "symbol": "EURUSD",
-                "bar_ticks": 1000,
-                "horizon": 1,
-                "family": "oco_first_touch_clean",
-                "state_id": "oco_first_touch_clean__all__k2",
-                "regime_desc": "all;barrier=2.0",
-                "quality_tier": "B",
-                "quality_score": 2,
-                "annualized_test_fills": 1000.0,
-                "mean_gross_pips_test": 0.5,
-            }
-        ]
-    )
-
-    out = _build_oco_events(
-        split_name="test",
-        df=df,
-        q_fit={
-            "cost_q30": 0.3,
-            "cost_q50": 0.3,
-            "rng_q70": 1.0,
-            "rng_q80": 1.0,
-            "shock_q60": 0.0,
-            "shock_q70": 0.0,
-            "shock_q80": 0.0,
-            "vel_q70": 1.0,
-            "vel_q80": 1.0,
-            "spread_q70": 0.0,
-            "tick_q30": 0.0,
-        },
-        cands=cands,
-        max_events_per_candidate=500,
-        symbol="EURUSD",
-        hold_mode="from_touch",
-        include_no_touch=True,
-    )
-
-    assert not out.empty
-    assert pd.Timestamp("2025-01-01 00:00:00+00:00") not in set(pd.to_datetime(out["close_ts"], utc=True))
 
 
 def test_extract_core_series_requires_explicit_bid_columns() -> None:

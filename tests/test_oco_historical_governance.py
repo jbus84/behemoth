@@ -23,7 +23,7 @@ def test_state_universe_for_month_hash_stable_under_row_order(tmp_path: Path) ->
             "bar_ticks": 100,
             "horizon": 5,
             "state_id": "s1",
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
             "barrier_pips": 2.0,
             "regime_desc": "r1",
         },
@@ -33,7 +33,7 @@ def test_state_universe_for_month_hash_stable_under_row_order(tmp_path: Path) ->
             "bar_ticks": 100,
             "horizon": 6,
             "state_id": "s2",
-            "family": "oco_first_touch_clean",
+            "family": "oco_first_touch",
             "barrier_pips": 3.0,
             "regime_desc": "r2",
         },
@@ -60,7 +60,7 @@ def test_state_universe_for_month_requires_rows(tmp_path: Path) -> None:
                 "bar_ticks": 100,
                 "horizon": 5,
                 "state_id": "s1",
-                "family": "oco_first_touch_clean",
+                "family": "oco_first_touch",
                 "barrier_pips": 2.0,
                 "regime_desc": "r1",
             }
@@ -112,7 +112,7 @@ def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_pa
         encoding="utf-8",
     )
     (config_dir / f"{sl}_oco_reduced_core_rolling.yaml").write_text(
-        "locked_quantile: 0.9\nselection_mode: auto\nfamily_keep: oco_first_touch_clean\n",
+        "locked_quantile: 0.9\nselection_mode: auto\nfamily_keep: oco_first_touch\n",
         encoding="utf-8",
     )
 
@@ -126,7 +126,7 @@ def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_pa
                 "bar_ticks": 100,
                 "horizon": 5,
                 "state_id": "state_a",
-                "family": "oco_first_touch_clean",
+                "family": "oco_first_touch",
                 "barrier_pips": 2.0,
                 "regime_desc": "all",
             }

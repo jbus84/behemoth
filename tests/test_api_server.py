@@ -2451,7 +2451,7 @@ class TestPredictEndpoint:
         dummy_cand.bar_ticks = 100
         dummy_cand.horizon = 6
         dummy_cand.barrier_pips = 2.0
-        dummy_cand.candidate_uid = "oco_first_touch_clean__london__k2"
+        dummy_cand.candidate_uid = "oco_first_touch__london__k2"
         dummy_cand.regime_desc = "london;barrier=2.0"
 
         dummy_features = ModelFeatures(

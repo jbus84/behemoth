@@ -21,7 +21,7 @@ def _mk_entry(symbol: str, month: str) -> HistoricalLockEntry:
                 bar_ticks=100,
                 horizon=4,
                 barrier_pips=10.0,
-                candidate_uid="oco_first_touch_clean__all__k2",
+                candidate_uid="oco_first_touch__all__k2",
             )
         ],
         cap_pips=1.2,

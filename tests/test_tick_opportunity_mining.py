@@ -8,7 +8,12 @@ import pytest
 
 from behemoth.core.features import _extract_core_series
 from scripts.analyze_oco_stop_limit_tickfill import _rebuild_touch_events
-from scripts.run_tick_opportunity_mining import _oco_candidates, _oco_precompute_candidates, run
+from scripts.run_tick_opportunity_mining import (
+    _assign_quality_tier,
+    _oco_candidates,
+    _oco_precompute_candidates,
+    run,
+)
 
 
 def _build_synth_tick_velocity(path: Path, *, symbol: str) -> None:
@@ -164,7 +169,7 @@ def test_stop_limit_tickfill_rejects_legacy_ambiguous_bar_schema(tmp_path: Path)
     pd.DataFrame(
         {
             "close_ts": [bars.loc[150, "close_ts"]],
-            "candidate_uid": [f"oco|{symbol}|{bar_ticks}|h3|oco_first_touch_clean_k2"],
+            "candidate_uid": [f"oco|{symbol}|{bar_ticks}|h3|oco_first_touch_k2"],
             "target_gross_pips": [2.0],
             "pred_prob": [0.95],
         }
@@ -194,7 +199,7 @@ def test_stop_limit_tickfill_accepts_partial_read_from_explicit_schema_velocity(
     pd.DataFrame(
         {
             "close_ts": [bars.loc[150, "close_ts"]],
-            "candidate_uid": [f"oco|{symbol}|{bar_ticks}|h3|oco_first_touch_clean_k2"],
+            "candidate_uid": [f"oco|{symbol}|{bar_ticks}|h3|oco_first_touch_k2"],
             "target_gross_pips": [2.0],
             "pred_prob": [0.95],
         }
@@ -209,7 +214,7 @@ def test_stop_limit_tickfill_accepts_partial_read_from_explicit_schema_velocity(
     )
 
     assert not events.empty
-    assert events.loc[0, "candidate_uid"] == f"oco|{symbol}|{bar_ticks}|h3|oco_first_touch_clean_k2"
+    assert events.loc[0, "candidate_uid"] == f"oco|{symbol}|{bar_ticks}|h3|oco_first_touch_k2"
 
 
 def _build_oco_semantics_frame(
@@ -298,7 +303,57 @@ def test_oco_candidates_follow_touch_bar_close_contract() -> None:
         gross_metric="mean",
     )
 
-    row = out.loc[out["state_id"] == "oco_first_touch_clean__all__k2"].iloc[0]
+    row = out.loc[out["state_id"] == "oco_first_touch__all__k2"].iloc[0]
     assert row["test_count"] > 100
     assert row["p_up_first"] == pytest.approx(1.0)
     assert row["mean_gross_pips_test"] == pytest.approx(1.5)
+
+
+def test_mining_emits_only_first_touch_family() -> None:
+    """The mining pipeline must not emit any look-ahead-conditioned family.
+
+    The old clean variant was conditioned on ~both (both barriers touched
+    within the horizon — future information). Only oco_first_touch, whose
+    universe is decided & reg_mask, is look-ahead-free.
+    """
+    train = _build_oco_semantics_frame(rows=4000)
+    test = _build_oco_semantics_frame(rows=4000)
+    out = _oco_candidates(
+        train=train,
+        test=test,
+        symbol="EURUSD",
+        bar_ticks=1000,
+        horizons=[6],
+        barrier_grid_pips=[2.0],
+        min_annual_fills=50.0,
+        gross_metric="mean",
+    )
+    families = set(out["family"].unique())
+    assert families == {"oco_first_touch"}, f"unexpected families: {families}"
+    assert not out["state_id"].str.contains("first_touch_clean").any()
+
+
+def test_quality_tier_does_not_condition_on_both() -> None:
+    """Quality tiers must not gate on both_window_rate (look-ahead).
+
+    A candidate with strong train metrics but a high both-touch rate must
+    still be eligible for tier A — the both rate is not knowable per-trade.
+    """
+    df = pd.DataFrame([{
+        "mean_gross_pips_train": 2.0,
+        "median_gross_pips_train": 0.5,
+        "train_count": 50000,
+        "both_window_rate_train": 0.95,   # high whipsaw — previously blocked tier A
+        "selection_pass": True,
+    }])
+    out = _assign_quality_tier(df, library="oco")
+    assert out.loc[0, "quality_tier"] == "A"
+
+
+def test_precompute_labels_lookahead_field_explicitly():
+    """The both-touch field must be named to make its look-ahead nature
+    self-evident, so it cannot be used as a filter by mistake."""
+    frame = _build_oco_semantics_frame(rows=4000)
+    prep = _oco_precompute_candidates(frame, symbol="EURUSD", horizon=6, barrier_pips=2.0)
+    assert "both_touched_lookahead" in prep
+    assert "both" not in prep

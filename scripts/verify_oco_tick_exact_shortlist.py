@@ -29,7 +29,7 @@ DEFAULTS: dict[str, Any] = {
     "shortlist_state_csv": "data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_reduced_states.csv",
     "locked_quantile": 0.9,
     "selection_mode": "auto",  # auto|exec_flag|monthly_quantile
-    "family_required": "oco_first_touch_clean",
+    "family_required": "oco_first_touch",
     "oco_hold_mode": "from_touch",  # from_touch|from_start
     "oco_include_no_touch": True,
     "sample_rows_per_combo": 0,

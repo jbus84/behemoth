@@ -4,7 +4,7 @@
 Document one complete OCO signal lifecycle from candidate selection through execution, hold logic, and governance controls.
 
 ## Scope
-- Strategy family: `oco_first_touch_clean`
+- Strategy family: `oco_first_touch` (only `oco_first_touch` is mined; `oco_first_touch_clean` was removed 2026-05 because its win rate was conditioned on `~both` — future information / look-ahead bias)
 - Runtime contract: stop-limit entry, `from_touch` hold mode
 - Symbols: EURUSD, GBPUSD, USDJPY, USDCHF, AUDUSD, USDCAD (example timeline shown on EURUSD)
 
@@ -31,7 +31,7 @@ sequenceDiagram
 ## Example Timeline (Concrete Fields)
 | step | timestamp_utc | stage | key fields | outcome |
 | --- | --- | --- | --- | --- |
-| 1 | 2025-08-04T07:00:00Z | Stage 2 | `state_id=oco_first_touch_clean__all__k2`, `bar_ticks=100`, `horizon=6` | candidate in hypothesis frontier |
+| 1 | 2025-08-04T07:00:00Z | Stage 2 | `state_id=oco_first_touch__all__k2`, `bar_ticks=100`, `horizon=6` | candidate in hypothesis frontier |
 | 2 | 2025-08-04T07:00:00Z | Stage 3 | `pred_prob=0.94`, `thr_day=0.90`, `selected=1` | event passes causal rolling threshold |
 | 3 | 2025-08-04T07:00:00Z | Stage 5 | `state_in_reduced_schedule=1` | state is eligible for live-style execution |
 | 4 | 2025-08-04T07:00:00Z | Stage 4 | `barrier_pips=2`, `side=buy`, `barrier_px=1.27840`, `cap_pips=1.0` | stop-limit armed |
