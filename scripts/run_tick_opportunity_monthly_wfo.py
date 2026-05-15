@@ -411,9 +411,9 @@ def _wfo_monthly(
     execution_quantile: float,
     seed: int,
     model_export_dir: Path | None = None,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     if d.empty:
-        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
     if CatBoostClassifier is None:
         raise RuntimeError("CatBoost is required for monthly WFO runner")
 
