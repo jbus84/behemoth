@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from behemoth.core.features import _extract_core_series
-from scripts.build_tick_opportunity_ml_dataset import _build_oco_events, run
+from scripts.build_tick_opportunity_ml_dataset import run
 from scripts.run_tick_opportunity_mining import (
     CANDIDATE_SCHEMA_VERSION,
     QUALITY_TIER_BASIS,
