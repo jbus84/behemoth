@@ -54,10 +54,10 @@ At prediction time, the API:
 ```
 POST /predict {"symbol": "EURUSD"}
 → [
-    {"candidate_uid": "oco_first_touch_clean|EURUSD|100|h5|b3_from_touch", "pred_prob": 0.81, "selected_exec": 1},
-    {"candidate_uid": "oco_first_touch_clean|EURUSD|100|h6|b3_from_touch", "pred_prob": 0.74, "selected_exec": 1},
-    {"candidate_uid": "oco_first_touch_clean|EURUSD|100|h5|b2_from_touch", "pred_prob": 0.65, "selected_exec": 0},
-    {"candidate_uid": "oco_first_touch_clean|EURUSD|100|h6|b2_from_touch", "pred_prob": 0.58, "selected_exec": 0},
+    {"candidate_uid": "oco_first_touch|EURUSD|100|h5|b3_from_touch", "pred_prob": 0.81, "selected_exec": 1},
+    {"candidate_uid": "oco_first_touch|EURUSD|100|h6|b3_from_touch", "pred_prob": 0.74, "selected_exec": 1},
+    {"candidate_uid": "oco_first_touch|EURUSD|100|h5|b2_from_touch", "pred_prob": 0.65, "selected_exec": 0},
+    {"candidate_uid": "oco_first_touch|EURUSD|100|h6|b2_from_touch", "pred_prob": 0.58, "selected_exec": 0},
   ]
 ```
 

@@ -120,6 +120,6 @@ Run once per active symbol; if `shortlist_state_csv` is a rolling schedule, the 
 #### Cross-Symbol Portability (X01-X03)
 | family                |   symbols_covered |   mean_across_symbols |   std_across_symbols |   spread_max_min |   x01_all_symbols_positive |
 |:----------------------|------------------:|----------------------:|---------------------:|-----------------:|---------------------------:|
-| oco_first_touch_clean |                 6 |              3.84634  |              1.08914 |          3.02862 |                        nan |
+| oco_first_touch |                 6 |              3.84634  |              1.08914 |          3.02862 |                        nan |
 | oco_first_touch       |                 1 |              0.187709 |            nan       |          0       |                        nan |
 <!-- GENERATED:STAGE_06:END -->
