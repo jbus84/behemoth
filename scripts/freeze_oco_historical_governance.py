@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import calendar
 import hashlib
 import json
 import re
@@ -28,6 +29,23 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def _model_valid_through(model_month: str) -> str:
+    """Return the last day of the deployment month for a ``YYYY-MM`` model month.
+
+    Models are named by their training-data-end month and deployed during the
+    *following* calendar month (a ``2026-04`` model — trained on data through
+    April, frozen ~May 1 — serves May). Validity therefore runs to the end of
+    that deployment month. Returns "" if model_month is not a valid YYYY-MM.
+    """
+    try:
+        year, month = (int(part) for part in str(model_month).split("-"))
+    except (ValueError, TypeError):
+        return ""
+    deploy_year, deploy_month = (year + 1, 1) if month == 12 else (year, month + 1)
+    last_day = calendar.monthrange(deploy_year, deploy_month)[1]
+    return f"{deploy_year:04d}-{deploy_month:02d}-{last_day:02d}"
 
 
 def _git_cmd(args: list[str]) -> str | None:
@@ -436,15 +454,13 @@ def run(
                 frozen_pred_path_txt = ""
                 frozen_pred_sha = ""
 
-            thr_data = (
-                json.loads(model_thr.read_text(encoding="utf-8")) if model_thr.exists() else {}
-            )
-            schedule = thr_data.get("threshold_schedule", {})
-            if schedule:
-                last_schedule_day = max(schedule.keys())
-                model_valid_through = last_schedule_day
-            else:
-                model_valid_through = ""
+            # model_valid_through is the last day of the deployment month
+            # (the month after the training-data-end model_month). It was
+            # previously derived from the model's threshold_schedule, but that
+            # schedule is dead config — live serving no longer consults it —
+            # so the derived value mislabelled each model as expiring a month
+            # before it is actually deployed.
+            model_valid_through = _model_valid_through(str(month))
 
             manifest: dict[str, Any] = {
                 "schema_version": 1,

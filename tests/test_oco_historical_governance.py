@@ -7,7 +7,12 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from scripts.freeze_oco_historical_governance import _filter_months, _state_universe_for_month, run
+from scripts.freeze_oco_historical_governance import (
+    _filter_months,
+    _model_valid_through,
+    _state_universe_for_month,
+    run,
+)
 
 
 def test_state_universe_for_month_hash_stable_under_row_order(tmp_path: Path) -> None:
@@ -74,6 +79,21 @@ def test_filter_months_applies_explicit_and_bounds() -> None:
         end_month="2025-09",
     )
     assert out == ["2025-08"]
+
+
+def test_model_valid_through_is_end_of_deployment_month() -> None:
+    # Models are named by training-data-end month and deployed the following
+    # month, so a 2026-04 model's validity runs to the end of May.
+    assert _model_valid_through("2026-04") == "2026-05-31"
+    assert _model_valid_through("2026-02") == "2026-03-31"
+    # Year rollover: a December model deploys in January of the next year.
+    assert _model_valid_through("2026-12") == "2027-01-31"
+    # Deployment month with 30 / 28 days.
+    assert _model_valid_through("2026-03") == "2026-04-30"
+    assert _model_valid_through("2026-01") == "2026-02-28"
+    # Malformed input degrades to empty string, not a crash.
+    assert _model_valid_through("") == ""
+    assert _model_valid_through("not-a-month") == ""
 
 
 def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_path: Path) -> None:
