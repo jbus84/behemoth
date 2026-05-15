@@ -843,7 +843,7 @@ def _run_symbol_offset_pipeline(
             "--selection-mode",
             "auto",
             "--family-required",
-            "oco_first_touch_clean",
+            "oco_first_touch",
             "--oco-hold-mode",
             "from_touch",
             "--oco-include-no-touch",

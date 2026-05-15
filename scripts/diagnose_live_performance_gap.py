@@ -30,10 +30,10 @@ import duckdb
 #                    wfo_m3to1_oco_fullcap/<SYM>_oco_events_eval2025.parquet
 # filtered to split='eval', bar_ticks=100, horizon=6, and the locked state_id.
 REDUCED_CORE_EXPECTED_WIN_RATE = {
-    "GBPUSD": 67.6,  # oco_first_touch_clean__ny_overlap__k2
-    "USDJPY": 72.1,  # oco_first_touch_clean__high_abs_vel_q80__k2
+    "GBPUSD": 67.6,  # oco_first_touch__ny_overlap__k2
+    "USDJPY": 72.1,  # oco_first_touch__high_abs_vel_q80__k2
     "USDCHF": 60.8,  # avg of two locked states
-    "USDCAD": 63.3,  # oco_first_touch_clean__ny_overlap__k2
+    "USDCAD": 63.3,  # oco_first_touch__ny_overlap__k2
     "AUDUSD": 59.2,  # avg of two locked states
     "EURUSD": 0.0,  # not live yet
 }

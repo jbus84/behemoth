@@ -73,7 +73,7 @@ def _make_synthetic_db(path: Path) -> None:
                 f"t{i}",
                 f"bp{i}",
                 "GBPUSD",
-                "oco|GBPUSD|100|h6|oco_first_touch_clean__ny_overlap__k2",
+                "oco|GBPUSD|100|h6|oco_first_touch__ny_overlap__k2",
                 "BUY",
                 1.3600,
                 now,
@@ -92,7 +92,7 @@ def _make_synthetic_db(path: Path) -> None:
                 f"t{i}",
                 f"bp{i}",
                 "GBPUSD",
-                "oco|GBPUSD|100|h6|oco_first_touch_clean__ny_overlap__k2",
+                "oco|GBPUSD|100|h6|oco_first_touch__ny_overlap__k2",
                 "BUY",
                 1.3600,
                 now,
@@ -111,7 +111,7 @@ def _make_synthetic_db(path: Path) -> None:
             [
                 now,
                 now,
-                "oco|GBPUSD|100|h6|oco_first_touch_clean__ny_overlap__k2",
+                "oco|GBPUSD|100|h6|oco_first_touch__ny_overlap__k2",
                 0.596 + i * 0.001,  # pred_probs 0.596–0.605
                 0.595,
             ],  # threshold
@@ -205,7 +205,7 @@ def test_rolling_threshold_integrity_section_detects_flat_warmup(tmp_path: Path)
         )
     """)
     now = datetime.now(tz=timezone.utc)
-    uid = "oco|USDJPY|1000|h6|oco_first_touch_clean__all__k2"
+    uid = "oco|USDJPY|1000|h6|oco_first_touch__all__k2"
     for i in range(300):
         con.execute(
             "INSERT INTO audit_logs VALUES (?, ?, 'USDJPY', ?, 0.6988, 0.5, '{}', '2026-03', 'warmup')",
@@ -243,7 +243,7 @@ def test_run_and_format_report_include_integrity_section(tmp_path: Path) -> None
 
     con = duckdb.connect(str(db))
     now = datetime(2026, 3, 23, 14, 0, tzinfo=timezone.utc)
-    uid = "oco|GBPUSD|100|h6|oco_first_touch_clean__ny_overlap__k2"
+    uid = "oco|GBPUSD|100|h6|oco_first_touch__ny_overlap__k2"
     for _i in range(40):
         con.execute(
             "INSERT INTO audit_logs VALUES (?, ?, 'GBPUSD', ?, 0.6123, 0.595, '{}', '2026-02', 'warmup')",

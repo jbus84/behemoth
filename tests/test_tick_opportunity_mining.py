@@ -312,7 +312,7 @@ def test_oco_candidates_follow_touch_bar_close_contract() -> None:
 def test_mining_emits_only_first_touch_family() -> None:
     """The mining pipeline must not emit any look-ahead-conditioned family.
 
-    oco_first_touch_clean was conditioned on ~both (both barriers touched
+    The old clean variant was conditioned on ~both (both barriers touched
     within the horizon — future information). Only oco_first_touch, whose
     universe is decided & reg_mask, is look-ahead-free.
     """

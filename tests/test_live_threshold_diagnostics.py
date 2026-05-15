@@ -428,7 +428,7 @@ def test_recompute_features_from_runtime_bars_uses_candidate_uid_fields(
     "candidate_uid",
     [
         "library|EURUSD|100|h6|b2",
-        "oco|EURUSD|100|h6|oco_first_touch_clean__high_abs_vel_q80__k2",
+        "oco|EURUSD|100|h6|oco_first_touch__high_abs_vel_q80__k2",
     ],
 )
 def test_recompute_features_from_runtime_bars_parses_encoded_barrier(

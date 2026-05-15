@@ -1,6 +1,6 @@
 """Contract: the OCO mining pipeline emits only look-ahead-free families.
 
-oco_first_touch_clean was removed because its universe was conditioned on
+The clean variant was removed because its universe was conditioned on
 ~both (both barriers touched within the horizon — future information). Any
 new family must be audited for look-ahead before being added to ALLOWED.
 See docs/superpowers/specs/2026-05-15-oco-lookahead-bias-removal-design.md.

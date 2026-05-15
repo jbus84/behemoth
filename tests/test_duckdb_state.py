@@ -633,7 +633,7 @@ class TestRollingThreshold:
         sm = StateManager()
         result = sm.get_rolling_threshold(
             symbol="GBPUSD",
-            candidate_uid="oco|GBPUSD|100|h6|oco_first_touch_clean__ny_overlap__k2",
+            candidate_uid="oco|GBPUSD|100|h6|oco_first_touch__ny_overlap__k2",
             exec_q=0.9,
             lookback_days=20,
             min_history=10,
@@ -647,7 +647,7 @@ class TestRollingThreshold:
 
         sm = StateManager()
         now = datetime.now(tz=timezone.utc)
-        uid = "oco|GBPUSD|100|h6|oco_first_touch_clean__ny_overlap__k2"
+        uid = "oco|GBPUSD|100|h6|oco_first_touch__ny_overlap__k2"
         # Insert 20 pred_probs ranging from 0.50 to 0.69
         for i in range(20):
             sm._store.execute(
@@ -673,7 +673,7 @@ class TestRollingThreshold:
 
         sm = StateManager()
         now = datetime.now(tz=timezone.utc)
-        uid = "oco|GBPUSD|100|h6|oco_first_touch_clean__ny_overlap__k2"
+        uid = "oco|GBPUSD|100|h6|oco_first_touch__ny_overlap__k2"
         # Only 5 events, min_history=10
         for i in range(5):
             sm._store.execute(
@@ -700,7 +700,7 @@ class TestPurgeAuditEvents:
 
         sm = StateManager()
         now = datetime.now(tz=timezone.utc)
-        uid = "oco|GBPUSD|100|h6|oco_first_touch_clean__ny_overlap__k2"
+        uid = "oco|GBPUSD|100|h6|oco_first_touch__ny_overlap__k2"
         # 5 warmup rows for GBPUSD
         for i in range(5):
             sm._store.execute(

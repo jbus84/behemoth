@@ -22,7 +22,7 @@ def test_parse_features_json_tolerates_garbage() -> None:
 
 def test_parse_canonical_uid_trailing_k_convention() -> None:
     bar_ticks, horizon, barrier_pips = parse_canonical_uid(
-        "oco|EURUSD|1000|h6|oco_first_touch_clean__all__k2"
+        "oco|EURUSD|1000|h6|oco_first_touch__all__k2"
     )
     assert (bar_ticks, horizon, barrier_pips) == (1000, 6, 2.0)
 

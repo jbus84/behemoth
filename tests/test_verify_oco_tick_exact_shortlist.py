@@ -144,7 +144,7 @@ def test_run_accepts_partial_read_from_explicit_schema_velocity(tmp_path, monkey
             {
                 "bar_ticks": bar_ticks,
                 "horizon": 3,
-                "state_id": "oco_first_touch_clean_k2",
+                "state_id": "oco_first_touch_k2",
                 "barrier_pips": 2.0,
             }
         ]
@@ -154,7 +154,7 @@ def test_run_accepts_partial_read_from_explicit_schema_velocity(tmp_path, monkey
     pd.DataFrame(
         [
             {
-                "candidate_uid": f"oco|{symbol}|{bar_ticks}|h3|oco_first_touch_clean_k2",
+                "candidate_uid": f"oco|{symbol}|{bar_ticks}|h3|oco_first_touch_k2",
                 "close_ts": close_ts.to_pydatetime(),
                 "test_month": "2025-01",
                 "pred_prob": 0.95,
@@ -174,7 +174,7 @@ def test_run_accepts_partial_read_from_explicit_schema_velocity(tmp_path, monkey
         "report_out": str(tmp_path / "report.md"),
         "locked_quantile": 0.9,
         "selection_mode": "monthly_quantile",
-        "family_required": "oco_first_touch_clean",
+        "family_required": "oco_first_touch",
         "oco_hold_mode": "from_touch",
         "oco_include_no_touch": True,
     }
@@ -266,4 +266,4 @@ def test_recompute_first_touch_matches_oco_precompute_from_touch_contract() -> N
     np.testing.assert_allclose(out["expected_gross_pips"], np.nan_to_num(prep["gross"], nan=0.0))
     np.testing.assert_array_equal(out["expected_side"], prep["side"])
     np.testing.assert_array_equal(out["expected_decided"], prep["decided"])
-    np.testing.assert_array_equal(out["expected_both_window"], prep["both"])
+    np.testing.assert_array_equal(out["expected_both_window"], prep["both_touched_lookahead"])
