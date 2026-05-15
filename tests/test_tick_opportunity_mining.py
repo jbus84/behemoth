@@ -298,7 +298,31 @@ def test_oco_candidates_follow_touch_bar_close_contract() -> None:
         gross_metric="mean",
     )
 
-    row = out.loc[out["state_id"] == "oco_first_touch_clean__all__k2"].iloc[0]
+    row = out.loc[out["state_id"] == "oco_first_touch__all__k2"].iloc[0]
     assert row["test_count"] > 100
     assert row["p_up_first"] == pytest.approx(1.0)
     assert row["mean_gross_pips_test"] == pytest.approx(1.5)
+
+
+def test_mining_emits_only_first_touch_family() -> None:
+    """The mining pipeline must not emit any look-ahead-conditioned family.
+
+    oco_first_touch_clean was conditioned on ~both (both barriers touched
+    within the horizon — future information). Only oco_first_touch, whose
+    universe is decided & reg_mask, is look-ahead-free.
+    """
+    train = _build_oco_semantics_frame(rows=4000)
+    test = _build_oco_semantics_frame(rows=4000)
+    out = _oco_candidates(
+        train=train,
+        test=test,
+        symbol="EURUSD",
+        bar_ticks=1000,
+        horizons=[6],
+        barrier_grid_pips=[2.0],
+        min_annual_fills=50.0,
+        gross_metric="mean",
+    )
+    families = set(out["family"].unique())
+    assert families == {"oco_first_touch"}, f"unexpected families: {families}"
+    assert not out["state_id"].str.contains("first_touch_clean").any()

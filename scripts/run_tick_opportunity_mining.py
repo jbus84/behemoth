@@ -631,7 +631,6 @@ def _oco_candidates(
                 for reg_name, reg_mask in reg_masks_i0:
                     for fam, fam_mask in [
                         ("first_touch", decided & reg_mask),
-                        ("first_touch_clean", decided & reg_mask & (~both)),
                     ]:
                         if stage == "test":
                             n = int(np.sum(fam_mask))
