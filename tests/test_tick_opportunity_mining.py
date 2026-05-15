@@ -348,3 +348,12 @@ def test_quality_tier_does_not_condition_on_both() -> None:
     }])
     out = _assign_quality_tier(df, library="oco")
     assert out.loc[0, "quality_tier"] == "A"
+
+
+def test_precompute_labels_lookahead_field_explicitly():
+    """The both-touch field must be named to make its look-ahead nature
+    self-evident, so it cannot be used as a filter by mistake."""
+    frame = _build_oco_semantics_frame(rows=4000)
+    prep = _oco_precompute_candidates(frame, symbol="EURUSD", horizon=6, barrier_pips=2.0)
+    assert "both_touched_lookahead" in prep
+    assert "both" not in prep

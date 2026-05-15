@@ -426,11 +426,22 @@ def _oco_precompute_candidates(
             gross[use] = side[use].astype(float) * (
                 (exit_price_use[num_ok] - entry_price_use[num_ok]) / pip
             )
+    # Return fields are partitioned by when they become knowable:
+    #   decision-time (safe to filter the candidate universe on):
+    #     i0       — signal bar index
+    #     decided  — a barrier was touched within the horizon (live expires
+    #                un-touched scans, so the traded population matches)
+    #     side     — first-touch direction (live enters the side that touches)
+    #   labelling-only (require forward information — outcome/metrics ONLY,
+    #   MUST NOT be used to filter the candidate universe):
+    #     gross                 — enter-at-touch, hold-h-bars P&L
+    #     both_touched_lookahead — both barriers touched within the horizon
+    #     touch_step            — bars from signal to first touch
     return {
         "i0": i0,
         "gross": gross,
         "side": side,
-        "both": both,
+        "both_touched_lookahead": both,
         "decided": decided,
         "touch_step": touch_step,
     }
@@ -618,7 +629,7 @@ def _oco_candidates(
                     continue
                 i0 = prep["i0"]
                 decided = prep["decided"]
-                both = prep["both"]
+                both = prep["both_touched_lookahead"]
                 side = prep["side"]
                 gross_all = prep["gross"]
                 reg_masks_i0 = [(name, mask[i0]) for name, mask in reg_masks]
