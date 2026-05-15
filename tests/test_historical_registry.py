@@ -40,7 +40,7 @@ def _write_lock(
                     "bar_ticks": 100,
                     "horizon": 3,
                     "barrier_pips": 8.0,
-                    "state_id": "oco_first_touch_clean__all__k2",
+                    "state_id": "oco_first_touch__all__k2",
                     "regime_desc": "all",
                 }
             ]

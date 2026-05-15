@@ -41,13 +41,26 @@ class CandidateSpec:
 
     @staticmethod
     def from_row(row: dict) -> CandidateSpec:
-        """Build from a state_universe row in the live lock JSON."""
+        """Build from a state_universe row in the live lock JSON.
+
+        Rejects first_touch_clean candidates: that family's win rate was
+        conditioned on ~both (look-ahead) and is not live-achievable. See
+        docs/superpowers/specs/2026-05-15-oco-lookahead-bias-removal-design.md.
+        """
+        state_id = str(row["state_id"])
+        if "first_touch_clean" in state_id:
+            raise ValueError(
+                f"refusing look-ahead-biased candidate '{state_id}': the "
+                "first_touch_clean family conditions its win rate on ~both "
+                "(future information) and must not be deployed. Re-mine and "
+                "re-freeze governance on the first_touch family."
+            )
         return CandidateSpec(
             symbol=row["symbol"],
             bar_ticks=row["bar_ticks"],
             horizon=row["horizon"],
             barrier_pips=float(row["barrier_pips"]),
-            candidate_uid=row["state_id"],
+            candidate_uid=state_id,
             regime_desc=row.get("regime_desc", ""),
         )
 
