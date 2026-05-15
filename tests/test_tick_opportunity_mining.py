@@ -169,7 +169,7 @@ def test_stop_limit_tickfill_rejects_legacy_ambiguous_bar_schema(tmp_path: Path)
     pd.DataFrame(
         {
             "close_ts": [bars.loc[150, "close_ts"]],
-            "candidate_uid": [f"oco|{symbol}|{bar_ticks}|h3|oco_first_touch_clean_k2"],
+            "candidate_uid": [f"oco|{symbol}|{bar_ticks}|h3|oco_first_touch_k2"],
             "target_gross_pips": [2.0],
             "pred_prob": [0.95],
         }
@@ -199,7 +199,7 @@ def test_stop_limit_tickfill_accepts_partial_read_from_explicit_schema_velocity(
     pd.DataFrame(
         {
             "close_ts": [bars.loc[150, "close_ts"]],
-            "candidate_uid": [f"oco|{symbol}|{bar_ticks}|h3|oco_first_touch_clean_k2"],
+            "candidate_uid": [f"oco|{symbol}|{bar_ticks}|h3|oco_first_touch_k2"],
             "target_gross_pips": [2.0],
             "pred_prob": [0.95],
         }
@@ -214,7 +214,7 @@ def test_stop_limit_tickfill_accepts_partial_read_from_explicit_schema_velocity(
     )
 
     assert not events.empty
-    assert events.loc[0, "candidate_uid"] == f"oco|{symbol}|{bar_ticks}|h3|oco_first_touch_clean_k2"
+    assert events.loc[0, "candidate_uid"] == f"oco|{symbol}|{bar_ticks}|h3|oco_first_touch_k2"
 
 
 def _build_oco_semantics_frame(
