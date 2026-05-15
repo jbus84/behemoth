@@ -212,7 +212,7 @@ def _parse_barrier_pips(value: object) -> float:
     """Extract a numeric ``barrier_pips`` from a candidate_uid rule segment.
 
     Accepts a literal float, a ``b<n>`` prefix, or a trailing ``_k<n>``
-    convention used by the rule UIDs (e.g. ``oco_first_touch_clean__all__k2``
+    convention used by the rule UIDs (e.g. ``oco_first_touch__all__k2``
     → 2.0).
     """
     import re

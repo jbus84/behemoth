@@ -251,7 +251,7 @@ uv run python scripts/verify_oco_tick_exact_shortlist.py \
   --shortlist-state-csv data/analysis/tick_opportunity_mining/reduced_core_rolling/<SYM>_oco_reduced_state_schedule.csv \
   --locked-quantile 0.9 \
   --selection-mode auto \
-  --family-required oco_first_touch_clean \
+  --family-required oco_first_touch \
   --oco-hold-mode from_touch \
   --oco-include-no-touch true
 ```
