@@ -8,7 +8,12 @@ import pytest
 
 from behemoth.core.features import _extract_core_series
 from scripts.analyze_oco_stop_limit_tickfill import _rebuild_touch_events
-from scripts.run_tick_opportunity_mining import _oco_candidates, _oco_precompute_candidates, run
+from scripts.run_tick_opportunity_mining import (
+    _assign_quality_tier,
+    _oco_candidates,
+    _oco_precompute_candidates,
+    run,
+)
 
 
 def _build_synth_tick_velocity(path: Path, *, symbol: str) -> None:
@@ -326,3 +331,20 @@ def test_mining_emits_only_first_touch_family() -> None:
     families = set(out["family"].unique())
     assert families == {"oco_first_touch"}, f"unexpected families: {families}"
     assert not out["state_id"].str.contains("first_touch_clean").any()
+
+
+def test_quality_tier_does_not_condition_on_both() -> None:
+    """Quality tiers must not gate on both_window_rate (look-ahead).
+
+    A candidate with strong train metrics but a high both-touch rate must
+    still be eligible for tier A — the both rate is not knowable per-trade.
+    """
+    df = pd.DataFrame([{
+        "mean_gross_pips_train": 2.0,
+        "median_gross_pips_train": 0.5,
+        "train_count": 50000,
+        "both_window_rate_train": 0.95,   # high whipsaw — previously blocked tier A
+        "selection_pass": True,
+    }])
+    out = _assign_quality_tier(df, library="oco")
+    assert out.loc[0, "quality_tier"] == "A"

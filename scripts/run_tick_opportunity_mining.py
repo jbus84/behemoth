@@ -437,7 +437,7 @@ def _oco_precompute_candidates(
 
 
 def _assign_quality_tier(df: pd.DataFrame, *, library: str) -> pd.DataFrame:
-    """Assign quality tiers (A/B/C/D) using train-only metrics.
+    """Assign quality tiers (A/B/C/D) from look-ahead-free train metrics only.
 
     This avoids test-metric leakage into quality_score, which downstream
     consumers (e.g. build_tick_opportunity_ml_dataset) use for ranking.
@@ -448,18 +448,14 @@ def _assign_quality_tier(df: pd.DataFrame, *, library: str) -> pd.DataFrame:
     mean_g = pd.to_numeric(out["mean_gross_pips_train"], errors="coerce").fillna(-np.inf)
     med_g = pd.to_numeric(out["median_gross_pips_train"], errors="coerce").fillna(-np.inf)
     tc = pd.to_numeric(out["train_count"], errors="coerce").fillna(0.0)
-    if "both_window_rate_train" in out.columns:
-        both = pd.to_numeric(out["both_window_rate_train"], errors="coerce").fillna(1.0)
-    else:
-        both = pd.Series(1.0, index=out.index)
     sel = out["selection_pass"].astype(bool)
 
     if str(library).lower() == "directional":
         a = (mean_g >= 0.25) & (med_g >= 0.05) & (tc >= 40000)
         b = (mean_g >= 0.10) & (med_g >= 0.0) & (tc >= 20000)
     else:
-        a = (mean_g >= 1.0) & (med_g >= 0.3) & (both <= 0.55) & (tc >= 40000)
-        b = (mean_g >= 0.40) & (med_g >= 0.1) & (both <= 0.70) & (tc >= 20000)
+        a = (mean_g >= 1.0) & (med_g >= 0.3) & (tc >= 40000)
+        b = (mean_g >= 0.40) & (med_g >= 0.1) & (tc >= 20000)
     tier = np.where(a, "A", np.where(b, "B", np.where(sel, "C", "D")))
     out["quality_tier"] = tier
     out["quality_score"] = np.where(
