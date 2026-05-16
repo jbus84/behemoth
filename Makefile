@@ -190,10 +190,21 @@ retrain-all:
 	@echo "══════════════════════════════════════════"
 	@echo "  Retraining all symbols (Stages 2-5)    "
 	@echo "══════════════════════════════════════════"
-	@for sym in $(REBUILD_SYMBOLS); do \
+	@summary=""; failed=0; \
+	for sym in $(REBUILD_SYMBOLS); do \
 		echo "\n=== Retraining $$sym ==="; \
-		uv run python scripts/onboard_symbol.py --symbol $$sym --skip-data --skip-docs --skip-registration --model-export-dir models/oco $(if $(EVAL_END_MONTH),--eval-end-month $(EVAL_END_MONTH),) || exit 1; \
-	done
+		uv run python scripts/onboard_symbol.py --symbol $$sym --skip-data --skip-docs --skip-registration --model-export-dir models/oco $(if $(EVAL_END_MONTH),--eval-end-month $(EVAL_END_MONTH),); \
+		code=$$?; \
+		sched=data/analysis/tick_opportunity_mining/reduced_core_rolling/$${sym}_oco_reduced_state_schedule.csv; \
+		outcome=$$(uv run python scripts/classify_retrain_outcome.py --exit-code $$code --schedule-csv $$sched); \
+		echo "  → $$sym: $$outcome"; \
+		summary="$$summary\n  $$sym: $$outcome"; \
+		if [ "$$outcome" = "FAILED" ]; then failed=1; fi; \
+	done; \
+	echo "\n══════════ Retrain summary ══════════"; \
+	printf "$$summary\n"; \
+	echo "═════════════════════════════════════"; \
+	if [ "$$failed" -ne 0 ]; then echo "❌ One or more symbols FAILED"; exit 1; fi
 	@echo "\n=== Running Stage-1 data reliability audit (all active symbols) ==="
 	uv run python scripts/audit_data_reliability.py \
 		--symbols $(shell echo $(REBUILD_SYMBOLS) | sed 's/ /,/g')
