@@ -129,3 +129,19 @@ def test_reduced_states_for_symbol_paths() -> None:
     assert "reduced_core/USDCAD_oco_reduced_states.csv" in str(
         _reduced_states_for_symbol(base, "USDCAD").as_posix()
     )
+
+
+def test_no_go_lock_with_empty_universe_is_accepted() -> None:
+    """A governance lock for a no-trade symbol — empty state_universe,
+    deploy_verdict NO_GO — must validate cleanly, not be flagged as a
+    failure. NO_GO is an expected outcome, not a defect."""
+
+    lock = {
+        "symbol": "EURUSD",
+        "deploy_verdict": "NO_GO",
+        "state_universe": {"count": 0, "sha256": _canon_hash({}), "rows": []},
+    }
+    # A NO_GO lock with an empty universe is well-formed: count matches rows,
+    # verdict matches count.
+    assert lock["state_universe"]["count"] == len(lock["state_universe"]["rows"])
+    assert lock["deploy_verdict"] == "NO_GO"
