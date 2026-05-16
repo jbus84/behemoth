@@ -2,14 +2,35 @@
 
 All signals must be causal (no look-ahead).
 New regimes must be additive (existing regimes unaffected).
-Quality of new regime candidates must meet or exceed baseline.
+Regime thresholds must be train-derived quantiles, not test-derived.
+
+The `tick_burst_score`, `quote_revision_rate_z` and `vol_cluster_score`
+regimes use a train-derived q70 cut — consistent with the cost/range/vel
+regimes — so each selects a stable ~top-30% of bars across symbols and
+volatility regimes. `directional_persistence_8` keeps a fixed +/-6 cut: it
+is a bounded integer count over 8 bars, so the threshold is interpretable
+and distribution-independent.
 """
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
 
-from scripts.run_tick_opportunity_mining import _directional_candidates, _oco_candidates
+from scripts.build_tick_velocity_dataset import _build_symbol_dataset
+from scripts.run_tick_opportunity_mining import (
+    _directional_candidates,
+    _oco_candidates,
+    _quantiles,
+    _regime_masks,
+)
+
+MICRO_REGIMES = [
+    "high_intensity",
+    "high_activity",
+    "persistent_flow",
+    "negative_flow",
+    "high_vol_cluster",
+]
 
 
 def _build_oco_semantics_frame(rows: int = 4000, seed: int = 1) -> pd.DataFrame:
@@ -70,17 +91,137 @@ def _build_oco_semantics_frame(rows: int = 4000, seed: int = 1) -> pd.DataFrame:
     return out
 
 
-def test_microstructure_signals_are_causal():
-    """Regime masks must use only lagged signals — no forward info."""
-    df = _build_oco_semantics_frame(rows=100, seed=1)
-    # Simulate a regime mask computation for bar t=50
-    t = 50
-    mask = df["tick_burst_score"].iloc[:t] > 0
-    # The mask for bar t uses only bars < t, which is trivially true for
-    # shift(1) rolling computations. This test documents the expectation.
-    assert len(mask) == t
-    # Verify that the signal itself is strictly lagged (shift(1))
-    assert pd.isna(df["tick_burst_score"].iloc[0]) or df["tick_burst_score"].iloc[0] == 0.0
+def _build_bars_frame(seed: int = 1, n: int = 60) -> pd.DataFrame:
+    """Build a synthetic tick-bar frame for the velocity-dataset builder."""
+    rng = np.random.default_rng(seed)
+    ts = pd.date_range("2026-01-01", periods=n, freq="1min", tz="UTC")
+    close_bid = 1.1000 + np.cumsum(rng.normal(0.0, 0.0003, n))
+    open_bid = np.r_[close_bid[0], close_bid[:-1]]
+    return pd.DataFrame(
+        {
+            "timestamp": ts,
+            "close_ts": ts,
+            "open_bid": open_bid,
+            "close_bid": close_bid,
+            "high_bid": close_bid + rng.uniform(0.0001, 0.0008, n),
+            "low_bid": close_bid - rng.uniform(0.0001, 0.0008, n),
+            "high_ask": close_bid + rng.uniform(0.0003, 0.0010, n),
+            "close_ask": close_bid + 0.0002,
+            "spread": rng.uniform(0.00015, 0.00025, n),
+            "tick_volume": rng.integers(60, 160, n).astype(float),
+            "bar_return_sign": rng.choice([1.0, -1.0, 0.0], size=n),
+            "tick_burst": rng.integers(60, 160, n).astype(float),
+            "quote_revisions": rng.integers(0, 15, n).astype(float),
+            "intra_bar_momentum": rng.normal(0, 0.5, n),
+            "range_pips": rng.uniform(2.0, 9.0, n),
+            "ret1_pips": (close_bid - open_bid) / 0.0001,
+        }
+    )
+
+
+def test_microstructure_signals_are_causal(tmp_path):
+    """Perturbing a future bar must not change any microstructure signal at an
+    earlier bar. This exercises the real velocity builder, so it fails if any
+    signal drops its .shift(1) lag and reaches into future bars."""
+    perturb_idx = 40
+    signal_cols = [
+        "tick_burst_score",
+        "quote_revision_rate_z",
+        "directional_persistence_8",
+        "signed_flow_24",
+        "vol_cluster_score",
+    ]
+    kwargs = dict(
+        symbol="EURUSD",
+        bar_ticks=100,
+        vel_horizons=[1],
+        target_horizons=[1],
+        vol_window=24,
+        cost_window=24,
+    )
+
+    bars = _build_bars_frame(seed=7)
+    base_path = tmp_path / "base.parquet"
+    bars.to_parquet(base_path, index=False)
+    out_base = _build_symbol_dataset(bar_path=base_path, **kwargs)
+
+    # Perturb every input that feeds a microstructure signal, from perturb_idx on.
+    perturbed = bars.copy()
+    perturbed.loc[perturb_idx:, "tick_burst"] *= 5.0
+    perturbed.loc[perturb_idx:, "quote_revisions"] += 50.0
+    perturbed.loc[perturb_idx:, "bar_return_sign"] *= -1.0
+    perturbed.loc[perturb_idx:, "close_bid"] += 0.0050
+    pert_path = tmp_path / "perturbed.parquet"
+    perturbed.to_parquet(pert_path, index=False)
+    out_pert = _build_symbol_dataset(bar_path=pert_path, **kwargs)
+
+    assert len(out_base) == len(out_pert)
+    assert len(out_base) >= perturb_idx
+    for col in signal_cols:
+        pd.testing.assert_series_equal(
+            out_base[col].iloc[:perturb_idx].reset_index(drop=True),
+            out_pert[col].iloc[:perturb_idx].reset_index(drop=True),
+            check_names=False,
+            obj=f"{col} before the perturbed bar",
+        )
+
+
+def test_regime_thresholds_are_train_derived():
+    """The microstructure regime thresholds must come from train quantiles,
+    never from the frame the mask is applied to. Built with a test frame whose
+    signal distribution is shifted far above train: a train-derived q70 admits
+    most test bars, a test-derived q70 would admit only ~30%."""
+    train = _build_oco_semantics_frame(rows=2000, seed=8)
+    test = _build_oco_semantics_frame(rows=2000, seed=9)
+    # Shift the test frame's microstructure signals well above the train frame.
+    test["tick_burst_score"] = test["tick_burst_score"] + 5.0
+    test["quote_revision_rate_z"] = test["quote_revision_rate_z"] + 5.0
+    test["vol_cluster_score"] = test["vol_cluster_score"] + 5.0
+
+    train_q = _quantiles(train)
+    masks = dict(_regime_masks(test, train_q))
+
+    # Each mask equals the test signal compared against the *train* q70.
+    np.testing.assert_array_equal(
+        masks["high_intensity"],
+        (test["tick_burst_score"].to_numpy() >= train_q["tick_burst_q70"]),
+    )
+    np.testing.assert_array_equal(
+        masks["high_vol_cluster"],
+        (test["vol_cluster_score"].to_numpy() >= train_q["vol_cluster_q70"]),
+    )
+    # Train-derived threshold admits far more shifted-up test bars than a
+    # test-derived q70 would — proving the threshold is not recomputed on test.
+    test_q70 = float(test["tick_burst_score"].quantile(0.70))
+    assert train_q["tick_burst_q70"] < test_q70
+    assert masks["high_intensity"].mean() > 0.70
+
+
+def test_high_intensity_regime_is_a_train_q70_subset():
+    """high_intensity must select the ~top-30% of bars by tick_burst_score
+    (train q70 cut) and be a strict subset of the 'all' regime."""
+    train = _build_oco_semantics_frame(rows=4000, seed=3)
+    q = _quantiles(train)
+    masks = dict(_regime_masks(train, q))
+
+    expected = train["tick_burst_score"].to_numpy() >= q["tick_burst_q70"]
+    np.testing.assert_array_equal(masks["high_intensity"], expected)
+
+    # A q70 cut keeps ~30% of bars: strictly fewer than 'all', clearly non-empty.
+    selected = masks["high_intensity"].mean()
+    assert 0.20 < selected < 0.40
+    assert (masks["high_intensity"] <= masks["all"]).all()
+
+
+def test_directional_persistence_regimes_stay_fixed():
+    """persistent_flow / negative_flow keep a fixed +/-6 cut on the bounded
+    directional_persistence_8 count — they must not become quantile-based."""
+    train = _build_oco_semantics_frame(rows=4000, seed=12)
+    q = _quantiles(train)
+    masks = dict(_regime_masks(train, q))
+    persist = train["directional_persistence_8"].to_numpy()
+    np.testing.assert_array_equal(masks["persistent_flow"], persist >= 6)
+    np.testing.assert_array_equal(masks["negative_flow"], persist <= -6)
 
 
 def test_new_regimes_are_additive():
@@ -99,30 +240,18 @@ def test_new_regimes_are_additive():
     )
     regimes = set(out["regime_desc"].str.split(";").str[0])
     assert "all" in regimes, "baseline 'all' regime must still be present"
-    new_regimes = {
-        "high_intensity",
-        "high_activity",
-        "persistent_flow",
-        "negative_flow",
-        "high_vol_cluster",
-    }
-    assert new_regimes <= regimes, f"missing new regimes: {new_regimes - regimes}"
-    # Count rows per regime to ensure new regimes are non-trivial
-    for r in new_regimes:
+    assert set(MICRO_REGIMES) <= regimes, f"missing: {set(MICRO_REGIMES) - regimes}"
+    for r in MICRO_REGIMES:
         count = (out["regime_desc"].str.startswith(r)).sum()
         assert count > 0, f"regime {r} produced zero candidates"
 
 
-def test_high_intensity_regime_filters_correctly():
-    """high_intensity must produce fewer or equal signal bars than 'all'."""
-    train = _build_oco_semantics_frame(rows=1000, seed=3)
-    all_mask = pd.Series(True, index=train.index)
-    hi_mask = train["tick_burst_score"] > 0
-    assert hi_mask.sum() <= all_mask.sum()
-
-
 def test_microstructure_candidate_quality_vs_baseline():
-    """New regime candidates must have comparable or better train mean gross than 'all'."""
+    """Every new regime must mine a finite train mean gross that can be
+    compared against the 'all' baseline. The spec's >=60%-beats-baseline
+    success criterion is validated on real data by
+    scripts/run_microstructure_diagnostics.py; synthetic random signals
+    cannot prove it, so this test verifies the comparison is well-formed."""
     train = _build_oco_semantics_frame(rows=4000, seed=4)
     test = _build_oco_semantics_frame(rows=4000, seed=5)
     out = _oco_candidates(
@@ -135,25 +264,16 @@ def test_microstructure_candidate_quality_vs_baseline():
         min_annual_fills=50.0,
         gross_metric="mean",
     )
-    _ = out[out["regime_desc"].str.startswith("all")][
-        "mean_gross_pips_train"
-    ].mean()  # baseline for future strict quality comparison
-    new_regimes = [
-        "high_intensity",
-        "high_activity",
-        "persistent_flow",
-        "negative_flow",
-        "high_vol_cluster",
-    ]
-    for r in new_regimes:
-        regime_mean = out[out["regime_desc"].str.startswith(r)][
-            "mean_gross_pips_train"
-        ].mean()
-        # At least 60% of new regimes should match or beat baseline
-        # This test checks the aggregate; per-symbol breakdown is in diagnostics
-        assert not np.isnan(regime_mean), f"regime {r} has no train mean gross"
-        # Relaxed: new regimes may be worse on synthetic data; this is a smoke test
-        assert regime_mean > -1.0, f"regime {r} mean gross unexpectedly low: {regime_mean}"
+    out = out.assign(regime=out["regime_desc"].str.split(";").str[0])
+    baseline = out.loc[out["regime"] == "all", "mean_gross_pips_train"].mean()
+    assert np.isfinite(baseline), "baseline 'all' regime has no train mean gross"
+
+    for r in MICRO_REGIMES:
+        regime_rows = out.loc[out["regime"] == r, "mean_gross_pips_train"]
+        assert len(regime_rows) > 0, f"regime {r} produced no candidates"
+        assert regime_rows.notna().all(), f"regime {r} has a NaN train mean gross"
+        delta = float(regime_rows.mean() - baseline)
+        assert np.isfinite(delta), f"regime {r} delta-vs-baseline is not finite"
 
 
 def test_directional_and_oco_both_mine_new_regimes():
@@ -184,15 +304,3 @@ def test_directional_and_oco_both_mine_new_regimes():
         regimes = set(out["regime_desc"].str.split(";").str[0])
         for r in ["high_intensity", "persistent_flow", "high_vol_cluster"]:
             assert r in regimes, f"{lib} missing regime {r}"
-
-
-def test_regime_threshold_no_test_leakage():
-    """Regime thresholds must be computed from train only, never test."""
-    _train = _build_oco_semantics_frame(rows=2000, seed=8)
-    _test = _build_oco_semantics_frame(rows=2000, seed=9)
-    # The regime mask in mining is applied per-frame (train or test) using
-    # thresholds computed from the train frame only. This test documents
-    # that the mask uses the same frame it is applied to (train mask uses
-    # train thresholds, test mask uses train thresholds).
-    assert True  # Structural: the mining loop applies the same mask logic
-    # to both train and test, but the mask is per-frame.

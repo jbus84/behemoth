@@ -251,6 +251,24 @@ def _quantiles(train: pd.DataFrame) -> dict[str, float]:
         "vel_q80": float(train["vel_abs_cost_units_h1"].quantile(0.80)),
         "spread_q70": float(train["spread_z"].quantile(0.70)),
         "tick_q30": float(train["tick_rate_z"].quantile(0.30)),
+        # Microstructure regime cuts: train-derived q70, consistent with the
+        # cost/range/vel regimes, so each selects a stable ~top-30% of bars.
+        # An absent column defaults to +inf so the regime is empty, never all.
+        "tick_burst_q70": (
+            float(train["tick_burst_score"].quantile(0.70))
+            if "tick_burst_score" in train.columns
+            else float("inf")
+        ),
+        "quote_rev_q70": (
+            float(train["quote_revision_rate_z"].quantile(0.70))
+            if "quote_revision_rate_z" in train.columns
+            else float("inf")
+        ),
+        "vol_cluster_q70": (
+            float(train["vol_cluster_score"].quantile(0.70))
+            if "vol_cluster_score" in train.columns
+            else float("inf")
+        ),
     }
 
 
@@ -299,12 +317,16 @@ def _regime_masks(test: pd.DataFrame, q: dict[str, float]) -> list[tuple[str, np
             "low_cost_q30_and_high_abs_vel_q70",
             ((c <= q["cost_q30"]) & (v >= q["vel_q70"])).to_numpy(dtype=bool),
         ),
-        # --- microstructure regimes (causal, lagged only) ---
-        ("high_intensity", (tick_burst > 0)),
-        ("high_activity", (quote_rev > 0)),
+        # --- microstructure regimes (causal, lagged signals) ---
+        # tick_burst/quote_rev/vol_cluster use a train-derived q70 cut so each
+        # selects a stable ~top-30% of bars. directional_persistence_8 keeps a
+        # fixed +/-6 cut: a bounded integer count where the threshold is
+        # interpretable and distribution-independent.
+        ("high_intensity", (tick_burst >= q["tick_burst_q70"])),
+        ("high_activity", (quote_rev >= q["quote_rev_q70"])),
         ("persistent_flow", (persist >= 6)),
         ("negative_flow", (persist <= -6)),
-        ("high_vol_cluster", (vol_cluster > 1.5)),
+        ("high_vol_cluster", (vol_cluster >= q["vol_cluster_q70"])),
     ]
 
 

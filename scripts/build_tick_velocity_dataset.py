@@ -381,7 +381,10 @@ def _build_symbol_dataset(
             .fillna(0)
         )
 
-    # vol_cluster_score uses vel_pips_h1 (same as ret1_pips) which is always present
+    # vol_cluster_score uses vel_pips_h1, the close-to-close pip return computed
+    # above, as its volatility proxy. The spec names ret1_pips (an open-to-close
+    # return); the bars frame does not reliably carry that column, and a
+    # close-to-close magnitude is an equally valid clustering proxy.
     abs_ret = out["vel_pips_h1"].abs()
     roll_abs_ret_mean = abs_ret.rolling(MICROSTRUCTURE_VOL_WINDOW, min_periods=1).mean().shift(1)
     # When both abs_ret and rolling mean are zero, ratio is NaN → fill to 1.0 (average volatility)
