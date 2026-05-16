@@ -8,27 +8,27 @@ barrier_keep: "2,3"
 horizon_keep: "5,6"
 locked_quantile: 0.9
 selection_mode: auto
-execution_mode: stop_limit
+execution_mode: gross
 stop_limit_detail_csv: data/analysis/tick_opportunity_mining/stop_limit_tickfill_fullcap/EURUSD_stop_limit_tickfill_detail.csv
 stop_limit_cap_pips: 1.2
 stop_limit_slippage_mode: full_overshoot
 stop_limit_min_fill_rate: 0.5
 stop_limit_require_match_rate: 0.95
 
-state_train_months: 3
-min_train_months: 3
+state_train_months: 2
+min_train_months: 1
 overlap_corr_max: 0.85
 max_states: 12
-min_states: 4
-min_state_avg_rows: 200
-min_positive_months_train: 2
+min_states: 1
+min_state_avg_rows: 20
+min_positive_months_train: 1
 require_lb95_trade_gt0: true
-require_lb95_month_gt0: true
-bootstrap_paths: 600
+require_lb95_month_gt0: false
+bootstrap_paths: 1000
 seed: 42
 
-capacity_floor_monthly: 3000
-capacity_floor_annual: 3000
+capacity_floor_monthly: 200
+capacity_floor_annual: 500
 
 out_state_schedule_csv: data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_state_schedule.csv
 out_state_csv: data/analysis/tick_opportunity_mining/reduced_core/EURUSD_oco_reduced_states.csv

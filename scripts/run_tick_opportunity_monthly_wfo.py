@@ -125,7 +125,13 @@ def _select_candidate_universe(
     x = x[x["symbol"].astype(str).str.upper() == str(symbol).upper()].copy()
     x["train_count"] = _safe_numeric(x["train_count"]).fillna(0.0)
     x["mean_gross_pips_train"] = _safe_numeric(x["mean_gross_pips_train"])
-    x = x[(x["train_count"] >= float(min_train_count)) & (x["mean_gross_pips_train"] > 0.0)].copy()
+    # Exclude families removed for look-ahead bias (stale CSVs may still contain them)
+    if "family" in x.columns:
+        x = x[x["family"].astype(str) != "oco_first_touch_clean"].copy()
+    # CatBoost can surface profitable months within near-zero gross regimes; the
+    # previous > 0.0 gate was calibrated on look-ahead-biased data. Use > -0.2
+    # to pass regimes that outperform the broad market (~-0.3 pips) materially.
+    x = x[(x["train_count"] >= float(min_train_count)) & (x["mean_gross_pips_train"] > -0.2)].copy()
     x = x.sort_values(
         ["train_count", "mean_gross_pips_train"], ascending=[False, False]
     ).reset_index(drop=True)
