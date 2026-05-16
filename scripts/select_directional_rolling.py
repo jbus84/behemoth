@@ -176,7 +176,7 @@ def _write_no_trade_outputs(
 
 def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     symbol = str(cfg["symbol"]).upper().strip()
-    family_keep = str(cfg.get("family_keep", "")).strip()
+    family_keep = {f.strip() for f in str(cfg.get("family_keep", "")).split(",") if f.strip()}
     horizon_keep = set(_parse_ints(str(cfg["horizon_keep"])))
     q = float(cfg["locked_quantile"])
     state_train_months = int(cfg["state_train_months"])
@@ -260,7 +260,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         & (c["horizon"].isin(list(horizon_keep)))
     ].copy()
     if family_keep:
-        c = c[c["family"].astype(str) == family_keep].copy()
+        c = c[c["family"].astype(str).isin(family_keep)].copy()
 
     if c.empty:
         if raw_candidates_empty:
@@ -269,7 +269,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             )
         raise RuntimeError(
             "candidate filter empty: candidate CSV has rows but none match "
-            f"family_keep={family_keep!r} / horizon_keep — "
+            f"family_keep={sorted(family_keep)!r} / horizon_keep — "
             "config mismatch, not a no-trade outcome"
         )
 
@@ -606,7 +606,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     report_lines.append(f"# {symbol} Directional Rolling Selection")
     report_lines.append("")
     report_lines.append("## Setup")
-    report_lines.append(f"- family_keep: `{family_keep or '(all)'}`")
+    report_lines.append(f"- family_keep: `{','.join(sorted(family_keep)) or '(all)'}`")
     report_lines.append(f"- horizon_keep: `{sorted(horizon_keep)}`")
     report_lines.append(f"- locked_quantile: `{q}`")
     report_lines.append(f"- state_train_months: `{state_train_months}`")
