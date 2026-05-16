@@ -100,8 +100,12 @@ def _parse_candidate_uid(uid: str) -> tuple[str, str, int, int, str]:
     if len(toks) != 5:
         raise ValueError(f"bad candidate_uid: {uid!r}")
     lib, symbol, bt, htxt, state_id = toks
-    horizon = int(str(htxt).lstrip("hH"))
-    return str(lib), str(symbol).upper(), int(bt), horizon, str(state_id)
+    try:
+        bar_ticks = int(bt)
+        horizon = int(str(htxt).lstrip("hH"))
+    except ValueError:
+        return "", "", -1, -1, uid
+    return str(lib), str(symbol).upper(), bar_ticks, horizon, str(state_id)
 
 
 def _select_month_q(d: pd.DataFrame, q: float) -> pd.DataFrame:
@@ -151,6 +155,12 @@ def _write_no_trade_outputs(
     monthly.to_csv(out_month, index=False)
     summary.to_csv(out_sum, index=False)
 
+    out_states = out_sched.with_name(
+        out_sched.name.replace("_state_schedule.csv", "_states.csv")
+    )
+    out_states.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(columns=NO_TRADE_STATE_COLS).to_csv(out_states, index=False)
+
     report_out = Path(str(cfg["report_out"]))
     report_out.parent.mkdir(parents=True, exist_ok=True)
     report_out.write_text(
@@ -159,7 +169,7 @@ def _write_no_trade_outputs(
         encoding="utf-8",
     )
     print(f"no-trade: {symbol} — {reason}")
-    for path in (out_sched, out_month, out_sum, report_out):
+    for path in (out_sched, out_states, out_month, out_sum, report_out):
         print(f"wrote: {path}")
     return schedule, monthly, summary
 
@@ -185,7 +195,8 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         c = pd.DataFrame()
     try:
         p = pd.read_parquet(str(cfg["pred_path"])).copy()
-    except (FileNotFoundError, OSError):
+    except Exception:
+        # Empty/malformed parquet from upstream ML pipeline = no-trade condition
         p = pd.DataFrame()
     raw_candidates_empty = c.empty
     raw_predictions_empty = p.empty
@@ -221,7 +232,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         report_out.write_text(
             f"# {symbol} Directional Rolling Selection\n\n"
             f"## Outcome: NO_TRADE\n\n"
-            f"No candidates or predictions available for selection.\n",
+            f"{_reason}\n",
             encoding="utf-8",
         )
         print(f"wrote: {report_out}")
