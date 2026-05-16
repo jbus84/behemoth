@@ -9,15 +9,15 @@ eval_start_month: "2025-01"
 eval_end_month: "2026-03"
 
 # full-cap style (materially larger than fast caps)
-min_candidate_train_count: 15000
+min_candidate_train_count: 2000
 max_candidates_per_library: 300
 max_events_per_candidate: 20000
 
 # rolling WFO in eval year
 rolling_train_months: 3
-min_month_train_rows: 5000
-min_month_test_rows: 1500
-min_candidate_rows_in_train_window: 300
+min_month_train_rows: 1000
+min_month_test_rows: 300
+min_candidate_rows_in_train_window: 100
 threshold_quantiles: "0.5,0.6,0.7,0.8,0.9,0.95"
 oco_include_no_touch: true
 threshold_mode: rolling_days
