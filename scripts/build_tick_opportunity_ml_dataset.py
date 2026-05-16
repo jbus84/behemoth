@@ -72,6 +72,16 @@ DEFAULTS: dict[str, Any] = {
 
 TIER_RANK = {"D": 0, "C": 1, "B": 2, "A": 3}
 EXPECTED_CANDIDATE_SCHEMA_VERSION = str(MINING_CANDIDATE_SCHEMA_VERSION)
+
+# Phase 1: microstructure columns preserved for diagnostics; not consumed by model
+_MICROSTRUCTURE_DIAGNOSTIC_COLS = [
+    "tick_burst_score",
+    "quote_revision_rate_z",
+    "directional_persistence_8",
+    "signed_flow_24",
+    "vol_cluster_score",
+    "session_marker",
+]
 EXPECTED_SELECTION_PASS_BASIS = str(MINING_SELECTION_PASS_BASIS)
 EXPECTED_QUALITY_TIER_BASIS = str(MINING_QUALITY_TIER_BASIS)
 REQUIRED_CANDIDATE_COLUMNS = {
@@ -270,7 +280,7 @@ def _build_directional_events(
 ) -> pd.DataFrame:
     if df.empty or cands.empty:
         return pd.DataFrame()
-    features = _feature_cols(df)
+    features = _feature_cols(df) + [c for c in _MICROSTRUCTURE_DIAGNOSTIC_COLS if c in df.columns]
     regime_map = {name: np.asarray(mask, dtype=bool) for name, mask in _regime_masks(df, q_fit)}
     fam_map = {
         name: (np.asarray(mask, dtype=bool), np.asarray(side, dtype=np.int8))
@@ -486,7 +496,7 @@ def _build_oco_events(
     if df.empty or cands.empty:
         return pd.DataFrame()
     regimes = {name: np.asarray(mask, dtype=bool) for name, mask in _regime_masks(df, q_fit)}
-    features = _feature_cols(df)
+    features = _feature_cols(df) + [c for c in _MICROSTRUCTURE_DIAGNOSTIC_COLS if c in df.columns]
     ts = pd.to_datetime(df["close_ts"], utc=True, errors="coerce")
     pip = float(_pip_size(symbol))
 
