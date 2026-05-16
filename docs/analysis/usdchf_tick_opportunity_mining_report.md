@@ -2,7 +2,7 @@
 
 ## Setup
 - symbol: `USDCHF`
-- bar_ticks_grid: `100,1000,2000`
+- bar_ticks_grid: `100,1000,2000,5000,10000`
 - horizons: `1,2,3,4,5,6`
 - train_years: `2022,2023,2024`
 - test_year: `2025`
@@ -34,31 +34,31 @@
 |         100 |         6 | shock_revert | shock_revert__high_intensity  | C              |                 52860.6 |              0.0460151 |                      0.1 |          4.44835 |              0.502164 | True             |
 
 ## OCO Top
-|   bar_ticks |   horizon | family          | state_id                            | quality_tier   |   annualized_test_fills |   mean_gross_pips_test |   median_gross_pips_test |   gross_std_test |   hit_rate_gross_test | selection_pass   |
-|------------:|----------:|:----------------|:------------------------------------|:---------------|------------------------:|-----------------------:|-------------------------:|-----------------:|----------------------:|:-----------------|
-|         100 |         6 | oco_first_touch | oco_first_touch__all__k0            | D              |                  175160 |               -1.15842 |                     -1.2 |          4.31463 |              0.370911 | False            |
-|         100 |         6 | oco_first_touch | oco_first_touch__high_intensity__k0 | D              |                  175160 |               -1.15842 |                     -1.2 |          4.31463 |              0.370911 | False            |
-|         100 |         5 | oco_first_touch | oco_first_touch__all__k0            | D              |                  175107 |               -1.16507 |                     -1.2 |          3.97088 |              0.360755 | False            |
-|         100 |         5 | oco_first_touch | oco_first_touch__high_intensity__k0 | D              |                  175107 |               -1.16507 |                     -1.2 |          3.97088 |              0.360755 | False            |
-|         100 |         4 | oco_first_touch | oco_first_touch__all__k0            | D              |                  175021 |               -1.15653 |                     -1.2 |          3.58586 |              0.349019 | False            |
-|         100 |         4 | oco_first_touch | oco_first_touch__high_intensity__k0 | D              |                  175021 |               -1.15653 |                     -1.2 |          3.58586 |              0.349019 | False            |
-|         100 |         3 | oco_first_touch | oco_first_touch__all__k0            | D              |                  174841 |               -1.15842 |                     -1.1 |          3.16598 |              0.331349 | False            |
-|         100 |         3 | oco_first_touch | oco_first_touch__high_intensity__k0 | D              |                  174841 |               -1.15842 |                     -1.1 |          3.16598 |              0.331349 | False            |
-|         100 |         2 | oco_first_touch | oco_first_touch__all__k0            | D              |                  174418 |               -1.14519 |                     -1.1 |          2.66986 |              0.303974 | False            |
-|         100 |         2 | oco_first_touch | oco_first_touch__high_intensity__k0 | D              |                  174418 |               -1.14519 |                     -1.1 |          2.66986 |              0.303974 | False            |
-|         100 |         6 | oco_first_touch | oco_first_touch__all__k1            | D              |                  173673 |               -1.14364 |                     -1.2 |          4.33823 |              0.374357 | False            |
-|         100 |         6 | oco_first_touch | oco_first_touch__high_intensity__k1 | D              |                  173673 |               -1.14364 |                     -1.2 |          4.33823 |              0.374357 | False            |
-|         100 |         5 | oco_first_touch | oco_first_touch__all__k1            | D              |                  173280 |               -1.14316 |                     -1.1 |          3.99699 |              0.3656   | False            |
-|         100 |         5 | oco_first_touch | oco_first_touch__high_intensity__k1 | D              |                  173280 |               -1.14316 |                     -1.1 |          3.99699 |              0.3656   | False            |
-|         100 |         1 | oco_first_touch | oco_first_touch__all__k0            | D              |                  172684 |               -1.1422  |                     -1   |          2.05622 |              0.244299 | False            |
-|         100 |         1 | oco_first_touch | oco_first_touch__high_intensity__k0 | D              |                  172684 |               -1.1422  |                     -1   |          2.05622 |              0.244299 | False            |
-|         100 |         4 | oco_first_touch | oco_first_touch__all__k1            | D              |                  172569 |               -1.13906 |                     -1.1 |          3.61816 |              0.354042 | False            |
-|         100 |         4 | oco_first_touch | oco_first_touch__high_intensity__k1 | D              |                  172569 |               -1.13906 |                     -1.1 |          3.61816 |              0.354042 | False            |
-|         100 |         3 | oco_first_touch | oco_first_touch__all__k1            | D              |                  171204 |               -1.14093 |                     -1.1 |          3.19658 |              0.336987 | False            |
-|         100 |         3 | oco_first_touch | oco_first_touch__high_intensity__k1 | D              |                  171204 |               -1.14093 |                     -1.1 |          3.19658 |              0.336987 | False            |
+|   bar_ticks |   horizon | family          | state_id                                               | quality_tier   |   annualized_test_fills |   mean_gross_pips_test |   median_gross_pips_test |   gross_std_test |   hit_rate_gross_test | selection_pass   |
+|------------:|----------:|:----------------|:-------------------------------------------------------|:---------------|------------------------:|-----------------------:|-------------------------:|-----------------:|----------------------:|:-----------------|
+|       10000 |         4 | oco_first_touch | oco_first_touch__low_cost_q50__k1                      | C              |                1235.33  |              0.533933  |                     1.4  |          33.5164 |              0.524121 | True             |
+|       10000 |         4 | oco_first_touch | oco_first_touch__low_cost_q50__k2                      | C              |                1235.33  |              0.193949  |                     1.3  |          33.5382 |              0.524939 | True             |
+|       10000 |         4 | oco_first_touch | oco_first_touch__low_cost_q30__k1                      | C              |                1225.23  |              0.477246  |                     1.2  |          33.5404 |              0.523495 | True             |
+|       10000 |         4 | oco_first_touch | oco_first_touch__low_cost_q30__k2                      | C              |                1225.23  |              0.0178071 |                     1.2  |          33.566  |              0.522671 | True             |
+|       10000 |         4 | oco_first_touch | oco_first_touch__low_cost_q30__k0                      | C              |                1225.23  |             -0.514427  |                     0.9  |          33.5598 |              0.515251 | True             |
+|        5000 |         4 | oco_first_touch | oco_first_touch__low_cost_q30_and_high_abs_vel_q70__k3 | C              |                 697.113 |             -0.652168  |                    -1.6  |          22.4259 |              0.465318 | True             |
+|        5000 |         6 | oco_first_touch | oco_first_touch__low_cost_q30_and_high_abs_vel_q70__k3 | C              |                 696.465 |             -1.33029   |                    -0.5  |          27.3536 |              0.484058 | True             |
+|        5000 |         5 | oco_first_touch | oco_first_touch__low_cost_q30_and_high_abs_vel_q70__k3 | C              |                 696.223 |             -0.786686  |                    -1.5  |          24.9188 |              0.468886 | True             |
+|        5000 |         5 | oco_first_touch | oco_first_touch__low_cost_q30_and_high_abs_vel_q70__k5 | C              |                 696.223 |             -1.00984   |                    -1.5  |          24.9323 |              0.470333 | True             |
+|       10000 |         5 | oco_first_touch | oco_first_touch__high_vol_cluster__k2                  | C              |                 534.992 |              0.539238  |                    -0.1  |          39.4674 |              0.499048 | True             |
+|       10000 |         4 | oco_first_touch | oco_first_touch__high_vol_cluster__k2                  | C              |                 532.647 |              0.410247  |                     2.2  |          34.9557 |              0.533207 | True             |
+|       10000 |         4 | oco_first_touch | oco_first_touch__high_vol_cluster__k3                  | C              |                 532.647 |             -0.533207  |                     1.2  |          35.0043 |              0.514231 | True             |
+|       10000 |         6 | oco_first_touch | oco_first_touch__high_activity__k5                     | C              |                 531.535 |              1.96622   |                     0.5  |          39.5431 |              0.506718 | True             |
+|       10000 |         6 | oco_first_touch | oco_first_touch__high_activity__k1                     | C              |                 531.535 |             -0.465067  |                     0.1  |          39.5229 |              0.50096  | True             |
+|       10000 |         4 | oco_first_touch | oco_first_touch__high_activity__k2                     | C              |                 529.276 |              1.60631   |                     2.4  |          32.9933 |              0.543021 | True             |
+|       10000 |         4 | oco_first_touch | oco_first_touch__high_activity__k1                     | C              |                 529.276 |              0.470363  |                     1.4  |          33.0655 |              0.521989 | True             |
+|       10000 |         4 | oco_first_touch | oco_first_touch__high_activity__k0                     | C              |                 529.276 |              0.445124  |                     2.1  |          33.0521 |              0.533461 | True             |
+|       10000 |         5 | oco_first_touch | oco_first_touch__high_activity__k2                     | C              |                 528.538 |              1.32854   |                     0.65 |          36.3926 |              0.517241 | True             |
+|       10000 |         5 | oco_first_touch | oco_first_touch__high_activity__k1                     | C              |                 528.538 |              0.377778  |                     0.05 |          36.451  |              0.5      | True             |
+|       10000 |         5 | oco_first_touch | oco_first_touch__high_activity__k0                     | C              |                 528.538 |             -0.172031  |                     0.3  |          36.4681 |              0.503831 | True             |
 
 ## Selection Summary
 | library     |   rows_total |   rows_pass |   pass_rate |   mean_annualized_fills_all |   mean_annualized_fills_pass |   mean_gross_all |   mean_gross_pass |   tier_a_rows |   tier_b_rows |   tier_c_rows |
 |:------------|-------------:|------------:|------------:|----------------------------:|-----------------------------:|-----------------:|------------------:|--------------:|--------------:|--------------:|
-| directional |         2988 |         389 |    0.130187 |                     7736.62 |                      24386.1 |        0.0881139 |         0.0425829 |             0 |            22 |           367 |
-| oco         |         2142 |           0 |    0        |                    13256.4  |                        nan   |       -1.3057    |       nan         |             0 |             0 |             0 |
+| directional |         4968 |         389 |  0.0783011  |                     4780.33 |                    24386.1   |        0.0954871 |         0.0425829 |             0 |            22 |           367 |
+| oco         |         3570 |          30 |  0.00840336 |                     8330.61 |                      649.127 |       -0.999814  |         0.156359  |             0 |             0 |            30 |

@@ -181,11 +181,11 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
     try:
         c = pd.read_csv(str(cfg["candidate_csv"])).copy()
-    except pd.errors.EmptyDataError:
+    except (pd.errors.EmptyDataError, FileNotFoundError, OSError):
         c = pd.DataFrame()
     try:
         p = pd.read_parquet(str(cfg["pred_path"])).copy()
-    except Exception:
+    except (FileNotFoundError, OSError):
         p = pd.DataFrame()
     raw_candidates_empty = c.empty
     raw_predictions_empty = p.empty
