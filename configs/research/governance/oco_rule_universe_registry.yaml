@@ -8,7 +8,7 @@ symbols:
   - AUDUSD
   - USDCAD
 allowed_families:
-  - oco_first_touch_clean
+  - oco_first_touch
 allowed_barrier_keep:
   - 2
   - 3
@@ -29,4 +29,4 @@ change_control:
   rationale: >
     Freeze rule-family universe used by reduced-core and governance lock so
     research selection cannot silently expand.
-hash_sha256: "0034c98fdc9dfe18f2dcae5bedd05b3dc1b526103f3c9b4e6c8ff11fb9b46c63"
+hash_sha256: "0511e4c57404096a89d4499784e972bf62ca3e2845f629e60cb36417be0e9912"

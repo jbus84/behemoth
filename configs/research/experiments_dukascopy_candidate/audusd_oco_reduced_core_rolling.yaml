@@ -3,7 +3,7 @@ symbol: AUDUSD
 candidate_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/AUDUSD_oco_candidates.csv
 pred_path: data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap/AUDUSD_oco_monthly_predictions.parquet
 
-family_keep: oco_first_touch_clean
+family_keep: oco_first_touch
 barrier_keep: "2,3"
 horizon_keep: "5,6"
 locked_quantile: 0.9
