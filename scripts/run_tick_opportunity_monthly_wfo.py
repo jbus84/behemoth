@@ -156,7 +156,11 @@ def _build_events_for_library(
     c_path = candidate_dir / f"{symbol}_{lib}_candidates.csv"
     if not c_path.exists():
         return pd.DataFrame()
-    c = pd.read_csv(c_path)
+    try:
+        c = pd.read_csv(c_path)
+    except pd.errors.EmptyDataError:
+        # Empty CSV from upstream mining stage (no-trade condition)
+        return pd.DataFrame()
     c = _select_candidate_universe(
         c,
         symbol=symbol,
@@ -708,6 +712,35 @@ def _write_report(
     report_out.write_text("\n".join(lines), encoding="utf-8")
 
 
+def _write_library_outputs(
+    *,
+    out_dir: Path,
+    symbol: str,
+    lib: str,
+    m: pd.DataFrame,
+    t: pd.DataFrame,
+    p: pd.DataFrame,
+    imp: pd.DataFrame,
+) -> list[Path]:
+    """Write the four per-library monthly artifacts, always.
+
+    Empty frames are written too: a missing artifact must mean the stage did
+    not run, never that it ran and found nothing. Writing an empty file also
+    overwrites any stale artifact from a prior run.
+    """
+    m_out = out_dir / f"{symbol}_{lib}_monthly_metrics.csv"
+    t_out = out_dir / f"{symbol}_{lib}_monthly_thresholds.csv"
+    p_out = out_dir / f"{symbol}_{lib}_monthly_predictions.parquet"
+    imp_out = out_dir / f"{symbol}_{lib}_monthly_importance.csv"
+    m.to_csv(m_out, index=False)
+    t.to_csv(t_out, index=False)
+    p.to_parquet(p_out, index=False)
+    imp.to_csv(imp_out, index=False)
+    for path in (m_out, t_out, p_out, imp_out):
+        print(f"wrote: {path}")
+    return [m_out, t_out, p_out, imp_out]
+
+
 def main() -> None:
     p = argparse.ArgumentParser(
         description="Run strict monthly WFO (3M->1M) on tick opportunity events"
@@ -847,25 +880,16 @@ def main() -> None:
             if cfg.get("model_export_dir")
             else None,
         )
+        _write_library_outputs(
+            out_dir=out_dir, symbol=symbol, lib=lib, m=m, t=t, p=p, imp=imp
+        )
         if not m.empty:
-            m_out = out_dir / f"{symbol}_{lib}_monthly_metrics.csv"
-            m.to_csv(m_out, index=False)
-            print(f"wrote: {m_out}")
             all_metrics.append(m)
         if not t.empty:
-            t_out = out_dir / f"{symbol}_{lib}_monthly_thresholds.csv"
-            t.to_csv(t_out, index=False)
-            print(f"wrote: {t_out}")
             all_thresholds.append(t)
         if not p.empty:
-            p_out = out_dir / f"{symbol}_{lib}_monthly_predictions.parquet"
-            p.to_parquet(p_out, index=False)
-            print(f"wrote: {p_out}")
             all_preds.append(p)
         if not imp.empty:
-            imp_out = out_dir / f"{symbol}_{lib}_monthly_importance.csv"
-            imp.to_csv(imp_out, index=False)
-            print(f"wrote: {imp_out}")
             all_importance.append(imp)
 
     metrics = pd.concat(all_metrics, ignore_index=True) if all_metrics else pd.DataFrame()

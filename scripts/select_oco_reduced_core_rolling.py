@@ -277,6 +277,67 @@ def _prepare_execution_frame(
     return out, meta
 
 
+NO_TRADE_STATE_COLS = [
+    "symbol", "bar_ticks", "horizon", "state_id", "family",
+    "barrier_pips", "regime_desc",
+]
+
+
+def _write_no_trade_outputs(
+    cfg: dict[str, Any], symbol: str, reason: str
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Write schema-correct empty Stage 2f outputs for a no-trade symbol.
+
+    A no-trade symbol has no deployable states. Downstream freeze reads the
+    states CSV through _state_universe, which tolerates an empty frame; the
+    summary carries a single status=NO_TRADE row so retrain-all can classify
+    the run without re-deriving it.
+    """
+    schedule = pd.DataFrame(columns=NO_TRADE_STATE_COLS)
+    states = pd.DataFrame(columns=NO_TRADE_STATE_COLS)
+    monthly = pd.DataFrame()
+    summary = pd.DataFrame([{"symbol": symbol, "status": "NO_TRADE", "reason": reason}])
+    churn = pd.DataFrame()
+
+    out_sched = Path(str(cfg["out_state_schedule_csv"]))
+    out_state_raw = str(cfg.get("out_state_csv", "")).strip()
+    if out_state_raw:
+        out_state = Path(out_state_raw)
+    elif out_sched.name.endswith("_state_schedule.csv"):
+        out_state = out_sched.with_name(
+            out_sched.name.replace("_state_schedule.csv", "_states.csv")
+        )
+    else:
+        out_state = out_sched.with_name(f"{symbol}_oco_reduced_states.csv")
+    out_month = Path(str(cfg["out_monthly_csv"]))
+    out_sum = Path(str(cfg["out_summary_csv"]))
+    out_churn_raw = str(cfg.get("out_state_churn_csv", "")).strip()
+    out_churn = (
+        Path(out_churn_raw)
+        if out_churn_raw
+        else out_month.with_name(out_month.name.replace("_monthly.csv", "_state_churn.csv"))
+    )
+    for path in (out_sched, out_state, out_month, out_sum, out_churn):
+        path.parent.mkdir(parents=True, exist_ok=True)
+    schedule.to_csv(out_sched, index=False)
+    states.to_csv(out_state, index=False)
+    monthly.to_csv(out_month, index=False)
+    summary.to_csv(out_sum, index=False)
+    churn.to_csv(out_churn, index=False)
+
+    report_out = Path(str(cfg["report_out"]))
+    report_out.parent.mkdir(parents=True, exist_ok=True)
+    report_out.write_text(
+        f"# {symbol} OCO Reduced-Core Rolling Selection\n\n"
+        f"## Outcome: NO_TRADE\n\n{reason}\n",
+        encoding="utf-8",
+    )
+    print(f"no-trade: {symbol} — {reason}")
+    for path in (out_sched, out_state, out_month, out_sum, out_churn, report_out):
+        print(f"wrote: {path}")
+    return schedule, monthly, summary
+
+
 def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     symbol = str(cfg["symbol"]).upper().strip()
     family_keep = str(cfg["family_keep"]).strip()
@@ -307,8 +368,74 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     capacity_floor_monthly = float(cfg["capacity_floor_monthly"])
     capacity_floor_annual = float(cfg["capacity_floor_annual"])
 
-    c = pd.read_csv(str(cfg["candidate_csv"])).copy()
-    p = pd.read_parquet(str(cfg["pred_path"])).copy()
+    try:
+        c = pd.read_csv(str(cfg["candidate_csv"])).copy()
+    except pd.errors.EmptyDataError:
+        # Empty CSV from upstream mining (no-trade condition)
+        c = pd.DataFrame()
+    try:
+        p = pd.read_parquet(str(cfg["pred_path"])).copy()
+    except Exception:
+        # Empty parquet from upstream ML pipeline (no-trade condition)
+        p = pd.DataFrame()
+    raw_candidates_empty = c.empty
+    raw_predictions_empty = p.empty
+
+    # Gracefully handle no-trade condition (empty inputs)
+    if raw_candidates_empty and raw_predictions_empty:
+        # Write empty outputs to allow downstream stages to continue
+        out_sched = Path(str(cfg["out_state_schedule_csv"]))
+        out_month = Path(str(cfg["out_monthly_csv"]))
+        out_sum = Path(str(cfg["out_summary_csv"]))
+
+        out_state_raw = str(cfg.get("out_state_csv", "")).strip()
+        if out_state_raw:
+            out_state = Path(out_state_raw)
+        elif out_sched.name.endswith("_state_schedule.csv"):
+            out_state = out_sched.with_name(
+                out_sched.name.replace("_state_schedule.csv", "_states.csv")
+            )
+        else:
+            out_state = out_sched.with_name(f"{symbol}_oco_reduced_states.csv")
+
+        out_churn_raw = str(cfg.get("out_state_churn_csv", "")).strip()
+        out_churn = (
+            Path(out_churn_raw)
+            if out_churn_raw
+            else out_month.with_name(out_month.name.replace("_monthly.csv", "_state_churn.csv"))
+        )
+
+        for path in (out_sched, out_state, out_month, out_sum, out_churn):
+            path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Write empty dataframes with proper schema
+        schedule_empty = pd.DataFrame(columns=["symbol", "state_id"])
+        monthly_empty = pd.DataFrame()
+        summary_empty = pd.DataFrame([{"symbol": symbol, "status": "NO_TRADE", "reason": "No candidates or predictions available"}])
+
+        schedule_empty.to_csv(out_sched, index=False)
+        pd.DataFrame().to_csv(out_state, index=False)
+        monthly_empty.to_csv(out_month, index=False)
+        summary_empty.to_csv(out_sum, index=False)
+        pd.DataFrame().to_csv(out_churn, index=False)
+
+        print(f"wrote: {out_sched}")
+        print(f"wrote: {out_state}")
+        print(f"wrote: {out_month}")
+        print(f"wrote: {out_sum}")
+        print(f"wrote: {out_churn}")
+
+        report_out = Path(str(cfg["report_out"]))
+        report_out.parent.mkdir(parents=True, exist_ok=True)
+        report_out.write_text(
+            f"# {symbol} OCO Reduced-Core Rolling Selection\n\n"
+            f"## Outcome: NO_TRADE\n\n"
+            f"No candidates or predictions available for selection.\n",
+            encoding="utf-8",
+        )
+        print(f"wrote: {report_out}")
+        return schedule_empty, monthly_empty, summary_empty
+
     p = p.dropna(subset=["candidate_uid", "pred_prob", "target_gross_pips", "test_month"]).copy()
     p["pred_prob"] = pd.to_numeric(p["pred_prob"], errors="coerce")
     p["target_gross_pips"] = pd.to_numeric(p["target_gross_pips"], errors="coerce")
@@ -336,18 +463,37 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         & (c["horizon"].isin(list(horizon_keep)))
     ].copy()
     if c.empty:
-        raise RuntimeError("candidate filter empty")
+        if raw_candidates_empty:
+            return _write_no_trade_outputs(
+                cfg, symbol, "candidate CSV is empty — nothing mined"
+            )
+        raise RuntimeError(
+            "candidate filter empty: candidate CSV has rows but none match "
+            f"family_keep={family_keep!r} / barrier_keep / horizon_keep — "
+            "config mismatch, not a no-trade outcome"
+        )
 
     key_cols = ["symbol", "bar_ticks", "horizon", "state_id"]
     meta_cols = key_cols + ["family", "regime_desc", "barrier_pips"]
     c_meta = c[meta_cols].drop_duplicates()
     p = p.merge(c_meta, on=key_cols, how="inner")
     if p.empty:
-        raise RuntimeError("no predictions left after candidate metadata merge")
+        if raw_predictions_empty:
+            return _write_no_trade_outputs(
+                cfg, symbol, "predictions parquet is empty — WFO produced no rows"
+            )
+        raise RuntimeError(
+            "no predictions left after candidate metadata merge: predictions "
+            "parquet has rows but none join the candidate universe — stale or "
+            "mismatched predictions, not a no-trade outcome"
+        )
 
     selected_all = _select_events(p, q=q, mode=selection_mode)
     if selected_all.empty:
-        raise RuntimeError("selection empty (selection_mode/quantile)")
+        return _write_no_trade_outputs(
+            cfg, symbol,
+            "no candidate cleared the selection quantile — true negative",
+        )
     selected_all["test_month"] = selected_all["test_month"].astype(str)
     selected_all["state_key"] = (
         selected_all["state_id"].astype(str)

@@ -1,6 +1,6 @@
 # Analysis Catalog
 
-- generated_at_utc: `2026-04-12T17:19:19Z`
+- generated_at_utc: `2026-05-16T11:08:16Z`
 - manifest_csv: `analysis/catalog_manifest.csv`
 - gaps_report: `analysis/catalog_gaps_report.md`
 
@@ -67,6 +67,7 @@ Use `Archive Reports` for documents already moved out of the live analysis surfa
 - [Gbpusd Oco Monthly Wfo Robustness Fullcap Report](gbpusd_oco_monthly_wfo_robustness_fullcap_report.md)
 - [Gbpusd Oco Reduced Core Rolling Report](gbpusd_oco_reduced_core_rolling_report.md)
 - [Gbpusd Oco Tick Exact Rolling Report](gbpusd_oco_tick_exact_rolling_report.md)
+- [Gbpusd Oco Tick Exact Shortlist Report](gbpusd_oco_tick_exact_shortlist_report.md)
 - [Gbpusd Tick Opportunity Mining Report](gbpusd_tick_opportunity_mining_report.md)
 - [Gbpusd Tick Opportunity Ml Ready Report](gbpusd_tick_opportunity_ml_ready_report.md)
 - [Gbpusd Tick Opportunity Monthly Wfo Oco Fullcap Report](gbpusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md)
@@ -76,6 +77,7 @@ Use `Archive Reports` for documents already moved out of the live analysis surfa
 - [Usdjpy Oco Monthly Wfo Robustness Fullcap Report](usdjpy_oco_monthly_wfo_robustness_fullcap_report.md)
 - [Usdjpy Oco Reduced Core Rolling Report](usdjpy_oco_reduced_core_rolling_report.md)
 - [Usdjpy Oco Tick Exact Rolling Report](usdjpy_oco_tick_exact_rolling_report.md)
+- [Usdjpy Oco Tick Exact Shortlist Report](usdjpy_oco_tick_exact_shortlist_report.md)
 - [Usdjpy Tick Opportunity Mining Report](usdjpy_tick_opportunity_mining_report.md)
 - [Usdjpy Tick Opportunity Ml Ready Report](usdjpy_tick_opportunity_ml_ready_report.md)
 - [Usdjpy Tick Opportunity Monthly Wfo Oco Fullcap Report](usdjpy_tick_opportunity_monthly_wfo_oco_fullcap_report.md)
@@ -85,6 +87,7 @@ Use `Archive Reports` for documents already moved out of the live analysis surfa
 - [Usdchf Oco Reduced Core Rolling Report](usdchf_oco_reduced_core_rolling_report.md)
 - [Usdchf Oco Stop Limit Tickfill Report](usdchf_oco_stop_limit_tickfill_report.md)
 - [Usdchf Oco Tick Exact Rolling Report](usdchf_oco_tick_exact_rolling_report.md)
+- [Usdchf Oco Tick Exact Shortlist Report](usdchf_oco_tick_exact_shortlist_report.md)
 - [Usdchf Tick Opportunity Mining Report](usdchf_tick_opportunity_mining_report.md)
 - [Usdchf Tick Opportunity Ml Ready Report](usdchf_tick_opportunity_ml_ready_report.md)
 - [Usdchf Tick Opportunity Monthly Wfo Oco Fullcap Report](usdchf_tick_opportunity_monthly_wfo_oco_fullcap_report.md)
@@ -94,6 +97,7 @@ Use `Archive Reports` for documents already moved out of the live analysis surfa
 - [Audusd Oco Reduced Core Rolling Report](audusd_oco_reduced_core_rolling_report.md)
 - [Audusd Oco Stop Limit Tickfill Report](audusd_oco_stop_limit_tickfill_report.md)
 - [Audusd Oco Tick Exact Rolling Report](audusd_oco_tick_exact_rolling_report.md)
+- [Audusd Oco Tick Exact Shortlist Report](audusd_oco_tick_exact_shortlist_report.md)
 - [Audusd Tick Opportunity Mining Report](audusd_tick_opportunity_mining_report.md)
 - [Audusd Tick Opportunity Ml Ready Report](audusd_tick_opportunity_ml_ready_report.md)
 - [Audusd Tick Opportunity Monthly Wfo Oco Fullcap Report](audusd_tick_opportunity_monthly_wfo_oco_fullcap_report.md)
@@ -102,6 +106,7 @@ Use `Archive Reports` for documents already moved out of the live analysis surfa
 - [Usdcad Oco Monthly Wfo Robustness Fullcap Report](usdcad_oco_monthly_wfo_robustness_fullcap_report.md)
 - [Usdcad Oco Reduced Core Rolling Report](usdcad_oco_reduced_core_rolling_report.md)
 - [Usdcad Oco Tick Exact Rolling Report](usdcad_oco_tick_exact_rolling_report.md)
+- [Usdcad Oco Tick Exact Shortlist Report](usdcad_oco_tick_exact_shortlist_report.md)
 - [Usdcad Tick Opportunity Mining Report](usdcad_tick_opportunity_mining_report.md)
 - [Usdcad Tick Opportunity Ml Ready Report](usdcad_tick_opportunity_ml_ready_report.md)
 - [Usdcad Tick Opportunity Monthly Wfo Oco Fullcap Report](usdcad_tick_opportunity_monthly_wfo_oco_fullcap_report.md)
@@ -166,7 +171,7 @@ Use `Archive Reports` for documents already moved out of the live analysis surfa
 |          3 |             20 |
 |          4 |              8 |
 |          5 |              7 |
-|          6 |              7 |
+|          6 |             12 |
 |          7 |              1 |
 |          8 |              8 |
 |          9 |              3 |
@@ -177,4 +182,5 @@ Use `Archive Reports` for documents already moved out of the live analysis surfa
 |         14 |              2 |
 
 ## Unclassified Reports
-_empty_
+- [2026 05 14 Live Underperformance Resolution](2026-05-14-live-underperformance-resolution.md)
+- [Live Demo Vs Offline Comparison 20260417](live_demo_vs_offline_comparison_20260417.md)

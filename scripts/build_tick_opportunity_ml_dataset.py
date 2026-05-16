@@ -206,7 +206,11 @@ def _validate_candidate_schema(d: pd.DataFrame, *, path: Path) -> pd.DataFrame:
 def _load_candidate_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame()
-    return _validate_candidate_schema(pd.read_csv(path), path=path)
+    try:
+        return _validate_candidate_schema(pd.read_csv(path), path=path)
+    except pd.errors.EmptyDataError:
+        # Empty CSV (no columns) from upstream mining stage (no-trade condition)
+        return pd.DataFrame()
 
 
 def _ensure_quality_cols(d: pd.DataFrame) -> pd.DataFrame:
