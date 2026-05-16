@@ -15,6 +15,8 @@ from pathlib import Path
 
 import polars as pl
 
+from src.behemoth.core.features import pip_size
+
 try:
     from scripts.canonical_tick_feed import DEFAULT_CANONICAL_ROOT
 except ModuleNotFoundError:
@@ -154,12 +156,108 @@ def _empty_bar_frame(symbol: str) -> pl.DataFrame:
             "hl_first": pl.Int8,
             "hl_pos_delta_tick": pl.Int32,
             "hl_pos_frac": pl.Float64,
+            "bar_return_sign": pl.Int8,
+            "tick_burst": pl.Int64,
+            "quote_revisions": pl.Int64,
+            "intra_bar_momentum": pl.Float64,
+        }
+    )
+
+
+def _build_bar(
+    ticks: pl.DataFrame,
+    bar_ticks: int,
+    prev_close_bid: float | None = None,
+    symbol: str = "EURUSD",
+) -> pl.DataFrame:
+    """Build a single tick bar from a small tick frame (testing helper)."""
+    if ticks.height == 0:
+        return _empty_bar_frame(symbol)
+
+    price_col = "price" if "price" in ticks.columns else "bid"
+    prices = ticks[price_col].to_list()
+
+    asks = ticks["ask"].to_list() if "ask" in ticks.columns else prices[:]
+
+    if "spread" in ticks.columns:
+        spreads = ticks["spread"].to_list()
+    else:
+        spreads = [float(a) - float(p) for a, p in zip(asks, prices)]
+
+    open_price = float(prices[0])
+    close_price = float(prices[-1])
+    high_price = max(float(p) for p in prices)
+    low_price = min(float(p) for p in prices)
+    spread_mean = sum(spreads) / len(spreads)
+
+    high_pos = prices.index(high_price)
+    low_pos = prices.index(low_price)
+    if high_pos < low_pos:
+        hl_first = 1
+    elif high_pos > low_pos:
+        hl_first = -1
+    else:
+        hl_first = 0
+
+    hl_pos_delta_tick = low_pos - high_pos
+    hl_pos_frac = hl_pos_delta_tick / max(1, bar_ticks - 1)
+
+    if prev_close_bid is not None:
+        if close_price > prev_close_bid:
+            bar_return_sign = 1
+        elif close_price < prev_close_bid:
+            bar_return_sign = -1
+        else:
+            bar_return_sign = 0
+    else:
+        bar_return_sign = 0
+
+    tick_burst = bar_ticks
+
+    if len(prices) >= 2:
+        bid_changes = sum(
+            1 for i in range(1, len(prices)) if float(prices[i]) != float(prices[i - 1])
+        )
+        quote_revisions = bid_changes
+    else:
+        quote_revisions = 0
+
+    pip = pip_size(symbol)
+    range_val = high_price - low_price
+    intra_bar_momentum = hl_first * range_val / pip
+
+    return pl.DataFrame(
+        {
+            "timestamp": [ticks["timestamp"][0]],
+            "close_ts": [ticks["timestamp"][-1]],
+            "open_bid": [open_price],
+            "high_bid": [high_price],
+            "low_bid": [low_price],
+            "close_bid": [close_price],
+            "high_ask": [max(float(a) for a in asks)],
+            "close_ask": [float(asks[-1])],
+            "spread": [spread_mean],
+            "tick_volume": [bar_ticks],
+            "high_pos_tick": [high_pos],
+            "low_pos_tick": [low_pos],
+            "hl_first": [hl_first],
+            "hl_pos_delta_tick": [hl_pos_delta_tick],
+            "hl_pos_frac": [hl_pos_frac],
+            "bar_return_sign": [bar_return_sign],
+            "tick_burst": [tick_burst],
+            "quote_revisions": [quote_revisions],
+            "intra_bar_momentum": [intra_bar_momentum],
         }
     )
 
 
 def _bars_from_ticks(
-    df: pl.DataFrame, *, symbol: str, bar_ticks: int, start_tick_index: int
+    df: pl.DataFrame,
+    *,
+    symbol: str,
+    bar_ticks: int,
+    start_tick_index: int,
+    prev_close_bid: float | None = None,
 ) -> tuple[pl.DataFrame, int, pl.DataFrame]:
     """Build fixed-size tick bars from a tick frame.
 
@@ -188,6 +286,18 @@ def _bars_from_ticks(
         pl.col("price").min().over("bar_id").alias("_bar_low"),
     )
 
+    first_sign_expr = (
+        pl.when(pl.col("close_bid") > prev_close_bid)
+        .then(pl.lit(1, dtype=pl.Int8))
+        .when(pl.col("close_bid") < prev_close_bid)
+        .then(pl.lit(-1, dtype=pl.Int8))
+        .otherwise(pl.lit(0, dtype=pl.Int8))
+        if prev_close_bid is not None
+        else pl.lit(0, dtype=pl.Int8)
+    )
+
+    pip = pip_size(symbol)
+
     bars = (
         complete.group_by("bar_id", maintain_order=True)
         .agg(
@@ -201,6 +311,11 @@ def _bars_from_ticks(
             pl.col("ask").last().alias("close_ask"),
             pl.col("spread").mean().alias("spread"),
             pl.len().cast(pl.Int64).alias("tick_volume"),
+            pl.len().cast(pl.Int64).alias("tick_burst"),
+            (pl.col("price").diff().fill_null(0) != 0)
+            .cast(pl.Int64)
+            .sum()
+            .alias("quote_revisions"),
             pl.when(pl.col("price") == pl.col("_bar_high"))
             .then(pl.col("bar_pos_tick"))
             .otherwise(None)
@@ -229,6 +344,19 @@ def _bars_from_ticks(
                 / float(max(1, int(bar_ticks) - 1))
             ).alias("hl_pos_frac"),
         )
+        .with_columns(
+            (pl.col("hl_first").cast(pl.Float64) * (pl.col("high_bid") - pl.col("low_bid")) / pip).alias(
+                "intra_bar_momentum"
+            ),
+            pl.when(pl.int_range(0, pl.len()) == 0)
+            .then(first_sign_expr)
+            .when(pl.col("close_bid") > pl.col("close_bid").shift(1))
+            .then(pl.lit(1, dtype=pl.Int8))
+            .when(pl.col("close_bid") < pl.col("close_bid").shift(1))
+            .then(pl.lit(-1, dtype=pl.Int8))
+            .otherwise(pl.lit(0, dtype=pl.Int8))
+            .alias("bar_return_sign"),
+        )
         .select(
             "timestamp",
             "close_ts",
@@ -245,6 +373,10 @@ def _bars_from_ticks(
             "hl_first",
             "hl_pos_delta_tick",
             "hl_pos_frac",
+            "bar_return_sign",
+            "tick_burst",
+            "quote_revisions",
+            "intra_bar_momentum",
         )
     )
 
@@ -287,6 +419,7 @@ def _build_base_tick_bars(
     )
     chunks: list[pl.DataFrame] = []
     tick_idx = 0
+    prev_close_bid: float | None = None
 
     for fp in files:
         part_schema = dict(pl.read_parquet_schema(str(fp)).items())
@@ -313,10 +446,15 @@ def _build_base_tick_bars(
             part = pl.concat([carry, part], how="vertical")
 
         bars, tick_idx, carry = _bars_from_ticks(
-            part, symbol=symbol, bar_ticks=base_ticks, start_tick_index=tick_idx
+            part,
+            symbol=symbol,
+            bar_ticks=base_ticks,
+            start_tick_index=tick_idx,
+            prev_close_bid=prev_close_bid,
         )
         if bars.height:
             chunks.append(bars)
+            prev_close_bid = float(bars["close_bid"][-1])
 
     if not chunks:
         return pl.DataFrame(), int(carry.height)
@@ -356,6 +494,8 @@ def _aggregate_from_base(
         )
     )
 
+    pip = pip_size(symbol)
+
     out = (
         p.group_by("agg_id", maintain_order=True)
         .agg(
@@ -369,6 +509,8 @@ def _aggregate_from_base(
             pl.col("close_ask").last().alias("close_ask"),
             pl.col("spread").mean().alias("spread"),
             pl.col("tick_volume").sum().cast(pl.Int64).alias("tick_volume"),
+            pl.col("tick_volume").sum().cast(pl.Int64).alias("tick_burst"),
+            pl.col("quote_revisions").sum().cast(pl.Int64).alias("quote_revisions"),
             pl.when(pl.col("high_bid") == pl.col("_agg_high_bid"))
             .then(pl.col("agg_child_idx") * int(base_ticks) + pl.col("high_pos_tick"))
             .otherwise(None)
@@ -397,6 +539,17 @@ def _aggregate_from_base(
                 / float(max(1, int(target_ticks) - 1))
             ).alias("hl_pos_frac"),
         )
+        .with_columns(
+            (pl.col("hl_first").cast(pl.Float64) * (pl.col("high_bid") - pl.col("low_bid")) / pip).alias(
+                "intra_bar_momentum"
+            ),
+            pl.when(pl.col("close_bid") > pl.col("close_bid").shift(1))
+            .then(pl.lit(1, dtype=pl.Int8))
+            .when(pl.col("close_bid") < pl.col("close_bid").shift(1))
+            .then(pl.lit(-1, dtype=pl.Int8))
+            .otherwise(pl.lit(0, dtype=pl.Int8))
+            .alias("bar_return_sign"),
+        )
         .select(
             "timestamp",
             "close_ts",
@@ -413,6 +566,10 @@ def _aggregate_from_base(
             "hl_first",
             "hl_pos_delta_tick",
             "hl_pos_frac",
+            "bar_return_sign",
+            "tick_burst",
+            "quote_revisions",
+            "intra_bar_momentum",
         )
     )
     return out, dropped_base_bars
