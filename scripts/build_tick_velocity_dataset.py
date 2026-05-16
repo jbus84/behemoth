@@ -381,11 +381,11 @@ def _build_symbol_dataset(
             .fillna(0)
         )
 
-    if "ret1_pips" in out.columns:
-        abs_ret = out["ret1_pips"].abs()
-        roll_abs_ret_mean = abs_ret.rolling(MICROSTRUCTURE_VOL_WINDOW, min_periods=1).mean().shift(1)
-        # When both abs_ret and rolling mean are zero, ratio is NaN → fill to 1.0 (average volatility)
-        out["vol_cluster_score"] = (abs_ret / roll_abs_ret_mean.replace(0, np.nan)).fillna(1.0)
+    # vol_cluster_score uses vel_pips_h1 (same as ret1_pips) which is always present
+    abs_ret = out["vel_pips_h1"].abs()
+    roll_abs_ret_mean = abs_ret.rolling(MICROSTRUCTURE_VOL_WINDOW, min_periods=1).mean().shift(1)
+    # When both abs_ret and rolling mean are zero, ratio is NaN → fill to 1.0 (average volatility)
+    out["vol_cluster_score"] = (abs_ret / roll_abs_ret_mean.replace(0, np.nan)).fillna(1.0)
 
     if "hour_utc" in out.columns:
         # session_marker is categorical and the only string column in the output
