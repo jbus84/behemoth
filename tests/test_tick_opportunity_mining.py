@@ -222,6 +222,7 @@ def _build_oco_semantics_frame(
     rows: int = 140,
     trigger_gap: float = 0.00025,
     step: float = 0.00025,
+    seed: int | None = None,
 ) -> pd.DataFrame:
     ts = pd.date_range("2025-01-01", periods=rows, freq="30min", tz="UTC")
     close_bid = 1.1000 + np.arange(rows) * step
@@ -229,7 +230,7 @@ def _build_oco_semantics_frame(
     high_bid = close_bid + 0.00005
     high_ask = close_ask + trigger_gap
     low_bid = close_bid - 0.00005
-    return pd.DataFrame(
+    out = pd.DataFrame(
         {
             "symbol": "EURUSD",
             "bar_ticks": 100,
@@ -257,6 +258,15 @@ def _build_oco_semantics_frame(
             "hl_pos_frac_mean_24": 1.0,
         }
     )
+    if seed is not None:
+        rng = np.random.default_rng(seed)
+        out["tick_burst_score"] = rng.normal(0.0, 1.0, size=rows)
+        out["quote_revision_rate_z"] = rng.normal(0.0, 1.0, size=rows)
+        out["directional_persistence_8"] = rng.integers(-10, 11, size=rows).astype(float)
+        out["signed_flow_24"] = rng.normal(0.0, 1.0, size=rows)
+        out["vol_cluster_score"] = rng.exponential(2.0, size=rows)
+        out["session_marker"] = rng.choice(["london", "ny", "asia"], size=rows)
+    return out
 
 
 def test_oco_precompute_candidates_uses_signal_close_ask_for_buy_trigger() -> None:
@@ -357,3 +367,45 @@ def test_precompute_labels_lookahead_field_explicitly():
     prep = _oco_precompute_candidates(frame, symbol="EURUSD", horizon=6, barrier_pips=2.0)
     assert "both_touched_lookahead" in prep
     assert "both" not in prep
+
+
+def test_mining_produces_microstructure_regime_candidates():
+    """Mining must emit candidates for microstructure regimes."""
+    from scripts.run_tick_opportunity_mining import _oco_candidates
+
+    train = _build_oco_semantics_frame(rows=4000, seed=1)
+    test = _build_oco_semantics_frame(rows=4000, seed=2)
+    # Inject microstructure columns with enough variance (fallback)
+    for col in [
+        "tick_burst_score",
+        "quote_revision_rate_z",
+        "directional_persistence_8",
+        "signed_flow_24",
+        "vol_cluster_score",
+        "session_marker",
+    ]:
+        if col not in train.columns:
+            rng = np.random.default_rng(42)
+            train[col] = rng.normal(0.0, 1.0, size=len(train))
+            test[col] = rng.normal(0.0, 1.0, size=len(test))
+
+    out = _oco_candidates(
+        train=train,
+        test=test,
+        symbol="EURUSD",
+        bar_ticks=1000,
+        horizons=[6],
+        barrier_grid_pips=[2.0],
+        min_annual_fills=50.0,
+        gross_metric="mean",
+    )
+    regimes = set(out["regime_desc"].str.split(";").str[0])
+    expected_regimes = {
+        "all",
+        "high_intensity",
+        "high_activity",
+        "persistent_flow",
+        "negative_flow",
+        "high_vol_cluster",
+    }
+    assert expected_regimes <= regimes, f"missing regimes: {expected_regimes - regimes}"
