@@ -263,6 +263,12 @@ def _pick_optimal_cap(caps_csv: Path, default: float = 1.2, hard_limit: float = 
         return float(default)
 
 
+def _deploy_verdict(state_count: int) -> str:
+    """Canonical deploy verdict: GO if the symbol has >=1 deployable state,
+    NO_GO if the universe is empty (a no-trade symbol)."""
+    return "GO" if int(state_count) >= 1 else "NO_GO"
+
+
 def _build_manifest(
     *,
     symbol: str,
@@ -338,6 +344,7 @@ def _build_manifest(
             "sha256": str(states_sha),
             "rows": json.loads(states.to_json(orient="records")),
         },
+        "deploy_verdict": _deploy_verdict(len(states)),
         "retrain_policy": {
             "mode": "calendar_window",
             "cadence_days": int(cadence_days),
