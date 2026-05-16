@@ -368,10 +368,74 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     capacity_floor_monthly = float(cfg["capacity_floor_monthly"])
     capacity_floor_annual = float(cfg["capacity_floor_annual"])
 
-    c = pd.read_csv(str(cfg["candidate_csv"])).copy()
-    p = pd.read_parquet(str(cfg["pred_path"])).copy()
+    try:
+        c = pd.read_csv(str(cfg["candidate_csv"])).copy()
+    except pd.errors.EmptyDataError:
+        # Empty CSV from upstream mining (no-trade condition)
+        c = pd.DataFrame()
+    try:
+        p = pd.read_parquet(str(cfg["pred_path"])).copy()
+    except Exception:
+        # Empty parquet from upstream ML pipeline (no-trade condition)
+        p = pd.DataFrame()
     raw_candidates_empty = c.empty
     raw_predictions_empty = p.empty
+
+    # Gracefully handle no-trade condition (empty inputs)
+    if raw_candidates_empty and raw_predictions_empty:
+        # Write empty outputs to allow downstream stages to continue
+        out_sched = Path(str(cfg["out_state_schedule_csv"]))
+        out_month = Path(str(cfg["out_monthly_csv"]))
+        out_sum = Path(str(cfg["out_summary_csv"]))
+
+        out_state_raw = str(cfg.get("out_state_csv", "")).strip()
+        if out_state_raw:
+            out_state = Path(out_state_raw)
+        elif out_sched.name.endswith("_state_schedule.csv"):
+            out_state = out_sched.with_name(
+                out_sched.name.replace("_state_schedule.csv", "_states.csv")
+            )
+        else:
+            out_state = out_sched.with_name(f"{symbol}_oco_reduced_states.csv")
+
+        out_churn_raw = str(cfg.get("out_state_churn_csv", "")).strip()
+        out_churn = (
+            Path(out_churn_raw)
+            if out_churn_raw
+            else out_month.with_name(out_month.name.replace("_monthly.csv", "_state_churn.csv"))
+        )
+
+        for path in (out_sched, out_state, out_month, out_sum, out_churn):
+            path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Write empty dataframes with proper schema
+        schedule_empty = pd.DataFrame(columns=["symbol", "state_id"])
+        monthly_empty = pd.DataFrame()
+        summary_empty = pd.DataFrame([{"symbol": symbol, "status": "NO_TRADE", "reason": "No candidates or predictions available"}])
+
+        schedule_empty.to_csv(out_sched, index=False)
+        pd.DataFrame().to_csv(out_state, index=False)
+        monthly_empty.to_csv(out_month, index=False)
+        summary_empty.to_csv(out_sum, index=False)
+        pd.DataFrame().to_csv(out_churn, index=False)
+
+        print(f"wrote: {out_sched}")
+        print(f"wrote: {out_state}")
+        print(f"wrote: {out_month}")
+        print(f"wrote: {out_sum}")
+        print(f"wrote: {out_churn}")
+
+        report_out = Path(str(cfg["report_out"]))
+        report_out.parent.mkdir(parents=True, exist_ok=True)
+        report_out.write_text(
+            f"# {symbol} OCO Reduced-Core Rolling Selection\n\n"
+            f"## Outcome: NO_TRADE\n\n"
+            f"No candidates or predictions available for selection.\n",
+            encoding="utf-8",
+        )
+        print(f"wrote: {report_out}")
+        return schedule_empty, monthly_empty, summary_empty
+
     p = p.dropna(subset=["candidate_uid", "pred_prob", "target_gross_pips", "test_month"]).copy()
     p["pred_prob"] = pd.to_numeric(p["pred_prob"], errors="coerce")
     p["target_gross_pips"] = pd.to_numeric(p["target_gross_pips"], errors="coerce")

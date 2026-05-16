@@ -801,49 +801,53 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         raise ValueError("gross_metric must be mean|median")
     if library_type not in {"separate", "directional", "oco"}:
         raise ValueError("library_type must be separate|directional|oco")
-    if not dataset_dir.exists():
-        raise FileNotFoundError(f"Dataset directory does not exist: {dataset_dir}")
 
     directional_parts: list[pd.DataFrame] = []
     oco_parts: list[pd.DataFrame] = []
 
-    for bt in bar_ticks_grid:
-        path = dataset_dir / f"{symbol}_{int(bt)}tick_velocity.parquet"
-        if not path.exists():
-            print(f"skip {bt}: missing {path}")
-            continue
-        d = _prepare_frame(path, symbol=symbol, horizons=horizons)
-        train = d[d["year"].isin(train_years)].copy().reset_index(drop=True)
-        test = d[d["year"] == int(test_year)].copy().reset_index(drop=True)
-        if train.empty or test.empty:
-            print(f"skip {bt}: empty split (train/test)")
-            continue
-        if library_type in {"separate", "directional"}:
-            directional_parts.append(
-                _directional_candidates(
-                    train=train,
-                    test=test,
-                    symbol=symbol,
-                    bar_ticks=int(bt),
-                    horizons=horizons,
-                    min_annual_fills=min_annual_fills,
-                    gross_metric=gross_metric,
+    # Gracefully handle missing dataset_dir: skip processing and return empty dataframes,
+    # allowing downstream stages to treat this as a no-trade condition.
+    if dataset_dir.exists():
+        for bt in bar_ticks_grid:
+            path = dataset_dir / f"{symbol}_{int(bt)}tick_velocity.parquet"
+            if not path.exists():
+                print(f"skip {bt}: missing {path}")
+                continue
+            d = _prepare_frame(path, symbol=symbol, horizons=horizons)
+            train = d[d["year"].isin(train_years)].copy().reset_index(drop=True)
+            test = d[d["year"] == int(test_year)].copy().reset_index(drop=True)
+            if train.empty or test.empty:
+                print(f"skip {bt}: empty split (train/test)")
+                continue
+            if library_type in {"separate", "directional"}:
+                directional_parts.append(
+                    _directional_candidates(
+                        train=train,
+                        test=test,
+                        symbol=symbol,
+                        bar_ticks=int(bt),
+                        horizons=horizons,
+                        min_annual_fills=min_annual_fills,
+                        gross_metric=gross_metric,
+                    )
                 )
-            )
-        if library_type in {"separate", "oco"}:
-            oco_parts.append(
-                _oco_candidates(
-                    train=train,
-                    test=test,
-                    symbol=symbol,
-                    bar_ticks=int(bt),
-                    horizons=horizons,
-                    barrier_grid_pips=barrier_grid,
-                    min_annual_fills=min_annual_fills,
-                    gross_metric=gross_metric,
+            if library_type in {"separate", "oco"}:
+                oco_parts.append(
+                    _oco_candidates(
+                        train=train,
+                        test=test,
+                        symbol=symbol,
+                        bar_ticks=int(bt),
+                        horizons=horizons,
+                        barrier_grid_pips=barrier_grid,
+                        min_annual_fills=min_annual_fills,
+                        gross_metric=gross_metric,
+                    )
                 )
-            )
-        print(f"ok {symbol} {bt}tick")
+            print(f"ok {symbol} {bt}tick")
+    else:
+        print(f"dataset_dir does not exist: {dataset_dir}")
+        print("returning empty candidates (no-trade condition)")
 
     directional = (
         pd.concat(directional_parts, ignore_index=True) if directional_parts else pd.DataFrame()

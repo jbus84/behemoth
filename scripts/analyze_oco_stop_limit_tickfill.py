@@ -117,10 +117,14 @@ def _rebuild_touch_events(
     try:
         d = pd.read_parquet(pred_path, columns=use_cols).copy()
     except Exception:
-        # Fallback for files without optional selection columns.
-        d = pd.read_parquet(
-            pred_path, columns=["close_ts", "candidate_uid", "target_gross_pips", "pred_prob"]
-        ).copy()
+        # Fallback for files without optional selection columns, or empty parquet (no-trade).
+        try:
+            d = pd.read_parquet(
+                pred_path, columns=["close_ts", "candidate_uid", "target_gross_pips", "pred_prob"]
+            ).copy()
+        except Exception:
+            # Empty parquet from no-trade condition
+            return pd.DataFrame()
     d["close_ts"] = pd.to_datetime(d["close_ts"], utc=True, errors="coerce")
     d["target_gross_pips"] = pd.to_numeric(d["target_gross_pips"], errors="coerce")
     d = d.dropna(subset=["close_ts", "candidate_uid", "target_gross_pips"]).copy()

@@ -156,7 +156,11 @@ def _build_events_for_library(
     c_path = candidate_dir / f"{symbol}_{lib}_candidates.csv"
     if not c_path.exists():
         return pd.DataFrame()
-    c = pd.read_csv(c_path)
+    try:
+        c = pd.read_csv(c_path)
+    except pd.errors.EmptyDataError:
+        # Empty CSV from upstream mining stage (no-trade condition)
+        return pd.DataFrame()
     c = _select_candidate_universe(
         c,
         symbol=symbol,

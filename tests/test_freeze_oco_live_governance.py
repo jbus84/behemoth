@@ -1,9 +1,7 @@
 """Tests for freeze_oco_live_governance module."""
 
-from pathlib import Path
 
 import pandas as pd
-import pytest
 
 
 def test_manifest_deploy_verdict_no_go_for_empty_universe(tmp_path, monkeypatch):

@@ -37,6 +37,7 @@ def test_wfo_main_overwrites_stale_predictions_when_empty(tmp_path, monkeypatch)
     per-library predictions parquet with a current empty file, not leave a
     stale one from a prior run in place."""
     import pandas as pd
+
     import scripts.run_tick_opportunity_monthly_wfo as wfo
 
     out_dir = tmp_path / "wfo_out"

@@ -73,7 +73,11 @@ def _summarize_symbol(
             [{"symbol": symbol, "issue": "missing_detail_csv", "source_path": str(detail_csv)}]
         )
 
-    d = pd.read_csv(detail_csv).copy()
+    try:
+        d = pd.read_csv(detail_csv).copy()
+    except pd.errors.EmptyDataError:
+        # Empty CSV from no-trade condition
+        return pd.DataFrame(), pd.DataFrame()
     required = {"close_ts", "touch_found_tick", "overshoot_tick_pips"}
     if not required.issubset(set(d.columns)):
         return pd.DataFrame(), pd.DataFrame(

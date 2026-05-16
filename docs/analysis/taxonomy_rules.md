@@ -1,6 +1,6 @@
 # Analysis Taxonomy Rules
 
-- generated_at_utc: `2026-04-12T17:19:19Z`
+- generated_at_utc: `2026-05-16T11:08:16Z`
 
 ## Group Assignment Order
 1. `archive`: anything already stored below `docs/archive/`.
