@@ -2,7 +2,7 @@ symbol: GBPUSD
 dataset_dir: data/analysis/tick_velocity
 
 # Tick universes and forecast horizons
-bar_ticks_grid: "100,1000,2000"
+bar_ticks_grid: "100,1000,2000,5000,10000"
 horizons: "1,2,3,4,5,6"
 barrier_grid_pips: "0.5,1,2,3,5,8,10"
 
