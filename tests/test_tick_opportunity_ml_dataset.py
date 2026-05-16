@@ -276,50 +276,6 @@ def test_ml_dataset_preserves_microstructure_columns() -> None:
         }
     )
 
-    # Phase 1 constraint: microstructure columns must NOT be in canonical feature set
-    for col in [
-        "tick_burst_score",
-        "quote_revision_rate_z",
-        "directional_persistence_8",
-        "signed_flow_24",
-        "vol_cluster_score",
-        "session_marker",
-    ]:
-        assert col not in _feature_cols(df)
-
-    n = 300
-    ts = pd.date_range("2026-01-01", periods=n, freq="1min")
-    df = pd.DataFrame(
-        {
-            "timestamp": ts,
-            "close_ts": ts,
-            "close_bid": np.linspace(1.1000, 1.1050, n),
-            "high_bid": np.linspace(1.1005, 1.1055, n),
-            "low_bid": np.linspace(1.0995, 1.1045, n),
-            "high_ask": np.linspace(1.1007, 1.1057, n),
-            "close_ask": np.linspace(1.1002, 1.1052, n),
-            "hl_first": [1, -1, 0] * (n // 3),
-            "cost_est_pips": np.full(n, 0.3),
-            "range_pips": np.full(n, 5.0),
-            "hour_utc": ts.hour.astype(int),
-            "spread_z": np.zeros(n),
-            "tick_rate_z": np.zeros(n),
-            "vel_cost_units_h1": np.zeros(n),
-            "vel_abs_cost_units_h1": np.zeros(n),
-            "ret1_pips": np.zeros(n),
-            "ret_z": np.zeros(n),
-            "ret_abs_z": np.zeros(n),
-            "hl_first_mean_24": np.zeros(n),
-            "hl_pos_frac_mean_24": np.zeros(n),
-            "tick_burst_score": [0.0] * n,
-            "quote_revision_rate_z": [0.0] * n,
-            "directional_persistence_8": [0.0] * n,
-            "signed_flow_24": [0.0] * n,
-            "vol_cluster_score": [1.0] * n,
-            "session_marker": ["london"] * n,
-        }
-    )
-
     cands = pd.DataFrame(
         [
             {

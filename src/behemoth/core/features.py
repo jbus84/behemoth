@@ -520,3 +520,48 @@ def _compute_structural_features(df: pd.DataFrame) -> tuple[pd.Series, pd.Series
     ).mean().shift(1)
 
     return hl_first_mean_24, hl_pos_frac_mean_24
+
+
+# ── Microstructure signal helpers (velocity dataset + live inference) ──
+
+def _compute_tick_burst_score(tick_burst: pd.Series) -> pd.Series:
+    roll_mean = tick_burst.rolling(24, min_periods=1).mean().shift(1)
+    roll_std = tick_burst.rolling(24, min_periods=1).std().shift(1)
+    return ((tick_burst - roll_mean) / roll_std.replace(0, np.nan)).fillna(0.0)
+
+
+def _compute_quote_revision_rate_z(quote_revisions: pd.Series) -> pd.Series:
+    roll_mean = quote_revisions.rolling(24, min_periods=1).mean().shift(1)
+    roll_std = quote_revisions.rolling(24, min_periods=1).std().shift(1)
+    return ((quote_revisions - roll_mean) / roll_std.replace(0, np.nan)).fillna(0.0)
+
+
+def _compute_directional_persistence_8(bar_return_sign: pd.Series) -> pd.Series:
+    return bar_return_sign.rolling(8, min_periods=1).sum().shift(1).fillna(0)
+
+
+def _compute_signed_flow_24(bar_return_sign: pd.Series) -> pd.Series:
+    return bar_return_sign.rolling(24, min_periods=1).sum().shift(1).fillna(0)
+
+
+def _compute_vol_cluster_score(ret1_pips: pd.Series) -> pd.Series:
+    abs_ret = ret1_pips.abs()
+    roll_mean = abs_ret.rolling(24, min_periods=1).mean().shift(1)
+    return (abs_ret / roll_mean.replace(0, np.nan)).fillna(1.0)
+
+
+def _compute_session_marker(hour_utc: pd.Series) -> pd.Series:
+    def _marker(h):
+        if 0 <= h <= 5:
+            return "asia"
+        elif 6 <= h <= 10:
+            return "london"
+        elif 11 <= h <= 12:
+            return "lunch"
+        elif 13 <= h <= 16:
+            return "ny_overlap"
+        elif 17 <= h <= 20:
+            return "ny"
+        else:
+            return "rollover"
+    return hour_utc.apply(_marker)
