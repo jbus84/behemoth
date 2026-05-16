@@ -5,7 +5,7 @@ candidate_csv: data/analysis/tick_opportunity_mining/USDCHF_oco_candidates.csv
 pred_path: data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/USDCHF_oco_monthly_predictions.parquet
 
 # Reduced-core policy
-family_keep: oco_first_touch_clean
+family_keep: oco_first_touch
 barrier_keep: "2,3"
 horizon_keep: "5,6"
 locked_quantile: 0.9
