@@ -236,3 +236,175 @@ def test_extract_core_series_rejects_legacy_ambiguous_columns() -> None:
 
     with pytest.raises(ValueError, match="legacy ambiguous bar schema unsupported"):
         _extract_core_series(df)
+
+
+def test_ml_dataset_preserves_microstructure_columns() -> None:
+    """ML parquet must include microstructure columns even though model doesn't consume them."""
+    from scripts.build_tick_opportunity_ml_dataset import _build_oco_events, _feature_cols
+    from scripts.run_tick_opportunity_mining import _quantiles
+
+    n = 300
+    ts = pd.date_range("2026-01-01", periods=n, freq="1min")
+    df = pd.DataFrame(
+        {
+            "timestamp": ts,
+            "close_ts": ts,
+            "close_bid": np.linspace(1.1000, 1.1050, n),
+            "high_bid": np.linspace(1.1005, 1.1055, n),
+            "low_bid": np.linspace(1.0995, 1.1045, n),
+            "high_ask": np.linspace(1.1007, 1.1057, n),
+            "close_ask": np.linspace(1.1002, 1.1052, n),
+            "hl_first": [1, -1, 0] * (n // 3),
+            "cost_est_pips": np.full(n, 0.3),
+            "range_pips": np.full(n, 5.0),
+            "hour_utc": ts.hour.astype(int),
+            "spread_z": np.zeros(n),
+            "tick_rate_z": np.zeros(n),
+            "vel_cost_units_h1": np.zeros(n),
+            "vel_abs_cost_units_h1": np.zeros(n),
+            "ret1_pips": np.zeros(n),
+            "ret_z": np.zeros(n),
+            "ret_abs_z": np.zeros(n),
+            "hl_first_mean_24": np.zeros(n),
+            "hl_pos_frac_mean_24": np.zeros(n),
+            "tick_burst_score": [0.0] * n,
+            "quote_revision_rate_z": [0.0] * n,
+            "directional_persistence_8": [0.0] * n,
+            "signed_flow_24": [0.0] * n,
+            "vol_cluster_score": [1.0] * n,
+            "session_marker": ["london"] * n,
+        }
+    )
+
+    cands = pd.DataFrame(
+        [
+            {
+                "symbol": "EURUSD",
+                "bar_ticks": 100,
+                "horizon": 5,
+                "family": "oco_first_touch",
+                "state_id": "oco_first_touch__all__k5",
+                "regime_desc": "all;barrier=2.0",
+                "quality_tier": "A",
+                "quality_score": 3,
+                "selection_pass": True,
+                "annualized_test_fills": 1000.0,
+                "mean_gross_pips_test": 1.5,
+                "train_count": 5000,
+            }
+        ]
+    )
+
+    # Phase 1 constraint: microstructure columns must NOT be in canonical feature set
+    for col in [
+        "tick_burst_score",
+        "quote_revision_rate_z",
+        "directional_persistence_8",
+        "signed_flow_24",
+        "vol_cluster_score",
+        "session_marker",
+    ]:
+        assert col not in _feature_cols(df)
+
+    q_fit = _quantiles(df)
+    events = _build_oco_events(
+        split_name="train",
+        df=df,
+        q_fit=q_fit,
+        cands=cands,
+        max_events_per_candidate=1000,
+        symbol="EURUSD",
+        hold_mode="from_touch",
+        include_no_touch=True,
+    )
+    assert "tick_burst_score" in events.columns
+    assert "quote_revision_rate_z" in events.columns
+    assert "directional_persistence_8" in events.columns
+    assert "signed_flow_24" in events.columns
+    assert "vol_cluster_score" in events.columns
+    assert "session_marker" in events.columns
+
+
+def test_ml_dataset_preserves_microstructure_columns_directional() -> None:
+    """Directional ML events must also include microstructure columns."""
+    from scripts.build_tick_opportunity_ml_dataset import _build_directional_events, _feature_cols
+    from scripts.run_tick_opportunity_mining import _quantiles
+
+    n = 300
+    ts = pd.date_range("2026-01-01", periods=n, freq="1min")
+    df = pd.DataFrame(
+        {
+            "timestamp": ts,
+            "close_ts": ts,
+            "close_bid": np.linspace(1.1000, 1.1050, n),
+            "high_bid": np.linspace(1.1005, 1.1055, n),
+            "low_bid": np.linspace(1.0995, 1.1045, n),
+            "high_ask": np.linspace(1.1007, 1.1057, n),
+            "close_ask": np.linspace(1.1002, 1.1052, n),
+            "hl_first": [1, -1, 0] * (n // 3),
+            "cost_est_pips": np.full(n, 0.3),
+            "range_pips": np.full(n, 5.0),
+            "hour_utc": ts.hour.astype(int),
+            "spread_z": np.zeros(n),
+            "tick_rate_z": np.zeros(n),
+            "vel_cost_units_h1": np.zeros(n),
+            "vel_abs_cost_units_h1": np.zeros(n),
+            "ret1_pips": np.zeros(n),
+            "ret_z": np.zeros(n),
+            "ret_abs_z": np.zeros(n),
+            "hl_first_mean_24": np.zeros(n),
+            "hl_pos_frac_mean_24": np.zeros(n),
+            "tick_burst_score": [0.0] * n,
+            "quote_revision_rate_z": [0.0] * n,
+            "directional_persistence_8": [0.0] * n,
+            "signed_flow_24": [0.0] * n,
+            "vol_cluster_score": [1.0] * n,
+            "session_marker": ["london"] * n,
+            "y_fwd_pips_h5": np.zeros(n),
+        }
+    )
+
+    cands = pd.DataFrame(
+        [
+            {
+                "symbol": "EURUSD",
+                "bar_ticks": 100,
+                "horizon": 5,
+                "family": "path_follow",
+                "state_id": "path_follow__all",
+                "regime_desc": "all",
+                "quality_tier": "A",
+                "quality_score": 3,
+                "selection_pass": True,
+                "annualized_test_fills": 1000.0,
+                "mean_gross_pips_test": 1.5,
+                "train_count": 5000,
+            }
+        ]
+    )
+
+    # Phase 1 constraint: microstructure columns must NOT be in canonical feature set
+    for col in [
+        "tick_burst_score",
+        "quote_revision_rate_z",
+        "directional_persistence_8",
+        "signed_flow_24",
+        "vol_cluster_score",
+        "session_marker",
+    ]:
+        assert col not in _feature_cols(df)
+
+    q_fit = _quantiles(df)
+    events = _build_directional_events(
+        split_name="train",
+        df=df,
+        q_fit=q_fit,
+        cands=cands,
+        max_events_per_candidate=1000,
+    )
+    assert "tick_burst_score" in events.columns
+    assert "quote_revision_rate_z" in events.columns
+    assert "directional_persistence_8" in events.columns
+    assert "signed_flow_24" in events.columns
+    assert "vol_cluster_score" in events.columns
+    assert "session_marker" in events.columns

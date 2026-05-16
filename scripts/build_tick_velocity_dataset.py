@@ -33,6 +33,11 @@ DEFAULT_TICKBAR_DIR = "data/global_tickbars"
 DEFAULT_OUT_DIR = "data/analysis/tick_velocity"
 DEFAULT_FEATURE_CONFIG = FeatureConfig()
 
+MICROSTRUCTURE_BURST_WINDOW = 24
+MICROSTRUCTURE_PERSISTENCE_WINDOW = 8
+MICROSTRUCTURE_FLOW_WINDOW = 24
+MICROSTRUCTURE_VOL_WINDOW = 24
+
 
 def _is_utc_tz(tz: Any) -> bool:
     if tz is None:
@@ -87,6 +92,25 @@ def _pip_size(symbol: str) -> float:
     if s.startswith("XAG"):
         return 0.01
     return 0.0001
+
+
+def _session_marker(h: int) -> str:
+    """Map UTC hour to FX session label.
+
+    Boundaries match the existing tick-opportunity mining regimes.
+    """
+    if 0 <= h <= 5:
+        return "asia"
+    elif 6 <= h <= 10:
+        return "london"
+    elif 11 <= h <= 12:
+        return "lunch"
+    elif 13 <= h <= 16:
+        return "ny_overlap"
+    elif 17 <= h <= 20:
+        return "ny"
+    else:
+        return "rollover"
 
 
 def _infer_symbols_from_tickbars(tickbar_dir: Path, bar_ticks: int) -> list[str]:
@@ -197,7 +221,11 @@ def _build_symbol_dataset(
         }
     )
 
-    for c in ["high_pos_tick", "low_pos_tick", "hl_first", "hl_pos_delta_tick", "hl_pos_frac"]:
+    for c in [
+        "high_pos_tick", "low_pos_tick", "hl_first", "hl_pos_delta_tick", "hl_pos_frac",
+        "bar_return_sign", "tick_burst", "quote_revisions", "intra_bar_momentum", "ret1_pips",
+    ]:
+        # TODO: consume intra_bar_momentum in a future signal (Phase 2)
         if c in d.columns:
             out[c] = pd.to_numeric(d[c], errors="coerce").astype(float)
 
@@ -323,6 +351,45 @@ def _build_symbol_dataset(
 
     for h in sorted(set(int(x) for x in target_horizons if int(x) > 0)):
         out[f"y_fwd_pips_h{h}"] = (close_bid.shift(-h) - open_bid.shift(-1)) / pip
+
+    # Microstructure signals (lagged to prevent look-ahead)
+    if "tick_burst" in out.columns:
+        roll_burst_mean = out["tick_burst"].rolling(MICROSTRUCTURE_BURST_WINDOW, min_periods=1).mean().shift(1)
+        roll_burst_std = out["tick_burst"].rolling(MICROSTRUCTURE_BURST_WINDOW, min_periods=1).std().shift(1)
+        out["tick_burst_score"] = (out["tick_burst"] - roll_burst_mean) / roll_burst_std.replace(0, np.nan)
+        out["tick_burst_score"] = out["tick_burst_score"].fillna(0.0)
+
+    if "quote_revisions" in out.columns:
+        roll_rev_mean = out["quote_revisions"].rolling(MICROSTRUCTURE_BURST_WINDOW, min_periods=1).mean().shift(1)
+        roll_rev_std = out["quote_revisions"].rolling(MICROSTRUCTURE_BURST_WINDOW, min_periods=1).std().shift(1)
+        out["quote_revision_rate_z"] = (out["quote_revisions"] - roll_rev_mean) / roll_rev_std.replace(0, np.nan)
+        out["quote_revision_rate_z"] = out["quote_revision_rate_z"].fillna(0.0)
+
+    if "bar_return_sign" in out.columns:
+        out["directional_persistence_8"] = (
+            out["bar_return_sign"]
+            .rolling(MICROSTRUCTURE_PERSISTENCE_WINDOW, min_periods=1)
+            .sum()
+            .shift(1)
+            .fillna(0)
+        )
+        out["signed_flow_24"] = (
+            out["bar_return_sign"]
+            .rolling(MICROSTRUCTURE_FLOW_WINDOW, min_periods=1)
+            .sum()
+            .shift(1)
+            .fillna(0)
+        )
+
+    # vol_cluster_score uses vel_pips_h1 (same as ret1_pips) which is always present
+    abs_ret = out["vel_pips_h1"].abs()
+    roll_abs_ret_mean = abs_ret.rolling(MICROSTRUCTURE_VOL_WINDOW, min_periods=1).mean().shift(1)
+    # When both abs_ret and rolling mean are zero, ratio is NaN → fill to 1.0 (average volatility)
+    out["vol_cluster_score"] = (abs_ret / roll_abs_ret_mean.replace(0, np.nan)).fillna(1.0)
+
+    if "hour_utc" in out.columns:
+        # session_marker is categorical and the only string column in the output
+        out["session_marker"] = out["hour_utc"].apply(_session_marker)
 
     out = out.replace([np.inf, -np.inf], np.nan)
     return out

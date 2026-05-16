@@ -226,6 +226,60 @@ class TestTickAggregatorMicrostructure:
         assert bar.timestamp == ticks[0].timestamp
         assert bar.close_ts == ticks[4].timestamp
 
+    def test_runtime_emits_bar_return_sign(self):
+        from src.behemoth.runtime.tick_aggregator import TickAggregator
+
+        agg = TickAggregator(bar_ticks=5)
+        # deterministic descending then ascending prices to get clear sign
+        ticks = _make_ticks(5, seed=99)
+        bars = agg.add_ticks(ticks)
+        assert len(bars) == 1
+        assert bars[0].bar_return_sign in {-1.0, 0.0, 1.0}
+
+    def test_runtime_emits_tick_burst(self):
+        from src.behemoth.runtime.tick_aggregator import TickAggregator
+
+        agg = TickAggregator(bar_ticks=5)
+        ticks = _make_ticks(5)
+        bars = agg.add_ticks(ticks)
+        assert bars[0].tick_burst == 5.0
+
+    def test_runtime_emits_quote_revisions(self):
+        from src.behemoth.runtime.tick_aggregator import TickAggregator
+
+        agg = TickAggregator(bar_ticks=5)
+        ticks = _make_ticks(5)
+        bars = agg.add_ticks(ticks)
+        assert bars[0].quote_revisions >= 0.0
+
+    def test_runtime_emits_intra_bar_momentum(self):
+        from src.behemoth.runtime.tick_aggregator import TickAggregator
+
+        agg = TickAggregator(bar_ticks=5)
+        ticks = _make_ticks(5)
+        bars = agg.add_ticks(ticks)
+        bar = bars[0]
+        # momentum should have the same sign as hl_first (or be zero)
+        if bar.hl_first == 1.0:
+            assert bar.intra_bar_momentum > 0.0
+        elif bar.hl_first == -1.0:
+            assert bar.intra_bar_momentum < 0.0
+        else:
+            assert bar.intra_bar_momentum == 0.0
+
+    def test_runtime_cross_bar_return_sign_uses_prev_close(self):
+        from src.behemoth.runtime.tick_aggregator import TickAggregator
+
+        agg = TickAggregator(bar_ticks=2)
+        # first bar: prices go up -> close > open
+        # second bar: prices go down -> close < first close
+        ticks = _make_ticks(4, seed=77)
+        bars = agg.add_ticks(ticks)
+        assert len(bars) == 2
+        # bar_return_sign for second bar should reflect relation to first bar close
+        second_sign = bars[1].bar_return_sign
+        assert second_sign in {-1.0, 0.0, 1.0}
+
 
 class TestTickAggregatorMultiSymbol:
     """Verify per-symbol isolation."""

@@ -212,6 +212,22 @@ def _prepare_frame(path: Path, *, symbol: str, horizons: list[int]) -> pd.DataFr
     else:
         d["hl_pos_frac_mean_24"] = 0.0
 
+    for col in [
+        "tick_burst_score",
+        "quote_revision_rate_z",
+        "directional_persistence_8",
+        "signed_flow_24",
+        "vol_cluster_score",
+    ]:
+        if col in d.columns:
+            d[col] = _safe_numeric(d[col]).fillna(0.0)
+        else:
+            d[col] = 0.0
+    if "session_marker" in d.columns:
+        d["session_marker"] = d["session_marker"].fillna("unknown")
+    else:
+        d["session_marker"] = "unknown"
+
     d["year"] = d["close_ts"].dt.year.astype(int)
     for h in sorted(set(int(x) for x in horizons if int(x) > 0)):
         col = f"y_fwd_pips_h{h}"
@@ -243,8 +259,29 @@ def _regime_masks(test: pd.DataFrame, q: dict[str, float]) -> list[tuple[str, np
     c = test["cost_est_pips"]
     r = test["range_pips"]
     v = test["vel_abs_cost_units_h1"]
+    n = len(test)
+    tick_burst = (
+        test["tick_burst_score"].to_numpy(dtype=float)
+        if "tick_burst_score" in test.columns
+        else np.zeros(n, dtype=float)
+    )
+    quote_rev = (
+        test["quote_revision_rate_z"].to_numpy(dtype=float)
+        if "quote_revision_rate_z" in test.columns
+        else np.zeros(n, dtype=float)
+    )
+    persist = (
+        test["directional_persistence_8"].to_numpy(dtype=float)
+        if "directional_persistence_8" in test.columns
+        else np.zeros(n, dtype=float)
+    )
+    vol_cluster = (
+        test["vol_cluster_score"].to_numpy(dtype=float)
+        if "vol_cluster_score" in test.columns
+        else np.zeros(n, dtype=float)
+    )
     return [
-        ("all", np.ones(len(test), dtype=bool)),
+        ("all", np.ones(n, dtype=bool)),
         ("low_cost_q30", (c <= q["cost_q30"]).to_numpy(dtype=bool)),
         ("low_cost_q50", (c <= q["cost_q50"]).to_numpy(dtype=bool)),
         ("high_range_q70", (r >= q["rng_q70"]).to_numpy(dtype=bool)),
@@ -262,6 +299,12 @@ def _regime_masks(test: pd.DataFrame, q: dict[str, float]) -> list[tuple[str, np
             "low_cost_q30_and_high_abs_vel_q70",
             ((c <= q["cost_q30"]) & (v >= q["vel_q70"])).to_numpy(dtype=bool),
         ),
+        # --- microstructure regimes (causal, lagged only) ---
+        ("high_intensity", (tick_burst > 0)),
+        ("high_activity", (quote_rev > 0)),
+        ("persistent_flow", (persist >= 6)),
+        ("negative_flow", (persist <= -6)),
+        ("high_vol_cluster", (vol_cluster > 1.5)),
     ]
 
 
@@ -556,6 +599,35 @@ def _directional_candidates(
                     if int(np.sum(tmask)) > 0
                     else 0.0
                 )
+                # Per-regime microstructure stats (train only)
+                if int(np.sum(tmask)) > 0:
+                    if "tick_burst_score" in train.columns:
+                        tick_burst_vals = train["tick_burst_score"].to_numpy(dtype=float)[tmask]
+                        mean_tick_burst = float(np.mean(tick_burst_vals))
+                    else:
+                        mean_tick_burst = float("nan")
+                    if "directional_persistence_8" in train.columns:
+                        persist_vals = train["directional_persistence_8"].to_numpy(dtype=float)[
+                            tmask
+                        ]
+                        mean_flow_persist = float(np.mean(persist_vals))
+                    else:
+                        mean_flow_persist = float("nan")
+                    if "vol_cluster_score" in train.columns:
+                        vol_cluster_vals = train["vol_cluster_score"].to_numpy(dtype=float)[tmask]
+                        mean_vol_cluster = float(np.mean(vol_cluster_vals))
+                    else:
+                        mean_vol_cluster = float("nan")
+                    if "session_marker" in train.columns:
+                        session_vals = train["session_marker"].iloc[np.flatnonzero(tmask)]
+                        session_coverage = session_vals.value_counts(normalize=True).to_dict()
+                    else:
+                        session_coverage = {}
+                else:
+                    mean_tick_burst = float("nan")
+                    mean_flow_persist = float("nan")
+                    mean_vol_cluster = float("nan")
+                    session_coverage = {}
                 rows.append(
                     {
                         "symbol": symbol,
@@ -576,6 +648,10 @@ def _directional_candidates(
                         "both_window_rate": float("nan"),
                         "p_up_first": float("nan"),
                         "ml_ready_target_type": "directional_sign",
+                        "mean_tick_burst_train": mean_tick_burst,
+                        "mean_flow_persistence_train": mean_flow_persist,
+                        "mean_vol_cluster_train": mean_vol_cluster,
+                        "session_coverage": session_coverage,
                         "selection_pass": bool(
                             np.isfinite(mean_train)
                             and mean_train > 0.0
@@ -608,7 +684,7 @@ def _oco_candidates(
     ts_train = pd.to_datetime(train["close_ts"], utc=True, errors="coerce")
 
     rows: list[dict[str, Any]] = []
-    train_cache: dict[tuple[int, float, str, str], tuple[int, float, float, float]] = {}
+    train_cache: dict[tuple[int, float, str, str], dict[str, Any]] = {}
     for h in horizons:
         h = int(h)
         for stage, dct in [
@@ -677,14 +753,51 @@ def _oco_candidates(
                         else:
                             gross = gross_all[fam_mask]
                             vals = gross[np.isfinite(gross)]
-                            train_cache[(int(h), float(k), reg_name, fam)] = (
-                                int(np.sum(fam_mask)),
-                                float(np.mean(vals)) if len(vals) > 0 else float("nan"),
-                                float(np.median(vals)) if len(vals) > 0 else float("nan"),
-                                float(np.mean(both[reg_mask]))
+                            train_event_idx = i0[fam_mask]
+                            if len(train_event_idx) > 0:
+                                if "tick_burst_score" in frame.columns:
+                                    tick_burst_vals = frame["tick_burst_score"].to_numpy(
+                                        dtype=float
+                                    )[train_event_idx]
+                                    mean_tick_burst = float(np.mean(tick_burst_vals))
+                                else:
+                                    mean_tick_burst = float("nan")
+                                if "directional_persistence_8" in frame.columns:
+                                    persist_vals = frame["directional_persistence_8"].to_numpy(
+                                        dtype=float
+                                    )[train_event_idx]
+                                    mean_flow_persist = float(np.mean(persist_vals))
+                                else:
+                                    mean_flow_persist = float("nan")
+                                if "vol_cluster_score" in frame.columns:
+                                    vol_cluster_vals = frame["vol_cluster_score"].to_numpy(
+                                        dtype=float
+                                    )[train_event_idx]
+                                    mean_vol_cluster = float(np.mean(vol_cluster_vals))
+                                else:
+                                    mean_vol_cluster = float("nan")
+                                if "session_marker" in frame.columns:
+                                    session_vals = frame["session_marker"].iloc[train_event_idx]
+                                    session_coverage = session_vals.value_counts(normalize=True).to_dict()
+                                else:
+                                    session_coverage = {}
+                            else:
+                                mean_tick_burst = float("nan")
+                                mean_flow_persist = float("nan")
+                                mean_vol_cluster = float("nan")
+                                session_coverage = {}
+                            train_cache[(int(h), float(k), reg_name, fam)] = {
+                                "count": int(np.sum(fam_mask)),
+                                "mean": float(np.mean(vals)) if len(vals) > 0 else float("nan"),
+                                "median": float(np.median(vals)) if len(vals) > 0 else float("nan"),
+                                "both_rate": float(np.mean(both[reg_mask]))
                                 if np.any(reg_mask)
                                 else float("nan"),
-                            )
+                                "mean_tick_burst_train": mean_tick_burst,
+                                "mean_flow_persistence_train": mean_flow_persist,
+                                "mean_vol_cluster_train": mean_vol_cluster,
+                                "session_coverage": session_coverage,
+                            }
             if stage == "test":
                 continue
 
@@ -696,17 +809,29 @@ def _oco_candidates(
     mean_train: list[float] = []
     median_train: list[float] = []
     both_train: list[float] = []
+    mean_tick_burst_train: list[float] = []
+    mean_flow_persistence_train: list[float] = []
+    mean_vol_cluster_train: list[float] = []
+    session_coverage_train: list[dict] = []
     for _, r in out.iterrows():
         key = (int(r["horizon"]), float(r["_tmp_k"]), str(r["_tmp_regime"]), str(r["_tmp_family"]))
-        tr = train_cache.get(key, (0, float("nan"), float("nan"), float("nan")))
-        train_count.append(int(tr[0]))
-        mean_train.append(float(tr[1]))
-        median_train.append(float(tr[2]))
-        both_train.append(float(tr[3]))
+        tr = train_cache.get(key, {})
+        train_count.append(int(tr.get("count", 0)))
+        mean_train.append(float(tr.get("mean", float("nan"))))
+        median_train.append(float(tr.get("median", float("nan"))))
+        both_train.append(float(tr.get("both_rate", float("nan"))))
+        mean_tick_burst_train.append(float(tr.get("mean_tick_burst_train", float("nan"))))
+        mean_flow_persistence_train.append(float(tr.get("mean_flow_persistence_train", float("nan"))))
+        mean_vol_cluster_train.append(float(tr.get("mean_vol_cluster_train", float("nan"))))
+        session_coverage_train.append(tr.get("session_coverage", {}))
     out["train_count"] = np.array(train_count, dtype=int)
     out["mean_gross_pips_train"] = np.array(mean_train, dtype=float)
     out["median_gross_pips_train"] = np.array(median_train, dtype=float)
     out["both_window_rate_train"] = np.array(both_train, dtype=float)
+    out["mean_tick_burst_train"] = np.array(mean_tick_burst_train, dtype=float)
+    out["mean_flow_persistence_train"] = np.array(mean_flow_persistence_train, dtype=float)
+    out["mean_vol_cluster_train"] = np.array(mean_vol_cluster_train, dtype=float)
+    out["session_coverage"] = session_coverage_train
     # Recompute selection_pass from train metrics (causal — no test leakage).
     # train_count >= 500 enforces a capacity floor analogous to the original
     # annualized_test_fills gate, preserving the script's "high-count" intent.

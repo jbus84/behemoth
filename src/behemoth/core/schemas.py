@@ -45,6 +45,12 @@ class IncomingTickBar(BaseModel):
     hl_pos_delta_tick: float | None = None
     hl_pos_frac: float | None = None
 
+    # Microstructure pre-aggregates
+    bar_return_sign: float | None = None
+    tick_burst: float | None = None
+    quote_revisions: float | None = None
+    intra_bar_momentum: float | None = None
+
     # ASK-side price columns for spread-adjusted barrier detection and label generation
     high_ask: float = Field(..., gt=0, description="Max ASK price over all ticks in the bar")
     close_ask: float = Field(..., gt=0, description="Last ASK price of the bar")

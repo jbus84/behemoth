@@ -74,6 +74,10 @@ class TestIncomingTickBar:
             "hl_first",
             "hl_pos_delta_tick",
             "hl_pos_frac",
+            "bar_return_sign",
+            "tick_burst",
+            "quote_revisions",
+            "intra_bar_momentum",
             "high_ask",
             "close_ask",
         ]
