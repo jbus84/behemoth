@@ -75,7 +75,11 @@ All rolling windows are **strictly lagged** (`shift(1)` after the rolling mean).
 | `quote_revision_rate_z` | `(quote_revisions - rolling_24_mean) / rolling_24_std` | Z-score: are quote revisions elevated? |
 | `directional_persistence_8` | Rolling sum of `bar_return_sign` over 8 bars | How persistent is the recent flow? (+8 = all up, -8 = all down) |
 | `signed_flow_24` | Rolling sum of `bar_return_sign` over 24 bars | Cumulative directional pressure |
-| `vol_cluster_score` | `abs(ret1_pips) / rolling_24_mean(abs(ret1_pips))` | Is current volatility elevated vs recent? |
+| `vol_cluster_score` | `abs(vel_pips_h1) / rolling_24_mean(abs(vel_pips_h1))` | Is current volatility elevated vs recent? |
+
+`vel_pips_h1` is the close-to-close pip return. It is used in place of an
+open-to-close `ret1_pips`: the bars frame does not reliably carry that column,
+and a close-to-close magnitude is an equally valid volatility-clustering proxy.
 | `session_marker` | Categorical: `tokyo`, `london`, `ny`, `overlap`, `rollover` | Which FX session is active? |
 
 ## 6. New Regime Filters
@@ -84,13 +88,26 @@ Applied in `run_tick_opportunity_mining.py` alongside existing regimes.
 
 | Regime | Condition | Rationale |
 |--------|-----------|-----------|
-| `high_intensity` | `tick_burst_score > 0` | Above-baseline activity often precedes directional moves |
-| `high_activity` | `quote_revision_rate_z > 0` | Elevated quote revisions signal dealer hedging |
+| `high_intensity` | `tick_burst_score >= train_q70` | Above-baseline activity often precedes directional moves |
+| `high_activity` | `quote_revision_rate_z >= train_q70` | Elevated quote revisions signal dealer hedging |
 | `persistent_flow` | `directional_persistence_8 >= 6` | Strong persistent order flow creates short-term drift |
 | `negative_flow` | `directional_persistence_8 <= -6` | Strong persistent sell pressure |
-| `high_vol_cluster` | `vol_cluster_score > 1.5` | Vol clustering predicts continued activity |
+| `high_vol_cluster` | `vol_cluster_score >= train_q70` | Vol clustering predicts continued activity |
 
 All conditions use **lagged** signals only. The regime mask for bar `t` is computed from bars `<= t-1`.
+
+**Threshold derivation.** `high_intensity`, `high_activity` and `high_vol_cluster`
+use a **train-derived q70 cut** — `train[signal].quantile(0.70)`, computed in
+`_quantiles(train)` and applied to both the train and test frames. This is
+consistent with the cost/range/vel regimes (`cost_q30`, `rng_q70`, `vel_q70`)
+and means each regime selects a stable ~top-30% of bars regardless of how the
+signal distribution varies across symbols or volatility regimes. The threshold
+is never recomputed on the test frame, so there is no test leakage.
+
+`persistent_flow` / `negative_flow` keep a **fixed +/-6 cut**: `directional_persistence_8`
+is a bounded integer count over 8 bars (range `[-8, +8]`), so `>= 6` / `<= -6`
+is interpretable (at least 6 of the last 8 bars agree in direction) and
+distribution-independent — a quantile cut would add no value.
 
 ## 7. Candidate Metadata Enrichment
 
@@ -165,13 +182,18 @@ Live ticks
 
 | Test | What it verifies |
 |------|------------------|
-| `test_microstructure_signals_are_causal` | No signal uses bar t to condition bar t (all lagged) |
+| `test_microstructure_signals_are_causal` | Perturbing a future bar leaves every earlier-bar signal unchanged (real velocity-builder run) |
+| `test_regime_thresholds_are_train_derived` | Microstructure q70 thresholds come from the train frame, never the frame the mask is applied to |
+| `test_high_intensity_regime_is_a_train_q70_subset` | `high_intensity` selects the train-q70 top-~30% and is a strict subset of `all` |
+| `test_directional_persistence_regimes_stay_fixed` | `persistent_flow` / `negative_flow` keep the fixed +/-6 cut, not a quantile |
 | `test_new_regimes_are_additive` | Mining still produces `all` regime candidates; new regimes are extra rows |
-| `test_high_intensity_regime_filters_correctly` | `tick_burst_score > 0` produces fewer signal bars than `all` |
-| `test_microstructure_candidate_quality_vs_baseline` | New regime candidates have comparable or better train mean gross than `all` |
-| `test_ml_dataset_includes_microstructure_columns` | ML parquet contains new columns even though model doesn't consume them |
+| `test_microstructure_candidate_quality_vs_baseline` | Each new regime mines a finite train mean gross comparable against the `all` baseline |
 | `test_directional_and_oco_both_mine_new_regimes` | Both libraries produce candidates for each new regime |
-| `test_regime_threshold_no_test_leakage` | Regime quantiles computed from train, not test |
+| `test_ml_dataset_includes_microstructure_columns` | ML parquet contains new columns even though model doesn't consume them |
+
+The spec's >=60%-beats-baseline success criterion (Section 13) is validated on
+real mined data by `scripts/run_microstructure_diagnostics.py`, not by a unit
+test — synthetic random signals cannot establish a quality edge.
 
 ## 11. Files Changed
 
