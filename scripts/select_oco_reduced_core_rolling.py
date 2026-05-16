@@ -382,7 +382,8 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     raw_predictions_empty = p.empty
 
     # Gracefully handle no-trade condition (empty inputs)
-    if raw_candidates_empty and raw_predictions_empty:
+    # Selection requires both inputs; either being empty means no trade is possible
+    if raw_candidates_empty or raw_predictions_empty:
         # Write empty outputs to allow downstream stages to continue
         out_sched = Path(str(cfg["out_state_schedule_csv"]))
         out_month = Path(str(cfg["out_monthly_csv"]))
@@ -411,7 +412,14 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         # Write empty dataframes with proper schema
         schedule_empty = pd.DataFrame(columns=["symbol", "state_id"])
         monthly_empty = pd.DataFrame()
-        summary_empty = pd.DataFrame([{"symbol": symbol, "status": "NO_TRADE", "reason": "No candidates or predictions available"}])
+        _reason = (
+            "No candidates available"
+            if raw_candidates_empty and raw_predictions_empty
+            else "No predictions available"
+            if raw_predictions_empty
+            else "No candidates available"
+        )
+        summary_empty = pd.DataFrame([{"symbol": symbol, "status": "NO_TRADE", "reason": _reason}])
 
         schedule_empty.to_csv(out_sched, index=False)
         pd.DataFrame().to_csv(out_state, index=False)
