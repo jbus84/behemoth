@@ -4,7 +4,7 @@
 - library: `oco`
 - train_years_for_state_fit: `2022,2023,2024`
 - eval_window: `2025-01` .. `2026-03`
-- min_candidate_train_count: `15000`
+- min_candidate_train_count: `2000`
 - max_candidates_per_library: `300`
 - rolling_train_months: `3`
 - oco_include_no_touch: `True`
