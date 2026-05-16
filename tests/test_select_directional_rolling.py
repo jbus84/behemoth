@@ -7,7 +7,6 @@ Empty predictions -> NO_TRADE (not crash).
 from __future__ import annotations
 
 import pandas as pd
-import pytest
 
 from scripts.select_directional_rolling import run
 
