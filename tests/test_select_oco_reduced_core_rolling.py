@@ -83,6 +83,26 @@ def test_empty_predictions_parquet_is_no_trade(tmp_path):
     assert pd.read_csv(tmp_path / "summary.csv").iloc[0]["status"] == "NO_TRADE"
 
 
+def test_zero_column_predictions_parquet_is_no_trade(tmp_path):
+    """A predictions parquet with no columns at all (shape 0x0, as produced by an
+    upstream pipeline that wrote an empty DataFrame()) is a no-trade, not a crash."""
+    cand = tmp_path / "cand.csv"
+    pred = tmp_path / "pred.parquet"
+    pd.DataFrame(
+        [{
+            "symbol": "EURUSD", "bar_ticks": 1000, "horizon": 5,
+            "family": "oco_first_touch", "state_id": "oco_first_touch__all__k2",
+            "regime_desc": "all;barrier=2.0", "barrier_pips": 2.0,
+        }]
+    ).to_csv(cand, index=False)
+    pd.DataFrame().to_parquet(pred, index=False)  # 0x0 — no columns
+
+    schedule, monthly, summary = run(_cfg(tmp_path, cand, pred))
+    assert schedule.empty
+    assert pd.read_csv(tmp_path / "summary.csv").iloc[0]["status"] == "NO_TRADE"
+    assert "predictions" in pd.read_csv(tmp_path / "summary.csv").iloc[0]["reason"].lower()
+
+
 def test_nonempty_predictions_that_do_not_join_still_raise(tmp_path):
     """Candidates and predictions both have rows but the candidate_uid state
     ids do not match — a mismatch bug, must stay a hard error."""
