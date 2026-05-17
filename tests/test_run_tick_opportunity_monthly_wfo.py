@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 
 from scripts.run_tick_opportunity_monthly_wfo import _wfo_monthly
 
@@ -99,7 +100,6 @@ def test_feature_cols_omits_microstructure_features_when_absent():
 
 
 def test_check_microstructure_columns_raises_when_all_absent():
-    import pytest
     from scripts.run_tick_opportunity_monthly_wfo import _check_microstructure_columns
 
     df = pd.DataFrame({"ret_z": [0.1, 0.2], "bar_ticks": [1000, 1000]})
@@ -131,7 +131,6 @@ def test_check_microstructure_columns_warns_on_partial_absence(capsys):
 
 
 def test_wfo_monthly_invokes_guard_on_stale_data():
-    import pytest
     from scripts.run_tick_opportunity_monthly_wfo import _wfo_monthly
 
     df = pd.DataFrame({"ret_z": [0.1, 0.2], "bar_ticks": [1000, 1000]})
