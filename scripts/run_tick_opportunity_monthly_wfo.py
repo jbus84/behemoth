@@ -245,10 +245,19 @@ def _attach_stable_event_ids(events: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def _feature_cols(d: pd.DataFrame) -> list[str]:
-    """Dynamically determine the 16 model feature columns present in the frame.
+_MICROSTRUCTURE_FEATURES = [
+    "tick_burst_score",
+    "quote_revision_rate_z",
+    "directional_persistence_8",
+    "signed_flow_24",
+    "vol_cluster_score",
+]
 
-    IMPORTANT: The returned list includes 13 market features AND 3 structural parameters
+
+def _feature_cols(d: pd.DataFrame) -> list[str]:
+    """Dynamically determine the model feature columns present in the frame.
+
+    IMPORTANT: The returned list includes 18 market features AND 3 structural parameters
     (bar_ticks, horizon, barrier_pips). These structural parameters are critical meta-learning
     state constraints that allow the CatBoost model to partition its thresholds contextually.
     Do NOT remove them under the mistaken belief that they are 'leakage'.
@@ -270,8 +279,24 @@ def _feature_cols(d: pd.DataFrame) -> list[str]:
         "bar_ticks",
         "horizon",
         "barrier_pips",
-    ]
+    ] + _MICROSTRUCTURE_FEATURES
     return [c for c in base if c in d.columns]
+
+
+def _check_microstructure_columns(d: pd.DataFrame) -> None:
+    """Fail loud when Stage 0 velocity data predates the microstructure
+    columns; warn (do not crash) on a partial schema split."""
+    present = [c for c in _MICROSTRUCTURE_FEATURES if c in d.columns]
+    if not present:
+        raise FileNotFoundError(
+            "no microstructure feature columns found in the ml-ready "
+            f"dataset (expected any of {_MICROSTRUCTURE_FEATURES}). "
+            "Stage 0 velocity data is stale or predates mining Phase 1. "
+            "Run `make rebuild-all MONTHS=...` to rebuild Stage 0 data."
+        )
+    missing = [c for c in _MICROSTRUCTURE_FEATURES if c not in d.columns]
+    if missing:
+        print(f"warning: microstructure columns missing from dataset: {missing}")
 
 
 def _month_bounds(year: int) -> list[tuple[pd.Timestamp, pd.Timestamp]]:
@@ -426,6 +451,7 @@ def _wfo_monthly(
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
     if CatBoostClassifier is None:
         raise RuntimeError("CatBoost is required for monthly WFO runner")
+    _check_microstructure_columns(d)
 
     x = d.copy()
     x["close_ts"] = pd.to_datetime(x["close_ts"], utc=True, errors="coerce")

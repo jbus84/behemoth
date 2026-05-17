@@ -73,13 +73,10 @@ DEFAULTS: dict[str, Any] = {
 TIER_RANK = {"D": 0, "C": 1, "B": 2, "A": 3}
 EXPECTED_CANDIDATE_SCHEMA_VERSION = str(MINING_CANDIDATE_SCHEMA_VERSION)
 
-# Phase 1: microstructure columns preserved for diagnostics; not consumed by model
+# session_marker stays diagnostic-only (categorical; see
+# docs/superpowers/specs/2026-05-17-microstructure-model-features-design.md).
+# The 5 numeric microstructure columns are now model features (_feature_cols).
 _MICROSTRUCTURE_DIAGNOSTIC_COLS = [
-    "tick_burst_score",
-    "quote_revision_rate_z",
-    "directional_persistence_8",
-    "signed_flow_24",
-    "vol_cluster_score",
     "session_marker",
 ]
 EXPECTED_SELECTION_PASS_BASIS = str(MINING_SELECTION_PASS_BASIS)
@@ -270,6 +267,11 @@ def _feature_cols(df: pd.DataFrame) -> list[str]:
         "hl_first",
         "hl_first_mean_24",
         "hl_pos_frac_mean_24",
+        "tick_burst_score",
+        "quote_revision_rate_z",
+        "directional_persistence_8",
+        "signed_flow_24",
+        "vol_cluster_score",
     ]
     return [c for c in cols if c in df.columns]
 
