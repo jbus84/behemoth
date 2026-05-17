@@ -96,3 +96,22 @@ def test_feature_cols_omits_microstructure_features_when_absent():
         assert c not in feats
     assert "bar_ticks" in feats
     assert "horizon" in feats
+
+
+def test_check_microstructure_columns_raises_when_all_absent():
+    import pytest
+    from scripts.run_tick_opportunity_monthly_wfo import _check_microstructure_columns
+
+    df = pd.DataFrame({"ret_z": [0.1, 0.2], "bar_ticks": [1000, 1000]})
+    with pytest.raises(FileNotFoundError, match="rebuild-all"):
+        _check_microstructure_columns(df)
+
+
+def test_check_microstructure_columns_passes_when_all_present():
+    from scripts.run_tick_opportunity_monthly_wfo import (
+        _MICROSTRUCTURE_FEATURES,
+        _check_microstructure_columns,
+    )
+
+    df = pd.DataFrame({c: [0.0, 1.0] for c in _MICROSTRUCTURE_FEATURES})
+    _check_microstructure_columns(df)  # must not raise

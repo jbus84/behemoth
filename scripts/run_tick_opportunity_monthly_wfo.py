@@ -283,6 +283,22 @@ def _feature_cols(d: pd.DataFrame) -> list[str]:
     return [c for c in base if c in d.columns]
 
 
+def _check_microstructure_columns(d: pd.DataFrame) -> None:
+    """Fail loud when Stage 0 velocity data predates the microstructure
+    columns; warn (do not crash) on a partial schema split."""
+    present = [c for c in _MICROSTRUCTURE_FEATURES if c in d.columns]
+    if not present:
+        raise FileNotFoundError(
+            "no microstructure feature columns found in the ml-ready "
+            f"dataset (expected any of {_MICROSTRUCTURE_FEATURES}). "
+            "Stage 0 velocity data is stale or predates mining Phase 1. "
+            "Run `make rebuild-all MONTHS=...` to rebuild Stage 0 data."
+        )
+    missing = [c for c in _MICROSTRUCTURE_FEATURES if c not in d.columns]
+    if missing:
+        print(f"warning: microstructure columns missing from dataset: {missing}")
+
+
 def _month_bounds(year: int) -> list[tuple[pd.Timestamp, pd.Timestamp]]:
     starts = pd.date_range(f"{int(year)}-01-01", f"{int(year)}-12-01", freq="MS", tz="UTC")
     out: list[tuple[pd.Timestamp, pd.Timestamp]] = []
@@ -435,6 +451,7 @@ def _wfo_monthly(
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
     if CatBoostClassifier is None:
         raise RuntimeError("CatBoost is required for monthly WFO runner")
+    _check_microstructure_columns(d)
 
     x = d.copy()
     x["close_ts"] = pd.to_datetime(x["close_ts"], utc=True, errors="coerce")
