@@ -115,3 +115,40 @@ def test_check_microstructure_columns_passes_when_all_present():
 
     df = pd.DataFrame({c: [0.0, 1.0] for c in _MICROSTRUCTURE_FEATURES})
     _check_microstructure_columns(df)  # must not raise
+
+
+def test_check_microstructure_columns_warns_on_partial_absence(capsys):
+    from scripts.run_tick_opportunity_monthly_wfo import (
+        _MICROSTRUCTURE_FEATURES,
+        _check_microstructure_columns,
+    )
+
+    df = pd.DataFrame({c: [0.0, 1.0] for c in _MICROSTRUCTURE_FEATURES[:2]})
+    _check_microstructure_columns(df)  # must not raise
+    captured = capsys.readouterr()
+    assert "warning:" in captured.out
+    assert "missing" in captured.out
+
+
+def test_wfo_monthly_invokes_guard_on_stale_data():
+    import pytest
+    from scripts.run_tick_opportunity_monthly_wfo import _wfo_monthly
+
+    df = pd.DataFrame({"ret_z": [0.1, 0.2], "bar_ticks": [1000, 1000]})
+    with pytest.raises(FileNotFoundError, match="rebuild-all"):
+        _wfo_monthly(
+            df,
+            library="oco",
+            months=[],
+            score_start_ts=None,
+            rolling_train_months=3,
+            min_month_train_rows=0,
+            min_month_test_rows=0,
+            min_candidate_rows_in_train_window=0,
+            threshold_quantiles=[0.9],
+            threshold_mode="static",
+            rolling_threshold_days=0,
+            rolling_threshold_min_history=0,
+            execution_quantile=0.9,
+            seed=0,
+        )
