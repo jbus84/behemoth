@@ -257,7 +257,7 @@ _MICROSTRUCTURE_FEATURES = [
 def _feature_cols(d: pd.DataFrame) -> list[str]:
     """Dynamically determine the model feature columns present in the frame.
 
-    IMPORTANT: The returned list includes 13 market features AND 3 structural parameters
+    IMPORTANT: The returned list includes 18 market features AND 3 structural parameters
     (bar_ticks, horizon, barrier_pips). These structural parameters are critical meta-learning
     state constraints that allow the CatBoost model to partition its thresholds contextually.
     Do NOT remove them under the mistaken belief that they are 'leakage'.

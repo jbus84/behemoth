@@ -67,30 +67,32 @@ def test_wfo_main_overwrites_stale_predictions_when_empty(tmp_path, monkeypatch)
 
 
 def test_feature_cols_includes_microstructure_features_when_present():
-    from scripts.run_tick_opportunity_monthly_wfo import _feature_cols
+    from scripts.run_tick_opportunity_monthly_wfo import (
+        _MICROSTRUCTURE_FEATURES,
+        _feature_cols,
+    )
 
     cols = [
         "cost_est_pips", "range_pips", "ret1_pips", "ret_z", "ret_abs_z",
         "vel_cost_units_h1", "vel_abs_cost_units_h1", "spread_z",
         "tick_rate_z", "hour_utc", "hl_first", "hl_first_mean_24",
         "hl_pos_frac_mean_24", "bar_ticks", "horizon", "barrier_pips",
-        "tick_burst_score", "quote_revision_rate_z",
-        "directional_persistence_8", "signed_flow_24", "vol_cluster_score",
-    ]
+    ] + _MICROSTRUCTURE_FEATURES
     df = pd.DataFrame({c: [0.0] for c in cols})
     feats = _feature_cols(df)
-    for c in [
-        "tick_burst_score", "quote_revision_rate_z",
-        "directional_persistence_8", "signed_flow_24", "vol_cluster_score",
-    ]:
+    for c in _MICROSTRUCTURE_FEATURES:
         assert c in feats
 
 
 def test_feature_cols_omits_microstructure_features_when_absent():
-    from scripts.run_tick_opportunity_monthly_wfo import _feature_cols
+    from scripts.run_tick_opportunity_monthly_wfo import (
+        _MICROSTRUCTURE_FEATURES,
+        _feature_cols,
+    )
 
     df = pd.DataFrame({c: [0.0] for c in ["ret_z", "bar_ticks", "horizon"]})
     feats = _feature_cols(df)
-    assert "tick_burst_score" not in feats
+    for c in _MICROSTRUCTURE_FEATURES:
+        assert c not in feats
     assert "bar_ticks" in feats
     assert "horizon" in feats
