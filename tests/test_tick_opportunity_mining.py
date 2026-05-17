@@ -409,3 +409,39 @@ def test_mining_produces_microstructure_regime_candidates():
         "high_vol_cluster",
     }
     assert expected_regimes <= regimes, f"missing regimes: {expected_regimes - regimes}"
+
+
+def test_mining_raises_when_dataset_dir_missing(tmp_path: Path) -> None:
+    cfg = {
+        "symbol": "EURUSD",
+        "dataset_dir": str(tmp_path / "does_not_exist"),
+        "bar_ticks_grid": "1000",
+        "horizons": "1,2,3",
+        "train_years": "2022,2023,2024",
+        "test_year": 2025,
+        "min_annual_fills": 50.0,
+        "gross_metric": "mean",
+        "library_type": "separate",
+        "barrier_grid_pips": "2,3",
+    }
+    with pytest.raises(FileNotFoundError, match="rebuild-all"):
+        run(cfg)
+
+
+def test_mining_raises_when_no_velocity_files_for_symbol(tmp_path: Path) -> None:
+    dataset_dir = tmp_path / "tick_velocity"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    cfg = {
+        "symbol": "EURUSD",
+        "dataset_dir": str(dataset_dir),
+        "bar_ticks_grid": "1000",
+        "horizons": "1,2,3",
+        "train_years": "2022,2023,2024",
+        "test_year": 2025,
+        "min_annual_fills": 50.0,
+        "gross_metric": "mean",
+        "library_type": "separate",
+        "barrier_grid_pips": "2,3",
+    }
+    with pytest.raises(FileNotFoundError, match="no velocity files"):
+        run(cfg)
