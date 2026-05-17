@@ -952,49 +952,60 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     directional_parts: list[pd.DataFrame] = []
     oco_parts: list[pd.DataFrame] = []
 
-    # Gracefully handle missing dataset_dir: skip processing and return empty dataframes,
-    # allowing downstream stages to treat this as a no-trade condition.
-    if dataset_dir.exists():
-        for bt in bar_ticks_grid:
-            path = dataset_dir / f"{symbol}_{int(bt)}tick_velocity.parquet"
-            if not path.exists():
-                print(f"skip {bt}: missing {path}")
-                continue
-            d = _prepare_frame(path, symbol=symbol, horizons=horizons)
-            train = d[d["year"].isin(train_years)].copy().reset_index(drop=True)
-            test = d[d["year"] == int(test_year)].copy().reset_index(drop=True)
-            if train.empty or test.empty:
-                print(f"skip {bt}: empty split (train/test)")
-                continue
-            if library_type in {"separate", "directional"}:
-                directional_parts.append(
-                    _directional_candidates(
-                        train=train,
-                        test=test,
-                        symbol=symbol,
-                        bar_ticks=int(bt),
-                        horizons=horizons,
-                        min_annual_fills=min_annual_fills,
-                        gross_metric=gross_metric,
-                    )
+    if not dataset_dir.exists():
+        raise FileNotFoundError(
+            f"mining input directory does not exist: {dataset_dir}\n"
+            "Stage 0 data has not been built. Run "
+            "`make rebuild-all MONTHS=...` to build the velocity dataset "
+            "before mining."
+        )
+
+    files_found = 0
+    for bt in bar_ticks_grid:
+        path = dataset_dir / f"{symbol}_{int(bt)}tick_velocity.parquet"
+        if not path.exists():
+            print(f"skip {bt}: missing {path}")
+            continue
+        files_found += 1
+        d = _prepare_frame(path, symbol=symbol, horizons=horizons)
+        train = d[d["year"].isin(train_years)].copy().reset_index(drop=True)
+        test = d[d["year"] == int(test_year)].copy().reset_index(drop=True)
+        if train.empty or test.empty:
+            print(f"skip {bt}: empty split (train/test)")
+            continue
+        if library_type in {"separate", "directional"}:
+            directional_parts.append(
+                _directional_candidates(
+                    train=train,
+                    test=test,
+                    symbol=symbol,
+                    bar_ticks=int(bt),
+                    horizons=horizons,
+                    min_annual_fills=min_annual_fills,
+                    gross_metric=gross_metric,
                 )
-            if library_type in {"separate", "oco"}:
-                oco_parts.append(
-                    _oco_candidates(
-                        train=train,
-                        test=test,
-                        symbol=symbol,
-                        bar_ticks=int(bt),
-                        horizons=horizons,
-                        barrier_grid_pips=barrier_grid,
-                        min_annual_fills=min_annual_fills,
-                        gross_metric=gross_metric,
-                    )
+            )
+        if library_type in {"separate", "oco"}:
+            oco_parts.append(
+                _oco_candidates(
+                    train=train,
+                    test=test,
+                    symbol=symbol,
+                    bar_ticks=int(bt),
+                    horizons=horizons,
+                    barrier_grid_pips=barrier_grid,
+                    min_annual_fills=min_annual_fills,
+                    gross_metric=gross_metric,
                 )
-            print(f"ok {symbol} {bt}tick")
-    else:
-        print(f"dataset_dir does not exist: {dataset_dir}")
-        print("returning empty candidates (no-trade condition)")
+            )
+        print(f"ok {symbol} {bt}tick")
+
+    if files_found == 0:
+        raise FileNotFoundError(
+            f"no velocity files found for {symbol} in {dataset_dir} "
+            f"(expected {symbol}_<ticks>tick_velocity.parquet). "
+            "Run `make rebuild-all MONTHS=...` to build Stage 0 data."
+        )
 
     directional = (
         pd.concat(directional_parts, ignore_index=True) if directional_parts else pd.DataFrame()
