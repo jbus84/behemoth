@@ -214,8 +214,14 @@ retrain-all:
 	uv run mkdocs build --strict
 	@echo "\n✅ Full retrain complete"
 
+clean-data:
+	@echo "Cleaning data/ (raw ticks at $$HOME/Desktop/dukascopy_ticks are kept)"
+	rm -rf data
+	mkdir -p data
+
 rebuild-all:
 	@test -n "$(MONTHS)" || (echo "error: MONTHS required, e.g. make rebuild-all MONTHS=201801-202602" && exit 1)
+	@if [ -z "$(SKIP_CLEAN)" ]; then $(MAKE) clean-data; else echo "SKIP_CLEAN set — keeping existing data/"; fi
 	@echo "══════════════════════════════════════════"
 	@echo "  Full rebuild for all symbols (Stages 0-5)"
 	@echo "══════════════════════════════════════════"
