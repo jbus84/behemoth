@@ -2,7 +2,7 @@ symbol: EURUSD
 candidate_csv: data/analysis/tick_opportunity_mining/EURUSD_directional_candidates.csv
 pred_path: data/analysis/tick_opportunity_mining/wfo_m3to1_directional_fullcap/EURUSD_directional_monthly_predictions.parquet
 
-family_keep: ""
+family_keep: "shock_extreme_revert,shock_revert"
 horizon_keep: "5,6"
 locked_quantile: 0.9
 
