@@ -245,8 +245,17 @@ def _attach_stable_event_ids(events: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+_MICROSTRUCTURE_FEATURES = [
+    "tick_burst_score",
+    "quote_revision_rate_z",
+    "directional_persistence_8",
+    "signed_flow_24",
+    "vol_cluster_score",
+]
+
+
 def _feature_cols(d: pd.DataFrame) -> list[str]:
-    """Dynamically determine the 16 model feature columns present in the frame.
+    """Dynamically determine the model feature columns present in the frame.
 
     IMPORTANT: The returned list includes 13 market features AND 3 structural parameters
     (bar_ticks, horizon, barrier_pips). These structural parameters are critical meta-learning
@@ -270,7 +279,7 @@ def _feature_cols(d: pd.DataFrame) -> list[str]:
         "bar_ticks",
         "horizon",
         "barrier_pips",
-    ]
+    ] + _MICROSTRUCTURE_FEATURES
     return [c for c in base if c in d.columns]
 
 
