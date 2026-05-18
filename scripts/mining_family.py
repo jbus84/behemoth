@@ -64,4 +64,54 @@ def resolve_families(library_type: str) -> list[str]:
     return list(_LIBRARY_TYPE_ALIASES[key])
 
 
-FAMILY_REGISTRY: dict[str, MiningFamily] = {}
+class DirectionalFamily:
+    name = "directional"
+
+    def param_grid(self, cfg: dict[str, Any]) -> list[dict[str, Any]]:
+        from scripts.run_tick_opportunity_mining import _parse_ints
+
+        return [{"horizon": h} for h in _parse_ints(str(cfg["horizons"]))]
+
+    def entry_indices(
+        self, frame: pd.DataFrame, regime_mask: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        h = int(params["horizon"])
+        ycol = f"y_fwd_pips_h{h}"
+        sidecol = f"_dir_side_h{h}"
+        if ycol not in frame.columns or sidecol not in frame.columns:
+            return np.array([], dtype=np.int64)
+        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
+        side = frame[sidecol].to_numpy()
+        valid = np.isfinite(y)
+        if h > 0:
+            valid[-h:] = False
+        m = valid & np.asarray(regime_mask, dtype=bool) & (side != 0)
+        return np.flatnonzero(m).astype(np.int64)
+
+    def measure_gross(
+        self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        h = int(params["horizon"])
+        ycol = f"y_fwd_pips_h{h}"
+        sidecol = f"_dir_side_h{h}"
+        if ycol not in frame.columns or sidecol not in frame.columns:
+            return np.array([], dtype=float)
+        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
+        side = frame[sidecol].to_numpy().astype(float)
+        return side[entries] * y[entries]
+
+    def candidate_metadata(
+        self, regime_name: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
+        h = int(params["horizon"])
+        return {
+            "family": "directional",
+            "state_id": f"directional__{regime_name}__h{h}",
+            "regime_desc": regime_name,
+            "ml_ready_target_type": "directional",
+        }
+
+
+FAMILY_REGISTRY: dict[str, MiningFamily] = {
+    "directional": DirectionalFamily(),
+}
