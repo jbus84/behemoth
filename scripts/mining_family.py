@@ -117,6 +117,9 @@ class DirectionalFamily:
 class OcoFirstTouchFamily:
     name = "oco_first_touch"
 
+    def __init__(self) -> None:
+        self._cache: dict[tuple[int, tuple[tuple[str, Any], ...]], dict[str, Any] | None] = {}
+
     def param_grid(self, cfg: dict[str, Any]) -> list[dict[str, Any]]:
         from scripts.run_tick_opportunity_mining import _parse_floats, _parse_ints
 
@@ -133,15 +136,20 @@ class OcoFirstTouchFamily:
     ) -> dict[str, Any] | None:
         from scripts.run_tick_opportunity_mining import _oco_precompute_candidates
 
+        key = (id(frame), tuple(sorted(params.items())))
+        if key in self._cache:
+            return self._cache[key]
         try:
-            return _oco_precompute_candidates(
+            result = _oco_precompute_candidates(
                 frame,
                 symbol=symbol,
                 horizon=int(params["horizon"]),
                 barrier_pips=float(params["barrier_pips"]),
             )
         except ValueError:
-            return None
+            result = None
+        self._cache[key] = result
+        return result
 
     def entry_indices(
         self, frame: pd.DataFrame, regime_mask: np.ndarray, params: dict[str, Any]
@@ -194,6 +202,9 @@ class OcoAsymmetricFamily:
     _DOWN_PIPS = [2.0, 3.0, 5.0, 8.0]
     _RR = [0.5, 0.75, 1.0, 1.5, 2.0, 3.0]
 
+    def __init__(self) -> None:
+        self._cache: dict[tuple[int, tuple[tuple[str, Any], ...]], dict[str, Any] | None] = {}
+
     def param_grid(self, cfg: dict[str, Any]) -> list[dict[str, Any]]:
         from scripts.run_tick_opportunity_mining import _parse_ints
 
@@ -210,13 +221,16 @@ class OcoAsymmetricFamily:
     ) -> dict[str, Any] | None:
         from scripts.run_tick_opportunity_mining import _oco_asymmetric_precompute
 
+        key = (id(frame), tuple(sorted(params.items())))
+        if key in self._cache:
+            return self._cache[key]
         down = float(params["down_pips"])
         rr = float(params["rr"])
         up = down * rr
         if down <= 0.0 or up <= 0.0:
             raise ValueError(f"non-positive barrier: down={down} up={up}")
         try:
-            return _oco_asymmetric_precompute(
+            result = _oco_asymmetric_precompute(
                 frame,
                 symbol=symbol,
                 horizon=int(params["horizon"]),
@@ -224,7 +238,9 @@ class OcoAsymmetricFamily:
                 down_pips=down,
             )
         except ValueError:
-            return None
+            result = None
+        self._cache[key] = result
+        return result
 
     def entry_indices(
         self, frame: pd.DataFrame, regime_mask: np.ndarray, params: dict[str, Any]
@@ -300,7 +316,7 @@ class DirectionalRunFamily:
 
         h = int(params["horizon"])
         ycol = f"y_fwd_pips_h{h}"
-        if ycol not in frame.columns:
+        if ycol not in frame.columns or "ret1_pips" not in frame.columns:
             return np.array([], dtype=np.int64)
         run_len, run_sign = _run_length(frame)
         y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)

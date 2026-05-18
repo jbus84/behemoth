@@ -911,7 +911,7 @@ def _mine_frame_pair(
                             both_window_rate_train = float(np.mean(botht[regt]))
 
                 # selection_pass
-                if fam_name == "directional":
+                if fam_name in ("directional", "directional_run"):
                     train_annual = (
                         _annualized_count(
                             train_n,

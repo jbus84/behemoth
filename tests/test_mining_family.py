@@ -291,3 +291,51 @@ def test_directional_run_entry_indices_match_bucket():
                              {"horizon": 1, "run_bucket": "6+", "bet": "continuation"})
     assert list(exact3) == [2]          # run length exactly 3 -> index 2
     assert list(tail) == [5]              # run length >= 6 -> index 5 (last h=1 bar excluded)
+
+
+def test_directional_run_entry_indices_empty_when_ret1_pips_missing():
+    import numpy as np
+    import pandas as pd
+
+    from scripts.mining_family import FAMILY_REGISTRY
+
+    fam = FAMILY_REGISTRY["directional_run"]
+    frame = pd.DataFrame({"y_fwd_pips_h1": [1.0, 2.0, 3.0]})
+    allmask = np.ones(3, dtype=bool)
+    entries = fam.entry_indices(frame, allmask,
+                                {"horizon": 1, "run_bucket": "2", "bet": "continuation"})
+    assert len(entries) == 0
+
+
+def test_oco_asymmetric_precompute_is_cached():
+    import numpy as np
+    import pandas as pd
+
+    from scripts.mining_family import OcoAsymmetricFamily
+
+    fam = OcoAsymmetricFamily()
+    rng = np.random.default_rng(11)
+    n = 300
+    base = 1.10 + np.cumsum(rng.normal(0, 0.0002, n))
+    frame = pd.DataFrame({
+        "close_bid": base,
+        "low_bid": base - rng.uniform(0.0001, 0.0006, n),
+        "high_ask": base + rng.uniform(0.0001, 0.0006, n),
+        "close_ask": base + 0.0002,
+        "hl_first": rng.choice([1.0, -1.0, 0.0], size=n),
+    })
+    allmask = np.ones(len(frame), dtype=bool)
+    params = {"symbol": "EURUSD", "horizon": 4, "down_pips": 3.0, "rr": 1.0}
+
+    # First call populates cache
+    entries1 = fam.entry_indices(frame, allmask, params)
+    # Second call should hit cache
+    gross1 = fam.measure_gross(frame, entries1, params)
+
+    # Verify cache has one entry
+    assert len(fam._cache) == 1
+    # Calling again with same frame + params should not grow cache
+    entries2 = fam.entry_indices(frame, allmask, params)
+    gross2 = fam.measure_gross(frame, entries2, params)
+    assert len(fam._cache) == 1
+    np.testing.assert_array_equal(gross1, gross2)
