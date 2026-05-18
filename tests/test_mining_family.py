@@ -339,3 +339,158 @@ def test_oco_asymmetric_precompute_is_cached():
     gross2 = fam.measure_gross(frame, entries2, params)
     assert len(fam._cache) == 1
     np.testing.assert_array_equal(gross1, gross2)
+
+
+def test_oco_asymmetric_no_false_edge_on_driftless_data():
+    import numpy as np
+    import pandas as pd
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from scripts.mining_random_baseline import random_entry_baseline
+
+    fam = FAMILY_REGISTRY["oco_asymmetric"]
+    rng = np.random.default_rng(99)
+    n = 1000
+    # Pure noise — no trend
+    base = 1.10 + np.cumsum(rng.normal(0, 0.0002, n))
+    frame = pd.DataFrame({
+        "close_bid": base,
+        "low_bid": base - rng.uniform(0.0001, 0.0006, n),
+        "high_ask": base + rng.uniform(0.0001, 0.0006, n),
+        "close_ask": base + 0.0002,
+        "hl_first": rng.choice([1.0, -1.0, 0.0], size=n),
+    })
+    allmask = np.ones(len(frame), dtype=bool)
+    params = {"symbol": "EURUSD", "horizon": 4, "down_pips": 3.0, "rr": 1.0}
+    entries = fam.entry_indices(frame, allmask, params)
+    if len(entries) == 0:
+        return  # no candidates = no false edge
+    gross = fam.measure_gross(frame, entries, params)
+    gross = gross[np.isfinite(gross)]
+    if gross.size == 0:
+        return
+    cand_ev = float(np.mean(gross))
+    baseline = random_entry_baseline(
+        fam, frame, params,
+        n_entries=len(entries), n_draws=100,
+        rng=np.random.default_rng(7),
+        candidate_gross_ev=cand_ev,
+    )
+    z = baseline["random_baseline_z"]
+    assert np.isnan(z) or z < 2.0
+
+
+def test_oco_asymmetric_detects_structure_on_regime_trend():
+    import numpy as np
+    import pandas as pd
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from scripts.mining_random_baseline import random_entry_baseline
+
+    fam = FAMILY_REGISTRY["oco_asymmetric"]
+    rng = np.random.default_rng(77)
+    n = 1000
+    # First half flat, second half strong uptrend — candidate enters only uptrend
+    flat = np.cumsum(rng.normal(0, 0.0002, n // 2))
+    trend = np.cumsum(np.full(n // 2, 0.002) + rng.normal(0, 0.0001, n // 2))
+    base = 1.10 + np.concatenate([flat, flat[-1] + trend])
+    frame = pd.DataFrame({
+        "close_bid": base,
+        "low_bid": base - rng.uniform(0.0001, 0.0003, n),
+        "high_ask": base + rng.uniform(0.0001, 0.0003, n),
+        "close_ask": base + 0.0002,
+        "hl_first": rng.choice([1.0, -1.0, 0.0], size=n),
+    })
+    # Regime mask: only uptrend bars
+    regime_mask = np.zeros(n, dtype=bool)
+    regime_mask[n // 2:] = True
+    params = {"symbol": "EURUSD", "horizon": 4, "down_pips": 3.0, "rr": 2.0}
+    entries = fam.entry_indices(frame, regime_mask, params)
+    assert len(entries) > 0, "uptrend regime should produce entries"
+    gross = fam.measure_gross(frame, entries, params)
+    gross = gross[np.isfinite(gross)]
+    assert gross.size > 0
+    cand_ev = float(np.mean(gross))
+    baseline = random_entry_baseline(
+        fam, frame, params,
+        n_entries=len(entries), n_draws=200,
+        rng=np.random.default_rng(7),
+        candidate_gross_ev=cand_ev,
+    )
+    assert baseline["random_baseline_z"] > 2.0
+
+
+def test_directional_run_no_false_edge_on_random_data():
+    import numpy as np
+    import pandas as pd
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from scripts.mining_random_baseline import random_entry_baseline
+
+    fam = FAMILY_REGISTRY["directional_run"]
+    rng = np.random.default_rng(88)
+    n = 500
+    # Random returns with no persistence
+    ret = rng.choice([-0.1, 0.1], size=n)
+    # Forward returns uncorrelated
+    y = rng.normal(0, 0.5, n)
+    frame = pd.DataFrame({
+        "ret1_pips": ret,
+        "y_fwd_pips_h1": y,
+    })
+    allmask = np.ones(len(frame), dtype=bool)
+    params = {"horizon": 1, "run_bucket": "2", "bet": "continuation"}
+    entries = fam.entry_indices(frame, allmask, params)
+    if len(entries) == 0:
+        return  # no candidates = no false edge
+    gross = fam.measure_gross(frame, entries, params)
+    gross = gross[np.isfinite(gross)]
+    if gross.size == 0:
+        return
+    cand_ev = float(np.mean(gross))
+    baseline = random_entry_baseline(
+        fam, frame, params,
+        n_entries=len(entries), n_draws=100,
+        rng=np.random.default_rng(7),
+        candidate_gross_ev=cand_ev,
+    )
+    z = baseline["random_baseline_z"]
+    assert np.isnan(z) or z < 2.0
+
+
+def test_directional_run_detects_structure_on_runs():
+    import numpy as np
+    import pandas as pd
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from scripts.mining_random_baseline import random_entry_baseline
+
+    fam = FAMILY_REGISTRY["directional_run"]
+    n = 500
+    # Create runs: blocks of positive returns, each block long enough for bucket 6+
+    ret = np.zeros(n)
+    y = np.zeros(n)
+    block = 8
+    for start in range(0, n, block + 2):
+        end = min(start + block, n)
+        ret[start:end] = 0.1
+        y[start:end] = 1.0  # positive forward return matching the run
+    frame = pd.DataFrame({
+        "ret1_pips": ret,
+        "y_fwd_pips_h1": y,
+    })
+    allmask = np.ones(len(frame), dtype=bool)
+    params = {"horizon": 1, "run_bucket": "6+", "bet": "continuation"}
+    entries = fam.entry_indices(frame, allmask, params)
+    assert len(entries) > 0, "run frame should produce entries"
+    gross = fam.measure_gross(frame, entries, params)
+    gross = gross[np.isfinite(gross)]
+    assert gross.size > 0
+    cand_ev = float(np.mean(gross))
+    baseline = random_entry_baseline(
+        fam, frame, params,
+        n_entries=len(entries), n_draws=200,
+        rng=np.random.default_rng(7),
+        candidate_gross_ev=cand_ev,
+    )
+    assert baseline["random_baseline_z"] > 2.0
