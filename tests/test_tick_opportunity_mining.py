@@ -627,16 +627,14 @@ def test_run_mines_oco_asymmetric_and_directional_run(tmp_path: Path) -> None:
         "min_annual_fills": 50.0, "gross_metric": "mean",
         "barrier_grid_pips": "2,3", "baseline_seed": 12345, "baseline_draws": 20,
     }
-    asym_dir, _, _ = run({**base_cfg, "library_type": "oco_asymmetric"})
-    assert not asym_dir.empty or asym_dir is not None
-    # oco_asymmetric candidates land in the oco frame
-    asym_oco = run({**base_cfg, "library_type": "oco_asymmetric"})[1]
-    if not asym_oco.empty:
-        assert (asym_oco["family"] == "oco_asymmetric").all()
-        for col in ("random_baseline_z", "random_baseline_p"):
-            assert col in asym_oco.columns
+    asym_dir, asym_oco, _ = run({**base_cfg, "library_type": "oco_asymmetric"})
+    # oco_asymmetric produces candidates in the oco slot
+    assert not asym_oco.empty, "oco_asymmetric should produce at least one candidate"
+    assert (asym_oco["family"] == "oco_asymmetric").all()
+    for col in ("random_baseline_z", "random_baseline_p"):
+        assert col in asym_oco.columns
 
-    run_dir = run({**base_cfg, "library_type": "directional_run"})[0]
-    if not run_dir.empty:
-        assert (run_dir["family"] == "directional_run").all()
-        assert "random_baseline_z" in run_dir.columns
+    run_dir, _, _ = run({**base_cfg, "library_type": "directional_run"})
+    assert not run_dir.empty, "directional_run should produce at least one candidate"
+    assert (run_dir["family"] == "directional_run").all()
+    assert "random_baseline_z" in run_dir.columns

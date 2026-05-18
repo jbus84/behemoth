@@ -114,6 +114,18 @@ class DirectionalFamily:
         }
 
 
+def _frame_fingerprint(frame: pd.DataFrame) -> int:
+    """Content-based hash that avoids id() aliasing across GC cycles."""
+    n = len(frame)
+    if n == 0:
+        return hash((0, tuple(frame.columns)))
+    # Hash first and last row values of a stable column; fallback to index.
+    col = "close_bid" if "close_bid" in frame.columns else frame.columns[0]
+    first = tuple(frame[col].iloc[:1].to_numpy(dtype=float))
+    last = tuple(frame[col].iloc[-1:].to_numpy(dtype=float))
+    return hash((n, tuple(frame.columns), first, last))
+
+
 class OcoFirstTouchFamily:
     name = "oco_first_touch"
 
@@ -136,7 +148,7 @@ class OcoFirstTouchFamily:
     ) -> dict[str, Any] | None:
         from scripts.run_tick_opportunity_mining import _oco_precompute_candidates
 
-        key = (id(frame), tuple(sorted(params.items())))
+        key = (_frame_fingerprint(frame), tuple(sorted(params.items())))
         if key in self._cache:
             return self._cache[key]
         try:
@@ -221,7 +233,7 @@ class OcoAsymmetricFamily:
     ) -> dict[str, Any] | None:
         from scripts.run_tick_opportunity_mining import _oco_asymmetric_precompute
 
-        key = (id(frame), tuple(sorted(params.items())))
+        key = (_frame_fingerprint(frame), tuple(sorted(params.items())))
         if key in self._cache:
             return self._cache[key]
         down = float(params["down_pips"])
