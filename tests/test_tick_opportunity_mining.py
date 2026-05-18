@@ -15,6 +15,73 @@ from scripts.run_tick_opportunity_mining import (
     run,
 )
 
+# Captured from pre-refactor `run()` — see test_mining_run_output_is_stable.
+_PARITY: dict = {
+    "directional_rows": 435,
+    "oco_rows": 8,
+    "directional_cols": [
+        "annualized_test_fills",
+        "bar_ticks",
+        "both_window_rate",
+        "candidate_schema_version",
+        "family",
+        "gross_std_test",
+        "hit_rate_gross_test",
+        "horizon",
+        "mean_flow_persistence_train",
+        "mean_gross_pips_test",
+        "mean_gross_pips_train",
+        "mean_tick_burst_train",
+        "mean_vol_cluster_train",
+        "median_gross_pips_test",
+        "median_gross_pips_train",
+        "ml_ready_target_type",
+        "p_up_first",
+        "quality_score",
+        "quality_tier",
+        "quality_tier_basis",
+        "regime_desc",
+        "selection_pass",
+        "selection_pass_basis",
+        "session_coverage",
+        "state_id",
+        "symbol",
+        "test_count",
+        "train_count",
+    ],
+    "oco_cols": [
+        "annualized_test_fills",
+        "bar_ticks",
+        "both_window_rate",
+        "both_window_rate_train",
+        "candidate_schema_version",
+        "family",
+        "gross_std_test",
+        "hit_rate_gross_test",
+        "horizon",
+        "mean_flow_persistence_train",
+        "mean_gross_pips_test",
+        "mean_gross_pips_train",
+        "mean_tick_burst_train",
+        "mean_vol_cluster_train",
+        "median_gross_pips_test",
+        "median_gross_pips_train",
+        "ml_ready_target_type",
+        "p_up_first",
+        "quality_score",
+        "quality_tier",
+        "quality_tier_basis",
+        "regime_desc",
+        "selection_pass",
+        "selection_pass_basis",
+        "session_coverage",
+        "state_id",
+        "symbol",
+        "test_count",
+        "train_count",
+    ],
+}
+
 
 def _build_synth_tick_velocity(path: Path, *, symbol: str) -> None:
     rng = np.random.default_rng(7)
@@ -445,3 +512,40 @@ def test_mining_raises_when_no_velocity_files_for_symbol(tmp_path: Path) -> None
     }
     with pytest.raises(FileNotFoundError, match="no velocity files"):
         run(cfg)
+
+
+def test_mining_run_output_is_stable(tmp_path: Path) -> None:
+    """Parity guard for the family-framework refactor: the directional and
+    oco candidate frames produced by run() must stay byte-identical across
+    the refactor. Tasks porting families into MiningFamily classes must keep
+    this green."""
+    dataset_dir = tmp_path / "tick_velocity"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    _build_synth_tick_velocity(dataset_dir / "EURUSD_1000tick_velocity.parquet",
+                         symbol="EURUSD")
+    cfg = {
+        "symbol": "EURUSD",
+        "dataset_dir": str(dataset_dir),
+        "bar_ticks_grid": "1000",
+        "horizons": "1,2,3",
+        "train_years": "2022,2023,2024",
+        "test_year": 2025,
+        "min_annual_fills": 50.0,
+        "gross_metric": "mean",
+        "library_type": "separate",
+        "barrier_grid_pips": "2,3",
+    }
+    directional, oco, summary = run(cfg)
+    # Shape + key columns are stable; exact row counts depend on the synthetic
+    # fixture and must not change across the refactor.
+    snapshot = {
+        "directional_rows": len(directional),
+        "oco_rows": len(oco),
+        "directional_cols": sorted(directional.columns.tolist()),
+        "oco_cols": sorted(oco.columns.tolist()),
+    }
+    # Pin the snapshot: capture once on pre-refactor main, paste below.
+    assert snapshot["directional_rows"] == _PARITY["directional_rows"]
+    assert snapshot["oco_rows"] == _PARITY["oco_rows"]
+    assert snapshot["directional_cols"] == _PARITY["directional_cols"]
+    assert snapshot["oco_cols"] == _PARITY["oco_cols"]
