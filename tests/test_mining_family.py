@@ -233,3 +233,86 @@ def test_double_touch_family_param_grid_rejects_nonpositive():
     fam = FAMILY_REGISTRY["double_touch"]
     with pytest.raises(ValueError):
         fam.param_grid({"barrier_grid_pips": "0", "horizons": "1"})
+
+
+def test_double_touch_no_false_edge_on_driftless_data():
+    import numpy as np
+    import pandas as pd
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from scripts.mining_random_baseline import random_entry_baseline
+
+    fam = FAMILY_REGISTRY["double_touch"]
+    rng = np.random.default_rng(99)
+    n = 1500
+    pip = 0.0001
+    # Driftless random walk — sweeps occur but carry no continuation edge.
+    base = 1.20000 + np.cumsum(rng.normal(0, 0.3 * pip, n))
+    frame = pd.DataFrame({
+        "close_bid": base,
+        "close_ask": base + 0.2 * pip,
+        "low_bid": base - rng.uniform(0.1, 0.4, n) * pip,
+        "high_ask": base + 0.2 * pip + rng.uniform(0.1, 0.4, n) * pip,
+    })
+    allmask = np.ones(len(frame), dtype=bool)
+    params = {"symbol": "EURUSD", "sweep_dir": "up", "a_pips": 3.0,
+              "b_pips": 3.0, "window_A": 15, "window_B": 15, "horizon": 5}
+    entries = fam.entry_indices(frame, allmask, params)
+    assert len(entries) > 0, "driftless fixture should still produce sweeps"
+    gross = fam.measure_gross(frame, entries, params)
+    gross = gross[np.isfinite(gross)]
+    assert gross.size > 0
+    cand_ev = float(np.mean(gross))
+    baseline = random_entry_baseline(
+        fam, frame, params,
+        n_entries=len(entries), n_draws=100,
+        rng=np.random.default_rng(7),
+        candidate_gross_ev=cand_ev,
+    )
+    z = baseline["random_baseline_z"]
+    assert np.isnan(z) or z < 2.0
+
+
+def test_double_touch_detects_structure_on_post_sweep_continuation():
+    import numpy as np
+    import pandas as pd
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from scripts.mining_random_baseline import random_entry_baseline
+
+    fam = FAMILY_REGISTRY["double_touch"]
+    n = 1500
+    pip = 0.0001
+    # First 1000 bars have a steady downtrend; last 500 are flat.  A regime
+    # restricted to the trending region should score well above the random-
+    # entry baseline because random draws sample decided sweeps from the
+    # flat region too, diluting the control mean.
+    drift = np.concatenate([
+        1.30000 - 0.5 * pip * np.arange(1000),
+        np.full(500, 1.30000 - 0.5 * pip * 1000),
+    ])
+    blip = np.where(np.arange(n) % 25 == 1, 5.0 * pip, 0.0)
+    close = drift + blip
+    frame = pd.DataFrame({
+        "close_bid": close,
+        "close_ask": close + 0.2 * pip,
+        "low_bid": close - 0.3 * pip,
+        "high_ask": close + 0.2 * pip + 0.3 * pip,
+    })
+    regime_mask = np.zeros(len(frame), dtype=bool)
+    regime_mask[:1000] = True
+    params = {"symbol": "EURUSD", "sweep_dir": "up", "a_pips": 3.0,
+              "b_pips": 3.0, "window_A": 5, "window_B": 5, "horizon": 5}
+    entries = fam.entry_indices(frame, regime_mask, params)
+    assert len(entries) > 0, "sweep frame should produce entries"
+    gross = fam.measure_gross(frame, entries, params)
+    gross = gross[np.isfinite(gross)]
+    assert gross.size > 0
+    cand_ev = float(np.mean(gross))
+    baseline = random_entry_baseline(
+        fam, frame, params,
+        n_entries=len(entries), n_draws=200,
+        rng=np.random.default_rng(7),
+        candidate_gross_ev=cand_ev,
+    )
+    assert baseline["random_baseline_z"] > 2.0
