@@ -638,3 +638,25 @@ def test_double_touch_precompute_empty_when_frame_too_short() -> None:
         a_pips=3.0, b_pips=3.0, window_A=5, window_B=5, h2=5,
     )
     assert out == {}
+
+
+def test_run_mines_double_touch(tmp_path: Path) -> None:
+    dataset_dir = tmp_path / "tick_velocity"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    _build_synth_tick_velocity(dataset_dir / "EURUSD_1000tick_velocity.parquet",
+                               symbol="EURUSD")
+    cfg = {
+        "symbol": "EURUSD", "dataset_dir": str(dataset_dir),
+        "bar_ticks_grid": "1000", "horizons": "1,2,3",
+        "train_years": "2022,2023,2024", "test_year": 2025,
+        "min_annual_fills": 50.0, "gross_metric": "mean",
+        "library_type": "double_touch", "barrier_grid_pips": "2,3",
+        "baseline_seed": 12345, "baseline_draws": 20,
+    }
+    directional, oco, _ = run(cfg)
+    # double_touch is a signed-return family -> lands in the directional frame.
+    assert oco.empty
+    assert not directional.empty, "double_touch should produce candidates"
+    assert (directional["family"] == "double_touch").all()
+    for col in ("random_baseline_z", "random_baseline_p"):
+        assert col in directional.columns
