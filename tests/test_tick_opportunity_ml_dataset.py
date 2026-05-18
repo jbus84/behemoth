@@ -426,3 +426,11 @@ def test_ml_dataset_feature_cols_includes_microstructure_features():
         assert c in feats
         assert c not in _MICROSTRUCTURE_DIAGNOSTIC_COLS
     assert _MICROSTRUCTURE_DIAGNOSTIC_COLS == ["session_marker"]
+
+
+def test_expected_candidate_schema_version_is_current():
+    from scripts.build_tick_opportunity_ml_dataset import (
+        EXPECTED_CANDIDATE_SCHEMA_VERSION,
+    )
+
+    assert EXPECTED_CANDIDATE_SCHEMA_VERSION == "4.0"
