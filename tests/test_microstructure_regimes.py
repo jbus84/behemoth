@@ -18,11 +18,38 @@ import pandas as pd
 
 from scripts.build_tick_velocity_dataset import _build_symbol_dataset
 from scripts.run_tick_opportunity_mining import (
-    _directional_candidates,
-    _oco_candidates,
+    _mine_frame_pair,
     _quantiles,
     _regime_masks,
 )
+
+
+def _mine(
+    train: pd.DataFrame,
+    test: pd.DataFrame,
+    families: list[str],
+    *,
+    horizons: str = "6",
+    barriers: str = "2.0",
+) -> dict[str, pd.DataFrame]:
+    """Mine candidate frames for a (train, test) pair via the family registry.
+
+    Replaces the removed `_oco_candidates` / `_directional_candidates`
+    entrypoints; `_mine_frame_pair` is the post-refactor seam that both
+    `run()` and these contract tests share.
+    """
+    rows = _mine_frame_pair(
+        train=train,
+        test=test,
+        symbol="EURUSD",
+        bar_ticks=1000,
+        cfg={"horizons": horizons, "barrier_grid_pips": barriers},
+        family_names=families,
+        baseline_seed=12345,
+        baseline_draws=20,
+        min_annual_fills=50.0,
+    )
+    return {fam: pd.DataFrame(fam_rows) for fam, fam_rows in rows.items()}
 
 MICRO_REGIMES = [
     "high_intensity",
@@ -228,16 +255,7 @@ def test_new_regimes_are_additive():
     """New microstructure regimes must produce extra rows; existing regimes unchanged."""
     train = _build_oco_semantics_frame(rows=4000, seed=1)
     test = _build_oco_semantics_frame(rows=4000, seed=2)
-    out = _oco_candidates(
-        train=train,
-        test=test,
-        symbol="EURUSD",
-        bar_ticks=1000,
-        horizons=[6],
-        barrier_grid_pips=[2.0],
-        min_annual_fills=50.0,
-        gross_metric="mean",
-    )
+    out = _mine(train, test, ["oco_first_touch"])["oco_first_touch"]
     regimes = set(out["regime_desc"].str.split(";").str[0])
     assert "all" in regimes, "baseline 'all' regime must still be present"
     assert set(MICRO_REGIMES) <= regimes, f"missing: {set(MICRO_REGIMES) - regimes}"
@@ -254,16 +272,7 @@ def test_microstructure_candidate_quality_vs_baseline():
     cannot prove it, so this test verifies the comparison is well-formed."""
     train = _build_oco_semantics_frame(rows=4000, seed=4)
     test = _build_oco_semantics_frame(rows=4000, seed=5)
-    out = _oco_candidates(
-        train=train,
-        test=test,
-        symbol="EURUSD",
-        bar_ticks=1000,
-        horizons=[6],
-        barrier_grid_pips=[2.0],
-        min_annual_fills=50.0,
-        gross_metric="mean",
-    )
+    out = _mine(train, test, ["oco_first_touch"])["oco_first_touch"]
     out = out.assign(regime=out["regime_desc"].str.split(";").str[0])
     baseline = out.loc[out["regime"] == "all", "mean_gross_pips_train"].mean()
     assert np.isfinite(baseline), "baseline 'all' regime has no train mean gross"
@@ -281,25 +290,9 @@ def test_directional_and_oco_both_mine_new_regimes():
     train = _build_oco_semantics_frame(rows=4000, seed=6)
     test = _build_oco_semantics_frame(rows=4000, seed=7)
 
-    oco = _oco_candidates(
-        train=train,
-        test=test,
-        symbol="EURUSD",
-        bar_ticks=1000,
-        horizons=[6],
-        barrier_grid_pips=[2.0],
-        min_annual_fills=50.0,
-        gross_metric="mean",
-    )
-    directional = _directional_candidates(
-        train=train,
-        test=test,
-        symbol="EURUSD",
-        bar_ticks=1000,
-        horizons=[6],
-        min_annual_fills=50.0,
-        gross_metric="mean",
-    )
+    mined = _mine(train, test, ["oco_first_touch", "directional"])
+    oco = mined["oco_first_touch"]
+    directional = mined["directional"]
     for lib, out in [("oco", oco), ("directional", directional)]:
         regimes = set(out["regime_desc"].str.split(";").str[0])
         for r in ["high_intensity", "persistent_flow", "high_vol_cluster"]:
