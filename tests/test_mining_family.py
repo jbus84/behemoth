@@ -241,3 +241,52 @@ def test_run_length_zero_return_breaks_run():
     run_len, run_sign = _run_length(frame)
     np.testing.assert_array_equal(run_len, [1, 0, 1, 2])
     np.testing.assert_array_equal(run_sign, [1, 0, 1, 1])
+
+
+def test_directional_run_family_grid_buckets_and_bet_symmetry():
+    import numpy as np
+    import pandas as pd
+
+    from scripts.mining_family import FAMILY_REGISTRY
+
+    fam = FAMILY_REGISTRY["directional_run"]
+    assert fam.name == "directional_run"
+    grid = fam.param_grid({"horizons": "1,2"})
+    buckets = sorted({g["run_bucket"] for g in grid})
+    bets = sorted({g["bet"] for g in grid})
+    assert buckets == ["2", "3", "4", "5", "6+"]
+    assert bets == ["continuation", "reversion"]
+    assert len(grid) == 5 * 2 * 2  # buckets x bets x horizons
+
+    # bet symmetry: continuation and reversion gross are exact negatives
+    frame = pd.DataFrame({
+        "ret1_pips": [0.2, 0.2, 0.2, -0.1],
+        "y_fwd_pips_h1": [1.0, 2.0, 3.0, 4.0],
+    })
+    entries = np.array([1, 2])
+    cont = fam.measure_gross(frame, entries,
+                             {"horizon": 1, "run_bucket": "2", "bet": "continuation"})
+    rev = fam.measure_gross(frame, entries,
+                            {"horizon": 1, "run_bucket": "2", "bet": "reversion"})
+    np.testing.assert_allclose(cont, -rev)
+
+
+def test_directional_run_entry_indices_match_bucket():
+    import numpy as np
+    import pandas as pd
+
+    from scripts.mining_family import FAMILY_REGISTRY
+
+    fam = FAMILY_REGISTRY["directional_run"]
+    # run lengths: 1,2,3,4,5,6,7  (seven rising bars)
+    frame = pd.DataFrame({
+        "ret1_pips": [0.1] * 7,
+        "y_fwd_pips_h1": [1.0] * 7,
+    })
+    allmask = np.ones(7, dtype=bool)
+    exact3 = fam.entry_indices(frame, allmask,
+                               {"horizon": 1, "run_bucket": "3", "bet": "continuation"})
+    tail = fam.entry_indices(frame, allmask,
+                             {"horizon": 1, "run_bucket": "6+", "bet": "continuation"})
+    assert list(exact3) == [2]          # run length exactly 3 -> index 2
+    assert list(tail) == [5]              # run length >= 6 -> index 5 (last h=1 bar excluded)

@@ -50,6 +50,7 @@ _LIBRARY_TYPE_ALIASES: dict[str, list[str]] = {
     "oco": ["oco_first_touch"],
     "oco_asymmetric": ["oco_asymmetric"],
     "directional": ["directional"],
+    "directional_run": ["directional_run"],
     "separate": ["oco_first_touch", "directional"],
 }
 
@@ -268,8 +269,87 @@ class OcoAsymmetricFamily:
         }
 
 
+class DirectionalRunFamily:
+    name = "directional_run"
+
+    _BUCKETS = ["2", "3", "4", "5", "6+"]
+    _BETS = ["continuation", "reversion"]
+
+    def param_grid(self, cfg: dict[str, Any]) -> list[dict[str, Any]]:
+        from scripts.run_tick_opportunity_mining import _parse_ints
+
+        horizons = _parse_ints(str(cfg["horizons"]))
+        return [
+            {"horizon": int(h), "run_bucket": b, "bet": bet}
+            for h in horizons
+            for b in self._BUCKETS
+            for bet in self._BETS
+        ]
+
+    def _bucket_mask(self, run_len: np.ndarray, bucket: str) -> np.ndarray:
+        if bucket == "6+":
+            return run_len >= 6
+        if bucket in {"2", "3", "4", "5"}:
+            return run_len == int(bucket)
+        raise ValueError(f"unknown run_bucket {bucket!r}")
+
+    def entry_indices(
+        self, frame: pd.DataFrame, regime_mask: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        from scripts.run_tick_opportunity_mining import _run_length
+
+        h = int(params["horizon"])
+        ycol = f"y_fwd_pips_h{h}"
+        if ycol not in frame.columns:
+            return np.array([], dtype=np.int64)
+        run_len, run_sign = _run_length(frame)
+        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
+        valid = np.isfinite(y)
+        if h > 0:
+            valid[-h:] = False
+        m = (
+            valid
+            & np.asarray(regime_mask, dtype=bool)
+            & self._bucket_mask(run_len, str(params["run_bucket"]))
+            & (run_sign != 0)
+        )
+        return np.flatnonzero(m).astype(np.int64)
+
+    def measure_gross(
+        self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        from scripts.run_tick_opportunity_mining import _run_length
+
+        h = int(params["horizon"])
+        ycol = f"y_fwd_pips_h{h}"
+        if ycol not in frame.columns:
+            return np.array([], dtype=float)
+        _, run_sign = _run_length(frame)
+        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
+        side = run_sign.astype(float)
+        bet = str(params["bet"])
+        if bet == "reversion":
+            side = -side
+        elif bet != "continuation":
+            raise ValueError(f"unknown bet {bet!r}")
+        return side[entries] * y[entries]
+
+    def candidate_metadata(
+        self, regime_name: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
+        bucket = str(params["run_bucket"])
+        bet = str(params["bet"])
+        return {
+            "family": "directional_run",
+            "state_id": f"directional_run__{regime_name}__n{bucket}_{bet}",
+            "regime_desc": f"{regime_name};run={bucket};bet={bet}",
+            "ml_ready_target_type": "directional_run",
+        }
+
+
 FAMILY_REGISTRY: dict[str, MiningFamily] = {
     "oco_first_touch": OcoFirstTouchFamily(),
     "oco_asymmetric": OcoAsymmetricFamily(),
     "directional": DirectionalFamily(),
+    "directional_run": DirectionalRunFamily(),
 }
