@@ -10,6 +10,7 @@ from behemoth.core.features import _extract_core_series
 from scripts.analyze_oco_stop_limit_tickfill import _rebuild_touch_events
 from scripts.run_tick_opportunity_mining import (
     _assign_quality_tier,
+    _double_touch_precompute,
     _oco_precompute_candidates,
     run,
 )
@@ -566,3 +567,74 @@ def test_run_emits_random_baseline_columns(tmp_path: Path) -> None:
             for col in ("random_baseline_z", "random_baseline_p",
                         "random_baseline_control_mean"):
                 assert col in df.columns
+
+
+def _build_sweep_frame(n: int = 600) -> pd.DataFrame:
+    """Steady downtrend with single-bar up-blips every 25 bars. A regime bar
+    just before a blip sees an up-A barrier touched (the blip), then price
+    drops back through the down-B barrier on the next bar, and the downtrend
+    is the continuation. Deterministic — used to assert a sweep is detected."""
+    pip = 0.0001
+    drift = 1.20000 - 0.5 * pip * np.arange(n)
+    blip = np.where(np.arange(n) % 25 == 1, 5.0 * pip, 0.0)
+    close = drift + blip
+    spread = 0.2 * pip
+    return pd.DataFrame({
+        "close_bid": close,
+        "close_ask": close + spread,
+        "low_bid": close - 0.3 * pip,
+        "high_ask": close + spread + 0.3 * pip,
+    })
+
+
+def _build_flat_frame(n: int = 300) -> pd.DataFrame:
+    """Constant price — no barrier is ever touched, so no sweep completes."""
+    pip = 0.0001
+    close = np.full(n, 1.20000)
+    spread = 0.2 * pip
+    return pd.DataFrame({
+        "close_bid": close,
+        "close_ask": close + spread,
+        "low_bid": close - 0.1 * pip,
+        "high_ask": close + spread + 0.1 * pip,
+    })
+
+
+def test_double_touch_precompute_detects_up_sweep() -> None:
+    frame = _build_sweep_frame()
+    out = _double_touch_precompute(
+        frame, symbol="EURUSD", sweep_dir="up",
+        a_pips=3.0, b_pips=3.0, window_A=5, window_B=5, h2=5,
+    )
+    assert out, "engine should return a populated dict for a long-enough frame"
+    decided = np.asarray(out["decided"], dtype=bool)
+    gross = np.asarray(out["gross"], dtype=float)
+    assert decided.sum() > 0, "at least one A->B sweep should complete"
+    # Up-sweep bets short; the downtrend continuation makes that profitable.
+    assert np.nanmean(gross) > 0.0
+    # Diagnostics are -1 where the leg did not fire, >=1 where it did.
+    t_a = np.asarray(out["t_a_step"], dtype=np.int64)
+    t_b = np.asarray(out["t_b_step"], dtype=np.int64)
+    assert (t_a[decided] >= 1).all() and (t_b[decided] >= 1).all()
+
+
+def test_double_touch_precompute_no_sweep_on_flat_frame() -> None:
+    frame = _build_flat_frame()
+    out = _double_touch_precompute(
+        frame, symbol="EURUSD", sweep_dir="up",
+        a_pips=3.0, b_pips=3.0, window_A=5, window_B=5, h2=5,
+    )
+    assert out, "engine should still return a dict for a long-enough frame"
+    decided = np.asarray(out["decided"], dtype=bool)
+    gross = np.asarray(out["gross"], dtype=float)
+    assert decided.sum() == 0, "a flat frame touches no barrier"
+    assert np.isnan(gross).all()
+
+
+def test_double_touch_precompute_empty_when_frame_too_short() -> None:
+    frame = _build_flat_frame(n=110)
+    out = _double_touch_precompute(
+        frame, symbol="EURUSD", sweep_dir="up",
+        a_pips=3.0, b_pips=3.0, window_A=5, window_B=5, h2=5,
+    )
+    assert out == {}

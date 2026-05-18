@@ -498,6 +498,105 @@ def _oco_precompute_candidates(
     }
 
 
+def _double_touch_precompute(
+    frame: pd.DataFrame,
+    *,
+    symbol: str,
+    sweep_dir: str,
+    a_pips: float,
+    b_pips: float,
+    window_A: int,
+    window_B: int,
+    h2: int,
+) -> dict[str, np.ndarray]:
+    """Anchored two-stage sweep engine.
+
+    For each regime entry bar i0: place an A-barrier a_pips in the sweep_dir
+    direction from i0's signal close; find the first touch within window_A
+    bars (tA). Then place a B-barrier b_pips in the OPPOSITE direction from
+    the A-barrier price; find the first touch within window_B bars of tA
+    (tB). Continuation gross is the signed h2-bar return from tB in the
+    B-direction. Look-ahead-free: entry conditioning is i0 only; tA, tB and
+    the continuation window are all strictly forward of i0.
+    """
+    load_bar_frame(
+        frame,
+        required=["close_bid", "low_bid", "high_ask", "close_ask"],
+    )
+    close_bid = pd.to_numeric(frame["close_bid"], errors="coerce").to_numpy(dtype=float)
+    low_bid = pd.to_numeric(frame["low_bid"], errors="coerce").to_numpy(dtype=float)
+    high_ask = pd.to_numeric(frame["high_ask"], errors="coerce").to_numpy(dtype=float)
+    close_ask = pd.to_numeric(frame["close_ask"], errors="coerce").to_numpy(dtype=float)
+
+    wA, wB, h = int(window_A), int(window_B), int(h2)
+    n = len(frame)
+    n_eff = n - (wA + wB + h)
+    if n_eff <= 100:
+        return {}
+
+    pip = float(_pip_size(symbol))
+    up = str(sweep_dir).strip().lower() == "up"
+
+    i0 = np.arange(n_eff, dtype=np.int64)
+    sig = close_ask[i0] if up else close_bid[i0]
+    valid = np.isfinite(sig)
+    i0 = i0[valid]
+    sig = sig[valid]
+
+    # Stage 1: A-barrier in the sweep direction.
+    a_price = sig + a_pips * pip if up else sig - a_pips * pip
+    inf_a = wA + 1
+    a_step = np.full(len(i0), inf_a, dtype=np.int32)
+    for s in range(1, wA + 1):
+        idx = i0 + int(s)
+        hit = high_ask[idx] >= a_price if up else low_bid[idx] <= a_price
+        first = (a_step == inf_a) & hit
+        a_step[first] = int(s)
+    a_touched = a_step <= wA
+    tA = i0 + a_step.astype(np.int64)
+
+    # Stage 2: B-barrier b_pips OPPOSITE the A-barrier price.
+    b_price = a_price - b_pips * pip if up else a_price + b_pips * pip
+    inf_b = wB + 1
+    b_step = np.full(len(i0), inf_b, dtype=np.int32)
+    for s in range(1, wB + 1):
+        idx = tA + int(s)
+        # idx stays in-bounds: tA <= i0+wA+1 and i0 <= n_eff-1, so
+        # idx <= n_eff-1 + wA + 1 + wB = n - h <= n - 1.
+        hit = low_bid[idx] <= b_price if up else high_ask[idx] >= b_price
+        first = a_touched & (b_step == inf_b) & hit
+        b_step[first] = int(s)
+    decided = a_touched & (b_step <= wB)
+    tB = tA + b_step.astype(np.int64)
+
+    # Continuation: signed h2-bar return from tB in the B-direction.
+    exit_i = tB + h
+    gross = np.full(len(i0), np.nan, dtype=float)
+    ok = decided & (exit_i < n)
+    if np.any(ok):
+        ok_idx = np.flatnonzero(ok)
+        if up:
+            # B is down -> continuation bet is short.
+            entry_price = close_bid[tB[ok_idx]]
+            exit_price = close_ask[exit_i[ok_idx]]
+            g = (entry_price - exit_price) / pip
+        else:
+            # B is up -> continuation bet is long.
+            entry_price = close_ask[tB[ok_idx]]
+            exit_price = close_bid[exit_i[ok_idx]]
+            g = (exit_price - entry_price) / pip
+        num_ok = np.isfinite(entry_price) & np.isfinite(exit_price)
+        gross[ok_idx[num_ok]] = g[num_ok]
+
+    return {
+        "i0": i0,
+        "decided": decided,
+        "gross": gross,
+        "t_a_step": np.where(a_touched, a_step, -1).astype(np.int64),
+        "t_b_step": np.where(decided, b_step, -1).astype(np.int64),
+    }
+
+
 def _assign_quality_tier(df: pd.DataFrame, *, library: str) -> pd.DataFrame:
     """Assign quality tiers (A/B/C/D) from look-ahead-free train metrics only.
 
