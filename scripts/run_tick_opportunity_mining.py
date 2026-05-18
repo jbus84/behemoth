@@ -659,6 +659,182 @@ def _save_report(
     report_out.write_text("\n".join(lines), encoding="utf-8")
 
 
+def _mine_frame_pair(
+    *,
+    train: pd.DataFrame,
+    test: pd.DataFrame,
+    symbol: str,
+    bar_ticks: int,
+    cfg: dict[str, Any],
+    family_names: list[str],
+    baseline_seed: int,
+    baseline_draws: int,
+    min_annual_fills: float,
+) -> dict[str, list[dict[str, Any]]]:
+    """Mine candidate rows for one (train, test) frame pair across the given
+    families. Returns per-family lists of candidate row dicts, before quality
+    tiering and contract stamping. Used by run() per bar-ticks velocity file
+    and directly by the microstructure-regime contract tests."""
+    horizons = _parse_ints(str(cfg["horizons"]))
+    per_family_rows: dict[str, list[dict[str, Any]]] = {n: [] for n in family_names}
+    train_q = _quantiles(train)
+    train = _attach_directional_side_columns(train, horizons=horizons, q=train_q)
+    test = _attach_directional_side_columns(test, horizons=horizons, q=train_q)
+    train_regimes = _regime_masks(train, train_q)
+    train_regime_map = {name: mask for name, mask in train_regimes}
+    for fam_name in family_names:
+        family = FAMILY_REGISTRY[fam_name]
+        rng = np.random.default_rng(baseline_seed)
+        test_regimes = _regime_masks(test, train_q)
+        for params in family.param_grid(cfg):
+            params = {**params, "symbol": symbol, "bar_ticks": int(bar_ticks)}
+
+            # OCO-specific precompute for both_window_rate / p_up_first
+            oco_prep_test: dict[str, Any] | None = None
+            oco_prep_train: dict[str, Any] | None = None
+            if fam_name == "oco_first_touch":
+                oco_prep_test = _oco_precompute_candidates(
+                    test, symbol=symbol,
+                    horizon=int(params.get("horizon", 0)),
+                    barrier_pips=float(params.get("barrier_pips", 0.0)),
+                )
+                oco_prep_train = _oco_precompute_candidates(
+                    train, symbol=symbol,
+                    horizon=int(params.get("horizon", 0)),
+                    barrier_pips=float(params.get("barrier_pips", 0.0)),
+                )
+
+            for regime_name, regime_mask in test_regimes:
+                entries = family.entry_indices(test, np.asarray(regime_mask, bool), params)
+                n = int(len(entries))
+                if n <= 0:
+                    continue
+                gross = np.asarray(family.measure_gross(test, entries, params), float)
+                gross = gross[np.isfinite(gross)]
+                if gross.size == 0:
+                    continue
+                cand_ev = float(np.mean(gross))
+
+                # Train metrics
+                train_entries = family.entry_indices(
+                    train, np.asarray(train_regime_map[regime_name], bool), params
+                )
+                train_n = int(len(train_entries))
+                train_gross = np.asarray(family.measure_gross(train, train_entries, params), float)
+                train_gross = train_gross[np.isfinite(train_gross)]
+                mean_train = float(np.mean(train_gross)) if train_gross.size > 0 else float("nan")
+                median_train = float(np.median(train_gross)) if train_gross.size > 0 else float("nan")
+
+                # Microstructure stats (train only)
+                if train_n > 0:
+                    if "tick_burst_score" in train.columns:
+                        tick_burst_vals = train["tick_burst_score"].to_numpy(dtype=float)[train_entries]
+                        mean_tick_burst = float(np.mean(tick_burst_vals))
+                    else:
+                        mean_tick_burst = float("nan")
+                    if "directional_persistence_8" in train.columns:
+                        persist_vals = train["directional_persistence_8"].to_numpy(dtype=float)[train_entries]
+                        mean_flow_persist = float(np.mean(persist_vals))
+                    else:
+                        mean_flow_persist = float("nan")
+                    if "vol_cluster_score" in train.columns:
+                        vol_cluster_vals = train["vol_cluster_score"].to_numpy(dtype=float)[train_entries]
+                        mean_vol_cluster = float(np.mean(vol_cluster_vals))
+                    else:
+                        mean_vol_cluster = float("nan")
+                    if "session_marker" in train.columns:
+                        session_vals = train["session_marker"].iloc[train_entries]
+                        session_coverage = session_vals.value_counts(normalize=True).to_dict()
+                    else:
+                        session_coverage = {}
+                else:
+                    mean_tick_burst = float("nan")
+                    mean_flow_persist = float("nan")
+                    mean_vol_cluster = float("nan")
+                    session_coverage = {}
+
+                base = random_entry_baseline(
+                    family, test, params,
+                    n_entries=n, n_draws=baseline_draws, rng=rng,
+                    candidate_gross_ev=cand_ev,
+                )
+
+                # OCO-specific fields
+                both_window_rate = float("nan")
+                both_window_rate_train = float("nan")
+                p_up_first = float("nan")
+                if fam_name == "oco_first_touch":
+                    if oco_prep_test:
+                        i0 = np.asarray(oco_prep_test["i0"], dtype=np.int64)
+                        decided = np.asarray(oco_prep_test["decided"], dtype=bool)
+                        both = np.asarray(oco_prep_test["both_touched_lookahead"], dtype=bool)
+                        side = np.asarray(oco_prep_test["side"], dtype=np.int8)
+                        reg = np.asarray(regime_mask, dtype=bool)[i0]
+                        if np.any(reg):
+                            both_window_rate = float(np.mean(both[reg]))
+                            fam_mask = decided & reg
+                            if np.any(fam_mask):
+                                p_up_first = float(np.mean(side[fam_mask] > 0.0))
+                    if oco_prep_train:
+                        i0t = np.asarray(oco_prep_train["i0"], dtype=np.int64)
+                        botht = np.asarray(oco_prep_train["both_touched_lookahead"], dtype=bool)
+                        regt = np.asarray(train_regime_map[regime_name], dtype=bool)[i0t]
+                        decidedt = np.asarray(oco_prep_train["decided"], dtype=bool)
+                        if np.any(regt & decidedt):
+                            both_window_rate_train = float(np.mean(botht[regt]))
+
+                # selection_pass
+                if fam_name == "directional":
+                    train_annual = (
+                        _annualized_count(
+                            train_n,
+                            pd.to_datetime(train["close_ts"], utc=True, errors="coerce").iloc[train_entries],
+                        )
+                        if train_n > 0
+                        else 0.0
+                    )
+                    selection_pass = bool(
+                        np.isfinite(mean_train)
+                        and mean_train > 0.0
+                        and train_annual >= float(min_annual_fills)
+                    )
+                else:
+                    selection_pass = bool(
+                        np.isfinite(mean_train)
+                        and mean_train > 0.0
+                        and train_n >= 500
+                    )
+
+                row = {
+                    "symbol": symbol,
+                    "bar_ticks": int(bar_ticks),
+                    "horizon": int(params.get("horizon", 0)),
+                    "test_count": n,
+                    "mean_gross_pips_test": cand_ev,
+                    "median_gross_pips_test": float(np.median(gross)),
+                    "gross_std_test": float(np.std(gross, ddof=0)),
+                    "hit_rate_gross_test": float(np.mean(gross > 0.0)),
+                    "annualized_test_fills": _annualized_count(
+                        n, pd.to_datetime(test["close_ts"], utc=True,
+                                          errors="coerce").iloc[entries]),
+                    "train_count": train_n,
+                    "mean_gross_pips_train": mean_train,
+                    "median_gross_pips_train": median_train,
+                    "both_window_rate": both_window_rate,
+                    "both_window_rate_train": both_window_rate_train,
+                    "p_up_first": p_up_first,
+                    "mean_tick_burst_train": mean_tick_burst,
+                    "mean_flow_persistence_train": mean_flow_persist,
+                    "mean_vol_cluster_train": mean_vol_cluster,
+                    "session_coverage": session_coverage,
+                    "selection_pass": selection_pass,
+                    **family.candidate_metadata(regime_name, params),
+                    **base,
+                }
+                per_family_rows[fam_name].append(row)
+    return per_family_rows
+
+
 def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     symbol = str(cfg["symbol"]).upper().strip()
     dataset_dir = Path(str(cfg["dataset_dir"]))
@@ -696,170 +872,20 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             continue
         files_found += 1
         d = _prepare_frame(path, symbol=symbol, horizons=horizons)
-        train_raw = d[d["year"].isin(train_years)].copy().reset_index(drop=True)
-        if not train_raw.empty:
-            train_q = _quantiles(train_raw)
-            d = _attach_directional_side_columns(d, horizons=horizons, q=train_q)
         train = d[d["year"].isin(train_years)].copy().reset_index(drop=True)
         test = d[d["year"] == int(test_year)].copy().reset_index(drop=True)
         if train.empty or test.empty:
             print(f"skip {bt}: empty split (train/test)")
             continue
 
-        train_q = _quantiles(train)
-        train_regimes = _regime_masks(train, train_q)
-        train_regime_map = {name: mask for name, mask in train_regimes}
-
-        for fam_name in family_names:
-            family = FAMILY_REGISTRY[fam_name]
-            rng = np.random.default_rng(baseline_seed)
-            test_regimes = _regime_masks(test, train_q)
-            for params in family.param_grid(cfg):
-                params = {**params, "symbol": symbol, "bar_ticks": int(bt)}
-
-                # OCO-specific precompute for both_window_rate / p_up_first
-                oco_prep_test: dict[str, Any] | None = None
-                oco_prep_train: dict[str, Any] | None = None
-                if fam_name == "oco_first_touch":
-                    oco_prep_test = _oco_precompute_candidates(
-                        test, symbol=symbol,
-                        horizon=int(params.get("horizon", 0)),
-                        barrier_pips=float(params.get("barrier_pips", 0.0)),
-                    )
-                    oco_prep_train = _oco_precompute_candidates(
-                        train, symbol=symbol,
-                        horizon=int(params.get("horizon", 0)),
-                        barrier_pips=float(params.get("barrier_pips", 0.0)),
-                    )
-
-                for regime_name, regime_mask in test_regimes:
-                    entries = family.entry_indices(test, np.asarray(regime_mask, bool), params)
-                    n = int(len(entries))
-                    if n <= 0:
-                        continue
-                    gross = np.asarray(family.measure_gross(test, entries, params), float)
-                    gross = gross[np.isfinite(gross)]
-                    if gross.size == 0:
-                        continue
-                    cand_ev = float(np.mean(gross))
-
-                    # Train metrics
-                    train_entries = family.entry_indices(
-                        train, np.asarray(train_regime_map[regime_name], bool), params
-                    )
-                    train_n = int(len(train_entries))
-                    train_gross = np.asarray(family.measure_gross(train, train_entries, params), float)
-                    train_gross = train_gross[np.isfinite(train_gross)]
-                    mean_train = float(np.mean(train_gross)) if train_gross.size > 0 else float("nan")
-                    median_train = float(np.median(train_gross)) if train_gross.size > 0 else float("nan")
-
-                    # Microstructure stats (train only)
-                    if train_n > 0:
-                        if "tick_burst_score" in train.columns:
-                            tick_burst_vals = train["tick_burst_score"].to_numpy(dtype=float)[train_entries]
-                            mean_tick_burst = float(np.mean(tick_burst_vals))
-                        else:
-                            mean_tick_burst = float("nan")
-                        if "directional_persistence_8" in train.columns:
-                            persist_vals = train["directional_persistence_8"].to_numpy(dtype=float)[train_entries]
-                            mean_flow_persist = float(np.mean(persist_vals))
-                        else:
-                            mean_flow_persist = float("nan")
-                        if "vol_cluster_score" in train.columns:
-                            vol_cluster_vals = train["vol_cluster_score"].to_numpy(dtype=float)[train_entries]
-                            mean_vol_cluster = float(np.mean(vol_cluster_vals))
-                        else:
-                            mean_vol_cluster = float("nan")
-                        if "session_marker" in train.columns:
-                            session_vals = train["session_marker"].iloc[train_entries]
-                            session_coverage = session_vals.value_counts(normalize=True).to_dict()
-                        else:
-                            session_coverage = {}
-                    else:
-                        mean_tick_burst = float("nan")
-                        mean_flow_persist = float("nan")
-                        mean_vol_cluster = float("nan")
-                        session_coverage = {}
-
-                    base = random_entry_baseline(
-                        family, test, params,
-                        n_entries=n, n_draws=baseline_draws, rng=rng,
-                        candidate_gross_ev=cand_ev,
-                    )
-
-                    # OCO-specific fields
-                    both_window_rate = float("nan")
-                    both_window_rate_train = float("nan")
-                    p_up_first = float("nan")
-                    if fam_name == "oco_first_touch":
-                        if oco_prep_test:
-                            i0 = np.asarray(oco_prep_test["i0"], dtype=np.int64)
-                            decided = np.asarray(oco_prep_test["decided"], dtype=bool)
-                            both = np.asarray(oco_prep_test["both_touched_lookahead"], dtype=bool)
-                            side = np.asarray(oco_prep_test["side"], dtype=np.int8)
-                            reg = np.asarray(regime_mask, dtype=bool)[i0]
-                            if np.any(reg):
-                                both_window_rate = float(np.mean(both[reg]))
-                                fam_mask = decided & reg
-                                if np.any(fam_mask):
-                                    p_up_first = float(np.mean(side[fam_mask] > 0.0))
-                        if oco_prep_train:
-                            i0t = np.asarray(oco_prep_train["i0"], dtype=np.int64)
-                            botht = np.asarray(oco_prep_train["both_touched_lookahead"], dtype=bool)
-                            regt = np.asarray(train_regime_map[regime_name], dtype=bool)[i0t]
-                            decidedt = np.asarray(oco_prep_train["decided"], dtype=bool)
-                            if np.any(regt & decidedt):
-                                both_window_rate_train = float(np.mean(botht[regt]))
-
-                    # selection_pass
-                    if fam_name == "directional":
-                        train_annual = (
-                            _annualized_count(
-                                train_n,
-                                pd.to_datetime(train["close_ts"], utc=True, errors="coerce").iloc[train_entries],
-                            )
-                            if train_n > 0
-                            else 0.0
-                        )
-                        selection_pass = bool(
-                            np.isfinite(mean_train)
-                            and mean_train > 0.0
-                            and train_annual >= float(min_annual_fills)
-                        )
-                    else:
-                        selection_pass = bool(
-                            np.isfinite(mean_train)
-                            and mean_train > 0.0
-                            and train_n >= 500
-                        )
-
-                    row = {
-                        "symbol": symbol,
-                        "bar_ticks": int(bt),
-                        "horizon": int(params.get("horizon", 0)),
-                        "test_count": n,
-                        "mean_gross_pips_test": cand_ev,
-                        "median_gross_pips_test": float(np.median(gross)),
-                        "gross_std_test": float(np.std(gross, ddof=0)),
-                        "hit_rate_gross_test": float(np.mean(gross > 0.0)),
-                        "annualized_test_fills": _annualized_count(
-                            n, pd.to_datetime(test["close_ts"], utc=True,
-                                              errors="coerce").iloc[entries]),
-                        "train_count": train_n,
-                        "mean_gross_pips_train": mean_train,
-                        "median_gross_pips_train": median_train,
-                        "both_window_rate": both_window_rate,
-                        "both_window_rate_train": both_window_rate_train,
-                        "p_up_first": p_up_first,
-                        "mean_tick_burst_train": mean_tick_burst,
-                        "mean_flow_persistence_train": mean_flow_persist,
-                        "mean_vol_cluster_train": mean_vol_cluster,
-                        "session_coverage": session_coverage,
-                        "selection_pass": selection_pass,
-                        **family.candidate_metadata(regime_name, params),
-                        **base,
-                    }
-                    per_family_rows[fam_name].append(row)
+        pair_rows = _mine_frame_pair(
+            train=train, test=test, symbol=symbol, bar_ticks=int(bt),
+            cfg=cfg, family_names=family_names,
+            baseline_seed=baseline_seed, baseline_draws=baseline_draws,
+            min_annual_fills=min_annual_fills,
+        )
+        for fam_name, fam_rows in pair_rows.items():
+            per_family_rows[fam_name].extend(fam_rows)
         print(f"ok {symbol} {bt}tick")
 
     if files_found == 0:
