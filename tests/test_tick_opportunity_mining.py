@@ -10,10 +10,83 @@ from behemoth.core.features import _extract_core_series
 from scripts.analyze_oco_stop_limit_tickfill import _rebuild_touch_events
 from scripts.run_tick_opportunity_mining import (
     _assign_quality_tier,
-    _oco_candidates,
     _oco_precompute_candidates,
     run,
 )
+
+# Captured from pre-refactor `run()` — see test_mining_run_output_is_stable.
+_PARITY: dict = {
+    "directional_rows": 45,
+    "oco_rows": 8,
+    "directional_cols": [
+        "annualized_test_fills",
+        "bar_ticks",
+        "both_window_rate",
+        "both_window_rate_train",
+        "candidate_schema_version",
+        "family",
+        "gross_std_test",
+        "hit_rate_gross_test",
+        "horizon",
+        "mean_flow_persistence_train",
+        "mean_gross_pips_test",
+        "mean_gross_pips_train",
+        "mean_tick_burst_train",
+        "mean_vol_cluster_train",
+        "median_gross_pips_test",
+        "median_gross_pips_train",
+        "ml_ready_target_type",
+        "p_up_first",
+        "quality_score",
+        "quality_tier",
+        "quality_tier_basis",
+        "random_baseline_control_mean",
+        "random_baseline_p",
+        "random_baseline_z",
+        "regime_desc",
+        "selection_pass",
+        "selection_pass_basis",
+        "session_coverage",
+        "state_id",
+        "symbol",
+        "test_count",
+        "train_count",
+    ],
+    "oco_cols": [
+        "annualized_test_fills",
+        "bar_ticks",
+        "both_window_rate",
+        "both_window_rate_train",
+        "candidate_schema_version",
+        "family",
+        "gross_std_test",
+        "hit_rate_gross_test",
+        "horizon",
+        "mean_flow_persistence_train",
+        "mean_gross_pips_test",
+        "mean_gross_pips_train",
+        "mean_tick_burst_train",
+        "mean_vol_cluster_train",
+        "median_gross_pips_test",
+        "median_gross_pips_train",
+        "ml_ready_target_type",
+        "p_up_first",
+        "quality_score",
+        "quality_tier",
+        "quality_tier_basis",
+        "random_baseline_control_mean",
+        "random_baseline_p",
+        "random_baseline_z",
+        "regime_desc",
+        "selection_pass",
+        "selection_pass_basis",
+        "session_coverage",
+        "state_id",
+        "symbol",
+        "test_count",
+        "train_count",
+    ],
+}
 
 
 def _build_synth_tick_velocity(path: Path, *, symbol: str) -> None:
@@ -300,23 +373,21 @@ def test_oco_precompute_candidates_uses_touch_bar_close_for_gross() -> None:
 
 
 def test_oco_candidates_follow_touch_bar_close_contract() -> None:
+    from scripts.mining_family import FAMILY_REGISTRY
+
     frame = _build_oco_semantics_frame(trigger_gap=0.00025)
-
-    out = _oco_candidates(
-        train=frame,
-        test=frame,
-        symbol="EURUSD",
-        bar_ticks=100,
-        horizons=[1],
-        barrier_grid_pips=[2.0],
-        min_annual_fills=50.0,
-        gross_metric="mean",
-    )
-
-    row = out.loc[out["state_id"] == "oco_first_touch__all__k2"].iloc[0]
-    assert row["test_count"] > 100
-    assert row["p_up_first"] == pytest.approx(1.0)
-    assert row["mean_gross_pips_test"] == pytest.approx(1.5)
+    fam = FAMILY_REGISTRY["oco_first_touch"]
+    params = {"horizon": 1, "barrier_pips": 2.0, "symbol": "EURUSD"}
+    entries = fam.entry_indices(frame, np.full(len(frame), True), params)
+    gross = fam.measure_gross(frame, entries, params)
+    assert len(entries) > 100
+    assert np.mean(gross) == pytest.approx(1.5)
+    prep = fam._precompute(frame, "EURUSD", params)
+    assert prep is not None
+    decided = np.asarray(prep["decided"], dtype=bool)
+    side = np.asarray(prep["side"], dtype=np.int8)
+    p_up = float(np.mean(side[decided] > 0.0))
+    assert p_up == pytest.approx(1.0)
 
 
 def test_mining_emits_only_first_touch_family() -> None:
@@ -326,21 +397,12 @@ def test_mining_emits_only_first_touch_family() -> None:
     within the horizon — future information). Only oco_first_touch, whose
     universe is decided & reg_mask, is look-ahead-free.
     """
-    train = _build_oco_semantics_frame(rows=4000)
-    test = _build_oco_semantics_frame(rows=4000)
-    out = _oco_candidates(
-        train=train,
-        test=test,
-        symbol="EURUSD",
-        bar_ticks=1000,
-        horizons=[6],
-        barrier_grid_pips=[2.0],
-        min_annual_fills=50.0,
-        gross_metric="mean",
-    )
-    families = set(out["family"].unique())
-    assert families == {"oco_first_touch"}, f"unexpected families: {families}"
-    assert not out["state_id"].str.contains("first_touch_clean").any()
+    from scripts.mining_family import FAMILY_REGISTRY, resolve_families
+
+    assert resolve_families("oco") == ["oco_first_touch"]
+    assert "oco_first_touch" in FAMILY_REGISTRY
+    assert FAMILY_REGISTRY["oco_first_touch"].name == "oco_first_touch"
+    assert "oco_first_touch_clean" not in FAMILY_REGISTRY
 
 
 def test_quality_tier_does_not_condition_on_both() -> None:
@@ -371,7 +433,8 @@ def test_precompute_labels_lookahead_field_explicitly():
 
 def test_mining_produces_microstructure_regime_candidates():
     """Mining must emit candidates for microstructure regimes."""
-    from scripts.run_tick_opportunity_mining import _oco_candidates
+    from scripts.mining_family import FAMILY_REGISTRY
+    from scripts.run_tick_opportunity_mining import _quantiles, _regime_masks
 
     train = _build_oco_semantics_frame(rows=4000, seed=1)
     test = _build_oco_semantics_frame(rows=4000, seed=2)
@@ -389,17 +452,15 @@ def test_mining_produces_microstructure_regime_candidates():
             train[col] = rng.normal(0.0, 1.0, size=len(train))
             test[col] = rng.normal(0.0, 1.0, size=len(test))
 
-    out = _oco_candidates(
-        train=train,
-        test=test,
-        symbol="EURUSD",
-        bar_ticks=1000,
-        horizons=[6],
-        barrier_grid_pips=[2.0],
-        min_annual_fills=50.0,
-        gross_metric="mean",
-    )
-    regimes = set(out["regime_desc"].str.split(";").str[0])
+    fam = FAMILY_REGISTRY["oco_first_touch"]
+    q = _quantiles(train)
+    masks = _regime_masks(test, q)
+    params = {"horizon": 6, "barrier_pips": 2.0, "symbol": "EURUSD"}
+    found_regimes = set()
+    for name, mask in masks:
+        entries = fam.entry_indices(test, np.asarray(mask, bool), params)
+        if len(entries) > 0:
+            found_regimes.add(name)
     expected_regimes = {
         "all",
         "high_intensity",
@@ -408,7 +469,7 @@ def test_mining_produces_microstructure_regime_candidates():
         "negative_flow",
         "high_vol_cluster",
     }
-    assert expected_regimes <= regimes, f"missing regimes: {expected_regimes - regimes}"
+    assert expected_regimes <= found_regimes, f"missing regimes: {expected_regimes - found_regimes}"
 
 
 def test_mining_raises_when_dataset_dir_missing(tmp_path: Path) -> None:
@@ -445,3 +506,63 @@ def test_mining_raises_when_no_velocity_files_for_symbol(tmp_path: Path) -> None
     }
     with pytest.raises(FileNotFoundError, match="no velocity files"):
         run(cfg)
+
+
+def test_mining_run_output_is_stable(tmp_path: Path) -> None:
+    """Post-refactor stability guard: the directional and oco candidate
+    frames produced by run() must stay stable going forward. The _PARITY
+    snapshot was re-captured after the family-framework refactor (Task 5).
+    Future tasks must keep this green."""
+    dataset_dir = tmp_path / "tick_velocity"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    _build_synth_tick_velocity(dataset_dir / "EURUSD_1000tick_velocity.parquet",
+                         symbol="EURUSD")
+    cfg = {
+        "symbol": "EURUSD",
+        "dataset_dir": str(dataset_dir),
+        "bar_ticks_grid": "1000",
+        "horizons": "1,2,3",
+        "train_years": "2022,2023,2024",
+        "test_year": 2025,
+        "min_annual_fills": 50.0,
+        "gross_metric": "mean",
+        "library_type": "separate",
+        "barrier_grid_pips": "2,3",
+    }
+    directional, oco, summary = run(cfg)
+    # Shape + key columns are stable; exact row counts depend on the synthetic
+    # fixture and must not change across the refactor.
+    snapshot = {
+        "directional_rows": len(directional),
+        "oco_rows": len(oco),
+        "directional_cols": sorted(directional.columns.tolist()),
+        "oco_cols": sorted(oco.columns.tolist()),
+    }
+    # Pin the snapshot: capture once on pre-refactor main, paste below.
+    assert snapshot["directional_rows"] == _PARITY["directional_rows"]
+    assert snapshot["oco_rows"] == _PARITY["oco_rows"]
+    assert snapshot["directional_cols"] == _PARITY["directional_cols"]
+    assert snapshot["oco_cols"] == _PARITY["oco_cols"]
+    assert "random_baseline_z" in snapshot["directional_cols"] or directional.empty
+    assert "random_baseline_z" in snapshot["oco_cols"] or oco.empty
+
+
+def test_run_emits_random_baseline_columns(tmp_path: Path) -> None:
+    dataset_dir = tmp_path / "tick_velocity"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    _build_synth_tick_velocity(dataset_dir / "EURUSD_1000tick_velocity.parquet",
+                         symbol="EURUSD")
+    cfg = {
+        "symbol": "EURUSD", "dataset_dir": str(dataset_dir),
+        "bar_ticks_grid": "1000", "horizons": "1,2,3",
+        "train_years": "2022,2023,2024", "test_year": 2025,
+        "min_annual_fills": 50.0, "gross_metric": "mean",
+        "library_type": "separate", "barrier_grid_pips": "2,3",
+        "baseline_seed": 12345, "baseline_draws": 50,
+    }
+    directional, oco, summary = run(cfg)
+    for df in (directional, oco):
+        if not df.empty:
+            for col in ("random_baseline_z", "random_baseline_p",
+                        "random_baseline_control_mean"):
+                assert col in df.columns

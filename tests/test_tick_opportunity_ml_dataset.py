@@ -417,8 +417,11 @@ def test_ml_dataset_feature_cols_includes_microstructure_features():
     )
 
     micro = [
-        "tick_burst_score", "quote_revision_rate_z",
-        "directional_persistence_8", "signed_flow_24", "vol_cluster_score",
+        "tick_burst_score",
+        "quote_revision_rate_z",
+        "directional_persistence_8",
+        "signed_flow_24",
+        "vol_cluster_score",
     ]
     df = pd.DataFrame({c: [0.0] for c in ["ret_z", "spread_z", *micro]})
     feats = _feature_cols(df)
@@ -426,3 +429,11 @@ def test_ml_dataset_feature_cols_includes_microstructure_features():
         assert c in feats
         assert c not in _MICROSTRUCTURE_DIAGNOSTIC_COLS
     assert _MICROSTRUCTURE_DIAGNOSTIC_COLS == ["session_marker"]
+
+
+def test_expected_candidate_schema_version_is_current():
+    from scripts.build_tick_opportunity_ml_dataset import (
+        EXPECTED_CANDIDATE_SCHEMA_VERSION,
+    )
+
+    assert EXPECTED_CANDIDATE_SCHEMA_VERSION == "4.0"
