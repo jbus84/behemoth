@@ -1001,7 +1001,7 @@ def _mine_frame_pair(
                             both_window_rate_train = float(np.mean(botht[regt]))
 
                 # selection_pass
-                if fam_name in ("directional", "double_touch"):
+                if fam_name in ("directional", "double_touch", "pullback"):
                     train_annual = (
                         _annualized_count(
                             train_n,
@@ -1064,8 +1064,10 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     library_type = str(cfg["library_type"]).strip().lower()
     if gross_metric not in {"mean", "median"}:
         raise ValueError("gross_metric must be mean|median")
-    if library_type not in {"separate", "directional", "oco", "double_touch"}:
-        raise ValueError("library_type must be separate|directional|oco|double_touch")
+    if library_type not in {"separate", "directional", "oco", "double_touch", "pullback"}:
+        raise ValueError(
+            "library_type must be separate|directional|oco|double_touch|pullback"
+        )
 
     family_names = resolve_families(library_type)
     baseline_seed = int(cfg.get("baseline_seed", 12345))
@@ -1115,6 +1117,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     directional = pd.DataFrame(
         per_family_rows.get("directional", [])
         + per_family_rows.get("double_touch", [])
+        + per_family_rows.get("pullback", [])
     )
     oco = pd.DataFrame(per_family_rows.get("oco_first_touch", []))
     if not directional.empty:
