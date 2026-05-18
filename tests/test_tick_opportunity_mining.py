@@ -12,6 +12,7 @@ from scripts.run_tick_opportunity_mining import (
     _assign_quality_tier,
     _double_touch_precompute,
     _oco_precompute_candidates,
+    _pullback_precompute,
     run,
 )
 
@@ -660,3 +661,65 @@ def test_run_mines_double_touch(tmp_path: Path) -> None:
     assert (directional["family"] == "double_touch").all()
     for col in ("random_baseline_z", "random_baseline_p"):
         assert col in directional.columns
+
+
+def _build_pullback_frame(n: int = 800) -> pd.DataFrame:
+    """Steady uptrend (0.5 pip/bar) with a single-bar low_bid dip every 30
+    bars. From a regime bar, the uptrend touches an up-impulse barrier; the
+    dip retraces price back through the pullback barrier; the uptrend then
+    resumes back to the impulse extreme and continues up. Deterministic —
+    used to assert a completed impulse->pullback->resumption is detected and
+    that the continuation bet is long-profitable."""
+    pip = 0.0001
+    close = 1.20000 + 0.5 * pip * np.arange(n)
+    spread = 0.2 * pip
+    dip = np.where(np.arange(n) % 30 == 15, 6.0 * pip, 0.0)
+    return pd.DataFrame({
+        "close_bid": close,
+        "close_ask": close + spread,
+        "low_bid": close - 0.3 * pip - dip,
+        "high_ask": close + spread + 0.3 * pip,
+    })
+
+
+def test_pullback_precompute_detects_up_pullback() -> None:
+    frame = _build_pullback_frame()
+    out = _pullback_precompute(
+        frame, symbol="EURUSD", impulse_dir="up",
+        m_pips=3.0, r_frac=0.5, window_I=15, window_P=15, window_R=10, h=5,
+    )
+    assert out, "engine should return a populated dict for a long-enough frame"
+    decided = np.asarray(out["decided"], dtype=bool)
+    gross = np.asarray(out["gross"], dtype=float)
+    assert decided.sum() > 0, "an impulse->pullback->resumption should complete"
+    # Up-impulse bets long; the uptrend continuation makes that profitable.
+    assert np.nanmean(gross) > 0.0
+    # Diagnostics are -1 where a leg did not fire, >=1 where it did.
+    t_i = np.asarray(out["t_i_step"], dtype=np.int64)
+    t_p = np.asarray(out["t_p_step"], dtype=np.int64)
+    t_r = np.asarray(out["t_r_step"], dtype=np.int64)
+    assert (t_i[decided] >= 1).all()
+    assert (t_p[decided] >= 1).all()
+    assert (t_r[decided] >= 1).all()
+
+
+def test_pullback_precompute_no_setup_on_flat_frame() -> None:
+    frame = _build_flat_frame()
+    out = _pullback_precompute(
+        frame, symbol="EURUSD", impulse_dir="up",
+        m_pips=3.0, r_frac=0.5, window_I=15, window_P=15, window_R=10, h=5,
+    )
+    assert out, "engine should still return a dict for a long-enough frame"
+    decided = np.asarray(out["decided"], dtype=bool)
+    gross = np.asarray(out["gross"], dtype=float)
+    assert decided.sum() == 0, "a flat frame touches no impulse barrier"
+    assert np.isnan(gross).all()
+
+
+def test_pullback_precompute_empty_when_frame_too_short() -> None:
+    frame = _build_flat_frame(n=140)
+    out = _pullback_precompute(
+        frame, symbol="EURUSD", impulse_dir="up",
+        m_pips=3.0, r_frac=0.5, window_I=15, window_P=15, window_R=10, h=5,
+    )
+    assert out == {}

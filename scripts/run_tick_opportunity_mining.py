@@ -597,6 +597,124 @@ def _double_touch_precompute(
     }
 
 
+def _pullback_precompute(
+    frame: pd.DataFrame,
+    *,
+    symbol: str,
+    impulse_dir: str,
+    m_pips: float,
+    r_frac: float,
+    window_I: int,
+    window_P: int,
+    window_R: int,
+    h: int,
+) -> dict[str, np.ndarray]:
+    """Anchored four-stage pullback-continuation engine.
+
+    For each regime entry bar i0: place an impulse barrier m_pips in the
+    impulse_dir direction from i0's signal close; find the first touch within
+    window_I bars (tI). The impulse extreme pI is the barrier price itself.
+    Place a pullback barrier r_frac*m_pips from pI in the OPPOSITE direction;
+    find the first touch within window_P bars of tI (tP). Place a resumption
+    barrier back at pI; find the first touch within window_R bars of tP (tR).
+    Continuation gross is the signed h-bar return from tR in the impulse
+    direction. Look-ahead-free: entry conditioning is i0 only; tI, tP, tR and
+    the continuation window are all strictly forward of i0.
+    """
+    load_bar_frame(
+        frame,
+        required=["close_bid", "low_bid", "high_ask", "close_ask"],
+    )
+    close_bid = pd.to_numeric(frame["close_bid"], errors="coerce").to_numpy(dtype=float)
+    low_bid = pd.to_numeric(frame["low_bid"], errors="coerce").to_numpy(dtype=float)
+    high_ask = pd.to_numeric(frame["high_ask"], errors="coerce").to_numpy(dtype=float)
+    close_ask = pd.to_numeric(frame["close_ask"], errors="coerce").to_numpy(dtype=float)
+
+    wI, wP, wR, hh = int(window_I), int(window_P), int(window_R), int(h)
+    n = len(frame)
+    # i0 upper bound reserves room for the worst-case forward index across all
+    # three scans plus the continuation horizon. The +2 covers the inf-padded
+    # steps of i0 bars that never complete an earlier stage (tI <= i0+wI+1,
+    # tP <= tI+wP+1), so every index read below stays in-bounds unconditionally.
+    n_eff = n - (wI + wP + wR + hh + 2)
+    if n_eff <= 100:
+        return {}
+
+    pip = float(_pip_size(symbol))
+    up = str(impulse_dir).strip().lower() == "up"
+
+    i0 = np.arange(n_eff, dtype=np.int64)
+    sig = close_ask[i0] if up else close_bid[i0]
+    valid = np.isfinite(sig)
+    i0 = i0[valid]
+    sig = sig[valid]
+
+    # Stage 1: impulse barrier in the impulse direction.
+    i_price = sig + m_pips * pip if up else sig - m_pips * pip
+    inf_i = wI + 1
+    i_step = np.full(len(i0), inf_i, dtype=np.int32)
+    for s in range(1, wI + 1):
+        idx = i0 + int(s)
+        hit = high_ask[idx] >= i_price if up else low_bid[idx] <= i_price
+        first = (i_step == inf_i) & hit
+        i_step[first] = int(s)
+    i_touched = i_step <= wI
+    tI = i0 + i_step.astype(np.int64)
+
+    # Stage 2: pullback barrier r_frac*m_pips OPPOSITE the impulse extreme pI.
+    p_price = (
+        i_price - r_frac * m_pips * pip if up else i_price + r_frac * m_pips * pip
+    )
+    inf_p = wP + 1
+    p_step = np.full(len(i0), inf_p, dtype=np.int32)
+    for s in range(1, wP + 1):
+        idx = tI + int(s)
+        hit = low_bid[idx] <= p_price if up else high_ask[idx] >= p_price
+        first = i_touched & (p_step == inf_p) & hit
+        p_step[first] = int(s)
+    p_touched = i_touched & (p_step <= wP)
+    tP = tI + p_step.astype(np.int64)
+
+    # Stage 3: resumption barrier back at the impulse extreme pI.
+    inf_r = wR + 1
+    r_step = np.full(len(i0), inf_r, dtype=np.int32)
+    for s in range(1, wR + 1):
+        idx = tP + int(s)
+        hit = high_ask[idx] >= i_price if up else low_bid[idx] <= i_price
+        first = p_touched & (r_step == inf_r) & hit
+        r_step[first] = int(s)
+    decided = p_touched & (r_step <= wR)
+    tR = tP + r_step.astype(np.int64)
+
+    # Continuation: signed h-bar return from tR in the impulse direction.
+    exit_i = tR + hh
+    gross = np.full(len(i0), np.nan, dtype=float)
+    ok = decided & (exit_i < n)
+    if np.any(ok):
+        ok_idx = np.flatnonzero(ok)
+        if up:
+            # Up-impulse -> continuation bet is long.
+            entry_price = close_ask[tR[ok_idx]]
+            exit_price = close_bid[exit_i[ok_idx]]
+            g = (exit_price - entry_price) / pip
+        else:
+            # Down-impulse -> continuation bet is short.
+            entry_price = close_bid[tR[ok_idx]]
+            exit_price = close_ask[exit_i[ok_idx]]
+            g = (entry_price - exit_price) / pip
+        num_ok = np.isfinite(entry_price) & np.isfinite(exit_price)
+        gross[ok_idx[num_ok]] = g[num_ok]
+
+    return {
+        "i0": i0,
+        "decided": decided,
+        "gross": gross,
+        "t_i_step": np.where(i_touched, i_step, -1).astype(np.int64),
+        "t_p_step": np.where(p_touched, p_step, -1).astype(np.int64),
+        "t_r_step": np.where(decided, r_step, -1).astype(np.int64),
+    }
+
+
 def _assign_quality_tier(df: pd.DataFrame, *, library: str) -> pd.DataFrame:
     """Assign quality tiers (A/B/C/D) from look-ahead-free train metrics only.
 
