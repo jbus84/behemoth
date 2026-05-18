@@ -46,9 +46,18 @@ class MiningFamily(Protocol):
         ...
 
 
+def _frame_fingerprint(frame: pd.DataFrame) -> int:
+    """Coarse identity for short-lived per-family caches.
+
+    Uses object id + shape + columns so two different frames that happen
+    to share shape/columns are still keyed separately."""
+    return hash((id(frame), frame.shape, tuple(frame.columns)))
+
+
 _LIBRARY_TYPE_ALIASES: dict[str, list[str]] = {
     "oco": ["oco_first_touch"],
     "directional": ["directional"],
+    "double_touch": ["double_touch"],
     "separate": ["oco_first_touch", "directional"],
 }
 
@@ -185,7 +194,129 @@ class OcoFirstTouchFamily:
         }
 
 
+class DoubleTouchFamily:
+    name = "double_touch"
+
+    _B_PIPS = [2.0, 4.0]
+    _WINDOWS = [5, 15]
+
+    def __init__(self) -> None:
+        self._cache: dict[tuple[int, tuple[tuple[str, Any], ...]], dict[str, Any] | None] = {}
+
+    def clear_cache(self) -> None:
+        """Drop cached precompute results. Long-lived processes should call
+        this between mining batches to avoid unbounded growth."""
+        self._cache.clear()
+
+    def param_grid(self, cfg: dict[str, Any]) -> list[dict[str, Any]]:
+        from scripts.run_tick_opportunity_mining import _parse_floats, _parse_ints
+
+        a_grid = _parse_floats(str(cfg["barrier_grid_pips"]))
+        horizons = _parse_ints(str(cfg["horizons"]))
+        grid: list[dict[str, Any]] = []
+        for sweep_dir in ("up", "down"):
+            for a in a_grid:
+                for b in self._B_PIPS:
+                    for wa in self._WINDOWS:
+                        for wb in self._WINDOWS:
+                            for h2 in horizons:
+                                if (
+                                    a <= 0.0 or b <= 0.0
+                                    or wa <= 0 or wb <= 0 or h2 <= 0
+                                ):
+                                    raise ValueError(
+                                        f"non-positive grid value: a={a} b={b} "
+                                        f"wA={wa} wB={wb} h2={h2}"
+                                    )
+                                grid.append({
+                                    "sweep_dir": sweep_dir,
+                                    "a_pips": float(a),
+                                    "b_pips": float(b),
+                                    "window_A": int(wa),
+                                    "window_B": int(wb),
+                                    "horizon": int(h2),
+                                })
+        return grid
+
+    def _precompute(
+        self, frame: pd.DataFrame, symbol: str, params: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        from scripts.run_tick_opportunity_mining import _double_touch_precompute
+
+        key = (_frame_fingerprint(frame), tuple(sorted(params.items())))
+        if key in self._cache:
+            return self._cache[key]
+        try:
+            result = _double_touch_precompute(
+                frame,
+                symbol=symbol,
+                sweep_dir=str(params["sweep_dir"]),
+                a_pips=float(params["a_pips"]),
+                b_pips=float(params["b_pips"]),
+                window_A=int(params["window_A"]),
+                window_B=int(params["window_B"]),
+                h2=int(params["horizon"]),
+            )
+        except ValueError:
+            result = None
+        self._cache[key] = result
+        return result
+
+    def entry_indices(
+        self, frame: pd.DataFrame, regime_mask: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        if "symbol" not in params:
+            return np.array([], dtype=np.int64)
+        prep = self._precompute(frame, str(params["symbol"]), params)
+        if not prep:
+            return np.array([], dtype=np.int64)
+        i0 = np.asarray(prep["i0"], dtype=np.int64)
+        decided = np.asarray(prep["decided"], dtype=bool)
+        reg = np.asarray(regime_mask, dtype=bool)[i0]
+        return i0[decided & reg]
+
+    def measure_gross(
+        self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        if "symbol" not in params:
+            return np.array([], dtype=float)
+        prep = self._precompute(frame, str(params["symbol"]), params)
+        if not prep:
+            return np.array([], dtype=float)
+        i0 = np.asarray(prep["i0"], dtype=np.int64)
+        gross = np.asarray(prep["gross"], dtype=float)
+        pos = pd.Series(np.arange(len(i0)), index=i0)
+        mapped = pos.reindex(entries).to_numpy(dtype=float)
+        out = np.full(len(entries), np.nan, dtype=float)
+        valid = np.isfinite(mapped)
+        out[valid] = gross[mapped[valid].astype(np.int64)]
+        return out
+
+    def candidate_metadata(
+        self, regime_name: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
+        sd = str(params["sweep_dir"])
+        a = float(params["a_pips"])
+        b = float(params["b_pips"])
+        wa = int(params["window_A"])
+        wb = int(params["window_B"])
+        h2 = int(params["horizon"])
+        return {
+            "family": "double_touch",
+            "state_id": (
+                f"double_touch__{regime_name}__{sd}_a{a:g}_b{b:g}"
+                f"_wA{wa}_wB{wb}_h{h2}"
+            ),
+            "regime_desc": (
+                f"{regime_name};sweep={sd};a={a:g};b={b:g}"
+                f";wA={wa};wB={wb};h={h2}"
+            ),
+            "ml_ready_target_type": "double_touch",
+        }
+
+
 FAMILY_REGISTRY: dict[str, MiningFamily] = {
     "oco_first_touch": OcoFirstTouchFamily(),
     "directional": DirectionalFamily(),
+    "double_touch": DoubleTouchFamily(),
 }

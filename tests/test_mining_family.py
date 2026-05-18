@@ -172,3 +172,64 @@ def test_oco_family_measure_gross_empty_when_no_precompute():
     entries = np.array([0])
     gross = fam.measure_gross(frame, entries, params)
     assert len(gross) == 0
+
+
+def test_double_touch_family_registered_and_resolves():
+    from scripts.mining_family import (
+        FAMILY_REGISTRY,
+        MiningFamily,
+        resolve_families,
+    )
+
+    assert resolve_families("double_touch") == ["double_touch"]
+    fam = FAMILY_REGISTRY["double_touch"]
+    assert fam.name == "double_touch"
+    assert isinstance(fam, MiningFamily)
+
+
+def test_double_touch_family_grid_and_metadata():
+    from scripts.mining_family import FAMILY_REGISTRY
+
+    fam = FAMILY_REGISTRY["double_touch"]
+    grid = fam.param_grid({"barrier_grid_pips": "2,3", "horizons": "1,2"})
+    sweeps = sorted({g["sweep_dir"] for g in grid})
+    assert sweeps == ["down", "up"]
+    # 2 sweep_dir x 2 a_pips x 2 b_pips x 2 window_A x 2 window_B x 2 horizons
+    assert len(grid) == 2 * 2 * 2 * 2 * 2 * 2
+    meta = fam.candidate_metadata(
+        "london",
+        {"sweep_dir": "up", "a_pips": 3.0, "b_pips": 2.0,
+         "window_A": 5, "window_B": 15, "horizon": 2},
+    )
+    assert meta["family"] == "double_touch"
+    assert meta["state_id"] == "double_touch__london__up_a3_b2_wA5_wB15_h2"
+    assert meta["ml_ready_target_type"] == "double_touch"
+    assert "sweep=up" in meta["regime_desc"]
+
+
+def test_double_touch_family_entry_and_gross():
+    import numpy as np
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from tests.test_tick_opportunity_mining import _build_sweep_frame
+
+    fam = FAMILY_REGISTRY["double_touch"]
+    frame = _build_sweep_frame()
+    allmask = np.ones(len(frame), dtype=bool)
+    params = {"symbol": "EURUSD", "sweep_dir": "up", "a_pips": 3.0,
+              "b_pips": 3.0, "window_A": 5, "window_B": 5, "horizon": 5}
+    entries = fam.entry_indices(frame, allmask, params)
+    assert len(entries) > 0
+    gross = fam.measure_gross(frame, entries, params)
+    assert len(gross) == len(entries)
+    assert np.isfinite(gross).sum() > 0
+
+
+def test_double_touch_family_param_grid_rejects_nonpositive():
+    import pytest
+
+    from scripts.mining_family import FAMILY_REGISTRY
+
+    fam = FAMILY_REGISTRY["double_touch"]
+    with pytest.raises(ValueError):
+        fam.param_grid({"barrier_grid_pips": "0", "horizons": "1"})
