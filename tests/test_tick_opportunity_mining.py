@@ -15,7 +15,8 @@ from scripts.run_tick_opportunity_mining import (
     run,
 )
 
-# Captured from pre-refactor `run()` — see test_mining_run_output_is_stable.
+# Captured after the family-framework refactor (sub-project 0). See
+# test_mining_run_output_is_stable for provenance.
 _PARITY: dict = {
     "directional_rows": 45,
     "oco_rows": 8,
@@ -512,7 +513,7 @@ def test_mining_raises_when_no_velocity_files_for_symbol(tmp_path: Path) -> None
 def test_mining_run_output_is_stable(tmp_path: Path) -> None:
     """Post-refactor stability guard: the directional and oco candidate
     frames produced by run() must stay stable going forward. The _PARITY
-    snapshot was re-captured after the family-framework refactor (Task 5).
+    snapshot was captured after the family-framework refactor (sub-project 0).
     Future tasks must keep this green."""
     dataset_dir = tmp_path / "tick_velocity"
     dataset_dir.mkdir(parents=True, exist_ok=True)

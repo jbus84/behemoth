@@ -363,12 +363,10 @@ def test_oco_asymmetric_no_false_edge_on_driftless_data():
     allmask = np.ones(len(frame), dtype=bool)
     params = {"symbol": "EURUSD", "horizon": 4, "down_pips": 3.0, "rr": 1.0}
     entries = fam.entry_indices(frame, allmask, params)
-    if len(entries) == 0:
-        return  # no candidates = no false edge
+    assert len(entries) > 0, "driftless fixture should still produce entries"
     gross = fam.measure_gross(frame, entries, params)
     gross = gross[np.isfinite(gross)]
-    if gross.size == 0:
-        return
+    assert gross.size > 0
     cand_ev = float(np.mean(gross))
     baseline = random_entry_baseline(
         fam, frame, params,
@@ -441,12 +439,10 @@ def test_directional_run_no_false_edge_on_random_data():
     allmask = np.ones(len(frame), dtype=bool)
     params = {"horizon": 1, "run_bucket": "2", "bet": "continuation"}
     entries = fam.entry_indices(frame, allmask, params)
-    if len(entries) == 0:
-        return  # no candidates = no false edge
+    assert len(entries) > 0, "random fixture should still produce bucket-2 entries"
     gross = fam.measure_gross(frame, entries, params)
     gross = gross[np.isfinite(gross)]
-    if gross.size == 0:
-        return
+    assert gross.size > 0
     cand_ev = float(np.mean(gross))
     baseline = random_entry_baseline(
         fam, frame, params,

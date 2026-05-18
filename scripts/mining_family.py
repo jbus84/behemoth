@@ -163,6 +163,11 @@ class OcoFirstTouchFamily:
         self._cache[key] = result
         return result
 
+    def clear_cache(self) -> None:
+        """Drop cached precompute results. Long-lived processes should call
+        this between mining batches to avoid unbounded growth."""
+        self._cache.clear()
+
     def entry_indices(
         self, frame: pd.DataFrame, regime_mask: np.ndarray, params: dict[str, Any]
     ) -> np.ndarray:
@@ -253,6 +258,11 @@ class OcoAsymmetricFamily:
             result = None
         self._cache[key] = result
         return result
+
+    def clear_cache(self) -> None:
+        """Drop cached precompute results. Long-lived processes should call
+        this between mining batches to avoid unbounded growth."""
+        self._cache.clear()
 
     def entry_indices(
         self, frame: pd.DataFrame, regime_mask: np.ndarray, params: dict[str, Any]
