@@ -112,6 +112,80 @@ class DirectionalFamily:
         }
 
 
+class OcoFirstTouchFamily:
+    name = "oco_first_touch"
+
+    def param_grid(self, cfg: dict[str, Any]) -> list[dict[str, Any]]:
+        from scripts.run_tick_opportunity_mining import _parse_floats, _parse_ints
+
+        horizons = _parse_ints(str(cfg["horizons"]))
+        barriers = _parse_floats(str(cfg["barrier_grid_pips"]))
+        return [
+            {"horizon": int(h), "barrier_pips": float(k)}
+            for h in horizons
+            for k in barriers
+        ]
+
+    def _precompute(
+        self, frame: pd.DataFrame, symbol: str, params: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        from scripts.run_tick_opportunity_mining import _oco_precompute_candidates
+
+        try:
+            return _oco_precompute_candidates(
+                frame,
+                symbol=symbol,
+                horizon=int(params["horizon"]),
+                barrier_pips=float(params["barrier_pips"]),
+            )
+        except ValueError:
+            return None
+
+    def entry_indices(
+        self, frame: pd.DataFrame, regime_mask: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        if "symbol" not in params:
+            return np.array([], dtype=np.int64)
+        symbol = str(params["symbol"])
+        prep = self._precompute(frame, symbol, params)
+        if not prep:
+            return np.array([], dtype=np.int64)
+        i0 = np.asarray(prep["i0"], dtype=np.int64)
+        decided = np.asarray(prep["decided"], dtype=bool)
+        reg = np.asarray(regime_mask, dtype=bool)[i0]
+        return i0[decided & reg]
+
+    def measure_gross(
+        self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        if "symbol" not in params:
+            return np.array([], dtype=float)
+        symbol = str(params["symbol"])
+        prep = self._precompute(frame, symbol, params)
+        if not prep:
+            return np.array([], dtype=float)
+        i0 = np.asarray(prep["i0"], dtype=np.int64)
+        gross = np.asarray(prep["gross"], dtype=float)
+        pos = pd.Series(np.arange(len(i0)), index=i0)
+        mapped = pos.reindex(entries).to_numpy(dtype=float)
+        out = np.full(len(entries), np.nan, dtype=float)
+        valid = np.isfinite(mapped)
+        out[valid] = gross[mapped[valid].astype(np.int64)]
+        return out
+
+    def candidate_metadata(
+        self, regime_name: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
+        k = float(params["barrier_pips"])
+        return {
+            "family": "oco_first_touch",
+            "state_id": f"oco_first_touch__{regime_name}__k{int(round(k))}",
+            "regime_desc": f"{regime_name};barrier={k:.1f}",
+            "ml_ready_target_type": "oco_expand",
+        }
+
+
 FAMILY_REGISTRY: dict[str, MiningFamily] = {
+    "oco_first_touch": OcoFirstTouchFamily(),
     "directional": DirectionalFamily(),
 }
