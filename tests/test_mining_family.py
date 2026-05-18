@@ -216,3 +216,28 @@ def test_oco_asymmetric_family_grid_and_metadata():
     assert meta["state_id"] == "oco_asymmetric__london__d5_rr2"
     assert meta["ml_ready_target_type"] == "oco_asymmetric"
     assert "down=5" in meta["regime_desc"] and "rr=2" in meta["regime_desc"]
+
+
+def test_run_length_counts_consecutive_same_sign():
+    import numpy as np
+    import pandas as pd
+
+    from scripts.run_tick_opportunity_mining import _run_length
+
+    # signs:  + + +  - -  +
+    frame = pd.DataFrame({"ret1_pips": [0.3, 0.1, 0.2, -0.1, -0.4, 0.2]})
+    run_len, run_sign = _run_length(frame)
+    np.testing.assert_array_equal(run_len, [1, 2, 3, 1, 2, 1])
+    np.testing.assert_array_equal(run_sign, [1, 1, 1, -1, -1, 1])
+
+
+def test_run_length_zero_return_breaks_run():
+    import numpy as np
+    import pandas as pd
+
+    from scripts.run_tick_opportunity_mining import _run_length
+
+    frame = pd.DataFrame({"ret1_pips": [0.3, 0.0, 0.2, 0.1]})
+    run_len, run_sign = _run_length(frame)
+    np.testing.assert_array_equal(run_len, [1, 0, 1, 2])
+    np.testing.assert_array_equal(run_sign, [1, 0, 1, 1])

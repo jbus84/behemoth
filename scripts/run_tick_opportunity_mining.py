@@ -599,6 +599,28 @@ def _oco_asymmetric_precompute(
     }
 
 
+def _run_length(frame: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+    """Per-bar consecutive same-sign run of ret1_pips.
+
+    Returns (run_len, run_sign): run_len[i] counts consecutive preceding bars
+    (including i) with the same non-zero sign of ret1_pips; run_sign[i] is
+    that sign (+1/-1, or 0 when ret1_pips is zero, which also resets the run).
+    """
+    ret = pd.to_numeric(frame["ret1_pips"], errors="coerce").to_numpy(dtype=float)
+    sign = np.sign(np.nan_to_num(ret)).astype(np.int8)
+    n = len(sign)
+    if n == 0:
+        return np.zeros(0, dtype=np.int64), np.zeros(0, dtype=np.int8)
+    change = np.empty(n, dtype=bool)
+    change[0] = True
+    change[1:] = sign[1:] != sign[:-1]
+    starts = np.where(change, np.arange(n), 0)
+    last_start = np.maximum.accumulate(starts)
+    run_len = (np.arange(n) - last_start + 1).astype(np.int64)
+    run_len[sign == 0] = 0
+    return run_len, sign
+
+
 def _assign_quality_tier(df: pd.DataFrame, *, library: str) -> pd.DataFrame:
     """Assign quality tiers (A/B/C/D) from look-ahead-free train metrics only.
 
