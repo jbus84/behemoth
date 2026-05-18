@@ -1,3 +1,36 @@
+## v0.31.0 (2026-05-18)
+
+### Feat
+
+- run() mines the double_touch family
+- DoubleTouchFamily implementing the MiningFamily protocol
+- _double_touch_precompute two-stage sweep engine
+- MiningFamily protocol + registry loop + random-entry baseline (#186)
+- promote microstructure columns to CatBoost model features (#185)
+- expand mining coverage — sub-pip barriers, wide tick bars, and directional track (#182)
+- microstructure mining phase 1 — regime filters for OCO & directional (#178)
+- graceful no-trade pipeline — empty artifacts flow through OCO (#177)
+- seed governance diagnostic rolling history from audit_logs (#170)
+
+### Fix
+
+- extract _mine_frame_pair seam; migrate contract tests off deleted functions (#187)
+- fail-loud mining + clean-data target for rebuild-all (#184)
+- filter directional selection to shock-revert families (#183)
+- recalibrate pipeline thresholds for unbiased data (#181)
+- treat predictions-only empty as NO_TRADE in Stage 2f (#180)
+- train-derived q70 cuts for microstructure regimes + genuine tests (#179)
+- point OCO configs at first_touch family after #173 removal (#176)
+- return 4-tuple from _wfo_monthly empty-input path (#175)
+- remove OCO look-ahead bias from mining pipeline (#173)
+- compute model_valid_through from model_month, not the dead schedule (#172)
+- surface live_deployable=false directly instead of missing_model_month (#169)
+- remove silent threshold fallbacks and dead schedule read (#168)
+- **types**: replace non-standard intersection and lowercase callable annotations (#166)
+- defer DuckDB cursor consumption in StateStoreResult; refresh stale tests (#165)
+- support 1000-tick bars in governance replay (#162)
+- persist raw ticks in live mode, not just historical (#161)
+
 ## v0.30.0 (2026-05-09)
 
 ### Feat
