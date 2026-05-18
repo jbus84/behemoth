@@ -172,3 +172,47 @@ def test_oco_family_measure_gross_empty_when_no_precompute():
     entries = np.array([0])
     gross = fam.measure_gross(frame, entries, params)
     assert len(gross) == 0
+
+
+def test_oco_asymmetric_family_entry_and_gross():
+    import numpy as np
+    import pandas as pd
+    from scripts.mining_family import FAMILY_REGISTRY
+
+    fam = FAMILY_REGISTRY["oco_asymmetric"]
+    rng = np.random.default_rng(11)
+    n = 300
+    base = 1.10 + np.cumsum(rng.normal(0, 0.0002, n))
+    frame = pd.DataFrame({
+        "close_bid": base,
+        "low_bid": base - rng.uniform(0.0001, 0.0006, n),
+        "high_ask": base + rng.uniform(0.0001, 0.0006, n),
+        "close_ask": base + 0.0002,
+        "hl_first": rng.choice([1.0, -1.0, 0.0], size=n),
+    })
+    allmask = np.ones(len(frame), dtype=bool)
+    params = {"symbol": "EURUSD", "horizon": 4, "down_pips": 3.0, "rr": 1.0}
+    entries = fam.entry_indices(frame, allmask, params)
+    assert len(entries) > 0
+    gross = fam.measure_gross(frame, entries, params)
+    assert len(gross) == len(entries)
+    assert np.isfinite(gross).sum() > 0
+
+
+def test_oco_asymmetric_family_grid_and_metadata():
+    from scripts.mining_family import FAMILY_REGISTRY
+
+    fam = FAMILY_REGISTRY["oco_asymmetric"]
+    assert fam.name == "oco_asymmetric"
+    grid = fam.param_grid({"horizons": "1,2"})
+    downs = sorted({g["down_pips"] for g in grid})
+    rrs = sorted({g["rr"] for g in grid})
+    assert downs == [2.0, 3.0, 5.0, 8.0]
+    assert rrs == [0.5, 0.75, 1.0, 1.5, 2.0, 3.0]
+    assert len(grid) == 4 * 6 * 2  # downs x rr x horizons
+    meta = fam.candidate_metadata("london", {"down_pips": 5.0, "rr": 2.0,
+                                             "horizon": 2})
+    assert meta["family"] == "oco_asymmetric"
+    assert meta["state_id"] == "oco_asymmetric__london__d5_rr2"
+    assert meta["ml_ready_target_type"] == "oco_asymmetric"
+    assert "down=5" in meta["regime_desc"] and "rr=2" in meta["regime_desc"]

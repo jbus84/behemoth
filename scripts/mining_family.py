@@ -48,6 +48,7 @@ class MiningFamily(Protocol):
 
 _LIBRARY_TYPE_ALIASES: dict[str, list[str]] = {
     "oco": ["oco_first_touch"],
+    "oco_asymmetric": ["oco_asymmetric"],
     "directional": ["directional"],
     "separate": ["oco_first_touch", "directional"],
 }
@@ -185,7 +186,90 @@ class OcoFirstTouchFamily:
         }
 
 
+class OcoAsymmetricFamily:
+    name = "oco_asymmetric"
+
+    # Spec-defined grid: standard stop distances and reward ratios
+    _DOWN_PIPS = [2.0, 3.0, 5.0, 8.0]
+    _RR = [0.5, 0.75, 1.0, 1.5, 2.0, 3.0]
+
+    def param_grid(self, cfg: dict[str, Any]) -> list[dict[str, Any]]:
+        from scripts.run_tick_opportunity_mining import _parse_ints
+
+        horizons = _parse_ints(str(cfg["horizons"]))
+        return [
+            {"horizon": int(h), "down_pips": float(d), "rr": float(r)}
+            for h in horizons
+            for d in self._DOWN_PIPS
+            for r in self._RR
+        ]
+
+    def _precompute(
+        self, frame: pd.DataFrame, symbol: str, params: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        from scripts.run_tick_opportunity_mining import _oco_asymmetric_precompute
+
+        down = float(params["down_pips"])
+        rr = float(params["rr"])
+        up = down * rr
+        if down <= 0.0 or up <= 0.0:
+            raise ValueError(f"non-positive barrier: down={down} up={up}")
+        try:
+            return _oco_asymmetric_precompute(
+                frame,
+                symbol=symbol,
+                horizon=int(params["horizon"]),
+                up_pips=up,
+                down_pips=down,
+            )
+        except ValueError:
+            return None
+
+    def entry_indices(
+        self, frame: pd.DataFrame, regime_mask: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        if "symbol" not in params:
+            return np.array([], dtype=np.int64)
+        prep = self._precompute(frame, str(params["symbol"]), params)
+        if not prep:
+            return np.array([], dtype=np.int64)
+        i0 = np.asarray(prep["i0"], dtype=np.int64)
+        decided = np.asarray(prep["decided"], dtype=bool)
+        reg = np.asarray(regime_mask, dtype=bool)[i0]
+        return i0[decided & reg]
+
+    def measure_gross(
+        self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        if "symbol" not in params:
+            return np.array([], dtype=float)
+        prep = self._precompute(frame, str(params["symbol"]), params)
+        if not prep:
+            return np.array([], dtype=float)
+        i0 = np.asarray(prep["i0"], dtype=np.int64)
+        gross = np.asarray(prep["gross"], dtype=float)
+        pos = pd.Series(np.arange(len(i0)), index=i0)
+        mapped = pos.reindex(entries).to_numpy(dtype=float)
+        out = np.full(len(entries), np.nan, dtype=float)
+        valid = np.isfinite(mapped)
+        out[valid] = gross[mapped[valid].astype(np.int64)]
+        return out
+
+    def candidate_metadata(
+        self, regime_name: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
+        down = float(params["down_pips"])
+        rr = float(params["rr"])
+        return {
+            "family": "oco_asymmetric",
+            "state_id": f"oco_asymmetric__{regime_name}__d{down:g}_rr{rr:g}",
+            "regime_desc": f"{regime_name};down={down:g};rr={rr:g}",
+            "ml_ready_target_type": "oco_asymmetric",
+        }
+
+
 FAMILY_REGISTRY: dict[str, MiningFamily] = {
     "oco_first_touch": OcoFirstTouchFamily(),
+    "oco_asymmetric": OcoAsymmetricFamily(),
     "directional": DirectionalFamily(),
 }
