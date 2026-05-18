@@ -316,3 +316,66 @@ def test_double_touch_detects_structure_on_post_sweep_continuation():
         candidate_gross_ev=cand_ev,
     )
     assert baseline["random_baseline_z"] > 2.0
+
+
+def test_pullback_family_registered_and_resolves():
+    from scripts.mining_family import (
+        FAMILY_REGISTRY,
+        MiningFamily,
+        resolve_families,
+    )
+
+    assert resolve_families("pullback") == ["pullback"]
+    fam = FAMILY_REGISTRY["pullback"]
+    assert fam.name == "pullback"
+    assert isinstance(fam, MiningFamily)
+
+
+def test_pullback_family_grid_and_metadata():
+    from scripts.mining_family import FAMILY_REGISTRY
+
+    fam = FAMILY_REGISTRY["pullback"]
+    grid = fam.param_grid({"barrier_grid_pips": "2,3", "horizons": "1,2"})
+    dirs = sorted({g["impulse_dir"] for g in grid})
+    assert dirs == ["down", "up"]
+    # 2 impulse_dir x 2 m_pips x 3 r_frac x 2 window_I x 2 window_P x 2 horizons
+    assert len(grid) == 2 * 2 * 3 * 2 * 2 * 2
+    assert all(g["window_R"] == 10 for g in grid)
+    meta = fam.candidate_metadata(
+        "london",
+        {"impulse_dir": "up", "m_pips": 3.0, "r_frac": 0.5,
+         "window_I": 5, "window_P": 15, "window_R": 10, "horizon": 2},
+    )
+    assert meta["family"] == "pullback"
+    assert meta["state_id"] == "pullback__london__up_M3_R0.5_wI5_wP15_wR10_h2"
+    assert meta["ml_ready_target_type"] == "pullback"
+    assert "impulse=up" in meta["regime_desc"]
+
+
+def test_pullback_family_entry_and_gross():
+    import numpy as np
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from tests.test_tick_opportunity_mining import _build_pullback_frame
+
+    fam = FAMILY_REGISTRY["pullback"]
+    frame = _build_pullback_frame()
+    allmask = np.ones(len(frame), dtype=bool)
+    params = {"symbol": "EURUSD", "impulse_dir": "up", "m_pips": 3.0,
+              "r_frac": 0.5, "window_I": 15, "window_P": 15,
+              "window_R": 10, "horizon": 5}
+    entries = fam.entry_indices(frame, allmask, params)
+    assert len(entries) > 0
+    gross = fam.measure_gross(frame, entries, params)
+    assert len(gross) == len(entries)
+    assert np.isfinite(gross).sum() > 0
+
+
+def test_pullback_family_param_grid_rejects_nonpositive():
+    import pytest
+
+    from scripts.mining_family import FAMILY_REGISTRY
+
+    fam = FAMILY_REGISTRY["pullback"]
+    with pytest.raises(ValueError):
+        fam.param_grid({"barrier_grid_pips": "0", "horizons": "1"})

@@ -58,6 +58,7 @@ _LIBRARY_TYPE_ALIASES: dict[str, list[str]] = {
     "oco": ["oco_first_touch"],
     "directional": ["directional"],
     "double_touch": ["double_touch"],
+    "pullback": ["pullback"],
     "separate": ["oco_first_touch", "directional"],
 }
 
@@ -315,8 +316,134 @@ class DoubleTouchFamily:
         }
 
 
+class PullbackFamily:
+    name = "pullback"
+
+    _R_FRACS = [0.382, 0.5, 0.618]
+    _WINDOWS = [5, 15]
+    _WINDOW_R = 10
+
+    def __init__(self) -> None:
+        self._cache: dict[tuple[int, tuple[tuple[str, Any], ...]], dict[str, Any] | None] = {}
+
+    def clear_cache(self) -> None:
+        """Drop cached precompute results. Long-lived processes should call
+        this between mining batches to avoid unbounded growth."""
+        self._cache.clear()
+
+    def param_grid(self, cfg: dict[str, Any]) -> list[dict[str, Any]]:
+        from scripts.run_tick_opportunity_mining import _parse_floats, _parse_ints
+
+        m_grid = _parse_floats(str(cfg["barrier_grid_pips"]))
+        horizons = _parse_ints(str(cfg["horizons"]))
+        grid: list[dict[str, Any]] = []
+        for impulse_dir in ("up", "down"):
+            for m in m_grid:
+                for r in self._R_FRACS:
+                    for wi in self._WINDOWS:
+                        for wp in self._WINDOWS:
+                            for h2 in horizons:
+                                if (
+                                    m <= 0.0 or wi <= 0 or wp <= 0 or h2 <= 0
+                                    or not (0.0 < r < 1.0)
+                                ):
+                                    raise ValueError(
+                                        f"invalid grid value: m={m} r={r} "
+                                        f"wI={wi} wP={wp} h={h2}"
+                                    )
+                                grid.append({
+                                    "impulse_dir": impulse_dir,
+                                    "m_pips": float(m),
+                                    "r_frac": float(r),
+                                    "window_I": int(wi),
+                                    "window_P": int(wp),
+                                    "window_R": int(self._WINDOW_R),
+                                    "horizon": int(h2),
+                                })
+        return grid
+
+    def _precompute(
+        self, frame: pd.DataFrame, symbol: str, params: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        from scripts.run_tick_opportunity_mining import _pullback_precompute
+
+        key = (_frame_fingerprint(frame), tuple(sorted(params.items())))
+        if key in self._cache:
+            return self._cache[key]
+        try:
+            result = _pullback_precompute(
+                frame,
+                symbol=symbol,
+                impulse_dir=str(params["impulse_dir"]),
+                m_pips=float(params["m_pips"]),
+                r_frac=float(params["r_frac"]),
+                window_I=int(params["window_I"]),
+                window_P=int(params["window_P"]),
+                window_R=int(params["window_R"]),
+                h=int(params["horizon"]),
+            )
+        except ValueError:
+            result = None
+        self._cache[key] = result
+        return result
+
+    def entry_indices(
+        self, frame: pd.DataFrame, regime_mask: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        if "symbol" not in params:
+            return np.array([], dtype=np.int64)
+        prep = self._precompute(frame, str(params["symbol"]), params)
+        if not prep:
+            return np.array([], dtype=np.int64)
+        i0 = np.asarray(prep["i0"], dtype=np.int64)
+        decided = np.asarray(prep["decided"], dtype=bool)
+        reg = np.asarray(regime_mask, dtype=bool)[i0]
+        return i0[decided & reg]
+
+    def measure_gross(
+        self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        if "symbol" not in params:
+            return np.array([], dtype=float)
+        prep = self._precompute(frame, str(params["symbol"]), params)
+        if not prep:
+            return np.array([], dtype=float)
+        i0 = np.asarray(prep["i0"], dtype=np.int64)
+        gross = np.asarray(prep["gross"], dtype=float)
+        pos = pd.Series(np.arange(len(i0)), index=i0)
+        mapped = pos.reindex(entries).to_numpy(dtype=float)
+        out = np.full(len(entries), np.nan, dtype=float)
+        valid = np.isfinite(mapped)
+        out[valid] = gross[mapped[valid].astype(np.int64)]
+        return out
+
+    def candidate_metadata(
+        self, regime_name: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
+        d = str(params["impulse_dir"])
+        m = float(params["m_pips"])
+        r = float(params["r_frac"])
+        wi = int(params["window_I"])
+        wp = int(params["window_P"])
+        wr = int(params["window_R"])
+        h2 = int(params["horizon"])
+        return {
+            "family": "pullback",
+            "state_id": (
+                f"pullback__{regime_name}__{d}_M{m:g}_R{r:g}"
+                f"_wI{wi}_wP{wp}_wR{wr}_h{h2}"
+            ),
+            "regime_desc": (
+                f"{regime_name};impulse={d};M={m:g};R={r:g}"
+                f";wI={wi};wP={wp};wR={wr};h={h2}"
+            ),
+            "ml_ready_target_type": "pullback",
+        }
+
+
 FAMILY_REGISTRY: dict[str, MiningFamily] = {
     "oco_first_touch": OcoFirstTouchFamily(),
     "directional": DirectionalFamily(),
     "double_touch": DoubleTouchFamily(),
+    "pullback": PullbackFamily(),
 }
