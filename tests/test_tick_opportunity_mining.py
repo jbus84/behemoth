@@ -10,6 +10,7 @@ from behemoth.core.features import _extract_core_series
 from scripts.analyze_oco_stop_limit_tickfill import _rebuild_touch_events
 from scripts.run_tick_opportunity_mining import (
     _assign_quality_tier,
+    _oco_asymmetric_precompute,
     _oco_precompute_candidates,
     run,
 )
@@ -566,3 +567,49 @@ def test_run_emits_random_baseline_columns(tmp_path: Path) -> None:
             for col in ("random_baseline_z", "random_baseline_p",
                         "random_baseline_control_mean"):
                 assert col in df.columns
+
+
+def test_oco_asymmetric_precompute_matches_symmetric_when_equal():
+    rng = np.random.default_rng(11)
+    n = 600
+    base = 1.10 + np.cumsum(rng.normal(0, 0.0002, n))
+    frame = pd.DataFrame({
+        "close_bid": base,
+        "low_bid": base - rng.uniform(0.0001, 0.0006, n),
+        "high_ask": base + rng.uniform(0.0001, 0.0006, n),
+        "close_ask": base + 0.0002,
+        "hl_first": rng.choice([1.0, -1.0, 0.0], size=n),
+    })
+    sym = _oco_precompute_candidates(frame, symbol="EURUSD", horizon=4,
+                                     barrier_pips=3.0)
+    asym = _oco_asymmetric_precompute(frame, symbol="EURUSD", horizon=4,
+                                      up_pips=3.0, down_pips=3.0)
+    assert sym and asym
+    np.testing.assert_array_equal(sym["i0"], asym["i0"])
+    np.testing.assert_array_equal(sym["decided"], asym["decided"])
+    np.testing.assert_array_equal(sym["side"], asym["side"])
+    np.testing.assert_allclose(sym["gross"], asym["gross"], equal_nan=True)
+    np.testing.assert_array_equal(sym["both_touched_lookahead"], asym["both_touched_lookahead"])
+    np.testing.assert_allclose(sym["touch_step"], asym["touch_step"], equal_nan=True)
+
+
+def test_oco_asymmetric_precompute_different_barriers():
+    rng = np.random.default_rng(42)
+    n = 600
+    base = 1.10 + np.cumsum(rng.normal(0, 0.0002, n))
+    frame = pd.DataFrame({
+        "close_bid": base,
+        "low_bid": base - rng.uniform(0.0001, 0.0006, n),
+        "high_ask": base + rng.uniform(0.0001, 0.0006, n),
+        "close_ask": base + 0.0002,
+        "hl_first": rng.choice([1.0, -1.0, 0.0], size=n),
+    })
+    # With wider up barrier and narrower down barrier, more down touches expected
+    asym = _oco_asymmetric_precompute(frame, symbol="EURUSD", horizon=4,
+                                      up_pips=6.0, down_pips=2.0)
+    assert asym
+    # Just verify it runs and produces different output than symmetric would
+    sym = _oco_asymmetric_precompute(frame, symbol="EURUSD", horizon=4,
+                                     up_pips=3.0, down_pips=3.0)
+    # Different barriers should give different results
+    assert not np.array_equal(asym["side"], sym["side"]) or not np.array_equal(asym["gross"], sym["gross"])

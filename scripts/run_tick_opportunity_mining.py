@@ -498,6 +498,107 @@ def _oco_precompute_candidates(
     }
 
 
+def _oco_asymmetric_precompute(
+    frame: pd.DataFrame,
+    *,
+    symbol: str,
+    horizon: int,
+    up_pips: float,
+    down_pips: float,
+) -> dict[str, np.ndarray]:
+    """First-touch precompute with independently-sized up and down barriers.
+
+    Identical algorithm to _oco_precompute_candidates; only the two barrier
+    thresholds differ. With up_pips == down_pips the output is identical to
+    the symmetric engine.
+    """
+    load_bar_frame(
+        frame,
+        required=["close_bid", "low_bid", "high_ask", "close_ask"],
+    )
+    close_bid = pd.to_numeric(frame["close_bid"], errors="coerce").to_numpy(dtype=float)
+    low_bid = pd.to_numeric(frame["low_bid"], errors="coerce").to_numpy(dtype=float)
+    high_ask = pd.to_numeric(frame["high_ask"], errors="coerce").to_numpy(dtype=float)
+    close_ask = pd.to_numeric(frame["close_ask"], errors="coerce").to_numpy(dtype=float)
+    hlf = pd.to_numeric(frame["hl_first"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
+
+    h = int(horizon)
+    n_eff = len(frame) - 2 * h
+    if n_eff <= 100:
+        return {}
+
+    pip = float(_pip_size(symbol))
+    inf = h + 1
+    i0 = np.arange(n_eff, dtype=np.int64)
+    buy_ref = close_ask[i0]
+    sell_ref = close_bid[i0]
+    valid = np.isfinite(buy_ref) & np.isfinite(sell_ref)
+    i0 = i0[valid]
+    buy_ref = buy_ref[valid]
+    sell_ref = sell_ref[valid]
+    up_thr = buy_ref + float(up_pips) * pip
+    dn_thr = sell_ref - float(down_pips) * pip
+    up_step = np.full(len(i0), inf, dtype=np.int32)
+    dn_step = np.full(len(i0), inf, dtype=np.int32)
+    any_up = np.zeros(len(i0), dtype=bool)
+    any_dn = np.zeros(len(i0), dtype=bool)
+    for s in range(1, h + 1):
+        idx = i0 + int(s)
+        hu = high_ask[idx] >= up_thr
+        hd = low_bid[idx] <= dn_thr
+        set_up = (up_step == inf) & hu
+        set_dn = (dn_step == inf) & hd
+        up_step[set_up] = int(s)
+        dn_step[set_dn] = int(s)
+        any_up |= hu
+        any_dn |= hd
+    side = np.zeros(len(i0), dtype=np.int8)
+    side[up_step < dn_step] = 1
+    side[dn_step < up_step] = -1
+    same = (up_step == dn_step) & (up_step <= h)
+    if np.any(same):
+        same_idx = np.flatnonzero(same)
+        tie_idx = i0[same_idx] + up_step[same_idx].astype(np.int64)
+        tie_hlf = hlf[tie_idx]
+        side[same_idx[tie_hlf > 0]] = 1
+        side[same_idx[tie_hlf < 0]] = -1
+    decided = side != 0
+    both = any_up & any_dn
+    touch_step = np.minimum(up_step, dn_step).astype(float)
+    touch_step[~decided] = np.nan
+    gross = np.full(len(i0), np.nan, dtype=float)
+    touch_i = np.minimum(up_step, dn_step).astype(np.int64, copy=False)
+    entry_i = i0 + touch_i
+    exit_i = i0 + touch_i + int(h)
+    ok = decided & (exit_i < len(close_bid))
+    if np.any(ok):
+        ok_idx = np.flatnonzero(ok)
+        exit_price_use = np.where(
+            side[ok_idx] == -1,
+            close_ask[exit_i[ok_idx]],
+            close_bid[exit_i[ok_idx]],
+        )
+        entry_price_use = np.where(
+            side[ok_idx] == -1,
+            close_bid[entry_i[ok_idx]],
+            close_ask[entry_i[ok_idx]],
+        )
+        num_ok = np.isfinite(exit_price_use) & np.isfinite(entry_price_use)
+        use = ok_idx[num_ok]
+        if len(use) > 0:
+            gross[use] = side[use].astype(float) * (
+                (exit_price_use[num_ok] - entry_price_use[num_ok]) / pip
+            )
+    return {
+        "i0": i0,
+        "gross": gross,
+        "side": side,
+        "both_touched_lookahead": both,
+        "decided": decided,
+        "touch_step": touch_step,
+    }
+
+
 def _assign_quality_tier(df: pd.DataFrame, *, library: str) -> pd.DataFrame:
     """Assign quality tiers (A/B/C/D) from look-ahead-free train metrics only.
 
