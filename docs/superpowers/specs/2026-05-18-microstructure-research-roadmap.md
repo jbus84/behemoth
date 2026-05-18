@@ -112,12 +112,12 @@ and the no-touch rate vary across regimes, unlike first-touch direction.
 
 | # | Sub-project | Spec | Plan | Status |
 |---|---|---|---|---|
-| 0 | Mining family framework + random-entry baseline | [design](2026-05-18-mining-family-framework-design.md) | [plan](../plans/2026-05-18-mining-family-framework.md) | Planned |
-| 1 | Asymmetric barriers | — | — | Blocked on 0 |
-| 2 | Consecutive-move persistence | — | — | Blocked on 0 |
-| 3 | Double-touch / liquidity sweep | — | — | Blocked on 0 |
-| 4 | Pullback continuation | — | — | Blocked on 0 |
-| 5 | No-touch / sell-the-range | — | — | Blocked on 0 |
+| 0 | Mining family framework + random-entry baseline | [design](2026-05-18-mining-family-framework-design.md) | [plan](../plans/2026-05-18-mining-family-framework.md) | Done (#186, #187) |
+| 1 | Asymmetric barriers | [design](2026-05-18-asymmetric-barriers-design.md) | [plan](../plans/2026-05-18-cheap-mining-families.md) | Done |
+| 2 | Consecutive-move persistence | [design](2026-05-18-consecutive-persistence-design.md) | [plan](../plans/2026-05-18-cheap-mining-families.md) | Done |
+| 3 | Double-touch / liquidity sweep | — | — | Ready |
+| 4 | Pullback continuation | — | — | Ready |
+| 5 | No-touch / sell-the-range | — | — | Ready |
 
 Each sub-project gets its own `docs/superpowers/specs/` design and
 `docs/superpowers/plans/` implementation plan. This table is updated as each
