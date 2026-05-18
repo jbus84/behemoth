@@ -379,3 +379,102 @@ def test_pullback_family_param_grid_rejects_nonpositive():
     fam = FAMILY_REGISTRY["pullback"]
     with pytest.raises(ValueError):
         fam.param_grid({"barrier_grid_pips": "0", "horizons": "1"})
+
+
+def test_pullback_no_false_edge_on_driftless_data():
+    import numpy as np
+    import pandas as pd
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from scripts.mining_random_baseline import random_entry_baseline
+
+    fam = FAMILY_REGISTRY["pullback"]
+    rng = np.random.default_rng(99)
+    n = 2500
+    pip = 0.0001
+    # Driftless random walk — impulse/pullback/resumption setups occur but
+    # carry no continuation edge.
+    base = 1.20000 + np.cumsum(rng.normal(0, 0.3 * pip, n))
+    frame = pd.DataFrame({
+        "close_bid": base,
+        "close_ask": base + 0.2 * pip,
+        "low_bid": base - rng.uniform(0.1, 0.5, n) * pip,
+        "high_ask": base + 0.2 * pip + rng.uniform(0.1, 0.5, n) * pip,
+    })
+    allmask = np.ones(len(frame), dtype=bool)
+    params = {"symbol": "EURUSD", "impulse_dir": "up", "m_pips": 3.0,
+              "r_frac": 0.5, "window_I": 15, "window_P": 15,
+              "window_R": 10, "horizon": 5}
+    entries = fam.entry_indices(frame, allmask, params)
+    assert len(entries) > 0, "driftless fixture should still produce setups"
+    gross = fam.measure_gross(frame, entries, params)
+    gross = gross[np.isfinite(gross)]
+    assert gross.size > 0
+    cand_ev = float(np.mean(gross))
+    baseline = random_entry_baseline(
+        fam, frame, params,
+        n_entries=len(entries), n_draws=100,
+        rng=np.random.default_rng(7),
+        candidate_gross_ev=cand_ev,
+    )
+    z = baseline["random_baseline_z"]
+    assert np.isnan(z) or z < 2.0
+
+
+def test_pullback_detects_structure_on_post_resumption_continuation():
+    import numpy as np
+    import pandas as pd
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from scripts.mining_random_baseline import random_entry_baseline
+
+    fam = FAMILY_REGISTRY["pullback"]
+    pip = 0.0001
+    # One 30-bar cycle: 10 flat bars, a 6-pip impulse held 3 bars, a pullback
+    # down to +1 pip held 3 bars, a resumption back to +6 pip, then a hold.
+    # Tiled across the frame so an impulse->pullback->resumption completes
+    # once per cycle.
+    cycle = np.array(
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+         6, 6, 6,
+         1, 1, 1,
+         6, 6, 6,
+         6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6],
+        dtype=float,
+    )
+    assert cycle.size == 30
+    bump = np.tile(cycle, 60) * pip
+    n = bump.size  # 1800
+    # First 1200 bars: a 0.5 pip/bar uptrend supplies real post-resumption
+    # continuation. Last 600 bars: flat — setups still complete on the bump
+    # shape but carry no continuation, diluting the control mean.
+    trend_len = 1200
+    drift = np.concatenate([
+        0.5 * pip * np.arange(trend_len),
+        np.full(n - trend_len, 0.5 * pip * trend_len),
+    ])
+    close = 1.30000 + drift + bump
+    frame = pd.DataFrame({
+        "close_bid": close,
+        "close_ask": close + 0.2 * pip,
+        "low_bid": close - 0.1 * pip,
+        "high_ask": close + 0.2 * pip + 0.1 * pip,
+    })
+    regime_mask = np.zeros(n, dtype=bool)
+    regime_mask[:trend_len] = True
+    params = {"symbol": "EURUSD", "impulse_dir": "up", "m_pips": 3.0,
+              "r_frac": 0.5, "window_I": 15, "window_P": 15,
+              "window_R": 10, "horizon": 5}
+    entries = fam.entry_indices(frame, regime_mask, params)
+    assert len(entries) > 0, "trending region should produce setups"
+    gross = fam.measure_gross(frame, entries, params)
+    gross = gross[np.isfinite(gross)]
+    assert gross.size > 0
+    cand_ev = float(np.mean(gross))
+    baseline = random_entry_baseline(
+        fam, frame, params,
+        n_entries=len(entries), n_draws=200,
+        rng=np.random.default_rng(7),
+        candidate_gross_ev=cand_ev,
+    )
+    assert baseline["random_baseline_z"] > 2.0
