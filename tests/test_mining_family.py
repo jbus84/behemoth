@@ -177,6 +177,7 @@ def test_oco_family_measure_gross_empty_when_no_precompute():
 def test_oco_asymmetric_family_entry_and_gross():
     import numpy as np
     import pandas as pd
+
     from scripts.mining_family import FAMILY_REGISTRY
 
     fam = FAMILY_REGISTRY["oco_asymmetric"]

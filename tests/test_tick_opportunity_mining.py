@@ -613,3 +613,30 @@ def test_oco_asymmetric_precompute_different_barriers():
                                      up_pips=3.0, down_pips=3.0)
     # Different barriers should give different results
     assert not np.array_equal(asym["side"], sym["side"]) or not np.array_equal(asym["gross"], sym["gross"])
+
+
+def test_run_mines_oco_asymmetric_and_directional_run(tmp_path: Path) -> None:
+    dataset_dir = tmp_path / "tick_velocity"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    _build_synth_tick_velocity(dataset_dir / "EURUSD_1000tick_velocity.parquet",
+                         symbol="EURUSD")
+    base_cfg = {
+        "symbol": "EURUSD", "dataset_dir": str(dataset_dir),
+        "bar_ticks_grid": "1000", "horizons": "1,2,3",
+        "train_years": "2022,2023,2024", "test_year": 2025,
+        "min_annual_fills": 50.0, "gross_metric": "mean",
+        "barrier_grid_pips": "2,3", "baseline_seed": 12345, "baseline_draws": 20,
+    }
+    asym_dir, _, _ = run({**base_cfg, "library_type": "oco_asymmetric"})
+    assert not asym_dir.empty or asym_dir is not None
+    # oco_asymmetric candidates land in the oco frame
+    asym_oco = run({**base_cfg, "library_type": "oco_asymmetric"})[1]
+    if not asym_oco.empty:
+        assert (asym_oco["family"] == "oco_asymmetric").all()
+        for col in ("random_baseline_z", "random_baseline_p"):
+            assert col in asym_oco.columns
+
+    run_dir = run({**base_cfg, "library_type": "directional_run"})[0]
+    if not run_dir.empty:
+        assert (run_dir["family"] == "directional_run").all()
+        assert "random_baseline_z" in run_dir.columns

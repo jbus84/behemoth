@@ -21,7 +21,11 @@ try:
 except Exception:
     yaml = None  # type: ignore[assignment]
 
-from scripts.mining_family import FAMILY_REGISTRY, resolve_families
+from scripts.mining_family import (
+    _LIBRARY_TYPE_ALIASES,
+    FAMILY_REGISTRY,
+    resolve_families,
+)
 from scripts.mining_random_baseline import random_entry_baseline
 
 DEFAULTS: dict[str, Any] = {
@@ -970,8 +974,10 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     library_type = str(cfg["library_type"]).strip().lower()
     if gross_metric not in {"mean", "median"}:
         raise ValueError("gross_metric must be mean|median")
-    if library_type not in {"separate", "directional", "oco"}:
-        raise ValueError("library_type must be separate|directional|oco")
+    if library_type not in _LIBRARY_TYPE_ALIASES:
+        raise ValueError(
+            f"library_type must be one of {sorted(_LIBRARY_TYPE_ALIASES)}"
+        )
 
     family_names = resolve_families(library_type)
     baseline_seed = int(cfg.get("baseline_seed", 12345))
@@ -1018,8 +1024,16 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             "Run `make rebuild-all MONTHS=...` to build Stage 0 data."
         )
 
-    directional = pd.DataFrame(per_family_rows.get("directional", []))
-    oco = pd.DataFrame(per_family_rows.get("oco_first_touch", []))
+    directional_rows: list[dict[str, Any]] = []
+    oco_rows: list[dict[str, Any]] = []
+    for fam_name in family_names:
+        rows = per_family_rows.get(fam_name, [])
+        if fam_name in {"directional", "directional_run"}:
+            directional_rows.extend(rows)
+        elif fam_name in {"oco_first_touch", "oco_asymmetric"}:
+            oco_rows.extend(rows)
+    directional = pd.DataFrame(directional_rows)
+    oco = pd.DataFrame(oco_rows)
     if not directional.empty:
         directional = _assign_quality_tier(directional, library="directional")
         directional = _stamp_candidate_contract(directional)
