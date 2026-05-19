@@ -21,7 +21,11 @@ try:
 except Exception:
     yaml = None  # type: ignore[assignment]
 
-from scripts.candidate_fills import candidate_id, expand_fills
+from scripts.candidate_fills import (
+    candidate_id,
+    expand_fills,
+    write_candidate_fills,
+)
 from scripts.mining_family import FAMILY_REGISTRY, resolve_families
 from scripts.mining_random_baseline import random_entry_baseline
 
@@ -1099,7 +1103,9 @@ def _mine_frame_pair(
     return per_family_rows, fill_rows
 
 
-def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def run(
+    cfg: dict[str, Any],
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, list[dict[str, Any]]]:
     symbol = str(cfg["symbol"]).upper().strip()
     dataset_dir = Path(str(cfg["dataset_dir"]))
     bar_ticks_grid = _parse_ints(str(cfg["bar_ticks_grid"]))
@@ -1124,6 +1130,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, 
     baseline_draws = int(cfg.get("baseline_draws", 200))
 
     per_family_rows: dict[str, list[dict[str, Any]]] = {n: [] for n in family_names}
+    all_fills: list[dict[str, Any]] = []
 
     if not dataset_dir.exists():
         raise FileNotFoundError(
@@ -1182,7 +1189,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, 
         no_touch = _assign_quality_tier(no_touch, library="no_touch")
         no_touch = _stamp_candidate_contract(no_touch)
     summary = _build_summary(directional, oco, no_touch)
-    return directional, oco, no_touch, summary
+    return directional, oco, no_touch, summary, all_fills
 
 
 def main() -> None:
@@ -1207,7 +1214,7 @@ def main() -> None:
     args = p.parse_args()
 
     cfg = _merge_config(args)
-    directional, oco, no_touch, summary = run(cfg)
+    directional, oco, no_touch, summary, fills = run(cfg)
 
     out_dir = Path(str(cfg["out_dir"]))
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1221,10 +1228,12 @@ def main() -> None:
     oco.to_csv(o_path, index=False)
     no_touch.to_csv(nt_path, index=False)
     summary.to_csv(s_path, index=False)
+    fills_path = write_candidate_fills(fills, out_dir, symbol)
     print(f"wrote: {d_path}")
     print(f"wrote: {o_path}")
     print(f"wrote: {nt_path}")
     print(f"wrote: {s_path}")
+    print(f"wrote: {fills_path}")
 
     report_out = Path(str(cfg["report_out"]))
     _save_report(
