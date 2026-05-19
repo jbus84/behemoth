@@ -103,3 +103,28 @@ def test_expand_fills_missing_feature_columns_degrade():
     assert np.isnan(rows[0]["directional_persistence_8"])
     assert np.isnan(rows[0]["vol_cluster_score"])
     assert rows[0]["session_marker"] == ""
+
+
+def test_write_candidate_fills_writes_parquet(tmp_path):
+    from scripts.candidate_fills import write_candidate_fills
+
+    rows = [
+        {"candidate_id": "abc", "symbol": "EURUSD", "gross_pips": 1.0},
+        {"candidate_id": "abc", "symbol": "EURUSD", "gross_pips": -0.5},
+    ]
+    path = write_candidate_fills(rows, tmp_path, "EURUSD")
+    assert path.exists()
+    assert path.parent.name == "candidate_fills"
+    df = pd.read_parquet(path)
+    assert len(df) == 2
+    assert set(df["candidate_id"]) == {"abc"}
+
+
+def test_write_candidate_fills_empty_writes_empty_schema_parquet(tmp_path):
+    from scripts.candidate_fills import write_candidate_fills, FILL_COLUMNS
+
+    path = write_candidate_fills([], tmp_path, "EURUSD")
+    assert path.exists()
+    df = pd.read_parquet(path)
+    assert df.empty
+    assert list(df.columns) == list(FILL_COLUMNS)

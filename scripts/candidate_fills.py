@@ -91,3 +91,46 @@ def expand_fills(
         )
         rows.append(row)
     return rows
+
+
+# Canonical per-fill column order; also the schema of an empty fills parquet.
+FILL_COLUMNS: tuple[str, ...] = (
+    "candidate_id",
+    "symbol",
+    "family",
+    "library_type",
+    "bar_ticks",
+    "horizon",
+    "regime",
+    "split",
+    "entry_index",
+    "entry_ts",
+    "gross_pips",
+    "tick_burst_score",
+    "directional_persistence_8",
+    "vol_cluster_score",
+    "session_marker",
+    "selection_pass",
+    "near_miss",
+)
+
+
+def write_candidate_fills(
+    rows: list[dict[str, Any]],
+    out_dir: Path | str,
+    symbol: str,
+) -> Path:
+    """Write per-fill rows to `<out_dir>/candidate_fills/<symbol>_candidate_fills.parquet`.
+
+    An empty `rows` list still produces a parquet with the canonical schema so
+    downstream readers never have to handle a missing file.
+    """
+    fills_dir = Path(out_dir) / "candidate_fills"
+    fills_dir.mkdir(parents=True, exist_ok=True)
+    path = fills_dir / f"{symbol}_candidate_fills.parquet"
+    if rows:
+        df = pd.DataFrame(rows)
+    else:
+        df = pd.DataFrame({c: [] for c in FILL_COLUMNS})
+    df.to_parquet(path, index=False)
+    return path
