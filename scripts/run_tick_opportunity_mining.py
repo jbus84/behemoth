@@ -759,12 +759,16 @@ def _stamp_candidate_contract(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def _build_summary(directional: pd.DataFrame, oco: pd.DataFrame) -> pd.DataFrame:
+def _build_summary(
+    directional: pd.DataFrame, oco: pd.DataFrame, no_touch: pd.DataFrame
+) -> pd.DataFrame:
     frames = []
     if not directional.empty:
         frames.append(directional.assign(library="directional"))
     if not oco.empty:
         frames.append(oco.assign(library="oco"))
+    if not no_touch.empty:
+        frames.append(no_touch.assign(library="no_touch"))
     summary_rows: list[dict[str, Any]] = []
     if frames:
         all_df = pd.concat(frames, ignore_index=True)
@@ -820,6 +824,7 @@ def _save_report(
     cfg: dict[str, Any],
     directional: pd.DataFrame,
     oco: pd.DataFrame,
+    no_touch: pd.DataFrame,
     summary: pd.DataFrame,
 ) -> None:
     lines: list[str] = []
@@ -865,6 +870,9 @@ def _save_report(
     lines.append("")
     lines.append("## OCO Top")
     lines.append(_top_table(oco))
+    lines.append("")
+    lines.append("## No-Touch Top")
+    lines.append(_top_table(no_touch))
     lines.append("")
 
     if not summary.empty:
@@ -1004,7 +1012,9 @@ def _mine_frame_pair(
                             both_window_rate_train = float(np.mean(botht[regt]))
 
                 # selection_pass
-                if fam_name in ("directional", "double_touch", "pullback"):
+                if fam_name in (
+                    "directional", "double_touch", "pullback", "no_touch"
+                ):
                     train_annual = (
                         _annualized_count(
                             train_n,
@@ -1055,7 +1065,7 @@ def _mine_frame_pair(
     return per_family_rows
 
 
-def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     symbol = str(cfg["symbol"]).upper().strip()
     dataset_dir = Path(str(cfg["dataset_dir"]))
     bar_ticks_grid = _parse_ints(str(cfg["bar_ticks_grid"]))
@@ -1067,9 +1077,12 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     library_type = str(cfg["library_type"]).strip().lower()
     if gross_metric not in {"mean", "median"}:
         raise ValueError("gross_metric must be mean|median")
-    if library_type not in {"separate", "directional", "oco", "double_touch", "pullback"}:
+    if library_type not in {
+        "separate", "directional", "oco", "double_touch", "pullback", "no_touch"
+    }:
         raise ValueError(
-            "library_type must be separate|directional|oco|double_touch|pullback"
+            "library_type must be "
+            "separate|directional|oco|double_touch|pullback|no_touch"
         )
 
     family_names = resolve_families(library_type)
@@ -1123,14 +1136,18 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         + per_family_rows.get("pullback", [])
     )
     oco = pd.DataFrame(per_family_rows.get("oco_first_touch", []))
+    no_touch = pd.DataFrame(per_family_rows.get("no_touch", []))
     if not directional.empty:
         directional = _assign_quality_tier(directional, library="directional")
         directional = _stamp_candidate_contract(directional)
     if not oco.empty:
         oco = _assign_quality_tier(oco, library="oco")
         oco = _stamp_candidate_contract(oco)
-    summary = _build_summary(directional, oco)
-    return directional, oco, summary
+    if not no_touch.empty:
+        no_touch = _assign_quality_tier(no_touch, library="no_touch")
+        no_touch = _stamp_candidate_contract(no_touch)
+    summary = _build_summary(directional, oco, no_touch)
+    return directional, oco, no_touch, summary
 
 
 def main() -> None:
@@ -1155,7 +1172,7 @@ def main() -> None:
     args = p.parse_args()
 
     cfg = _merge_config(args)
-    directional, oco, summary = run(cfg)
+    directional, oco, no_touch, summary = run(cfg)
 
     out_dir = Path(str(cfg["out_dir"]))
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1163,16 +1180,22 @@ def main() -> None:
 
     d_path = out_dir / f"{symbol}_directional_candidates.csv"
     o_path = out_dir / f"{symbol}_oco_candidates.csv"
+    nt_path = out_dir / f"{symbol}_no_touch_candidates.csv"
     s_path = out_dir / f"{symbol}_candidate_summary.csv"
     directional.to_csv(d_path, index=False)
     oco.to_csv(o_path, index=False)
+    no_touch.to_csv(nt_path, index=False)
     summary.to_csv(s_path, index=False)
     print(f"wrote: {d_path}")
     print(f"wrote: {o_path}")
+    print(f"wrote: {nt_path}")
     print(f"wrote: {s_path}")
 
     report_out = Path(str(cfg["report_out"]))
-    _save_report(report_out=report_out, cfg=cfg, directional=directional, oco=oco, summary=summary)
+    _save_report(
+        report_out=report_out, cfg=cfg, directional=directional,
+        oco=oco, no_touch=no_touch, summary=summary,
+    )
     print(f"wrote: {report_out}")
 
 

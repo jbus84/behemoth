@@ -478,3 +478,183 @@ def test_pullback_detects_structure_on_post_resumption_continuation():
         candidate_gross_ev=cand_ev,
     )
     assert baseline["random_baseline_z"] > 2.0
+
+
+def test_no_touch_family_registered_and_resolves():
+    from scripts.mining_family import (
+        FAMILY_REGISTRY,
+        MiningFamily,
+        resolve_families,
+    )
+
+    assert resolve_families("no_touch") == ["no_touch"]
+    fam = FAMILY_REGISTRY["no_touch"]
+    assert fam.name == "no_touch"
+    assert isinstance(fam, MiningFamily)
+
+
+def test_no_touch_family_grid_and_metadata():
+    from scripts.mining_family import FAMILY_REGISTRY
+
+    fam = FAMILY_REGISTRY["no_touch"]
+    grid = fam.param_grid({"barrier_grid_pips": "2,3", "horizons": "1,2,3"})
+    # 2 barrier widths x 3 horizons; symmetric barriers -> no direction axis.
+    assert len(grid) == 2 * 3
+    assert sorted({g["barrier_pips"] for g in grid}) == [2.0, 3.0]
+    assert sorted({g["horizon"] for g in grid}) == [1, 2, 3]
+    meta = fam.candidate_metadata(
+        "london", {"barrier_pips": 3.0, "horizon": 2}
+    )
+    assert meta["family"] == "no_touch"
+    assert meta["state_id"] == "no_touch__london__K3_h2"
+    assert meta["ml_ready_target_type"] == "no_touch"
+    assert "K=3" in meta["regime_desc"]
+
+
+def test_no_touch_family_grid_rejects_non_positive():
+    from scripts.mining_family import FAMILY_REGISTRY
+
+    fam = FAMILY_REGISTRY["no_touch"]
+    with pytest.raises(ValueError, match="non-positive"):
+        fam.param_grid({"barrier_grid_pips": "0,3", "horizons": "1"})
+
+def test_no_touch_entry_indices_not_gated_on_decided():
+    import numpy as np
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from tests.test_tick_opportunity_mining import _build_breakout_frame
+
+    fam = FAMILY_REGISTRY["no_touch"]
+    frame = _build_breakout_frame()
+    allmask = np.ones(len(frame), dtype=bool)
+    params = {"symbol": "EURUSD", "barrier_pips": 3.0, "horizon": 5}
+    entries = fam.entry_indices(frame, allmask, params)
+    prep = fam._precompute(frame, "EURUSD", params)
+    i0 = np.asarray(prep["i0"], dtype=np.int64)
+    # Every barrier is touched on a breakout frame, yet entry_indices still
+    # returns the full i0 universe — no_touch does not gate on `decided`.
+    assert np.asarray(prep["decided"], dtype=bool).all()
+    assert np.array_equal(entries, i0)
+
+
+def test_no_touch_gross_is_plus_k_when_no_touch():
+    import numpy as np
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from tests.test_tick_opportunity_mining import _build_range_bound_frame
+
+    fam = FAMILY_REGISTRY["no_touch"]
+    frame = _build_range_bound_frame()
+    allmask = np.ones(len(frame), dtype=bool)
+    params = {"symbol": "EURUSD", "barrier_pips": 3.0, "horizon": 5}
+    entries = fam.entry_indices(frame, allmask, params)
+    assert len(entries) > 0
+    gross = fam.measure_gross(frame, entries, params)
+    gross = gross[np.isfinite(gross)]
+    assert gross.size > 0
+    # Range never touches a +/-3 pip barrier -> every candidate wins +K.
+    assert np.allclose(gross, 3.0)
+
+
+def test_no_touch_gross_is_negative_on_breakout():
+    import numpy as np
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from tests.test_tick_opportunity_mining import _build_breakout_frame
+
+    fam = FAMILY_REGISTRY["no_touch"]
+    frame = _build_breakout_frame()
+    allmask = np.ones(len(frame), dtype=bool)
+    params = {"symbol": "EURUSD", "barrier_pips": 3.0, "horizon": 5}
+    entries = fam.entry_indices(frame, allmask, params)
+    gross = fam.measure_gross(frame, entries, params)
+    gross = gross[np.isfinite(gross)]
+    assert gross.size > 0
+    # Up-breakout that keeps running -> the range-fade loses.
+    assert np.mean(gross) < 0.0
+
+
+def test_no_touch_no_false_edge_on_driftless_data():
+    import numpy as np
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from scripts.mining_random_baseline import random_entry_baseline
+
+    fam = FAMILY_REGISTRY["no_touch"]
+    # A driftless random walk: no regime is structurally calmer than another,
+    # so a no_touch bet must NOT clear the random-entry baseline.
+    rng = np.random.default_rng(20260519)
+    n = 4000
+    pip = 0.0001
+    steps = rng.normal(0.0, 0.6 * pip, size=n)
+    close = 1.30000 + np.cumsum(steps)
+    spread = 0.2 * pip
+    frame = pd.DataFrame({
+        "close_bid": close,
+        "close_ask": close + spread,
+        "low_bid": close - 0.2 * pip,
+        "high_ask": close + spread + 0.2 * pip,
+        "hl_first": np.zeros(n, dtype=float),
+    })
+    # Scatter the regime across the frame rather than taking a contiguous
+    # block. Overlapping h-bar horizons make adjacent bars' outcomes
+    # correlated, so a contiguous block behaves like one correlated sample
+    # and drifts multiple sigma from a control built on decorrelated random
+    # draws. A scattered mask is decorrelated like the baseline draws, so a
+    # truly driftless frame yields z ~ 0.
+    regime_mask = rng.random(n) < 0.5
+    params = {"symbol": "EURUSD", "barrier_pips": 3.0, "horizon": 8}
+    entries = fam.entry_indices(frame, regime_mask, params)
+    assert len(entries) > 0
+    gross = fam.measure_gross(frame, entries, params)
+    gross = gross[np.isfinite(gross)]
+    cand_ev = float(np.mean(gross))
+    baseline = random_entry_baseline(
+        fam, frame, params,
+        n_entries=len(entries), n_draws=200,
+        rng=np.random.default_rng(7),
+        candidate_gross_ev=cand_ev,
+    )
+    assert abs(baseline["random_baseline_z"]) < 2.0
+
+
+def test_no_touch_detects_structure_on_range_bound_regime():
+    import numpy as np
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from scripts.mining_random_baseline import random_entry_baseline
+
+    fam = FAMILY_REGISTRY["no_touch"]
+    # First 2000 bars are a tight range (no barrier ever touched -> +K wins);
+    # last 2000 are a strong trend (barriers touched, breakouts run -> losses).
+    # A regime restricted to the range should beat the random-entry baseline,
+    # because random draws sample the trending half too, diluting the control.
+    n = 4000
+    pip = 0.0001
+    saw = (np.arange(2000) % 4 - 1.5) * 0.4 * pip  # +/-0.6 pip, never touches
+    calm = 1.30000 + saw
+    trend = calm[-1] + 0.8 * pip * np.arange(1, 2001)
+    close = np.concatenate([calm, trend])
+    spread = 0.2 * pip
+    frame = pd.DataFrame({
+        "close_bid": close,
+        "close_ask": close + spread,
+        "low_bid": close - 0.1 * pip,
+        "high_ask": close + spread + 0.1 * pip,
+        "hl_first": np.zeros(n, dtype=float),
+    })
+    regime_mask = np.zeros(len(frame), dtype=bool)
+    regime_mask[:2000] = True
+    params = {"symbol": "EURUSD", "barrier_pips": 3.0, "horizon": 8}
+    entries = fam.entry_indices(frame, regime_mask, params)
+    assert len(entries) > 0
+    gross = fam.measure_gross(frame, entries, params)
+    gross = gross[np.isfinite(gross)]
+    cand_ev = float(np.mean(gross))
+    baseline = random_entry_baseline(
+        fam, frame, params,
+        n_entries=len(entries), n_draws=200,
+        rng=np.random.default_rng(7),
+        candidate_gross_ev=cand_ev,
+    )
+    assert baseline["random_baseline_z"] > 2.0

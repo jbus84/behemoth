@@ -59,6 +59,7 @@ _LIBRARY_TYPE_ALIASES: dict[str, list[str]] = {
     "directional": ["directional"],
     "double_touch": ["double_touch"],
     "pullback": ["pullback"],
+    "no_touch": ["no_touch"],
     "separate": ["oco_first_touch", "directional"],
 }
 
@@ -441,9 +442,110 @@ class PullbackFamily:
         }
 
 
+class NoTouchFamily:
+    """Range-fade / sell-the-range family — the honest inverse of
+    oco_first_touch. A symmetric +/-K range bet is placed at every regime
+    bar: a horizon that completes without touching either barrier wins a
+    fixed +K pips; a touch books the breakout continuation as a loss. Reuses
+    _oco_precompute_candidates rather than adding a new engine."""
+
+    name = "no_touch"
+
+    def __init__(self) -> None:
+        self._cache: dict[tuple[int, tuple[tuple[str, Any], ...]], dict[str, Any] | None] = {}
+
+    def clear_cache(self) -> None:
+        """Drop cached precompute results. Long-lived processes should call
+        this between mining batches to avoid unbounded growth."""
+        self._cache.clear()
+
+    def param_grid(self, cfg: dict[str, Any]) -> list[dict[str, Any]]:
+        from scripts.run_tick_opportunity_mining import _parse_floats, _parse_ints
+
+        barriers = _parse_floats(str(cfg["barrier_grid_pips"]))
+        horizons = _parse_ints(str(cfg["horizons"]))
+        grid: list[dict[str, Any]] = []
+        for k in barriers:
+            for h in horizons:
+                if k <= 0.0 or h <= 0:
+                    raise ValueError(f"non-positive grid value: k={k} h={h}")
+                grid.append({"barrier_pips": float(k), "horizon": int(h)})
+        return grid
+
+    def _precompute(
+        self, frame: pd.DataFrame, symbol: str, params: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        from scripts.run_tick_opportunity_mining import _oco_precompute_candidates
+
+        key = (_frame_fingerprint(frame), tuple(sorted(params.items())))
+        if key in self._cache:
+            return self._cache[key]
+        try:
+            result = _oco_precompute_candidates(
+                frame,
+                symbol=symbol,
+                horizon=int(params["horizon"]),
+                barrier_pips=float(params["barrier_pips"]),
+            )
+        except ValueError:
+            result = None
+        self._cache[key] = result
+        return result
+
+    def entry_indices(
+        self, frame: pd.DataFrame, regime_mask: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        if "symbol" not in params:
+            return np.array([], dtype=np.int64)
+        prep = self._precompute(frame, str(params["symbol"]), params)
+        if not prep:
+            return np.array([], dtype=np.int64)
+        # Not gated on `decided`: un-touched bars are the wins, not dropped
+        # candidates. Every valid regime bar is an entry.
+        i0 = np.asarray(prep["i0"], dtype=np.int64)
+        reg = np.asarray(regime_mask, dtype=bool)[i0]
+        return i0[reg]
+
+    def measure_gross(
+        self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        if "symbol" not in params:
+            return np.array([], dtype=float)
+        prep = self._precompute(frame, str(params["symbol"]), params)
+        if not prep:
+            return np.array([], dtype=float)
+        i0 = np.asarray(prep["i0"], dtype=np.int64)
+        decided = np.asarray(prep["decided"], dtype=bool)
+        oco_gross = np.asarray(prep["gross"], dtype=float)
+        k = float(params["barrier_pips"])
+        # No touch -> +K win. Touch -> -(signed breakout continuation); a
+        # decided entry whose continuation exit is out of bounds keeps the
+        # NaN that _oco_precompute_candidates already produced.
+        nt_gross = np.where(decided, -oco_gross, k)
+        pos = pd.Series(np.arange(len(i0)), index=i0)
+        mapped = pos.reindex(entries).to_numpy(dtype=float)
+        out = np.full(len(entries), np.nan, dtype=float)
+        valid = np.isfinite(mapped)
+        out[valid] = nt_gross[mapped[valid].astype(np.int64)]
+        return out
+
+    def candidate_metadata(
+        self, regime_name: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
+        k = float(params["barrier_pips"])
+        h = int(params["horizon"])
+        return {
+            "family": "no_touch",
+            "state_id": f"no_touch__{regime_name}__K{k:g}_h{h}",
+            "regime_desc": f"{regime_name};K={k:g};h={h}",
+            "ml_ready_target_type": "no_touch",
+        }
+
+
 FAMILY_REGISTRY: dict[str, MiningFamily] = {
     "oco_first_touch": OcoFirstTouchFamily(),
     "directional": DirectionalFamily(),
     "double_touch": DoubleTouchFamily(),
     "pullback": PullbackFamily(),
+    "no_touch": NoTouchFamily(),
 }

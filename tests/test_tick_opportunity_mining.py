@@ -201,7 +201,7 @@ def test_tick_opportunity_mining_outputs(tmp_path: Path) -> None:
         "library_type": "separate",
         "barrier_grid_pips": "2,3",
     }
-    directional, oco, summary = run(cfg)
+    directional, oco, _no_touch, summary = run(cfg)
 
     assert not directional.empty
     assert not oco.empty
@@ -531,7 +531,7 @@ def test_mining_run_output_is_stable(tmp_path: Path) -> None:
         "library_type": "separate",
         "barrier_grid_pips": "2,3",
     }
-    directional, oco, summary = run(cfg)
+    directional, oco, _no_touch, summary = run(cfg)
     # Shape + key columns are stable; exact row counts depend on the synthetic
     # fixture and must not change across the refactor.
     snapshot = {
@@ -562,7 +562,7 @@ def test_run_emits_random_baseline_columns(tmp_path: Path) -> None:
         "library_type": "separate", "barrier_grid_pips": "2,3",
         "baseline_seed": 12345, "baseline_draws": 50,
     }
-    directional, oco, summary = run(cfg)
+    directional, oco, _no_touch, summary = run(cfg)
     for df in (directional, oco):
         if not df.empty:
             for col in ("random_baseline_z", "random_baseline_p",
@@ -654,7 +654,7 @@ def test_run_mines_double_touch(tmp_path: Path) -> None:
         "library_type": "double_touch", "barrier_grid_pips": "2,3",
         "baseline_seed": 12345, "baseline_draws": 20,
     }
-    directional, oco, _ = run(cfg)
+    directional, oco, _no_touch, _ = run(cfg)
     # double_touch is a signed-return family -> lands in the directional frame.
     assert oco.empty
     assert not directional.empty, "double_touch should produce candidates"
@@ -679,6 +679,40 @@ def _build_pullback_frame(n: int = 800) -> pd.DataFrame:
         "close_ask": close + spread,
         "low_bid": close - 0.3 * pip - dip,
         "high_ask": close + spread + 0.3 * pip,
+    })
+
+
+def _build_range_bound_frame(n: int = 800) -> pd.DataFrame:
+    """Flat price with a tiny sub-pip sawtooth — never travels far enough to
+    touch a +/-3 pip barrier (peak-to-peak swing 1.2 pips, plus 0.1 pip of
+    high/low offset, stays well inside 3 pips). Deterministic: every no_touch
+    candidate is a win (decided False -> gross +K)."""
+    pip = 0.0001
+    saw = (np.arange(n) % 4 - 1.5) * 0.4 * pip  # in [-0.6, +0.6] pips
+    close = 1.20000 + saw
+    spread = 0.2 * pip
+    return pd.DataFrame({
+        "close_bid": close,
+        "close_ask": close + spread,
+        "low_bid": close - 0.1 * pip,
+        "high_ask": close + spread + 0.1 * pip,
+        "hl_first": np.zeros(n, dtype=float),
+    })
+
+
+def _build_breakout_frame(n: int = 800) -> pd.DataFrame:
+    """Steady uptrend (0.8 pip/bar) — from any bar the +K barrier is touched
+    fast and price keeps rising. Deterministic: every no_touch candidate is a
+    loss (decided True, up-continuation -> negative gross)."""
+    pip = 0.0001
+    close = 1.20000 + 0.8 * pip * np.arange(n)
+    spread = 0.2 * pip
+    return pd.DataFrame({
+        "close_bid": close,
+        "close_ask": close + spread,
+        "low_bid": close - 0.1 * pip,
+        "high_ask": close + spread + 0.1 * pip,
+        "hl_first": np.zeros(n, dtype=float),
     })
 
 
@@ -738,10 +772,34 @@ def test_run_mines_pullback(tmp_path: Path) -> None:
         "library_type": "pullback", "barrier_grid_pips": "2,3",
         "baseline_seed": 12345, "baseline_draws": 20,
     }
-    directional, oco, _ = run(cfg)
+    directional, oco, _no_touch, _ = run(cfg)
     # pullback is a signed-return family -> lands in the directional frame.
     assert oco.empty
     assert not directional.empty, "pullback should produce candidates"
     assert (directional["family"] == "pullback").all()
     for col in ("random_baseline_z", "random_baseline_p"):
         assert col in directional.columns
+
+
+def test_run_mines_no_touch(tmp_path: Path) -> None:
+    dataset_dir = tmp_path / "tick_velocity"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    _build_synth_tick_velocity(dataset_dir / "EURUSD_1000tick_velocity.parquet",
+                               symbol="EURUSD")
+    cfg = {
+        "symbol": "EURUSD", "dataset_dir": str(dataset_dir),
+        "bar_ticks_grid": "1000", "horizons": "1,2,3",
+        "train_years": "2022,2023,2024", "test_year": 2025,
+        "min_annual_fills": 50.0, "gross_metric": "mean",
+        "library_type": "no_touch", "barrier_grid_pips": "2,3",
+        "baseline_seed": 12345, "baseline_draws": 20,
+    }
+    directional, oco, no_touch, _ = run(cfg)
+    # no_touch is a payoff family -> its own frame; others stay empty.
+    assert directional.empty
+    assert oco.empty
+    assert not no_touch.empty, "no_touch should produce candidates"
+    assert (no_touch["family"] == "no_touch").all()
+    assert no_touch["selection_pass"].isin([True, False]).all()
+    for col in ("random_baseline_z", "random_baseline_p"):
+        assert col in no_touch.columns
