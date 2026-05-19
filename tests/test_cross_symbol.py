@@ -86,3 +86,44 @@ def test_align_peer_returns_is_free_of_look_ahead():
         np.nan_to_num(out_a["xs_ret_z__USDJPY"].to_numpy(), nan=-1.0),
         np.nan_to_num(out_b["xs_ret_z__USDJPY"].to_numpy(), nan=-1.0),
     )
+
+
+def test_market_measures_all6_and_loo():
+    from scripts.cross_symbol import _add_market_measures, _align_peer_returns
+
+    # One target bar; five peers each with a known USD-aligned return.
+    target = _mk_frame(["2024-01-01T01:00:00Z"], [6.0])  # target ret_z = 6.0
+    peers = {
+        "GBPUSD": _mk_frame(["2024-01-01T00:00:00Z"], [-1.0]),
+        "AUDUSD": _mk_frame(["2024-01-01T00:00:00Z"], [-2.0]),
+        "USDJPY": _mk_frame(["2024-01-01T00:00:00Z"], [1.0]),
+        "USDCAD": _mk_frame(["2024-01-01T00:00:00Z"], [2.0]),
+        "USDCHF": _mk_frame(["2024-01-01T00:00:00Z"], [3.0]),
+    }
+    aligned = _align_peer_returns(target, "EURUSD", peers)
+    out = _add_market_measures(aligned, "EURUSD")
+    # USD-aligned peer values: GBP +1, AUD +2 (sign -1 on raw -1,-2),
+    # JPY +1, CAD +2, CHF +3 -> peer sum 9, mean 1.8.
+    assert out["mkt_loo"].to_numpy()[0] == pytest.approx(1.8)
+    # Target EURUSD USD-aligned = -1 * 6.0 = -6.0. all6 = (-6+9)/6 = 0.5.
+    assert out["mkt_all6"].to_numpy()[0] == pytest.approx(0.5)
+
+
+def test_market_measures_loo_ignores_target_returns():
+    from scripts.cross_symbol import _add_market_measures, _align_peer_returns
+
+    peers = {
+        "GBPUSD": _mk_frame(["2024-01-01T00:00:00Z"], [1.0]),
+        "AUDUSD": _mk_frame(["2024-01-01T00:00:00Z"], [1.0]),
+        "USDJPY": _mk_frame(["2024-01-01T00:00:00Z"], [1.0]),
+        "USDCAD": _mk_frame(["2024-01-01T00:00:00Z"], [1.0]),
+        "USDCHF": _mk_frame(["2024-01-01T00:00:00Z"], [1.0]),
+    }
+    a = _add_market_measures(
+        _align_peer_returns(_mk_frame(["2024-01-01T01:00:00Z"], [0.0]),
+                            "EURUSD", peers), "EURUSD")
+    b = _add_market_measures(
+        _align_peer_returns(_mk_frame(["2024-01-01T01:00:00Z"], [999.0]),
+                            "EURUSD", peers), "EURUSD")
+    # mkt_loo excludes the target, so the target's own ret_z cannot move it.
+    assert a["mkt_loo"].to_numpy()[0] == b["mkt_loo"].to_numpy()[0]

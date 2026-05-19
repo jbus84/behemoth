@@ -64,3 +64,24 @@ def _align_peer_returns(
         )
         out[col] = joined[col].to_numpy()
     return out
+
+
+def _add_market_measures(
+    frame: pd.DataFrame,
+    target_symbol: str,
+) -> pd.DataFrame:
+    """Append mkt_all6 and mkt_loo to a frame that already carries the
+    xs_ret_z__{peer} columns from _align_peer_returns. mkt_pca is added by a
+    later step."""
+    out = frame.copy()
+    peer_cols = sorted(c for c in out.columns if c.startswith("xs_ret_z__"))
+    target_usd = _usd_aligned_ret_z(out, target_symbol)
+    # 6-wide matrix: the target's own USD-aligned return + the 5 peers.
+    six = pd.concat(
+        [target_usd.rename(f"xs_ret_z__{target_symbol}")]
+        + [out[c] for c in peer_cols],
+        axis=1,
+    )
+    out["mkt_all6"] = six.mean(axis=1, skipna=True).to_numpy()
+    out["mkt_loo"] = out[peer_cols].mean(axis=1, skipna=True).to_numpy()
+    return out
