@@ -478,3 +478,42 @@ def test_pullback_detects_structure_on_post_resumption_continuation():
         candidate_gross_ev=cand_ev,
     )
     assert baseline["random_baseline_z"] > 2.0
+
+
+def test_no_touch_family_registered_and_resolves():
+    from scripts.mining_family import (
+        FAMILY_REGISTRY,
+        MiningFamily,
+        resolve_families,
+    )
+
+    assert resolve_families("no_touch") == ["no_touch"]
+    fam = FAMILY_REGISTRY["no_touch"]
+    assert fam.name == "no_touch"
+    assert isinstance(fam, MiningFamily)
+
+
+def test_no_touch_family_grid_and_metadata():
+    from scripts.mining_family import FAMILY_REGISTRY
+
+    fam = FAMILY_REGISTRY["no_touch"]
+    grid = fam.param_grid({"barrier_grid_pips": "2,3", "horizons": "1,2,3"})
+    # 2 barrier widths x 3 horizons; symmetric barriers -> no direction axis.
+    assert len(grid) == 2 * 3
+    assert sorted({g["barrier_pips"] for g in grid}) == [2.0, 3.0]
+    assert sorted({g["horizon"] for g in grid}) == [1, 2, 3]
+    meta = fam.candidate_metadata(
+        "london", {"barrier_pips": 3.0, "horizon": 2}
+    )
+    assert meta["family"] == "no_touch"
+    assert meta["state_id"] == "no_touch__london__K3_h2"
+    assert meta["ml_ready_target_type"] == "no_touch"
+    assert "K=3" in meta["regime_desc"]
+
+
+def test_no_touch_family_grid_rejects_non_positive():
+    from scripts.mining_family import FAMILY_REGISTRY
+
+    fam = FAMILY_REGISTRY["no_touch"]
+    with pytest.raises(ValueError, match="non-positive"):
+        fam.param_grid({"barrier_grid_pips": "0,3", "horizons": "1"})
