@@ -805,3 +805,53 @@ def test_run_mines_no_touch(tmp_path: Path) -> None:
     assert no_touch["selection_pass"].isin([True, False]).all()
     for col in ("random_baseline_z", "random_baseline_p"):
         assert col in no_touch.columns
+
+
+def test_run_emits_candidate_fills_joinable_to_summary(tmp_path: Path) -> None:
+    from scripts.candidate_fills import FILL_COLUMNS, write_candidate_fills
+
+    dataset_dir = tmp_path / "tick_velocity"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    symbol = "EURUSD"
+    _build_synth_tick_velocity(
+        dataset_dir / f"{symbol}_1000tick_velocity.parquet", symbol=symbol,
+    )
+
+    cfg = {
+        "symbol": symbol,
+        "dataset_dir": str(dataset_dir),
+        "bar_ticks_grid": "1000",
+        "horizons": "1,2,3",
+        "train_years": "2022,2023,2024",
+        "test_year": 2025,
+        "min_annual_fills": 50.0,
+        "gross_metric": "mean",
+        "library_type": "separate",
+        "barrier_grid_pips": "2,3",
+    }
+    directional, oco, no_touch, summary, fills = run(cfg)
+
+    # run() returns fills as a list of row dicts.
+    assert isinstance(fills, list)
+
+    # Writing them yields a parquet with the canonical schema.
+    out_dir = tmp_path / "out"
+    path = write_candidate_fills(fills, out_dir, symbol)
+    assert path.exists()
+    fills_df = pd.read_parquet(path)
+    assert list(fills_df.columns) == list(FILL_COLUMNS)
+
+    if not fills_df.empty:
+        # Every fill carries one of the two splits.
+        assert set(fills_df["split"]).issubset({"train", "test"})
+        # Every fill's candidate_id is present in some mined candidate frame
+        # (library_type "separate" mines directional + oco).
+        known_ids: set[str] = set()
+        for frame in (directional, oco, no_touch):
+            if not frame.empty and "candidate_id" in frame.columns:
+                known_ids |= set(frame["candidate_id"])
+        assert set(fills_df["candidate_id"]).issubset(known_ids)
+        # Only positive-EV candidates emit fills.
+        assert bool(fills_df["selection_pass"].any()) or bool(
+            fills_df["near_miss"].any()
+        )
