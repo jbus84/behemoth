@@ -146,12 +146,14 @@ than folding into `directional` or `oco`.
   `{SYMBOL}_no_touch_candidates.csv` alongside the directional / oco / summary
   CSVs.
 
-**Callers updated** (the 4 sites that unpack `run()`):
+**Callers updated** (the 8 sites that unpack `run()`):
 
 - `scripts/run_tick_opportunity_mining.py` `main()` block.
-- `scripts/build_tick_opportunity_ml_dataset.py:882`.
+- `scripts/build_tick_opportunity_ml_dataset.py:882` — `no_touch` unused there
+  (Non-Goal: no ml-dataset change).
 - `tests/test_tick_opportunity_ml_dataset.py:126`.
-- `tests/test_tick_opportunity_mining.py:204`.
+- `tests/test_tick_opportunity_mining.py` — five unpack sites (204, 534, 565,
+  657, 741).
 
 No-arg `run(cfg)` callers (`select_directional_rolling.py`,
 `select_oco_reduced_core*.py`, `verify_oco_tick_exact_shortlist.py`,
