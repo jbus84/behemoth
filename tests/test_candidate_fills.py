@@ -121,7 +121,7 @@ def test_write_candidate_fills_writes_parquet(tmp_path):
 
 
 def test_write_candidate_fills_empty_writes_empty_schema_parquet(tmp_path):
-    from scripts.candidate_fills import write_candidate_fills, FILL_COLUMNS
+    from scripts.candidate_fills import FILL_COLUMNS, write_candidate_fills
 
     path = write_candidate_fills([], tmp_path, "EURUSD")
     assert path.exists()
@@ -131,7 +131,7 @@ def test_write_candidate_fills_empty_writes_empty_schema_parquet(tmp_path):
 
 
 def test_write_candidate_fills_non_empty_uses_canonical_column_order(tmp_path):
-    from scripts.candidate_fills import write_candidate_fills, FILL_COLUMNS
+    from scripts.candidate_fills import FILL_COLUMNS, write_candidate_fills
 
     # Row dict deliberately in NON-canonical key order.
     rows = [{
