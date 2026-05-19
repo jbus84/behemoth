@@ -779,3 +779,27 @@ def test_run_mines_pullback(tmp_path: Path) -> None:
     assert (directional["family"] == "pullback").all()
     for col in ("random_baseline_z", "random_baseline_p"):
         assert col in directional.columns
+
+
+def test_run_mines_no_touch(tmp_path: Path) -> None:
+    dataset_dir = tmp_path / "tick_velocity"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    _build_synth_tick_velocity(dataset_dir / "EURUSD_1000tick_velocity.parquet",
+                               symbol="EURUSD")
+    cfg = {
+        "symbol": "EURUSD", "dataset_dir": str(dataset_dir),
+        "bar_ticks_grid": "1000", "horizons": "1,2,3",
+        "train_years": "2022,2023,2024", "test_year": 2025,
+        "min_annual_fills": 50.0, "gross_metric": "mean",
+        "library_type": "no_touch", "barrier_grid_pips": "2,3",
+        "baseline_seed": 12345, "baseline_draws": 20,
+    }
+    directional, oco, no_touch, _ = run(cfg)
+    # no_touch is a payoff family -> its own frame; others stay empty.
+    assert directional.empty
+    assert oco.empty
+    assert not no_touch.empty, "no_touch should produce candidates"
+    assert (no_touch["family"] == "no_touch").all()
+    assert no_touch["selection_pass"].isin([True, False]).all()
+    for col in ("random_baseline_z", "random_baseline_p"):
+        assert col in no_touch.columns
