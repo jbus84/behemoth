@@ -201,7 +201,7 @@ def test_tick_opportunity_mining_outputs(tmp_path: Path) -> None:
         "library_type": "separate",
         "barrier_grid_pips": "2,3",
     }
-    directional, oco, summary = run(cfg)
+    directional, oco, _no_touch, summary = run(cfg)
 
     assert not directional.empty
     assert not oco.empty
@@ -531,7 +531,7 @@ def test_mining_run_output_is_stable(tmp_path: Path) -> None:
         "library_type": "separate",
         "barrier_grid_pips": "2,3",
     }
-    directional, oco, summary = run(cfg)
+    directional, oco, _no_touch, summary = run(cfg)
     # Shape + key columns are stable; exact row counts depend on the synthetic
     # fixture and must not change across the refactor.
     snapshot = {
@@ -562,7 +562,7 @@ def test_run_emits_random_baseline_columns(tmp_path: Path) -> None:
         "library_type": "separate", "barrier_grid_pips": "2,3",
         "baseline_seed": 12345, "baseline_draws": 50,
     }
-    directional, oco, summary = run(cfg)
+    directional, oco, _no_touch, summary = run(cfg)
     for df in (directional, oco):
         if not df.empty:
             for col in ("random_baseline_z", "random_baseline_p",
@@ -654,7 +654,7 @@ def test_run_mines_double_touch(tmp_path: Path) -> None:
         "library_type": "double_touch", "barrier_grid_pips": "2,3",
         "baseline_seed": 12345, "baseline_draws": 20,
     }
-    directional, oco, _ = run(cfg)
+    directional, oco, _no_touch, _ = run(cfg)
     # double_touch is a signed-return family -> lands in the directional frame.
     assert oco.empty
     assert not directional.empty, "double_touch should produce candidates"
@@ -772,7 +772,7 @@ def test_run_mines_pullback(tmp_path: Path) -> None:
         "library_type": "pullback", "barrier_grid_pips": "2,3",
         "baseline_seed": 12345, "baseline_draws": 20,
     }
-    directional, oco, _ = run(cfg)
+    directional, oco, _no_touch, _ = run(cfg)
     # pullback is a signed-return family -> lands in the directional frame.
     assert oco.empty
     assert not directional.empty, "pullback should produce candidates"
