@@ -128,3 +128,21 @@ def test_write_candidate_fills_empty_writes_empty_schema_parquet(tmp_path):
     df = pd.read_parquet(path)
     assert df.empty
     assert list(df.columns) == list(FILL_COLUMNS)
+
+
+def test_write_candidate_fills_non_empty_uses_canonical_column_order(tmp_path):
+    from scripts.candidate_fills import write_candidate_fills, FILL_COLUMNS
+
+    # Row dict deliberately in NON-canonical key order.
+    rows = [{
+        "near_miss": False, "split": "test", "symbol": "EURUSD",
+        "candidate_id": "abc", "family": "f", "library_type": "oco",
+        "bar_ticks": 1000, "horizon": 6, "regime": "r", "entry_index": 0,
+        "entry_ts": pd.Timestamp("2024-01-01T00:00:00Z"), "gross_pips": 1.0,
+        "tick_burst_score": 0.1, "directional_persistence_8": 1.0,
+        "vol_cluster_score": 0.5, "session_marker": "LON",
+        "selection_pass": True,
+    }]
+    path = write_candidate_fills(rows, tmp_path, "EURUSD")
+    df = pd.read_parquet(path)
+    assert list(df.columns) == list(FILL_COLUMNS)

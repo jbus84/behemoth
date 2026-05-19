@@ -129,7 +129,7 @@ def write_candidate_fills(
     fills_dir.mkdir(parents=True, exist_ok=True)
     path = fills_dir / f"{symbol}_candidate_fills.parquet"
     if rows:
-        df = pd.DataFrame(rows)
+        df = pd.DataFrame(rows).reindex(columns=list(FILL_COLUMNS))
     else:
         df = pd.DataFrame({c: [] for c in FILL_COLUMNS})
     df.to_parquet(path, index=False)
