@@ -1037,39 +1037,39 @@ def _mine_frame_pair(
                         and train_n >= 500
                     )
 
-                _library_type = str(cfg.get("library_type", "separate"))
-                _cid = candidate_id(
-                    symbol, _library_type, fam_name, int(bar_ticks),
+                library_type = str(cfg.get("library_type", "separate"))
+                cid = candidate_id(
+                    symbol, library_type, fam_name, int(bar_ticks),
                     int(params.get("horizon", 0)), regime_name, params,
                 )
-                _near_miss = bool(
+                near_miss = bool(
                     np.isfinite(mean_train)
                     and mean_train > 0.0
                     and not selection_pass
                 )
-                if selection_pass or _near_miss:
-                    _identity = {
-                        "candidate_id": _cid,
+                if selection_pass or near_miss:
+                    identity = {
+                        "candidate_id": cid,
                         "symbol": symbol,
                         "family": fam_name,
-                        "library_type": _library_type,
+                        "library_type": library_type,
                         "bar_ticks": int(bar_ticks),
                         "horizon": int(params.get("horizon", 0)),
                         "regime": regime_name,
                         "selection_pass": bool(selection_pass),
-                        "near_miss": _near_miss,
+                        "near_miss": near_miss,
                     }
                     fill_rows.extend(expand_fills(
                         test, entries, gross_raw,
-                        split="test", identity=_identity,
+                        split="test", identity=identity,
                     ))
                     fill_rows.extend(expand_fills(
                         train, train_entries, train_gross_raw,
-                        split="train", identity=_identity,
+                        split="train", identity=identity,
                     ))
 
                 row = {
-                    "candidate_id": _cid,
+                    "candidate_id": cid,
                     "symbol": symbol,
                     "bar_ticks": int(bar_ticks),
                     "horizon": int(params.get("horizon", 0)),
