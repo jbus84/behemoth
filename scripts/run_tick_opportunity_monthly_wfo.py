@@ -17,6 +17,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 try:
     import yaml
@@ -470,7 +471,9 @@ def _wfo_monthly(
     pred_rows: list[pd.DataFrame] = []
     importance_rows: list[dict[str, Any]] = []
 
-    for i, (test_start, test_end) in enumerate(months):
+    for i, (test_start, test_end) in tqdm(
+        enumerate(months), desc=f"WFO {symbol}", unit="month", leave=False
+    ):
         if i < int(rolling_train_months):
             continue
         if score_start_ts is not None and test_start < score_start_ts:

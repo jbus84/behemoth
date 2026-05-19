@@ -16,6 +16,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 try:
     import yaml
@@ -933,7 +934,8 @@ def _mine_frame_pair(
         family = FAMILY_REGISTRY[fam_name]
         rng = np.random.default_rng(baseline_seed)
         test_regimes = _regime_masks(test, train_q)
-        for params in family.param_grid(cfg):
+        param_grid = family.param_grid(cfg)
+        for params in tqdm(param_grid, desc=f"Mining {fam_name}", unit="param", leave=False):
             params = {**params, "symbol": symbol, "bar_ticks": int(bar_ticks)}
 
             # Precompute once per candidate for test and train frames
@@ -1174,7 +1176,7 @@ def run(
         )
 
     files_found = 0
-    for bt in bar_ticks_grid:
+    for bt in tqdm(bar_ticks_grid, desc=f"Mining {symbol}", unit="bar", leave=False):
         path = dataset_dir / f"{symbol}_{int(bt)}tick_velocity.parquet"
         if not path.exists():
             print(f"skip {bt}: missing {path}")
