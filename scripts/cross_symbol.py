@@ -68,8 +68,8 @@ def _align_peer_returns(
             allow_exact_matches=True,
         )
         # Scatter the joined values back to out by original position.
-        out[col] = np.empty(len(out), dtype=float)
-        out.loc[joined["__pos"].to_numpy(), col] = joined[col].to_numpy()
+        out[col] = np.full(len(out), np.nan)
+        out.iloc[joined["__pos"].to_numpy(), out.columns.get_loc(col)] = joined[col].to_numpy()
     return out
 
 
