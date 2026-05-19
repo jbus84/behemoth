@@ -856,3 +856,31 @@ def test_run_emits_candidate_fills_joinable_to_summary(tmp_path: Path) -> None:
     # Every fill comes from a positive-EV candidate: each row is either a
     # selection_pass or a near_miss.
     assert (fills_df["selection_pass"] | fills_df["near_miss"]).all()
+
+
+def test_mining_script_runs_as_direct_file_invocation(tmp_path: Path) -> None:
+    """Regression: `python scripts/run_tick_opportunity_mining.py` must not
+    ImportError on its `scripts.*` imports.
+
+    Running a file directly puts the script's own directory (`scripts/`) on
+    sys.path -- not the repo root -- so the module needs its own sys.path
+    bootstrap. The subprocess runs from a neutral cwd with PYTHONPATH stripped
+    so only that bootstrap can make `import scripts` resolve.
+    """
+    import os
+    import subprocess
+    import sys
+
+    repo_root = Path(__file__).resolve().parents[1]
+    script = repo_root / "scripts" / "run_tick_opportunity_mining.py"
+    env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+    result = subprocess.run(
+        [sys.executable, str(script), "--help"],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+        env=env,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "ModuleNotFoundError" not in result.stderr
+    assert "Traceback" not in result.stderr

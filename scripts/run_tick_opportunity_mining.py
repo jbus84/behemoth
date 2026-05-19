@@ -10,6 +10,7 @@ Purpose:
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -21,13 +22,25 @@ try:
 except Exception:
     yaml = None  # type: ignore[assignment]
 
-from scripts.candidate_fills import (
+# Put the repo root on sys.path so the `scripts.*` imports below resolve when
+# this file is run directly (`python scripts/run_tick_opportunity_mining.py`),
+# not only when imported as a package under pytest.
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from scripts.candidate_fills import (  # noqa: E402  # sys.path bootstrap above
     candidate_id,
     expand_fills,
     write_candidate_fills,
 )
-from scripts.mining_family import FAMILY_REGISTRY, resolve_families
-from scripts.mining_random_baseline import random_entry_baseline
+from scripts.mining_family import (  # noqa: E402  # sys.path bootstrap above
+    FAMILY_REGISTRY,
+    resolve_families,
+)
+from scripts.mining_random_baseline import (  # noqa: E402  # sys.path bootstrap
+    random_entry_baseline,
+)
 
 DEFAULTS: dict[str, Any] = {
     "symbol": "EURUSD",
