@@ -47,11 +47,15 @@ class MiningFamily(Protocol):
 
 
 def _frame_fingerprint(frame: pd.DataFrame) -> int:
-    """Coarse identity for short-lived per-family caches.
+    """Content identity for short-lived per-family caches.
 
-    Uses object id + shape + columns so two different frames that happen
-    to share shape/columns are still keyed separately."""
-    return hash((id(frame), frame.shape, tuple(frame.columns)))
+    Hashes the frame's row contents together with its shape and columns.
+    Two frames with identical contents share a cache entry (their
+    precompute results are identical); two frames with differing contents
+    never collide -- unlike an id()-based key, which silently collides when
+    a later frame is allocated at a garbage-collected frame's address."""
+    row_hashes = pd.util.hash_pandas_object(frame, index=True).to_numpy()
+    return hash((row_hashes.tobytes(), frame.shape, tuple(frame.columns)))
 
 
 _LIBRARY_TYPE_ALIASES: dict[str, list[str]] = {
