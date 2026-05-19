@@ -30,3 +30,37 @@ _USD_SIGN: dict[str, int] = {
     "USDCAD": 1,
     "USDCHF": 1,
 }
+
+
+def _usd_aligned_ret_z(frame: pd.DataFrame, symbol: str) -> pd.Series:
+    """The symbol's volatility-normalised return oriented to USD strength."""
+    ret_z = pd.to_numeric(frame["ret_z"], errors="coerce")
+    return _USD_SIGN[symbol] * ret_z
+
+
+def _align_peer_returns(
+    target: pd.DataFrame,
+    target_symbol: str,
+    peers: dict[str, pd.DataFrame],
+) -> pd.DataFrame:
+    """Append one USD-aligned peer return column per peer, backward as-of
+    joined onto the target frame's close_ts. Look-ahead-free: each target
+    bar at time T sees only peer bars with close_ts <= T."""
+    out = target.reset_index(drop=True).copy()
+    left = out[["close_ts"]].copy()
+    for peer_symbol, peer_frame in peers.items():
+        col = f"xs_ret_z__{peer_symbol}"
+        right = pd.DataFrame({
+            "close_ts": pd.to_datetime(
+                peer_frame["close_ts"], utc=True, errors="coerce"
+            ),
+            col: _usd_aligned_ret_z(peer_frame, peer_symbol).to_numpy(),
+        })
+        right = right[right["close_ts"].notna()].sort_values(
+            "close_ts"
+        ).reset_index(drop=True)
+        joined = pd.merge_asof(
+            left, right, on="close_ts", direction="backward",
+        )
+        out[col] = joined[col].to_numpy()
+    return out

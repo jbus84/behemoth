@@ -26,3 +26,63 @@ def test_usd_sign_table_orients_to_usd_strength():
     assert _USD_SIGN["USDCHF"] == 1
     # Every roster symbol has a sign.
     assert set(_USD_SIGN) == set(CROSS_SYMBOLS)
+
+
+def _mk_frame(close_ts: list[str], ret_z: list[float]) -> pd.DataFrame:
+    """A minimal prepared-frame stand-in: close_ts + ret_z only."""
+    return pd.DataFrame({
+        "close_ts": pd.to_datetime(close_ts, utc=True),
+        "ret_z": np.asarray(ret_z, dtype=float),
+    })
+
+
+def test_align_peer_returns_takes_most_recent_completed_peer_bar():
+    from scripts.cross_symbol import _align_peer_returns
+
+    # Target bars at :00, :02, :04. Peer bars at :01, :03 (between them).
+    target = _mk_frame(
+        ["2024-01-01T00:00:00Z", "2024-01-01T00:02:00Z", "2024-01-01T00:04:00Z"],
+        [0.0, 0.0, 0.0],
+    )
+    # USDJPY peer, sign +1: USD-aligned ret_z == raw ret_z.
+    peer = _mk_frame(
+        ["2024-01-01T00:01:00Z", "2024-01-01T00:03:00Z"], [2.0, 5.0],
+    )
+    out = _align_peer_returns(target, "EURUSD", {"USDJPY": peer})
+    col = out["xs_ret_z__USDJPY"].to_numpy()
+    # Target :00 -> no peer bar <= :00 yet -> NaN.
+    assert np.isnan(col[0])
+    # Target :02 -> last peer bar <= :02 is :01 (ret_z 2.0).
+    assert col[1] == 2.0
+    # Target :04 -> last peer bar <= :04 is :03 (ret_z 5.0).
+    assert col[2] == 5.0
+
+
+def test_align_peer_returns_applies_usd_sign():
+    from scripts.cross_symbol import _align_peer_returns
+
+    target = _mk_frame(["2024-01-01T00:05:00Z"], [0.0])
+    peer = _mk_frame(["2024-01-01T00:00:00Z"], [3.0])
+    # EURUSD peer has sign -1 -> USD-aligned column is negated.
+    out = _align_peer_returns(target, "USDJPY", {"EURUSD": peer})
+    assert out["xs_ret_z__EURUSD"].to_numpy()[0] == -3.0
+
+
+def test_align_peer_returns_is_free_of_look_ahead():
+    from scripts.cross_symbol import _align_peer_returns
+
+    target = _mk_frame(
+        ["2024-01-01T00:00:00Z", "2024-01-01T00:02:00Z"], [0.0, 0.0],
+    )
+    peer_a = _mk_frame(["2024-01-01T00:01:00Z"], [1.0])
+    # peer_b adds a FUTURE bar at :09 that must not leak into earlier rows.
+    peer_b = _mk_frame(
+        ["2024-01-01T00:01:00Z", "2024-01-01T00:09:00Z"], [1.0, 99.0],
+    )
+    out_a = _align_peer_returns(target, "EURUSD", {"USDJPY": peer_a})
+    out_b = _align_peer_returns(target, "EURUSD", {"USDJPY": peer_b})
+    # The future :09 bar changes nothing for target bars at :00 and :02.
+    assert np.array_equal(
+        np.nan_to_num(out_a["xs_ret_z__USDJPY"].to_numpy(), nan=-1.0),
+        np.nan_to_num(out_b["xs_ret_z__USDJPY"].to_numpy(), nan=-1.0),
+    )
