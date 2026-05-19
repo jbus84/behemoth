@@ -47,6 +47,10 @@ def _align_peer_returns(
     bar at time T sees only peer bars with close_ts <= T."""
     out = target.reset_index(drop=True).copy()
     left = out[["close_ts"]].copy()
+    # Track original position to handle correct reindexing after merge if left is sorted.
+    left["__pos"] = np.arange(len(left))
+    # Sort left defensively: merge_asof requires left key to be sorted.
+    left = left.sort_values("close_ts").reset_index(drop=True)
     for peer_symbol, peer_frame in peers.items():
         col = f"xs_ret_z__{peer_symbol}"
         right = pd.DataFrame({
@@ -58,10 +62,14 @@ def _align_peer_returns(
         right = right[right["close_ts"].notna()].sort_values(
             "close_ts"
         ).reset_index(drop=True)
+        # A peer bar closing exactly at T counts as completed and is intentionally included.
         joined = pd.merge_asof(
             left, right, on="close_ts", direction="backward",
+            allow_exact_matches=True,
         )
-        out[col] = joined[col].to_numpy()
+        # Scatter the joined values back to out by original position.
+        out[col] = np.empty(len(out), dtype=float)
+        out.loc[joined["__pos"].to_numpy(), col] = joined[col].to_numpy()
     return out
 
 
@@ -79,6 +87,11 @@ def _rolling_pca_factor(
     loads the same sign, and this fixes the eigenvector's arbitrary sign so
     the factor tracks the shared move rather than its negation."""
     arr = np.asarray(mat, dtype=float)
+    if min_periods < arr.shape[1]:
+        raise ValueError(
+            f"min_periods ({min_periods}) must be >= number of columns "
+            f"({arr.shape[1]}) for the covariance to be full-rank"
+        )
     n = arr.shape[0]
     out = np.full(n, np.nan, dtype=float)
     for i in range(n):
@@ -107,7 +120,11 @@ def _add_market_measures(
     pca_min_periods: int = 200,
 ) -> pd.DataFrame:
     """Append mkt_all6, mkt_loo, and mkt_pca to a frame that already carries
-    the xs_ret_z__{peer} columns from _align_peer_returns."""
+    the xs_ret_z__{peer} columns from _align_peer_returns.
+
+    Note: mkt_loo (and mkt_all6) use skipna=True, so on early bars where only
+    some peers have a prior bar the mean is taken over the available subset
+    rather than always exactly 5 (or 6) symbols."""
     out = frame.copy()
     peer_cols = sorted(c for c in out.columns if c.startswith("xs_ret_z__"))
     target_usd = _usd_aligned_ret_z(out, target_symbol)

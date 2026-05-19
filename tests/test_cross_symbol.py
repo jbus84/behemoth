@@ -282,3 +282,45 @@ def test_build_cross_symbol_frame_rejects_unknown_target(tmp_path: Path):
             dataset_dir=dataset_dir,
             horizons=[1, 2, 3],
         )
+
+
+def test_align_peer_returns_handles_unsorted_target_frame():
+    """An unsorted target frame produces correct per-row peer values."""
+    from scripts.cross_symbol import _align_peer_returns
+
+    # Target bars shuffled: :04, :00, :02.
+    target = _mk_frame(
+        ["2024-01-01T00:04:00Z", "2024-01-01T00:00:00Z", "2024-01-01T00:02:00Z"],
+        [0.0, 0.0, 0.0],
+    )
+    peer = _mk_frame(
+        ["2024-01-01T00:01:00Z", "2024-01-01T00:03:00Z"], [2.0, 5.0],
+    )
+    out = _align_peer_returns(target, {"USDJPY": peer})
+    col = out["xs_ret_z__USDJPY"].to_numpy()
+    # Each target bar should get the correct peer value based on its close_ts,
+    # regardless of frame order.
+    assert col[0] == 5.0  # :04 -> peer :03 (5.0)
+    assert np.isnan(col[1])  # :00 -> no peer <= :00
+    assert col[2] == 2.0  # :02 -> peer :01 (2.0)
+
+
+def test_align_peer_returns_includes_exact_timestamp_match():
+    """A peer bar with close_ts exactly equal to a target bar's is included."""
+    from scripts.cross_symbol import _align_peer_returns
+
+    target = _mk_frame(["2024-01-01T00:00:00Z"], [0.0])
+    peer = _mk_frame(["2024-01-01T00:00:00Z"], [7.0])
+    out = _align_peer_returns(target, {"USDJPY": peer})
+    # A peer bar closing exactly at T counts as completed and is included.
+    assert out["xs_ret_z__USDJPY"].to_numpy()[0] == 7.0
+
+
+def test_rolling_pca_factor_rejects_insufficient_min_periods():
+    """_rolling_pca_factor raises ValueError when min_periods < num columns."""
+    from scripts.cross_symbol import _rolling_pca_factor
+
+    mat = np.random.default_rng(42).normal(size=(100, 6))
+    # min_periods=5 < 6 columns -> full-rank covariance impossible.
+    with pytest.raises(ValueError, match="min_periods.*must be >=.*columns"):
+        _rolling_pca_factor(mat, window=50, min_periods=5)
