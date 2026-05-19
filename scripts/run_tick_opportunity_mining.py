@@ -21,6 +21,7 @@ try:
 except Exception:
     yaml = None  # type: ignore[assignment]
 
+from scripts.candidate_fills import candidate_id, expand_fills
 from scripts.mining_family import FAMILY_REGISTRY, resolve_families
 from scripts.mining_random_baseline import random_entry_baseline
 
@@ -898,13 +899,14 @@ def _mine_frame_pair(
     baseline_seed: int,
     baseline_draws: int,
     min_annual_fills: float,
-) -> dict[str, list[dict[str, Any]]]:
+) -> tuple[dict[str, list[dict[str, Any]]], list[dict[str, Any]]]:
     """Mine candidate rows for one (train, test) frame pair across the given
     families. Returns per-family lists of candidate row dicts, before quality
     tiering and contract stamping. Used by run() per bar-ticks velocity file
     and directly by the microstructure-regime contract tests."""
     horizons = _parse_ints(str(cfg["horizons"]))
     per_family_rows: dict[str, list[dict[str, Any]]] = {n: [] for n in family_names}
+    fill_rows: list[dict[str, Any]] = []
     train_q = _quantiles(train)
     train = _attach_directional_side_columns(train, horizons=horizons, q=train_q)
     test = _attach_directional_side_columns(test, horizons=horizons, q=train_q)
@@ -937,8 +939,8 @@ def _mine_frame_pair(
                 n = int(len(entries))
                 if n <= 0:
                     continue
-                gross = np.asarray(family.measure_gross(test, entries, params), float)
-                gross = gross[np.isfinite(gross)]
+                gross_raw = np.asarray(family.measure_gross(test, entries, params), float)
+                gross = gross_raw[np.isfinite(gross_raw)]
                 if gross.size == 0:
                     continue
                 cand_ev = float(np.mean(gross))
@@ -948,8 +950,8 @@ def _mine_frame_pair(
                     train, np.asarray(train_regime_map[regime_name], bool), params
                 )
                 train_n = int(len(train_entries))
-                train_gross = np.asarray(family.measure_gross(train, train_entries, params), float)
-                train_gross = train_gross[np.isfinite(train_gross)]
+                train_gross_raw = np.asarray(family.measure_gross(train, train_entries, params), float)
+                train_gross = train_gross_raw[np.isfinite(train_gross_raw)]
                 mean_train = float(np.mean(train_gross)) if train_gross.size > 0 else float("nan")
                 median_train = float(np.median(train_gross)) if train_gross.size > 0 else float("nan")
 
@@ -1035,7 +1037,39 @@ def _mine_frame_pair(
                         and train_n >= 500
                     )
 
+                _library_type = str(cfg.get("library_type", "separate"))
+                _cid = candidate_id(
+                    symbol, _library_type, fam_name, int(bar_ticks),
+                    int(params.get("horizon", 0)), regime_name, params,
+                )
+                _near_miss = bool(
+                    np.isfinite(mean_train)
+                    and mean_train > 0.0
+                    and not selection_pass
+                )
+                if selection_pass or _near_miss:
+                    _identity = {
+                        "candidate_id": _cid,
+                        "symbol": symbol,
+                        "family": fam_name,
+                        "library_type": _library_type,
+                        "bar_ticks": int(bar_ticks),
+                        "horizon": int(params.get("horizon", 0)),
+                        "regime": regime_name,
+                        "selection_pass": bool(selection_pass),
+                        "near_miss": _near_miss,
+                    }
+                    fill_rows.extend(expand_fills(
+                        test, entries, gross_raw,
+                        split="test", identity=_identity,
+                    ))
+                    fill_rows.extend(expand_fills(
+                        train, train_entries, train_gross_raw,
+                        split="train", identity=_identity,
+                    ))
+
                 row = {
+                    "candidate_id": _cid,
                     "symbol": symbol,
                     "bar_ticks": int(bar_ticks),
                     "horizon": int(params.get("horizon", 0)),
@@ -1062,7 +1096,7 @@ def _mine_frame_pair(
                     **base,
                 }
                 per_family_rows[fam_name].append(row)
-    return per_family_rows
+    return per_family_rows, fill_rows
 
 
 def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -1113,7 +1147,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, 
             print(f"skip {bt}: empty split (train/test)")
             continue
 
-        pair_rows = _mine_frame_pair(
+        pair_rows, pair_fills = _mine_frame_pair(
             train=train, test=test, symbol=symbol, bar_ticks=int(bt),
             cfg=cfg, family_names=family_names,
             baseline_seed=baseline_seed, baseline_draws=baseline_draws,
@@ -1121,6 +1155,7 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, 
         )
         for fam_name, fam_rows in pair_rows.items():
             per_family_rows[fam_name].extend(fam_rows)
+        all_fills.extend(pair_fills)
         print(f"ok {symbol} {bt}tick")
 
     if files_found == 0:

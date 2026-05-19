@@ -38,7 +38,7 @@ def _mine(
     entrypoints; `_mine_frame_pair` is the post-refactor seam that both
     `run()` and these contract tests share.
     """
-    rows = _mine_frame_pair(
+    rows, _fill_rows = _mine_frame_pair(
         train=train,
         test=test,
         symbol="EURUSD",
