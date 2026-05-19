@@ -841,17 +841,18 @@ def test_run_emits_candidate_fills_joinable_to_summary(tmp_path: Path) -> None:
     fills_df = pd.read_parquet(path)
     assert list(fills_df.columns) == list(FILL_COLUMNS)
 
-    if not fills_df.empty:
-        # Every fill carries one of the two splits.
-        assert set(fills_df["split"]).issubset({"train", "test"})
-        # Every fill's candidate_id is present in some mined candidate frame
-        # (library_type "separate" mines directional + oco).
-        known_ids: set[str] = set()
-        for frame in (directional, oco, no_touch):
-            if not frame.empty and "candidate_id" in frame.columns:
-                known_ids |= set(frame["candidate_id"])
-        assert set(fills_df["candidate_id"]).issubset(known_ids)
-        # Only positive-EV candidates emit fills.
-        assert bool(fills_df["selection_pass"].any()) or bool(
-            fills_df["near_miss"].any()
-        )
+    # The pipeline emits fills for this config.
+    assert not fills_df.empty
+    # Every fill carries one of the two splits.
+    assert set(fills_df["split"]).issubset({"train", "test"})
+    # Every fill's candidate_id is present in some mined candidate frame
+    # (library_type "separate" mines directional + oco; no_touch stays empty,
+    # so the per-frame guard below is required, not merely defensive).
+    known_ids: set[str] = set()
+    for frame in (directional, oco, no_touch):
+        if not frame.empty and "candidate_id" in frame.columns:
+            known_ids |= set(frame["candidate_id"])
+    assert set(fills_df["candidate_id"]).issubset(known_ids)
+    # Every fill comes from a positive-EV candidate: each row is either a
+    # selection_pass or a near_miss.
+    assert (fills_df["selection_pass"] | fills_df["near_miss"]).all()
