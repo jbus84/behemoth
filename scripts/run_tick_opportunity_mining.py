@@ -662,6 +662,9 @@ def _pullback_precompute(
     tI = i0 + i_step.astype(np.int64)
 
     # Stage 2: pullback barrier r_frac*m_pips OPPOSITE the impulse extreme pI.
+    # Note: p_price is anchored to the impulse barrier (ask-space for up), but
+    # touched via the opposite-side quote (low_bid for up). This ~1-spread
+    # offset is intrinsic to measuring a retracement on the opposite side.
     p_price = (
         i_price - r_frac * m_pips * pip if up else i_price + r_frac * m_pips * pip
     )
