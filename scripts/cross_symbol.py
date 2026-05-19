@@ -66,13 +66,49 @@ def _align_peer_returns(
     return out
 
 
+def _rolling_pca_factor(
+    mat: np.ndarray,
+    *,
+    window: int = 500,
+    min_periods: int = 200,
+) -> np.ndarray:
+    """First-principal-component factor, fit on a strictly-trailing window.
+
+    For row i the covariance is estimated from rows [i-window, i-1] only —
+    never row i or later — so the factor is look-ahead-free. PC1 is oriented
+    so its loadings sum positive: under a common USD factor every column
+    loads the same sign, and this fixes the eigenvector's arbitrary sign so
+    the factor tracks the shared move rather than its negation."""
+    arr = np.asarray(mat, dtype=float)
+    n = arr.shape[0]
+    out = np.full(n, np.nan, dtype=float)
+    for i in range(n):
+        lo = max(0, i - window)
+        win = arr[lo:i]  # strictly trailing: excludes row i
+        win = win[np.isfinite(win).all(axis=1)]
+        if len(win) < min_periods:
+            continue
+        row = arr[i]
+        if not np.isfinite(row).all():
+            continue
+        cov = np.cov(win, rowvar=False)
+        _vals, vecs = np.linalg.eigh(cov)  # ascending eigenvalues
+        pc1 = vecs[:, -1]                  # largest-eigenvalue eigenvector
+        if pc1.sum() < 0.0:
+            pc1 = -pc1
+        out[i] = float(row @ pc1)
+    return out
+
+
 def _add_market_measures(
     frame: pd.DataFrame,
     target_symbol: str,
+    *,
+    pca_window: int = 500,
+    pca_min_periods: int = 200,
 ) -> pd.DataFrame:
-    """Append mkt_all6 and mkt_loo to a frame that already carries the
-    xs_ret_z__{peer} columns from _align_peer_returns. mkt_pca is added by a
-    later step."""
+    """Append mkt_all6, mkt_loo, and mkt_pca to a frame that already carries
+    the xs_ret_z__{peer} columns from _align_peer_returns."""
     out = frame.copy()
     peer_cols = sorted(c for c in out.columns if c.startswith("xs_ret_z__"))
     target_usd = _usd_aligned_ret_z(out, target_symbol)
@@ -84,4 +120,9 @@ def _add_market_measures(
     )
     out["mkt_all6"] = six.mean(axis=1, skipna=True).to_numpy()
     out["mkt_loo"] = out[peer_cols].mean(axis=1, skipna=True).to_numpy()
+    out["mkt_pca"] = _rolling_pca_factor(
+        six.to_numpy(dtype=float),
+        window=pca_window,
+        min_periods=pca_min_periods,
+    )
     return out

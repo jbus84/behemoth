@@ -127,3 +127,83 @@ def test_market_measures_loo_ignores_target_returns():
                             "EURUSD", peers), "EURUSD")
     # mkt_loo excludes the target, so the target's own ret_z cannot move it.
     assert a["mkt_loo"].to_numpy()[0] == b["mkt_loo"].to_numpy()[0]
+
+
+def test_rolling_pca_factor_uses_only_trailing_bars():
+    from scripts.cross_symbol import _rolling_pca_factor
+
+    rng = np.random.default_rng(11)
+    base = rng.normal(size=(600, 6))
+    # mat_b is identical to mat_a for the first 400 rows, perturbed after.
+    mat_a = base.copy()
+    mat_b = base.copy()
+    mat_b[400:] += 50.0
+    fac_a = _rolling_pca_factor(mat_a, window=200, min_periods=100)
+    fac_b = _rolling_pca_factor(mat_b, window=200, min_periods=100)
+    # The factor at row i fits PC1 on rows < i only, so altering rows >= 400
+    # cannot change the factor for rows < 400.
+    assert np.allclose(
+        np.nan_to_num(fac_a[:400], nan=0.0),
+        np.nan_to_num(fac_b[:400], nan=0.0),
+    )
+
+
+def test_rolling_pca_factor_nan_before_min_periods():
+    from scripts.cross_symbol import _rolling_pca_factor
+
+    rng = np.random.default_rng(3)
+    mat = rng.normal(size=(300, 6))
+    fac = _rolling_pca_factor(mat, window=200, min_periods=100)
+    # Rows with fewer than min_periods trailing bars get NaN.
+    assert np.isnan(fac[:100]).all()
+    assert np.isfinite(fac[150])
+
+
+def test_rolling_pca_factor_sign_is_oriented_to_usd_strength():
+    from scripts.cross_symbol import _rolling_pca_factor
+
+    # All 6 series move together (a shared USD factor). PC1 then loads all
+    # series with the same sign; the orientation rule makes the factor track
+    # that common move rather than its arbitrary negation.
+    rng = np.random.default_rng(7)
+    common = rng.normal(size=(500, 1))
+    mat = common + 0.05 * rng.normal(size=(500, 6))
+    fac = _rolling_pca_factor(mat, window=200, min_periods=100)
+    common_flat = common[:, 0]
+    valid = np.isfinite(fac)
+    corr = np.corrcoef(fac[valid], common_flat[valid])[0, 1]
+    assert corr > 0.9
+
+
+def test_add_market_measures_includes_distinct_mkt_pca():
+    from scripts.cross_symbol import _add_market_measures, _align_peer_returns
+
+    # Build a 500-bar target + 5 peers with distinct, correlated series so
+    # the three measures are genuinely different.
+    rng = np.random.default_rng(19)
+    n = 500
+    ts = pd.date_range("2024-01-01", periods=n, freq="min", tz="UTC")
+    common = rng.normal(size=n)
+
+    def _frame(scale: float) -> pd.DataFrame:
+        return pd.DataFrame({
+            "close_ts": ts,
+            "ret_z": common * scale + 0.1 * rng.normal(size=n),
+        })
+
+    target = _frame(1.0)
+    peers = {
+        "GBPUSD": _frame(1.1), "AUDUSD": _frame(0.9),
+        "USDJPY": _frame(1.2), "USDCAD": _frame(0.8),
+        "USDCHF": _frame(1.05),
+    }
+    aligned = _align_peer_returns(target, "EURUSD", peers)
+    out = _add_market_measures(aligned, "EURUSD")
+    for col in ("mkt_all6", "mkt_loo", "mkt_pca"):
+        assert col in out.columns
+    a = out["mkt_all6"].to_numpy()
+    p = out["mkt_pca"].to_numpy()
+    fin = np.isfinite(a) & np.isfinite(p)
+    assert fin.sum() > 0
+    # mkt_pca is a distinct series, not a copy of mkt_all6.
+    assert not np.allclose(a[fin], p[fin])
