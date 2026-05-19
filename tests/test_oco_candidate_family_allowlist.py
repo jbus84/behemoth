@@ -25,3 +25,14 @@ def test_mining_family_definitions_are_allowlisted() -> None:
     assert oco_families == ALLOWED_OCO_FAMILIES, (
         f"expected exactly {ALLOWED_OCO_FAMILIES}, got {oco_families}"
     )
+
+
+def test_no_touch_is_not_an_oco_bracket_family() -> None:
+    """no_touch reuses the OCO precompute but is a range-fade payoff bet, not
+    an OCO bracket family. It must stay out of ALLOWED_OCO_FAMILIES, and the
+    `oco_`-prefixed allowlist must not be broadened to cover it."""
+    from scripts.mining_family import FAMILY_REGISTRY
+
+    assert "no_touch" in FAMILY_REGISTRY
+    assert "no_touch" not in ALLOWED_OCO_FAMILIES
+    assert not "no_touch".startswith("oco_")
