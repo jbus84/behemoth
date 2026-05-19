@@ -317,6 +317,110 @@ class DoubleTouchFamily:
         }
 
 
+class NoTouchFamily:
+    name = "no_touch"
+
+    def __init__(self) -> None:
+        self._cache: dict[tuple[int, tuple[tuple[str, Any], ...]], dict[str, Any] | None] = {}
+
+    def clear_cache(self) -> None:
+        """Drop cached precompute results. Long-lived processes should call
+        this between mining batches to avoid unbounded growth."""
+        self._cache.clear()
+
+    def param_grid(self, cfg: dict[str, Any]) -> list[dict[str, Any]]:
+        from scripts.run_tick_opportunity_mining import _parse_floats, _parse_ints
+
+        horizons = _parse_ints(str(cfg["horizons"]))
+        barriers = _parse_floats(str(cfg["barrier_grid_pips"]))
+        return [
+            {"horizon": int(h), "barrier_pips": float(k)}
+            for h in horizons
+            for k in barriers
+        ]
+
+    def _precompute(
+        self, frame: pd.DataFrame, symbol: str, params: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        from scripts.run_tick_opportunity_mining import _oco_precompute_candidates
+
+        key = (_frame_fingerprint(frame), tuple(sorted(params.items())))
+        if key in self._cache:
+            return self._cache[key]
+        try:
+            oco = _oco_precompute_candidates(
+                frame,
+                symbol=symbol,
+                horizon=int(params["horizon"]),
+                barrier_pips=float(params["barrier_pips"]),
+            )
+        except ValueError:
+            result = None
+        else:
+            if not oco:
+                result = None
+            else:
+                k = float(params["barrier_pips"])
+                i0 = oco["i0"]
+                decided = oco["decided"]
+                gross_oco = oco["gross"]
+                gross = np.full(len(i0), np.nan, dtype=float)
+                # Range-fade wins +K when no barrier is touched.
+                gross[~decided] = k
+                # When a barrier IS touched, the range-fade loses the
+                # opposite of the OCO continuation gross.
+                ok = decided & np.isfinite(gross_oco)
+                gross[ok] = -gross_oco[ok]
+                result = {
+                    "i0": i0,
+                    "decided": decided,
+                    "gross": gross,
+                }
+        self._cache[key] = result
+        return result
+
+    def entry_indices(
+        self, frame: pd.DataFrame, regime_mask: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        if "symbol" not in params:
+            return np.array([], dtype=np.int64)
+        prep = self._precompute(frame, str(params["symbol"]), params)
+        if not prep:
+            return np.array([], dtype=np.int64)
+        i0 = np.asarray(prep["i0"], dtype=np.int64)
+        reg = np.asarray(regime_mask, dtype=bool)[i0]
+        return i0[reg]  # does NOT gate on decided
+
+    def measure_gross(
+        self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        if "symbol" not in params:
+            return np.array([], dtype=float)
+        prep = self._precompute(frame, str(params["symbol"]), params)
+        if not prep:
+            return np.array([], dtype=float)
+        i0 = np.asarray(prep["i0"], dtype=np.int64)
+        gross = np.asarray(prep["gross"], dtype=float)
+        pos = pd.Series(np.arange(len(i0)), index=i0)
+        mapped = pos.reindex(entries).to_numpy(dtype=float)
+        out = np.full(len(entries), np.nan, dtype=float)
+        valid = np.isfinite(mapped)
+        out[valid] = gross[mapped[valid].astype(np.int64)]
+        return out
+
+    def candidate_metadata(
+        self, regime_name: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
+        k = float(params["barrier_pips"])
+        h = int(params["horizon"])
+        return {
+            "family": "no_touch",
+            "state_id": f"no_touch__{regime_name}__k{int(round(k))}_h{h}",
+            "regime_desc": f"{regime_name};barrier={k:.1f}",
+            "ml_ready_target_type": "no_touch",
+        }
+
+
 class PullbackFamily:
     name = "pullback"
 

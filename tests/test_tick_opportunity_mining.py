@@ -682,6 +682,40 @@ def _build_pullback_frame(n: int = 800) -> pd.DataFrame:
     })
 
 
+def _build_range_bound_frame(n: int = 800) -> pd.DataFrame:
+    """Flat price with a tiny sub-pip sawtooth — never travels far enough to
+    touch a +/-3 pip barrier (peak-to-peak swing 1.2 pips, plus 0.1 pip of
+    high/low offset, stays well inside 3 pips). Deterministic: every no_touch
+    candidate is a win (decided False -> gross +K)."""
+    pip = 0.0001
+    saw = (np.arange(n) % 4 - 1.5) * 0.4 * pip  # in [-0.6, +0.6] pips
+    close = 1.20000 + saw
+    spread = 0.2 * pip
+    return pd.DataFrame({
+        "close_bid": close,
+        "close_ask": close + spread,
+        "low_bid": close - 0.1 * pip,
+        "high_ask": close + spread + 0.1 * pip,
+        "hl_first": np.zeros(n, dtype=float),
+    })
+
+
+def _build_breakout_frame(n: int = 800) -> pd.DataFrame:
+    """Steady uptrend (0.8 pip/bar) — from any bar the +K barrier is touched
+    fast and price keeps rising. Deterministic: every no_touch candidate is a
+    loss (decided True, up-continuation -> negative gross)."""
+    pip = 0.0001
+    close = 1.20000 + 0.8 * pip * np.arange(n)
+    spread = 0.2 * pip
+    return pd.DataFrame({
+        "close_bid": close,
+        "close_ask": close + spread,
+        "low_bid": close - 0.1 * pip,
+        "high_ask": close + spread + 0.1 * pip,
+        "hl_first": np.zeros(n, dtype=float),
+    })
+
+
 def test_pullback_precompute_detects_up_pullback() -> None:
     frame = _build_pullback_frame()
     out = _pullback_precompute(

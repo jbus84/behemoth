@@ -517,3 +517,58 @@ def test_no_touch_family_grid_rejects_non_positive():
     fam = FAMILY_REGISTRY["no_touch"]
     with pytest.raises(ValueError, match="non-positive"):
         fam.param_grid({"barrier_grid_pips": "0,3", "horizons": "1"})
+
+def test_no_touch_entry_indices_not_gated_on_decided():
+    import numpy as np
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from tests.test_tick_opportunity_mining import _build_breakout_frame
+
+    fam = FAMILY_REGISTRY["no_touch"]
+    frame = _build_breakout_frame()
+    allmask = np.ones(len(frame), dtype=bool)
+    params = {"symbol": "EURUSD", "barrier_pips": 3.0, "horizon": 5}
+    entries = fam.entry_indices(frame, allmask, params)
+    prep = fam._precompute(frame, "EURUSD", params)
+    i0 = np.asarray(prep["i0"], dtype=np.int64)
+    # Every barrier is touched on a breakout frame, yet entry_indices still
+    # returns the full i0 universe — no_touch does not gate on `decided`.
+    assert np.asarray(prep["decided"], dtype=bool).all()
+    assert np.array_equal(entries, i0)
+
+
+def test_no_touch_gross_is_plus_k_when_no_touch():
+    import numpy as np
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from tests.test_tick_opportunity_mining import _build_range_bound_frame
+
+    fam = FAMILY_REGISTRY["no_touch"]
+    frame = _build_range_bound_frame()
+    allmask = np.ones(len(frame), dtype=bool)
+    params = {"symbol": "EURUSD", "barrier_pips": 3.0, "horizon": 5}
+    entries = fam.entry_indices(frame, allmask, params)
+    assert len(entries) > 0
+    gross = fam.measure_gross(frame, entries, params)
+    gross = gross[np.isfinite(gross)]
+    assert gross.size > 0
+    # Range never touches a +/-3 pip barrier -> every candidate wins +K.
+    assert np.allclose(gross, 3.0)
+
+
+def test_no_touch_gross_is_negative_on_breakout():
+    import numpy as np
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from tests.test_tick_opportunity_mining import _build_breakout_frame
+
+    fam = FAMILY_REGISTRY["no_touch"]
+    frame = _build_breakout_frame()
+    allmask = np.ones(len(frame), dtype=bool)
+    params = {"symbol": "EURUSD", "barrier_pips": 3.0, "horizon": 5}
+    entries = fam.entry_indices(frame, allmask, params)
+    gross = fam.measure_gross(frame, entries, params)
+    gross = gross[np.isfinite(gross)]
+    assert gross.size > 0
+    # Up-breakout that keeps running -> the range-fade loses.
+    assert np.mean(gross) < 0.0
