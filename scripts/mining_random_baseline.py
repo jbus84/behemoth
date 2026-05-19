@@ -24,6 +24,7 @@ def random_entry_baseline(
     n_draws: int,
     rng: np.random.Generator,
     candidate_gross_ev: float | None = None,
+    precomputed: Any = None,
 ) -> dict[str, float]:
     """Return random_baseline_z / random_baseline_p /
     random_baseline_control_mean for a candidate.
@@ -44,9 +45,8 @@ def random_entry_baseline(
         )
         return nan_result
 
-    # Precompute once for all draws
-    precomputed = None
-    if hasattr(family, '_precompute'):
+    # Precompute once for all draws (skip if caller already supplied)
+    if precomputed is None and hasattr(family, '_precompute'):
         try:
             symbol = str(params.get("symbol", ""))
             precomputed = family._precompute(frame, symbol, params)

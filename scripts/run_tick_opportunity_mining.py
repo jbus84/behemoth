@@ -936,27 +936,43 @@ def _mine_frame_pair(
         for params in family.param_grid(cfg):
             params = {**params, "symbol": symbol, "bar_ticks": int(bar_ticks)}
 
-            # OCO-specific precompute for both_window_rate / p_up_first
-            oco_prep_test: dict[str, Any] | None = None
-            oco_prep_train: dict[str, Any] | None = None
+            # Precompute once per candidate for test and train frames
+            candidate_precomputed_test: Any = None
+            candidate_precomputed_train: Any = None
             if fam_name == "oco_first_touch":
-                oco_prep_test = _oco_precompute_candidates(
+                candidate_precomputed_test = _oco_precompute_candidates(
                     test, symbol=symbol,
                     horizon=int(params.get("horizon", 0)),
                     barrier_pips=float(params.get("barrier_pips", 0.0)),
                 )
-                oco_prep_train = _oco_precompute_candidates(
+                candidate_precomputed_train = _oco_precompute_candidates(
                     train, symbol=symbol,
                     horizon=int(params.get("horizon", 0)),
                     barrier_pips=float(params.get("barrier_pips", 0.0)),
                 )
+            elif hasattr(family, '_precompute'):
+                try:
+                    candidate_precomputed_test = family._precompute(
+                        test, str(params.get("symbol", symbol)), params
+                    )
+                except (ValueError, TypeError):
+                    pass
+                try:
+                    candidate_precomputed_train = family._precompute(
+                        train, str(params.get("symbol", symbol)), params
+                    )
+                except (ValueError, TypeError):
+                    pass
 
             for regime_name, regime_mask in test_regimes:
                 entries = family.entry_indices(test, np.asarray(regime_mask, bool), params)
                 n = int(len(entries))
                 if n <= 0:
                     continue
-                gross_raw = np.asarray(family.measure_gross(test, entries, params), float)
+                gross_raw = np.asarray(
+                    family.measure_gross(test, entries, params, precomputed=candidate_precomputed_test),
+                    float,
+                )
                 gross = gross_raw[np.isfinite(gross_raw)]
                 if gross.size == 0:
                     continue
@@ -967,7 +983,10 @@ def _mine_frame_pair(
                     train, np.asarray(train_regime_map[regime_name], bool), params
                 )
                 train_n = int(len(train_entries))
-                train_gross_raw = np.asarray(family.measure_gross(train, train_entries, params), float)
+                train_gross_raw = np.asarray(
+                    family.measure_gross(train, train_entries, params, precomputed=candidate_precomputed_train),
+                    float,
+                )
                 train_gross = train_gross_raw[np.isfinite(train_gross_raw)]
                 mean_train = float(np.mean(train_gross)) if train_gross.size > 0 else float("nan")
                 median_train = float(np.median(train_gross)) if train_gross.size > 0 else float("nan")
@@ -1004,6 +1023,7 @@ def _mine_frame_pair(
                     family, test, params,
                     n_entries=n, n_draws=baseline_draws, rng=rng,
                     candidate_gross_ev=cand_ev,
+                    precomputed=candidate_precomputed_test,
                 )
 
                 # OCO-specific fields
@@ -1011,22 +1031,22 @@ def _mine_frame_pair(
                 both_window_rate_train = float("nan")
                 p_up_first = float("nan")
                 if fam_name == "oco_first_touch":
-                    if oco_prep_test:
-                        i0 = np.asarray(oco_prep_test["i0"], dtype=np.int64)
-                        decided = np.asarray(oco_prep_test["decided"], dtype=bool)
-                        both = np.asarray(oco_prep_test["both_touched_lookahead"], dtype=bool)
-                        side = np.asarray(oco_prep_test["side"], dtype=np.int8)
+                    if candidate_precomputed_test:
+                        i0 = np.asarray(candidate_precomputed_test["i0"], dtype=np.int64)
+                        decided = np.asarray(candidate_precomputed_test["decided"], dtype=bool)
+                        both = np.asarray(candidate_precomputed_test["both_touched_lookahead"], dtype=bool)
+                        side = np.asarray(candidate_precomputed_test["side"], dtype=np.int8)
                         reg = np.asarray(regime_mask, dtype=bool)[i0]
                         if np.any(reg):
                             both_window_rate = float(np.mean(both[reg]))
                             fam_mask = decided & reg
                             if np.any(fam_mask):
                                 p_up_first = float(np.mean(side[fam_mask] > 0.0))
-                    if oco_prep_train:
-                        i0t = np.asarray(oco_prep_train["i0"], dtype=np.int64)
-                        botht = np.asarray(oco_prep_train["both_touched_lookahead"], dtype=bool)
+                    if candidate_precomputed_train:
+                        i0t = np.asarray(candidate_precomputed_train["i0"], dtype=np.int64)
+                        botht = np.asarray(candidate_precomputed_train["both_touched_lookahead"], dtype=bool)
                         regt = np.asarray(train_regime_map[regime_name], dtype=bool)[i0t]
-                        decidedt = np.asarray(oco_prep_train["decided"], dtype=bool)
+                        decidedt = np.asarray(candidate_precomputed_train["decided"], dtype=bool)
                         if np.any(regt & decidedt):
                             both_window_rate_train = float(np.mean(botht[regt]))
 

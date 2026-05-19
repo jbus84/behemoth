@@ -14,7 +14,7 @@ class _ConstGrossFamily:
     name = "const"
 
     def measure_gross(
-        self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any]
+        self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any], *, precomputed: Any = None
     ) -> np.ndarray:
         return frame["g"].to_numpy(dtype=float)[entries]
 
