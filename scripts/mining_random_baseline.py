@@ -48,14 +48,24 @@ def random_entry_baseline(
     precomputed = None
     if hasattr(family, '_precompute'):
         try:
-            precomputed = family._precompute(frame, params)
+            symbol = str(params.get("symbol", ""))
+            precomputed = family._precompute(frame, symbol, params)
         except (ValueError, TypeError):
             pass
 
     control = np.empty(int(n_draws), dtype=float)
     for i in range(int(n_draws)):
         draw = rng.choice(n_rows, size=int(n_entries), replace=False)
-        gross = np.asarray(family.measure_gross(frame, draw, params, precomputed=precomputed), dtype=float)
+        try:
+            gross = np.asarray(
+                family.measure_gross(frame, draw, params, precomputed=precomputed),
+                dtype=float,
+            )
+        except TypeError:
+            gross = np.asarray(
+                family.measure_gross(frame, draw, params),
+                dtype=float,
+            )
         gross = gross[np.isfinite(gross)]
         control[i] = float(np.mean(gross)) if gross.size else float("nan")
 
