@@ -572,3 +572,89 @@ def test_no_touch_gross_is_negative_on_breakout():
     assert gross.size > 0
     # Up-breakout that keeps running -> the range-fade loses.
     assert np.mean(gross) < 0.0
+
+
+def test_no_touch_no_false_edge_on_driftless_data():
+    import numpy as np
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from scripts.mining_random_baseline import random_entry_baseline
+
+    fam = FAMILY_REGISTRY["no_touch"]
+    # A driftless random walk: no regime is structurally calmer than another,
+    # so a no_touch bet must NOT clear the random-entry baseline.
+    rng = np.random.default_rng(20260519)
+    n = 4000
+    pip = 0.0001
+    steps = rng.normal(0.0, 0.6 * pip, size=n)
+    close = 1.30000 + np.cumsum(steps)
+    spread = 0.2 * pip
+    frame = pd.DataFrame({
+        "close_bid": close,
+        "close_ask": close + spread,
+        "low_bid": close - 0.2 * pip,
+        "high_ask": close + spread + 0.2 * pip,
+        "hl_first": np.zeros(n, dtype=float),
+    })
+    # Scatter the regime across the frame rather than taking a contiguous
+    # block. Overlapping h-bar horizons make adjacent bars' outcomes
+    # correlated, so a contiguous block behaves like one correlated sample
+    # and drifts multiple sigma from a control built on decorrelated random
+    # draws. A scattered mask is decorrelated like the baseline draws, so a
+    # truly driftless frame yields z ~ 0.
+    regime_mask = rng.random(n) < 0.5
+    params = {"symbol": "EURUSD", "barrier_pips": 3.0, "horizon": 8}
+    entries = fam.entry_indices(frame, regime_mask, params)
+    assert len(entries) > 0
+    gross = fam.measure_gross(frame, entries, params)
+    gross = gross[np.isfinite(gross)]
+    cand_ev = float(np.mean(gross))
+    baseline = random_entry_baseline(
+        fam, frame, params,
+        n_entries=len(entries), n_draws=200,
+        rng=np.random.default_rng(7),
+        candidate_gross_ev=cand_ev,
+    )
+    assert abs(baseline["random_baseline_z"]) < 2.0
+
+
+def test_no_touch_detects_structure_on_range_bound_regime():
+    import numpy as np
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from scripts.mining_random_baseline import random_entry_baseline
+
+    fam = FAMILY_REGISTRY["no_touch"]
+    # First 2000 bars are a tight range (no barrier ever touched -> +K wins);
+    # last 2000 are a strong trend (barriers touched, breakouts run -> losses).
+    # A regime restricted to the range should beat the random-entry baseline,
+    # because random draws sample the trending half too, diluting the control.
+    n = 4000
+    pip = 0.0001
+    saw = (np.arange(2000) % 4 - 1.5) * 0.4 * pip  # +/-0.6 pip, never touches
+    calm = 1.30000 + saw
+    trend = calm[-1] + 0.8 * pip * np.arange(1, 2001)
+    close = np.concatenate([calm, trend])
+    spread = 0.2 * pip
+    frame = pd.DataFrame({
+        "close_bid": close,
+        "close_ask": close + spread,
+        "low_bid": close - 0.1 * pip,
+        "high_ask": close + spread + 0.1 * pip,
+        "hl_first": np.zeros(n, dtype=float),
+    })
+    regime_mask = np.zeros(len(frame), dtype=bool)
+    regime_mask[:2000] = True
+    params = {"symbol": "EURUSD", "barrier_pips": 3.0, "horizon": 8}
+    entries = fam.entry_indices(frame, regime_mask, params)
+    assert len(entries) > 0
+    gross = fam.measure_gross(frame, entries, params)
+    gross = gross[np.isfinite(gross)]
+    cand_ev = float(np.mean(gross))
+    baseline = random_entry_baseline(
+        fam, frame, params,
+        n_entries=len(entries), n_draws=200,
+        rng=np.random.default_rng(7),
+        candidate_gross_ev=cand_ev,
+    )
+    assert baseline["random_baseline_z"] > 2.0
