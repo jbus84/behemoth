@@ -32,7 +32,12 @@ class MiningFamily(Protocol):
         ...
 
     def measure_gross(
-        self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any]
+        self,
+        frame: pd.DataFrame,
+        entries: np.ndarray,
+        params: dict[str, Any],
+        *,
+        precomputed: dict[str, Any] | None = None,
     ) -> np.ndarray:
         """Gross pips realised per entry. MUST accept any entry index array
         (used for both real entries and random-baseline draws)."""
@@ -104,7 +109,12 @@ class DirectionalFamily:
         return np.flatnonzero(m).astype(np.int64)
 
     def measure_gross(
-        self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any]
+        self,
+        frame: pd.DataFrame,
+        entries: np.ndarray,
+        params: dict[str, Any],
+        *,
+        precomputed: dict[str, Any] | None = None,
     ) -> np.ndarray:
         h = int(params["horizon"])
         ycol = f"y_fwd_pips_h{h}"
@@ -130,6 +140,14 @@ class DirectionalFamily:
 class OcoFirstTouchFamily:
     name = "oco_first_touch"
 
+    def __init__(self) -> None:
+        self._cache: dict[tuple[int, tuple[tuple[str, Any], ...]], dict[str, Any] | None] = {}
+
+    def clear_cache(self) -> None:
+        """Drop cached precompute results. Long-lived processes should call
+        this between mining batches to avoid unbounded growth."""
+        self._cache.clear()
+
     def param_grid(self, cfg: dict[str, Any]) -> list[dict[str, Any]]:
         from scripts.run_tick_opportunity_mining import _parse_floats, _parse_ints
 
@@ -146,15 +164,20 @@ class OcoFirstTouchFamily:
     ) -> dict[str, Any] | None:
         from scripts.run_tick_opportunity_mining import _oco_precompute_candidates
 
+        key = (_frame_fingerprint(frame), tuple(sorted(params.items())))
+        if key in self._cache:
+            return self._cache[key]
         try:
-            return _oco_precompute_candidates(
+            result = _oco_precompute_candidates(
                 frame,
                 symbol=symbol,
                 horizon=int(params["horizon"]),
                 barrier_pips=float(params["barrier_pips"]),
             )
         except ValueError:
-            return None
+            result = None
+        self._cache[key] = result
+        return result
 
     def entry_indices(
         self, frame: pd.DataFrame, regime_mask: np.ndarray, params: dict[str, Any]
@@ -171,12 +194,17 @@ class OcoFirstTouchFamily:
         return i0[decided & reg]
 
     def measure_gross(
-        self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any]
+        self,
+        frame: pd.DataFrame,
+        entries: np.ndarray,
+        params: dict[str, Any],
+        *,
+        precomputed: dict[str, Any] | None = None,
     ) -> np.ndarray:
         if "symbol" not in params:
             return np.array([], dtype=float)
         symbol = str(params["symbol"])
-        prep = self._precompute(frame, symbol, params)
+        prep = precomputed if precomputed is not None else self._precompute(frame, symbol, params)
         if not prep:
             return np.array([], dtype=float)
         i0 = np.asarray(prep["i0"], dtype=np.int64)
@@ -282,11 +310,16 @@ class DoubleTouchFamily:
         return i0[decided & reg]
 
     def measure_gross(
-        self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any]
+        self,
+        frame: pd.DataFrame,
+        entries: np.ndarray,
+        params: dict[str, Any],
+        *,
+        precomputed: dict[str, Any] | None = None,
     ) -> np.ndarray:
         if "symbol" not in params:
             return np.array([], dtype=float)
-        prep = self._precompute(frame, str(params["symbol"]), params)
+        prep = precomputed if precomputed is not None else self._precompute(frame, str(params["symbol"]), params)
         if not prep:
             return np.array([], dtype=float)
         i0 = np.asarray(prep["i0"], dtype=np.int64)
@@ -406,11 +439,16 @@ class PullbackFamily:
         return i0[decided & reg]
 
     def measure_gross(
-        self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any]
+        self,
+        frame: pd.DataFrame,
+        entries: np.ndarray,
+        params: dict[str, Any],
+        *,
+        precomputed: dict[str, Any] | None = None,
     ) -> np.ndarray:
         if "symbol" not in params:
             return np.array([], dtype=float)
-        prep = self._precompute(frame, str(params["symbol"]), params)
+        prep = precomputed if precomputed is not None else self._precompute(frame, str(params["symbol"]), params)
         if not prep:
             return np.array([], dtype=float)
         i0 = np.asarray(prep["i0"], dtype=np.int64)
@@ -511,11 +549,16 @@ class NoTouchFamily:
         return i0[reg]
 
     def measure_gross(
-        self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any]
+        self,
+        frame: pd.DataFrame,
+        entries: np.ndarray,
+        params: dict[str, Any],
+        *,
+        precomputed: dict[str, Any] | None = None,
     ) -> np.ndarray:
         if "symbol" not in params:
             return np.array([], dtype=float)
-        prep = self._precompute(frame, str(params["symbol"]), params)
+        prep = precomputed if precomputed is not None else self._precompute(frame, str(params["symbol"]), params)
         if not prep:
             return np.array([], dtype=float)
         i0 = np.asarray(prep["i0"], dtype=np.int64)
