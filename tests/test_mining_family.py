@@ -658,3 +658,29 @@ def test_no_touch_detects_structure_on_range_bound_regime():
         candidate_gross_ev=cand_ev,
     )
     assert baseline["random_baseline_z"] > 2.0
+
+
+def test_frame_fingerprint_distinguishes_different_content_same_shape():
+    from scripts.mining_family import _frame_fingerprint
+
+    # Same shape and columns, DIFFERENT content -> must NOT collide.
+    a = pd.DataFrame({"close_bid": [1.0, 2.0, 3.0], "low_bid": [0.0, 0.0, 0.0]})
+    b = pd.DataFrame({"close_bid": [9.0, 9.0, 9.0], "low_bid": [0.0, 0.0, 0.0]})
+    assert _frame_fingerprint(a) != _frame_fingerprint(b)
+
+
+def test_frame_fingerprint_is_stable_for_equal_content():
+    from scripts.mining_family import _frame_fingerprint
+
+    # Two distinct objects with identical content -> same fingerprint.
+    a = pd.DataFrame({"close_bid": [1.0, 2.0, 3.0]})
+    b = pd.DataFrame({"close_bid": [1.0, 2.0, 3.0]})
+    assert _frame_fingerprint(a) == _frame_fingerprint(b)
+
+
+def test_frame_fingerprint_distinguishes_different_columns():
+    from scripts.mining_family import _frame_fingerprint
+
+    a = pd.DataFrame({"close_bid": [1.0, 2.0, 3.0]})
+    b = pd.DataFrame({"low_bid": [1.0, 2.0, 3.0]})
+    assert _frame_fingerprint(a) != _frame_fingerprint(b)

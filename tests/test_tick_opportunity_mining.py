@@ -25,6 +25,7 @@ _PARITY: dict = {
         "bar_ticks",
         "both_window_rate",
         "both_window_rate_train",
+        "candidate_id",
         "candidate_schema_version",
         "family",
         "gross_std_test",
@@ -59,6 +60,7 @@ _PARITY: dict = {
         "bar_ticks",
         "both_window_rate",
         "both_window_rate_train",
+        "candidate_id",
         "candidate_schema_version",
         "family",
         "gross_std_test",
@@ -201,7 +203,7 @@ def test_tick_opportunity_mining_outputs(tmp_path: Path) -> None:
         "library_type": "separate",
         "barrier_grid_pips": "2,3",
     }
-    directional, oco, _no_touch, summary = run(cfg)
+    directional, oco, _no_touch, summary, _fills = run(cfg)
 
     assert not directional.empty
     assert not oco.empty
@@ -531,7 +533,7 @@ def test_mining_run_output_is_stable(tmp_path: Path) -> None:
         "library_type": "separate",
         "barrier_grid_pips": "2,3",
     }
-    directional, oco, _no_touch, summary = run(cfg)
+    directional, oco, _no_touch, summary, _fills = run(cfg)
     # Shape + key columns are stable; exact row counts depend on the synthetic
     # fixture and must not change across the refactor.
     snapshot = {
@@ -562,7 +564,7 @@ def test_run_emits_random_baseline_columns(tmp_path: Path) -> None:
         "library_type": "separate", "barrier_grid_pips": "2,3",
         "baseline_seed": 12345, "baseline_draws": 50,
     }
-    directional, oco, _no_touch, summary = run(cfg)
+    directional, oco, _no_touch, summary, _fills = run(cfg)
     for df in (directional, oco):
         if not df.empty:
             for col in ("random_baseline_z", "random_baseline_p",
@@ -654,7 +656,7 @@ def test_run_mines_double_touch(tmp_path: Path) -> None:
         "library_type": "double_touch", "barrier_grid_pips": "2,3",
         "baseline_seed": 12345, "baseline_draws": 20,
     }
-    directional, oco, _no_touch, _ = run(cfg)
+    directional, oco, _no_touch, _, _fills = run(cfg)
     # double_touch is a signed-return family -> lands in the directional frame.
     assert oco.empty
     assert not directional.empty, "double_touch should produce candidates"
@@ -772,7 +774,7 @@ def test_run_mines_pullback(tmp_path: Path) -> None:
         "library_type": "pullback", "barrier_grid_pips": "2,3",
         "baseline_seed": 12345, "baseline_draws": 20,
     }
-    directional, oco, _no_touch, _ = run(cfg)
+    directional, oco, _no_touch, _, _fills = run(cfg)
     # pullback is a signed-return family -> lands in the directional frame.
     assert oco.empty
     assert not directional.empty, "pullback should produce candidates"
@@ -794,7 +796,7 @@ def test_run_mines_no_touch(tmp_path: Path) -> None:
         "library_type": "no_touch", "barrier_grid_pips": "2,3",
         "baseline_seed": 12345, "baseline_draws": 20,
     }
-    directional, oco, no_touch, _ = run(cfg)
+    directional, oco, no_touch, _, _fills = run(cfg)
     # no_touch is a payoff family -> its own frame; others stay empty.
     assert directional.empty
     assert oco.empty
@@ -803,3 +805,54 @@ def test_run_mines_no_touch(tmp_path: Path) -> None:
     assert no_touch["selection_pass"].isin([True, False]).all()
     for col in ("random_baseline_z", "random_baseline_p"):
         assert col in no_touch.columns
+
+
+def test_run_emits_candidate_fills_joinable_to_summary(tmp_path: Path) -> None:
+    from scripts.candidate_fills import FILL_COLUMNS, write_candidate_fills
+
+    dataset_dir = tmp_path / "tick_velocity"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    symbol = "EURUSD"
+    _build_synth_tick_velocity(
+        dataset_dir / f"{symbol}_1000tick_velocity.parquet", symbol=symbol,
+    )
+
+    cfg = {
+        "symbol": symbol,
+        "dataset_dir": str(dataset_dir),
+        "bar_ticks_grid": "1000",
+        "horizons": "1,2,3",
+        "train_years": "2022,2023,2024",
+        "test_year": 2025,
+        "min_annual_fills": 50.0,
+        "gross_metric": "mean",
+        "library_type": "separate",
+        "barrier_grid_pips": "2,3",
+    }
+    directional, oco, no_touch, summary, fills = run(cfg)
+
+    # run() returns fills as a list of row dicts.
+    assert isinstance(fills, list)
+
+    # Writing them yields a parquet with the canonical schema.
+    out_dir = tmp_path / "out"
+    path = write_candidate_fills(fills, out_dir, symbol)
+    assert path.exists()
+    fills_df = pd.read_parquet(path)
+    assert list(fills_df.columns) == list(FILL_COLUMNS)
+
+    # The pipeline emits fills for this config.
+    assert not fills_df.empty
+    # Every fill carries one of the two splits.
+    assert set(fills_df["split"]).issubset({"train", "test"})
+    # Every fill's candidate_id is present in some mined candidate frame
+    # (library_type "separate" mines directional + oco; no_touch stays empty,
+    # so the per-frame guard below is required, not merely defensive).
+    known_ids: set[str] = set()
+    for frame in (directional, oco, no_touch):
+        if not frame.empty and "candidate_id" in frame.columns:
+            known_ids |= set(frame["candidate_id"])
+    assert set(fills_df["candidate_id"]).issubset(known_ids)
+    # Every fill comes from a positive-EV candidate: each row is either a
+    # selection_pass or a near_miss.
+    assert (fills_df["selection_pass"] | fills_df["near_miss"]).all()
