@@ -207,3 +207,77 @@ def test_add_market_measures_includes_distinct_mkt_pca():
     assert fin.sum() > 0
     # mkt_pca is a distinct series, not a copy of mkt_all6.
     assert not np.allclose(a[fin], p[fin])
+
+
+def test_build_cross_symbol_frame_end_to_end(tmp_path: Path):
+    from tests.test_tick_opportunity_mining import _build_synth_tick_velocity
+
+    from scripts.cross_symbol import CROSS_SYMBOLS, build_cross_symbol_frame
+
+    dataset_dir = tmp_path / "tick_velocity"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    for sym in CROSS_SYMBOLS:
+        _build_synth_tick_velocity(
+            dataset_dir / f"{sym}_1000tick_velocity.parquet", symbol=sym,
+        )
+    out = build_cross_symbol_frame(
+        target_symbol="EURUSD",
+        bar_ticks=1000,
+        dataset_dir=dataset_dir,
+        horizons=[1, 2, 3],
+    )
+    assert not out.empty
+    # The target's own OHLC survives unchanged.
+    for col in ("close_bid", "close_ask", "close_ts"):
+        assert col in out.columns
+    # One peer column per non-target symbol.
+    for sym in CROSS_SYMBOLS:
+        if sym != "EURUSD":
+            assert f"xs_ret_z__{sym}" in out.columns
+    assert "xs_ret_z__EURUSD" not in out.columns  # target is not its own peer
+    # All three market measures present.
+    for col in ("mkt_all6", "mkt_loo", "mkt_pca"):
+        assert col in out.columns
+    # The aligned frame has the same row count as the target's own frame.
+    assert len(out) > 0
+
+
+def test_build_cross_symbol_frame_requires_all_six_symbols(tmp_path: Path):
+    from tests.test_tick_opportunity_mining import _build_synth_tick_velocity
+
+    from scripts.cross_symbol import build_cross_symbol_frame
+
+    dataset_dir = tmp_path / "tick_velocity"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    # Only 5 of the 6 symbols present — USDCHF is missing.
+    for sym in ("EURUSD", "GBPUSD", "AUDUSD", "USDJPY", "USDCAD"):
+        _build_synth_tick_velocity(
+            dataset_dir / f"{sym}_1000tick_velocity.parquet", symbol=sym,
+        )
+    with pytest.raises(FileNotFoundError, match="USDCHF"):
+        build_cross_symbol_frame(
+            target_symbol="EURUSD",
+            bar_ticks=1000,
+            dataset_dir=dataset_dir,
+            horizons=[1, 2, 3],
+        )
+
+
+def test_build_cross_symbol_frame_rejects_unknown_target(tmp_path: Path):
+    from tests.test_tick_opportunity_mining import _build_synth_tick_velocity
+
+    from scripts.cross_symbol import CROSS_SYMBOLS, build_cross_symbol_frame
+
+    dataset_dir = tmp_path / "tick_velocity"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    for sym in CROSS_SYMBOLS:
+        _build_synth_tick_velocity(
+            dataset_dir / f"{sym}_1000tick_velocity.parquet", symbol=sym,
+        )
+    with pytest.raises(ValueError, match="target_symbol"):
+        build_cross_symbol_frame(
+            target_symbol="NZDUSD",
+            bar_ticks=1000,
+            dataset_dir=dataset_dir,
+            horizons=[1, 2, 3],
+        )

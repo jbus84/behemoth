@@ -126,3 +126,39 @@ def _add_market_measures(
         min_periods=pca_min_periods,
     )
     return out
+
+
+def build_cross_symbol_frame(
+    target_symbol: str,
+    bar_ticks: int,
+    dataset_dir: Path,
+    horizons: list[int],
+) -> pd.DataFrame:
+    """Return the target symbol's tick frame enriched with backward
+    as-of-joined peer returns and the three market measures.
+
+    All 6 CROSS_SYMBOLS must have a velocity parquet in dataset_dir — a
+    coherent cross-section cannot be built from a partial roster.
+    """
+    from scripts.run_tick_opportunity_mining import _prepare_frame
+
+    if target_symbol not in CROSS_SYMBOLS:
+        raise ValueError(
+            f"target_symbol {target_symbol!r} is not a cross-symbol major; "
+            f"expected one of {CROSS_SYMBOLS}"
+        )
+    dataset_dir = Path(dataset_dir)
+    frames: dict[str, pd.DataFrame] = {}
+    for sym in CROSS_SYMBOLS:
+        path = dataset_dir / f"{sym}_{int(bar_ticks)}tick_velocity.parquet"
+        if not path.exists():
+            raise FileNotFoundError(
+                f"cross-symbol alignment requires all {len(CROSS_SYMBOLS)} "
+                f"majors; missing velocity parquet for {sym}: {path}"
+            )
+        frames[sym] = _prepare_frame(path, symbol=sym, horizons=horizons)
+
+    target = frames[target_symbol]
+    peers = {s: f for s, f in frames.items() if s != target_symbol}
+    aligned = _align_peer_returns(target, target_symbol, peers)
+    return _add_market_measures(aligned, target_symbol)
