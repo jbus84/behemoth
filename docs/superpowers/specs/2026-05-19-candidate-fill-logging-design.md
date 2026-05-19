@@ -110,6 +110,10 @@ DataFrames and arrays.
   — produce one dict per fill: identity columns, fill columns, and the entry-time
   feature snapshot pulled at each `entry_index`. Missing feature columns yield NaN
   (or empty string for `session_marker`).
+  `gross` must be the **raw, unfiltered** array aligned 1:1 with `entries` (the
+  summary path filters non-finite gross *before* aggregating; `expand_fills` instead
+  receives the aligned array and drops any fill whose `gross_pips` is non-finite,
+  per-row, so the entry↔gross correspondence is never broken).
 - `write_candidate_fills(rows, out_dir, symbol) -> Path`
   — assemble the rows into a DataFrame and write the parquet.
 
