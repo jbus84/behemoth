@@ -316,3 +316,165 @@ def test_double_touch_detects_structure_on_post_sweep_continuation():
         candidate_gross_ev=cand_ev,
     )
     assert baseline["random_baseline_z"] > 2.0
+
+
+def test_pullback_family_registered_and_resolves():
+    from scripts.mining_family import (
+        FAMILY_REGISTRY,
+        MiningFamily,
+        resolve_families,
+    )
+
+    assert resolve_families("pullback") == ["pullback"]
+    fam = FAMILY_REGISTRY["pullback"]
+    assert fam.name == "pullback"
+    assert isinstance(fam, MiningFamily)
+
+
+def test_pullback_family_grid_and_metadata():
+    from scripts.mining_family import FAMILY_REGISTRY
+
+    fam = FAMILY_REGISTRY["pullback"]
+    grid = fam.param_grid({"barrier_grid_pips": "2,3", "horizons": "1,2"})
+    dirs = sorted({g["impulse_dir"] for g in grid})
+    assert dirs == ["down", "up"]
+    # 2 impulse_dir x 2 m_pips x 3 r_frac x 2 window_I x 2 window_P x 2 horizons
+    assert len(grid) == 2 * 2 * 3 * 2 * 2 * 2
+    assert all(g["window_R"] == 10 for g in grid)
+    meta = fam.candidate_metadata(
+        "london",
+        {"impulse_dir": "up", "m_pips": 3.0, "r_frac": 0.5,
+         "window_I": 5, "window_P": 15, "window_R": 10, "horizon": 2},
+    )
+    assert meta["family"] == "pullback"
+    assert meta["state_id"] == "pullback__london__up_M3_R0.5_wI5_wP15_wR10_h2"
+    assert meta["ml_ready_target_type"] == "pullback"
+    assert "impulse=up" in meta["regime_desc"]
+
+
+def test_pullback_family_entry_and_gross():
+    import numpy as np
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from tests.test_tick_opportunity_mining import _build_pullback_frame
+
+    fam = FAMILY_REGISTRY["pullback"]
+    frame = _build_pullback_frame()
+    allmask = np.ones(len(frame), dtype=bool)
+    params = {"symbol": "EURUSD", "impulse_dir": "up", "m_pips": 3.0,
+              "r_frac": 0.5, "window_I": 15, "window_P": 15,
+              "window_R": 10, "horizon": 5}
+    entries = fam.entry_indices(frame, allmask, params)
+    assert len(entries) > 0
+    gross = fam.measure_gross(frame, entries, params)
+    assert len(gross) == len(entries)
+    assert np.isfinite(gross).sum() > 0
+
+
+def test_pullback_family_param_grid_rejects_nonpositive():
+    import pytest
+
+    from scripts.mining_family import FAMILY_REGISTRY
+
+    fam = FAMILY_REGISTRY["pullback"]
+    with pytest.raises(ValueError):
+        fam.param_grid({"barrier_grid_pips": "0", "horizons": "1"})
+
+
+def test_pullback_no_false_edge_on_driftless_data():
+    import numpy as np
+    import pandas as pd
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from scripts.mining_random_baseline import random_entry_baseline
+
+    fam = FAMILY_REGISTRY["pullback"]
+    rng = np.random.default_rng(99)
+    n = 2500
+    pip = 0.0001
+    # Driftless random walk — impulse/pullback/resumption setups occur but
+    # carry no continuation edge.
+    base = 1.20000 + np.cumsum(rng.normal(0, 0.3 * pip, n))
+    frame = pd.DataFrame({
+        "close_bid": base,
+        "close_ask": base + 0.2 * pip,
+        "low_bid": base - rng.uniform(0.1, 0.5, n) * pip,
+        "high_ask": base + 0.2 * pip + rng.uniform(0.1, 0.5, n) * pip,
+    })
+    allmask = np.ones(len(frame), dtype=bool)
+    params = {"symbol": "EURUSD", "impulse_dir": "up", "m_pips": 3.0,
+              "r_frac": 0.5, "window_I": 15, "window_P": 15,
+              "window_R": 10, "horizon": 5}
+    entries = fam.entry_indices(frame, allmask, params)
+    assert len(entries) > 0, "driftless fixture should still produce setups"
+    gross = fam.measure_gross(frame, entries, params)
+    gross = gross[np.isfinite(gross)]
+    assert gross.size > 0
+    cand_ev = float(np.mean(gross))
+    baseline = random_entry_baseline(
+        fam, frame, params,
+        n_entries=len(entries), n_draws=100,
+        rng=np.random.default_rng(7),
+        candidate_gross_ev=cand_ev,
+    )
+    z = baseline["random_baseline_z"]
+    assert np.isnan(z) or z < 2.0
+
+
+def test_pullback_detects_structure_on_post_resumption_continuation():
+    import numpy as np
+    import pandas as pd
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from scripts.mining_random_baseline import random_entry_baseline
+
+    fam = FAMILY_REGISTRY["pullback"]
+    pip = 0.0001
+    # One 30-bar cycle: 10 flat bars, a 6-pip impulse held 3 bars, a pullback
+    # down to +1 pip held 3 bars, a resumption back to +6 pip, then a hold.
+    # Tiled across the frame so an impulse->pullback->resumption completes
+    # once per cycle.
+    cycle = np.array(
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+         6, 6, 6,
+         1, 1, 1,
+         6, 6, 6,
+         6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6],
+        dtype=float,
+    )
+    assert cycle.size == 30
+    bump = np.tile(cycle, 60) * pip
+    n = bump.size  # 1800
+    # First 1200 bars: a 0.5 pip/bar uptrend supplies real post-resumption
+    # continuation. Last 600 bars: flat — setups still complete on the bump
+    # shape but carry no continuation, diluting the control mean.
+    trend_len = 1200
+    drift = np.concatenate([
+        0.5 * pip * np.arange(trend_len),
+        np.full(n - trend_len, 0.5 * pip * trend_len),
+    ])
+    close = 1.30000 + drift + bump
+    frame = pd.DataFrame({
+        "close_bid": close,
+        "close_ask": close + 0.2 * pip,
+        "low_bid": close - 0.1 * pip,
+        "high_ask": close + 0.2 * pip + 0.1 * pip,
+    })
+    regime_mask = np.zeros(n, dtype=bool)
+    regime_mask[:trend_len] = True
+    params = {"symbol": "EURUSD", "impulse_dir": "up", "m_pips": 3.0,
+              "r_frac": 0.5, "window_I": 15, "window_P": 15,
+              "window_R": 10, "horizon": 5}
+    entries = fam.entry_indices(frame, regime_mask, params)
+    assert len(entries) > 0, "trending region should produce setups"
+    gross = fam.measure_gross(frame, entries, params)
+    gross = gross[np.isfinite(gross)]
+    assert gross.size > 0
+    cand_ev = float(np.mean(gross))
+    baseline = random_entry_baseline(
+        fam, frame, params,
+        n_entries=len(entries), n_draws=200,
+        rng=np.random.default_rng(7),
+        candidate_gross_ev=cand_ev,
+    )
+    assert baseline["random_baseline_z"] > 2.0

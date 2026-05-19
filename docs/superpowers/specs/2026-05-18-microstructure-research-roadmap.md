@@ -116,7 +116,7 @@ and the no-touch rate vary across regimes, unlike first-touch direction.
 | 1 | Asymmetric barriers | — | — | Blocked on 0 |
 | 2 | Consecutive-move persistence | — | — | Blocked on 0 |
 | 3 | Double-touch / liquidity sweep | [design](2026-05-18-double-touch-sweep-design.md) | — | Specced |
-| 4 | Pullback continuation | — | — | Blocked on 0 |
+| 4 | Pullback continuation | [design](2026-05-18-pullback-continuation-design.md) | [plan](../plans/2026-05-18-pullback-continuation.md) | Planned |
 | 5 | No-touch / sell-the-range | — | — | Blocked on 0 |
 
 Each sub-project gets its own `docs/superpowers/specs/` design and
