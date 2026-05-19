@@ -48,7 +48,7 @@ def test_align_peer_returns_takes_most_recent_completed_peer_bar():
     peer = _mk_frame(
         ["2024-01-01T00:01:00Z", "2024-01-01T00:03:00Z"], [2.0, 5.0],
     )
-    out = _align_peer_returns(target, "EURUSD", {"USDJPY": peer})
+    out = _align_peer_returns(target, {"USDJPY": peer})
     col = out["xs_ret_z__USDJPY"].to_numpy()
     # Target :00 -> no peer bar <= :00 yet -> NaN.
     assert np.isnan(col[0])
@@ -64,7 +64,7 @@ def test_align_peer_returns_applies_usd_sign():
     target = _mk_frame(["2024-01-01T00:05:00Z"], [0.0])
     peer = _mk_frame(["2024-01-01T00:00:00Z"], [3.0])
     # EURUSD peer has sign -1 -> USD-aligned column is negated.
-    out = _align_peer_returns(target, "USDJPY", {"EURUSD": peer})
+    out = _align_peer_returns(target, {"EURUSD": peer})
     assert out["xs_ret_z__EURUSD"].to_numpy()[0] == -3.0
 
 
@@ -79,8 +79,8 @@ def test_align_peer_returns_is_free_of_look_ahead():
     peer_b = _mk_frame(
         ["2024-01-01T00:01:00Z", "2024-01-01T00:09:00Z"], [1.0, 99.0],
     )
-    out_a = _align_peer_returns(target, "EURUSD", {"USDJPY": peer_a})
-    out_b = _align_peer_returns(target, "EURUSD", {"USDJPY": peer_b})
+    out_a = _align_peer_returns(target, {"USDJPY": peer_a})
+    out_b = _align_peer_returns(target, {"USDJPY": peer_b})
     # The future :09 bar changes nothing for target bars at :00 and :02.
     assert np.array_equal(
         np.nan_to_num(out_a["xs_ret_z__USDJPY"].to_numpy(), nan=-1.0),
@@ -100,7 +100,7 @@ def test_market_measures_all6_and_loo():
         "USDCAD": _mk_frame(["2024-01-01T00:00:00Z"], [2.0]),
         "USDCHF": _mk_frame(["2024-01-01T00:00:00Z"], [3.0]),
     }
-    aligned = _align_peer_returns(target, "EURUSD", peers)
+    aligned = _align_peer_returns(target, peers)
     out = _add_market_measures(aligned, "EURUSD")
     # USD-aligned peer values: GBP +1, AUD +2 (sign -1 on raw -1,-2),
     # JPY +1, CAD +2, CHF +3 -> peer sum 9, mean 1.8.
@@ -121,10 +121,10 @@ def test_market_measures_loo_ignores_target_returns():
     }
     a = _add_market_measures(
         _align_peer_returns(_mk_frame(["2024-01-01T01:00:00Z"], [0.0]),
-                            "EURUSD", peers), "EURUSD")
+                            peers), "EURUSD")
     b = _add_market_measures(
         _align_peer_returns(_mk_frame(["2024-01-01T01:00:00Z"], [999.0]),
-                            "EURUSD", peers), "EURUSD")
+                            peers), "EURUSD")
     # mkt_loo excludes the target, so the target's own ret_z cannot move it.
     assert a["mkt_loo"].to_numpy()[0] == b["mkt_loo"].to_numpy()[0]
 
@@ -197,7 +197,7 @@ def test_add_market_measures_includes_distinct_mkt_pca():
         "USDJPY": _frame(1.2), "USDCAD": _frame(0.8),
         "USDCHF": _frame(1.05),
     }
-    aligned = _align_peer_returns(target, "EURUSD", peers)
+    aligned = _align_peer_returns(target, peers)
     out = _add_market_measures(aligned, "EURUSD")
     for col in ("mkt_all6", "mkt_loo", "mkt_pca"):
         assert col in out.columns
@@ -238,8 +238,9 @@ def test_build_cross_symbol_frame_end_to_end(tmp_path: Path):
     # All three market measures present.
     for col in ("mkt_all6", "mkt_loo", "mkt_pca"):
         assert col in out.columns
-    # The aligned frame has the same row count as the target's own frame.
+    # The aligned frame is non-empty.
     assert len(out) > 0
+    assert np.isfinite(out["mkt_all6"]).any()
 
 
 def test_build_cross_symbol_frame_requires_all_six_symbols(tmp_path: Path):

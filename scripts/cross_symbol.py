@@ -40,7 +40,6 @@ def _usd_aligned_ret_z(frame: pd.DataFrame, symbol: str) -> pd.Series:
 
 def _align_peer_returns(
     target: pd.DataFrame,
-    target_symbol: str,
     peers: dict[str, pd.DataFrame],
 ) -> pd.DataFrame:
     """Append one USD-aligned peer return column per peer, backward as-of
@@ -160,5 +159,5 @@ def build_cross_symbol_frame(
 
     target = frames[target_symbol]
     peers = {s: f for s, f in frames.items() if s != target_symbol}
-    aligned = _align_peer_returns(target, target_symbol, peers)
+    aligned = _align_peer_returns(target, peers)
     return _add_market_measures(aligned, target_symbol)
