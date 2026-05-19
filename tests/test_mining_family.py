@@ -4,7 +4,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from scripts.mining_family import FAMILY_REGISTRY, MiningFamily, resolve_families
+from scripts.mining_family import (
+    DoubleTouchFamily,
+    FAMILY_REGISTRY,
+    MiningFamily,
+    NoTouchFamily,
+    OcoFirstTouchFamily,
+    resolve_families,
+)
 
 
 def test_resolve_families_maps_legacy_library_type():
@@ -121,6 +128,18 @@ def _oco_test_frame(n: int) -> pd.DataFrame:
         "high_ask": np.arange(n, dtype=float),
         "close_ask": np.arange(n, dtype=float),
         "hl_first": np.full(n, 1.0),
+    })
+
+
+def _make_test_frame(n: int = 1000) -> pd.DataFrame:
+    rng = np.random.default_rng(42)
+    base = 1.0
+    return pd.DataFrame({
+        "close_bid": base + rng.random(n) * 0.001,
+        "low_bid": base - rng.random(n) * 0.002,
+        "high_ask": base + rng.random(n) * 0.002,
+        "close_ask": base + 0.0002 + rng.random(n) * 0.001,
+        "hl_first": rng.random(n) * 0.001,
     })
 
 
@@ -684,3 +703,77 @@ def test_frame_fingerprint_distinguishes_different_columns():
     a = pd.DataFrame({"close_bid": [1.0, 2.0, 3.0]})
     b = pd.DataFrame({"low_bid": [1.0, 2.0, 3.0]})
     assert _frame_fingerprint(a) != _frame_fingerprint(b)
+
+
+def test_oco_first_touch_precompute_cache_returns_same_object():
+    family = OcoFirstTouchFamily()
+    frame = _make_test_frame()
+    params = {"symbol": "EURUSD", "horizon": 10, "barrier_pips": 5.0}
+    result1 = family._precompute(frame, "EURUSD", params)
+    result2 = family._precompute(frame, "EURUSD", params)
+    assert result1 is result2
+    for key in ["i0", "gross", "side", "both_touched_lookahead", "decided", "touch_step"]:
+        assert key in result1
+        assert np.array_equal(result1[key], result2[key])
+
+
+def test_oco_first_touch_measure_gross_with_precomputed():
+    family = OcoFirstTouchFamily()
+    frame = _make_test_frame()
+    params = {"symbol": "EURUSD", "horizon": 10, "barrier_pips": 5.0}
+    family.clear_cache()
+    without = family.measure_gross(frame, np.array([0, 50, 100]), params)
+    family.clear_cache()
+    precomputed = family._precompute(frame, "EURUSD", params)
+    with_pre = family.measure_gross(frame, np.array([0, 50, 100]), params, precomputed=precomputed)
+    assert np.allclose(without, with_pre, equal_nan=True)
+
+
+def test_double_touch_measure_gross_with_precomputed():
+    family = DoubleTouchFamily()
+    frame = _make_test_frame()
+    params = {"symbol": "EURUSD", "sweep_dir": "up", "a_pips": 5.0, "b_pips": 2.0, "window_A": 5, "window_B": 15, "horizon": 10}
+    family.clear_cache()
+    without = family.measure_gross(frame, np.array([0, 50, 100]), params)
+    family.clear_cache()
+    precomputed = family._precompute(frame, "EURUSD", params)
+    with_pre = family.measure_gross(frame, np.array([0, 50, 100]), params, precomputed=precomputed)
+    assert np.allclose(without, with_pre, equal_nan=True)
+
+
+def test_no_touch_measure_gross_with_precomputed():
+    family = NoTouchFamily()
+    frame = _make_test_frame()
+    params = {"symbol": "EURUSD", "horizon": 10, "barrier_pips": 5.0}
+    family.clear_cache()
+    without = family.measure_gross(frame, np.array([0, 50, 100]), params)
+    family.clear_cache()
+    precomputed = family._precompute(frame, "EURUSD", params)
+    with_pre = family.measure_gross(frame, np.array([0, 50, 100]), params, precomputed=precomputed)
+    assert np.allclose(without, with_pre, equal_nan=True)
+
+
+def test_random_entry_baseline_parity_with_precompute():
+    from scripts.mining_random_baseline import random_entry_baseline
+    family = OcoFirstTouchFamily()
+    frame = _make_test_frame()
+    params = {"symbol": "EURUSD", "horizon": 10, "barrier_pips": 5.0}
+    rng = np.random.default_rng(42)
+    family.clear_cache()
+    result_legacy = random_entry_baseline(
+        family, frame, params,
+        n_entries=5, n_draws=10, rng=rng,
+        candidate_gross_ev=1.0,
+    )
+    family.clear_cache()
+    rng = np.random.default_rng(42)
+    precomputed = family._precompute(frame, "EURUSD", params)
+    result_optimized = random_entry_baseline(
+        family, frame, params,
+        n_entries=5, n_draws=10, rng=rng,
+        candidate_gross_ev=1.0,
+        precomputed=precomputed,
+    )
+    assert np.isclose(result_legacy["random_baseline_z"], result_optimized["random_baseline_z"])
+    assert np.isclose(result_legacy["random_baseline_p"], result_optimized["random_baseline_p"])
+    assert np.isclose(result_legacy["random_baseline_control_mean"], result_optimized["random_baseline_control_mean"])
