@@ -1254,13 +1254,15 @@ def run(
     if gross_metric not in {"mean", "median"}:
         raise ValueError("gross_metric must be mean|median")
     if library_type not in {
-        "all", "separate", "directional", "directional_run",
+        "all", "separate",
+        "directional", "directional_inverse", "directional_run",
         "oco", "oco_asymmetric",
         "double_touch", "pullback", "no_touch",
     }:
         raise ValueError(
             "library_type must be "
-            "all|separate|directional|directional_run|"
+            "all|separate|"
+            "directional|directional_inverse|directional_run|"
             "oco|oco_asymmetric|"
             "double_touch|pullback|no_touch"
         )
@@ -1314,6 +1316,7 @@ def run(
 
     directional = pd.DataFrame(
         per_family_rows.get("directional", [])
+        + per_family_rows.get("directional_inverse", [])
         + per_family_rows.get("directional_run", [])
         + per_family_rows.get("double_touch", [])
         + per_family_rows.get("pullback", [])

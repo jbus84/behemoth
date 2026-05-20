@@ -62,6 +62,7 @@ _LIBRARY_TYPE_ALIASES: dict[str, list[str]] = {
     "oco": ["oco_first_touch"],
     "oco_asymmetric": ["oco_asymmetric"],
     "directional": ["directional"],
+    "directional_inverse": ["directional_inverse"],
     "directional_run": ["directional_run"],
     "double_touch": ["double_touch"],
     "pullback": ["pullback"],
@@ -71,6 +72,7 @@ _LIBRARY_TYPE_ALIASES: dict[str, list[str]] = {
         "oco_first_touch",
         "oco_asymmetric",
         "directional",
+        "directional_inverse",
         "directional_run",
         "double_touch",
         "pullback",
@@ -135,6 +137,67 @@ class DirectionalFamily:
             "state_id": f"directional__{regime_name}__h{h}",
             "regime_desc": regime_name,
             "ml_ready_target_type": "directional",
+        }
+
+
+class DirectionalInverseFamily:
+    """Contrarian directional family: fades the `_dir_side_h{h}` signal.
+
+    Hypothesis (post-rebuild 2026-05-20 observation): the base `directional`
+    family produced strongly negative mean_baseline_z scores on 4/6 majors
+    (USDJPY −3.12, GBPUSD −2.99, USDCAD −2.61, USDCHF −2.63), meaning real
+    entries underperformed random by 2–3 sigma. Flipping the entry side is
+    the cleanest test of whether that underperformance is a genuine inverse
+    edge or a wash.
+
+    Same entry universe as `directional` (same bars, same regime conditioning,
+    same horizon); only the realised gross is sign-flipped.
+    """
+
+    name = "directional_inverse"
+
+    def param_grid(self, cfg: dict[str, Any]) -> list[dict[str, Any]]:
+        from scripts.run_tick_opportunity_mining import _parse_ints
+
+        return [{"horizon": h} for h in _parse_ints(str(cfg["horizons"]))]
+
+    def entry_indices(
+        self, frame: pd.DataFrame, regime_mask: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        h = int(params["horizon"])
+        ycol = f"y_fwd_pips_h{h}"
+        sidecol = f"_dir_side_h{h}"
+        if ycol not in frame.columns or sidecol not in frame.columns:
+            return np.array([], dtype=np.int64)
+        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
+        side = frame[sidecol].to_numpy()
+        valid = np.isfinite(y)
+        if h > 0:
+            valid[-h:] = False
+        m = valid & np.asarray(regime_mask, dtype=bool) & (side != 0)
+        return np.flatnonzero(m).astype(np.int64)
+
+    def measure_gross(
+        self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        h = int(params["horizon"])
+        ycol = f"y_fwd_pips_h{h}"
+        sidecol = f"_dir_side_h{h}"
+        if ycol not in frame.columns or sidecol not in frame.columns:
+            return np.array([], dtype=float)
+        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
+        side = frame[sidecol].to_numpy().astype(float)
+        return -side[entries] * y[entries]
+
+    def candidate_metadata(
+        self, regime_name: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
+        h = int(params["horizon"])
+        return {
+            "family": "directional_inverse",
+            "state_id": f"directional_inverse__{regime_name}__h{h}",
+            "regime_desc": regime_name,
+            "ml_ready_target_type": "directional_inverse",
         }
 
 
@@ -731,6 +794,7 @@ FAMILY_REGISTRY: dict[str, MiningFamily] = {
     "oco_first_touch": OcoFirstTouchFamily(),
     "oco_asymmetric": OcoAsymmetricFamily(),
     "directional": DirectionalFamily(),
+    "directional_inverse": DirectionalInverseFamily(),
     "directional_run": DirectionalRunFamily(),
     "double_touch": DoubleTouchFamily(),
     "pullback": PullbackFamily(),
