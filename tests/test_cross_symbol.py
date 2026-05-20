@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from scripts.cross_symbol import CROSS_SYMBOLS, _USD_SIGN
+from scripts.cross_symbol import _USD_SIGN, CROSS_SYMBOLS
 
 
 def test_cross_symbols_roster_is_the_six_majors():
@@ -210,9 +210,8 @@ def test_add_market_measures_includes_distinct_mkt_pca():
 
 
 def test_build_cross_symbol_frame_end_to_end(tmp_path: Path):
-    from tests.test_tick_opportunity_mining import _build_synth_tick_velocity
-
     from scripts.cross_symbol import CROSS_SYMBOLS, build_cross_symbol_frame
+    from tests.test_tick_opportunity_mining import _build_synth_tick_velocity
 
     dataset_dir = tmp_path / "tick_velocity"
     dataset_dir.mkdir(parents=True, exist_ok=True)
@@ -244,9 +243,8 @@ def test_build_cross_symbol_frame_end_to_end(tmp_path: Path):
 
 
 def test_build_cross_symbol_frame_requires_all_six_symbols(tmp_path: Path):
-    from tests.test_tick_opportunity_mining import _build_synth_tick_velocity
-
     from scripts.cross_symbol import build_cross_symbol_frame
+    from tests.test_tick_opportunity_mining import _build_synth_tick_velocity
 
     dataset_dir = tmp_path / "tick_velocity"
     dataset_dir.mkdir(parents=True, exist_ok=True)
@@ -265,9 +263,8 @@ def test_build_cross_symbol_frame_requires_all_six_symbols(tmp_path: Path):
 
 
 def test_build_cross_symbol_frame_rejects_unknown_target(tmp_path: Path):
-    from tests.test_tick_opportunity_mining import _build_synth_tick_velocity
-
     from scripts.cross_symbol import CROSS_SYMBOLS, build_cross_symbol_frame
+    from tests.test_tick_opportunity_mining import _build_synth_tick_velocity
 
     dataset_dir = tmp_path / "tick_velocity"
     dataset_dir.mkdir(parents=True, exist_ok=True)
