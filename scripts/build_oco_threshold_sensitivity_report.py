@@ -256,9 +256,10 @@ def run(
         )
         if not paths.pred_path.exists():
             raise FileNotFoundError(f"Missing prediction data for {symbol} at {paths.pred_path}")
-        d = pd.read_parquet(
-            paths.pred_path, columns=["test_month", "close_ts", "pred_prob", "target_gross_pips"]
-        ).copy()
+        d = pd.read_parquet(paths.pred_path).copy()
+        if d.empty:
+            continue
+        d = d[["test_month", "close_ts", "pred_prob", "target_gross_pips"]].copy()
         d["close_ts"] = _dt_utc(d["close_ts"])
         d["pred_prob"] = _to_num(d["pred_prob"])
         d["target_gross_pips"] = _to_num(d["target_gross_pips"])

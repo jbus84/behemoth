@@ -309,7 +309,7 @@ def run(
         )
 
         rs_path = _reduced_states_for_symbol(mining_base, symbol)
-        rs_ok = rs_path.exists()
+        rs_ok = rs_path.exists() and rs_path.stat().st_size > 0
         _add_check(
             checks_rows,
             symbol=symbol,

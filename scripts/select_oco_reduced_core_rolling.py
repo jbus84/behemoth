@@ -464,6 +464,13 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     if "barrier_pips" not in c.columns:
         c["barrier_pips"] = c.apply(_parse_barrier_row, axis=1)
     c["barrier_pips"] = pd.to_numeric(c["barrier_pips"], errors="coerce")
+
+    # Before filtering, capture whether predictions reference any raw candidate at all
+    key_cols = ["symbol", "bar_ticks", "horizon", "state_id"]
+    raw_meta = c[key_cols].drop_duplicates()
+    pred_keys = p[key_cols].drop_duplicates()
+    any_pred_in_raw = not pred_keys.merge(raw_meta, on=key_cols, how="inner").empty
+
     c = c[
         (c["symbol"] == symbol)
         & (c["family"].astype(str) == family_keep)
@@ -481,7 +488,6 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             "config mismatch, not a no-trade outcome"
         )
 
-    key_cols = ["symbol", "bar_ticks", "horizon", "state_id"]
     meta_cols = key_cols + ["family", "regime_desc", "barrier_pips"]
     c_meta = c[meta_cols].drop_duplicates()
     p = p.merge(c_meta, on=key_cols, how="inner")
@@ -490,10 +496,18 @@ def run(cfg: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             return _write_no_trade_outputs(
                 cfg, symbol, "predictions parquet is empty — WFO produced no rows"
             )
-        raise RuntimeError(
-            "no predictions left after candidate metadata merge: predictions "
-            "parquet has rows but none join the candidate universe — stale or "
-            "mismatched predictions, not a no-trade outcome"
+        if not any_pred_in_raw:
+            # Predictions reference state_ids that do not exist in the raw
+            # candidate file at all — this is a structural mismatch/bug.
+            raise RuntimeError(
+                "no predictions left after candidate metadata merge: predictions "
+                "parquet has rows but none join the candidate universe — stale or "
+                "mismatched predictions, not a no-trade outcome"
+            )
+        return _write_no_trade_outputs(
+            cfg, symbol,
+            "predictions exist but none match the filtered candidate universe "
+            "(barrier/family/horizon filter) — true negative",
         )
 
     selected_all = _select_events(p, q=q, mode=selection_mode)
