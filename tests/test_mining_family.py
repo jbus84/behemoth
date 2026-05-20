@@ -684,3 +684,213 @@ def test_frame_fingerprint_distinguishes_different_columns():
     a = pd.DataFrame({"close_bid": [1.0, 2.0, 3.0]})
     b = pd.DataFrame({"low_bid": [1.0, 2.0, 3.0]})
     assert _frame_fingerprint(a) != _frame_fingerprint(b)
+
+
+# ---------------------------------------------------------------------------
+# Sub-projects 1 + 2: oco_asymmetric + directional_run
+# ---------------------------------------------------------------------------
+
+
+def test_oco_asymmetric_family_entry_and_gross():
+    fam = FAMILY_REGISTRY["oco_asymmetric"]
+    rng = np.random.default_rng(11)
+    n = 300
+    base = 1.10 + np.cumsum(rng.normal(0, 0.0002, n))
+    frame = pd.DataFrame({
+        "close_bid": base,
+        "low_bid": base - rng.uniform(0.0001, 0.0006, n),
+        "high_ask": base + rng.uniform(0.0001, 0.0006, n),
+        "close_ask": base + 0.0002,
+        "hl_first": rng.choice([1.0, -1.0, 0.0], size=n),
+    })
+    allmask = np.ones(len(frame), dtype=bool)
+    params = {"symbol": "EURUSD", "horizon": 4, "down_pips": 3.0, "rr": 1.0}
+    entries = fam.entry_indices(frame, allmask, params)
+    assert len(entries) > 0
+    gross = fam.measure_gross(frame, entries, params)
+    assert len(gross) == len(entries)
+    assert np.isfinite(gross).sum() > 0
+
+
+def test_oco_asymmetric_family_grid_and_metadata():
+    fam = FAMILY_REGISTRY["oco_asymmetric"]
+    assert fam.name == "oco_asymmetric"
+    grid = fam.param_grid({"horizons": "1,2"})
+    downs = sorted({g["down_pips"] for g in grid})
+    rrs = sorted({g["rr"] for g in grid})
+    assert downs == [2.0, 3.0, 5.0, 8.0]
+    assert rrs == [0.5, 0.75, 1.0, 1.5, 2.0, 3.0]
+    assert len(grid) == 4 * 6 * 2  # downs x rr x horizons
+    meta = fam.candidate_metadata(
+        "london", {"down_pips": 5.0, "rr": 2.0, "horizon": 2}
+    )
+    assert meta["family"] == "oco_asymmetric"
+    assert meta["state_id"] == "oco_asymmetric__london__d5_rr2"
+    assert meta["ml_ready_target_type"] == "oco_asymmetric"
+    assert "down=5" in meta["regime_desc"] and "rr=2" in meta["regime_desc"]
+
+
+def test_oco_asymmetric_precompute_is_cached():
+    from scripts.mining_family import OcoAsymmetricFamily
+
+    fam = OcoAsymmetricFamily()
+    rng = np.random.default_rng(11)
+    n = 300
+    base = 1.10 + np.cumsum(rng.normal(0, 0.0002, n))
+    frame = pd.DataFrame({
+        "close_bid": base,
+        "low_bid": base - rng.uniform(0.0001, 0.0006, n),
+        "high_ask": base + rng.uniform(0.0001, 0.0006, n),
+        "close_ask": base + 0.0002,
+        "hl_first": rng.choice([1.0, -1.0, 0.0], size=n),
+    })
+    allmask = np.ones(len(frame), dtype=bool)
+    params = {"symbol": "EURUSD", "horizon": 4, "down_pips": 3.0, "rr": 1.0}
+
+    entries1 = fam.entry_indices(frame, allmask, params)
+    gross1 = fam.measure_gross(frame, entries1, params)
+    assert len(fam._cache) == 1
+    entries2 = fam.entry_indices(frame, allmask, params)
+    gross2 = fam.measure_gross(frame, entries2, params)
+    assert len(fam._cache) == 1
+    np.testing.assert_array_equal(gross1, gross2)
+
+
+def test_oco_asymmetric_no_false_edge_on_driftless_data():
+    from scripts.mining_random_baseline import random_entry_baseline
+
+    fam = FAMILY_REGISTRY["oco_asymmetric"]
+    rng = np.random.default_rng(99)
+    n = 1000
+    base = 1.10 + np.cumsum(rng.normal(0, 0.0002, n))
+    frame = pd.DataFrame({
+        "close_bid": base,
+        "low_bid": base - rng.uniform(0.0001, 0.0006, n),
+        "high_ask": base + rng.uniform(0.0001, 0.0006, n),
+        "close_ask": base + 0.0002,
+        "hl_first": rng.choice([1.0, -1.0, 0.0], size=n),
+    })
+    allmask = np.ones(len(frame), dtype=bool)
+    params = {"symbol": "EURUSD", "horizon": 4, "down_pips": 3.0, "rr": 1.0}
+    entries = fam.entry_indices(frame, allmask, params)
+    assert len(entries) > 0
+    gross = fam.measure_gross(frame, entries, params)
+    gross = gross[np.isfinite(gross)]
+    assert gross.size > 0
+    cand_ev = float(np.mean(gross))
+    baseline = random_entry_baseline(
+        fam, frame, params,
+        n_entries=len(entries), n_draws=100,
+        rng=np.random.default_rng(7),
+        candidate_gross_ev=cand_ev,
+    )
+    z = baseline["random_baseline_z"]
+    assert np.isnan(z) or z < 2.0
+
+
+def test_oco_asymmetric_detects_structure_on_regime_trend():
+    from scripts.mining_random_baseline import random_entry_baseline
+
+    fam = FAMILY_REGISTRY["oco_asymmetric"]
+    rng = np.random.default_rng(77)
+    n = 1000
+    flat = np.cumsum(rng.normal(0, 0.0002, n // 2))
+    trend = np.cumsum(np.full(n // 2, 0.002) + rng.normal(0, 0.0001, n // 2))
+    base = 1.10 + np.concatenate([flat, flat[-1] + trend])
+    frame = pd.DataFrame({
+        "close_bid": base,
+        "low_bid": base - rng.uniform(0.0001, 0.0003, n),
+        "high_ask": base + rng.uniform(0.0001, 0.0003, n),
+        "close_ask": base + 0.0002,
+        "hl_first": rng.choice([1.0, -1.0, 0.0], size=n),
+    })
+    regime_mask = np.zeros(n, dtype=bool)
+    regime_mask[n // 2:] = True
+    params = {"symbol": "EURUSD", "horizon": 4, "down_pips": 3.0, "rr": 2.0}
+    entries = fam.entry_indices(frame, regime_mask, params)
+    assert len(entries) > 0
+    gross = fam.measure_gross(frame, entries, params)
+    gross = gross[np.isfinite(gross)]
+    assert gross.size > 0
+    cand_ev = float(np.mean(gross))
+    baseline = random_entry_baseline(
+        fam, frame, params,
+        n_entries=len(entries), n_draws=200,
+        rng=np.random.default_rng(7),
+        candidate_gross_ev=cand_ev,
+    )
+    assert baseline["random_baseline_z"] > 2.0
+
+
+def test_run_length_counts_consecutive_same_sign():
+    from scripts.run_tick_opportunity_mining import _run_length
+
+    frame = pd.DataFrame({"ret1_pips": [0.3, 0.1, 0.2, -0.1, -0.4, 0.2]})
+    run_len, run_sign = _run_length(frame)
+    np.testing.assert_array_equal(run_len, [1, 2, 3, 1, 2, 1])
+    np.testing.assert_array_equal(run_sign, [1, 1, 1, -1, -1, 1])
+
+
+def test_run_length_zero_return_breaks_run():
+    from scripts.run_tick_opportunity_mining import _run_length
+
+    frame = pd.DataFrame({"ret1_pips": [0.3, 0.0, 0.2, 0.1]})
+    run_len, run_sign = _run_length(frame)
+    np.testing.assert_array_equal(run_len, [1, 0, 1, 2])
+    np.testing.assert_array_equal(run_sign, [1, 0, 1, 1])
+
+
+def test_directional_run_family_grid_buckets_and_bet_symmetry():
+    fam = FAMILY_REGISTRY["directional_run"]
+    assert fam.name == "directional_run"
+    grid = fam.param_grid({"horizons": "1,2"})
+    buckets = sorted({g["run_bucket"] for g in grid})
+    bets = sorted({g["bet"] for g in grid})
+    assert buckets == ["2", "3", "4", "5", "6+"]
+    assert bets == ["continuation", "reversion"]
+    assert len(grid) == 5 * 2 * 2  # buckets x bets x horizons
+
+    frame = pd.DataFrame({
+        "ret1_pips": [0.2, 0.2, 0.2, -0.1],
+        "y_fwd_pips_h1": [1.0, 2.0, 3.0, 4.0],
+    })
+    entries = np.array([1, 2])
+    cont = fam.measure_gross(
+        frame, entries,
+        {"horizon": 1, "run_bucket": "2", "bet": "continuation"},
+    )
+    rev = fam.measure_gross(
+        frame, entries,
+        {"horizon": 1, "run_bucket": "2", "bet": "reversion"},
+    )
+    np.testing.assert_allclose(cont, -rev)
+
+
+def test_directional_run_entry_indices_match_bucket():
+    fam = FAMILY_REGISTRY["directional_run"]
+    frame = pd.DataFrame({
+        "ret1_pips": [0.1] * 7,
+        "y_fwd_pips_h1": [1.0] * 7,
+    })
+    allmask = np.ones(7, dtype=bool)
+    exact3 = fam.entry_indices(
+        frame, allmask,
+        {"horizon": 1, "run_bucket": "3", "bet": "continuation"},
+    )
+    tail = fam.entry_indices(
+        frame, allmask,
+        {"horizon": 1, "run_bucket": "6+", "bet": "continuation"},
+    )
+    assert list(exact3) == [2]
+    assert list(tail) == [5]
+
+
+def test_directional_run_entry_indices_empty_when_ret1_pips_missing():
+    fam = FAMILY_REGISTRY["directional_run"]
+    frame = pd.DataFrame({"y_fwd_pips_h1": [1.0, 2.0, 3.0]})
+    allmask = np.ones(3, dtype=bool)
+    entries = fam.entry_indices(
+        frame, allmask,
+        {"horizon": 1, "run_bucket": "2", "bet": "continuation"},
+    )
+    assert len(entries) == 0

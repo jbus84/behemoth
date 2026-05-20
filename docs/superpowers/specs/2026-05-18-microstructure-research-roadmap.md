@@ -113,8 +113,8 @@ and the no-touch rate vary across regimes, unlike first-touch direction.
 | # | Sub-project | Spec | Plan | Status |
 |---|---|---|---|---|
 | 0 | Mining family framework + random-entry baseline | [design](2026-05-18-mining-family-framework-design.md) | [plan](../plans/2026-05-18-mining-family-framework.md) | Planned |
-| 1 | Asymmetric barriers | — | — | Blocked on 0 |
-| 2 | Consecutive-move persistence | — | — | Blocked on 0 |
+| 1 | Asymmetric barriers | [design](2026-05-18-asymmetric-barriers-design.md) | [plan](../plans/2026-05-18-cheap-mining-families.md) | Planned |
+| 2 | Consecutive-move persistence | [design](2026-05-18-consecutive-persistence-design.md) | [plan](../plans/2026-05-18-cheap-mining-families.md) | Planned |
 | 3 | Double-touch / liquidity sweep | [design](2026-05-18-double-touch-sweep-design.md) | — | Specced |
 | 4 | Pullback continuation | [design](2026-05-18-pullback-continuation-design.md) | [plan](../plans/2026-05-18-pullback-continuation.md) | Planned |
 | 5 | No-touch / sell-the-range | [design](2026-05-19-no-touch-sell-range-design.md) | [plan](../plans/2026-05-19-no-touch-sell-range.md) | Planned |

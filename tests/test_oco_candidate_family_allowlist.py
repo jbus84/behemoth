@@ -11,7 +11,7 @@ the registry directly.
 """
 from __future__ import annotations
 
-ALLOWED_OCO_FAMILIES = {"oco_first_touch"}
+ALLOWED_OCO_FAMILIES = {"oco_first_touch", "oco_asymmetric"}
 
 
 def test_mining_family_definitions_are_allowlisted() -> None:
