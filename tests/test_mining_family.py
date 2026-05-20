@@ -13,6 +13,12 @@ def test_resolve_families_maps_legacy_library_type():
     assert resolve_families("separate") == ["oco_first_touch", "directional"]
 
 
+def test_resolve_families_all_includes_every_registered_family():
+    families = resolve_families("all")
+    assert set(families) == set(FAMILY_REGISTRY)
+    assert len(families) == len(set(families)), "no duplicates"
+
+
 def test_resolve_families_rejects_unknown():
     with pytest.raises(ValueError, match="unknown"):
         resolve_families("nonsense")

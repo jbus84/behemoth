@@ -67,6 +67,15 @@ _LIBRARY_TYPE_ALIASES: dict[str, list[str]] = {
     "pullback": ["pullback"],
     "no_touch": ["no_touch"],
     "separate": ["oco_first_touch", "directional"],
+    "all": [
+        "oco_first_touch",
+        "oco_asymmetric",
+        "directional",
+        "directional_run",
+        "double_touch",
+        "pullback",
+        "no_touch",
+    ],
 }
 
 

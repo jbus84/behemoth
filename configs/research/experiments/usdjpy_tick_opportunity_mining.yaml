@@ -13,7 +13,7 @@ test_year: 2025
 # Gross-first opportunity mining (for downstream ML filtering)
 min_annual_fills: 5000
 gross_metric: mean
-library_type: separate
+library_type: all
 
 out_dir: data/analysis/tick_opportunity_mining
 report_out: docs/analysis/usdjpy_tick_opportunity_mining_report.md

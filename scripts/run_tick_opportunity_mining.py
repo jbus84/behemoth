@@ -1254,13 +1254,13 @@ def run(
     if gross_metric not in {"mean", "median"}:
         raise ValueError("gross_metric must be mean|median")
     if library_type not in {
-        "separate", "directional", "directional_run",
+        "all", "separate", "directional", "directional_run",
         "oco", "oco_asymmetric",
         "double_touch", "pullback", "no_touch",
     }:
         raise ValueError(
             "library_type must be "
-            "separate|directional|directional_run|"
+            "all|separate|directional|directional_run|"
             "oco|oco_asymmetric|"
             "double_touch|pullback|no_touch"
         )
