@@ -516,6 +516,129 @@ def _oco_precompute_candidates(
     }
 
 
+def _oco_asymmetric_precompute(
+    frame: pd.DataFrame,
+    *,
+    symbol: str,
+    horizon: int,
+    up_pips: float,
+    down_pips: float,
+) -> dict[str, np.ndarray]:
+    """First-touch precompute with independently-sized up and down barriers.
+
+    Identical algorithm to _oco_precompute_candidates; only the two barrier
+    thresholds differ. With up_pips == down_pips the output is identical to
+    the symmetric engine.
+    """
+    load_bar_frame(
+        frame,
+        required=["close_bid", "low_bid", "high_ask", "close_ask"],
+    )
+    close_bid = pd.to_numeric(frame["close_bid"], errors="coerce").to_numpy(dtype=float)
+    low_bid = pd.to_numeric(frame["low_bid"], errors="coerce").to_numpy(dtype=float)
+    high_ask = pd.to_numeric(frame["high_ask"], errors="coerce").to_numpy(dtype=float)
+    close_ask = pd.to_numeric(frame["close_ask"], errors="coerce").to_numpy(dtype=float)
+    hlf = pd.to_numeric(frame["hl_first"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
+
+    h = int(horizon)
+    n_eff = len(frame) - 2 * h
+    if n_eff <= 100:
+        return {}
+
+    pip = float(_pip_size(symbol))
+    inf = h + 1
+    i0 = np.arange(n_eff, dtype=np.int64)
+    buy_ref = close_ask[i0]
+    sell_ref = close_bid[i0]
+    valid = np.isfinite(buy_ref) & np.isfinite(sell_ref)
+    i0 = i0[valid]
+    buy_ref = buy_ref[valid]
+    sell_ref = sell_ref[valid]
+    up_thr = buy_ref + float(up_pips) * pip
+    dn_thr = sell_ref - float(down_pips) * pip
+    up_step = np.full(len(i0), inf, dtype=np.int32)
+    dn_step = np.full(len(i0), inf, dtype=np.int32)
+    any_up = np.zeros(len(i0), dtype=bool)
+    any_dn = np.zeros(len(i0), dtype=bool)
+    for s in range(1, h + 1):
+        idx = i0 + int(s)
+        hu = high_ask[idx] >= up_thr
+        hd = low_bid[idx] <= dn_thr
+        set_up = (up_step == inf) & hu
+        set_dn = (dn_step == inf) & hd
+        up_step[set_up] = int(s)
+        dn_step[set_dn] = int(s)
+        any_up |= hu
+        any_dn |= hd
+    side = np.zeros(len(i0), dtype=np.int8)
+    side[up_step < dn_step] = 1
+    side[dn_step < up_step] = -1
+    same = (up_step == dn_step) & (up_step <= h)
+    if np.any(same):
+        same_idx = np.flatnonzero(same)
+        tie_idx = i0[same_idx] + up_step[same_idx].astype(np.int64)
+        tie_hlf = hlf[tie_idx]
+        side[same_idx[tie_hlf > 0]] = 1
+        side[same_idx[tie_hlf < 0]] = -1
+    decided = side != 0
+    both = any_up & any_dn
+    touch_step = np.minimum(up_step, dn_step).astype(float)
+    touch_step[~decided] = np.nan
+    gross = np.full(len(i0), np.nan, dtype=float)
+    touch_i = np.minimum(up_step, dn_step).astype(np.int64, copy=False)
+    entry_i = i0 + touch_i
+    exit_i = i0 + touch_i + int(h)
+    ok = decided & (exit_i < len(close_bid))
+    if np.any(ok):
+        ok_idx = np.flatnonzero(ok)
+        exit_price_use = np.where(
+            side[ok_idx] == -1,
+            close_ask[exit_i[ok_idx]],
+            close_bid[exit_i[ok_idx]],
+        )
+        entry_price_use = np.where(
+            side[ok_idx] == -1,
+            close_bid[entry_i[ok_idx]],
+            close_ask[entry_i[ok_idx]],
+        )
+        num_ok = np.isfinite(exit_price_use) & np.isfinite(entry_price_use)
+        use = ok_idx[num_ok]
+        if len(use) > 0:
+            gross[use] = side[use].astype(float) * (
+                (exit_price_use[num_ok] - entry_price_use[num_ok]) / pip
+            )
+    return {
+        "i0": i0,
+        "gross": gross,
+        "side": side,
+        "both_touched_lookahead": both,
+        "decided": decided,
+        "touch_step": touch_step,
+    }
+
+
+def _run_length(frame: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+    """Per-bar consecutive same-sign run of ret1_pips.
+
+    Returns (run_len, run_sign): run_len[i] counts consecutive preceding bars
+    (including i) with the same non-zero sign of ret1_pips; run_sign[i] is
+    that sign (+1/-1, or 0 when ret1_pips is zero, which also resets the run).
+    """
+    ret = pd.to_numeric(frame["ret1_pips"], errors="coerce").to_numpy(dtype=float)
+    sign = np.sign(np.nan_to_num(ret)).astype(np.int8)
+    n = len(sign)
+    if n == 0:
+        return np.zeros(0, dtype=np.int64), np.zeros(0, dtype=np.int8)
+    change = np.empty(n, dtype=bool)
+    change[0] = True
+    change[1:] = sign[1:] != sign[:-1]
+    starts = np.where(change, np.arange(n), 0)
+    last_start = np.maximum.accumulate(starts)
+    run_len = (np.arange(n) - last_start + 1).astype(np.int64)
+    run_len[sign == 0] = 0
+    return run_len, sign
+
+
 def _double_touch_precompute(
     frame: pd.DataFrame,
     *,
@@ -1118,7 +1241,7 @@ def _mine_frame_pair(
 
 def run(
     cfg: dict[str, Any],
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, list[dict[str, Any]]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, list[dict[str, Any]]]:
     symbol = str(cfg["symbol"]).upper().strip()
     dataset_dir = Path(str(cfg["dataset_dir"]))
     bar_ticks_grid = _parse_ints(str(cfg["bar_ticks_grid"]))
@@ -1131,11 +1254,15 @@ def run(
     if gross_metric not in {"mean", "median"}:
         raise ValueError("gross_metric must be mean|median")
     if library_type not in {
-        "separate", "directional", "oco", "double_touch", "pullback", "no_touch"
+        "separate", "directional", "directional_run",
+        "oco", "oco_asymmetric",
+        "double_touch", "pullback", "no_touch",
     }:
         raise ValueError(
             "library_type must be "
-            "separate|directional|oco|double_touch|pullback|no_touch"
+            "separate|directional|directional_run|"
+            "oco|oco_asymmetric|"
+            "double_touch|pullback|no_touch"
         )
 
     family_names = resolve_families(library_type)
@@ -1187,10 +1314,12 @@ def run(
 
     directional = pd.DataFrame(
         per_family_rows.get("directional", [])
+        + per_family_rows.get("directional_run", [])
         + per_family_rows.get("double_touch", [])
         + per_family_rows.get("pullback", [])
     )
     oco = pd.DataFrame(per_family_rows.get("oco_first_touch", []))
+    oco_asymmetric = pd.DataFrame(per_family_rows.get("oco_asymmetric", []))
     no_touch = pd.DataFrame(per_family_rows.get("no_touch", []))
     if not directional.empty:
         directional = _assign_quality_tier(directional, library="directional")
@@ -1198,11 +1327,14 @@ def run(
     if not oco.empty:
         oco = _assign_quality_tier(oco, library="oco")
         oco = _stamp_candidate_contract(oco)
+    if not oco_asymmetric.empty:
+        oco_asymmetric = _assign_quality_tier(oco_asymmetric, library="oco")
+        oco_asymmetric = _stamp_candidate_contract(oco_asymmetric)
     if not no_touch.empty:
         no_touch = _assign_quality_tier(no_touch, library="no_touch")
         no_touch = _stamp_candidate_contract(no_touch)
     summary = _build_summary(directional, oco, no_touch)
-    return directional, oco, no_touch, summary, all_fills
+    return directional, oco, oco_asymmetric, no_touch, summary, all_fills
 
 
 def main() -> None:
@@ -1227,7 +1359,7 @@ def main() -> None:
     args = p.parse_args()
 
     cfg = _merge_config(args)
-    directional, oco, no_touch, summary, fills = run(cfg)
+    directional, oco, oco_asymmetric, no_touch, summary, fills = run(cfg)
 
     out_dir = Path(str(cfg["out_dir"]))
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1235,15 +1367,18 @@ def main() -> None:
 
     d_path = out_dir / f"{symbol}_directional_candidates.csv"
     o_path = out_dir / f"{symbol}_oco_candidates.csv"
+    oa_path = out_dir / f"{symbol}_oco_asymmetric_candidates.csv"
     nt_path = out_dir / f"{symbol}_no_touch_candidates.csv"
     s_path = out_dir / f"{symbol}_candidate_summary.csv"
     directional.to_csv(d_path, index=False)
     oco.to_csv(o_path, index=False)
+    oco_asymmetric.to_csv(oa_path, index=False)
     no_touch.to_csv(nt_path, index=False)
     summary.to_csv(s_path, index=False)
     fills_path = write_candidate_fills(fills, out_dir, symbol)
     print(f"wrote: {d_path}")
     print(f"wrote: {o_path}")
+    print(f"wrote: {oa_path}")
     print(f"wrote: {nt_path}")
     print(f"wrote: {s_path}")
     print(f"wrote: {fills_path}")
