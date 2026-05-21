@@ -62,6 +62,7 @@ endef
 .PHONY: stage0 stage1 stage2 stage3 stage4 stage5 stage6 stage7 stage8 stage9 \
         stage10 stage11 stage12 stage13 stage14 \
         onboard-symbol retrain-all rebuild-all audit-all \
+        clean-data clean-mining-outputs \
         freeze-oco freeze-oco-history freeze-oco-dukascopy-candidate validate-oco-history \
         stage12-api-parity stage12-stage13-cert-artifacts local-jforex-parity local-jforex-parity-matrix \
         local-jforex-parity-ordinal local-jforex-parity-spotlight local-jforex-cert \
@@ -187,6 +188,7 @@ onboard-symbol:
 	uv run python scripts/onboard_symbol.py --symbol $(SYMBOL) --months $(MONTHS) $(ONBOARD_FLAGS)
 
 retrain-all:
+	@if [ -z "$(SKIP_CLEAN)" ]; then $(MAKE) clean-mining-outputs; else echo "SKIP_CLEAN set — keeping existing Stage 2-5 outputs"; fi
 	@echo "══════════════════════════════════════════"
 	@echo "  Retraining all symbols (Stages 2-5)    "
 	@echo "══════════════════════════════════════════"
@@ -218,6 +220,12 @@ clean-data:
 	@echo "Cleaning data/ (raw ticks at $$HOME/Desktop/dukascopy_ticks are kept)"
 	rm -rf data
 	mkdir -p data
+
+clean-mining-outputs:
+	@echo "Cleaning Stage 2-5 outputs under data/analysis/tick_opportunity_mining/ (Stage 0-1 tick_velocity is kept)"
+	rm -rf data/analysis/tick_opportunity_mining
+	rm -rf data/analysis/tick_opportunity_mining_dukascopy_candidate
+	mkdir -p data/analysis/tick_opportunity_mining
 
 rebuild-all:
 	@test -n "$(MONTHS)" || (echo "error: MONTHS required, e.g. make rebuild-all MONTHS=201801-202602" && exit 1)
@@ -741,8 +749,10 @@ help:
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage13" "Alias for stage13-dukascopy-cert"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage14" "Alias for stage14-jforex-cert"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "onboard-symbol" "Onboard a single symbol (SYMBOL=... MONTHS=... required)"
-	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "retrain-all" "Re-run ML pipeline + docs for all symbols (skip data download)"
-	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "rebuild-all" "Full rebuild: data + ML + docs for all symbols (MONTHS=... required)"
+	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "retrain-all" "Re-run ML pipeline + docs for all symbols (skip data download; cleans Stage 2-5 outputs first unless SKIP_CLEAN set)"
+	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "rebuild-all" "Full rebuild: data + ML + docs for all symbols (MONTHS=... required; wipes data/ unless SKIP_CLEAN set)"
+	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "clean-mining-outputs" "Wipe Stage 2-5 outputs under data/analysis/tick_opportunity_mining/ (Stage 0-1 tick_velocity kept)"
+	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "clean-data" "Wipe entire data/ folder (raw Dukascopy ticks at ~/Desktop/dukascopy_ticks kept)"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "audit-all" "Run core OCO pipeline audits"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "freeze-oco" "Verify API parity, refreeze governance locks, run audits"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "freeze-oco-history" "Freeze month-scoped historical governance locks for replay/backtests"
