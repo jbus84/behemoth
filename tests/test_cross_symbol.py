@@ -321,3 +321,42 @@ def test_rolling_pca_factor_rejects_insufficient_min_periods():
     # min_periods=5 < 6 columns -> full-rank covariance impossible.
     with pytest.raises(ValueError, match="min_periods.*must be >=.*columns"):
         _rolling_pca_factor(mat, window=50, min_periods=5)
+
+
+def test_load_peer_ret_z_returns_only_close_ts_and_ret_z(tmp_path: Path):
+    """_load_peer_ret_z is the lightweight peer loader: it must return
+    a 2-column frame (close_ts + ret_z) regardless of how many columns
+    the source parquet carries. Critical for ≤8 GB machines that can
+    not afford a full _prepare_frame peer load."""
+    from scripts.cross_symbol import _load_peer_ret_z
+    from tests.test_tick_opportunity_mining import _build_synth_tick_velocity
+
+    path = tmp_path / "EURUSD_1000tick_velocity.parquet"
+    _build_synth_tick_velocity(path, symbol="EURUSD")
+    peer = _load_peer_ret_z(path, "EURUSD")
+    assert list(peer.columns) == ["close_ts", "ret_z"]
+    assert len(peer) > 0
+    assert np.issubdtype(peer["ret_z"].dtype, np.floating)
+
+
+def test_load_peer_ret_z_matches_prepare_frame_ret_z(tmp_path: Path):
+    """Lightweight peer load must produce the same ret_z values as the
+    full _prepare_frame path — this is what guarantees that switching
+    build_cross_symbol_frame to stream peers yields identical output."""
+    from scripts.cross_symbol import _load_peer_ret_z
+    from scripts.run_tick_opportunity_mining import _prepare_frame
+    from tests.test_tick_opportunity_mining import _build_synth_tick_velocity
+
+    path = tmp_path / "EURUSD_1000tick_velocity.parquet"
+    _build_synth_tick_velocity(path, symbol="EURUSD")
+    full = _prepare_frame(path, symbol="EURUSD", horizons=[1, 2, 3])
+    peer = _load_peer_ret_z(path, "EURUSD")
+    full_idx = full.set_index("close_ts")["ret_z"]
+    peer_idx = peer.set_index("close_ts")["ret_z"]
+    common = full_idx.index.intersection(peer_idx.index)
+    assert len(common) > 0
+    np.testing.assert_allclose(
+        peer_idx.reindex(common).to_numpy(dtype=float),
+        full_idx.reindex(common).to_numpy(dtype=float),
+        rtol=1e-9, atol=1e-12, equal_nan=True,
+    )
