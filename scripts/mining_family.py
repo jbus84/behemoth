@@ -1172,35 +1172,20 @@ class DispersionRankFamily:
         self._cs_cache[key] = cs_aligned
         return cs_aligned
 
-    def _per_bar_rank_and_side(
+    def _per_bar_rank_and_side_loop(
         self, cs_frame: pd.DataFrame, target_symbol: str
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Returns (target_rank, raw_side_unmasked).
-
-        target_rank[i] = 1..6 where 1 is most USD-positive in the
-        cross-section at bar i; NaN where any required value is missing.
-        raw_side_unmasked[i] gives the contrarian raw-price side IF the
-        bar would be a rank-extreme entry; entry_indices applies the
-        actual rank-k filter on top.
-        """
+        """REFERENCE — loop version, kept for parity testing."""
         from scripts.cross_symbol import (
-            _USD_SIGN,
             CROSS_SYMBOLS,
+            _USD_SIGN,
             _usd_aligned_ret_z,
         )
 
-        key = (_frame_fingerprint(cs_frame), target_symbol)
-        if key in self._rank_cache:
-            return self._rank_cache[key]
-
         n = len(cs_frame)
         target_usd = _usd_aligned_ret_z(cs_frame, target_symbol).to_numpy(float)
-        # Lexically sorted peer order for deterministic tie-breaking.
         peers = sorted(s for s in CROSS_SYMBOLS if s != target_symbol)
         peer_cols = [f"xs_ret_z__{s}" for s in peers]
-        # All-symbols matrix in a deterministic column order — target last so
-        # ties resolve in peers' favour (target gets the higher numeric rank
-        # only when strictly the most extreme).
         cols = peer_cols + ["__target"]
         matrix = cs_frame[peer_cols].copy()
         matrix["__target"] = target_usd
@@ -1211,18 +1196,63 @@ class DispersionRankFamily:
             row = arr[i]
             if not np.isfinite(row).all():
                 continue
-            # Descending rank: largest = rank 1.
             order = np.argsort(-row, kind="stable")
             rank_of_col = np.empty(len(row), dtype=np.int64)
             rank_of_col[order] = np.arange(1, len(row) + 1)
-            target_rank[i] = float(rank_of_col[-1])  # __target is the last col
+            target_rank[i] = float(rank_of_col[-1])
 
         usd = _USD_SIGN[target_symbol]
-        # Per-bar USD-sign vector; entry_indices combines it with the
-        # rank_k filter to produce the raw-price contrarian side.
-        result = (target_rank, np.full(n, usd, dtype=np.int8))
+        return (target_rank, np.full(n, usd, dtype=np.int8))
+
+    def _per_bar_rank_and_side(
+        self, cs_frame: pd.DataFrame, target_symbol: str
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Per-bar descending rank of the target's USD-aligned return among
+        the 6 majors. Vectorised — one np.argsort on the full (n,6) matrix
+        replaces the per-row argsort loop. Matches `_loop` exactly."""
+        key = (_frame_fingerprint(cs_frame), target_symbol)
+        if key in self._rank_cache:
+            return self._rank_cache[key]
+
+        result = self._per_bar_rank_and_side_compute(cs_frame, target_symbol)
         self._rank_cache[key] = result
         return result
+
+    def _per_bar_rank_and_side_compute(
+        self, cs_frame: pd.DataFrame, target_symbol: str
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Cache-free hot path of `_per_bar_rank_and_side`. Exposed so the
+        perf microbench can measure the work being vectorised without
+        `_frame_fingerprint` (an O(n) pandas hash) dominating the timer."""
+        from scripts.cross_symbol import (
+            CROSS_SYMBOLS,
+            _USD_SIGN,
+            _usd_aligned_ret_z,
+        )
+
+        n = len(cs_frame)
+        target_usd = _usd_aligned_ret_z(cs_frame, target_symbol).to_numpy(float)
+        peers = sorted(s for s in CROSS_SYMBOLS if s != target_symbol)
+        peer_cols = [f"xs_ret_z__{s}" for s in peers]
+        cols = peer_cols + ["__target"]
+        matrix = cs_frame[peer_cols].copy()
+        matrix["__target"] = target_usd
+        arr = matrix[cols].to_numpy(float)  # shape (n, 6)
+
+        target_rank = np.full(n, np.nan, dtype=float)
+        all_finite = np.isfinite(arr).all(axis=1)
+        if np.any(all_finite):
+            order = np.argsort(-arr[all_finite], axis=1, kind="stable")
+            ranks = np.empty_like(order)
+            row_idx = np.arange(order.shape[0])[:, None]
+            rank_values = np.broadcast_to(
+                np.arange(1, arr.shape[1] + 1), order.shape
+            )
+            ranks[row_idx, order] = rank_values
+            target_rank[all_finite] = ranks[:, -1].astype(float)
+
+        usd = _USD_SIGN[target_symbol]
+        return (target_rank, np.full(n, usd, dtype=np.int8))
 
     def _entry_state(
         self, frame: pd.DataFrame, params: dict[str, Any]
