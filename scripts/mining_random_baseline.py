@@ -48,6 +48,9 @@ def random_entry_baseline(
 
     n_draws = int(n_draws)
     n_entries = int(n_entries)
+    # Per-row rng.choice loop is load-bearing: a 2D `size` with replace=False
+    # would enforce global uniqueness across the whole output, not per-draw
+    # uniqueness. Do not vectorise this loop.
     draws = np.stack([
         rng.choice(n_rows, size=n_entries, replace=False)
         for _ in range(n_draws)
@@ -57,12 +60,13 @@ def random_entry_baseline(
         dtype=float,
     )
     if gross_flat.shape[0] != n_draws * n_entries:
-        print(
-            f"warning: family {getattr(family, 'name', '?')!r} returned "
-            f"gross of length {gross_flat.shape[0]} for "
-            f"{n_draws * n_entries} entries; baseline skipped"
+        raise ValueError(
+            f"MiningFamily {getattr(family, 'name', '?')!r}.measure_gross returned "
+            f"length {gross_flat.shape[0]} for {n_draws * n_entries} entries — "
+            f"this violates the family protocol (measure_gross must return "
+            f"len(entries) floats). This is a bug in the family implementation; "
+            f"do not silently mask."
         )
-        return nan_result
     gross_per_draw = gross_flat.reshape(n_draws, n_entries)
     finite_mask = np.isfinite(gross_per_draw)
     finite_counts = finite_mask.sum(axis=1)
