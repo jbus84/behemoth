@@ -954,7 +954,6 @@ class DollarFactorResidualFamily:
 
         r = _usd_aligned_ret_z(cs_frame, target_symbol).to_numpy(dtype=float)
         m = pd.to_numeric(cs_frame["mkt_loo"], errors="coerce").to_numpy(dtype=float)
-        n = len(r)
         w = int(window)
         min_obs = max(w // 4, 20)
 
@@ -1177,8 +1176,8 @@ class DispersionRankFamily:
     ) -> tuple[np.ndarray, np.ndarray]:
         """REFERENCE — loop version, kept for parity testing."""
         from scripts.cross_symbol import (
-            CROSS_SYMBOLS,
             _USD_SIGN,
+            CROSS_SYMBOLS,
             _usd_aligned_ret_z,
         )
 
@@ -1225,8 +1224,8 @@ class DispersionRankFamily:
         perf microbench can measure the work being vectorised without
         `_frame_fingerprint` (an O(n) pandas hash) dominating the timer."""
         from scripts.cross_symbol import (
-            CROSS_SYMBOLS,
             _USD_SIGN,
+            CROSS_SYMBOLS,
             _usd_aligned_ret_z,
         )
 

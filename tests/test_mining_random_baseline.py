@@ -147,6 +147,7 @@ def test_random_entry_baseline_batched_is_at_least_3x_faster():
 
     import numpy as np
     import pandas as pd
+
     from scripts.mining_family import FAMILY_REGISTRY
     from scripts.mining_random_baseline import random_entry_baseline
 
