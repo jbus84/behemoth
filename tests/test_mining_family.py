@@ -98,6 +98,43 @@ def test_directional_family_candidate_metadata():
     assert meta["ml_ready_target_type"] == "directional"
 
 
+def test_directional_inverse_family_negates_gross_vs_directional():
+    """Same entries, opposite sign. Catches accidental refactors of the
+    contrarian semantics."""
+    base = FAMILY_REGISTRY["directional"]
+    inv = FAMILY_REGISTRY["directional_inverse"]
+    frame = pd.DataFrame({
+        "y_fwd_pips_h1": [1.0, -2.0, 3.0, -4.0],
+        "_dir_side_h1": np.array([1, 1, -1, -1], dtype=np.int8),
+    })
+    entries = np.array([0, 1, 2])
+    g_base = base.measure_gross(frame, entries, {"horizon": 1})
+    g_inv = inv.measure_gross(frame, entries, {"horizon": 1})
+    np.testing.assert_allclose(g_inv, -g_base)
+
+
+def test_directional_inverse_shares_entry_universe_with_directional():
+    base = FAMILY_REGISTRY["directional"]
+    inv = FAMILY_REGISTRY["directional_inverse"]
+    frame = pd.DataFrame({
+        "y_fwd_pips_h1": [1.0, 2.0, 3.0, 4.0, 5.0],
+        "_dir_side_h1": np.array([1, 0, -1, 1, -1], dtype=np.int8),
+    })
+    regime_mask = np.array([True, True, False, True, True])
+    np.testing.assert_array_equal(
+        base.entry_indices(frame, regime_mask, {"horizon": 1}),
+        inv.entry_indices(frame, regime_mask, {"horizon": 1}),
+    )
+
+
+def test_directional_inverse_candidate_metadata():
+    fam = FAMILY_REGISTRY["directional_inverse"]
+    meta = fam.candidate_metadata("ny_overlap", {"horizon": 5})
+    assert meta["family"] == "directional_inverse"
+    assert meta["state_id"] == "directional_inverse__ny_overlap__h5"
+    assert meta["ml_ready_target_type"] == "directional_inverse"
+
+
 def test_oco_family_registered_with_barrier_param_grid():
     from scripts.mining_family import FAMILY_REGISTRY
 
