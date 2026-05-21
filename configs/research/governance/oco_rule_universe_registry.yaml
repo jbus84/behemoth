@@ -1,5 +1,5 @@
-registry_version: 1
-effective_from_utc: "2026-02-27T00:00:00Z"
+registry_version: 2
+effective_from_utc: "2026-05-21T00:00:00Z"
 symbols:
   - EURUSD
   - GBPUSD
@@ -12,6 +12,7 @@ allowed_families:
 allowed_barrier_keep:
   - 2
   - 3
+  - 5
 allowed_horizon_keep:
   - 5
   - 6
@@ -25,8 +26,17 @@ locked_runtime_contract:
   execution_quantile: 0.9
 change_control:
   owner: research_lead
-  ticket: OCO-GOV-001
+  ticket: OCO-GOV-002
   rationale: >
-    Freeze rule-family universe used by reduced-core and governance lock so
-    research selection cannot silently expand.
-hash_sha256: "0511e4c57404096a89d4499784e972bf62ca3e2845f629e60cb36417be0e9912"
+    Widen allowed_barrier_keep from [2, 3] to [2, 3, 5] so 5-pip barriers
+    become eligible for selection. The 2026-05-20 rebuild observed that
+    [2, 3] was so restrictive only EURUSD exported a model; non-EURUSD
+    symbols had every candidate filtered out at the barrier_keep gate.
+    Barrier 5 is already in the mining grid (2, 3, 5, 8, 10) and
+    structurally well-tested. Adding 5 alone — not the full grid — keeps
+    per-fill bleed manageable for current execution costs.
+  prior_versions:
+    - version: 1
+      hash_sha256: "0511e4c57404096a89d4499784e972bf62ca3e2845f629e60cb36417be0e9912"
+      ticket: OCO-GOV-001
+hash_sha256: "c88c0c3c3529cdf60710a8147850f5d0d6a0cc5ec55baf9ce5094219ba3111ec"

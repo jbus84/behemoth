@@ -6,7 +6,7 @@ pred_path: data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/USDCAD_oc
 
 # Reduced-core policy
 family_keep: oco_first_touch
-barrier_keep: "2,3"
+barrier_keep: "2,3,5"
 horizon_keep: "5,6"
 locked_quantile: 0.9
 selection_mode: auto
