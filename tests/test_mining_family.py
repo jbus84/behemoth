@@ -937,3 +937,90 @@ def test_directional_run_entry_indices_empty_when_ret1_pips_missing():
         {"horizon": 1, "run_bucket": "2", "bet": "continuation"},
     )
     assert len(entries) == 0
+
+
+# ---------------------------------------------------------------------------
+# Cross-symbol family A: dollar_residual
+# ---------------------------------------------------------------------------
+
+
+def test_dollar_residual_family_registered_and_aliased():
+    from scripts.mining_family import _LIBRARY_TYPE_ALIASES
+
+    fam = FAMILY_REGISTRY["dollar_residual"]
+    assert fam.name == "dollar_residual"
+    grid = fam.param_grid({"horizons": "1,2"})
+    windows = sorted({g["residual_window"] for g in grid})
+    thresholds = sorted({g["threshold_z"] for g in grid})
+    assert windows == [200, 500]
+    assert thresholds == [1.5, 2.0, 2.5, 3.0]
+    assert len(grid) == 2 * 4 * 2  # windows x thresholds x horizons
+    assert "dollar_residual" in _LIBRARY_TYPE_ALIASES["all"]
+
+
+def test_dollar_residual_candidate_metadata():
+    fam = FAMILY_REGISTRY["dollar_residual"]
+    meta = fam.candidate_metadata(
+        "london",
+        {"residual_window": 500, "threshold_z": 2.0, "horizon": 3},
+    )
+    assert meta["family"] == "dollar_residual"
+    assert meta["state_id"] == "dollar_residual__london__w500_z2.0"
+    assert meta["ml_ready_target_type"] == "dollar_residual"
+    assert "window=500" in meta["regime_desc"]
+    assert "z=2.0" in meta["regime_desc"]
+
+
+def test_dollar_residual_no_op_without_context():
+    """Without the orchestrator's `_dataset_dir`/`_horizons` injection
+    (or with a target outside CROSS_SYMBOLS), the family is a no-op rather
+    than crashing — preserves contract with ad-hoc callers."""
+    fam = FAMILY_REGISTRY["dollar_residual"]
+    frame = pd.DataFrame({
+        "y_fwd_pips_h1": [1.0] * 10,
+        "close_ts": pd.to_datetime(np.arange(10), unit="s", utc=True),
+    })
+    regime = np.ones(10, dtype=bool)
+    params = {
+        "symbol": "EURUSD", "bar_ticks": 1000,
+        "horizon": 1, "residual_window": 200, "threshold_z": 2.0,
+    }
+    assert len(fam.entry_indices(frame, regime, params)) == 0
+    assert len(fam.measure_gross(frame, np.array([], dtype=np.int64), params)) == 0
+
+
+def test_dollar_residual_end_to_end_runs(tmp_path):
+    """End-to-end: with the 6-symbol synth fixture + injected context, the
+    rolling regression executes without error. Smoke-only — synthetic
+    random-walk inputs aren't expected to consistently produce signal."""
+    from scripts.cross_symbol import CROSS_SYMBOLS
+    from tests.test_tick_opportunity_mining import _build_synth_tick_velocity
+
+    dataset_dir = tmp_path / "tick_velocity"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    for sym in CROSS_SYMBOLS:
+        _build_synth_tick_velocity(
+            dataset_dir / f"{sym}_1000tick_velocity.parquet", symbol=sym,
+        )
+
+    from scripts.run_tick_opportunity_mining import _prepare_frame
+    fam = FAMILY_REGISTRY["dollar_residual"]
+    fam.clear_cache()
+    frame = _prepare_frame(
+        dataset_dir / "EURUSD_1000tick_velocity.parquet",
+        symbol="EURUSD",
+        horizons=[1, 2, 3],
+    )
+    regime = np.ones(len(frame), dtype=bool)
+    params = {
+        "symbol": "EURUSD", "bar_ticks": 1000,
+        "horizon": 1, "residual_window": 200, "threshold_z": 1.5,
+        "_dataset_dir": str(dataset_dir),
+        "_horizons": [1, 2, 3],
+    }
+    entries = fam.entry_indices(frame, regime, params)
+    # Smoke: path executed; entries may or may not exist on random-walk data.
+    assert isinstance(entries, np.ndarray)
+    if len(entries) > 0:
+        gross = fam.measure_gross(frame, entries, params)
+        assert len(gross) == len(entries)
