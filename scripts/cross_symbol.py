@@ -144,6 +144,46 @@ def _add_market_measures(
     return out
 
 
+# Module-level cache of the assembled cross-symbol frame, shared across
+# all 3 cross-symbol families. Keyed by (target_symbol, bar_ticks).
+# Each cross-symbol family used to keep its OWN _cs_cache dict, which
+# meant the same (symbol, bar_ticks) cs_frame was built and held 3×
+# (once per family) — wasting ~10 GB on a 3-bar_ticks run.
+#
+# Orchestrators MUST call `clear_cross_symbol_frame_cache()` between
+# bar_ticks iterations or the cache grows unboundedly across the
+# bar_ticks_grid sweep.
+_BUILT_CS_FRAME_CACHE: dict[tuple[str, int], pd.DataFrame] = {}
+
+
+def get_or_build_cross_symbol_frame(
+    target_symbol: str,
+    bar_ticks: int,
+    dataset_dir: Path,
+    horizons: list[int],
+) -> pd.DataFrame:
+    """Cached entry point for build_cross_symbol_frame.
+
+    Returns the cached cs_frame for (target_symbol, bar_ticks) if present;
+    otherwise builds, caches, and returns. All 3 cross-symbol families
+    share one cs_frame per (symbol, bar_ticks) instead of each holding
+    their own copy."""
+    key = (str(target_symbol).upper(), int(bar_ticks))
+    cached = _BUILT_CS_FRAME_CACHE.get(key)
+    if cached is not None:
+        return cached
+    cs = build_cross_symbol_frame(target_symbol, bar_ticks, dataset_dir, horizons)
+    _BUILT_CS_FRAME_CACHE[key] = cs
+    return cs
+
+
+def clear_cross_symbol_frame_cache() -> None:
+    """Drop the shared cs_frame cache. Orchestrators MUST call this
+    between bar_ticks iterations to let the GC free the previous
+    bar_ticks's cs_frame before the next one is built."""
+    _BUILT_CS_FRAME_CACHE.clear()
+
+
 def _load_peer_ret_z(path: Path, symbol: str) -> pd.DataFrame:
     """Lightweight peer load: read ONLY the columns needed to derive
     ret_z and close_ts.

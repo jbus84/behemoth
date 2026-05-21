@@ -1318,6 +1318,14 @@ def run(
         for fam_name, fam_rows in pair_rows.items():
             per_family_rows[fam_name].extend(fam_rows)
         all_fills.extend(pair_fills)
+        # Drop the cross-symbol cs_frame for this bar_ticks so GC can
+        # free it before the next bar_ticks builds its own. Without
+        # this, the module-level _BUILT_CS_FRAME_CACHE accumulates one
+        # cs_frame per bar_ticks across the loop — on ≤8 GB machines
+        # that's enough to OOM by the third bar_ticks.
+        from scripts.cross_symbol import clear_cross_symbol_frame_cache
+
+        clear_cross_symbol_frame_cache()
         print(f"ok {symbol} {bt}tick")
 
     if files_found == 0:

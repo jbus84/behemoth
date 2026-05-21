@@ -339,6 +339,49 @@ def test_load_peer_ret_z_returns_only_close_ts_and_ret_z(tmp_path: Path):
     assert np.issubdtype(peer["ret_z"].dtype, np.floating)
 
 
+def test_get_or_build_cross_symbol_frame_shares_cache_across_calls(tmp_path: Path):
+    """Module-level cache: two calls with the same (symbol, bar_ticks)
+    must return the SAME object (not just equal). This is what lets the
+    3 cross-symbol families share one cs_frame instead of each holding
+    their own copy."""
+    from scripts.cross_symbol import (
+        CROSS_SYMBOLS,
+        clear_cross_symbol_frame_cache,
+        get_or_build_cross_symbol_frame,
+    )
+    from tests.test_tick_opportunity_mining import _build_synth_tick_velocity
+
+    clear_cross_symbol_frame_cache()
+    dataset_dir = tmp_path / "tick_velocity"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    for sym in CROSS_SYMBOLS:
+        _build_synth_tick_velocity(
+            dataset_dir / f"{sym}_1000tick_velocity.parquet", symbol=sym,
+        )
+    a = get_or_build_cross_symbol_frame(
+        target_symbol="EURUSD", bar_ticks=1000,
+        dataset_dir=dataset_dir, horizons=[1, 2, 3],
+    )
+    b = get_or_build_cross_symbol_frame(
+        target_symbol="EURUSD", bar_ticks=1000,
+        dataset_dir=dataset_dir, horizons=[1, 2, 3],
+    )
+    assert a is b, "second call should return the cached object, not rebuild"
+    # Different (symbol, bar_ticks) keys are separate cache entries.
+    c = get_or_build_cross_symbol_frame(
+        target_symbol="GBPUSD", bar_ticks=1000,
+        dataset_dir=dataset_dir, horizons=[1, 2, 3],
+    )
+    assert c is not a
+    # clear() drops everything.
+    clear_cross_symbol_frame_cache()
+    d = get_or_build_cross_symbol_frame(
+        target_symbol="EURUSD", bar_ticks=1000,
+        dataset_dir=dataset_dir, horizons=[1, 2, 3],
+    )
+    assert d is not a, "after clear, a fresh build must occur"
+
+
 def test_load_peer_ret_z_matches_prepare_frame_ret_z(tmp_path: Path):
     """Lightweight peer load must produce the same ret_z values as the
     full _prepare_frame path — this is what guarantees that switching

@@ -812,16 +812,19 @@ class DollarFactorResidualFamily:
     _THRESHOLDS = [1.5, 2.0, 2.5, 3.0]
 
     def __init__(self) -> None:
-        # Cross-symbol frame cache keyed by (symbol, bar_ticks, frame_fingerprint).
-        self._cs_cache: dict[tuple[str, int, int], pd.DataFrame] = {}
         # Per-(frame_fingerprint, residual_window) regression outputs.
+        # The cross-symbol frame itself is cached at module level in
+        # scripts.cross_symbol._BUILT_CS_FRAME_CACHE (shared across all
+        # 3 cross-symbol families) — see the streaming-load PR.
         self._reg_cache: dict[
             tuple[int, int], dict[str, np.ndarray]
         ] = {}
 
     def clear_cache(self) -> None:
-        self._cs_cache.clear()
+        from scripts.cross_symbol import clear_cross_symbol_frame_cache
+
         self._reg_cache.clear()
+        clear_cross_symbol_frame_cache()
 
     def param_grid(self, cfg: dict[str, Any]) -> list[dict[str, Any]]:
         from scripts.run_tick_opportunity_mining import _parse_ints
@@ -841,16 +844,18 @@ class DollarFactorResidualFamily:
     def _build_cs_frame(
         self, frame: pd.DataFrame, params: dict[str, Any]
     ) -> pd.DataFrame | None:
-        """Lazily call build_cross_symbol_frame and row-align to the
-        train/test-split `frame` by close_ts.
+        """Get the shared cs_frame for (symbol, bar_ticks) and row-align
+        it to the supplied train/test-split `frame` by close_ts.
 
         Returns None if context (dataset_dir, horizons) is missing — the
         family is then a no-op (treated like a frame missing required
         columns).
         """
+        from pathlib import Path
+
         from scripts.cross_symbol import (
             CROSS_SYMBOLS,
-            build_cross_symbol_frame,
+            get_or_build_cross_symbol_frame,
         )
 
         symbol = str(params.get("symbol", "")).upper()
@@ -865,24 +870,17 @@ class DollarFactorResidualFamily:
         ):
             return None
 
-        from pathlib import Path
-
-        key = (symbol, bar_ticks, _frame_fingerprint(frame))
-        if key in self._cs_cache:
-            return self._cs_cache[key]
         try:
-            cs_full = build_cross_symbol_frame(
+            cs_full = get_or_build_cross_symbol_frame(
                 target_symbol=symbol,
                 bar_ticks=bar_ticks,
                 dataset_dir=Path(str(dataset_dir)),
                 horizons=list(horizons),
             )
         except (FileNotFoundError, ValueError):
-            self._cs_cache[key] = None  # type: ignore[assignment]
             return None
-        # Row-align by close_ts to the supplied (year-filtered) frame.
+
         if "close_ts" not in frame.columns or "close_ts" not in cs_full.columns:
-            self._cs_cache[key] = None  # type: ignore[assignment]
             return None
         cs_aligned = cs_full.merge(
             frame[["close_ts"]].assign(_ord=np.arange(len(frame))),
@@ -890,7 +888,6 @@ class DollarFactorResidualFamily:
             how="inner",
         ).sort_values("_ord").reset_index(drop=True)
         cs_aligned = cs_aligned.drop(columns=["_ord"])
-        self._cs_cache[key] = cs_aligned
         return cs_aligned
 
     def _rolling_regression_loop(
@@ -1103,18 +1100,19 @@ class DispersionRankFamily:
     _RANK_KS = [1, 2]
 
     def __init__(self) -> None:
-        # Reuses the same per-(symbol, bar_ticks, frame_fingerprint) key
-        # shape as DollarFactorResidualFamily.
-        self._cs_cache: dict[tuple[str, int, int], pd.DataFrame] = {}
         # Per-frame rank arrays (target_rank, side_raw) keyed by
-        # (frame_fingerprint, target_symbol).
+        # (frame_fingerprint, target_symbol). The cross-symbol frame
+        # itself is cached at module level in
+        # scripts.cross_symbol._BUILT_CS_FRAME_CACHE.
         self._rank_cache: dict[
             tuple[int, str], tuple[np.ndarray, np.ndarray]
         ] = {}
 
     def clear_cache(self) -> None:
-        self._cs_cache.clear()
+        from scripts.cross_symbol import clear_cross_symbol_frame_cache
+
         self._rank_cache.clear()
+        clear_cross_symbol_frame_cache()
 
     def param_grid(self, cfg: dict[str, Any]) -> list[dict[str, Any]]:
         from scripts.run_tick_opportunity_mining import _parse_ints
@@ -1133,7 +1131,7 @@ class DispersionRankFamily:
 
         from scripts.cross_symbol import (
             CROSS_SYMBOLS,
-            build_cross_symbol_frame,
+            get_or_build_cross_symbol_frame,
         )
 
         symbol = str(params.get("symbol", "")).upper()
@@ -1147,28 +1145,22 @@ class DispersionRankFamily:
             or horizons is None
         ):
             return None
-        key = (symbol, bar_ticks, _frame_fingerprint(frame))
-        if key in self._cs_cache:
-            return self._cs_cache[key]
         try:
-            cs_full = build_cross_symbol_frame(
+            cs_full = get_or_build_cross_symbol_frame(
                 target_symbol=symbol,
                 bar_ticks=bar_ticks,
                 dataset_dir=Path(str(dataset_dir)),
                 horizons=list(horizons),
             )
         except (FileNotFoundError, ValueError):
-            self._cs_cache[key] = None  # type: ignore[assignment]
             return None
         if "close_ts" not in frame.columns or "close_ts" not in cs_full.columns:
-            self._cs_cache[key] = None  # type: ignore[assignment]
             return None
         cs_aligned = cs_full.merge(
             frame[["close_ts"]].assign(_ord=np.arange(len(frame))),
             on="close_ts",
             how="inner",
         ).sort_values("_ord").reset_index(drop=True).drop(columns=["_ord"])
-        self._cs_cache[key] = cs_aligned
         return cs_aligned
 
     def _per_bar_rank_and_side_loop(
@@ -1334,15 +1326,18 @@ class LeadLagFamily:
     _THRESHOLDS = [1.5, 2.0]
 
     def __init__(self) -> None:
-        self._cs_cache: dict[tuple[str, int, int], pd.DataFrame] = {}
         # Per-(frame_fingerprint, peer, lag) shifted trigger arrays.
+        # The cross-symbol frame itself is cached at module level in
+        # scripts.cross_symbol._BUILT_CS_FRAME_CACHE.
         self._shift_cache: dict[
             tuple[int, str, int], np.ndarray
         ] = {}
 
     def clear_cache(self) -> None:
-        self._cs_cache.clear()
+        from scripts.cross_symbol import clear_cross_symbol_frame_cache
+
         self._shift_cache.clear()
+        clear_cross_symbol_frame_cache()
 
     def param_grid(self, cfg: dict[str, Any]) -> list[dict[str, Any]]:
         from scripts.cross_symbol import CROSS_SYMBOLS
@@ -1369,7 +1364,7 @@ class LeadLagFamily:
 
         from scripts.cross_symbol import (
             CROSS_SYMBOLS,
-            build_cross_symbol_frame,
+            get_or_build_cross_symbol_frame,
         )
 
         symbol = str(params.get("symbol", "")).upper()
@@ -1383,28 +1378,22 @@ class LeadLagFamily:
             or horizons is None
         ):
             return None
-        key = (symbol, bar_ticks, _frame_fingerprint(frame))
-        if key in self._cs_cache:
-            return self._cs_cache[key]
         try:
-            cs_full = build_cross_symbol_frame(
+            cs_full = get_or_build_cross_symbol_frame(
                 target_symbol=symbol,
                 bar_ticks=bar_ticks,
                 dataset_dir=Path(str(dataset_dir)),
                 horizons=list(horizons),
             )
         except (FileNotFoundError, ValueError):
-            self._cs_cache[key] = None  # type: ignore[assignment]
             return None
         if "close_ts" not in frame.columns or "close_ts" not in cs_full.columns:
-            self._cs_cache[key] = None  # type: ignore[assignment]
             return None
         cs_aligned = cs_full.merge(
             frame[["close_ts"]].assign(_ord=np.arange(len(frame))),
             on="close_ts",
             how="inner",
         ).sort_values("_ord").reset_index(drop=True).drop(columns=["_ord"])
-        self._cs_cache[key] = cs_aligned
         return cs_aligned
 
     def _peer_trigger_at_lag(
