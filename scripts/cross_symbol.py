@@ -144,6 +144,100 @@ def _add_market_measures(
     return out
 
 
+# Module-level cache of the assembled cross-symbol frame, shared across
+# all 3 cross-symbol families. Keyed by (target_symbol, bar_ticks).
+# Each cross-symbol family used to keep its OWN _cs_cache dict, which
+# meant the same (symbol, bar_ticks) cs_frame was built and held 3×
+# (once per family) — wasting ~10 GB on a 3-bar_ticks run.
+#
+# Orchestrators MUST call `clear_cross_symbol_frame_cache()` between
+# bar_ticks iterations or the cache grows unboundedly across the
+# bar_ticks_grid sweep.
+_BUILT_CS_FRAME_CACHE: dict[tuple[str, int], pd.DataFrame] = {}
+
+
+def get_or_build_cross_symbol_frame(
+    target_symbol: str,
+    bar_ticks: int,
+    dataset_dir: Path,
+    horizons: list[int],
+) -> pd.DataFrame:
+    """Cached entry point for build_cross_symbol_frame.
+
+    Returns the cached cs_frame for (target_symbol, bar_ticks) if present;
+    otherwise builds, caches, and returns. All 3 cross-symbol families
+    share one cs_frame per (symbol, bar_ticks) instead of each holding
+    their own copy."""
+    key = (str(target_symbol).upper(), int(bar_ticks))
+    cached = _BUILT_CS_FRAME_CACHE.get(key)
+    if cached is not None:
+        return cached
+    cs = build_cross_symbol_frame(target_symbol, bar_ticks, dataset_dir, horizons)
+    _BUILT_CS_FRAME_CACHE[key] = cs
+    return cs
+
+
+def clear_cross_symbol_frame_cache() -> None:
+    """Drop the shared cs_frame cache. Orchestrators MUST call this
+    between bar_ticks iterations to let the GC free the previous
+    bar_ticks's cs_frame before the next one is built."""
+    _BUILT_CS_FRAME_CACHE.clear()
+
+
+def _load_peer_ret_z(path: Path, symbol: str) -> pd.DataFrame:
+    """Lightweight peer load: read ONLY the columns needed to derive
+    ret_z and close_ts.
+
+    Mirrors the ret_z derivation in _prepare_frame but skips OHLC,
+    microstructure features, hour, spread, etc. — none of which the
+    cross-symbol alignment reads from peers. Memory footprint per peer
+    is ~50 MB vs ~1.5 GB for a full _prepare_frame load. Critical on
+    ≤8 GB machines.
+    """
+    import pyarrow.parquet as pq
+
+    schema_names = set(pq.read_schema(path).names)
+    # Prefer vel_z_h1 (already pre-computed ret_z) when present; fall
+    # back to vel_pips_h1 → ret_z; fall back to close_bid → ret1_pips →
+    # ret_z. Same precedence as _prepare_frame.
+    if "vel_z_h1" in schema_names:
+        cols = ["close_ts", "vel_z_h1"]
+    elif "vel_pips_h1" in schema_names:
+        cols = ["close_ts", "vel_pips_h1"]
+    else:
+        cols = ["close_ts", "close_bid"]
+
+    d = pd.read_parquet(path, columns=cols).copy()
+    d["close_ts"] = pd.to_datetime(d["close_ts"], utc=True, errors="coerce")
+    d = d[d["close_ts"].notna()].sort_values("close_ts").reset_index(drop=True)
+    if d.empty:
+        d["ret_z"] = pd.Series(dtype=float)
+        return d[["close_ts", "ret_z"]]
+
+    if "vel_z_h1" in d.columns:
+        d["ret_z"] = pd.to_numeric(d["vel_z_h1"], errors="coerce")
+    elif "vel_pips_h1" in d.columns:
+        ret1 = pd.to_numeric(d["vel_pips_h1"], errors="coerce").fillna(0.0)
+        std = ret1.rolling(96, min_periods=24).std(ddof=0).shift(1)
+        d["ret_z"] = ret1 / std.replace(0.0, np.nan)
+    else:
+        pip = float(_PIP_SIZE_FOR_PEER_LOAD.get(symbol, 0.0001))
+        cb = pd.to_numeric(d["close_bid"], errors="coerce")
+        ret1 = ((cb - cb.shift(1)) / pip).fillna(0.0)
+        std = ret1.rolling(96, min_periods=24).std(ddof=0).shift(1)
+        d["ret_z"] = ret1 / std.replace(0.0, np.nan)
+
+    return d[["close_ts", "ret_z"]]
+
+
+# Local pip-size table so peer loading does not need to import the
+# heavy run_tick_opportunity_mining module just to look up a constant.
+_PIP_SIZE_FOR_PEER_LOAD: dict[str, float] = {
+    "EURUSD": 0.0001, "GBPUSD": 0.0001, "AUDUSD": 0.0001,
+    "USDJPY": 0.01,   "USDCAD": 0.0001, "USDCHF": 0.0001,
+}
+
+
 def build_cross_symbol_frame(
     target_symbol: str,
     bar_ticks: int,
@@ -155,6 +249,11 @@ def build_cross_symbol_frame(
 
     All 6 CROSS_SYMBOLS must have a velocity parquet in dataset_dir — a
     coherent cross-section cannot be built from a partial roster.
+
+    Memory: target is loaded via _prepare_frame (full ~1.5 GB); peers
+    are loaded via _load_peer_ret_z (~50 MB each, close_ts + ret_z
+    only). Earlier versions loaded every peer as a full _prepare_frame
+    which made the cross-symbol families unusable on ≤8 GB machines.
     """
     from scripts.run_tick_opportunity_mining import _prepare_frame
 
@@ -164,7 +263,7 @@ def build_cross_symbol_frame(
             f"expected one of {CROSS_SYMBOLS}"
         )
     dataset_dir = Path(dataset_dir)
-    frames: dict[str, pd.DataFrame] = {}
+    # Validate roster up front so we error before doing any I/O work.
     for sym in CROSS_SYMBOLS:
         path = dataset_dir / f"{sym}_{int(bar_ticks)}tick_velocity.parquet"
         if not path.exists():
@@ -172,9 +271,19 @@ def build_cross_symbol_frame(
                 f"cross-symbol alignment requires all {len(CROSS_SYMBOLS)} "
                 f"majors; missing velocity parquet for {sym}: {path}"
             )
-        frames[sym] = _prepare_frame(path, symbol=sym, horizons=horizons)
 
-    target = frames[target_symbol]
-    peers = {s: f for s, f in frames.items() if s != target_symbol}
+    target_path = dataset_dir / f"{target_symbol}_{int(bar_ticks)}tick_velocity.parquet"
+    target = _prepare_frame(target_path, symbol=target_symbol, horizons=horizons)
+
+    peers: dict[str, pd.DataFrame] = {}
+    for sym in CROSS_SYMBOLS:
+        if sym == target_symbol:
+            continue
+        peer_path = dataset_dir / f"{sym}_{int(bar_ticks)}tick_velocity.parquet"
+        peers[sym] = _load_peer_ret_z(peer_path, sym)
+
     aligned = _align_peer_returns(target, peers)
+    # Drop peer frames before computing market measures — they're no
+    # longer needed and we want the GC to free them ASAP on tight RAM.
+    del peers
     return _add_market_measures(aligned, target_symbol)
