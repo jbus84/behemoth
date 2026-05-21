@@ -69,6 +69,7 @@ _LIBRARY_TYPE_ALIASES: dict[str, list[str]] = {
     "no_touch": ["no_touch"],
     "dollar_residual": ["dollar_residual"],
     "dispersion_rank": ["dispersion_rank"],
+    "lead_lag": ["lead_lag"],
     "separate": ["oco_first_touch", "directional"],
     "all": [
         "oco_first_touch",
@@ -81,6 +82,7 @@ _LIBRARY_TYPE_ALIASES: dict[str, list[str]] = {
         "no_touch",
         "dollar_residual",
         "dispersion_rank",
+        "lead_lag",
     ],
 }
 
@@ -1215,6 +1217,195 @@ class DispersionRankFamily:
         }
 
 
+class LeadLagFamily:
+    """Cross-symbol lead-lag follow (family C).
+
+    Triggers on a peer's USD-aligned return at bar `t − lag_k` exceeding
+    `±trigger_z`; enters the target at bar `t` in the same USD-direction
+    (follow, not fade).
+
+    See docs/superpowers/specs/2026-05-21-cross-symbol-leadlag-design.md.
+    """
+
+    name = "lead_lag"
+
+    _LAGS = [1, 2]
+    _THRESHOLDS = [1.5, 2.0]
+
+    def __init__(self) -> None:
+        self._cs_cache: dict[tuple[str, int, int], pd.DataFrame] = {}
+        # Per-(frame_fingerprint, peer, lag) shifted trigger arrays.
+        self._shift_cache: dict[
+            tuple[int, str, int], np.ndarray
+        ] = {}
+
+    def clear_cache(self) -> None:
+        self._cs_cache.clear()
+        self._shift_cache.clear()
+
+    def param_grid(self, cfg: dict[str, Any]) -> list[dict[str, Any]]:
+        from scripts.cross_symbol import CROSS_SYMBOLS
+        from scripts.run_tick_opportunity_mining import _parse_ints
+
+        horizons = _parse_ints(str(cfg["horizons"]))
+        return [
+            {
+                "horizon": int(h),
+                "peer": str(p),
+                "lag_k": int(k),
+                "trigger_z": float(z),
+            }
+            for h in horizons
+            for p in CROSS_SYMBOLS
+            for k in self._LAGS
+            for z in self._THRESHOLDS
+        ]
+
+    def _build_cs_frame(
+        self, frame: pd.DataFrame, params: dict[str, Any]
+    ) -> pd.DataFrame | None:
+        from pathlib import Path
+
+        from scripts.cross_symbol import (
+            CROSS_SYMBOLS,
+            build_cross_symbol_frame,
+        )
+
+        symbol = str(params.get("symbol", "")).upper()
+        bar_ticks = int(params.get("bar_ticks", 0))
+        dataset_dir = params.get("_dataset_dir")
+        horizons = params.get("_horizons")
+        if (
+            symbol not in CROSS_SYMBOLS
+            or bar_ticks <= 0
+            or dataset_dir is None
+            or horizons is None
+        ):
+            return None
+        key = (symbol, bar_ticks, _frame_fingerprint(frame))
+        if key in self._cs_cache:
+            return self._cs_cache[key]
+        try:
+            cs_full = build_cross_symbol_frame(
+                target_symbol=symbol,
+                bar_ticks=bar_ticks,
+                dataset_dir=Path(str(dataset_dir)),
+                horizons=list(horizons),
+            )
+        except (FileNotFoundError, ValueError):
+            self._cs_cache[key] = None  # type: ignore[assignment]
+            return None
+        if "close_ts" not in frame.columns or "close_ts" not in cs_full.columns:
+            self._cs_cache[key] = None  # type: ignore[assignment]
+            return None
+        cs_aligned = cs_full.merge(
+            frame[["close_ts"]].assign(_ord=np.arange(len(frame))),
+            on="close_ts",
+            how="inner",
+        ).sort_values("_ord").reset_index(drop=True).drop(columns=["_ord"])
+        self._cs_cache[key] = cs_aligned
+        return cs_aligned
+
+    def _peer_trigger_at_lag(
+        self, cs_frame: pd.DataFrame, peer: str, lag_k: int
+    ) -> np.ndarray | None:
+        """Peer's xs_ret_z column shifted forward by lag_k bars so that
+        the value at output row `t` equals the peer column at row `t-k`.
+        Returns None if the peer column is absent."""
+        col = f"xs_ret_z__{peer}"
+        if col not in cs_frame.columns:
+            return None
+        key = (_frame_fingerprint(cs_frame), peer, int(lag_k))
+        if key in self._shift_cache:
+            return self._shift_cache[key]
+        raw = pd.to_numeric(cs_frame[col], errors="coerce").to_numpy(dtype=float)
+        shifted = np.full_like(raw, np.nan)
+        if lag_k > 0:
+            shifted[lag_k:] = raw[:-lag_k]
+        else:
+            shifted[:] = raw
+        self._shift_cache[key] = shifted
+        return shifted
+
+    def _entry_state(
+        self, frame: pd.DataFrame, params: dict[str, Any]
+    ) -> tuple[np.ndarray, np.ndarray] | None:
+        from scripts.cross_symbol import _USD_SIGN
+
+        peer = str(params["peer"]).upper()
+        target = str(params["symbol"]).upper()
+        if peer == target:
+            return None  # self-peer is not a candidate
+        cs = self._build_cs_frame(frame, params)
+        if cs is None or len(cs) != len(frame):
+            return None
+        lag_k = int(params["lag_k"])
+        trigger = float(params["trigger_z"])
+        shifted = self._peer_trigger_at_lag(cs, peer, lag_k)
+        if shifted is None:
+            return None
+        n = len(frame)
+        side_raw = np.zeros(n, dtype=np.int8)
+        usd = _USD_SIGN[target]
+        # Follow: peer USD-positive trigger -> follow USD-positive ->
+        # raw side = +usd. Peer USD-negative -> raw side = -usd.
+        pos = np.isfinite(shifted) & (shifted >= +trigger)
+        neg = np.isfinite(shifted) & (shifted <= -trigger)
+        side_raw[pos] = +usd
+        side_raw[neg] = -usd
+        entry = side_raw != 0
+        return entry, side_raw
+
+    def entry_indices(
+        self, frame: pd.DataFrame, regime_mask: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        h = int(params["horizon"])
+        ycol = f"y_fwd_pips_h{h}"
+        if ycol not in frame.columns:
+            return np.array([], dtype=np.int64)
+        state = self._entry_state(frame, params)
+        if state is None:
+            return np.array([], dtype=np.int64)
+        entry, _ = state
+        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
+        valid = np.isfinite(y)
+        if h > 0:
+            valid[-h:] = False
+        m = entry & valid & np.asarray(regime_mask, dtype=bool)
+        return np.flatnonzero(m).astype(np.int64)
+
+    def measure_gross(
+        self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        h = int(params["horizon"])
+        ycol = f"y_fwd_pips_h{h}"
+        if ycol not in frame.columns:
+            return np.array([], dtype=float)
+        state = self._entry_state(frame, params)
+        if state is None:
+            return np.array([], dtype=float)
+        _, side = state
+        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
+        return side[entries].astype(float) * y[entries]
+
+    def candidate_metadata(
+        self, regime_name: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
+        peer = str(params["peer"])
+        lag_k = int(params["lag_k"])
+        trigger = float(params["trigger_z"])
+        return {
+            "family": "lead_lag",
+            "state_id": (
+                f"lead_lag__{regime_name}__p{peer}_k{lag_k}_z{trigger:.1f}"
+            ),
+            "regime_desc": (
+                f"{regime_name};peer={peer};lag={lag_k};z={trigger:.1f}"
+            ),
+            "ml_ready_target_type": "lead_lag",
+        }
+
+
 FAMILY_REGISTRY: dict[str, MiningFamily] = {
     "oco_first_touch": OcoFirstTouchFamily(),
     "oco_asymmetric": OcoAsymmetricFamily(),
@@ -1226,4 +1417,5 @@ FAMILY_REGISTRY: dict[str, MiningFamily] = {
     "no_touch": NoTouchFamily(),
     "dollar_residual": DollarFactorResidualFamily(),
     "dispersion_rank": DispersionRankFamily(),
+    "lead_lag": LeadLagFamily(),
 }

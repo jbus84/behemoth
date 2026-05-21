@@ -1252,7 +1252,7 @@ def _mine_frame_pair(
 
 def run(
     cfg: dict[str, Any],
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, list[dict[str, Any]]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, list[dict[str, Any]]]:
     symbol = str(cfg["symbol"]).upper().strip()
     dataset_dir = Path(str(cfg["dataset_dir"]))
     bar_ticks_grid = _parse_ints(str(cfg["bar_ticks_grid"]))
@@ -1269,7 +1269,7 @@ def run(
         "directional", "directional_inverse", "directional_run",
         "oco", "oco_asymmetric",
         "double_touch", "pullback", "no_touch",
-        "dollar_residual", "dispersion_rank",
+        "dollar_residual", "dispersion_rank", "lead_lag",
     }:
         raise ValueError(
             "library_type must be "
@@ -1277,7 +1277,7 @@ def run(
             "directional|directional_inverse|directional_run|"
             "oco|oco_asymmetric|"
             "double_touch|pullback|no_touch|"
-            "dollar_residual|dispersion_rank"
+            "dollar_residual|dispersion_rank|lead_lag"
         )
 
     family_names = resolve_families(library_type)
@@ -1339,6 +1339,7 @@ def run(
     no_touch = pd.DataFrame(per_family_rows.get("no_touch", []))
     dollar_residual = pd.DataFrame(per_family_rows.get("dollar_residual", []))
     dispersion_rank = pd.DataFrame(per_family_rows.get("dispersion_rank", []))
+    lead_lag = pd.DataFrame(per_family_rows.get("lead_lag", []))
     if not directional.empty:
         directional = _assign_quality_tier(directional, library="directional")
         directional = _stamp_candidate_contract(directional)
@@ -1357,10 +1358,13 @@ def run(
     if not dispersion_rank.empty:
         dispersion_rank = _assign_quality_tier(dispersion_rank, library="directional")
         dispersion_rank = _stamp_candidate_contract(dispersion_rank)
+    if not lead_lag.empty:
+        lead_lag = _assign_quality_tier(lead_lag, library="directional")
+        lead_lag = _stamp_candidate_contract(lead_lag)
     summary = _build_summary(directional, oco, no_touch)
     return (
         directional, oco, oco_asymmetric, no_touch,
-        dollar_residual, dispersion_rank, summary, all_fills,
+        dollar_residual, dispersion_rank, lead_lag, summary, all_fills,
     )
 
 
@@ -1388,7 +1392,7 @@ def main() -> None:
     cfg = _merge_config(args)
     (
         directional, oco, oco_asymmetric, no_touch,
-        dollar_residual, dispersion_rank, summary, fills,
+        dollar_residual, dispersion_rank, lead_lag, summary, fills,
     ) = run(cfg)
 
     out_dir = Path(str(cfg["out_dir"]))
@@ -1401,6 +1405,7 @@ def main() -> None:
     nt_path = out_dir / f"{symbol}_no_touch_candidates.csv"
     dr_path = out_dir / f"{symbol}_dollar_residual_candidates.csv"
     dx_path = out_dir / f"{symbol}_dispersion_rank_candidates.csv"
+    ll_path = out_dir / f"{symbol}_lead_lag_candidates.csv"
     s_path = out_dir / f"{symbol}_candidate_summary.csv"
     directional.to_csv(d_path, index=False)
     oco.to_csv(o_path, index=False)
@@ -1408,6 +1413,7 @@ def main() -> None:
     no_touch.to_csv(nt_path, index=False)
     dollar_residual.to_csv(dr_path, index=False)
     dispersion_rank.to_csv(dx_path, index=False)
+    lead_lag.to_csv(ll_path, index=False)
     summary.to_csv(s_path, index=False)
     fills_path = write_candidate_fills(fills, out_dir, symbol)
     print(f"wrote: {d_path}")
@@ -1416,6 +1422,7 @@ def main() -> None:
     print(f"wrote: {nt_path}")
     print(f"wrote: {dr_path}")
     print(f"wrote: {dx_path}")
+    print(f"wrote: {ll_path}")
     print(f"wrote: {s_path}")
     print(f"wrote: {fills_path}")
 
