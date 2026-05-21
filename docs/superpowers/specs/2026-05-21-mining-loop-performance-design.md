@@ -44,7 +44,7 @@ Three independent items in one PR or three small PRs:
 3. Vectorise `random_entry_baseline` to call `measure_gross` once per
    candidate instead of 200 times.
 
-Combined estimated speedup: ~40-80× wall-clock on `make retrain-all`.
+Combined estimated speedup: ~4-12× wall-clock on `make retrain-all`. The per-item factors (≥50×, ≥15×, ≥3× on individual inner ops) do not multiply end-to-end: items 1+3 act inside the mining loop, item 2 parallelises across 6 symbols, and unchanged post-mining stages (audit, docs-contract, mkdocs build) cap the total per Amdahl's law.
 
 ## Out of Scope
 
