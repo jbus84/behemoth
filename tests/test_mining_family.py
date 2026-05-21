@@ -1024,3 +1024,81 @@ def test_dollar_residual_end_to_end_runs(tmp_path):
     if len(entries) > 0:
         gross = fam.measure_gross(frame, entries, params)
         assert len(gross) == len(entries)
+
+
+# ---------------------------------------------------------------------------
+# Cross-symbol family B: dispersion_rank
+# ---------------------------------------------------------------------------
+
+
+def test_dispersion_rank_family_registered_and_aliased():
+    from scripts.mining_family import _LIBRARY_TYPE_ALIASES
+
+    fam = FAMILY_REGISTRY["dispersion_rank"]
+    assert fam.name == "dispersion_rank"
+    grid = fam.param_grid({"horizons": "1,2,3"})
+    ks = sorted({g["rank_k"] for g in grid})
+    horizons = sorted({g["horizon"] for g in grid})
+    assert ks == [1, 2]
+    assert horizons == [1, 2, 3]
+    assert len(grid) == 2 * 3
+    assert "dispersion_rank" in _LIBRARY_TYPE_ALIASES["all"]
+
+
+def test_dispersion_rank_candidate_metadata():
+    fam = FAMILY_REGISTRY["dispersion_rank"]
+    meta = fam.candidate_metadata("london", {"rank_k": 2, "horizon": 5})
+    assert meta["family"] == "dispersion_rank"
+    assert meta["state_id"] == "dispersion_rank__london__k2"
+    assert "k=2" in meta["regime_desc"]
+    assert meta["ml_ready_target_type"] == "dispersion_rank"
+
+
+def test_dispersion_rank_no_op_without_context():
+    fam = FAMILY_REGISTRY["dispersion_rank"]
+    frame = pd.DataFrame({
+        "y_fwd_pips_h1": [1.0] * 10,
+        "close_ts": pd.to_datetime(np.arange(10), unit="s", utc=True),
+    })
+    regime = np.ones(10, dtype=bool)
+    params = {
+        "symbol": "EURUSD", "bar_ticks": 1000,
+        "horizon": 1, "rank_k": 1,
+    }
+    assert len(fam.entry_indices(frame, regime, params)) == 0
+    assert len(fam.measure_gross(frame, np.array([], dtype=np.int64), params)) == 0
+
+
+def test_dispersion_rank_end_to_end_smoke(tmp_path):
+    """6-symbol synth fixture drives the family through to completion."""
+    from scripts.cross_symbol import CROSS_SYMBOLS
+    from scripts.run_tick_opportunity_mining import _prepare_frame
+    from tests.test_tick_opportunity_mining import _build_synth_tick_velocity
+
+    dataset_dir = tmp_path / "tick_velocity"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    for sym in CROSS_SYMBOLS:
+        _build_synth_tick_velocity(
+            dataset_dir / f"{sym}_1000tick_velocity.parquet", symbol=sym,
+        )
+    fam = FAMILY_REGISTRY["dispersion_rank"]
+    fam.clear_cache()
+    frame = _prepare_frame(
+        dataset_dir / "EURUSD_1000tick_velocity.parquet",
+        symbol="EURUSD",
+        horizons=[1, 2, 3],
+    )
+    regime = np.ones(len(frame), dtype=bool)
+    params = {
+        "symbol": "EURUSD", "bar_ticks": 1000,
+        "horizon": 1, "rank_k": 1,
+        "_dataset_dir": str(dataset_dir),
+        "_horizons": [1, 2, 3],
+    }
+    entries = fam.entry_indices(frame, regime, params)
+    assert isinstance(entries, np.ndarray)
+    assert 0 <= len(entries) <= len(frame)
+    if len(entries) > 0:
+        gross = fam.measure_gross(frame, entries, params)
+        assert len(gross) == len(entries)
+        assert np.isfinite(gross).any()
