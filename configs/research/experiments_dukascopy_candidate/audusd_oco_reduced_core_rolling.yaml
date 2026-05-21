@@ -4,7 +4,7 @@ candidate_csv: data/analysis/tick_opportunity_mining_dukascopy_candidate/AUDUSD_
 pred_path: data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap/AUDUSD_oco_monthly_predictions.parquet
 
 family_keep: oco_first_touch
-barrier_keep: "2,3"
+barrier_keep: "2,3,5"
 horizon_keep: "5,6"
 locked_quantile: 0.9
 selection_mode: auto
