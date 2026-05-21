@@ -1102,3 +1102,102 @@ def test_dispersion_rank_end_to_end_smoke(tmp_path):
         gross = fam.measure_gross(frame, entries, params)
         assert len(gross) == len(entries)
         assert np.isfinite(gross).any()
+
+
+# ---------------------------------------------------------------------------
+# Cross-symbol family C: lead_lag
+# ---------------------------------------------------------------------------
+
+
+def test_lead_lag_family_registered_and_aliased():
+    from scripts.mining_family import _LIBRARY_TYPE_ALIASES
+
+    fam = FAMILY_REGISTRY["lead_lag"]
+    assert fam.name == "lead_lag"
+    grid = fam.param_grid({"horizons": "1,2"})
+    peers = sorted({g["peer"] for g in grid})
+    lags = sorted({g["lag_k"] for g in grid})
+    thresholds = sorted({g["trigger_z"] for g in grid})
+    assert peers == ["AUDUSD", "EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"]
+    assert lags == [1, 2]
+    assert thresholds == [1.5, 2.0]
+    assert len(grid) == 6 * 2 * 2 * 2
+    assert "lead_lag" in _LIBRARY_TYPE_ALIASES["all"]
+
+
+def test_lead_lag_candidate_metadata():
+    fam = FAMILY_REGISTRY["lead_lag"]
+    meta = fam.candidate_metadata(
+        "london",
+        {"peer": "USDJPY", "lag_k": 2, "trigger_z": 1.5, "horizon": 3},
+    )
+    assert meta["family"] == "lead_lag"
+    assert meta["state_id"] == "lead_lag__london__pUSDJPY_k2_z1.5"
+    assert meta["ml_ready_target_type"] == "lead_lag"
+
+
+def test_lead_lag_self_peer_is_empty():
+    """When the trigger peer matches the target symbol, the family produces
+    zero entries (the grid yields every peer; runtime filters self)."""
+    fam = FAMILY_REGISTRY["lead_lag"]
+    frame = pd.DataFrame({
+        "y_fwd_pips_h1": [1.0] * 10,
+        "close_ts": pd.to_datetime(np.arange(10), unit="s", utc=True),
+    })
+    regime = np.ones(10, dtype=bool)
+    params = {
+        "symbol": "EURUSD", "bar_ticks": 1000,
+        "peer": "EURUSD",
+        "horizon": 1, "lag_k": 1, "trigger_z": 1.5,
+        "_dataset_dir": "/dev/null",
+        "_horizons": (1,),
+    }
+    assert len(fam.entry_indices(frame, regime, params)) == 0
+
+
+def test_lead_lag_no_op_without_context():
+    fam = FAMILY_REGISTRY["lead_lag"]
+    frame = pd.DataFrame({
+        "y_fwd_pips_h1": [1.0] * 10,
+        "close_ts": pd.to_datetime(np.arange(10), unit="s", utc=True),
+    })
+    regime = np.ones(10, dtype=bool)
+    params = {
+        "symbol": "EURUSD", "bar_ticks": 1000, "peer": "USDJPY",
+        "horizon": 1, "lag_k": 1, "trigger_z": 1.5,
+    }
+    assert len(fam.entry_indices(frame, regime, params)) == 0
+    assert len(fam.measure_gross(frame, np.array([], dtype=np.int64), params)) == 0
+
+
+def test_lead_lag_end_to_end_smoke(tmp_path):
+    """6-symbol synth fixture drives the family through to completion."""
+    from scripts.cross_symbol import CROSS_SYMBOLS
+    from scripts.run_tick_opportunity_mining import _prepare_frame
+    from tests.test_tick_opportunity_mining import _build_synth_tick_velocity
+
+    dataset_dir = tmp_path / "tick_velocity"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    for sym in CROSS_SYMBOLS:
+        _build_synth_tick_velocity(
+            dataset_dir / f"{sym}_1000tick_velocity.parquet", symbol=sym,
+        )
+    fam = FAMILY_REGISTRY["lead_lag"]
+    fam.clear_cache()
+    frame = _prepare_frame(
+        dataset_dir / "EURUSD_1000tick_velocity.parquet",
+        symbol="EURUSD",
+        horizons=[1, 2, 3],
+    )
+    regime = np.ones(len(frame), dtype=bool)
+    params = {
+        "symbol": "EURUSD", "bar_ticks": 1000, "peer": "USDJPY",
+        "horizon": 1, "lag_k": 1, "trigger_z": 1.5,
+        "_dataset_dir": str(dataset_dir),
+        "_horizons": (1, 2, 3),
+    }
+    entries = fam.entry_indices(frame, regime, params)
+    assert isinstance(entries, np.ndarray)
+    if len(entries) > 0:
+        gross = fam.measure_gross(frame, entries, params)
+        assert len(gross) == len(entries)
