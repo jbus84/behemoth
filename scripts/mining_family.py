@@ -67,6 +67,7 @@ _LIBRARY_TYPE_ALIASES: dict[str, list[str]] = {
     "double_touch": ["double_touch"],
     "pullback": ["pullback"],
     "no_touch": ["no_touch"],
+    "dollar_residual": ["dollar_residual"],
     "separate": ["oco_first_touch", "directional"],
     "all": [
         "oco_first_touch",
@@ -77,6 +78,7 @@ _LIBRARY_TYPE_ALIASES: dict[str, list[str]] = {
         "double_touch",
         "pullback",
         "no_touch",
+        "dollar_residual",
     ],
 }
 
@@ -790,6 +792,228 @@ class DirectionalRunFamily:
         }
 
 
+class DollarFactorResidualFamily:
+    """Cross-symbol residual mean-reversion (family A).
+
+    Decomposes the target's USD-aligned return into a USD-factor component
+    (rolling OLS on `mkt_loo`) and an idiosyncratic residual. Enters
+    contrarian when the standardised residual exceeds a threshold.
+
+    See docs/superpowers/specs/2026-05-21-cross-symbol-residual-design.md.
+    """
+
+    name = "dollar_residual"
+
+    _RESIDUAL_WINDOWS = [200, 500]
+    _THRESHOLDS = [1.5, 2.0, 2.5, 3.0]
+
+    def __init__(self) -> None:
+        # Cross-symbol frame cache keyed by (symbol, bar_ticks, frame_fingerprint).
+        self._cs_cache: dict[tuple[str, int, int], pd.DataFrame] = {}
+        # Per-(frame_fingerprint, residual_window) regression outputs.
+        self._reg_cache: dict[
+            tuple[int, int], dict[str, np.ndarray]
+        ] = {}
+
+    def clear_cache(self) -> None:
+        self._cs_cache.clear()
+        self._reg_cache.clear()
+
+    def param_grid(self, cfg: dict[str, Any]) -> list[dict[str, Any]]:
+        from scripts.run_tick_opportunity_mining import _parse_ints
+
+        horizons = _parse_ints(str(cfg["horizons"]))
+        return [
+            {
+                "horizon": int(h),
+                "residual_window": int(w),
+                "threshold_z": float(z),
+            }
+            for h in horizons
+            for w in self._RESIDUAL_WINDOWS
+            for z in self._THRESHOLDS
+        ]
+
+    def _build_cs_frame(
+        self, frame: pd.DataFrame, params: dict[str, Any]
+    ) -> pd.DataFrame | None:
+        """Lazily call build_cross_symbol_frame and row-align to the
+        train/test-split `frame` by close_ts.
+
+        Returns None if context (dataset_dir, horizons) is missing — the
+        family is then a no-op (treated like a frame missing required
+        columns).
+        """
+        from scripts.cross_symbol import (
+            CROSS_SYMBOLS,
+            build_cross_symbol_frame,
+        )
+
+        symbol = str(params.get("symbol", "")).upper()
+        bar_ticks = int(params.get("bar_ticks", 0))
+        dataset_dir = params.get("_dataset_dir")
+        horizons = params.get("_horizons")
+        if (
+            symbol not in CROSS_SYMBOLS
+            or bar_ticks <= 0
+            or dataset_dir is None
+            or horizons is None
+        ):
+            return None
+
+        from pathlib import Path
+
+        key = (symbol, bar_ticks, _frame_fingerprint(frame))
+        if key in self._cs_cache:
+            return self._cs_cache[key]
+        try:
+            cs_full = build_cross_symbol_frame(
+                target_symbol=symbol,
+                bar_ticks=bar_ticks,
+                dataset_dir=Path(str(dataset_dir)),
+                horizons=list(horizons),
+            )
+        except (FileNotFoundError, ValueError):
+            self._cs_cache[key] = None  # type: ignore[assignment]
+            return None
+        # Row-align by close_ts to the supplied (year-filtered) frame.
+        if "close_ts" not in frame.columns or "close_ts" not in cs_full.columns:
+            self._cs_cache[key] = None  # type: ignore[assignment]
+            return None
+        cs_aligned = cs_full.merge(
+            frame[["close_ts"]].assign(_ord=np.arange(len(frame))),
+            on="close_ts",
+            how="inner",
+        ).sort_values("_ord").reset_index(drop=True)
+        cs_aligned = cs_aligned.drop(columns=["_ord"])
+        self._cs_cache[key] = cs_aligned
+        return cs_aligned
+
+    def _rolling_regression(
+        self, cs_frame: pd.DataFrame, target_symbol: str, window: int
+    ) -> dict[str, np.ndarray]:
+        """Trailing-window OLS of target USD-aligned ret_z on mkt_loo.
+
+        Returns dict with alpha, beta, sigma, eps, z — each of length
+        len(cs_frame), NaN until enough trailing bars exist.
+        """
+        from scripts.cross_symbol import _usd_aligned_ret_z
+
+        key = (_frame_fingerprint(cs_frame), int(window))
+        if key in self._reg_cache:
+            return self._reg_cache[key]
+
+        r = _usd_aligned_ret_z(cs_frame, target_symbol).to_numpy(dtype=float)
+        m = pd.to_numeric(cs_frame["mkt_loo"], errors="coerce").to_numpy(dtype=float)
+        n = len(r)
+        alpha = np.full(n, np.nan, dtype=float)
+        beta = np.full(n, np.nan, dtype=float)
+        sigma = np.full(n, np.nan, dtype=float)
+        eps = np.full(n, np.nan, dtype=float)
+        z = np.full(n, np.nan, dtype=float)
+        min_obs = max(int(window // 4), 20)
+
+        for t in range(int(window), n):
+            lo = t - int(window)
+            rr = r[lo:t]
+            mm = m[lo:t]
+            ok = np.isfinite(rr) & np.isfinite(mm)
+            if int(ok.sum()) < min_obs:
+                continue
+            rr = rr[ok]
+            mm = mm[ok]
+            m_var = float(np.var(mm))
+            if m_var <= 0.0:
+                continue
+            m_mean = float(np.mean(mm))
+            r_mean = float(np.mean(rr))
+            b = float(np.cov(rr, mm, ddof=0)[0, 1] / m_var)
+            a = r_mean - b * m_mean
+            e_train = rr - a - b * mm
+            s = float(np.std(e_train, ddof=0))
+            if not np.isfinite(s) or s <= 0.0:
+                continue
+            alpha[t] = a
+            beta[t] = b
+            sigma[t] = s
+            if np.isfinite(r[t]) and np.isfinite(m[t]):
+                eps_t = r[t] - a - b * m[t]
+                eps[t] = eps_t
+                z[t] = eps_t / s
+
+        out = {"alpha": alpha, "beta": beta, "sigma": sigma, "eps": eps, "z": z}
+        self._reg_cache[key] = out
+        return out
+
+    def _entry_state(
+        self, frame: pd.DataFrame, params: dict[str, Any]
+    ) -> tuple[np.ndarray, np.ndarray] | None:
+        """Returns (entry_mask, side) over the aligned frame, or None if
+        no cross-symbol context is available."""
+        cs = self._build_cs_frame(frame, params)
+        if cs is None or len(cs) != len(frame):
+            return None
+        symbol = str(params["symbol"]).upper()
+        window = int(params["residual_window"])
+        threshold = float(params["threshold_z"])
+        reg = self._rolling_regression(cs, symbol, window)
+        z = reg["z"]
+        side = np.zeros(len(frame), dtype=np.int8)
+        side[z >= threshold] = -1   # extreme positive residual → short
+        side[z <= -threshold] = 1   # extreme negative residual → long
+        entry = side != 0
+        return entry, side
+
+    def entry_indices(
+        self, frame: pd.DataFrame, regime_mask: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        h = int(params["horizon"])
+        ycol = f"y_fwd_pips_h{h}"
+        if ycol not in frame.columns:
+            return np.array([], dtype=np.int64)
+        state = self._entry_state(frame, params)
+        if state is None:
+            return np.array([], dtype=np.int64)
+        entry, _ = state
+        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
+        valid = np.isfinite(y)
+        if h > 0:
+            valid[-h:] = False
+        m = entry & valid & np.asarray(regime_mask, dtype=bool)
+        return np.flatnonzero(m).astype(np.int64)
+
+    def measure_gross(
+        self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        h = int(params["horizon"])
+        ycol = f"y_fwd_pips_h{h}"
+        if ycol not in frame.columns:
+            return np.array([], dtype=float)
+        state = self._entry_state(frame, params)
+        if state is None:
+            return np.array([], dtype=float)
+        _, side = state
+        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
+        return side[entries].astype(float) * y[entries]
+
+    def candidate_metadata(
+        self, regime_name: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
+        window = int(params["residual_window"])
+        threshold = float(params["threshold_z"])
+        return {
+            "family": "dollar_residual",
+            "state_id": (
+                f"dollar_residual__{regime_name}__"
+                f"w{window}_z{threshold:.1f}"
+            ),
+            "regime_desc": (
+                f"{regime_name};window={window};z={threshold:.1f}"
+            ),
+            "ml_ready_target_type": "dollar_residual",
+        }
+
+
 FAMILY_REGISTRY: dict[str, MiningFamily] = {
     "oco_first_touch": OcoFirstTouchFamily(),
     "oco_asymmetric": OcoAsymmetricFamily(),
@@ -799,4 +1023,5 @@ FAMILY_REGISTRY: dict[str, MiningFamily] = {
     "double_touch": DoubleTouchFamily(),
     "pullback": PullbackFamily(),
     "no_touch": NoTouchFamily(),
+    "dollar_residual": DollarFactorResidualFamily(),
 }

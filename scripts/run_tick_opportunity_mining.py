@@ -1057,7 +1057,18 @@ def _mine_frame_pair(
         rng = np.random.default_rng(baseline_seed)
         test_regimes = _regime_masks(test, train_q)
         for params in family.param_grid(cfg):
-            params = {**params, "symbol": symbol, "bar_ticks": int(bar_ticks)}
+            params = {
+                **params,
+                "symbol": symbol,
+                "bar_ticks": int(bar_ticks),
+                # Context (not tuned axes) for cross-symbol families that
+                # need to call build_cross_symbol_frame. Other families
+                # ignore underscore-prefixed keys. Values must be hashable
+                # because some families key their internal cache off the
+                # full params dict (tuple(sorted(params.items()))).
+                "_dataset_dir": str(cfg.get("dataset_dir", "")),
+                "_horizons": tuple(_parse_ints(str(cfg.get("horizons", "")))),
+            }
 
             # OCO-specific precompute for both_window_rate / p_up_first
             oco_prep_test: dict[str, Any] | None = None
@@ -1241,7 +1252,7 @@ def _mine_frame_pair(
 
 def run(
     cfg: dict[str, Any],
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, list[dict[str, Any]]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, list[dict[str, Any]]]:
     symbol = str(cfg["symbol"]).upper().strip()
     dataset_dir = Path(str(cfg["dataset_dir"]))
     bar_ticks_grid = _parse_ints(str(cfg["bar_ticks_grid"]))
@@ -1258,13 +1269,15 @@ def run(
         "directional", "directional_inverse", "directional_run",
         "oco", "oco_asymmetric",
         "double_touch", "pullback", "no_touch",
+        "dollar_residual",
     }:
         raise ValueError(
             "library_type must be "
             "all|separate|"
             "directional|directional_inverse|directional_run|"
             "oco|oco_asymmetric|"
-            "double_touch|pullback|no_touch"
+            "double_touch|pullback|no_touch|"
+            "dollar_residual"
         )
 
     family_names = resolve_families(library_type)
@@ -1324,6 +1337,7 @@ def run(
     oco = pd.DataFrame(per_family_rows.get("oco_first_touch", []))
     oco_asymmetric = pd.DataFrame(per_family_rows.get("oco_asymmetric", []))
     no_touch = pd.DataFrame(per_family_rows.get("no_touch", []))
+    dollar_residual = pd.DataFrame(per_family_rows.get("dollar_residual", []))
     if not directional.empty:
         directional = _assign_quality_tier(directional, library="directional")
         directional = _stamp_candidate_contract(directional)
@@ -1336,8 +1350,11 @@ def run(
     if not no_touch.empty:
         no_touch = _assign_quality_tier(no_touch, library="no_touch")
         no_touch = _stamp_candidate_contract(no_touch)
+    if not dollar_residual.empty:
+        dollar_residual = _assign_quality_tier(dollar_residual, library="directional")
+        dollar_residual = _stamp_candidate_contract(dollar_residual)
     summary = _build_summary(directional, oco, no_touch)
-    return directional, oco, oco_asymmetric, no_touch, summary, all_fills
+    return directional, oco, oco_asymmetric, no_touch, dollar_residual, summary, all_fills
 
 
 def main() -> None:
@@ -1362,7 +1379,7 @@ def main() -> None:
     args = p.parse_args()
 
     cfg = _merge_config(args)
-    directional, oco, oco_asymmetric, no_touch, summary, fills = run(cfg)
+    directional, oco, oco_asymmetric, no_touch, dollar_residual, summary, fills = run(cfg)
 
     out_dir = Path(str(cfg["out_dir"]))
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1372,17 +1389,20 @@ def main() -> None:
     o_path = out_dir / f"{symbol}_oco_candidates.csv"
     oa_path = out_dir / f"{symbol}_oco_asymmetric_candidates.csv"
     nt_path = out_dir / f"{symbol}_no_touch_candidates.csv"
+    dr_path = out_dir / f"{symbol}_dollar_residual_candidates.csv"
     s_path = out_dir / f"{symbol}_candidate_summary.csv"
     directional.to_csv(d_path, index=False)
     oco.to_csv(o_path, index=False)
     oco_asymmetric.to_csv(oa_path, index=False)
     no_touch.to_csv(nt_path, index=False)
+    dollar_residual.to_csv(dr_path, index=False)
     summary.to_csv(s_path, index=False)
     fills_path = write_candidate_fills(fills, out_dir, symbol)
     print(f"wrote: {d_path}")
     print(f"wrote: {o_path}")
     print(f"wrote: {oa_path}")
     print(f"wrote: {nt_path}")
+    print(f"wrote: {dr_path}")
     print(f"wrote: {s_path}")
     print(f"wrote: {fills_path}")
 
