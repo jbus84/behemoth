@@ -68,6 +68,7 @@ _LIBRARY_TYPE_ALIASES: dict[str, list[str]] = {
     "pullback": ["pullback"],
     "no_touch": ["no_touch"],
     "dollar_residual": ["dollar_residual"],
+    "dispersion_rank": ["dispersion_rank"],
     "separate": ["oco_first_touch", "directional"],
     "all": [
         "oco_first_touch",
@@ -79,6 +80,7 @@ _LIBRARY_TYPE_ALIASES: dict[str, list[str]] = {
         "pullback",
         "no_touch",
         "dollar_residual",
+        "dispersion_rank",
     ],
 }
 
@@ -1014,6 +1016,205 @@ class DollarFactorResidualFamily:
         }
 
 
+class DispersionRankFamily:
+    """Cross-symbol dispersion rank (family B).
+
+    Ranks the 6 majors' USD-aligned returns at each target bar; enters
+    contrarian when the target is at the top-k or bottom-k extreme.
+
+    See docs/superpowers/specs/2026-05-21-cross-symbol-dispersion-design.md.
+    """
+
+    name = "dispersion_rank"
+
+    _RANK_KS = [1, 2]
+
+    def __init__(self) -> None:
+        # Reuses the same per-(symbol, bar_ticks, frame_fingerprint) key
+        # shape as DollarFactorResidualFamily.
+        self._cs_cache: dict[tuple[str, int, int], pd.DataFrame] = {}
+        # Per-frame rank arrays (target_rank, side_raw) keyed by
+        # (frame_fingerprint, target_symbol).
+        self._rank_cache: dict[
+            tuple[int, str], tuple[np.ndarray, np.ndarray]
+        ] = {}
+
+    def clear_cache(self) -> None:
+        self._cs_cache.clear()
+        self._rank_cache.clear()
+
+    def param_grid(self, cfg: dict[str, Any]) -> list[dict[str, Any]]:
+        from scripts.run_tick_opportunity_mining import _parse_ints
+
+        horizons = _parse_ints(str(cfg["horizons"]))
+        return [
+            {"horizon": int(h), "rank_k": int(k)}
+            for h in horizons
+            for k in self._RANK_KS
+        ]
+
+    def _build_cs_frame(
+        self, frame: pd.DataFrame, params: dict[str, Any]
+    ) -> pd.DataFrame | None:
+        from pathlib import Path
+
+        from scripts.cross_symbol import (
+            CROSS_SYMBOLS,
+            build_cross_symbol_frame,
+        )
+
+        symbol = str(params.get("symbol", "")).upper()
+        bar_ticks = int(params.get("bar_ticks", 0))
+        dataset_dir = params.get("_dataset_dir")
+        horizons = params.get("_horizons")
+        if (
+            symbol not in CROSS_SYMBOLS
+            or bar_ticks <= 0
+            or dataset_dir is None
+            or horizons is None
+        ):
+            return None
+        key = (symbol, bar_ticks, _frame_fingerprint(frame))
+        if key in self._cs_cache:
+            return self._cs_cache[key]
+        try:
+            cs_full = build_cross_symbol_frame(
+                target_symbol=symbol,
+                bar_ticks=bar_ticks,
+                dataset_dir=Path(str(dataset_dir)),
+                horizons=list(horizons),
+            )
+        except (FileNotFoundError, ValueError):
+            self._cs_cache[key] = None  # type: ignore[assignment]
+            return None
+        if "close_ts" not in frame.columns or "close_ts" not in cs_full.columns:
+            self._cs_cache[key] = None  # type: ignore[assignment]
+            return None
+        cs_aligned = cs_full.merge(
+            frame[["close_ts"]].assign(_ord=np.arange(len(frame))),
+            on="close_ts",
+            how="inner",
+        ).sort_values("_ord").reset_index(drop=True).drop(columns=["_ord"])
+        self._cs_cache[key] = cs_aligned
+        return cs_aligned
+
+    def _per_bar_rank_and_side(
+        self, cs_frame: pd.DataFrame, target_symbol: str
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Returns (target_rank, raw_side_unmasked).
+
+        target_rank[i] = 1..6 where 1 is most USD-positive in the
+        cross-section at bar i; NaN where any required value is missing.
+        raw_side_unmasked[i] gives the contrarian raw-price side IF the
+        bar would be a rank-extreme entry; entry_indices applies the
+        actual rank-k filter on top.
+        """
+        from scripts.cross_symbol import (
+            _USD_SIGN,
+            CROSS_SYMBOLS,
+            _usd_aligned_ret_z,
+        )
+
+        key = (_frame_fingerprint(cs_frame), target_symbol)
+        if key in self._rank_cache:
+            return self._rank_cache[key]
+
+        n = len(cs_frame)
+        target_usd = _usd_aligned_ret_z(cs_frame, target_symbol).to_numpy(float)
+        # Lexically sorted peer order for deterministic tie-breaking.
+        peers = sorted(s for s in CROSS_SYMBOLS if s != target_symbol)
+        peer_cols = [f"xs_ret_z__{s}" for s in peers]
+        # All-symbols matrix in a deterministic column order — target last so
+        # ties resolve in peers' favour (target gets the higher numeric rank
+        # only when strictly the most extreme).
+        cols = peer_cols + ["__target"]
+        matrix = cs_frame[peer_cols].copy()
+        matrix["__target"] = target_usd
+        arr = matrix[cols].to_numpy(float)
+
+        target_rank = np.full(n, np.nan, dtype=float)
+        for i in range(n):
+            row = arr[i]
+            if not np.isfinite(row).all():
+                continue
+            # Descending rank: largest = rank 1.
+            order = np.argsort(-row, kind="stable")
+            rank_of_col = np.empty(len(row), dtype=np.int64)
+            rank_of_col[order] = np.arange(1, len(row) + 1)
+            target_rank[i] = float(rank_of_col[-1])  # __target is the last col
+
+        usd = _USD_SIGN[target_symbol]
+        # Per-bar USD-sign vector; entry_indices combines it with the
+        # rank_k filter to produce the raw-price contrarian side.
+        result = (target_rank, np.full(n, usd, dtype=np.int8))
+        self._rank_cache[key] = result
+        return result
+
+    def _entry_state(
+        self, frame: pd.DataFrame, params: dict[str, Any]
+    ) -> tuple[np.ndarray, np.ndarray] | None:
+        cs = self._build_cs_frame(frame, params)
+        if cs is None or len(cs) != len(frame):
+            return None
+        symbol = str(params["symbol"]).upper()
+        rank_k = int(params["rank_k"])
+        target_rank, usd_sign = self._per_bar_rank_and_side(cs, symbol)
+
+        n = len(frame)
+        side_raw = np.zeros(n, dtype=np.int8)
+        top_mask = np.isfinite(target_rank) & (target_rank <= rank_k)
+        bot_mask = np.isfinite(target_rank) & (target_rank >= (7 - rank_k))
+        # rank ≤ k → fade USD-positive direction.
+        side_raw[top_mask] = (-1) * usd_sign[top_mask]
+        # rank ≥ 7-k → fade USD-negative direction.
+        side_raw[bot_mask] = (+1) * usd_sign[bot_mask]
+        entry = side_raw != 0
+        return entry, side_raw
+
+    def entry_indices(
+        self, frame: pd.DataFrame, regime_mask: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        h = int(params["horizon"])
+        ycol = f"y_fwd_pips_h{h}"
+        if ycol not in frame.columns:
+            return np.array([], dtype=np.int64)
+        state = self._entry_state(frame, params)
+        if state is None:
+            return np.array([], dtype=np.int64)
+        entry, _ = state
+        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
+        valid = np.isfinite(y)
+        if h > 0:
+            valid[-h:] = False
+        m = entry & valid & np.asarray(regime_mask, dtype=bool)
+        return np.flatnonzero(m).astype(np.int64)
+
+    def measure_gross(
+        self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any]
+    ) -> np.ndarray:
+        h = int(params["horizon"])
+        ycol = f"y_fwd_pips_h{h}"
+        if ycol not in frame.columns:
+            return np.array([], dtype=float)
+        state = self._entry_state(frame, params)
+        if state is None:
+            return np.array([], dtype=float)
+        _, side = state
+        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
+        return side[entries].astype(float) * y[entries]
+
+    def candidate_metadata(
+        self, regime_name: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
+        k = int(params["rank_k"])
+        return {
+            "family": "dispersion_rank",
+            "state_id": f"dispersion_rank__{regime_name}__k{k}",
+            "regime_desc": f"{regime_name};k={k}",
+            "ml_ready_target_type": "dispersion_rank",
+        }
+
+
 FAMILY_REGISTRY: dict[str, MiningFamily] = {
     "oco_first_touch": OcoFirstTouchFamily(),
     "oco_asymmetric": OcoAsymmetricFamily(),
@@ -1024,4 +1225,5 @@ FAMILY_REGISTRY: dict[str, MiningFamily] = {
     "pullback": PullbackFamily(),
     "no_touch": NoTouchFamily(),
     "dollar_residual": DollarFactorResidualFamily(),
+    "dispersion_rank": DispersionRankFamily(),
 }

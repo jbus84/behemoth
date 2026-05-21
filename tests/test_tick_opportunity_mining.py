@@ -203,7 +203,7 @@ def test_tick_opportunity_mining_outputs(tmp_path: Path) -> None:
         "library_type": "separate",
         "barrier_grid_pips": "2,3",
     }
-    directional, oco, _oco_asym, _no_touch, _dr, summary, _fills = run(cfg)
+    directional, oco, _oco_asym, _no_touch, _dr, _dx, summary, _fills = run(cfg)
 
     assert not directional.empty
     assert not oco.empty
@@ -533,7 +533,7 @@ def test_mining_run_output_is_stable(tmp_path: Path) -> None:
         "library_type": "separate",
         "barrier_grid_pips": "2,3",
     }
-    directional, oco, _oco_asym, _no_touch, _dr, summary, _fills = run(cfg)
+    directional, oco, _oco_asym, _no_touch, _dr, _dx, summary, _fills = run(cfg)
     # Shape + key columns are stable; exact row counts depend on the synthetic
     # fixture and must not change across the refactor.
     snapshot = {
@@ -564,7 +564,7 @@ def test_run_emits_random_baseline_columns(tmp_path: Path) -> None:
         "library_type": "separate", "barrier_grid_pips": "2,3",
         "baseline_seed": 12345, "baseline_draws": 50,
     }
-    directional, oco, _oco_asym, _no_touch, _dr, summary, _fills = run(cfg)
+    directional, oco, _oco_asym, _no_touch, _dr, _dx, summary, _fills = run(cfg)
     for df in (directional, oco):
         if not df.empty:
             for col in ("random_baseline_z", "random_baseline_p",
@@ -656,7 +656,7 @@ def test_run_mines_double_touch(tmp_path: Path) -> None:
         "library_type": "double_touch", "barrier_grid_pips": "2,3",
         "baseline_seed": 12345, "baseline_draws": 20,
     }
-    directional, oco, _oco_asym, _no_touch, _dr, _, _fills = run(cfg)
+    directional, oco, _oco_asym, _no_touch, _dr, _dx, _, _fills = run(cfg)
     # double_touch is a signed-return family -> lands in the directional frame.
     assert oco.empty
     assert not directional.empty, "double_touch should produce candidates"
@@ -774,7 +774,7 @@ def test_run_mines_pullback(tmp_path: Path) -> None:
         "library_type": "pullback", "barrier_grid_pips": "2,3",
         "baseline_seed": 12345, "baseline_draws": 20,
     }
-    directional, oco, _oco_asym, _no_touch, _dr, _, _fills = run(cfg)
+    directional, oco, _oco_asym, _no_touch, _dr, _dx, _, _fills = run(cfg)
     # pullback is a signed-return family -> lands in the directional frame.
     assert oco.empty
     assert not directional.empty, "pullback should produce candidates"
@@ -796,7 +796,7 @@ def test_run_mines_no_touch(tmp_path: Path) -> None:
         "library_type": "no_touch", "barrier_grid_pips": "2,3",
         "baseline_seed": 12345, "baseline_draws": 20,
     }
-    directional, oco, _oco_asym, no_touch, _dr, _, _fills = run(cfg)
+    directional, oco, _oco_asym, no_touch, _dr, _dx, _, _fills = run(cfg)
     # no_touch is a payoff family -> its own frame; others stay empty.
     assert directional.empty
     assert oco.empty
@@ -829,7 +829,7 @@ def test_run_emits_candidate_fills_joinable_to_summary(tmp_path: Path) -> None:
         "library_type": "separate",
         "barrier_grid_pips": "2,3",
     }
-    directional, oco, _oco_asym, no_touch, _dr, summary, fills = run(cfg)
+    directional, oco, _oco_asym, no_touch, _dr, _dx, summary, fills = run(cfg)
 
     # run() returns fills as a list of row dicts.
     assert isinstance(fills, list)
