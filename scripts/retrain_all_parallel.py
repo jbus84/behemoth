@@ -125,8 +125,19 @@ def run_orchestrator(
             for sym in symbols
         }
         for fut in as_completed(futures):
-            r = fut.result()
-            print(f"  [done {r.symbol} exit={r.exit_code} elapsed={r.elapsed_s:.0f}s log={r.log_path}]")
+            try:
+                r = fut.result()
+            except Exception as exc:
+                sym = futures[fut]
+                print(f"  [crash {sym}: {exc!r}]")
+                r = WorkerResult(
+                    symbol=sym,
+                    exit_code=-1,
+                    log_path=log_dir / f"{sym}.log",
+                    elapsed_s=0.0,
+                )
+            else:
+                print(f"  [done {r.symbol} exit={r.exit_code} elapsed={r.elapsed_s:.0f}s log={r.log_path}]")
             results.append(r)
 
     summary = collect_outcomes(results, symbols_order=symbols, analysis_dir=analysis_dir)

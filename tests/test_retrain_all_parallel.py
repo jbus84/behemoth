@@ -69,3 +69,42 @@ def test_orchestrator_isolates_worker_failure(tmp_path):
     by_sym = {s.symbol: s.outcome for s in summary}
     assert by_sym["EURUSD"] == "DEPLOY"
     assert by_sym["GBPUSD"] == "FAILED"
+
+
+def test_orchestrator_isolates_run_worker_crash(tmp_path):
+    """If run_worker itself raises (not just returns exit!=0), other
+    siblings must still be collected and the crashing symbol marked
+    FAILED — not propagate out of run_orchestrator."""
+    from unittest.mock import patch
+
+    from scripts.retrain_all_parallel import (
+        WorkerResult,
+        run_orchestrator,
+    )
+
+    ad = tmp_path / "analysis"
+    (ad / "reduced_core_rolling").mkdir(parents=True)
+    pd_df = pd.DataFrame({"state_id": ["s0"]})
+    pd_df.to_csv(ad / "reduced_core_rolling" / "EURUSD_oco_reduced_state_schedule.csv", index=False)
+
+    def fake_run_worker(symbol, *, eval_end_month, log_dir):
+        if symbol == "GBPUSD":
+            raise FileNotFoundError("uv: command not found")
+        return WorkerResult(
+            symbol=symbol, exit_code=0,
+            log_path=log_dir / f"{symbol}.log", elapsed_s=0.5,
+        )
+
+    with patch("scripts.retrain_all_parallel.run_worker", side_effect=fake_run_worker):
+        exit_code, summary = run_orchestrator(
+            symbols=["EURUSD", "GBPUSD"],
+            max_workers=2,
+            eval_end_month=None,
+            log_dir=tmp_path,
+            analysis_dir=ad,
+        )
+
+    assert exit_code == 1
+    by_sym = {s.symbol: s.outcome for s in summary}
+    assert by_sym["EURUSD"] == "DEPLOY"
+    assert by_sym["GBPUSD"] == "FAILED"
