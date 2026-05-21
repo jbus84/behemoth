@@ -192,21 +192,10 @@ retrain-all:
 	@echo "══════════════════════════════════════════"
 	@echo "  Retraining all symbols (Stages 2-5)    "
 	@echo "══════════════════════════════════════════"
-	@summary=""; failed=0; \
-	for sym in $(REBUILD_SYMBOLS); do \
-		echo "\n=== Retraining $$sym ==="; \
-		uv run python scripts/onboard_symbol.py --symbol $$sym --skip-data --skip-docs --skip-registration --model-export-dir models/oco $(if $(EVAL_END_MONTH),--eval-end-month $(EVAL_END_MONTH),); \
-		code=$$?; \
-		sched=data/analysis/tick_opportunity_mining/reduced_core_rolling/$${sym}_oco_reduced_state_schedule.csv; \
-		outcome=$$(uv run python scripts/classify_retrain_outcome.py --exit-code $$code --schedule-csv $$sched); \
-		echo "  → $$sym: $$outcome"; \
-		summary="$$summary\n  $$sym: $$outcome"; \
-		if [ "$$outcome" = "FAILED" ]; then failed=1; fi; \
-	done; \
-	echo "\n══════════ Retrain summary ══════════"; \
-	printf "$$summary\n"; \
-	echo "═════════════════════════════════════"; \
-	if [ "$$failed" -ne 0 ]; then echo "❌ One or more symbols FAILED"; exit 1; fi
+	uv run python scripts/retrain_all_parallel.py \
+		--symbols "$(shell echo $(REBUILD_SYMBOLS) | sed 's/ /,/g')" \
+		--max-workers $(or $(MAX_WORKERS),6) \
+		$(if $(EVAL_END_MONTH),--eval-end-month $(EVAL_END_MONTH),)
 	@echo "\n=== Running Stage-1 data reliability audit (all active symbols) ==="
 	uv run python scripts/audit_data_reliability.py \
 		--symbols $(shell echo $(REBUILD_SYMBOLS) | sed 's/ /,/g')
@@ -749,7 +738,7 @@ help:
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage13" "Alias for stage13-dukascopy-cert"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "stage14" "Alias for stage14-jforex-cert"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "onboard-symbol" "Onboard a single symbol (SYMBOL=... MONTHS=... required)"
-	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "retrain-all" "Re-run ML pipeline + docs for all symbols (skip data download; cleans Stage 2-5 outputs first unless SKIP_CLEAN set)"
+	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "retrain-all" "Re-run ML pipeline + docs for all symbols, parallel across symbols (skip data; cleans Stage 2-5 first; MAX_WORKERS=N to cap)"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "rebuild-all" "Full rebuild: data + ML + docs for all symbols (MONTHS=... required; wipes data/ unless SKIP_CLEAN set)"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "clean-mining-outputs" "Wipe Stage 2-5 outputs under data/analysis/tick_opportunity_mining/ (Stage 0-1 tick_velocity kept)"
 	@printf "  $(COLOR_TARGET)%-30s$(COLOR_RESET) $(COLOR_DESC)%s$(COLOR_RESET)\n" "clean-data" "Wipe entire data/ folder (raw Dukascopy ticks at ~/Desktop/dukascopy_ticks kept)"

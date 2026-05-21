@@ -28,8 +28,10 @@ def random_entry_baseline(
     """Return random_baseline_z / random_baseline_p /
     random_baseline_control_mean for a candidate.
 
-    candidate_gross_ev is the candidate's own mean gross pips; when None the
-    z/p fields are NaN but the control mean is still returned.
+    Vectorised: draws all n_draws entry-sets upfront, calls
+    family.measure_gross ONCE on the flattened (n_draws * n_entries)
+    indices, and reshapes back to per-draw means. Same RNG seed yields
+    bit-identical control statistics as the per-draw loop.
     """
     n_rows = len(frame)
     nan_result = {
@@ -44,12 +46,33 @@ def random_entry_baseline(
         )
         return nan_result
 
-    control = np.empty(int(n_draws), dtype=float)
-    for i in range(int(n_draws)):
-        draw = rng.choice(n_rows, size=int(n_entries), replace=False)
-        gross = np.asarray(family.measure_gross(frame, draw, params), dtype=float)
-        gross = gross[np.isfinite(gross)]
-        control[i] = float(np.mean(gross)) if gross.size else float("nan")
+    n_draws = int(n_draws)
+    n_entries = int(n_entries)
+    # Per-row rng.choice loop is load-bearing: a 2D `size` with replace=False
+    # would enforce global uniqueness across the whole output, not per-draw
+    # uniqueness. Do not vectorise this loop.
+    draws = np.stack([
+        rng.choice(n_rows, size=n_entries, replace=False)
+        for _ in range(n_draws)
+    ])
+    gross_flat = np.asarray(
+        family.measure_gross(frame, draws.ravel(), params),
+        dtype=float,
+    )
+    if gross_flat.shape[0] != n_draws * n_entries:
+        raise ValueError(
+            f"MiningFamily {getattr(family, 'name', '?')!r}.measure_gross returned "
+            f"length {gross_flat.shape[0]} for {n_draws * n_entries} entries — "
+            f"this violates the family protocol (measure_gross must return "
+            f"len(entries) floats). This is a bug in the family implementation; "
+            f"do not silently mask."
+        )
+    gross_per_draw = gross_flat.reshape(n_draws, n_entries)
+    finite_mask = np.isfinite(gross_per_draw)
+    finite_counts = finite_mask.sum(axis=1)
+    with np.errstate(invalid="ignore"):
+        sums = np.where(finite_mask, gross_per_draw, 0.0).sum(axis=1)
+        control = np.where(finite_counts > 0, sums / finite_counts, np.nan)
 
     control = control[np.isfinite(control)]
     if control.size == 0:
