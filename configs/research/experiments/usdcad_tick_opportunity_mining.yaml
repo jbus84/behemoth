@@ -12,6 +12,7 @@ test_year: 2025
 
 # Gross-first opportunity mining (for downstream ML filtering)
 min_annual_fills: 5000
+baseline_draws: 20  # was 200 (default); 20-draw z estimate has SE ~0.22 vs ~0.07, ~10x faster
 gross_metric: mean
 library_type: all
 
