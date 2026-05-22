@@ -58,6 +58,28 @@ def _frame_fingerprint(frame: pd.DataFrame) -> int:
     return hash((row_hashes.tobytes(), frame.shape, tuple(frame.columns)))
 
 
+def _gross_at_entries_via_i0(
+    i0: np.ndarray, gross: np.ndarray, entries: np.ndarray
+) -> np.ndarray:
+    """Position-lookup `entries` against monotonically-sorted `i0`, return
+    `gross` at the matching positions; NaN for entries not in i0.
+
+    Earlier OCO-style families rebuilt a `pd.Series(arange(n), index=i0)`
+    per measure_gross call to do this lookup — that allocates a ~len(i0)
+    Series every call, which at len(i0) ~ 1M and thousands of measure_gross
+    calls per family was the dominant per-candidate cost. np.searchsorted
+    does the same lookup in O(m log n) with no allocation."""
+    if entries.size == 0 or i0.size == 0:
+        return np.full(entries.size, np.nan, dtype=float)
+    idx = np.searchsorted(i0, entries)
+    out = np.full(entries.size, np.nan, dtype=float)
+    in_bounds = idx < i0.size
+    valid = np.zeros(entries.size, dtype=bool)
+    valid[in_bounds] = i0[idx[in_bounds]] == entries[in_bounds]
+    out[valid] = gross[idx[valid]]
+    return out
+
+
 _LIBRARY_TYPE_ALIASES: dict[str, list[str]] = {
     "oco": ["oco_first_touch"],
     "oco_asymmetric": ["oco_asymmetric"],
@@ -279,12 +301,7 @@ class OcoFirstTouchFamily:
             return np.array([], dtype=float)
         i0 = np.asarray(prep["i0"], dtype=np.int64)
         gross = np.asarray(prep["gross"], dtype=float)
-        pos = pd.Series(np.arange(len(i0)), index=i0)
-        mapped = pos.reindex(entries).to_numpy(dtype=float)
-        out = np.full(len(entries), np.nan, dtype=float)
-        valid = np.isfinite(mapped)
-        out[valid] = gross[mapped[valid].astype(np.int64)]
-        return out
+        return _gross_at_entries_via_i0(i0, gross, np.asarray(entries, dtype=np.int64))
 
     def candidate_metadata(
         self, regime_name: str, params: dict[str, Any]
@@ -389,12 +406,7 @@ class DoubleTouchFamily:
             return np.array([], dtype=float)
         i0 = np.asarray(prep["i0"], dtype=np.int64)
         gross = np.asarray(prep["gross"], dtype=float)
-        pos = pd.Series(np.arange(len(i0)), index=i0)
-        mapped = pos.reindex(entries).to_numpy(dtype=float)
-        out = np.full(len(entries), np.nan, dtype=float)
-        valid = np.isfinite(mapped)
-        out[valid] = gross[mapped[valid].astype(np.int64)]
-        return out
+        return _gross_at_entries_via_i0(i0, gross, np.asarray(entries, dtype=np.int64))
 
     def candidate_metadata(
         self, regime_name: str, params: dict[str, Any]
@@ -513,12 +525,7 @@ class PullbackFamily:
             return np.array([], dtype=float)
         i0 = np.asarray(prep["i0"], dtype=np.int64)
         gross = np.asarray(prep["gross"], dtype=float)
-        pos = pd.Series(np.arange(len(i0)), index=i0)
-        mapped = pos.reindex(entries).to_numpy(dtype=float)
-        out = np.full(len(entries), np.nan, dtype=float)
-        valid = np.isfinite(mapped)
-        out[valid] = gross[mapped[valid].astype(np.int64)]
-        return out
+        return _gross_at_entries_via_i0(i0, gross, np.asarray(entries, dtype=np.int64))
 
     def candidate_metadata(
         self, regime_name: str, params: dict[str, Any]
@@ -624,12 +631,7 @@ class NoTouchFamily:
         # decided entry whose continuation exit is out of bounds keeps the
         # NaN that _oco_precompute_candidates already produced.
         nt_gross = np.where(decided, -oco_gross, k)
-        pos = pd.Series(np.arange(len(i0)), index=i0)
-        mapped = pos.reindex(entries).to_numpy(dtype=float)
-        out = np.full(len(entries), np.nan, dtype=float)
-        valid = np.isfinite(mapped)
-        out[valid] = nt_gross[mapped[valid].astype(np.int64)]
-        return out
+        return _gross_at_entries_via_i0(i0, nt_gross, np.asarray(entries, dtype=np.int64))
 
     def candidate_metadata(
         self, regime_name: str, params: dict[str, Any]
@@ -716,12 +718,7 @@ class OcoAsymmetricFamily:
             return np.array([], dtype=float)
         i0 = np.asarray(prep["i0"], dtype=np.int64)
         gross = np.asarray(prep["gross"], dtype=float)
-        pos = pd.Series(np.arange(len(i0)), index=i0)
-        mapped = pos.reindex(entries).to_numpy(dtype=float)
-        out = np.full(len(entries), np.nan, dtype=float)
-        valid = np.isfinite(mapped)
-        out[valid] = gross[mapped[valid].astype(np.int64)]
-        return out
+        return _gross_at_entries_via_i0(i0, gross, np.asarray(entries, dtype=np.int64))
 
     def candidate_metadata(
         self, regime_name: str, params: dict[str, Any]
@@ -742,6 +739,15 @@ class DirectionalRunFamily:
     _BUCKETS = ["2", "3", "4", "5", "6+"]
     _BETS = ["continuation", "reversion"]
 
+    def __init__(self) -> None:
+        # Cache _run_length results per frame fingerprint. Each call was
+        # re-scanning the full ~850K-row frame for consecutive-run lengths;
+        # with 1020 candidates × ~5 calls each that was the bottleneck.
+        self._run_cache: dict[int, tuple[np.ndarray, np.ndarray]] = {}
+
+    def clear_cache(self) -> None:
+        self._run_cache.clear()
+
     def param_grid(self, cfg: dict[str, Any]) -> list[dict[str, Any]]:
         from scripts.run_tick_opportunity_mining import _parse_ints
 
@@ -760,16 +766,27 @@ class DirectionalRunFamily:
             return run_len == int(bucket)
         raise ValueError(f"unknown run_bucket {bucket!r}")
 
+    def _cached_run_length(
+        self, frame: pd.DataFrame
+    ) -> tuple[np.ndarray, np.ndarray]:
+        from scripts.run_tick_opportunity_mining import _run_length
+
+        key = _frame_fingerprint(frame)
+        cached = self._run_cache.get(key)
+        if cached is not None:
+            return cached
+        result = _run_length(frame)
+        self._run_cache[key] = result
+        return result
+
     def entry_indices(
         self, frame: pd.DataFrame, regime_mask: np.ndarray, params: dict[str, Any]
     ) -> np.ndarray:
-        from scripts.run_tick_opportunity_mining import _run_length
-
         h = int(params["horizon"])
         ycol = f"y_fwd_pips_h{h}"
         if ycol not in frame.columns or "ret1_pips" not in frame.columns:
             return np.array([], dtype=np.int64)
-        run_len, run_sign = _run_length(frame)
+        run_len, run_sign = self._cached_run_length(frame)
         y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
         valid = np.isfinite(y)
         if h > 0:
@@ -785,13 +802,11 @@ class DirectionalRunFamily:
     def measure_gross(
         self, frame: pd.DataFrame, entries: np.ndarray, params: dict[str, Any]
     ) -> np.ndarray:
-        from scripts.run_tick_opportunity_mining import _run_length
-
         h = int(params["horizon"])
         ycol = f"y_fwd_pips_h{h}"
         if ycol not in frame.columns:
             return np.array([], dtype=float)
-        _, run_sign = _run_length(frame)
+        _, run_sign = self._cached_run_length(frame)
         y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
         side = run_sign.astype(float)
         bet = str(params["bet"])
