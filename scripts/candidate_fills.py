@@ -63,32 +63,56 @@ def expand_fills(
     fills whose gross is non-finite are dropped per-row so the entry-to-gross
     correspondence is never broken. Missing feature columns degrade to NaN
     (or empty string for session_marker) rather than raising.
+
+    Hot-path-optimised: the prior version called `frame[col].iloc[i]` for
+    every feature on every fill. On a high-pass-rate family (e.g.
+    directional_inverse at 93/102 pass) that pandas `.iloc[]` overhead
+    dominated mining wall-clock — 22 minutes for 102 candidates. This
+    version pulls each column to numpy once per candidate, then the
+    per-row dict construction is plain Python indexing on numpy arrays.
     """
     entries = np.asarray(entries, dtype=np.int64)
     gross = np.asarray(gross, dtype=float)
-    close_ts = pd.to_datetime(frame["close_ts"], utc=True, errors="coerce")
+    if entries.size == 0:
+        return []
+    finite = np.isfinite(gross)
+    if not finite.any():
+        return []
+    sel = entries[finite]
+    gross_sel = gross[finite]
+
+    # Vectorised column lookups: one .to_numpy() per column, then fancy
+    # index by the kept entry positions. Replaces O(n_fills * n_columns)
+    # pandas .iloc[] calls.
+    close_ts_arr = pd.to_datetime(
+        frame["close_ts"], utc=True, errors="coerce"
+    ).to_numpy()
+    entry_ts = close_ts_arr[sel]
+
+    feature_arrays: dict[str, np.ndarray] = {}
+    for col in _FEATURE_FLOAT_COLS:
+        if col in frame.columns:
+            feature_arrays[col] = pd.to_numeric(
+                frame[col], errors="coerce"
+            ).to_numpy(dtype=float)[sel]
+        else:
+            feature_arrays[col] = np.full(sel.size, np.nan, dtype=float)
+
+    if _SESSION_COL in frame.columns:
+        session_arr = frame[_SESSION_COL].astype(str).to_numpy()[sel]
+    else:
+        session_arr = np.full(sel.size, "", dtype=object)
+
     rows: list[dict[str, Any]] = []
-    for k, idx in enumerate(entries):
-        g = float(gross[k])
-        if not np.isfinite(g):
-            continue
-        i = int(idx)
+    for k in range(sel.size):
         row = dict(identity)
         row["split"] = split
-        row["entry_index"] = i
-        row["entry_ts"] = close_ts.iloc[i]
-        row["gross_pips"] = g
+        row["entry_index"] = int(sel[k])
+        row["entry_ts"] = entry_ts[k]
+        row["gross_pips"] = float(gross_sel[k])
         for col in _FEATURE_FLOAT_COLS:
-            row[col] = (
-                float(frame[col].iloc[i])
-                if col in frame.columns
-                else float("nan")
-            )
-        row[_SESSION_COL] = (
-            str(frame[_SESSION_COL].iloc[i])
-            if _SESSION_COL in frame.columns
-            else ""
-        )
+            row[col] = float(feature_arrays[col][k])
+        row[_SESSION_COL] = str(session_arr[k])
         rows.append(row)
     return rows
 
