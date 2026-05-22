@@ -111,6 +111,23 @@ def random_entry_baseline(
 
     # Short-circuit decision (only meaningful when we have a candidate EV
     # AND there are remaining draws we could skip).
+    #
+    # Bidirectional gate: we can short-circuit whenever the confidence
+    # interval [|z_partial| - 2·SE, |z_partial| + 2·SE] does NOT span the
+    # interesting bar. Two ways this happens:
+    #
+    #   (a) |z_partial| + 2·SE < interesting_bar_z
+    #       — candidate is confidently in the noise band (|z| < 1.5).
+    #
+    #   (b) |z_partial| - 2·SE > interesting_bar_z
+    #       — candidate is confidently distinguishable (|z| > 1.5),
+    #         either as a positive edge OR an inverse-direction signal.
+    #         The extra 180 draws would tighten precision but not flip
+    #         the classification.
+    #
+    # The only case we keep running is when the CI brackets the bar —
+    # i.e., the candidate is genuinely borderline and the extra draws
+    # actually matter for the verdict.
     short_circuit = False
     if (
         candidate_gross_ev is not None
@@ -121,11 +138,16 @@ def random_entry_baseline(
         cs_p = float(np.std(finite_probe))
         if cs_p > 0.0:
             z_partial = (float(candidate_gross_ev) - cm_p) / cs_p
-            # Approximate SE of the z estimator from `probe_draws` draws.
-            # In the noise regime (z ≈ 0), the sampling distribution of
-            # the z-statistic over many bootstrap reruns has SE ≈ 1/sqrt(k).
+            # SE of the z-statistic estimator ≈ 1/sqrt(k) in the noise
+            # regime. For larger |z| the actual SE is somewhat tighter,
+            # but using this conservative estimate keeps the gate honest
+            # at the boundary.
             se_z = 1.0 / float(np.sqrt(probe_draws))
-            if abs(z_partial) + se_margin * se_z < float(interesting_bar_z):
+            half_ci = se_margin * se_z
+            bar = float(interesting_bar_z)
+            confidently_noise = abs(z_partial) + half_ci < bar
+            confidently_distinguishable = abs(z_partial) - half_ci > bar
+            if confidently_noise or confidently_distinguishable:
                 short_circuit = True
 
     if short_circuit:
