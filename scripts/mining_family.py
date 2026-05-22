@@ -46,6 +46,9 @@ class MiningFamily(Protocol):
         ...
 
 
+_FINGERPRINT_ATTR = "__mining_fingerprint"
+
+
 def _frame_fingerprint(frame: pd.DataFrame) -> int:
     """Content identity for short-lived per-family caches.
 
@@ -53,9 +56,23 @@ def _frame_fingerprint(frame: pd.DataFrame) -> int:
     Two frames with identical contents share a cache entry (their
     precompute results are identical); two frames with differing contents
     never collide -- unlike an id()-based key, which silently collides when
-    a later frame is allocated at a garbage-collected frame's address."""
+    a later frame is allocated at a garbage-collected frame's address.
+
+    The hash itself is O(n) (via `pd.util.hash_pandas_object`) and on a
+    ~850k-row train frame costs ~100-200ms per call. Under per-family
+    `_precompute` caching, this gets called once per `measure_gross` lookup
+    — thousands of times per family — and the fingerprint cost will
+    dominate everything the cache saved. So memoise the fingerprint on
+    the frame itself via `frame.attrs` (pandas' per-frame metadata dict;
+    GC'd with the frame, no id-collision risk). Mining frames are
+    read-only in the hot path, so caching by frame identity is safe."""
+    cached = frame.attrs.get(_FINGERPRINT_ATTR)
+    if cached is not None:
+        return cached
     row_hashes = pd.util.hash_pandas_object(frame, index=True).to_numpy()
-    return hash((row_hashes.tobytes(), frame.shape, tuple(frame.columns)))
+    fp = hash((row_hashes.tobytes(), frame.shape, tuple(frame.columns)))
+    frame.attrs[_FINGERPRINT_ATTR] = fp
+    return fp
 
 
 def _gross_at_entries_via_i0(
