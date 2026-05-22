@@ -52,7 +52,7 @@ def test_orchestrator_isolates_worker_failure(tmp_path):
     _stub_schedule(ad / "reduced_core_rolling" / "EURUSD_oco_reduced_state_schedule.csv", 1)
     _stub_schedule(ad / "reduced_core_rolling" / "GBPUSD_oco_reduced_state_schedule.csv", 1)
 
-    def fake_run_worker(symbol: str, *, eval_end_month, log_dir):
+    def fake_run_worker(symbol: str, *, eval_end_month, log_dir, stream_to_stdout=False):
         if symbol == "GBPUSD":
             return WorkerResult(symbol=symbol, exit_code=1, log_path=log_dir / f"{symbol}.log", elapsed_s=1.0)
         return WorkerResult(symbol=symbol, exit_code=0, log_path=log_dir / f"{symbol}.log", elapsed_s=1.0)
@@ -87,7 +87,7 @@ def test_orchestrator_isolates_run_worker_crash(tmp_path):
     pd_df = pd.DataFrame({"state_id": ["s0"]})
     pd_df.to_csv(ad / "reduced_core_rolling" / "EURUSD_oco_reduced_state_schedule.csv", index=False)
 
-    def fake_run_worker(symbol, *, eval_end_month, log_dir):
+    def fake_run_worker(symbol, *, eval_end_month, log_dir, stream_to_stdout=False):
         if symbol == "GBPUSD":
             raise FileNotFoundError("uv: command not found")
         return WorkerResult(

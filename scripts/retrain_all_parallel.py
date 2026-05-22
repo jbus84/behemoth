@@ -58,11 +58,18 @@ def run_worker(
     *,
     eval_end_month: str | None,
     log_dir: Path,
+    stream_to_stdout: bool = False,
 ) -> WorkerResult:
     """Invoke onboard_symbol.py for one symbol as a subprocess.
 
-    Stdout+stderr stream to `{log_dir}/{symbol}.log` so concurrent
-    workers don't interleave on the terminal.
+    Output routing:
+    - stream_to_stdout=True (single-worker mode): subprocess inherits
+      the parent's stdout/stderr so the user sees mining progress in
+      real time. log_path still records the destination — written as
+      `<terminal>` — for the summary block.
+    - stream_to_stdout=False (multi-worker mode): stdout+stderr go to
+      `{log_dir}/{symbol}.log` so concurrent workers don't interleave
+      on the terminal. Tail those logs from another shell to follow.
     """
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"{symbol}.log"
@@ -78,8 +85,14 @@ def run_worker(
     if eval_end_month:
         cmd += ["--eval-end-month", eval_end_month]
     t0 = time.perf_counter()
-    with log_path.open("w") as fh:
-        proc = subprocess.run(cmd, stdout=fh, stderr=subprocess.STDOUT, check=False)
+    if stream_to_stdout:
+        # Inherit parent fds → child writes directly to terminal.
+        print(f"  [start {symbol} streaming to terminal]", flush=True)
+        proc = subprocess.run(cmd, check=False)
+        print(f"  [end   {symbol} streaming]", flush=True)
+    else:
+        with log_path.open("w") as fh:
+            proc = subprocess.run(cmd, stdout=fh, stderr=subprocess.STDOUT, check=False)
     return WorkerResult(
         symbol=symbol,
         exit_code=int(proc.returncode),
@@ -125,12 +138,32 @@ def run_orchestrator(
 ) -> tuple[int, list[SymbolSummary]]:
     """Run all symbols concurrently, return (exit_code, ordered_summary).
     Exit code is 1 if any symbol FAILED, else 0."""
-    print(f"=== Parallel retrain: {len(symbols)} symbols, {max_workers} workers ===")
+    # Single-worker mode streams the subprocess directly to the
+    # terminal so the user sees mining progress live. Multi-worker
+    # mode captures per-symbol logs to disk to avoid interleave.
+    stream = max_workers == 1
+    if stream:
+        print(
+            f"=== Parallel retrain: {len(symbols)} symbols, 1 worker "
+            f"(streaming subprocess output to this terminal) ===",
+            flush=True,
+        )
+    else:
+        print(
+            f"=== Parallel retrain: {len(symbols)} symbols, {max_workers} "
+            f"workers (per-symbol logs in {log_dir} — "
+            f"`tail -f {log_dir}/EURUSD.log` etc.) ===",
+            flush=True,
+        )
     log_dir.mkdir(parents=True, exist_ok=True)
     results: list[WorkerResult] = []
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
         futures = {
-            ex.submit(run_worker, sym, eval_end_month=eval_end_month, log_dir=log_dir): sym
+            ex.submit(
+                run_worker, sym,
+                eval_end_month=eval_end_month, log_dir=log_dir,
+                stream_to_stdout=stream,
+            ): sym
             for sym in symbols
         }
         for fut in as_completed(futures):
