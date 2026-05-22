@@ -272,7 +272,17 @@ def build_cross_symbol_frame(
                 f"majors; missing velocity parquet for {sym}: {path}"
             )
 
+    import sys
+    import time
+    from datetime import datetime, timezone
+
+    def _log(msg: str) -> None:
+        ts = datetime.now(timezone.utc).strftime("%H:%M:%S")
+        print(f"[cs   {ts}] {msg}", flush=True, file=sys.stdout)
+
+    cs_t0 = time.perf_counter()
     target_path = dataset_dir / f"{target_symbol}_{int(bar_ticks)}tick_velocity.parquet"
+    _log(f"build_cross_symbol_frame {target_symbol} {bar_ticks}tick: loading target")
     target = _prepare_frame(target_path, symbol=target_symbol, horizons=horizons)
 
     peers: dict[str, pd.DataFrame] = {}
@@ -281,9 +291,20 @@ def build_cross_symbol_frame(
             continue
         peer_path = dataset_dir / f"{sym}_{int(bar_ticks)}tick_velocity.parquet"
         peers[sym] = _load_peer_ret_z(peer_path, sym)
+    _log(
+        f"build_cross_symbol_frame {target_symbol} {bar_ticks}tick: "
+        f"loaded target ({len(target):,} rows) + {len(peers)} streamed peers "
+        f"in {time.perf_counter() - cs_t0:.1f}s; aligning peer joins…"
+    )
 
     aligned = _align_peer_returns(target, peers)
     # Drop peer frames before computing market measures — they're no
     # longer needed and we want the GC to free them ASAP on tight RAM.
     del peers
-    return _add_market_measures(aligned, target_symbol)
+    result = _add_market_measures(aligned, target_symbol)
+    _log(
+        f"build_cross_symbol_frame {target_symbol} {bar_ticks}tick: "
+        f"done in {time.perf_counter() - cs_t0:.1f}s "
+        f"({len(result):,} rows × {len(result.columns)} cols)"
+    )
+    return result

@@ -11,11 +11,23 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pandas as pd
+
+
+def _log(msg: str) -> None:
+    """Progress log with timestamp + flush. flush=True is critical:
+    Python's stdout is block-buffered when piped (e.g. via `tee
+    /tmp/retrain.log`), so without flush the user sees nothing until
+    the buffer fills or the process exits. retrain-all runs piped, so
+    every progress line in this script must flush."""
+    ts = datetime.now(timezone.utc).strftime("%H:%M:%S")
+    print(f"[mine {ts}] {msg}", flush=True)
 
 try:
     import yaml
@@ -1056,6 +1068,14 @@ def _mine_frame_pair(
         family = FAMILY_REGISTRY[fam_name]
         rng = np.random.default_rng(baseline_seed)
         test_regimes = _regime_masks(test, train_q)
+        n_params = len(list(family.param_grid(cfg)))
+        n_regimes = len(test_regimes)
+        fam_t0 = time.perf_counter()
+        _log(
+            f"  family {fam_name}: {n_params} params × {n_regimes} regimes "
+            f"(~{n_params * n_regimes:,} candidate evals × "
+            f"{baseline_draws} baseline draws)"
+        )
         for params in family.param_grid(cfg):
             params = {
                 **params,
@@ -1247,6 +1267,15 @@ def _mine_frame_pair(
                     **base,
                 }
                 per_family_rows[fam_name].append(row)
+        fam_added = len(per_family_rows[fam_name])
+        fam_pass = sum(
+            1 for r in per_family_rows[fam_name] if r.get("selection_pass")
+        )
+        _log(
+            f"  family {fam_name}: done in "
+            f"{time.perf_counter() - fam_t0:.0f}s — "
+            f"{fam_added:,} candidates ({fam_pass} pass)"
+        )
     return per_family_rows, fill_rows
 
 
@@ -1295,20 +1324,36 @@ def run(
             "before mining."
         )
 
+    _log(
+        f"{symbol}: mining {len(family_names)} families "
+        f"({', '.join(family_names)}) over {len(bar_ticks_grid)} bar_ticks "
+        f"{list(bar_ticks_grid)} with {baseline_draws} baseline draws each"
+    )
     files_found = 0
+    run_t0 = time.perf_counter()
     for bt in bar_ticks_grid:
         path = dataset_dir / f"{symbol}_{int(bt)}tick_velocity.parquet"
         if not path.exists():
-            print(f"skip {bt}: missing {path}")
+            _log(f"skip {bt}: missing {path}")
             continue
         files_found += 1
+        load_t0 = time.perf_counter()
         d = _prepare_frame(path, symbol=symbol, horizons=horizons)
+        _log(
+            f"{symbol} {bt}tick: loaded {len(d):,} rows in "
+            f"{time.perf_counter() - load_t0:.1f}s"
+        )
         train = d[d["year"].isin(train_years)].copy().reset_index(drop=True)
         test = d[d["year"] == int(test_year)].copy().reset_index(drop=True)
+        _log(
+            f"{symbol} {bt}tick: train={len(train):,} rows, "
+            f"test={len(test):,} rows"
+        )
         if train.empty or test.empty:
-            print(f"skip {bt}: empty split (train/test)")
+            _log(f"skip {bt}: empty split (train/test)")
             continue
 
+        pair_t0 = time.perf_counter()
         pair_rows, pair_fills = _mine_frame_pair(
             train=train, test=test, symbol=symbol, bar_ticks=int(bt),
             cfg=cfg, family_names=family_names,
@@ -1326,7 +1371,11 @@ def run(
         from scripts.cross_symbol import clear_cross_symbol_frame_cache
 
         clear_cross_symbol_frame_cache()
-        print(f"ok {symbol} {bt}tick")
+        _log(
+            f"{symbol} {bt}tick: done in "
+            f"{time.perf_counter() - pair_t0:.0f}s "
+            f"(total elapsed {time.perf_counter() - run_t0:.0f}s)"
+        )
 
     if files_found == 0:
         raise FileNotFoundError(
@@ -1424,22 +1473,22 @@ def main() -> None:
     lead_lag.to_csv(ll_path, index=False)
     summary.to_csv(s_path, index=False)
     fills_path = write_candidate_fills(fills, out_dir, symbol)
-    print(f"wrote: {d_path}")
-    print(f"wrote: {o_path}")
-    print(f"wrote: {oa_path}")
-    print(f"wrote: {nt_path}")
-    print(f"wrote: {dr_path}")
-    print(f"wrote: {dx_path}")
-    print(f"wrote: {ll_path}")
-    print(f"wrote: {s_path}")
-    print(f"wrote: {fills_path}")
+    print(f"wrote: {d_path}", flush=True)
+    print(f"wrote: {o_path}", flush=True)
+    print(f"wrote: {oa_path}", flush=True)
+    print(f"wrote: {nt_path}", flush=True)
+    print(f"wrote: {dr_path}", flush=True)
+    print(f"wrote: {dx_path}", flush=True)
+    print(f"wrote: {ll_path}", flush=True)
+    print(f"wrote: {s_path}", flush=True)
+    print(f"wrote: {fills_path}", flush=True)
 
     report_out = Path(str(cfg["report_out"]))
     _save_report(
         report_out=report_out, cfg=cfg, directional=directional,
         oco=oco, no_touch=no_touch, summary=summary,
     )
-    print(f"wrote: {report_out}")
+    print(f"wrote: {report_out}", flush=True)
 
 
 if __name__ == "__main__":
