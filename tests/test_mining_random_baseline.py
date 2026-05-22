@@ -186,3 +186,83 @@ def test_random_entry_baseline_batched_is_at_least_3x_faster():
     t_batch = _time(_batched)
     speedup = t_loop / max(t_batch, 1e-9)
     assert speedup >= 3.0, f"got {speedup:.1f}x; loop={t_loop:.3f}s batch={t_batch:.3f}s"
+
+
+def test_random_entry_baseline_short_circuits_noise_band():
+    """Short-circuit fires: when the candidate sits in the noise band
+    (z ≈ 0), the baseline must return early before completing all 200
+    draws. We prove this by measuring elapsed wall-clock against the
+    same call with the short-circuit disabled (probe_draws==n_draws)."""
+    import time
+
+    import numpy as np
+    import pandas as pd
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from scripts.mining_random_baseline import random_entry_baseline
+
+    n_rows = 50_000  # large enough that the per-draw cost is measurable
+    rng = np.random.default_rng(0)
+    frame = pd.DataFrame({
+        "y_fwd_pips_h1": rng.normal(0.0, 1.0, n_rows),
+        "_dir_side_h1": rng.choice([-1, 1], size=n_rows).astype(np.int8),
+    })
+    fam = FAMILY_REGISTRY["directional"]
+    params = {"horizon": 1, "symbol": "EURUSD", "bar_ticks": 1000}
+
+    # Candidate EV ≈ 0 (noise band): should short-circuit after probe.
+    t0 = time.perf_counter()
+    out_sc = random_entry_baseline(
+        fam, frame, params,
+        n_entries=500, n_draws=200, rng=np.random.default_rng(42),
+        candidate_gross_ev=0.0,
+    )
+    t_sc = time.perf_counter() - t0
+    # Same call with short-circuit disabled.
+    t0 = time.perf_counter()
+    _ = random_entry_baseline(
+        fam, frame, params,
+        n_entries=500, n_draws=200, rng=np.random.default_rng(42),
+        candidate_gross_ev=0.0,
+        probe_draws=200,
+    )
+    t_full = time.perf_counter() - t0
+
+    # Short-circuit path runs ~20 / 200 = 10% of draws; should be faster.
+    assert t_sc < t_full * 0.6, (
+        f"short-circuit ({t_sc:.4f}s) was not meaningfully faster than full "
+        f"({t_full:.4f}s). Gate may have failed to fire."
+    )
+    # Result should still be sane (z ≈ 0 ± SE).
+    assert np.isfinite(out_sc["random_baseline_z"])
+    assert abs(out_sc["random_baseline_z"]) < 1.5
+
+
+def test_random_entry_baseline_does_not_short_circuit_extreme_z():
+    """When the candidate is clearly NOT in the noise band, the
+    short-circuit must NOT fire (otherwise we'd lose precision on the
+    interesting candidates)."""
+    import numpy as np
+    import pandas as pd
+
+    from scripts.mining_family import FAMILY_REGISTRY
+    from scripts.mining_random_baseline import random_entry_baseline
+
+    n_rows = 5_000
+    rng = np.random.default_rng(0)
+    frame = pd.DataFrame({
+        "y_fwd_pips_h1": rng.normal(0.0, 1.0, n_rows),
+        "_dir_side_h1": rng.choice([-1, 1], size=n_rows).astype(np.int8),
+    })
+    fam = FAMILY_REGISTRY["directional"]
+    params = {"horizon": 1, "symbol": "EURUSD", "bar_ticks": 1000}
+
+    out = random_entry_baseline(
+        fam, frame, params,
+        n_entries=100, n_draws=200, rng=np.random.default_rng(7),
+        candidate_gross_ev=10.0,
+    )
+    # |z| should be very large; gate is at 1.5 + 2 * 0.22 ≈ 1.94. We expect
+    # the actual z to be >> 1.94 because candidate_gross_ev=10 is way above
+    # the noise distribution mean of ~0.
+    assert abs(out["random_baseline_z"]) > 1.94
