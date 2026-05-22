@@ -210,6 +210,19 @@ class DirectionalInverseFamily:
 class OcoFirstTouchFamily:
     name = "oco_first_touch"
 
+    def __init__(self) -> None:
+        # Cache _oco_precompute_candidates results so entry_indices and
+        # measure_gross share one barrier-touch scan per (frame, params).
+        # Without this, every per-regime call (and every random-baseline
+        # draw call) re-runs the ~12M-op scan from scratch. With 510
+        # candidates per (symbol, bar_ticks) the un-cached version costs
+        # ~150s of pure recomputation — empirically the dominant cost
+        # post-PR #213 (baseline_draws=20).
+        self._cache: dict[tuple[int, tuple[tuple[str, Any], ...]], dict[str, Any] | None] = {}
+
+    def clear_cache(self) -> None:
+        self._cache.clear()
+
     def param_grid(self, cfg: dict[str, Any]) -> list[dict[str, Any]]:
         from scripts.run_tick_opportunity_mining import _parse_floats, _parse_ints
 
@@ -226,15 +239,20 @@ class OcoFirstTouchFamily:
     ) -> dict[str, Any] | None:
         from scripts.run_tick_opportunity_mining import _oco_precompute_candidates
 
+        key = (_frame_fingerprint(frame), tuple(sorted(params.items())))
+        if key in self._cache:
+            return self._cache[key]
         try:
-            return _oco_precompute_candidates(
+            result = _oco_precompute_candidates(
                 frame,
                 symbol=symbol,
                 horizon=int(params["horizon"]),
                 barrier_pips=float(params["barrier_pips"]),
             )
         except ValueError:
-            return None
+            result = None
+        self._cache[key] = result
+        return result
 
     def entry_indices(
         self, frame: pd.DataFrame, regime_mask: np.ndarray, params: dict[str, Any]
