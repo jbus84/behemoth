@@ -20,7 +20,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 
-from scripts.classify_retrain_outcome import classify_outcome
+# Put the repo root on sys.path so `from scripts.classify_retrain_outcome
+# import ...` below resolves when this file is run directly
+# (`uv run python scripts/retrain_all_parallel.py`), not only when
+# imported as a package under pytest. Same bootstrap as
+# scripts/run_tick_opportunity_mining.py (PR #194).
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from scripts.classify_retrain_outcome import classify_outcome  # noqa: E402
 
 DEFAULT_SYMBOLS: tuple[str, ...] = (
     "EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD",
