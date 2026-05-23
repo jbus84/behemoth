@@ -73,6 +73,13 @@ DEFAULTS: dict[str, Any] = {
 CANDIDATE_SCHEMA_VERSION = "4.0"
 SELECTION_PASS_BASIS = "train_only"
 QUALITY_TIER_BASIS = "train_only"
+
+# Minimum |baseline_z| for emitting per-fill rows. Candidates that pass
+# selection but whose train EV is statistically indistinguishable from
+# random (|z| < threshold) still appear in the candidate CSV with full
+# stats, but skip the expensive expand_fills logging. This is the
+# dominant per-candidate cost on high-pass-rate families.
+FILL_LOG_MIN_Z = 2.0
 EXPLICIT_BAR_SCHEMA_COLUMNS = [
     "open_bid",
     "high_bid",
@@ -1064,6 +1071,37 @@ def _mine_frame_pair(
     test = _attach_directional_side_columns(test, horizons=horizons, q=train_q)
     train_regimes = _regime_masks(train, train_q)
     train_regime_map = {name: mask for name, mask in train_regimes}
+
+    # Per-candidate hot-path: microstructure stats + annualized-fills count
+    # called pd.to_datetime / .to_numpy on full ~850k-row columns on every
+    # candidate iteration. With 1020+ candidates per family that's ~150-500s
+    # of redundant per-family overhead before any mining work. These columns
+    # are read-only across all families/params/regimes within one frame pair
+    # — hoist the conversions once here, index by train_entries / entries
+    # per candidate. ~50 MB additional memory peak; negligible vs frame size.
+    train_close_ts_dt = pd.to_datetime(
+        train["close_ts"], utc=True, errors="coerce"
+    )
+    test_close_ts_dt = pd.to_datetime(
+        test["close_ts"], utc=True, errors="coerce"
+    )
+    train_tick_burst_arr = (
+        train["tick_burst_score"].to_numpy(dtype=float)
+        if "tick_burst_score" in train.columns else None
+    )
+    train_persist_arr = (
+        train["directional_persistence_8"].to_numpy(dtype=float)
+        if "directional_persistence_8" in train.columns else None
+    )
+    train_vol_cluster_arr = (
+        train["vol_cluster_score"].to_numpy(dtype=float)
+        if "vol_cluster_score" in train.columns else None
+    )
+    train_session_series = (
+        train["session_marker"]
+        if "session_marker" in train.columns else None
+    )
+
     for fam_name in family_names:
         family = FAMILY_REGISTRY[fam_name]
         rng = np.random.default_rng(baseline_seed)
@@ -1126,25 +1164,23 @@ def _mine_frame_pair(
                 mean_train = float(np.mean(train_gross)) if train_gross.size > 0 else float("nan")
                 median_train = float(np.median(train_gross)) if train_gross.size > 0 else float("nan")
 
-                # Microstructure stats (train only)
+                # Microstructure stats (train only). Use the hoisted
+                # column arrays — see comment above the family loop.
                 if train_n > 0:
-                    if "tick_burst_score" in train.columns:
-                        tick_burst_vals = train["tick_burst_score"].to_numpy(dtype=float)[train_entries]
-                        mean_tick_burst = float(np.mean(tick_burst_vals))
+                    if train_tick_burst_arr is not None:
+                        mean_tick_burst = float(np.mean(train_tick_burst_arr[train_entries]))
                     else:
                         mean_tick_burst = float("nan")
-                    if "directional_persistence_8" in train.columns:
-                        persist_vals = train["directional_persistence_8"].to_numpy(dtype=float)[train_entries]
-                        mean_flow_persist = float(np.mean(persist_vals))
+                    if train_persist_arr is not None:
+                        mean_flow_persist = float(np.mean(train_persist_arr[train_entries]))
                     else:
                         mean_flow_persist = float("nan")
-                    if "vol_cluster_score" in train.columns:
-                        vol_cluster_vals = train["vol_cluster_score"].to_numpy(dtype=float)[train_entries]
-                        mean_vol_cluster = float(np.mean(vol_cluster_vals))
+                    if train_vol_cluster_arr is not None:
+                        mean_vol_cluster = float(np.mean(train_vol_cluster_arr[train_entries]))
                     else:
                         mean_vol_cluster = float("nan")
-                    if "session_marker" in train.columns:
-                        session_vals = train["session_marker"].iloc[train_entries]
+                    if train_session_series is not None:
+                        session_vals = train_session_series.iloc[train_entries]
                         session_coverage = session_vals.value_counts(normalize=True).to_dict()
                     else:
                         session_coverage = {}
@@ -1191,7 +1227,7 @@ def _mine_frame_pair(
                     train_annual = (
                         _annualized_count(
                             train_n,
-                            pd.to_datetime(train["close_ts"], utc=True, errors="coerce").iloc[train_entries],
+                            train_close_ts_dt.iloc[train_entries],
                         )
                         if train_n > 0
                         else 0.0
@@ -1218,7 +1254,23 @@ def _mine_frame_pair(
                     and mean_train > 0.0
                     and not selection_pass
                 )
-                if selection_pass or near_miss:
+                # Gate per-fill logging on baseline-z significance. Mining
+                # called expand_fills (two full-frame column conversions per
+                # call) for every selection_pass=True OR near_miss candidate
+                # — for high-pass-rate families (directional_inverse ~95%,
+                # directional_run ~50%) that's hundreds of expand_fills calls
+                # per family, dominating wall-clock (~13s per passing
+                # candidate). Skip the fills logging for candidates whose
+                # train EV is statistically indistinguishable from random
+                # (|z| < FILL_LOG_MIN_Z). Their candidate row is still
+                # emitted with full mean/median/z/p stats; only the per-fill
+                # parquet rows are skipped. NaN-z (e.g. control_std=0 path)
+                # gets logged to preserve the existing diagnostic behaviour.
+                cand_z = base.get("random_baseline_z", float("nan"))
+                z_significant = (
+                    not np.isfinite(cand_z) or abs(cand_z) >= FILL_LOG_MIN_Z
+                )
+                if (selection_pass or near_miss) and z_significant:
                     identity = {
                         "candidate_id": cid,
                         "symbol": symbol,
@@ -1250,8 +1302,7 @@ def _mine_frame_pair(
                     "gross_std_test": float(np.std(gross, ddof=0)),
                     "hit_rate_gross_test": float(np.mean(gross > 0.0)),
                     "annualized_test_fills": _annualized_count(
-                        n, pd.to_datetime(test["close_ts"], utc=True,
-                                          errors="coerce").iloc[entries]),
+                        n, test_close_ts_dt.iloc[entries]),
                     "train_count": train_n,
                     "mean_gross_pips_train": mean_train,
                     "median_gross_pips_train": median_train,
