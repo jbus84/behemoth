@@ -73,6 +73,13 @@ DEFAULTS: dict[str, Any] = {
 CANDIDATE_SCHEMA_VERSION = "4.0"
 SELECTION_PASS_BASIS = "train_only"
 QUALITY_TIER_BASIS = "train_only"
+
+# Minimum |baseline_z| for emitting per-fill rows. Candidates that pass
+# selection but whose train EV is statistically indistinguishable from
+# random (|z| < threshold) still appear in the candidate CSV with full
+# stats, but skip the expensive expand_fills logging. This is the
+# dominant per-candidate cost on high-pass-rate families.
+FILL_LOG_MIN_Z = 2.0
 EXPLICIT_BAR_SCHEMA_COLUMNS = [
     "open_bid",
     "high_bid",
@@ -1218,7 +1225,23 @@ def _mine_frame_pair(
                     and mean_train > 0.0
                     and not selection_pass
                 )
-                if selection_pass or near_miss:
+                # Gate per-fill logging on baseline-z significance. Mining
+                # called expand_fills (two full-frame column conversions per
+                # call) for every selection_pass=True OR near_miss candidate
+                # — for high-pass-rate families (directional_inverse ~95%,
+                # directional_run ~50%) that's hundreds of expand_fills calls
+                # per family, dominating wall-clock (~13s per passing
+                # candidate). Skip the fills logging for candidates whose
+                # train EV is statistically indistinguishable from random
+                # (|z| < FILL_LOG_MIN_Z). Their candidate row is still
+                # emitted with full mean/median/z/p stats; only the per-fill
+                # parquet rows are skipped. NaN-z (e.g. control_std=0 path)
+                # gets logged to preserve the existing diagnostic behaviour.
+                cand_z = base.get("random_baseline_z", float("nan"))
+                z_significant = (
+                    not np.isfinite(cand_z) or abs(cand_z) >= FILL_LOG_MIN_Z
+                )
+                if (selection_pass or near_miss) and z_significant:
                     identity = {
                         "candidate_id": cid,
                         "symbol": symbol,
