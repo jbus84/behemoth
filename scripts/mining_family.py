@@ -48,6 +48,24 @@ class MiningFamily(Protocol):
 
 _FINGERPRINT_ATTR = "__mining_fingerprint"
 
+_PRECOMPUTE_CACHE_CAP = 8
+
+
+def _set_bounded(cache: dict, key: Any, value: Any) -> None:
+    """Insertion-ordered FIFO eviction for per-family `_precompute` caches.
+
+    The cache is consulted O(20+) times for the same key within one
+    candidate's evaluation (real entries + baseline draws); once we move
+    to new params we never need the old entry again. Without a cap, the
+    cache holds one entry per unique (frame, params) tuple across the
+    entire family — for DoubleTouchFamily that's 480 entries × ~34 MB
+    per entry on an 851k-row train frame ≈ 16 GB, which OOM-kills an
+    8 GB machine. Cap=8 leaves slack for train/test alternation while
+    keeping peak memory at <300 MB for the largest grid."""
+    if len(cache) >= _PRECOMPUTE_CACHE_CAP:
+        cache.pop(next(iter(cache)))
+    cache[key] = value
+
 
 def _frame_fingerprint(frame: pd.DataFrame) -> int:
     """Content identity for short-lived per-family caches.
@@ -290,7 +308,7 @@ class OcoFirstTouchFamily:
             )
         except ValueError:
             result = None
-        self._cache[key] = result
+        _set_bounded(self._cache, key, result)
         return result
 
     def entry_indices(
@@ -397,7 +415,7 @@ class DoubleTouchFamily:
             )
         except ValueError:
             result = None
-        self._cache[key] = result
+        _set_bounded(self._cache, key, result)
         return result
 
     def entry_indices(
@@ -516,7 +534,7 @@ class PullbackFamily:
             )
         except ValueError:
             result = None
-        self._cache[key] = result
+        _set_bounded(self._cache, key, result)
         return result
 
     def entry_indices(
@@ -615,7 +633,7 @@ class NoTouchFamily:
             )
         except ValueError:
             result = None
-        self._cache[key] = result
+        _set_bounded(self._cache, key, result)
         return result
 
     def entry_indices(
@@ -709,7 +727,7 @@ class OcoAsymmetricFamily:
             )
         except ValueError:
             result = None
-        self._cache[key] = result
+        _set_bounded(self._cache, key, result)
         return result
 
     def entry_indices(
@@ -793,7 +811,7 @@ class DirectionalRunFamily:
         if cached is not None:
             return cached
         result = _run_length(frame)
-        self._run_cache[key] = result
+        _set_bounded(self._run_cache, key, result)
         return result
 
     def entry_indices(
@@ -1064,7 +1082,7 @@ class DollarFactorResidualFamily:
 
         out = {"alpha": alpha, "beta": beta, "sigma": sigma,
                "eps": eps_out, "z": z_out}
-        self._reg_cache[key] = out
+        _set_bounded(self._reg_cache, key, out)
         return out
 
     def _entry_state(
@@ -1256,7 +1274,7 @@ class DispersionRankFamily:
             return self._rank_cache[key]
 
         result = self._per_bar_rank_and_side_compute(cs_frame, target_symbol)
-        self._rank_cache[key] = result
+        _set_bounded(self._rank_cache, key, result)
         return result
 
     def _per_bar_rank_and_side_compute(
