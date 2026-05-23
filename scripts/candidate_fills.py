@@ -236,7 +236,7 @@ class CandidateFillsWriter:
         empty = pd.DataFrame({c: [] for c in FILL_COLUMNS})
         empty.to_parquet(self._path, index=False)
 
-    def __enter__(self) -> "CandidateFillsWriter":
+    def __enter__(self) -> CandidateFillsWriter:
         return self
 
     def __exit__(self, *exc: Any) -> None:
