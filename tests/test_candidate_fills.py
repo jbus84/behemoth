@@ -146,3 +146,48 @@ def test_write_candidate_fills_non_empty_uses_canonical_column_order(tmp_path):
     path = write_candidate_fills(rows, tmp_path, "EURUSD")
     df = pd.read_parquet(path)
     assert list(df.columns) == list(FILL_COLUMNS)
+
+
+def test_candidate_fills_writer_chunked_matches_batch(tmp_path):
+    from scripts.candidate_fills import (
+        FILL_COLUMNS,
+        CandidateFillsWriter,
+        write_candidate_fills,
+    )
+
+    rows = [
+        {
+            "candidate_id": f"c{i}", "symbol": "EURUSD", "family": "f",
+            "library_type": "oco", "bar_ticks": 1000, "horizon": 6,
+            "regime": "r", "split": "test", "entry_index": i,
+            "entry_ts": pd.Timestamp("2024-01-01T00:00:00Z"),
+            "gross_pips": float(i), "tick_burst_score": 0.1,
+            "directional_persistence_8": 1.0, "vol_cluster_score": 0.5,
+            "session_marker": "LON",
+            "selection_pass": bool(i % 2), "near_miss": False,
+        }
+        for i in range(5)
+    ]
+    batch_dir = tmp_path / "batch"
+    chunk_dir = tmp_path / "chunked"
+    batch_path = write_candidate_fills(rows, batch_dir, "EURUSD")
+    with CandidateFillsWriter(chunk_dir, "EURUSD") as w:
+        w.append(rows[:2])
+        w.append(rows[2:])
+    chunk_path = w.path
+    batch_df = pd.read_parquet(batch_path).reset_index(drop=True)
+    chunk_df = pd.read_parquet(chunk_path).reset_index(drop=True)
+    assert list(chunk_df.columns) == list(FILL_COLUMNS)
+    assert len(chunk_df) == len(batch_df) == 5
+    assert chunk_df["gross_pips"].tolist() == batch_df["gross_pips"].tolist()
+    assert chunk_df["candidate_id"].tolist() == batch_df["candidate_id"].tolist()
+
+
+def test_candidate_fills_writer_empty_emits_canonical_schema(tmp_path):
+    from scripts.candidate_fills import FILL_COLUMNS, CandidateFillsWriter
+
+    with CandidateFillsWriter(tmp_path, "EURUSD") as w:
+        pass
+    df = pd.read_parquet(w.path)
+    assert df.empty
+    assert list(df.columns) == list(FILL_COLUMNS)
