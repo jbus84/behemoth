@@ -44,7 +44,6 @@ if str(_REPO_ROOT) not in sys.path:
 from scripts.candidate_fills import (  # noqa: E402  # sys.path bootstrap above
     candidate_id,
     expand_fills,
-    write_candidate_fills,
 )
 from scripts.mining_family import (  # noqa: E402  # sys.path bootstrap above
     FAMILY_REGISTRY,
@@ -1051,6 +1050,7 @@ def _mine_frame_pair(
     baseline_seed: int,
     baseline_draws: int,
     min_annual_fills: float,
+    fills_writer: Any = None,
 ) -> tuple[dict[str, list[dict[str, Any]]], list[dict[str, Any]]]:
     """Mine candidate rows for one (train, test) frame pair across the given
     families. Returns per-family lists of candidate row dicts, before quality
@@ -1271,6 +1271,14 @@ def _mine_frame_pair(
         fam_pass = sum(
             1 for r in per_family_rows[fam_name] if r.get("selection_pass")
         )
+        if fills_writer is not None and fill_rows:
+            # Stream this family's fills to disk and drop them from memory.
+            # Without this, `fill_rows` accumulates across all 11 families
+            # within one bar_ticks iteration — for high-pass families
+            # (directional_inverse ~95%, directional_run ~50%) that's
+            # several GB and OOM-kills the next big family (double_touch).
+            fills_writer.append(fill_rows)
+            fill_rows = []
         _log(
             f"  family {fam_name}: done in "
             f"{time.perf_counter() - fam_t0:.0f}s — "
@@ -1281,6 +1289,8 @@ def _mine_frame_pair(
 
 def run(
     cfg: dict[str, Any],
+    *,
+    fills_writer: Any = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, list[dict[str, Any]]]:
     symbol = str(cfg["symbol"]).upper().strip()
     dataset_dir = Path(str(cfg["dataset_dir"]))
@@ -1359,10 +1369,17 @@ def run(
             cfg=cfg, family_names=family_names,
             baseline_seed=baseline_seed, baseline_draws=baseline_draws,
             min_annual_fills=min_annual_fills,
+            fills_writer=fills_writer,
         )
         for fam_name, fam_rows in pair_rows.items():
             per_family_rows[fam_name].extend(fam_rows)
-        all_fills.extend(pair_fills)
+        # When a writer is supplied, fills were flushed per family inside
+        # `_mine_frame_pair` and `pair_fills` is empty. Otherwise (tests,
+        # small in-memory runs) keep the legacy in-memory accumulator.
+        if fills_writer is not None and pair_fills:
+            fills_writer.append(pair_fills)
+        else:
+            all_fills.extend(pair_fills)
         # Drop the cross-symbol cs_frame for this bar_ticks so GC can
         # free it before the next bar_ticks builds its own. Without
         # this, the module-level _BUILT_CS_FRAME_CACHE accumulates one
@@ -1447,14 +1464,18 @@ def main() -> None:
     args = p.parse_args()
 
     cfg = _merge_config(args)
-    (
-        directional, oco, oco_asymmetric, no_touch,
-        dollar_residual, dispersion_rank, lead_lag, summary, fills,
-    ) = run(cfg)
-
     out_dir = Path(str(cfg["out_dir"]))
     out_dir.mkdir(parents=True, exist_ok=True)
     symbol = str(cfg["symbol"]).upper().strip()
+
+    from scripts.candidate_fills import CandidateFillsWriter
+
+    with CandidateFillsWriter(out_dir, symbol) as fills_writer:
+        (
+            directional, oco, oco_asymmetric, no_touch,
+            dollar_residual, dispersion_rank, lead_lag, summary, fills,
+        ) = run(cfg, fills_writer=fills_writer)
+    fills_path = fills_writer.path
 
     d_path = out_dir / f"{symbol}_directional_candidates.csv"
     o_path = out_dir / f"{symbol}_oco_candidates.csv"
@@ -1472,7 +1493,6 @@ def main() -> None:
     dispersion_rank.to_csv(dx_path, index=False)
     lead_lag.to_csv(ll_path, index=False)
     summary.to_csv(s_path, index=False)
-    fills_path = write_candidate_fills(fills, out_dir, symbol)
     print(f"wrote: {d_path}", flush=True)
     print(f"wrote: {o_path}", flush=True)
     print(f"wrote: {oa_path}", flush=True)
