@@ -49,6 +49,43 @@ _FEATURE_FLOAT_COLS = (
 _SESSION_COL = "session_marker"
 
 
+_FILLS_FRAME_CTX_ATTR = "__mining_fills_ctx"
+
+
+def prepare_fills_frame_context(frame: pd.DataFrame) -> dict[str, Any]:
+    """Pre-convert the columns expand_fills needs into numpy arrays.
+
+    expand_fills was running `pd.to_datetime` (~500ms), three
+    `pd.to_numeric` (~50ms each), and one `astype(str)` (~100ms) on the
+    full ~850k-row frame on EVERY call. For high-pass families that's
+    ~750ms × 2 splits × 86 passes ≈ 130s of pure column conversion on
+    GBPUSD's directional_inverse alone. These columns are read-only
+    across all expand_fills calls within one _mine_frame_pair invocation,
+    so compute them once and stash the result on `frame.attrs`. Subsequent
+    expand_fills calls index into the cached arrays in ~microseconds."""
+    cached = frame.attrs.get(_FILLS_FRAME_CTX_ATTR)
+    if cached is not None:
+        return cached
+    ctx: dict[str, Any] = {
+        "close_ts": pd.to_datetime(
+            frame["close_ts"], utc=True, errors="coerce"
+        ).to_numpy(),
+    }
+    for col in _FEATURE_FLOAT_COLS:
+        if col in frame.columns:
+            ctx[col] = pd.to_numeric(
+                frame[col], errors="coerce"
+            ).to_numpy(dtype=float)
+        else:
+            ctx[col] = None
+    if _SESSION_COL in frame.columns:
+        ctx[_SESSION_COL] = frame[_SESSION_COL].astype(str).to_numpy()
+    else:
+        ctx[_SESSION_COL] = None
+    frame.attrs[_FILLS_FRAME_CTX_ATTR] = ctx
+    return ctx
+
+
 def expand_fills(
     frame: pd.DataFrame,
     entries: np.ndarray,
@@ -64,12 +101,10 @@ def expand_fills(
     correspondence is never broken. Missing feature columns degrade to NaN
     (or empty string for session_marker) rather than raising.
 
-    Hot-path-optimised: the prior version called `frame[col].iloc[i]` for
-    every feature on every fill. On a high-pass-rate family (e.g.
-    directional_inverse at 93/102 pass) that pandas `.iloc[]` overhead
-    dominated mining wall-clock — 22 minutes for 102 candidates. This
-    version pulls each column to numpy once per candidate, then the
-    per-row dict construction is plain Python indexing on numpy arrays.
+    Hot-path-optimised: column conversions are memoised on `frame.attrs`
+    via `prepare_fills_frame_context` (compute once per frame, reused
+    across all candidates). Per-row dict construction is plain Python
+    indexing on cached numpy arrays.
     """
     entries = np.asarray(entries, dtype=np.int64)
     gross = np.asarray(gross, dtype=float)
@@ -81,25 +116,20 @@ def expand_fills(
     sel = entries[finite]
     gross_sel = gross[finite]
 
-    # Vectorised column lookups: one .to_numpy() per column, then fancy
-    # index by the kept entry positions. Replaces O(n_fills * n_columns)
-    # pandas .iloc[] calls.
-    close_ts_arr = pd.to_datetime(
-        frame["close_ts"], utc=True, errors="coerce"
-    ).to_numpy()
-    entry_ts = close_ts_arr[sel]
+    ctx = prepare_fills_frame_context(frame)
+    entry_ts = ctx["close_ts"][sel]
 
     feature_arrays: dict[str, np.ndarray] = {}
     for col in _FEATURE_FLOAT_COLS:
-        if col in frame.columns:
-            feature_arrays[col] = pd.to_numeric(
-                frame[col], errors="coerce"
-            ).to_numpy(dtype=float)[sel]
+        col_arr = ctx[col]
+        if col_arr is not None:
+            feature_arrays[col] = col_arr[sel]
         else:
             feature_arrays[col] = np.full(sel.size, np.nan, dtype=float)
 
-    if _SESSION_COL in frame.columns:
-        session_arr = frame[_SESSION_COL].astype(str).to_numpy()[sel]
+    session_full = ctx[_SESSION_COL]
+    if session_full is not None:
+        session_arr = session_full[sel]
     else:
         session_arr = np.full(sel.size, "", dtype=object)
 
