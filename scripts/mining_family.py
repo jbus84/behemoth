@@ -93,6 +93,40 @@ def _cached_float_col(frame: pd.DataFrame, col: str) -> np.ndarray:
     return arr
 
 
+_CS_ALIGNED_CACHE_ATTR = "__mining_cs_aligned_cache"
+
+
+def _cached_cs_aligned(
+    cs_full: pd.DataFrame, frame: pd.DataFrame
+) -> pd.DataFrame:
+    """Memoised cs_full -> train/test alignment by close_ts inner-join.
+
+    All 3 cross-symbol families (DollarFactorResidual, DispersionRank,
+    LeadLag) call this per-params inside their `_build_cs_frame`. The
+    merge is O(n + m) on the 2.2M-row cs_full + 851k-row train frame
+    plus a sort — empirically ~5-30s per call. With 24 + 6 + 72 = 102
+    cs-family params each calling it twice (train + test), uncached cost
+    is ~17-100 min per (symbol, bar_ticks) iteration.
+
+    The result depends only on `(cs_full, frame)` — not on params — so
+    cache it once per pair and reuse across all params and all 3 cs
+    families. Stored on `frame.attrs` keyed by `id(cs_full)`; both the
+    cs_full (module-cached) and the frame (held during _mine_frame_pair)
+    have stable identity for the cache lifetime."""
+    cache = frame.attrs.setdefault(_CS_ALIGNED_CACHE_ATTR, {})
+    key = id(cs_full)
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+    result = cs_full.merge(
+        frame[["close_ts"]].assign(_ord=np.arange(len(frame))),
+        on="close_ts",
+        how="inner",
+    ).sort_values("_ord").reset_index(drop=True).drop(columns=["_ord"])
+    cache[key] = result
+    return result
+
+
 def _frame_fingerprint(frame: pd.DataFrame) -> int:
     """Content identity for short-lived per-family caches.
 
@@ -989,13 +1023,7 @@ class DollarFactorResidualFamily:
 
         if "close_ts" not in frame.columns or "close_ts" not in cs_full.columns:
             return None
-        cs_aligned = cs_full.merge(
-            frame[["close_ts"]].assign(_ord=np.arange(len(frame))),
-            on="close_ts",
-            how="inner",
-        ).sort_values("_ord").reset_index(drop=True)
-        cs_aligned = cs_aligned.drop(columns=["_ord"])
-        return cs_aligned
+        return _cached_cs_aligned(cs_full, frame)
 
     def _rolling_regression_loop(
         self, cs_frame: pd.DataFrame, target_symbol: str, window: int
@@ -1263,12 +1291,7 @@ class DispersionRankFamily:
             return None
         if "close_ts" not in frame.columns or "close_ts" not in cs_full.columns:
             return None
-        cs_aligned = cs_full.merge(
-            frame[["close_ts"]].assign(_ord=np.arange(len(frame))),
-            on="close_ts",
-            how="inner",
-        ).sort_values("_ord").reset_index(drop=True).drop(columns=["_ord"])
-        return cs_aligned
+        return _cached_cs_aligned(cs_full, frame)
 
     def _per_bar_rank_and_side_loop(
         self, cs_frame: pd.DataFrame, target_symbol: str
@@ -1496,12 +1519,7 @@ class LeadLagFamily:
             return None
         if "close_ts" not in frame.columns or "close_ts" not in cs_full.columns:
             return None
-        cs_aligned = cs_full.merge(
-            frame[["close_ts"]].assign(_ord=np.arange(len(frame))),
-            on="close_ts",
-            how="inner",
-        ).sort_values("_ord").reset_index(drop=True).drop(columns=["_ord"])
-        return cs_aligned
+        return _cached_cs_aligned(cs_full, frame)
 
     def _peer_trigger_at_lag(
         self, cs_frame: pd.DataFrame, peer: str, lag_k: int
