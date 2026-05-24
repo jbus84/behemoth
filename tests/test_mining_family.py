@@ -13,9 +13,14 @@ def test_resolve_families_maps_legacy_library_type():
     assert resolve_families("separate") == ["oco_first_touch", "directional"]
 
 
-def test_resolve_families_all_includes_every_registered_family():
+def test_resolve_families_all_includes_every_registered_family_except_no_touch():
+    # no_touch was excluded from "all" on 2026-05-24 (PR #229) due to its
+    # ~6 min per-iteration cost and 0 passes on EURUSD. It remains in
+    # FAMILY_REGISTRY and runnable via `library_type: no_touch`.
     families = resolve_families("all")
-    assert set(families) == set(FAMILY_REGISTRY)
+    expected = set(FAMILY_REGISTRY) - {"no_touch"}
+    assert set(families) == expected
+    assert "no_touch" not in families
     assert len(families) == len(set(families)), "no duplicates"
 
 
