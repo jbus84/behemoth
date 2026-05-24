@@ -10,6 +10,8 @@ Purpose:
 from __future__ import annotations
 
 import argparse
+import contextlib
+import gc
 import sys
 import time
 from datetime import datetime, timezone
@@ -1330,6 +1332,16 @@ def _mine_frame_pair(
             # several GB and OOM-kills the next big family (double_touch).
             fills_writer.append(fill_rows)
             fill_rows = []
+        # Drop the family's _precompute cache + force a GC pass before
+        # the next family starts. Each family accumulates arrays sized
+        # O(n_rows) in its cache; pandas allocations don't always return
+        # to the OS after del, so on long 8 GB runs the process drifts
+        # toward the RSS ceiling and OOM-kills the first family that
+        # tries to allocate (observed on no_touch after a 9-hour run).
+        if hasattr(family, "clear_cache"):
+            with contextlib.suppress(Exception):
+                family.clear_cache()
+        gc.collect()
         _log(
             f"  family {fam_name}: done in "
             f"{time.perf_counter() - fam_t0:.0f}s — "
