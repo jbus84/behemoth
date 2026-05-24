@@ -11,16 +11,25 @@ Output per symbol/tick-size:
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 import polars as pl
 
-from src.behemoth.core.features import pip_size
+# Put the repo root on sys.path so `src.behemoth.*` and `scripts.*` imports
+# resolve when this script is run directly (e.g. as a subprocess from
+# `build_tick_velocity_dataset.py`'s `_ensure_tickbar`), not only when
+# imported as a package under pytest. Same bootstrap pattern as PR #194.
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from src.behemoth.core.features import pip_size  # noqa: E402
 
 try:
-    from scripts.canonical_tick_feed import DEFAULT_CANONICAL_ROOT
+    from scripts.canonical_tick_feed import DEFAULT_CANONICAL_ROOT  # noqa: E402
 except ModuleNotFoundError:
-    from canonical_tick_feed import DEFAULT_CANONICAL_ROOT
+    from canonical_tick_feed import DEFAULT_CANONICAL_ROOT  # noqa: E402
 
 UTC_TS = pl.Datetime("ns", "UTC")
 
