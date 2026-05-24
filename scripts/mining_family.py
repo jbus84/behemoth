@@ -198,7 +198,7 @@ class DirectionalFamily:
         if ycol not in frame.columns or sidecol not in frame.columns:
             return np.array([], dtype=np.int64)
         y = _cached_float_col(frame, ycol)
-        side = frame[sidecol].to_numpy()
+        side = _cached_float_col(frame, sidecol)
         valid = np.isfinite(y)
         if h > 0:
             valid[-h:] = False
@@ -214,7 +214,7 @@ class DirectionalFamily:
         if ycol not in frame.columns or sidecol not in frame.columns:
             return np.array([], dtype=float)
         y = _cached_float_col(frame, ycol)
-        side = frame[sidecol].to_numpy().astype(float)
+        side = _cached_float_col(frame, sidecol)
         return side[entries] * y[entries]
 
     def candidate_metadata(
@@ -259,7 +259,7 @@ class DirectionalInverseFamily:
         if ycol not in frame.columns or sidecol not in frame.columns:
             return np.array([], dtype=np.int64)
         y = _cached_float_col(frame, ycol)
-        side = frame[sidecol].to_numpy()
+        side = _cached_float_col(frame, sidecol)
         valid = np.isfinite(y)
         if h > 0:
             valid[-h:] = False
@@ -275,7 +275,7 @@ class DirectionalInverseFamily:
         if ycol not in frame.columns or sidecol not in frame.columns:
             return np.array([], dtype=float)
         y = _cached_float_col(frame, ycol)
-        side = frame[sidecol].to_numpy().astype(float)
+        side = _cached_float_col(frame, sidecol)
         return -side[entries] * y[entries]
 
     def candidate_metadata(

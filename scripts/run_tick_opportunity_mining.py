@@ -49,6 +49,7 @@ from scripts.candidate_fills import (  # noqa: E402  # sys.path bootstrap above
 )
 from scripts.mining_family import (  # noqa: E402  # sys.path bootstrap above
     FAMILY_REGISTRY,
+    _cached_float_col,
     resolve_families,
 )
 from scripts.mining_random_baseline import (  # noqa: E402  # sys.path bootstrap
@@ -441,11 +442,11 @@ def _oco_precompute_candidates(
         frame,
         required=["close_bid", "low_bid", "high_ask", "close_ask"],
     )
-    close_bid = pd.to_numeric(frame["close_bid"], errors="coerce").to_numpy(dtype=float)
-    low_bid = pd.to_numeric(frame["low_bid"], errors="coerce").to_numpy(dtype=float)
-    high_ask = pd.to_numeric(frame["high_ask"], errors="coerce").to_numpy(dtype=float)
-    close_ask = pd.to_numeric(frame["close_ask"], errors="coerce").to_numpy(dtype=float)
-    hlf = pd.to_numeric(frame["hl_first"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
+    close_bid = _cached_float_col(frame, "close_bid")
+    low_bid = _cached_float_col(frame, "low_bid")
+    high_ask = _cached_float_col(frame, "high_ask")
+    close_ask = _cached_float_col(frame, "close_ask")
+    hlf = np.nan_to_num(_cached_float_col(frame, "hl_first"), nan=0.0)
 
     h = int(horizon)
     n_eff = len(frame) - 2 * h
@@ -554,11 +555,11 @@ def _oco_asymmetric_precompute(
         frame,
         required=["close_bid", "low_bid", "high_ask", "close_ask"],
     )
-    close_bid = pd.to_numeric(frame["close_bid"], errors="coerce").to_numpy(dtype=float)
-    low_bid = pd.to_numeric(frame["low_bid"], errors="coerce").to_numpy(dtype=float)
-    high_ask = pd.to_numeric(frame["high_ask"], errors="coerce").to_numpy(dtype=float)
-    close_ask = pd.to_numeric(frame["close_ask"], errors="coerce").to_numpy(dtype=float)
-    hlf = pd.to_numeric(frame["hl_first"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
+    close_bid = _cached_float_col(frame, "close_bid")
+    low_bid = _cached_float_col(frame, "low_bid")
+    high_ask = _cached_float_col(frame, "high_ask")
+    close_ask = _cached_float_col(frame, "close_ask")
+    hlf = np.nan_to_num(_cached_float_col(frame, "hl_first"), nan=0.0)
 
     h = int(horizon)
     n_eff = len(frame) - 2 * h
@@ -644,7 +645,7 @@ def _run_length(frame: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
     (including i) with the same non-zero sign of ret1_pips; run_sign[i] is
     that sign (+1/-1, or 0 when ret1_pips is zero, which also resets the run).
     """
-    ret = pd.to_numeric(frame["ret1_pips"], errors="coerce").to_numpy(dtype=float)
+    ret = _cached_float_col(frame, "ret1_pips")
     sign = np.sign(np.nan_to_num(ret)).astype(np.int8)
     n = len(sign)
     if n == 0:
@@ -684,10 +685,10 @@ def _double_touch_precompute(
         frame,
         required=["close_bid", "low_bid", "high_ask", "close_ask"],
     )
-    close_bid = pd.to_numeric(frame["close_bid"], errors="coerce").to_numpy(dtype=float)
-    low_bid = pd.to_numeric(frame["low_bid"], errors="coerce").to_numpy(dtype=float)
-    high_ask = pd.to_numeric(frame["high_ask"], errors="coerce").to_numpy(dtype=float)
-    close_ask = pd.to_numeric(frame["close_ask"], errors="coerce").to_numpy(dtype=float)
+    close_bid = _cached_float_col(frame, "close_bid")
+    low_bid = _cached_float_col(frame, "low_bid")
+    high_ask = _cached_float_col(frame, "high_ask")
+    close_ask = _cached_float_col(frame, "close_ask")
 
     wA, wB, h = int(window_A), int(window_B), int(h2)
     n = len(frame)
@@ -786,10 +787,10 @@ def _pullback_precompute(
         frame,
         required=["close_bid", "low_bid", "high_ask", "close_ask"],
     )
-    close_bid = pd.to_numeric(frame["close_bid"], errors="coerce").to_numpy(dtype=float)
-    low_bid = pd.to_numeric(frame["low_bid"], errors="coerce").to_numpy(dtype=float)
-    high_ask = pd.to_numeric(frame["high_ask"], errors="coerce").to_numpy(dtype=float)
-    close_ask = pd.to_numeric(frame["close_ask"], errors="coerce").to_numpy(dtype=float)
+    close_bid = _cached_float_col(frame, "close_bid")
+    low_bid = _cached_float_col(frame, "low_bid")
+    high_ask = _cached_float_col(frame, "high_ask")
+    close_ask = _cached_float_col(frame, "close_ask")
 
     wI, wP, wR, hh = int(window_I), int(window_P), int(window_R), int(h)
     n = len(frame)
