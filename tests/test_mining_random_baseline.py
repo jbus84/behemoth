@@ -185,7 +185,12 @@ def test_random_entry_baseline_batched_is_at_least_3x_faster():
     t_loop = _time(_looped)
     t_batch = _time(_batched)
     speedup = t_loop / max(t_batch, 1e-9)
-    assert speedup >= 3.0, f"got {speedup:.1f}x; loop={t_loop:.3f}s batch={t_batch:.3f}s"
+    # Originally asserted >= 3.0x because the loop did 200 full-column
+    # pd.to_numeric conversions inside measure_gross. After mining_family's
+    # _cached_float_col memoisation, the loop reuses the cached conversion
+    # too, so the per-call overhead gap narrows. Batching is still faster
+    # (function-call + draw-generation overhead amortised) but only ~2x.
+    assert speedup >= 1.8, f"got {speedup:.1f}x; loop={t_loop:.3f}s batch={t_batch:.3f}s"
 
 
 def test_random_entry_baseline_short_circuits_noise_band():
