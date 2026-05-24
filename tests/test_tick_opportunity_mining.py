@@ -200,7 +200,7 @@ def test_tick_opportunity_mining_outputs(tmp_path: Path) -> None:
         "test_year": 2025,
         "min_annual_fills": 50.0,
         "gross_metric": "mean",
-        "library_type": "separate",
+        "library_type": "separate", "prescreen_min_train_entries": 0,
         "barrier_grid_pips": "2,3",
     }
     directional, oco, _oco_asym, _no_touch, _dr, _dx, _ll, summary, _fills = run(cfg)
@@ -486,7 +486,7 @@ def test_mining_raises_when_dataset_dir_missing(tmp_path: Path) -> None:
         "test_year": 2025,
         "min_annual_fills": 50.0,
         "gross_metric": "mean",
-        "library_type": "separate",
+        "library_type": "separate", "prescreen_min_train_entries": 0,
         "barrier_grid_pips": "2,3",
     }
     with pytest.raises(FileNotFoundError, match="rebuild-all"):
@@ -505,7 +505,7 @@ def test_mining_raises_when_no_velocity_files_for_symbol(tmp_path: Path) -> None
         "test_year": 2025,
         "min_annual_fills": 50.0,
         "gross_metric": "mean",
-        "library_type": "separate",
+        "library_type": "separate", "prescreen_min_train_entries": 0,
         "barrier_grid_pips": "2,3",
     }
     with pytest.raises(FileNotFoundError, match="no velocity files"):
@@ -530,7 +530,7 @@ def test_mining_run_output_is_stable(tmp_path: Path) -> None:
         "test_year": 2025,
         "min_annual_fills": 50.0,
         "gross_metric": "mean",
-        "library_type": "separate",
+        "library_type": "separate", "prescreen_min_train_entries": 0,
         "barrier_grid_pips": "2,3",
     }
     directional, oco, _oco_asym, _no_touch, _dr, _dx, _ll, summary, _fills = run(cfg)
@@ -562,7 +562,7 @@ def test_run_emits_random_baseline_columns(tmp_path: Path) -> None:
         "train_years": "2022,2023,2024", "test_year": 2025,
         "min_annual_fills": 50.0, "gross_metric": "mean",
         "library_type": "separate", "barrier_grid_pips": "2,3",
-        "baseline_seed": 12345, "baseline_draws": 50,
+        "baseline_seed": 12345, "baseline_draws": 50, "prescreen_min_train_entries": 0,
     }
     directional, oco, _oco_asym, _no_touch, _dr, _dx, _ll, summary, _fills = run(cfg)
     for df in (directional, oco):
@@ -654,7 +654,7 @@ def test_run_mines_double_touch(tmp_path: Path) -> None:
         "train_years": "2022,2023,2024", "test_year": 2025,
         "min_annual_fills": 50.0, "gross_metric": "mean",
         "library_type": "double_touch", "barrier_grid_pips": "2,3",
-        "baseline_seed": 12345, "baseline_draws": 20,
+        "baseline_seed": 12345, "baseline_draws": 20, "prescreen_min_train_entries": 0,
     }
     directional, oco, _oco_asym, _no_touch, _dr, _dx, _ll, _, _fills = run(cfg)
     # double_touch is a signed-return family -> lands in the directional frame.
@@ -772,7 +772,7 @@ def test_run_mines_pullback(tmp_path: Path) -> None:
         "train_years": "2022,2023,2024", "test_year": 2025,
         "min_annual_fills": 50.0, "gross_metric": "mean",
         "library_type": "pullback", "barrier_grid_pips": "2,3",
-        "baseline_seed": 12345, "baseline_draws": 20,
+        "baseline_seed": 12345, "baseline_draws": 20, "prescreen_min_train_entries": 0,
     }
     directional, oco, _oco_asym, _no_touch, _dr, _dx, _ll, _, _fills = run(cfg)
     # pullback is a signed-return family -> lands in the directional frame.
@@ -794,7 +794,7 @@ def test_run_mines_no_touch(tmp_path: Path) -> None:
         "train_years": "2022,2023,2024", "test_year": 2025,
         "min_annual_fills": 50.0, "gross_metric": "mean",
         "library_type": "no_touch", "barrier_grid_pips": "2,3",
-        "baseline_seed": 12345, "baseline_draws": 20,
+        "baseline_seed": 12345, "baseline_draws": 20, "prescreen_min_train_entries": 0,
     }
     directional, oco, _oco_asym, no_touch, _dr, _dx, _ll, _, _fills = run(cfg)
     # no_touch is a payoff family -> its own frame; others stay empty.
@@ -826,7 +826,7 @@ def test_run_emits_candidate_fills_joinable_to_summary(tmp_path: Path) -> None:
         "test_year": 2025,
         "min_annual_fills": 50.0,
         "gross_metric": "mean",
-        "library_type": "separate",
+        "library_type": "separate", "prescreen_min_train_entries": 0,
         "barrier_grid_pips": "2,3",
     }
     directional, oco, _oco_asym, no_touch, _dr, _dx, _ll, summary, fills = run(cfg)

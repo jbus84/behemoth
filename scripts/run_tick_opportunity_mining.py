@@ -82,6 +82,15 @@ QUALITY_TIER_BASIS = "train_only"
 # stats, but skip the expensive expand_fills logging. This is the
 # dominant per-candidate cost on high-pass-rate families.
 FILL_LOG_MIN_Z = 2.0
+
+# Minimum train-side entry count for a params combo to be worth mining.
+# Selection_pass requires train_n >= 500 (post-regime filtering), and a
+# params combo whose universe (pre-regime) has fewer entries than this
+# cannot possibly produce a passing candidate in any regime. Skip the
+# 17 regime iterations + baseline draws + expand_fills work for those.
+# Matches the train_n >= 500 selection_pass gate so no candidate that
+# would have passed is dropped.
+PRESCREEN_MIN_TRAIN_ENTRIES = 500
 EXPLICIT_BAR_SCHEMA_COLUMNS = [
     "open_bid",
     "high_bid",
@@ -1060,6 +1069,7 @@ def _mine_frame_pair(
     baseline_draws: int,
     min_annual_fills: float,
     fills_writer: Any = None,
+    prescreen_min_train_entries: int = PRESCREEN_MIN_TRAIN_ENTRIES,
 ) -> tuple[dict[str, list[dict[str, Any]]], list[dict[str, Any]]]:
     """Mine candidate rows for one (train, test) frame pair across the given
     families. Returns per-family lists of candidate row dicts, before quality
@@ -1104,6 +1114,10 @@ def _mine_frame_pair(
         if "session_marker" in train.columns else None
     )
 
+    # All-true train mask for the cheap per-params feasibility prescreen
+    # below. Allocated once; reused across all families/params.
+    all_train_mask = np.ones(len(train), dtype=bool)
+
     for fam_name in family_names:
         family = FAMILY_REGISTRY[fam_name]
         rng = np.random.default_rng(baseline_seed)
@@ -1116,6 +1130,7 @@ def _mine_frame_pair(
             f"(~{n_params * n_regimes:,} candidate evals × "
             f"{baseline_draws} baseline draws)"
         )
+        n_prescreen_skipped = 0
         for params in family.param_grid(cfg):
             params = {
                 **params,
@@ -1129,6 +1144,25 @@ def _mine_frame_pair(
                 "_dataset_dir": str(cfg.get("dataset_dir", "")),
                 "_horizons": tuple(_parse_ints(str(cfg.get("horizons", "")))),
             }
+
+            # Cheap feasibility prescreen: call entry_indices once on the
+            # full train universe (no regime mask). If fewer than
+            # PRESCREEN_MIN_TRAIN_ENTRIES events exist for this params,
+            # no regime subset can reach the selection_pass `train_n >=
+            # 500` gate — skip all 17 regime iterations + baseline draws
+            # + expand_fills work. For barrier families the result is
+            # cached on the family `_cache`, so the regime-loop's first
+            # entry_indices call reuses it (zero wasted work).
+            if prescreen_min_train_entries > 0:
+                try:
+                    universe_entries = family.entry_indices(
+                        train, all_train_mask, params
+                    )
+                except Exception:
+                    universe_entries = np.array([], dtype=np.int64)
+                if len(universe_entries) < prescreen_min_train_entries:
+                    n_prescreen_skipped += 1
+                    continue
 
             # OCO-specific precompute for both_window_rate / p_up_first
             oco_prep_test: dict[str, Any] | None = None
@@ -1342,10 +1376,16 @@ def _mine_frame_pair(
             with contextlib.suppress(Exception):
                 family.clear_cache()
         gc.collect()
+        skip_note = (
+            f" (prescreen skipped {n_prescreen_skipped}/{n_params} params "
+            f"with < {PRESCREEN_MIN_TRAIN_ENTRIES} train entries)"
+            if n_prescreen_skipped > 0 else ""
+        )
         _log(
             f"  family {fam_name}: done in "
             f"{time.perf_counter() - fam_t0:.0f}s — "
             f"{fam_added:,} candidates ({fam_pass} pass)"
+            f"{skip_note}"
         )
     return per_family_rows, fill_rows
 
@@ -1433,6 +1473,10 @@ def run(
             baseline_seed=baseline_seed, baseline_draws=baseline_draws,
             min_annual_fills=min_annual_fills,
             fills_writer=fills_writer,
+            prescreen_min_train_entries=int(
+                cfg.get("prescreen_min_train_entries",
+                        PRESCREEN_MIN_TRAIN_ENTRIES)
+            ),
         )
         for fam_name, fam_rows in pair_rows.items():
             per_family_rows[fam_name].extend(fam_rows)

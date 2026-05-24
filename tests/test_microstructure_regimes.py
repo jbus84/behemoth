@@ -48,6 +48,7 @@ def _mine(
         baseline_seed=12345,
         baseline_draws=20,
         min_annual_fills=50.0,
+        prescreen_min_train_entries=0,
     )
     return {fam: pd.DataFrame(fam_rows) for fam, fam_rows in rows.items()}
 
