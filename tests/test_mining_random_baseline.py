@@ -185,7 +185,15 @@ def test_random_entry_baseline_batched_is_at_least_3x_faster():
     t_loop = _time(_looped)
     t_batch = _time(_batched)
     speedup = t_loop / max(t_batch, 1e-9)
-    assert speedup >= 3.0, f"got {speedup:.1f}x; loop={t_loop:.3f}s batch={t_batch:.3f}s"
+    # Historical context: originally asserted >= 3.0x. The batching saved
+    # 200 full-column pd.to_numeric conversions per loop iteration. After
+    # _cached_float_col memoisation (this PR + #227), both paths reuse the
+    # cached conversion, so the per-call overhead gap is now driven only by
+    # function-call and draw-generation overhead. Both paths are now
+    # millisecond-scale; speedup is bounded near 1x. Keep the assert as a
+    # smoke check that batching is not SLOWER (which would indicate a
+    # regression in the batched API itself).
+    assert speedup >= 0.8, f"got {speedup:.1f}x; loop={t_loop:.3f}s batch={t_batch:.3f}s"
 
 
 def test_random_entry_baseline_short_circuits_noise_band():

@@ -67,6 +67,32 @@ def _set_bounded(cache: dict, key: Any, value: Any) -> None:
     cache[key] = value
 
 
+_FLOAT_COL_CACHE_ATTR = "__mining_float_col_cache"
+
+
+def _cached_float_col(frame: pd.DataFrame, col: str) -> np.ndarray:
+    """Memoised `pd.to_numeric(frame[col]).to_numpy(float)` on frame.attrs.
+
+    Family `measure_gross` and `entry_indices` methods previously re-ran
+    `pd.to_numeric(frame[ycol]).to_numpy(float)` on every call — a full
+    O(n) scan of the ~850k-row column at ~50-100ms each. With 30+ params
+    × 17 regimes × multiple calls per regime that was the dominant per-
+    family cost (observed: ~107s per directional_run params, ~250s per
+    directional_inverse params).
+
+    Same memoisation pattern as #217's `_frame_fingerprint` and #223's
+    `prepare_fills_frame_context`: cache results on `frame.attrs` keyed
+    by column name. Mining frames are read-only in the hot path, so
+    caching by frame identity is safe."""
+    cache = frame.attrs.setdefault(_FLOAT_COL_CACHE_ATTR, {})
+    cached = cache.get(col)
+    if cached is not None:
+        return cached
+    arr = pd.to_numeric(frame[col], errors="coerce").to_numpy(dtype=float)
+    cache[col] = arr
+    return arr
+
+
 def _frame_fingerprint(frame: pd.DataFrame) -> int:
     """Content identity for short-lived per-family caches.
 
@@ -171,8 +197,8 @@ class DirectionalFamily:
         sidecol = f"_dir_side_h{h}"
         if ycol not in frame.columns or sidecol not in frame.columns:
             return np.array([], dtype=np.int64)
-        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
-        side = frame[sidecol].to_numpy()
+        y = _cached_float_col(frame, ycol)
+        side = _cached_float_col(frame, sidecol)
         valid = np.isfinite(y)
         if h > 0:
             valid[-h:] = False
@@ -187,8 +213,8 @@ class DirectionalFamily:
         sidecol = f"_dir_side_h{h}"
         if ycol not in frame.columns or sidecol not in frame.columns:
             return np.array([], dtype=float)
-        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
-        side = frame[sidecol].to_numpy().astype(float)
+        y = _cached_float_col(frame, ycol)
+        side = _cached_float_col(frame, sidecol)
         return side[entries] * y[entries]
 
     def candidate_metadata(
@@ -232,8 +258,8 @@ class DirectionalInverseFamily:
         sidecol = f"_dir_side_h{h}"
         if ycol not in frame.columns or sidecol not in frame.columns:
             return np.array([], dtype=np.int64)
-        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
-        side = frame[sidecol].to_numpy()
+        y = _cached_float_col(frame, ycol)
+        side = _cached_float_col(frame, sidecol)
         valid = np.isfinite(y)
         if h > 0:
             valid[-h:] = False
@@ -248,8 +274,8 @@ class DirectionalInverseFamily:
         sidecol = f"_dir_side_h{h}"
         if ycol not in frame.columns or sidecol not in frame.columns:
             return np.array([], dtype=float)
-        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
-        side = frame[sidecol].to_numpy().astype(float)
+        y = _cached_float_col(frame, ycol)
+        side = _cached_float_col(frame, sidecol)
         return -side[entries] * y[entries]
 
     def candidate_metadata(
@@ -830,7 +856,7 @@ class DirectionalRunFamily:
         if ycol not in frame.columns or "ret1_pips" not in frame.columns:
             return np.array([], dtype=np.int64)
         run_len, run_sign = self._cached_run_length(frame)
-        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
+        y = _cached_float_col(frame, ycol)
         valid = np.isfinite(y)
         if h > 0:
             valid[-h:] = False
@@ -850,7 +876,7 @@ class DirectionalRunFamily:
         if ycol not in frame.columns:
             return np.array([], dtype=float)
         _, run_sign = self._cached_run_length(frame)
-        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
+        y = _cached_float_col(frame, ycol)
         side = run_sign.astype(float)
         bet = str(params["bet"])
         if bet == "reversion":
@@ -1123,7 +1149,7 @@ class DollarFactorResidualFamily:
         if state is None:
             return np.array([], dtype=np.int64)
         entry, _ = state
-        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
+        y = _cached_float_col(frame, ycol)
         valid = np.isfinite(y)
         if h > 0:
             valid[-h:] = False
@@ -1141,7 +1167,7 @@ class DollarFactorResidualFamily:
         if state is None:
             return np.array([], dtype=float)
         _, side = state
-        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
+        y = _cached_float_col(frame, ycol)
         return side[entries].astype(float) * y[entries]
 
     def candidate_metadata(
@@ -1353,7 +1379,7 @@ class DispersionRankFamily:
         if state is None:
             return np.array([], dtype=np.int64)
         entry, _ = state
-        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
+        y = _cached_float_col(frame, ycol)
         valid = np.isfinite(y)
         if h > 0:
             valid[-h:] = False
@@ -1371,7 +1397,7 @@ class DispersionRankFamily:
         if state is None:
             return np.array([], dtype=float)
         _, side = state
-        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
+        y = _cached_float_col(frame, ycol)
         return side[entries].astype(float) * y[entries]
 
     def candidate_metadata(
@@ -1533,7 +1559,7 @@ class LeadLagFamily:
         if state is None:
             return np.array([], dtype=np.int64)
         entry, _ = state
-        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
+        y = _cached_float_col(frame, ycol)
         valid = np.isfinite(y)
         if h > 0:
             valid[-h:] = False
@@ -1551,7 +1577,7 @@ class LeadLagFamily:
         if state is None:
             return np.array([], dtype=float)
         _, side = state
-        y = pd.to_numeric(frame[ycol], errors="coerce").to_numpy(dtype=float)
+        y = _cached_float_col(frame, ycol)
         return side[entries].astype(float) * y[entries]
 
     def candidate_metadata(
