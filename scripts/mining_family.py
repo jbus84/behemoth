@@ -154,6 +154,12 @@ _LIBRARY_TYPE_ALIASES: dict[str, list[str]] = {
     "dispersion_rank": ["dispersion_rank"],
     "lead_lag": ["lead_lag"],
     "separate": ["oco_first_touch", "directional"],
+    # no_touch was dropped from "all" on 2026-05-24: EURUSD showed 0
+    # passes, and per-candidate cost scales with entry-count by design
+    # (every i0 bar is an entry — no caching can speed it up), so each
+    # bar_ticks iteration cost ~6 min for no observed value. Still
+    # runnable explicitly via `library_type: no_touch` for diagnostic
+    # re-runs against historic data.
     "all": [
         "oco_first_touch",
         "oco_asymmetric",
@@ -162,7 +168,6 @@ _LIBRARY_TYPE_ALIASES: dict[str, list[str]] = {
         "directional_run",
         "double_touch",
         "pullback",
-        "no_touch",
         "dollar_residual",
         "dispersion_rank",
         "lead_lag",
