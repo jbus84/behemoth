@@ -237,15 +237,15 @@ def test_double_touch_family_grid_and_metadata():
     grid = fam.param_grid({"barrier_grid_pips": "2,3", "horizons": "1,2"})
     sweeps = sorted({g["sweep_dir"] for g in grid})
     assert sweeps == ["down", "up"]
-    # 2 sweep_dir x 2 a_pips x 2 b_pips x 2 window_A x 2 window_B x 2 horizons
-    assert len(grid) == 2 * 2 * 2 * 2 * 2 * 2
+    # 2 sweep_dir x 2 a_pips x 2 b_pips x 1 window_A x 1 window_B x 2 horizons
+    assert len(grid) == 2 * 2 * 2 * 1 * 1 * 2
     meta = fam.candidate_metadata(
         "london",
         {"sweep_dir": "up", "a_pips": 3.0, "b_pips": 2.0,
-         "window_A": 5, "window_B": 15, "horizon": 2},
+         "window_A": 10, "window_B": 10, "horizon": 2},
     )
     assert meta["family"] == "double_touch"
-    assert meta["state_id"] == "double_touch__london__up_a3_b2_wA5_wB15_h2"
+    assert meta["state_id"] == "double_touch__london__up_a3_b2_wA10_wB10_h2"
     assert meta["ml_ready_target_type"] == "double_touch"
     assert "sweep=up" in meta["regime_desc"]
 
@@ -381,16 +381,16 @@ def test_pullback_family_grid_and_metadata():
     grid = fam.param_grid({"barrier_grid_pips": "2,3", "horizons": "1,2"})
     dirs = sorted({g["impulse_dir"] for g in grid})
     assert dirs == ["down", "up"]
-    # 2 impulse_dir x 2 m_pips x 3 r_frac x 2 window_I x 2 window_P x 2 horizons
-    assert len(grid) == 2 * 2 * 3 * 2 * 2 * 2
+    # 2 impulse_dir x 2 m_pips x 3 r_frac x 1 window_I x 1 window_P x 2 horizons
+    assert len(grid) == 2 * 2 * 3 * 1 * 1 * 2
     assert all(g["window_R"] == 10 for g in grid)
     meta = fam.candidate_metadata(
         "london",
         {"impulse_dir": "up", "m_pips": 3.0, "r_frac": 0.5,
-         "window_I": 5, "window_P": 15, "window_R": 10, "horizon": 2},
+         "window_I": 10, "window_P": 10, "window_R": 10, "horizon": 2},
     )
     assert meta["family"] == "pullback"
-    assert meta["state_id"] == "pullback__london__up_M3_R0.5_wI5_wP15_wR10_h2"
+    assert meta["state_id"] == "pullback__london__up_M3_R0.5_wI10_wP10_wR10_h2"
     assert meta["ml_ready_target_type"] == "pullback"
     assert "impulse=up" in meta["regime_desc"]
 

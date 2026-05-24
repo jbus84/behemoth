@@ -354,7 +354,11 @@ class DoubleTouchFamily:
     name = "double_touch"
 
     _B_PIPS = [2.0, 4.0]
-    _WINDOWS = [5, 15]
+    # Spec design used [5, 15] for window_A / window_B as independent
+    # asymmetric phases. Empirically the full 2 × 2 = 4 window combos
+    # produced 0 passes across both measured symbols. Collapsed to a
+    # single mid-value to cut the grid 4x.
+    _WINDOWS = [10]
 
     def __init__(self) -> None:
         self._cache: dict[tuple[int, tuple[tuple[str, Any], ...]], dict[str, Any] | None] = {}
@@ -470,7 +474,11 @@ class PullbackFamily:
     name = "pullback"
 
     _R_FRACS = [0.382, 0.5, 0.618]
-    _WINDOWS = [5, 15]
+    # Impulse window × pullback window: spec used [5, 15] for both as
+    # independent asymmetric phases. Empirically 0 passes across two
+    # measured symbols at the full grid. Collapsed to a single mid-
+    # value to cut the grid 4x (wi × wp from 4 → 1).
+    _WINDOWS = [10]
     _WINDOW_R = 10
 
     def __init__(self) -> None:
