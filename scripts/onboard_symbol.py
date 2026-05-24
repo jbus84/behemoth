@@ -105,11 +105,18 @@ def stage_0_data(symbol: str, months: str, *, dry_run: bool, force: bool) -> Non
             label="Stage 0b: Build global tick bars",
         )
 
-    # Build velocity features
+    # Build velocity features for ALL bar-tick resolutions the downstream
+    # mining configs reference (100, 1000, 2000). Without --bar-ticks-grid
+    # the builder defaults to --bar-ticks 100 only, leaving the 1000/2000
+    # files absent — mining then silently skips those resolutions with
+    #   "skip 1000: missing data/.../<sym>_1000tick_velocity.parquet"
+    # and the strategy bible / ML dataset are built on 100tick only.
     _uv_run(
         "build_tick_velocity_dataset.py",
         "--symbols",
         symbol,
+        "--bar-ticks-grid",
+        "100,1000,2000",
         "--auto-build-bars",
         "--tickbar-dir",
         str(TICKBAR_DIR),
