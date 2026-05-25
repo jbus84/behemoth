@@ -764,7 +764,7 @@ def _run_symbol_offset_pipeline(
             "reduced_core",
             [
                 sys.executable,
-                str(ROOT / "scripts/select_oco_reduced_core_rolling.py"),
+                str(ROOT / "scripts/legacy/select_oco_reduced_core_rolling.py"),
                 "--config",
                 str(cfg.reduced),
                 "--candidate-csv",
@@ -829,7 +829,7 @@ def _run_symbol_offset_pipeline(
     if not schedule_df.empty:
         tick_exact_cmd = [
             sys.executable,
-            str(ROOT / "scripts/verify_oco_tick_exact_shortlist.py"),
+            str(ROOT / "scripts/legacy/verify_oco_tick_exact_shortlist.py"),
             "--symbol",
             symbol,
             "--dataset-dir",

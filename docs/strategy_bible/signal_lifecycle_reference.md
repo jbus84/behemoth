@@ -66,6 +66,6 @@ sequenceDiagram
 ## Traceability
 - `scripts/run_tick_opportunity_mining.py`
 - `scripts/run_tick_opportunity_monthly_wfo.py`
-- `scripts/select_oco_reduced_core_rolling.py`
+- `scripts/legacy/select_oco_reduced_core_rolling.py`
 - `scripts/analyze_oco_stop_limit_tickfill.py`
 - `scripts/validate_oco_live_governance.py`

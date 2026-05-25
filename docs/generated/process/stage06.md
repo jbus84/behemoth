@@ -25,8 +25,8 @@ Replays the Shortlist at exact tick granularity to verify selected opportunities
 ## Implementation Scope
 
 - `Makefile` (registry)
+- `scripts/legacy/verify_oco_tick_exact_shortlist.py` (registry)
 - `scripts/onboard_symbol.py` (registry)
-- `scripts/verify_oco_tick_exact_shortlist.py` (registry)
 
 ## Tests
 

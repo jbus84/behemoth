@@ -270,7 +270,7 @@ freeze-oco:
 	@echo "\n✅ Successfully audited and frozen all locks."
 
 freeze-oco-history:
-	uv run python scripts/freeze_oco_historical_governance.py --symbols $(shell echo $(REBUILD_SYMBOLS) | sed 's/ /,/g')
+	uv run python scripts/legacy/freeze_oco_historical_governance.py --symbols $(shell echo $(REBUILD_SYMBOLS) | sed 's/ /,/g')
 	$(MAKE) validate-oco-history
 	@echo "\n✅ Historical month-scoped locks generated."
 

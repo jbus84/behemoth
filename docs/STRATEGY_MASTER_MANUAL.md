@@ -232,8 +232,8 @@ See:
 - `scripts/run_tick_opportunity_mining.py`
 - `scripts/run_tick_opportunity_monthly_wfo.py`
 - `scripts/select_oco_reduced_core.py`
-- `scripts/select_oco_reduced_core_rolling.py`
-- `scripts/verify_oco_tick_exact_shortlist.py`
+- `scripts/legacy/select_oco_reduced_core_rolling.py`
+- `scripts/legacy/verify_oco_tick_exact_shortlist.py`
 - `scripts/analyze_oco_monthly_wfo_robustness.py`
 - `scripts/analyze_oco_stop_limit_tickfill.py`
 - `scripts/simulate_api_e2e_replay.py` (E2E Replay Parity Check)
