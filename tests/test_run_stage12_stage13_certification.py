@@ -9,6 +9,7 @@ from scripts.run_stage12_stage13_certification import (
     _resolve_model_json,
     _resolve_model_month,
     _run_stage13_matrix_replay,
+    main,
     run_stage12_stage13_certification,
 )
 
@@ -212,3 +213,49 @@ def test_stage13_matrix_replay_fails_fast_without_jforex_credentials(monkeypatch
     assert result["signal_pass"] is False
     assert result["execution_pass"] is False
     assert "BEHEMOTH_JFOREX_JNLP_URI" in result["details"]
+
+
+def test_main_returns_nonzero_when_final_certification_fails(monkeypatch, tmp_path: Path) -> None:
+    def _stage12_fail(**kwargs):
+        out_dir = kwargs["out_dir"]
+        symbol = kwargs["symbol"]
+        pd.DataFrame(
+            [
+                {
+                    "symbol": symbol,
+                    "stage12_api_parity_pass": False,
+                    "certification_outcome": "FAIL",
+                    "go_decision": "NO_GO",
+                }
+            ]
+        ).to_csv(out_dir / f"{symbol}_stage12_api_parity_summary.csv", index=False)
+        return {"certification_outcome": "FAIL", "go_decision": "NO_GO"}
+
+    def _stage13_empty(**kwargs):
+        return pd.DataFrame(), pd.DataFrame()
+
+    monkeypatch.setattr(
+        "scripts.run_stage12_stage13_certification._stage12_default_runner",
+        _stage12_fail,
+    )
+    monkeypatch.setattr(
+        "scripts.run_stage12_stage13_certification._stage13_default_runner",
+        _stage13_empty,
+    )
+
+    exit_code = main(
+        [
+            "--symbols",
+            "EURUSD",
+            "--models-dir",
+            str(tmp_path / "models"),
+            "--predictions-dir",
+            str(tmp_path / "predictions"),
+            "--reconcile-dir",
+            str(tmp_path),
+            "--out-dir",
+            str(tmp_path),
+        ]
+    )
+
+    assert exit_code == 1

@@ -194,3 +194,30 @@ def test_execution_risk_flags_net_viability_fail(tmp_path: Path) -> None:
     )
     e10 = checks[checks["check_id"] == "E10"].iloc[0]
     assert e10["status"] == "fail"
+
+
+def test_execution_risk_reports_missing_prediction_columns(tmp_path: Path) -> None:
+    cfg = _write_bundle(tmp_path)
+    pd.DataFrame(
+        [
+            {
+                "close_ts": "2025-05-01T00:00:00Z",
+                "candidate_uid": "oco|EURUSD|100|h6|s1",
+                "target_gross_pips": 1.0,
+                "selected_exec": 1,
+            }
+        ]
+    ).to_parquet(cfg.pred_path, index=False)
+
+    checks, issues = run_audit(
+        ["EURUSD"],
+        out_checks_csv=tmp_path / "checks.csv",
+        out_issues_csv=tmp_path / "issues.csv",
+        report_out=tmp_path / "report.md",
+        config_map={"EURUSD": cfg},
+    )
+
+    schema_check = checks[checks["check_id"] == "E00"].iloc[0]
+    assert schema_check["status"] == "fail"
+    assert "test_month" in str(schema_check["details_json"])
+    assert "EURUSD_E00" in set(issues["issue_id"].astype(str))

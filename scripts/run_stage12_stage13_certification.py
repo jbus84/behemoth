@@ -570,6 +570,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Wrote final normalized summary to {final_summary_path.as_posix()}")
     if not stage13_checks.empty:
         print(f"Stage 13 checks rows: {len(stage13_checks)}")
+    if any(_normalize_outcome(row.get("certification_outcome")) != "PASS" for row in final_rows):
+        return 1
     return 0
 
 
