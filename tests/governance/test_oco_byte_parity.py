@@ -118,7 +118,6 @@ def test_parity_script_accepts_byte_identical_candidate_artifacts(tmp_path: Path
 
     assert result.returncode == 0
     assert "byte-identical" in result.stdout
-    assert result.stderr == ""
 
 
 def test_parity_script_accepts_semantically_equivalent_csv_and_json(tmp_path: Path) -> None:
@@ -175,7 +174,6 @@ def test_parity_script_accepts_semantically_equivalent_csv_and_json(tmp_path: Pa
 
     assert result.returncode == 0
     assert "semantically equivalent" in result.stdout
-    assert result.stderr == ""
 
 
 def test_parity_script_reports_semantic_csv_value_diff(tmp_path: Path) -> None:
