@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import csv
 import hashlib
 import json
 import sys
@@ -148,74 +147,72 @@ def test_run_step_raises_on_nonzero_returncode(monkeypatch) -> None:
         run_monthly_build._run_step(["cmd"], "step 1/2: sync_candidate_model_artifacts")
 
 
-def test_materialize_bundle_models_copies_and_rewrites_manifest_and_index(tmp_path) -> None:
+def _sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def test_materialize_bundle_models_validates_v2_bundle(monkeypatch, tmp_path) -> None:
     bundle_dir = tmp_path / "configs/research/governance/oco_candidate_builds/2026-02"
     bundle_dir.mkdir(parents=True)
-    source_models = tmp_path / "models/oco_dukascopy_candidate"
-    source_models.mkdir(parents=True)
-    cbm_path = source_models / "EURUSD_model_2026-02.cbm"
-    thr_path = source_models / "EURUSD_model_2026-02.json"
-    cbm_path.write_text("cbm\n")
-    thr_path.write_text('{"threshold": 1.23}\n')
 
+    # Create stub artifacts so validate_bundle.py succeeds
+    preds = bundle_dir / "eurusd_oco_locked_predictions.parquet"
+    preds.write_bytes(b"preds")
+    states = bundle_dir / "eurusd_oco_allowed_states.csv"
+    states.write_text("state\na\n")
+    models_dir = bundle_dir / "models"
+    models_dir.mkdir()
+    cbm = models_dir / "EURUSD_model_2026-02.cbm"
+    cbm.write_bytes(b"cbm")
+    thr = models_dir / "EURUSD_model_2026-02.json"
+    thr.write_text('{"t":1}')
+
+    # v2 lock with bundle-relative artifacts
+    manifest = {
+        "schema_version": 2,
+        "symbol": "EURUSD",
+        "artifacts": {
+            "predictions": {
+                "path": "eurusd_oco_locked_predictions.parquet",
+                "sha256": _sha256_bytes(b"preds"),
+            },
+            "allowed_states_csv": {
+                "path": "eurusd_oco_allowed_states.csv",
+                "sha256": _sha256_bytes(states.read_bytes()),
+            },
+            "model_cbm": {
+                "path": "models/EURUSD_model_2026-02.cbm",
+                "sha256": _sha256_bytes(b"cbm"),
+            },
+            "model_threshold_json": {
+                "path": "models/EURUSD_model_2026-02.json",
+                "sha256": _sha256_bytes(thr.read_bytes()),
+            },
+        },
+        "deployability": {"live_deployable": True},
+    }
     manifest_path = bundle_dir / "eurusd_oco_live_lock.json"
-    manifest_path.write_text(
-        json.dumps(
-            {
-                "symbol": "EURUSD",
-                "artifacts": {
-                    "model_cbm_path": str(cbm_path),
-                    "model_threshold_json_path": str(thr_path),
-                },
-            }
-        )
-        + "\n"
-    )
-    index_path = bundle_dir.parent / "index.csv"
-    with index_path.open("w", newline="") as f:
-        writer = csv.DictWriter(
-            f,
-            fieldnames=[
-                "symbol",
-                "month",
-                "lock_path",
-                "allowed_states_path",
-                "model_cbm_path",
-                "threshold_json_path",
-                "candidates_count",
-                "production_cap_pips",
-                "live_deployable",
-            ],
-        )
-        writer.writeheader()
-        writer.writerow(
-            {
-                "symbol": "EURUSD",
-                "month": "2026-02",
-                "lock_path": str(manifest_path),
-                "allowed_states_path": str(bundle_dir / "eurusd_oco_allowed_states.csv"),
-                "model_cbm_path": str(cbm_path),
-                "threshold_json_path": str(thr_path),
-                "candidates_count": 1,
-                "production_cap_pips": 1.2,
-                "live_deployable": True,
-            }
-        )
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
 
     run_monthly_build._materialize_bundle_models(bundle_dir)
 
-    copied_cbm = bundle_dir / "models/oco_dukascopy_candidate/EURUSD_model_2026-02.cbm"
-    copied_thr = bundle_dir / "models/oco_dukascopy_candidate/EURUSD_model_2026-02.json"
-    assert copied_cbm.read_text() == "cbm\n"
-    assert copied_thr.read_text() == '{"threshold": 1.23}\n'
 
-    manifest = json.loads(manifest_path.read_text())
-    assert manifest["artifacts"]["model_cbm_path"] == str(copied_cbm)
-    assert manifest["artifacts"]["model_threshold_json_path"] == str(copied_thr)
+def test_materialize_bundle_models_raises_on_invalid_bundle(monkeypatch, tmp_path) -> None:
+    bundle_dir = tmp_path / "configs/research/governance/oco_candidate_builds/2026-02"
+    bundle_dir.mkdir(parents=True)
 
-    rows = list(csv.DictReader(index_path.open()))
-    assert rows[0]["model_cbm_path"] == str(copied_cbm)
-    assert rows[0]["threshold_json_path"] == str(copied_thr)
+    # v2 lock missing required artifacts
+    manifest = {
+        "schema_version": 2,
+        "symbol": "EURUSD",
+        "artifacts": {},
+        "deployability": {"live_deployable": True},
+    }
+    manifest_path = bundle_dir / "eurusd_oco_live_lock.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(SystemExit, match=r"bundle failed validation"):
+        run_monthly_build._materialize_bundle_models(bundle_dir)
 
 
 def test_sync_candidate_model_artifacts_can_use_bundle_or_candidate_lock_source(
