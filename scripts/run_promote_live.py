@@ -18,8 +18,15 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 from datetime import date
 from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from src.behemoth.core.bundle_paths import BundleIntegrityError, BundlePaths  # noqa: E402
 
 CERT_CHECKS_FILENAME = "stage14_jforex_runtime_certification_checks.csv"
 CERT_SUMMARY_FILENAME = "stage14_jforex_runtime_certification_summary.csv"
@@ -67,8 +74,7 @@ def _verify_dag_provenance(
     missing = sorted(key for key in required if key not in status)
     if missing:
         raise SystemExit(
-            "[promote-live] missing DAG provenance in monthly recert status: "
-            + ",".join(missing)
+            "[promote-live] missing DAG provenance in monthly recert status: " + ",".join(missing)
         )
     if str(status["dag_node_id"]) != "monthly_recert":
         raise SystemExit(f"[promote-live] unexpected DAG node id: {status['dag_node_id']}")
@@ -128,9 +134,7 @@ def _verify_required_go_symbols(status: dict[str, object]) -> None:
         raise SystemExit("[promote-live] monthly recert symbol_decisions missing or invalid")
     required = _required_go_symbols(status)
     missing_or_no_go = [
-        symbol
-        for symbol in required
-        if str(decisions.get(symbol, "")).strip().upper() != "GO"
+        symbol for symbol in required if str(decisions.get(symbol, "")).strip().upper() != "GO"
     ]
     if missing_or_no_go:
         raise SystemExit(
@@ -239,19 +243,31 @@ def _copy_candidate_models(model_month: str) -> None:
     lock_dir = _repo_root() / HISTORY_ROOT / model_month
     copied: list[str] = []
     for lock_path in sorted(lock_dir.glob("*_oco_live_lock.json")):
-        with lock_path.open() as f:
-            manifest = json.load(f)
-        artifacts = manifest.get("artifacts", {})
-        for key in ("model_cbm_path", "model_threshold_json_path"):
-            rel = artifacts.get(key, "")
-            if not rel:
-                continue
-            src = _repo_root() / rel
-            if not src.exists():
-                raise SystemExit(f"[promote-live] model file not found: {src}")
+        try:
+            bp = BundlePaths.from_lock(lock_path)
+            src = bp.model_cbm()
             dest = dest_dir / src.name
             shutil.copy2(src, dest)
             copied.append(src.name)
+            src_thr = bp.model_threshold_json()
+            dest_thr = dest_dir / src_thr.name
+            shutil.copy2(src_thr, dest_thr)
+            copied.append(src_thr.name)
+        except BundleIntegrityError:
+            # Legacy v1 fallback
+            with lock_path.open() as f:
+                manifest = json.load(f)
+            artifacts = manifest.get("artifacts", {})
+            for key in ("model_cbm_path", "model_threshold_json_path"):
+                rel = artifacts.get(key, "")
+                if not rel:
+                    continue
+                src = _repo_root() / rel
+                if not src.exists():
+                    raise SystemExit(f"[promote-live] model file not found: {src}")
+                dest = dest_dir / src.name
+                shutil.copy2(src, dest)
+                copied.append(src.name)
     if not copied:
         raise SystemExit(
             f"[promote-live] no model files found for {model_month}; "
@@ -332,6 +348,9 @@ def _rewrite_promoted_lock_paths(source_dir: Path, target_dir: Path) -> None:
     for lock_path in target_dir.rglob("*_oco_live_lock.json"):
         with lock_path.open() as f:
             manifest = json.load(f)
+        if int(manifest.get("schema_version", 0)) == 2:
+            # v2 locks use bundle-relative paths; no rewriting needed.
+            continue
         rewritten = _rewrite_manifest_paths(manifest, source_dir, target_dir)
         with lock_path.open("w") as f:
             json.dump(rewritten, f, indent=2)
@@ -341,24 +360,53 @@ def _rewrite_promoted_lock_paths(source_dir: Path, target_dir: Path) -> None:
 def _rebuild_promoted_index(target_root: Path) -> None:
     rows: list[dict[str, object]] = []
     for lock_path in sorted(target_root.glob("*/*_oco_live_lock.json")):
-        with lock_path.open() as f:
-            manifest = json.load(f)
-        artifacts = manifest.get("artifacts", {})
-        state_universe = manifest.get("state_universe", {})
-        locked_runtime = manifest.get("locked_runtime", {})
-        rows.append(
-            {
-                "symbol": str(manifest.get("symbol", "")).upper(),
-                "month": lock_path.parent.name,
-                "lock_path": str(lock_path),
-                "allowed_states_path": str(artifacts.get("reduced_states_csv_path", "")),
-                "model_cbm_path": str(artifacts.get("model_cbm_path", "")),
-                "threshold_json_path": str(artifacts.get("model_threshold_json_path", "")),
-                "candidates_count": int(state_universe.get("count", 0) or 0),
-                "production_cap_pips": float(locked_runtime.get("production_cap_pips", 0.0) or 0.0),
-                "live_deployable": bool(artifacts.get("live_deployable", False)),
-            }
-        )
+        try:
+            bp = BundlePaths.from_lock(lock_path)
+            rows.append(
+                {
+                    "symbol": bp.symbol,
+                    "month": lock_path.parent.name,
+                    "lock_path": str(lock_path),
+                    "allowed_states_path": str(bp.allowed_states_csv()),
+                    "model_cbm_path": str(bp.model_cbm()),
+                    "threshold_json_path": str(bp.model_threshold_json()),
+                    "candidates_count": int(
+                        json.loads(lock_path.read_text(encoding="utf-8"))
+                        .get("state_universe", {})
+                        .get("count", 0)
+                        or 0
+                    ),
+                    "production_cap_pips": float(
+                        json.loads(lock_path.read_text(encoding="utf-8"))
+                        .get("locked_runtime", {})
+                        .get("production_cap_pips", 0.0)
+                        or 0.0
+                    ),
+                    "live_deployable": bp.live_deployable,
+                }
+            )
+        except BundleIntegrityError:
+            # Legacy v1 fallback
+            with lock_path.open() as f:
+                manifest = json.load(f)
+            artifacts = manifest.get("artifacts", {})
+            state_universe = manifest.get("state_universe", {})
+            locked_runtime = manifest.get("locked_runtime", {})
+            rows.append(
+                {
+                    "symbol": str(manifest.get("symbol", "")).upper(),
+                    "month": lock_path.parent.name,
+                    "lock_path": str(lock_path),
+                    "allowed_states_path": str(artifacts.get("reduced_states_csv_path", "")),
+                    "model_cbm_path": str(artifacts.get("model_cbm_path", "")),
+                    "threshold_json_path": str(artifacts.get("model_threshold_json_path", "")),
+                    "candidates_count": int(state_universe.get("count", 0) or 0),
+                    "production_cap_pips": float(
+                        locked_runtime.get("production_cap_pips", 0.0) or 0.0
+                    ),
+                    "live_deployable": bool(artifacts.get("live_deployable", False)),
+                }
+            )
 
     index_path = target_root / "index.csv"
     columns = [
