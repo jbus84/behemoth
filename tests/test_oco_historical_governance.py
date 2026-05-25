@@ -210,16 +210,17 @@ def test_run_writes_explicit_non_deployable_lock_for_no_gate_states_month(tmp_pa
     threshold_json = json.loads(
         (models_dir / f"{symbol}_model_2026-02.json").read_text(encoding="utf-8")
     )
+    assert lock["schema_version"] == 2
     assert lock["historical_backtest"]["deployable"] is False
     assert lock["historical_backtest"]["non_deployable_reason"] == "no_gate_states"
     assert lock["state_universe"]["count"] == 0
     assert lock["state_universe"]["rows"] == []
-    assert lock["artifacts"]["predictions_path"] == ""
-    assert lock["artifacts"]["predictions_sha256"] == ""
+    assert "predictions" not in lock["artifacts"]
     assert threshold_json["rolling_threshold_min_history"] == 300
-    assert lock["artifacts"]["model_threshold_json_sha256"] == hashlib.sha256(
-        (models_dir / f"{symbol}_model_2026-02.json").read_bytes()
-    ).hexdigest()
+    assert (
+        lock["artifacts"]["model_threshold_json"]["sha256"]
+        == hashlib.sha256((models_dir / f"{symbol}_model_2026-02.json").read_bytes()).hexdigest()
+    )
 
     states_df = pd.read_csv(states_path)
     assert states_df.empty
