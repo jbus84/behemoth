@@ -7,7 +7,6 @@ import pandas as pd
 import pytest
 
 from scripts.build_tick_opportunity_ml_dataset import _oco_precompute
-from scripts.run_tick_opportunity_mining import _pip_size
 from scripts.legacy.verify_oco_tick_exact_shortlist import (
     _merge_config,
     _normalize_shortlist_states,
@@ -15,6 +14,7 @@ from scripts.legacy.verify_oco_tick_exact_shortlist import (
     _resolve_shortlist_state_csv,
     run,
 )
+from scripts.run_tick_opportunity_mining import _pip_size
 
 
 def test_normalize_shortlist_states_filters_symbol_and_latest_month() -> None:
