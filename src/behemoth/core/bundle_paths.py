@@ -12,11 +12,29 @@ import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 
 class BundleIntegrityError(RuntimeError):
     pass
+
+
+class BundleArtifactSpec(NamedTuple):
+    v2_key: str
+    target_relpath_template: str
+    required: bool
+
+
+BUNDLE_LAYOUT: tuple[BundleArtifactSpec, ...] = (
+    BundleArtifactSpec("predictions", "{symbol_lower}_oco_locked_predictions.parquet", True),
+    BundleArtifactSpec("allowed_states_csv", "{symbol_lower}_oco_allowed_states.csv", True),
+    BundleArtifactSpec("model_cbm", "models/{symbol_upper}_model_{month}.cbm", True),
+    BundleArtifactSpec("model_threshold_json", "models/{symbol_upper}_model_{month}.json", True),
+    BundleArtifactSpec("wfo_config", "configs/{symbol_lower}_wfo.yaml", False),
+    BundleArtifactSpec("reduced_config", "configs/{symbol_lower}_reduced.yaml", False),
+    BundleArtifactSpec("reduced_summary", "{symbol_lower}_oco_reduced_summary.csv", False),
+    BundleArtifactSpec("tick_exact_summary", "{symbol_lower}_oco_tick_exact_summary.csv", False),
+)
 
 
 @dataclass(frozen=True)
@@ -82,7 +100,7 @@ class BundlePaths:
             ) from exc
         if not candidate.is_file():
             raise BundleIntegrityError(f"{self.lock_path}: missing artifact for {key}: {candidate}")
-        actual = _sha256_file(candidate)
+        actual = sha256_file(candidate)
         if actual != art.sha256:
             raise BundleIntegrityError(
                 f"{self.lock_path}: sha256 mismatch for {key} (expected {art.sha256}, got {actual})"
@@ -118,7 +136,7 @@ class BundlePaths:
         return bool(self._deployability.get("live_deployable", False))
 
 
-def _sha256_file(path: Path) -> str:
+def sha256_file(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as fh:
         for chunk in iter(lambda: fh.read(1024 * 1024), b""):

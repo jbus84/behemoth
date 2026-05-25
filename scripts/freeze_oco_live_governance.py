@@ -14,17 +14,36 @@ import argparse
 import hashlib
 import json
 import re
+import shutil
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from src.behemoth.core.bundle_paths import BUNDLE_LAYOUT, sha256_file  # noqa: E402
+
 try:
     import yaml
 except Exception:
     yaml = None  # type: ignore[assignment]
+
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def _repo_relative_or_abs(path: Path, repo_root: Path) -> Path:
+    try:
+        return path.relative_to(repo_root)
+    except ValueError:
+        return path
 
 
 def _sha256(path: Path) -> str:
@@ -176,9 +195,7 @@ def _default_paths(
         ),
         "predictions": _pick_first_existing(
             analysis_dir / "wfo_m3to1_oco_fullcap" / f"{s}_oco_monthly_predictions.parquet",
-            analysis_dir
-            / f"wfo_m3to1_oco_fullcap_{sl}"
-            / f"{s}_oco_monthly_predictions.parquet",
+            analysis_dir / f"wfo_m3to1_oco_fullcap_{sl}" / f"{s}_oco_monthly_predictions.parquet",
         ),
         "tick_fill_caps": _pick_first_existing(
             analysis_dir / "stop_limit_tickfill_fullcap" / f"{s}_stop_limit_tickfill_caps.csv",
@@ -273,6 +290,7 @@ def _build_manifest(
     *,
     symbol: str,
     paths: dict[str, Path],
+    out_dir: Path,
     cadence_days: int,
     anchor_day_utc: int,
     window_days: int,
@@ -293,34 +311,65 @@ def _build_manifest(
     cap_ok = _read_capacity_ok(paths["reduced_summary"])
     model_month = model_cbm.stem.split("_")[-1]
 
+    fmt = {"symbol_lower": s.lower(), "symbol_upper": s, "month": model_month}
+    file_map: dict[str, Path] = {
+        "predictions": paths["predictions"],
+        "allowed_states_csv": paths["reduced_states"],
+        "model_cbm": model_cbm,
+        "model_threshold_json": model_thr,
+        "wfo_config": paths["wfo_config"],
+        "reduced_config": paths["reduced_config"],
+        "reduced_summary": paths["reduced_summary"],
+        "tick_exact_summary": paths["tick_exact_summary"],
+    }
+
+    artifacts: dict[str, dict[str, str]] = {}
+    provenance: dict[str, dict[str, str]] = {}
+    repo_root = _repo_root().resolve()
+    out_dir = out_dir.resolve()
+
+    for spec in BUNDLE_LAYOUT:
+        source = file_map.get(spec.v2_key)
+        if source is None or not source.exists():
+            if spec.required:
+                raise FileNotFoundError(f"required artifact {spec.v2_key}: {source}")
+            continue
+        target_rel = spec.target_relpath_template.format(**fmt)
+        target_abs = out_dir / target_rel
+        target_abs.parent.mkdir(parents=True, exist_ok=True)
+        if source.resolve() != target_abs.resolve():
+            shutil.copy2(source, target_abs)
+        sha = sha256_file(target_abs)
+        artifacts[spec.v2_key] = {"path": target_rel, "sha256": sha}
+        try:
+            source.resolve().relative_to(out_dir)
+        except ValueError:
+            try:
+                origin_rel = source.resolve().relative_to(repo_root).as_posix()
+            except ValueError:
+                origin_rel = str(source.resolve())
+            provenance[spec.v2_key] = {"origin": origin_rel, "origin_sha256": sha}
+
+    deployability = {
+        "live_deployable": (tick_ok is True) and (cap_ok is True),
+        "tick_exact_overall_pass": tick_ok,
+        "capacity_overall_pass": cap_ok,
+        "model_month": str(model_month),
+        "model_valid_through": str(wfo_cfg.get("model_valid_through", "")).strip(),
+    }
+
     manifest: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "frozen_at_utc": now.isoformat(),
         "symbol": s,
         "git": git_snapshot,
-        "artifacts": {
-            "wfo_config_path": str(paths["wfo_config"]),
-            "wfo_config_sha256": _sha256(paths["wfo_config"]),
-            "reduced_config_path": str(paths["reduced_config"]),
-            "reduced_config_sha256": _sha256(paths["reduced_config"]),
-            "reduced_states_csv_path": str(paths["reduced_states"]),
-            "reduced_states_csv_sha256": _sha256(paths["reduced_states"]),
-            "predictions_path": str(paths["predictions"]),
-            "predictions_sha256": _sha256(paths["predictions"]),
-            "model_cbm_path": str(model_cbm),
-            "model_cbm_sha256": _sha256(model_cbm),
-            "model_threshold_json_path": str(model_thr),
-            "model_threshold_json_sha256": _sha256(model_thr),
-            "model_month": str(model_month),
-            "tick_exact_summary_path": str(paths["tick_exact_summary"]),
-            "tick_exact_summary_sha256": _sha256(paths["tick_exact_summary"]),
-            "tick_exact_overall_pass": tick_ok,
-            "reduced_summary_path": str(paths["reduced_summary"]),
-            "reduced_summary_sha256": _sha256(paths["reduced_summary"]),
-            "capacity_overall_pass": cap_ok,
-            # Unknown (`None`) should not silently pass deployability.
-            "live_deployable": (tick_ok is True) and (cap_ok is True),
+        "bundle": {
+            "month": str(model_month),
+            "dir_relpath": str(_repo_relative_or_abs(out_dir, repo_root)),
         },
+        "artifacts": artifacts,
+        "provenance": provenance,
+        "deployability": deployability,
         "locked_runtime": {
             "locked_quantile": float(red_cfg.get("locked_quantile", 0.9)),
             "selection_mode": str(red_cfg.get("selection_mode", "auto")),
@@ -344,7 +393,6 @@ def _build_manifest(
             "sha256": str(states_sha),
             "rows": json.loads(states.to_json(orient="records")),
         },
-        "deploy_verdict": _deploy_verdict(len(states)),
         "retrain_policy": {
             "mode": "calendar_window",
             "cadence_days": int(cadence_days),
@@ -379,6 +427,7 @@ def run(
         manifest = _build_manifest(
             symbol=s,
             paths=paths,
+            out_dir=out_dir,
             cadence_days=int(cadence_days),
             anchor_day_utc=int(anchor_day_utc),
             window_days=int(window_days),

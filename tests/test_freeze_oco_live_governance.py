@@ -88,6 +88,7 @@ def test_live_freeze_emits_schema_v2_with_bundle_relative_paths(tmp_path, monkey
     manifest = freeze._build_manifest(
         symbol="EURUSD",
         paths=paths,
+        out_dir=bundle_dir,
         cadence_days=30,
         anchor_day_utc=1,
         window_days=3,

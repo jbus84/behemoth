@@ -10,82 +10,69 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import shutil
 import sys
 from pathlib import Path
 from typing import Any
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from src.behemoth.core.bundle_paths import BUNDLE_LAYOUT, sha256_file  # noqa: E402
+
 # Mapping from v1 artifact key prefix to v2 key, target bundle-relative path, and provenance.
-# Each tuple = (v1_path_key, v1_sha_key, v2_key, target_relpath_template, is_required)
-# `{symbol_lower}` and `{month}` are formatted at runtime.
+# Target templates are taken from BUNDLE_LAYOUT so producers and migration agree.
+_BUNDLE_TEMPLATE: dict[str, str] = {
+    spec.v2_key: spec.target_relpath_template for spec in BUNDLE_LAYOUT
+}
 _PLAN: list[tuple[str, str, str, str, bool]] = [
     (
         "predictions_path",
         "predictions_sha256",
         "predictions",
-        "{symbol_lower}_oco_locked_predictions.parquet",
+        _BUNDLE_TEMPLATE["predictions"],
         True,
     ),
     (
         "reduced_states_csv_path",
         "reduced_states_csv_sha256",
         "allowed_states_csv",
-        "{symbol_lower}_oco_allowed_states.csv",
+        _BUNDLE_TEMPLATE["allowed_states_csv"],
         True,
     ),
-    (
-        "model_cbm_path",
-        "model_cbm_sha256",
-        "model_cbm",
-        "models/{symbol_upper}_model_{month}.cbm",
-        True,
-    ),
+    ("model_cbm_path", "model_cbm_sha256", "model_cbm", _BUNDLE_TEMPLATE["model_cbm"], True),
     (
         "model_threshold_json_path",
         "model_threshold_json_sha256",
         "model_threshold_json",
-        "models/{symbol_upper}_model_{month}.json",
+        _BUNDLE_TEMPLATE["model_threshold_json"],
         True,
     ),
-    (
-        "wfo_config_path",
-        "wfo_config_sha256",
-        "wfo_config",
-        "configs/{symbol_lower}_wfo.yaml",
-        False,
-    ),
+    ("wfo_config_path", "wfo_config_sha256", "wfo_config", _BUNDLE_TEMPLATE["wfo_config"], False),
     (
         "reduced_config_path",
         "reduced_config_sha256",
         "reduced_config",
-        "configs/{symbol_lower}_oco_reduced_core_rolling.yaml",
+        _BUNDLE_TEMPLATE["reduced_config"],
         False,
     ),
     (
         "reduced_summary_path",
         "reduced_summary_sha256",
         "reduced_summary",
-        "{symbol_lower}_oco_reduced_summary.csv",
+        _BUNDLE_TEMPLATE["reduced_summary"],
         False,
     ),
     (
         "tick_exact_summary_path",
         "tick_exact_summary_sha256",
         "tick_exact_summary",
-        "{symbol_lower}_oco_tick_exact_summary.csv",
+        _BUNDLE_TEMPLATE["tick_exact_summary"],
         False,
     ),
 ]
-
-
-def _sha256_file(path: Path) -> str:
-    h = hashlib.sha256()
-    with path.open("rb") as fh:
-        for chunk in iter(lambda: fh.read(1024 * 1024), b""):
-            h.update(chunk)
-    return h.hexdigest()
 
 
 def _resolve_v1(value: str, *, bundle_dir: Path, repo_root: Path) -> Path:
@@ -129,7 +116,7 @@ def _migrate_one(lock_path: Path, repo_root: Path) -> None:
         target_abs.parent.mkdir(parents=True, exist_ok=True)
         if source.resolve() != target_abs.resolve():
             shutil.copy2(source, target_abs)
-        sha = _sha256_file(target_abs)
+        sha = sha256_file(target_abs)
         new_artifacts[v2_key] = {"path": target_rel, "sha256": sha}
         # Provenance — only record when the source lived outside the bundle.
         try:
@@ -153,7 +140,7 @@ def _migrate_one(lock_path: Path, repo_root: Path) -> None:
                             origin_rel = str(src.resolve())
                         provenance[v2_key] = {
                             "origin": origin_rel,
-                            "origin_sha256": _sha256_file(src),
+                            "origin_sha256": sha256_file(src),
                         }
 
     deployability = {

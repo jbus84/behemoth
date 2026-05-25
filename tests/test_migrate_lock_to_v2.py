@@ -140,7 +140,7 @@ def test_migration_copies_external_artifacts(tmp_path: Path) -> None:
     assert (bundle / "eurusd_oco_reduced_summary.csv").is_file()
     assert (bundle / "eurusd_oco_tick_exact_summary.csv").is_file()
     # Configs are copied under bundle/configs/.
-    assert (bundle / "configs/eurusd_oco_reduced_core_rolling.yaml").is_file()
+    assert (bundle / "configs/eurusd_reduced.yaml").is_file()
 
 
 def test_migration_records_provenance(tmp_path: Path) -> None:
