@@ -193,6 +193,17 @@ def test_main_rejects_incomplete_month_bundle(monkeypatch, tmp_path) -> None:
         run_monthly_recert.main()
 
 
+def test_validate_month_bundle_requires_live_deployable_prediction_artifacts(tmp_path, monkeypatch) -> None:
+    build_bundle_dir = tmp_path / "configs/research/governance/oco_candidate_builds/2026-02"
+    build_bundle_dir.mkdir(parents=True)
+    _write_bundle_fixture(build_bundle_dir)
+    (build_bundle_dir / "eurusd_oco_locked_predictions.parquet").unlink()
+    monkeypatch.setattr(run_monthly_recert, "_repo_root", lambda: tmp_path)
+
+    with pytest.raises(SystemExit, match=r"missing predictions artifact for EURUSD"):
+        run_monthly_recert._validate_month_bundle(build_bundle_dir)
+
+
 def test_read_failures_ignores_expected_non_deployable_nogo(tmp_path, monkeypatch) -> None:
     report_dir = tmp_path / "reports"
     report_dir.mkdir()
@@ -300,13 +311,20 @@ def _write_bundle_fixture(build_bundle_dir) -> None:
         cbm_path.write_text("cbm\n")
         thr_path.write_text('{"threshold": 1.23}\n')
         lock_path = build_bundle_dir / f"{lower}_oco_live_lock.json"
+        predictions_path = build_bundle_dir / f"{lower}_oco_locked_predictions.parquet"
+        states_path = build_bundle_dir / f"{lower}_oco_allowed_states.csv"
+        predictions_path.write_text("prediction fixture\n")
+        states_path.write_text("state fixture\n")
         lock_path.write_text(
             json.dumps(
                 {
                     "symbol": symbol,
                     "artifacts": {
+                        "live_deployable": True,
                         "model_cbm_path": str(cbm_path),
                         "model_threshold_json_path": str(thr_path),
+                        "predictions_path": str(predictions_path),
+                        "reduced_states_csv_path": str(states_path),
                     },
                 }
             )
