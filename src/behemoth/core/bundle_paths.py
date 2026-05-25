@@ -5,6 +5,7 @@ Single source of truth for turning lock keys into filesystem paths. Every
 producer and consumer goes through here so the lock file's contract is
 enforced in exactly one place.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -70,9 +71,7 @@ class BundlePaths:
 
     def _resolve(self, key: str) -> Path:
         if key not in self._artifacts:
-            raise BundleIntegrityError(
-                f"{self.lock_path}: required artifact key {key!r} missing"
-            )
+            raise BundleIntegrityError(f"{self.lock_path}: required artifact key {key!r} missing")
         art = self._artifacts[key]
         candidate = (self.bundle_dir / art.relpath).resolve()
         try:
@@ -82,14 +81,11 @@ class BundlePaths:
                 f"{self.lock_path}: artifacts.{key} escapes bundle dir"
             ) from exc
         if not candidate.is_file():
-            raise BundleIntegrityError(
-                f"{self.lock_path}: missing artifact for {key}: {candidate}"
-            )
+            raise BundleIntegrityError(f"{self.lock_path}: missing artifact for {key}: {candidate}")
         actual = _sha256_file(candidate)
         if actual != art.sha256:
             raise BundleIntegrityError(
-                f"{self.lock_path}: sha256 mismatch for {key} "
-                f"(expected {art.sha256}, got {actual})"
+                f"{self.lock_path}: sha256 mismatch for {key} (expected {art.sha256}, got {actual})"
             )
         return candidate
 
