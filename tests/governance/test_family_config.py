@@ -14,7 +14,7 @@ def test_family_governance_config_requires_all_fields():
 def test_family_governance_config_holds_values():
     cfg = FamilyGovernanceConfig(
         name="oco_first_touch",
-        state_key_cols=("family", "barrier_pips", "horizon", "regime"),
+        state_key_cols=("family", "bar_ticks", "barrier_pips", "horizon", "regime"),
         wfo_target_col="y_oco_first_touch_decided",
         payoff_simulator="barrier_touch",
         selection_gate_cols=("both_window_rate", "p_up_first"),
@@ -54,7 +54,7 @@ def test_base_hooks_default_derive_state_id_uses_state_key_cols_in_order():
 
     cfg = FamilyGovernanceConfig(
         name="oco_first_touch",
-        state_key_cols=("family", "barrier_pips", "horizon", "regime"),
+        state_key_cols=("family", "bar_ticks", "barrier_pips", "horizon", "regime"),
         wfo_target_col="t",
         payoff_simulator="barrier_touch",
         selection_gate_cols=(),
@@ -64,6 +64,7 @@ def test_base_hooks_default_derive_state_id_uses_state_key_cols_in_order():
     row = pd.Series(
         {
             "family": "oco_first_touch",
+            "bar_ticks": 1000,
             "barrier_pips": 2.0,
             "horizon": 3,
             "regime": "london",

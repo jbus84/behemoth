@@ -29,7 +29,26 @@ def test_assemble_states_state_id_uses_adapter_formatting():
 
     state_ids = states["state_id"].tolist()
     assert any("london" in state_id for state_id in state_ids)
-    assert any("_2_3_london" in state_id for state_id in state_ids)
+    assert any("_1000_2_3_london" in state_id for state_id in state_ids)
+
+
+def test_assemble_states_does_not_merge_different_bar_ticks():
+    candidates = pd.read_csv(FIXTURE)
+    extra = candidates.iloc[[0]].copy()
+    extra["candidate_id"] = "c11"
+    extra["bar_ticks"] = 2000
+    candidates = pd.concat([candidates, extra], ignore_index=True)
+    adapter = get_family_adapter("oco_first_touch")
+
+    states = assemble_states(candidates=candidates, adapter=adapter)
+
+    same_non_tick_key = states[
+        (states["family"] == "oco_first_touch")
+        & (states["barrier_pips"] == 2.0)
+        & (states["horizon"] == 3)
+        & (states["regime"] == "london")
+    ]
+    assert same_non_tick_key["bar_ticks"].tolist() == [1000, 2000]
 
 
 def test_assemble_states_aggregates_train_counts_and_weighted_train_pips():
