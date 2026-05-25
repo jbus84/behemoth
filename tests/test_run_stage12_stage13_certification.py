@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -13,6 +14,10 @@ from scripts.run_stage12_stage13_certification import (
     main,
     run_stage12_stage13_certification,
 )
+
+
+def _sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def test_orchestrator_skips_stage13_when_stage12_fails(tmp_path: Path) -> None:
@@ -88,11 +93,15 @@ def test_stage13_matrix_replay_forwards_models_dir(monkeypatch, tmp_path: Path) 
         signal_path = tmp_path / "EURUSD_jforex_signal_parity_summary.csv"
         execution_path = tmp_path / "EURUSD_jforex_execution_parity_summary.csv"
         runtime_path = tmp_path / "EURUSD_jforex_runtime_events.csv"
-        pd.DataFrame([{"symbol": "EURUSD", "jforex_signal_parity_pass": True}]).to_csv(signal_path, index=False)
+        pd.DataFrame([{"symbol": "EURUSD", "jforex_signal_parity_pass": True}]).to_csv(
+            signal_path, index=False
+        )
         pd.DataFrame([{"symbol": "EURUSD", "jforex_execution_parity_pass": True}]).to_csv(
             execution_path, index=False
         )
-        pd.DataFrame([{"event_name": "predict_cycle", "pass": True}]).to_csv(runtime_path, index=False)
+        pd.DataFrame([{"event_name": "predict_cycle", "pass": True}]).to_csv(
+            runtime_path, index=False
+        )
         return _Completed()
 
     monkeypatch.setattr("scripts.run_stage12_stage13_certification.subprocess.run", _fake_run)
@@ -185,7 +194,9 @@ def test_resolve_model_month_uses_latest_available_model_month(tmp_path: Path) -
     assert resolved == "2026-02"
 
 
-def test_stage13_matrix_replay_fails_fast_without_jforex_credentials(monkeypatch, tmp_path: Path) -> None:
+def test_stage13_matrix_replay_fails_fast_without_jforex_credentials(
+    monkeypatch, tmp_path: Path
+) -> None:
     monkeypatch.delenv("BEHEMOTH_JFOREX_JNLP_URI", raising=False)
     monkeypatch.delenv("BEHEMOTH_JFOREX_USERNAME", raising=False)
     monkeypatch.delenv("BEHEMOTH_JFOREX_PASSWORD", raising=False)
@@ -269,13 +280,28 @@ def test_main_uses_lock_bundle_predictions_for_stage12(monkeypatch, tmp_path: Pa
     missing_predictions_dir = tmp_path / "missing-active-predictions"
     lock_dir = tmp_path / "bundle" / "2026-02"
     lock_dir.mkdir(parents=True)
-    locked_predictions = lock_dir / "eurusd_oco_locked_predictions.parquet"
+    # Place predictions at a non-default path so the old fallback would miss it.
+    # BundlePaths will resolve it from the v2 lock.
+    locked_predictions = lock_dir / "custom_predictions.parquet"
     pd.DataFrame([{"symbol": "EURUSD", "test_month": "2026-02"}]).to_parquet(
         locked_predictions,
         index=False,
     )
     (lock_dir / "eurusd_oco_live_lock.json").write_text(
-        json.dumps({"artifacts": {"predictions_path": str(locked_predictions)}}) + "\n"
+        json.dumps(
+            {
+                "schema_version": 2,
+                "symbol": "EURUSD",
+                "artifacts": {
+                    "predictions": {
+                        "path": "custom_predictions.parquet",
+                        "sha256": _sha256_file(locked_predictions),
+                    }
+                },
+                "deployability": {"live_deployable": True},
+            }
+        )
+        + "\n"
     )
     captured: dict[str, Path] = {}
 
