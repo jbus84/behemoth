@@ -26,5 +26,22 @@ class OcoFirstTouchHooks(BaseFamilyGovernanceHooks):
             and float(row["p_up_first"]) >= float(thresholds["min_p_up_first"])
         )
 
+    def simulate_one_entry(self, tick_stream, entry_bar, params):
+        if tick_stream.empty:
+            return 0.0
+
+        pip_size = 0.0001
+        barrier_pips = float(entry_bar["barrier_pips"])
+        entry_price = float(entry_bar["entry_price"])
+        upper = entry_price + barrier_pips * pip_size
+        lower = entry_price - barrier_pips * pip_size
+
+        for _, tick in tick_stream.iterrows():
+            if float(tick["bid"]) >= upper:
+                return barrier_pips
+            if float(tick["ask"]) <= lower:
+                return -barrier_pips
+        return 0.0
+
 
 OCO_FIRST_TOUCH_HOOKS = OcoFirstTouchHooks(OCO_FIRST_TOUCH_CONFIG)
