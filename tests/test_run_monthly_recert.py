@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 from types import SimpleNamespace
 
@@ -9,15 +10,17 @@ import pytest
 import scripts.run_monthly_recert as run_monthly_recert
 
 
+def _sha256_file(path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def test_main_runs_definitive_recert_chain(monkeypatch, tmp_path) -> None:
     calls: list[list[str]] = []
     build_bundle_dir = tmp_path / "configs/research/governance/oco_candidate_builds/2026-02"
     build_bundle_dir.mkdir(parents=True)
     _write_bundle_fixture(build_bundle_dir)
     report_dir = "data/analysis/backtest_reconcile"
-    expected_run_dir = (
-        "data/analysis/backtest_reconcile/2026-02/monthly_recert"
-    )
+    expected_run_dir = "data/analysis/backtest_reconcile/2026-02/monthly_recert"
 
     def fake_run(cmd, cwd=None):
         calls.append(cmd)
@@ -67,7 +70,7 @@ def test_main_runs_definitive_recert_chain(monkeypatch, tmp_path) -> None:
             "make",
             "stage13-dukascopy-cert",
             "HISTORY_DIR=configs/research/governance/oco_candidate_builds",
-            f"MODELS_DIR={build_bundle_dir / 'models/oco_dukascopy_candidate'}",
+            f"MODELS_DIR={build_bundle_dir / 'models'}",
             "MODEL_MONTH=2026-02",
             "PREDICTIONS_DIR=data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap",
             "START_TS=2026-02-04T00:00:00Z",
@@ -80,7 +83,7 @@ def test_main_runs_definitive_recert_chain(monkeypatch, tmp_path) -> None:
             "make",
             "jforex-dukascopy-matrix",
             "HISTORY_DIR=configs/research/governance/oco_candidate_builds",
-            f"MODELS_DIR={build_bundle_dir / 'models/oco_dukascopy_candidate'}",
+            f"MODELS_DIR={build_bundle_dir / 'models'}",
             "MODEL_MONTH=2026-02",
             "START_TS=2026-02-04T00:00:00Z",
             "END_TS=2026-02-09T00:00:00Z",
@@ -91,7 +94,7 @@ def test_main_runs_definitive_recert_chain(monkeypatch, tmp_path) -> None:
             "make",
             "local-jforex-parity-matrix",
             "HISTORY_DIR=configs/research/governance/oco_candidate_builds",
-            f"MODELS_DIR={build_bundle_dir / 'models/oco_dukascopy_candidate'}",
+            f"MODELS_DIR={build_bundle_dir / 'models'}",
             "MODEL_MONTH=2026-02",
             "START_TS=2026-02-07T00:00:00Z",
             "END_TS=2026-02-09T00:00:00Z",
@@ -193,14 +196,16 @@ def test_main_rejects_incomplete_month_bundle(monkeypatch, tmp_path) -> None:
         run_monthly_recert.main()
 
 
-def test_validate_month_bundle_requires_live_deployable_prediction_artifacts(tmp_path, monkeypatch) -> None:
+def test_validate_month_bundle_requires_live_deployable_prediction_artifacts(
+    tmp_path, monkeypatch
+) -> None:
     build_bundle_dir = tmp_path / "configs/research/governance/oco_candidate_builds/2026-02"
     build_bundle_dir.mkdir(parents=True)
     _write_bundle_fixture(build_bundle_dir)
     (build_bundle_dir / "eurusd_oco_locked_predictions.parquet").unlink()
     monkeypatch.setattr(run_monthly_recert, "_repo_root", lambda: tmp_path)
 
-    with pytest.raises(SystemExit, match=r"missing predictions artifact for EURUSD"):
+    with pytest.raises(SystemExit, match=r"missing artifact for predictions"):
         run_monthly_recert._validate_month_bundle(build_bundle_dir)
 
 
@@ -301,7 +306,7 @@ def test_print_summary_blocks_release_when_required_go_decisions_are_missing(cap
 
 def _write_bundle_fixture(build_bundle_dir) -> None:
     bundle_root = build_bundle_dir.parent
-    model_dir = build_bundle_dir / "models/oco_dukascopy_candidate"
+    model_dir = build_bundle_dir / "models"
     model_dir.mkdir(parents=True)
     rows = []
     for symbol in run_monthly_recert.DEFAULT_SYMBOLS:
@@ -318,14 +323,27 @@ def _write_bundle_fixture(build_bundle_dir) -> None:
         lock_path.write_text(
             json.dumps(
                 {
+                    "schema_version": 2,
                     "symbol": symbol,
                     "artifacts": {
-                        "live_deployable": True,
-                        "model_cbm_path": str(cbm_path),
-                        "model_threshold_json_path": str(thr_path),
-                        "predictions_path": str(predictions_path),
-                        "reduced_states_csv_path": str(states_path),
+                        "predictions": {
+                            "path": f"{lower}_oco_locked_predictions.parquet",
+                            "sha256": _sha256_file(predictions_path),
+                        },
+                        "allowed_states_csv": {
+                            "path": f"{lower}_oco_allowed_states.csv",
+                            "sha256": _sha256_file(states_path),
+                        },
+                        "model_cbm": {
+                            "path": f"models/{symbol}_model_2026-02.cbm",
+                            "sha256": _sha256_file(cbm_path),
+                        },
+                        "model_threshold_json": {
+                            "path": f"models/{symbol}_model_2026-02.json",
+                            "sha256": _sha256_file(thr_path),
+                        },
                     },
+                    "deployability": {"live_deployable": True},
                 }
             )
             + "\n"
@@ -335,7 +353,7 @@ def _write_bundle_fixture(build_bundle_dir) -> None:
                 "symbol": symbol,
                 "month": "2026-02",
                 "lock_path": str(lock_path),
-                "allowed_states_path": str(build_bundle_dir / f"{lower}_oco_allowed_states.csv"),
+                "allowed_states_path": str(states_path),
                 "model_cbm_path": str(cbm_path),
                 "threshold_json_path": str(thr_path),
                 "candidates_count": 1,
