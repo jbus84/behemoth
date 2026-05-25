@@ -123,7 +123,7 @@ def main() -> None:
             "uv",
             "run",
             "python",
-            "scripts/freeze_oco_historical_governance.py",
+            "scripts/legacy/freeze_oco_historical_governance.py",
             "--allow-dirty",
             "--symbols",
             DEFAULT_SYMBOLS,

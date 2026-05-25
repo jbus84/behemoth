@@ -10,7 +10,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from scripts.select_oco_reduced_core_rolling import run
+from scripts.legacy.select_oco_reduced_core_rolling import run
 
 CANDIDATE_COLS = [
     "symbol", "bar_ticks", "horizon", "family", "state_id",

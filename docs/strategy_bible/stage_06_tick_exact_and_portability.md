@@ -62,7 +62,7 @@ Verify label/path correctness at tick level and assess whether family-level edge
 
 ## Reproduction Commands
 ```bash
-uv run python scripts/verify_oco_tick_exact_shortlist.py \
+uv run python scripts/legacy/verify_oco_tick_exact_shortlist.py \
   --symbol EURUSD \
   --dataset-dir data/analysis/tick_velocity \
   --pred-path data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/EURUSD_oco_monthly_predictions.parquet \
@@ -72,7 +72,7 @@ uv run python scripts/verify_oco_tick_exact_shortlist.py \
 Run once per active symbol; if `shortlist_state_csv` is a rolling schedule, the verifier uses the latest `test_month`.
 
 ## Traceability
-- `scripts/verify_oco_tick_exact_shortlist.py`
+- `scripts/legacy/verify_oco_tick_exact_shortlist.py`
 - `docs/analysis/*_oco_tick_exact_rolling_report.md`
 - `docs/strategy_bible/generated/stage_06_snapshot.md`
 

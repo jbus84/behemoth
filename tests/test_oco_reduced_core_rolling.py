@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from scripts.select_oco_reduced_core_rolling import run
+from scripts.legacy.select_oco_reduced_core_rolling import run
 
 
 def _uid(state: str) -> str:
