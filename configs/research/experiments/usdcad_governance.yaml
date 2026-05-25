@@ -1,0 +1,17 @@
+symbol: USDCAD
+model_month: 2026-05
+required_families:
+  - oco_first_touch
+families:
+  oco_first_touch:
+    capacity_floor_monthly: 200
+    capacity_floor_annual: 500
+    max_state_churn: 0.45
+    max_top_state_share: 0.35
+    max_state_hhi: 0.25
+    state_train_months: 2
+    min_states: 1
+    max_states: 12
+    selection_gates:
+      min_both_window_rate: 0.5
+      min_p_up_first: 0.4

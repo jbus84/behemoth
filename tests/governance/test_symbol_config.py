@@ -173,3 +173,12 @@ def test_missing_per_family_field_raises(tmp_path):
         load_symbol_governance_config(p)
     assert ei.value.field == "capacity_floor_monthly"
     assert ei.value.family == "oco_first_touch"
+
+
+def test_active_symbol_governance_configs_load():
+    for symbol in ("eurusd", "gbpusd", "usdjpy", "usdchf", "audusd", "usdcad"):
+        cfg = load_symbol_governance_config(
+            Path(f"configs/research/experiments/{symbol}_governance.yaml")
+        )
+        assert cfg.symbol == symbol.upper()
+        assert cfg.required_families == ("oco_first_touch",)
