@@ -1,30 +1,49 @@
 {
   "artifacts": {
+    "allowed_states_csv": {
+      "path": "usdchf_oco_first_touch_allowed_states.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "model_cbm": {
+      "path": "models/USDCHF_oco_first_touch_model_2026-04.cbm",
+      "sha256": "648d23d130cce6e4b4e705ee07e83b497ba535364af6a03ec7726c998f86ab7a"
+    },
+    "model_threshold_json": {
+      "path": "models/USDCHF_oco_first_touch_model_2026-04.json",
+      "sha256": "0aa5db1decb7665dfeb5cc46381c96c601e0e8a8aaf19cb8953c1836e8348fbe"
+    },
+    "predictions": {
+      "path": "usdchf_oco_first_touch_locked_predictions.parquet",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "reduced_config": {
+      "path": "configs/usdchf_oco_first_touch_reduced.yaml",
+      "sha256": "498fed2882a41b52ff0d3140d2aa2711652922fb59a5c8d79747ea57e2da2977"
+    },
+    "reduced_summary": {
+      "path": "usdchf_oco_first_touch_reduced_summary.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "tick_exact_summary": {
+      "path": "usdchf_oco_first_touch_tick_exact_summary.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "wfo_config": {
+      "path": "configs/usdchf_oco_first_touch_wfo.yaml",
+      "sha256": "76c25f317f41ff68fc28a82b143ea1eaeaca12f866da8977d910998deaf09612"
+    }
+  },
+  "bundle": {
+    "dir_relpath": "configs/research/governance/oco",
+    "family": "oco_first_touch",
+    "month": "2026-04"
+  },
+  "deployability": {
     "capacity_overall_pass": false,
     "live_deployable": false,
-    "model_cbm_path": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_history_dukascopy_candidate/2026-04/models/oco_dukascopy_candidate/USDCHF_model_2026-04.cbm",
-    "model_cbm_sha256": "648d23d130cce6e4b4e705ee07e83b497ba535364af6a03ec7726c998f86ab7a",
     "model_month": "2026-04",
-    "model_threshold_json_path": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_history_dukascopy_candidate/2026-04/models/oco_dukascopy_candidate/USDCHF_model_2026-04.json",
-    "model_threshold_json_sha256": "0aa5db1decb7665dfeb5cc46381c96c601e0e8a8aaf19cb8953c1836e8348fbe",
     "model_valid_through": "2026-04-30",
-    "predictions_path": "configs/research/governance/oco_candidate_builds/2026-04/usdchf_oco_locked_predictions.parquet",
-    "predictions_sha256": "771da250e4a60de790200e0ca5a0ae7cdf894a52609ee8f11d4324fa2f236aaf",
-    "reduced_config_path": "configs/research/experiments_dukascopy_candidate/usdchf_oco_reduced_core_rolling.yaml",
-    "reduced_config_sha256": "4f13a9012e3de193daa2287bb59cf4398c9bbaad1b56339b73e328d50b4bd1e4",
-    "reduced_states_csv_path": "configs/research/governance/oco_candidate_builds/2026-04/usdchf_oco_allowed_states.csv",
-    "reduced_states_csv_sha256": "88df2fe211b4a9406b8a60ec4c48c1dbf2e84912159481b1d2d8a0efd7de9801",
-    "reduced_summary_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/USDCHF_oco_reduced_summary.csv",
-    "reduced_summary_sha256": "4dd545c87553330cfc6dfe9b44ae96863d9b5ef3bfe835d2b7a5696c38f950ce",
-    "source_predictions_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap/USDCHF_oco_monthly_predictions.parquet",
-    "source_predictions_sha256": "8e484e5b4685e84c6e7541ecc4f35736ec47ebb56dfe4f0bd68544e342424f65",
-    "tick_exact_overall_pass": true,
-    "tick_exact_summary_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/USDCHF_oco_tick_exact_summary.csv",
-    "tick_exact_summary_sha256": "3c8ad37e1d732083737bec025d132d97ac3d3910a578e18b753adf524c5418d3",
-    "train_predictions_path": "models/oco_dukascopy_candidate/USDCHF_train_predictions_2026-04.parquet",
-    "train_predictions_sha256": "",
-    "wfo_config_path": "configs/research/experiments_dukascopy_candidate/usdchf_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
-    "wfo_config_sha256": "76c25f317f41ff68fc28a82b143ea1eaeaca12f866da8977d910998deaf09612"
+    "tick_exact_overall_pass": true
   },
   "frozen_at_utc": "2026-05-01T16:08:13.126565+00:00",
   "git": {
@@ -52,23 +71,57 @@
     "selection_mode": "auto",
     "threshold_mode": "rolling_days"
   },
+  "provenance": {
+    "allowed_states_csv": {
+      "origin": "configs/research/governance/oco_candidate_builds/2026-04/usdchf_oco_allowed_states.csv",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "model_cbm": {
+      "origin": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_history_dukascopy_candidate/2026-04/models/oco_dukascopy_candidate/USDCHF_model_2026-04.cbm",
+      "origin_sha256": "648d23d130cce6e4b4e705ee07e83b497ba535364af6a03ec7726c998f86ab7a"
+    },
+    "model_threshold_json": {
+      "origin": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_history_dukascopy_candidate/2026-04/models/oco_dukascopy_candidate/USDCHF_model_2026-04.json",
+      "origin_sha256": "0aa5db1decb7665dfeb5cc46381c96c601e0e8a8aaf19cb8953c1836e8348fbe"
+    },
+    "predictions": {
+      "origin": "configs/research/governance/oco_candidate_builds/2026-04/usdchf_oco_locked_predictions.parquet",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "reduced_config": {
+      "origin": "configs/research/experiments_dukascopy_candidate/usdchf_oco_reduced_core_rolling.yaml",
+      "origin_sha256": "498fed2882a41b52ff0d3140d2aa2711652922fb59a5c8d79747ea57e2da2977"
+    },
+    "reduced_summary": {
+      "origin": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/USDCHF_oco_reduced_summary.csv",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "tick_exact_summary": {
+      "origin": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/USDCHF_oco_tick_exact_summary.csv",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "wfo_config": {
+      "origin": "configs/research/experiments_dukascopy_candidate/usdchf_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
+      "origin_sha256": "76c25f317f41ff68fc28a82b143ea1eaeaca12f866da8977d910998deaf09612"
+    }
+  },
   "retrain_policy": {
     "anchor_day_utc": 1,
     "cadence_days": 30,
     "mode": "calendar_window",
     "window_days": 3
   },
-  "schema_version": 1,
+  "schema_version": 3,
   "state_universe": {
     "count": 1,
     "rows": [
       {
         "bar_ticks": 1000,
         "barrier_pips": 3.0,
-        "family": "oco_first_touch_clean",
+        "family": "oco_first_touch",
         "horizon": 6,
         "regime_desc": "all;barrier=3.0",
-        "state_id": "oco_first_touch_clean__all__k3",
+        "state_id": "oco_first_touch__all__k3",
         "symbol": "USDCHF"
       }
     ],

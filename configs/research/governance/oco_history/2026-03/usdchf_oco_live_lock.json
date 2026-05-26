@@ -1,30 +1,49 @@
 {
   "artifacts": {
+    "allowed_states_csv": {
+      "path": "usdchf_oco_first_touch_allowed_states.csv",
+      "sha256": "6478d8dca6c89a62dac72b8954216bb67591d6fb785215a33fb03a3a39100e5e"
+    },
+    "model_cbm": {
+      "path": "models/USDCHF_oco_first_touch_model_2026-03.cbm",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "model_threshold_json": {
+      "path": "models/USDCHF_oco_first_touch_model_2026-03.json",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "predictions": {
+      "path": "usdchf_oco_first_touch_locked_predictions.parquet",
+      "sha256": "a42db0a8177e3b6b11665b54042d42177157660d47af9770f29740546ac86310"
+    },
+    "reduced_config": {
+      "path": "configs/usdchf_oco_first_touch_reduced.yaml",
+      "sha256": "6c23d5925d6a26b6b52ceb8e6420ac0565c67173a566a346f72cd099793458a9"
+    },
+    "reduced_summary": {
+      "path": "usdchf_oco_first_touch_reduced_summary.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "tick_exact_summary": {
+      "path": "usdchf_oco_first_touch_tick_exact_summary.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "wfo_config": {
+      "path": "configs/usdchf_oco_first_touch_wfo.yaml",
+      "sha256": "dd43d3a1456ef416f3038940690a4d40fcb43655aaafd184705ba8e81f627af6"
+    }
+  },
+  "bundle": {
+    "dir_relpath": "configs/research/governance/oco_history/2026-03",
+    "family": "oco_first_touch",
+    "month": "2026-03"
+  },
+  "deployability": {
     "capacity_overall_pass": true,
     "live_deployable": true,
-    "model_cbm_path": "models/oco/USDCHF_model_2026-03.cbm",
-    "model_cbm_sha256": "0a3f9d78cfedf728d0d26ca85c3595ec521df725163019f3c2086b31082d486e",
     "model_month": "2026-03",
-    "model_threshold_json_path": "models/oco/USDCHF_model_2026-03.json",
-    "model_threshold_json_sha256": "4ef0b419f2ebbaad2b26aaaed5b6edccff3cb4dc5dab8b34d05b667abd575428",
     "model_valid_through": "2026-03-31",
-    "predictions_path": "configs/research/governance/oco_history/2026-03/usdchf_oco_locked_predictions.parquet",
-    "predictions_sha256": "a42db0a8177e3b6b11665b54042d42177157660d47af9770f29740546ac86310",
-    "reduced_config_path": "configs/research/experiments/usdchf_oco_reduced_core.yaml",
-    "reduced_config_sha256": "4697fb73da731ccdcaa17f481351c0fa913685247ccee74a5b7e5ad5ef8b80bb",
-    "reduced_states_csv_path": "configs/research/governance/oco_history/2026-03/usdchf_oco_allowed_states.csv",
-    "reduced_states_csv_sha256": "6478d8dca6c89a62dac72b8954216bb67591d6fb785215a33fb03a3a39100e5e",
-    "reduced_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_summary.csv",
-    "reduced_summary_sha256": "10d67ae753e0592c4dff9c85c2f466908cf7f0fda7b22568b317a141ebfa3339",
-    "source_predictions_path": "data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/USDCHF_oco_monthly_predictions.parquet",
-    "source_predictions_sha256": "72b23373f97f41761b3ac1ed2f2ad62f2faea46b0764cdbf6cd4b033d4e9c07e",
-    "tick_exact_overall_pass": true,
-    "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_tick_exact_summary.csv",
-    "tick_exact_summary_sha256": "f15624a08c50d0d13f6e46514b428e76ed99b56241f2b366f4c95cd16bb40b4f",
-    "train_predictions_path": "models/oco/USDCHF_train_predictions_2026-03.parquet",
-    "train_predictions_sha256": "ddd96729dac997a720639de15b91b632ffdac242a631fafc1dfe4dfc31f5bd38",
-    "wfo_config_path": "configs/research/experiments/usdchf_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
-    "wfo_config_sha256": "62334934dbd73992913271f99c9e87bfa303db41e94f812f75567414d42efa12"
+    "tick_exact_overall_pass": true
   },
   "frozen_at_utc": "2026-04-07T10:19:05.675860+00:00",
   "git": {
@@ -52,32 +71,62 @@
     "selection_mode": "auto",
     "threshold_mode": "rolling_days"
   },
+  "provenance": {
+    "model_cbm": {
+      "origin": "models/oco/USDCHF_model_2026-03.cbm",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "model_threshold_json": {
+      "origin": "models/oco/USDCHF_model_2026-03.json",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "predictions": {
+      "origin": "data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/USDCHF_oco_monthly_predictions.parquet",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "reduced_config": {
+      "origin": "configs/research/experiments/usdchf_oco_reduced_core.yaml",
+      "origin_sha256": "6c23d5925d6a26b6b52ceb8e6420ac0565c67173a566a346f72cd099793458a9"
+    },
+    "reduced_summary": {
+      "origin": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_reduced_summary.csv",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "tick_exact_summary": {
+      "origin": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCHF_oco_tick_exact_summary.csv",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "wfo_config": {
+      "origin": "configs/research/experiments/usdchf_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
+      "origin_sha256": "dd43d3a1456ef416f3038940690a4d40fcb43655aaafd184705ba8e81f627af6"
+    }
+  },
   "retrain_policy": {
     "anchor_day_utc": 1,
     "cadence_days": 30,
     "mode": "calendar_window",
     "window_days": 3
   },
-  "schema_version": 1,
+  "schema_version": 3,
   "state_universe": {
     "count": 2,
     "rows": [
       {
         "bar_ticks": 100,
         "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
+        "family": "oco_first_touch",
         "horizon": 6,
         "regime_desc": "low_cost_q30_and_high_abs_vel_q70;barrier=2.0",
-        "state_id": "oco_first_touch_clean__low_cost_q30_and_high_abs_vel_q70__k2",
+        "state_id": "oco_first_touch__low_cost_q30_and_high_abs_vel_q70__k2",
         "symbol": "USDCHF"
       },
       {
         "bar_ticks": 100,
         "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
+        "family": "oco_first_touch",
         "horizon": 6,
         "regime_desc": "ny_overlap;barrier=2.0",
-        "state_id": "oco_first_touch_clean__ny_overlap__k2",
+        "state_id": "oco_first_touch__ny_overlap__k2",
         "symbol": "USDCHF"
       }
     ],

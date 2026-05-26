@@ -129,6 +129,10 @@ def _migrate_one(lock_path: Path, repo_root: Path, family: str) -> None:
         "model_valid_through": str(v1_artifacts.get("model_valid_through", "")).strip(),
     }
 
+    state_universe = data.get("state_universe", {})
+    if state_universe:
+        state_universe = _rewrite_state_universe(state_universe)
+
     v3 = {
         "schema_version": 3,
         "symbol": symbol,
@@ -144,10 +148,29 @@ def _migrate_one(lock_path: Path, repo_root: Path, family: str) -> None:
         "deployability": deployability,
         "locked_runtime": data.get("locked_runtime", {}),
         "retrain_policy": data.get("retrain_policy", {}),
-        "state_universe": data.get("state_universe", {}),
+        "state_universe": state_universe,
         "historical_backtest": data.get("historical_backtest", {}),
     }
     _write_lock(lock_path, v3)
+
+
+def _rewrite_state_universe(state_universe: dict[str, Any]) -> dict[str, Any]:
+    """Rewrite state_universe to canonicalize family names."""
+    rows = list(state_universe.get("rows", []))
+    if not rows:
+        return state_universe
+    new_rows: list[dict[str, Any]] = []
+    for row in rows:
+        new_row = dict(row)
+        # Rewrite family from oco_first_touch_clean to oco_first_touch
+        if new_row.get("family") == "oco_first_touch_clean":
+            new_row["family"] = "oco_first_touch"
+        # Rewrite state_id to drop _clean suffix
+        state_id = str(new_row.get("state_id", ""))
+        if "oco_first_touch_clean" in state_id:
+            new_row["state_id"] = state_id.replace("oco_first_touch_clean", "oco_first_touch")
+        new_rows.append(new_row)
+    return {**state_universe, "rows": new_rows, "count": len(new_rows)}
 
 
 def main() -> int:

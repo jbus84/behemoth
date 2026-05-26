@@ -1,30 +1,49 @@
 {
   "artifacts": {
+    "allowed_states_csv": {
+      "path": "usdjpy_oco_first_touch_allowed_states.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "model_cbm": {
+      "path": "models/USDJPY_oco_first_touch_model_2026-04.cbm",
+      "sha256": "a174d4c14ada7c25bea82026819451068cd1121b23d3a25a18cc14207857fc9f"
+    },
+    "model_threshold_json": {
+      "path": "models/USDJPY_oco_first_touch_model_2026-04.json",
+      "sha256": "f191f0d4c6745f9d934d7e5de8df7b59c9d3b7f33dc5dd92765852aebf19ea05"
+    },
+    "predictions": {
+      "path": "usdjpy_oco_first_touch_locked_predictions.parquet",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "reduced_config": {
+      "path": "configs/usdjpy_oco_first_touch_reduced.yaml",
+      "sha256": "fd3a0d4a370d9659300f891cfedc9cdcb042e86d84035b7a51469153de5b4139"
+    },
+    "reduced_summary": {
+      "path": "usdjpy_oco_first_touch_reduced_summary.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "tick_exact_summary": {
+      "path": "usdjpy_oco_first_touch_tick_exact_summary.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "wfo_config": {
+      "path": "configs/usdjpy_oco_first_touch_wfo.yaml",
+      "sha256": "7cdfcd425031e5fa64952223e1b0c2228a6d9ee2c12cfccb888ea7468f4156e9"
+    }
+  },
+  "bundle": {
+    "dir_relpath": "configs/research/governance/oco",
+    "family": "oco_first_touch",
+    "month": "2026-04"
+  },
+  "deployability": {
     "capacity_overall_pass": true,
     "live_deployable": true,
-    "model_cbm_path": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_history_dukascopy_candidate/2026-04/models/oco_dukascopy_candidate/USDJPY_model_2026-04.cbm",
-    "model_cbm_sha256": "a174d4c14ada7c25bea82026819451068cd1121b23d3a25a18cc14207857fc9f",
     "model_month": "2026-04",
-    "model_threshold_json_path": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_history_dukascopy_candidate/2026-04/models/oco_dukascopy_candidate/USDJPY_model_2026-04.json",
-    "model_threshold_json_sha256": "f191f0d4c6745f9d934d7e5de8df7b59c9d3b7f33dc5dd92765852aebf19ea05",
     "model_valid_through": "2026-04-30",
-    "predictions_path": "configs/research/governance/oco_candidate_builds/2026-04/usdjpy_oco_locked_predictions.parquet",
-    "predictions_sha256": "875f833aafb2882eea5874dac4aa8863d977eba0d0a3087f73653da3f34df45b",
-    "reduced_config_path": "configs/research/experiments_dukascopy_candidate/usdjpy_oco_reduced_core_rolling.yaml",
-    "reduced_config_sha256": "d62c26a1e49790f5172a0a4f6af012121aa985373d7e9c66f796a1f0fbfb9cf7",
-    "reduced_states_csv_path": "configs/research/governance/oco_candidate_builds/2026-04/usdjpy_oco_allowed_states.csv",
-    "reduced_states_csv_sha256": "a085e40adc865c574bc85b0cd4f65723414979dd4ffe5c8f2dfe0dfa6e373239",
-    "reduced_summary_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/USDJPY_oco_reduced_summary.csv",
-    "reduced_summary_sha256": "3d12bc26b03dcec6307cbdd53ea2d00650697b31ae8ccefd4dfb9c6e2b08110f",
-    "source_predictions_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/wfo_m3to1_oco_fullcap/USDJPY_oco_monthly_predictions.parquet",
-    "source_predictions_sha256": "c6ffcdb35f62ee4afc300d15a317e73ec54951a0293cfea154b084cf9506eaca",
-    "tick_exact_overall_pass": true,
-    "tick_exact_summary_path": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/USDJPY_oco_tick_exact_summary.csv",
-    "tick_exact_summary_sha256": "3124bd7385c8951aa39d504cf481118fc528959f54730637bb1fc475da9ca2ff",
-    "train_predictions_path": "models/oco_dukascopy_candidate/USDJPY_train_predictions_2026-04.parquet",
-    "train_predictions_sha256": "",
-    "wfo_config_path": "configs/research/experiments_dukascopy_candidate/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
-    "wfo_config_sha256": "7cdfcd425031e5fa64952223e1b0c2228a6d9ee2c12cfccb888ea7468f4156e9"
+    "tick_exact_overall_pass": true
   },
   "frozen_at_utc": "2026-05-01T16:08:13.039539+00:00",
   "git": {
@@ -52,23 +71,57 @@
     "selection_mode": "auto",
     "threshold_mode": "rolling_days"
   },
+  "provenance": {
+    "allowed_states_csv": {
+      "origin": "configs/research/governance/oco_candidate_builds/2026-04/usdjpy_oco_allowed_states.csv",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "model_cbm": {
+      "origin": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_history_dukascopy_candidate/2026-04/models/oco_dukascopy_candidate/USDJPY_model_2026-04.cbm",
+      "origin_sha256": "a174d4c14ada7c25bea82026819451068cd1121b23d3a25a18cc14207857fc9f"
+    },
+    "model_threshold_json": {
+      "origin": "/Users/danielfisher/repositories/behemoth/configs/research/governance/oco_history_dukascopy_candidate/2026-04/models/oco_dukascopy_candidate/USDJPY_model_2026-04.json",
+      "origin_sha256": "f191f0d4c6745f9d934d7e5de8df7b59c9d3b7f33dc5dd92765852aebf19ea05"
+    },
+    "predictions": {
+      "origin": "configs/research/governance/oco_candidate_builds/2026-04/usdjpy_oco_locked_predictions.parquet",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "reduced_config": {
+      "origin": "configs/research/experiments_dukascopy_candidate/usdjpy_oco_reduced_core_rolling.yaml",
+      "origin_sha256": "fd3a0d4a370d9659300f891cfedc9cdcb042e86d84035b7a51469153de5b4139"
+    },
+    "reduced_summary": {
+      "origin": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core_rolling/USDJPY_oco_reduced_summary.csv",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "tick_exact_summary": {
+      "origin": "data/analysis/tick_opportunity_mining_dukascopy_candidate/reduced_core/USDJPY_oco_tick_exact_summary.csv",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "wfo_config": {
+      "origin": "configs/research/experiments_dukascopy_candidate/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
+      "origin_sha256": "7cdfcd425031e5fa64952223e1b0c2228a6d9ee2c12cfccb888ea7468f4156e9"
+    }
+  },
   "retrain_policy": {
     "anchor_day_utc": 1,
     "cadence_days": 30,
     "mode": "calendar_window",
     "window_days": 3
   },
-  "schema_version": 1,
+  "schema_version": 3,
   "state_universe": {
     "count": 1,
     "rows": [
       {
         "bar_ticks": 1000,
         "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
+        "family": "oco_first_touch",
         "horizon": 6,
         "regime_desc": "all;barrier=2.0",
-        "state_id": "oco_first_touch_clean__all__k2",
+        "state_id": "oco_first_touch__all__k2",
         "symbol": "USDJPY"
       }
     ],

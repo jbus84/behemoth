@@ -1,25 +1,49 @@
 {
   "artifacts": {
+    "allowed_states_csv": {
+      "path": "usdcad_oco_first_touch_allowed_states.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "model_cbm": {
+      "path": "models/USDCAD_oco_first_touch_model_2025-09.cbm",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "model_threshold_json": {
+      "path": "models/USDCAD_oco_first_touch_model_2025-09.json",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "predictions": {
+      "path": "usdcad_oco_first_touch_locked_predictions.parquet",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "reduced_config": {
+      "path": "configs/usdcad_oco_first_touch_reduced.yaml",
+      "sha256": "f8034c8ffd53bb7d089d987cdda17213cc5d0089aacd5782257b61c7bebb6683"
+    },
+    "reduced_summary": {
+      "path": "usdcad_oco_first_touch_reduced_summary.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "tick_exact_summary": {
+      "path": "usdcad_oco_first_touch_tick_exact_summary.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "wfo_config": {
+      "path": "configs/usdcad_oco_first_touch_wfo.yaml",
+      "sha256": "25cb14012cf75c99240a307d3810f08cfccf6dcb4285e2851604dda1b3522840"
+    }
+  },
+  "bundle": {
+    "dir_relpath": "configs/research/governance/oco_history/2025-09",
+    "family": "oco_first_touch",
+    "month": "2025-09"
+  },
+  "deployability": {
     "capacity_overall_pass": true,
     "live_deployable": true,
-    "model_cbm_path": "models/oco/USDCAD_model_2025-09.cbm",
-    "model_cbm_sha256": "671dbdf5aa7bbc2605346dff854c8348da25c811f0399f34f5456b379a6825b9",
     "model_month": "2025-09",
-    "model_threshold_json_path": "models/oco/USDCAD_model_2025-09.json",
-    "model_threshold_json_sha256": "912f41aa25a4a50f66daa202298a01913ff5598f026045be51dc277f5934da14",
-    "predictions_path": "data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/USDCAD_oco_monthly_predictions.parquet",
-    "predictions_sha256": "06ad8a2b9ba64054a7d2ef8ad4b82350ce345b32deda5261d7f9c9ee4f0332c4",
-    "reduced_config_path": "configs/research/experiments/usdcad_oco_reduced_core.yaml",
-    "reduced_config_sha256": "3410a90099ef6974357aeaf2a206baa17d85d64ce6f1b1a979617ec4bd2b5725",
-    "reduced_states_csv_path": "configs/research/governance/oco_history/2025-09/usdcad_oco_allowed_states.csv",
-    "reduced_states_csv_sha256": "eb0869080271a2d964a699357ca70c2748e1abaaa883f375c60ab908d52cf596",
-    "reduced_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_reduced_summary.csv",
-    "reduced_summary_sha256": "5981c6848823762ffe39713230fe1093d34bf562c11d76d11b0ad6233da150de",
-    "tick_exact_overall_pass": true,
-    "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_tick_exact_summary.csv",
-    "tick_exact_summary_sha256": "b9c23fdba0449f89d2cafb4492050649a15e2e8d9032d685d2037985c156c376",
-    "wfo_config_path": "configs/research/experiments/usdcad_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
-    "wfo_config_sha256": "473c30f335111f2f8bbe666c765dd7f5646f697212e485d6798ad7da15fa45a1"
+    "model_valid_through": "",
+    "tick_exact_overall_pass": true
   },
   "frozen_at_utc": "2026-03-10T11:42:18.282320+00:00",
   "git": {
@@ -45,32 +69,62 @@
     "selection_mode": "auto",
     "threshold_mode": "rolling_days"
   },
+  "provenance": {
+    "model_cbm": {
+      "origin": "models/oco/USDCAD_model_2025-09.cbm",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "model_threshold_json": {
+      "origin": "models/oco/USDCAD_model_2025-09.json",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "predictions": {
+      "origin": "data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/USDCAD_oco_monthly_predictions.parquet",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "reduced_config": {
+      "origin": "configs/research/experiments/usdcad_oco_reduced_core.yaml",
+      "origin_sha256": "f8034c8ffd53bb7d089d987cdda17213cc5d0089aacd5782257b61c7bebb6683"
+    },
+    "reduced_summary": {
+      "origin": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_reduced_summary.csv",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "tick_exact_summary": {
+      "origin": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDCAD_oco_tick_exact_summary.csv",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "wfo_config": {
+      "origin": "configs/research/experiments/usdcad_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
+      "origin_sha256": "25cb14012cf75c99240a307d3810f08cfccf6dcb4285e2851604dda1b3522840"
+    }
+  },
   "retrain_policy": {
     "anchor_day_utc": 1,
     "cadence_days": 30,
     "mode": "calendar_window",
     "window_days": 3
   },
-  "schema_version": 1,
+  "schema_version": 3,
   "state_universe": {
     "count": 2,
     "rows": [
       {
         "bar_ticks": 100,
         "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
+        "family": "oco_first_touch",
         "horizon": 5,
         "regime_desc": "high_range_q70;barrier=2.0",
-        "state_id": "oco_first_touch_clean__high_range_q70__k2",
+        "state_id": "oco_first_touch__high_range_q70__k2",
         "symbol": "USDCAD"
       },
       {
         "bar_ticks": 100,
         "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
+        "family": "oco_first_touch",
         "horizon": 6,
         "regime_desc": "high_range_q70;barrier=2.0",
-        "state_id": "oco_first_touch_clean__high_range_q70__k2",
+        "state_id": "oco_first_touch__high_range_q70__k2",
         "symbol": "USDCAD"
       }
     ],

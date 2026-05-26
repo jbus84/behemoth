@@ -1,25 +1,49 @@
 {
   "artifacts": {
+    "allowed_states_csv": {
+      "path": "usdjpy_oco_first_touch_allowed_states.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "model_cbm": {
+      "path": "models/USDJPY_oco_first_touch_model_2025-09.cbm",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "model_threshold_json": {
+      "path": "models/USDJPY_oco_first_touch_model_2025-09.json",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "predictions": {
+      "path": "usdjpy_oco_first_touch_locked_predictions.parquet",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "reduced_config": {
+      "path": "configs/usdjpy_oco_first_touch_reduced.yaml",
+      "sha256": "7e9632e0cd646c5ea8142fec7a0710883cfc2e9ef5dbbed165958a9a6ad31aed"
+    },
+    "reduced_summary": {
+      "path": "usdjpy_oco_first_touch_reduced_summary.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "tick_exact_summary": {
+      "path": "usdjpy_oco_first_touch_tick_exact_summary.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "wfo_config": {
+      "path": "configs/usdjpy_oco_first_touch_wfo.yaml",
+      "sha256": "0c40b3754814ace974a220e7de1b53c7977c8bf98baee989bc7a0d2d1a551799"
+    }
+  },
+  "bundle": {
+    "dir_relpath": "configs/research/governance/oco_history/2025-09",
+    "family": "oco_first_touch",
+    "month": "2025-09"
+  },
+  "deployability": {
     "capacity_overall_pass": true,
     "live_deployable": true,
-    "model_cbm_path": "models/oco/USDJPY_model_2025-09.cbm",
-    "model_cbm_sha256": "5bb088ae383ca23f37aff2f7ddc42dcb6c5629ef10e03302ee68ab6d6dd872c6",
     "model_month": "2025-09",
-    "model_threshold_json_path": "models/oco/USDJPY_model_2025-09.json",
-    "model_threshold_json_sha256": "25ede4b5e3dc1be55a72c94a7e5eba7b1c644f93aa69695b77de46ab8638ea30",
-    "predictions_path": "data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/USDJPY_oco_monthly_predictions.parquet",
-    "predictions_sha256": "5916195eece95948e12048c1f4e6fc67522fed38e2962efd3ce9741e2ee5d5e7",
-    "reduced_config_path": "configs/research/experiments/usdjpy_oco_reduced_core.yaml",
-    "reduced_config_sha256": "1deee84cc3d4846f05be60752e8c6250ef93632dc33078a0a061fa8ac4a69313",
-    "reduced_states_csv_path": "configs/research/governance/oco_history/2025-09/usdjpy_oco_allowed_states.csv",
-    "reduced_states_csv_sha256": "c9b3762c1f1fae539708b53ad1179159fd682667405290ecb2fe16966e3eb803",
-    "reduced_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_reduced_summary.csv",
-    "reduced_summary_sha256": "630b22ae583be10332cbbddd9ef295b6357464abf38ed89d4bc9b21c6b6a8668",
-    "tick_exact_overall_pass": true,
-    "tick_exact_summary_path": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_tick_exact_summary.csv",
-    "tick_exact_summary_sha256": "68201418f353014772bac5b5c9b4cf9c67a583304adf525eddb0d74eb527bb08",
-    "wfo_config_path": "configs/research/experiments/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
-    "wfo_config_sha256": "938642f549dead9ff81a6d52cde56b35a893869aed67082848422ad774aca61a"
+    "model_valid_through": "",
+    "tick_exact_overall_pass": true
   },
   "frozen_at_utc": "2026-03-10T11:42:17.400663+00:00",
   "git": {
@@ -45,32 +69,62 @@
     "selection_mode": "auto",
     "threshold_mode": "rolling_days"
   },
+  "provenance": {
+    "model_cbm": {
+      "origin": "models/oco/USDJPY_model_2025-09.cbm",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "model_threshold_json": {
+      "origin": "models/oco/USDJPY_model_2025-09.json",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "predictions": {
+      "origin": "data/analysis/tick_opportunity_mining/wfo_m3to1_oco_fullcap/USDJPY_oco_monthly_predictions.parquet",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "reduced_config": {
+      "origin": "configs/research/experiments/usdjpy_oco_reduced_core.yaml",
+      "origin_sha256": "7e9632e0cd646c5ea8142fec7a0710883cfc2e9ef5dbbed165958a9a6ad31aed"
+    },
+    "reduced_summary": {
+      "origin": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_reduced_summary.csv",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "tick_exact_summary": {
+      "origin": "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_tick_exact_summary.csv",
+      "origin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "wfo_config": {
+      "origin": "configs/research/experiments/usdjpy_tick_opportunity_monthly_wfo_oco_fullcap.yaml",
+      "origin_sha256": "0c40b3754814ace974a220e7de1b53c7977c8bf98baee989bc7a0d2d1a551799"
+    }
+  },
   "retrain_policy": {
     "anchor_day_utc": 1,
     "cadence_days": 30,
     "mode": "calendar_window",
     "window_days": 3
   },
-  "schema_version": 1,
+  "schema_version": 3,
   "state_universe": {
     "count": 2,
     "rows": [
       {
         "bar_ticks": 100,
         "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
+        "family": "oco_first_touch",
         "horizon": 6,
         "regime_desc": "high_range_q70;barrier=2.0",
-        "state_id": "oco_first_touch_clean__high_range_q70__k2",
+        "state_id": "oco_first_touch__high_range_q70__k2",
         "symbol": "USDJPY"
       },
       {
         "bar_ticks": 100,
         "barrier_pips": 2.0,
-        "family": "oco_first_touch_clean",
+        "family": "oco_first_touch",
         "horizon": 6,
         "regime_desc": "high_range_q80;barrier=2.0",
-        "state_id": "oco_first_touch_clean__high_range_q80__k2",
+        "state_id": "oco_first_touch__high_range_q80__k2",
         "symbol": "USDJPY"
       }
     ],
