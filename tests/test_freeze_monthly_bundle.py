@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from scripts.legacy.freeze_oco_historical_governance import (
+from scripts.freeze_monthly_bundle import (
     _filter_months,
     _model_valid_through,
     _state_universe_for_month,
