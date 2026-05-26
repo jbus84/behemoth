@@ -1634,7 +1634,54 @@ def _resolve_runtime_contract(sym: str, close_ts: datetime) -> _ResolvedRuntimeC
     )
 
 
+def _resolve_runtime_contract_for_family(sym: str, family: str, close_ts: datetime) -> _ResolvedRuntimeContract:
+    """Resolve runtime contract for a specific symbol and family."""
+    symbol = str(sym).upper().strip()
+    family = str(family).strip()
+    if _config.force_model_month and _is_historical_mode():
+        forced_month = _normalize_model_month(_config.force_model_month)
+        if forced_month is None:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid BEHEMOTH_FORCE_MODEL_MONTH={_config.force_model_month!r}; expected YYYY-MM",
+            )
+    try:
+        contract = _candidate_catalog().resolve_contract(symbol, close_ts)
+    except LookupError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=422, detail=str(exc).strip("'")) from exc
+
+    # Filter to the requested family
+    family_candidates = [c for c in contract.candidates if c.family == family]
+    if not family_candidates:
+        raise HTTPException(status_code=422, detail=f"No candidates for {symbol} family {family}")
+
+    # Get per-family metadata
+    if _registry is not None:
+        bundle_paths = _registry.get_bundle_paths(symbol, family)
+        cap_pips = _registry.get_cap_pips(symbol, family)
+    else:
+        bundle_paths = contract.bundle_paths
+        cap_pips = contract.cap_pips
+
+    model_month = bundle_paths.model_month if bundle_paths else contract.model_month
+    cache_key = _cache_key(symbol, model_month, family)
+
+    return _ResolvedRuntimeContract(
+        symbol=symbol,
+        model_month=model_month,
+        cache_key=cache_key,
+        candidates=family_candidates,
+        bundle_paths=bundle_paths or contract.bundle_paths,
+        cap_pips=float(cap_pips),
+        source=contract.source,
+        lock_path=contract.lock_path,
+    )
+
+
 def _ensure_model_and_threshold(contract: _ResolvedRuntimeContract) -> tuple[Any, dict[str, Any]]:
+    """Ensure model and threshold are loaded for the contract's cache_key."""
     model, thr_cfg = _model_registry.get_model_and_threshold(contract.cache_key)
     if model is not None and isinstance(thr_cfg, dict):
         return model, thr_cfg
