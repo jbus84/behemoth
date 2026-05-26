@@ -4239,3 +4239,38 @@ class TestOpenSummaryEndpoint:
             server._config.persist_db_path = original_path
 
         assert not any("live_position_summary" in p for p in written_paths)
+
+
+class TestPredictionFamilyField:
+    def test_oco_prediction_has_family_field(self):
+        from src.behemoth.core.schemas import OcoPrediction
+        p = OcoPrediction(
+            symbol="EURUSD",
+            close_ts=datetime(2026, 5, 1, tzinfo=timezone.utc),
+            candidate_uid="directional|eurusd|100|h4|k1",
+            pred_prob=0.75,
+            threshold_exec=0.5,
+            selected_exec=1,
+            bar_ticks=100,
+            horizon=4,
+            barrier_pips=10.0,
+            cap_pips=1.5,
+            threshold_source="test",
+            model_month="2026-04",
+            family="directional",
+        )
+        assert p.family == "directional"
+
+    def test_trade_open_request_has_family_field(self):
+        from src.behemoth.core.schemas import TradeOpenRequest
+        req = TradeOpenRequest(
+            symbol="EURUSD",
+            candidate_uid="directional|eurusd|100|h4|k1",
+            broker_pos_id="bp-1",
+            side="Buy",
+            entry_price=1.1000,
+            entry_ts=datetime(2026, 5, 1, tzinfo=timezone.utc),
+            horizon=4,
+            family="directional",
+        )
+        assert req.family == "directional"

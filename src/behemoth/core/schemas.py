@@ -321,6 +321,10 @@ class OcoPrediction(BaseModel):
         default=None,
         description="Reservation identifier created by the API allocator for this candidate.",
     )
+    family: str = Field(
+        default="",
+        description="Mining family provenance, e.g. 'oco_first_touch' or 'directional'.",
+    )
 
 
 class BarrierActionType(str, Enum):
@@ -370,6 +374,10 @@ class TradeOpenRequest(BaseModel):
     horizon: int
     reservation_id: str | None = None
     run_id: str | None = None
+    family: str | None = Field(
+        default=None,
+        description="Mining family provenance for the trade.",
+    )
 
 
 class TradeTouchRequest(BaseModel):
