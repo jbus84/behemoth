@@ -28,3 +28,17 @@ def test_directional_wfo_configs_are_family_driven() -> None:
         cfg = _load(path)
         assert cfg["library"] == "directional"
         assert cfg["families"] == ["directional"]
+
+
+def test_dukascopy_candidate_directional_configs_exist() -> None:
+    for symbol in ACTIVE_SYMBOLS:
+        wfo = Path(
+            "configs/research/experiments_dukascopy_candidate"
+        ) / f"{symbol}_tick_opportunity_monthly_wfo_directional_fullcap.yaml"
+        reduced = Path(
+            "configs/research/experiments_dukascopy_candidate"
+        ) / f"{symbol}_directional_reduced_core_rolling.yaml"
+        assert wfo.exists(), wfo
+        assert reduced.exists(), reduced
+        assert _load(wfo)["families"] == ["directional"]
+        assert _load(reduced)["family_keep"] == "directional"
