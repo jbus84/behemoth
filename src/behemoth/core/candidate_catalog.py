@@ -156,7 +156,13 @@ class CandidateCatalog:
     def _resolve_live_contract(self, symbol: str) -> RuntimeCandidateContract:
         if self._live_registry is None:
             raise LookupError("Candidate registry not loaded")
-        bundle_paths = self._live_registry.get_bundle_paths(symbol)
+        all_candidates = self._live_registry.get_candidates(symbol)
+        if not all_candidates:
+            raise LookupError(f"No candidates registered for {symbol}")
+        # Use the first family's bundle_paths as the "primary" contract metadata.
+        # Per-family dispatch happens downstream in server.py.
+        first_family = all_candidates[0].family or "unknown"
+        bundle_paths = self._live_registry.get_bundle_paths(symbol, first_family)
         if not bundle_paths:
             raise LookupError(f"No bundle paths registered for {symbol}")
         model_month = bundle_paths.model_month or "unknown"
@@ -164,9 +170,9 @@ class CandidateCatalog:
             symbol=symbol,
             model_month=model_month,
             cache_key=self.cache_key(symbol),
-            candidates=self._live_registry.get_candidates(symbol),
+            candidates=all_candidates,
             bundle_paths=bundle_paths,
-            cap_pips=float(self._live_registry.get_cap_pips(symbol)),
+            cap_pips=float(self._live_registry.get_cap_pips(symbol, first_family)),
             source="live",
             lock_path=None,
         )
