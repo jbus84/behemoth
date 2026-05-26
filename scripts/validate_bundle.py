@@ -14,7 +14,11 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.behemoth.core.bundle_paths import BundleIntegrityError, BundlePaths  # noqa: E402
+from src.behemoth.core.bundle_paths import (  # noqa: E402
+    BundleIntegrityError,
+    BundlePaths,
+    iter_locks,
+)
 
 
 def _validate_one_lock(lock_path: Path) -> None:
@@ -37,7 +41,7 @@ def main() -> int:
     if not bundle_dir.is_dir():
         print(f"[validate-bundle] not a directory: {bundle_dir}", file=sys.stderr)
         return 2
-    locks = sorted(bundle_dir.glob("*_oco_live_lock.json"))
+    locks = list(iter_locks(bundle_dir))
     if not locks:
         print(f"[validate-bundle] no locks in {bundle_dir}", file=sys.stderr)
         return 2

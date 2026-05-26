@@ -31,6 +31,7 @@ _SCRIPT_REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_SCRIPT_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_REPO_ROOT))
 
+from src.behemoth.core.bundle_paths import iter_locks  # noqa: E402
 from src.behemoth.live_restart.reconciliation import (  # noqa: E402, F401 — sys.path setup above; symbols re-exported for monkeypatching in tests
     BrokerSnapshot,
     LocalRuntimeStateSummary,
@@ -210,7 +211,7 @@ def _validate_promoted_runtime_artifacts(cfg: RunConfig) -> None:
     requested_symbols = {symbol.upper() for symbol in cfg.symbols}
     failures: list[str] = []
 
-    for lock_path in sorted(governance_dir.glob("*_oco_live_lock.json")):
+    for lock_path in iter_locks(governance_dir):
         payload = json.loads(lock_path.read_text(encoding="utf-8"))
         symbol = str(payload.get("symbol", "")).upper().strip()
         if not symbol or symbol not in requested_symbols:

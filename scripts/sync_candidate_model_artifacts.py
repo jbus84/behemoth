@@ -6,9 +6,16 @@ import hashlib
 import json
 import re
 import shutil
+import sys
 from dataclasses import dataclass
 from json import JSONDecodeError
 from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from src.behemoth.core.bundle_paths import iter_locks, lock_filename  # noqa: E402
 
 _MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 
@@ -31,17 +38,15 @@ def _sha(path: Path) -> str:
 
 def _iter_locks(lock_dir: Path, symbols: list[str]) -> list[Path]:
     if not symbols:
-        return sorted(lock_dir.glob("*_oco_live_lock.json"))
-    wanted_names = {f"{symbol.lower()}_oco_live_lock.json" for symbol in symbols}
-    return sorted(
-        path for path in lock_dir.glob("*_oco_live_lock.json") if path.name in wanted_names
-    )
+        return list(iter_locks(lock_dir))
+    wanted_names = {lock_filename(symbol) for symbol in symbols}
+    return sorted(path for path in iter_locks(lock_dir) if path.name in wanted_names)
 
 
 def _symbol_from_lock_path(lock_path: Path) -> str:
-    suffix = "_oco_live_lock.json"
-    if lock_path.name.endswith(suffix):
-        return lock_path.name[: -len(suffix)].upper()
+    for part in lock_path.name.split("_live_lock.json", 1)[:1]:
+        if part:
+            return part.rsplit("_", 1)[0].upper() if "_" in part else part.upper()
     return ""
 
 
@@ -238,7 +243,7 @@ def run(
                         symbol,
                         "-",
                         "FAIL",
-                        f"missing live lock {lock_dir / f'{symbol.lower()}_oco_live_lock.json'}",
+                        f"missing live lock {lock_dir / lock_filename(symbol)}",
                     )
                 )
     else:

@@ -31,7 +31,7 @@ def check(ctx: CheckContext) -> CheckResult:
         return CheckResult(
             passed=False, severity="critical",
             observed="governance_lock_dir missing",
-            expected="directory with *_oco_live_lock.json files",
+            expected="directory with *_live_lock.json files",
             evidence="",
         )
     mismatches: list[str] = []

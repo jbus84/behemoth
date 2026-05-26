@@ -64,6 +64,51 @@ def _write_v3_bundle(
     return lock_path
 
 
+def _write_v3_bundle_at(
+    bundle_dir: Path,
+    symbol: str,
+    family: str,
+    artifact_basenames: dict[str, str] | None = None,
+) -> Path:
+    (bundle_dir / "models").mkdir(parents=True, exist_ok=True)
+    artifact_basenames = artifact_basenames or {}
+    pred_name = artifact_basenames.get(
+        "predictions", f"{symbol.lower()}_oco_locked_predictions.parquet"
+    )
+    states_name = artifact_basenames.get(
+        "allowed_states_csv", f"{symbol.lower()}_oco_allowed_states.csv"
+    )
+    pred = b"prediction-bytes"
+    states = b"states-bytes"
+    cbm = b"cbm-bytes"
+    thr = b"thr-bytes"
+    (bundle_dir / pred_name).write_bytes(pred)
+    (bundle_dir / states_name).write_bytes(states)
+    (bundle_dir / "models" / f"{symbol}_model_2026-04.cbm").write_bytes(cbm)
+    (bundle_dir / "models" / f"{symbol}_model_2026-04.json").write_bytes(thr)
+    lock = {
+        "schema_version": 3,
+        "symbol": symbol,
+        "bundle": {"month": "2026-04", "dir_relpath": str(bundle_dir), "family": family},
+        "artifacts": {
+            "predictions": {"path": pred_name, "sha256": _sha256(pred)},
+            "allowed_states_csv": {"path": states_name, "sha256": _sha256(states)},
+            "model_cbm": {
+                "path": f"models/{symbol}_model_2026-04.cbm",
+                "sha256": _sha256(cbm),
+            },
+            "model_threshold_json": {
+                "path": f"models/{symbol}_model_2026-04.json",
+                "sha256": _sha256(thr),
+            },
+        },
+        "deployability": {"live_deployable": True, "model_month": "2026-04"},
+    }
+    lock_path = bundle_dir / f"{symbol.lower()}_oco_live_lock.json"
+    lock_path.write_text(json.dumps(lock, indent=2))
+    return lock_path
+
+
 def test_from_lock_resolves_predictions(tmp_path: Path) -> None:
     lock_path = _write_v3_bundle(tmp_path)
 
@@ -229,3 +274,75 @@ def test_non_oco_family_round_trip(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     assert parsed.family == "test_breakout"
     assert parsed.predictions().name == "eurusd_breakout_predictions.parquet"
     assert parsed.model_cbm().name == "EURUSD_model_2026-04.cbm"
+
+
+def test_iter_locks_yields_all_live_locks(tmp_path: Path) -> None:
+    from src.behemoth.core.bundle_paths import iter_locks
+
+    bundle = tmp_path / "2026-04"
+    bundle.mkdir()
+    a = bundle / "eurusd_oco_live_lock.json"
+    b = bundle / "gbpusd_oco_live_lock.json"
+    a.write_text("{}")
+    b.write_text("{}")
+    (bundle / "not_a_lock.json").write_text("{}")
+
+    paths = sorted(iter_locks(bundle))
+    assert paths == sorted([a, b])
+
+
+def test_iter_locks_filters_by_family(tmp_path: Path) -> None:
+    """Yield only locks whose bundle.family matches."""
+    from src.behemoth.core.bundle_paths import BUNDLE_LAYOUTS, BundleArtifactSpec, iter_locks
+
+    bundle = tmp_path / "2026-04"
+    bundle.mkdir()
+    oco_lock = _write_v3_bundle_at(bundle, symbol="EURUSD", family="oco_first_touch_clean")
+    BUNDLE_LAYOUTS["test_breakout"] = (
+        BundleArtifactSpec("predictions", "gbpusd_breakout_predictions.parquet", True),
+        BundleArtifactSpec("allowed_states_csv", "gbpusd_breakout_states.csv", True),
+        BundleArtifactSpec("model_cbm", "models/GBPUSD_model_2026-04.cbm", True),
+        BundleArtifactSpec("model_threshold_json", "models/GBPUSD_model_2026-04.json", True),
+    )
+    try:
+        breakout_lock = _write_v3_bundle_at(
+            bundle,
+            symbol="GBPUSD",
+            family="test_breakout",
+            artifact_basenames={
+                "predictions": "gbpusd_breakout_predictions.parquet",
+                "allowed_states_csv": "gbpusd_breakout_states.csv",
+            },
+        )
+
+        assert sorted(iter_locks(bundle, family="oco_first_touch_clean")) == [oco_lock]
+        assert sorted(iter_locks(bundle, family="test_breakout")) == [breakout_lock]
+    finally:
+        BUNDLE_LAYOUTS.pop("test_breakout", None)
+
+
+def test_iter_locks_skips_invalid_locks_with_warning(tmp_path: Path, caplog) -> None:
+    """A malformed lock does not break the scan."""
+    from src.behemoth.core.bundle_paths import iter_locks
+
+    bundle = tmp_path / "2026-04"
+    bundle.mkdir()
+    good = _write_v3_bundle_at(bundle, symbol="EURUSD", family="oco_first_touch_clean")
+    bad = bundle / "broken_oco_live_lock.json"
+    bad.write_text("{not json")
+
+    assert good in iter_locks(bundle)
+    assert bad in iter_locks(bundle)
+
+    with caplog.at_level("WARNING", logger="behemoth.governance"):
+        filtered = list(iter_locks(bundle, family="oco_first_touch_clean"))
+    assert good in filtered
+    assert bad not in filtered
+    assert any("failed to parse" in record.message for record in caplog.records)
+
+
+def test_lock_filename_returns_canonical_form() -> None:
+    from src.behemoth.core.bundle_paths import lock_filename
+
+    assert lock_filename("EURUSD") == "eurusd_oco_live_lock.json"
+    assert lock_filename("eurusd") == "eurusd_oco_live_lock.json"

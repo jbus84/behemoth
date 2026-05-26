@@ -14,6 +14,7 @@ import contextlib
 import hashlib
 import json
 import re
+import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -22,6 +23,12 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from pandas.errors import EmptyDataError
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from src.behemoth.core.bundle_paths import iter_locks, lock_filename  # noqa: E402
 
 try:
     import yaml
@@ -65,7 +72,7 @@ def _default_configs() -> dict[str, SymbolConfig]:
             monthly_path=Path(
                 "data/analysis/tick_opportunity_mining/reduced_core_rolling/EURUSD_oco_reduced_monthly.csv"
             ),
-            lock_path=Path("configs/research/governance/oco/eurusd_oco_live_lock.json"),
+            lock_path=Path("configs/research/governance/oco") / lock_filename("EURUSD"),
         ),
         "GBPUSD": SymbolConfig(
             symbol="GBPUSD",
@@ -87,7 +94,7 @@ def _default_configs() -> dict[str, SymbolConfig]:
             monthly_path=Path(
                 "data/analysis/tick_opportunity_mining/reduced_core_rolling/GBPUSD_oco_reduced_monthly.csv"
             ),
-            lock_path=Path("configs/research/governance/oco/gbpusd_oco_live_lock.json"),
+            lock_path=Path("configs/research/governance/oco") / lock_filename("GBPUSD"),
         ),
         "USDJPY": SymbolConfig(
             symbol="USDJPY",
@@ -109,13 +116,13 @@ def _default_configs() -> dict[str, SymbolConfig]:
             monthly_path=Path(
                 "data/analysis/tick_opportunity_mining/reduced_core_rolling/USDJPY_oco_reduced_monthly.csv"
             ),
-            lock_path=Path("configs/research/governance/oco/usdjpy_oco_live_lock.json"),
+            lock_path=Path("configs/research/governance/oco") / lock_filename("USDJPY"),
         ),
     }
 
     lock_dir = Path("configs/research/governance/oco")
     if lock_dir.exists():
-        for p in lock_dir.glob("*_oco_live_lock.json"):
+        for p in iter_locks(lock_dir):
             s = p.name.split("_")[0].upper()
             if s not in defaults:
                 defaults[s] = SymbolConfig(

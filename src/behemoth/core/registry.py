@@ -80,13 +80,13 @@ class CandidateRegistry:
         lock_dir: Path | str | None = None,
         models_dir: Path | str | None = None,
     ) -> CandidateRegistry:
-        """Load exactly from per-symbol *_oco_live_lock.json files."""
+        """Load exactly from per-symbol Governance Locks."""
         if lock_dir is None:
             lock_dir = Path(os.getenv("BEHEMOTH_GOVERNANCE_DIR", "configs/research/governance/oco"))
 
         import json  # noqa: E402
 
-        from src.behemoth.core.bundle_paths import BundlePaths  # noqa: E402
+        from src.behemoth.core.bundle_paths import BundlePaths, iter_locks  # noqa: E402
 
         p_dir = Path(lock_dir)
         resolved_models_dir = Path(models_dir) if models_dir is not None else None
@@ -94,7 +94,8 @@ class CandidateRegistry:
             raise FileNotFoundError(f"Governance live lock directory not found: {p_dir}")
 
         reg = cls()
-        for p in p_dir.glob("*_oco_live_lock.json"):
+        # Filtered to OCO until CandidateRegistry supports multi-family lookup.
+        for p in iter_locks(p_dir, family="oco_first_touch_clean"):
             try:
                 data = json.loads(p.read_text())
                 sym = data.get("symbol", "").upper()

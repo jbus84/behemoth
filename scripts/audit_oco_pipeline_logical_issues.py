@@ -25,6 +25,13 @@ except ImportError:
     yaml = None
 
 
+_MINING_FAMILY = "oco"
+_MONTHLY_PREDICTIONS_SUFFIX = f"_{_MINING_FAMILY}_monthly_predictions.parquet"
+_REDUCED_MONTHLY_SUFFIX = f"_{_MINING_FAMILY}_reduced_monthly.csv"
+_REDUCED_SUMMARY_SUFFIX = f"_{_MINING_FAMILY}_reduced_summary.csv"
+_REDUCED_STATE_SCHEDULE_SUFFIX = f"_{_MINING_FAMILY}_reduced_state_schedule.csv"
+
+
 @dataclass(frozen=True)
 class SymbolConfig:
     symbol: str
@@ -52,10 +59,10 @@ def _default_configs(
 
         configs[s] = SymbolConfig(
             symbol=s,
-            pred_path=base_dir / pred_folder / f"{s}_oco_monthly_predictions.parquet",
-            monthly_path=base_dir / red_folder / f"{s}_oco_reduced_monthly.csv",
-            summary_path=base_dir / red_folder / f"{s}_oco_reduced_summary.csv",
-            schedule_path=base_dir / red_folder / f"{s}_oco_reduced_state_schedule.csv",
+            pred_path=base_dir / pred_folder / f"{s}{_MONTHLY_PREDICTIONS_SUFFIX}",
+            monthly_path=base_dir / red_folder / f"{s}{_REDUCED_MONTHLY_SUFFIX}",
+            summary_path=base_dir / red_folder / f"{s}{_REDUCED_SUMMARY_SUFFIX}",
+            schedule_path=base_dir / red_folder / f"{s}{_REDUCED_STATE_SCHEDULE_SUFFIX}",
             stop_detail_path=base_dir / stop_folder / f"{s}_stop_limit_tickfill_detail.csv",
             stop_caps_path=base_dir / stop_folder / f"{s}_stop_limit_tickfill_caps.csv",
         )

@@ -10,6 +10,8 @@ import duckdb
 import pandas as pd
 import polars as pl
 
+from src.behemoth.core.bundle_paths import lock_filename
+
 ACTIVE_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD")
 
 SKIP_COLUMNS = ["symbol", "reason"]
@@ -284,7 +286,7 @@ def _read_live_deployment_verdict(
     or because the lock file is missing/unreadable. ``reason`` carries a
     human-readable summary suitable for inclusion in a deviation finding.
     """
-    lock_path = Path(governance_dir) / f"{symbol_upper.lower()}_oco_live_lock.json"
+    lock_path = Path(governance_dir) / lock_filename(symbol_upper)
     try:
         lock = json.loads(lock_path.read_text(encoding="utf-8"))
     except FileNotFoundError:
@@ -292,7 +294,6 @@ def _read_live_deployment_verdict(
     except Exception as exc:
         return False, f"governance lock unreadable: {exc}", lock_path
 
-    artifacts = lock.get("artifacts", {}) or {}
     deploy = lock.get("deployability", {}) or {}
     live_deployable = bool(deploy.get("live_deployable", False))
     capacity_pass = deploy.get("capacity_overall_pass")
@@ -378,7 +379,7 @@ def score_governance_predictions_for_window(
             layer="governance_predictions",
             finding_id="missing_governance_states",
             reason=f"governance states unavailable: {exc}",
-            source_path=governance_dir / f"{symbol_upper.lower()}_oco_live_lock.json",
+            source_path=governance_dir / lock_filename(symbol_upper),
         )
         return _empty_governance_predictions()
 
@@ -443,7 +444,7 @@ def score_governance_predictions_for_window(
                 finding_id="governance_state_scoring_failed",
                 reason=f"governance state scoring failed: {exc}",
                 source_path=governance_dir
-                / f"{symbol_upper.lower()}_oco_live_lock.json",
+                / lock_filename(symbol_upper),
             )
             continue
         if not scored.is_empty():

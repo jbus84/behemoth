@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from behemoth.core.bundle_paths import lock_filename
 from behemoth.parity.registry import register_check
 from behemoth.parity.types import CheckContext, CheckResult
 
@@ -18,7 +19,7 @@ def _list_deployable_months(history_dir: Path, symbol: str) -> list[str]:
     for month_dir in sorted(history_dir.iterdir()):
         if not month_dir.is_dir():
             continue
-        lock_path = month_dir / f"{sym_lc}_oco_live_lock.json"
+        lock_path = month_dir / lock_filename(sym_lc)
         if not lock_path.exists():
             continue
         try:

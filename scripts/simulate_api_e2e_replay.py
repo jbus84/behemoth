@@ -21,6 +21,12 @@ import polars as pl
 import tqdm
 from fastapi.testclient import TestClient
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from src.behemoth.core.bundle_paths import lock_filename  # noqa: E402
+
 # server imported lazily to allow env variable injection
 
 
@@ -44,7 +50,7 @@ def load_expected_predictions(symbol: str, target_month: str) -> dict[tuple[str,
     )
     if not parquet_path.exists():
         # Fallback to checking lock file for path
-        lock_path = Path(f"configs/research/governance/oco/{symbol.lower()}_oco_live_lock.json")
+        lock_path = Path("configs/research/governance/oco") / lock_filename(symbol)
         if lock_path.exists():
             import json
 

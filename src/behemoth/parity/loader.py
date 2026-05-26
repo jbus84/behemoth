@@ -10,6 +10,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.behemoth.core.bundle_paths import lock_filename
+
 
 def load_signal_parity_csvs(*, reconcile_dir: Path, pattern: str) -> pd.DataFrame:
     """Load every *_<pattern>_signal_parity_summary.csv under reconcile_dir.
@@ -40,7 +42,7 @@ def load_runtime_events(
 
 
 def load_governance_lock(*, governance_lock_dir: Path, symbol: str) -> dict:
-    lock = governance_lock_dir / f"{symbol.lower()}_oco_live_lock.json"
+    lock = governance_lock_dir / lock_filename(symbol)
     if not lock.exists():
         return {}
     return json.loads(lock.read_text())

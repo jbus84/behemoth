@@ -20,6 +20,10 @@ import yaml
 DEFAULT_MANIFEST = Path("configs/research/docs/oco_bible_manifest.yaml")
 DETAIL_MAX_ROWS_DEFAULT = 40
 REPO_ROOT = Path.cwd().resolve()
+_MINING_FAMILY = "oco"
+_MONTHLY_PREDICTIONS_SUFFIX = f"_{_MINING_FAMILY}_monthly_predictions.parquet"
+_MONTHLY_METRICS_SUFFIX = f"_{_MINING_FAMILY}_monthly_metrics.csv"
+_MONTHLY_THRESHOLDS_SUFFIX = f"_{_MINING_FAMILY}_monthly_thresholds.csv"
 
 
 @dataclass(frozen=True)
@@ -1025,14 +1029,14 @@ def _symbol_contexts(cfg: dict[str, Any], base_dir: Path) -> list[dict[str, Any]
 
         wfo_metrics = _glob_latest(
             str(analysis_root / "wfo_*" / f"{symbol}_monthly_metrics_all.csv")
-        ) or _glob_latest(str(analysis_root / "wfo_*" / f"{symbol}_oco_monthly_metrics.csv"))
+        ) or _glob_latest(str(analysis_root / "wfo_*" / f"{symbol}{_MONTHLY_METRICS_SUFFIX}"))
         wfo_thresholds = _glob_latest(
             str(analysis_root / "wfo_*" / f"{symbol}_monthly_thresholds_all.csv")
-        ) or _glob_latest(str(analysis_root / "wfo_*" / f"{symbol}_oco_monthly_thresholds.csv"))
+        ) or _glob_latest(str(analysis_root / "wfo_*" / f"{symbol}{_MONTHLY_THRESHOLDS_SUFFIX}"))
         wfo_predictions = _glob_latest(
             str(analysis_root / "wfo_*" / f"{symbol}_monthly_predictions_all.parquet")
         ) or _glob_latest(
-            str(analysis_root / "wfo_*" / f"{symbol}_oco_monthly_predictions.parquet")
+            str(analysis_root / "wfo_*" / f"{symbol}{_MONTHLY_PREDICTIONS_SUFFIX}")
         )
         governance_predeploy = _glob_latest(
             str(analysis_root / f"{str(symbol).lower()}_governance_predeploy*.json")

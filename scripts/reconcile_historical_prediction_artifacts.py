@@ -7,10 +7,17 @@ import argparse
 import hashlib
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from src.behemoth.core.bundle_paths import iter_locks  # noqa: E402
 
 try:
     from catboost import CatBoostClassifier
@@ -103,7 +110,11 @@ def _find_repo_root(start: Path) -> Path:
 
 
 def _iter_lock_paths(history_dir: Path, symbols: list[str], months: list[str]) -> list[Path]:
-    lock_paths = sorted(history_dir.glob("*/*_oco_live_lock.json"))
+    lock_paths = [
+        lock_path
+        for month_dir in sorted(path for path in history_dir.iterdir() if path.is_dir())
+        for lock_path in iter_locks(month_dir)
+    ]
     out: list[Path] = []
     symbol_set = {s.upper() for s in symbols if s}
     month_set = {m for m in months if m}

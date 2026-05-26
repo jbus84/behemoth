@@ -31,7 +31,11 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.behemoth.core.bundle_paths import bundle_layout_for, sha256_file  # noqa: E402
+from src.behemoth.core.bundle_paths import (  # noqa: E402
+    bundle_layout_for,
+    lock_filename,
+    sha256_file,
+)
 
 try:
     import yaml
@@ -441,7 +445,7 @@ def run(
             window_days=int(window_days),
             git_snapshot=git_snapshot,
         )
-        mp = out_dir / f"{str(s).lower()}_oco_live_lock.json"
+        mp = out_dir / lock_filename(str(s))
         mp.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
 
         st = pd.DataFrame(manifest["state_universe"]["rows"])

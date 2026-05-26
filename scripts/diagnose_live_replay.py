@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from src.behemoth.core.bundle_paths import lock_filename  # noqa: E402
 from src.behemoth.core.features import (  # noqa: E402
     compute_feature_matrix_from_bars,
     compute_regime_quantiles_from_bars,
@@ -228,7 +229,7 @@ def _build_bars_from_ticks(ticks: pl.DataFrame, *, bar_ticks: int) -> pl.DataFra
 
 
 def _load_states(symbol: str, governance_dir: str) -> list[dict]:
-    lock_path = Path(governance_dir) / f"{str(symbol).lower()}_oco_live_lock.json"
+    lock_path = Path(governance_dir) / lock_filename(symbol)
     lock = json.loads(lock_path.read_text(encoding="utf-8"))
     rows = lock.get("state_universe", {}).get("rows", [])
     if not isinstance(rows, list):

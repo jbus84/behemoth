@@ -37,6 +37,9 @@ DEFAULT_PREDICTIONS_DIR = (
 )
 DEFAULT_TICK_ROOT = "/Users/danielfisher/Desktop/dukascopy_ticks"
 DEFAULT_API_PORT = 8000
+_MINING_FAMILY = "oco"
+_LOCKED_PREDICTIONS_SUFFIX = f"_{_MINING_FAMILY}_locked_predictions.parquet"
+_MONTHLY_PREDICTIONS_SUFFIX = f"_{_MINING_FAMILY}_monthly_predictions.parquet"
 
 
 @dataclass(frozen=True)
@@ -240,15 +243,11 @@ def _poll_health(proc: subprocess.Popen[str], base_url: str, timeout_sec: float)
 
 def _prediction_path(cfg: RunConfig, symbol: str) -> str:
     if cfg.locked_predictions_dir:
-        return str(
-            Path(cfg.locked_predictions_dir) / f"{symbol.lower()}_oco_locked_predictions.parquet"
-        )
-    locked = (
-        Path(cfg.history_dir) / cfg.model_month / f"{symbol.lower()}_oco_locked_predictions.parquet"
-    )
+        return str(Path(cfg.locked_predictions_dir) / f"{symbol.lower()}{_LOCKED_PREDICTIONS_SUFFIX}")
+    locked = Path(cfg.history_dir) / cfg.model_month / f"{symbol.lower()}{_LOCKED_PREDICTIONS_SUFFIX}"
     if locked.exists():
         return str(locked)
-    return str(Path(cfg.predictions_dir) / f"{symbol}_oco_monthly_predictions.parquet")
+    return str(Path(cfg.predictions_dir) / f"{symbol}{_MONTHLY_PREDICTIONS_SUFFIX}")
 
 
 def _state_db_path(cfg: RunConfig, symbol: str) -> Path:
